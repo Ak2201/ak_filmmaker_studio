@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Short Film Blueprint — Curated by Arunak</title>
+<!-- StudioStore must load before any other script touches localStorage. -->
+<script src="studio-store.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1152,6 +1154,10 @@
 
 <div class="toolbar">
   <span class="brand">SHORT FILM · CURATED BY ARUNAK</span>
+  <a href="index.html" id="studioProjLink" class="studio-proj-link" title="Back to Studio · current project">
+    <span class="spl-arrow">←</span>
+    <span class="spl-label" id="studioProjLabel">STUDIO</span>
+  </a>
   <div class="progress-meter" title="Overall completion">
     <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
     <span class="progress-text" id="progressText">0%</span>

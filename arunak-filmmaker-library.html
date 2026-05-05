@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Filmmaker's Library — Curated by Arunak</title>
+<!-- StudioStore must load before any other script touches localStorage. -->
+<script src="studio-store.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -625,6 +627,10 @@
 
 <div class="toolbar">
   <span class="brand">CURATED BY ARUNAK · LIBRARY · COMPANION</span>
+  <a href="index.html" id="studioProjLink" class="studio-proj-link" title="Back to Studio · current project">
+    <span class="spl-arrow">←</span>
+    <span class="spl-label" id="studioProjLabel">STUDIO</span>
+  </a>
   <a class="nav-link" href="index.html" style="color:var(--gold);border-color:var(--gold);">⌂ HUB</a>
   <a class="nav-link" href="arunak-filmmaker-blueprint.html">FEATURE ↗</a>
   <a class="nav-link" href="arunak-shortfilm-blueprint.html">SHORTS ↗</a>

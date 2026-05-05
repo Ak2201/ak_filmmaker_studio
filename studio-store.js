@@ -191,7 +191,11 @@
         const orig = k;
         k = scopedKey(k);
         const result = originalSet.call(this, k, v);
-        if (k !== orig) touch();
+        if (k !== orig) {
+          touch();
+          // Tell the UI a save happened (debounced display in studio-ui.js)
+          notify('saved', { key: orig });
+        }
         return result;
       }
       return originalSet.call(this, k, v);

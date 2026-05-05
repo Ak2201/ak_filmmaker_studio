@@ -1,0 +1,919 @@
+/* ============================================================
+   STUDIO v2 — UX/UI ENHANCEMENTS
+   ------------------------------------------------------------
+   Loaded after each blueprint's own <style>. Layers on top.
+   Premium-first: restraint, hairlines, slow easing, custom focus,
+   editorial typography. No decoration for decoration's sake.
+   ============================================================ */
+
+/* Type tuning — applied universally for premium feel */
+html {
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1, 'ss01' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:root {
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);   /* iOS-style "premium" */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --hair: rgba(26, 24, 21, 0.08);
+  --hair-strong: rgba(26, 24, 21, 0.16);
+  --premium-blur: saturate(180%) blur(20px);
+}
+body.dark {
+  --hair: rgba(244, 237, 224, 0.08);
+  --hair-strong: rgba(244, 237, 224, 0.18);
+}
+
+/* ============================================================
+   SEPIA THEME — third theme between paper and ink.
+   Activated via <body class="sepia">.
+   ============================================================ */
+body.sepia {
+  --ink: #3a2a1a;
+  --paper: #ede0c4;
+  --paper-deep: #e0d0a8;
+  --paper-soft: #f3e8d0;
+  --paper-warm: #e6d5b0;
+  --gold: #8a5a20;
+  --gold-bright: #b07820;
+  --rule: #5a3e22;
+  --muted: #7a6044;
+  --feature: #8a3014;
+  --feature-deep: #5a1e08;
+  --shorts: #345a78;
+  --shorts-deep: #1f3d52;
+  --library: #8a5a20;
+  --green: #2a4a2a;
+  --shadow-md: 0 6px 18px rgba(58, 42, 26, 0.10);
+  --shadow-lg: 0 18px 42px rgba(58, 42, 26, 0.18);
+  --hair: rgba(58, 42, 26, 0.12);
+  --hair-strong: rgba(58, 42, 26, 0.24);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ============================================================
+   FOCUS RINGS — premium, not browser default
+   ============================================================ */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--feature);
+  outline-offset: 2px;
+  border-radius: 1px;
+  transition: outline-offset 120ms var(--ease);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline-offset: 1px;
+}
+button:focus-visible, a:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   SKIP TO CONTENT — accessibility hidden link
+   ============================================================ */
+.skip-to-content {
+  position: fixed; top: -40px; left: 8px;
+  background: var(--ink); color: var(--paper);
+  padding: 8px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 1.5px; font-weight: 600;
+  z-index: 1000; text-decoration: none;
+  border-radius: 2px;
+  transition: top 200ms var(--ease);
+}
+.skip-to-content:focus-visible {
+  top: 8px;
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   READING PROGRESS BAR — top hairline
+   ============================================================ */
+.reading-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: transparent;
+  z-index: 102;
+  pointer-events: none;
+}
+.reading-progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--feature), var(--gold), var(--shorts));
+  transition: width 120ms linear;
+  box-shadow: 0 0 12px rgba(176, 58, 31, 0.45);
+}
+
+/* ============================================================
+   TOOLBAR — premium polish (works alongside existing styles)
+   ============================================================ */
+.toolbar {
+  backdrop-filter: var(--premium-blur);
+  -webkit-backdrop-filter: var(--premium-blur);
+  background: rgba(26, 24, 21, 0.92);
+}
+body.sepia .toolbar { background: rgba(58, 42, 26, 0.92); }
+
+/* ============================================================
+   STICKY STEP RAIL — left-side navigation, auto-built
+   ============================================================ */
+.step-rail {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  width: 220px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px 14px 18px 18px;
+  z-index: 50;
+  background: var(--paper-soft);
+  border-right: 1px solid var(--hair-strong);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  transition: transform 280ms var(--ease), opacity 200ms;
+  scrollbar-width: thin;
+}
+.step-rail::-webkit-scrollbar { width: 6px; }
+.step-rail::-webkit-scrollbar-thumb {
+  background: var(--hair-strong); border-radius: 3px;
+}
+.step-rail.collapsed { transform: translateX(-100%); }
+.step-rail-toggle {
+  position: fixed; top: 80px; left: 0;
+  background: var(--ink); color: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 8px 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px; font-weight: 600;
+  cursor: pointer;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  z-index: 51;
+  border-left: 0;
+  border-radius: 0 2px 2px 0;
+  transition: background 150ms var(--ease);
+}
+.step-rail-toggle:hover { background: var(--feature); }
+
+.step-rail-head {
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); margin-bottom: 12px;
+  font-weight: 600; padding-bottom: 8px;
+  border-bottom: 1px solid var(--hair);
+}
+.step-rail-group {
+  margin-bottom: 16px;
+}
+.step-rail-group-label {
+  font-size: 8px; letter-spacing: 2.5px;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 6px;
+}
+.step-rail-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  text-decoration: none;
+  color: var(--ink);
+  border-radius: 2px;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+  margin-bottom: 1px;
+  position: relative;
+}
+.step-rail-item:hover { background: var(--paper-warm); }
+.step-rail-item.active {
+  background: var(--paper-warm);
+  color: var(--feature);
+  font-weight: 700;
+}
+.step-rail-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 2px;
+  background: var(--feature);
+  border-radius: 0 2px 2px 0;
+}
+.step-rail-item .sri-num {
+  display: inline-block;
+  min-width: 18px;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 9px;
+}
+.step-rail-item.active .sri-num { color: var(--feature); }
+.step-rail-item.done .sri-num { color: var(--green); }
+.step-rail-item.done .sri-check {
+  margin-left: auto;
+  color: var(--green); font-weight: 700;
+}
+.step-rail-item .sri-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+/* On small screens, step rail is hidden by default, drawer-style */
+@media (max-width: 1100px) {
+  .step-rail {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
+  }
+  .step-rail.show { transform: translateX(0); }
+  .step-rail-toggle { display: block; }
+}
+@media (min-width: 1101px) {
+  body.has-step-rail .toolbar,
+  body.has-step-rail .hero,
+  body.has-step-rail .section,
+  body.has-step-rail .step,
+  body.has-step-rail .ladder-step {
+    /* Keep the rail tucked neatly, content shifts */
+  }
+  body.has-step-rail.rail-open main,
+  body.has-step-rail.rail-open .step,
+  body.has-step-rail.rail-open .ladder-step {
+    margin-left: 220px;
+  }
+}
+
+/* ============================================================
+   TOAST — bottom-right, minimal, autodismiss
+   ============================================================ */
+.toast-host {
+  position: fixed;
+  bottom: 18px; right: 18px;
+  z-index: 1500;
+  display: flex; flex-direction: column-reverse; gap: 8px;
+  pointer-events: none;
+  max-width: min(90vw, 360px);
+}
+.toast {
+  background: var(--ink); color: var(--paper);
+  padding: 12px 18px;
+  border-left: 3px solid var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.5px;
+  line-height: 1.45;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+  border-radius: 1px;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-left-color: #4a9d82; }
+.toast.error   { border-left-color: var(--feature); }
+.toast.info    { border-left-color: var(--shorts); }
+.toast .toast-msg { flex: 1; }
+.toast .toast-action {
+  background: transparent; border: 1px solid var(--paper);
+  color: var(--paper); font-family: inherit; font-size: 10px;
+  letter-spacing: 1px; padding: 3px 8px; cursor: pointer;
+  transition: all 120ms var(--ease); font-weight: 600;
+}
+.toast .toast-action:hover { background: var(--paper); color: var(--ink); }
+
+/* ============================================================
+   AUTO-SAVE INDICATOR
+   ============================================================ */
+.save-indicator {
+  position: fixed;
+  bottom: 16px; left: 16px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.2px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  z-index: 90;
+  display: flex; align-items: center; gap: 6px;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+.save-indicator.show {
+  opacity: 0.95;
+  transform: translateY(0);
+}
+.save-indicator .si-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4a9d82;
+}
+.save-indicator.saving .si-dot {
+  background: var(--gold);
+  animation: pulse-soft 1.2s var(--ease) infinite;
+}
+.save-indicator.error .si-dot { background: var(--feature); }
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ============================================================
+   FIELD-SAVED MARK — inline checkmark next to fields after save
+   ============================================================ */
+.field-saved-mark {
+  position: absolute;
+  right: 8px; top: 8px;
+  width: 14px; height: 14px;
+  color: var(--green); opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+}
+.field-saved-mark.show { opacity: 0.9; transform: scale(1); }
+
+/* ============================================================
+   SHORTCUT SHEET MODAL — pressed via "?"
+   ============================================================ */
+.shortcut-sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26, 24, 21, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+.shortcut-sheet-overlay.show { display: flex; opacity: 1; }
+.shortcut-sheet {
+  background: var(--paper);
+  color: var(--ink);
+  max-width: 540px; width: 100%;
+  padding: 36px 40px 30px;
+  border: 1px solid var(--hair-strong);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  position: relative;
+  transform: translateY(8px);
+  transition: transform 240ms var(--ease-out);
+}
+.shortcut-sheet-overlay.show .shortcut-sheet { transform: translateY(0); }
+.shortcut-sheet h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 800; font-style: italic;
+  margin-bottom: 6px; line-height: 1;
+}
+.shortcut-sheet h3 em { color: var(--feature); }
+.shortcut-sheet .deck {
+  color: var(--muted); margin-bottom: 22px; font-size: 13px;
+  font-family: 'Fraunces', serif;
+}
+.shortcut-sheet table {
+  width: 100%; border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+}
+.shortcut-sheet td {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hair);
+  color: var(--ink);
+}
+.shortcut-sheet td:first-child {
+  width: 38%;
+  font-weight: 700; letter-spacing: 1px;
+}
+.shortcut-sheet td:last-child {
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+.shortcut-sheet kbd {
+  display: inline-block;
+  background: var(--paper-warm);
+  border: 1px solid var(--hair-strong);
+  padding: 2px 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  color: var(--ink);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--hair-strong);
+  margin: 0 1px;
+  line-height: 1.4;
+}
+.shortcut-sheet-close {
+  position: absolute; top: 14px; right: 16px;
+  background: transparent; border: 0; cursor: pointer;
+  font-size: 18px; color: var(--muted); padding: 4px 8px;
+}
+.shortcut-sheet-close:hover { color: var(--ink); }
+
+/* ============================================================
+   GLOSSARY POPOVER — hover any [data-glossary] term
+   ============================================================ */
+[data-glossary] {
+  text-decoration: none;
+  border-bottom: 1px dotted var(--gold);
+  cursor: help;
+  transition: border-color 150ms var(--ease);
+}
+[data-glossary]:hover { border-bottom-color: var(--feature); }
+.glossary-popover {
+  position: fixed;
+  background: var(--ink); color: var(--paper);
+  padding: 14px 16px;
+  max-width: 320px;
+  font-family: 'Fraunces', serif;
+  font-size: 13px; line-height: 1.5;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+  z-index: 1200;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  border-radius: 2px;
+  border-left: 3px solid var(--gold);
+}
+.glossary-popover.show { opacity: 1; transform: translateY(0); }
+.glossary-popover .gp-term {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--gold);
+  font-weight: 700; margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.glossary-popover .gp-tn {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(244,237,224,0.2);
+  font-size: 12px; color: rgba(244,237,224,0.85);
+}
+
+/* ============================================================
+   THEME PICKER — three-state pill in toolbar
+   ============================================================ */
+.theme-picker {
+  display: inline-flex;
+  background: rgba(244, 237, 224, 0.06);
+  border: 1px solid rgba(244, 237, 224, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  padding: 2px;
+  gap: 0;
+}
+.theme-picker button {
+  background: transparent; border: 0; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  color: rgba(244, 237, 224, 0.55);
+  padding: 5px 10px;
+  border-radius: 999px;
+  transition: background 150ms var(--ease), color 150ms var(--ease);
+  letter-spacing: 0;
+}
+.theme-picker button.active {
+  background: rgba(244, 237, 224, 0.22);
+  color: #fff;
+}
+.theme-picker button:hover:not(.active) {
+  color: rgba(244, 237, 224, 0.85);
+}
+
+/* ============================================================
+   PROJECT LIST — search/filter/sort bar
+   ============================================================ */
+.projects-toolbar {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 10px 0;
+}
+.projects-search {
+  flex: 1; min-width: 220px;
+  background: var(--paper);
+  border: 1px solid var(--hair-strong);
+  padding: 9px 14px;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: 2px;
+  transition: border-color 150ms var(--ease);
+}
+.projects-search:focus {
+  border-color: var(--feature);
+  outline: none;
+}
+.projects-filter {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.projects-filter button {
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  color: var(--muted);
+  padding: 7px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; letter-spacing: 1.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 150ms var(--ease);
+}
+.projects-filter button:hover {
+  color: var(--ink); border-color: var(--ink);
+}
+.projects-filter button.active {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.projects-sort {
+  background: var(--paper);
+  border: 1px solid var(--hair-strong);
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+/* Inline rename — click pen icon (or dblclick title) */
+.project-card .pc-title-edit {
+  width: 100%;
+  background: var(--paper-soft);
+  border: 1px solid var(--feature);
+  padding: 4px 8px;
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 800; font-style: italic;
+  color: var(--ink);
+  border-radius: 1px;
+}
+.project-card .pc-title-edit:focus { outline: none; }
+
+/* ============================================================
+   STEP COMPLETION RING — replaces the bare check
+   ============================================================ */
+.step-progress-ring {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--hair-strong);
+  position: relative;
+}
+.step-progress-ring.partial::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  transform: rotate(45deg);
+}
+.step-progress-ring.done {
+  border-color: var(--green);
+  background: var(--green);
+}
+.step-progress-ring.done::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--paper);
+  font-size: 9px; font-weight: 700;
+}
+
+/* ============================================================
+   EMPTY STATES — replaces "—" with charm
+   ============================================================ */
+.empty-charm {
+  display: inline-flex;
+  align-items: center; gap: 6px;
+  color: var(--muted);
+  font-style: italic;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  opacity: 0.75;
+}
+.empty-charm::before {
+  content: '·';
+  color: var(--gold);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 16px;
+}
+
+/* ============================================================
+   MOBILE BOTTOM ACTION BAR — phone only
+   ============================================================ */
+.mobile-actionbar {
+  display: none;
+}
+@media (max-width: 720px) {
+  .mobile-actionbar {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(26, 24, 21, 0.92);
+    backdrop-filter: var(--premium-blur);
+    -webkit-backdrop-filter: var(--premium-blur);
+    border-top: 1px solid rgba(244,237,224,0.1);
+    padding: 8px 12px env(safe-area-inset-bottom, 8px);
+    z-index: 95;
+    gap: 6px;
+    justify-content: space-around;
+  }
+  .mobile-actionbar button, .mobile-actionbar a {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1px;
+    font-weight: 700;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 2px;
+    transition: background 120ms var(--ease);
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: center;
+    min-height: 48px;
+  }
+  .mobile-actionbar button:hover, .mobile-actionbar a:hover {
+    background: rgba(244,237,224,0.1);
+  }
+  .mobile-actionbar .mab-icon {
+    font-size: 14px; line-height: 1;
+    color: var(--gold);
+  }
+  body.has-mobile-actionbar { padding-bottom: 60px; }
+  body.has-mobile-actionbar .save-indicator { bottom: 70px; }
+  body.has-mobile-actionbar .toast-host { bottom: 70px; }
+}
+
+/* ============================================================
+   EDITORIAL POLISH — drop caps, hanging punctuation
+   ============================================================ */
+.step-deck::first-letter,
+.section-head .deck::first-letter,
+.hero-deck::first-letter {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.05em;
+  font-weight: 800;
+  font-style: italic;
+}
+
+/* Pull quotes (use sparingly — class .pull-quote) */
+.pull-quote {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.25;
+  border-left: 2px solid var(--feature);
+  padding: 6px 22px;
+  margin: 28px 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   15-BEAT VISUALIZER — auto-rendered if blueprint has b01..b15
+   ============================================================ */
+.beat-visualizer {
+  margin: 24px 0;
+  padding: 22px 18px;
+  background: var(--paper-soft);
+  border: 1px solid var(--hair-strong);
+  border-radius: 2px;
+  position: relative;
+}
+.beat-visualizer-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--gold); font-weight: 700;
+}
+.beat-visualizer svg {
+  width: 100%;
+  height: 220px;
+  display: block;
+  cursor: crosshair;
+}
+.beat-dot {
+  fill: var(--paper);
+  stroke: var(--feature);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r 150ms var(--ease), stroke-width 150ms var(--ease);
+}
+.beat-dot.filled {
+  fill: var(--feature);
+}
+.beat-dot:hover {
+  stroke-width: 3;
+  r: 7;
+}
+.beat-line {
+  fill: none;
+  stroke: var(--feature);
+  stroke-width: 1.5;
+  stroke-opacity: 0.4;
+}
+.beat-axis {
+  stroke: var(--hair-strong);
+  stroke-width: 1;
+}
+.beat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  fill: var(--muted);
+  letter-spacing: 0.5px;
+}
+.beat-tooltip {
+  position: absolute;
+  background: var(--ink); color: var(--paper);
+  padding: 8px 12px;
+  font-family: 'Fraunces', serif;
+  font-size: 12px; line-height: 1.4;
+  max-width: 240px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  z-index: 30;
+  border-left: 2px solid var(--gold);
+}
+.beat-tooltip.show { opacity: 1; }
+
+/* ============================================================
+   PROJECT-AT-A-GLANCE GREETING (hub)
+   ============================================================ */
+.greeting-block {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.greeting-block strong { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   REDUCED MOTION RESPECT
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   TIGHTER NUMBERS — proper tabular figures for stats
+   ============================================================ */
+.hero-stat .num,
+.progress-text,
+.calc-grand .total,
+.pc-num,
+.beat-label {
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ============================================================
+   BUTTON HOVERS — refined
+   ============================================================ */
+.btn, .nav-link, button {
+  transition: background 160ms var(--ease), border-color 160ms var(--ease),
+              color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+/* ============================================================
+   CARD HOVERS — sub-pixel lift
+   ============================================================ */
+.door, .start-card, .data-card, .activity-row, .film-card,
+.director-card, .project-card {
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out),
+              border-color 220ms var(--ease-out);
+}
+@media (hover: hover) {
+  .door:hover, .start-card:hover, .data-card:hover, .film-card:hover,
+  .director-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* ============================================================
+   TYPOGRAPHY REFINEMENTS
+   ============================================================ */
+h1, h2, h3, h4 {
+  font-feature-settings: 'kern' 1, 'liga' 1, 'dlig' 1;
+  letter-spacing: -0.012em;
+}
+em { font-style: italic; font-feature-settings: 'liga' 1; }
+
+/* Hanging quotes */
+blockquote, .pull-quote {
+  hanging-punctuation: first last;
+}
+
+/* ============================================================
+   PROJECT CARD: cover image upload area (premium feel)
+   ============================================================ */
+.project-card .pc-cover {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.10;
+  z-index: 0;
+  pointer-events: none;
+}
+.project-card > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   STORAGE / PROGRESS pill on hub - subtle
+   ============================================================ */
+.hub-stat-strip {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--hair);
+}
+.hub-stat-strip .hss-item {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.hub-stat-strip .hss-num {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 800; font-style: italic;
+  color: var(--ink);
+  font-feature-settings: 'tnum' 1;
+}
+.hub-stat-strip .hss-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); font-weight: 600;
+}
+
+/* ============================================================
+   DARK MODE TWEAKS
+   ============================================================ */
+body.dark .step-rail {
+  background: var(--paper-deep);
+}
+body.dark .toast {
+  background: #0e0c0a;
+}
+body.dark .glossary-popover {
+  background: #0e0c0a;
+  border-left-color: var(--gold-bright);
+}
+body.dark .shortcut-sheet {
+  background: var(--paper-deep);
+  color: var(--ink);
+  border-color: var(--hair-strong);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+body.dark .save-indicator {
+  background: #0e0c0a;
+}
+body.dark .hub-stat-strip .hss-num,
+body.dark .greeting-block strong {
+  color: var(--ink);
+}
+
+/* ============================================================
+   HEADER PILL OVERFLOW HELPERS
+   ============================================================ */
+@media (max-width: 900px) {
+  .toolbar {
+    overflow-x: auto;
+    padding: 8px 12px;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .step-rail-toggle { display: block; }
+}
+
+/* ============================================================
+   SUBTLE SHIMMER ON SKELETONS (for project switch loading)
+   ============================================================ */
+.shimmer {
+  background: linear-gradient(90deg,
+    var(--paper-deep) 0%,
+    var(--paper-warm) 50%,
+    var(--paper-deep) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 2px;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

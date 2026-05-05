@@ -28,6 +28,7 @@
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/feature", "destination": "/arunak-filmmaker-blueprint.html" },
     { "source": "/short", "destination": "/arunak-shortfilm-blueprint.html" },
-    { "source": "/library", "destination": "/arunak-filmmaker-library.html" }
+    { "source": "/library", "destination": "/arunak-filmmaker-library.html" },
+    { "source": "/shared/:token", "destination": "/index.html?share=:token" }
   ]
 }

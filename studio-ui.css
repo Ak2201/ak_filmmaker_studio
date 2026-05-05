@@ -902,6 +902,370 @@ body.dark .greeting-block strong {
 }
 
 /* ============================================================
+   CLOUD UI — sign-in pill, auth modal, account menu, share dialog
+   ------------------------------------------------------------
+   Same paper/ink/sepia palette, same typography. No flashy chrome.
+   ============================================================ */
+
+/* Sign-in pill (toolbar) */
+.sign-in-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: transparent;
+  border: 1px solid rgba(244,237,224,0.3);
+  color: var(--paper);
+  padding: 7px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: all 150ms var(--ease);
+  max-width: 220px;
+}
+.sign-in-pill:hover {
+  background: rgba(244,237,224,0.08);
+  border-color: rgba(244,237,224,0.55);
+}
+.sign-in-pill .sip-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.sign-in-pill.signed-in .sip-dot {
+  background: #4a9d82;
+  box-shadow: 0 0 0 3px rgba(74,157,130,0.2);
+}
+.sign-in-pill .sip-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 170px;
+}
+
+/* Account menu (dropdown) */
+.account-menu {
+  position: fixed;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--hair-strong);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.18);
+  min-width: 220px;
+  padding: 6px;
+  z-index: 200;
+  display: none;
+  border-radius: 2px;
+}
+.account-menu.show { display: block; }
+.account-menu .am-email {
+  padding: 10px 12px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.5px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--hair);
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.account-menu .am-item {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: 0; cursor: pointer;
+  padding: 9px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px; font-weight: 600;
+  color: var(--ink);
+  border-radius: 2px;
+  transition: background 120ms var(--ease);
+}
+.account-menu .am-item:hover { background: var(--paper-warm); }
+.account-menu .am-item.danger { color: var(--feature); }
+.account-menu .am-item.danger:hover { background: rgba(176,58,31,0.08); }
+
+/* Cloud auth modal (.cm-overlay reused for share dialog + migration) */
+.cm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,24,21,0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-out);
+}
+.cm-overlay.show { display: flex; opacity: 1; }
+.cm-card {
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+  max-width: 460px;
+  padding: 36px 40px 30px;
+  border: 1px solid var(--hair-strong);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  border-radius: 2px;
+  position: relative;
+  transform: translateY(8px);
+  transition: transform 240ms var(--ease-out);
+  max-height: 90vh; overflow-y: auto;
+}
+.cm-overlay.show .cm-card { transform: translateY(0); }
+.cm-close {
+  position: absolute; top: 14px; right: 16px;
+  background: transparent; border: 0; cursor: pointer;
+  font-size: 20px; color: var(--muted); padding: 4px 8px;
+  border-radius: 2px;
+}
+.cm-close:hover { color: var(--ink); }
+.cm-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 12px;
+}
+.cm-card h2, .cm-card h3 {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  letter-spacing: -0.012em;
+}
+.cm-card h2 {
+  font-size: 30px; font-weight: 800;
+  line-height: 1.05; margin-bottom: 8px;
+}
+.cm-card h2 em { color: var(--feature); font-style: italic; }
+.cm-card .cm-deck {
+  color: var(--muted);
+  font-size: 14px; line-height: 1.55;
+  margin-bottom: 22px;
+  font-family: 'Fraunces', serif;
+}
+.cm-card label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--muted); font-weight: 600;
+  margin-bottom: 5px;
+  margin-top: 12px;
+}
+.cm-card input[type="email"],
+.cm-card input[type="url"],
+.cm-card input[type="text"],
+.cm-card input[type="password"],
+.cm-card select {
+  width: 100%;
+  background: var(--paper-soft);
+  border: 1px solid var(--hair-strong);
+  padding: 11px 14px;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: 2px;
+  margin-bottom: 6px;
+  transition: border-color 150ms var(--ease);
+}
+.cm-card input:focus, .cm-card select:focus {
+  outline: none;
+  border-color: var(--feature);
+}
+.cm-card .cm-hint {
+  font-size: 11px; color: var(--muted); line-height: 1.5;
+  margin-top: 8px; font-family: 'Fraunces', serif;
+  font-style: italic;
+}
+.cm-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 11px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 2px; font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 150ms var(--ease);
+  margin-top: 10px;
+  width: 100%;
+}
+.cm-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+.cm-btn.primary {
+  background: var(--feature);
+  color: var(--paper);
+  border-color: var(--feature);
+}
+.cm-btn.primary:hover {
+  background: var(--feature-deep);
+  border-color: var(--feature-deep);
+}
+.cm-btn.google {
+  background: #fff;
+  color: #1a1815;
+  border-color: rgba(0,0,0,0.18);
+}
+.cm-btn.google:hover {
+  background: #f5f5f7;
+  border-color: rgba(0,0,0,0.36);
+  color: #1a1815;
+}
+.cm-divider {
+  display: flex; align-items: center;
+  margin: 20px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--muted); font-weight: 600;
+}
+.cm-divider::before, .cm-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--hair);
+}
+.cm-divider span { padding: 0 12px; }
+.cm-link {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  color: var(--feature);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cm-link:hover { text-decoration: underline; }
+.cm-share-banner {
+  background: var(--paper-warm);
+  border-left: 3px solid var(--gold);
+  padding: 10px 14px;
+  font-size: 13px; line-height: 1.45;
+  margin-bottom: 18px;
+  font-family: 'Fraunces', serif;
+}
+.cm-actions {
+  display: flex; gap: 10px;
+  margin-top: 18px;
+}
+.cm-actions .cm-btn { width: auto; flex: 1; margin-top: 0; }
+
+/* Share dialog */
+.share-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+.share-row select { margin-bottom: 0; }
+.share-row .cm-btn { width: auto; margin-top: 0; padding: 9px 14px; }
+.share-result {
+  display: flex; gap: 8px;
+  margin: 4px 0 18px;
+  background: var(--paper-warm);
+  padding: 8px;
+  border-radius: 2px;
+}
+.share-result input {
+  flex: 1;
+  background: var(--paper) !important;
+  margin-bottom: 0 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+}
+.share-result .cm-btn { width: auto; margin-top: 0; padding: 9px 14px; }
+.share-h3 {
+  font-size: 16px !important;
+  margin-top: 18px; margin-bottom: 10px;
+  color: var(--ink);
+  border-top: 1px solid var(--hair);
+  padding-top: 16px;
+}
+.share-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+  max-height: 220px; overflow-y: auto;
+}
+.share-item {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 8px; align-items: center;
+  background: var(--paper-soft);
+  padding: 8px 10px;
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+}
+.si-meta { display: flex; flex-direction: column; gap: 2px; }
+.si-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1.5px;
+  font-weight: 700; color: var(--feature);
+}
+.si-exp {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--muted);
+}
+.si-url {
+  background: var(--paper) !important;
+  border: 1px solid var(--hair) !important;
+  padding: 4px 8px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  margin-bottom: 0 !important;
+}
+.si-revoke {
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  color: var(--muted);
+  width: 28px; height: 28px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 14px;
+  transition: all 120ms var(--ease);
+}
+.si-revoke:hover {
+  color: var(--feature);
+  border-color: var(--feature);
+}
+
+/* Sepia + dark adjustments */
+body.dark .cm-card,
+body.dark .account-menu {
+  background: var(--paper-deep);
+}
+body.dark .cm-btn.google {
+  background: var(--paper-warm);
+  color: var(--ink);
+  border-color: var(--hair-strong);
+}
+
+/* On mobile, modals breathe a little less */
+@media (max-width: 600px) {
+  .cm-card { padding: 28px 24px 24px; }
+  .cm-card h2 { font-size: 24px; }
+  .share-row { grid-template-columns: 1fr; }
+  .share-row .cm-btn { width: 100%; }
+  .share-item { grid-template-columns: 1fr auto; }
+  .share-item .si-url { grid-column: 1 / -1; }
+}
+
+/* Project card SHARE button (hub) */
+.project-card .pc-share {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  color: var(--muted);
+  padding: 5px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1.5px; font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+  opacity: 0;
+  transition: all 150ms var(--ease);
+  z-index: 2;
+}
+.project-card:hover .pc-share { opacity: 1; }
+.project-card .pc-share:hover {
+  color: var(--feature);
+  border-color: var(--feature);
+}
+
+/* ============================================================
    SUBTLE SHIMMER ON SKELETONS (for project switch loading)
    ============================================================ */
 .shimmer {

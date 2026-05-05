@@ -311,6 +311,9 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeShortcutSheet();
+      closeCloudAuthModal();
+      const sd = document.getElementById('shareDialog');
+      if (sd) sd.remove();
       return;
     }
     if (e.key === '?' && !isTextInput(e.target)) {
@@ -771,6 +774,334 @@
   };
 
   // ============================================================
+  // CLOUD UI — auth pill, sign-in modal, migration prompt, share dialog
+  // ------------------------------------------------------------
+  // These render only when StudioCloud is loaded; they fail silently
+  // otherwise so logged-out users never see anything cloud-related.
+  // ============================================================
+  function fmtEmail(e) {
+    if (!e) return '';
+    if (e.length > 22) return e.slice(0, 8) + '…' + e.slice(-10);
+    return e;
+  }
+  function attachSignInPill(host) {
+    if (!host || host.querySelector('#signInPill')) return;
+    const pill = document.createElement('button');
+    pill.id = 'signInPill';
+    pill.className = 'sign-in-pill';
+    pill.setAttribute('aria-label', 'Sign in to cloud');
+    pill.title = 'Sign in to sync across devices and share';
+    pill.innerHTML = '<span class="sip-dot" aria-hidden="true"></span><span class="sip-label">SIGN IN</span>';
+    pill.addEventListener('click', () => openCloudAuthModal());
+    host.appendChild(pill);
+    refreshSignInPill();
+    if (window.StudioCloud) {
+      StudioCloud.onAuth(() => refreshSignInPill());
+    }
+  }
+  function refreshSignInPill() {
+    const pill = document.getElementById('signInPill');
+    if (!pill) return;
+    const sess = window.StudioCloud && StudioCloud.getSession && StudioCloud.getSession();
+    const lab = pill.querySelector('.sip-label');
+    if (sess && sess.user) {
+      pill.classList.add('signed-in');
+      lab.textContent = fmtEmail(StudioCloud.getUserEmail() || 'signed in');
+      pill.title = 'Signed in as ' + StudioCloud.getUserEmail();
+      pill.onclick = () => openAccountMenu(pill);
+    } else {
+      pill.classList.remove('signed-in');
+      lab.textContent = 'SIGN IN';
+      pill.title = 'Sign in to sync across devices and share';
+      pill.onclick = () => openCloudAuthModal();
+    }
+  }
+
+  // ----- account menu (signed-in dropdown) ----------------------
+  function openAccountMenu(anchor) {
+    let menu = document.getElementById('accountMenu');
+    if (menu) { menu.classList.remove('show'); menu.remove(); return; }
+    menu = document.createElement('div');
+    menu.id = 'accountMenu';
+    menu.className = 'account-menu';
+    menu.innerHTML =
+      '<div class="am-email">' + (StudioCloud.getUserEmail() || '') + '</div>' +
+      '<button class="am-item" data-act="sync">↻ SYNC NOW</button>' +
+      '<button class="am-item" data-act="settings">⚙ CLOUD SETTINGS</button>' +
+      '<button class="am-item danger" data-act="signout">SIGN OUT</button>';
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.top = (r.bottom + 6) + 'px';
+    menu.style.right = (window.innerWidth - r.right) + 'px';
+    menu.classList.add('show');
+    menu.addEventListener('click', async (e) => {
+      const act = e.target && e.target.dataset && e.target.dataset.act;
+      if (!act) return;
+      menu.remove();
+      if (act === 'sync')     { await StudioCloud.flushQueue(); StudioCloud.attachToCurrentProject(); StudioUI.toastSuccess('Synced.'); }
+      if (act === 'settings') { openCloudAuthModal({ mode: 'settings' }); }
+      if (act === 'signout')  { await StudioCloud.signOut(); StudioUI.toastInfo('Signed out.'); }
+    });
+    setTimeout(() => {
+      document.addEventListener('click', function close(ev) {
+        if (!menu.contains(ev.target) && ev.target !== anchor) {
+          menu.remove();
+          document.removeEventListener('click', close);
+        }
+      });
+    }, 50);
+  }
+
+  // ----- cloud auth modal ---------------------------------------
+  function ensureCloudAuthModal() {
+    let m = document.getElementById('cloudAuthModal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'cloudAuthModal';
+    m.className = 'cm-overlay';
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+    m.setAttribute('aria-labelledby', 'cmHeading');
+    m.innerHTML =
+      '<form class="cm-card" onsubmit="event.preventDefault();">' +
+        '<button type="button" class="cm-close" aria-label="Close" onclick="StudioUI.closeCloudAuthModal()">×</button>' +
+        '<div class="cm-eyebrow">CLOUD · OPTIONAL</div>' +
+        '<h2 id="cmHeading">Sign <em>In.</em></h2>' +
+        '<p class="cm-deck">Save your projects to the cloud, sync across devices, and share with collaborators. Local-only works without this.</p>' +
+        '<div id="cmConfigBlock" class="cm-config" hidden>' +
+          '<label>Supabase Project URL</label>' +
+          '<input type="url" id="cmCfgUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">' +
+          '<label>Anon (public) key</label>' +
+          '<input type="text" id="cmCfgKey" placeholder="eyJhbGciOi…" autocomplete="off">' +
+          '<button type="button" class="cm-btn primary" onclick="StudioUI._cmSaveCfg()">SAVE &amp; CONTINUE</button>' +
+          '<p class="cm-hint">The anon key is safe to share — security is enforced by row-level policies on your database.</p>' +
+        '</div>' +
+        '<div id="cmAuthBlock">' +
+          '<button type="button" class="cm-btn google" id="cmGoogle">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1h-9.18v2.92h5.27c-.23 1.4-1.6 4.11-5.27 4.11-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.43l2.53-2.43C16.79 4.06 14.62 3 12.17 3 6.92 3 2.7 7.22 2.7 12.27s4.22 9.27 9.47 9.27c5.47 0 9.1-3.84 9.1-9.25 0-.62-.07-1.09-.16-1.59z"/></svg>' +
+            '&nbsp;CONTINUE WITH GOOGLE' +
+          '</button>' +
+          '<div class="cm-divider"><span>OR</span></div>' +
+          '<label>Email address</label>' +
+          '<input type="email" id="cmEmail" placeholder="you@studio.com" autocomplete="email">' +
+          '<button type="button" class="cm-btn primary" id="cmMagic">SEND MAGIC LINK</button>' +
+          '<p class="cm-hint">We\'ll email you a one-time login link. No password required.</p>' +
+          '<a href="#" class="cm-link" id="cmConfigLink" onclick="event.preventDefault();StudioUI._cmShowCfg();">Configure your own Supabase project →</a>' +
+        '</div>' +
+      '</form>';
+    document.body.appendChild(m);
+    // wire actions
+    m.addEventListener('click', (e) => { if (e.target === m) closeCloudAuthModal(); });
+    m.querySelector('#cmGoogle').addEventListener('click', async () => {
+      try { await StudioCloud.signInWithGoogle(); }
+      catch (e) { StudioUI.toastError(e.message || String(e)); }
+    });
+    m.querySelector('#cmMagic').addEventListener('click', async () => {
+      const email = m.querySelector('#cmEmail').value.trim();
+      if (!email) { StudioUI.toastError('Enter your email.'); return; }
+      try {
+        await StudioCloud.signInWithEmail(email);
+        StudioUI.toastSuccess('Check your inbox for the magic link.');
+        closeCloudAuthModal();
+      } catch (e) { StudioUI.toastError(e.message || String(e)); }
+    });
+    return m;
+  }
+  function openCloudAuthModal(opts) {
+    opts = opts || {};
+    if (!window.StudioCloud) {
+      StudioUI.toastError('Cloud module not loaded.');
+      return;
+    }
+    const m = ensureCloudAuthModal();
+    const heading = m.querySelector('#cmHeading');
+    if (StudioCloud.isConfigured()) {
+      m.querySelector('#cmConfigBlock').hidden = true;
+      m.querySelector('#cmAuthBlock').hidden = false;
+      if (opts.mode === 'settings') {
+        heading.innerHTML = 'Cloud <em>settings.</em>';
+        StudioUI._cmShowCfg();
+      } else {
+        heading.innerHTML = 'Sign <em>in.</em>';
+      }
+    } else {
+      // First time: force config
+      m.querySelector('#cmConfigBlock').hidden = false;
+      m.querySelector('#cmAuthBlock').hidden = true;
+      heading.innerHTML = 'Configure <em>cloud.</em>';
+      const cfg = StudioCloud.getCfg() || {};
+      m.querySelector('#cmCfgUrl').value = cfg.url || '';
+      m.querySelector('#cmCfgKey').value = cfg.key || '';
+    }
+    if (opts.shareMeta) {
+      const banner = document.createElement('div');
+      banner.className = 'cm-share-banner';
+      banner.innerHTML = '<strong>📎 You\'ve been invited:</strong> "' + opts.shareMeta.title + '" · role: ' + opts.shareMeta.role + '.<br>Sign in to claim.';
+      m.querySelector('.cm-card').insertBefore(banner, m.querySelector('#cmConfigBlock'));
+    }
+    m.classList.add('show');
+    setTimeout(() => {
+      const ip = m.querySelector('#cmConfigBlock').hidden ? m.querySelector('#cmEmail') : m.querySelector('#cmCfgUrl');
+      if (ip) ip.focus();
+    }, 80);
+  }
+  function closeCloudAuthModal() {
+    const m = document.getElementById('cloudAuthModal');
+    if (m) m.classList.remove('show');
+  }
+  StudioUI._cmShowCfg = () => {
+    const m = ensureCloudAuthModal();
+    m.querySelector('#cmConfigBlock').hidden = false;
+    const cfg = StudioCloud.getCfg() || {};
+    m.querySelector('#cmCfgUrl').value = cfg.url || '';
+    m.querySelector('#cmCfgKey').value = cfg.key || '';
+  };
+  StudioUI._cmSaveCfg = async () => {
+    const m = ensureCloudAuthModal();
+    const url = m.querySelector('#cmCfgUrl').value.trim();
+    const key = m.querySelector('#cmCfgKey').value.trim();
+    if (!url || !key) { StudioUI.toastError('Both URL and anon key are required.'); return; }
+    StudioCloud.setCfg({ url, key });
+    const ok = await StudioCloud.ensureClient();
+    if (!ok) { StudioUI.toastError('Could not connect — check your URL and key.'); return; }
+    StudioUI.toastSuccess('Connected. Sign in below.');
+    m.querySelector('#cmConfigBlock').hidden = true;
+    m.querySelector('#cmAuthBlock').hidden = false;
+    m.querySelector('#cmHeading').innerHTML = 'Sign <em>in.</em>';
+  };
+
+  // ----- migration prompt ---------------------------------------
+  function openMigrationModal(count) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'cm-overlay show';
+      overlay.innerHTML =
+        '<div class="cm-card" style="max-width:440px;">' +
+          '<div class="cm-eyebrow">MIGRATION</div>' +
+          '<h2>' + count + ' project' + (count === 1 ? '' : 's') + ' found <em>locally.</em></h2>' +
+          '<p class="cm-deck">Upload to your cloud account so you can edit them on any device, share with collaborators, and never lose work to a cleared browser.</p>' +
+          '<p class="cm-hint">You can decide later — projects stay on this device until uploaded.</p>' +
+          '<div class="cm-actions">' +
+            '<button class="cm-btn" id="mmNo">NOT NOW</button>' +
+            '<button class="cm-btn primary" id="mmYes">UPLOAD ALL</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      function close(answer) {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 200);
+        resolve(answer);
+      }
+      overlay.querySelector('#mmYes').addEventListener('click', () => close(true));
+      overlay.querySelector('#mmNo').addEventListener('click',  () => close(false));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+    });
+  }
+
+  // ----- share dialog -------------------------------------------
+  function openShareDialog(projectId) {
+    if (!projectId) return;
+    if (!window.StudioCloud || !StudioCloud.getSession()) {
+      openCloudAuthModal();
+      return;
+    }
+    let m = document.getElementById('shareDialog');
+    if (m) m.remove();
+    m = document.createElement('div');
+    m.id = 'shareDialog';
+    m.className = 'cm-overlay';
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+    m.innerHTML =
+      '<div class="cm-card" style="max-width:560px;">' +
+        '<button type="button" class="cm-close" aria-label="Close">×</button>' +
+        '<div class="cm-eyebrow">SHARING</div>' +
+        '<h2>Share <em>this project.</em></h2>' +
+        '<p class="cm-deck">Create a link with a role. Anyone who opens it (and signs in) gets that level of access. Revoke any link any time.</p>' +
+        '<div class="share-row">' +
+          '<select id="shRole" aria-label="Share role">' +
+            '<option value="view">VIEW · read only</option>' +
+            '<option value="comment" selected>COMMENT · read + comment (default)</option>' +
+            '<option value="edit">EDIT · full edit access</option>' +
+          '</select>' +
+          '<select id="shExp" aria-label="Expiry">' +
+            '<option value="">NO EXPIRY</option>' +
+            '<option value="1">1 DAY</option>' +
+            '<option value="7" selected>7 DAYS</option>' +
+            '<option value="30">30 DAYS</option>' +
+          '</select>' +
+          '<button class="cm-btn primary" id="shGen">GENERATE LINK</button>' +
+        '</div>' +
+        '<div class="share-result" id="shResult" hidden>' +
+          '<input type="text" id="shUrl" readonly>' +
+          '<button class="cm-btn" id="shCopy">COPY</button>' +
+        '</div>' +
+        '<h3 class="share-h3">Active links</h3>' +
+        '<div id="shList" class="share-list"><em class="cm-hint">Loading…</em></div>' +
+      '</div>';
+    document.body.appendChild(m);
+    m.querySelector('.cm-close').addEventListener('click', () => m.remove());
+    m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
+    m.querySelector('#shGen').addEventListener('click', async () => {
+      const role = m.querySelector('#shRole').value;
+      const days = parseInt(m.querySelector('#shExp').value, 10);
+      const exp = days ? new Date(Date.now() + days * 86400e3).toISOString() : null;
+      try {
+        const token = await StudioCloud.createShare(projectId, role, exp);
+        const url = location.origin + '/index.html?share=' + token;
+        const wrap = m.querySelector('#shResult');
+        wrap.hidden = false;
+        m.querySelector('#shUrl').value = url;
+        renderShareList();
+        StudioUI.toastSuccess('Share link created (' + role + ').');
+      } catch (e) { StudioUI.toastError(e.message || String(e)); }
+    });
+    m.querySelector('#shCopy').addEventListener('click', () => {
+      const inp = m.querySelector('#shUrl');
+      inp.select();
+      try { document.execCommand('copy'); StudioUI.toastSuccess('Copied!'); }
+      catch (e) { navigator.clipboard.writeText(inp.value); StudioUI.toastSuccess('Copied!'); }
+    });
+    async function renderShareList() {
+      const list = m.querySelector('#shList');
+      list.innerHTML = '<em class="cm-hint">Loading…</em>';
+      const rows = await StudioCloud.listShares(projectId);
+      if (!rows.length) { list.innerHTML = '<em class="cm-hint">No active links yet.</em>'; return; }
+      list.innerHTML = rows.map(r => {
+        const exp = r.expires_at ? ('expires ' + new Date(r.expires_at).toLocaleDateString()) : 'no expiry';
+        const url = location.origin + '/index.html?share=' + r.token;
+        return '<div class="share-item">' +
+          '<div class="si-meta">' +
+            '<span class="si-role">' + r.role.toUpperCase() + '</span>' +
+            '<span class="si-exp">' + exp + '</span>' +
+          '</div>' +
+          '<input class="si-url" value="' + url + '" readonly>' +
+          '<button class="si-revoke" data-id="' + r.id + '" aria-label="Revoke">×</button>' +
+        '</div>';
+      }).join('');
+      list.querySelectorAll('.si-revoke').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Revoke this link? Anyone using it will lose access.')) return;
+          try { await StudioCloud.revokeShare(btn.dataset.id); renderShareList(); StudioUI.toastSuccess('Link revoked.'); }
+          catch (e) { StudioUI.toastError(e.message || String(e)); }
+        });
+      });
+      list.querySelectorAll('.si-url').forEach(inp => {
+        inp.addEventListener('focus', () => inp.select());
+      });
+    }
+    m.classList.add('show');
+    renderShareList();
+  }
+
+  StudioUI.attachSignInPill      = attachSignInPill;
+  StudioUI.refreshSignInPill     = refreshSignInPill;
+  StudioUI.openCloudAuthModal    = openCloudAuthModal;
+  StudioUI.closeCloudAuthModal   = closeCloudAuthModal;
+  StudioUI.openMigrationModal    = openMigrationModal;
+  StudioUI.openShareDialog       = openShareDialog;
+
+  // ============================================================
   // PUBLIC API
   // ============================================================
   StudioUI.injectSkipLink            = injectSkipLink;
@@ -805,6 +1136,9 @@
       wireFieldSavedFlash();
       autoAriaLabels();
       StudioUI.polishEmptyStates();
+      // Auto-attach sign-in pill to the toolbar on every page
+      const toolbar = document.querySelector('.toolbar');
+      if (toolbar) attachSignInPill(toolbar);
       // Mobile bar on blueprints (auto-detect)
       if (document.querySelector('section.step') && window.matchMedia('(max-width: 720px)').matches) {
         StudioUI.attachMobileActionBar();

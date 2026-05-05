@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800;9..144,900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="studio-ui.css">
 <script src="studio-ui.js" defer></script>
+<script type="module" src="studio-cloud.js"></script>
 <style>
   :root {
     --ink: #1a1815;
@@ -2663,6 +2664,7 @@
             '<button onclick="duplicateProject(\'' + p.id + '\')" aria-label="Duplicate project" title="Duplicate">⎘</button>' +
             '<button onclick="deleteProjectConfirm(\'' + p.id + '\')" aria-label="Delete project" title="Delete">×</button>' +
           '</div>' +
+          '<button class="pc-share" onclick="event.stopPropagation();shareProject(\'' + p.id + '\')" aria-label="Share project" title="Share">↗ SHARE</button>' +
           '<div class="pc-format">' + (FORMAT_LABELS[p.format] || p.format.toUpperCase()) +
             (active ? ' · ACTIVE' : '') +
             ' · ' + progressLabel(pct) +
@@ -2691,6 +2693,14 @@
     document.getElementById('projectsSearch').value = '';
     document.getElementById('projectsSort').value = 'recent';
     renderProjects();
+  };
+
+  window.shareProject = function (id) {
+    if (window.StudioUI && StudioUI.openShareDialog) {
+      StudioUI.openShareDialog(id);
+    } else {
+      alert('Sharing requires the cloud module — please configure it from Settings.');
+    }
   };
 
   window.duplicateProject = function (id) {

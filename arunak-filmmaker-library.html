@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Filmmaker's Library — Curated by Arunak</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1815;
+    --paper: #f5ecd6;
+    --paper-deep: #ebe0c2;
+    --paper-soft: #faf3df;
+    --accent: #b03a1f;
+    --accent-deep: #7a2812;
+    --accent-2: #1f5d4a;
+    --gold: #a87a32;
+    --rule: #2a2520;
+    --muted: #6b6256;
+  }
+  body.dark {
+    --ink: #f0e6d0;
+    --paper: #1a1815;
+    --paper-deep: #2a2520;
+    --paper-soft: #221e19;
+    --accent: #d97a55;
+    --accent-deep: #b03a1f;
+    --accent-2: #4a9d82;
+    --gold: #d9a856;
+    --muted: #9e9486;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.65;
+    font-size: 16px;
+  }
+
+  /* TOOLBAR */
+  .toolbar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ink); color: var(--paper);
+    padding: 10px 18px;
+    display: flex; gap: 10px;
+    align-items: center; flex-wrap: wrap;
+    border-bottom: 2px solid var(--accent);
+  }
+  .toolbar .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2.5px;
+    color: var(--gold); margin-right: auto;
+  }
+  .nav-link {
+    color: var(--paper); text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-link:hover { border-color: var(--gold); color: var(--gold); }
+  .btn {
+    background: transparent; color: var(--paper);
+    border: 1px solid var(--paper);
+    padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover { background: var(--paper); color: var(--ink); }
+  .icon-btn { width: 32px; padding: 4px 8px; font-size: 14px; line-height: 1; }
+
+  /* COVER */
+  .cover {
+    min-height: 100vh; padding: 70px 50px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    border-bottom: 2px solid var(--ink);
+    page-break-after: always;
+    background: linear-gradient(135deg, var(--paper) 0%, var(--paper-deep) 100%);
+    position: relative;
+  }
+  .cover::after {
+    content: ""; position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 320px; height: 320px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    opacity: 0.15; pointer-events: none;
+  }
+  .cover-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--accent);
+    z-index: 1;
+  }
+  .cover-mark::before { content: "— "; }
+  .cover-title {
+    font-size: clamp(56px, 11vw, 140px);
+    font-weight: 800; line-height: 0.85;
+    letter-spacing: -0.04em; font-style: italic;
+    margin: 60px 0 30px;
+    z-index: 1; position: relative;
+  }
+  .cover-title .light { font-weight: 400; font-style: normal; }
+  .cover-sub {
+    font-size: clamp(18px, 2vw, 24px);
+    color: var(--muted); font-style: italic;
+    max-width: 680px;
+    margin-bottom: 50px;
+    z-index: 1; position: relative;
+  }
+  .cover-toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    max-width: 900px;
+    margin-bottom: 40px;
+    z-index: 1; position: relative;
+  }
+  .toc-item {
+    background: var(--ink); color: var(--paper);
+    padding: 14px 18px;
+    text-decoration: none;
+    border-left: 3px solid var(--gold);
+    transition: transform 0.2s;
+  }
+  .toc-item:hover { transform: translateX(4px); }
+  .toc-item .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--gold);
+  }
+  .toc-item .title {
+    font-size: 17px; font-weight: 600;
+    font-style: italic;
+    color: var(--paper);
+    margin-top: 4px; display: block;
+  }
+  .toc-item .desc {
+    font-size: 12px; color: rgba(244,237,224,0.6);
+    margin-top: 4px;
+  }
+  .cover-byline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 4px;
+    color: var(--ink);
+    border-top: 2px solid var(--ink);
+    padding-top: 14px;
+    display: inline-block;
+    z-index: 1; position: relative;
+  }
+  .cover-byline span { color: var(--accent); font-weight: 600; }
+
+  /* SECTION HEADERS */
+  .section-head {
+    padding: 80px 50px 30px;
+    border-bottom: 2px solid var(--ink);
+    page-break-before: always;
+    background: var(--paper-soft);
+  }
+  .section-head .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--accent); margin-bottom: 12px;
+  }
+  .section-head h2 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800; font-style: italic;
+    line-height: 0.95;
+    margin-bottom: 16px;
+  }
+  .section-head h2 em { color: var(--accent); }
+  .section-head .deck {
+    font-size: 17px; color: var(--muted);
+    font-style: italic;
+    max-width: 720px;
+  }
+
+  /* CONTENT */
+  .section-body { padding: 40px 50px; border-bottom: 2px solid var(--ink); }
+
+  /* FILM CARDS */
+  .films-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 18px;
+  }
+  .film-card {
+    background: var(--paper-deep);
+    border-left: 4px solid var(--accent);
+    padding: 20px 22px;
+    page-break-inside: avoid;
+  }
+  .film-card .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .film-card h3 {
+    font-size: 22px; font-weight: 800;
+    font-style: italic;
+    margin-bottom: 4px;
+    line-height: 1.05;
+  }
+  .film-card .director {
+    font-size: 13px; color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .film-card .tags {
+    display: flex; gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .film-card .tag {
+    background: var(--ink); color: var(--gold);
+    padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1px;
+  }
+  .film-card .lesson {
+    font-size: 14.5px; line-height: 1.6;
+    color: var(--ink);
+  }
+  .film-card .lesson strong { color: var(--accent-deep); }
+  .film-card .tn {
+    display: block;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(120,90,30,0.3);
+    font-style: italic;
+    color: var(--accent-deep);
+    font-size: 13px; line-height: 1.55;
+  }
+  .film-card .tn::before {
+    content: "TAMIL · ";
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  /* DIRECTOR CARDS */
+  .director-card {
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent-2);
+    padding: 24px 28px;
+    margin-bottom: 18px;
+    page-break-inside: avoid;
+  }
+  .director-card .name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed rgba(120,90,30,0.3);
+    padding-bottom: 10px;
+  }
+  .director-card h3 {
+    font-size: 26px; font-weight: 800;
+    font-style: italic;
+    color: var(--ink);
+  }
+  .director-card .era {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    color: var(--accent-2);
+  }
+  .director-card .traits {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 10px 18px;
+    font-size: 14px;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .director-card .traits dt {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .director-card .traits dd { color: var(--ink); }
+  .director-card .study {
+    background: var(--ink); color: var(--paper);
+    padding: 10px 14px;
+    margin-top: 10px;
+    border-left: 3px solid var(--gold);
+  }
+  .director-card .study .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .director-card .study p {
+    font-size: 13.5px;
+    color: var(--paper);
+  }
+  .director-card .tn {
+    display: block;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(120,90,30,0.3);
+    font-style: italic;
+    color: var(--accent-2);
+    font-size: 13px; line-height: 1.55;
+  }
+  .director-card .tn::before {
+    content: "TAMIL · ";
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--accent-2);
+    margin-right: 4px;
+  }
+
+  /* RULES LIST */
+  .rules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+    counter-reset: rule;
+  }
+  .rule-card {
+    counter-increment: rule;
+    background: var(--paper-deep);
+    border-left: 3px solid var(--gold);
+    padding: 16px 20px 16px 56px;
+    position: relative;
+    page-break-inside: avoid;
+  }
+  .rule-card::before {
+    content: counter(rule, decimal-leading-zero);
+    position: absolute;
+    left: 14px; top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 800;
+    color: var(--accent);
+  }
+  .rule-card .rule-text {
+    font-size: 15px; line-height: 1.55;
+    color: var(--ink);
+    font-style: italic;
+    margin-bottom: 6px;
+  }
+  .rule-card .attrib {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .rule-card .attrib::before { content: "— "; }
+
+  /* EQUIPMENT TABLE */
+  .equip-block {
+    margin-bottom: 32px;
+    page-break-inside: avoid;
+  }
+  .equip-block h3 {
+    font-size: 22px; font-weight: 800;
+    font-style: italic;
+    color: var(--accent);
+    margin-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 6px;
+  }
+  .equip-block .hint {
+    font-size: 13px; color: var(--muted);
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+  .equip-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--paper-soft);
+    border: 1px solid var(--rule);
+  }
+  .equip-table th {
+    background: var(--ink); color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  .equip-table td {
+    padding: 10px 12px;
+    border-top: 1px solid rgba(42,37,32,0.15);
+    font-size: 13.5px;
+    vertical-align: top;
+  }
+  .equip-table td.item { font-weight: 600; color: var(--ink); }
+  .equip-table td.rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .equip-table td.note {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* CALCULATOR */
+  .calc-block {
+    background: var(--ink); color: var(--paper);
+    padding: 24px 28px;
+    margin: 30px 0;
+    border-left: 4px solid var(--gold);
+  }
+  .calc-block h3 {
+    font-size: 20px; font-weight: 800;
+    font-style: italic;
+    color: var(--paper);
+    margin-bottom: 6px;
+  }
+  .calc-block .hint {
+    font-size: 13px; color: rgba(244,237,224,0.6);
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+  .calc-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .calc-row.head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+  .calc-row input, .calc-row select {
+    background: rgba(244,237,224,0.08);
+    border: 1px solid rgba(244,237,224,0.2);
+    color: var(--paper);
+    padding: 8px 10px;
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+  }
+  .calc-row input:focus, .calc-row select:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: rgba(244,237,224,0.12);
+  }
+  .calc-row .total-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--gold);
+    text-align: right;
+    padding: 8px 10px;
+    background: rgba(168,122,50,0.08);
+  }
+  .calc-actions {
+    display: flex; gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .mini-btn {
+    background: var(--gold); color: var(--ink);
+    border: none;
+    padding: 7px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    cursor: pointer; font-weight: 600;
+  }
+  .mini-btn:hover { background: var(--paper); }
+  .mini-btn.danger { background: rgba(244,237,224,0.2); color: var(--paper); }
+  .calc-grand {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 2px solid var(--gold);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .calc-grand .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 2px;
+    color: var(--gold);
+  }
+  .calc-grand .total {
+    font-family: 'Fraunces', serif;
+    font-size: 28px; font-weight: 800;
+    font-style: italic;
+    color: var(--paper);
+  }
+  .calc-grand .total span { color: var(--gold); font-size: 14px; font-style: normal; }
+
+  /* WATCH LIST */
+  .watch-step {
+    background: var(--paper-deep);
+    border-left: 4px solid var(--accent);
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+  .watch-step .step-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .watch-step h4 {
+    font-size: 18px; font-weight: 700;
+    font-style: italic;
+    margin-bottom: 12px;
+    line-height: 1.1;
+  }
+  .watch-films {
+    display: grid;
+    gap: 8px;
+  }
+  .watch-film {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px dashed rgba(120,90,30,0.25);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .watch-film:first-child { border-top: none; }
+  .watch-film .title {
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .watch-film .why {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    background: var(--paper-deep);
+    border: 1px solid var(--gold);
+    border-left: 4px solid var(--gold);
+    padding: 16px 22px;
+    margin-bottom: 24px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .disclaimer .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  /* FINAL */
+  .final-page {
+    padding: 80px 50px;
+    background: var(--ink); color: var(--paper);
+    text-align: center;
+    page-break-before: always;
+  }
+  .final-page .quote {
+    font-size: clamp(20px, 3vw, 28px);
+    font-style: italic;
+    max-width: 720px;
+    margin: 0 auto 30px;
+    line-height: 1.3;
+  }
+  .final-page .signature {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 3px;
+    color: var(--gold);
+    margin-top: 36px;
+  }
+  .final-page .signature span { color: var(--paper); }
+
+  @media print {
+    @page { size: A4; margin: 16mm 14mm; }
+    body { background: white; color: black; font-size: 10.5pt; }
+    .toolbar { display: none !important; }
+    .cover, .section-head, .section-body, .final-page { padding: 0; }
+    .film-card, .director-card, .rule-card, .watch-step, .calc-block,
+    .equip-table, .disclaimer {
+      background: #fff !important;
+      color: #000 !important;
+      border: 1px solid #888 !important;
+      page-break-inside: avoid;
+    }
+    .calc-block { border-left: 3px solid #a87a32 !important; }
+    .calc-block * { color: #000 !important; }
+    .calc-row input, .calc-row select { background: transparent !important; border: 1px solid #888 !important; }
+    .equip-table th { background: #eee !important; color: #000 !important; }
+    .toc-item { background: #fff !important; color: #000 !important; }
+  }
+
+  @media (max-width: 740px) {
+    .cover, .section-head, .section-body, .final-page { padding: 36px 20px; }
+    .films-grid, .rules-grid { grid-template-columns: 1fr; }
+    .director-card .traits { grid-template-columns: 1fr; gap: 4px; }
+    .director-card .traits dt { margin-top: 6px; }
+    .calc-row { grid-template-columns: 1fr; gap: 4px; }
+    .calc-row.head { display: none; }
+    .calc-row .total-cell { text-align: left; }
+    .equip-table { font-size: 11px; }
+    .equip-table th, .equip-table td { padding: 6px 8px; }
+    .toolbar { padding: 8px 12px; gap: 5px; }
+    .toolbar .brand { font-size: 9px; flex-basis: 100%; margin-bottom: 4px; }
+    .nav-link { font-size: 9px; padding: 3px 6px; }
+    .btn { padding: 5px 9px; font-size: 9px; }
+    .cover-toc { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="brand">CURATED BY ARUNAK · LIBRARY · COMPANION</span>
+  <a class="nav-link" href="index.html" style="color:var(--gold);border-color:var(--gold);">⌂ HUB</a>
+  <a class="nav-link" href="arunak-filmmaker-blueprint.html">FEATURE ↗</a>
+  <a class="nav-link" href="arunak-shortfilm-blueprint.html">SHORTS ↗</a>
+  <a class="nav-link" href="#films">FILMS</a>
+  <a class="nav-link" href="#directors">DIRECTORS</a>
+  <a class="nav-link" href="#rules">RULES</a>
+  <a class="nav-link" href="#equipment">EQUIPMENT</a>
+  <a class="nav-link" href="#watch">WATCH LIST</a>
+  <button class="btn icon-btn" onclick="toggleDark()" id="darkBtn">◐</button>
+  <button class="btn" onclick="window.print()">PRINT</button>
+</div>
+
+<!-- ============== COVER ============== -->
+<section class="cover">
+  <div>
+    <div class="cover-mark">A reference companion to The Filmmaker's Blueprint</div>
+    <h1 class="cover-title">The <span class="light">Filmmaker's</span><br>Library.</h1>
+    <p class="cover-sub">A curated reference: 22 Tamil &amp; Indian films analyzed for craft, 10 director archetypes, 50 craft rules, equipment cost ranges (Chennai 2024-25), and a 72-film watch list mapped to every step of the blueprint.</p>
+    <div class="cover-toc">
+      <a class="toc-item" href="#films">
+        <span class="num">SECTION I</span>
+        <span class="title">Tamil Cinema Craft Library</span>
+        <span class="desc">22 films, what to learn from each</span>
+      </a>
+      <a class="toc-item" href="#directors">
+        <span class="num">SECTION II</span>
+        <span class="title">Director Archetypes</span>
+        <span class="desc">10 voices to study</span>
+      </a>
+      <a class="toc-item" href="#rules">
+        <span class="num">SECTION III</span>
+        <span class="title">50 Rules of Thumb</span>
+        <span class="desc">Craft maxims, attributed</span>
+      </a>
+      <a class="toc-item" href="#equipment">
+        <span class="num">SECTION IV</span>
+        <span class="title">Equipment &amp; Cost Estimator</span>
+        <span class="desc">Chennai 2024-25 indicative ranges</span>
+      </a>
+      <a class="toc-item" href="#watch">
+        <span class="num">SECTION V</span>
+        <span class="title">Watch List per Step</span>
+        <span class="desc">3 films for each of 24 blueprint steps</span>
+      </a>
+    </div>
+  </div>
+  <div><span class="cover-byline">CURATED BY <span>ARUNAK</span></span></div>
+</section>
+
+<!-- ============== SECTION I — FILMS ============== -->
+<section class="section-head" id="films">
+  <div class="label">SECTION I</div>
+  <h2>The Tamil Cinema <em>Craft Library.</em></h2>
+  <p class="deck">Twenty-two films, mostly Tamil with a few Malayalam neighbours. For each one, the single craft lesson worth taking. Not reviews — extractable techniques you can apply to your own work.</p>
+</section>
+
+<section class="section-body">
+  <div class="films-grid">
+
+    <div class="film-card">
+      <div class="meta">2017 · NEO-NOIR</div>
+      <h3>Vikram Vedha</h3>
+      <div class="director">PUSHKAR–GAYATHRI</div>
+      <div class="tags"><span class="tag">STRUCTURE</span><span class="tag">DUAL HERO</span><span class="tag">FOLKLORE FRAME</span></div>
+      <p class="lesson"><strong>Story-within-story as engine.</strong> The Vikram-Betaal frame isn't decoration — it's the mechanism that lets the film withhold information ethically. Each story Vedha tells reframes the previous scene. Audience and protagonist learn at the same speed.<span class="tn">Vikram-Betaal frame vெறum decoration illa — information ah late ah kaattardhukku karuvi. Vedha sollum ovvoru kadhai um munadi paartha scene oda meaning ah maathidum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2018 · ROMANCE</div>
+      <h3>96</h3>
+      <div class="director">C. PREM KUMAR</div>
+      <div class="tags"><span class="tag">RESTRAINT</span><span class="tag">SUBTEXT</span><span class="tag">MEMORY</span></div>
+      <p class="lesson"><strong>Silence as dialogue.</strong> The film's emotional peaks happen in pauses, glances, and what is NOT said. Premkumar refused to underline emotion with score or close-up. Trust the audience to do the work and they'll do it twice.<span class="tn">Padathula emotion peak vaarthaila illa — pauses la, paarvaila, sollatha vaarthaila. Audience ah work panna vidu — rendu mada deep ah feel pannuva.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2023 · THRILLER</div>
+      <h3>Por Thozhil</h3>
+      <div class="director">VIGNESH RAJA</div>
+      <div class="tags"><span class="tag">SUBTRACTION</span><span class="tag">CASTING</span><span class="tag">ATMOSPHERE</span></div>
+      <p class="lesson"><strong>Define the film by what it refuses.</strong> No songs, no comedy, no daytime, no mass-hero entry. Each constraint became signature. Vignesh Raja's debut proves: limitations chosen, not imposed, become a director's voice.<span class="tn">Padatha enna aagamattaen nu solradhula irundhu thaan voice varudhu — paatu illa, comedy illa, daytime illa, mass entry illa. Constraint ah nee select pannina, adhuvey unga signature.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2010 · BLACK COMEDY</div>
+      <h3>Aaranya Kaandam</h3>
+      <div class="director">THIAGARAJAN KUMARARAJA</div>
+      <div class="tags"><span class="tag">NON-LINEAR</span><span class="tag">GENRE PLAY</span></div>
+      <p class="lesson"><strong>Tone is more important than plot.</strong> A criminal-underworld day told with the rhythm of a Coen brothers film. The tonal commitment carries an audience past plot loose ends. If your tone is precise, your plot can be loose.<span class="tn">Plot kaatilum tone mukkiyam. Tone strict-ah hold pannina, plot la sila gap irundhalum padam vandhuvidum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2015 · POLITICAL DRAMA</div>
+      <h3>Visaranai</h3>
+      <div class="director">VETRIMAARAN</div>
+      <div class="tags"><span class="tag">REALISM</span><span class="tag">POWER</span></div>
+      <p class="lesson"><strong>Procedure as horror.</strong> Vetrimaaran shows how systemic violence is mostly paperwork and routine. The terror isn't in monsters — it's in normalcy. Documentary realism makes fiction more unbearable than fantasy.<span class="tn">System oda violence — monster illa, daily routine la thaan irukku. Documentary feel kuda sollardhu — fantasy ah vida feel kasakkudhu.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2019 · REVENGE DRAMA</div>
+      <h3>Asuran</h3>
+      <div class="director">VETRIMAARAN</div>
+      <div class="tags"><span class="tag">CHARACTER</span><span class="tag">CASTE</span></div>
+      <p class="lesson"><strong>The hero arc, inverted.</strong> Dhanush plays a man who has already learned the lesson — to swallow rage to survive. The drama is whether he can keep that lesson, not whether he'll learn it. Reverse the conventional arc.<span class="tn">Hero adipadiyila lesson kathukittirukan — rage ah vizhungi vaazhanum nu. Avan adha hold panna mudiyumaa nu thaan drama. Conventional arc ah ulpurama.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2014 · COMING-OF-AGE</div>
+      <h3>Kaaka Muttai</h3>
+      <div class="director">M. MANIKANDAN</div>
+      <div class="tags"><span class="tag">CHILD POV</span><span class="tag">SOCIAL</span></div>
+      <p class="lesson"><strong>Specific is universal.</strong> Two slum boys want to taste pizza. The smaller and more specific the want, the wider the audience. Every step the boys take is small; the cumulative meaning is enormous.<span class="tn">Specific aana kadhai — universal aagidum. Pizza saappidanum nu rendu kuzhanthaigal nenaikuranga. Want chinna chinna ah irukkum — kadaisila padam periya meaning kudukkum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2021 · CASTE DRAMA</div>
+      <h3>Karnan</h3>
+      <div class="director">MARI SELVARAJ</div>
+      <div class="tags"><span class="tag">SYMBOLISM</span><span class="tag">VISUAL POETRY</span></div>
+      <p class="lesson"><strong>Symbol over speech.</strong> Mari Selvaraj uses recurring images — the headless statue, the donkey, the masks — to carry political meaning without dialogue speeches. The audience learns the symbol's weight, then he uses it like a word.<span class="tn">Speech la political idea solladhe — recurring symbols la sollu. Tala illatha statue, kazhuthai, mask. Audience symbol oda meaning kathukittapuram, ada vaarthai mathiri use pannalaam.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2019 · COMEDY DRAMA · MALAYALAM</div>
+      <h3>Kumbalangi Nights</h3>
+      <div class="director">MADHU C. NARAYANAN</div>
+      <div class="tags"><span class="tag">ENSEMBLE</span><span class="tag">MASCULINITY</span></div>
+      <p class="lesson"><strong>Antagonist as toxic norm.</strong> No external villain. The "villain" is one character's polished, performative manhood — the kind society approves of. The most dangerous men are the ones the world calls "complete." Make your villain socially admired.<span class="tn">Veliyila villain illa. Society admire panra "complete man" thaan villain. Family ku nallavar mathiri varuvar — aana adhe thaan kettavar. Villain ah society approve panra mathiri vai.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2020 · BIOPIC DRAMA</div>
+      <h3>Soorarai Pottru</h3>
+      <div class="director">SUDHA KONGARA</div>
+      <div class="tags"><span class="tag">UNDERDOG</span><span class="tag">PACING</span></div>
+      <p class="lesson"><strong>Stakes raised in stages.</strong> Each act, the obstacle becomes harder AND more personal. By Act 3 it's not "can I start an airline" — it's "can I be the man my father didn't believe I could be?" External and internal stakes converge.<span class="tn">Ovvoru act um obstacle kashtam aagi, sondha vishayam aagidum. Act 3 la "airline thodanguma" illa — "appa nambama keya namba indha aalu aagidum" nu thaan. External stakes um internal stakes um onna varum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2016 · ENSEMBLE DRAMA</div>
+      <h3>Iraivi</h3>
+      <div class="director">KARTHIK SUBBARAJ</div>
+      <div class="tags"><span class="tag">FEMALE GAZE</span><span class="tag">FRAGMENTED POV</span></div>
+      <p class="lesson"><strong>Refuse a single protagonist.</strong> Three men's lives told through the women they fail. The structural argument — that women see the truth men don't — is built into who gets to narrate which scene. POV is a moral choice.<span class="tn">Oru hero illa — moonu aalu, avanga life avangale failure pannara pengal kannala kaattaranga. Yaaru kadhai sollanum nu decision panrathu — adhu oru moral choice.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2018 · CASTE DRAMA</div>
+      <h3>Pariyerum Perumal</h3>
+      <div class="director">MARI SELVARAJ</div>
+      <div class="tags"><span class="tag">DEBUT</span><span class="tag">QUIET ANGER</span></div>
+      <p class="lesson"><strong>Climax through restraint.</strong> The final scene is two men sitting at a table drinking tea. No fight, no speech. The political punch lands harder for being quiet. The biggest moments don't need the biggest action.<span class="tn">Climax — rendu peru oru table la chaai kudikuranga. Adi illa, dialogue illa. Adhuvey thaan padam oda biggest punch. Periya moment ku periya action vendam.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2019 · ANTHOLOGY</div>
+      <h3>Super Deluxe</h3>
+      <div class="director">THIAGARAJAN KUMARARAJA</div>
+      <div class="tags"><span class="tag">ANTHOLOGY</span><span class="tag">TONE COLLAPSE</span></div>
+      <p class="lesson"><strong>Tonal whiplash as design.</strong> The film deliberately collides comedy, tragedy, magical realism, and crime in one night. The discomfort is the point — the audience can't settle into a single mode. If you commit fully, you can break every rule.<span class="tn">Comedy, tragedy, magical realism, crime — onnu night la collide pannardhu deliberate. Audience oru mode la settle aaga muyalvanga — vidamaattan. Full ah commit panna, ovvoru rule um break pannalaam.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2018 · CRIME DRAMA</div>
+      <h3>Vada Chennai</h3>
+      <div class="director">VETRIMAARAN</div>
+      <div class="tags"><span class="tag">EPIC</span><span class="tag">MULTI-TIMELINE</span></div>
+      <p class="lesson"><strong>Set the rules of your timeline jumps.</strong> Vada Chennai jumps decades freely, but each jump is anchored by a recurring object or location. The audience learns the cipher in act 1; by act 3 they can navigate decades without title cards.<span class="tn">Decade jumps aagum — aana ovvoru jump um oru object la, oru jaagam la anchor aagum. Act 1 la cipher kathukita, Act 3 la title card vendam — audience navigate panniduvanga.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2021 · COURTROOM</div>
+      <h3>Jai Bhim</h3>
+      <div class="director">T. J. GNANAVEL</div>
+      <div class="tags"><span class="tag">PROCEDURAL</span><span class="tag">JUSTICE</span></div>
+      <p class="lesson"><strong>Procedural rigor builds emotional weight.</strong> Each step of the legal investigation is shown precisely. The accuracy makes the verdict feel earned, not performed. When you respect process, the audience trusts the catharsis.<span class="tn">Ovvoru legal step um precision la kaattaranga. Accuracy thaan kadaisi judgment ku weight kudukkudhu. Process ah respect panna, audience catharsis ah nambum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2004 · YOUTH ROMANCE</div>
+      <h3>Kaadhal</h3>
+      <div class="director">BALAJI SAKTHIVEL</div>
+      <div class="tags"><span class="tag">FIRST FILM</span><span class="tag">REALISM</span></div>
+      <p class="lesson"><strong>Documentary fiction.</strong> Balaji Sakthivel cast non-actors and shot in real Madurai locations. The result feels closer to reportage than romance. When you remove the polish, you get truth — and truth is harder to argue with than glamour.<span class="tn">Real-ana aalungal cast pannitanga, real Madurai la edukkanga. Romance kaatilum reportage maathiri feel. Polish eduthuvuduna unmai varum — unmaiya vida glamour ah argue panna easy.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2008 · SMALL-TOWN DRAMA</div>
+      <h3>Subramaniyapuram</h3>
+      <div class="director">M. SASIKUMAR</div>
+      <div class="tags"><span class="tag">PERIOD</span><span class="tag">FRIENDSHIP</span></div>
+      <p class="lesson"><strong>Period detail as emotional access.</strong> 1980s Madurai recreated through specific cassette tapes, specific bicycles, specific cigarette brands. The granularity makes the era feel inhabited, not visited. Find the three smallest correct details.<span class="tn">1980s Madurai — specific cassette, specific cycle, specific cigarette. Granularity thaan andha kalathula irundhu paakkura feel kudukkudhu. Moonu chinna sariyana details thedikko.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">1999 · ROMANCE TRAGEDY</div>
+      <h3>Sethu</h3>
+      <div class="director">BALA</div>
+      <div class="tags"><span class="tag">DEBUT</span><span class="tag">TONAL TURN</span></div>
+      <p class="lesson"><strong>The bold tonal shift.</strong> Sethu opens as a college romance and pivots to psychiatric tragedy. Bala's confidence in the shift is what makes it work — the film commits fully to its new register. Don't apologize for your turn.<span class="tn">College romance ah aarambichi, psychiatric tragedy ku pogum. Andha shift confident ah panna thaan velai pannum. Unga turn ku apology vendam — full ah commit pannu.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2017 · ROMANTIC DRAMA</div>
+      <h3>Aandavan Kattalai</h3>
+      <div class="director">M. MANIKANDAN</div>
+      <div class="tags"><span class="tag">SLICE OF LIFE</span><span class="tag">MIGRATION</span></div>
+      <p class="lesson"><strong>Bureaucracy as plot engine.</strong> A passport application drives the whole film. The "boring" obstacle is more relatable than action because it's what audiences actually face. Use the dull stakes of real life — they have unexpected depth.<span class="tn">Passport application thaan plot engine. "Boring" obstacle audience ku connect aagudhu — daily life la avanga face panradhu adhu thaan. Real life oda dull stakes use pannu — unexpected depth kudukkum.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2018 · CRIME THRILLER</div>
+      <h3>Ratsasan</h3>
+      <div class="director">RAM KUMAR</div>
+      <div class="tags"><span class="tag">PROCEDURAL</span><span class="tag">VILLAIN</span></div>
+      <p class="lesson"><strong>The villain's psychology drives the structure.</strong> Each clue is a piece of the killer's biography. Solving the case = understanding the trauma. The protagonist isn't tracking what the killer did — he's reconstructing why. Make your antagonist a puzzle.<span class="tn">Killer oda psychology thaan structure ah ottardhu. Ovvoru clue um avana oda biography. Case mudikkardhu = avan trauma ah purinjikkardhu. Villain ah oru puzzle ah maathu.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2014 · ROAD MOVIE</div>
+      <h3>Jigarthanda</h3>
+      <div class="director">KARTHIK SUBBARAJ</div>
+      <div class="tags"><span class="tag">META</span><span class="tag">GENRE PLAY</span></div>
+      <p class="lesson"><strong>Make the act of filmmaking the plot.</strong> A director infiltrates a gangster's life to make a movie about him. The film is partly about itself — and that meta-frame multiplies the meaning of every scene. When you talk about your craft inside the film, the film becomes about craft.<span class="tn">Padam edukkardhe plot. Director gangster oda life ulla pugundhu padam ezhuthuran. Padam athey patti pesi padam aagudhu — andha meta-frame ovvoru scene oda meaning ah multiply pannudhu.</span></p>
+    </div>
+
+    <div class="film-card">
+      <div class="meta">2016 · SMALL-TOWN COMEDY</div>
+      <h3>Joker</h3>
+      <div class="director">RAJU MURUGAN</div>
+      <div class="tags"><span class="tag">SATIRE</span><span class="tag">POLITICAL</span></div>
+      <p class="lesson"><strong>Comedy as the surface, rage as the substance.</strong> A village man writes letters to the President about a missing toilet. The film looks like comedy and lands like indictment. Comedy gives the audience permission to enter; tragedy keeps them there.<span class="tn">Comedy vெளiyey, rage uللe. Oru ooran President ku kakkoos pathi kadithangal ezhudharar. Padam comedy mathiri kaattuthu, indictment mathiri vandhu sernthudhu. Comedy audience ah ulla varuvikum, tragedy avanga thanga vaikkum.</span></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============== SECTION II — DIRECTORS ============== -->
+<section class="section-head" id="directors">
+  <div class="label">SECTION II</div>
+  <h2>Director <em>Archetypes.</em></h2>
+  <p class="deck">Ten directors whose grammar is distinct enough to study as schools of filmmaking. For each: the signature traits, the film to start with, and a Tanglish gloss on what makes them unique.</p>
+</section>
+
+<section class="section-body">
+
+  <div class="director-card">
+    <div class="name-row"><h3>Mani Ratnam</h3><span class="era">1986 – PRESENT · ROMANCE / EPIC</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Layered montage editing, lyric-led emotional peaks, urban poetry, music-as-character. The frame is always doing two things at once — narrative and metaphor.</dd>
+      <dt>Visual grammar</dt><dd>Backlight silhouettes, rain-soaked windows, glass reflections, dance as conversation. He shoots cities like landscapes.</dd>
+      <dt>Recurring concern</dt><dd>Personal love against political turmoil. Roja, Bombay, Dil Se, Kannathil Muthamittal — the same shape recurs.</dd>
+      <dt>Watch for</dt><dd>Cuts on emotional beats, not action beats. The edit reveals the feeling.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Mouna Raagam</em> (1986) for the chamber-drama craft, <em>Kannathil Muthamittal</em> (2002) for the political-personal weave.</p></div>
+    <span class="tn">Mani Ratnam frame la rendu vishayam onnaaga seyvaaru — kadhai um metaphor um. Cut emotional beat la varum, action beat la illa. Padatha cinema mathiri illa, kavithai mathiri edukkuvaaru.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Vetrimaaran</h3><span class="era">2007 – PRESENT · POLITICAL REALISM</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Caste politics shown as procedural fact. Long takes in cramped spaces. Refuses sentimentality even at emotional peaks.</dd>
+      <dt>Visual grammar</dt><dd>Available light, working-class textures, untrained-feeling ensemble performances. The camera follows, never glamourises.</dd>
+      <dt>Recurring concern</dt><dd>Power and the people the system grinds down quietly. The question is never "who is the bad guy" — it's "what is the structure."</dd>
+      <dt>Watch for</dt><dd>How background characters keep doing their tasks during dramatic moments. The world doesn't pause for the protagonist.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Aadukalam</em> (2011) for the lived-in milieu, <em>Visaranai</em> (2015) for the procedural horror, <em>Asuran</em> (2019) for the inverted hero arc.</p></div>
+    <span class="tn">Sentimentality ah deliberately tappikiraar. Background la aalungal sondha vela seythukittiruppanga — drama nadakara samayathula kuda. World hero ku pause aagaadhu — Vetrimaaran rule.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Mysskin</h3><span class="era">2006 – PRESENT · CRIME / MORALITY</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Geometric framing, shoes-and-ankles low angles, deliberate slow pace, Bresson-influenced minimalism.</dd>
+      <dt>Visual grammar</dt><dd>Architectural symmetry, walking shots from low angles, an obsession with how feet move through a space.</dd>
+      <dt>Recurring concern</dt><dd>Ethical action under impossible circumstances. The cop, the soldier, the witness — what should they do?</dd>
+      <dt>Watch for</dt><dd>How long he holds a frame after action stops. The held shot is where the meaning lives.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Anjaathe</em> (2008) and <em>Pisaasu</em> (2014). Then <em>Thupparivaalan</em> for the genre experiment.</p></div>
+    <span class="tn">Action mudinjadhukkappaarum frame ah hold pannuvaaru — andha extra second la thaan meaning irukku. Walking shots low angle la, kaal nadai paakkardhula obsession irukku.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Pa. Ranjith</h3><span class="era">2012 – PRESENT · POLITICAL / ANTI-CASTE</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Mass-hero spectacle wired with anti-caste politics. The grammar of commercial cinema deployed for radical content.</dd>
+      <dt>Visual grammar</dt><dd>Bold color, iconic silhouettes, hero shots that are also political assertions (blue suits, raised fists).</dd>
+      <dt>Recurring concern</dt><dd>Dignity as politics. The hero isn't fighting for justice — he is justice.</dd>
+      <dt>Watch for</dt><dd>How he rewrites mass-cinema tropes (intro fight, climax speech) to carry a different meaning.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Madras</em> (2014) for the local politics, <em>Kabali</em> (2016) for the global ambition, <em>Sarpatta Parambarai</em> (2021) for the period craft.</p></div>
+    <span class="tn">Mass cinema oda grammar ah radical content kku use pannuvaaru. Intro fight, climax speech — pazhaya tropes pudhu meaning kudukum.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Selvaraghavan</h3><span class="era">2003 – PRESENT · DARK ROMANCE</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Raw emotional excess, melancholic men, broken protagonists who cannot articulate themselves.</dd>
+      <dt>Visual grammar</dt><dd>Handheld intimacy, unflattering close-ups, dim domestic lighting, the texture of small Chennai apartments.</dd>
+      <dt>Recurring concern</dt><dd>The damaged man. Why love hurts. Why family wounds the most.</dd>
+      <dt>Watch for</dt><dd>How dialogue often breaks down into stuttering silence. He trusts inarticulacy as truth.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>7G Rainbow Colony</em> (2004), <em>Pudhupettai</em> (2006), <em>Mayakkam Enna</em> (2011).</p></div>
+    <span class="tn">Dialogue stuttering ah, paadu bottle-aaga vidumudhu — adhuvey thaan unmai. Chennai chinna apartment oda texture, melancholy male protagonists. Damaged aalungal kadhai sollardhu signature.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Lokesh Kanagaraj</h3><span class="era">2017 – PRESENT · KINETIC ACTION</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>World-building across films, plot density, action choreography that feels designed for a chess board.</dd>
+      <dt>Visual grammar</dt><dd>Cool color palettes, low-key lighting, geographic clarity in action (you always know where everyone is).</dd>
+      <dt>Recurring concern</dt><dd>Order vs chaos in cities. Mass heroes as quiet professionals.</dd>
+      <dt>Watch for</dt><dd>How he plants and pays off across his Lokesh Cinematic Universe — Kaithi to Vikram to Leo.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Maanagaram</em> (2017) for the multi-thread structure, <em>Kaithi</em> (2019) for the real-time pressure cooker, <em>Vikram</em> (2022) for the world-building payoff.</p></div>
+    <span class="tn">Action la geographic clarity strict — yaar enga irukkanga nu always therinjirukkum. Maintain pannardhu strain — adhanaala adi scenes la confusion illa, choreography clear ah feel aagum.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Karthik Subbaraj</h3><span class="era">2012 – PRESENT · GENRE EXPERIMENT</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Plays with genre conventions and meta layers. Each film tests how far a Tamil thriller / horror / character study can stretch.</dd>
+      <dt>Visual grammar</dt><dd>Extreme color saturation, bold camera moves, long-take confrontations.</dd>
+      <dt>Recurring concern</dt><dd>The act of storytelling itself — directors, listeners, audiences inside the film.</dd>
+      <dt>Watch for</dt><dd>How stories-within-stories reframe earlier scenes (a trick perfected before Vikram Vedha did it).</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Pizza</em> (2012), <em>Jigarthanda</em> (2014), <em>Iraivi</em> (2016), <em>Mahaan</em> (2022).</p></div>
+    <span class="tn">Story-within-story technique perfect-aaga handle pannuvaaru. Padam la oru director, oru kadhai sollum aalu, oru listener — andha layers vechu meaning multiply pannuvaaru.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Bala</h3><span class="era">1999 – PRESENT · UNCOMFORTABLE TRUTHS</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Tonally hard films about marginal lives — psychiatric, disabled, criminal — refused sentimentality, often refused happy endings.</dd>
+      <dt>Visual grammar</dt><dd>Rural India, hot harsh sun, sweat-soaked frames, performances pushed to physical extremes.</dd>
+      <dt>Recurring concern</dt><dd>The dignity of those society discards. Pity is forbidden; respect is demanded.</dd>
+      <dt>Watch for</dt><dd>How deep he sinks into a single character's psychology. Most Tamil films are plot-led; Bala's are psychology-led.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Sethu</em> (1999), <em>Pithamagan</em> (2003), <em>Naan Kadavul</em> (2009).</p></div>
+    <span class="tn">Marginal aalungal pathi padam — pity vechi illa, respect vechi. Psychology-led padam — plot-led illa. Pithamagan, Sethu, Naan Kadavul — character oda manasula muzhusa pogardhu.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Thiagarajan Kumararaja</h3><span class="era">2010 – PRESENT · SURREAL BLACK COMEDY</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Tonally fearless ensemble cinema. Multiple genres collide inside one runtime. Anti-plot in a plot-driven industry.</dd>
+      <dt>Visual grammar</dt><dd>Static long takes, formal symmetry, characters who deliver dialogue as if quoting it.</dd>
+      <dt>Recurring concern</dt><dd>The randomness of meaning. The universe doesn't owe a plot — but the camera looks anyway.</dd>
+      <dt>Watch for</dt><dd>How he commits to a tonal collision so completely that the audience is forced to surrender their expectations.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Aaranya Kaandam</em> (2010), <em>Super Deluxe</em> (2019).</p></div>
+    <span class="tn">Tonally fearless. Comedy, tragedy, magical realism — onnaaga collide pannuvaaru. Plot-driven illa, anti-plot. Audience expectations ah surrender panna vaikkura confidence iruku.</span>
+  </div>
+
+  <div class="director-card">
+    <div class="name-row"><h3>Pushkar–Gayathri</h3><span class="era">2009 – PRESENT · HIGH-CONCEPT THRILLER</span></div>
+    <dl class="traits">
+      <dt>Signature</dt><dd>Writer-director duo. Strong logline, ambidextrous structure, moral ambiguity as engine. They write so tightly that improvisation is rare.</dd>
+      <dt>Visual grammar</dt><dd>Urban noir, warm-cool dichotomy between worlds, controlled handheld for chaos sequences.</dd>
+      <dt>Recurring concern</dt><dd>Two systems of belief in collision. The audience must decide.</dd>
+      <dt>Watch for</dt><dd>How they design dual-protagonist scenes so neither character "wins" the conversation outright.</dd>
+    </dl>
+    <div class="study"><div class="lab">START WITH</div><p><em>Oram Po</em> (2007), <em>Va Quarter Cutting</em> (2010), <em>Vikram Vedha</em> (2017).</p></div>
+    <span class="tn">Logline strong-aaga irukkum. Rendu peru writer-director — adhanaala script tight aagidum, improvisation kammi. Rendu protagonist oda scene la yaarum jeyikka maattanga — adhuvey design.</span>
+  </div>
+
+</section>
+
+<!-- ============== SECTION III — RULES ============== -->
+<section class="section-head" id="rules">
+  <div class="label">SECTION III</div>
+  <h2>Fifty <em>Rules of Thumb.</em></h2>
+  <p class="deck">Craft maxims, attributed where the source is known. Treat them as starting points, not laws — every great film breaks at least one.</p>
+</section>
+
+<section class="section-body">
+  <div class="rules-grid">
+    <div class="rule-card"><p class="rule-text">If you can show it, don't say it.</p><p class="attrib">CINEMATIC FIRST PRINCIPLE</p></div>
+    <div class="rule-card"><p class="rule-text">Enter the scene as late as possible. Leave as early as you can.</p><p class="attrib">WILLIAM GOLDMAN</p></div>
+    <div class="rule-card"><p class="rule-text">A character is what they do under pressure, not what they say at peace.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Every scene must end on a different value charge than it started.</p><p class="attrib">ROBERT McKEE</p></div>
+    <div class="rule-card"><p class="rule-text">If your antagonist doesn't think they're the hero, you don't have one.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Don't confuse busy with active. A character can sit still and be more active than someone running.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">The ending must be inevitable but not predictable.</p><p class="attrib">ARISTOTLE, PARAPHRASED</p></div>
+    <div class="rule-card"><p class="rule-text">Specific details are universal. Generalities are nobody's life.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Cut on motion. Cut on emotion. Never both.</p><p class="attrib">WALTER MURCH</p></div>
+    <div class="rule-card"><p class="rule-text">Coverage isn't a safety net for indecision. Plan the cuts before you shoot.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">When in doubt, hold longer. The audience will lean in.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Sound is half the film. Plan it before the shoot, not after.</p><p class="attrib">DAVID LYNCH</p></div>
+    <div class="rule-card"><p class="rule-text">A great film is made three times: in the script, on the set, and in the edit.</p><p class="attrib">PRODUCTION FOLKLORE</p></div>
+    <div class="rule-card"><p class="rule-text">Every frame should answer: who is this scene about, and what do they want right now?</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If the actor can play it without the line, cut the line.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Good direction looks like nothing. Bad direction looks like everything.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">A subplot must deepen the theme or develop the protagonist. Otherwise it's filler.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If you can't pitch your film in one sentence, you don't yet know what it is.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Setup, then forget. Payoff lands hardest when the audience has stopped expecting it.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">The protagonist must be the one who decides. If the world decides for them, they aren't the protagonist.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Casting against type forces an audience to look. Casting to type lets them stop looking.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Location is the third character. Pick it like one.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If your hero gets what they want at the end, you wrote a fairy tale. If they get what they need, you wrote drama.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Wide shots establish power. Close-ups establish vulnerability. Choose deliberately.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Great editing makes you feel like the cuts were inevitable. There were no other places.</p><p class="attrib">WALTER MURCH</p></div>
+    <div class="rule-card"><p class="rule-text">A film is only as good as its midpoint twist.</p><p class="attrib">SCREENWRITING FOLKLORE</p></div>
+    <div class="rule-card"><p class="rule-text">Recce in the conditions you'll shoot in. Daytime recces of night shoots are theatre.</p><p class="attrib">PRODUCTION MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Rehearse blocking before lighting. Light the blocking, not the marks.</p><p class="attrib">PRODUCTION MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Constraints aren't restrictions. They're redistribution. What you save somewhere, you spend where it matters.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If the audience is asking "why is this scene here," the answer should be obvious one cut later.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">A great score doesn't decorate the scene. It tightens it.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If you're cutting a scene you love because it doesn't serve the film, you're directing.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Trust the audience. They're smarter than your producer thinks.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">First-time directors over-shoot. Second-time directors under-shoot. Third-time directors shoot exactly what they need.</p><p class="attrib">PRODUCTION FOLKLORE</p></div>
+    <div class="rule-card"><p class="rule-text">If two characters agree on everything, you have one character.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Conflict is not argument. It's two needs that can't both be satisfied.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Your film's thesis is in its final image. Get the final image right.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">A long take is not better than a cut. It's just different. Pick the one the scene needs.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If a flashback isn't carrying information the present can't, cut it.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Voiceover is a tool, not a crutch. Use it to add a layer, never to explain a scene.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Direction isn't moving the camera. It's deciding what the audience needs to feel right now.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If your DOP doesn't argue with you sometimes, you're not collaborating.</p><p class="attrib">PRODUCTION MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Pre-production is where you direct the film. The shoot is where you protect it.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">An actor's worst take with intention is better than their best take without it.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">If you're directing the actor's face instead of the actor's intent, you're micromanaging.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Shoot for the edit you want, not the edit your assistant editor will make easy.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">A film's tone must be set in the first three minutes. The audience contracts with you there.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Don't fall in love with your draft. Fall in love with the film it could become.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">The script is a blueprint, not a contract. Be loyal to the story, not the page.</p><p class="attrib">CRAFT MAXIM</p></div>
+    <div class="rule-card"><p class="rule-text">Make the film you want to watch, not the film you think will sell. The first one might be both.</p><p class="attrib">CRAFT MAXIM</p></div>
+  </div>
+</section>
+
+<!-- ============== SECTION IV — EQUIPMENT ============== -->
+<section class="section-head" id="equipment">
+  <div class="label">SECTION IV</div>
+  <h2>Equipment &amp; <em>Cost Estimator.</em></h2>
+  <p class="deck">Indicative daily rental ranges, Chennai market, 2024–25. Use the calculator at the bottom to estimate kit cost for your shoot. Rates fluctuate; verify with vendors before locking your budget.</p>
+</section>
+
+<section class="section-body">
+
+  <div class="disclaimer">
+    <div class="label">⚠ DISCLAIMER</div>
+    <p>These are <strong>indicative ranges</strong> based on Chennai market, 2024–25, sourced from production folklore and publicly visible rate cards. Actual rates depend on vendor, season, package deal, kit accessories, and your producer's negotiating strength. <strong>Always verify with at least three vendors before locking a budget.</strong> Tax, transport, and insurance are typically NOT included in headline daily rates.</p>
+  </div>
+
+  <div class="equip-block">
+    <h3>Camera Bodies</h3>
+    <p class="hint">Daily rental rates. Add ~10–15% for higher-end packages, more for international rental houses.</p>
+    <table class="equip-table">
+      <thead><tr><th>Body</th><th>Rate (₹/day)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">ARRI Alexa 35</td><td class="rate">40,000 – 55,000</td><td class="note">Latest sensor; best HDR; high demand.</td></tr>
+        <tr><td class="item">ARRI Alexa Mini LF</td><td class="rate">35,000 – 50,000</td><td class="note">Large-format prestige choice.</td></tr>
+        <tr><td class="item">ARRI Alexa Mini</td><td class="rate">25,000 – 35,000</td><td class="note">Workhorse for most Tamil features.</td></tr>
+        <tr><td class="item">Sony Venice 2</td><td class="rate">30,000 – 40,000</td><td class="note">Dual-base ISO; growing share.</td></tr>
+        <tr><td class="item">RED V-Raptor</td><td class="rate">22,000 – 30,000</td><td class="note">8K, lighter, popular with indies.</td></tr>
+        <tr><td class="item">RED Komodo</td><td class="rate">15,000 – 22,000</td><td class="note">B-cam favourite. Compact.</td></tr>
+        <tr><td class="item">Canon C500 Mark II</td><td class="rate">10,000 – 15,000</td><td class="note">Doc-leaning, RF mount.</td></tr>
+        <tr><td class="item">Sony FX9</td><td class="rate">8,000 – 12,000</td><td class="note">Mid-tier prestige doc.</td></tr>
+        <tr><td class="item">Blackmagic URSA Mini Pro 12K</td><td class="rate">6,000 – 10,000</td><td class="note">High-res indie option.</td></tr>
+        <tr><td class="item">Sony FX6</td><td class="rate">4,000 – 7,000</td><td class="note">Indie features, doc, OTT.</td></tr>
+        <tr><td class="item">Sony FX3</td><td class="rate">3,500 – 5,500</td><td class="note">Run-and-gun, gimbal-friendly.</td></tr>
+        <tr><td class="item">Blackmagic Pocket 6K Pro</td><td class="rate">2,500 – 4,000</td><td class="note">Ultra-low-budget feature option.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="equip-block">
+    <h3>Lens Kits</h3>
+    <p class="hint">Per kit, per day. Often bundled with the camera at a package discount.</p>
+    <table class="equip-table">
+      <thead><tr><th>Kit</th><th>Rate (₹/day)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Zeiss Master Primes (set)</td><td class="rate">35,000 – 50,000</td><td class="note">High-end prestige look.</td></tr>
+        <tr><td class="item">Vintage Lomo Anamorphic (set)</td><td class="rate">30,000 – 45,000</td><td class="note">Iconic flares; period look.</td></tr>
+        <tr><td class="item">Cooke S4/i (set)</td><td class="rate">25,000 – 35,000</td><td class="note">"The Cooke look" — warm, soft.</td></tr>
+        <tr><td class="item">Atlas Orion Anamorphics (set)</td><td class="rate">20,000 – 30,000</td><td class="note">Modern anamorphic, indie favourite.</td></tr>
+        <tr><td class="item">Zeiss CP.3 / Sigma Cine Primes</td><td class="rate">12,000 – 18,000</td><td class="note">Solid mid-tier prime set.</td></tr>
+        <tr><td class="item">Angenieux Optimo 24-290 zoom</td><td class="rate">15,000 – 22,000</td><td class="note">When you need range.</td></tr>
+        <tr><td class="item">Standard zoom (24-70 / 70-200)</td><td class="rate">3,000 – 5,000 each</td><td class="note">Indie / B-cam.</td></tr>
+        <tr><td class="item">Macro / Probe lens</td><td class="rate">3,000 – 6,000</td><td class="note">Specialty work.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="equip-block">
+    <h3>Lighting &amp; Grip</h3>
+    <p class="hint">Per unit, per day. Most lighting is rented as a package with stands and accessories.</p>
+    <table class="equip-table">
+      <thead><tr><th>Item</th><th>Rate (₹/day)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">HMI 2.5K (with ballast, head)</td><td class="rate">3,000 – 4,500</td><td class="note">Daylight punch.</td></tr>
+        <tr><td class="item">HMI 1.2K</td><td class="rate">1,800 – 2,500</td><td class="note">Workhorse fill.</td></tr>
+        <tr><td class="item">Aputure 600D Pro</td><td class="rate">2,500 – 3,500</td><td class="note">LED daylight, controllable.</td></tr>
+        <tr><td class="item">LED panel kits (e.g. Litepanels, ARRI SkyPanel)</td><td class="rate">2,000 – 4,500 each</td><td class="note">RGB tunable, soft.</td></tr>
+        <tr><td class="item">Tungsten 5K / 10K</td><td class="rate">2,000 – 3,500</td><td class="note">Old-school for warmth.</td></tr>
+        <tr><td class="item">Diffusion / flag / negative kit</td><td class="rate">500 – 1,000</td><td class="note">Per box / per kit.</td></tr>
+        <tr><td class="item">Dolly + 30 ft track</td><td class="rate">2,500 – 3,500</td><td class="note">Doorway / Western dolly.</td></tr>
+        <tr><td class="item">Mini jib (8-12 ft)</td><td class="rate">2,000 – 3,000</td><td class="note">Affordable rise/fall.</td></tr>
+        <tr><td class="item">Crane (16 ft)</td><td class="rate">5,000 – 8,000</td><td class="note">Operator extra.</td></tr>
+        <tr><td class="item">Steadicam rig + operator</td><td class="rate">15,000 – 25,000</td><td class="note">Operator rate is the bulk.</td></tr>
+        <tr><td class="item">DJI Ronin 2 / RS3 Pro + op</td><td class="rate">6,000 – 10,000</td><td class="note">Gimbal coverage.</td></tr>
+        <tr><td class="item">Drone (DJI Inspire 3) + pilot</td><td class="rate">15,000 – 25,000</td><td class="note">Permits separate.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="equip-block">
+    <h3>Sound &amp; Power</h3>
+    <table class="equip-table">
+      <thead><tr><th>Item</th><th>Rate (₹/day)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Production sound recordist + full kit</td><td class="rate">4,000 – 8,000</td><td class="note">Boom, lavs, mixer, recorder.</td></tr>
+        <tr><td class="item">Comtek / IFB system</td><td class="rate">500 – 1,000</td><td class="note">Director hears actor.</td></tr>
+        <tr><td class="item">Generator 30 KVA (with operator)</td><td class="rate">3,000 – 5,000</td><td class="note">Plus diesel.</td></tr>
+        <tr><td class="item">Generator 60 KVA</td><td class="rate">5,000 – 7,500</td><td class="note">For larger lighting setups.</td></tr>
+        <tr><td class="item">Camera car / track car</td><td class="rate">4,000 – 7,000</td><td class="note">Per day, with driver.</td></tr>
+        <tr><td class="item">Production van</td><td class="rate">2,500 – 4,000</td><td class="note">Per day, with driver, fuel extra.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="equip-block">
+    <h3>Crew (Daily Rates)</h3>
+    <p class="hint">Indicative for mid-level Chennai talent. Top-tier names charge 3–5× these. Below-the-line techs at the lower end.</p>
+    <table class="equip-table">
+      <thead><tr><th>Role</th><th>Rate (₹/day)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">DOP (mid-level)</td><td class="rate">15,000 – 25,000</td><td class="note">Top-tier names: ₹50K – 2L+.</td></tr>
+        <tr><td class="item">1st AD</td><td class="rate">6,000 – 12,000</td><td class="note">Experienced for features.</td></tr>
+        <tr><td class="item">2nd AD</td><td class="rate">3,000 – 5,000</td><td class="note">Floor/continuity.</td></tr>
+        <tr><td class="item">Production Designer (mid)</td><td class="rate">8,000 – 15,000</td><td class="note">Plus dept budget.</td></tr>
+        <tr><td class="item">Costume Designer (mid)</td><td class="rate">5,000 – 10,000</td><td class="note">Plus wardrobe budget.</td></tr>
+        <tr><td class="item">Editor</td><td class="rate">3,000 – 8,000</td><td class="note">Or flat fee per project.</td></tr>
+        <tr><td class="item">Sound Designer / Supervisor</td><td class="rate">6,000 – 12,000</td><td class="note">Or flat fee for post.</td></tr>
+        <tr><td class="item">Focus Puller / 1st AC</td><td class="rate">3,500 – 6,000</td><td class="note">Critical role.</td></tr>
+        <tr><td class="item">Gaffer</td><td class="rate">3,500 – 6,000</td><td class="note">Plus electrician team.</td></tr>
+        <tr><td class="item">Electrician / spot crew</td><td class="rate">800 – 1,500</td><td class="note">Per person.</td></tr>
+        <tr><td class="item">Production Manager</td><td class="rate">3,500 – 7,000</td><td class="note">Often pre-prod + shoot package.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="equip-block">
+    <h3>Music &amp; Post</h3>
+    <p class="hint">Mostly project fees, not daily rates.</p>
+    <table class="equip-table">
+      <thead><tr><th>Item</th><th>Rate</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Composer (mid-level, full feature)</td><td class="rate">₹2 – 5 L flat</td><td class="note">Score + 1-2 songs.</td></tr>
+        <tr><td class="item">Composer (top-tier)</td><td class="rate">₹15 L – 2 Cr flat</td><td class="note">Big names; package deals.</td></tr>
+        <tr><td class="item">Live orchestra recording</td><td class="rate">₹2 – 5 L/day</td><td class="note">Strings, players, studio.</td></tr>
+        <tr><td class="item">Sound mix studio (5.1)</td><td class="rate">₹15 – 30 K/day</td><td class="note">Mix takes 5-10 days.</td></tr>
+        <tr><td class="item">Atmos mix studio</td><td class="rate">₹40 – 75 K/day</td><td class="note">Premium delivery.</td></tr>
+        <tr><td class="item">Color grade (DI suite)</td><td class="rate">₹10 – 25 K/day</td><td class="note">Plus colorist fee.</td></tr>
+        <tr><td class="item">VFX (per shot, simple cleanup)</td><td class="rate">₹5 – 25 K/shot</td><td class="note">Wide variance.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- COST CALCULATOR -->
+  <div class="calc-block">
+    <h3>Quick Cost Estimator</h3>
+    <p class="hint">Add line items, set days × daily rate, get a running total. Saves to your browser only. Click PRINT to keep a hard copy.</p>
+    <div class="calc-row head">
+      <span>Item</span><span>Days</span><span>Rate (₹/day)</span><span>Subtotal</span>
+    </div>
+    <div id="calcRows"></div>
+    <div class="calc-actions">
+      <button class="mini-btn" onclick="addCalcRow()">+ ADD ITEM</button>
+      <button class="mini-btn" onclick="addCalcRow(5)">+ ADD 5</button>
+      <button class="mini-btn danger" onclick="resetCalc()">RESET</button>
+    </div>
+    <div class="calc-grand">
+      <span class="lab">GRAND TOTAL</span>
+      <span class="total" id="calcTotal">₹ 0 <span>across 0 line items</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============== SECTION V — WATCH LIST ============== -->
+<section class="section-head" id="watch">
+  <div class="label">SECTION V</div>
+  <h2>Watch List <em>per Step.</em></h2>
+  <p class="deck">For every one of the 24 blueprint steps, three films to study for that exact craft concept. 72 films total. Watch them with the step's question in mind — the films will teach you more than the blueprint can.</p>
+</section>
+
+<section class="section-body">
+
+  <!-- VOL I -->
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-01" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 01 ↗</div></a><h4>The Spark</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Magnolia (1999)</span><span class="why">Multiple "what if"s woven into one fabric. Watch how each spark recurs.</span></div>
+      <div class="watch-film"><span class="title">Pizza (2012)</span><span class="why">Karthik Subbaraj's debut spark — what if the haunted house was a story?</span></div>
+      <div class="watch-film"><span class="title">Memento (2000)</span><span class="why">A high-concept what-if that survives every scene.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-02" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 02 ↗</div></a><h4>The Logline</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Speed (1994)</span><span class="why">"Bus that can't slow down." Logline as filmic blueprint.</span></div>
+      <div class="watch-film"><span class="title">Kaithi (2019)</span><span class="why">A convict must drive cops to safety. One-line, immediate.</span></div>
+      <div class="watch-film"><span class="title">Locke (2013)</span><span class="why">Single-location logline that runs the whole film.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-03" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 03 ↗</div></a><h4>Theme &amp; Stakes</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">There Will Be Blood (2007)</span><span class="why">Theme as obsession; stakes as soul.</span></div>
+      <div class="watch-film"><span class="title">Visaranai (2015)</span><span class="why">Theme worn into bone; stakes external and absolute.</span></div>
+      <div class="watch-film"><span class="title">Whiplash (2014)</span><span class="why">Three-layer stakes, perfectly aligned.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-04" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 04 ↗</div></a><h4>The Protagonist</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Asuran (2019)</span><span class="why">Protagonist already at the lesson — drama is keeping it.</span></div>
+      <div class="watch-film"><span class="title">Michael Clayton (2007)</span><span class="why">Want vs need shown in slow erosion.</span></div>
+      <div class="watch-film"><span class="title">Mayakkam Enna (2011)</span><span class="why">Protagonist's flaw and gift are the same thing.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-05" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 05 ↗</div></a><h4>The Antagonist</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">No Country for Old Men (2007)</span><span class="why">Anton Chigurh — a villain with absolute philosophy.</span></div>
+      <div class="watch-film"><span class="title">Kumbalangi Nights (2019)</span><span class="why">The "ideal man" as monster.</span></div>
+      <div class="watch-film"><span class="title">Ratsasan (2018)</span><span class="why">Antagonist as psychology puzzle.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-06" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 06 ↗</div></a><h4>Supporting Cast</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">The Lord of the Rings (2001-03)</span><span class="why">Each fellowship member with a defined arc.</span></div>
+      <div class="watch-film"><span class="title">Soodhu Kavvum (2013)</span><span class="why">Ensemble of distinct comic logics.</span></div>
+      <div class="watch-film"><span class="title">Knives Out (2019)</span><span class="why">Ten suspects, all readable in two minutes each.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-07" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 07 ↗</div></a><h4>The World</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Subramaniyapuram (2008)</span><span class="why">1980s Madurai through specific period detail.</span></div>
+      <div class="watch-film"><span class="title">Aaranya Kaandam (2010)</span><span class="why">Chennai underworld with rule-bound texture.</span></div>
+      <div class="watch-film"><span class="title">Children of Men (2006)</span><span class="why">Near-future world built through background detail.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-08" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 08 ↗</div></a><h4>The 15 Beats</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Die Hard (1988)</span><span class="why">Textbook 15-beat structure. Every beat lands.</span></div>
+      <div class="watch-film"><span class="title">Vikram Vedha (2017)</span><span class="why">Three-stories structure inside the 15-beat frame.</span></div>
+      <div class="watch-film"><span class="title">Soorarai Pottru (2020)</span><span class="why">Stakes raised in stages, beat-by-beat.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-09" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 09 ↗</div></a><h4>Timeline</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Pulp Fiction (1994)</span><span class="why">Non-linear masterclass.</span></div>
+      <div class="watch-film"><span class="title">Vada Chennai (2018)</span><span class="why">Decades jumped, anchored in objects.</span></div>
+      <div class="watch-film"><span class="title">Memento (2000)</span><span class="why">Reverse-chronology that is the story.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-10" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 10 ↗</div></a><h4>Setups &amp; Payoffs</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">The Sixth Sense (1999)</span><span class="why">A setup-payoff so clean it rewatches as a different film.</span></div>
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">Casual scenes that pay off as character behaviour.</span></div>
+      <div class="watch-film"><span class="title">Chinatown (1974)</span><span class="why">Every prop pays off.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-11" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 11 ↗</div></a><h4>The Scene List</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Mouna Raagam (1986)</span><span class="why">Each scene with a clear charge flip.</span></div>
+      <div class="watch-film"><span class="title">Marriage Story (2019)</span><span class="why">Conversation scenes engineered as conflict.</span></div>
+      <div class="watch-film"><span class="title">A Separation (2011)</span><span class="why">Every scene has competing wants.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-12" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL I · STEP 12 ↗</div></a><h4>The Final Check</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Anatomy of a Fall (2023)</span><span class="why">The whole film answers its own opening.</span></div>
+      <div class="watch-film"><span class="title">Aandavan Kattalai (2016)</span><span class="why">Tiny stakes, perfect closure.</span></div>
+      <div class="watch-film"><span class="title">Drive My Car (2021)</span><span class="why">A film that fully earns its 3-hour patience.</span></div>
+    </div>
+  </div>
+
+  <!-- VOL II -->
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-13" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 13 ↗</div></a><h4>Script Lock</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">The Social Network (2010)</span><span class="why">Sorkin script discipline. Locked, then shot.</span></div>
+      <div class="watch-film"><span class="title">12 Angry Men (1957)</span><span class="why">A locked script that lives or dies on dialogue.</span></div>
+      <div class="watch-film"><span class="title">Visaranai (2015)</span><span class="why">Documentary fidelity from a tight draft.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-14" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 14 ↗</div></a><h4>Director's Vision</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">96 (2018)</span><span class="why">Vision = restraint. One word makes every choice.</span></div>
+      <div class="watch-film"><span class="title">Dunkirk (2017)</span><span class="why">"Subtraction" as a vision statement.</span></div>
+      <div class="watch-film"><span class="title">Pariyerum Perumal (2018)</span><span class="why">Vision of quiet political rage.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-15" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 15 ↗</div></a><h4>The Lookbook</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Blade Runner 2049 (2017)</span><span class="why">Lookbook so precise every frame is a still.</span></div>
+      <div class="watch-film"><span class="title">Karnan (2021)</span><span class="why">Symbol-driven lookbook = political vocabulary.</span></div>
+      <div class="watch-film"><span class="title">Moonrise Kingdom (2012)</span><span class="why">Wes Anderson — palette as character.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-16" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 16 ↗</div></a><h4>Storyboard / Shots</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">1917 (2019)</span><span class="why">Every shot pre-visualized for the long-take design.</span></div>
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">"When NOT to move the camera" lessons.</span></div>
+      <div class="watch-film"><span class="title">The Bourne Ultimatum (2007)</span><span class="why">Action mapped beat-by-beat.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-17" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 17 ↗</div></a><h4>Cinematography</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">In the Mood for Love (2000)</span><span class="why">Christopher Doyle / Mark Lee Ping-bin — palette and motion.</span></div>
+      <div class="watch-film"><span class="title">Vikram Vedha (2017)</span><span class="why">P. S. Vinod's two visual worlds.</span></div>
+      <div class="watch-film"><span class="title">Roma (2018)</span><span class="why">Black-and-white architecture; deep focus.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-18" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 18 ↗</div></a><h4>Production Design</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Parasite (2019)</span><span class="why">Set as character. Vertical class architecture.</span></div>
+      <div class="watch-film"><span class="title">Aaranya Kaandam (2010)</span><span class="why">Anti-design realism done with rigor.</span></div>
+      <div class="watch-film"><span class="title">The Grand Budapest Hotel (2014)</span><span class="why">Stylised design as world rule.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-19" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 19 ↗</div></a><h4>Costume / HMU</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">96 (2018)</span><span class="why">Wardrobe restraint = emotional register.</span></div>
+      <div class="watch-film"><span class="title">Phantom Thread (2017)</span><span class="why">Costume IS the protagonist's psychology.</span></div>
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">Anti-glamour costume as casting argument.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-20" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 20 ↗</div></a><h4>Casting</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Vikram Vedha (2017)</span><span class="why">Casting as moral inversion (Madhavan, Sethupathi).</span></div>
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">Ashok Selvan against type as the entire film's argument.</span></div>
+      <div class="watch-film"><span class="title">The Florida Project (2017)</span><span class="why">Non-actor + star alchemy.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-21" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 21 ↗</div></a><h4>Locations / Recce</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Subramaniyapuram (2008)</span><span class="why">Real Madurai locations as period accuracy.</span></div>
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">Trichy chosen for tone, not beauty.</span></div>
+      <div class="watch-film"><span class="title">Children of Men (2006)</span><span class="why">Locations that telegraph world-state.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-22" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 22 ↗</div></a><h4>Sound &amp; Music</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Por Thozhil (2023)</span><span class="why">No songs. Score as nervous system.</span></div>
+      <div class="watch-film"><span class="title">96 (2018)</span><span class="why">Govind Vasantha — minimalism trusted to carry emotion.</span></div>
+      <div class="watch-film"><span class="title">Dunkirk (2017)</span><span class="why">Hans Zimmer — sound design and score as one rhythm.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-23" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 23 ↗</div></a><h4>Schedule / Budget</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Tangerine (2015)</span><span class="why">Shot on iPhones — constraints as creative redistribution.</span></div>
+      <div class="watch-film"><span class="title">Pizza (2012)</span><span class="why">Indie budget, full thriller on screen.</span></div>
+      <div class="watch-film"><span class="title">Primer (2004)</span><span class="why">$7,000 budget that punches like $7M.</span></div>
+    </div>
+  </div>
+
+  <div class="watch-step"><a href="arunak-filmmaker-blueprint.html#step-24" style="text-decoration:none;color:inherit;display:inline-block;" title="Jump to this step in the blueprint"><div class="step-tag" style="cursor:pointer;">VOL II · STEP 24 ↗</div></a><h4>Tech Recce / Final Lock</h4>
+    <div class="watch-films">
+      <div class="watch-film"><span class="title">Mad Max: Fury Road (2015)</span><span class="why">Recce, planning, choreography — military-grade prep.</span></div>
+      <div class="watch-film"><span class="title">Sairat (2016)</span><span class="why">Pre-production rigor in regional production.</span></div>
+      <div class="watch-film"><span class="title">Roma (2018)</span><span class="why">Sets and recces obsessive enough to recreate childhood.</span></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============== FINAL ============== -->
+<section class="final-page">
+  <p class="quote">"Watch films like a director, not an audience.<br>Then write films like an audience, not a director."</p>
+  <div class="signature">THE FILMMAKER'S LIBRARY · CURATED BY <span>ARUNAK</span></div>
+</section>
+
+<script>
+  const PREF_KEY = 'arunak_library_prefs_v1';
+  const CALC_KEY = 'arunak_library_calc_v1';
+  let calcCount = 0;
+
+  function toggleDark() {
+    document.body.classList.toggle('dark');
+    localStorage.setItem(PREF_KEY, JSON.stringify({ dark: document.body.classList.contains('dark') }));
+    document.getElementById('darkBtn').textContent = document.body.classList.contains('dark') ? '☀' : '◐';
+  }
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+      if (p.dark) document.body.classList.add('dark');
+      document.getElementById('darkBtn').textContent = document.body.classList.contains('dark') ? '☀' : '◐';
+    } catch (e) {}
+  }
+
+  // ===== CALCULATOR =====
+  const PRESET_ITEMS = [
+    "ARRI Alexa Mini","ARRI Alexa Mini LF","ARRI Alexa 35","Sony Venice 2","RED Komodo","RED V-Raptor","Sony FX9","Sony FX6","Sony FX3","Blackmagic 6K Pro","Canon C500 II",
+    "Cooke S4 lens kit","Zeiss Master Primes set","Atlas Anamorphic set","Vintage Lomo Anamorphic","Sigma Cine Primes","Angenieux Optimo zoom",
+    "HMI 2.5K","HMI 1.2K","Aputure 600D Pro","LED panel kit","Tungsten 5K","Tungsten 10K","Diffusion / flag kit",
+    "Dolly + 30ft track","Mini jib","Crane 16ft","Steadicam + operator","Gimbal (Ronin) + op","Drone + pilot",
+    "Sound recordist + kit","Comtek/IFB","Generator 30 KVA","Generator 60 KVA","Camera car","Production van",
+    "DOP","1st AD","2nd AD","Production Designer","Costume Designer","Editor","Sound Designer","Focus Puller","Gaffer","Production Manager","Electrician (each)",
+    "Sound mix studio (5.1)","Sound mix studio (Atmos)","DI / color grade","VFX shot",
+    "Other (custom)"
+  ];
+
+  function buildCalcRow(idx) {
+    const div = document.createElement('div');
+    div.className = 'calc-row';
+    div.innerHTML = `
+      <select data-key="ci_${idx}_item" onchange="updateCalc()">
+        <option value="">Pick item or type below...</option>
+        ${PRESET_ITEMS.map(i => `<option>${i}</option>`).join('')}
+      </select>
+      <input type="text" data-key="ci_${idx}_days" placeholder="Days" oninput="updateCalc()">
+      <input type="text" data-key="ci_${idx}_rate" placeholder="₹/day" oninput="updateCalc()">
+      <span class="total-cell" id="ci_${idx}_subtotal">₹ 0</span>
+    `;
+    return div;
+  }
+  function addCalcRow(n=1) {
+    const wrap = document.getElementById('calcRows');
+    for (let i = 0; i < n; i++) {
+      calcCount++;
+      const r = buildCalcRow(calcCount);
+      wrap.appendChild(r);
+      r.querySelectorAll('input, select').forEach(el => el.addEventListener('input', saveCalc));
+    }
+    updateCalc();
+    saveCalc();
+  }
+  function parseNum(s) {
+    if (!s) return 0;
+    s = String(s).toLowerCase().replace(/[,\s₹$]/g,'').replace(/rs\.?/g,'');
+    let m = 1;
+    if (/cr|crore/.test(s)) { m = 10000000; s = s.replace(/cr(ore)?/,''); }
+    else if (/l|lakh|lac/.test(s)) { m = 100000; s = s.replace(/l(akh|ac)?/,''); }
+    else if (/k/.test(s)) { m = 1000; s = s.replace(/k/,''); }
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n * m;
+  }
+  function fmtINR(n) {
+    if (n === 0) return '₹ 0';
+    if (n >= 10000000) return '₹ ' + (n/10000000).toFixed(2).replace(/\.?0+$/,'') + ' Cr';
+    if (n >= 100000) return '₹ ' + (n/100000).toFixed(2).replace(/\.?0+$/,'') + ' L';
+    if (n >= 1000) return '₹ ' + Math.round(n/1000) + 'k';
+    return '₹ ' + Math.round(n);
+  }
+  function updateCalc() {
+    let total = 0, count = 0;
+    document.querySelectorAll('#calcRows .calc-row').forEach(row => {
+      const days = parseNum(row.querySelector('[data-key$="_days"]').value);
+      const rate = parseNum(row.querySelector('[data-key$="_rate"]').value);
+      const sub = days * rate;
+      const subEl = row.querySelector('.total-cell');
+      subEl.textContent = fmtINR(sub);
+      if (sub > 0) count++;
+      total += sub;
+    });
+    document.getElementById('calcTotal').innerHTML = `${fmtINR(total)} <span>across ${count} line item${count !== 1 ? 's' : ''}</span>`;
+  }
+  function saveCalc() {
+    const data = {};
+    document.querySelectorAll('#calcRows [data-key]').forEach(el => { data[el.getAttribute('data-key')] = el.value; });
+    localStorage.setItem(CALC_KEY, JSON.stringify(data));
+  }
+  function loadCalc() {
+    try {
+      const data = JSON.parse(localStorage.getItem(CALC_KEY) || '{}');
+      let max = 0;
+      Object.keys(data).forEach(k => { const m = k.match(/^ci_(\d+)_/); if (m) max = Math.max(max, +m[1]); });
+      const targetRows = Math.max(max, 5);
+      for (let i = 0; i < targetRows; i++) addCalcRow();
+      Object.keys(data).forEach(k => {
+        const el = document.querySelector(`[data-key="${k}"]`);
+        if (el) el.value = data[k];
+      });
+      updateCalc();
+    } catch(e) {}
+  }
+  function resetCalc() {
+    if (!confirm('Clear all calculator rows?')) return;
+    localStorage.removeItem(CALC_KEY);
+    document.getElementById('calcRows').innerHTML = '';
+    calcCount = 0;
+    for (let i = 0; i < 5; i++) addCalcRow();
+  }
+
+  loadPrefs();
+  loadCalc();
+
+  // Cross-link: convert each watch-list step-tag into a clickable link back to the matching blueprint step
+  document.querySelectorAll('.watch-step .step-tag').forEach(tag => {
+    const text = tag.textContent.trim();
+    const m = text.match(/^VOL\s+(I+)\s+·\s+STEP\s+(\d+)$/i);
+    if (!m) return;
+    const stepNum = m[2].padStart(2, '0');
+    const isFeature = true; // both VOL I and VOL II go to feature blueprint
+    const href = 'arunak-filmmaker-blueprint.html#step-' + stepNum;
+    const a = document.createElement('a');
+    a.href = href;
+    a.title = 'Open this step in the Feature Blueprint';
+    a.style.cssText = 'color:inherit;text-decoration:none;border-bottom:1px dashed currentColor;cursor:pointer;';
+    a.innerHTML = text + ' <span style="font-size:8px;letter-spacing:0;">→</span>';
+    tag.innerHTML = '';
+    tag.appendChild(a);
+  });
+</script>
+
+</body>
+</html>

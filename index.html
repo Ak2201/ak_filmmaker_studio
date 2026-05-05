@@ -1,0 +1,2229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Filmmaker's Studio — Curated by Arunak</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800;9..144,900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1815;
+    --paper: #f5ecd6;
+    --paper-deep: #ebe0c2;
+    --paper-soft: #faf3df;
+    --paper-warm: #f0e2bc;
+    --gold: #a87a32;
+    --gold-bright: #c9942f;
+    --rule: #2a2520;
+    --muted: #6b6256;
+    --feature: #b03a1f;
+    --feature-deep: #7a2812;
+    --shorts: #2c5d99;
+    --shorts-deep: #1c3d6a;
+    --library: #a87a32;
+    --green: #1f5d4a;
+    --shadow-md: 0 6px 18px rgba(26, 24, 21, 0.07);
+    --shadow-lg: 0 18px 42px rgba(26, 24, 21, 0.12);
+  }
+  body.dark {
+    --ink: #f0e6d0;
+    --paper: #1a1815;
+    --paper-deep: #2a2520;
+    --paper-soft: #221e19;
+    --paper-warm: #2f2922;
+    --gold: #d9a856;
+    --gold-bright: #e8c070;
+    --rule: #4a4238;
+    --muted: #9e9486;
+    --feature: #d97a55;
+    --feature-deep: #b03a1f;
+    --shorts: #6fa3d8;
+    --shorts-deep: #4a7eb3;
+    --library: #d9a856;
+    --green: #4a9d82;
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 18px 42px rgba(0, 0, 0, 0.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 16px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============================================================
+     TOOLBAR
+     ============================================================ */
+  .toolbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--ink); color: var(--paper);
+    padding: 12px 24px;
+    display: flex; gap: 10px;
+    align-items: center; flex-wrap: wrap;
+    border-bottom: 1px solid rgba(244,237,224,0.08);
+  }
+  .toolbar-stripe {
+    position: absolute;
+    bottom: -3px; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+      var(--feature) 0% 33.33%,
+      var(--shorts) 33.33% 66.66%,
+      var(--gold) 66.66% 100%);
+  }
+  .toolbar .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2.5px;
+    color: var(--gold); margin-right: auto;
+    font-weight: 600;
+  }
+  .nav-link {
+    color: var(--paper); text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    padding: 7px 11px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .nav-link:hover { background: rgba(244,237,224,0.08); border-color: rgba(244,237,224,0.2); }
+  .btn {
+    background: transparent; color: var(--paper);
+    border: 1px solid var(--paper);
+    padding: 7px 13px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    cursor: pointer; transition: all 0.15s;
+    font-weight: 600;
+  }
+  .btn:hover { background: var(--paper); color: var(--ink); }
+  .btn.gold { border-color: var(--gold); color: var(--gold); }
+  .btn.gold:hover { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+  .btn.icon-btn { width: 34px; padding: 5px 8px; font-size: 14px; line-height: 1; }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+  .hero {
+    position: relative;
+    padding: 90px 50px 70px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 70% 50% at 85% 20%, rgba(176,58,31,0.07), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 15% 75%, rgba(44,93,153,0.05), transparent 60%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(var(--ink) 0.7px, transparent 0.7px);
+    background-size: 32px 32px;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+  .hero-inner {
+    position: relative;
+    max-width: 1280px;
+    margin: 0 auto;
+    z-index: 1;
+  }
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .hero-vol {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--feature);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .hero-vol::before { content: "—  "; }
+  .hero-edition {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(60px, 12vw, 156px);
+    font-weight: 800;
+    font-style: italic;
+    line-height: 0.84;
+    letter-spacing: -0.045em;
+    margin-bottom: 24px;
+    max-width: 1080px;
+  }
+  .hero h1 .light {
+    font-weight: 400; font-style: normal;
+    color: var(--muted);
+  }
+  .hero-deck {
+    font-size: clamp(18px, 2vw, 23px);
+    color: var(--ink);
+    font-style: italic;
+    max-width: 700px;
+    line-height: 1.45;
+    margin-bottom: 40px;
+  }
+  .hero-deck em { color: var(--feature); font-weight: 600; }
+  .hero-deck em.s { color: var(--shorts); }
+  .hero-deck em.g { color: var(--gold); }
+
+  /* RESUME CARD */
+  .resume-card {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 26px 32px;
+    margin-bottom: 32px;
+    max-width: 760px;
+    border-radius: 4px;
+    border-left: 4px solid var(--gold);
+    display: none;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+  }
+  .resume-card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle at top right, rgba(168,122,50,0.18), transparent 70%);
+    pointer-events: none;
+  }
+  .resume-card.has-data { display: block; }
+  .resume-card .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2.5px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .resume-card .lab::before { content: "↻  "; }
+  .resume-card h2 {
+    font-size: 26px; font-style: italic; font-weight: 700;
+    margin-bottom: 6px;
+    line-height: 1.15;
+  }
+  .resume-card .resume-meta {
+    font-size: 14px; color: rgba(244,237,224,0.7);
+    margin-bottom: 18px; line-height: 1.5;
+  }
+  .resume-card .resume-meta strong { color: var(--gold-bright); font-weight: 600; }
+  .resume-card .resume-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .resume-card .resume-btn {
+    background: var(--gold);
+    color: var(--ink);
+    padding: 10px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 1.5px;
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .resume-card .resume-btn:hover {
+    background: var(--paper);
+    transform: translateX(2px);
+  }
+  .resume-card .resume-btn.alt {
+    background: transparent;
+    color: var(--paper);
+    border: 1px solid rgba(244,237,224,0.3);
+  }
+  .resume-card .resume-btn.alt:hover {
+    background: rgba(244,237,224,0.1);
+    border-color: var(--paper);
+  }
+
+  /* SEARCH */
+  .search-wrap {
+    max-width: 760px;
+    margin-bottom: 36px;
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--paper-soft);
+    border: 1px solid var(--rule);
+    padding: 16px 60px 16px 22px;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    color: var(--ink);
+    border-radius: 2px;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-md);
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--feature);
+    box-shadow: var(--shadow-lg), 0 0 0 3px rgba(176,58,31,0.08);
+  }
+  .search-input::placeholder { color: var(--muted); font-style: italic; }
+  .search-icon {
+    position: absolute;
+    right: 18px; top: 50%;
+    transform: translateY(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    pointer-events: none;
+    background: var(--paper-deep);
+    padding: 4px 8px;
+    border-radius: 3px;
+  }
+  .search-tip {
+    margin-top: 8px;
+    font-size: 12px; color: var(--muted);
+    font-style: italic;
+  }
+  .search-tip kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--paper-deep);
+    padding: 1px 6px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+    font-style: normal;
+    color: var(--ink);
+    margin: 0 2px;
+  }
+  .search-results {
+    background: var(--paper-soft);
+    border: 1px solid var(--rule);
+    margin-top: 4px;
+    max-height: 0;
+    overflow-y: auto;
+    border-radius: 2px;
+    position: absolute;
+    z-index: 50;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    transition: max-height 0.2s;
+    top: 100%;
+  }
+  .search-results.open { max-height: 480px; }
+  .search-result {
+    padding: 13px 20px;
+    border-bottom: 1px solid rgba(42,37,32,0.08);
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--ink);
+    display: block;
+    transition: background 0.1s;
+  }
+  .search-result:hover, .search-result.active {
+    background: var(--paper-warm);
+  }
+  .search-result:last-child { border-bottom: none; }
+  .search-result .kind {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--feature);
+    margin-bottom: 3px;
+    font-weight: 700;
+  }
+  .search-result.r-shorts .kind { color: var(--shorts); }
+  .search-result.r-library .kind { color: var(--library); }
+  .search-result h5 {
+    font-size: 15px; font-style: italic; font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .search-result p {
+    font-size: 12px; color: var(--muted);
+    line-height: 1.4;
+  }
+  .search-result mark {
+    background: rgba(168, 122, 50, 0.3);
+    color: var(--ink);
+    padding: 0 2px;
+    border-radius: 1px;
+  }
+  .search-empty {
+    padding: 18px 20px;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* HERO STATS */
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+    max-width: 1100px;
+    border-top: 1px solid var(--rule);
+    padding-top: 30px;
+  }
+  .hero-stat {
+    text-align: left;
+  }
+  .hero-stat .num {
+    font-family: 'Fraunces', serif;
+    font-size: 42px; font-weight: 800;
+    font-style: italic;
+    color: var(--feature);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .hero-stat.s .num { color: var(--shorts); }
+  .hero-stat.l .num { color: var(--library); }
+  .hero-stat.g .num { color: var(--gold); }
+  .hero-stat .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     SECTIONS
+     ============================================================ */
+  .section {
+    padding: 70px 50px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .section.alt { background: var(--paper-soft); }
+  .section.dark-bg {
+    background: var(--paper-deep);
+  }
+  .section-inner { max-width: 1280px; margin: 0 auto; }
+  .section-head {
+    margin-bottom: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .section-head .left { max-width: 760px; }
+  .section-head .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--feature);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .section-head h2 {
+    font-size: clamp(32px, 4.5vw, 54px);
+    font-weight: 800; font-style: italic;
+    line-height: 0.95;
+    margin-bottom: 14px;
+    letter-spacing: -0.02em;
+  }
+  .section-head h2 em.f { color: var(--feature); }
+  .section-head h2 em.s { color: var(--shorts); }
+  .section-head h2 em.g { color: var(--gold); }
+  .section-head .deck {
+    font-size: 16px; color: var(--muted);
+    font-style: italic;
+    max-width: 760px;
+    line-height: 1.55;
+  }
+  .section-head .right {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ============================================================
+     DOORS
+     ============================================================ */
+  .doors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 24px;
+  }
+  .door {
+    background: var(--paper-soft);
+    border: 1px solid var(--rule);
+    border-top: 4px solid var(--feature);
+    padding: 32px 30px 24px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border-radius: 2px;
+  }
+  .door::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle at top right, rgba(176,58,31,0.07), transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .door.shorts { border-top-color: var(--shorts); }
+  .door.shorts::before { background: radial-gradient(circle at top right, rgba(44,93,153,0.07), transparent 70%); }
+  .door.library { border-top-color: var(--library); }
+  .door.library::before { background: radial-gradient(circle at top right, rgba(168,122,50,0.09), transparent 70%); }
+  .door:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .door:hover::before { opacity: 1.4; }
+
+  .door-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--feature);
+    margin-bottom: 18px;
+    text-transform: uppercase;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .door.shorts .door-tag { color: var(--shorts); }
+  .door.library .door-tag { color: var(--library); }
+  .door-num-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--feature);
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0;
+  }
+  .door.shorts .door-num-circle { background: var(--shorts); }
+  .door.library .door-num-circle { background: var(--library); color: var(--ink); }
+
+  .door h3 {
+    font-size: 32px;
+    font-weight: 800;
+    font-style: italic;
+    line-height: 1;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .door h3 .light {
+    font-weight: 400; font-style: normal;
+    color: var(--muted);
+    display: block;
+    font-size: 18px;
+    margin-top: 4px;
+  }
+  .door .door-sub {
+    font-size: 14px;
+    color: var(--ink);
+    font-style: italic;
+    margin-top: 14px;
+    margin-bottom: 18px;
+    line-height: 1.55;
+    opacity: 0.85;
+  }
+  .door-contents {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  .door-contents li {
+    padding: 4px 0 4px 18px;
+    line-height: 1.5;
+    position: relative;
+  }
+  .door-contents li::before {
+    content: "—";
+    position: absolute; left: 0;
+    color: var(--feature);
+    font-weight: 600;
+  }
+  .door.shorts .door-contents li::before { color: var(--shorts); }
+  .door.library .door-contents li::before { color: var(--library); }
+
+  .door-status {
+    background: var(--paper);
+    border: 1px solid rgba(42,37,32,0.12);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    border-radius: 2px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .status-row {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .status-row:last-child { margin-bottom: 0; }
+  .status-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .status-value {
+    font-style: italic;
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 13px;
+    text-align: right;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .progress-track {
+    height: 5px;
+    background: rgba(42,37,32,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .progress-fill-bar {
+    height: 100%;
+    background: var(--feature);
+    transition: width 0.4s ease;
+    border-radius: 3px;
+  }
+  .door.shorts .progress-fill-bar { background: var(--shorts); }
+  .door.library .progress-fill-bar { background: var(--library); }
+
+  .door-quicklinks {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(42,37,32,0.15);
+  }
+  .door-quicklinks .ql {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 4px 9px;
+    border: 1px solid rgba(42,37,32,0.2);
+    border-radius: 2px;
+    transition: all 0.15s;
+    background: var(--paper);
+    z-index: 5;
+    position: relative;
+  }
+  .door-quicklinks .ql:hover {
+    color: var(--feature);
+    border-color: var(--feature);
+    background: var(--paper-warm);
+  }
+  .door.shorts .door-quicklinks .ql:hover { color: var(--shorts); border-color: var(--shorts); }
+  .door.library .door-quicklinks .ql:hover { color: var(--library); border-color: var(--library); }
+
+  .door-cta {
+    background: var(--feature);
+    color: var(--paper);
+    padding: 13px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    text-align: left;
+    transition: background 0.2s;
+    border-radius: 2px;
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .door-cta .arrow {
+    transition: transform 0.2s;
+  }
+  .door:hover .door-cta { background: var(--feature-deep); }
+  .door:hover .door-cta .arrow { transform: translateX(4px); }
+  .door.shorts .door-cta { background: var(--shorts); }
+  .door.shorts:hover .door-cta { background: var(--shorts-deep); }
+  .door.library .door-cta { background: var(--gold); color: var(--ink); }
+  .door.library:hover .door-cta { background: var(--ink); color: var(--gold); }
+
+  /* ============================================================
+     PATHS
+     ============================================================ */
+  .start-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .start-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--gold);
+    padding: 22px 24px;
+    text-decoration: none;
+    color: var(--ink);
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    border-radius: 2px;
+  }
+  .start-card:hover {
+    transform: translateX(4px);
+    background: var(--paper-warm);
+    box-shadow: var(--shadow-md);
+  }
+  .start-card.f { border-left-color: var(--feature); }
+  .start-card.s { border-left-color: var(--shorts); }
+  .start-card.l { border-left-color: var(--library); }
+  .start-card .question {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .start-card.f .question { color: var(--feature); }
+  .start-card.s .question { color: var(--shorts); }
+  .start-card.l .question { color: var(--library); }
+  .start-card h4 {
+    font-size: 20px;
+    font-weight: 800;
+    font-style: italic;
+    margin-bottom: 8px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  .start-card p {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+    flex: 1;
+  }
+  .start-card .arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    font-weight: 700;
+    margin-top: auto;
+  }
+  .start-card.f .arrow { color: var(--feature); }
+  .start-card.s .arrow { color: var(--shorts); }
+  .start-card.l .arrow { color: var(--library); }
+
+  /* ============================================================
+     TOOLS
+     ============================================================ */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .tool-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    color: var(--ink);
+    text-decoration: none;
+    display: block;
+    border-radius: 2px;
+  }
+  .tool-card:hover {
+    border-color: var(--gold);
+    background: var(--paper-warm);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .tool-card .tool-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    font-weight: 800;
+    display: inline-block;
+    background: var(--paper-warm);
+    padding: 4px 10px;
+    border-radius: 2px;
+    min-width: 30px;
+    text-align: center;
+  }
+  .tool-card.f .tool-icon { color: var(--feature); background: rgba(176,58,31,0.1); }
+  .tool-card.s .tool-icon { color: var(--shorts); background: rgba(44,93,153,0.1); }
+  .tool-card h5 {
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .tool-card p {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* DATA CARD */
+  .data-card {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 22px 28px;
+    margin-top: 24px;
+    border-left: 4px solid var(--gold);
+    border-radius: 2px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    box-shadow: var(--shadow-md);
+  }
+  .data-card .left { flex: 1; min-width: 280px; }
+  .data-card .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2.5px;
+    color: var(--gold);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .data-card p { font-size: 14px; line-height: 1.55; color: rgba(244,237,224,0.8); }
+  .data-card .right {
+    display: flex; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .data-card .mb {
+    background: rgba(244,237,224,0.1);
+    color: var(--paper);
+    border: 1px solid rgba(244,237,224,0.2);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+  .data-card .mb:hover { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+
+  /* ============================================================
+     INDEX
+     ============================================================ */
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 22px;
+  }
+  .index-col {
+    background: var(--paper);
+    padding: 24px 26px;
+    border: 1px solid var(--rule);
+    border-top: 4px solid var(--feature);
+    border-radius: 2px;
+    box-shadow: var(--shadow-md);
+  }
+  .index-col.shorts { border-top-color: var(--shorts); }
+  .index-col.library { border-top-color: var(--library); }
+  .index-col h4 {
+    font-size: 22px;
+    font-weight: 800;
+    font-style: italic;
+    margin-bottom: 4px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .index-col .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .toc-group { margin-bottom: 18px; }
+  .toc-group-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--feature);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(176,58,31,0.15);
+    padding-bottom: 5px;
+    font-weight: 700;
+  }
+  .index-col.shorts .toc-group-label { color: var(--shorts); border-bottom-color: rgba(44,93,153,0.15); }
+  .index-col.library .toc-group-label { color: var(--library); border-bottom-color: rgba(168,122,50,0.15); }
+  .toc-list { list-style: none; padding: 0; }
+  .toc-list li {
+    padding: 3px 0;
+    font-size: 13px;
+  }
+  .toc-list a {
+    color: var(--ink);
+    text-decoration: none;
+    transition: all 0.15s;
+    display: flex;
+    gap: 8px;
+    border-left: 2px solid transparent;
+    padding-left: 8px;
+    align-items: baseline;
+  }
+  .toc-list a:hover {
+    color: var(--feature);
+    border-left-color: var(--feature);
+  }
+  .index-col.shorts .toc-list a:hover { color: var(--shorts); border-left-color: var(--shorts); }
+  .index-col.library .toc-list a:hover { color: var(--library); border-left-color: var(--library); }
+  .toc-list .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    min-width: 22px;
+    font-weight: 600;
+  }
+  .toc-list .check {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--feature);
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-weight: 700;
+  }
+  .toc-list .check.done { opacity: 1; }
+  .index-col.shorts .toc-list .check { color: var(--shorts); }
+
+  /* ============================================================
+     ACTIVITY
+     ============================================================ */
+  .activity-list {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 0;
+    max-height: 380px;
+    overflow-y: auto;
+    border-radius: 2px;
+    box-shadow: var(--shadow-md);
+  }
+  .activity-row {
+    display: grid;
+    grid-template-columns: 90px 110px 1fr;
+    gap: 16px;
+    padding: 14px 22px;
+    border-bottom: 1px solid rgba(42,37,32,0.08);
+    align-items: baseline;
+    font-size: 13px;
+    transition: background 0.15s;
+  }
+  .activity-row:hover { background: var(--paper-warm); }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-row .when {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .activity-row .where {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .activity-row .where.feat { color: var(--feature); }
+  .activity-row .where.short { color: var(--shorts); }
+  .activity-row .where.lib { color: var(--library); }
+  .activity-row .where.studio { color: var(--gold); }
+  .activity-row .what {
+    font-style: italic;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .activity-row a {
+    color: inherit;
+    text-decoration: none;
+    display: contents;
+  }
+  .activity-row a:hover .what { text-decoration: underline; }
+  .activity-empty {
+    padding: 36px 30px;
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .activity-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .activity-actions .mini-btn {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    cursor: pointer;
+    font-weight: 600;
+    border-radius: 2px;
+  }
+  .activity-actions .mini-btn:hover { background: var(--feature); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .final-page {
+    padding: 80px 50px;
+    background: var(--ink);
+    color: var(--paper);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .final-page::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 50% 40% at 20% 30%, rgba(176,58,31,0.08), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 70%, rgba(44,93,153,0.08), transparent 60%);
+    pointer-events: none;
+  }
+  .final-inner { position: relative; max-width: 800px; margin: 0 auto; z-index: 1; }
+  .final-page .quote {
+    font-size: clamp(20px, 2.8vw, 28px);
+    font-style: italic;
+    margin-bottom: 24px;
+    line-height: 1.4;
+    color: var(--paper);
+  }
+  .final-page .quote .feature { color: var(--feature); font-weight: 600; }
+  .final-page .quote .shorts { color: var(--shorts); font-weight: 600; }
+  .final-page .quote .library { color: var(--gold); font-weight: 600; }
+  .final-page .signature {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px;
+    color: var(--gold);
+    margin-top: 30px;
+    font-weight: 700;
+  }
+  .final-page .signature span { color: var(--paper); }
+  .file-list {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid rgba(244,237,224,0.15);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(244,237,224,0.55);
+    line-height: 1.8;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .file-list code {
+    background: rgba(244,237,224,0.07);
+    color: var(--gold);
+    padding: 2px 7px;
+    margin-right: 6px;
+    border-radius: 2px;
+  }
+  .file-list .note {
+    margin-top: 14px;
+    text-align: center;
+    opacity: 0.6;
+  }
+
+  @media print {
+    @page { size: A4; margin: 14mm; }
+    body { background: white; color: black; }
+    .toolbar, .resume-card, .search-wrap, .activity-actions { display: none !important; }
+    .hero, .section, .final-page { padding: 14px 0; border: none; page-break-after: auto; }
+    .door, .start-card, .tool-card, .index-col, .data-card, .activity-list {
+      background: white !important; color: black !important;
+      border: 1px solid #888 !important;
+      page-break-inside: avoid;
+      box-shadow: none !important;
+    }
+    .door::before, .hero::before, .final-page::before { display: none !important; }
+  }
+
+  @media (max-width: 740px) {
+    .toolbar { padding: 8px 12px; gap: 5px; }
+    .toolbar .brand { flex-basis: 100%; text-align: center; padding-bottom: 6px; border-bottom: 1px solid rgba(244,237,224,0.1); margin-right: 0; }
+    .nav-link, .btn { font-size: 9px; padding: 6px 8px; min-height: 32px; }
+    .hero, .section, .final-page { padding: 50px 22px; }
+    .hero h1 { font-size: clamp(48px, 14vw, 80px); }
+    .doors, .start-grid, .tools-grid, .index-grid { grid-template-columns: 1fr; }
+    .activity-row { grid-template-columns: 70px 90px 1fr; gap: 10px; padding: 12px 16px; font-size: 12px; }
+    .section-head { flex-direction: column; align-items: flex-start; }
+    .data-card { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="brand">CURATED BY ARUNAK · STUDIO</span>
+  <a class="nav-link" href="#doors">BLUEPRINTS</a>
+  <a class="nav-link" href="#start">START</a>
+  <a class="nav-link" href="#tools">TOOLS</a>
+  <a class="nav-link" href="#index">INDEX</a>
+  <a class="nav-link" href="#activity">ACTIVITY</a>
+  <button class="btn icon-btn" onclick="toggleDark()" id="darkBtn" title="Toggle theme">◐</button>
+  <button class="btn gold" onclick="exportAll()" title="Backup all studio data">↓ EXPORT</button>
+  <button class="btn" onclick="importAll()">IMPORT</button>
+  <input type="file" id="importAllFile" accept=".json" style="display:none;" onchange="handleImportAll(event)">
+  <div class="toolbar-stripe"></div>
+</div>
+
+<!-- ============== HERO ============== -->
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <div class="hero-top">
+      <span class="hero-vol">A working desk for the working filmmaker</span>
+      <span class="hero-edition">EDITION 01 · CHENNAI · MMXXVI</span>
+    </div>
+
+    <h1>The <span class="light">Filmmaker's</span><br>Studio.</h1>
+
+    <p class="hero-deck">Three companion blueprints, one reference library. Build a <em>feature</em>, draft a <em class="s">short</em>, study the <em class="g">craft</em> — all from one desk.</p>
+
+    <div class="resume-card" id="resumeCard">
+      <div class="lab">PICK UP WHERE YOU LEFT OFF</div>
+      <h2 id="resumeTitle">—</h2>
+      <p class="resume-meta" id="resumeBody">—</p>
+      <div class="resume-actions" id="resumeActions"></div>
+    </div>
+
+    <div class="search-wrap">
+      <input type="text" class="search-input" id="searchInput"
+             placeholder="Search steps, films, directors, glossary terms…"
+             autocomplete="off" spellcheck="false"
+             oninput="performSearch(this.value)" onkeydown="searchKey(event)">
+      <span class="search-icon">⌘ K</span>
+      <div class="search-results" id="searchResults"></div>
+      <p class="search-tip">Try <kbd>logline</kbd> · <kbd>vetrimaaran</kbd> · <kbd>fountain</kbd> · <kbd>festival</kbd> · <kbd>budget</kbd></p>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">24</div><div class="lab">Feature steps</div></div>
+      <div class="hero-stat s"><div class="num">11</div><div class="lab">Short steps</div></div>
+      <div class="hero-stat l"><div class="num">22</div><div class="lab">Films analyzed</div></div>
+      <div class="hero-stat l"><div class="num">10</div><div class="lab">Directors</div></div>
+      <div class="hero-stat l"><div class="num">50</div><div class="lab">Craft rules</div></div>
+      <div class="hero-stat g"><div class="num">72</div><div class="lab">Watch list</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== DOORS ============== -->
+<section class="section" id="doors">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="left">
+        <div class="label">SECTION I · THE BLUEPRINTS</div>
+        <h2>Three <em class="f">doors.</em> <em class="s">Pick</em> a <em class="g">path.</em></h2>
+        <p class="deck">Each blueprint is a self-contained working tool. Open one, work in it, save (data lives in your browser). Cross-link freely. Use EXPORT in the toolbar to back everything up at once.</p>
+      </div>
+      <div class="right">3 BLUEPRINTS</div>
+    </div>
+
+    <div class="doors">
+
+      <div class="door">
+        <div class="door-tag"><span class="door-num-circle">I</span> VOL I &amp; II · 24 STEPS</div>
+        <h3>Feature Film<br><span class="light">Blueprint.</span></h3>
+        <p class="door-sub">From the first "what if?" to "ROLL CAMERA." Story (Vol I) and Pre-Production (Vol II) joined into one continuous tool.</p>
+        <ul class="door-contents">
+          <li>Story: 12 steps from spark to scene list</li>
+          <li>Pre-prod: 12 steps to tech recce</li>
+          <li>Treatment Ladder, Pitch Deck, Sync</li>
+          <li>HOD sign-off, Tanglish glosses</li>
+        </ul>
+        <div class="door-status">
+          <div class="status-row">
+            <span class="status-label">Project</span>
+            <span class="status-value" id="feat-title">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Stage</span>
+            <span class="status-value" id="feat-stage">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Progress</span>
+            <span class="status-value" id="feat-progress">0%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill-bar" id="feat-bar" style="width:0%"></div></div>
+        </div>
+        <div class="door-quicklinks">
+          <a class="ql" href="arunak-filmmaker-blueprint.html#step-01">SPARK</a>
+          <a class="ql" href="arunak-filmmaker-blueprint.html#treatment-ladder">TREATMENT</a>
+          <a class="ql" href="arunak-filmmaker-blueprint.html#pitch-deck">PITCH</a>
+          <a class="ql" href="arunak-filmmaker-blueprint.html#sync-section">SYNC</a>
+          <a class="ql" href="arunak-filmmaker-blueprint.html#glossary">GLOSSARY</a>
+        </div>
+        <a class="door-cta" href="arunak-filmmaker-blueprint.html">
+          <span>OPEN BLUEPRINT</span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+
+      <div class="door shorts">
+        <div class="door-tag"><span class="door-num-circle">II</span> 11 STEPS · WITH SCRIPT EDITOR</div>
+        <h3>Short Film<br><span class="light">Blueprint.</span></h3>
+        <p class="door-sub">For films under 30 minutes. Compressed structure, structured script editor, Fountain export, festival strategy.</p>
+        <ul class="door-contents">
+          <li>5-Beat structure: Setup → Image</li>
+          <li>Live screenplay editor with page count</li>
+          <li>Fountain export (Final Draft, Highland)</li>
+          <li>AI prompt generator + festivals</li>
+        </ul>
+        <div class="door-status">
+          <div class="status-row">
+            <span class="status-label">Project</span>
+            <span class="status-value" id="short-title">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Runtime</span>
+            <span class="status-value" id="short-runtime">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Progress</span>
+            <span class="status-value" id="short-progress">0%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill-bar" id="short-bar" style="width:0%"></div></div>
+        </div>
+        <div class="door-quicklinks">
+          <a class="ql" href="arunak-shortfilm-blueprint.html#step-01">SEED</a>
+          <a class="ql" href="arunak-shortfilm-blueprint.html#step-04">5 BEATS</a>
+          <a class="ql" href="arunak-shortfilm-blueprint.html#step-07">SCRIPT</a>
+          <a class="ql" href="arunak-shortfilm-blueprint.html#step-10">FESTIVALS</a>
+          <a class="ql" href="arunak-shortfilm-blueprint.html#glossary">GLOSSARY</a>
+        </div>
+        <a class="door-cta" href="arunak-shortfilm-blueprint.html">
+          <span>OPEN BLUEPRINT</span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+
+      <div class="door library">
+        <div class="door-tag"><span class="door-num-circle">III</span> REFERENCE COMPANION</div>
+        <h3>The Filmmaker's<br><span class="light">Library.</span></h3>
+        <p class="door-sub">A curated reference: Tamil &amp; Indian films analyzed for craft, director archetypes, rules of thumb, equipment costs, watch list.</p>
+        <ul class="door-contents">
+          <li>22 films, one extractable lesson each</li>
+          <li>10 director archetypes</li>
+          <li>50 craft rules + equipment calculator</li>
+          <li>72-film watch list, mapped to each step</li>
+        </ul>
+        <div class="door-status">
+          <div class="status-row">
+            <span class="status-label">Equipment</span>
+            <span class="status-value" id="lib-calc">empty</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Total / day</span>
+            <span class="status-value" id="lib-total">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Type</span>
+            <span class="status-value" style="color:var(--muted);">read-only ref</span>
+          </div>
+        </div>
+        <div class="door-quicklinks">
+          <a class="ql" href="arunak-filmmaker-library.html#films">FILMS</a>
+          <a class="ql" href="arunak-filmmaker-library.html#directors">DIRECTORS</a>
+          <a class="ql" href="arunak-filmmaker-library.html#rules">RULES</a>
+          <a class="ql" href="arunak-filmmaker-library.html#equipment">EQUIPMENT</a>
+          <a class="ql" href="arunak-filmmaker-library.html#watch">WATCH LIST</a>
+        </div>
+        <a class="door-cta" href="arunak-filmmaker-library.html">
+          <span>OPEN LIBRARY</span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============== START PATHS ============== -->
+<section class="section alt" id="start">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="left">
+        <div class="label">SECTION II · WHERE TO START</div>
+        <h2>What are you <em class="f">trying to make?</em></h2>
+        <p class="deck">If this is your first time here, pick the path that matches what's ahead. The blueprints are designed to be standalone — no order required.</p>
+      </div>
+      <div class="right">4 PATHS</div>
+    </div>
+
+    <div class="start-grid">
+      <a class="start-card f" href="arunak-filmmaker-blueprint.html">
+        <div class="question">PATH A · I want to make a feature</div>
+        <h4>Feature Blueprint</h4>
+        <p>Begin at Step 01: The Spark. Work through Vol I (Story) until you have a locked scene list, then continue into Vol II (Pre-Production).</p>
+        <span class="arrow">OPEN  →</span>
+      </a>
+
+      <a class="start-card s" href="arunak-shortfilm-blueprint.html">
+        <div class="question">PATH B · I want to make a short</div>
+        <h4>Short Film Blueprint</h4>
+        <p>11 steps for films under 30 minutes. Includes structured script editor and Fountain export. 4–8 weeks from idea to lock.</p>
+        <span class="arrow">OPEN  →</span>
+      </a>
+
+      <a class="start-card l" href="arunak-filmmaker-library.html">
+        <div class="question">PATH C · I want to study craft</div>
+        <h4>Open the Library</h4>
+        <p>22 films analyzed for craft, 10 director archetypes, 50 rules of thumb, 72-film watch list. Read in any order.</p>
+        <span class="arrow">OPEN  →</span>
+      </a>
+
+      <a class="start-card" href="arunak-filmmaker-blueprint.html">
+        <div class="question">PATH D · I want a complete example</div>
+        <h4>Load the Por Thozhil sample</h4>
+        <p>Open the Feature Blueprint, click <strong>SAMPLE</strong> in the toolbar. Loads a fully filled blueprint based on the 2023 Tamil thriller.</p>
+        <span class="arrow">OPEN  →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============== TOOLS ============== -->
+<section class="section" id="tools">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="left">
+        <div class="label">SECTION III · TOOLS &amp; UTILITIES</div>
+        <h2>Studio <em class="g">tools.</em></h2>
+        <p class="deck">Cross-blueprint utilities and quick-jumps to commonly used features. Backup, restore, print, or jump straight to a tool.</p>
+      </div>
+      <div class="right">10 TOOLS</div>
+    </div>
+
+    <div class="tools-grid">
+      <button class="tool-card" onclick="exportAll()">
+        <div class="tool-icon">↓</div>
+        <h5>Export everything</h5>
+        <p>Combined JSON of all blueprints, prefs, comments. One file, full backup.</p>
+      </button>
+      <button class="tool-card" onclick="importAll()">
+        <div class="tool-icon">↑</div>
+        <h5>Import everything</h5>
+        <p>Restore from a previous backup. Replaces all current data.</p>
+      </button>
+      <button class="tool-card" onclick="window.print()">
+        <div class="tool-icon">⎙</div>
+        <h5>Print this hub</h5>
+        <p>Snapshot of the studio overview. Each blueprint has its own print mode.</p>
+      </button>
+      <button class="tool-card" onclick="resetAll()">
+        <div class="tool-icon">⌫</div>
+        <h5>Reset everything</h5>
+        <p>Erase all studio data. Export first if you want to keep anything.</p>
+      </button>
+      <a class="tool-card f" href="arunak-filmmaker-blueprint.html#pitch-deck">
+        <div class="tool-icon">▦</div>
+        <h5>Auto Pitch Deck</h5>
+        <p>10 slides built from your filled fields. Inside the Feature Blueprint. Exports as .pptx.</p>
+      </a>
+      <a class="tool-card" href="arunak-filmmaker-library.html#equipment">
+        <div class="tool-icon">₹</div>
+        <h5>Equipment Calculator</h5>
+        <p>Chennai 2024-25 rate ranges. Build a kit, get a daily-rate total.</p>
+      </a>
+      <a class="tool-card s" href="arunak-shortfilm-blueprint.html#step-08">
+        <div class="tool-icon">.fnt</div>
+        <h5>Fountain Export</h5>
+        <p>Export your short as Fountain — opens in Final Draft, Highland.</p>
+      </a>
+      <a class="tool-card f" href="arunak-filmmaker-blueprint.html#sync-section">
+        <div class="tool-icon">↻</div>
+        <h5>Real-time Sync</h5>
+        <p>Optional Supabase backend for syncing across devices.</p>
+      </a>
+      <a class="tool-card s" href="arunak-shortfilm-blueprint.html#step-08">
+        <div class="tool-icon">AI</div>
+        <h5>AI Prompt Generator</h5>
+        <p>Build prompts for Claude / ChatGPT from your blueprint data.</p>
+      </a>
+      <a class="tool-card" href="arunak-filmmaker-library.html#watch">
+        <div class="tool-icon">▶</div>
+        <h5>Watch List by Step</h5>
+        <p>Three films to study per blueprint step. 72 films total.</p>
+      </a>
+    </div>
+
+    <div class="data-card">
+      <div class="left">
+        <div class="lab">YOUR DATA</div>
+        <p id="storageBytes">Computing storage…</p>
+      </div>
+      <div class="right">
+        <button class="mb" onclick="exportAll()">DOWNLOAD BACKUP</button>
+        <button class="mb" onclick="alert('All data is local-only — saved to this browser\\'s localStorage on this domain.\\n\\nTo move to a new browser: EXPORT here, then IMPORT in the new browser.\\n\\nIncognito mode does NOT save data between sessions.')">PRIVACY NOTE</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== INDEX ============== -->
+<section class="section dark-bg" id="index">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="left">
+        <div class="label">SECTION IV · MASTER INDEX</div>
+        <h2>The full <em class="g">index.</em></h2>
+        <p class="deck">Every step and section across all three documents, in one place. Items with a <strong>✓</strong> are complete in your data. Click any to jump straight in.</p>
+      </div>
+      <div class="right">36 STEPS · 5 LIBRARY SECTIONS</div>
+    </div>
+
+    <div class="index-grid">
+
+      <div class="index-col">
+        <h4>Feature Blueprint</h4>
+        <p class="sub">Vols I &amp; II · 24 steps</p>
+        <div class="toc-group">
+          <div class="toc-group-label">VOL I · STORY</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-blueprint.html#step-01"><span class="num">01</span>The Spark<span class="check" data-tcheck="feat-01">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-02"><span class="num">02</span>The Logline<span class="check" data-tcheck="feat-02">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#treatment-ladder"><span class="num">··</span>Treatment Ladder</a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-03"><span class="num">03</span>Theme &amp; Stakes<span class="check" data-tcheck="feat-03">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-04"><span class="num">04</span>Protagonist<span class="check" data-tcheck="feat-04">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-05"><span class="num">05</span>Antagonist<span class="check" data-tcheck="feat-05">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-06"><span class="num">06</span>Supporting Cast<span class="check" data-tcheck="feat-06">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-07"><span class="num">07</span>The World<span class="check" data-tcheck="feat-07">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-08"><span class="num">08</span>The 15 Beats<span class="check" data-tcheck="feat-08">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-09"><span class="num">09</span>Timeline<span class="check" data-tcheck="feat-09">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-10"><span class="num">10</span>Setups &amp; Payoffs<span class="check" data-tcheck="feat-10">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-11"><span class="num">11</span>Scene List<span class="check" data-tcheck="feat-11">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-12"><span class="num">12</span>Final Check<span class="check" data-tcheck="feat-12">✓</span></a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">VOL II · PRE-PRODUCTION</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-blueprint.html#step-13"><span class="num">13</span>Script Lock<span class="check" data-tcheck="feat-13">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-14"><span class="num">14</span>Director's Vision<span class="check" data-tcheck="feat-14">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-15"><span class="num">15</span>Lookbook<span class="check" data-tcheck="feat-15">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-16"><span class="num">16</span>Storyboard / Shots<span class="check" data-tcheck="feat-16">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-17"><span class="num">17</span>Cinematography<span class="check" data-tcheck="feat-17">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-18"><span class="num">18</span>Production Design<span class="check" data-tcheck="feat-18">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-19"><span class="num">19</span>Costume / HMU<span class="check" data-tcheck="feat-19">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-20"><span class="num">20</span>Casting<span class="check" data-tcheck="feat-20">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-21"><span class="num">21</span>Locations / Recce<span class="check" data-tcheck="feat-21">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-22"><span class="num">22</span>Sound &amp; Music<span class="check" data-tcheck="feat-22">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-23"><span class="num">23</span>Schedule / Budget<span class="check" data-tcheck="feat-23">✓</span></a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#step-24"><span class="num">24</span>Tech Recce / Lock<span class="check" data-tcheck="feat-24">✓</span></a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">EXTRAS</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-blueprint.html#pitch-deck"><span class="num">··</span>Auto Pitch Deck</a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#sync-section"><span class="num">··</span>Real-time Sync</a></li>
+            <li><a href="arunak-filmmaker-blueprint.html#glossary"><span class="num">··</span>Full Glossary</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="index-col shorts">
+        <h4>Short Blueprint</h4>
+        <p class="sub">11 steps · with script editor</p>
+        <div class="toc-group">
+          <div class="toc-group-label">PRE-SCRIPT</div>
+          <ul class="toc-list">
+            <li><a href="arunak-shortfilm-blueprint.html#step-01"><span class="num">01</span>The Seed<span class="check" data-tcheck="short-01">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-02"><span class="num">02</span>The Logline<span class="check" data-tcheck="short-02">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-03"><span class="num">03</span>The Character<span class="check" data-tcheck="short-03">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-04"><span class="num">04</span>5-Beat Structure<span class="check" data-tcheck="short-04">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-05"><span class="num">05</span>The World<span class="check" data-tcheck="short-05">✓</span></a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">SCRIPT</div>
+          <ul class="toc-list">
+            <li><a href="arunak-shortfilm-blueprint.html#step-06"><span class="num">06</span>Scene Map<span class="check" data-tcheck="short-06">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-07"><span class="num">07</span>Script Pages<span class="check" data-tcheck="short-07">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-08"><span class="num">08</span>Format &amp; Export<span class="check" data-tcheck="short-08">✓</span></a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">PRODUCTION</div>
+          <ul class="toc-list">
+            <li><a href="arunak-shortfilm-blueprint.html#step-09"><span class="num">09</span>Production Reality<span class="check" data-tcheck="short-09">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-10"><span class="num">10</span>Festival Strategy<span class="check" data-tcheck="short-10">✓</span></a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-11"><span class="num">11</span>Final Lock<span class="check" data-tcheck="short-11">✓</span></a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">EXTRAS</div>
+          <ul class="toc-list">
+            <li><a href="arunak-shortfilm-blueprint.html#step-08"><span class="num">··</span>Fountain Export</a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#step-08"><span class="num">··</span>AI Prompt Generator</a></li>
+            <li><a href="arunak-shortfilm-blueprint.html#glossary"><span class="num">··</span>Glossary</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="index-col library">
+        <h4>The Library</h4>
+        <p class="sub">Reference companion · 5 sections</p>
+        <div class="toc-group">
+          <div class="toc-group-label">SECTIONS</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">I</span>22 Films Analyzed</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">II</span>10 Director Archetypes</a></li>
+            <li><a href="arunak-filmmaker-library.html#rules"><span class="num">III</span>50 Rules of Thumb</a></li>
+            <li><a href="arunak-filmmaker-library.html#equipment"><span class="num">IV</span>Equipment Calculator</a></li>
+            <li><a href="arunak-filmmaker-library.html#watch"><span class="num">V</span>72-Film Watch List</a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">FEATURED FILMS</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Vikram Vedha · 96 · Por Thozhil</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Visaranai · Asuran · Vada Chennai</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Karnan · Pariyerum Perumal</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Aaranya Kaandam · Super Deluxe</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Kumbalangi Nights · Kaaka Muttai</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>Soorarai Pottru · Iraivi · Ratsasan</a></li>
+            <li><a href="arunak-filmmaker-library.html#films"><span class="num">··</span>+ 7 more</a></li>
+          </ul>
+        </div>
+        <div class="toc-group">
+          <div class="toc-group-label">DIRECTORS</div>
+          <ul class="toc-list">
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Mani Ratnam · Vetrimaaran</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Mysskin · Pa. Ranjith</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Selvaraghavan · Lokesh Kanagaraj</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Karthik Subbaraj · Bala</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Thiagarajan Kumararaja</a></li>
+            <li><a href="arunak-filmmaker-library.html#directors"><span class="num">··</span>Pushkar–Gayathri</a></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============== ACTIVITY ============== -->
+<section class="section alt" id="activity">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="left">
+        <div class="label">SECTION V · ACTIVITY LOG</div>
+        <h2>What you've <em class="f">touched.</em></h2>
+        <p class="deck">A timeline of your recent edits across all three blueprints. Updates whenever you save in any blueprint. Click an entry to jump back.</p>
+      </div>
+      <div class="right" id="activityCount">0 ENTRIES</div>
+    </div>
+
+    <div class="activity-list" id="activityList">
+      <div class="activity-empty">No activity yet. Open a blueprint and start filling things in. Activity updates whenever you save.</div>
+    </div>
+
+    <div class="activity-actions">
+      <button class="mini-btn" onclick="refreshActivity()">↻ REFRESH</button>
+      <button class="mini-btn" onclick="clearActivity()">CLEAR LOG</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============== FINAL ============== -->
+<section class="final-page">
+  <div class="final-inner">
+    <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
+    <div class="signature">THE FILMMAKER'S STUDIO · CURATED BY <span>ARUNAK</span></div>
+    <div class="file-list">
+      <p>FILES IN THIS STUDIO:</p>
+      <p>
+        <code>index.html</code> this hub<br>
+        <code>arunak-filmmaker-blueprint.html</code> feature, Vol I &amp; II<br>
+        <code>arunak-shortfilm-blueprint.html</code> short film blueprint<br>
+        <code>arunak-filmmaker-library.html</code> reference companion<br>
+        <code>arunak-portothozhil-sample.json</code> pre-filled sample
+      </p>
+      <p class="note">Keep all files in the same folder so cross-links work.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // ============================================================
+  // STORAGE KEYS
+  // ============================================================
+  const PREF_KEY        = 'arunak_studio_prefs_v1';
+  const FEATURE_KEY     = 'arunak_filmmaker_combined_v1';
+  const SHORT_KEY       = 'arunak_shortfilm_blueprint_v1';
+  const LIB_CALC_KEY    = 'arunak_library_calc_v1';
+  const FEAT_PREFS      = 'arunak_filmmaker_prefs_v1';
+  const SHORT_PREFS     = 'arunak_shortfilm_prefs_v1';
+  const LIB_PREFS       = 'arunak_library_prefs_v1';
+  const SYNC_CFG        = 'arunak_supabase_cfg_v1';
+  const NOTE_PREFIX     = 'arunak_note_';
+  const ACTIVITY_KEY    = 'arunak_studio_activity_v1';
+
+  // ============================================================
+  // UTIL
+  // ============================================================
+  function parseStorage(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
+  }
+  function escHTML(s) {
+    return String(s || '').replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
+  }
+  function fmtINR(n) {
+    if (!n) return '₹ 0';
+    if (n >= 10000000) return '₹ ' + (n/10000000).toFixed(2).replace(/\.?0+$/,'') + ' Cr';
+    if (n >= 100000) return '₹ ' + (n/100000).toFixed(2).replace(/\.?0+$/,'') + ' L';
+    if (n >= 1000) return '₹ ' + Math.round(n/1000) + 'k';
+    return '₹ ' + Math.round(n);
+  }
+
+  // ============================================================
+  // DARK MODE
+  // ============================================================
+  function toggleDark() {
+    document.body.classList.toggle('dark');
+    const dark = document.body.classList.contains('dark');
+    localStorage.setItem(PREF_KEY, JSON.stringify({ dark }));
+    document.getElementById('darkBtn').textContent = dark ? '☀' : '◐';
+  }
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+      if (p.dark) document.body.classList.add('dark');
+      document.getElementById('darkBtn').textContent = document.body.classList.contains('dark') ? '☀' : '◐';
+    } catch (e) {}
+  }
+
+  // ============================================================
+  // FEATURE PROGRESS
+  // ============================================================
+  function computeFeatureStatus() {
+    const data = parseStorage(FEATURE_KEY);
+    const keys = Object.keys(data);
+    if (keys.length === 0) return { pct: 0, title: '', stage: 'not started', stepsDone: {}, lastEditedStep: null };
+    let total = 0, filled = 0;
+    const stepsDone = {};
+    keys.forEach(k => {
+      if (k.startsWith('fc_v1_')) { stepsDone['feat-' + k.slice(6)] = !!data[k]; }
+      if (k.startsWith('fc_v2_')) {
+        const n = parseInt(k.slice(6), 10);
+        if (!isNaN(n)) stepsDone['feat-' + String(n+12).padStart(2,'0')] = !!data[k];
+      }
+      const m1 = k.match(/^s(\d+)_/);
+      const m2 = k.match(/^v2s(\d+)_/);
+      const b = k.match(/^b(\d+)$/);
+      if (m1 && data[k] && String(data[k]).trim()) {
+        const n = String(m1[1]).padStart(2,'0');
+        stepsDone['feat-' + n] = stepsDone['feat-' + n] || 'partial';
+      }
+      if (m2 && data[k] && String(data[k]).trim()) {
+        const n = String(parseInt(m2[1],10)+12).padStart(2,'0');
+        stepsDone['feat-' + n] = stepsDone['feat-' + n] || 'partial';
+      }
+      if (b && data[k] && String(data[k]).trim()) stepsDone['feat-08'] = stepsDone['feat-08'] || 'partial';
+
+      if (typeof data[k] === 'string') { total++; if (data[k].trim().length > 0) filled++; }
+      else if (data[k] === true) { total++; filled++; }
+      else if (data[k] === false) total++;
+    });
+    const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+    let stage = 'not started';
+    if (pct > 0 && pct < 25) stage = 'Vol I early';
+    else if (pct < 50) stage = 'Vol I · Story';
+    else if (pct < 80) stage = 'Vol II · Pre-prod';
+    else if (pct < 100) stage = 'Final lock';
+    else stage = 'ready to shoot';
+    let lastStepNum = null;
+    Object.keys(stepsDone).forEach(k => {
+      const match = k.match(/feat-(\d+)/);
+      if (!match) return;
+      const n = parseInt(match[1], 10);
+      if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
+    });
+    return {
+      pct,
+      title: data.meta_title || data.v1_title || '',
+      stage,
+      stepsDone,
+      lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2,'0') : null
+    };
+  }
+
+  // ============================================================
+  // SHORT PROGRESS
+  // ============================================================
+  function computeShortStatus() {
+    const data = parseStorage(SHORT_KEY);
+    const keys = Object.keys(data);
+    if (keys.length === 0) return { pct: 0, title: '', runtime: '', stepsDone: {}, lastEditedStep: null };
+    let total = 0, filled = 0;
+    const stepsDone = {};
+    keys.forEach(k => {
+      const m = k.match(/^s(\d+)_/);
+      const cm = k.match(/^ck_s(\d+)_/);
+      const bm = k.match(/^b(\d+)_/);
+      const pm = k.match(/^p_/);
+      const lm = k.match(/^ck_lock_/);
+      if (m && data[k] && String(data[k]).trim()) {
+        const n = String(m[1]).padStart(2,'0');
+        stepsDone['short-' + n] = stepsDone['short-' + n] || 'partial';
+      }
+      if (cm && data[k] === true) {
+        const n = String(cm[1]).padStart(2,'0');
+        stepsDone['short-' + n] = true;
+      }
+      if (bm && data[k] && String(data[k]).trim()) stepsDone['short-04'] = stepsDone['short-04'] || 'partial';
+      if (pm && data[k] && String(data[k]).trim()) stepsDone['short-09'] = stepsDone['short-09'] || 'partial';
+      if (lm && data[k] === true) stepsDone['short-11'] = true;
+
+      if (k.startsWith('_')) {
+        if (k === '_sceneMap' && Array.isArray(data[k])) {
+          data[k].forEach(row => {
+            Object.values(row).forEach(v => { total++; if (v && String(v).trim()) filled++; });
+          });
+          if (data[k].some(r => Object.values(r).some(v => v && String(v).trim()))) {
+            stepsDone['short-06'] = stepsDone['short-06'] || 'partial';
+          }
+        }
+        if (k === '_script' && Array.isArray(data[k])) {
+          data[k].forEach(scene => {
+            total++; if (scene.slug) filled++;
+            total++; if (scene.action) filled++;
+            (scene.dialogues || []).forEach(d => { total++; if (d.line) filled++; });
+          });
+          if (data[k].some(s => s.slug || s.action || (s.dialogues||[]).some(d => d.line))) {
+            stepsDone['short-07'] = stepsDone['short-07'] || 'partial';
+          }
+        }
+        return;
+      }
+      if (typeof data[k] === 'string') { total++; if (data[k].trim().length > 0) filled++; }
+      else if (data[k] === true) { total++; filled++; }
+      else if (data[k] === false) total++;
+    });
+    const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+    let lastStepNum = null;
+    Object.keys(stepsDone).forEach(k => {
+      const match = k.match(/short-(\d+)/);
+      if (!match) return;
+      const n = parseInt(match[1], 10);
+      if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
+    });
+    return {
+      pct,
+      title: data.meta_title || '',
+      runtime: data.meta_runtime || '',
+      stepsDone,
+      lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2,'0') : null
+    };
+  }
+
+  // ============================================================
+  // LIBRARY STATUS
+  // ============================================================
+  function computeLibraryStatus() {
+    const calc = parseStorage(LIB_CALC_KEY);
+    const seenRows = {};
+    Object.keys(calc).forEach(k => {
+      const m = k.match(/^ci_(\d+)_(\w+)$/);
+      if (!m) return;
+      seenRows[m[1]] = seenRows[m[1]] || {};
+      seenRows[m[1]][m[2]] = calc[k];
+    });
+    let count = 0, total = 0;
+    Object.keys(seenRows).forEach(idx => {
+      const r = seenRows[idx];
+      const days = parseFloat((r.days || '').replace(/[^\d.]/g,'')) || 0;
+      let rate = parseFloat((r.rate || '').replace(/[^\d.]/g,'')) || 0;
+      let m = 1;
+      if (/cr|crore/i.test(r.rate || '')) m = 10000000;
+      else if (/l|lakh|lac/i.test(r.rate || '')) m = 100000;
+      else if (/k/i.test(r.rate || '')) m = 1000;
+      const sub = days * rate * m;
+      if (sub > 0) { count++; total += sub; }
+    });
+    return { count, total };
+  }
+
+  // ============================================================
+  // STATUS RENDER
+  // ============================================================
+  let lastFeatStatus, lastShortStatus, lastLibStatus;
+
+  function updateStatus() {
+    const f = computeFeatureStatus(); lastFeatStatus = f;
+    document.getElementById('feat-title').textContent = f.title || '—';
+    document.getElementById('feat-stage').textContent = f.stage || '—';
+    document.getElementById('feat-progress').textContent = f.pct + '%';
+    document.getElementById('feat-bar').style.width = f.pct + '%';
+
+    const s = computeShortStatus(); lastShortStatus = s;
+    document.getElementById('short-title').textContent = s.title || '—';
+    document.getElementById('short-runtime').textContent = s.runtime || '—';
+    document.getElementById('short-progress').textContent = s.pct + '%';
+    document.getElementById('short-bar').style.width = s.pct + '%';
+
+    const l = computeLibraryStatus(); lastLibStatus = l;
+    document.getElementById('lib-calc').textContent = l.count > 0 ? (l.count + ' items') : 'empty';
+    document.getElementById('lib-total').textContent = l.total > 0 ? fmtINR(l.total) : '—';
+
+    // Storage info
+    let bytes = 0, noteCount = 0;
+    [FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY, FEAT_PREFS, SHORT_PREFS, LIB_PREFS, PREF_KEY, SYNC_CFG, ACTIVITY_KEY].forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v) bytes += v.length;
+    });
+    for (let i = 0; i < localStorage.length; i++) {
+      if (localStorage.key(i).startsWith(NOTE_PREFIX)) {
+        noteCount++;
+        bytes += (localStorage.getItem(localStorage.key(i)) || '').length;
+      }
+    }
+    const kb = (bytes / 1024).toFixed(1);
+    const parts = [];
+    if (f.pct > 0 || f.title) parts.push('feature blueprint');
+    if (s.pct > 0 || s.title) parts.push('short blueprint');
+    if (l.count > 0) parts.push('equipment list (' + l.count + ' items)');
+    if (noteCount > 0) parts.push(noteCount + ' private notes');
+    const summary = parts.length ? 'Tracked: ' + parts.join(', ') + '. ' : 'No projects yet — open a blueprint to start. ';
+    document.getElementById('storageBytes').textContent = summary + 'Total local storage: ' + kb + ' KB.';
+
+    updateResume(f, s);
+    updateIndexChecks(f, s);
+  }
+
+  function updateResume(f, s) {
+    const card = document.getElementById('resumeCard');
+    const title = document.getElementById('resumeTitle');
+    const body = document.getElementById('resumeBody');
+    const actions = document.getElementById('resumeActions');
+    actions.innerHTML = '';
+
+    const featActive = f.pct > 0 || f.title;
+    const shortActive = s.pct > 0 || s.title;
+    if (!featActive && !shortActive) { card.classList.remove('has-data'); return; }
+    card.classList.add('has-data');
+
+    const primary = (f.pct >= s.pct && featActive) || !shortActive ? 'feature' : 'short';
+
+    if (primary === 'feature') {
+      title.textContent = f.title || 'Untitled feature';
+      body.innerHTML = '<strong>' + escHTML(f.stage) + '</strong> · ' + f.pct + '% complete' + (f.lastEditedStep ? ' · last touched <strong>' + escHTML(f.lastEditedStep) + '</strong>' : '');
+      const lastUrl = 'arunak-filmmaker-blueprint.html' + (f.lastEditedStep ? '#' + f.lastEditedStep : '');
+      actions.innerHTML += '<a href="' + lastUrl + '" class="resume-btn">CONTINUE FEATURE  →</a>';
+      if (shortActive) {
+        const shortUrl = 'arunak-shortfilm-blueprint.html' + (s.lastEditedStep ? '#' + s.lastEditedStep : '');
+        actions.innerHTML += '<a href="' + shortUrl + '" class="resume-btn alt">→ Switch to Short</a>';
+      }
+    } else {
+      title.textContent = s.title || 'Untitled short';
+      body.innerHTML = (s.runtime ? '<strong>' + escHTML(s.runtime) + '</strong> · ' : '') + s.pct + '% complete' + (s.lastEditedStep ? ' · last touched <strong>' + escHTML(s.lastEditedStep) + '</strong>' : '');
+      const lastUrl = 'arunak-shortfilm-blueprint.html' + (s.lastEditedStep ? '#' + s.lastEditedStep : '');
+      actions.innerHTML += '<a href="' + lastUrl + '" class="resume-btn">CONTINUE SHORT  →</a>';
+      if (featActive) {
+        const featUrl = 'arunak-filmmaker-blueprint.html' + (f.lastEditedStep ? '#' + f.lastEditedStep : '');
+        actions.innerHTML += '<a href="' + featUrl + '" class="resume-btn alt">→ Switch to Feature</a>';
+      }
+    }
+  }
+
+  function updateIndexChecks(f, s) {
+    document.querySelectorAll('[data-tcheck]').forEach(el => {
+      const k = el.getAttribute('data-tcheck');
+      const isComplete = f.stepsDone[k] === true || s.stepsDone[k] === true;
+      const isPartial = f.stepsDone[k] || s.stepsDone[k];
+      el.classList.toggle('done', !!isPartial);
+      if (isComplete) el.textContent = '✓';
+      else if (isPartial) { el.textContent = '◐'; el.style.opacity = '0.6'; }
+    });
+  }
+
+  // ============================================================
+  // GLOBAL SEARCH
+  // ============================================================
+  const SEARCH_INDEX = [
+    // FEATURE Vol I
+    { kind: 'feature', label: '01 · The Spark', snippet: 'Vol I · find the what-if image', url: 'arunak-filmmaker-blueprint.html#step-01' },
+    { kind: 'feature', label: '02 · The Logline', snippet: 'Vol I · One sentence under 30 words', url: 'arunak-filmmaker-blueprint.html#step-02' },
+    { kind: 'feature', label: 'Treatment Ladder', snippet: 'Logline → synopsis → one-pager → treatment → step outline', url: 'arunak-filmmaker-blueprint.html#treatment-ladder' },
+    { kind: 'feature', label: '03 · Theme & Stakes', snippet: 'External / internal / philosophical stakes', url: 'arunak-filmmaker-blueprint.html#step-03' },
+    { kind: 'feature', label: '04 · Protagonist', snippet: 'Want vs Need, wound, lie, skill, flaw, arc', url: 'arunak-filmmaker-blueprint.html#step-04' },
+    { kind: 'feature', label: '05 · Antagonist', snippet: 'The opposition — hero in their own story', url: 'arunak-filmmaker-blueprint.html#step-05' },
+    { kind: 'feature', label: '06 · Supporting Cast', snippet: 'Allies, lovers, mentors, foils', url: 'arunak-filmmaker-blueprint.html#step-06' },
+    { kind: 'feature', label: '07 · The World', snippet: 'Era, location, duration, rules, sensory anchors', url: 'arunak-filmmaker-blueprint.html#step-07' },
+    { kind: 'feature', label: '08 · The 15 Beats', snippet: 'Save the Cat structure adapted for Tamil cinema', url: 'arunak-filmmaker-blueprint.html#step-08' },
+    { kind: 'feature', label: '09 · Timeline', snippet: 'Chronological vs screen order', url: 'arunak-filmmaker-blueprint.html#step-09' },
+    { kind: 'feature', label: '10 · Setups & Payoffs', snippet: '5 planted seeds and how they bloom', url: 'arunak-filmmaker-blueprint.html#step-10' },
+    { kind: 'feature', label: '11 · Scene List', snippet: 'Slug, POV, want, conflict, charge per scene', url: 'arunak-filmmaker-blueprint.html#step-11' },
+    { kind: 'feature', label: '12 · Final Check', snippet: 'Story-lock checklist before pre-prod', url: 'arunak-filmmaker-blueprint.html#step-12' },
+    // FEATURE Vol II
+    { kind: 'feature', label: '13 · Script Lock', snippet: 'Vol II · Locked script, page count, weak-link review', url: 'arunak-filmmaker-blueprint.html#step-13' },
+    { kind: 'feature', label: '14 · Director\'s Vision', snippet: 'Tone, references, what we refuse', url: 'arunak-filmmaker-blueprint.html#step-14' },
+    { kind: 'feature', label: '15 · Lookbook', snippet: 'Palette, light references, painters, frames', url: 'arunak-filmmaker-blueprint.html#step-15' },
+    { kind: 'feature', label: '16 · Storyboard / Shots', snippet: 'Shot list per scene, lens, move, coverage', url: 'arunak-filmmaker-blueprint.html#step-16' },
+    { kind: 'feature', label: '17 · Cinematography', snippet: 'Camera, aspect ratio, fps, lens kit, lighting', url: 'arunak-filmmaker-blueprint.html#step-17' },
+    { kind: 'feature', label: '18 · Production Design', snippet: 'Sets, hero props, recurring objects, period', url: 'arunak-filmmaker-blueprint.html#step-18' },
+    { kind: 'feature', label: '19 · Costume / HMU', snippet: 'Wardrobe arc, hair, makeup, SFX', url: 'arunak-filmmaker-blueprint.html#step-19' },
+    { kind: 'feature', label: '20 · Casting', snippet: 'Lead, supporting, against-type choices', url: 'arunak-filmmaker-blueprint.html#step-20' },
+    { kind: 'feature', label: '21 · Locations / Recce', snippet: 'Real vs built, permits, recce notes', url: 'arunak-filmmaker-blueprint.html#step-21' },
+    { kind: 'feature', label: '22 · Sound & Music', snippet: 'Composer, songs, BGM philosophy, mix', url: 'arunak-filmmaker-blueprint.html#step-22' },
+    { kind: 'feature', label: '23 · Schedule / Budget', snippet: 'Days, pages, budget, ATL/BTL/post split', url: 'arunak-filmmaker-blueprint.html#step-23' },
+    { kind: 'feature', label: '24 · Tech Recce / Lock', snippet: 'Final problems & resolutions, HOD sign-off', url: 'arunak-filmmaker-blueprint.html#step-24' },
+    { kind: 'feature', label: 'Auto Pitch Deck', snippet: '10 slides built from blueprint data — exports as .pptx', url: 'arunak-filmmaker-blueprint.html#pitch-deck' },
+    { kind: 'feature', label: 'Real-time Sync', snippet: 'Supabase setup — sync across devices', url: 'arunak-filmmaker-blueprint.html#sync-section' },
+    { kind: 'feature', label: 'Glossary (Feature)', snippet: 'Camera, lens, lighting, sound, post-production terms', url: 'arunak-filmmaker-blueprint.html#glossary' },
+    // SHORTS
+    { kind: 'shorts', label: '01 · The Seed', snippet: 'One image, one moment, one question', url: 'arunak-shortfilm-blueprint.html#step-01' },
+    { kind: 'shorts', label: '02 · The Logline', snippet: 'Tighter than feature — under 25 words', url: 'arunak-shortfilm-blueprint.html#step-02' },
+    { kind: 'shorts', label: '03 · The Character', snippet: 'One want, one obstacle, one turn', url: 'arunak-shortfilm-blueprint.html#step-03' },
+    { kind: 'shorts', label: '04 · 5-Beat Structure', snippet: 'Setup → Disturbance → Escalation → Turn → Image', url: 'arunak-shortfilm-blueprint.html#step-04' },
+    { kind: 'shorts', label: '05 · The World', snippet: 'Single location, time, weather, sensory anchors', url: 'arunak-shortfilm-blueprint.html#step-05' },
+    { kind: 'shorts', label: '06 · Scene Map', snippet: '5 to 12 scenes with beat tagging', url: 'arunak-shortfilm-blueprint.html#step-06' },
+    { kind: 'shorts', label: '07 · Script Pages', snippet: 'Structured screenplay editor with live formatting', url: 'arunak-shortfilm-blueprint.html#step-07' },
+    { kind: 'shorts', label: '08 · Format & Export', snippet: 'Fountain export, AI prompt generator, formatted preview', url: 'arunak-shortfilm-blueprint.html#step-08' },
+    { kind: 'shorts', label: '09 · Production Reality', snippet: 'Days, cast, crew, budget grid', url: 'arunak-shortfilm-blueprint.html#step-09' },
+    { kind: 'shorts', label: '10 · Festival Strategy', snippet: '18 festivals across 3 tiers — Cannes, Sundance, MAMI, IFFI', url: 'arunak-shortfilm-blueprint.html#step-10' },
+    { kind: 'shorts', label: '11 · Final Lock', snippet: '20-item pre-shoot lock checklist', url: 'arunak-shortfilm-blueprint.html#step-11' },
+    { kind: 'shorts', label: 'Glossary (Shorts)', snippet: 'Screenplay, production, festival, craft terms', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'shorts', label: 'Fountain export', snippet: 'Plain-text screenplay — Final Draft, Highland, WriterDuet', url: 'arunak-shortfilm-blueprint.html#step-08' },
+    { kind: 'shorts', label: 'AI Prompt Generator', snippet: 'Build prompts for scene / dialogue / feedback', url: 'arunak-shortfilm-blueprint.html#step-08' },
+    // LIBRARY films
+    { kind: 'library', label: 'Vikram Vedha (2017)', snippet: 'Pushkar–Gayathri · Story-within-story, dual hero', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: '96 (2018)', snippet: 'C. Premkumar · Silence as dialogue, restraint', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Por Thozhil (2023)', snippet: 'Vignesh Raja · Subtraction as voice', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Aaranya Kaandam (2010)', snippet: 'Thiagarajan Kumararaja · Tone over plot', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Visaranai (2015)', snippet: 'Vetrimaaran · Procedure as horror', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Asuran (2019)', snippet: 'Vetrimaaran · Inverted hero arc', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Kaaka Muttai (2014)', snippet: 'M. Manikandan · Specific is universal', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Karnan (2021)', snippet: 'Mari Selvaraj · Symbol over speech', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Kumbalangi Nights (2019)', snippet: 'Madhu C. Narayanan · Antagonist as toxic norm', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Soorarai Pottru (2020)', snippet: 'Sudha Kongara · Stakes raised in stages', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Iraivi (2016)', snippet: 'Karthik Subbaraj · Refuse a single protagonist', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Pariyerum Perumal (2018)', snippet: 'Mari Selvaraj · Climax through restraint', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Super Deluxe (2019)', snippet: 'Thiagarajan Kumararaja · Tonal whiplash as design', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Vada Chennai (2018)', snippet: 'Vetrimaaran · Multi-timeline, anchored jumps', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Jai Bhim (2021)', snippet: 'T. J. Gnanavel · Procedural rigor builds emotion', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Kaadhal (2004)', snippet: 'Balaji Sakthivel · Documentary fiction', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Subramaniyapuram (2008)', snippet: 'M. Sasikumar · Period detail as emotional access', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Sethu (1999)', snippet: 'Bala · The bold tonal shift', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Aandavan Kattalai (2017)', snippet: 'M. Manikandan · Bureaucracy as plot engine', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Ratsasan (2018)', snippet: 'Ram Kumar · Villain psychology drives structure', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Jigarthanda (2014)', snippet: 'Karthik Subbaraj · Filmmaking-as-plot meta-frame', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Joker (2016)', snippet: 'Raju Murugan · Comedy surface, rage substance', url: 'arunak-filmmaker-library.html#films' },
+    // Library directors
+    { kind: 'library', label: 'Mani Ratnam', snippet: 'Layered montage, lyric peaks, urban poetry', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Vetrimaaran', snippet: 'Caste politics as procedural fact', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Mysskin', snippet: 'Geometric framing, slow pace, ethical action', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Pa. Ranjith', snippet: 'Mass-hero spectacle wired with anti-caste politics', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Selvaraghavan', snippet: 'Raw emotional excess, melancholic men', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Lokesh Kanagaraj', snippet: 'Kinetic action, world-building across films', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Karthik Subbaraj', snippet: 'Genre experiment, story-within-story', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Bala', snippet: 'Marginal lives, no sentiment, psychology-led', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Thiagarajan Kumararaja', snippet: 'Surreal black comedy, tonal collision', url: 'arunak-filmmaker-library.html#directors' },
+    { kind: 'library', label: 'Pushkar–Gayathri', snippet: 'High-concept thriller writer-director duo', url: 'arunak-filmmaker-library.html#directors' },
+    // Library sections
+    { kind: 'library', label: '50 Rules of Thumb', snippet: 'Craft maxims, attributed where source is known', url: 'arunak-filmmaker-library.html#rules' },
+    { kind: 'library', label: 'Equipment & Cost Estimator', snippet: 'Camera, lens, lighting, sound, crew rates · Chennai 2024-25', url: 'arunak-filmmaker-library.html#equipment' },
+    { kind: 'library', label: 'Watch List by Step', snippet: '72 films, 3 per step of the blueprint', url: 'arunak-filmmaker-library.html#watch' },
+    { kind: 'library', label: 'Tamil Cinema Craft Library', snippet: '22 films analyzed for one extractable lesson each', url: 'arunak-filmmaker-library.html#films' },
+    { kind: 'library', label: 'Director Archetypes', snippet: '10 voices to study as schools of filmmaking', url: 'arunak-filmmaker-library.html#directors' },
+    // Glossary
+    { kind: 'shorts', label: 'Slug Line', snippet: 'INT./EXT. — LOCATION — TIME · Always ALL CAPS', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'shorts', label: 'Fountain', snippet: 'Plain-text screenplay format, like Markdown', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'shorts', label: 'DCP', snippet: 'Digital Cinema Package — festival projection format', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'shorts', label: 'FilmFreeway', snippet: 'Dominant festival submission platform', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'shorts', label: 'Setup / Payoff', snippet: 'Element planted early, returns later with new meaning', url: 'arunak-shortfilm-blueprint.html#glossary' },
+    { kind: 'feature', label: 'Anamorphic', snippet: '2.39:1 scope, oval bokeh, horizontal flares', url: 'arunak-filmmaker-blueprint.html#glossary' },
+    { kind: 'feature', label: 'ATL / BTL', snippet: 'Above-the-Line / Below-the-Line — budget categories', url: 'arunak-filmmaker-blueprint.html#glossary' },
+  ];
+
+  let activeSearchIdx = -1;
+  let visibleResults = [];
+
+  function performSearch(q) {
+    const results = document.getElementById('searchResults');
+    q = q.trim().toLowerCase();
+    activeSearchIdx = -1;
+    if (!q) { results.classList.remove('open'); results.innerHTML = ''; return; }
+    const tokens = q.split(/\s+/);
+    const matches = SEARCH_INDEX.map(item => {
+      const text = (item.label + ' ' + item.snippet + ' ' + item.kind).toLowerCase();
+      let score = 0;
+      tokens.forEach(t => {
+        if (text.includes(t)) score++;
+        if (item.label.toLowerCase().includes(t)) score += 2;
+      });
+      return { item, score };
+    }).filter(r => r.score >= tokens.length).sort((a,b) => b.score - a.score).slice(0, 12);
+
+    visibleResults = matches.map(m => m.item);
+    if (!matches.length) {
+      results.innerHTML = '<div class="search-empty">No results. Try simpler words — "logline", "vetrimaaran", "fountain".</div>';
+      results.classList.add('open');
+      return;
+    }
+    const re = new RegExp('(' + tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+    results.innerHTML = matches.map((m, i) => {
+      const it = m.item;
+      const labelHL = escHTML(it.label).replace(re, '<mark>$1</mark>');
+      const snipHL = escHTML(it.snippet).replace(re, '<mark>$1</mark>');
+      return '<a href="' + it.url + '" class="search-result r-' + it.kind + '" data-idx="' + i + '">' +
+        '<div class="kind">' + (it.kind === 'feature' ? 'FEATURE BLUEPRINT' : (it.kind === 'shorts' ? 'SHORT BLUEPRINT' : 'LIBRARY')) + '</div>' +
+        '<h5>' + labelHL + '</h5>' +
+        '<p>' + snipHL + '</p>' +
+      '</a>';
+    }).join('');
+    results.classList.add('open');
+  }
+
+  function searchKey(e) {
+    const results = document.getElementById('searchResults');
+    if (!results.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeSearchIdx = Math.min(activeSearchIdx + 1, visibleResults.length - 1);
+      highlightActiveResult();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeSearchIdx = Math.max(activeSearchIdx - 1, 0);
+      highlightActiveResult();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeSearchIdx >= 0 && visibleResults[activeSearchIdx]) {
+        window.location.href = visibleResults[activeSearchIdx].url;
+      } else if (visibleResults[0]) {
+        window.location.href = visibleResults[0].url;
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.target.value = ''; performSearch(''); e.target.blur();
+    }
+  }
+  function highlightActiveResult() {
+    const els = document.querySelectorAll('.search-result');
+    els.forEach((el, i) => el.classList.toggle('active', i === activeSearchIdx));
+    if (activeSearchIdx >= 0 && els[activeSearchIdx]) {
+      els[activeSearchIdx].scrollIntoView({ block: 'nearest' });
+    }
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-wrap')) {
+      document.getElementById('searchResults').classList.remove('open');
+    }
+  });
+
+  // ============================================================
+  // EXPORT / IMPORT / RESET
+  // ============================================================
+  function exportAll() {
+    const all = {
+      _exported: new Date().toISOString(),
+      _from: "The Filmmaker's Studio",
+      _curator: 'Arunak',
+      _version: 1,
+      feature_blueprint: parseStorage(FEATURE_KEY),
+      short_blueprint: parseStorage(SHORT_KEY),
+      library_calc: parseStorage(LIB_CALC_KEY),
+      feature_prefs: parseStorage(FEAT_PREFS),
+      short_prefs: parseStorage(SHORT_PREFS),
+      library_prefs: parseStorage(LIB_PREFS),
+      studio_prefs: parseStorage(PREF_KEY),
+      sync_config: parseStorage(SYNC_CFG),
+      activity_log: parseStorage(ACTIVITY_KEY),
+      notes: {}
+    };
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith(NOTE_PREFIX)) all.notes[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = 'arunak_studio_backup_' + date + '.json'; a.click();
+    URL.revokeObjectURL(url);
+    logActivity('studio', 'Exported full studio backup');
+  }
+
+  function importAll() { document.getElementById('importAllFile').click(); }
+  function handleImportAll(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = (ev) => {
+      try {
+        const all = JSON.parse(ev.target.result);
+        if (!all._from || !all._from.includes('Studio')) {
+          if (!confirm('This file does not look like a Studio backup. Try anyway?')) return;
+        }
+        if (!confirm('This will REPLACE all current studio data. Continue?')) return;
+        if (all.feature_blueprint) localStorage.setItem(FEATURE_KEY, JSON.stringify(all.feature_blueprint));
+        if (all.short_blueprint) localStorage.setItem(SHORT_KEY, JSON.stringify(all.short_blueprint));
+        if (all.library_calc) localStorage.setItem(LIB_CALC_KEY, JSON.stringify(all.library_calc));
+        if (all.feature_prefs) localStorage.setItem(FEAT_PREFS, JSON.stringify(all.feature_prefs));
+        if (all.short_prefs) localStorage.setItem(SHORT_PREFS, JSON.stringify(all.short_prefs));
+        if (all.library_prefs) localStorage.setItem(LIB_PREFS, JSON.stringify(all.library_prefs));
+        if (all.studio_prefs) localStorage.setItem(PREF_KEY, JSON.stringify(all.studio_prefs));
+        if (all.sync_config) localStorage.setItem(SYNC_CFG, JSON.stringify(all.sync_config));
+        if (all.activity_log) localStorage.setItem(ACTIVITY_KEY, JSON.stringify(all.activity_log));
+        if (all.notes) {
+          Object.keys(all.notes).forEach(k => localStorage.setItem(k, all.notes[k]));
+        }
+        alert('✓ Studio data imported. Refreshing…');
+        location.reload();
+      } catch (err) { alert('Import failed: ' + err.message); }
+    };
+    r.readAsText(file);
+    e.target.value = '';
+  }
+
+  function resetAll() {
+    if (!confirm('This erases EVERYTHING — both blueprints, library calc, all prefs, all comments. EXPORT first if you want to keep anything.\n\nContinue?')) return;
+    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+    [FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY, FEAT_PREFS, SHORT_PREFS, LIB_PREFS, PREF_KEY, SYNC_CFG, ACTIVITY_KEY].forEach(k => localStorage.removeItem(k));
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith(NOTE_PREFIX)) toRemove.push(k);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+    alert('All studio data cleared. Refreshing…');
+    location.reload();
+  }
+
+  // ============================================================
+  // ACTIVITY LOG
+  // ============================================================
+  const ACTIVITY_LIMIT = 30;
+  function logActivity(where, what, url) {
+    const log = parseStorage(ACTIVITY_KEY);
+    const arr = Array.isArray(log.entries) ? log.entries : [];
+    arr.unshift({ ts: Date.now(), where, what, url });
+    log.entries = arr.slice(0, ACTIVITY_LIMIT);
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+    renderActivity();
+  }
+  function detectActivity() {
+    const log = parseStorage(ACTIVITY_KEY);
+    const last = log.lastSnap || {};
+    const f = lastFeatStatus || computeFeatureStatus();
+    const s = lastShortStatus || computeShortStatus();
+    const l = lastLibStatus || computeLibraryStatus();
+    const now = { fp: f.pct, ft: f.title, fs: f.lastEditedStep,
+                  sp: s.pct, st: s.title, ss: s.lastEditedStep,
+                  lc: l.count, lt: l.total };
+    const arr = Array.isArray(log.entries) ? log.entries : [];
+
+    if (last.fp !== undefined) {
+      if (now.ft && now.ft !== last.ft) arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: 'arunak-filmmaker-blueprint.html' });
+      if (now.fp > (last.fp || 0)) arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature progress: ' + (last.fp || 0) + '% → ' + now.fp + '%' + (now.fs ? ' (' + now.fs + ')' : ''), url: 'arunak-filmmaker-blueprint.html' + (now.fs ? '#' + now.fs : '') });
+      if (now.st && now.st !== last.st) arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: 'arunak-shortfilm-blueprint.html' });
+      if (now.sp > (last.sp || 0)) arr.unshift({ ts: Date.now(), where: 'short', what: 'Short progress: ' + (last.sp || 0) + '% → ' + now.sp + '%' + (now.ss ? ' (' + now.ss + ')' : ''), url: 'arunak-shortfilm-blueprint.html' + (now.ss ? '#' + now.ss : '') });
+      if (now.lc > (last.lc || 0)) arr.unshift({ ts: Date.now(), where: 'lib', what: 'Equipment list: ' + (last.lc || 0) + ' → ' + now.lc + ' items (' + fmtINR(now.lt) + ')', url: 'arunak-filmmaker-library.html#equipment' });
+    }
+    log.entries = arr.slice(0, ACTIVITY_LIMIT);
+    log.lastSnap = now;
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+  }
+  function renderActivity() {
+    const log = parseStorage(ACTIVITY_KEY);
+    const arr = Array.isArray(log.entries) ? log.entries : [];
+    const container = document.getElementById('activityList');
+    document.getElementById('activityCount').textContent = arr.length + ' ENTR' + (arr.length === 1 ? 'Y' : 'IES');
+    if (!arr.length) {
+      container.innerHTML = '<div class="activity-empty">No activity yet. Open a blueprint and start filling things in. Activity updates whenever you save.</div>';
+      return;
+    }
+    container.innerHTML = arr.map(e => {
+      const when = relTime(e.ts);
+      const whereClass = e.where === 'feat' ? 'feat' : (e.where === 'short' ? 'short' : (e.where === 'lib' ? 'lib' : 'studio'));
+      const whereLabel = e.where === 'feat' ? 'FEATURE' : (e.where === 'short' ? 'SHORT' : (e.where === 'lib' ? 'LIBRARY' : 'STUDIO'));
+      const inner = '<span class="when">' + when + '</span><span class="where ' + whereClass + '">' + whereLabel + '</span><span class="what">' + escHTML(e.what) + '</span>';
+      if (e.url) return '<div class="activity-row"><a href="' + e.url + '">' + inner + '</a></div>';
+      return '<div class="activity-row">' + inner + '</div>';
+    }).join('');
+  }
+  function relTime(ts) {
+    const diff = Date.now() - ts;
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+    if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
+    const d = new Date(ts);
+    return (d.getMonth()+1) + '/' + d.getDate();
+  }
+  function refreshActivity() { updateStatus(); detectActivity(); renderActivity(); }
+  function clearActivity() {
+    if (!confirm('Clear the activity log? (Your blueprint data is not affected.)')) return;
+    const log = parseStorage(ACTIVITY_KEY);
+    log.entries = [];
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+    renderActivity();
+  }
+
+  // ============================================================
+  // KEYBOARD
+  // ============================================================
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const inp = document.getElementById('searchInput');
+      inp.focus(); inp.select();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); toggleDark(); }
+  });
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  loadPrefs();
+  updateStatus();
+  detectActivity();
+  renderActivity();
+  window.addEventListener('focus', () => { updateStatus(); detectActivity(); renderActivity(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { updateStatus(); detectActivity(); renderActivity(); }
+  });
+  window.addEventListener('storage', (e) => {
+    if ([FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY].includes(e.key)) {
+      setTimeout(() => { updateStatus(); detectActivity(); renderActivity(); }, 200);
+    }
+  });
+</script>
+
+</body>
+</html>

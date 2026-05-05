@@ -1,0 +1,258 @@
+{
+  "_about": "PRE-FILLED SAMPLE — Por Thozhil (Vignesh Raja, 2023). Import this into the Filmmaker's Blueprint to see what a fully filled project looks like. Curated by Arunak. To use: open the blueprint, click IMPORT, select this file. Your existing work will be replaced — export it first if you want to keep it.",
+
+  "meta_title": "Por Thozhil",
+  "meta_writer": "Vignesh Raja & Alfred Prakash",
+  "meta_started": "Sample data — based on the 2023 film",
+  "meta_stage": "Both volumes (illustrative)",
+
+  "v1_title": "Por Thozhil",
+  "v1_genre": "Crime / Noir",
+  "v1_draft": "Locked — sample",
+
+  "s1_whatif": "What if a serial killer who stopped after 1979 starts killing again — and a faint-hearted, book-smart rookie has to partner with a reclusive veteran cop to stop him before more young women die?",
+  "s1_why_me": "I want to write a Tamil thriller that refuses every easy commercial trick — no songs, no comedy track, no hero entry. A film that proves a procedural can be cinematic without being flashy.",
+  "s1_image": "A police station at 2 AM, fluorescent lights, two cops studying a 1979 case file with the dust still on it. The younger one is sweating; the older one is calm.",
+
+  "ck_s1_a": true, "ck_s1_b": true, "ck_s1_c": true,
+
+  "s2_log1": "When a serial killer starts again decades later, a rookie must catch him.",
+  "s2_log2": "When a serial killer who stopped in 1979 starts killing again, a rookie cop must overcome his fear and partner with a reclusive veteran to catch him.",
+  "s2_log_final": "When a serial killer who stopped after 1979 starts killing again, a faint-hearted rookie cop must overcome his fear and partner with a reclusive veteran to catch the killer before more young women die.",
+
+  "ck_s2_a": true, "ck_s2_b": true, "ck_s2_c": true,
+
+  "s3_theme": "Motive matters more than evidence.",
+  "s3_ext": "More young women will be killed if the cops fail. The killer has been operating undetected for decades and will continue.",
+  "s3_int": "The rookie's belief that he is not strong enough to be a real cop will be confirmed; the veteran's reclusive grief over an old failure will harden into permanent retreat.",
+  "s3_phil": "If they fail, the idea that empathy and patience can crack a case — that procedure is more powerful than force — gets disproven.",
+
+  "ck_s3_a": true, "ck_s3_b": true, "ck_s3_c": true,
+
+  "s4_name": "Prakash",
+  "s4_age": "28, IPS rookie, on his first major posting",
+  "s4_want": "To do well in his first big case so he can prove himself.",
+  "s4_need": "To stop being a cop because his family wants it and accept (or quit) on his own terms.",
+  "s4_lie": "Wearing the uniform is enough to be a cop.",
+  "s4_wound": "Family pressure to enter the IPS; never chose this himself.",
+  "s4_skill": "Book-smart. Photographic memory for case detail. Methodical reader of files.",
+  "s4_flaw": "Physically untrained, panics under physical threat, freezes at gore.",
+  "s4_arc": "By the final scene, he has chosen this work for the first time — and made his own terms with what kind of cop he can be.",
+
+  "ck_s4_a": true, "ck_s4_b": true, "ck_s4_c": true, "ck_s4_d": true,
+
+  "s5_name": "The killer (revealed late)",
+  "s5_want": "To return to the only thing that has ever made him feel powerful — killing — after decades of suppressed routine life.",
+  "s5_philosophy": "He has a coherent inner logic rooted in childhood trauma and a specific psychological pattern; the film treats it as a puzzle to be assembled, not a label to be slapped on.",
+  "s5_hero": "He sees himself as someone reclaiming a self the world forced him to bury. In his interior life, the killings are an act of becoming whole again.",
+  "s5_mirror": "He mirrors what unspent trauma can do over decades — what Loganathan and Prakash both risk if they don't process their own.",
+  "s5_humanity": "His domestic life — meek, gentle, unremarkable — humanises him for one chilling scene. The audience almost understands.",
+
+  "ck_s5_a": true, "ck_s5_b": true, "ck_s5_c": true,
+
+  "s6_ally_name": "Loganathan (S.P.)",
+  "s6_ally_reflect": "He shows Prakash what cop work actually is — patience, file-reading, motive-hunting — versus the heroic version Prakash imagined.",
+  "s6_ally_subplot": "Loganathan is haunted by an old failed case from his youth; the new investigation is also a return to that ghost.",
+  "s6_ally_exit": "He doesn't leave — but he hands Prakash the lead at the climax, a quiet abdication of authority that completes Prakash's arc.",
+
+  "s6_lover_name": "(none — film deliberately has no romantic subplot)",
+  "s6_lover_sees": "—",
+  "s6_lover_goal": "—",
+  "s6_lover_decision": "—",
+
+  "s6_mentor_name": "Loganathan (also serves as mentor)",
+  "s6_mentor_tool": "The principle: motive matters more than evidence. Investigate the why; the who follows.",
+  "s6_mentor_failure": "The 1979 case he never solved as a young officer.",
+
+  "ck_s6_a": true, "ck_s6_b": true, "ck_s6_c": true,
+
+  "s7_era": "Contemporary, with 1979 flashback texture",
+  "s7_location": "Trichy and surrounding small-town Tamil Nadu",
+  "s7_duration": "Roughly two weeks of investigation, intercut with 1979",
+  "s7_rules": "1. No songs. 2. Mostly night. 3. No comedy track. 4. No romantic subplot. 5. No hero introduction shot.",
+  "s7_sensory": "Sodium-lamp orange, fluorescent green, file-dust beige. Sound: rain, distant traffic, fluorescent buzz, the rustle of paper. Recurring object: the 1979 case file itself.",
+
+  "ck_s7_a": true, "ck_s7_b": true, "ck_s7_c": true,
+
+  "b01": "Loganathan in his sparse home, alone with old files. World before disturbance.",
+  "b02": "An older cop says 'motive ah paaru, evidence ah illa' — the principle that will become Prakash's lesson.",
+  "b03": "Prakash arrives, eager and untested. The station shown as procedural, real, unglamorous.",
+  "b04": "A young woman is found murdered in a way that matches a 1979 file. Loganathan is summoned out of retreat.",
+  "b05": "Prakash debates whether he can handle this case. He nearly asks for reassignment.",
+  "b06": "The rookie commits — partnering with Loganathan officially. New rules: no shortcuts, follow process.",
+  "b07": "B-story: Loganathan's own grief over the 1979 case begins surfacing through Prakash's questions.",
+  "b08": "The investigation: file-reading, interviews, location work. The 'fun and games' is the procedural — promise of the premise.",
+  "b09": "Midpoint: a suspect emerges. Looks open-and-shut. False victory.",
+  "b10": "The suspect's profile is wrong. The real killer is closer than they thought, and another body appears.",
+  "b11": "A near-miss with the killer, where Prakash freezes physically. All his fears confirmed. Worst night of his life.",
+  "b12": "Prakash alone, considers quitting. Loganathan also at his lowest — confronting his old failure.",
+  "b13": "Prakash returns with a new approach — using the 'motive' principle to look at the killer's psychology, not his trail.",
+  "b14": "They identify the killer through psychological deduction. Confrontation. Procedural, not heroic.",
+  "b15": "Final image: Prakash quieter, older. Loganathan having handed over the work. The file closes — but the world remains.",
+
+  "ck_s8_a": true, "ck_s8_b": true, "ck_s8_c": true, "ck_s8_d": true,
+
+  "s9_chrono": "1. 1979 — original killings\n2. Decades of dormancy\n3. Recent killing — case 1\n4. Loganathan summoned\n5. Prakash assigned\n6. Investigation begins\n7. Wrong suspect\n8. Real killer pattern emerges\n9. Climactic confrontation\n10. Aftermath",
+  "s9_screen": "1. Recent killing\n2. Loganathan / Prakash meet\n3. Glimpses of 1979 woven in\n4. Investigation\n5. 1979 reframed at midpoint\n6. Real killer revealed\n7. Confrontation\n8. Quiet ending",
+  "s9_why": "The 1979 footage is parcelled out so each fragment recontextualises a present-day scene. By the time the audience sees the full 1979 picture, they are also at the climax of the present-day case. Two timelines converge.",
+
+  "ck_s9_a": true, "ck_s9_b": true,
+
+  "s10_setup_1": "Two cops chat casually about one's wife — looks like throwaway comedy. ~p15",
+  "s10_pay_1": "Forty minutes later, that conversation is mirrored in a different character's actual behaviour — reframing the casual scene as a planted clue. ~p55",
+  "s10_setup_2": "Loganathan's hand trembles holding a file early on. Played as old-age detail. ~p20",
+  "s10_pay_2": "Same tremor returns at the climax — but now we know it's not age, it's the 1979 case. ~p115",
+  "s10_setup_3": "A railway-crossing detail mentioned in passing during a witness interview. ~p35",
+  "s10_pay_3": "The crossing becomes critical to identifying the killer's movement pattern. ~p100",
+  "s10_setup_4": "Prakash's photographic memory shown when he reads a file in front of Loganathan. ~p25",
+  "s10_pay_4": "That same memory is what cracks the case in the third act. ~p110",
+  "s10_setup_5": "A child plays a specific game in the background of a 1979 flashback. ~p30",
+  "s10_pay_5": "The game returns as a behaviour pattern of the killer. ~p105",
+
+  "ck_s10_a": true, "ck_s10_b": true, "ck_s10_c": true,
+
+  "sl_1_slug": "INT. POLICE STATION – NIGHT", "sl_1_pov": "Prakash", "sl_1_want": "Prove himself on day one", "sl_1_conf": "Senior officers ignore him", "sl_1_charge": "pos",
+  "sl_2_slug": "EXT. CRIME SCENE – DAWN", "sl_2_pov": "Loganathan", "sl_2_want": "Read the body before forensics arrive", "sl_2_conf": "Forensics arrives early; tension", "sl_2_charge": "neg",
+  "sl_3_slug": "INT. ARCHIVE ROOM – DAY", "sl_3_pov": "Prakash", "sl_3_want": "Find the 1979 file connection", "sl_3_conf": "Files are disordered, decades of neglect", "sl_3_charge": "pos",
+  "sl_4_slug": "INT. LOGANATHAN'S HOUSE – NIGHT", "sl_4_pov": "Loganathan", "sl_4_want": "Refuse the case and return home", "sl_4_conf": "The 1979 file pulls him back", "sl_4_charge": "dbl-neg",
+  "sl_5_slug": "EXT. RAILWAY CROSSING – DUSK", "sl_5_pov": "Prakash", "sl_5_want": "Witness statement from a casual chai stall vendor", "sl_5_conf": "Vendor is evasive; Prakash too polite", "sl_5_charge": "neg",
+
+  "ck_s11_a": true, "ck_s11_b": true, "ck_s11_c": true, "ck_s11_d": true,
+
+  "fc_v1_01": true, "fc_v1_02": true, "fc_v1_03": true, "fc_v1_04": true, "fc_v1_05": true,
+  "fc_v1_06": true, "fc_v1_07": true, "fc_v1_08": true, "fc_v1_09": true, "fc_v1_10": true,
+  "fc_v1_11": true, "fc_v1_12": true, "fc_v1_13": true, "fc_v1_14": true, "fc_v1_15": true,
+  "fc_v1_16": true, "fc_v1_17": true, "fc_v1_18": true, "fc_v1_19": true, "fc_v1_20": true,
+
+  "s12_note_v1": "When you're 60 pages in: the principle is 'motive over evidence.' If a scene does not advance motive understanding, cut it.",
+
+  "v2_director": "Vignesh Raja",
+  "v2_producer": "Applause Entertainment",
+  "v2_start": "Sample — illustrative",
+  "v2_shoot": "Sample — illustrative",
+  "v2_budget": "Indicative mid-budget Tamil thriller",
+
+  "v2s1_draft": "Final draft locked. ~135 pages. ~110 scenes. Estimated runtime ~145 minutes.",
+  "v2s1_weak": "1. The 1979 fragments must read clearly — risk of audience confusion. 2. The 'no songs' decision means every silence must be earned. 3. The killer's reveal hinges on payoff timing — if too early, predictable; if too late, frustrating.",
+  "v2s1_signoff": "Producer, lead cast (Sarathkumar, Ashok Selvan), DOP (Kalaiselvan Sivaji), 1st AD",
+
+  "ck_v2s1_a": true, "ck_v2s1_b": true, "ck_v2s1_c": true, "ck_v2s1_d": true, "ck_v2s1_e": true,
+
+  "v2s2_theme": "Motive matters more than evidence — and patience matters more than force.",
+  "v2s2_tone1": "Suspenseful",
+  "v2s2_tone2": "quiet, dread-soaked, procedural, unsentimental",
+  "v2s2_refs": "Zodiac (Fincher, 2007); Memories of Murder (Bong, 2003); a non-film reference: real Tamil Nadu police case files from the 1970s-80s as a procedural texture source.",
+  "v2s2_refuse": "No songs. No comedy track. No romantic subplot. No mass-hero entry. No daytime ambience. No gore for shock value. No flashy camera moves. No genre-typical jump scares.",
+  "v2s2_para": "Por Thozhil is a Tamil procedural thriller about a 1979 case that comes back to life. It is quiet, mostly night, refuses songs, and is built on the premise that motive — psychology, biography — matters more than evidence. The texture is real police stations, real files, real Trichy locations. Every department's job is to make the audience feel that this case is being solved by patience, not by force. We refuse glamour, we refuse mass, we refuse heroism. The film must read like a procedural, look like a quiet horror, and end like an elegy.",
+
+  "ck_v2s2_a": true, "ck_v2s2_b": true, "ck_v2s2_c": true, "ck_v2s2_d": true,
+
+  "v2s3_palette": "Sodium-lamp orange, fluorescent green, file-dust beige.",
+  "v2s3_light": "Films: Zodiac, Memories of Murder, Prisoners (Villeneuve). Photographer: Greg Williams' on-set work. Painter: Edward Hopper for the lonely-light interiors.",
+  "v2s3_frames": "1. Hopper's Nighthawks — for the police-station-at-night feel.\n2. Zodiac's basement scene — for procedural dread.\n3. Memories of Murder rural-night frames.\n4. Prisoners' garage scenes — for confined-space tension.\n5. Real cold-case file photography — for grain texture.\n6. Tamil Nadu police archive photography — for period authenticity.",
+  "v2s3_texture": "Dusty / sun-faded",
+  "v2s3_location": "Folder: /preprod/lookbook/ — shared with DOP, AD, costume, art.",
+
+  "ck_v2s3_a": true, "ck_v2s3_b": true, "ck_v2s3_c": true, "ck_v2s3_d": true,
+
+  "shot_1_scene": "1", "shot_1_desc": "Loganathan walks into archive room — alone with files", "shot_1_lens": "35mm", "shot_1_move": "Static", "shot_1_coverage": "WS — Wide Shot", "shot_1_notes": "Single fluorescent practical, cold green tint. Hold long.",
+  "shot_2_scene": "1", "shot_2_desc": "Hand reaches for the 1979 folder", "shot_2_lens": "85mm", "shot_2_move": "Static", "shot_2_coverage": "Insert", "shot_2_notes": "Tremor visible. Subtle.",
+  "shot_3_scene": "2", "shot_3_desc": "Crime scene establishing — body off-frame", "shot_3_lens": "24mm", "shot_3_move": "Push in", "shot_3_coverage": "Establishing", "shot_3_notes": "Dawn light, cold blue. No sting.",
+  "shot_4_scene": "5", "shot_4_desc": "Two cops chat casually about wife (setup #1)", "shot_4_lens": "50mm", "shot_4_move": "Static", "shot_4_coverage": "2-Shot", "shot_4_notes": "Plays as filler. Frame symmetric.",
+  "shot_5_scene": "12", "shot_5_desc": "Prakash freezes during near-miss with killer", "shot_5_lens": "35mm", "shot_5_move": "Handheld", "shot_5_coverage": "MS — Medium", "shot_5_notes": "His POV bleeds in and out. Sound design carries it.",
+
+  "ck_v2s4_a": true, "ck_v2s4_b": true, "ck_v2s4_c": true, "ck_v2s4_d": true,
+
+  "v2s5_camera": "ARRI Alexa Mini",
+  "v2s5_aspect": "2.39:1 (Scope / CinemaScope)",
+  "v2s5_fps": "24 fps",
+  "v2s5_res": "4K UHD",
+  "v2s5_lens": "Cooke S4 Mini set, with selected vintage Lomo for night exteriors",
+  "v2s5_speciallens": "Probe lens for one file insert",
+  "v2s5_light_phil": "Always one motivated source. Practicals over fixtures. Sodium and fluorescent are the dominant colour temperatures.",
+  "v2s5_grade": "Kodak Vision3 250D feel; muted desaturated grade with green-amber lift in shadows.",
+  "v2s5_dn": "~80% night, ~20% day",
+
+  "ck_v2s5_a": true, "ck_v2s5_b": true, "ck_v2s5_c": true, "ck_v2s5_d": true,
+
+  "v2s6_sets": "Police station interior (built for control). Loganathan's house interior (real location dressed). 1979 archive room.",
+  "v2s6_dressed": "Trichy police station exterior. Railway crossing. Several real Trichy streets. Suspect's house.",
+  "v2s6_heroprops": "The 1979 case file (custom-built, aged). The killer's specific tool/object (deliberately ordinary).",
+  "v2s6_recurring": "The case file (gathers meaning across scenes). Prakash's pen and notepad. Loganathan's reading glasses.",
+  "v2s6_period": "1979 flashback elements: police uniforms, documentation paperwork, telephones, vehicles. Also archive design.",
+  "v2s6_pd": "[Production designer name]",
+  "v2s6_ad": "[Art director name]",
+  "v2s6_setlead": "[Set construction lead]",
+  "v2s6_artbudget": "Mid-budget allocation",
+
+  "ck_v2s6_a": true, "ck_v2s6_b": true, "ck_v2s6_c": true, "ck_v2s6_d": true,
+
+  "v2s7_designer": "[Costume designer]",
+  "v2s7_hair": "[Hair stylist]",
+  "v2s7_makeup": "[Makeup chief]",
+  "v2s7_sfx_need": "Light (bruises, dirt)",
+  "v2s7_protag": "Prakash starts in pressed crisp uniform with shoes shined — clearly trying. By midpoint, sleeves unrolled, wrinkles visible. By final scenes, comfortable in his own clothes — the uniform fits him, not the other way around.",
+  "v2s7_antag": "The killer wears unremarkable, almost forgettable clothing throughout — by design. The audience should not be able to recall his outfit after seeing him. His domestic clothes are gentle and soft.",
+  "v2s7_period": "1979 flashback: police uniform style of the era; cotton bush shirts; specific bell-bottom cuts.",
+
+  "ck_v2s7_a": true, "ck_v2s7_b": true, "ck_v2s7_c": true, "ck_v2s7_d": true,
+
+  "cast_1_role": "Loganathan (S.P.)", "cast_1_actor": "Sarathkumar", "cast_1_status": "Fully locked", "cast_1_notes": "Cast against type — a quiet veteran rather than mass-hero swagger.",
+  "cast_2_role": "Prakash (rookie cop)", "cast_2_actor": "Ashok Selvan", "cast_2_status": "Fully locked", "cast_2_notes": "Cast against type — geeky, not imposing. The casting is part of the directorial argument.",
+  "cast_3_role": "Killer", "cast_3_actor": "[Reveal-cast]", "cast_3_status": "Fully locked", "cast_3_notes": "Domestic, meek, unremarkable in his everyday scenes.",
+  "cast_4_role": "Constable (procedural foil)", "cast_4_actor": "Nikhila Vimal (auxiliary)", "cast_4_status": "Contract signed", "cast_4_notes": "Provides one of the casual conversations that pays off later.",
+
+  "ck_v2s8_a": true, "ck_v2s8_b": true, "ck_v2s8_c": true, "ck_v2s8_d": true, "ck_v2s8_e": true,
+
+  "loc_1_scene": "1, 5, 18", "loc_1_name": "Trichy Central Police Station — used for exteriors", "loc_1_type": "Real (dressed)", "loc_1_permit": "Approved", "loc_1_recce": "completed",
+  "loc_2_scene": "12, 15", "loc_2_name": "Loganathan's house — Srirangam quiet residential", "loc_2_type": "Real (dressed)", "loc_2_permit": "Approved", "loc_2_recce": "completed",
+  "loc_3_scene": "8, 9", "loc_3_name": "Railway crossing near Tiruchirappalli Junction", "loc_3_type": "Real (as-is)", "loc_3_permit": "Approved", "loc_3_recce": "completed",
+  "loc_4_scene": "Climax", "loc_4_name": "Disused warehouse outside Trichy", "loc_4_type": "Real (dressed)", "loc_4_permit": "Approved", "loc_4_recce": "completed",
+  "loc_5_scene": "Various", "loc_5_name": "Trichy streets at night", "loc_5_type": "Real (as-is)", "loc_5_permit": "Approved", "loc_5_recce": "completed",
+
+  "ck_v2s9_a": true, "ck_v2s9_b": true, "ck_v2s9_c": true, "ck_v2s9_d": true, "ck_v2s9_e": true,
+
+  "v2s10_composer": "Jakes Bejoy",
+  "v2s10_songs": "0 (no songs)",
+  "v2s10_bgm": "Tighten the scene; never decorate. Atmospheric layers; minimal melody; let silence play.",
+  "v2s10_refs": "Zodiac (David Shire), Memories of Murder (Taro Iwashiro), Prisoners (Jóhann Jóhannsson).",
+  "v2s10_sd": "[Sound designer]",
+  "v2s10_psr": "[Production sound recordist]",
+  "v2s10_phil": "Quiet film. Silence is a tool. Rooms must sound real. Fluorescent buzz, distant traffic, rain, fans — these carry the dread. The score holds back.",
+  "v2s10_mix": "5.1 Surround",
+
+  "ck_v2s10_a": true, "ck_v2s10_b": true, "ck_v2s10_c": true, "ck_v2s10_d": true,
+
+  "v2s11_days": "~50 (with 36 night-shoot days)",
+  "v2s11_pages": "~3 pages (mainstream)",
+  "v2s11_blocks": "3 schedules",
+  "v2s11_ad": "[1st AD]",
+  "v2s11_expday": "Climactic confrontation night — multiple cast, special lighting setup, controlled physical action.",
+  "v2s11_total": "Mid-budget Tamil feature range",
+  "v2s11_atl": "1.5 Cr",
+  "v2s11_btl": "3.5 Cr",
+  "v2s11_post": "1 Cr",
+  "v2s11_cont": "10% (standard minimum)",
+  "v2s11_largest": "Camera + lens package across ~50 days; cinematographer fees.",
+  "v2s11_dop": "Kalaiselvan Sivaji",
+  "v2s11_pd": "[Production designer]",
+  "v2s11_editor": "[Editor]",
+  "v2s11_composer": "Jakes Bejoy",
+  "v2s11_sound": "[Sound designer]",
+  "v2s11_cd": "[Costume designer]",
+  "v2s11_casting": "[Casting director]",
+  "v2s11_pm": "[Production manager]",
+
+  "ck_v2s11_a": true, "ck_v2s11_b": true, "ck_v2s11_c": true, "ck_v2s11_d": true, "ck_v2s11_e": true,
+
+  "v2s12_recce": "Aug — Trichy Central Station + warehouse: Director, DOP, AD, Sound, PD\nAug — Railway crossing at night: Director, DOP, Sound\nAug — Loganathan's house exterior: Director, DOP, PD",
+  "v2s12_problems": "1. Sodium-lamp tint at the railway crossing varies by hour. 2. Warehouse acoustic — too live for the climax dialogue. 3. Police-station exterior had unexpected traffic noise after 10 PM. 4. One night-shoot location had a wedding hall nearby playing music until 11 PM. 5. Generator power requirement at remote location larger than expected.",
+  "v2s12_resolutions": "1. Lock specific shoot windows; gel as needed (Gaffer). 2. Treat warehouse with sound blankets; ADR-ready (Sound). 3. Permit-extend traffic block, reschedule scene to early morning (AD). 4. Negotiate with hall owner; alternate dates booked (PM). 5. Upgrade to 60 KVA gen (PM).",
+
+  "fc_v2_01": true, "fc_v2_02": true, "fc_v2_03": true, "fc_v2_04": true, "fc_v2_05": true,
+  "fc_v2_06": true, "fc_v2_07": true, "fc_v2_08": true, "fc_v2_09": true, "fc_v2_10": true,
+  "fc_v2_11": true, "fc_v2_12": true, "fc_v2_13": true, "fc_v2_14": true, "fc_v2_15": true,
+  "fc_v2_16": true, "fc_v2_17": true, "fc_v2_18": true, "fc_v2_19": true, "fc_v2_20": true,
+
+  "v2s12_note": "When you're tired on day 18 and someone is asking the same question for the third time: the answer is in the Director's Vision. 'Motive over evidence. Patience over force.' If the choice on the floor doesn't serve those two principles, it's a bad choice — even if it looks easier."
+}

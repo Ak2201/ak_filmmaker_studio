@@ -472,7 +472,17 @@ function _onRemoteComment(payload) {
 // ============================================================
 function genToken() {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
-  return Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+  // getRandomValues predates randomUUID by years and is the real floor.
+  // The old fallback was two Math.random() calls and a timestamp — not a
+  // CSPRNG, and its state is recoverable from a handful of outputs. A
+  // share token is a bearer credential and resolve_share() answers to
+  // anon, so a guessable token is a readable project.
+  if (window.crypto && crypto.getRandomValues) {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  throw new Error('This browser cannot generate a secure share link.');
 }
 
 export async function createShare(projectId, role, expiresAt) {

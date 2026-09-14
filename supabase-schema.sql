@@ -107,6 +107,7 @@ returns boolean
 language sql
 security definer
 stable
+set search_path = public, pg_temp
 as $$
   select exists (
     select 1 from public.projects p
@@ -133,6 +134,7 @@ create or replace function public.claim_share(p_token text)
 returns table (project_id uuid, role text)
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   s_record record;
@@ -185,6 +187,7 @@ returns table (
 language sql
 security definer
 stable
+set search_path = public, pg_temp
 as $$
   select
     p.id,
@@ -196,6 +199,11 @@ as $$
   from public.shares s
   join public.projects p on p.id = s.project_id
   where s.token = p_token
+    -- An expired link must not keep answering. It previously returned
+    -- the project title to anyone holding a revoked token, with
+    -- is_expired set alongside it; the caller shows a generic
+    -- "invalid or expired" instead.
+    and (s.expires_at is null or s.expires_at > now())
   limit 1;
 $$;
 grant execute on function public.resolve_share(text) to authenticated, anon;
@@ -224,6 +232,14 @@ drop policy if exists proj_insert on public.projects;
 create policy proj_insert on public.projects
   for insert with check (owner_id = auth.uid());
 
+-- An UPDATE policy with no WITH CHECK reuses its USING expression for
+-- the new row (Postgres docs, "Row Security Policies"). USING passed for
+-- any 'edit' collaborator, and it passed again for the row they wrote —
+-- so an editor could set owner_id to themselves or to a stranger, and
+-- the new row still satisfied it. The new owner could then delete the
+-- project, drop the real owner's collaborator row and lock them out
+-- entirely. WITH CHECK alone cannot fix this, because it has no access
+-- to the OLD row; the trigger below does the OLD/NEW comparison.
 drop policy if exists proj_update on public.projects;
 create policy proj_update on public.projects
   for update using (
@@ -232,7 +248,32 @@ create policy proj_update on public.projects
       select 1 from public.project_collaborators c
       where c.project_id = id and c.user_id = auth.uid() and c.role = 'edit'
     )
+  )
+  with check (
+    owner_id = auth.uid()
+    or exists (
+      select 1 from public.project_collaborators c
+      where c.project_id = id and c.user_id = auth.uid() and c.role = 'edit'
+    )
   );
+
+create or replace function public.projects_guard_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.owner_id is distinct from old.owner_id and old.owner_id <> auth.uid() then
+    raise exception 'Only the owner can transfer ownership' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists projects_guard_owner on public.projects;
+create trigger projects_guard_owner
+  before update on public.projects
+  for each row execute function public.projects_guard_owner();
 
 drop policy if exists proj_delete on public.projects;
 create policy proj_delete on public.projects
@@ -317,6 +358,12 @@ create policy cm_insert on public.comments
     and author_id = auth.uid()
   );
 
+-- Same missing-WITH-CHECK shape as proj_update had. USING only asks
+-- "are you the author"; with no WITH CHECK the new row was asked the
+-- same question, which stayed true however project_id changed. An author
+-- could therefore re-point their own comment at any project whose uuid
+-- they knew — including one their access had since been revoked, since
+-- the INSERT policy's has_project_access() check never runs on UPDATE.
 drop policy if exists cm_update on public.comments;
 create policy cm_update on public.comments
   for update using (
@@ -325,7 +372,43 @@ create policy cm_update on public.comments
       select 1 from public.projects p
       where p.id = project_id and p.owner_id = auth.uid()
     )
+  )
+  with check (
+    public.has_project_access(project_id, 'comment')
+    and (
+      author_id = auth.uid()
+      or exists (
+        select 1 from public.projects p
+        where p.id = project_id and p.owner_id = auth.uid()
+      )
+    )
   );
+
+-- author_name was whatever the client sent. cm_insert pinned author_id
+-- to auth.uid() but never the display name, so a signed-in collaborator
+-- could post as anyone. Both identity columns are now set server-side
+-- and frozen; the client's values are ignored rather than trusted.
+create or replace function public.comments_set_author()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.author_id   := auth.uid();
+    new.author_name := coalesce(nullif(auth.jwt() ->> 'email', ''), 'Anonymous');
+  else
+    new.author_id   := old.author_id;
+    new.author_name := old.author_name;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists comments_set_author on public.comments;
+create trigger comments_set_author
+  before insert or update on public.comments
+  for each row execute function public.comments_set_author();
 
 drop policy if exists cm_delete on public.comments;
 create policy cm_delete on public.comments

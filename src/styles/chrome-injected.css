@@ -55,9 +55,10 @@
 
 /* ------------------------------------------------------------
    "No project selected" banner. store.js used to carry this as an
-   inline cssText blob with a raw #b03a1f fill, #f5ecd6 text (the
-   pre-token paper colour) and hard-coded px. Tokens now, so it
-   follows paper / sepia / ink like everything else.
+   inline cssText blob with a raw fill, raw text colour (the pre-token
+   paper value) and hard-coded px. Tokens now, so it follows paper /
+   sepia / ink like everything else. Literal values left out on purpose:
+   the invariant-4 check in CLAUDE.md greps for them.
    ------------------------------------------------------------ */
 .studio-no-project-banner {
   position: sticky;

@@ -70,10 +70,31 @@ To change copy, edit the JSON. To change how copy is presented, edit
 If it changes, the verifier stops being able to tell a refactor from a regression.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-No raw hex outside that file (there are currently zero — keep it that way). No
-`body.dark` rules: paper / sepia / ink are token swaps, and a rule that only
+Every colour is a token. This rule previously claimed there were zero raw
+colours outside that file; there were nine, and a claim nobody can verify stops
+being enforceable. The real position, with the two intended exceptions:
+
+- `src/styles/chrome-injected.css` — nine colour declarations (three hex, six
+  `rgba()`). It is a verbatim port of the style string `studio-store.js` used to
+  inject at runtime. The chrome surface is dark in *every* theme while
+  `--danger` is not, so substituting tokens naively would cut contrast in paper.
+  It wants a considered pass, not a find-and-replace.
+- The palette picker's seed colours — `palette_c1..c3` in `src/pages/feature.js`
+  and the matching swatches in `steps.feature.json`. `<input type="color">`
+  requires a hex literal and these are the user's editable starting values.
+  They are content, not design tokens. Leave them.
+
+Anything else is a bug. To check:
+
+```bash
+grep -rnE '#[0-9a-fA-F]{3,8}\b|rgba?\([0-9]' src --include=*.css --include=*.js | grep -v tokens.css
+```
+
+No `body.dark` rules: paper / sepia / ink are token swaps, and a rule that only
 exists to restate a colour for dark mode is a bug. Tokens are declared in bare
-`:root` first, then overridden under `prefers-color-scheme` and `[data-theme]`.
+`:root` first, then overridden under `prefers-color-scheme` and `[data-theme]` —
+and the JS half has to hold up its end, which it did not for a while. See the
+theme trap below.
 
 **5. No inline `onclick` / `onchange` anywhere.**
 A strict CSP ships in `vercel.json`; an inline handler breaks the page under it.
@@ -105,8 +126,25 @@ loads all four pages in Chromium, and diffs each against its original in
 - zero `localStorage` writes during four seconds of idle (see the save loop below)
 - zero horizontal overflow at 390px
 - zero console errors
+- the three themes produce three distinct backgrounds. The stylesheets key off
+  `:root[data-theme]`; when `applyTheme()` only set body classes every theme
+  rendered identically and nothing above noticed, because the text, the keys and
+  the handlers are all still correct on a page with the wrong palette.
 
-Current state: all four pages pass at 100% accounted coverage.
+Then one studio-level check that is not per page:
+
+- **a backup round trip** — two projects out, two projects back, contents
+  matched. `export`/`import` is the only backup a local-first app has, and the
+  per-page diff cannot see it: the hub's markup is identical whether the file
+  holds every project or just the open one.
+
+Current state: all four pages pass at 100% accounted coverage, and the round
+trip restores both projects.
+
+**Known blind spot.** The run loads each page at 1280px and resizes to 390px
+*afterwards*, so anything gated on `matchMedia` at load time has already decided
+by then — the mobile action bar never attaches during a verify run and its
+layout is untested. Check viewport-gated chrome by hand at 390px.
 
 ## Traps already paid for
 
@@ -136,6 +174,27 @@ These were real bugs. Re-introducing one is easy, so they are named here.
 - **Chrome initialises at import time**, when `#app` is still empty. Pages call a
   re-init after render to rebuild the step rail, glossary popovers and aria
   labels. If you add render-dependent chrome, wire it into that re-init.
+  `short.js` went a long time without one at all, which is why it had no step
+  rail, no reading progress and eighteen unlabelled inputs while the other three
+  pages were fine.
+- **The storage proxy scopes "studio-wide" operations to the open project.**
+  `store.js` patches `getItem`/`setItem`/`removeItem` to suffix every
+  `SCOPED_KEYS` entry with the current project id. Anything in `hub.js` that
+  reaches for one of those keys through `localStorage` therefore gets *one*
+  project, however global its name. Export called itself "full studio backup"
+  and contained a single film; reset promised "this erases EVERYTHING" and left
+  the other projects on disk. When an operation really is studio-wide, iterate
+  `listProjects()` and address each project explicitly through
+  `rawGet`/`rawSet`/`rawRemove(key + '__' + id)`, which bypass the proxy.
+- **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
+  matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
+  match nothing. When `applyTheme()` set only the classes, all three themes
+  rendered identically, a user who chose paper got ink on a dark-mode OS
+  (nothing set `[data-theme="light"]`, so the `prefers-color-scheme` block won),
+  and sepia was unreachable. `applyTheme()` stamps the attribute *first* —
+  `documentElement` exists before `<body>`, so that also avoids a flash — and
+  keeps the classes in the same call, because four pages still read them as
+  state. `verify` asserts three distinct backgrounds now.
 
 ## How to do common things
 
@@ -146,10 +205,21 @@ Keep `key` values untouched.
 the section heads derive, so they update themselves.
 
 **Promote a bespoke widget** → `raw` blocks are elements the extractors couldn't
-model (`char-map`, `pp-table`, `dept-grid`, `beat-viz`, …). They are re-inserted
-verbatim, which is why nothing was lost in the migration. To promote one, add a
-renderer to `BLOCKS` in `src/ui/steps.js`, convert the block in the JSON, and run
-`npm run verify` — the data-key assertion will tell you if you dropped a field.
+model (`char-map`, `pp-table`, `dept-grid`, …). They are re-inserted verbatim,
+which is why nothing was lost in the migration. To promote one, add a renderer,
+convert the block in the JSON, and run `npm run verify` — the data-key assertion
+will tell you if you dropped a field.
+
+Two places to put the renderer. A widget every blueprint could use goes in
+`BLOCKS` in `src/ui/steps.js`. One that only a single page can render — because
+it reads that page's data — is passed as the third argument to `renderSteps()`,
+which merges page renderers over `BLOCKS`; that keeps the shared module from
+importing a page's data. `short.js` does this for `beatviz` and `festgrid`.
+
+Finish the conversion. Adding the renderer while leaving the `raw` block in the
+JSON means the page builds the static markup, throws it away and replaces it —
+two representations of one thing, and in the short film's case 5.2KB shipped to
+be discarded.
 
 **Re-run extraction** → `npm run extract` reads `legacy/`, rewrites `src/data`,
 self-checks coverage, and fixes the old page filenames. Safe to re-run; it is

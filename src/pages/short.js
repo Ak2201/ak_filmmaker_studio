@@ -276,9 +276,9 @@ function renderBeatViz() {
   });
 
   // .beat-axis is stroked from var(--rule) in widgets.css. The legacy
-  // markup hard-coded rgba(120,90,30,.2) here, which is both a raw
-  // colour outside tokens.css and theme-blind — a fixed brown that did
-  // not move between paper, sepia and ink.
+  // markup hard-coded a translucent brown here, which is both a raw
+  // colour outside tokens.css and theme-blind — it did not move between
+  // paper, sepia and ink.
   svg.append(svgEl('line', { x1: 0, y1: AXIS_Y, x2: W, y2: AXIS_Y, class: 'beat-axis' }));
 
   // Anchor the curve to both edges at the height of the first/last beat,

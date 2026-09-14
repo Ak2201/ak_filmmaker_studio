@@ -627,7 +627,7 @@ function buildBeatVisualizer() {
     function showTip() {
       const fld = document.querySelector('[data-key="' + key + '"]');
       const txt = fld && fld.value ? fld.value.slice(0, 140) + (fld.value.length > 140 ? '…' : '') : '(not yet filled)';
-      // Was innerHTML with an inline style carrying a raw #a87a32, a
+      // Was innerHTML with an inline style carrying a raw gold hex, a
       // literal font stack and magic px — and it interpolated the
       // user's own beat text, so a "<" in a script broke the tooltip.
       // .beat-tip-head is the same class the short blueprint's

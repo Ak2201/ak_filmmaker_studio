@@ -1,0 +1,589 @@
+{
+  "asOf": "2024-25",
+  "currency": "INR",
+  "noteLabel": "⚠ DISCLAIMER",
+  "note": "These are <strong>indicative ranges</strong> based on Chennai market, 2024–25, sourced from production folklore and publicly visible rate cards. Actual rates depend on vendor, season, package deal, kit accessories, and your producer's negotiating strength. <strong>Always verify with at least three vendors before locking a budget.</strong> Tax, transport, and insurance are typically NOT included in headline daily rates.",
+  "sections": [
+    {
+      "id": "camera-bodies",
+      "heading": "Camera Bodies",
+      "note": "Daily rental rates. Add ~10–15% for higher-end packages, more for international rental houses.",
+      "columns": [
+        "Body",
+        "Rate (₹/day)",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "ARRI Alexa 35",
+          "unit": "day",
+          "low": 40000,
+          "high": 55000,
+          "raw": "40,000 – 55,000",
+          "note": "Latest sensor; best HDR; high demand."
+        },
+        {
+          "item": "ARRI Alexa Mini LF",
+          "unit": "day",
+          "low": 35000,
+          "high": 50000,
+          "raw": "35,000 – 50,000",
+          "note": "Large-format prestige choice."
+        },
+        {
+          "item": "ARRI Alexa Mini",
+          "unit": "day",
+          "low": 25000,
+          "high": 35000,
+          "raw": "25,000 – 35,000",
+          "note": "Workhorse for most Tamil features."
+        },
+        {
+          "item": "Sony Venice 2",
+          "unit": "day",
+          "low": 30000,
+          "high": 40000,
+          "raw": "30,000 – 40,000",
+          "note": "Dual-base ISO; growing share."
+        },
+        {
+          "item": "RED V-Raptor",
+          "unit": "day",
+          "low": 22000,
+          "high": 30000,
+          "raw": "22,000 – 30,000",
+          "note": "8K, lighter, popular with indies."
+        },
+        {
+          "item": "RED Komodo",
+          "unit": "day",
+          "low": 15000,
+          "high": 22000,
+          "raw": "15,000 – 22,000",
+          "note": "B-cam favourite. Compact."
+        },
+        {
+          "item": "Canon C500 Mark II",
+          "unit": "day",
+          "low": 10000,
+          "high": 15000,
+          "raw": "10,000 – 15,000",
+          "note": "Doc-leaning, RF mount."
+        },
+        {
+          "item": "Sony FX9",
+          "unit": "day",
+          "low": 8000,
+          "high": 12000,
+          "raw": "8,000 – 12,000",
+          "note": "Mid-tier prestige doc."
+        },
+        {
+          "item": "Blackmagic URSA Mini Pro 12K",
+          "unit": "day",
+          "low": 6000,
+          "high": 10000,
+          "raw": "6,000 – 10,000",
+          "note": "High-res indie option."
+        },
+        {
+          "item": "Sony FX6",
+          "unit": "day",
+          "low": 4000,
+          "high": 7000,
+          "raw": "4,000 – 7,000",
+          "note": "Indie features, doc, OTT."
+        },
+        {
+          "item": "Sony FX3",
+          "unit": "day",
+          "low": 3500,
+          "high": 5500,
+          "raw": "3,500 – 5,500",
+          "note": "Run-and-gun, gimbal-friendly."
+        },
+        {
+          "item": "Blackmagic Pocket 6K Pro",
+          "unit": "day",
+          "low": 2500,
+          "high": 4000,
+          "raw": "2,500 – 4,000",
+          "note": "Ultra-low-budget feature option."
+        }
+      ]
+    },
+    {
+      "id": "lens-kits",
+      "heading": "Lens Kits",
+      "note": "Per kit, per day. Often bundled with the camera at a package discount.",
+      "columns": [
+        "Kit",
+        "Rate (₹/day)",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "Zeiss Master Primes (set)",
+          "unit": "day",
+          "low": 35000,
+          "high": 50000,
+          "raw": "35,000 – 50,000",
+          "note": "High-end prestige look."
+        },
+        {
+          "item": "Vintage Lomo Anamorphic (set)",
+          "unit": "day",
+          "low": 30000,
+          "high": 45000,
+          "raw": "30,000 – 45,000",
+          "note": "Iconic flares; period look."
+        },
+        {
+          "item": "Cooke S4/i (set)",
+          "unit": "day",
+          "low": 25000,
+          "high": 35000,
+          "raw": "25,000 – 35,000",
+          "note": "\"The Cooke look\" — warm, soft."
+        },
+        {
+          "item": "Atlas Orion Anamorphics (set)",
+          "unit": "day",
+          "low": 20000,
+          "high": 30000,
+          "raw": "20,000 – 30,000",
+          "note": "Modern anamorphic, indie favourite."
+        },
+        {
+          "item": "Zeiss CP.3 / Sigma Cine Primes",
+          "unit": "day",
+          "low": 12000,
+          "high": 18000,
+          "raw": "12,000 – 18,000",
+          "note": "Solid mid-tier prime set."
+        },
+        {
+          "item": "Angenieux Optimo 24-290 zoom",
+          "unit": "day",
+          "low": 15000,
+          "high": 22000,
+          "raw": "15,000 – 22,000",
+          "note": "When you need range."
+        },
+        {
+          "item": "Standard zoom (24-70 / 70-200)",
+          "unit": "day",
+          "low": 3000,
+          "high": 5000,
+          "raw": "3,000 – 5,000 each",
+          "per": "each",
+          "note": "Indie / B-cam."
+        },
+        {
+          "item": "Macro / Probe lens",
+          "unit": "day",
+          "low": 3000,
+          "high": 6000,
+          "raw": "3,000 – 6,000",
+          "note": "Specialty work."
+        }
+      ]
+    },
+    {
+      "id": "lighting-and-grip",
+      "heading": "Lighting & Grip",
+      "note": "Per unit, per day. Most lighting is rented as a package with stands and accessories.",
+      "columns": [
+        "Item",
+        "Rate (₹/day)",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "HMI 2.5K (with ballast, head)",
+          "unit": "day",
+          "low": 3000,
+          "high": 4500,
+          "raw": "3,000 – 4,500",
+          "note": "Daylight punch."
+        },
+        {
+          "item": "HMI 1.2K",
+          "unit": "day",
+          "low": 1800,
+          "high": 2500,
+          "raw": "1,800 – 2,500",
+          "note": "Workhorse fill."
+        },
+        {
+          "item": "Aputure 600D Pro",
+          "unit": "day",
+          "low": 2500,
+          "high": 3500,
+          "raw": "2,500 – 3,500",
+          "note": "LED daylight, controllable."
+        },
+        {
+          "item": "LED panel kits (e.g. Litepanels, ARRI SkyPanel)",
+          "unit": "day",
+          "low": 2000,
+          "high": 4500,
+          "raw": "2,000 – 4,500 each",
+          "per": "each",
+          "note": "RGB tunable, soft."
+        },
+        {
+          "item": "Tungsten 5K / 10K",
+          "unit": "day",
+          "low": 2000,
+          "high": 3500,
+          "raw": "2,000 – 3,500",
+          "note": "Old-school for warmth."
+        },
+        {
+          "item": "Diffusion / flag / negative kit",
+          "unit": "day",
+          "low": 500,
+          "high": 1000,
+          "raw": "500 – 1,000",
+          "note": "Per box / per kit."
+        },
+        {
+          "item": "Dolly + 30 ft track",
+          "unit": "day",
+          "low": 2500,
+          "high": 3500,
+          "raw": "2,500 – 3,500",
+          "note": "Doorway / Western dolly."
+        },
+        {
+          "item": "Mini jib (8-12 ft)",
+          "unit": "day",
+          "low": 2000,
+          "high": 3000,
+          "raw": "2,000 – 3,000",
+          "note": "Affordable rise/fall."
+        },
+        {
+          "item": "Crane (16 ft)",
+          "unit": "day",
+          "low": 5000,
+          "high": 8000,
+          "raw": "5,000 – 8,000",
+          "note": "Operator extra."
+        },
+        {
+          "item": "Steadicam rig + operator",
+          "unit": "day",
+          "low": 15000,
+          "high": 25000,
+          "raw": "15,000 – 25,000",
+          "note": "Operator rate is the bulk."
+        },
+        {
+          "item": "DJI Ronin 2 / RS3 Pro + op",
+          "unit": "day",
+          "low": 6000,
+          "high": 10000,
+          "raw": "6,000 – 10,000",
+          "note": "Gimbal coverage."
+        },
+        {
+          "item": "Drone (DJI Inspire 3) + pilot",
+          "unit": "day",
+          "low": 15000,
+          "high": 25000,
+          "raw": "15,000 – 25,000",
+          "note": "Permits separate."
+        }
+      ]
+    },
+    {
+      "id": "sound-and-power",
+      "heading": "Sound & Power",
+      "columns": [
+        "Item",
+        "Rate (₹/day)",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "Production sound recordist + full kit",
+          "unit": "day",
+          "low": 4000,
+          "high": 8000,
+          "raw": "4,000 – 8,000",
+          "note": "Boom, lavs, mixer, recorder."
+        },
+        {
+          "item": "Comtek / IFB system",
+          "unit": "day",
+          "low": 500,
+          "high": 1000,
+          "raw": "500 – 1,000",
+          "note": "Director hears actor."
+        },
+        {
+          "item": "Generator 30 KVA (with operator)",
+          "unit": "day",
+          "low": 3000,
+          "high": 5000,
+          "raw": "3,000 – 5,000",
+          "note": "Plus diesel."
+        },
+        {
+          "item": "Generator 60 KVA",
+          "unit": "day",
+          "low": 5000,
+          "high": 7500,
+          "raw": "5,000 – 7,500",
+          "note": "For larger lighting setups."
+        },
+        {
+          "item": "Camera car / track car",
+          "unit": "day",
+          "low": 4000,
+          "high": 7000,
+          "raw": "4,000 – 7,000",
+          "note": "Per day, with driver."
+        },
+        {
+          "item": "Production van",
+          "unit": "day",
+          "low": 2500,
+          "high": 4000,
+          "raw": "2,500 – 4,000",
+          "note": "Per day, with driver, fuel extra."
+        }
+      ]
+    },
+    {
+      "id": "crew-daily-rates",
+      "heading": "Crew (Daily Rates)",
+      "note": "Indicative for mid-level Chennai talent. Top-tier names charge 3–5× these. Below-the-line techs at the lower end.",
+      "columns": [
+        "Role",
+        "Rate (₹/day)",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "DOP (mid-level)",
+          "unit": "day",
+          "low": 15000,
+          "high": 25000,
+          "raw": "15,000 – 25,000",
+          "note": "Top-tier names: ₹50K – 2L+."
+        },
+        {
+          "item": "1st AD",
+          "unit": "day",
+          "low": 6000,
+          "high": 12000,
+          "raw": "6,000 – 12,000",
+          "note": "Experienced for features."
+        },
+        {
+          "item": "2nd AD",
+          "unit": "day",
+          "low": 3000,
+          "high": 5000,
+          "raw": "3,000 – 5,000",
+          "note": "Floor/continuity."
+        },
+        {
+          "item": "Production Designer (mid)",
+          "unit": "day",
+          "low": 8000,
+          "high": 15000,
+          "raw": "8,000 – 15,000",
+          "note": "Plus dept budget."
+        },
+        {
+          "item": "Costume Designer (mid)",
+          "unit": "day",
+          "low": 5000,
+          "high": 10000,
+          "raw": "5,000 – 10,000",
+          "note": "Plus wardrobe budget."
+        },
+        {
+          "item": "Editor",
+          "unit": "day",
+          "low": 3000,
+          "high": 8000,
+          "raw": "3,000 – 8,000",
+          "note": "Or flat fee per project."
+        },
+        {
+          "item": "Sound Designer / Supervisor",
+          "unit": "day",
+          "low": 6000,
+          "high": 12000,
+          "raw": "6,000 – 12,000",
+          "note": "Or flat fee for post."
+        },
+        {
+          "item": "Focus Puller / 1st AC",
+          "unit": "day",
+          "low": 3500,
+          "high": 6000,
+          "raw": "3,500 – 6,000",
+          "note": "Critical role."
+        },
+        {
+          "item": "Gaffer",
+          "unit": "day",
+          "low": 3500,
+          "high": 6000,
+          "raw": "3,500 – 6,000",
+          "note": "Plus electrician team."
+        },
+        {
+          "item": "Electrician / spot crew",
+          "unit": "day",
+          "low": 800,
+          "high": 1500,
+          "raw": "800 – 1,500",
+          "note": "Per person."
+        },
+        {
+          "item": "Production Manager",
+          "unit": "day",
+          "low": 3500,
+          "high": 7000,
+          "raw": "3,500 – 7,000",
+          "note": "Often pre-prod + shoot package."
+        }
+      ]
+    },
+    {
+      "id": "music-and-post",
+      "heading": "Music & Post",
+      "note": "Mostly project fees, not daily rates.",
+      "columns": [
+        "Item",
+        "Rate",
+        "Notes"
+      ],
+      "rows": [
+        {
+          "item": "Composer (mid-level, full feature)",
+          "unit": "flat",
+          "low": 200000,
+          "high": 500000,
+          "raw": "₹2 – 5 L flat",
+          "note": "Score + 1-2 songs."
+        },
+        {
+          "item": "Composer (top-tier)",
+          "unit": "flat",
+          "low": 1500000,
+          "high": 20000000,
+          "raw": "₹15 L – 2 Cr flat",
+          "note": "Big names; package deals."
+        },
+        {
+          "item": "Live orchestra recording",
+          "unit": "day",
+          "low": 200000,
+          "high": 500000,
+          "raw": "₹2 – 5 L/day",
+          "note": "Strings, players, studio."
+        },
+        {
+          "item": "Sound mix studio (5.1)",
+          "unit": "day",
+          "low": 15000,
+          "high": 30000,
+          "raw": "₹15 – 30 K/day",
+          "note": "Mix takes 5-10 days."
+        },
+        {
+          "item": "Atmos mix studio",
+          "unit": "day",
+          "low": 40000,
+          "high": 75000,
+          "raw": "₹40 – 75 K/day",
+          "note": "Premium delivery."
+        },
+        {
+          "item": "Color grade (DI suite)",
+          "unit": "day",
+          "low": 10000,
+          "high": 25000,
+          "raw": "₹10 – 25 K/day",
+          "note": "Plus colorist fee."
+        },
+        {
+          "item": "VFX (per shot, simple cleanup)",
+          "unit": "shot",
+          "low": 5000,
+          "high": 25000,
+          "raw": "₹5 – 25 K/shot",
+          "note": "Wide variance."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    "ARRI Alexa Mini",
+    "ARRI Alexa Mini LF",
+    "ARRI Alexa 35",
+    "Sony Venice 2",
+    "RED Komodo",
+    "RED V-Raptor",
+    "Sony FX9",
+    "Sony FX6",
+    "Sony FX3",
+    "Blackmagic 6K Pro",
+    "Canon C500 II",
+    "Cooke S4 lens kit",
+    "Zeiss Master Primes set",
+    "Atlas Anamorphic set",
+    "Vintage Lomo Anamorphic",
+    "Sigma Cine Primes",
+    "Angenieux Optimo zoom",
+    "HMI 2.5K",
+    "HMI 1.2K",
+    "Aputure 600D Pro",
+    "LED panel kit",
+    "Tungsten 5K",
+    "Tungsten 10K",
+    "Diffusion / flag kit",
+    "Dolly + 30ft track",
+    "Mini jib",
+    "Crane 16ft",
+    "Steadicam + operator",
+    "Gimbal (Ronin) + op",
+    "Drone + pilot",
+    "Sound recordist + kit",
+    "Comtek/IFB",
+    "Generator 30 KVA",
+    "Generator 60 KVA",
+    "Camera car",
+    "Production van",
+    "DOP",
+    "1st AD",
+    "2nd AD",
+    "Production Designer",
+    "Costume Designer",
+    "Editor",
+    "Sound Designer",
+    "Focus Puller",
+    "Gaffer",
+    "Production Manager",
+    "Electrician (each)",
+    "Sound mix studio (5.1)",
+    "Sound mix studio (Atmos)",
+    "DI / color grade",
+    "VFX shot",
+    "Other (custom)"
+  ],
+  "widgets": [
+    {
+      "type": "raw",
+      "html": "<div class=\"calc-block\"> <h3>Quick Cost Estimator</h3> <p class=\"hint\">Add line items, set days × daily rate, get a running total. Saves to your browser only. Click PRINT to keep a hard copy.</p> <div class=\"calc-row head\"> <span>Item</span><span>Days</span><span>Rate (₹/day)</span><span>Subtotal</span> </div> <div id=\"calcRows\"></div> <div class=\"calc-actions\"> <button class=\"mini-btn\" onclick=\"addCalcRow()\">+ ADD ITEM</button> <button class=\"mini-btn\" onclick=\"addCalcRow(5)\">+ ADD 5</button> <button class=\"mini-btn danger\" onclick=\"resetCalc()\">RESET</button> </div> <div class=\"calc-grand\"> <span class=\"lab\">GRAND TOTAL</span> <span class=\"total\" id=\"calcTotal\">₹ 0 <span>across 0 line items</span></span> </div> </div>"
+    }
+  ]
+}

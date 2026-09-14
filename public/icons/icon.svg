@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="The Filmmaker's Studio">
+  <title>The Filmmaker's Studio</title>
+  <defs>
+    <clipPath id="board"><rect x="76" y="222" width="360" height="186" rx="10"/></clipPath>
+    <clipPath id="stick"><rect x="76" y="150" width="360" height="62" rx="6"/></clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#16130f"/>
+
+  <g transform="translate(0 0) scale(1.000000)">
+    <!-- the clapper stick, hinged open -->
+    <g transform="rotate(-9 76 212)">
+      <rect x="76" y="150" width="360" height="62" rx="6" fill="#fdfaf3"/>
+      <g fill="#16130f" clip-path="url(#stick)">
+        <polygon points="124,150 154,150 136,212 106,212"/><polygon points="209,150 239,150 221,212 191,212"/><polygon points="294,150 324,150 306,212 276,212"/><polygon points="379,150 409,150 391,212 361,212"/>
+      </g>
+    </g>
+
+    <!-- the slate -->
+    <rect x="76" y="222" width="360" height="186" rx="10" fill="#f6f1e6"/>
+
+    <!-- two ruled lines, as on a real slate -->
+    <g fill="#16130f" opacity="0.14">
+      <rect x="112" y="284" width="288" height="12" rx="6"/>
+      <rect x="112" y="318" width="196" height="12" rx="6"/>
+    </g>
+
+    <!-- the three volumes, the same stripe the toolbar wears -->
+    <g clip-path="url(#board)">
+      <rect x="76"  y="376" width="120" height="32" fill="#b0311c"/>
+      <rect x="196" y="376" width="120" height="32" fill="#245e9e"/>
+      <rect x="316" y="376" width="120" height="32" fill="#9a6d1f"/>
+    </g>
+  </g>
+</svg>

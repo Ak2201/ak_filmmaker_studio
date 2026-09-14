@@ -1,0 +1,54 @@
+/* ============================================================
+   SHARED CHROME STYLES
+   ------------------------------------------------------------
+   Ported verbatim from the CSS string that studio-store.js used
+   to inject at runtime as <style id="studio-store-styles">.
+   The rules are unchanged — only the delivery mechanism moved,
+   so the bundler can process/minify them like every other sheet.
+
+   Imported by src/lib/store.js and src/ui/chrome.js.
+   ============================================================ */
+
+.studio-proj-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f5ecd6;
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 6px 11px;
+  border-radius: 2px;
+  border: 1px solid rgba(244, 237, 224, 0.3);
+  background: rgba(244, 237, 224, 0.04);
+  transition: all 0.15s;
+  max-width: 260px;
+  font-weight: 600;
+}
+
+.studio-proj-link:hover {
+  background: rgba(244, 237, 224, 0.15);
+  border-color: rgba(244, 237, 224, 0.6);
+}
+
+.studio-proj-link .spl-arrow {
+  opacity: 0.7;
+}
+
+.studio-proj-link .spl-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.studio-proj-link.no-project {
+  border-color: #b03a1f;
+  background: rgba(176, 58, 31, 0.18);
+  color: #ffbfa8;
+}
+
+.studio-proj-link.no-project:hover {
+  background: rgba(176, 58, 31, 0.32);
+}

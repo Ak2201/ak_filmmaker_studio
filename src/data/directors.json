@@ -1,0 +1,312 @@
+[
+  {
+    "name": "Mani Ratnam",
+    "archetype": "ROMANCE / EPIC",
+    "years": "1986 – PRESENT",
+    "era": "1986 – PRESENT · ROMANCE / EPIC",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Layered montage editing, lyric-led emotional peaks, urban poetry, music-as-character. The frame is always doing two things at once — narrative and metaphor."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Backlight silhouettes, rain-soaked windows, glass reflections, dance as conversation. He shoots cities like landscapes."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Personal love against political turmoil. Roja, Bombay, Dil Se, Kannathil Muthamittal — the same shape recurs."
+      },
+      {
+        "term": "Watch for",
+        "value": "Cuts on emotional beats, not action beats. The edit reveals the feeling."
+      }
+    ],
+    "signature": "Layered montage editing, lyric-led emotional peaks, urban poetry, music-as-character. The frame is always doing two things at once — narrative and metaphor.",
+    "watch": "Cuts on emotional beats, not action beats. The edit reveals the feeling.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Mouna Raagam</em> (1986) for the chamber-drama craft, <em>Kannathil Muthamittal</em> (2002) for the political-personal weave."
+    },
+    "tanglish": "Mani Ratnam frame la rendu vishayam onnaaga seyvaaru — kadhai um metaphor um. Cut emotional beat la varum, action beat la illa. Padatha cinema mathiri illa, kavithai mathiri edukkuvaaru."
+  },
+  {
+    "name": "Vetrimaaran",
+    "archetype": "POLITICAL REALISM",
+    "years": "2007 – PRESENT",
+    "era": "2007 – PRESENT · POLITICAL REALISM",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Caste politics shown as procedural fact. Long takes in cramped spaces. Refuses sentimentality even at emotional peaks."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Available light, working-class textures, untrained-feeling ensemble performances. The camera follows, never glamourises."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Power and the people the system grinds down quietly. The question is never \"who is the bad guy\" — it's \"what is the structure.\""
+      },
+      {
+        "term": "Watch for",
+        "value": "How background characters keep doing their tasks during dramatic moments. The world doesn't pause for the protagonist."
+      }
+    ],
+    "signature": "Caste politics shown as procedural fact. Long takes in cramped spaces. Refuses sentimentality even at emotional peaks.",
+    "watch": "How background characters keep doing their tasks during dramatic moments. The world doesn't pause for the protagonist.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Aadukalam</em> (2011) for the lived-in milieu, <em>Visaranai</em> (2015) for the procedural horror, <em>Asuran</em> (2019) for the inverted hero arc."
+    },
+    "tanglish": "Sentimentality ah deliberately tappikiraar. Background la aalungal sondha vela seythukittiruppanga — drama nadakara samayathula kuda. World hero ku pause aagaadhu — Vetrimaaran rule."
+  },
+  {
+    "name": "Mysskin",
+    "archetype": "CRIME / MORALITY",
+    "years": "2006 – PRESENT",
+    "era": "2006 – PRESENT · CRIME / MORALITY",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Geometric framing, shoes-and-ankles low angles, deliberate slow pace, Bresson-influenced minimalism."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Architectural symmetry, walking shots from low angles, an obsession with how feet move through a space."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Ethical action under impossible circumstances. The cop, the soldier, the witness — what should they do?"
+      },
+      {
+        "term": "Watch for",
+        "value": "How long he holds a frame after action stops. The held shot is where the meaning lives."
+      }
+    ],
+    "signature": "Geometric framing, shoes-and-ankles low angles, deliberate slow pace, Bresson-influenced minimalism.",
+    "watch": "How long he holds a frame after action stops. The held shot is where the meaning lives.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Anjaathe</em> (2008) and <em>Pisaasu</em> (2014). Then <em>Thupparivaalan</em> for the genre experiment."
+    },
+    "tanglish": "Action mudinjadhukkappaarum frame ah hold pannuvaaru — andha extra second la thaan meaning irukku. Walking shots low angle la, kaal nadai paakkardhula obsession irukku."
+  },
+  {
+    "name": "Pa. Ranjith",
+    "archetype": "POLITICAL / ANTI-CASTE",
+    "years": "2012 – PRESENT",
+    "era": "2012 – PRESENT · POLITICAL / ANTI-CASTE",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Mass-hero spectacle wired with anti-caste politics. The grammar of commercial cinema deployed for radical content."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Bold color, iconic silhouettes, hero shots that are also political assertions (blue suits, raised fists)."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Dignity as politics. The hero isn't fighting for justice — he is justice."
+      },
+      {
+        "term": "Watch for",
+        "value": "How he rewrites mass-cinema tropes (intro fight, climax speech) to carry a different meaning."
+      }
+    ],
+    "signature": "Mass-hero spectacle wired with anti-caste politics. The grammar of commercial cinema deployed for radical content.",
+    "watch": "How he rewrites mass-cinema tropes (intro fight, climax speech) to carry a different meaning.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Madras</em> (2014) for the local politics, <em>Kabali</em> (2016) for the global ambition, <em>Sarpatta Parambarai</em> (2021) for the period craft."
+    },
+    "tanglish": "Mass cinema oda grammar ah radical content kku use pannuvaaru. Intro fight, climax speech — pazhaya tropes pudhu meaning kudukum."
+  },
+  {
+    "name": "Selvaraghavan",
+    "archetype": "DARK ROMANCE",
+    "years": "2003 – PRESENT",
+    "era": "2003 – PRESENT · DARK ROMANCE",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Raw emotional excess, melancholic men, broken protagonists who cannot articulate themselves."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Handheld intimacy, unflattering close-ups, dim domestic lighting, the texture of small Chennai apartments."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "The damaged man. Why love hurts. Why family wounds the most."
+      },
+      {
+        "term": "Watch for",
+        "value": "How dialogue often breaks down into stuttering silence. He trusts inarticulacy as truth."
+      }
+    ],
+    "signature": "Raw emotional excess, melancholic men, broken protagonists who cannot articulate themselves.",
+    "watch": "How dialogue often breaks down into stuttering silence. He trusts inarticulacy as truth.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>7G Rainbow Colony</em> (2004), <em>Pudhupettai</em> (2006), <em>Mayakkam Enna</em> (2011)."
+    },
+    "tanglish": "Dialogue stuttering ah, paadu bottle-aaga vidumudhu — adhuvey thaan unmai. Chennai chinna apartment oda texture, melancholy male protagonists. Damaged aalungal kadhai sollardhu signature."
+  },
+  {
+    "name": "Lokesh Kanagaraj",
+    "archetype": "KINETIC ACTION",
+    "years": "2017 – PRESENT",
+    "era": "2017 – PRESENT · KINETIC ACTION",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "World-building across films, plot density, action choreography that feels designed for a chess board."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Cool color palettes, low-key lighting, geographic clarity in action (you always know where everyone is)."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Order vs chaos in cities. Mass heroes as quiet professionals."
+      },
+      {
+        "term": "Watch for",
+        "value": "How he plants and pays off across his Lokesh Cinematic Universe — Kaithi to Vikram to Leo."
+      }
+    ],
+    "signature": "World-building across films, plot density, action choreography that feels designed for a chess board.",
+    "watch": "How he plants and pays off across his Lokesh Cinematic Universe — Kaithi to Vikram to Leo.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Maanagaram</em> (2017) for the multi-thread structure, <em>Kaithi</em> (2019) for the real-time pressure cooker, <em>Vikram</em> (2022) for the world-building payoff."
+    },
+    "tanglish": "Action la geographic clarity strict — yaar enga irukkanga nu always therinjirukkum. Maintain pannardhu strain — adhanaala adi scenes la confusion illa, choreography clear ah feel aagum."
+  },
+  {
+    "name": "Karthik Subbaraj",
+    "archetype": "GENRE EXPERIMENT",
+    "years": "2012 – PRESENT",
+    "era": "2012 – PRESENT · GENRE EXPERIMENT",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Plays with genre conventions and meta layers. Each film tests how far a Tamil thriller / horror / character study can stretch."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Extreme color saturation, bold camera moves, long-take confrontations."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "The act of storytelling itself — directors, listeners, audiences inside the film."
+      },
+      {
+        "term": "Watch for",
+        "value": "How stories-within-stories reframe earlier scenes (a trick perfected before Vikram Vedha did it)."
+      }
+    ],
+    "signature": "Plays with genre conventions and meta layers. Each film tests how far a Tamil thriller / horror / character study can stretch.",
+    "watch": "How stories-within-stories reframe earlier scenes (a trick perfected before Vikram Vedha did it).",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Pizza</em> (2012), <em>Jigarthanda</em> (2014), <em>Iraivi</em> (2016), <em>Mahaan</em> (2022)."
+    },
+    "tanglish": "Story-within-story technique perfect-aaga handle pannuvaaru. Padam la oru director, oru kadhai sollum aalu, oru listener — andha layers vechu meaning multiply pannuvaaru."
+  },
+  {
+    "name": "Bala",
+    "archetype": "UNCOMFORTABLE TRUTHS",
+    "years": "1999 – PRESENT",
+    "era": "1999 – PRESENT · UNCOMFORTABLE TRUTHS",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Tonally hard films about marginal lives — psychiatric, disabled, criminal — refused sentimentality, often refused happy endings."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Rural India, hot harsh sun, sweat-soaked frames, performances pushed to physical extremes."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "The dignity of those society discards. Pity is forbidden; respect is demanded."
+      },
+      {
+        "term": "Watch for",
+        "value": "How deep he sinks into a single character's psychology. Most Tamil films are plot-led; Bala's are psychology-led."
+      }
+    ],
+    "signature": "Tonally hard films about marginal lives — psychiatric, disabled, criminal — refused sentimentality, often refused happy endings.",
+    "watch": "How deep he sinks into a single character's psychology. Most Tamil films are plot-led; Bala's are psychology-led.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Sethu</em> (1999), <em>Pithamagan</em> (2003), <em>Naan Kadavul</em> (2009)."
+    },
+    "tanglish": "Marginal aalungal pathi padam — pity vechi illa, respect vechi. Psychology-led padam — plot-led illa. Pithamagan, Sethu, Naan Kadavul — character oda manasula muzhusa pogardhu."
+  },
+  {
+    "name": "Thiagarajan Kumararaja",
+    "archetype": "SURREAL BLACK COMEDY",
+    "years": "2010 – PRESENT",
+    "era": "2010 – PRESENT · SURREAL BLACK COMEDY",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Tonally fearless ensemble cinema. Multiple genres collide inside one runtime. Anti-plot in a plot-driven industry."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Static long takes, formal symmetry, characters who deliver dialogue as if quoting it."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "The randomness of meaning. The universe doesn't owe a plot — but the camera looks anyway."
+      },
+      {
+        "term": "Watch for",
+        "value": "How he commits to a tonal collision so completely that the audience is forced to surrender their expectations."
+      }
+    ],
+    "signature": "Tonally fearless ensemble cinema. Multiple genres collide inside one runtime. Anti-plot in a plot-driven industry.",
+    "watch": "How he commits to a tonal collision so completely that the audience is forced to surrender their expectations.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Aaranya Kaandam</em> (2010), <em>Super Deluxe</em> (2019)."
+    },
+    "tanglish": "Tonally fearless. Comedy, tragedy, magical realism — onnaaga collide pannuvaaru. Plot-driven illa, anti-plot. Audience expectations ah surrender panna vaikkura confidence iruku."
+  },
+  {
+    "name": "Pushkar–Gayathri",
+    "archetype": "HIGH-CONCEPT THRILLER",
+    "years": "2009 – PRESENT",
+    "era": "2009 – PRESENT · HIGH-CONCEPT THRILLER",
+    "traits": [
+      {
+        "term": "Signature",
+        "value": "Writer-director duo. Strong logline, ambidextrous structure, moral ambiguity as engine. They write so tightly that improvisation is rare."
+      },
+      {
+        "term": "Visual grammar",
+        "value": "Urban noir, warm-cool dichotomy between worlds, controlled handheld for chaos sequences."
+      },
+      {
+        "term": "Recurring concern",
+        "value": "Two systems of belief in collision. The audience must decide."
+      },
+      {
+        "term": "Watch for",
+        "value": "How they design dual-protagonist scenes so neither character \"wins\" the conversation outright."
+      }
+    ],
+    "signature": "Writer-director duo. Strong logline, ambidextrous structure, moral ambiguity as engine. They write so tightly that improvisation is rare.",
+    "watch": "How they design dual-protagonist scenes so neither character \"wins\" the conversation outright.",
+    "study": {
+      "label": "START WITH",
+      "body": "<em>Oram Po</em> (2007), <em>Va Quarter Cutting</em> (2010), <em>Vikram Vedha</em> (2017)."
+    },
+    "tanglish": "Logline strong-aaga irukkum. Rendu peru writer-director — adhanaala script tight aagidum, improvisation kammi. Rendu protagonist oda scene la yaarum jeyikka maattanga — adhuvey design."
+  }
+]

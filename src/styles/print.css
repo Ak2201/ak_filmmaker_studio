@@ -1,0 +1,327 @@
+/* ============================================================
+   PRINT — the blueprint as paper.
+   ------------------------------------------------------------
+   Every @media print block from the four pages, merged. They
+   had drifted into four different page sizes, three different
+   "hide the toolbar" lists and four copies of "make the ink
+   boxes white", each naming a slightly different set of
+   classes. What is left is one page setup, one hide list, one
+   flatten rule, plus the two special modes (zine, pitch-only).
+
+   Print takes no theme: --print-paper and --print-ink are
+   constant, so a reader printing in dark mode still gets black
+   on white.
+   ============================================================ */
+
+@import url('tokens.css');
+
+@media print {
+
+  @page { size: A4; margin: 16mm 14mm; }
+
+  html, body {
+    background: var(--print-paper);
+    color: var(--print-ink);
+    font-size: 10.5pt;
+  }
+
+  /* ----------------------------------------------------------
+     HIDE — chrome, controls and anything that only exists to be
+     clicked. One list for all four pages.
+     ---------------------------------------------------------- */
+  .toolbar,
+  .toolbar-stripe,
+  .reading-progress,
+  .skip-link,
+  .skip-to-content,
+  .step-rail,
+  .step-rail-toggle,
+  .mobile-actionbar,
+  .toast-host,
+  .save-indicator,
+  .focus-timer,
+  .row-actions,
+  .editor-actions,
+  .calc-actions,
+  .pitch-actions,
+  .sync-actions,
+  .activity-actions,
+  .ai-actions,
+  .mini-btn,
+  .row-ctrl,
+  .row-ctrl-btn,
+  .comment-btn,
+  .resume-card,
+  .search-wrap,
+  .toolbar-search,
+  .search-results,
+  .projects-toolbar,
+  .modal-overlay,
+  .shortcut-sheet-overlay,
+  .cm-overlay,
+  .account-menu,
+  .switcher-dropdown,
+  .glossary-popover,
+  .sync-section,
+  .theme-picker { display: none !important; }
+
+  /* Decorative grounds cost toner and give nothing back. */
+  .door::before,
+  .hero::before,
+  .final-page::before,
+  .master-cover::after,
+  .cover::after,
+  .vol-cover::after,
+  .resume-card::before { display: none !important; }
+
+  /* ----------------------------------------------------------
+     PAGE BANDS — each band starts a page and drops its screen
+     padding, minimum height and border.
+     ---------------------------------------------------------- */
+  .master-cover,
+  .cover,
+  .vol-cover,
+  .hero,
+  .how-to,
+  .step,
+  .ladder-step,
+  .section,
+  .section-head,
+  .section-body,
+  .glossary,
+  .pitch-section,
+  .phase,
+  .interlude,
+  .final-page {
+    padding: 0;
+    border: none;
+    min-height: 0;
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+    break-after: page;
+  }
+  .section-head { break-after: avoid; }
+  .phase { break-after: avoid; break-before: page; }
+  .master-cover,
+  .cover { padding-top: 30mm; }
+  .hero,
+  .section { break-after: auto; padding-block: 14pt; }
+
+  /* ----------------------------------------------------------
+     FLATTEN — every panel and card becomes white with a hairline
+     and an accent-weight left rule. This replaced four separate
+     lists that each set the same three properties.
+     ---------------------------------------------------------- */
+  .formula-box,
+  .formula,
+  .por-thozil,
+  .why-this,
+  .why-box,
+  .example,
+  .ex-card,
+  .vs-card,
+  .step-check,
+  .tip-box,
+  .film-card,
+  .director-card,
+  .director-card .study,
+  .rule-card,
+  .fest-card,
+  .watch-step,
+  .gloss-item,
+  .disclaimer,
+  .meta-field,
+  .beat-cell,
+  .prod-field,
+  .dept-block,
+  .char-block,
+  .ladder-rung,
+  .scene-block,
+  .dialogue-block,
+  .page-counter,
+  .ai-prompt-block,
+  .calc-block,
+  .budget-summary,
+  .equip-table,
+  .pacing-viz,
+  .char-map,
+  .scene-timeline,
+  .beat-viz,
+  .hod-signoff,
+  .door,
+  .start-card,
+  .tool-card,
+  .index-col,
+  .data-card,
+  .activity-list,
+  .toc-item {
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+    border: 1px solid var(--print-rule) !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  /* The boxes that carried a coloured spine on screen keep one,
+     in black, so the hierarchy survives a monochrome printer. */
+  .formula-box,
+  .formula,
+  .por-thozil,
+  .why-this,
+  .why-box,
+  .tip-box,
+  .step-check,
+  .ai-prompt-block,
+  .calc-block,
+  .film-card,
+  .watch-step,
+  .ladder-rung,
+  .scene-block { border-left: 3px solid var(--print-ink) !important; }
+
+  /* Descendant text inside a flattened panel. */
+  .formula-box *,
+  .formula *,
+  .por-thozil *,
+  .why-this *,
+  .why-box *,
+  .example *,
+  .step-check *,
+  .tip-box *,
+  .phase *,
+  .interlude *,
+  .final-page *,
+  .calc-block *,
+  .ai-prompt-block *,
+  .budget-summary *,
+  .page-counter *,
+  .director-card .study *,
+  .data-card *,
+  .toc-item * { color: var(--print-ink) !important; }
+
+  .formula-box .eq code,
+  .sync-instructions code,
+  .sync-instructions pre {
+    background: var(--print-wash) !important;
+    color: var(--print-ink) !important;
+  }
+
+  /* Headings and step numbers keep their weight, lose their hue. */
+  .step-num,
+  .step-title em,
+  .section-head h2 em,
+  .glossary h2 em,
+  .how-to h2 em { color: var(--print-ink) !important; }
+
+  /* ----------------------------------------------------------
+     FIELDS — printed as rules to write on.
+     ---------------------------------------------------------- */
+  textarea,
+  input,
+  select {
+    background: transparent !important;
+    color: var(--print-ink) !important;
+    border: 1px solid var(--print-rule) !important;
+    min-height: 36px;
+    box-shadow: none !important;
+  }
+
+  /* Checklists print as boxes, not as positioned glyphs. */
+  .step-check li { padding-left: 0; }
+  .step-check li::before {
+    content: "□  ";
+    position: static;
+    font-size: 12pt;
+    color: var(--print-ink) !important;
+  }
+  .step-check li.checked::before,
+  .step-check li.done::before { content: "■  "; }
+
+  /* ----------------------------------------------------------
+     TABLES — never scroll on paper.
+     ---------------------------------------------------------- */
+  .table-wrap,
+  .pacing-svg-wrap,
+  .char-map-svg-wrap,
+  .scene-chart-wrap { overflow: visible !important; }
+  .pp-table,
+  .scene-table,
+  .beat-table,
+  .equip-table {
+    display: table !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    break-inside: auto;
+  }
+  .pp-table th,
+  .scene-table th,
+  .beat-table th,
+  .equip-table th {
+    background: var(--print-wash) !important;
+    color: var(--print-ink) !important;
+  }
+  .pp-table tr,
+  .scene-table tr,
+  .beat-table tr,
+  .equip-table tr { break-inside: avoid; }
+
+  /* Charts print at their drawn size. */
+  .pacing-svg,
+  .char-map-svg,
+  .beat-viz svg,
+  .beat-visualizer svg { min-width: 0 !important; }
+
+  /* Screenplay preview is already print-shaped. */
+  .script-preview {
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    max-width: none;
+  }
+
+  /* ----------------------------------------------------------
+     ZINE MODE — two columns, compact, no page break per step.
+     ---------------------------------------------------------- */
+  /* The columns live on whichever element actually holds the page:
+     <body> on the legacy pages, #main once a page renders itself
+     into #app. */
+  body.zine-print-mode,
+  body.zine-print-mode #main { column-count: 2; column-gap: 8mm; }
+  body.zine-print-mode .step,
+  body.zine-print-mode .ladder-step,
+  body.zine-print-mode .pitch-slide {
+    break-inside: avoid;
+    break-after: auto;
+  }
+  body.zine-print-mode .master-cover,
+  body.zine-print-mode .cover,
+  body.zine-print-mode .vol-cover,
+  body.zine-print-mode .interlude,
+  body.zine-print-mode .final-page { column-span: all; }
+  body.zine-print-mode .step-num { font-size: 36pt; }
+  body.zine-print-mode .step-title { font-size: 18pt; }
+  body.zine-print-mode .examples,
+  body.zine-print-mode .dept-grid { grid-template-columns: 1fr; }
+
+  /* ----------------------------------------------------------
+     PITCH-ONLY — print the deck and nothing else. The slides
+     keep their ink ground; that is the point of a pitch deck.
+     ---------------------------------------------------------- */
+  /* Hide every sibling of the deck at each level it can sit at:
+     a direct child of <body> (legacy pages), or nested inside the
+     #app / #main wrapper a rendered page builds. */
+  body.pitch-only-print > *:not(.pitch-section):not(#app),
+  body.pitch-only-print #app > *:not(.pitch-section):not(#main),
+  body.pitch-only-print #main > *:not(.pitch-section) { display: none !important; }
+  body.pitch-only-print .pitch-section {
+    padding: 0 !important;
+    background: var(--print-paper) !important;
+  }
+  body.pitch-only-print .pitch-section > *:not(.pitch-deck) { display: none !important; }
+  body.pitch-only-print .pitch-slide {
+    min-height: 240mm;
+    background: var(--panel) !important;
+    color: var(--panel-ink) !important;
+    border: none !important;
+    break-after: page;
+  }
+  body.pitch-only-print .pitch-slide * { color: inherit !important; }
+}

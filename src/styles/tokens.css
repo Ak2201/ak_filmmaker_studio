@@ -1,0 +1,312 @@
+/* ============================================================
+   THE FILMMAKER'S STUDIO — DESIGN TOKENS
+   ------------------------------------------------------------
+   One source of truth for colour, type, space and elevation.
+   Previously each of the four pages declared its own :root and
+   its own body.dark override list — roughly 2,400 lines of
+   near-identical CSS that drifted apart page by page.
+
+   Three themes, and the distinction matters: the viewer may have
+   chosen light, chosen dark, or (the default) chosen nothing at
+   all. So the bare :root carries the COMPLETE light palette,
+   prefers-color-scheme redefines it for the un-chosen state, and
+   [data-theme] wins over both. Sepia is a deliberate third mode
+   for long writing sessions, not a variant of either.
+
+   Components must never read a raw hex. If a value is missing
+   here, add it here.
+   ============================================================ */
+
+:root {
+  /* ---- ink & paper -------------------------------------- */
+  /* Warm bond paper rather than the old #f5ecd6, which was
+     saturated enough to tint photographs and lookbook swatches. */
+  --paper:        #f6f1e6;
+  --paper-raised: #fdfaf3;
+  --paper-sunk:   #ebe4d3;
+  --paper-edge:   #e0d7c2;
+
+  --ink:          #16130f;
+  --ink-body:     #35302a;
+  --ink-muted:    #6d6558;
+  --ink-faint:    #958b7b;
+
+  --rule:         #cfc5ae;
+  --rule-hair:    #e2d9c6;
+
+  /* ---- the three volumes -------------------------------- */
+  /* Each blueprint owns a hue. Used for the spine stripe, step
+     numbers, progress fills and the hub's door cards. */
+  --feature:      #b0311c;
+  --feature-deep: #7d1f0e;
+  --feature-wash: #f7e3dd;
+
+  --shorts:       #245e9e;
+  --shorts-deep:  #163f6f;
+  --shorts-wash:  #dde8f4;
+
+  --library:      #9a6d1f;
+  --library-deep: #6d4b10;
+  --library-wash: #f5ead2;
+
+  /* ---- lifted volume hues ---------------------------------
+     The editorial panels (.formula-box, .step-check, .example,
+     .final-page, pitch slides …) are dark in EVERY theme, so the
+     volume hues need a version that stays legible on near-black.
+     These are constant across themes for exactly that reason. */
+  --feature-lift: #e08a6d;
+  --shorts-lift:  #71a6dd;
+  --library-lift: #d9ab5c;
+  --ok-lift:      #5fbc99;
+  --danger-lift:  #e58471;
+
+  /* ---- semantic (never the same hue as a volume) --------- */
+  --ok:           #1d6a4f;
+  --ok-wash:      #dcece4;
+  --warn:         #8a5d0c;
+  --warn-wash:    #f6ecd6;
+  --danger:       #a32b1c;
+  --danger-wash:  #f7e0dc;
+
+  /* ---- per-page accent ----------------------------------
+     Each page sets --accent once, on <html data-volume="...">.
+     Everything else refers to --accent. */
+  --accent:       var(--feature);
+  --accent-deep:  var(--feature-deep);
+  --accent-wash:  var(--feature-wash);
+  --accent-lift:  var(--feature-lift); /* accent ON a dark panel */
+  --accent-on:    #fdfaf3;   /* text ON an accent fill */
+
+  /* ---- chrome -------------------------------------------
+     The toolbar, rail toggle and mobile bar are a single dark
+     surface in light and sepia; in dark they lift off the page
+     instead of inverting. Declared here so no component ever
+     re-states a colour for a theme. */
+  --chrome:             #16130f;
+  --chrome-ink:         #f6f1e6;
+  --chrome-muted:       #a8a091;
+  --chrome-hair:        rgba(246, 241, 230, .12);
+  --chrome-hair-strong: rgba(246, 241, 230, .30);
+  --chrome-fill:        rgba(246, 241, 230, .08);
+  --chrome-fill-strong: rgba(246, 241, 230, .18);
+
+  /* ---- dark editorial panel ------------------------------
+     Ink-on-paper contrast blocks. Dark in every theme. */
+  --panel:            #16130f;
+  --panel-raised:     #221e18;
+  --panel-ink:        #f2ead8;
+  --panel-muted:      #a29885;
+  --panel-hair:       rgba(242, 234, 216, .14);
+  --panel-hair-soft:  rgba(242, 234, 216, .07);
+  --panel-gilt:       var(--library-lift);
+
+  --scrim: rgba(22, 19, 15, .62);
+
+  /* ---- type --------------------------------------------- */
+  --f-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --f-body:    'Fraunces', Georgia, 'Times New Roman', serif;
+  --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --f-script:  'Courier Prime', 'Courier New', Courier, monospace;
+
+  /* A real scale (1.25), replacing the ad-hoc 10/11/13/14/16/18
+     px values scattered through the old files. */
+  --t-micro: 0.688rem;   /* 11px — mono labels, meta */
+  --t-tiny:  0.75rem;    /* 12px */
+  --t-small: 0.875rem;   /* 14px */
+  --t-base:  1rem;       /* 16px */
+  --t-lg:    1.125rem;   /* 18px — step deck */
+  --t-xl:    1.375rem;   /* 22px */
+  --t-2xl:   1.75rem;    /* 28px — step title */
+  --t-3xl:   2.25rem;    /* 36px — section head */
+  --t-4xl:   3rem;       /* 48px */
+  --t-5xl:   4.25rem;    /* 68px — cover */
+  --t-6xl:   6.5rem;     /* 104px — master cover ceiling */
+
+  --lh-display: 0.92;    /* cover / hero display setting */
+  --lh-tight: 1.08;
+  --lh-snug:  1.32;
+  --lh-body:  1.62;
+
+  --track-label: 0.15em;   /* uppercase mono labels */
+  --track-wide:  0.32em;   /* cover stamps, phase eyebrows */
+  --track-tight: -0.022em; /* display headings */
+
+  /* ---- space (4px base) --------------------------------- */
+  --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
+  --s5: 24px;  --s6: 32px;  --s7: 48px;  --s8: 64px;
+  --s9: 96px;  --s10: 128px;
+
+  /* ---- edges & elevation -------------------------------- */
+  --radius:      2px;      /* the studio is printed matter, not iOS */
+  --radius-lg:   4px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(22, 19, 15, .06);
+  --shadow-md: 0 6px 18px rgba(22, 19, 15, .08);
+  --shadow-lg: 0 18px 42px rgba(22, 19, 15, .14);
+  /* Panels and overlays are dark in every theme, so their shadow
+     is constant too — a themed shadow under a constant surface
+     was one of the drifts in the old files. */
+  --shadow-panel: 0 12px 36px rgba(0, 0, 0, .35);
+  --shadow-modal: 0 30px 80px rgba(0, 0, 0, .35);
+  --blur-chrome:  saturate(180%) blur(20px);
+
+  --measure:       68ch;   /* max line length for running text */
+  --measure-wide:  92ch;   /* card grids, tables, editor columns */
+  --content-max:   1280px; /* hub sections */
+  --rail-w:        220px;  /* sticky step rail */
+  --viz-min:       560px;  /* charts and wide tables before they scroll */
+  --modal-w:       480px;
+  --popover-w:     320px;
+  --gutter:  clamp(16px, 4vw, 50px);
+
+  --focus: 2px solid var(--accent);
+  --focus-offset: 2px;
+
+  --speed:      0.15s;
+  --speed-slow: 0.28s;
+  --ease:     cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- stacking ----------------------------------------- */
+  --z-rail:    50;
+  --z-toolbar: 100;
+  --z-float:   150;   /* dropdowns, focus timer, save indicator */
+  --z-overlay: 1100;  /* modals, sheets, popovers */
+  --z-toast:   1500;
+
+  /* ---- print --------------------------------------------
+     Paper is paper; ink is ink. No theme applies. */
+  --print-paper: #ffffff;
+  --print-ink:   #000000;
+  --print-rule:  #888888;
+  --print-wash:  #f0f0f0;
+}
+
+/* ============================================================
+   SEPIA — a third mode, for long writing sessions.
+   Warmer and lower-contrast than paper; not a dark theme.
+   ============================================================ */
+:root[data-theme="sepia"] {
+  --paper:        #efe2c8;
+  --paper-raised: #f7eed9;
+  --paper-sunk:   #e4d4b4;
+  --paper-edge:   #d8c6a2;
+  --ink:          #2a2116;
+  --ink-body:     #453826;
+  --ink-muted:    #7a6748;
+  --ink-faint:    #9c8865;
+  --rule:         #c9b287;
+  --rule-hair:    #ddcba6;
+}
+
+/* ============================================================
+   DARK — "ink". Not an inversion: the paper becomes a graded
+   print viewed on a monitor, so the accents lift in lightness
+   and drop in saturation to stay legible on a dark ground.
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="sepia"]) {
+    color-scheme: dark;
+    --paper:        #16140f;
+    --paper-raised: #201d16;
+    --paper-sunk:   #100e0a;
+    --paper-edge:   #302b21;
+
+    --ink:          #f2ead8;
+    --ink-body:     #ded5c2;
+    --ink-muted:    #a29885;
+    --ink-faint:    #7d7361;
+
+    --rule:         #453e31;
+    --rule-hair:    #2b2720;
+
+    --feature:      #e08a6d;
+    --feature-deep: #b0311c;
+    --feature-wash: #2e1b14;
+
+    --shorts:       #71a6dd;
+    --shorts-deep:  #245e9e;
+    --shorts-wash:  #15232f;
+
+    --library:      #d9ab5c;
+    --library-deep: #9a6d1f;
+    --library-wash: #2c2415;
+
+    --ok:           #5fbc99;
+    --ok-wash:      #15271f;
+    --warn:         #d6a74d;
+    --warn-wash:    #2a2113;
+    --danger:       #e58471;
+    --danger-wash:  #2e1815;
+
+    --accent-on:    #16140f;
+
+    --chrome:       #201d16;
+    --chrome-hair:  rgba(242, 234, 216, .10);
+    --chrome-fill:  rgba(242, 234, 216, .07);
+    --scrim:        rgba(0, 0, 0, .72);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, .45);
+    --shadow-lg: 0 18px 42px rgba(0, 0, 0, .6);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:        #16140f;
+  --paper-raised: #201d16;
+  --paper-sunk:   #100e0a;
+  --paper-edge:   #302b21;
+
+  --ink:          #f2ead8;
+  --ink-body:     #ded5c2;
+  --ink-muted:    #a29885;
+  --ink-faint:    #7d7361;
+
+  --rule:         #453e31;
+  --rule-hair:    #2b2720;
+
+  --feature:      #e08a6d;
+  --feature-deep: #b0311c;
+  --feature-wash: #2e1b14;
+
+  --shorts:       #71a6dd;
+  --shorts-deep:  #245e9e;
+  --shorts-wash:  #15232f;
+
+  --library:      #d9ab5c;
+  --library-deep: #9a6d1f;
+  --library-wash: #2c2415;
+
+  --ok:           #5fbc99;
+  --ok-wash:      #15271f;
+  --warn:         #d6a74d;
+  --warn-wash:    #2a2113;
+  --danger:       #e58471;
+  --danger-wash:  #2e1815;
+
+  --accent-on:    #16140f;
+
+  --chrome:       #201d16;
+  --chrome-hair:  rgba(242, 234, 216, .10);
+  --chrome-fill:  rgba(242, 234, 216, .07);
+  --scrim:        rgba(0, 0, 0, .72);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 18px 42px rgba(0, 0, 0, .6);
+}
+
+/* ============================================================
+   VOLUME ACCENT — set once per page on <html data-volume>.
+   ============================================================ */
+[data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); }
+[data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); }
+[data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); }
+[data-volume="studio"]  { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); }
+
+/* Volume II of the feature blueprint (production) switches accent
+   mid-document. It is the one in-page accent change in the studio,
+   and it rides the same token as everything else. */
+.vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); }

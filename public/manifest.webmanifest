@@ -1,0 +1,58 @@
+{
+  "name": "The Filmmaker's Studio",
+  "short_name": "Studio",
+  "description": "A working desk for screenwriting, pre-production and craft study.",
+  "lang": "en",
+  "dir": "ltr",
+  "display": "standalone",
+  "orientation": "any",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "theme_color": "#16140f",
+  "background_color": "#f6f1e6",
+  "categories": ["productivity", "education"],
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Feature Film Blueprint",
+      "short_name": "Feature",
+      "url": "./feature.html"
+    },
+    {
+      "name": "Short Film Blueprint",
+      "short_name": "Short",
+      "url": "./short.html"
+    },
+    {
+      "name": "The Filmmaker's Library",
+      "short_name": "Library",
+      "url": "./library.html"
+    }
+  ]
+}

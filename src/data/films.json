@@ -1,0 +1,336 @@
+[
+  {
+    "title": "Vikram Vedha",
+    "year": 2017,
+    "director": "PUSHKAR–GAYATHRI",
+    "genres": [
+      "NEO-NOIR"
+    ],
+    "tags": [
+      "STRUCTURE",
+      "DUAL HERO",
+      "FOLKLORE FRAME"
+    ],
+    "meta": "2017 · NEO-NOIR",
+    "lesson": "<strong>Story-within-story as engine.</strong> The Vikram-Betaal frame isn't decoration — it's the mechanism that lets the film withhold information ethically. Each story Vedha tells reframes the previous scene. Audience and protagonist learn at the same speed.",
+    "tanglish": "Vikram-Betaal frame vெறum decoration illa — information ah late ah kaattardhukku karuvi. Vedha sollum ovvoru kadhai um munadi paartha scene oda meaning ah maathidum."
+  },
+  {
+    "title": "96",
+    "year": 2018,
+    "director": "C. PREM KUMAR",
+    "genres": [
+      "ROMANCE"
+    ],
+    "tags": [
+      "RESTRAINT",
+      "SUBTEXT",
+      "MEMORY"
+    ],
+    "meta": "2018 · ROMANCE",
+    "lesson": "<strong>Silence as dialogue.</strong> The film's emotional peaks happen in pauses, glances, and what is NOT said. Premkumar refused to underline emotion with score or close-up. Trust the audience to do the work and they'll do it twice.",
+    "tanglish": "Padathula emotion peak vaarthaila illa — pauses la, paarvaila, sollatha vaarthaila. Audience ah work panna vidu — rendu mada deep ah feel pannuva."
+  },
+  {
+    "title": "Por Thozhil",
+    "year": 2023,
+    "director": "VIGNESH RAJA",
+    "genres": [
+      "THRILLER"
+    ],
+    "tags": [
+      "SUBTRACTION",
+      "CASTING",
+      "ATMOSPHERE"
+    ],
+    "meta": "2023 · THRILLER",
+    "lesson": "<strong>Define the film by what it refuses.</strong> No songs, no comedy, no daytime, no mass-hero entry. Each constraint became signature. Vignesh Raja's debut proves: limitations chosen, not imposed, become a director's voice.",
+    "tanglish": "Padatha enna aagamattaen nu solradhula irundhu thaan voice varudhu — paatu illa, comedy illa, daytime illa, mass entry illa. Constraint ah nee select pannina, adhuvey unga signature."
+  },
+  {
+    "title": "Aaranya Kaandam",
+    "year": 2010,
+    "director": "THIAGARAJAN KUMARARAJA",
+    "genres": [
+      "BLACK COMEDY"
+    ],
+    "tags": [
+      "NON-LINEAR",
+      "GENRE PLAY"
+    ],
+    "meta": "2010 · BLACK COMEDY",
+    "lesson": "<strong>Tone is more important than plot.</strong> A criminal-underworld day told with the rhythm of a Coen brothers film. The tonal commitment carries an audience past plot loose ends. If your tone is precise, your plot can be loose.",
+    "tanglish": "Plot kaatilum tone mukkiyam. Tone strict-ah hold pannina, plot la sila gap irundhalum padam vandhuvidum."
+  },
+  {
+    "title": "Visaranai",
+    "year": 2015,
+    "director": "VETRIMAARAN",
+    "genres": [
+      "POLITICAL DRAMA"
+    ],
+    "tags": [
+      "REALISM",
+      "POWER"
+    ],
+    "meta": "2015 · POLITICAL DRAMA",
+    "lesson": "<strong>Procedure as horror.</strong> Vetrimaaran shows how systemic violence is mostly paperwork and routine. The terror isn't in monsters — it's in normalcy. Documentary realism makes fiction more unbearable than fantasy.",
+    "tanglish": "System oda violence — monster illa, daily routine la thaan irukku. Documentary feel kuda sollardhu — fantasy ah vida feel kasakkudhu."
+  },
+  {
+    "title": "Asuran",
+    "year": 2019,
+    "director": "VETRIMAARAN",
+    "genres": [
+      "REVENGE DRAMA"
+    ],
+    "tags": [
+      "CHARACTER",
+      "CASTE"
+    ],
+    "meta": "2019 · REVENGE DRAMA",
+    "lesson": "<strong>The hero arc, inverted.</strong> Dhanush plays a man who has already learned the lesson — to swallow rage to survive. The drama is whether he can keep that lesson, not whether he'll learn it. Reverse the conventional arc.",
+    "tanglish": "Hero adipadiyila lesson kathukittirukan — rage ah vizhungi vaazhanum nu. Avan adha hold panna mudiyumaa nu thaan drama. Conventional arc ah ulpurama."
+  },
+  {
+    "title": "Kaaka Muttai",
+    "year": 2014,
+    "director": "M. MANIKANDAN",
+    "genres": [
+      "COMING-OF-AGE"
+    ],
+    "tags": [
+      "CHILD POV",
+      "SOCIAL"
+    ],
+    "meta": "2014 · COMING-OF-AGE",
+    "lesson": "<strong>Specific is universal.</strong> Two slum boys want to taste pizza. The smaller and more specific the want, the wider the audience. Every step the boys take is small; the cumulative meaning is enormous.",
+    "tanglish": "Specific aana kadhai — universal aagidum. Pizza saappidanum nu rendu kuzhanthaigal nenaikuranga. Want chinna chinna ah irukkum — kadaisila padam periya meaning kudukkum."
+  },
+  {
+    "title": "Karnan",
+    "year": 2021,
+    "director": "MARI SELVARAJ",
+    "genres": [
+      "CASTE DRAMA"
+    ],
+    "tags": [
+      "SYMBOLISM",
+      "VISUAL POETRY"
+    ],
+    "meta": "2021 · CASTE DRAMA",
+    "lesson": "<strong>Symbol over speech.</strong> Mari Selvaraj uses recurring images — the headless statue, the donkey, the masks — to carry political meaning without dialogue speeches. The audience learns the symbol's weight, then he uses it like a word.",
+    "tanglish": "Speech la political idea solladhe — recurring symbols la sollu. Tala illatha statue, kazhuthai, mask. Audience symbol oda meaning kathukittapuram, ada vaarthai mathiri use pannalaam."
+  },
+  {
+    "title": "Kumbalangi Nights",
+    "year": 2019,
+    "director": "MADHU C. NARAYANAN",
+    "genres": [
+      "COMEDY DRAMA",
+      "MALAYALAM"
+    ],
+    "tags": [
+      "ENSEMBLE",
+      "MASCULINITY"
+    ],
+    "meta": "2019 · COMEDY DRAMA · MALAYALAM",
+    "lesson": "<strong>Antagonist as toxic norm.</strong> No external villain. The \"villain\" is one character's polished, performative manhood — the kind society approves of. The most dangerous men are the ones the world calls \"complete.\" Make your villain socially admired.",
+    "tanglish": "Veliyila villain illa. Society admire panra \"complete man\" thaan villain. Family ku nallavar mathiri varuvar — aana adhe thaan kettavar. Villain ah society approve panra mathiri vai."
+  },
+  {
+    "title": "Soorarai Pottru",
+    "year": 2020,
+    "director": "SUDHA KONGARA",
+    "genres": [
+      "BIOPIC DRAMA"
+    ],
+    "tags": [
+      "UNDERDOG",
+      "PACING"
+    ],
+    "meta": "2020 · BIOPIC DRAMA",
+    "lesson": "<strong>Stakes raised in stages.</strong> Each act, the obstacle becomes harder AND more personal. By Act 3 it's not \"can I start an airline\" — it's \"can I be the man my father didn't believe I could be?\" External and internal stakes converge.",
+    "tanglish": "Ovvoru act um obstacle kashtam aagi, sondha vishayam aagidum. Act 3 la \"airline thodanguma\" illa — \"appa nambama keya namba indha aalu aagidum\" nu thaan. External stakes um internal stakes um onna varum."
+  },
+  {
+    "title": "Iraivi",
+    "year": 2016,
+    "director": "KARTHIK SUBBARAJ",
+    "genres": [
+      "ENSEMBLE DRAMA"
+    ],
+    "tags": [
+      "FEMALE GAZE",
+      "FRAGMENTED POV"
+    ],
+    "meta": "2016 · ENSEMBLE DRAMA",
+    "lesson": "<strong>Refuse a single protagonist.</strong> Three men's lives told through the women they fail. The structural argument — that women see the truth men don't — is built into who gets to narrate which scene. POV is a moral choice.",
+    "tanglish": "Oru hero illa — moonu aalu, avanga life avangale failure pannara pengal kannala kaattaranga. Yaaru kadhai sollanum nu decision panrathu — adhu oru moral choice."
+  },
+  {
+    "title": "Pariyerum Perumal",
+    "year": 2018,
+    "director": "MARI SELVARAJ",
+    "genres": [
+      "CASTE DRAMA"
+    ],
+    "tags": [
+      "DEBUT",
+      "QUIET ANGER"
+    ],
+    "meta": "2018 · CASTE DRAMA",
+    "lesson": "<strong>Climax through restraint.</strong> The final scene is two men sitting at a table drinking tea. No fight, no speech. The political punch lands harder for being quiet. The biggest moments don't need the biggest action.",
+    "tanglish": "Climax — rendu peru oru table la chaai kudikuranga. Adi illa, dialogue illa. Adhuvey thaan padam oda biggest punch. Periya moment ku periya action vendam."
+  },
+  {
+    "title": "Super Deluxe",
+    "year": 2019,
+    "director": "THIAGARAJAN KUMARARAJA",
+    "genres": [
+      "ANTHOLOGY"
+    ],
+    "tags": [
+      "ANTHOLOGY",
+      "TONE COLLAPSE"
+    ],
+    "meta": "2019 · ANTHOLOGY",
+    "lesson": "<strong>Tonal whiplash as design.</strong> The film deliberately collides comedy, tragedy, magical realism, and crime in one night. The discomfort is the point — the audience can't settle into a single mode. If you commit fully, you can break every rule.",
+    "tanglish": "Comedy, tragedy, magical realism, crime — onnu night la collide pannardhu deliberate. Audience oru mode la settle aaga muyalvanga — vidamaattan. Full ah commit panna, ovvoru rule um break pannalaam."
+  },
+  {
+    "title": "Vada Chennai",
+    "year": 2018,
+    "director": "VETRIMAARAN",
+    "genres": [
+      "CRIME DRAMA"
+    ],
+    "tags": [
+      "EPIC",
+      "MULTI-TIMELINE"
+    ],
+    "meta": "2018 · CRIME DRAMA",
+    "lesson": "<strong>Set the rules of your timeline jumps.</strong> Vada Chennai jumps decades freely, but each jump is anchored by a recurring object or location. The audience learns the cipher in act 1; by act 3 they can navigate decades without title cards.",
+    "tanglish": "Decade jumps aagum — aana ovvoru jump um oru object la, oru jaagam la anchor aagum. Act 1 la cipher kathukita, Act 3 la title card vendam — audience navigate panniduvanga."
+  },
+  {
+    "title": "Jai Bhim",
+    "year": 2021,
+    "director": "T. J. GNANAVEL",
+    "genres": [
+      "COURTROOM"
+    ],
+    "tags": [
+      "PROCEDURAL",
+      "JUSTICE"
+    ],
+    "meta": "2021 · COURTROOM",
+    "lesson": "<strong>Procedural rigor builds emotional weight.</strong> Each step of the legal investigation is shown precisely. The accuracy makes the verdict feel earned, not performed. When you respect process, the audience trusts the catharsis.",
+    "tanglish": "Ovvoru legal step um precision la kaattaranga. Accuracy thaan kadaisi judgment ku weight kudukkudhu. Process ah respect panna, audience catharsis ah nambum."
+  },
+  {
+    "title": "Kaadhal",
+    "year": 2004,
+    "director": "BALAJI SAKTHIVEL",
+    "genres": [
+      "YOUTH ROMANCE"
+    ],
+    "tags": [
+      "FIRST FILM",
+      "REALISM"
+    ],
+    "meta": "2004 · YOUTH ROMANCE",
+    "lesson": "<strong>Documentary fiction.</strong> Balaji Sakthivel cast non-actors and shot in real Madurai locations. The result feels closer to reportage than romance. When you remove the polish, you get truth — and truth is harder to argue with than glamour.",
+    "tanglish": "Real-ana aalungal cast pannitanga, real Madurai la edukkanga. Romance kaatilum reportage maathiri feel. Polish eduthuvuduna unmai varum — unmaiya vida glamour ah argue panna easy."
+  },
+  {
+    "title": "Subramaniyapuram",
+    "year": 2008,
+    "director": "M. SASIKUMAR",
+    "genres": [
+      "SMALL-TOWN DRAMA"
+    ],
+    "tags": [
+      "PERIOD",
+      "FRIENDSHIP"
+    ],
+    "meta": "2008 · SMALL-TOWN DRAMA",
+    "lesson": "<strong>Period detail as emotional access.</strong> 1980s Madurai recreated through specific cassette tapes, specific bicycles, specific cigarette brands. The granularity makes the era feel inhabited, not visited. Find the three smallest correct details.",
+    "tanglish": "1980s Madurai — specific cassette, specific cycle, specific cigarette. Granularity thaan andha kalathula irundhu paakkura feel kudukkudhu. Moonu chinna sariyana details thedikko."
+  },
+  {
+    "title": "Sethu",
+    "year": 1999,
+    "director": "BALA",
+    "genres": [
+      "ROMANCE TRAGEDY"
+    ],
+    "tags": [
+      "DEBUT",
+      "TONAL TURN"
+    ],
+    "meta": "1999 · ROMANCE TRAGEDY",
+    "lesson": "<strong>The bold tonal shift.</strong> Sethu opens as a college romance and pivots to psychiatric tragedy. Bala's confidence in the shift is what makes it work — the film commits fully to its new register. Don't apologize for your turn.",
+    "tanglish": "College romance ah aarambichi, psychiatric tragedy ku pogum. Andha shift confident ah panna thaan velai pannum. Unga turn ku apology vendam — full ah commit pannu."
+  },
+  {
+    "title": "Aandavan Kattalai",
+    "year": 2017,
+    "director": "M. MANIKANDAN",
+    "genres": [
+      "ROMANTIC DRAMA"
+    ],
+    "tags": [
+      "SLICE OF LIFE",
+      "MIGRATION"
+    ],
+    "meta": "2017 · ROMANTIC DRAMA",
+    "lesson": "<strong>Bureaucracy as plot engine.</strong> A passport application drives the whole film. The \"boring\" obstacle is more relatable than action because it's what audiences actually face. Use the dull stakes of real life — they have unexpected depth.",
+    "tanglish": "Passport application thaan plot engine. \"Boring\" obstacle audience ku connect aagudhu — daily life la avanga face panradhu adhu thaan. Real life oda dull stakes use pannu — unexpected depth kudukkum."
+  },
+  {
+    "title": "Ratsasan",
+    "year": 2018,
+    "director": "RAM KUMAR",
+    "genres": [
+      "CRIME THRILLER"
+    ],
+    "tags": [
+      "PROCEDURAL",
+      "VILLAIN"
+    ],
+    "meta": "2018 · CRIME THRILLER",
+    "lesson": "<strong>The villain's psychology drives the structure.</strong> Each clue is a piece of the killer's biography. Solving the case = understanding the trauma. The protagonist isn't tracking what the killer did — he's reconstructing why. Make your antagonist a puzzle.",
+    "tanglish": "Killer oda psychology thaan structure ah ottardhu. Ovvoru clue um avana oda biography. Case mudikkardhu = avan trauma ah purinjikkardhu. Villain ah oru puzzle ah maathu."
+  },
+  {
+    "title": "Jigarthanda",
+    "year": 2014,
+    "director": "KARTHIK SUBBARAJ",
+    "genres": [
+      "ROAD MOVIE"
+    ],
+    "tags": [
+      "META",
+      "GENRE PLAY"
+    ],
+    "meta": "2014 · ROAD MOVIE",
+    "lesson": "<strong>Make the act of filmmaking the plot.</strong> A director infiltrates a gangster's life to make a movie about him. The film is partly about itself — and that meta-frame multiplies the meaning of every scene. When you talk about your craft inside the film, the film becomes about craft.",
+    "tanglish": "Padam edukkardhe plot. Director gangster oda life ulla pugundhu padam ezhuthuran. Padam athey patti pesi padam aagudhu — andha meta-frame ovvoru scene oda meaning ah multiply pannudhu."
+  },
+  {
+    "title": "Joker",
+    "year": 2016,
+    "director": "RAJU MURUGAN",
+    "genres": [
+      "SMALL-TOWN COMEDY"
+    ],
+    "tags": [
+      "SATIRE",
+      "POLITICAL"
+    ],
+    "meta": "2016 · SMALL-TOWN COMEDY",
+    "lesson": "<strong>Comedy as the surface, rage as the substance.</strong> A village man writes letters to the President about a missing toilet. The film looks like comedy and lands like indictment. Comedy gives the audience permission to enter; tragedy keeps them there.",
+    "tanglish": "Comedy vெளiyey, rage uللe. Oru ooran President ku kakkoos pathi kadithangal ezhudharar. Padam comedy mathiri kaattuthu, indictment mathiri vandhu sernthudhu. Comedy audience ah ulla varuvikum, tragedy avanga thanga vaikkum."
+  }
+]

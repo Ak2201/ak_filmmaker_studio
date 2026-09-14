@@ -1,0 +1,1045 @@
+{
+  "steps": [
+    {
+      "id": "step-01",
+      "num": "01",
+      "title": "The <em>Seed.</em>",
+      "titlePlain": "The Seed.",
+      "time": "~ ONE EVENING",
+      "badge": {
+        "step": "01",
+        "initial": "EMPTY"
+      },
+      "deck": "Every short begins with one indivisible thing. An image. A moment. A question. A line you overheard. Find it before you write a frame.",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "If you can't say what your short is in <em>one image</em> or <em>one sentence</em>, you don't have a short — you have a feature in disguise. The seed is what the audience will remember six months later. Find that thing first.",
+          "tanglish": "Sirukadhai aarambichu mudikkardhukku munnadi, oru imageaaha, oru kelvi-aaga, oru moment-aaga athan core ah pidikko. Adhuvey oru year kazhichi audience nyabakam vechikkurathu. Adha munnadi find pannu."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "Most failed shorts try to be tiny features — too many characters, too many subplots, too many ideas. The successful ones are confident enough to be about <em>one thing</em>. The seed is what gives you permission to cut everything that isn't it."
+        },
+        {
+          "type": "examples",
+          "items": [
+            {
+              "label": "SEED · IMAGE",
+              "heading": "Pixar's <em>Piper</em> (2016)",
+              "body": "A tiny sandpiper learns to feed itself when the tide comes in. The seed: a baby bird overcoming fear of water. Everything in the film is just that image, expanded."
+            },
+            {
+              "label": "SEED · MOMENT",
+              "heading": "Wes Anderson's <em>Hotel Chevalier</em> (2007)",
+              "body": "Two ex-lovers meet in a Paris hotel room. The seed: the strange ritual of seeing someone you loved after you've stopped loving them. Thirteen minutes, one room."
+            }
+          ]
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "The Seed — in one sentence",
+              "hint": "Don't pitch the plot. Describe the single moment, image, or question that won't leave you alone.",
+              "key": "s1_seed",
+              "kind": "textarea",
+              "placeholder": "e.g. A father teaches his daughter to ride a bicycle on the morning of his last day in their family home.",
+              "rows": 3,
+              "size": null
+            },
+            {
+              "label": "The Image — what would you put on the poster?",
+              "hint": "If your short had a single still that captured everything, what would it be?",
+              "key": "s1_image",
+              "kind": "textarea",
+              "placeholder": "e.g. A wobbling bicycle in soft morning light. A man jogs alongside, half-watching, half-letting go.",
+              "rows": 3,
+              "size": null
+            },
+            {
+              "label": "Why this, why you, why now?",
+              "hint": "If you don't know why you have to make THIS short, the audience won't either.",
+              "key": "s1_why",
+              "kind": "textarea",
+              "placeholder": "What about this seed has been with you? Why is it yours to tell?",
+              "rows": 3,
+              "size": null
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "BEFORE YOU MOVE ON",
+          "items": [
+            {
+              "key": "ck_s1_a",
+              "text": "My seed is one indivisible thing. Not three things stitched together."
+            },
+            {
+              "key": "ck_s1_b",
+              "text": "I can describe it in a single sentence without losing the punch."
+            },
+            {
+              "key": "ck_s1_c",
+              "text": "I have a clear mental image — I could draw it."
+            },
+            {
+              "key": "ck_s1_d",
+              "text": "I know why I, specifically, am drawn to this seed."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-02",
+      "num": "02",
+      "title": "The <em>Logline.</em>",
+      "titlePlain": "The Logline.",
+      "time": "~ TWO EVENINGS",
+      "badge": {
+        "step": "02",
+        "initial": "EMPTY"
+      },
+      "deck": "A short film logline is even tighter than a feature's. Twenty-five words or less. Festival selectors read hundreds. Yours has to land in eight seconds.",
+      "blocks": [
+        {
+          "type": "raw",
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip feat\" href=\"feature.html#step-02\"><span class=\"src\">FEATURE</span> · Step 02 Logline</a>\n    <a class=\"related-chip lib\" href=\"library.html#watch\"><span class=\"src\">LIBRARY</span> · Logline films</a>\n  </div>"
+        },
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "WHEN [<em>inciting moment</em>], a [<em>specific protagonist</em>] must [<em>concrete action</em>] before [<em>cost / deadline</em>] — or [<em>specific consequence</em>].<br><br>Trim until it can be said on one breath. If you have to add \"and also\" or \"but then\", you have two films.",
+          "tanglish": "Sirukadhai logline 25 words ku mela poga koodathu. \"Adhukku mela\", \"appuram\", \"mathiri\" ipdi extra clauses irundha — adhu rendu padam."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "Festival programmers receive 5,000+ short film submissions a year. Your logline is the first 25 words that decide whether they watch the file. It's also the line you'll repeat 200 times in the next year — to actors, crew, festivals, journalists. Make it crisp."
+        },
+        {
+          "type": "examples",
+          "items": [
+            {
+              "label": "EXAMPLE · 21 WORDS",
+              "heading": "What a tight logline looks like",
+              "body": "\"On the morning he leaves home for good, a divorced father teaches his eight-year-old daughter to ride a bicycle.\""
+            },
+            {
+              "label": "EXAMPLE · 19 WORDS",
+              "heading": "Conflict made concrete",
+              "body": "\"A night-shift cleaner finds a winning lottery ticket on a rich woman's desk and has thirty minutes to decide.\""
+            }
+          ]
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Draft 1 — The first attempt (will be wrong)",
+              "hint": "Write it long. Don't worry about word count yet. Get the shape down.",
+              "key": "s2_log1",
+              "kind": "textarea",
+              "placeholder": "WHEN ... a ... must ... before ...",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "Draft 2 — Cut every word that isn't load-bearing",
+              "hint": "Adjectives are usually first to go. So is \"in order to\" → \"to\". So is the second clause.",
+              "key": "s2_log2",
+              "kind": "textarea",
+              "placeholder": "Tighten Draft 1.",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "Draft 3 — The locked logline",
+              "hint": "≤ 25 words. Specific. Active verbs. One protagonist, one want, one obstacle. Word counter below.",
+              "key": "s2_log_final",
+              "kind": "textarea",
+              "placeholder": "The version you'll put on Vimeo, on FilmFreeway, on every email.",
+              "rows": 2,
+              "size": null,
+              "extras": [
+                "<div id=\"logline-count\" style=\"font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px;\">0 / 25 words</div>"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "LOGLINE LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s2_a",
+              "text": "25 words or fewer."
+            },
+            {
+              "key": "ck_s2_b",
+              "text": "No \"and\", no \"but then\", no second clause."
+            },
+            {
+              "key": "ck_s2_c",
+              "text": "A stranger could understand my film from this sentence."
+            },
+            {
+              "key": "ck_s2_d",
+              "text": "I can say it without checking notes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-03",
+      "num": "03",
+      "title": "The <em>Character.</em>",
+      "titlePlain": "The Character.",
+      "time": "~ TWO EVENINGS",
+      "badge": {
+        "step": "03",
+        "initial": "EMPTY"
+      },
+      "deck": "One protagonist. One want. One obstacle. That's all the runtime allows. Anything more and the audience can't hold it.",
+      "blocks": [
+        {
+          "type": "raw",
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip feat\" href=\"feature.html#step-04\"><span class=\"src\">FEATURE</span> · Step 04 Protagonist</a>\n    <a class=\"related-chip feat\" href=\"feature.html#step-05\"><span class=\"src\">FEATURE</span> · Step 05 Antagonist</a>\n  </div>"
+        },
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "SHORT-FORM CHARACTER = ONE WANT + ONE OBSTACLE + ONE TURN. The \"want\" must be visible, concrete, and impossible to summarize as \"happiness\" or \"love.\" The obstacle must be specific. The turn is what flips the want into something else — or impossible.",
+          "tanglish": "Sirukadhai character ku — oru want, oru thaduppu, oru turn. Want vague aaga irukkakoodaadhu — \"santosham\" mathiri abstract illa, concrete ah irukanum."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "Features can build character through dozens of scenes. A short has 5–15 minutes. Your character has to be readable in their first 30 seconds — through choices, not through dialogue. The one-want / one-obstacle structure is what lets you skip the setup a feature would need."
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Name &amp; one-line description",
+              "key": "s3_name",
+              "kind": "textarea",
+              "placeholder": "e.g. Ravi, 38, divorced father — quiet, slightly nervous, a man who has accepted disappointment.",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "The ONE want — concrete and visible",
+              "hint": "Not \"to feel valued.\" Something an actor can play. Something a camera can see.",
+              "key": "s3_want",
+              "kind": "textarea",
+              "placeholder": "e.g. To teach his daughter to ride the bicycle without falling — before her mother arrives to pick her up.",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "The ONE obstacle",
+              "hint": "Internal (their own flaw, fear, history) OR external (someone, something, time). Pick one. Don't dilute.",
+              "key": "s3_obstacle",
+              "kind": "textarea",
+              "placeholder": "e.g. The daughter doesn't trust him to hold on, because he hasn't been around enough to earn it.",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "What we LEARN about them — without dialogue",
+              "hint": "Three details an actor and director can show. Body language, an object they carry, how they enter a room.",
+              "key": "s3_show",
+              "kind": "textarea",
+              "placeholder": "e.g. 1. He has a bandage on his thumb (he tried to fix the bike himself). 2. He brings a snack she liked five years ago. 3. He says her old nickname, then corrects himself.",
+              "rows": 3,
+              "size": null
+            },
+            {
+              "label": "The TURN — the moment that changes everything",
+              "hint": "In a feature, this might be the midpoint. In a short, it's almost the whole film. What pivots in this character?",
+              "key": "s3_turn",
+              "kind": "textarea",
+              "placeholder": "e.g. She falls. He doesn't rush. He waits — and lets her get up on her own. Both of them realize they don't need him to hold on anymore.",
+              "rows": 3,
+              "size": null
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "CHARACTER LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s3_a",
+              "text": "My protagonist's want is concrete enough to play."
+            },
+            {
+              "key": "ck_s3_b",
+              "text": "There is exactly ONE obstacle — not three."
+            },
+            {
+              "key": "ck_s3_c",
+              "text": "The audience can read who they are in 30 seconds without exposition."
+            },
+            {
+              "key": "ck_s3_d",
+              "text": "There is a clear turn — a moment of real change."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-04",
+      "num": "04",
+      "title": "The <em>5-Beat Structure.</em>",
+      "titlePlain": "The 5-Beat Structure.",
+      "time": "~ TWO EVENINGS",
+      "badge": {
+        "step": "04",
+        "initial": "EMPTY"
+      },
+      "deck": "Forget the 15-beat feature structure. A short has five: <em>Setup</em>, <em>Disturbance</em>, <em>Escalation</em>, <em>Turn</em>, <em>Image</em>. Each beat earns its place or it's cut.",
+      "blocks": [
+        {
+          "type": "raw",
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip feat\" href=\"feature.html#step-08\"><span class=\"src\">FEATURE</span> · Step 08 The 15 Beats</a>\n    <a class=\"related-chip feat\" href=\"feature.html#step-10\"><span class=\"src\">FEATURE</span> · Setups &amp; Payoffs</a>\n  </div>"
+        },
+        {
+          "type": "formula",
+          "label": "FORMULA · 5 BEATS",
+          "eq": "1. <strong>Setup</strong> (≤15% of runtime) — Establish character, world, normal.<br> 2. <strong>Disturbance</strong> (~10%) — The thing that breaks the normal.<br> 3. <strong>Escalation</strong> (~50%) — The pursuit of the want; obstacles compound.<br> 4. <strong>Turn</strong> (~15%) — The moment everything changes.<br> 5. <strong>Image</strong> (~10%) — The final frame that holds the meaning.",
+          "tanglish": "Sirukadhai 5 beat ah ottum: setup → disturbance → escalation → turn → image. Ovvoru beat um earn pannanum — sumaa irukkamudiyaadhu."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "The 5-beat is the minimum a short film needs to feel like a story rather than a sketch. Without all five, audiences sense something is missing — even if they can't name it. The most common short film failure is missing beat 5: a turn happens but the film doesn't land on a final image that contains the meaning."
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"beat-viz\">\n    <svg viewBox=\"0 0 800 200\" xmlns=\"http://www.w3.org/2000/svg\">\n      <line x1=\"0\" y1=\"100\" x2=\"800\" y2=\"100\" stroke=\"rgba(120,90,30,0.2)\" stroke-width=\"1\" />\n      <path class=\"beat-line\" d=\"M 0 130 Q 50 130 80 110 L 120 110 Q 200 110 240 90 L 480 50 Q 540 50 580 80 L 720 90 Q 760 95 800 90\" />\n      <circle class=\"beat-dot\" cx=\"40\" cy=\"130\" r=\"5\" />\n      <circle class=\"beat-dot\" cx=\"120\" cy=\"110\" r=\"5\" />\n      <circle class=\"beat-dot\" cx=\"380\" cy=\"65\" r=\"5\" />\n      <circle class=\"beat-dot\" cx=\"580\" cy=\"80\" r=\"5\" />\n      <circle class=\"beat-dot\" cx=\"780\" cy=\"90\" r=\"5\" />\n      <text class=\"beat-label\" x=\"40\" y=\"155\" text-anchor=\"middle\">SETUP</text>\n      <text class=\"beat-label\" x=\"120\" y=\"155\" text-anchor=\"middle\">DISTURB</text>\n      <text class=\"beat-label\" x=\"380\" y=\"40\" text-anchor=\"middle\">ESCALATE</text>\n      <text class=\"beat-label\" x=\"580\" y=\"105\" text-anchor=\"middle\">TURN</text>\n      <text class=\"beat-label\" x=\"770\" y=\"115\" text-anchor=\"middle\">IMAGE</text>\n    </svg>\n  </div>"
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"beat-grid\">\n    <div class=\"beat-cell\">\n      <div class=\"pos\">BEAT 1 · ≤15%</div>\n      <h4>Setup</h4>\n      <textarea data-key=\"b1_setup\" placeholder=\"Establish the protagonist, the world, the normal. End the moment they touch something that hints at the want.\"></textarea>\n    </div>\n    <div class=\"beat-cell\">\n      <div class=\"pos\">BEAT 2 · ~10%</div>\n      <h4>Disturbance</h4>\n      <textarea data-key=\"b2_disturb\" placeholder=\"The single event that destabilizes the normal and forces action. The 'now what?' moment.\"></textarea>\n    </div>\n    <div class=\"beat-cell\">\n      <div class=\"pos\">BEAT 3 · ~50%</div>\n      <h4>Escalation</h4>\n      <textarea data-key=\"b3_escalate\" placeholder=\"The pursuit. Obstacles get worse. The protagonist tries and fails (or partly fails). Tension rises.\"></textarea>\n    </div>\n    <div class=\"beat-cell\">\n      <div class=\"pos\">BEAT 4 · ~15%</div>\n      <h4>Turn</h4>\n      <textarea data-key=\"b4_turn\" placeholder=\"The moment something flips. They get the want — or realize they wanted something else. The peak of the film.\"></textarea>\n    </div>\n    <div class=\"beat-cell\">\n      <div class=\"pos\">BEAT 5 · ~10%</div>\n      <h4>Image</h4>\n      <textarea data-key=\"b5_image\" placeholder=\"The final frame. Not a wrap-up — a single image that holds everything the short was about. The thing the audience walks away with.\"></textarea>\n    </div>\n  </div>"
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Self-test — Read the five beats aloud back-to-back. Does it feel like a story?",
+              "key": "s4_test",
+              "kind": "textarea",
+              "placeholder": "Note any beat that felt thin, and what it's missing.",
+              "rows": 3,
+              "size": null,
+              "style": "margin-top:24px;"
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "STRUCTURE LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s4_a",
+              "text": "Each of the five beats is filled in."
+            },
+            {
+              "key": "ck_s4_b",
+              "text": "The escalation beat earns its 50% — there's actual rising tension."
+            },
+            {
+              "key": "ck_s4_c",
+              "text": "The turn isn't where the story ends — there's a final image after."
+            },
+            {
+              "key": "ck_s4_d",
+              "text": "The final image contains the film's meaning."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-05",
+      "num": "05",
+      "title": "The <em>World.</em>",
+      "titlePlain": "The World.",
+      "time": "~ ONE EVENING",
+      "badge": {
+        "step": "05",
+        "initial": "EMPTY"
+      },
+      "deck": "For a short, the world is usually one location, one time of day, one weather. The constraints aren't compromises — they're the form's strength.",
+      "blocks": [
+        {
+          "type": "raw",
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip feat\" href=\"feature.html#step-07\"><span class=\"src\">FEATURE</span> · Step 07 The World</a>\n    <a class=\"related-chip feat\" href=\"feature.html#step-15\"><span class=\"src\">FEATURE</span> · Step 15 Lookbook</a>\n  </div>"
+        },
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "The shorter the film, the more loaded each location must be. A single-location short is not a limitation — it forces every piece of the frame to do double duty. The chair the character sits in becomes a character. The light through the window becomes a clock.",
+          "tanglish": "Sirukadhai oru location la nadakum — adhu compromise illa, adhuvey form oda strength. Each prop, each frame extra meaning kudukum."
+        },
+        {
+          "type": "examples",
+          "items": [
+            {
+              "label": "SINGLE LOCATION",
+              "heading": "Locke (2013) — feature, but the principle holds",
+              "body": "One man, one car, one phone. The constraint forced every choice to mean something. The short film equivalent: one room, one street, one café."
+            },
+            {
+              "label": "DUAL LOCATION",
+              "heading": "Wes Anderson's <em>Hotel Chevalier</em>",
+              "body": "Hotel room and balcony. The balcony is just three steps from the room — but it's where the conversation can't happen indoors."
+            }
+          ]
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Primary location — describe it like a character",
+              "key": "s5_loc",
+              "kind": "textarea",
+              "placeholder": "What does the space look like? What's it for? Who has been in it before? What does it smell like?",
+              "rows": 3,
+              "size": null
+            },
+            {
+              "label": "Time of day &amp; weather",
+              "hint": "Pick the one that loads the scene with maximum meaning. Dawn ≠ Noon ≠ Dusk. Rain ≠ Heat.",
+              "key": "s5_time",
+              "kind": "textarea",
+              "placeholder": "e.g. Late afternoon. Mango light through dusty windows. The kind of stillness that comes before a phone rings.",
+              "rows": 2,
+              "size": null
+            },
+            {
+              "label": "Three sensory anchors — sound, texture, recurring object",
+              "key": "s5_anchors",
+              "kind": "textarea",
+              "placeholder": "e.g. SOUND: A ceiling fan one notch slower than it should be. TEXTURE: Plastic tablecloth, faintly tacky. OBJECT: A glass of water that nobody drinks.",
+              "rows": 3,
+              "size": null
+            },
+            {
+              "label": "Rules the world establishes (3–5)",
+              "hint": "What's allowed, what's forbidden, what's normal here. Even a realist short has rules.",
+              "key": "s5_rules",
+              "kind": "textarea",
+              "placeholder": "e.g. 1. Nobody raises their voice in this house. 2. The TV is always on. 3. Shoes come off at the door. 4. The grandmother's chair is empty since she died.",
+              "rows": 4,
+              "size": null
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "WORLD LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s5_a",
+              "text": "My primary location is specific and loaded with meaning."
+            },
+            {
+              "key": "ck_s5_b",
+              "text": "Time of day and weather are deliberate, not default."
+            },
+            {
+              "key": "ck_s5_c",
+              "text": "There are 2–3 sensory anchors I can keep returning to."
+            },
+            {
+              "key": "ck_s5_d",
+              "text": "If I had only this one location, the script still works."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-06",
+      "num": "06",
+      "title": "The <em>Scene Map.</em>",
+      "titlePlain": "The Scene Map.",
+      "time": "~ TWO EVENINGS",
+      "badge": {
+        "step": "06",
+        "initial": "EMPTY"
+      },
+      "deck": "Most shorts work with 5 to 12 scenes. List them before you write a line of dialogue. Each scene must do at least one of three jobs: reveal character, advance want, or set up the turn.",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "For each scene, ask: WHO is in it? What do they WANT? What's the OBSTACLE? How does it END differently from how it started? If a scene has no answer to all four, cut it.",
+          "tanglish": "Ovvoru scene um — yaaru, enna want, enna thaduppu, ennapadi muddiyum. Ipdi naalu kelvi answer aagatha scene-a vetti vidu."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "You're going to spend most of your runtime on the escalation beat (Beat 3). That's where the scene map matters most. A weak escalation = scenes that stall. A strong escalation = each scene tighter than the last, each one closer to the turn."
+        },
+        {
+          "type": "raw",
+          "html": "<table class=\"scene-table\">\n    <thead>\n      <tr>\n        <th>#</th>\n        <th>Slug (INT./EXT. — Place — Time)</th>\n        <th>Who</th>\n        <th>What happens</th>\n        <th>Beat</th>\n        <th>Pages</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody id=\"sceneMapBody\">\n      <!-- rows added dynamically -->\n    </tbody>\n  </table>"
+        },
+        {
+          "type": "raw",
+          "html": "<button class=\"btn primary\" onclick=\"addSceneMapRow()\" style=\"margin-top:8px;\">+ ADD SCENE</button>"
+        },
+        {
+          "type": "raw",
+          "html": "<button class=\"btn\" onclick=\"addSceneMapRow(3)\" style=\"margin-top:8px; margin-left:6px;\">+ ADD 3</button>"
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Self-test: read the \"What happens\" column top-to-bottom",
+              "hint": "Do the scenes escalate? Does each one push the protagonist closer to the turn? If you read the scene map without dialogue, does it still feel like a story?",
+              "key": "s6_test",
+              "kind": "textarea",
+              "placeholder": "Note any scenes that feel like filler, repetition, or that don't move the want forward.",
+              "rows": 3,
+              "size": null,
+              "style": "margin-top:24px;"
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "SCENE MAP LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s6_a",
+              "text": "5 to 12 scenes total. (Anything more is feature territory.)"
+            },
+            {
+              "key": "ck_s6_b",
+              "text": "Each scene has a clear who-want-obstacle-end answer."
+            },
+            {
+              "key": "ck_s6_c",
+              "text": "The escalation builds — scenes get tighter, not slower."
+            },
+            {
+              "key": "ck_s6_d",
+              "text": "No two scenes do the same job."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-07",
+      "num": "07",
+      "title": "The <em>Script Pages.</em>",
+      "titlePlain": "The Script Pages.",
+      "time": "~ 5-10 SESSIONS",
+      "badge": {
+        "step": "07",
+        "initial": "EMPTY"
+      },
+      "deck": "Now write the actual screenplay. The structured editor below formats your slugs, action, and dialogue automatically. One scene at a time. Don't skip ahead.",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA · 1 PAGE = 1 MINUTE",
+          "eq": "Standard screenplay convention: one formatted page ≈ one minute of screen time. Action paragraphs in present tense, third person. Dialogue centered. Slug lines in CAPS. Don't cheat with smaller margins; festivals and producers will measure.",
+          "tanglish": "Oru page = oru nimisham screen time. Action present tense la, dialogue centered, slug ALL CAPS la. Margin la cheat panna kashtam — readers tale-aal pidiccha."
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"page-counter\">\n    <div class=\"pc-stat\">\n      <span class=\"pc-num\" id=\"totalWords\">0</span>\n      <span class=\"pc-lab\">TOTAL WORDS</span>\n    </div>\n    <div class=\"pc-stat\">\n      <span class=\"pc-num\" id=\"totalPages\">0.0</span>\n      <span class=\"pc-lab\">EST. PAGES</span>\n    </div>\n    <div class=\"pc-stat\">\n      <span class=\"pc-num\" id=\"totalRuntime\">0:00</span>\n      <span class=\"pc-lab\">EST. RUNTIME</span>\n    </div>\n    <div class=\"pc-status\" id=\"runtimeStatus\">enter scenes below</div>\n  </div>"
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"script-editor\" id=\"scriptEditor\">\n    <div id=\"scriptScenes\"></div>\n    <button class=\"add-scene-btn\" onclick=\"addScriptScene()\">+ ADD SCENE</button>\n    <div class=\"editor-actions\">\n      <button class=\"mini-btn\" onclick=\"rebuildPreview()\">↻ REFRESH PREVIEW</button>\n      <button class=\"mini-btn\" onclick=\"copyFountain()\">COPY AS FOUNTAIN</button>\n      <button class=\"mini-btn\" onclick=\"copyPlainText()\">COPY AS PLAIN TEXT</button>\n      <button class=\"mini-btn danger\" onclick=\"clearScript()\">CLEAR SCRIPT</button>\n    </div>\n  </div>"
+        },
+        {
+          "type": "check",
+          "heading": "SCRIPT LOCK CHECK",
+          "items": [
+            {
+              "key": "ck_s7_a",
+              "text": "Every scene from my Scene Map (Step 6) is in the script."
+            },
+            {
+              "key": "ck_s7_b",
+              "text": "Page count is roughly aligned with my target runtime."
+            },
+            {
+              "key": "ck_s7_c",
+              "text": "I've read the script aloud — every line earns its place."
+            },
+            {
+              "key": "ck_s7_d",
+              "text": "No exposition dump. No \"as you know...\" dialogue."
+            },
+            {
+              "key": "ck_s7_e",
+              "text": "A first reader (not me) has given notes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-08",
+      "num": "08",
+      "title": "Format &amp; <em>Export.</em>",
+      "titlePlain": "Format & Export.",
+      "time": "~ ONE EVENING",
+      "badge": {
+        "step": "08",
+        "initial": "EMPTY"
+      },
+      "deck": "Live preview of your script in proper screenplay format, plus export to Fountain (universal screenplay markdown that any pro app can open).",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA · WHY FOUNTAIN",
+          "eq": "Fountain is plain-text screenplay format, like Markdown for screenplays. It opens in Final Draft, Highland, WriterDuet, Fade In, and Trelby. It doesn't lock you to one app, doesn't break, and survives every format migration. Export to Fountain for any serious workflow.",
+          "tanglish": "Fountain — screenplay ku Markdown mathiri. Plain text, ovvoru pro app la um open aagum, vendor lock-in illa. Serious work ku Fountain ah eduthukko."
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"ai-prompt-block\">\n    <h4>AI PROMPT GENERATOR</h4>\n    <p>Stuck on a scene? This builds a prompt from your blueprint data — character, want, world, beat — that you can paste into Claude, ChatGPT, or any AI tool to draft a scene. Your data stays here; only the prompt is copied.</p>\n    <textarea id=\"aiPrompt\" readonly placeholder=\"Click 'BUILD PROMPT' to generate.\"></textarea>\n    <div class=\"ai-actions\">\n      <button class=\"mini-btn\" onclick=\"buildAIPrompt('scene')\">BUILD SCENE PROMPT</button>\n      <button class=\"mini-btn\" onclick=\"buildAIPrompt('dialogue')\">BUILD DIALOGUE PROMPT</button>\n      <button class=\"mini-btn alt\" onclick=\"buildAIPrompt('feedback')\">BUILD FEEDBACK PROMPT</button>\n      <button class=\"mini-btn\" onclick=\"copyAIPrompt()\">COPY TO CLIPBOARD</button>\n    </div>\n  </div>"
+        },
+        {
+          "type": "raw",
+          "html": "<h3 style=\"font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:3px; color:var(--accent); margin: 30px 0 10px;\">FORMATTED PREVIEW</h3>"
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"script-preview\" id=\"scriptPreview\">\n    <div class=\"sp-empty\">Add scenes and dialogue in Step 7 to see the formatted preview here.</div>\n  </div>"
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"editor-actions\" style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;\">\n    <button class=\"btn primary\" onclick=\"exportFountain()\">↓ DOWNLOAD .FOUNTAIN</button>\n    <button class=\"btn\" onclick=\"exportPlainTxt()\">↓ DOWNLOAD .TXT</button>\n    <button class=\"btn\" onclick=\"printScriptOnly()\">PRINT SCRIPT ONLY</button>\n  </div>"
+        },
+        {
+          "type": "check",
+          "heading": "EXPORT CHECK",
+          "items": [
+            {
+              "key": "ck_s8_a",
+              "text": "The formatted preview reads like a real screenplay."
+            },
+            {
+              "key": "ck_s8_b",
+              "text": "Page count matches my target."
+            },
+            {
+              "key": "ck_s8_c",
+              "text": "I've downloaded a .fountain backup."
+            },
+            {
+              "key": "ck_s8_d",
+              "text": "I've imported the .fountain into a real screenwriting app to verify formatting."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-09",
+      "num": "09",
+      "title": "Production <em>Reality.</em>",
+      "titlePlain": "Production Reality.",
+      "time": "~ TWO EVENINGS",
+      "badge": {
+        "step": "09",
+        "initial": "EMPTY"
+      },
+      "deck": "Most shorts shoot in 1–4 days, with 3–6 crew, in 1–3 locations. Knowing your reality before you finalize the script lets you cut what you can't actually shoot.",
+      "blocks": [
+        {
+          "type": "raw",
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip feat\" href=\"feature.html#step-23\"><span class=\"src\">FEATURE</span> · Step 23 Schedule &amp; Budget</a>\n    <a class=\"related-chip lib\" href=\"library.html#equipment\"><span class=\"src\">LIBRARY</span> · Equipment Estimator</a>\n  </div>"
+        },
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "BUDGET = (DAYS × CREW SIZE × LOCATION FEE) + EQUIPMENT + POST. For a serious calling-card short in Chennai, ₹50K–₹3L is typical. Festival-quality with name talent: ₹5L–₹15L. Your script must fit your budget, not the other way around.",
+          "tanglish": "Sirukadhai budget = days × crew × location + equipment + post. Chennai la calling-card short — ₹50K-₹3L common. Script ah budget kku fit panna vendiyathu, vice versa illa."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "Many first-time shorts fail in pre-production because the script demands things the budget can't deliver — drone shots, child actors, period costumes, night exteriors. Cut those before script lock. A great cheap short beats a compromised expensive one every time."
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"prod-grid\">\n    <div class=\"prod-field\"><label>SHOOT DAYS</label><input type=\"text\" data-key=\"p_days\" placeholder=\"e.g. 2 days\"></div>\n    <div class=\"prod-field\"><label>CAST</label><input type=\"text\" data-key=\"p_cast\" placeholder=\"e.g. 3 speaking, 2 background\"></div>\n    <div class=\"prod-field\"><label>LOCATIONS</label><input type=\"text\" data-key=\"p_locs\" placeholder=\"e.g. 1 — apartment\"></div>\n    <div class=\"prod-field\"><label>CREW SIZE</label><input type=\"text\" data-key=\"p_crew\" placeholder=\"e.g. 6\"></div>\n    <div class=\"prod-field\"><label>CAMERA</label><input type=\"text\" data-key=\"p_cam\" placeholder=\"e.g. Sony FX3 (owned)\"></div>\n    <div class=\"prod-field\"><label>LENS KIT</label><input type=\"text\" data-key=\"p_lens\" placeholder=\"e.g. Sigma cine primes (rented)\"></div>\n    <div class=\"prod-field\"><label>SOUND</label><input type=\"text\" data-key=\"p_sound\" placeholder=\"e.g. Boom + 2 lavs (recordist hired)\"></div>\n    <div class=\"prod-field\"><label>LIGHTING</label><input type=\"text\" data-key=\"p_light\" placeholder=\"e.g. 2 LED panels + bounces\"></div>\n    <div class=\"prod-field\"><label>BUDGET (TOTAL)</label><input type=\"text\" data-key=\"p_budget\" placeholder=\"e.g. ₹1.5L\"></div>\n    <div class=\"prod-field\"><label>FUNDING</label><input type=\"text\" data-key=\"p_funding\" placeholder=\"e.g. Self-funded, friends, grant\"></div>\n    <div class=\"prod-field\"><label>POST-PRO</label><input type=\"text\" data-key=\"p_post\" placeholder=\"e.g. Editor + colorist (paid), sound (favour)\"></div>\n    <div class=\"prod-field\"><label>SHOOT MONTH</label><input type=\"text\" data-key=\"p_month\" placeholder=\"e.g. March 2026\"></div>\n  </div>"
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "Five things in the script I cannot afford to shoot",
+              "hint": "Drone? Crowd scenes? Children under 12? Period props? Animals? Be honest. Cut them now or find workarounds.",
+              "key": "p_cuts",
+              "kind": "textarea",
+              "placeholder": "List them, then decide: cut, replace, or budget for it.",
+              "rows": 4,
+              "size": null,
+              "style": "margin-top:18px;"
+            },
+            {
+              "label": "My biggest production risk",
+              "hint": "Weather? Child actor availability? One key location permission? Be honest with yourself.",
+              "key": "p_risk",
+              "kind": "textarea",
+              "placeholder": "Name it. Then write your plan B.",
+              "rows": 3,
+              "size": null
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "PRODUCTION REALITY CHECK",
+          "items": [
+            {
+              "key": "ck_s9_a",
+              "text": "My budget covers the script as written. No magical thinking."
+            },
+            {
+              "key": "ck_s9_b",
+              "text": "I know what I'm cutting if money runs out (priority list)."
+            },
+            {
+              "key": "ck_s9_c",
+              "text": "Locations are confirmed (or I have a clear path to confirming)."
+            },
+            {
+              "key": "ck_s9_d",
+              "text": "Cast is locked or in serious negotiation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-10",
+      "num": "10",
+      "title": "Festival <em>Strategy.</em>",
+      "titlePlain": "Festival Strategy.",
+      "time": "~ ONE EVENING",
+      "badge": {
+        "step": "10",
+        "initial": "EMPTY"
+      },
+      "deck": "A short film is a calling card. Festivals are how it gets seen. Strategy: pick 12–20 festivals across three tiers, submit early, never online-premiere before a top-tier rejection.",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA · THE FESTIVAL HIERARCHY",
+          "eq": "<strong>TIER 1 (Oscar-qualifying / A-list):</strong> Cannes, Sundance, Berlinale, TIFF, Locarno, Venice, SXSW, Tribeca. Submit FIRST. They have first-screening rules — your film cannot have premiered online or at any other festival before them.<br> <strong>TIER 2 (Regional A-list / strong):</strong> Clermont-Ferrand, Palm Springs ShortFest, Aspen, IFFI Goa, MAMI Mumbai, IFFK Kerala. Submit AFTER Tier 1 results.<br> <strong>TIER 3 (Genre / regional / online):</strong> Fantasia, Sitges, Dharamshala, Bengaluru International, Vimeo Staff Picks, NoBudge, Short of the Week.",
+          "tanglish": "Festival ah 3-tier la divide pannu. Tier 1 munadi submit pannu — onlina ya ettungalla mela istha mudiyaadhu. Tier 1 result vandha apparam tier 2, then tier 3."
+        },
+        {
+          "type": "why",
+          "label": "WHY THIS MATTERS",
+          "body": "The single biggest mistake first-time filmmakers make: posting their short on YouTube the day it's done. That kills your shot at every premiere-restricted festival — which is most of the top ones. Online release is the LAST step, after your festival run, not the first."
+        },
+        {
+          "type": "raw",
+          "html": "<div class=\"fest-grid\">\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1 · OSCAR-QUALIFYING</div><h4>Cannes Court Métrage</h4><p>The world's most prestigious short film section. Submit through Cannes Film Festival website. Strict premiere requirements.</p><p class=\"req\">Deadline: ~Feb each year · Format: DCP · Length ≤15 min</p></div>\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1 · OSCAR-QUALIFYING</div><h4>Sundance Shorts</h4><p>The career-launcher for U.S. and international shorts. Submission via FilmFreeway. 70+ shorts selected from 12,000+.</p><p class=\"req\">Deadline: ~Aug · Format: DCP / ProRes · Length ≤40 min</p></div>\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1 · OSCAR-QUALIFYING</div><h4>Berlinale Shorts</h4><p>European prestige; international perspective. Strong on experimental and political work.</p><p class=\"req\">Deadline: ~Oct · Format: DCP · Length ≤30 min</p></div>\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1</div><h4>TIFF · Toronto</h4><p>Industry-heavy. North American industry takes notice. Strong distribution opportunities.</p><p class=\"req\">Deadline: ~May · Length ≤40 min</p></div>\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1</div><h4>SXSW Shorts</h4><p>Genre-friendly Tier 1. Especially strong for thriller, comedy, and experimental.</p><p class=\"req\">Deadline: ~Oct · Format varies</p></div>\n    <div class=\"fest-card t1\"><div class=\"tier\">TIER 1</div><h4>Locarno Pardi di domani</h4><p>The art-cinema short showcase. Especially for first or second-time directors.</p><p class=\"req\">Deadline: ~Apr · Length ≤25 min</p></div>\n\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · INTERNATIONAL</div><h4>Clermont-Ferrand</h4><p>The world's largest dedicated short film festival. France. Massive industry market alongside.</p><p class=\"req\">Deadline: ~Sep · Length ≤40 min</p></div>\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · USA</div><h4>Palm Springs ShortFest</h4><p>Major North American showcase, Oscar-qualifying.</p><p class=\"req\">Deadline: ~Mar · Length ≤45 min</p></div>\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · USA</div><h4>Aspen ShortsFest</h4><p>Boutique, prestigious, Oscar-qualifying.</p><p class=\"req\">Deadline: ~Dec · Length ≤40 min</p></div>\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · INDIA</div><h4>MAMI · Mumbai Film Festival</h4><p>India's biggest festival. Strong shorts section. Industry exposure within India.</p><p class=\"req\">Deadline: ~Jul · Format: DCP / ProRes</p></div>\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · INDIA</div><h4>IFFK · Kerala</h4><p>Politically-engaged, strong on regional cinema. Excellent audience.</p><p class=\"req\">Deadline: ~Sep · Various lengths accepted</p></div>\n    <div class=\"fest-card t2\"><div class=\"tier\">TIER 2 · INDIA</div><h4>IFFI · Goa</h4><p>India's national film festival. Government-backed, strong for Indian shorts.</p><p class=\"req\">Deadline: ~Sep</p></div>\n\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · GENRE</div><h4>Fantasia (Montreal)</h4><p>Genre, horror, fantasy, sci-fi. Oscar-qualifying for shorts.</p><p class=\"req\">Deadline: ~Apr · Length ≤30 min</p></div>\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · GENRE</div><h4>Sitges (Spain)</h4><p>Horror &amp; fantastic film festival.</p><p class=\"req\">Deadline: ~Jun</p></div>\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · ONLINE</div><h4>Vimeo Staff Picks</h4><p>Online curation. Massive reach. After your festival run.</p><p class=\"req\">Submit via Vimeo · No deadlines</p></div>\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · ONLINE</div><h4>Short of the Week</h4><p>Curated showcase. Strong industry readership.</p><p class=\"req\">Submit anytime · No deadlines</p></div>\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · INDIA</div><h4>Dharamshala International</h4><p>Strong for documentary and thoughtful narrative. Mountain setting; intimate community.</p><p class=\"req\">Deadline: ~Aug</p></div>\n    <div class=\"fest-card t3\"><div class=\"tier\">TIER 3 · INDIA</div><h4>Bengaluru International</h4><p>Friendly to South Indian and emerging filmmakers.</p><p class=\"req\">Deadline: ~Dec</p></div>\n  </div>"
+        },
+        {
+          "type": "raw",
+          "html": "<p style=\"font-size: 13px; color: var(--muted); font-style: italic; margin-top: 14px;\"><strong>Note:</strong> Deadlines and rules change every year. Always verify current dates on each festival's official site or via FilmFreeway before submitting.</p>"
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "My target festivals (3 tier-1, 5 tier-2, 5 tier-3)",
+              "key": "s10_targets",
+              "kind": "textarea",
+              "placeholder": "List them with submission month + deadline. The order matters: tier 1 first.",
+              "rows": 6,
+              "size": null,
+              "style": "margin-top:24px;"
+            },
+            {
+              "label": "My festival positioning — one paragraph",
+              "hint": "Why does this short matter NOW? What conversation is it part of? What demographic? Festival programmers want films that say something about the moment.",
+              "key": "s10_pos",
+              "kind": "textarea",
+              "placeholder": "The one paragraph you'll send with every submission.",
+              "rows": 4,
+              "size": null
+            },
+            {
+              "label": "Submission budget",
+              "hint": "Festival fees add up. Tier-1 shorts are usually $40–$70. Tier 2: $25–$50. Tier 3: $10–$30. Plan for $400–$800 total.",
+              "key": "s10_budget",
+              "kind": "textarea",
+              "placeholder": "Estimate. Worth it.",
+              "rows": 2,
+              "size": null
+            }
+          ]
+        },
+        {
+          "type": "check",
+          "heading": "FESTIVAL STRATEGY CHECK",
+          "items": [
+            {
+              "key": "ck_s10_a",
+              "text": "I have NOT released the short online or socially yet."
+            },
+            {
+              "key": "ck_s10_b",
+              "text": "I have a tiered list (3 tier-1, 5 tier-2, 5 tier-3) with deadlines."
+            },
+            {
+              "key": "ck_s10_c",
+              "text": "My DCP / ProRes / H.264 deliverables are ready."
+            },
+            {
+              "key": "ck_s10_d",
+              "text": "I have a one-paragraph positioning statement."
+            },
+            {
+              "key": "ck_s10_e",
+              "text": "I have a poster, stills, and a director bio ready."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step-11",
+      "num": "11",
+      "title": "The <em>Final Lock.</em>",
+      "titlePlain": "The Final Lock.",
+      "time": "~ 30 MIN",
+      "badge": {
+        "step": "11",
+        "initial": "EMPTY"
+      },
+      "deck": "Read aloud, double-check, and lock. After this, the script doesn't change unless you discover something on set.",
+      "blocks": [
+        {
+          "type": "formula",
+          "label": "FORMULA",
+          "eq": "The locked script is a contract — with yourself, your cast, your crew, and your future editor. Until it's locked, you're still in writing mode. Once it's locked, you're in production mode. The two cannot coexist.",
+          "tanglish": "Lock aana script oru contract — un, cast, crew, editor odu. Lock aagama irundha indha rendu mode um onnaaga nadakkaadhu. Lock aanaa puri vendam — production start."
+        },
+        {
+          "type": "check",
+          "heading": "FINAL LOCK CHECKLIST · 20 ITEMS",
+          "items": [
+            {
+              "key": "ck_lock_01",
+              "text": "My logline lands in 25 words or fewer."
+            },
+            {
+              "key": "ck_lock_02",
+              "text": "My protagonist has one clear want."
+            },
+            {
+              "key": "ck_lock_03",
+              "text": "There is exactly one obstacle."
+            },
+            {
+              "key": "ck_lock_04",
+              "text": "There is one decisive turn."
+            },
+            {
+              "key": "ck_lock_05",
+              "text": "There is one final image that holds the meaning."
+            },
+            {
+              "key": "ck_lock_06",
+              "text": "All five beats are present and earned."
+            },
+            {
+              "key": "ck_lock_07",
+              "text": "The escalation builds; no scene stalls."
+            },
+            {
+              "key": "ck_lock_08",
+              "text": "No two scenes do the same job."
+            },
+            {
+              "key": "ck_lock_09",
+              "text": "Page count fits target runtime (1 page ≈ 1 minute)."
+            },
+            {
+              "key": "ck_lock_10",
+              "text": "No unfilmable elements (drone shot I can't afford, child I haven't cast, etc.)."
+            },
+            {
+              "key": "ck_lock_11",
+              "text": "All locations are practical and confirmed (or I have plan B)."
+            },
+            {
+              "key": "ck_lock_12",
+              "text": "Cast is locked or in advanced negotiation."
+            },
+            {
+              "key": "ck_lock_13",
+              "text": "Budget covers the script as written."
+            },
+            {
+              "key": "ck_lock_14",
+              "text": "I've read the script aloud, scene by scene."
+            },
+            {
+              "key": "ck_lock_15",
+              "text": "A trusted first reader has given notes."
+            },
+            {
+              "key": "ck_lock_16",
+              "text": "I've cut every line that doesn't earn its place."
+            },
+            {
+              "key": "ck_lock_17",
+              "text": "I've exported a Fountain backup."
+            },
+            {
+              "key": "ck_lock_18",
+              "text": "My festival list is tiered and dated."
+            },
+            {
+              "key": "ck_lock_19",
+              "text": "I have NOT released anything online yet."
+            },
+            {
+              "key": "ck_lock_20",
+              "text": "I'm ready to call ROLL CAMERA."
+            }
+          ]
+        },
+        {
+          "type": "asks",
+          "items": [
+            {
+              "label": "A note to yourself before the shoot",
+              "hint": "Day 1 morning, when nerves hit — what would past-you want present-you to remember about WHY you wanted to make this short?",
+              "key": "s11_note",
+              "kind": "textarea",
+              "placeholder": "Write it for the version of yourself that's tired, behind schedule, and tempted to compromise.",
+              "size": "lg",
+              "style": "margin-top:24px;"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1_setup",
+      "key": "b1_setup",
+      "num": 1,
+      "name": "Setup",
+      "positionLabel": "BEAT 1 · ≤15%",
+      "percentage": "≤15%",
+      "description": "Establish the protagonist, the world, the normal. End the moment they touch something that hints at the want.",
+      "formulaLine": "Setup (≤15% of runtime) — Establish character, world, normal.",
+      "summary": "Establish character, world, normal.",
+      "svg": {
+        "label": "SETUP",
+        "dotX": 40,
+        "dotY": 130,
+        "xPercent": 5,
+        "labelX": 40,
+        "labelY": 155
+      }
+    },
+    {
+      "id": "b2_disturb",
+      "key": "b2_disturb",
+      "num": 2,
+      "name": "Disturbance",
+      "positionLabel": "BEAT 2 · ~10%",
+      "percentage": "~10%",
+      "description": "The single event that destabilizes the normal and forces action. The 'now what?' moment.",
+      "formulaLine": "Disturbance (~10%) — The thing that breaks the normal.",
+      "summary": "The thing that breaks the normal.",
+      "svg": {
+        "label": "DISTURB",
+        "dotX": 120,
+        "dotY": 110,
+        "xPercent": 15,
+        "labelX": 120,
+        "labelY": 155
+      }
+    },
+    {
+      "id": "b3_escalate",
+      "key": "b3_escalate",
+      "num": 3,
+      "name": "Escalation",
+      "positionLabel": "BEAT 3 · ~50%",
+      "percentage": "~50%",
+      "description": "The pursuit. Obstacles get worse. The protagonist tries and fails (or partly fails). Tension rises.",
+      "formulaLine": "Escalation (~50%) — The pursuit of the want; obstacles compound.",
+      "summary": "The pursuit of the want; obstacles compound.",
+      "svg": {
+        "label": "ESCALATE",
+        "dotX": 380,
+        "dotY": 65,
+        "xPercent": 47.5,
+        "labelX": 380,
+        "labelY": 40
+      }
+    },
+    {
+      "id": "b4_turn",
+      "key": "b4_turn",
+      "num": 4,
+      "name": "Turn",
+      "positionLabel": "BEAT 4 · ~15%",
+      "percentage": "~15%",
+      "description": "The moment something flips. They get the want — or realize they wanted something else. The peak of the film.",
+      "formulaLine": "Turn (~15%) — The moment everything changes.",
+      "summary": "The moment everything changes.",
+      "svg": {
+        "label": "TURN",
+        "dotX": 580,
+        "dotY": 80,
+        "xPercent": 72.5,
+        "labelX": 580,
+        "labelY": 105
+      }
+    },
+    {
+      "id": "b5_image",
+      "key": "b5_image",
+      "num": 5,
+      "name": "Image",
+      "positionLabel": "BEAT 5 · ~10%",
+      "percentage": "~10%",
+      "description": "The final frame. Not a wrap-up — a single image that holds everything the short was about. The thing the audience walks away with.",
+      "formulaLine": "Image (~10%) — The final frame that holds the meaning.",
+      "summary": "The final frame that holds the meaning.",
+      "svg": {
+        "label": "IMAGE",
+        "dotX": 780,
+        "dotY": 90,
+        "xPercent": 97.5,
+        "labelX": 770,
+        "labelY": 115
+      }
+    }
+  ]
+}

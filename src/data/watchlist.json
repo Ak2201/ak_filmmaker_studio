@@ -1,0 +1,554 @@
+[
+  {
+    "step": "step-01",
+    "vol": 1,
+    "label": "VOL I · STEP 01",
+    "heading": "The Spark",
+    "films": [
+      {
+        "title": "Magnolia",
+        "year": "1999",
+        "why": "Multiple \"what if\"s woven into one fabric. Watch how each spark recurs."
+      },
+      {
+        "title": "Pizza",
+        "year": "2012",
+        "why": "Karthik Subbaraj's debut spark — what if the haunted house was a story?"
+      },
+      {
+        "title": "Memento",
+        "year": "2000",
+        "why": "A high-concept what-if that survives every scene."
+      }
+    ]
+  },
+  {
+    "step": "step-02",
+    "vol": 1,
+    "label": "VOL I · STEP 02",
+    "heading": "The Logline",
+    "films": [
+      {
+        "title": "Speed",
+        "year": "1994",
+        "why": "\"Bus that can't slow down.\" Logline as filmic blueprint."
+      },
+      {
+        "title": "Kaithi",
+        "year": "2019",
+        "why": "A convict must drive cops to safety. One-line, immediate."
+      },
+      {
+        "title": "Locke",
+        "year": "2013",
+        "why": "Single-location logline that runs the whole film."
+      }
+    ]
+  },
+  {
+    "step": "step-03",
+    "vol": 1,
+    "label": "VOL I · STEP 03",
+    "heading": "Theme &amp; Stakes",
+    "films": [
+      {
+        "title": "There Will Be Blood",
+        "year": "2007",
+        "why": "Theme as obsession; stakes as soul."
+      },
+      {
+        "title": "Visaranai",
+        "year": "2015",
+        "why": "Theme worn into bone; stakes external and absolute."
+      },
+      {
+        "title": "Whiplash",
+        "year": "2014",
+        "why": "Three-layer stakes, perfectly aligned."
+      }
+    ]
+  },
+  {
+    "step": "step-04",
+    "vol": 1,
+    "label": "VOL I · STEP 04",
+    "heading": "The Protagonist",
+    "films": [
+      {
+        "title": "Asuran",
+        "year": "2019",
+        "why": "Protagonist already at the lesson — drama is keeping it."
+      },
+      {
+        "title": "Michael Clayton",
+        "year": "2007",
+        "why": "Want vs need shown in slow erosion."
+      },
+      {
+        "title": "Mayakkam Enna",
+        "year": "2011",
+        "why": "Protagonist's flaw and gift are the same thing."
+      }
+    ]
+  },
+  {
+    "step": "step-05",
+    "vol": 1,
+    "label": "VOL I · STEP 05",
+    "heading": "The Antagonist",
+    "films": [
+      {
+        "title": "No Country for Old Men",
+        "year": "2007",
+        "why": "Anton Chigurh — a villain with absolute philosophy."
+      },
+      {
+        "title": "Kumbalangi Nights",
+        "year": "2019",
+        "why": "The \"ideal man\" as monster."
+      },
+      {
+        "title": "Ratsasan",
+        "year": "2018",
+        "why": "Antagonist as psychology puzzle."
+      }
+    ]
+  },
+  {
+    "step": "step-06",
+    "vol": 1,
+    "label": "VOL I · STEP 06",
+    "heading": "Supporting Cast",
+    "films": [
+      {
+        "title": "The Lord of the Rings",
+        "year": "2001-03",
+        "why": "Each fellowship member with a defined arc."
+      },
+      {
+        "title": "Soodhu Kavvum",
+        "year": "2013",
+        "why": "Ensemble of distinct comic logics."
+      },
+      {
+        "title": "Knives Out",
+        "year": "2019",
+        "why": "Ten suspects, all readable in two minutes each."
+      }
+    ]
+  },
+  {
+    "step": "step-07",
+    "vol": 1,
+    "label": "VOL I · STEP 07",
+    "heading": "The World",
+    "films": [
+      {
+        "title": "Subramaniyapuram",
+        "year": "2008",
+        "why": "1980s Madurai through specific period detail."
+      },
+      {
+        "title": "Aaranya Kaandam",
+        "year": "2010",
+        "why": "Chennai underworld with rule-bound texture."
+      },
+      {
+        "title": "Children of Men",
+        "year": "2006",
+        "why": "Near-future world built through background detail."
+      }
+    ]
+  },
+  {
+    "step": "step-08",
+    "vol": 1,
+    "label": "VOL I · STEP 08",
+    "heading": "The 15 Beats",
+    "films": [
+      {
+        "title": "Die Hard",
+        "year": "1988",
+        "why": "Textbook 15-beat structure. Every beat lands."
+      },
+      {
+        "title": "Vikram Vedha",
+        "year": "2017",
+        "why": "Three-stories structure inside the 15-beat frame."
+      },
+      {
+        "title": "Soorarai Pottru",
+        "year": "2020",
+        "why": "Stakes raised in stages, beat-by-beat."
+      }
+    ]
+  },
+  {
+    "step": "step-09",
+    "vol": 1,
+    "label": "VOL I · STEP 09",
+    "heading": "Timeline",
+    "films": [
+      {
+        "title": "Pulp Fiction",
+        "year": "1994",
+        "why": "Non-linear masterclass."
+      },
+      {
+        "title": "Vada Chennai",
+        "year": "2018",
+        "why": "Decades jumped, anchored in objects."
+      },
+      {
+        "title": "Memento",
+        "year": "2000",
+        "why": "Reverse-chronology that is the story."
+      }
+    ]
+  },
+  {
+    "step": "step-10",
+    "vol": 1,
+    "label": "VOL I · STEP 10",
+    "heading": "Setups &amp; Payoffs",
+    "films": [
+      {
+        "title": "The Sixth Sense",
+        "year": "1999",
+        "why": "A setup-payoff so clean it rewatches as a different film."
+      },
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "Casual scenes that pay off as character behaviour."
+      },
+      {
+        "title": "Chinatown",
+        "year": "1974",
+        "why": "Every prop pays off."
+      }
+    ]
+  },
+  {
+    "step": "step-11",
+    "vol": 1,
+    "label": "VOL I · STEP 11",
+    "heading": "The Scene List",
+    "films": [
+      {
+        "title": "Mouna Raagam",
+        "year": "1986",
+        "why": "Each scene with a clear charge flip."
+      },
+      {
+        "title": "Marriage Story",
+        "year": "2019",
+        "why": "Conversation scenes engineered as conflict."
+      },
+      {
+        "title": "A Separation",
+        "year": "2011",
+        "why": "Every scene has competing wants."
+      }
+    ]
+  },
+  {
+    "step": "step-12",
+    "vol": 1,
+    "label": "VOL I · STEP 12",
+    "heading": "The Final Check",
+    "films": [
+      {
+        "title": "Anatomy of a Fall",
+        "year": "2023",
+        "why": "The whole film answers its own opening."
+      },
+      {
+        "title": "Aandavan Kattalai",
+        "year": "2016",
+        "why": "Tiny stakes, perfect closure."
+      },
+      {
+        "title": "Drive My Car",
+        "year": "2021",
+        "why": "A film that fully earns its 3-hour patience."
+      }
+    ]
+  },
+  {
+    "step": "step-13",
+    "vol": 2,
+    "label": "VOL II · STEP 13",
+    "heading": "Script Lock",
+    "films": [
+      {
+        "title": "The Social Network",
+        "year": "2010",
+        "why": "Sorkin script discipline. Locked, then shot."
+      },
+      {
+        "title": "12 Angry Men",
+        "year": "1957",
+        "why": "A locked script that lives or dies on dialogue."
+      },
+      {
+        "title": "Visaranai",
+        "year": "2015",
+        "why": "Documentary fidelity from a tight draft."
+      }
+    ]
+  },
+  {
+    "step": "step-14",
+    "vol": 2,
+    "label": "VOL II · STEP 14",
+    "heading": "Director's Vision",
+    "films": [
+      {
+        "title": "96",
+        "year": "2018",
+        "why": "Vision = restraint. One word makes every choice."
+      },
+      {
+        "title": "Dunkirk",
+        "year": "2017",
+        "why": "\"Subtraction\" as a vision statement."
+      },
+      {
+        "title": "Pariyerum Perumal",
+        "year": "2018",
+        "why": "Vision of quiet political rage."
+      }
+    ]
+  },
+  {
+    "step": "step-15",
+    "vol": 2,
+    "label": "VOL II · STEP 15",
+    "heading": "The Lookbook",
+    "films": [
+      {
+        "title": "Blade Runner 2049",
+        "year": "2017",
+        "why": "Lookbook so precise every frame is a still."
+      },
+      {
+        "title": "Karnan",
+        "year": "2021",
+        "why": "Symbol-driven lookbook = political vocabulary."
+      },
+      {
+        "title": "Moonrise Kingdom",
+        "year": "2012",
+        "why": "Wes Anderson — palette as character."
+      }
+    ]
+  },
+  {
+    "step": "step-16",
+    "vol": 2,
+    "label": "VOL II · STEP 16",
+    "heading": "Storyboard / Shots",
+    "films": [
+      {
+        "title": "1917",
+        "year": "2019",
+        "why": "Every shot pre-visualized for the long-take design."
+      },
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "\"When NOT to move the camera\" lessons."
+      },
+      {
+        "title": "The Bourne Ultimatum",
+        "year": "2007",
+        "why": "Action mapped beat-by-beat."
+      }
+    ]
+  },
+  {
+    "step": "step-17",
+    "vol": 2,
+    "label": "VOL II · STEP 17",
+    "heading": "Cinematography",
+    "films": [
+      {
+        "title": "In the Mood for Love",
+        "year": "2000",
+        "why": "Christopher Doyle / Mark Lee Ping-bin — palette and motion."
+      },
+      {
+        "title": "Vikram Vedha",
+        "year": "2017",
+        "why": "P. S. Vinod's two visual worlds."
+      },
+      {
+        "title": "Roma",
+        "year": "2018",
+        "why": "Black-and-white architecture; deep focus."
+      }
+    ]
+  },
+  {
+    "step": "step-18",
+    "vol": 2,
+    "label": "VOL II · STEP 18",
+    "heading": "Production Design",
+    "films": [
+      {
+        "title": "Parasite",
+        "year": "2019",
+        "why": "Set as character. Vertical class architecture."
+      },
+      {
+        "title": "Aaranya Kaandam",
+        "year": "2010",
+        "why": "Anti-design realism done with rigor."
+      },
+      {
+        "title": "The Grand Budapest Hotel",
+        "year": "2014",
+        "why": "Stylised design as world rule."
+      }
+    ]
+  },
+  {
+    "step": "step-19",
+    "vol": 2,
+    "label": "VOL II · STEP 19",
+    "heading": "Costume / HMU",
+    "films": [
+      {
+        "title": "96",
+        "year": "2018",
+        "why": "Wardrobe restraint = emotional register."
+      },
+      {
+        "title": "Phantom Thread",
+        "year": "2017",
+        "why": "Costume IS the protagonist's psychology."
+      },
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "Anti-glamour costume as casting argument."
+      }
+    ]
+  },
+  {
+    "step": "step-20",
+    "vol": 2,
+    "label": "VOL II · STEP 20",
+    "heading": "Casting",
+    "films": [
+      {
+        "title": "Vikram Vedha",
+        "year": "2017",
+        "why": "Casting as moral inversion (Madhavan, Sethupathi)."
+      },
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "Ashok Selvan against type as the entire film's argument."
+      },
+      {
+        "title": "The Florida Project",
+        "year": "2017",
+        "why": "Non-actor + star alchemy."
+      }
+    ]
+  },
+  {
+    "step": "step-21",
+    "vol": 2,
+    "label": "VOL II · STEP 21",
+    "heading": "Locations / Recce",
+    "films": [
+      {
+        "title": "Subramaniyapuram",
+        "year": "2008",
+        "why": "Real Madurai locations as period accuracy."
+      },
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "Trichy chosen for tone, not beauty."
+      },
+      {
+        "title": "Children of Men",
+        "year": "2006",
+        "why": "Locations that telegraph world-state."
+      }
+    ]
+  },
+  {
+    "step": "step-22",
+    "vol": 2,
+    "label": "VOL II · STEP 22",
+    "heading": "Sound &amp; Music",
+    "films": [
+      {
+        "title": "Por Thozhil",
+        "year": "2023",
+        "why": "No songs. Score as nervous system."
+      },
+      {
+        "title": "96",
+        "year": "2018",
+        "why": "Govind Vasantha — minimalism trusted to carry emotion."
+      },
+      {
+        "title": "Dunkirk",
+        "year": "2017",
+        "why": "Hans Zimmer — sound design and score as one rhythm."
+      }
+    ]
+  },
+  {
+    "step": "step-23",
+    "vol": 2,
+    "label": "VOL II · STEP 23",
+    "heading": "Schedule / Budget",
+    "films": [
+      {
+        "title": "Tangerine",
+        "year": "2015",
+        "why": "Shot on iPhones — constraints as creative redistribution."
+      },
+      {
+        "title": "Pizza",
+        "year": "2012",
+        "why": "Indie budget, full thriller on screen."
+      },
+      {
+        "title": "Primer",
+        "year": "2004",
+        "why": "$7,000 budget that punches like $7M."
+      }
+    ]
+  },
+  {
+    "step": "step-24",
+    "vol": 2,
+    "label": "VOL II · STEP 24",
+    "heading": "Tech Recce / Final Lock",
+    "films": [
+      {
+        "title": "Mad Max: Fury Road",
+        "year": "2015",
+        "why": "Recce, planning, choreography — military-grade prep."
+      },
+      {
+        "title": "Sairat",
+        "year": "2016",
+        "why": "Pre-production rigor in regional production."
+      },
+      {
+        "title": "Roma",
+        "year": "2018",
+        "why": "Sets and recces obsessive enough to recreate childhood."
+      }
+    ]
+  }
+]

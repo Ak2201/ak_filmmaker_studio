@@ -264,8 +264,10 @@ function svgEl(tag, attrs) {
  * one hand-tuned path — next to a `beats` array that already carried
  * every coordinate. Now the array is the only source.
  */
+const BEAT_W = 800, BEAT_H = 200;
+
 function renderBeatViz() {
-  const W = 800, H = 200, AXIS_Y = 100;
+  const W = BEAT_W, H = BEAT_H, AXIS_Y = 100;
   const svg = svgEl('svg', {
     viewBox: `0 0 ${W} ${H}`, xmlns: SVG_NS,
     role: 'img',
@@ -273,10 +275,11 @@ function renderBeatViz() {
       + BEATS.map((b) => `${b.num} ${b.name}`).join(', ')
   });
 
-  svg.append(svgEl('line', {
-    x1: 0, y1: AXIS_Y, x2: W, y2: AXIS_Y,
-    stroke: 'rgba(120,90,30,0.2)', 'stroke-width': 1
-  }));
+  // .beat-axis is stroked from var(--rule) in widgets.css. The legacy
+  // markup hard-coded rgba(120,90,30,.2) here, which is both a raw
+  // colour outside tokens.css and theme-blind — a fixed brown that did
+  // not move between paper, sepia and ink.
+  svg.append(svgEl('line', { x1: 0, y1: AXIS_Y, x2: W, y2: AXIS_Y, class: 'beat-axis' }));
 
   // Anchor the curve to both edges at the height of the first/last beat,
   // then run a quadratic through every beat dot.
@@ -307,7 +310,10 @@ function renderBeatViz() {
     label.textContent = b.svg.label;
     svg.append(label);
   }
-  return h('div.beat-viz', {}, [svg]);
+  // The dots carry an aria-label for screen readers; sighted users got
+  // nothing on hover. The feature blueprint has had a tooltip all along
+  // and .beat-tooltip is already styled — short just never used it.
+  return h('div.beat-viz', {}, [svg, h('div.beat-tooltip')]);
 }
 
 /** Fill in the dots whose beat field has been written. */
@@ -462,7 +468,13 @@ function render() {
   // over verbatim stringifies to "[object Object]" in the page. Render the
   // badges here instead, where the legacy markup put them — inside
   // .step-header, after .step-time — and keep the renderer out of it.
-  renderSteps(stepHost, STEPS.map(({ badge, ...rest }) => rest));
+  // beatviz / festgrid are views of data that lives elsewhere (the
+  // `beats` array, festivals.json). The page owns those renderers; the
+  // shared module stays out of page data.
+  renderSteps(stepHost, STEPS.map(({ badge, ...rest }) => rest), {
+    beatviz: renderBeatViz,
+    festgrid: renderFestivals
+  });
   for (const step of STEPS) {
     if (!step.badge) continue;
     const header = stepHost.querySelector(`#${step.id} .step-header`);
@@ -472,13 +484,6 @@ function render() {
       text: step.badge.initial ?? 'EMPTY'
     }));
   }
-
-  // Two hand-written blocks in the step data are really views of data
-  // that lives elsewhere. Swap the generated ones in.
-  const viz = stepHost.querySelector('#step-04 .beat-viz');
-  if (viz) viz.replaceWith(renderBeatViz());
-  const fest = stepHost.querySelector('#step-10 .fest-grid');
-  if (fest) fest.replaceWith(renderFestivals());
 
   adoptInlineHandlers(stepHost);
   main.append(...stepHost.childNodes);
@@ -1273,6 +1278,38 @@ function wireEvents() {
     field.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => field.focus(), 280);
   };
+  const showBeatTip = (dot) => {
+    const viz = dot.closest('.beat-viz');
+    const tip = viz && viz.querySelector('.beat-tooltip');
+    const beat = BEATS.find((b) => b.key === dot.dataset.beatKey);
+    if (!tip || !beat) return;
+    const field = document.querySelector(`[data-key="${beat.key}"]`);
+    const written = ((field && field.value) || '').trim();
+    tip.replaceChildren(
+      h('div.beat-tip-head', {
+        text: `BEAT ${beat.num} · ${beat.name.toUpperCase()} · ${beat.percentage}`
+      }),
+      h('div', { text: written.length > 140 ? written.slice(0, 140) + '…' : (written || 'Not yet written.') })
+    );
+    // Map the dot's viewBox coordinates onto the rendered SVG box.
+    const svgBox = viz.querySelector('svg').getBoundingClientRect();
+    const vizBox = viz.getBoundingClientRect();
+    const x = (Number(dot.getAttribute('cx')) / BEAT_W) * svgBox.width + (svgBox.left - vizBox.left);
+    const y = (Number(dot.getAttribute('cy')) / BEAT_H) * svgBox.height + (svgBox.top - vizBox.top);
+    tip.style.left = Math.max(0, Math.min(x - 120, vizBox.width - 240)) + 'px';
+    tip.style.top = Math.max(0, y - tip.offsetHeight - 14) + 'px';
+    tip.classList.add('show');
+  };
+  const hideBeatTip = (dot) => {
+    const viz = dot.closest('.beat-viz');
+    const tip = viz && viz.querySelector('.beat-tooltip');
+    if (tip) tip.classList.remove('show');
+  };
+  // mouseenter/focus do not bubble, so delegation uses their bubbling twins.
+  delegate(document, 'mouseover', '.beat-viz .beat-dot[data-beat-key]', (e, el) => showBeatTip(el));
+  delegate(document, 'mouseout',  '.beat-viz .beat-dot[data-beat-key]', (e, el) => hideBeatTip(el));
+  delegate(document, 'focusin',   '.beat-viz .beat-dot[data-beat-key]', (e, el) => showBeatTip(el));
+  delegate(document, 'focusout',  '.beat-viz .beat-dot[data-beat-key]', (e, el) => hideBeatTip(el));
   delegate(document, 'click', '.beat-viz .beat-dot[data-beat-key]', (e, el) => jumpToBeat(el));
   delegate(document, 'keydown', '.beat-viz .beat-dot[data-beat-key]', (e, el) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToBeat(el); }

@@ -377,6 +377,14 @@
   transition: opacity var(--speed) var(--ease-out);
 }
 .beat-tooltip.show { opacity: 1; }
+.beat-tip-head {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--panel-gilt);
+  margin-bottom: var(--s1);
+}
 
 /* --- Character relationship map ----------------------------- */
 .char-map-svg .conn-line {

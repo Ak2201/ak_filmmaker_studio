@@ -127,7 +127,11 @@ function renderAsk(a) {
 
 /* ---- step ------------------------------------------------- */
 
-export function renderStep(step) {
+/* `extra` lets a page supply renderers for block types only it knows
+   about — the five-beat visualiser, the festival grid — without this
+   shared module importing a page's data. Page renderers win over BLOCKS
+   so a page can also override a shared one. */
+export function renderStep(step, extra) {
   const section = h('section.step', { id: step.id });
   if (step.vol === 2) section.classList.add('vol-2');
 
@@ -153,7 +157,7 @@ export function renderStep(step) {
   if (step.deck) section.append(prose('p.step-deck', step.deck, step.deckTanglish));
 
   for (const block of step.blocks || []) {
-    const fn = BLOCKS[block.type];
+    const fn = (extra && extra[block.type]) || BLOCKS[block.type];
     if (!fn) {
       // Never silently drop. An unknown type is a data bug, and
       // we want it loud in dev and harmless in production.
@@ -166,9 +170,9 @@ export function renderStep(step) {
 }
 
 /** Render a list of steps into `host`, replacing its contents. */
-export function renderSteps(host, steps) {
+export function renderSteps(host, steps, extra) {
   const frag = document.createDocumentFragment();
-  for (const s of steps) frag.append(renderStep(s));
+  for (const s of steps) frag.append(renderStep(s, extra));
   host.replaceChildren(frag);
   return host;
 }

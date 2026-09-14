@@ -108,12 +108,44 @@ StudioUI.notify = StudioUI.toastInfo;
 // THEME — paper / ink / sepia (3-state pill)
 // ============================================================
 const THEME_KEY = 'arunak_studio_theme_v1';
+
+/* The stylesheets match `:root[data-theme]` with the CSS-side names
+   light / sepia / dark (see tokens.css). The app's own names are
+   paper / sepia / ink and the STORED value keeps those — THEME_KEY is
+   part of the storage contract. Map between the two here, once. */
+const CSS_THEME = { paper: 'light', sepia: 'sepia', ink: 'dark' };
+
+/* Canonical reader. The root attribute is the source of truth; the body
+   classes are a mirror kept for the pages that still read them. */
+function currentTheme() {
+  switch (document.documentElement.getAttribute('data-theme')) {
+    case 'sepia': return 'sepia';
+    case 'dark':  return 'ink';
+    case 'light': return 'paper';
+  }
+  if (document.body && document.body.classList.contains('sepia')) return 'sepia';
+  if (document.body && document.body.classList.contains('dark'))  return 'ink';
+  return 'paper';
+}
+
 function applyTheme(theme) {
+  // Stamp the root FIRST. This is the line the stylesheets actually key
+  // off, and documentElement exists long before body does, so setting it
+  // ahead of the body guard also avoids a flash of the wrong palette.
+  //
+  // Without it the picker is a no-op: nothing sets [data-theme="light"],
+  // so `@media (prefers-color-scheme: dark)` wins and a user who chose
+  // paper gets ink. Sepia becomes unreachable entirely.
+  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'light');
+
   if (!document.body) {
-    // Document not parsed yet — defer until ready
+    // Document not parsed yet — defer the body half until ready
     document.addEventListener('DOMContentLoaded', () => applyTheme(theme));
     return;
   }
+  // These classes match no CSS rule any more, but hub.js, library.js,
+  // feature.js and short.js still read them as state. Set them in the
+  // same call as the attribute so the two can never disagree.
   document.body.classList.remove('dark', 'sepia');
   if (theme === 'ink')   document.body.classList.add('dark');
   if (theme === 'sepia') document.body.classList.add('sepia');
@@ -140,10 +172,9 @@ function loadTheme() {
   }
 }
 StudioUI.applyTheme = applyTheme;
+StudioUI.currentTheme = currentTheme;
 StudioUI.cycleTheme = function () {
-  const cur = document.body.classList.contains('sepia') ? 'sepia'
-            : document.body.classList.contains('dark') ? 'ink'
-            : 'paper';
+  const cur = currentTheme();
   const next = cur === 'paper' ? 'sepia' : cur === 'sepia' ? 'ink' : 'paper';
   applyTheme(next);
   StudioUI.toast('Theme: ' + next, { type: 'info', duration: 1400 });
@@ -169,9 +200,7 @@ StudioUI.attachThemePicker = function (host) {
   });
   host.appendChild(wrap);
   // mark the active one
-  const cur = document.body.classList.contains('sepia') ? 'sepia'
-            : document.body.classList.contains('dark') ? 'ink'
-            : 'paper';
+  const cur = currentTheme();
   wrap.querySelectorAll('button').forEach(b =>
     b.classList.toggle('active', b.dataset.theme === cur));
 };

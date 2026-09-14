@@ -181,6 +181,26 @@ for (const spec of PAGES) {
   const overflow = await page.evaluate(() =>
     Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
 
+  // --- themes must actually swap ---
+  // The stylesheets key off :root[data-theme]; chrome.js once set only
+  // body.dark/.sepia, which no rule matches — so all three themes
+  // rendered identically, the picker was a no-op and sepia was
+  // unreachable. Nothing above would notice: the text, the keys and the
+  // handlers are all still correct on a page with the wrong palette.
+  const themes = await page.evaluate(() => {
+    const api = window.StudioUI;
+    if (!api || !api.applyTheme) return { unavailable: true };
+    const bg = () => getComputedStyle(document.body).backgroundColor;
+    const before = document.documentElement.getAttribute('data-theme');
+    const out = {};
+    ['paper', 'sepia', 'ink'].forEach((t) => { api.applyTheme(t); out[t] = bg(); });
+    if (before) document.documentElement.setAttribute('data-theme', before);
+    return out;
+  });
+  const themeSwatches = themes.unavailable
+    ? null
+    : new Set([themes.paper, themes.sepia, themes.ink]).size;
+
   const old = legacyFacts(spec.legacy);
   const liveKeys = new Set(live.keys);
   const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
@@ -215,6 +235,7 @@ for (const spec of PAGES) {
     inlineHandlers: live.inlineHandlers,
     idleWrites,
     hOverflowAt390: overflow,
+    distinctThemes: themeSwatches,
     errors
   };
   report.push(row);
@@ -230,6 +251,9 @@ for (const spec of PAGES) {
   if (live.inlineHandlers) bad.push(`${live.inlineHandlers} inline handlers`);
   if (idleWrites > 0) bad.push(`${idleWrites} idle writes`);
   if (overflow > 0) bad.push(`${overflow}px horizontal overflow at 390px`);
+  if (themeSwatches !== null && themeSwatches !== 3) {
+    bad.push(`themes do not swap (${themeSwatches} distinct background(s) across paper/sepia/ink)`);
+  }
   if (errors.length) bad.push(`${errors.length} console/page errors`);
   if (!live.hasMain) bad.push('no <main id="main">');
   if (bad.length) { failures++; row.FAIL = bad; }

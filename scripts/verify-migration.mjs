@@ -261,9 +261,115 @@ for (const spec of PAGES) {
   await ctx.close();
 }
 
+/* ---- backup round trip --------------------------------------
+   Export is the ONLY backup a local-first app has, so it gets its own
+   assertion rather than riding on the per-page diff.
+
+   v1 read the per-project keys straight off localStorage, where the
+   storage proxy resolved them to whichever project was open — so a file
+   labelled "full studio backup" held exactly one film, and the other
+   projects were gone the moment the browser was. Nothing in the page
+   diff could see it: the hub's markup is identical either way.
+
+   Two projects out, two projects back, with their contents matched. */
+const rtCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const rtPage = await rtCtx.newPage();
+const rtErrors = [];
+rtPage.on('pageerror', (e) => rtErrors.push(e.message));
+await rtPage.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
+
+const exported = await rtPage.evaluate(async () => {
+  const S = window.StudioStore;
+  if (!S) return { unavailable: true };
+  S.listProjects().forEach((p) => S.deleteProject(p.id));
+  const a = S.createProject({ title: 'RT Alpha', format: 'feature' });
+  S.setCurrentProject(a.id);
+  localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify({ lad_1_logline: 'ALPHA-CONTENT' }));
+  const b = S.createProject({ title: 'RT Beta', format: 'short' });
+  S.setCurrentProject(b.id);
+  localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify({ lad_1_logline: 'BETA-CONTENT' }));
+
+  // Capture the blob instead of letting the browser download it.
+  let blob = null;
+  const origCreate = URL.createObjectURL;
+  const origClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
+  HTMLAnchorElement.prototype.click = function () {};
+  document.querySelector('[data-action="export-all"]').click();
+  URL.createObjectURL = origCreate;
+  HTMLAnchorElement.prototype.click = origClick;
+  return { text: blob ? await blob.text() : null };
+});
+
+let backup = { checked: false };
+if (!exported.unavailable && exported.text) {
+  const parsed = JSON.parse(exported.text);
+  const loglines = Object.values(parsed.data || {})
+    .map((d) => d.feature_blueprint && d.feature_blueprint.lad_1_logline)
+    .filter(Boolean).sort();
+
+  // Wipe, then re-import the captured file through the real input path.
+  await rtPage.evaluate((text) => {
+    const S = window.StudioStore;
+    S.listProjects().forEach((p) => S.deleteProject(p.id));
+    window.confirm = () => true;
+    window.alert = () => {};
+    const input = document.getElementById('importAllFile');
+    const dt = new DataTransfer();
+    dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, exported.text);
+
+  // importV2 finishes with location.reload()
+  await rtPage.waitForLoadState('networkidle').catch(() => {});
+  await rtPage.waitForTimeout(1200);
+
+  const restored = await rtPage.evaluate(() => {
+    const S = window.StudioStore;
+    return S.listProjects().map((p) => ({
+      title: p.title,
+      logline: (() => {
+        const raw = S.rawGet('arunak_filmmaker_combined_v1__' + p.id);
+        try { return JSON.parse(raw || '{}').lad_1_logline || null; } catch (e) { return null; }
+      })()
+    })).sort((x, y) => (x.title > y.title ? 1 : -1));
+  });
+
+  backup = {
+    checked: true,
+    exportVersion: parsed._version,
+    projectsInFile: (parsed.projects || []).length,
+    loglinesInFile: loglines,
+    projectsRestored: restored.length,
+    restored,
+    pageErrors: rtErrors
+  };
+
+  const bad = [];
+  if (parsed._version < 2) bad.push(`export is v${parsed._version}, expected v2+`);
+  if ((parsed.projects || []).length !== 2) {
+    bad.push(`export listed ${(parsed.projects || []).length} project(s), expected 2`);
+  }
+  if (loglines.join('|') !== 'ALPHA-CONTENT|BETA-CONTENT') {
+    bad.push(`export carried [${loglines.join(', ')}], expected both projects' content`);
+  }
+  if (restored.length !== 2) bad.push(`restored ${restored.length} project(s), expected 2`);
+  const restoredLoglines = restored.map((r) => r.logline).sort().join('|');
+  if (restoredLoglines !== 'ALPHA-CONTENT|BETA-CONTENT') {
+    bad.push(`restored content [${restoredLoglines}], expected both projects' content`);
+  }
+  if (bad.length) { failures++; backup.FAIL = bad; }
+} else {
+  backup.FAIL = ['could not capture an export blob'];
+  failures++;
+}
+report.push({ page: 'backup round trip', ...backup });
+
+await rtCtx.close();
 await browser.close();
 server.close();
 
 console.log(JSON.stringify(report, null, 2));
-console.log(failures ? `\n✗ ${failures} page(s) failed` : '\n✓ all pages pass');
+console.log(failures ? `\n✗ ${failures} check(s) failed` : '\n✓ all pages pass');
 process.exit(failures ? 1 : 0);

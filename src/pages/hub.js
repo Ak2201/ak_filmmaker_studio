@@ -79,6 +79,27 @@ const ALL_KEYS = [
   PREF_KEY, SYNC_CFG, ACTIVITY_KEY
 ];
 
+/* Backup field name -> storage key, for the keys store.js namespaces
+   per project (its SCOPED_KEYS). Everything here exists once PER
+   PROJECT; reading it through localStorage would silently give you only
+   the active one, which is exactly the bug this map exists to kill. */
+const PROJECT_KEYS = {
+  feature_blueprint: FEATURE_KEY,
+  short_blueprint:   SHORT_KEY,
+  library_calc:      LIB_CALC_KEY,
+  feature_prefs:     FEAT_PREFS,
+  short_prefs:       SHORT_PREFS,
+  library_prefs:     LIB_PREFS,
+  activity_log:      ACTIVITY_KEY
+};
+
+/* Deliberately NOT per project: the theme is a device preference and the
+   Supabase config is account-level. Both are global in store.js too. */
+const GLOBAL_KEYS = {
+  studio_prefs: PREF_KEY,
+  sync_config:  SYNC_CFG
+};
+
 // ============================================================
 // PAGES — the new filenames, and a map off the old ones.
 // ============================================================
@@ -1101,26 +1122,50 @@ function highlightActiveResult() {
 // EXPORT / IMPORT / RESET  (cross-blueprint)
 // ============================================================
 function exportAll() {
+  /* v2: EVERY project, not just the active one.
+     v1 read the scoped keys straight off localStorage, so the storage
+     proxy quietly resolved them to whichever project happened to be
+     open. The file said "full studio backup" and contained one film. */
+  const projects = Store.listProjects();
   const all = {
     _exported: new Date().toISOString(),
     _from: "The Filmmaker's Studio",
     _curator: 'Arunak',
-    _version: 1,
-    feature_blueprint: parseStorage(FEATURE_KEY),
-    short_blueprint:   parseStorage(SHORT_KEY),
-    library_calc:      parseStorage(LIB_CALC_KEY),
-    feature_prefs:     parseStorage(FEAT_PREFS),
-    short_prefs:       parseStorage(SHORT_PREFS),
-    library_prefs:     parseStorage(LIB_PREFS),
-    studio_prefs:      parseStorage(PREF_KEY),
-    sync_config:       parseStorage(SYNC_CFG),
-    activity_log:      parseStorage(ACTIVITY_KEY),
+    _version: 2,
+    projects,
+    currentProject: Store.currentProjectId() || null,
+    data: {},
+    global: {},
     notes: {}
   };
+
+  // Read each project's namespaced keys directly. Switching the active
+  // project to read them would fire change events and bump updatedAt on
+  // every project just for taking a backup.
+  const readBucket = (suffix) => {
+    const bucket = {};
+    Object.keys(PROJECT_KEYS).forEach((name) => {
+      const raw = Store.rawGet(PROJECT_KEYS[name] + suffix);
+      if (raw == null) return;
+      try { bucket[name] = JSON.parse(raw); } catch (e) { /* skip corrupt */ }
+    });
+    return bucket;
+  };
+  projects.forEach((p) => { all.data[p.id] = readBucket('__' + p.id); });
+
+  // A studio that never created a project still has unsuffixed data.
+  if (!projects.length) {
+    const legacy = readBucket('');
+    if (Object.keys(legacy).length) all.data._unfiled = legacy;
+  }
+
+  Object.keys(GLOBAL_KEYS).forEach((n) => { all.global[n] = parseStorage(GLOBAL_KEYS[n]); });
+
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k && k.startsWith(NOTE_PREFIX)) all.notes[k] = localStorage.getItem(k);
   }
+
   const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1129,7 +1174,8 @@ function exportAll() {
   a.download = 'arunak_studio_backup_' + date + '.json';
   a.click();
   URL.revokeObjectURL(url);
-  logActivity('studio', 'Exported full studio backup');
+  const n = projects.length;
+  logActivity('studio', 'Exported full studio backup — ' + n + ' project' + (n === 1 ? '' : 's'));
 }
 
 function importAll() { $('#importAllFile').click(); }
@@ -1144,27 +1190,9 @@ function handleImportAll(e) {
       if (!all._from || !all._from.includes('Studio')) {
         if (!confirm('This file does not look like a Studio backup. Try anyway?')) return;
       }
-      if (!Store.currentProjectId()) {
-        const tryTitle =
-          (all.feature_blueprint && (all.feature_blueprint.meta_title || all.feature_blueprint.v1_title)) ||
-          (all.short_blueprint && all.short_blueprint.meta_title) ||
-          'Imported Project';
-        Store.createProject({ title: tryTitle, format: 'feature' });
-      } else if (!confirm('This will REPLACE the data in the active project ("' + Store.currentProject().title +
-                          '"). Continue?\n\nTip: cancel and create a new project first if you want to keep the current one.')) {
-        return;
-      }
-      if (all.feature_blueprint) localStorage.setItem(FEATURE_KEY, JSON.stringify(all.feature_blueprint));
-      if (all.short_blueprint)   localStorage.setItem(SHORT_KEY, JSON.stringify(all.short_blueprint));
-      if (all.library_calc)      localStorage.setItem(LIB_CALC_KEY, JSON.stringify(all.library_calc));
-      if (all.feature_prefs)     localStorage.setItem(FEAT_PREFS, JSON.stringify(all.feature_prefs));
-      if (all.short_prefs)       localStorage.setItem(SHORT_PREFS, JSON.stringify(all.short_prefs));
-      if (all.library_prefs)     localStorage.setItem(LIB_PREFS, JSON.stringify(all.library_prefs));
-      if (all.studio_prefs)      localStorage.setItem(PREF_KEY, JSON.stringify(all.studio_prefs));
-      if (all.sync_config)       localStorage.setItem(SYNC_CFG, JSON.stringify(all.sync_config));
-      if (all.activity_log)      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(all.activity_log));
-      if (all.notes) Object.keys(all.notes).forEach(k => localStorage.setItem(k, all.notes[k]));
-      alert('✓ Studio data imported. Refreshing…');
+      const done = (all._version >= 2 && all.data) ? importV2(all) : importV1(all);
+      if (!done) return;
+      alert('✓ ' + done + ' Refreshing…');
       location.reload();
     } catch (err) {
       alert('Import failed: ' + err.message);
@@ -1174,17 +1202,109 @@ function handleImportAll(e) {
   e.target.value = '';
 }
 
+/* v2 — a whole studio. Additive by design: an import never deletes or
+   overwrites a project you already have. A backup restored onto an empty
+   machine comes back with its original ids and titles; restored onto a
+   machine that still has the originals, the incoming copies arrive
+   alongside, marked, so nobody loses a draft to a filename collision. */
+function importV2(all) {
+  const incoming = Array.isArray(all.projects) ? all.projects : [];
+  const unfiled  = all.data._unfiled;
+  const total    = incoming.length + (unfiled ? 1 : 0);
+  if (!total) { alert('That backup contains no projects.'); return null; }
+
+  if (!confirm('Import ' + total + ' project' + (total === 1 ? '' : 's') +
+               ' into this studio?\n\nNothing you already have is deleted or ' +
+               'overwritten — the imported work is added alongside it.')) return null;
+
+  const taken = Store.listProjects().map((p) => p.id);
+  let added = 0;
+
+  const restore = (meta, bucket) => {
+    const clash = taken.indexOf(meta.id) >= 0;
+    const created = Store.createProject({
+      id:     clash ? undefined : meta.id,
+      title:  (meta.title || 'Imported Project') + (clash ? ' (imported)' : ''),
+      format: meta.format
+    });
+    Object.keys(PROJECT_KEYS).forEach((name) => {
+      if (bucket[name] === undefined) return;
+      Store.rawSet(PROJECT_KEYS[name] + '__' + created.id, JSON.stringify(bucket[name]));
+    });
+    taken.push(created.id);
+    added++;
+  };
+
+  incoming.forEach((p) => restore(p, all.data[p.id] || {}));
+  if (unfiled) restore({ title: 'Imported Project', format: 'feature' }, unfiled);
+
+  // Globals and notes are studio-wide; last write wins, as before.
+  if (all.global) {
+    Object.keys(GLOBAL_KEYS).forEach((n) => {
+      if (all.global[n] !== undefined) localStorage.setItem(GLOBAL_KEYS[n], JSON.stringify(all.global[n]));
+    });
+  }
+  if (all.notes) Object.keys(all.notes).forEach((k) => localStorage.setItem(k, all.notes[k]));
+
+  logActivity('studio', 'Imported ' + added + ' project' + (added === 1 ? '' : 's'));
+  return 'Imported ' + added + ' project' + (added === 1 ? '' : 's') + '.';
+}
+
+/* v1 — a single project's worth of data, with no project identity in the
+   file. Keeps working exactly as it did, including the warning that it
+   lands on top of whatever is currently open. */
+function importV1(all) {
+  if (!Store.currentProjectId()) {
+    const tryTitle =
+      (all.feature_blueprint && (all.feature_blueprint.meta_title || all.feature_blueprint.v1_title)) ||
+      (all.short_blueprint && all.short_blueprint.meta_title) ||
+      'Imported Project';
+    Store.createProject({ title: tryTitle, format: 'feature' });
+  } else if (!confirm('This is an older single-project backup. It will REPLACE the data in ' +
+                      'the active project ("' + Store.currentProject().title + '"). Continue?' +
+                      '\n\nTip: cancel and create a new project first if you want to keep the current one.')) {
+    return null;
+  }
+  if (all.feature_blueprint) localStorage.setItem(FEATURE_KEY, JSON.stringify(all.feature_blueprint));
+  if (all.short_blueprint)   localStorage.setItem(SHORT_KEY, JSON.stringify(all.short_blueprint));
+  if (all.library_calc)      localStorage.setItem(LIB_CALC_KEY, JSON.stringify(all.library_calc));
+  if (all.feature_prefs)     localStorage.setItem(FEAT_PREFS, JSON.stringify(all.feature_prefs));
+  if (all.short_prefs)       localStorage.setItem(SHORT_PREFS, JSON.stringify(all.short_prefs));
+  if (all.library_prefs)     localStorage.setItem(LIB_PREFS, JSON.stringify(all.library_prefs));
+  if (all.studio_prefs)      localStorage.setItem(PREF_KEY, JSON.stringify(all.studio_prefs));
+  if (all.sync_config)       localStorage.setItem(SYNC_CFG, JSON.stringify(all.sync_config));
+  if (all.activity_log)      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(all.activity_log));
+  if (all.notes) Object.keys(all.notes).forEach((k) => localStorage.setItem(k, all.notes[k]));
+  return 'Studio data imported.';
+}
+
 function resetAll() {
-  if (!confirm('This erases EVERYTHING — both blueprints, library calc, all prefs, all comments. EXPORT first if you want to keep anything.\n\nContinue?')) return;
+  /* This said "erases EVERYTHING" and then called removeItem for each
+     scoped key — which the storage proxy resolved to the ACTIVE project
+     only. Other projects survived a wipe the user was told was total.
+     Now it means what it says: every project, then the globals. */
+  const projects = Store.listProjects();
+  const n = projects.length;
+  if (!confirm('This erases EVERYTHING — ' + n + ' project' + (n === 1 ? '' : 's') +
+               ', both blueprints, library calc, all prefs, all comments. ' +
+               'EXPORT first if you want to keep anything.\n\nContinue?')) return;
   if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
-  ALL_KEYS.forEach(k => localStorage.removeItem(k));
+
+  // deleteProject already wipes that project's namespaced keys, using
+  // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
+  projects.forEach((p) => Store.deleteProject(p.id));
+
+  // Anything still unsuffixed (a studio that predates projects), then globals.
+  ALL_KEYS.forEach((k) => Store.rawRemove(k));
+
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k && k.startsWith(NOTE_PREFIX)) toRemove.push(k);
   }
-  toRemove.forEach(k => localStorage.removeItem(k));
-  alert('All studio data cleared. Refreshing…');
+  toRemove.forEach((k) => localStorage.removeItem(k));
+
+  alert('All studio data cleared — ' + n + ' project' + (n === 1 ? '' : 's') + ' removed. Refreshing…');
   location.reload();
 }
 

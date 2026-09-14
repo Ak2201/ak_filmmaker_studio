@@ -167,6 +167,22 @@ a:focus-visible { outline-offset: 3px; }
 }
 .btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
 
+/* Destructive actions must not read as the page's primary call to
+   action. RESET shipped as .btn.primary — a filled accent button, the
+   heaviest control in the toolbar — sitting directly beside PRINT and
+   JSON. Outlined in the danger hue until hover, so the visual weight
+   only arrives once the pointer is actually on it. */
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn.danger:hover,
+.btn.danger:focus-visible {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--chrome);
+}
+
 .btn.gold,
 .tb-link.gold {
   border-color: var(--panel-gilt);
@@ -1516,7 +1532,10 @@ a:focus-visible { outline-offset: 3px; }
   }
   .progress-meter { flex: 1; }
   .progress-bar { width: 100%; min-width: 70px; }
-  .step-jumper { flex: 1; min-width: 0; max-width: none; }
+  /* min-width:0 let the select shrink to ~86px between the progress
+     meter and the theme button, clipping its own label to "JUMP T".
+     Give it room for the label and let the row wrap instead. */
+  .step-jumper { flex: 1; min-width: 8.5rem; max-width: none; }
   /* Tap targets — 36px minimum on every control in the chrome. */
   .btn,
   .tb-link,

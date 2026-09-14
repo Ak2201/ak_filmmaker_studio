@@ -155,7 +155,7 @@ function renderToolbar() {
     h('button.btn', { 'data-action': 'export-json', text: 'JSON' }),
     h('button.btn', { 'data-action': 'export-fountain', text: 'FOUNTAIN' }),
     h('button.btn', { 'data-action': 'import-json', text: 'IMPORT' }),
-    h('button.btn.primary', { 'data-action': 'reset', text: 'RESET' }),
+    h('button.btn.danger', { 'data-action': 'reset', text: 'RESET' }),
     h('a.tb-link.gold', { href: 'index.html', title: 'Back to the Studio hub', text: '⌂ HUB' }),
     h('a.tb-link', { href: 'feature.html', title: 'Open the feature blueprint', text: 'FEATURE ↗' }),
     h('a.tb-link', { href: 'library.html', title: 'Open the library', text: 'LIBRARY ↗' }),
@@ -1310,3 +1310,14 @@ wireEvents();
 loadPrefs();
 loadData();
 updateProgress();
+
+// chrome.js runs its auto-init at import time, when #app is still empty,
+// so anything that has to see rendered fields must be re-run here. The
+// other three pages already do this; short.js never did, which left 18
+// of its inputs — every beat textarea, the budget cells — announcing
+// nothing to a screen reader once they held a value.
+try {
+  StudioUI.autoAriaLabels();
+} catch (e) {
+  console.warn('[short] chrome re-init', e);
+}

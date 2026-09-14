@@ -794,6 +794,22 @@ function autoAriaLabels() {
   document.querySelectorAll('a:not([aria-label])').forEach(a => {
     if (!a.textContent.trim() && a.title) a.setAttribute('aria-label', a.title);
   });
+  // Fields whose only label is a placeholder. A placeholder is not a
+  // label: it disappears the moment you type, so the rate and day cells
+  // in the budget tables announced nothing once they held a value.
+  // Derived from the placeholder rather than hand-written, so a new
+  // column is covered the day it is added.
+  document.querySelectorAll(
+    'input:not([aria-label]):not([aria-labelledby]),' +
+    'textarea:not([aria-label]):not([aria-labelledby]),' +
+    'select:not([aria-label]):not([aria-labelledby])'
+  ).forEach(el => {
+    if (el.type === 'hidden') return;
+    if (el.closest('label')) return;
+    if (el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]')) return;
+    const name = el.placeholder || el.title;
+    if (name) el.setAttribute('aria-label', name);
+  });
 }
 
 // ============================================================

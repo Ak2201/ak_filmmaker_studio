@@ -468,7 +468,7 @@ function toolbarHTML() {
   <button class="btn" data-action="emailToSelf" title="Email a summary to yourself">✉ MAIL</button>
   <button class="btn" data-action="importData">IMPORT</button>
   <button class="btn" data-action="loadSamplePack" title="Load Por Thozhil pre-filled sample">SAMPLE</button>
-  <button class="btn primary" data-action="resetData">RESET</button>
+  <button class="btn danger" data-action="resetData">RESET</button>
   <a class="tb-link gold" href="index.html" title="Back to the Studio hub">⌂ HUB</a>
   <a class="tb-link" href="library.html" title="Open the Filmmaker's Library">LIBRARY ↗</a>
   <a class="tb-link" href="short.html" title="Open the Short Film Blueprint">SHORTS ↗</a>

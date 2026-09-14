@@ -117,7 +117,11 @@ function legacyFacts(file) {
 }
 
 /* ---- run --------------------------------------------------- */
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+// Playwright resolves its own downloaded browser. PW_CHROMIUM overrides
+// that for environments that ship Chromium at a fixed path instead.
+const browser = await chromium.launch(
+  process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}
+);
 const report = [];
 let failures = 0;
 

@@ -1,0 +1,94 @@
+# Netlify equivalent of vercel.json. Kept deliberately in step with it —
+# if you change a header or a route in one, change it in the other, or
+# the two deploys diverge in ways only a browser console will tell you.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # vite 8 / rolldown need ^20.19 || >=22.12. Netlify's default image has
+  # shipped older Node before now, and the failure is an unhelpful
+  # "styleText is not exported from node:util" at build time.
+  NODE_VERSION = "22"
+
+# ---- headers -------------------------------------------------
+# Hashed assets are immutable; HTML and the service worker must never be
+# held, or a deploy strands users on an old shell.
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    # The CSP invariant 5 relies on. script-src is 'self' with no
+    # 'unsafe-inline': an inline handler breaks the page under it.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+
+# ---- old URLs ------------------------------------------------
+# force = true because the stub files still exist in dist/; without it
+# Netlify serves the file and the redirect never fires. Browsers carry
+# the #fragment across a 301, so deep links to a step survive.
+
+[[redirects]]
+  from = "/arunak-filmmaker-blueprint.html"
+  to = "/feature.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/arunak-shortfilm-blueprint.html"
+  to = "/short.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/arunak-filmmaker-library.html"
+  to = "/library.html"
+  status = 301
+  force = true
+
+# ---- clean URLs ----------------------------------------------
+# status 200 = rewrite, not redirect: the address bar keeps /feature.
+
+[[redirects]]
+  from = "/studio"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/feature"
+  to = "/feature.html"
+  status = 200
+
+[[redirects]]
+  from = "/short"
+  to = "/short.html"
+  status = 200
+
+[[redirects]]
+  from = "/library"
+  to = "/library.html"
+  status = 200
+
+[[redirects]]
+  from = "/shared/:token"
+  to = "/index.html?share=:token"
+  status = 200

@@ -253,6 +253,10 @@
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
+  /* The chart keeps its readable width and this frame scrolls, rather
+     than the chart shrinking or the page growing sideways. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .pacing-viz .label,
 .char-map .label,
@@ -282,15 +286,20 @@
 }
 
 /* --- SVG charts --------------------------------------------
-   All three charts scale with their box and never force the
-   page wider than the viewport. */
+   --viz-min is documented as the width "before they scroll", but
+   min(var(--viz-min), 100%) collapsed it to the container on any screen
+   narrower than 560px, so the charts never scrolled — they shrank. At
+   375px the 800-unit viewBox rendered at 0.37x: beat labels about 5px
+   tall and clickable dots 3.7px across. The page-overflow the min() was
+   guarding against is now handled where it belongs, by scrolling the
+   frame (.scroll-x is the same idiom the wide tables use). */
 .pacing-svg,
 .char-map-svg,
 .beat-viz svg,
 .beat-visualizer svg {
   display: block;
   width: 100%;
-  min-width: min(var(--viz-min), 100%);
+  min-width: var(--viz-min);
   height: 200px;
 }
 .char-map-svg { height: 380px; }
@@ -337,6 +346,13 @@
 .beat-dot.filled,
 .pacing-svg .beat-dot.filled { fill: var(--accent); stroke: var(--accent-deep); }
 .beat-dot:hover { stroke-width: 3; }
+/* On a touch screen the dots are the only way into a beat, and at the
+   chart's scale they were under 4px across. SVG geometry properties are
+   settable from CSS, and the attribute stays as the fallback. */
+@media (pointer: coarse) {
+  .beat-dot,
+  .pacing-svg .beat-dot { r: 9; stroke-width: 3; }
+}
 .pacing-svg .beat-num {
   font-family: var(--f-mono);
   font-size: var(--t-micro);

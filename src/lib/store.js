@@ -424,13 +424,18 @@ export function wireBlueprintHeader(opts) {
     if (document.getElementById('studioNoProjectBanner')) return;
     const banner = document.createElement('div');
     banner.id = 'studioNoProjectBanner';
-    banner.style.cssText =
-      'position:sticky;top:0;z-index:101;background:#b03a1f;color:#f5ecd6;' +
-      'padding:10px 16px;text-align:center;font-family:JetBrains Mono,monospace;' +
-      'font-size:11px;letter-spacing:1.5px;font-weight:600;';
-    banner.innerHTML =
-      '⚠ NO PROJECT SELECTED — your edits won\'t save until you pick a project. ' +
-      '<a href="index.html" style="color:#f5ecd6;text-decoration:underline;">GO TO STUDIO →</a>';
+    // Styling lives in chrome-injected.css (imported here) so it can use
+    // tokens. It was an inline cssText blob with raw #b03a1f / #f5ecd6 —
+    // the latter being the pre-token paper colour, so the banner did not
+    // move with the theme.
+    banner.className = 'studio-no-project-banner';
+    banner.append(
+      '⚠ NO PROJECT SELECTED — your edits won\'t save until you pick a project. '
+    );
+    const link = document.createElement('a');
+    link.href = 'index.html';
+    link.textContent = 'GO TO STUDIO →';
+    banner.append(link);
     document.body.insertBefore(banner, document.body.firstChild);
   }
   if (document.readyState === 'loading') {

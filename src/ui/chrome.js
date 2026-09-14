@@ -627,7 +627,17 @@ function buildBeatVisualizer() {
     function showTip() {
       const fld = document.querySelector('[data-key="' + key + '"]');
       const txt = fld && fld.value ? fld.value.slice(0, 140) + (fld.value.length > 140 ? '…' : '') : '(not yet filled)';
-      tooltip.innerHTML = '<strong style="font-family:JetBrains Mono;font-size:10px;letter-spacing:1.5px;color:#a87a32;">BEAT ' + beatNum + ' · ' + beatLabels[i].toUpperCase() + '</strong><br>' + txt;
+      // Was innerHTML with an inline style carrying a raw #a87a32, a
+      // literal font stack and magic px — and it interpolated the
+      // user's own beat text, so a "<" in a script broke the tooltip.
+      // .beat-tip-head is the same class the short blueprint's
+      // visualiser uses, styled from tokens; textContent escapes.
+      const tipHead = document.createElement('div');
+      tipHead.className = 'beat-tip-head';
+      tipHead.textContent = 'BEAT ' + beatNum + ' · ' + beatLabels[i].toUpperCase();
+      const tipBody = document.createElement('div');
+      tipBody.textContent = txt;
+      tooltip.replaceChildren(tipHead, tipBody);
       const rect = svg.getBoundingClientRect();
       const wrapRect = wrap.getBoundingClientRect();
       tooltip.style.left = ((x / W) * rect.width + (rect.left - wrapRect.left) - 110) + 'px';

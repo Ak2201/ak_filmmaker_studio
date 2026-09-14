@@ -52,3 +52,24 @@
 .studio-proj-link.no-project:hover {
   background: rgba(176, 58, 31, 0.32);
 }
+
+/* ------------------------------------------------------------
+   "No project selected" banner. store.js used to carry this as an
+   inline cssText blob with a raw #b03a1f fill, #f5ecd6 text (the
+   pre-token paper colour) and hard-coded px. Tokens now, so it
+   follows paper / sepia / ink like everything else.
+   ------------------------------------------------------------ */
+.studio-no-project-banner {
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--z-toolbar) + 1);   /* was a literal 101: one above the toolbar */
+  padding: var(--s2) var(--s4);
+  text-align: center;
+  background: var(--danger);
+  color: var(--danger-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+}
+.studio-no-project-banner a { color: inherit; text-decoration: underline; }

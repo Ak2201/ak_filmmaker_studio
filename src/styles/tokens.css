@@ -76,6 +76,10 @@
   --accent-wash:  var(--feature-wash);
   --accent-lift:  var(--feature-lift); /* accent ON a dark panel */
   --accent-on:    #fdfaf3;   /* text ON an accent fill */
+  /* Text ON a --danger fill. Tracks --accent-on deliberately: both it
+     and --danger invert per theme, so the pair stays legible in paper,
+     sepia and ink without a second set of values to keep in step. */
+  --danger-on:    var(--accent-on);
 
   /* ---- chrome -------------------------------------------
      The toolbar, rail toggle and mobile bar are a single dark

@@ -1312,12 +1312,32 @@ loadData();
 updateProgress();
 
 // chrome.js runs its auto-init at import time, when #app is still empty,
-// so anything that has to see rendered fields must be re-run here. The
-// other three pages already do this; short.js never did, which left 18
-// of its inputs — every beat textarea, the budget cells — announcing
-// nothing to a screen reader once they held a value.
-try {
-  StudioUI.autoAriaLabels();
-} catch (e) {
-  console.warn('[short] chrome re-init', e);
+// so every piece of it that needs rendered markup has to be called again
+// here. The other three pages already did this; short.js did not, which
+// is why it had no step rail, no reading progress, no saved-field flash
+// and 18 inputs announcing nothing to a screen reader.
+//
+// buildBeatVisualizer() is deliberately absent: it keys off
+// [data-key="b01"] and draws the feature's 15-beat Save-the-Cat curve.
+// The short film has its own five-beat model (b1_setup … b5_image), so
+// the visualiser would be permanently dead code on this page rather than
+// merely inactive. A short-form equivalent would be a new renderer, not
+// this call.
+function reinitChrome() {
+  try {
+    StudioUI.injectReadingProgress();
+    StudioUI.buildStepRail();
+    StudioUI.wireGlossaryPopovers();
+    StudioUI.wireFieldSavedFlash();
+    StudioUI.autoAriaLabels();
+    StudioUI.polishEmptyStates();
+    const toolbar = document.querySelector('.toolbar');
+    if (toolbar) StudioUI.attachSignInPill(toolbar);
+    if (window.matchMedia('(max-width: 720px)').matches) StudioUI.attachMobileActionBar();
+  } catch (e) {
+    // The chrome extras are a polish layer; none of them is a reason to
+    // take down a page the user has writing in.
+    console.warn('[short] chrome re-init', e);
+  }
 }
+reinitChrome();

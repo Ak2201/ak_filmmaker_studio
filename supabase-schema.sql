@@ -445,3 +445,248 @@ end $$;
 --   select count(*) from projects;       -- should be 0 as anon
 --   select * from has_project_access('00000000-0000-0000-0000-000000000000', 'view');  -- false
 -- ============================================================
+
+-- ============================================================
+-- 6. ACCOUNTS — the org tier above projects (v4)
+-- ------------------------------------------------------------
+-- Added before there is production data, deliberately. Retrofitting a
+-- tenant above `projects` later means migrating live rows, and the
+-- first invariant of this app is that saved work is a contract.
+--
+-- TWO ROLE AXES, kept separate on purpose:
+--   account_members.role      owner / admin / member
+--     governs billing, seats, and who may create projects.
+--   project_collaborators.role  view / comment / edit
+--     governs access to one project's data.
+-- An account 'member' gets NO blanket access to the account's projects;
+-- they need an explicit collaborator row. Only owner/admin see
+-- everything, which is the privacy-preserving default. Flip that in
+-- has_project_access() below if you want company-wide visibility.
+-- ============================================================
+create table if not exists public.accounts (
+  id               uuid        primary key default gen_random_uuid(),
+  name             text        not null default 'My Studio',
+  owner_id         uuid        not null references auth.users(id) on delete restrict,
+  plan             text        not null default 'free'
+                   check (plan in ('free','starter','indie','pro')),
+  seat_limit       int         not null default 1  check (seat_limit >= 1),
+  storage_limit_mb int         not null default 500 check (storage_limit_mb >= 0),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+create index if not exists accounts_owner_idx on public.accounts(owner_id);
+
+-- Seats. user_id stays null until a pending invite is claimed, so a
+-- person can be invited before they have signed up; the email is the
+-- stable key. Store it lowercased — the trigger below enforces that
+-- rather than trusting the caller.
+create table if not exists public.account_members (
+  account_id    uuid        not null references public.accounts(id) on delete cascade,
+  invited_email text        not null,
+  user_id       uuid        references auth.users(id) on delete cascade,
+  role          text        not null check (role in ('owner','admin','member')),
+  status        text        not null default 'pending'
+                check (status in ('pending','active','revoked')),
+  invited_by    uuid        references auth.users(id),
+  created_at    timestamptz not null default now(),
+  joined_at     timestamptz,
+  primary key (account_id, invited_email)
+);
+create unique index if not exists account_members_user_idx
+  on public.account_members(account_id, user_id) where user_id is not null;
+create index if not exists account_members_lookup_idx
+  on public.account_members(user_id, status);
+
+-- Nullable for now: the column has to exist before the backfill can run,
+-- and the client still creates projects without it. Make it NOT NULL in
+-- a later migration once every row is populated and cloud.js sets it.
+alter table public.projects
+  add column if not exists account_id uuid references public.accounts(id) on delete cascade;
+create index if not exists projects_account_idx on public.projects(account_id);
+
+-- ---- backfill: one personal account per existing project owner ------
+-- Idempotent. Re-running finds the account it made last time and only
+-- fills projects still carrying a null account_id.
+do $$
+declare
+  r      record;
+  acc_id uuid;
+begin
+  for r in select distinct owner_id from public.projects where account_id is null loop
+    select id into acc_id
+      from public.accounts
+     where owner_id = r.owner_id
+     order by created_at
+     limit 1;
+
+    if acc_id is null then
+      insert into public.accounts (name, owner_id)
+      values ('Personal', r.owner_id)
+      returning id into acc_id;
+
+      insert into public.account_members
+        (account_id, invited_email, user_id, role, status, joined_at)
+      select acc_id, lower(coalesce(u.email, u.id::text)), r.owner_id, 'owner', 'active', now()
+        from auth.users u
+       where u.id = r.owner_id
+      on conflict (account_id, invited_email) do nothing;
+    end if;
+
+    update public.projects
+       set account_id = acc_id
+     where owner_id = r.owner_id
+       and account_id is null;
+  end loop;
+end $$;
+
+-- ---- helpers --------------------------------------------------------
+-- security definer so it bypasses RLS: account_members policies below
+-- ask "am I a member of this account", and answering that by querying
+-- account_members under RLS would recurse infinitely. This is the
+-- standard way out of that trap.
+create or replace function public.account_role(aid uuid)
+returns text
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select m.role
+    from public.account_members m
+   where m.account_id = aid
+     and m.user_id    = auth.uid()
+     and m.status     = 'active'
+   limit 1;
+$$;
+grant execute on function public.account_role(uuid) to authenticated;
+
+create or replace function public.normalise_member_email()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  new.invited_email := lower(trim(new.invited_email));
+  return new;
+end;
+$$;
+drop trigger if exists account_members_normalise on public.account_members;
+create trigger account_members_normalise
+  before insert or update on public.account_members
+  for each row execute function public.normalise_member_email();
+
+-- Seats are what the plan sells, so the limit is enforced in the
+-- database rather than in the client that happens to be asking.
+create or replace function public.enforce_seat_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  used int;
+  lim  int;
+begin
+  select seat_limit into lim from public.accounts where id = new.account_id;
+  select count(*) into used
+    from public.account_members
+   where account_id = new.account_id
+     and status in ('pending','active');
+  if used >= lim then
+    raise exception 'Seat limit reached for this account (% of %). Add seats to invite more people.', used, lim
+      using errcode = '53400';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists account_members_seat_limit on public.account_members;
+create trigger account_members_seat_limit
+  before insert on public.account_members
+  for each row execute function public.enforce_seat_limit();
+
+-- ---- access: account owners/admins reach their account's projects ---
+create or replace function public.has_project_access(pid uuid, min_role text default 'view')
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.projects p
+     where p.id = pid and p.owner_id = auth.uid()
+  ) or exists (
+    select 1
+      from public.projects p
+      join public.account_members m on m.account_id = p.account_id
+     where p.id = pid
+       and m.user_id = auth.uid()
+       and m.status  = 'active'
+       and m.role in ('owner','admin')
+  ) or exists (
+    select 1 from public.project_collaborators c
+     where c.project_id = pid
+       and c.user_id    = auth.uid()
+       and case min_role
+             when 'view'    then true
+             when 'comment' then c.role in ('comment','edit')
+             when 'edit'    then c.role = 'edit'
+           end
+  );
+$$;
+
+-- ---- RLS ------------------------------------------------------------
+alter table public.accounts        enable row level security;
+alter table public.account_members enable row level security;
+
+drop policy if exists acc_select on public.accounts;
+create policy acc_select on public.accounts
+  for select using (owner_id = auth.uid() or public.account_role(id) is not null);
+
+drop policy if exists acc_insert on public.accounts;
+create policy acc_insert on public.accounts
+  for insert with check (owner_id = auth.uid());
+
+-- WITH CHECK is explicit, not inherited from USING. Without it Postgres
+-- reuses USING for the new row, which is how an 'edit' collaborator was
+-- once able to rewrite projects.owner_id and seize a project.
+drop policy if exists acc_update on public.accounts;
+create policy acc_update on public.accounts
+  for update
+  using  (owner_id = auth.uid() or public.account_role(id) = 'owner')
+  with check (owner_id = auth.uid() or public.account_role(id) = 'owner');
+
+drop policy if exists acc_delete on public.accounts;
+create policy acc_delete on public.accounts
+  for delete using (owner_id = auth.uid());
+
+drop policy if exists am_select on public.account_members;
+create policy am_select on public.account_members
+  for select using (
+    user_id = auth.uid() or public.account_role(account_id) in ('owner','admin')
+  );
+
+drop policy if exists am_write on public.account_members;
+create policy am_write on public.account_members
+  for all
+  using  (public.account_role(account_id) in ('owner','admin'))
+  with check (public.account_role(account_id) in ('owner','admin'));
+
+-- NOTE: proj_select and proj_insert are REDEFINED here, superseding the
+-- versions in section "ROW-LEVEL SECURITY" above. The file is applied
+-- top to bottom and every policy is drop-then-create, so the last
+-- definition wins — these are the live ones. proj_update, pd_*, pc_*,
+-- sh_* and cm_* are unchanged and still defined above.
+--
+-- Projects become visible to account owners/admins as well.
+drop policy if exists proj_select on public.projects;
+create policy proj_select on public.projects
+  for select using (public.has_project_access(id, 'view'));
+
+-- A new project must land in an account the creator actually belongs to.
+drop policy if exists proj_insert on public.projects;
+create policy proj_insert on public.projects
+  for insert with check (
+    owner_id = auth.uid()
+    and (account_id is null or public.account_role(account_id) is not null)
+  );

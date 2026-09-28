@@ -68,6 +68,7 @@ import '../lib/cloud.js';
 import { esc, fromHTML, delegate } from '../lib/dom.js';
 import { renderSteps, stepIndex, stepFieldKeys } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
+import { mountShell } from '../ui/shell.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
@@ -2454,6 +2455,7 @@ function wirePitchRebuild() {
    ============================================================ */
 function reinitChrome() {
   try {
+    mountShell();
     injectReadingProgress();
     buildStepRail();
     buildBeatVisualizer();

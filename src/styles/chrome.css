@@ -1654,3 +1654,184 @@ a:focus-visible { outline-offset: 3px; }
   .save-indicator,
   .glossary-popover { transform: none !important; }
 }
+
+/* ============================================================
+   STUDIO SHELL — global rail + six-phase bar
+   ------------------------------------------------------------
+   Two layouts, one markup. Below 1100px the shell stacks above the
+   page like any other bar. At 1100px and up the rail detaches to the
+   left edge, which is the StudioBinder-shaped layout — done as a
+   media query so narrow screens never inherit a fixed element that
+   could push the page sideways. verify asserts zero overflow at
+   390px and this must not be the thing that breaks it.
+   ============================================================ */
+.sh-shell {
+  position: relative;
+  z-index: var(--z-toolbar);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+
+.sh-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+.sh-rail-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  min-height: 36px;
+  color: var(--chrome-muted);
+  text-decoration: none;
+  border-radius: var(--radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.sh-rail-item:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
+.sh-rail-item.is-active { color: var(--chrome-ink); background: var(--chrome-fill-strong); }
+.sh-rail-icon { font-size: 1.1em; line-height: 1; }
+
+/* ---- phase bar ---- */
+.sh-phasebar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+}
+.sh-phase { position: relative; }
+.sh-phase-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 36px;
+  padding: var(--s2) var(--s3);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--chrome-muted);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sh-phase-btn:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
+.sh-phase.is-active .sh-phase-btn {
+  color: var(--chrome-ink);
+  border-color: var(--phase-hue);
+}
+/* The dot is the whole colour system in 8px: six phases, six hues,
+   legible before the label is read. */
+.sh-phase-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--phase-hue);
+  flex: none;
+}
+
+/* ---- module dropdown ---- */
+.sh-phase-menu {
+  position: absolute;
+  top: calc(100% + var(--s1));
+  left: 0;
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - var(--s4) * 2));
+  padding: var(--s2);
+  background: var(--panel);
+  color: var(--panel-ink);
+  border: 1px solid var(--panel-hair);
+  border-top: 2px solid var(--phase-hue);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-modal);
+  z-index: var(--z-overlay);
+}
+.sh-phase-menu-head {
+  padding: var(--s2) var(--s3) var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.sh-mod {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--s2);
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  text-align: left;
+  text-decoration: none;
+  color: var(--panel-ink);
+  cursor: pointer;
+  font: inherit;
+}
+.sh-mod:hover, .mod:focus-visible { background: var(--panel-raised); }
+.sh-mod-label { font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; }
+.sh-mod-purpose {
+  grid-column: 1 / -1;
+  font-size: var(--t-tiny);
+  color: var(--panel-muted);
+  line-height: var(--lh-snug);
+}
+/* "Planned" is stated, not implied by a dead link. A module that looks
+   clickable and does nothing is worse than one that says SOON. */
+.sh-mod-flag {
+  align-self: start;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--phase-hue, var(--panel-gilt));
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  padding: 0 var(--s1);
+}
+.sh-mod.planned { opacity: .72; }
+
+/* Below 720px the menu anchors to the BAR, not to the phase that opened
+   it. Anchored per-phase, the rightmost phases (Plan, Shoot) pushed a
+   260px menu past the right edge and took the page with them — 96px of
+   horizontal overflow at 375px. left+right pin it inside the bar, so it
+   cannot overflow whichever phase is tapped.
+
+   verify did not catch this: it measures overflow with every menu shut.
+   Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
+@media (max-width: 719px) {
+  .sh-phasebar { position: relative; }
+  .sh-phase { position: static; }
+  .sh-phase-menu {
+    left: var(--s3);
+    right: var(--s3);
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .sh-shell {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: stretch;
+  }
+  .sh-rail {
+    flex-direction: column;
+    align-items: stretch;
+    border-bottom: 0;
+    border-right: 1px solid var(--chrome-hair);
+    padding: var(--s3) var(--s2);
+  }
+  .sh-rail-item { justify-content: flex-start; }
+}
+
+@media print {
+  .sh-shell { display: none !important; }
+}

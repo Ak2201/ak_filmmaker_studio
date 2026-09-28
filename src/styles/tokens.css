@@ -49,14 +49,34 @@
   --library-deep: #6d4b10;
   --library-wash: #f5ead2;
 
+  /* ---- three more, for the six-phase spine ----------------
+     develop / write / breakdown reuse the volume hues that
+     already exist; visualize / plan / shoot are new. Chosen to
+     stay clear of --ok (green) and --warn (amber), because a
+     phase colour must never read as a status. */
+  --visualize:      #6a4a9c;
+  --visualize-deep: #48306e;
+  --visualize-wash: #ebe4f5;
+
+  --plan:           #14657a;
+  --plan-deep:      #0d4453;
+  --plan-wash:      #dbeaf0;
+
+  --shoot:          #8a2f62;
+  --shoot-deep:     #5e1f43;
+  --shoot-wash:     #f3dfeb;
+
   /* ---- lifted volume hues ---------------------------------
      The editorial panels (.formula-box, .step-check, .example,
      .final-page, pitch slides …) are dark in EVERY theme, so the
      volume hues need a version that stays legible on near-black.
      These are constant across themes for exactly that reason. */
-  --feature-lift: #e08a6d;
-  --shorts-lift:  #71a6dd;
-  --library-lift: #d9ab5c;
+  --feature-lift:   #e08a6d;
+  --shorts-lift:    #71a6dd;
+  --library-lift:   #d9ab5c;
+  --visualize-lift: #b394e0;
+  --plan-lift:      #63b6cc;
+  --shoot-lift:     #d183b0;
   --ok-lift:      #5fbc99;
   --danger-lift:  #e58471;
 
@@ -233,6 +253,9 @@
     --shorts-wash:  #15232f;
 
     --library:      #d9ab5c;
+    --visualize:    #b394e0;
+    --plan:         #63b6cc;
+    --shoot:        #d183b0;
     --library-deep: #9a6d1f;
     --library-wash: #2c2415;
 
@@ -280,6 +303,9 @@
   --shorts-wash:  #15232f;
 
   --library:      #d9ab5c;
+  --visualize:    #b394e0;
+  --plan:         #63b6cc;
+  --shoot:        #d183b0;
   --library-deep: #9a6d1f;
   --library-wash: #2c2415;
 
@@ -305,6 +331,29 @@
 /* ============================================================
    VOLUME ACCENT — set once per page on <html data-volume>.
    ============================================================ */
+/* ---- phase accents --------------------------------------
+   The six-phase spine (Develop → Write → Breakdown → Visualize
+   → Plan → Shoot). Same mechanism as [data-volume]: set the
+   attribute once on <html> and every --accent reference follows.
+   develop / write / breakdown deliberately reuse the three
+   volume hues, so the pages that already exist do not change
+   colour when they gain a phase. */
+[data-phase="develop"]   { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); }
+[data-phase="write"]     { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); }
+[data-phase="breakdown"] { --accent: var(--shorts);    --accent-deep: var(--shorts-deep);    --accent-wash: var(--shorts-wash);    --accent-lift: var(--shorts-lift); }
+[data-phase="visualize"] { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); }
+[data-phase="plan"]      { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); }
+[data-phase="shoot"]     { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); }
+
+/* Per-phase swatch, for the nav itself — independent of --accent so a
+   phase pill keeps its own colour on a page belonging to another phase. */
+.sh-ph-develop   { --phase-hue: var(--feature); }
+.sh-ph-write     { --phase-hue: var(--library); }
+.sh-ph-breakdown { --phase-hue: var(--shorts); }
+.sh-ph-visualize { --phase-hue: var(--visualize); }
+.sh-ph-plan      { --phase-hue: var(--plan); }
+.sh-ph-shoot     { --phase-hue: var(--shoot); }
+
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); }
 [data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); }

@@ -50,6 +50,7 @@ import '../lib/cloud.js';
 
 import { h, delegate } from '../lib/dom.js';
 import { renderSteps } from '../ui/steps.js';
+import { mountShell } from '../ui/shell.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
@@ -1362,6 +1363,7 @@ updateProgress();
 // this call.
 function reinitChrome() {
   try {
+    mountShell();
     StudioUI.injectReadingProgress();
     StudioUI.buildStepRail();
     StudioUI.wireGlossaryPopovers();

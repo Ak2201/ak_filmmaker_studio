@@ -39,6 +39,7 @@
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
 import Store from '../lib/store.js';
+import { mountShell } from '../ui/shell.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -1799,6 +1800,7 @@ function init() {
 
   // The shared chrome auto-inits on import, before this page has any
   // DOM — so the pieces that need our markup are attached here.
+  mountShell();
   const toolbar = document.querySelector('.toolbar');
   if (toolbar) StudioUI.attachSignInPill(toolbar);
   StudioUI.wireGlossaryPopovers();

@@ -228,6 +228,27 @@ for (const spec of PAGES) {
     ? null
     : new Set([themes.paper, themes.sepia, themes.ink]).size;
 
+  // --- overflow with every phase menu OPEN ---
+  // The plain overflow check above measures a page with all menus shut,
+  // and missed a 260px dropdown anchored to the rightmost phase pushing
+  // 96px of horizontal overflow at 375px. Open them all and measure
+  // again; a dropdown that escapes the viewport is a layout bug whether
+  // or not the page is scrolled sideways by default.
+  const overflowOpen = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('.sh-phase-btn')];
+    if (!btns.length) return { checked: false, overflow: 0, escaped: 0 };
+    document.querySelectorAll('.sh-phase-menu').forEach((m) => { m.hidden = false; });
+    const de = document.documentElement;
+    const escaped = [...document.querySelectorAll('.sh-phase-menu')]
+      .filter((m) => {
+        const r = m.getBoundingClientRect();
+        return r.width > 0 && (r.right > de.clientWidth + 1 || r.left < -1);
+      }).length;
+    const overflow = Math.max(0, de.scrollWidth - de.clientWidth);
+    document.querySelectorAll('.sh-phase-menu').forEach((m) => { m.hidden = true; });
+    return { checked: true, overflow, escaped };
+  });
+
   const old = WRITE_BASELINE ? legacyFacts(spec.legacy) : baselineFacts(spec.name);
   const liveKeys = new Set(live.keys);
   const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
@@ -269,6 +290,8 @@ for (const spec of PAGES) {
     inlineHandlers: live.inlineHandlers,
     idleWrites,
     hOverflowAt390: overflow,
+    hOverflowMenusOpen: overflowOpen.overflow,
+    menusEscapingViewport: overflowOpen.escaped,
     distinctThemes: themeSwatches,
     errors
   };
@@ -285,6 +308,12 @@ for (const spec of PAGES) {
   if (live.inlineHandlers) bad.push(`${live.inlineHandlers} inline handlers`);
   if (idleWrites > 0) bad.push(`${idleWrites} idle writes`);
   if (overflow > 0) bad.push(`${overflow}px horizontal overflow at 390px`);
+  if (overflowOpen.checked && overflowOpen.overflow > 0) {
+    bad.push(`${overflowOpen.overflow}px horizontal overflow at 390px with the phase menus open`);
+  }
+  if (overflowOpen.checked && overflowOpen.escaped > 0) {
+    bad.push(`${overflowOpen.escaped} phase menu(s) escape the viewport at 390px`);
+  }
   if (themeSwatches !== null && themeSwatches !== 3) {
     bad.push(`themes do not swap (${themeSwatches} distinct background(s) across paper/sepia/ink)`);
   }

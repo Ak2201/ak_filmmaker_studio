@@ -31,6 +31,7 @@ import '../styles/widgets.css';
 import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
+import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 
 import films from '../data/films.json';
@@ -713,6 +714,7 @@ function render() {
   // StudioUI boots before this module renders, so the bits of it
   // that look for page furniture get a second, explicit call.
   try {
+    mountShell();
     StudioUI.attachSignInPill(toolbar);
     StudioUI.autoAriaLabels();
     // The craft rules and film notes are exactly where a term needs

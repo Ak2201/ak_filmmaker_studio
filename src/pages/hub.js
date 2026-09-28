@@ -73,11 +73,12 @@ const LIB_PREFS    = 'arunak_library_prefs_v1';
 const SYNC_CFG     = 'arunak_supabase_cfg_v1';
 const NOTE_PREFIX  = 'arunak_note_';
 const ACTIVITY_KEY = 'arunak_studio_activity_v1';
+const SCENES_KEY   = 'arunak_scenes_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
-  PREF_KEY, SYNC_CFG, ACTIVITY_KEY
+  PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY
 ];
 
 /* Backup field name -> storage key, for the keys store.js namespaces
@@ -91,7 +92,8 @@ const PROJECT_KEYS = {
   feature_prefs:     FEAT_PREFS,
   short_prefs:       SHORT_PREFS,
   library_prefs:     LIB_PREFS,
-  activity_log:      ACTIVITY_KEY
+  activity_log:      ACTIVITY_KEY,
+  scenes:            SCENES_KEY
 };
 
 /* Deliberately NOT per project: the theme is a device preference and the

@@ -1,8 +1,20 @@
 {
   "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
   "global": [
-    { "id": "home",    "label": "Home",    "icon": "⌂", "href": "index.html",   "purpose": "Projects and recent activity" },
-    { "id": "library", "label": "Library", "icon": "◈", "href": "library.html", "purpose": "Films, directors, rules, festivals, rates" }
+    {
+      "id": "home",
+      "label": "Home",
+      "icon": "⌂",
+      "href": "index.html",
+      "purpose": "Projects and recent activity"
+    },
+    {
+      "id": "library",
+      "label": "Library",
+      "icon": "◈",
+      "href": "library.html",
+      "purpose": "Films, directors, rules, festivals, rates"
+    }
   ],
   "phases": [
     {
@@ -11,9 +23,27 @@
       "hue": "develop",
       "blurb": "Idea to locked outline",
       "modules": [
-        { "id": "feature-blueprint", "label": "Feature Blueprint", "purpose": "24 guided steps, idea to camera", "status": "built", "href": "feature.html" },
-        { "id": "short-blueprint",   "label": "Short Blueprint",   "purpose": "11 steps for under 30 minutes",   "status": "built", "href": "short.html" },
-        { "id": "glossary",          "label": "Craft Glossary",    "purpose": "Terms, explained through four Tamil films", "status": "built", "href": "feature.html#glossary" }
+        {
+          "id": "feature-blueprint",
+          "label": "Feature Blueprint",
+          "purpose": "24 guided steps, idea to camera",
+          "status": "built",
+          "href": "feature.html"
+        },
+        {
+          "id": "short-blueprint",
+          "label": "Short Blueprint",
+          "purpose": "11 steps for under 30 minutes",
+          "status": "built",
+          "href": "short.html"
+        },
+        {
+          "id": "glossary",
+          "label": "Craft Glossary",
+          "purpose": "Terms, explained through four Tamil films",
+          "status": "built",
+          "href": "feature.html#glossary"
+        }
       ]
     },
     {
@@ -22,9 +52,27 @@
       "hue": "write",
       "blurb": "Pages on the page",
       "modules": [
-        { "id": "screenplay",  "label": "Screenplay",   "purpose": "Write and format the script",   "status": "partial", "href": "short.html#step-07", "note": "The short blueprint has a structured editor with Fountain export. A full feature screenplay editor is not built." },
-        { "id": "revisions",   "label": "Revisions",    "purpose": "Coloured revision history",      "status": "planned", "note": "White, Blue, Pink, Yellow, Green — the industry revision order, with changed pages marked." },
-        { "id": "docs",        "label": "Documents",    "purpose": "Treatments, notes, one-pagers",  "status": "planned" }
+        {
+          "id": "screenplay",
+          "label": "Screenplay",
+          "purpose": "Write and format the script",
+          "status": "partial",
+          "href": "short.html#step-07",
+          "note": "The short blueprint has a structured editor with Fountain export. A full feature screenplay editor is not built."
+        },
+        {
+          "id": "revisions",
+          "label": "Revisions",
+          "purpose": "Coloured revision history",
+          "status": "planned",
+          "note": "White, Blue, Pink, Yellow, Green — the industry revision order, with changed pages marked."
+        },
+        {
+          "id": "docs",
+          "label": "Documents",
+          "purpose": "Treatments, notes, one-pagers",
+          "status": "planned"
+        }
       ]
     },
     {
@@ -33,12 +81,45 @@
       "hue": "breakdown",
       "blurb": "Script into elements",
       "modules": [
-        { "id": "scene-list",  "label": "Scene List",       "purpose": "Every scene, INT/EXT, D/N, location", "status": "partial", "href": "feature.html#step-11", "note": "Step 11 collects scenes as text. The structured scene model every other module needs is not built." },
-        { "id": "breakdowns",  "label": "Script Breakdowns","purpose": "Tag cast, props, wardrobe, VFX",      "status": "planned" },
-        { "id": "elements",    "label": "Elements",         "purpose": "The element library across scenes",   "status": "planned" },
-        { "id": "stripboard",  "label": "Stripboard",       "purpose": "Order scenes into shoot days",        "status": "planned" },
-        { "id": "sides",       "label": "Sides",            "purpose": "Per-day pages for cast and crew",     "status": "planned" },
-        { "id": "reports",     "label": "Reports",          "purpose": "Element, scene and day reports",      "status": "planned" }
+        {
+          "id": "scene-list",
+          "label": "Scene List",
+          "purpose": "Every scene, INT/EXT, D/N, location",
+          "status": "built",
+          "href": "breakdown.html#scenes"
+        },
+        {
+          "id": "breakdowns",
+          "label": "Script Breakdowns",
+          "purpose": "Tag cast, props, wardrobe, VFX",
+          "status": "built",
+          "href": "breakdown.html#scenes"
+        },
+        {
+          "id": "elements",
+          "label": "Elements",
+          "purpose": "The element library across scenes",
+          "status": "built",
+          "href": "breakdown.html#elements"
+        },
+        {
+          "id": "stripboard",
+          "label": "Stripboard",
+          "purpose": "Order scenes into shoot days",
+          "status": "planned"
+        },
+        {
+          "id": "sides",
+          "label": "Sides",
+          "purpose": "Per-day pages for cast and crew",
+          "status": "planned"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "purpose": "Element, scene and day reports",
+          "status": "planned"
+        }
       ]
     },
     {
@@ -47,9 +128,27 @@
       "hue": "visualize",
       "blurb": "See it before you shoot it",
       "modules": [
-        { "id": "shot-list",   "label": "Shot List",   "purpose": "Shots per scene, with size and move", "status": "partial", "href": "feature.html#step-16" },
-        { "id": "storyboard",  "label": "Storyboard",  "purpose": "Frames against the shot list",        "status": "planned" },
-        { "id": "lookbook",    "label": "Lookbook",    "purpose": "Reference images per department",     "status": "partial", "href": "feature.html#step-15", "note": "Step 15 is prose. Image support needs the media store." }
+        {
+          "id": "shot-list",
+          "label": "Shot List",
+          "purpose": "Shots per scene, with size and move",
+          "status": "partial",
+          "href": "feature.html#step-16"
+        },
+        {
+          "id": "storyboard",
+          "label": "Storyboard",
+          "purpose": "Frames against the shot list",
+          "status": "planned"
+        },
+        {
+          "id": "lookbook",
+          "label": "Lookbook",
+          "purpose": "Reference images per department",
+          "status": "partial",
+          "href": "feature.html#step-15",
+          "note": "Step 15 is prose. Image support needs the media store."
+        }
       ]
     },
     {
@@ -58,10 +157,32 @@
       "hue": "plan",
       "blurb": "People, dates, money",
       "modules": [
-        { "id": "budget",      "label": "Budget",    "purpose": "Chennai rates, live totals", "status": "built",   "href": "library.html#calculator" },
-        { "id": "contacts",    "label": "Contacts",  "purpose": "Cast and crew by department", "status": "planned" },
-        { "id": "calendar",    "label": "Calendar",  "purpose": "Prep, shoot and post dates",  "status": "planned" },
-        { "id": "media",       "label": "Media",     "purpose": "Your own reference files",    "status": "planned", "note": "Needs a storage layer — IndexedDB locally, Supabase Storage when synced." }
+        {
+          "id": "budget",
+          "label": "Budget",
+          "purpose": "Chennai rates, live totals",
+          "status": "built",
+          "href": "library.html#calculator"
+        },
+        {
+          "id": "contacts",
+          "label": "Contacts",
+          "purpose": "Cast and crew by department",
+          "status": "planned"
+        },
+        {
+          "id": "calendar",
+          "label": "Calendar",
+          "purpose": "Prep, shoot and post dates",
+          "status": "planned"
+        },
+        {
+          "id": "media",
+          "label": "Media",
+          "purpose": "Your own reference files",
+          "status": "planned",
+          "note": "Needs a storage layer — IndexedDB locally, Supabase Storage when synced."
+        }
       ]
     },
     {
@@ -70,9 +191,26 @@
       "hue": "shoot",
       "blurb": "The day itself",
       "modules": [
-        { "id": "locations",   "label": "Locations",  "purpose": "Recce notes and logistics",   "status": "partial", "href": "feature.html#step-21" },
-        { "id": "call-sheets", "label": "Call Sheets","purpose": "Who, where, what time",       "status": "planned", "note": "Generate and print. Sending and read-tracking need a server." },
-        { "id": "dood",        "label": "Day Out of Days", "purpose": "Cast availability across days", "status": "planned" }
+        {
+          "id": "locations",
+          "label": "Locations",
+          "purpose": "Recce notes and logistics",
+          "status": "partial",
+          "href": "feature.html#step-21"
+        },
+        {
+          "id": "call-sheets",
+          "label": "Call Sheets",
+          "purpose": "Who, where, what time",
+          "status": "planned",
+          "note": "Generate and print. Sending and read-tracking need a server."
+        },
+        {
+          "id": "dood",
+          "label": "Day Out of Days",
+          "purpose": "Cast availability across days",
+          "status": "planned"
+        }
       ]
     }
   ]

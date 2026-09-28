@@ -1,0 +1,286 @@
+/* ============================================================
+   MODULE PAGES — the new visual language
+   ------------------------------------------------------------
+   The editorial pages are dense on purpose: printed matter, mono
+   labels, tight rhythm. That reads as cluttered on a working screen,
+   which is the complaint. Module pages go the other way, taking the
+   things that make StudioBinder legible:
+
+     air            generous padding; one idea per band
+     hierarchy      eyebrow → large heading → muted deck → one action
+     quiet chrome   hairline borders, no boxes inside boxes
+     colour = data  hue means a category, never decoration
+     one CTA        a single filled button per view; everything else quiet
+
+   Same tokens as the rest of the app — this is a different
+   arrangement of the design system, not a second one.
+   ============================================================ */
+
+/* ---- page frame ---- */
+.bd-head,
+.bd-list,
+.bd-elements,
+.bd-empty {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+.bd-head { padding-block: var(--s7) var(--s5); }
+
+.bd-eyebrow {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.bd-title {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  line-height: 1.04;
+  letter-spacing: var(--track-tight);
+}
+.bd-deck {
+  max-width: 62ch;
+  margin: 0 0 var(--s5);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+/* ---- stat strip: numbers first, label second ---- */
+.bd-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s6);
+  padding-block: var(--s4);
+  border-top: 1px solid var(--rule-hair);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.bd-stat { display: flex; flex-direction: column; gap: 2px; }
+.bd-stat strong {
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.bd-stat span {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---- empty state: the module teaches itself ---- */
+.bd-empty { padding-block: var(--s8); text-align: center; }
+.bd-empty-mark { font-size: 3rem; line-height: 1; color: var(--accent); opacity: .5; }
+.bd-empty h2 {
+  margin: var(--s4) 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  letter-spacing: var(--track-tight);
+}
+.bd-empty > p {
+  max-width: 56ch;
+  margin: 0 auto var(--s6);
+  color: var(--ink-muted);
+  line-height: var(--lh-body);
+}
+.bd-how {
+  display: grid;
+  gap: var(--s5);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-bottom: var(--s6);
+  text-align: left;
+}
+.bd-how-step { display: grid; gap: var(--s2); }
+.bd-how-num {
+  display: inline-grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+}
+.bd-how-step strong { font-family: var(--f-display); font-size: var(--t-small); }
+.bd-how-step p { margin: 0; font-size: var(--t-small); color: var(--ink-muted); line-height: var(--lh-snug); }
+
+/* The worked example, same idea as the glossary: the concept is not
+   abstract if a film everyone has seen already did it. */
+.bd-example {
+  max-width: 62ch;
+  margin: 0 auto var(--s6);
+  padding: var(--s4) var(--s5);
+  text-align: left;
+  background: var(--paper-raised);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.bd-example-film {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.bd-cta { font-size: var(--t-small); padding: var(--s3) var(--s5); }
+
+/* ---- scene cards: one row of facts, one line of story ---- */
+.bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+.bd-scene {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+}
+.bd-scene:focus-within { border-color: var(--accent); }
+.bd-scene-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.bd-scene-no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px; height: 30px;
+  padding-inline: var(--s2);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+}
+.bd-slug { flex: 1 1 14rem; min-width: 0; }
+.bd-scene input,
+.bd-scene select,
+.bd-scene textarea {
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--t-small);
+}
+.bd-scene input:focus-visible,
+.bd-scene select:focus-visible,
+.bd-scene textarea:focus-visible { border-color: var(--accent); outline: none; }
+.bd-sel { font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-eighths { display: inline-flex; align-items: center; gap: var(--s2); }
+.bd-eighths span {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.bd-eighths input { width: 4.5rem; }
+.bd-pages {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.bd-synopsis { width: 100%; resize: vertical; line-height: var(--lh-snug); }
+
+.bd-scene-acts { margin-left: auto; display: flex; gap: var(--s1); }
+.bd-icon {
+  min-width: 32px; min-height: 32px;
+  background: none;
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font: inherit;
+}
+.bd-icon:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-deep); border-color: var(--accent); }
+.bd-icon:disabled { opacity: .3; cursor: default; }
+/* Destructive is outlined in danger and fills only on hover — the same
+   rule the RESET button now follows. */
+.bd-icon.is-danger { color: var(--danger); border-color: var(--danger); }
+.bd-icon.is-danger:hover { background: var(--danger); color: var(--danger-on); }
+
+/* ---- element chips: hue carries the category ---- */
+.bd-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.bd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2) var(--s1) var(--s3);
+  border: 1px solid var(--phase-hue);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: var(--t-tiny);
+}
+.bd-chip-cat {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--phase-hue);
+}
+.bd-chip-name { color: var(--ink); }
+.bd-chip-x {
+  background: none; border: 0; padding: 0 2px;
+  color: var(--ink-faint); cursor: pointer; font: inherit; line-height: 1;
+}
+.bd-chip-x:hover { color: var(--danger); }
+
+.bd-add-el { display: inline-flex; gap: var(--s2); flex: 1 1 18rem; min-width: 0; }
+.bd-add-name { flex: 1; min-width: 0; }
+
+.bd-add { justify-self: start; }
+
+/* ---- element index ---- */
+.bd-elements { padding-block: var(--s6) var(--s8); }
+.bd-h2 {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  letter-spacing: var(--track-tight);
+}
+.bd-sub, .bd-none { margin: 0 0 var(--s5); color: var(--ink-muted); font-size: var(--t-small); }
+.bd-el-grid {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.bd-el {
+  display: grid;
+  gap: 2px;
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-hair);
+  border-left: 3px solid var(--phase-hue);
+  border-radius: var(--radius);
+}
+.bd-el-cat {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--phase-hue);
+}
+.bd-el-name { font-family: var(--f-display); font-size: var(--t-small); }
+.bd-el-scenes { font-size: var(--t-tiny); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 719px) {
+  .bd-head, .bd-list, .bd-elements, .bd-empty { padding-inline: var(--s4); }
+  .bd-head { padding-block: var(--s5) var(--s4); }
+  .bd-stats { gap: var(--s4); }
+  .bd-scene-acts { margin-left: 0; }
+}

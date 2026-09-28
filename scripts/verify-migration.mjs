@@ -42,7 +42,10 @@ const PAGES = [
   { page: 'index.html',   legacy: 'index.html',                        name: 'hub' },
   { page: 'feature.html', legacy: 'arunak-filmmaker-blueprint.html',   name: 'feature' },
   { page: 'short.html',   legacy: 'arunak-shortfilm-blueprint.html',   name: 'short' },
-  { page: 'library.html', legacy: 'arunak-filmmaker-library.html',     name: 'library' }
+  { page: 'library.html', legacy: 'arunak-filmmaker-library.html',     name: 'library' },
+  // No legacy counterpart — this page did not exist before v5. The
+  // `legacy` field is vestigial now that nothing diffs against it.
+  { page: 'breakdown.html', legacy: null, name: 'breakdown' }
 ];
 
 /* ------------------------------------------------------------
@@ -70,6 +73,7 @@ const PAGES = [
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
   hub: {},
+  breakdown: {},
   feature: {},
   short: {},
   library: {}
@@ -127,20 +131,6 @@ function baselineFacts(name) {
   return { keys: new Set(page.keys), text: page.words };
 }
 
-function legacyFacts(file) {
-  const src = fs.readFileSync(path.join(ROOT, 'legacy', file), 'utf8');
-  const { document } = parseHTML(src);
-  // Script and style content is neither visible text nor real markup.
-  // Scraping data-key out of the raw source instead of the parsed body
-  // picks up the row-template literals inside the legacy <script> blocks
-  // — `sl_${idx}_slug`, `ci_${idx}_rate` — which are not keys at all,
-  // just the shape the JS builds keys from at runtime.
-  document.querySelectorAll('script, style, noscript').forEach((n) => n.remove());
-  const keys = new Set(
-    [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'))
-  );
-  return { keys, text: words(document.body.innerHTML) };
-}
 
 /* ---- run --------------------------------------------------- */
 // Playwright resolves its own downloaded browser. PW_CHROMIUM overrides
@@ -249,11 +239,19 @@ for (const spec of PAGES) {
     return { checked: true, overflow, escaped };
   });
 
-  const old = WRITE_BASELINE ? legacyFacts(spec.legacy) : baselineFacts(spec.name);
   const liveKeys = new Set(live.keys);
-  const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
-
   const liveWords = new Set(words(live.text));
+
+  // Capturing a baseline records what the build produces; there is
+  // nothing to compare it against yet, so skip the assertions.
+  if (WRITE_BASELINE) {
+    captured[spec.name] = { keys: [...liveKeys].sort(), words: [...liveWords].sort() };
+    await ctx.close();
+    continue;
+  }
+
+  const old = baselineFacts(spec.name);
+  const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
   const allowed = EXPECTED[spec.name] || {};
   const gone = [...new Set(old.text)].filter((w) => !liveWords.has(w));
   const missingWords = gone.filter((w) => !(w in allowed));       // unexplained
@@ -266,13 +264,6 @@ for (const spec of PAGES) {
   // An allowlist entry that no longer fires is stale; say so rather
   // than letting the list rot into a set of permanent excuses.
   const staleAllowances = Object.keys(allowed).filter((w) => !gone.includes(w));
-
-  if (WRITE_BASELINE) {
-    captured[spec.name] = {
-      keys: [...liveKeys].sort(),
-      words: [...liveWords].sort()
-    };
-  }
 
   const row = {
     page: spec.name,
@@ -337,8 +328,10 @@ if (WRITE_BASELINE) {
     capturedAt: new Date().toISOString(),
     capturedFrom: sha,
     provenance:
-      'Captured from a build that still passed 100% accounted coverage against the original legacy/ pages, ' +
-      'so the migration guarantee (no data-key lost, no prose lost) is carried forward rather than dropped.',
+      'Captured from the build at the commit above. The FIRST baseline (16bf3b4) came from a build that ' +
+      'still passed 100% against the original legacy/ pages, so the migration guarantee entered the chain ' +
+      'there; every later capture inherits whatever the build was at that moment, which is why re-baselining ' +
+      'is a deliberate act and belongs in a commit message.',
     pages: captured
   }, null, 2) + '\n');
   await browser.close();

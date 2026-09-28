@@ -1,0 +1,424 @@
+/* ============================================================
+   CONTACTS — the unit list and the call sheets
+   ------------------------------------------------------------
+   Only what is genuinely this page's own. The hierarchy (eyebrow →
+   title → deck), the stats strip, the teaching empty state and the
+   icon buttons are the studio language from modules.css, reused as
+   they are — a "new design language" that only one page speaks is
+   not a language.
+
+   Every colour here is a token and every shape is a --sk-* skin
+   variable, so the page is correct in all five skins and all three
+   themes without knowing which one is on. `--hue` comes from the
+   .hue-* classes in tokens.css and carries the department; it is
+   the only colour on the page that means anything.
+
+   The print block at the bottom is the reason this file exists. A
+   call sheet is the one thing here that lives on paper, taped to a
+   van door, and printing the editing form instead of the document
+   is how you get a page of empty checkboxes.
+   ============================================================ */
+
+.ct-people,
+.ct-sheets {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+.ct-people { padding-block: var(--s6); }
+.ct-sheets { padding-block: var(--s6) var(--s9); }
+
+.ct-add { justify-self: start; margin-top: var(--s4); }
+
+/* ------------------------------------------------------------
+   1. THE UNIT LIST
+   ------------------------------------------------------------ */
+
+.ct-dept-block { display: grid; gap: var(--s2); margin-bottom: var(--s6); }
+
+.ct-dept-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+}
+.ct-dept-name {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue);
+}
+.ct-dept-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ct-person {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.ct-person:focus-within { border-color: var(--accent); border-left-color: var(--hue); }
+
+.ct-person-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.ct-person-acts { margin-left: auto; display: flex; gap: var(--s1); }
+
+.ct-person-reach {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.ct-fieldset { display: grid; gap: var(--s1); min-width: 0; }
+.ct-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* One input treatment for the whole page, the same one the
+   breakdown's scene rows use. */
+.ct-person input,
+.ct-person select,
+.ct-sheet input,
+.ct-sheet select,
+.ct-sheet textarea {
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  font: inherit;
+  font-size: var(--t-small);
+  min-width: 0;
+}
+.ct-person input:focus-visible,
+.ct-person select:focus-visible,
+.ct-sheet input:focus-visible,
+.ct-sheet select:focus-visible,
+.ct-sheet textarea:focus-visible { border-color: var(--accent); outline: none; }
+.ct-person input:disabled,
+.ct-sheet input:disabled { opacity: .45; }
+
+.ct-name {
+  flex: 1 1 12rem;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+}
+.ct-role { flex: 2 1 16rem; }
+/* An explicit basis, for the same reason as the checkbox above: a
+   `flex: 0 0 auto` select inherits base.css's width:100% and takes the
+   whole row, pushing the delete button onto a line of its own. */
+.ct-dept {
+  flex: 0 1 11rem;
+  width: auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--hue);
+}
+
+/* ------------------------------------------------------------
+   2. CALL SHEETS — the editing side
+   ------------------------------------------------------------ */
+
+.ct-sheet {
+  display: grid;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: var(--sk-hue-rule-w) solid var(--shoot);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+
+.ct-sheet-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.ct-sheet-title {
+  flex: 1 1 14rem;
+  font-family: var(--f-display);
+  font-size: var(--t-lg) !important;
+}
+.ct-sheet-acts { margin-left: auto; display: flex; align-items: center; gap: var(--s2); }
+.ct-print { font-size: var(--t-small); border-radius: var(--sk-btn-radius); }
+
+.ct-sheet-facts {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.ct-sheet-notes { width: 100%; resize: vertical; line-height: var(--lh-snug); }
+
+.ct-pick { display: grid; gap: var(--s2); }
+.ct-pick-head {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ct-pick-none { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.ct-pick-none a { color: var(--accent); }
+
+.ct-pick-list {
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a grid item's automatic minimum is its
+     min-content width, so a long slug line would push the row out of
+     the column and scroll the whole page sideways at 390px. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: var(--s1);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+}
+
+.ct-pick-dept {
+  padding: var(--s2) var(--s3) var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue);
+}
+
+.ct-pick-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--paper-raised);
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+.ct-pick-row.is-on { background: var(--accent-wash); }
+/* base.css gives every input `display:block; width:100%`, which a
+   checkbox in a flex row takes literally — it claimed 259px and shoved
+   the rest of the row off the phone. Size it explicitly. */
+.ct-pick-row input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.ct-pick-no {
+  flex: 0 0 auto;
+  min-width: 2.25rem;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* The slug and the name are the two strings long enough to push the row
+   past a phone's width; they truncate rather than scroll the list
+   sideways, which is the one overflow this page could produce. */
+.ct-pick-slug {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ct-pick-pages {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ct-call-row { cursor: default; }
+.ct-call-who {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  cursor: pointer;
+}
+.ct-pick-name {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ct-pick-role {
+  min-width: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-tiny);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ct-call-time { flex: 0 0 auto; width: 8rem; }
+
+/* ------------------------------------------------------------
+   3. CALL SHEETS — the paper side
+   Hidden on screen; the print block below is the whole point of it.
+   ------------------------------------------------------------ */
+
+.ct-doc { display: none; }
+
+.ct-doc-eyebrow {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.ct-doc-title {
+  margin: 0 0 var(--s4);
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  line-height: var(--lh-tight);
+}
+.ct-doc-facts {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: var(--s5);
+}
+.ct-doc-fact { display: grid; gap: 2px; }
+.ct-doc-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.ct-doc-table { width: 100%; border-collapse: collapse; margin-bottom: var(--s5); }
+.ct-doc-table caption {
+  text-align: left;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding-bottom: var(--s2);
+}
+.ct-doc-table th,
+.ct-doc-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: var(--s2) var(--s3) var(--s2) 0;
+  font-size: var(--t-small);
+}
+.ct-doc-table th {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.ct-doc-none { font-size: var(--t-small); }
+.ct-doc-notes { margin-top: var(--s4); }
+.ct-doc-notes p { margin: 0; font-size: var(--t-small); }
+
+/* ------------------------------------------------------------
+   4. NARROW
+   ------------------------------------------------------------ */
+
+@media (max-width: 719px) {
+  .ct-people, .ct-sheets { padding-inline: var(--s4); }
+  .ct-person-acts, .ct-sheet-acts { margin-left: 0; }
+  .ct-call-row { flex-wrap: wrap; }
+  .ct-call-time { width: 100%; }
+}
+
+/* ------------------------------------------------------------
+   5. PRINT — one call sheet, alone, as a document.
+   The page sets .ct-printing on <body> and .is-printing on the one
+   sheet being printed, so the unit list, the other sheets, the
+   shell and every control drop away and what is left is the paper.
+   Printing with nothing marked still gives a readable page: all the
+   sheets print as documents, one per page.
+   ------------------------------------------------------------ */
+
+@media print {
+  .sh-rail,
+  .sh-bar,
+  .ct-edit,
+  .ct-add,
+  .bd-empty,
+  .ct-pick { display: none !important; }
+
+  body.has-sh-shell { padding-left: 0 !important; }
+
+  .ct-doc {
+    display: block;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    color: var(--print-ink);
+  }
+  .ct-sheet {
+    display: block;
+    margin: 0 0 var(--s6);
+    padding: 0;
+    background: var(--print-paper);
+    border: 0;
+    border-top: 2px solid var(--print-ink);
+    padding-top: var(--s4);
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+  .ct-sheet:last-of-type { break-after: auto; page-break-after: auto; }
+
+  .ct-doc-eyebrow,
+  .ct-doc-flabel,
+  .ct-doc-table caption,
+  .ct-doc-table th { color: var(--print-ink); }
+
+  .ct-doc-table th { border-bottom: 1px solid var(--print-ink); }
+  .ct-doc-table td { border-bottom: 1px solid var(--print-rule); }
+  .ct-doc-notes { border-top: 1px solid var(--print-rule); padding-top: var(--s3); }
+
+  /* One sheet asked for: everything else, including the unit list and
+     the page header, stands down. */
+  body.ct-printing .ct-people,
+  body.ct-printing .bd-head,
+  body.ct-printing .ct-sheets > .bd-h2,
+  body.ct-printing .ct-sheets > .bd-sub,
+  body.ct-printing .ct-sheets > .bd-none,
+  body.ct-printing .ct-sheet:not(.is-printing) { display: none !important; }
+
+  body.ct-printing .ct-sheet.is-printing {
+    border-top: 0;
+    padding-top: 0;
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

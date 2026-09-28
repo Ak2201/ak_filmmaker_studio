@@ -38,7 +38,8 @@ create table if not exists public.project_data (
               check (scope in (
                 'feature','short','library',
                 'feature_prefs','short_prefs','library_prefs','activity',
-                'scenes'
+                'scenes',
+                'contacts'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),

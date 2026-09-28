@@ -389,6 +389,14 @@
     --shoot:        #d183b0;
     --library-deep: #9a6d1f;
     --library-wash: #2c2415;
+  /* The other three washes were never given dark values, so on ink they
+     stayed at their :root light tints — a pale block behind light text
+     on any page whose accent is visualize, plan or shoot. Three hues
+     had a dark wash and three did not, which is the kind of gap a
+     palette only reveals on the page that happens to use it. */
+  --visualize-wash: #231b33;
+  --plan-wash:      #11262d;
+  --shoot-wash:     #2b1522;
 
     --ok:           #5fbc99;
     --ok-wash:      #15271f;
@@ -436,6 +444,14 @@
   --plan:         #63b6cc;
   --shoot:        #d183b0;
   --library-wash: #2c2415;
+  /* The other three washes were never given dark values, so on ink they
+     stayed at their :root light tints — a pale block behind light text
+     on any page whose accent is visualize, plan or shoot. Three hues
+     had a dark wash and three did not, which is the kind of gap a
+     palette only reveals on the page that happens to use it. */
+  --visualize-wash: #231b33;
+  --plan-wash:      #11262d;
+  --shoot-wash:     #2b1522;
 
   /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
      on ink the ground is dark — so deep has to go lighter, not darker.

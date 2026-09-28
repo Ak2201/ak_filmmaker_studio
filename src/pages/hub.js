@@ -62,6 +62,7 @@ import directors   from '../data/directors.json';
 import rules       from '../data/rules.json';
 import watchlist   from '../data/watchlist.json';
 import festivals   from '../data/festivals.json';
+import prodData    from '../data/steps.production.json';
 
 // ============================================================
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
@@ -77,11 +78,12 @@ const SYNC_CFG     = 'arunak_supabase_cfg_v1';
 const NOTE_PREFIX  = 'arunak_note_';
 const ACTIVITY_KEY = 'arunak_studio_activity_v1';
 const SCENES_KEY   = 'arunak_scenes_v1';
+const CONTACTS_KEY = 'arunak_contacts_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
-  PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY
+  PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY
 ];
 
 /* Backup field name -> storage key, for the keys store.js namespaces
@@ -96,7 +98,8 @@ const PROJECT_KEYS = {
   short_prefs:       SHORT_PREFS,
   library_prefs:     LIB_PREFS,
   activity_log:      ACTIVITY_KEY,
-  scenes:            SCENES_KEY
+  scenes:            SCENES_KEY,
+  contacts:          CONTACTS_KEY
 };
 
 /* Deliberately NOT per project: the theme is a device preference and the
@@ -131,7 +134,15 @@ function rewriteUrl(url) {
 // ============================================================
 // DATA — flattened once, read by search, index and stats.
 // ============================================================
-const FEATURE_STEPS = [...featureData.vol1, ...featureData.vol2];
+/* All four phases. This was vol1+vol2 and stayed that way when
+   Production and Post-production were added, which quietly left eight
+   steps out of the search index, out of the step count on the cover
+   and out of the door tag — findable only by scrolling. */
+const FEATURE_STEPS = [
+  ...featureData.vol1, ...featureData.vol2,
+  ...prodData.production, ...prodData.post
+];
+const PHASE_NAME = { 1: 'Story', 2: 'Pre-production', 3: 'Production', 4: 'Post-production' };
 const SHORT_STEPS   = shortData.steps;
 
 /** Strip authored markup so data HTML can be used as plain text. */
@@ -189,7 +200,7 @@ const SEARCH_INDEX = [
   ...FEATURE_STEPS.map(s => ({
     kind: 'feature',
     label: `${s.num} · ${title(s.titlePlain || s.title)}`,
-    snippet: `Vol ${s.vol === 2 ? 'II' : 'I'} · ${clip(s.deck)}`,
+    snippet: `${PHASE_NAME[s.vol] || 'Story'} · ${clip(s.deck)}`,
     url: `${FEATURE_URL}#${s.id}`
   })),
   ...ANCHORS.feature.map(a => ({
@@ -374,6 +385,12 @@ function heroMarkup() {
         </div>
 
         <div class="search-wrap">
+          <!-- .search-field exists so the dropdown anchors to the INPUT.
+               Anchored to .search-wrap, top:100% put the results below
+               the whole block INCLUDING the hint line underneath, so a
+               floating panel with a shadow rendered as a flat list a
+               row further down than it should be. -->
+          <div class="search-field">
           <input type="search" class="search-input" id="searchInput"
                  placeholder="Search steps, films, directors, glossary terms…"
                  autocomplete="off" spellcheck="false"
@@ -381,6 +398,7 @@ function heroMarkup() {
                  aria-controls="searchResults" data-action="search">
           <span class="search-icon" aria-hidden="true">⌘ K</span>
           <div class="search-results" id="searchResults" role="listbox" aria-label="Search results"></div>
+          </div>
           <p class="search-tip">Try <kbd>logline</kbd> · <kbd>vetrimaaran</kbd> · <kbd>fountain</kbd> · <kbd>festival</kbd> · <kbd>budget</kbd></p>
         </div>
 
@@ -454,7 +472,7 @@ function doorsMarkup() {
 
         <div class="doors">
           <div class="door">
-            <div class="door-tag"><span class="door-num-circle">I</span> VOL I &amp; II · ${FEATURE_STEPS.length} STEPS</div>
+            <div class="door-tag"><span class="door-num-circle">I</span> 4 PHASES · ${FEATURE_STEPS.length} STEPS</div>
             <h3>Feature Film<br><span class="light">Blueprint.</span></h3>
             <p class="door-sub">From the first "what if?" to "ROLL CAMERA." Story (Vol I) and Pre-Production (Vol II) joined into one continuous tool.</p>
             <ul class="door-contents">

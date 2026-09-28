@@ -3,7 +3,7 @@
   "production": [
     {
       "id": "step-25",
-      "vol": "3",
+      "vol": 3,
       "num": "25",
       "title": "The <em>Shoot Day.</em>",
       "titlePlain": "The Shoot Day.",
@@ -19,25 +19,49 @@
         {
           "type": "asks",
           "items": [
-            { "key": "pr_day_first", "label": "A · The first shot of the day, and why it is first", "placeholder": "The setup that unlocks the rest of the day…", "kind": "textarea", "size": null },
-            { "key": "pr_day_drop", "label": "B · What you will drop if you are two hours behind", "placeholder": "Decide this now, in daylight, not at 7pm with the crew watching.", "kind": "textarea", "size": null }
+            {
+              "key": "pr_day_first",
+              "label": "A · The first shot of the day, and why it is first",
+              "placeholder": "The setup that unlocks the rest of the day…",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "pr_day_drop",
+              "label": "B · What you will drop if you are two hours behind",
+              "placeholder": "Decide this now, in daylight, not at 7pm with the crew watching.",
+              "kind": "textarea",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE THE UNIT MOVES",
           "items": [
-            { "key": "ck_pr25_a", "text": "Call sheet issued the night before, not the morning of." },
-            { "key": "ck_pr25_b", "text": "Every HOD has read the day's shot list, not just received it." },
-            { "key": "ck_pr25_c", "text": "The drop-order is written down and the AD knows it." },
-            { "key": "ck_pr25_d", "text": "Batteries, cards and a second monitor cable are on the truck." }
+            {
+              "key": "ck_pr25_a",
+              "text": "Call sheet issued the night before, not the morning of."
+            },
+            {
+              "key": "ck_pr25_b",
+              "text": "Every HOD has read the day's shot list, not just received it."
+            },
+            {
+              "key": "ck_pr25_c",
+              "text": "The drop-order is written down and the AD knows it."
+            },
+            {
+              "key": "ck_pr25_d",
+              "text": "Batteries, cards and a second monitor cable are on the truck."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-26",
-      "vol": "3",
+      "vol": 3,
       "num": "26",
       "title": "The <em>Continuity Log.</em>",
       "titlePlain": "The Continuity Log.",
@@ -54,25 +78,49 @@
         {
           "type": "asks",
           "items": [
-            { "key": "pr_cont_rule", "label": "A · Your continuity rule for time (what changes when the period changes)", "placeholder": "Costume palette, hair length, lens, grade…", "kind": "textarea", "size": null },
-            { "key": "pr_cont_owner", "label": "B · Who holds the log, and where it lives", "placeholder": "Name, and the folder everyone can reach.", "kind": "text", "size": null }
+            {
+              "key": "pr_cont_rule",
+              "label": "A · Your continuity rule for time (what changes when the period changes)",
+              "placeholder": "Costume palette, hair length, lens, grade…",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "pr_cont_owner",
+              "label": "B · Who holds the log, and where it lives",
+              "placeholder": "Name, and the folder everyone can reach.",
+              "kind": "text",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "EVERY SETUP",
           "items": [
-            { "key": "ck_pr26_a", "text": "Stills of each costume and prop position before the first take." },
-            { "key": "ck_pr26_b", "text": "Screen direction noted for anything that will cut together." },
-            { "key": "ck_pr26_c", "text": "Watches, phones and food levels checked between takes." },
-            { "key": "ck_pr26_d", "text": "Scene, slate and take logged against the breakdown." }
+            {
+              "key": "ck_pr26_a",
+              "text": "Stills of each costume and prop position before the first take."
+            },
+            {
+              "key": "ck_pr26_b",
+              "text": "Screen direction noted for anything that will cut together."
+            },
+            {
+              "key": "ck_pr26_c",
+              "text": "Watches, phones and food levels checked between takes."
+            },
+            {
+              "key": "ck_pr26_d",
+              "text": "Scene, slate and take logged against the breakdown."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-27",
-      "vol": "3",
+      "vol": 3,
       "num": "27",
       "title": "The <em>Dailies.</em>",
       "titlePlain": "The Dailies.",
@@ -88,24 +136,45 @@
         {
           "type": "asks",
           "items": [
-            { "key": "pr_dailies_gap", "label": "A · What is missing from today that you can still get", "placeholder": "Coverage, a reaction, a clean exit…", "kind": "textarea", "size": null },
-            { "key": "pr_dailies_backup", "label": "B · Where the day's footage is backed up, in two places", "placeholder": "Drive A / Drive B — and who checked the copy.", "kind": "text", "size": null }
+            {
+              "key": "pr_dailies_gap",
+              "label": "A · What is missing from today that you can still get",
+              "placeholder": "Coverage, a reaction, a clean exit…",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "pr_dailies_backup",
+              "label": "B · Where the day's footage is backed up, in two places",
+              "placeholder": "Drive A / Drive B — and who checked the copy.",
+              "kind": "text",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE ANYONE SLEEPS",
           "items": [
-            { "key": "ck_pr27_a", "text": "Two copies of the day's card, verified — not just copied." },
-            { "key": "ck_pr27_b", "text": "Sound and picture from the same take can be found together." },
-            { "key": "ck_pr27_c", "text": "Tomorrow's call sheet reflects anything that slipped today." }
+            {
+              "key": "ck_pr27_a",
+              "text": "Two copies of the day's card, verified — not just copied."
+            },
+            {
+              "key": "ck_pr27_b",
+              "text": "Sound and picture from the same take can be found together."
+            },
+            {
+              "key": "ck_pr27_c",
+              "text": "Tomorrow's call sheet reflects anything that slipped today."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-28",
-      "vol": "3",
+      "vol": 3,
       "num": "28",
       "title": "The <em>Wrap.</em>",
       "titlePlain": "The Wrap.",
@@ -115,18 +184,42 @@
         {
           "type": "asks",
           "items": [
-            { "key": "pr_wrap_owed", "label": "A · What is still owed — people, locations, equipment", "placeholder": "Payments, returns, permissions, thank-yous.", "kind": "textarea", "size": "lg" },
-            { "key": "pr_wrap_pickup", "label": "B · The pickup list you are honest about", "placeholder": "Shots you will need and must schedule, not hope for.", "kind": "textarea", "size": null }
+            {
+              "key": "pr_wrap_owed",
+              "label": "A · What is still owed — people, locations, equipment",
+              "placeholder": "Payments, returns, permissions, thank-yous.",
+              "kind": "textarea",
+              "size": "lg"
+            },
+            {
+              "key": "pr_wrap_pickup",
+              "label": "B · The pickup list you are honest about",
+              "placeholder": "Shots you will need and must schedule, not hope for.",
+              "kind": "textarea",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE THE UNIT DISBANDS",
           "items": [
-            { "key": "ck_pr28_a", "text": "Every crew member's payment date is agreed in writing." },
-            { "key": "ck_pr28_b", "text": "Locations released and returned to condition, with photos." },
-            { "key": "ck_pr28_c", "text": "All footage and sound consolidated and checked off the breakdown." },
-            { "key": "ck_pr28_d", "text": "Cast release forms signed — every speaking part, no exceptions." }
+            {
+              "key": "ck_pr28_a",
+              "text": "Every crew member's payment date is agreed in writing."
+            },
+            {
+              "key": "ck_pr28_b",
+              "text": "Locations released and returned to condition, with photos."
+            },
+            {
+              "key": "ck_pr28_c",
+              "text": "All footage and sound consolidated and checked off the breakdown."
+            },
+            {
+              "key": "ck_pr28_d",
+              "text": "Cast release forms signed — every speaking part, no exceptions."
+            }
           ]
         }
       ]
@@ -135,7 +228,7 @@
   "post": [
     {
       "id": "step-29",
-      "vol": "4",
+      "vol": 4,
       "num": "29",
       "title": "The <em>Assembly.</em>",
       "titlePlain": "The Assembly.",
@@ -151,24 +244,45 @@
         {
           "type": "asks",
           "items": [
-            { "key": "po_assembly_len", "label": "A · Assembly runtime, and your target", "placeholder": "e.g. 3h 10m → 2h 15m", "kind": "text", "size": null },
-            { "key": "po_assembly_weak", "label": "B · The three weakest stretches, watched cold", "placeholder": "Timecodes and what is wrong.", "kind": "textarea", "size": "lg" }
+            {
+              "key": "po_assembly_len",
+              "label": "A · Assembly runtime, and your target",
+              "placeholder": "e.g. 3h 10m → 2h 15m",
+              "kind": "text",
+              "size": null
+            },
+            {
+              "key": "po_assembly_weak",
+              "label": "B · The three weakest stretches, watched cold",
+              "placeholder": "Timecodes and what is wrong.",
+              "kind": "textarea",
+              "size": "lg"
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE THE FIRST TRIM",
           "items": [
-            { "key": "ck_po29_a", "text": "Every scene from the breakdown is in the timeline, or deliberately cut." },
-            { "key": "ck_po29_b", "text": "Watched start to finish in one sitting, without stopping to fix." },
-            { "key": "ck_po29_c", "text": "Notes taken as a viewer first, an editor second." }
+            {
+              "key": "ck_po29_a",
+              "text": "Every scene from the breakdown is in the timeline, or deliberately cut."
+            },
+            {
+              "key": "ck_po29_b",
+              "text": "Watched start to finish in one sitting, without stopping to fix."
+            },
+            {
+              "key": "ck_po29_c",
+              "text": "Notes taken as a viewer first, an editor second."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-30",
-      "vol": "4",
+      "vol": 4,
       "num": "30",
       "title": "The <em>Picture Lock.</em>",
       "titlePlain": "The Picture Lock.",
@@ -185,24 +299,45 @@
         {
           "type": "asks",
           "items": [
-            { "key": "po_lock_date", "label": "A · Lock date, agreed with sound and music", "placeholder": "DD / MM / YYYY", "kind": "text", "size": null },
-            { "key": "po_lock_risk", "label": "B · What could still force a change, and who decides", "placeholder": "Be specific. \"Notes\" is not an answer.", "kind": "textarea", "size": null }
+            {
+              "key": "po_lock_date",
+              "label": "A · Lock date, agreed with sound and music",
+              "placeholder": "DD / MM / YYYY",
+              "kind": "text",
+              "size": null
+            },
+            {
+              "key": "po_lock_risk",
+              "label": "B · What could still force a change, and who decides",
+              "placeholder": "Be specific. \"Notes\" is not an answer.",
+              "kind": "textarea",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE YOU CALL IT LOCKED",
           "items": [
-            { "key": "ck_po30_a", "text": "Watched with an audience who have not read the script." },
-            { "key": "ck_po30_b", "text": "Every temp shot is either final or flagged for VFX with a date." },
-            { "key": "ck_po30_c", "text": "Reel lengths and timecode handed to sound in their format, not yours." }
+            {
+              "key": "ck_po30_a",
+              "text": "Watched with an audience who have not read the script."
+            },
+            {
+              "key": "ck_po30_b",
+              "text": "Every temp shot is either final or flagged for VFX with a date."
+            },
+            {
+              "key": "ck_po30_c",
+              "text": "Reel lengths and timecode handed to sound in their format, not yours."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-31",
-      "vol": "4",
+      "vol": 4,
       "num": "31",
       "title": "The <em>Sound &amp; Music.</em>",
       "titlePlain": "The Sound & Music.",
@@ -218,26 +353,56 @@
         {
           "type": "asks",
           "items": [
-            { "key": "po_sound_rerec", "label": "A · Which scenes need re-recording, and who is available", "placeholder": "Scene numbers, actor availability, dates.", "kind": "textarea", "size": null },
-            { "key": "po_music_brief", "label": "B · The music brief in one sentence", "placeholder": "What the score must do that the picture cannot.", "kind": "textarea", "size": null },
-            { "key": "po_sound_mix", "label": "C · Mix format and where it will be heard", "placeholder": "Stereo / 5.1 — festival, theatre, phone.", "kind": "text", "size": null }
+            {
+              "key": "po_sound_rerec",
+              "label": "A · Which scenes need re-recording, and who is available",
+              "placeholder": "Scene numbers, actor availability, dates.",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "po_music_brief",
+              "label": "B · The music brief in one sentence",
+              "placeholder": "What the score must do that the picture cannot.",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "po_sound_mix",
+              "label": "C · Mix format and where it will be heard",
+              "placeholder": "Stereo / 5.1 — festival, theatre, phone.",
+              "kind": "text",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE THE FINAL MIX",
           "items": [
-            { "key": "ck_po31_a", "text": "Every line is intelligible on a laptop speaker, not just in the studio." },
-            { "key": "ck_po31_b", "text": "Music cues are cleared, credited and paid for — including any samples." },
-            { "key": "ck_po31_c", "text": "A mix checked at low volume, which is how most people will hear it." },
-            { "key": "ck_po31_d", "text": "M&E track delivered, for any dub or territory later." }
+            {
+              "key": "ck_po31_a",
+              "text": "Every line is intelligible on a laptop speaker, not just in the studio."
+            },
+            {
+              "key": "ck_po31_b",
+              "text": "Music cues are cleared, credited and paid for — including any samples."
+            },
+            {
+              "key": "ck_po31_c",
+              "text": "A mix checked at low volume, which is how most people will hear it."
+            },
+            {
+              "key": "ck_po31_d",
+              "text": "M&E track delivered, for any dub or territory later."
+            }
           ]
         }
       ]
     },
     {
       "id": "step-32",
-      "vol": "4",
+      "vol": 4,
       "num": "32",
       "title": "The <em>Delivery.</em>",
       "titlePlain": "The Delivery.",
@@ -247,19 +412,49 @@
         {
           "type": "asks",
           "items": [
-            { "key": "po_grade_ref", "label": "A · The grade in one reference", "placeholder": "A film, a photograph, a time of day.", "kind": "textarea", "size": null },
-            { "key": "po_deliver_list", "label": "B · Who needs what, in which format", "placeholder": "Festival DCP, streamer ProRes, press stills, subtitle file…", "kind": "textarea", "size": "lg" },
-            { "key": "po_release_plan", "label": "C · First screening, and the date you are working towards", "placeholder": "Festival deadline, private screening, release.", "kind": "text", "size": null }
+            {
+              "key": "po_grade_ref",
+              "label": "A · The grade in one reference",
+              "placeholder": "A film, a photograph, a time of day.",
+              "kind": "textarea",
+              "size": null
+            },
+            {
+              "key": "po_deliver_list",
+              "label": "B · Who needs what, in which format",
+              "placeholder": "Festival DCP, streamer ProRes, press stills, subtitle file…",
+              "kind": "textarea",
+              "size": "lg"
+            },
+            {
+              "key": "po_release_plan",
+              "label": "C · First screening, and the date you are working towards",
+              "placeholder": "Festival deadline, private screening, release.",
+              "kind": "text",
+              "size": null
+            }
           ]
         },
         {
           "type": "check",
           "heading": "BEFORE YOU CALL IT FINISHED",
           "items": [
-            { "key": "ck_po32_a", "text": "Subtitles checked by someone who speaks both languages well." },
-            { "key": "ck_po32_b", "text": "Credits verified against every release form and payment." },
-            { "key": "ck_po32_c", "text": "A master archived somewhere that is not your editing drive." },
-            { "key": "ck_po32_d", "text": "The file actually played, start to finish, on the device it will be shown on." }
+            {
+              "key": "ck_po32_a",
+              "text": "Subtitles checked by someone who speaks both languages well."
+            },
+            {
+              "key": "ck_po32_b",
+              "text": "Credits verified against every release form and payment."
+            },
+            {
+              "key": "ck_po32_c",
+              "text": "A master archived somewhere that is not your editing drive."
+            },
+            {
+              "key": "ck_po32_d",
+              "text": "The file actually played, start to finish, on the device it will be shown on."
+            }
           ]
         }
       ]

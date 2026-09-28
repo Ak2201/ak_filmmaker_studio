@@ -348,10 +348,13 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 .search-wrap {
-  position: relative;
   max-width: 760px;
   margin-bottom: var(--s6);
 }
+/* The positioning context is the FIELD, not the whole block — the hint
+   line lives in .search-wrap too, and anchoring to it pushed the
+   dropdown below the hint. */
+.search-field { position: relative; }
 .search-input {
   width: 100%;
   padding: var(--s4) var(--s8) var(--s4) var(--s5);

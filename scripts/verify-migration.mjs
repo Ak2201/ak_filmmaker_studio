@@ -45,7 +45,13 @@ const PAGES = [
   { page: 'library.html', legacy: 'arunak-filmmaker-library.html',     name: 'library' },
   // No legacy counterpart — this page did not exist before v5. The
   // `legacy` field is vestigial now that nothing diffs against it.
-  { page: 'breakdown.html', legacy: null, name: 'breakdown' }
+  { page: 'breakdown.html', legacy: null, name: 'breakdown' },
+  // Also post-v5, also with no legacy counterpart: the 2023 pages had
+  // no stripboard, no reports and no contacts because the app stopped
+  // at the tech recce.
+  { page: 'stripboard.html', legacy: null, name: 'stripboard' },
+  { page: 'reports.html',    legacy: null, name: 'reports' },
+  { page: 'contacts.html',   legacy: null, name: 'contacts' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -83,17 +89,16 @@ const SKIN_FILES = fs
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
   hub: {},
+  stripboard: {},
+  reports: {},
+  contacts: {},
   breakdown: {},
-  feature: {
-    /* The blueprint stopped at the tech recce and was described as two
-       volumes of twelve steps. It now runs four phases and thirty-two
-       steps, through the shoot and out the other side, so the master
-       cover no longer counts volumes. Two words, so two entries —
-       re-baselining for this would have thrown away the check's grip
-       on the other 2,000. */
-    'volumes': 'the two volumes became four phases: Story, Pre-production, Production, Post-production',
-    'twenty-four': 'twenty-four steps became thirty-two with Production and Post-production'
-  },
+  /* Emptied when the oracle was recaptured for the new modules. The two
+     entries here explained the volumes→phases rewording, and a baseline
+     taken after that rewording has no such divergence — so both were
+     reported STALE on the next run, which is the anti-rot half of this
+     mechanism doing its job rather than a failure. */
+  feature: {},
   short: {},
   library: {}
 };

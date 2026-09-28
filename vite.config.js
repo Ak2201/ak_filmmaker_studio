@@ -59,6 +59,9 @@ export default defineConfig({
         short:   resolve(__dirname, 'short.html'),
         library: resolve(__dirname, 'library.html'),
         breakdown: resolve(__dirname, 'breakdown.html'),
+        stripboard: resolve(__dirname, 'stripboard.html'),
+        reports:    resolve(__dirname, 'reports.html'),
+        contacts:   resolve(__dirname, 'contacts.html'),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

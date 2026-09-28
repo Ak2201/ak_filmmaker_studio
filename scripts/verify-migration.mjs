@@ -332,6 +332,40 @@ for (const spec of PAGES) {
     await page.waitForTimeout(500);
   }
 
+  /* --- what is inside a modal has never been checked ---
+
+     Every count above reads the DOM as it stands at load. A modal is
+     built on first open, so nothing in one has ever been measured —
+     and that is not hypothetical: the cloud auth modal shipped FOUR
+     inline onclick/onsubmit attributes, which under the production
+     `script-src 'self'` are inert. The sign-in button was the single
+     control on the site guaranteed not to work in production, and it
+     passed every run of this file.
+
+     So: open everything that opens, then count again. */
+  const modals = await page.evaluate(() => {
+    const api = window.StudioUI;
+    if (!api) return { unavailable: true };
+    const opened = [];
+    const OPENERS = [
+      'openCloudAuthModal', 'openShareDialog', 'openMigrationModal', 'openShortcutSheet'
+    ];
+    OPENERS.forEach((n) => {
+      if (typeof api[n] !== 'function') return;
+      try { api[n](); opened.push(n); } catch (e) { /* needs state we do not have */ }
+    });
+    // The hub's own new-project modal, if this page has one.
+    document.querySelectorAll('[data-action="new-project"], #newProjectBtn').forEach((b) => {
+      try { b.click(); opened.push('new-project'); } catch (e) {}
+    });
+    const inline = document.querySelectorAll(
+      '[onclick],[onchange],[oninput],[onsubmit],[onkeydown],[ondblclick],[onfocus],[onblur]'
+    ).length;
+    const de = document.documentElement;
+    const overflow = Math.max(0, de.scrollWidth - de.clientWidth);
+    return { opened, inline, overflow };
+  });
+
   /* --- text must stay legible on the surface it sits on ---
 
      Twice now a surface has been restyled without its text. Moving
@@ -404,7 +438,12 @@ for (const spec of PAGES) {
     const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
       + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
       + ' .bd-example, .toc-item, .film-card, .ex-card,'
-      + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip';
+      + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip,'
+      /* Modals are opened just above so that these are reachable at all.
+         Every count in this file used to read the DOM as it stands at
+         load, which is why four inert inline handlers lived in the auth
+         modal undetected. */
+      + ' .cm-card, .cm-eyebrow, .cm-link, .shortcut-sheet, .modal';
 
     /* Freeze transitions for the duration of the probe.
 
@@ -588,8 +627,14 @@ for (const spec of PAGES) {
      This is an EXCLUSION, not an EXPECTED entry, and the difference
      matters: an allowance that stops firing is reported as stale, and
      this one genuinely fires only some of the time. The oracle cannot
-     contain a clock — so the clock comes out of both sides. */
-  const CLOCK = new Set(['morning', 'afternoon', 'evening', 'late']);
+     contain a clock — so the clock comes out of both sides.
+
+     The set must cover EVERY word that varies, not just the obvious
+     ones. It first held morning/afternoon/evening/late, which looks
+     complete until 21:00, when the greeting becomes "Working late" and
+     the word "good" leaves the page. `npm run verify` could not pass
+     between 21:00 and 05:00 and nobody had run it at night yet. */
+  const CLOCK = new Set(['morning', 'afternoon', 'evening', 'late', 'good', 'working']);
   const gone = [...new Set(old.text)]
     .filter((w) => !CLOCK.has(w))
     .filter((w) => !liveWords.has(w));
@@ -628,6 +673,8 @@ for (const spec of PAGES) {
     distinctSkins: skinFingerprints,
     skinsOverflowing: skins.unavailable ? null : skins.wide,
     hueGroups,
+    modalsOpened: modals.unavailable ? null : modals.opened,
+    modalInlineHandlers: modals.unavailable ? null : modals.inline,
     lowContrast,
     errors
   };
@@ -642,6 +689,15 @@ for (const spec of PAGES) {
     bad.push(`stale allowlist entries: ${staleAllowances.join(', ')}`);
   }
   if (live.inlineHandlers) bad.push(`${live.inlineHandlers} inline handlers`);
+  if (!modals.unavailable && modals.inline > 0) {
+    bad.push(
+      `${modals.inline} inline handler(s) inside modal markup — inert under the shipped CSP ` +
+      `(opened: ${modals.opened.join(', ') || 'none'})`
+    );
+  }
+  if (!modals.unavailable && modals.overflow > 0) {
+    bad.push(`${modals.overflow}px horizontal overflow at 390px with modals open`);
+  }
   if (idleWrites > 0) bad.push(`${idleWrites} idle writes`);
   if (overflow > 0) bad.push(`${overflow}px horizontal overflow at 390px`);
   if (overflowOpen.checked && overflowOpen.overflow > 0) {

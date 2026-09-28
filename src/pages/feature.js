@@ -51,6 +51,7 @@ import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
+import '../styles/pdf.css';
 
 /* ---- store FIRST ------------------------------------------
    store.js monkey-patches Storage.prototype at module
@@ -72,6 +73,7 @@ import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import PDF from '../lib/pdf.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
@@ -523,6 +525,7 @@ function renderToolbar() {
 
   const exportMenu = actionMenu('Export', [
     { label: 'Print',            action: 'print',             title: 'Print or save as PDF' },
+    { label: 'Save as PDF',      action: 'exportPDF',         hint: 'A4', title: 'The whole blueprint as a paginated A4 document' },
     { label: 'Zine layout',      action: 'toggleZinePrint',   title: 'Two-up zine layout for printing' },
     '---',
     { label: 'JSON',             action: 'exportData',        hint: 'data' },
@@ -1355,6 +1358,27 @@ function exportData() {
   a.href = url; a.download = `arunak_blueprint_${t}.json`; a.click();
   URL.revokeObjectURL(url);
   flashStatus('●  exported');
+}
+
+/* The whole blueprint, paginated. print.css already lays this page
+   out as paper — a page per step, every panel flattened to a hairline
+   and every theme inverted to print ink — so all this adds is the A4
+   page setup, the running band, and a filename that says which film
+   it is. Saving first, because a PDF of what is on screen should
+   include the sentence the user finished typing four seconds ago. */
+function exportBlueprintPDF() {
+  saveData();
+  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  const title = data.meta_title || data.v1_title || 'Untitled film';
+  const done = document.querySelectorAll('.step').length;
+  PDF.exportPDF({
+    scope: 'blueprint',
+    project: title,
+    label: 'Feature blueprint',
+    title: title + ' — Feature blueprint',
+    subtitle: done + (done === 1 ? ' step' : ' steps')
+  });
+  flashStatus('●  printing');
 }
 
 function importData() { document.getElementById('importFile').click(); }
@@ -2372,6 +2396,7 @@ async function syncLoad() {
 // Actions invoked as fn(...dataArgs).
 const ACTIONS = {
   print: () => window.print(),
+  exportPDF: () => exportBlueprintPDF(),
   toggleDark,
   toggleReadingMode,
   toggleZinePrint,

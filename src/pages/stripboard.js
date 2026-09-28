@@ -39,10 +39,13 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/stripboard.css';
 import '../styles/print.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 
 const app = document.getElementById('app');
@@ -265,9 +268,19 @@ function renderBoard(scenes) {
       'aria-pressed': String(on), text: g.label
     }));
   });
-  controls.append(seg, h('div.sb-acts', {}, [
+  /* The board and the day out of days are two documents, and both
+     are wider than they are tall — so both go out landscape. The
+     export sits in a named menu beside the two scheduling actions
+     rather than as two more buttons on the row. */
+  controls.append(seg, h('div.sb-acts.pdf-menu-host', {}, [
     h('button.sb-btn', { type: 'button', 'data-action': 'sb-auto', text: 'Schedule by location' }),
-    h('button.sb-btn.is-danger', { type: 'button', 'data-action': 'sb-clear', text: 'Clear days' })
+    h('button.sb-btn.is-danger', { type: 'button', 'data-action': 'sb-clear', text: 'Clear days' }),
+    actionMenu('Export', [
+      { label: 'Stripboard as PDF',      action: 'pdf-board', hint: 'landscape' },
+      { label: 'Day Out of Days as PDF', action: 'pdf-dood',  hint: 'landscape' },
+      '---',
+      { label: 'Print this page',        action: 'sb-print' }
+    ], { align: 'right' })
   ]));
   wrap.append(controls, legend());
 
@@ -435,6 +448,7 @@ function render() {
 
   app.replaceChildren(main);
   mountShell();
+  wireActionBar();
   // Chrome initialises at import time, when #app is still empty — the
   // trap short.js fell into. Re-init after every render.
   try {
@@ -489,6 +503,28 @@ delegate(document, 'click', '[data-action="sb-clear"]', () => {
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   render();
 });
+
+/* ---- PDF -----------------------------------------------------
+   Landscape, one document at a time. Neither of these two had any
+   print rules at all before — a board printed with the app rail
+   down the side and the shoot-day select as an empty box — so the
+   whole treatment lives in styles/pdf.css. */
+function boardSummary(scenes) {
+  const days = shootDays(scenes).length;
+  return `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'} · `
+       + `${formatEighths(totalEighths(scenes))} pages · `
+       + `${days} ${days === 1 ? 'shoot day' : 'shoot days'}`;
+}
+
+delegate(document, 'click', '[data-action="pdf-board"]', () => {
+  PDF.exportPDF({ scope: 'board', subtitle: boardSummary(Scenes.listScenes()) });
+});
+
+delegate(document, 'click', '[data-action="pdf-dood"]', () => {
+  PDF.exportPDF({ scope: 'dood', subtitle: boardSummary(Scenes.listScenes()) });
+});
+
+delegate(document, 'click', '[data-action="sb-print"]', () => window.print());
 
 function toast(message) {
   try { StudioUI.toast(message, { type: 'info' }); } catch (e) { /* chrome may not be up */ }

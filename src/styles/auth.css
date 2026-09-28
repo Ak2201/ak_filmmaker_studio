@@ -1,0 +1,168 @@
+/* ============================================================
+   ACCOUNT — the bits chrome.css doesn't already carry
+   ------------------------------------------------------------
+   chrome.css already dresses .cm-overlay / .cm-card / .cm-btn /
+   .sign-in-pill / .account-menu. This file adds only what the
+   account flow introduced: the sync tone on the pill and in the
+   menu, the Google mark, the busy and error states.
+
+   RULES THIS FILE OBEYS
+   · Every colour is a token. No hex, no rgba() literal.
+   · Every shape comes from --sk-* (via --radius, which the skin
+     drives) so the five skins keep their geometry.
+   · The toolbar is a DARK surface in all four themes, so text and
+     dots on it use --chrome-* and the *-lift hues. Inside the
+     modal, which sits on paper, the same meanings use the plain
+     and -deep hues. A hue is a fill; where a hue has to be text,
+     it is --*-deep on light and --*-lift on dark.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   SYNC TONE
+   ------------------------------------------------------------
+   One dot, five states, four tones. `data-sync` is set by
+   src/ui/auth.js from the cloud layer's status; nothing here
+   knows what "OFFLINE" means, only what it should look like.
+   ------------------------------------------------------------ */
+.sign-in-pill[data-sync="off"]     .sip-dot { background: var(--chrome-muted); }
+.sign-in-pill[data-sync="ok"]      .sip-dot { background: var(--ok-lift); }
+.sign-in-pill[data-sync="waiting"] .sip-dot { background: var(--library-lift); }
+.sign-in-pill[data-sync="error"]   .sip-dot { background: var(--danger-lift); }
+.sign-in-pill[data-sync="busy"]    .sip-dot {
+  background: var(--shorts-lift);
+  animation: sip-pulse 1.1s var(--ease) infinite;
+}
+
+@keyframes sip-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+/* A control mid-redirect must read as unavailable, not as broken. */
+.sign-in-pill[disabled] {
+  cursor: progress;
+  opacity: .75;
+}
+
+/* prefers-reduced-motion is respected everywhere else in the app;
+   a pulsing dot is exactly the sort of thing it is asking about. */
+@media (prefers-reduced-motion: reduce) {
+  .sign-in-pill[data-sync="busy"] .sip-dot { animation: none; }
+}
+
+/* ------------------------------------------------------------
+   ACCOUNT MENU — status line + footnote
+   ------------------------------------------------------------
+   The menu sits on paper, so these are the light-ground hues.
+   ------------------------------------------------------------ */
+.account-menu .am-sync {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3) var(--s3);
+  border-bottom: 1px solid var(--rule-hair);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.account-menu .am-sync-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.account-menu .am-sync-text { min-width: 0; }
+.account-menu .am-sync[data-sync="ok"]      .am-sync-dot { background: var(--ok); }
+.account-menu .am-sync[data-sync="waiting"] .am-sync-dot { background: var(--warn); }
+.account-menu .am-sync[data-sync="error"]   .am-sync-dot { background: var(--danger); }
+.account-menu .am-sync[data-sync="busy"]    .am-sync-dot { background: var(--shorts); }
+
+.account-menu .am-foot {
+  padding: var(--s2) var(--s3) var(--s1);
+  border-top: 1px solid var(--rule-hair);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-style: italic;
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   THE GOOGLE BUTTON
+   ------------------------------------------------------------
+   Deliberately NOT Google's four-colour mark. This studio has one
+   palette per theme and four raw brand hexes in the middle of it
+   would be the only unthemed thing on the page — and would trip
+   the raw-colour rule in CLAUDE.md. The glyph inherits
+   currentColor, so it reads correctly in paper, sepia and ink.
+   ------------------------------------------------------------ */
+.cm-btn.google .g-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+.cm-btn.google .g-mark svg { display: block; }
+
+/* The label is its own element so a busy state can swap the words
+   without disturbing the mark beside it. */
+.cm-btn .cm-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-btn[aria-busy="true"],
+.cm-btn[disabled] {
+  cursor: progress;
+  opacity: .7;
+}
+.cm-btn[disabled]:hover {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.cm-btn.primary[disabled]:hover {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   ERRORS
+   ------------------------------------------------------------
+   In the card, not only in a toast. A toast that has faded is no
+   help to somebody re-reading the form to work out what went
+   wrong, and OAuth failures are almost always a configuration
+   sentence worth keeping on screen.
+   ------------------------------------------------------------ */
+.auth-error {
+  margin: 0 0 var(--s4);
+  padding: var(--s3);
+  background: var(--danger-wash);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.auth-error[hidden] { display: none; }
+
+/* ------------------------------------------------------------
+   PHONE
+   ------------------------------------------------------------
+   390px is the width the verifier measures and the width most of
+   this gets used at. The pill label is the only thing here that
+   can run long — an email address has no natural break — so it
+   truncates rather than pushing the toolbar sideways.
+   ------------------------------------------------------------ */
+@media (max-width: 480px) {
+  .sign-in-pill { max-width: 46vw; }
+  .sign-in-pill .sip-label { max-width: 36vw; }
+  .account-menu { max-width: calc(100vw - 16px); }
+  .account-menu .am-email { overflow-wrap: anywhere; }
+}

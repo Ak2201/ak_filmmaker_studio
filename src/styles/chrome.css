@@ -568,7 +568,7 @@ a:focus-visible { outline-offset: 3px; }
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .step-rail-item {
   position: relative;
@@ -779,7 +779,9 @@ a:focus-visible { outline-offset: 3px; }
 }
 .modal h3 em,
 .shortcut-sheet h3 em,
-.cm-card h2 em { color: var(--accent); }
+/* .cm-card is --paper-raised, a LIGHT ground: text takes the deep
+   accent, not the fill. At --accent it measured 2.54:1 in desk. */
+.cm-card h2 em { color: var(--accent-deep); }
 
 .modal .deck,
 .shortcut-sheet .deck,
@@ -885,6 +887,10 @@ a:focus-visible { outline-offset: 3px; }
 }
 .cm-btn.google:hover { background: var(--paper-sunk); color: var(--ink); border-color: var(--ink); }
 
+/* .cm-card is --paper-raised, a LIGHT ground, so modal text takes the
+   DEEP accent. At --accent this measured 2.54:1 in desk, where the
+   studio accent is a bright amber. Same rule as everywhere else: a hue
+   is a fill, --accent-deep is the text. */
 .cm-eyebrow,
 .shortcut-sheet .deck + .cm-eyebrow {
   margin-bottom: var(--s3);
@@ -892,7 +898,7 @@ a:focus-visible { outline-offset: 3px; }
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .cm-hint {
   margin-top: var(--s2);
@@ -910,7 +916,9 @@ a:focus-visible { outline-offset: 3px; }
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 600;
-  color: var(--ink-faint);
+  /* --ink-faint is for text you are not meant to read yet; this is a
+     word the user reads to understand the choice. 2.76:1 before. */
+  color: var(--ink-muted);
 }
 .cm-divider::before,
 .cm-divider::after { content: ''; flex: 1; height: 1px; background: var(--rule-hair); }
@@ -919,7 +927,7 @@ a:focus-visible { outline-offset: 3px; }
   display: block;
   margin-top: var(--s4);
   text-align: center;
-  color: var(--accent);
+  color: var(--accent-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);

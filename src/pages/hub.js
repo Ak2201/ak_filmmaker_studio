@@ -49,11 +49,13 @@ import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, esc, delegate } from '../lib/dom.js';
+import PDF from '../lib/pdf.js';
 
 import featureData from '../data/steps.feature.json';
 import shortData   from '../data/steps.short.json';
@@ -350,6 +352,10 @@ function toolbarMarkup() {
           </button>
           <button class="tb-item" type="button" data-action="import-all" role="menuitem">
             <span class="tb-item-label">Import a backup</span>
+          </button>
+          <button class="tb-item" type="button" data-action="pdf-overview" role="menuitem"
+                  title="The studio overview as a paginated A4 document">
+            <span class="tb-item-label">Studio overview</span><span class="tb-item-hint">.pdf</span>
           </button>
           <div class="tb-sep" role="separator"></div>
           <button class="tb-item is-danger" type="button" data-action="reset-all" role="menuitem">
@@ -1182,6 +1188,31 @@ function highlightActiveResult() {
 // ============================================================
 // EXPORT / IMPORT / RESET  (cross-blueprint)
 // ============================================================
+
+/* The overview, as paper, beside the JSON. The two are not
+   alternatives: the JSON is the backup — the only one a local-first
+   app has — and a PDF of it would be useless for restoring anything.
+   This is the other half, the thing you hand somebody: what is in the
+   studio, how far each blueprint has got, and where to find the rest.
+
+   Deliberately NOT called a backup, and deliberately below the two
+   that are, so that nobody reaches for it at the moment they most
+   need the JSON. */
+function exportOverviewPDF() {
+  const projects = Store.listProjects();
+  const open = Store.currentProject();
+  PDF.exportPDF({
+    scope: 'overview',
+    project: "The Filmmaker's Studio",
+    label: 'Studio overview',
+    title: "The Filmmaker's Studio — overview",
+    subtitle: [
+      projects.length + (projects.length === 1 ? ' project' : ' projects'),
+      open && open.title ? 'open: ' + open.title : ''
+    ].filter(Boolean).join(' · ')
+  });
+}
+
 function exportAll() {
   /* v2: EVERY project, not just the active one.
      v1 read the scoped keys straight off localStorage, so the storage
@@ -1762,6 +1793,7 @@ const CLICK_ACTIONS = {
   'export-all':            () => exportAll(),
   'import-all':            () => importAll(),
   'print-hub':             () => window.print(),
+  'pdf-overview':          () => exportOverviewPDF(),
   'reset-all':             () => resetAll(),
   'privacy-note':          () => alert(
     'All data is local-only — saved to this browser\'s localStorage on this domain.\n\n' +

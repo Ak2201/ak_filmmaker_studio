@@ -24,10 +24,13 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/contacts.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 
@@ -273,10 +276,11 @@ function renderSheetEdit(sheet, contacts, scenes) {
       type: 'text', placeholder: 'Shoot day', 'data-sheet-field': 'title',
       'aria-label': 'Call sheet title'
     }, sheet.title),
-    h('div.ct-sheet-acts', {}, [
-      h('button.btn.ct-print', {
-        type: 'button', 'data-action': 'sheet-print', text: 'Print this sheet'
-      }),
+    h('div.ct-sheet-acts.pdf-menu-host', {}, [
+      actionMenu('Export', [
+        { label: 'Print this sheet', action: 'sheet-print' },
+        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'one page' }
+      ], { align: 'right' }),
       iconBtn('✕', 'sheet-del', 'Delete this call sheet', false, true)
     ])
   ]));
@@ -466,6 +470,7 @@ function render() {
 
   app.replaceChildren(main);
   mountShell();
+  wireActionBar();
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -570,12 +575,16 @@ function syncDoc(el) {
 /* Print one sheet, not the page. The class comes off again on
    afterprint; the timeout is the fallback for browsers that never
    fire it (Safari, historically). */
-delegate(document, 'click', '[data-action="sheet-print"]', (e, el) => {
-  const card = el.closest('.ct-sheet');
-  if (!card) return;
+function markOnlySheet(card) {
   document.querySelectorAll('.ct-sheet.is-printing')
     .forEach((n) => n.classList.remove('is-printing'));
   card.classList.add('is-printing');
+}
+
+delegate(document, 'click', '[data-action="sheet-print"]', (e, el) => {
+  const card = el.closest('.ct-sheet');
+  if (!card) return;
+  markOnlySheet(card);
   document.body.classList.add('ct-printing');
   const clean = () => {
     document.body.classList.remove('ct-printing');
@@ -585,6 +594,27 @@ delegate(document, 'click', '[data-action="sheet-print"]', (e, el) => {
   window.addEventListener('afterprint', clean);
   window.print();
   setTimeout(clean, 2000);
+});
+
+/* Same sheet, same rules — contacts.css already prints one call sheet
+   per page off `ct-printing` and `.is-printing`, so lib/pdf.js is
+   handed those classes rather than being taught the layout twice. What
+   it adds is the page setup, the running band, and a filename a
+   producer can find again: "Por Thozhil — Day 3", not "contacts". */
+delegate(document, 'click', '[data-action="sheet-pdf"]', (e, el) => {
+  const card = el.closest('.ct-sheet');
+  if (!card) return;
+  const sheet = Contacts.listCallSheets().find((s) => s.id === card.dataset.sheet);
+  if (!sheet) return;
+  const day = sheet.title || 'Shoot day';
+  PDF.exportPDF({
+    scope: 'callsheet',
+    title: PDF.projectTitle() + ' — ' + day,
+    subtitle: [day, prettyDate(sheet.date), sheet.location].filter(Boolean).join(' · '),
+    classes: ['ct-printing'],
+    before: () => markOnlySheet(card),
+    after: () => card.classList.remove('is-printing')
+  });
 });
 
 render();

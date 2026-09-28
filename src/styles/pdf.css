@@ -1,0 +1,401 @@
+/* ============================================================
+   PDF — what print.css does not, and only while exporting
+   ------------------------------------------------------------
+   styles/print.css is the shared print system: one page setup,
+   one hide list, one flatten pass, and the inversion that makes
+   a page printed from the ink theme come out black on white. It
+   is not edited here and nothing below repeats it.
+
+   This sheet adds what a *document* needs:
+
+     · the masthead — which film, which document, how big, as of
+       when — in the flow on the first page, because Blink gives
+       no way to put a repeating one anywhere useful (the note in
+       src/lib/pdf.js has the measurements);
+     · the two modules that had no print rules at all — the
+       stripboard and the day out of days, which print landscape;
+     · a screenplay page that is typeset rather than a column of
+       textareas;
+     · the shell (rail and phase bar), which print.css predates.
+
+   Everything here is scoped to `body.pdf-print` or a
+   `body.pdf-<scope>` class stamped by src/lib/pdf.js for the
+   duration of one print job, so a plain Ctrl-P behaves exactly
+   as it did before this file existed.
+
+   COLOUR. Inside @media print the only colours are print.css's
+   four constants — --print-ink, --print-paper, --print-rule,
+   --print-wash. They are theme-independent by design: a writer
+   in the ink theme prints black on white and spends no toner on
+   a dark ground.
+   ============================================================ */
+
+@import url('tokens.css');
+
+/* ------------------------------------------------------------
+   SCREEN — two things that only exist on paper.
+   ------------------------------------------------------------ */
+.pdf-masthead { display: none; }
+.wr-print { display: none; }
+
+/* A dropdown is absolutely positioned. Outside the toolbar there is
+   nothing positioned to hang it from, so at phone width the panel
+   escapes its row and lands at the top of the document. Any row that
+   hosts an Export menu opts in to being that anchor. */
+.pdf-menu-host { position: relative; }
+
+@media print {
+
+  /* ----------------------------------------------------------
+     THE MASTHEAD
+     ----------------------------------------------------------
+     First page, in the flow. `!important` and two ids of
+     specificity because two of the documents it heads are
+     printed by hiding every sibling of one section —
+     reports.css's `body.rp-print-sides #main > *:not(#sides)`
+     would otherwise take the masthead with them.
+     ---------------------------------------------------------- */
+  body.pdf-print #main > #pdf-masthead {
+    display: block !important;
+    margin: 0 0 8pt;
+    padding-bottom: 3pt;
+    border-bottom: 2px solid var(--print-ink);
+    color: var(--print-ink) !important;
+    background: var(--print-paper) !important;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .pdf-mh-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+  }
+  .pdf-mh-project {
+    font-family: var(--f-display);
+    font-size: 13pt;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .pdf-mh-kind,
+  .pdf-mh-meta {
+    font-family: var(--f-mono);
+    font-size: 7.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--print-ink);
+  }
+  .pdf-mh-kind { flex: 0 0 auto; }
+  .pdf-mh-meta { margin-top: 2pt; }
+
+  /* ----------------------------------------------------------
+     THE SHELL — the rail and the phase bar arrived after
+     print.css was written, so every module page still printed a
+     70px dark gutter down the left of every sheet.
+     ---------------------------------------------------------- */
+  body.pdf-print .sh-rail,
+  body.pdf-print .sh-bar,
+  body.pdf-print .sh-rail-toggle,
+  body.pdf-print .launcher-nav { display: none !important; }
+  body.pdf-print.has-sh-shell { padding-left: 0 !important; }
+
+  /* A menu is never part of a document. Nor is a button, a hover
+     tooltip or a row of add/delete glyphs — print.css hides the
+     control classes it knew about, and these are the ones the
+     modules added after it. */
+  .tb-menu { display: none !important; }
+  body.pdf-print .btn,
+  body.pdf-print .bd-cta,
+  body.pdf-print .bd-icon,
+  body.pdf-print .sb-btn,
+  body.pdf-print .sb-seg-btn,
+  body.pdf-print .add-scene-btn,
+  body.pdf-print .add-dialogue-btn,
+  body.pdf-print .beat-tooltip,
+  body.pdf-print .toast-host { display: none !important; }
+
+  /* ----------------------------------------------------------
+     MONOCHROME, MEASURED
+     ----------------------------------------------------------
+     Every one of these was measured in the exported PDF at
+     between 2.4:1 and 4.4:1 against white — labels, counters,
+     citations and cue tags chosen to sit BACK from body text on
+     a lit screen, which on paper means the first thing a
+     photocopier loses. They are already theme-independent (the
+     ink theme and the paper theme export identically); what they
+     are not is legible.
+     ---------------------------------------------------------- */
+  body.pdf-print .bd-eyebrow,
+  body.pdf-print .bd-sub,
+  body.pdf-print .bd-none,
+  body.pdf-print .bd-el-cat,
+  body.pdf-print .bd-el-scenes,
+  body.pdf-print .rp-cat-tag,
+  body.pdf-print .sb-group-meta,
+  body.pdf-print .sb-grid-sub,
+  body.pdf-print .sb-note,
+  body.pdf-print .src,
+  body.pdf-print .lab,
+  body.pdf-print .num,
+  body.pdf-print .pct,
+  body.pdf-print .hint,
+  body.pdf-print .label,
+  body.pdf-print .step-badge,
+  body.pdf-print .sp-empty,
+  body.pdf-print .word-counter,
+  body.pdf-print .glossary-term,
+  body.pdf-print .pc-open,
+  body.pdf-print .pc-cta,
+  body.pdf-print .pc-plus,
+  body.pdf-print .pc-share,
+  body.pdf-print .lx-mod-purpose,
+  body.pdf-print .status-label,
+  body.pdf-print .status-value,
+  body.pdf-print .ql,
+  body.pdf-print .arrow,
+  body.pdf-print #main em { color: var(--print-ink) !important; }
+
+  /* Coloured grounds that carry navigation rather than data. The
+     hue says which phase, and on a monochrome printer it says
+     nothing at all — the label beside it already does the work. */
+  body.pdf-print .lx-phase,
+  body.pdf-print .door-num-circle,
+  body.pdf-print .door-cta,
+  body.pdf-print .seg,
+  body.pdf-print .pos-i,
+  body.pdf-print .neg-i,
+  body.pdf-print .dbl-pos-i,
+  body.pdf-print .dbl-neg-i {
+    background: var(--print-paper) !important;
+    border: 1px solid var(--print-ink) !important;
+  }
+  body.pdf-print .lx-phase,
+  body.pdf-print .lx-phase *,
+  body.pdf-print .door-cta,
+  body.pdf-print .door-cta *,
+  body.pdf-print .door-num-circle,
+  body.pdf-print .door-num-circle * { color: var(--print-ink) !important; }
+  /* The palette picker's swatches are exempt on purpose: they ARE
+     the three colours the user chose for the film, and a PDF of
+     them in grey says nothing. */
+
+  body.pdf-print,
+  body.pdf-print #main {
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+  }
+
+  /* ----------------------------------------------------------
+     STRIPBOARD — the module that had no print rules at all.
+     Landscape, because a board is wider than it is tall and a
+     day out of days is a grid of shoot days across the top.
+     ---------------------------------------------------------- */
+  body.pdf-print .sb-board,
+  body.pdf-print .sb-dood {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+  body.pdf-print .sb-controls,
+  body.pdf-print .sb-legend { display: none !important; }
+  body.pdf-board #dood,
+  body.pdf-dood #stripboard { display: none !important; }
+  body.pdf-dood .bd-head,
+  body.pdf-board .bd-head { display: none !important; }
+
+  body.pdf-print .sb-group { break-inside: auto; margin-bottom: 6pt; }
+  body.pdf-print .sb-group-head { break-after: avoid; }
+  body.pdf-print .sb-rack { display: block; }
+
+  /* A strip is white with a hairline and an ink spine. The colour
+     coding on screen is time of day, and the strip already says
+     DAY or NIGHT in words — which is the half that survives a
+     monochrome office printer. */
+  body.pdf-print .sb-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6pt;
+    margin: 0 0 2pt;
+    padding: 3pt 5pt;
+    background: var(--print-paper) !important;
+    border: 1px solid var(--print-rule) !important;
+    border-left: 3px solid var(--print-ink) !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    font-size: 8.5pt;
+  }
+  body.pdf-print .sb-strip * { color: var(--print-ink) !important; }
+  body.pdf-print .sb-no {
+    min-width: 2.2em;
+    font-weight: 700;
+    background: var(--print-paper) !important;
+    border: 1px solid var(--print-ink) !important;
+  }
+  body.pdf-print .sb-ie {
+    background: var(--print-paper) !important;
+    border: 1px solid var(--print-ink) !important;
+  }
+  body.pdf-print .sb-ie.is-ext {
+    background: var(--print-ink) !important;
+    color: var(--print-paper) !important;
+  }
+  body.pdf-print .sb-cast-chip {
+    background: var(--print-wash) !important;
+    border: 1px solid var(--print-rule) !important;
+  }
+  body.pdf-print .sb-synopsis { flex: 1 0 100%; margin: 2pt 0 0; max-width: none; }
+  body.pdf-print .sb-cast { flex: 1 0 100%; margin: 1pt 0 0; }
+
+  /* The shoot day is data, so the control prints as its value
+     rather than as an empty 36px box. print.css floors every
+     select at 36px for the blueprints, where a printed field IS
+     a rule to write on; a stripboard is not that document. */
+  body.pdf-print .sb-day-sel,
+  body.pdf-print .sb-day {
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--print-ink) !important;
+    font-weight: 700;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* DAY OUT OF DAYS — the grid never scrolls on paper, and the
+     header row repeats when the cast list runs over a page. */
+  body.pdf-print .sb-dood-scroll { overflow: visible !important; }
+  body.pdf-print .sb-grid {
+    width: 100%;
+    font-size: 7.5pt;
+    border-collapse: collapse;
+  }
+  body.pdf-print .sb-grid thead { display: table-header-group; }
+  body.pdf-print .sb-grid tr { break-inside: avoid; }
+  body.pdf-print .sb-grid th,
+  body.pdf-print .sb-grid td {
+    padding: 2pt 3pt;
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+    border: 1px solid var(--print-rule) !important;
+  }
+  body.pdf-print .sb-grid thead th,
+  body.pdf-print .sb-grid-tot { background: var(--print-wash) !important; }
+  body.pdf-print .sb-cell { text-align: center; font-weight: 700; }
+  body.pdf-print .sb-cell.is-hold { background: var(--print-wash) !important; font-weight: 400; }
+  body.pdf-print .sb-note { font-size: 7.5pt; margin-top: 6pt; }
+
+  /* ----------------------------------------------------------
+     SCREENPLAY — typeset, not a stack of textareas.
+     ----------------------------------------------------------
+     The editor is a grid of a type selector, a growing textarea
+     and three row buttons; it is a good writing surface and a
+     terrible page. src/pages/write.js builds a `.wr-print`
+     document from the same element list at print time, and this
+     is its format.
+
+     The numbers are the industry's, in characters, which is what
+     `ch` means in a monospaced face: at 12pt Courier one
+     character is exactly 0.1in, so 60ch is the 6in text block
+     between a 1.5in gutter and a 1in right margin. line-height 1
+     at 12pt is six lines to the inch.
+     ---------------------------------------------------------- */
+  body.pdf-screenplay #main > *:not(.wr-print) { display: none !important; }
+  body.pdf-screenplay .wr-print {
+    display: block;
+    font-family: var(--f-script);
+    font-size: 12pt;
+    line-height: 1;
+    color: var(--print-ink);
+  }
+  .wr-pr {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    orphans: 2;
+    widows: 2;
+  }
+  .wr-pr + .wr-pr { margin-top: 12pt; }
+  .wr-pr-scene {
+    width: 60ch;
+    font-weight: 700;
+    text-transform: uppercase;
+    break-after: avoid;
+  }
+  .wr-pr-action { width: 60ch; }
+  .wr-pr-character {
+    margin-left: 22ch;
+    width: 38ch;
+    text-transform: uppercase;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .wr-pr-paren {
+    margin-left: 16ch;
+    width: 28ch;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .wr-pr-dialogue { margin-left: 10ch; width: 35ch; }
+  .wr-pr-transition {
+    width: 60ch;
+    text-align: right;
+    text-transform: uppercase;
+  }
+  /* A speech is one block: no blank line between the name, the
+     parenthetical and the words. */
+  .wr-pr-character + .wr-pr-paren,
+  .wr-pr-character + .wr-pr-dialogue,
+  .wr-pr-paren + .wr-pr-dialogue { margin-top: 0; }
+
+  /* The title page, and then the script starts on a fresh sheet. */
+  .wr-pr-title {
+    /* Centred on the SHEET, not on the text block: the 1.5in
+       gutter puts the block's middle a quarter-inch right of the
+       page's, which on a title page is visible. */
+    margin-left: -0.25in;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 85vh;
+    text-align: center;
+    text-transform: uppercase;
+    break-after: page;
+  }
+  .wr-pr-title b { display: block; font-weight: 700; }
+  .wr-pr-title span { display: block; margin-top: 24pt; font-size: 10pt; }
+
+  /* ----------------------------------------------------------
+     CALL SHEET — contacts.css already prints one sheet per page
+     off `ct-printing` / `.is-printing`, and pdf.js reuses it
+     rather than growing a second copy. All that is left is the
+     shell, handled above, and keeping a sheet off two pages.
+     ---------------------------------------------------------- */
+  body.pdf-callsheet .ct-sheets { padding: 0; }
+  body.pdf-callsheet .ct-doc-table { break-inside: auto; }
+  body.pdf-callsheet .ct-doc-table tr { break-inside: avoid; }
+
+  /* ----------------------------------------------------------
+     SIDES AND REPORTS — reports.css owns these two, off the
+     body classes pdf.js passes through. Only the page furniture
+     it could not know about is left.
+     ---------------------------------------------------------- */
+  body.pdf-sides .bd-head,
+  body.pdf-reports .bd-head { display: none !important; }
+
+  /* ----------------------------------------------------------
+     THE BLUEPRINTS AND THE HUB — print.css already sets these
+     out as paper. Two corrections: an empty writing rule is
+     worth a page on a blueprint you fill in by hand, and worth
+     nothing in a PDF of what you have written.
+     ---------------------------------------------------------- */
+  body.pdf-overview .search-wrap,
+  body.pdf-overview .projects-toolbar,
+  body.pdf-overview .tool-card,
+  body.pdf-overview .mobile-bar { display: none !important; }
+}

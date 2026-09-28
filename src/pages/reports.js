@@ -27,10 +27,13 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/reports.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import PDF from '../lib/pdf.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
@@ -253,8 +256,15 @@ function renderReports(scenes, numbers) {
           + 'and every tagged element — the five things a 1st AD and a line '
           + 'producer ask for before anything else.'
     }),
-    h('div.rp-tools.rp-noprint', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'print-reports', text: 'Print the reports' })
+    /* One named menu rather than two more buttons. The toolbar went
+       from twenty flat controls to seven on purpose (see
+       ui/actionbar.js) and a second top-level button per view is how
+       that creeps back. */
+    h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
+      actionMenu('Export', [
+        { label: 'Print the reports', action: 'print-reports' },
+        { label: 'Save as PDF',       action: 'pdf-reports', hint: 'A4' }
+      ])
     ])
   );
 
@@ -361,12 +371,15 @@ function renderSides(scenes, numbers) {
           + 'length, what happens and everything tagged to it — one block per '
           + 'scene, never split across a page.'
     }),
-    h('div.rp-tools.rp-noprint', {}, [
+    h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [
       h('button.btn', { type: 'button', 'data-action': 'sides-all', text: 'Select all' }),
       h('button.btn', { type: 'button', 'data-action': 'sides-none', text: 'Clear' }),
       h('span.rp-count', { id: 'rp-sides-count', text: selectionLabel(scenes) }),
       h('span.rp-spacer'),
-      h('button.btn.primary', { type: 'button', 'data-action': 'print-sides', text: 'Print the sides' })
+      actionMenu('Export', [
+        { label: 'Print the sides', action: 'print-sides' },
+        { label: 'Save as PDF',     action: 'pdf-sides', hint: 'A4' }
+      ], { align: 'right' })
     ])
   );
 
@@ -417,6 +430,30 @@ function printOnly(cls) {
   setTimeout(clear, 1000);
 }
 
+/* ---- PDF -----------------------------------------------------
+   Same two views, through the print pipeline with a page setup, a
+   running band and a filename. The body classes above are what
+   reports.css already keys off, so lib/pdf.js is handed them
+   rather than growing a second copy of these rules. */
+function pdfReports() {
+  const scenes = Scenes.listScenes();
+  PDF.exportPDF({
+    scope: 'reports',
+    subtitle: plural(scenes.length, 'scene', 'scenes')
+            + ' · ' + formatEighths(totalEighths(scenes)) + ' pages'
+  });
+}
+
+function pdfSides() {
+  const scenes = Scenes.listScenes();
+  const chosen = scenes.filter((s) => selected.has(s.id));
+  PDF.exportPDF({
+    scope: 'sides',
+    subtitle: plural(chosen.length, 'scene', 'scenes')
+            + ' · ' + formatEighths(totalEighths(chosen)) + ' pages'
+  });
+}
+
 /* ---- render ------------------------------------------------- */
 function render() {
   const scenes = Scenes.listScenes();
@@ -435,6 +472,7 @@ function render() {
 
   app.replaceChildren(main);
   mountShell();
+  wireActionBar();
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -460,5 +498,7 @@ delegate(document, 'click', '[data-action="sides-none"]', () => {
 });
 delegate(document, 'click', '[data-action="print-sides"]',   () => printOnly('rp-print-sides'));
 delegate(document, 'click', '[data-action="print-reports"]', () => printOnly('rp-print-reports'));
+delegate(document, 'click', '[data-action="pdf-sides"]',     () => pdfSides());
+delegate(document, 'click', '[data-action="pdf-reports"]',   () => pdfReports());
 
 render();

@@ -45,6 +45,7 @@ import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
@@ -53,6 +54,7 @@ import { h, delegate } from '../lib/dom.js';
 import { renderSteps } from '../ui/steps.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import PDF from '../lib/pdf.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
@@ -153,7 +155,8 @@ function renderToolbar() {
     jumper,
     h('span.save-status', { id: 'saveStatus', role: 'status', text: '●  ready' }),
     actionMenu('Export', [
-      { label: 'Print',    action: 'print' },
+      { label: 'Print',       action: 'print' },
+      { label: 'Save as PDF', action: 'export-pdf', hint: 'A4' },
       '---',
       { label: 'JSON',     action: 'export-json',     hint: 'data' },
       { label: 'Fountain', action: 'export-fountain', hint: 'screenplay' }
@@ -1160,6 +1163,23 @@ function exportData() {
   flashStatus('●  exported');
 }
 
+/* The blueprint as an A4 document. print.css already sets the page
+   out as paper and inverts every theme to print ink; this adds the
+   page setup, the running band and a filename with the film in it. */
+function exportPDF() {
+  saveData();
+  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  const title = data.meta_title || 'Untitled short';
+  PDF.exportPDF({
+    scope: 'blueprint',
+    project: title,
+    label: 'Short film blueprint',
+    title: title + ' — Short film blueprint',
+    subtitle: data.meta_runtime ? 'Target runtime ' + data.meta_runtime : ''
+  });
+  flashStatus('●  printing');
+}
+
 function importData() { document.getElementById('importFile').click(); }
 
 function handleImport(e) {
@@ -1240,6 +1260,7 @@ function jumpToStep(target) {
 const CLICK_ACTIONS = {
   'toggle-dark':         () => toggleDark(),
   'print':               () => window.print(),
+  'export-pdf':          () => exportPDF(),
   'export-json':         () => exportData(),
   'import-json':         () => importData(),
   'reset':               () => resetData(),

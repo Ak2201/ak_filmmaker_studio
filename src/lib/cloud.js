@@ -31,8 +31,23 @@ const CFG_KEY          = 'arunak_supabase_cfg_v1';        // { url, key } — pu
 const QUEUE_KEY        = 'arunak_studio_cloud_queue_v1';  // offline queue
 const MIGRATE_FLAG_KEY = 'arunak_studio_migrated_v1';     // <userId> = migrated
 const MIGRATE_LOCK_KEY = 'arunak_studio_migrate_lock_v1'; // ts when running
+const SYNC_META_KEY    = 'arunak_studio_sync_meta_v1';    // per (project,scope) clocks
+const SALVAGE_KEY      = 'arunak_studio_sync_salvage_v1'; // overwritten-local safety net
+const PENDING_SHARE_KEY = 'arunak_studio_pending_share_v1'; // survives an OAuth round trip
 
-// Map between localStorage scoped-key and DB scope name
+// Map between localStorage scoped-key and DB scope name.
+//
+// EVERY entry in Store.SCOPED_KEYS belongs here. A scoped key with no
+// scope name is a key that saves locally and silently never reaches the
+// account — which reads, from the user's side, exactly like data loss on
+// a new device. The seven module keys below (scenes … dissect) were
+// missing for three releases for precisely that reason.
+//
+// The names on the right are not free-form: `project_data.scope` in
+// supabase-schema.sql has a CHECK constraint listing them, so a new
+// scope needs BOTH sides changed or the upsert is rejected by Postgres.
+// The assertion under this map turns the silent version of that mistake
+// into a console warning at load.
 const SCOPE_BY_KEY = {
   'arunak_filmmaker_combined_v1':  'feature',
   'arunak_shortfilm_blueprint_v1': 'short',
@@ -40,11 +55,28 @@ const SCOPE_BY_KEY = {
   'arunak_filmmaker_prefs_v1':     'feature_prefs',
   'arunak_shortfilm_prefs_v1':     'short_prefs',
   'arunak_library_prefs_v1':       'library_prefs',
-  'arunak_studio_activity_v1':     'activity'
+  'arunak_studio_activity_v1':     'activity',
+  'arunak_scenes_v1':              'scenes',
+  'arunak_contacts_v1':            'contacts',
+  'arunak_shots_v1':               'shots',
+  'arunak_script_v1':              'script',
+  'arunak_locations_v1':           'locations',
+  'arunak_workbench_v1':           'workbench',
+  'arunak_dissect_v1':             'dissect'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])
 );
+
+// Derived, not hand-checked: the list of scoped keys lives in store.js
+// and this asks that file rather than repeating it.
+const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k]);
+if (_unsynced.length) {
+  console.warn(
+    '[StudioCloud] these project-scoped keys have no cloud scope and will ' +
+    'NEVER sync to an account:', _unsynced
+  );
+}
 
 // ============================================================
 // STATE
@@ -55,6 +87,135 @@ let cfg = null;               // {url,key}
 let _applyingRemote = false;  // echo-loop guard
 let _activeChannels = [];     // realtime subscriptions for current project
 let _migrationPromise = null; // single-flight migration guard
+let _signingIn = false;       // an OAuth redirect is in flight
+
+// ============================================================
+// SYNC STATUS — one visible answer to "is my writing safe?"
+// ------------------------------------------------------------
+// A local-first app that also syncs owes the user an honest status
+// line, because the two states it can be in ("saved here" and "saved
+// to the account") are different promises. Nothing below ever blocks
+// a local save on a network result; the status only ever REPORTS.
+// ============================================================
+export const SYNC_STATES = {
+  OFF:      'off',       // not configured, or signed out — local only
+  IDLE:     'idle',      // signed in, nothing outstanding
+  SYNCING:  'syncing',   // a push or pull is in flight
+  SYNCED:   'synced',    // last operation succeeded
+  OFFLINE:  'offline',   // queued locally, waiting for a connection
+  ERROR:    'error'      // last operation failed; work is still local
+};
+let _syncState  = SYNC_STATES.OFF;
+let _syncDetail = 'Local only';
+const syncListeners = new Set();
+
+export function onSyncStatus(cb) {
+  syncListeners.add(cb);
+  try { cb(getSyncStatus()); } catch (e) {}
+  return () => syncListeners.delete(cb);
+}
+export function getSyncStatus() {
+  return {
+    state:   _syncState,
+    detail:  _syncDetail,
+    pending: _readQueue().length,
+    online:  typeof navigator === 'undefined' ? true : navigator.onLine
+  };
+}
+function setSync(state, detail) {
+  _syncState  = state;
+  _syncDetail = detail || '';
+  const snap = getSyncStatus();
+  syncListeners.forEach((fn) => { try { fn(snap); } catch (e) {} });
+  Store.notify('cloud:status', snap);
+}
+function idleSync() {
+  const q = _readQueue().length;
+  if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
+  if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
+  setSync(SYNC_STATES.SYNCED, 'Everything is in your account');
+}
+
+// ============================================================
+// SYNC CLOCKS — what last-write-wins is decided on
+// ------------------------------------------------------------
+// One entry per (project, scope): when this device last WROTE that
+// scope, and the server timestamp it last SAW. Kept out of the
+// SCOPED_KEYS list deliberately and written through rawSet, so the
+// storage proxy neither re-scopes it nor re-fires `saved` (which
+// would be an infinite loop — see the save-loop trap in CLAUDE.md).
+// ============================================================
+function _readMeta() {
+  try { return JSON.parse(Store.rawGet(SYNC_META_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function _writeMeta(m) { Store.rawSet(SYNC_META_KEY, JSON.stringify(m)); }
+const _metaId = (pid, scope) => pid + '::' + scope;
+
+function markLocalWrite(pid, scope, ts) {
+  if (!pid || !scope) return;
+  const m = _readMeta();
+  const row = m[_metaId(pid, scope)] || {};
+  row.local = ts || Date.now();
+  m[_metaId(pid, scope)] = row;
+  _writeMeta(m);
+}
+function markRemoteSeen(pid, scope, ts, alsoLocal) {
+  if (!pid || !scope) return;
+  const m = _readMeta();
+  const row = m[_metaId(pid, scope)] || {};
+  row.remote = ts || Date.now();
+  if (alsoLocal) row.local = row.remote;
+  m[_metaId(pid, scope)] = row;
+  _writeMeta(m);
+}
+
+/* When this device last touched a scope, in epoch ms.
+
+   The per-scope clock is the precise answer. When there isn't one —
+   data written before the account existed, or restored from a backup
+   file — fall back to the project's own `updatedAt`, which store.js
+   bumps on EVERY scoped write. That fallback is coarse (any save in
+   the project bumps it) and therefore biased toward "local is newer",
+   which is the safe direction for a local-first tool: the worst case
+   is an extra upload, not a lost paragraph. */
+function localClock(pid, scope) {
+  const row = _readMeta()[_metaId(pid, scope)];
+  if (row && row.local) return row.local;
+  const proj = Store.getProject(pid);
+  const t = proj && proj.updatedAt ? Date.parse(proj.updatedAt) : 0;
+  return Number.isFinite(t) ? t : 0;
+}
+
+/* The last thing standing between a bad clock and somebody's writing.
+
+   Before any remote value replaces a DIFFERENT non-empty local value,
+   the local one is copied here first. Capped at the last 12 so it can
+   never grow without bound. Nothing reads it automatically — it exists
+   so that "the sync ate my scene list" has an answer other than "sorry". */
+function salvage(pid, scope, previous) {
+  if (!previous) return;
+  let all = [];
+  try { all = JSON.parse(Store.rawGet(SALVAGE_KEY) || '[]') || []; } catch (e) { all = []; }
+  all.push({ at: new Date().toISOString(), projectId: pid, scope, data: previous });
+  while (all.length > 12) all.shift();
+  Store.rawSet(SALVAGE_KEY, JSON.stringify(all));
+}
+export function listSalvage() {
+  try { return JSON.parse(Store.rawGet(SALVAGE_KEY) || '[]') || []; }
+  catch (e) { return []; }
+}
+export function restoreSalvage(index) {
+  const all = listSalvage();
+  const row = all[index];
+  if (!row) return false;
+  const localKey = KEY_BY_SCOPE[row.scope];
+  if (!localKey) return false;
+  Store.rawSet(localKey + '__' + row.projectId, row.data);
+  markLocalWrite(row.projectId, row.scope, Date.now());
+  Store.notify('cloud:restored', row);
+  return true;
+}
 
 // ============================================================
 // CFG (URL + anon key — both public, gated by RLS)
@@ -103,6 +264,7 @@ export async function ensureClient() {
     supabase.auth.onAuthStateChange((event, sess) => {
       const wasNull = !session;
       session = sess;
+      if (sess) _signingIn = false;
       notifyAuth(event, sess);
       if (sess && wasNull) {
         // First time signed in this load — try migration
@@ -112,7 +274,9 @@ export async function ensureClient() {
       if (!sess) {
         tearDownChannels();
       }
+      idleSync();
     });
+    idleSync();
     return supabase;
   } catch (e) {
     console.warn('[StudioCloud] failed to load SDK', e);
@@ -135,32 +299,167 @@ export function getUserEmail() {
   return session.user.email || (session.user.user_metadata && session.user.user_metadata.email);
 }
 
+/* Where the provider sends the browser back to.
+
+   The CURRENT page, with query and fragment stripped. Two reasons it
+   is not a fixed landing page: the user keeps the page they were
+   working on, and the value has to be listed verbatim in Supabase's
+   "Additional Redirect URLs", which a wildcard per origin covers
+   (docs/GOOGLE-AUTH.md). Nothing app-specific is smuggled through the
+   URL — the pending share token rides in localStorage instead, because
+   a bearer token has no business in a query string. */
+export function authRedirectTarget() {
+  return location.origin + location.pathname;
+}
+
+// ------------------------------------------------------------
+// COMING BACK FROM THE PROVIDER
+// ------------------------------------------------------------
+// FLOW TYPE. The client is left on supabase-js's default, `implicit`,
+// on purpose rather than by omission:
+//
+//   implicit → the return URL carries the tokens in the FRAGMENT
+//     (`#access_token=…`). A fragment is never sent to any server, so
+//     nothing lands in a Netlify or Vercel access log, and auth-js
+//     clears it the moment it has read it (we tidy the leftover `#`
+//     below). No credential of ours ever appears in a query string.
+//   pkce → the return URL carries `?code=…` in the QUERY STRING, and
+//     the exchange needs a verifier held in THIS browser's storage.
+//     That breaks the existing magic-link path the moment someone
+//     opens the emailed link on their phone instead of the laptop
+//     that asked for it, which is most people.
+//
+// The cost of implicit is that a refresh token passes through
+// `location.hash` and therefore through the tab's history entry. We
+// replace that entry immediately, below. If this app ever drops the
+// magic-link path, switch to pkce.
+//
+// auth-js throws the provider's own `#error=access_denied&…` away
+// inside its initialiser, so the only way to tell a user WHY Google
+// bounced them is to read the URL before the client is constructed.
+const _redirect = (() => {
+  if (typeof location === 'undefined') return null;
+  const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  const qs   = new URLSearchParams(String(location.search || ''));
+  const pick = (k) => hash.get(k) || qs.get(k);
+  const err  = pick('error') || pick('error_code');
+  if (err) {
+    return {
+      error: err,
+      description: (pick('error_description') || '').replace(/\+/g, ' ')
+    };
+  }
+  if (hash.get('access_token') || qs.get('code')) return { pending: true };
+  return null;
+})();
+
+/** What the provider said when it sent the browser back here, if anything. */
+export function readRedirect() { return _redirect; }
+
+/* Strip anything the provider appended, without adding a history entry.
+   auth-js sets `location.hash = ''`, which leaves a bare trailing '#'
+   AND pushes a new entry; this replaces the entry outright. */
+function cleanRedirectUrl() {
+  if (!_redirect) return;
+  try {
+    const url = new URL(location.href);
+    ['error', 'error_code', 'error_description', 'code', 'state'].forEach(
+      (k) => url.searchParams.delete(k)
+    );
+    url.hash = '';
+    history.replaceState(history.state, '', url.pathname + url.search);
+  } catch (e) {}
+}
+
+/* A share token must survive the trip to Google and back. It rides in
+   localStorage rather than on the redirect URL: the token is a bearer
+   credential, and a bearer credential in a query string ends up in
+   logs, in Referer headers and in whatever the user pastes next. */
+function stashPendingShare() {
+  try {
+    const t = new URLSearchParams(location.search).get('share');
+    if (t) Store.rawSet(PENDING_SHARE_KEY, t);
+  } catch (e) {}
+}
+function takePendingShare() {
+  const t = Store.rawGet(PENDING_SHARE_KEY);
+  if (t) Store.rawRemove(PENDING_SHARE_KEY);
+  return t || null;
+}
+
 export async function signInWithEmail(email) {
   const sb = await ensureClient();
-  if (!sb) throw new Error('Cloud not configured. Open Settings to add your Supabase URL + anon key.');
+  if (!sb) throw new Error('Cloud is not set up in this browser yet. Add your Supabase URL and anon key first.');
+  stashPendingShare();
+  setSync(SYNC_STATES.SYNCING, 'Sending your sign-in link…');
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: location.origin + location.pathname }
+    options: { emailRedirectTo: authRedirectTarget() }
   });
-  if (error) throw error;
+  if (error) { idleSync(); throw error; }
+  idleSync();
   return true;
 }
 
+/* Google.
+
+   `signInWithOAuth` does a top-level navigation to Google; it injects
+   no script and posts no form, so the strict CSP (`script-src 'self'`,
+   `form-action 'self'`) does not touch it. What comes back is handled
+   by `detectSessionInUrl` inside ensureClient() plus readRedirect()
+   below — see the flow-type note there.
+
+   `prompt: 'select_account'` because the alternative is that a user on
+   a shared machine is silently signed back into somebody else's
+   Google account without ever being asked which one. */
 export async function signInWithGoogle() {
   const sb = await ensureClient();
-  if (!sb) throw new Error('Cloud not configured.');
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: location.origin + location.pathname }
-  });
-  if (error) throw error;
+  if (!sb) throw new Error('Cloud is not set up in this browser yet. Add your Supabase URL and anon key first.');
+  if (_signingIn) return;
+  _signingIn = true;
+  stashPendingShare();
+  setSync(SYNC_STATES.SYNCING, 'Opening Google…');
+  notifyAuth('REDIRECTING', null);
+  try {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: authRedirectTarget(),
+        queryParams: { prompt: 'select_account' }
+      }
+    });
+    if (error) throw error;
+    // On success the browser is already navigating away; nothing after
+    // this line is guaranteed to run.
+  } catch (e) {
+    _signingIn = false;
+    setSync(SYNC_STATES.ERROR, 'Google sign-in could not start');
+    notifyAuth('SIGNED_OUT', null);
+    throw e;
+  }
 }
 
+export function isSigningIn() { return _signingIn; }
+
+/* Sign out clears the SESSION, never the work.
+
+   Nothing here touches a SCOPED_KEY, the projects list or the current
+   project — the user keeps every word on this device and can carry on
+   writing offline. The queue survives too: it holds changes that have
+   not reached the account yet, and dropping it would turn "sign out"
+   into "discard my unsynced edits". */
 export async function signOut() {
-  if (!supabase) return;
-  await supabase.auth.signOut();
+  if (!supabase) { session = null; idleSync(); return; }
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.warn('[StudioCloud] sign-out', e);
+  }
   session = null;
+  _signingIn = false;
   tearDownChannels();
+  Store.rawRemove(PENDING_SHARE_KEY);
+  setSync(SYNC_STATES.OFF, 'Signed out — your projects are still on this device');
 }
 
 // ============================================================
@@ -279,31 +578,64 @@ export async function pullProjectList() {
   Store.notify('projects:changed', { reason: 'cloud-pull' });
 }
 
+/* Pull one project's scopes, resolving each one by last-write-wins.
+
+   The old version of this function had a comment admitting it "always
+   trusts remote on pull". On a device that had been edited offline,
+   that is an instruction to overwrite unsent work with an older copy
+   the second the user signs in — the exact failure a local-first tool
+   exists to not have. Each scope is now decided on its own clock, a
+   newer local copy is pushed up instead of being replaced, and any
+   local value that IS replaced is copied to the salvage ring first. */
 export async function pullProjectData(projectId) {
-  if (!supabase) return;
+  if (!supabase || !projectId) return;
+  setSync(SYNC_STATES.SYNCING, 'Checking your account…');
   const { data, error } = await supabase
     .from('project_data')
     .select('scope,data,updated_at')
     .eq('project_id', projectId);
-  if (error) { console.warn('[pull data]', error); return; }
-  if (!data) return;
-  _applyingRemote = true;
-  try {
-    for (const row of data) {
-      const localKey = KEY_BY_SCOPE[row.scope];
-      if (!localKey) continue;
-      const namespacedKey = localKey + '__' + projectId;
-      // compare timestamps: only overwrite if remote is newer or local missing
-      const localRaw = Store.rawGet(namespacedKey);
-      if (localRaw) {
-        // We don't store updated_at locally, so we always trust remote on pull.
-        // (Push debounce ensures local edits win after the user types.)
-      }
-      Store.rawSet(namespacedKey, JSON.stringify(row.data || {}));
-    }
-  } finally {
-    _applyingRemote = false;
+  if (error) {
+    console.warn('[pull data]', error);
+    // A failed pull changes nothing on disk. Local work is untouched.
+    setSync(navigator.onLine ? SYNC_STATES.ERROR : SYNC_STATES.OFFLINE,
+      navigator.onLine ? 'Could not read your account — working locally'
+                       : 'Offline — working locally');
+    return;
   }
+  if (!data) { idleSync(); return; }
+
+  let applied = 0, kept = 0;
+  for (const row of data) {
+    const localKey = KEY_BY_SCOPE[row.scope];
+    if (!localKey) continue;                      // scope this build doesn't know
+    const nsKey    = localKey + '__' + projectId;
+    const remoteTs = Date.parse(row.updated_at || '') || 0;
+    const localRaw = Store.rawGet(nsKey);
+    const nextRaw  = JSON.stringify(row.data || {});
+
+    if (localRaw === nextRaw) {                   // identical — write nothing
+      markRemoteSeen(projectId, row.scope, remoteTs);
+      continue;
+    }
+    if (localRaw != null && localClock(projectId, row.scope) > remoteTs) {
+      // Local is the later write. Keep it, and send it up.
+      kept++;
+      markRemoteSeen(projectId, row.scope, remoteTs);
+      _debouncedPush(projectId, row.scope, 250);
+      continue;
+    }
+    // Remote wins. Keep a copy of whatever it displaces.
+    if (localRaw != null && localRaw !== '{}') salvage(projectId, row.scope, localRaw);
+    _applyingRemote = true;
+    try { Store.rawSet(nsKey, nextRaw); } finally { _applyingRemote = false; }
+    markRemoteSeen(projectId, row.scope, remoteTs, true);
+    applied++;
+  }
+  if (applied || kept) {
+    Store.notify('cloud:synced', { projectId, applied, kept });
+  }
+  idleSync();
+  return { applied, kept };
 }
 
 // ============================================================
@@ -326,6 +658,7 @@ function _debouncedPush(projectId, scope, delay) {
 async function _pushScope(projectId, scope) {
   if (!supabase || !session) {
     _enqueue({ kind: 'upsert', projectId, scope });
+    idleSync();
     return;
   }
   const localKey = KEY_BY_SCOPE[scope];
@@ -333,18 +666,28 @@ async function _pushScope(projectId, scope) {
   const raw = Store.rawGet(localKey + '__' + projectId);
   let json = {};
   if (raw) { try { json = JSON.parse(raw); } catch (e) { json = {}; } }
+  const stamp = new Date().toISOString();
+  setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
   const { error } = await supabase.from('project_data').upsert({
     project_id: projectId,
     scope: scope,
     data: json,
-    updated_at: new Date().toISOString(),
+    updated_at: stamp,
     updated_by: session.user.id
   }, { onConflict: 'project_id,scope' });
   if (error) {
     console.warn('[push scope]', error);
+    // The local copy is already on disk and stays there. All a failed
+    // push costs is the upload, which the queue retries.
     _enqueue({ kind: 'upsert', projectId, scope });
+    setSync(navigator.onLine ? SYNC_STATES.ERROR : SYNC_STATES.OFFLINE,
+      navigator.onLine ? 'Saved here — could not reach your account'
+                       : 'Saved here — will upload when you are back online');
     throw error;
   }
+  // Both clocks now agree on the value this device just sent.
+  markRemoteSeen(projectId, scope, Date.parse(stamp), true);
+  idleSync();
 }
 
 async function _pushProjectMeta(project) {
@@ -407,8 +750,12 @@ async function _flushQueue() {
   if (q.length && !remaining.length) {
     toast('Synced ' + q.length + ' offline change' + (q.length === 1 ? '' : 's'), 'success', 1800);
   }
+  idleSync();
 }
-window.addEventListener('online',  () => { setTimeout(_flushQueue, 500); });
+window.addEventListener('online',  () => { idleSync(); setTimeout(_flushQueue, 500); });
+window.addEventListener('offline', () => {
+  if (session) setSync(SYNC_STATES.OFFLINE, 'Offline — still saving to this device');
+});
 setInterval(() => { if (navigator.onLine) _flushQueue(); }, 30_000);
 
 // ============================================================
@@ -449,13 +796,27 @@ function _onRemoteData(payload) {
   if (session && row.updated_by === session.user.id) return;  // self echo
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;
-  const namespacedKey = localKey + '__' + row.project_id;
+  const nsKey    = localKey + '__' + row.project_id;
+  const remoteTs = Date.parse(row.updated_at || '') || Date.now();
+  const localRaw = Store.rawGet(nsKey);
+  const nextRaw  = JSON.stringify(row.data || {});
+  if (localRaw === nextRaw) return;
+
+  // Same rule as the pull: a live edit from another device does not
+  // get to overwrite a later edit made here. It loses, and this
+  // device's copy goes up instead.
+  if (localRaw != null && localClock(row.project_id, row.scope) > remoteTs) {
+    _debouncedPush(row.project_id, row.scope, 250);
+    return;
+  }
+  if (localRaw != null && localRaw !== '{}') salvage(row.project_id, row.scope, localRaw);
   _applyingRemote = true;
   try {
-    Store.rawSet(namespacedKey, JSON.stringify(row.data || {}));
+    Store.rawSet(nsKey, nextRaw);
   } finally {
     _applyingRemote = false;
   }
+  markRemoteSeen(row.project_id, row.scope, remoteTs, true);
   // Re-render visible inputs if blueprint exposes a reload hook
   if (typeof window.loadAll === 'function') {
     try { window.loadAll(); } catch (e) {}
@@ -567,11 +928,16 @@ export async function updateCommentStatus(id, status) {
 // ============================================================
 Store.subscribe('saved', ({ key }) => {
   if (_applyingRemote) return;
-  if (!session) return;  // not signed in → no cloud push
   const scope = SCOPE_BY_KEY[key];
   if (!scope) return;
   const pid = Store.currentProjectId();
   if (!pid) return;
+  // Record the clock even when signed out, as long as an account
+  // exists in this browser. Otherwise a week of offline writing has
+  // no timestamp to defend itself with at the next sign-in, and the
+  // pull resolves every scope in the server's favour.
+  if (isConfigured()) markLocalWrite(pid, scope);
+  if (!session) return;  // not signed in → nothing to push to
   _debouncedPush(pid, scope);
 });
 Store.subscribe('current:changed', () => {
@@ -596,7 +962,9 @@ Store.subscribe('projects:changed', (info) => {
 // ============================================================
 async function handleSharedLink() {
   const params = new URLSearchParams(location.search);
-  const token = params.get('share');
+  // Either it is in the URL now, or it was stashed before we sent the
+  // browser off to Google and this is the trip back.
+  const token = params.get('share') || takePendingShare();
   if (!token) return;
   await ensureClient();
   if (!supabase) {
@@ -661,10 +1029,12 @@ const StudioCloud = {
   ensureClient,
   signInWithEmail, signInWithGoogle, signOut,
   getSession, getUser, getUserEmail,
-  onAuth,
+  onAuth, isSigningIn, readRedirect, authRedirectTarget,
   // sync
   pullProjectList, pullProjectData, attachToCurrentProject,
   flushQueue: _flushQueue,
+  onSyncStatus, getSyncStatus, SYNC_STATES,
+  listSalvage, restoreSalvage,
   // sharing
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
   // comments
@@ -690,14 +1060,46 @@ export default StudioCloud;
 // importing this module never blocks the importer's evaluation — the
 // old file was a separate <script type="module"> and behaved the same.
 async function boot() {
+  // A provider bounce we can explain before the client even exists.
+  if (_redirect && _redirect.error) {
+    const why = _redirect.description || _redirect.error;
+    cleanRedirectUrl();
+    _signingIn = false;
+    setSync(SYNC_STATES.ERROR, 'Sign-in was not completed');
+    notifyAuth('OAUTH_ERROR', null);
+    toast('Google sign-in did not complete: ' + why, 'error', 5000);
+    Store.notify('cloud:auth-error', { message: why, code: _redirect.error });
+    return;
+  }
+  if (_redirect && _redirect.pending) _signingIn = true;
+
   // Try to initialise the client if cfg exists; fail silently if not.
+  // createClient({ detectSessionInUrl: true }) is what actually reads
+  // the tokens out of the URL and turns them into a session.
   await ensureClient();
+
+  if (_redirect && _redirect.pending) {
+    _signingIn = false;
+    cleanRedirectUrl();
+    if (session) {
+      notifyAuth('SIGNED_IN', session);
+      toast('Signed in as ' + (getUserEmail() || 'your account') + '.', 'success', 2400);
+    } else {
+      // Tokens came back but no session survived — almost always a
+      // Site URL / redirect-URL mismatch. Say so; the runbook covers it.
+      setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
+      notifyAuth('OAUTH_ERROR', null);
+      toast('Signed in with Google, but the session did not stick. Check the Supabase Site URL and Redirect URLs.', 'error', 6000);
+    }
+  }
+
   // If signed in already (session restored), attach to current project + run migration check
   if (session) {
     await maybeMigrateLocalToCloud();
     attachToCurrentProject();
     setTimeout(_flushQueue, 1500);
   }
+  idleSync();
   // Always handle ?share= if present, even before sign-in
   handleSharedLink();
 }

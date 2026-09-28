@@ -35,10 +35,13 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/write.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import PDF from '../lib/pdf.js';
 import Script, {
   ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
   revisionColour, typeLabel,
@@ -228,7 +231,7 @@ function renderScreenplay() {
   );
 
   const pages = pageCount(doc.elements);
-  section.append(h('div.wr-bar', {}, [
+  section.append(h('div.wr-bar.pdf-menu-host', {}, [
     h('div.wr-gauge', {}, [
       h('span.wr-gauge-num', { 'data-count': 'pages', text: formatPages(pages) }),
       h('span.wr-gauge-lab', { text: 'pages' }),
@@ -239,11 +242,15 @@ function renderScreenplay() {
       h('span.wr-gauge-num', { 'data-count': 'runtime', text: formatRuntime(pages) }),
       h('span.wr-gauge-lab', { text: 'on screen' })
     ]),
-    h('button.btn.wr-export', {
-      type: 'button', 'data-action': 'export-fountain',
-      text: 'Export .fountain',
-      disabled: doc.elements.length === 0
-    })
+    /* Two exports now, so they go behind one named menu instead of
+       two buttons on the gauge row. Both are dead without pages, and
+       both say so rather than silently producing an empty file. */
+    h('div.wr-export', {}, [
+      actionMenu('Export', [
+        { label: 'Export .fountain', action: 'export-fountain', hint: 'screenplay' },
+        { label: 'Save as PDF',      action: 'export-pdf',      hint: 'US Letter' }
+      ], { align: 'right' })
+    ])
   ]));
 
   if (!doc.elements.length) {
@@ -467,6 +474,7 @@ function render(focus) {
   requestAnimationFrame(autosizeAll);   // again once layout has settled
 
   mountShell();
+  wireActionBar();
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -653,13 +661,80 @@ function download(text, filename) {
   URL.revokeObjectURL(url);
 }
 
+function say(message) {
+  try { StudioUI.toast(message, { type: 'info' }); } catch (e) { /* chrome may not be up */ }
+}
+
+/** "White — Second draft", or nothing if no revision has been issued. */
+function currentRevision() {
+  if (!doc.revisions.length) return '';
+  const i = doc.revisions.length - 1;
+  return revisionColour(i).name + ' — ' + doc.revisions[i].name;
+}
+
 delegate(document, 'click', '[data-action="export-fountain"]', () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const title = Script.projectTitle();
-  const last = doc.revisions.length
-    ? revisionColour(doc.revisions.length - 1).name + ' — ' + doc.revisions[doc.revisions.length - 1].name
-    : '';
-  const text = Script.toFountain(doc, { title, revision: last });
+  const text = Script.toFountain(doc, { title, revision: currentRevision() });
   download(text, Script.slugify(title, 'screenplay') + '.fountain');
+});
+
+/* ---- the screenplay as paper --------------------------------
+   The editor is a grid of a type selector, a growing textarea and
+   three row buttons. It is a good writing surface and a terrible
+   page: printed as-is, every element lands in its own bordered box
+   at print.css's 36px field floor, the autosized heights were
+   measured against a screen-width column, and `overflow: hidden`
+   then clips whatever no longer fits — silently, because a
+   textarea has no scrollbar to give it away.
+
+   So the PDF is typeset instead, from the same element list, at
+   print time. It is thrown away again on afterprint: a second copy
+   of the script living permanently in the DOM is the "one
+   representation per thing" rule broken, and it would be the copy
+   that goes stale. The measurements are in styles/pdf.css. */
+const PRINT_CLASS = {
+  scene: 'wr-pr-scene',
+  action: 'wr-pr-action',
+  character: 'wr-pr-character',
+  paren: 'wr-pr-paren',
+  dialogue: 'wr-pr-dialogue',
+  transition: 'wr-pr-transition'
+};
+
+function buildScreenplayDocument() {
+  const page = h('div.wr-print');
+  const rev = currentRevision();
+  page.append(h('div.wr-pr.wr-pr-title', {}, [
+    h('b', { text: Script.projectTitle() }),
+    h('span', { text: 'Screenplay' }),
+    h('span', { text: rev || prettyStamp(new Date().toISOString()) })
+  ]));
+
+  for (const el of doc.elements) {
+    let text = String(el.text ?? '').trim();
+    if (!text) continue;                       // a blank element is a gap, not a beat
+    // A parenthetical is written without its brackets in the editor,
+    // the way every screenwriting app takes it, and wears them on paper.
+    if (el.type === 'paren' && !/^\(.*\)$/.test(text)) text = '(' + text + ')';
+    page.append(h('p.wr-pr.' + (PRINT_CLASS[el.type] || PRINT_CLASS.action), { text }));
+  }
+  return page;
+}
+
+delegate(document, 'click', '[data-action="export-pdf"]', () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  const main = document.getElementById('main');
+  if (!main) return;
+  let node = null;
+  PDF.exportPDF({
+    scope: 'screenplay',
+    title: Script.projectTitle() + ' — Screenplay',
+    subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
+      .filter(Boolean).join(' · '),
+    before: () => { node = buildScreenplayDocument(); main.append(node); },
+    after: () => { if (node) { node.remove(); node = null; } }
+  });
 });
 
 /* ---- revisions ---------------------------------------------- */

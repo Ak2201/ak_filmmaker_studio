@@ -96,6 +96,20 @@
   --accent-wash:  var(--feature-wash);
   --accent-lift:  var(--feature-lift); /* accent ON a dark panel */
   --accent-on:    #fdfaf3;   /* text ON an accent fill */
+
+  /* Text ON each hue used as a FILL. Mostly --accent-on, because five
+     of the six hues are dark enough for near-white. Amber is not: in
+     the Desk palette --library is #d99512, and white on it is 2.4:1 —
+     the launcher's phase tiles and the hub's door numerals were both
+     unreadable there. A hue used as a fill needs a stated on-colour;
+     "the accent's on-colour" is an assumption that holds until one
+     hue gets bright. */
+  --feature-on:   var(--accent-on);
+  --shorts-on:    var(--accent-on);
+  --library-on:   var(--accent-on);
+  --visualize-on: var(--accent-on);
+  --plan-on:      var(--accent-on);
+  --shoot-on:     var(--accent-on);
   /* Text ON a --danger fill. Tracks --accent-on deliberately: both it
      and --danger invert per theme, so the pair stays legible in paper,
      sepia and ink without a second set of values to keep in step. */
@@ -127,8 +141,19 @@
   --scrim: rgba(22, 19, 15, .62);
 
   /* ---- type --------------------------------------------- */
-  --f-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --f-body:    'Fraunces', Georgia, 'Times New Roman', serif;
+  /* The raw stacks, and then the two SEMANTIC faces that point at
+     them through the skin.
+
+     Every stylesheet in the app already says var(--f-display); routing
+     that through --sk-display here means a skin changes the face
+     everywhere at once, instead of each of the ~90 rules that name a
+     face having to be found and rewritten. The fallback is the stack,
+     not --f-display, because --sk-display defaulting back to
+     --f-display would be a cycle and resolve to nothing. */
+  --face-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  --f-display: var(--sk-display, var(--face-serif));
+  --f-body:    var(--sk-body, var(--face-serif));
   --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --f-script:  'Courier Prime', 'Courier New', Courier, monospace;
 
@@ -224,12 +249,118 @@
 }
 
 /* ============================================================
+   DESK — a fourth mode: cool neutral ground, white cards.
+   ------------------------------------------------------------
+   Paper and sepia are printed matter and ink is that printed
+   matter at night. This one is not paper at all: it is a screen
+   a crew works on in an office, which is a different job. The
+   ground goes cool grey so white cards read as raised, the rules
+   get crisp, and the hues go flat and bright rather than
+   ink-on-paper muted.
+
+   It exists because the layout went from a book to an
+   application, and a warm bond-paper palette under a fixed rail
+   and a launcher grid reads as a costume. The Console skin is
+   its intended partner — theme picks the palette, skin picks the
+   shapes — but the two are independent and all pairings work.
+
+   The hues are this app's own, chosen to stay distinct from each
+   other at small sizes (an 8px phase dot) and clear of --ok and
+   --warn, because a phase colour must never read as a status.
+   ============================================================ */
+:root[data-theme="desk"] {
+  color-scheme: light;
+
+  --paper:        #f4f5f7;
+  --paper-raised: #ffffff;
+  --paper-sunk:   #eaecf1;
+  --paper-edge:   #dcdfe6;
+
+  --ink:          #14171d;
+  --ink-body:     #353b45;
+  --ink-muted:    #646c7a;
+  --ink-faint:    #949cab;
+
+  --rule:         #d2d7e0;
+  --rule-hair:    #e6e9ef;
+
+  /* Flat and bright: on a grey ground the muted print hues go dull. */
+  --feature:      #dc4f36;
+  --feature-deep: #a5341f;
+  --feature-wash: #fdeae6;
+
+  --shorts:       #2f7fe6;
+  --shorts-deep:  #1b569f;
+  --shorts-wash:  #e5eefc;
+
+  --library:      #d99512;
+  --library-deep: #a06a08;
+  --library-wash: #fdf1da;
+
+  --visualize:      #7b52e0;
+  --visualize-deep: #56349f;
+  --visualize-wash: #efe9fd;
+
+  --plan:           #0f93b0;
+  --plan-deep:      #0a687e;
+  --plan-wash:      #e0f3f8;
+
+  --shoot:          #c63a84;
+  --shoot-deep:     #90275e;
+  --shoot-wash:     #fce6f1;
+
+  /* The one bright enough to need dark text on it. */
+  --library-on:     #3b2905;
+
+  --ok:           #17805c;
+  --ok-wash:      #e1f5ed;
+  --warn:         #b57407;
+  --warn-wash:    #fdf0d9;
+  --danger:       #cc3826;
+  --danger-wash:  #fce8e5;
+
+  /* The chrome and the ink panels go slate rather than near-black
+     warm, so the dark surfaces belong to the same palette as the
+     light ones instead of looking borrowed from the paper theme. */
+  --chrome:             #1e2129;
+  --chrome-ink:         #f2f4f8;
+  --chrome-muted:       #99a2b2;
+  --chrome-hair:        rgba(242, 244, 248, .14);
+  --chrome-hair-strong: rgba(242, 244, 248, .32);
+  --chrome-fill:        rgba(242, 244, 248, .08);
+  --chrome-fill-strong: rgba(242, 244, 248, .16);
+
+  --panel:            #1e2129;
+  --panel-raised:     #2a2e3a;
+  --panel-ink:        #eef1f6;
+  --panel-muted:      #9aa3b2;
+  --panel-hair:       rgba(238, 241, 246, .16);
+  --panel-hair-soft:  rgba(238, 241, 246, .08);
+
+  /* Soft and short, the way a shadow reads on a grey ground. */
+  --shadow-sm: 0 1px 2px rgba(20, 23, 29, .06);
+  --shadow-md: 0 2px 8px rgba(20, 23, 29, .08);
+  --shadow-lg: 0 8px 24px rgba(20, 23, 29, .12);
+}
+
+/* ============================================================
    DARK — "ink". Not an inversion: the paper becomes a graded
    print viewed on a monitor, so the accents lift in lightness
    and drop in saturation to stay legible on a dark ground.
    ============================================================ */
+/* The guard here used to be an EXCLUSION LIST —
+   :root:not([data-theme="light"]):not([data-theme="sepia"]) — which
+   meant every new theme had to remember to add itself to it, and the
+   penalty for forgetting was silent: "desk" rendered as ink on any
+   machine set to dark mode, and only on those machines. Exactly the
+   trap CLAUDE.md records from the other direction, where paper did it.
+
+   :not([data-theme]) states the real rule instead. The OS preference
+   decides only when the user has not chosen, and applyTheme() always
+   stamps the attribute, so any choice wins on any OS. A theme added
+   later cannot get this wrong because there is nothing to update. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="sepia"]) {
+  :root:not([data-theme]) {
     color-scheme: dark;
     --paper:        #16140f;
     --paper-raised: #201d16;
@@ -295,19 +426,30 @@
   --rule-hair:    #2b2720;
 
   --feature:      #e08a6d;
-  --feature-deep: #b0311c;
   --feature-wash: #2e1b14;
 
   --shorts:       #71a6dd;
-  --shorts-deep:  #245e9e;
   --shorts-wash:  #15232f;
 
   --library:      #d9ab5c;
   --visualize:    #b394e0;
   --plan:         #63b6cc;
   --shoot:        #d183b0;
-  --library-deep: #9a6d1f;
   --library-wash: #2c2415;
+
+  /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
+     on ink the ground is dark — so deep has to go lighter, not darker.
+     These used to hold the paper theme's base hues, which are darker
+     than the ink page: .por-thozil's trade line and every Tanglish
+     gloss rendered dark-on-dark. --accent-deep resolves from these
+     through [data-volume] and [data-phase], so this is the one place
+     the whole family is fixed. */
+  --feature-deep:   #f0ab90;
+  --shorts-deep:    #a0c7ea;
+  --library-deep:   #ebc588;
+  --visualize-deep: #cbb2ee;
+  --plan-deep:      #8fcede;
+  --shoot-deep:     #e3a6c6;
 
   --ok:           #5fbc99;
   --ok-wash:      #15271f;
@@ -359,12 +501,12 @@
    page's whole "colour = the category" idea rendered in grey. Named
    classes rather than a lookup in JS, because the values belong to
    tokens.css and nowhere else. */
-.sh-ph-develop,   .hue-feature   { --hue: var(--feature); }
-.sh-ph-write,     .hue-library   { --hue: var(--library); }
-.sh-ph-breakdown, .hue-shorts    { --hue: var(--shorts); }
-.sh-ph-visualize, .hue-visualize { --hue: var(--visualize); }
-.sh-ph-plan,      .hue-plan      { --hue: var(--plan); }
-.sh-ph-shoot,     .hue-shoot     { --hue: var(--shoot); }
+.sh-ph-develop,   .hue-feature   { --hue: var(--feature);   --hue-on: var(--feature-on); }
+.sh-ph-write,     .hue-library   { --hue: var(--library);   --hue-on: var(--library-on); }
+.sh-ph-breakdown, .hue-shorts    { --hue: var(--shorts);    --hue-on: var(--shorts-on); }
+.sh-ph-visualize, .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); }
+.sh-ph-plan,      .hue-plan      { --hue: var(--plan);      --hue-on: var(--plan-on); }
+.sh-ph-shoot,     .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on); }
 
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); }

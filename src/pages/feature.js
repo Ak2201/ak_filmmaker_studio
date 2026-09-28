@@ -179,11 +179,15 @@ const LADDER_HTML       = `
   <div class="ladder-intro">
     <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px;">INTERLUDE · BETWEEN STEPS 02 AND 03</div>
     <h2 style="font-size: clamp(32px, 5vw, 52px); font-weight: 800; font-style: italic; line-height: 0.95; margin-bottom: 14px;">The <em style="color: var(--accent);">Treatment Ladder.</em></h2>
-    <p style="font-size: 16px; color: var(--muted); font-style: italic; max-width: 720px; line-height: 1.55;">Five rungs from one sentence to a step outline. Each rung is a real document with a target length. Producers and collaborators ask for these in this order. Build them in order, and the script writes itself.</p>
-    <div class="formula-box" style="background: var(--paper-deep); padding: 18px 22px; border-left: 4px solid var(--gold); margin: 20px 0; max-width: 720px;">
-      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--gold);">FORMULA</span>
+    <p style="font-size: 16px; color: var(--ink-muted); font-style: italic; max-width: 720px; line-height: 1.55;">Five rungs from one sentence to a step outline. Each rung is a real document with a target length. Producers and collaborators ask for these in this order. Build them in order, and the script writes itself.</p>
+    <!-- No inline surface here: .formula-box IS the slab, and the skin
+         decides what a slab is made of. Restating it inline pinned this
+         one box to a background the stylesheet could not reach, which
+         is how it ended up with light panel ink on light paper. -->
+    <div class="formula-box" style="margin: 20px 0; max-width: 720px;">
+      <span class="label">FORMULA</span>
       <p style="margin-top: 6px; font-style: italic; font-size: 14.5px;">Each rung must be readable on its own. If you can't show a rung independently and have it work, the rung above it is also broken.</p>
-      <p style="margin-top: 8px; font-size: 13.5px; font-style: italic; color: var(--accent-deep);">Tanglish: ovvoru rung um thaniya padichaalum sense aaganum. Oru rung break aagudhuna, adhukku mela irukura rung um break-thaan.</p>
+      <p class="tn" style="margin-top: 8px; font-size: 13.5px; font-style: italic;">Tanglish: ovvoru rung um thaniya padichaalum sense aaganum. Oru rung break aagudhuna, adhukku mela irukura rung um break-thaan.</p>
     </div>
   </div>
   <div class="ladder-rungs">
@@ -218,7 +222,7 @@ const LADDER_HTML       = `
       <p class="hint">When you can read your step outline aloud and "feel" the film's shape — that's when you start writing pages.</p>
     </div>
   </div>
-  <p style="margin-top: 30px; font-size: 13px; color: var(--muted); font-style: italic; max-width: 720px;">Tip: Don't move to the next rung until the current one is honest. A weak treatment exposes a weak logline. A weak step outline exposes a weak treatment. The ladder forces the truth.</p>
+  <p style="margin-top: 30px; font-size: 13px; color: var(--ink-muted); font-style: italic; max-width: 720px;">Tip: Don't move to the next rung until the current one is honest. A weak treatment exposes a weak logline. A weak step outline exposes a weak treatment. The ladder forces the truth.</p>
 </section>
 `;
 const INTERLUDE_HTML    = `
@@ -243,7 +247,7 @@ const VOL2_COVER_HTML   = `
       <div class="meta-field"><label>Estimated budget</label><input type="text" data-key="v2_budget"></div>
     </div>
   </div>
-  <div><div class="vol-byline">CURATED BY <span style="color:var(--accent-2);">ARUNAK</span></div></div>
+  <div><div class="vol-byline">CURATED BY <span style="color:var(--accent);">ARUNAK</span></div></div>
 </section>
 `;
 const HOWTO2_HTML       = `
@@ -306,7 +310,7 @@ const SYNC_FIELDS_HTML  = `
     </div>
     <div>
       <label>AUTO-PUSH</label>
-      <select id="sync_auto" style="width:100%;background:var(--paper-soft);border:1px solid var(--muted);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);">
+      <select id="sync_auto" style="width:100%;background:var(--paper-raised);border:1px solid var(--ink-muted);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);">
         <option value="off">OFF — push manually</option>
         <option value="on">ON — push every save</option>
       </select>
@@ -646,7 +650,7 @@ function tagVol1Bridge() {
   const box = step13.querySelector('.why-this');
   if (!box) return;
   box.id = 'vol1Bridge';
-  box.style.borderLeftColor = 'var(--gold)';
+  box.style.borderLeftColor = 'var(--panel-gilt)';
   box.style.display = 'none';
   const p = box.querySelector('p');
   if (p) {
@@ -1273,7 +1277,7 @@ function debouncedSave() {
 function flashStatus(msg) {
   if (!statusEl) return;
   statusEl.textContent = msg;
-  statusEl.style.color = 'var(--gold)';
+  statusEl.style.color = 'var(--panel-gilt)';
 }
 
 function updateSavedAtTimer() {

@@ -40,13 +40,24 @@
    WHAT EACH GROUP CONTROLS
 
    geometry   corner radius, how much air a card and a band get
-   surfaces   what a card is made of, and the one dark slab
+   surfaces   what a card is made of, and the one dark slab. The
+              slab carries THREE inks — body, muted and accent — not
+              just a background. A skin that flips the slab from near
+              black to light grey and does not also move the text on
+              it produces a card whose every word is invisible, which
+              is a bug the page still renders happily.
    rules      the left rule: width and colour, split into the one
               that carries data (tier, category) and the one that
               is decoration. A skin sets the decorative one to a
               hairline to get the quiet look, or to 4px of accent
               to get the printed-matter look.
-   type       the display sizes and whether the face is italic
+   type       the faces themselves, the display sizes, and whether
+              the face is italic. --sk-display and --sk-body may name
+              a font stack: an all-serif design and an all-sans one
+              are different designs, and that is the sort of thing a
+              skin is for. Prefer the --f-* tokens or a system stack;
+              a skin that pulls in a web font is a skin that costs a
+              network round trip on first paint.
    pacing     how tall a cover is — the difference between "a book
               you open" and "a tool you work in"
    ============================================================ */

@@ -303,7 +303,21 @@
   border-radius: var(--sk-radius);
 }
 .formula-box .label,
-.formula .lab { color: var(--panel-gilt); }
+.formula .lab { color: var(--sk-slab-accent); }
+
+/* THE SLAB INK FLOOR.
+   A slab sets its own ink, and everything inside inherits it unless it
+   deliberately says otherwise. Without this, a <p> or a <strong> in a
+   slab falls back to the page's --ink-body: dark text, correct on the
+   page, invisible on a dark slab — and when a skin flips the slab to
+   light, the panel-coloured text that was right becomes invisible the
+   other way. Both happened.
+
+   `X *` is specificity (0,1,0), so it is a FLOOR, not an override:
+   .formula-box .label at (0,2,0) still wins, and so does every other
+   rule that names an element inside a slab on purpose. */
+.formula-box, .formula, .resume-card, .data-card, .toc-item { color: var(--sk-slab-ink); }
+.formula-box *, .formula *, .resume-card *, .data-card *, .toc-item * { color: inherit; }
 
 /* No boxes inside boxes. A card that finds itself inside a card
    drops its own ground and keeps only the hairline — this is the
@@ -392,6 +406,103 @@
 .bd-how-step strong { font-family: var(--f-display); font-size: var(--t-small); }
 .bd-how-step p { margin: 0; font-size: var(--t-small); color: var(--ink-muted); line-height: var(--lh-snug); }
 .bd-cta { font-size: var(--t-small); padding: var(--s3) var(--s5); }
+
+/* ------------------------------------------------------------
+   6. THE LAUNCHER — every module, by phase, on one page
+   ------------------------------------------------------------
+   A row per phase: a saturated tile carrying the phase hue, then the
+   modules of that phase as tiles beside it. This is the one place in
+   the app where a hue fills a block rather than edging one, and it
+   earns that — six rows, six hues, and the colour IS the phase.
+
+   It is why the top bar can stay at 56px. The complete map of 22
+   modules is one page rather than permanent chrome, which is the
+   trade StudioBinder makes and the reason their nav reads as simple
+   without hiding anything.
+   ------------------------------------------------------------ */
+.lx-grid { display: grid; gap: var(--sk-grid-gap); }
+
+.lx-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 180px) 1fr;
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  overflow: hidden;
+}
+
+.lx-phase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s4) var(--s5);
+  background: var(--hue);
+  color: var(--hue-on);
+}
+.lx-phase-label {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.lx-phase-blurb { font-size: var(--t-tiny); line-height: var(--lh-snug); opacity: .85; }
+.lx-phase-count {
+  margin-top: auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  opacity: .8;
+}
+
+.lx-mods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--sk-card-bg);
+}
+.lx-mod {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--s3) var(--s4);
+  background: var(--paper);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+.lx-mod:hover,
+.lx-mod:focus-visible { border-color: var(--hue); }
+.lx-mod-label { font-family: var(--f-display); font-size: var(--t-small); font-weight: 700; }
+.lx-mod-purpose { font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
+
+/* A tile that is not finished says so on its face. Eleven of the 22
+   are planned, and a map that drew 22 identical tiles would be a lie
+   the first click exposes. */
+.lx-flag {
+  justify-self: start;
+  margin-top: var(--s2);
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  color: var(--hue);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+}
+.lx-mod.is-planned { opacity: .66; }
+.lx-mod.is-planned .lx-flag { color: var(--ink-faint); }
+
+@media (max-width: 719px) {
+  .lx-row { grid-template-columns: 1fr; }
+  .lx-phase { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: var(--s3); }
+  .lx-phase-count { margin-top: 0; }
+}
 
 /* ============================================================
    BREAKDOWN — what is genuinely this page's own.

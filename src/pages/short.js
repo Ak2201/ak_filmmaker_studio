@@ -714,7 +714,7 @@ function updateLoglineCount() {
   if (!el || !out) return;
   const words = (el.value || '').trim().split(/\s+/).filter(Boolean).length;
   out.textContent = words + ' / 25 words';
-  out.style.color = words > 25 ? 'var(--warn)' : 'var(--muted)';
+  out.style.color = words > 25 ? 'var(--warn)' : 'var(--ink-muted)';
 }
 
 // ============================================================

@@ -20,12 +20,34 @@ const RENAMES = {
   'arunak-filmmaker-library.html': 'library.html'
 };
 
+/* Custom properties the 2023 markup used that the design system
+   renamed. Same problem as the filenames and the same fix: the raw
+   blocks are copied verbatim from legacy/, so a re-extraction would
+   put every one of these back.
+
+   These are not cosmetic. An undefined var() makes the whole
+   declaration invalid at computed-value time, so `background:
+   var(--paper-deep)` does not fall back to anything — it computes to
+   transparent. One formula box on the feature page lost its ink
+   ground that way and printed near-white text on near-white paper,
+   in the DEFAULT theme, until a contrast check went looking. */
+const TOKEN_RENAMES = {
+  '--muted':      '--ink-muted',
+  '--gold':       '--panel-gilt',
+  '--paper-deep': '--paper-sunk',
+  '--paper-soft': '--paper-raised',
+  '--accent-2':   '--accent'
+};
+
 let touched = 0;
 for (const name of readdirSync(DATA).filter((f) => f.endsWith('.json'))) {
   const path = join(DATA, name);
   const before = readFileSync(path, 'utf8');
   let after = before;
   for (const [from, to] of Object.entries(RENAMES)) after = after.split(from).join(to);
+  for (const [from, to] of Object.entries(TOKEN_RENAMES)) {
+    after = after.split(`var(${from})`).join(`var(${to})`);
+  }
   if (after !== before) {
     writeFileSync(path, after);
     console.log(`relinked ${name}`);

@@ -1,0 +1,63 @@
+/* ============================================================
+   SKIN: CONSOLE — the studio as an application.
+   ------------------------------------------------------------
+   Sans faces, small radii, tight padding, soft shadows: the
+   shapes of a tool people keep open all day, rather than of a
+   book they read once. Pair it with the Desk theme and the app
+   stops looking like printed matter; either one alone still
+   works, which is the point of keeping the two axes separate.
+
+   The face is a SYSTEM stack, not a web font. Every other face in
+   this app is fetched from Google Fonts, and a skin that adds a
+   fourth family would put a network round trip in front of first
+   paint for a look the user may switch away from in a minute.
+   ============================================================ */
+
+:root[data-skin="console"] {
+  --sk-name: "Console";
+
+  --sk-display: system-ui, -apple-system, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+  --sk-body:    system-ui, -apple-system, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+
+  --sk-radius:        6px;
+  --sk-card-pad:      var(--s3) var(--s4);
+  --sk-band-pad:      var(--s6);
+  --sk-grid-gap:      var(--s3);
+
+  --sk-card-bg:       var(--paper-raised);
+  --sk-card-line:     var(--rule-hair);
+  --sk-card-shadow:   var(--shadow-sm);
+
+  /* The one dark slab per step goes light here. On a grey ground
+     with white cards, a near-black block is the only thing on the
+     page shouting, and this design does not shout. */
+  --sk-slab-bg:       var(--paper-sunk);
+  --sk-slab-ink:      var(--ink-body);
+  --sk-slab-rule-w:   3px;
+  --sk-slab-rule-c:   var(--accent);
+  --sk-slab-muted:    var(--ink-muted);
+  --sk-slab-accent:   var(--accent-deep);
+
+  --sk-hue-rule-w:    3px;
+  --sk-deco-rule-w:   1px;
+  --sk-deco-rule-c:   var(--rule-hair);
+  --sk-deco-bg:       var(--paper-raised);
+
+  --sk-title-size:    clamp(1.5rem, 2.8vw, 2.1rem);
+  --sk-title-style:   normal;
+  --sk-title-lh:      1.15;
+  --sk-h2-size:       var(--t-xl);
+  --sk-h2-style:      normal;
+  --sk-deck-size:     var(--t-small);
+  --sk-deck-style:    normal;
+  --sk-deck-measure:  68ch;
+  --sk-eyebrow-track: var(--track-label);
+  --sk-stepnum-size:  var(--t-lg);
+  --sk-card-h-size:   var(--t-base);
+  --sk-card-h-style:  normal;
+
+  --sk-cover-min:     0;
+  --sk-cover-pad:     var(--s6) var(--gutter);
+}

@@ -25,6 +25,8 @@
   --sk-slab-bg:       var(--paper-sunk);
   --sk-slab-ink:      var(--ink);
   --sk-slab-rule-c:   var(--accent);
+  --sk-slab-muted:    var(--ink-muted);
+  --sk-slab-accent:   var(--accent-deep);
 
   --sk-title-size:    clamp(1.6rem, 3vw, 2.1rem);
   --sk-h2-size:       var(--t-xl);

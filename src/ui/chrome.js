@@ -116,13 +116,18 @@ const THEME_KEY = 'arunak_studio_theme_v1';
    light / sepia / dark (see tokens.css). The app's own names are
    paper / sepia / ink and the STORED value keeps those — THEME_KEY is
    part of the storage contract. Map between the two here, once. */
-const CSS_THEME = { paper: 'light', sepia: 'sepia', ink: 'dark' };
+const CSS_THEME = { paper: 'light', sepia: 'sepia', desk: 'desk', ink: 'dark' };
+/* The order the ⌃⇧D cycle walks, and the order the picker lists.
+   Warm → warmer → cool → dark, which is the only arrangement where
+   each step is a small change from the one before. */
+const THEME_ORDER = ['paper', 'sepia', 'desk', 'ink'];
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
 function currentTheme() {
   switch (document.documentElement.getAttribute('data-theme')) {
     case 'sepia': return 'sepia';
+    case 'desk':  return 'desk';
     case 'dark':  return 'ink';
     case 'light': return 'paper';
   }
@@ -159,12 +164,15 @@ function applyTheme(theme) {
   });
   // Existing hub dark button keeps working — sync icon
   const darkBtn = document.getElementById('darkBtn');
-  if (darkBtn) darkBtn.textContent = theme === 'ink' ? '☀' : (theme === 'sepia' ? '◉' : '◐');
+  if (darkBtn) {
+    darkBtn.textContent =
+      theme === 'ink' ? '☀' : theme === 'sepia' ? '◉' : theme === 'desk' ? '▣' : '◐';
+  }
 }
 function loadTheme() {
   let t;
   try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
-  if (t === 'ink' || t === 'sepia' || t === 'paper') {
+  if (THEME_ORDER.indexOf(t) >= 0) {
     applyTheme(t);
   } else {
     // fall back to legacy dark-mode pref
@@ -175,10 +183,13 @@ function loadTheme() {
   }
 }
 StudioUI.applyTheme = applyTheme;
+/* Exposed so scripts/verify can iterate the real list instead of
+   keeping its own copy that goes stale the day a theme is added. */
+StudioUI.themeOrder = () => THEME_ORDER.slice();
 StudioUI.currentTheme = currentTheme;
 StudioUI.cycleTheme = function () {
-  const cur = currentTheme();
-  const next = cur === 'paper' ? 'sepia' : cur === 'sepia' ? 'ink' : 'paper';
+  const i = THEME_ORDER.indexOf(currentTheme());
+  const next = THEME_ORDER[(i + 1) % THEME_ORDER.length];
   applyTheme(next);
   StudioUI.toast('Theme: ' + next, { type: 'info', duration: 1400 });
 };
@@ -191,6 +202,7 @@ StudioUI.attachThemePicker = function (host) {
   [
     { theme: 'paper', label: 'Paper', icon: '◐' },
     { theme: 'sepia', label: 'Sepia', icon: '◉' },
+    { theme: 'desk',  label: 'Desk',  icon: '▣' },
     { theme: 'ink',   label: 'Ink',   icon: '☀' }
   ].forEach(({ theme, label, icon }) => {
     const b = document.createElement('button');
@@ -233,11 +245,10 @@ function appearanceMenu() {
       action: 'set-theme',
       attr: 'data-theme-choice',
       value: currentTheme(),
-      choices: [
-        { value: 'paper', label: 'Paper' },
-        { value: 'sepia', label: 'Sepia' },
-        { value: 'ink',   label: 'Ink' }
-      ]
+      choices: THEME_ORDER.map((t) => ({
+        value: t,
+        label: t.charAt(0).toUpperCase() + t.slice(1)
+      }))
     },
     {
       label: 'Design',

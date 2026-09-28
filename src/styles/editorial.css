@@ -238,7 +238,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .toc-item .title {
   display: block;
@@ -247,7 +247,7 @@
   font-weight: 600;
   font-style: italic;
 }
-.toc-item .desc { margin-top: var(--s1); font-size: var(--t-tiny); color: var(--panel-muted); }
+.toc-item .desc { margin-top: var(--s1); font-size: var(--t-tiny); color: var(--sk-slab-muted); }
 
 /* Hero stats and the hub's stat strip are one object now — modules.css
    §2. What stays here is the only part that is data: a stat that counts
@@ -487,11 +487,16 @@
    .tip-box, .why-box, .director-card .study and the two data cards
    used to share it, which put three dark slabs in one step — a wall.
    They are paper cards now; only the eyebrow stays coloured. */
+/* These two are slabs like .formula-box, so they follow the skin's
+   slab rather than naming --panel directly. Under Console the slab is
+   light, and a card that stayed near-black would have been the only
+   thing shouting on a page designed not to. */
 .resume-card,
 .data-card {
-  background: var(--panel);
-  color: var(--panel-ink);
-  border-left: 3px solid var(--panel-gilt);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+  border-left: var(--sk-slab-rule-w) solid var(--sk-slab-rule-c);
+  border-radius: var(--sk-radius);
 }
 .tip-box,
 .why-box { max-width: var(--measure-wide); margin: var(--s4) 0 var(--s5); }
@@ -516,7 +521,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-small);
   font-weight: 400;
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .formula p { font-size: var(--t-small); line-height: var(--lh-body); color: var(--panel-ink); }
 .tip-box p,
@@ -573,10 +578,10 @@
 .formula-box .tn,
 .formula .tn {
   border-top-color: var(--panel-hair);
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
 .formula-box .tn::before,
-.formula .tn::before { color: var(--panel-gilt); }
+.formula .tn::before { color: var(--sk-slab-accent); }
 
 /* ------------------------------------------------------------
    EXAMPLES — the feature blueprint set these on ink and the
@@ -829,7 +834,10 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-small);
   letter-spacing: var(--track-label);
-  color: var(--accent);
+  /* Text on a light card takes the DEEP accent, not the base hue.
+     Amber at #d99512 on white is 2.15:1 — the base hue is chosen to
+     read as a fill, and a fill colour is rarely a text colour. */
+  color: var(--accent-deep);
 }
 .film-card .tags { display: flex; flex-wrap: wrap; gap: var(--s1); margin-bottom: var(--s3); }
 .film-card .tag {
@@ -955,14 +963,14 @@ select.field-input {
   height: var(--s5);
   border-radius: 50%;
   background: var(--feature);
-  color: var(--accent-on);
+  color: var(--feature-on);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
   letter-spacing: 0;
 }
-.door.shorts .door-num-circle  { background: var(--shorts); }
-.door.library .door-num-circle { background: var(--library); }
+.door.shorts .door-num-circle  { background: var(--shorts);  color: var(--shorts-on); }
+.door.library .door-num-circle { background: var(--library); color: var(--library-on); }
 .door h3 {
   margin-bottom: var(--s1);
   font-family: var(--f-display);
@@ -1069,7 +1077,10 @@ select.field-input {
   margin-top: auto;
   padding: var(--s3) var(--s4);
   background: var(--feature);
-  color: var(--accent-on);
+  /* The fill's own on-colour, not the accent's. Same reason as the
+     door numerals: five hues take near-white, amber does not, and in
+     Desk this button was white on #d99512 at 2.4:1. */
+  color: var(--feature-on);
   border-radius: var(--radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1080,9 +1091,9 @@ select.field-input {
 .door-cta .arrow { transition: transform var(--speed-slow) var(--ease); }
 .door:hover .door-cta { background: var(--feature-deep); }
 .door:hover .door-cta .arrow { transform: translateX(var(--s1)); }
-.door.shorts .door-cta { background: var(--shorts); }
+.door.shorts .door-cta { background: var(--shorts); color: var(--shorts-on); }
 .door.shorts:hover .door-cta { background: var(--shorts-deep); }
-.door.library .door-cta { background: var(--library); }
+.door.library .door-cta { background: var(--library); color: var(--library-on); }
 .door.library:hover .door-cta { background: var(--library-deep); }
 
 /* ------------------------------------------------------------
@@ -1151,14 +1162,14 @@ select.field-input {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 700;
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .resume-card .lab::before { content: "↻  "; }
 .resume-card h2 {
-  /* The card is an ink panel in every theme, so it needs the panel
-     ink explicitly — otherwise base.css's `h1-h6 { color: var(--ink) }`
-     wins and the title goes invisible on paper and sepia. */
-  color: var(--panel-ink);
+  /* The card is a SLAB, and a slab's ink is the skin's to set —
+     otherwise base.css's `h1-h6 { color: var(--ink) }` wins and the
+     title goes invisible on whatever ground the slab happens to have. */
+  color: var(--sk-slab-ink);
   margin-bottom: var(--s2);
   font-family: var(--f-display);
   font-size: var(--t-2xl);
@@ -1170,14 +1181,14 @@ select.field-input {
   margin-bottom: var(--s4);
   font-size: var(--t-small);
   line-height: var(--lh-snug);
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
-.resume-card .resume-meta strong { color: var(--panel-gilt); font-weight: 600; }
+.resume-card .resume-meta strong { color: var(--sk-slab-accent); font-weight: 600; }
 .resume-card .resume-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
 .resume-card .resume-btn {
   padding: var(--s3) var(--s4);
-  background: var(--panel-gilt);
-  color: var(--panel);
+  background: var(--sk-slab-accent);
+  color: var(--accent-on);
   border-radius: var(--radius);
   text-decoration: none;
   font-family: var(--f-mono);
@@ -1189,7 +1200,7 @@ select.field-input {
 .resume-card .resume-btn:hover { transform: translateX(2px); }
 .resume-card .resume-btn.alt {
   background: transparent;
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   border: 1px solid var(--panel-hair);
 }
 .resume-card .resume-btn.alt:hover { background: var(--panel-hair-soft); }
@@ -1206,12 +1217,12 @@ select.field-input {
   box-shadow: var(--shadow-sm);
 }
 .data-card .left { flex: 1; min-width: 280px; }
-.data-card p { font-size: var(--t-small); line-height: var(--lh-snug); color: var(--panel-muted); }
+.data-card p { font-size: var(--t-small); line-height: var(--lh-snug); color: var(--sk-slab-muted); }
 .data-card .right { display: flex; flex-wrap: wrap; gap: var(--s3); }
 .data-card .mb {
   padding: var(--s2) var(--s3);
   background: var(--panel-hair-soft);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   border: 1px solid var(--panel-hair);
   border-radius: var(--radius);
   font-family: var(--f-mono);
@@ -1221,7 +1232,7 @@ select.field-input {
   cursor: pointer;
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
 }
-.data-card .mb:hover { background: var(--panel-gilt); color: var(--panel); border-color: var(--panel-gilt); }
+.data-card .mb:hover { background: var(--sk-slab-accent); color: var(--accent-on); border-color: var(--sk-slab-accent); }
 
 /* ------------------------------------------------------------
    INDEX COLUMNS & ACTIVITY (hub)

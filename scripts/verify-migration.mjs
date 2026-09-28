@@ -219,14 +219,21 @@ for (const spec of PAGES) {
     if (!api || !api.applyTheme) return { unavailable: true };
     const bg = () => getComputedStyle(document.body).backgroundColor;
     const before = document.documentElement.getAttribute('data-theme');
+    /* Read the list from the app rather than repeating it here. When a
+       fourth theme was added, a hardcoded ['paper','sepia','ink'] would
+       have gone on passing while saying nothing about it — the check
+       would have quietly stopped covering the newest palette, which is
+       the one most likely to be wrong. */
+    const names = api.themeOrder ? api.themeOrder() : ['paper', 'sepia', 'ink'];
     const out = {};
-    ['paper', 'sepia', 'ink'].forEach((t) => { api.applyTheme(t); out[t] = bg(); });
+    names.forEach((t) => { api.applyTheme(t); out[t] = bg(); });
     if (before) document.documentElement.setAttribute('data-theme', before);
-    return out;
+    return { out, names };
   });
+  const themeCount = themes.unavailable ? null : themes.names.length;
   const themeSwatches = themes.unavailable
     ? null
-    : new Set([themes.paper, themes.sepia, themes.ink]).size;
+    : new Set(Object.values(themes.out)).size;
 
   /* --- skins must actually swap, and all of them must have loaded ---
 
@@ -300,6 +307,142 @@ for (const spec of PAGES) {
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
   }
+
+  /* --- text must stay legible on the surface it sits on ---
+
+     Twice now a surface has been restyled without its text. Moving
+     .tip-box from an ink ground to paper left `color: var(--panel-ink)`
+     behind, which is near-white on near-white; giving Console a light
+     slab left the resume card's --panel-gilt heading on it, same
+     result. Both render perfectly happily and both are invisible.
+
+     Nothing else here can see that. The keys are right, the words are
+     right — `innerHTML` still contains them, so the coverage check is
+     satisfied by text no human can read.
+
+     So: for every theme crossed with every skin, walk the text inside
+     the surfaces a skin controls and compute the WCAG contrast against
+     the nearest opaque ancestor background. The floor is 3.0 rather
+     than 4.5 on purpose — this is looking for text that has vanished,
+     not auditing the muted greys, and a stricter bar here would cry
+     wolf about --ink-faint until someone turned the check off. */
+  const contrast = await page.evaluate(() => {
+    const api = window.StudioUI, skinApi = window.StudioSkin;
+    if (!api || !skinApi) return { unavailable: true };
+
+    const parse = (c) => {
+      const m = String(c).match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const p = m[1].split(',').map((n) => parseFloat(n));
+      return { c: p.slice(0, 3), a: p.length > 3 ? p[3] : 1 };
+    };
+    const rgb = (c) => { const p = parse(c); return p && p.a > 0 ? p.c : null; };
+    const lum = ([r, g, b]) => {
+      const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const ratio = (a, b) => {
+      const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+      return (x + 0.05) / (y + 0.05);
+    };
+    /* Composite the stack, do not stop at the first non-transparent
+       layer. A 7%-alpha wash over a near-black card is, to the eye,
+       near-black — treating it as its own opaque colour reported a
+       perfectly legible chip as 1:1 and sent me looking for a bug that
+       was in this function. Layers accumulate until one is opaque. */
+    const groundOf = (el) => {
+      const layers = [];
+      for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+        const p = parse(getComputedStyle(n).backgroundColor);
+        if (!p || p.a === 0) continue;
+        layers.push(p);
+        if (p.a >= 1) break;
+      }
+      const base = parse(getComputedStyle(document.body).backgroundColor);
+      if (!layers.length || layers[layers.length - 1].a < 1) {
+        layers.push(base && base.a >= 1 ? base : { c: [255, 255, 255], a: 1 });
+      }
+      // Back to front: the deepest opaque layer first, then blend up.
+      let out = layers[layers.length - 1].c;
+      for (let i = layers.length - 2; i >= 0; i--) {
+        const { c, a } = layers[i];
+        out = out.map((v, k) => c[k] * a + v * (1 - a));
+      }
+      return out;
+    };
+
+    const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
+      + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
+      + ' .bd-example, .toc-item, .film-card, .ex-card';
+
+    /* Freeze transitions for the duration of the probe.
+
+       Three findings survived every real fix and would not reproduce
+       by hand: two door buttons and a backup chip, always reporting
+       the PREVIOUS combination's colour. They are the only elements in
+       SURFACES with `transition: background`/`color`, and a property
+       mid-transition computes to its in-flight value — at t≈0, the old
+       one. The check was measuring its own switching, not the design.
+
+       A real user never sees this: they change theme once and the
+       transition lands. Only a loop that switches sixteen times and
+       reads instantly can catch a colour in the air. */
+    const freeze = document.createElement('style');
+    freeze.textContent = '*,*::before,*::after{transition:none !important;animation:none !important}';
+    document.head.appendChild(freeze);
+
+    const beforeTheme = api.currentTheme();
+    const beforeSkin = skinApi.currentSkin();
+    const worst = [];
+
+    for (const t of api.themeOrder()) {
+      for (const sk of skinApi.listSkins()) {
+        api.applyTheme(t);
+        skinApi.applySkin(sk.id);
+        /* Force a style recalc between the attribute change and the
+           reads. Sixteen theme/skin switches in a tight loop, each
+           followed by hundreds of getComputedStyle calls, and some of
+           those reads came back with the PREVIOUS combination's custom
+           properties — reporting a door button as :root blue while the
+           root element already resolved the ink palette. */
+        void document.documentElement.offsetHeight;
+        document.querySelectorAll(SURFACES).forEach((surface) => {
+          surface.querySelectorAll('*').forEach((el) => {
+            if (el.children.length) return;
+            if (!el.textContent.trim()) return;
+            const cs = getComputedStyle(el);
+            if (cs.visibility === 'hidden' || cs.display === 'none') return;
+            const fg = rgb(cs.color);
+            if (!fg) return;
+            const r = ratio(fg, groundOf(el));
+            if (r < 3.0) {
+              /* fg and bg are in the finding on purpose. Without them
+                 every investigation starts by guessing which element
+                 out of nine matching the selector was the bad one, and
+                 three of mine guessed wrong. */
+              const g = groundOf(el);
+              worst.push({
+                where: (surface.className || '').toString().split(' ')[0]
+                     + ' ' + (el.className || el.tagName).toString().split(' ')[0],
+                text: el.textContent.trim().slice(0, 24),
+                fg: `rgb(${fg.map(Math.round).join(',')})`,
+                bg: `rgb(${g.map(Math.round).join(',')})`,
+                theme: t, skin: sk.id, ratio: Math.round(r * 100) / 100
+              });
+            }
+          });
+        });
+      }
+    }
+    api.applyTheme(beforeTheme);
+    skinApi.applySkin(beforeSkin);
+    freeze.remove();
+    // One row per distinct place, not one per theme-skin pair.
+    const seen = new Map();
+    for (const w of worst) if (!seen.has(w.where) || seen.get(w.where).ratio > w.ratio) seen.set(w.where, w);
+    return { fails: [...seen.values()].sort((a, b) => a.ratio - b.ratio).slice(0, 10) };
+  });
+  const lowContrast = contrast.unavailable ? [] : contrast.fails;
 
   /* --- colour that means something must still mean it ---
 
@@ -399,10 +542,21 @@ for (const spec of PAGES) {
   const old = baselineFacts(spec.name);
   const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
   const allowed = EXPECTED[spec.name] || {};
-  const gone = [...new Set(old.text)].filter((w) => !liveWords.has(w));
+  /* The hub greets you by time of day, so exactly one of these words is
+     on the page at any moment and the other three are not. A baseline
+     captured at 3pm therefore fails every run after 5pm.
+
+     This is an EXCLUSION, not an EXPECTED entry, and the difference
+     matters: an allowance that stops firing is reported as stale, and
+     this one genuinely fires only some of the time. The oracle cannot
+     contain a clock — so the clock comes out of both sides. */
+  const CLOCK = new Set(['morning', 'afternoon', 'evening', 'late']);
+  const gone = [...new Set(old.text)]
+    .filter((w) => !CLOCK.has(w))
+    .filter((w) => !liveWords.has(w));
   const missingWords = gone.filter((w) => !(w in allowed));       // unexplained
   const explained = gone.filter((w) => w in allowed);             // deliberate
-  const total = new Set(old.text).size;
+  const total = [...new Set(old.text)].filter((w) => !CLOCK.has(w)).length;
   const coverage = ((total - gone.length) / total) * 100;
   // Coverage counting deliberate rewording as intact — this is the
   // number that must be 100%.
@@ -429,11 +583,13 @@ for (const spec of PAGES) {
     hOverflowAt390: overflow,
     hOverflowMenusOpen: overflowOpen.overflow,
     menusEscapingViewport: overflowOpen.escaped,
+    themes: themeCount,
     distinctThemes: themeSwatches,
     skins: skinCount,
     distinctSkins: skinFingerprints,
     skinsOverflowing: skins.unavailable ? null : skins.wide,
     hueGroups,
+    lowContrast,
     errors
   };
   report.push(row);
@@ -455,8 +611,11 @@ for (const spec of PAGES) {
   if (overflowOpen.checked && overflowOpen.escaped > 0) {
     bad.push(`${overflowOpen.escaped} dropdown(s) escape the viewport at 390px`);
   }
-  if (themeSwatches !== null && themeSwatches !== 3) {
-    bad.push(`themes do not swap (${themeSwatches} distinct background(s) across paper/sepia/ink)`);
+  if (themeSwatches !== null && themeSwatches !== themeCount) {
+    bad.push(
+      `themes do not swap (${themeSwatches} distinct background(s) across ` +
+      `${themeCount}: ${themes.names.join('/')})`
+    );
   }
   if (skinCount !== null && skinCount !== SKIN_FILES.length) {
     bad.push(
@@ -467,6 +626,12 @@ for (const spec of PAGES) {
   if (skinFingerprints !== null && skinFingerprints !== skinCount) {
     bad.push(
       `skins do not swap (${skinFingerprints} distinct look(s) across ${skinCount} skins)`
+    );
+  }
+  for (const c of lowContrast) {
+    bad.push(
+      `text invisible on its surface: ${c.where} at ${c.ratio}:1 ` +
+      `(${c.theme} + ${c.skin})`
     );
   }
   for (const g of hueBroken) {

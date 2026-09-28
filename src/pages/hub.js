@@ -41,6 +41,7 @@
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
 import { wireActionBar } from '../ui/actionbar.js';
+import { renderLauncher } from '../ui/launcher.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -357,13 +358,17 @@ function heroMarkup() {
 
         <div class="resume-card" id="resumeCard">
           <div class="lab">PICK UP WHERE YOU LEFT OFF</div>
-          <!-- The resume card is an ink panel, but base.css colours every
-               h1–h6 with --ink, which beats the panel's inherited
-               --panel-ink. In the light and sepia themes that renders the
-               project title invisible. Compensated here with the panel
-               token (no hex) until editorial.css grows the matching rule
-               for .resume-card h2. -->
-          <h2 id="resumeTitle" style="color: var(--panel-ink)">—</h2>
+          <!-- No inline colour here. This element carried an inline
+               "color: var(--panel-ink)" as a stopgap until editorial.css
+               grew a rule for .resume-card h2. That rule now exists and
+               reads the SKIN's slab ink, and an inline style beats every
+               stylesheet, so the stopgap had quietly become the bug:
+               light panel ink on a light slab, under every skin whose
+               slab is light. (No backticks in this comment — the markup
+               around it is a JS template literal, and a stray one ends
+               the string. That mistake cost a silent build failure and
+               four phantom findings measured against a stale dist.) -->
+          <h2 id="resumeTitle">—</h2>
           <p class="resume-meta" id="resumeBody">—</p>
           <div class="resume-actions" id="resumeActions"></div>
         </div>
@@ -771,7 +776,12 @@ function render() {
   if (!app) throw new Error('#app not found');
   const main = h('main#main');
   main.append(
-    heroMarkup(), projectsMarkup(), doorsMarkup(),
+    heroMarkup(), projectsMarkup(),
+    // The map before the detail: the launcher answers "what is in here
+    // and where do I go", the doors that follow answer "how far am I in
+    // the three I actually use". Different questions, and the map is
+    // the one a new arrival needs first.
+    renderLauncher(), doorsMarkup(),
     startMarkup(), toolsMarkup(), indexMarkup(),
     activityMarkup(), finalMarkup()
   );

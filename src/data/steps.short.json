@@ -166,7 +166,7 @@
               "rows": 2,
               "size": null,
               "extras": [
-                "<div id=\"logline-count\" style=\"font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px;\">0 / 25 words</div>"
+                "<div id=\"logline-count\" style=\"font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-muted); margin-top: 4px;\">0 / 25 words</div>"
               ]
             }
           ]
@@ -760,7 +760,7 @@
         },
         {
           "type": "raw",
-          "html": "<p style=\"font-size: 13px; color: var(--muted); font-style: italic; margin-top: 14px;\"><strong>Note:</strong> Deadlines and rules change every year. Always verify current dates on each festival's official site or via FilmFreeway before submitting.</p>"
+          "html": "<p style=\"font-size: 13px; color: var(--ink-muted); font-style: italic; margin-top: 14px;\"><strong>Note:</strong> Deadlines and rules change every year. Always verify current dates on each festival's official site or via FilmFreeway before submitting.</p>"
         },
         {
           "type": "asks",

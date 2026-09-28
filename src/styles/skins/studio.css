@@ -37,6 +37,8 @@
   --sk-slab-ink:      var(--panel-ink);
   --sk-slab-rule-w:   3px;
   --sk-slab-rule-c:   var(--panel-gilt);
+  --sk-slab-muted:    var(--panel-muted);
+  --sk-slab-accent:   var(--panel-gilt);
 
   /* rules: the hue-carrying one, and the decorative one */
   --sk-hue-rule-w:    3px;
@@ -46,6 +48,8 @@
   --sk-deco-ink:      var(--ink-body);
 
   /* type */
+  --sk-display:       var(--face-serif);
+  --sk-body:          var(--face-serif);
   --sk-title-size:    clamp(2rem, 4.5vw, 3rem);
   --sk-title-style:   normal;
   --sk-title-lh:      1.04;

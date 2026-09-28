@@ -450,6 +450,152 @@
         "midpoint",
         "antagonist",
         "theme"
+      ],
+      "beatSheets": [
+        {
+          "id": "save-the-cat",
+          "name": "Save the Cat",
+          "attribution": "Blake Snyder's fifteen-beat sheet, from Save the Cat! (2005)",
+          "baseline": "110 pages",
+          "note": "The seven beats above are the spine every story has. This is one popular way of subdividing it — fifteen beats with page targets, written for a 110-page American screenplay. Dragon runs long by that measure, so the useful part is not whether it hits page 55 on the nose; it is that the beats arrive in this order and each does its job. Where the film departs from the template, the departure is noted — that is where the Tamil commercial form is doing something the template does not account for.",
+          "beats": [
+            {
+              "n": 1,
+              "label": "Opening Image",
+              "pages": "p.1",
+              "pct": 1,
+              "function": "One image that states the before — the world and the flaw, in a form the ending can answer.",
+              "inFilm": "Opens on the protagonist performing competence rather than possessing it. The image is of someone being believed, which is the exact transaction the whole film will interrogate.",
+              "craft": "Make the opening image the thing your final image will contradict. If it cannot be contradicted, it is decoration."
+            },
+            {
+              "n": 2,
+              "label": "Theme Stated",
+              "pages": "p.5",
+              "pct": 5,
+              "function": "Someone says the lesson aloud, early, to a hero not ready to hear it.",
+              "inFilm": "Delivered by an authority figure in a register the protagonist is free to dismiss as nagging. The film plants it as comedy so it can collect on it as judgment.",
+              "craft": "State the theme in the mouth of someone the hero is currently entitled to ignore. The audience files it; the hero does not."
+            },
+            {
+              "n": 3,
+              "label": "Set-Up",
+              "pages": "pp.1–10",
+              "pct": 8,
+              "function": "Show the six things that need fixing, and the stasis that will not fix them.",
+              "inFilm": "The campus world is established as a place where charm substitutes for work and everyone tolerates it. Crucially it establishes the people who will later be owed something.",
+              "craft": "Every person you introduce in the set-up is a debt. The third act is where you pay them."
+            },
+            {
+              "n": 4,
+              "label": "Catalyst",
+              "pages": "p.12",
+              "pct": 11,
+              "function": "The knock at the door. Something external makes the old life untenable.",
+              "inFilm": "A personal rejection, not an institutional one — which matters, because it lets the film make failure a wound rather than a consequence.",
+              "craft": "Choose the catalyst that hurts in the register your theme cares about. An external one starts a plot; a personal one starts a character."
+            },
+            {
+              "n": 5,
+              "label": "Debate",
+              "pages": "pp.12–25",
+              "pct": 17,
+              "function": "The hero resists. The question of the film is asked and not yet answered.",
+              "inFilm": "Compressed harder than the template expects. The protagonist is a person who does not deliberate, and the film shortens the beat to characterise him rather than lengthening it to fill a slot.",
+              "craft": "A short debate is a characterisation, not an omission — if the shortness is the point. Say so in the writing so the reader knows you meant it."
+            },
+            {
+              "n": 6,
+              "label": "Break Into Two",
+              "pages": "p.25",
+              "pct": 23,
+              "function": "The hero chooses the new world. The choice must be active.",
+              "inFilm": "He takes the shortcut. The decision is framed as escape and plays as triumph, which is the film setting its own trap: the audience is invited to enjoy the choice it will later be asked to condemn.",
+              "craft": "If the wrong choice does not feel good in the moment, the third act has nothing to reverse."
+            },
+            {
+              "n": 7,
+              "label": "B Story",
+              "pages": "p.30",
+              "pct": 27,
+              "function": "The relationship that carries the theme while the A story carries the plot.",
+              "inFilm": "The mentor line rather than the romance. The romance is A-story fuel; it is the authority figure who holds the thematic argument and can therefore win it in Act Three.",
+              "craft": "Put the theme in the B story so the A story can be about wanting. Then the ending can give the hero the lesson instead of the prize."
+            },
+            {
+              "n": 8,
+              "label": "Fun and Games",
+              "pages": "pp.30–55",
+              "pct": 39,
+              "function": "The promise of the premise. What the poster sold, delivered.",
+              "inFilm": "The longest stretch and the most commercially confident — the ascent, played for pleasure. This is where the runtime goes, and where the Tamil form diverges most from a 110-page baseline: the beat is expanded because this is the sequence the audience came for.",
+              "craft": "Fun and games is where you spend length, because it is the only act where the audience does not want the story to move faster."
+            },
+            {
+              "n": 9,
+              "label": "Midpoint",
+              "pages": "p.55",
+              "pct": 50,
+              "function": "A false victory or false defeat. Stakes raise, the clock starts.",
+              "inFilm": "A false victory. The protagonist obtains the life he engineered, and the film immediately makes the cost visible to the audience while keeping it invisible to him — the gap between those two is the engine of the next act.",
+              "craft": "At the midpoint, let the audience know something the hero does not. Dread is cheaper than surprise and lasts longer."
+            },
+            {
+              "n": 10,
+              "label": "Bad Guys Close In",
+              "pages": "pp.55–75",
+              "pct": 59,
+              "function": "Internal and external pressure converge. The team frays.",
+              "inFilm": "The pressure is almost entirely self-manufactured — there is no villain, only arithmetic. Every person from the set-up returns as an invoice.",
+              "craft": "A film without an antagonist needs its consequences to have a schedule. Make the pressure arrive on dates, not on moods."
+            },
+            {
+              "n": 11,
+              "label": "All Is Lost",
+              "pages": "p.75",
+              "pct": 68,
+              "function": "The low point. Often a whiff of death — something ends.",
+              "inFilm": "What dies is the constructed self. The film is careful that the loss is of a fiction, not of a person, which keeps the ending earnable.",
+              "craft": "Kill the false self at All Is Lost. If you kill something real, you owe the audience a grief the third act may not have time for."
+            },
+            {
+              "n": 12,
+              "label": "Dark Night of the Soul",
+              "pages": "pp.75–85",
+              "pct": 73,
+              "function": "The hero sits in the wreckage before the idea arrives.",
+              "inFilm": "Played quieter than the surrounding film and mostly without comedy — the register shift is the beat. A film that has been funny for ninety minutes announces its seriousness by withdrawing the jokes.",
+              "craft": "You can mark this beat with tone alone. Take away the thing the film has been giving freely and the audience feels the floor drop."
+            },
+            {
+              "n": 13,
+              "label": "Break Into Three",
+              "pages": "p.85",
+              "pct": 77,
+              "function": "A and B stories meet. The lesson from the B story solves the A story.",
+              "inFilm": "The mentor line converges on the plot line exactly here: the thematic argument becomes the practical method. The protagonist does not find a clever way out, he finds the slow way through.",
+              "craft": "The best Break Into Three is not a new idea — it is the old advice, finally taken."
+            },
+            {
+              "n": 14,
+              "label": "Finale",
+              "pages": "pp.85–110",
+              "pct": 89,
+              "function": "The hero proves the lesson by doing the hard version of the thing he dodged.",
+              "inFilm": "The climax is unglamorous by design — the work, done properly, at length. The film stakes its ending on the audience finding diligence satisfying, which it can only do because Act Two made the shortcut so enjoyable.",
+              "craft": "An anticlimactic climax works only if the shortcut was thrilling. Earn the boredom."
+            },
+            {
+              "n": 15,
+              "label": "Final Image",
+              "pages": "p.110",
+              "pct": 100,
+              "function": "The after. The opening image, answered.",
+              "inFilm": "The same transaction as the opening — being believed — but now with something behind it. The image rhymes rather than repeats, which is the difference between a resolution and a reset.",
+              "craft": "Shoot your final image with the opening image on the monitor. If they do not rhyme, one of them is wrong."
+            }
+          ]
+        }
       ]
     },
     {

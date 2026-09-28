@@ -541,6 +541,101 @@
 }
 
 /* ------------------------------------------------------------
+   NAMED BEAT SHEET
+   ------------------------------------------------------------
+   A second reading of the same spine, so it reuses .st-beat and adds
+   only what a numbered, page-targeted sheet needs: the ordinal, the
+   page target, and a bar showing where in the whole the beat falls.
+
+   The bar's track is a hairline and its fill is --accent, which is a
+   fill and never carries text. Nothing here is a text colour.
+   ------------------------------------------------------------ */
+.st-sheet-head {
+  max-width: var(--measure);
+  margin: var(--s5) 0 var(--s5);
+  padding-left: var(--s4);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+}
+.st-sheet-name {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  font-style: italic;
+  color: var(--ink);
+}
+.st-sheet-attr {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-sheet-base {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.st-sheet-base-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.st-sheet-note {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+
+.st-sheet {
+  display: grid;
+  gap: var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-sheet-beat { position: relative; }
+.st-sheet-n {
+  flex: none;
+  min-width: 2.25em;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+/* The label takes the middle, so the page target keeps the right
+   edge on one line and wraps beneath it rather than beside it. */
+.st-sheet-beat .st-beat-label { flex: 1 1 auto; }
+.st-sheet-page {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-sheet-bar {
+  height: 2px;
+  margin: 0 0 var(--s3);
+  background: var(--rule-hair);
+  border-radius: var(--radius-pill);
+}
+.st-sheet-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+/* ------------------------------------------------------------
    SCENE CRAFT
    ------------------------------------------------------------ */
 .st-scenes {

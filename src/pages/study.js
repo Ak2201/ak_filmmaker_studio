@@ -440,6 +440,78 @@ function renderBeats(study) {
 }
 
 /* ------------------------------------------------------------
+   3b. NAMED BEAT SHEET — an optional second reading of the spine
+   ------------------------------------------------------------
+   The seven beats above are the structure this studio teaches. A
+   named sheet is somebody else's subdivision of the same spine, and
+   a film can carry any number of them (or none) via
+   study.beatSheets. Nothing here names a film or a method; the
+   section simply does not render when a study has no sheet.
+
+   Page targets are shown as given by the method and as a percentage
+   of the whole, because a page number written for a 110-page script
+   means very little against a Tamil commercial runtime — the
+   percentage is the part that travels.
+   ------------------------------------------------------------ */
+function renderBeatSheets(study) {
+  const sheets = (study.beatSheets || []).filter((s) => s && (s.beats || []).length);
+  if (!sheets.length) return null;
+  const title = study.meta.title;
+
+  const sec = section('beatsheet', 'How it is built',
+    sheets.length === 1 ? 'The ' + sheets[0].name + ' sheet' : 'Named beat sheets',
+    'The same spine, subdivided by a published method — and marked where '
+    + title + ' departs from it.');
+
+  sheets.forEach((sheet) => {
+    const head = h('div.st-sheet-head');
+    head.append(h('h3.st-sheet-name', { text: sheet.name }));
+    if (sheet.attribution) head.append(h('p.st-sheet-attr', { text: sheet.attribution }));
+    if (sheet.baseline) {
+      head.append(h('p.st-sheet-base', {}, [
+        h('span.st-sheet-base-lab', { text: 'Written against' }),
+        h('span', { text: sheet.baseline })
+      ]));
+    }
+    if (sheet.note) head.append(h('p.st-sheet-note', { text: sheet.note }));
+    sec.append(head);
+
+    const list = h('ol.st-sheet');
+    sheet.beats.forEach((b) => {
+      const card = h('li.st-beat.st-sheet-beat' + (filled(b.inFilm) ? '' : '.is-missing'));
+      card.append(h('div.st-beat-head', {}, [
+        h('span.st-sheet-n', { text: String(b.n != null ? b.n : '') }),
+        h('span.st-beat-label', { text: b.label }),
+        h('span.st-sheet-page', { text: b.pages || '' })
+      ]));
+      if (typeof b.pct === 'number') {
+        // The bar is decoration for a sighted reader and noise for a
+        // screen reader, which already has the page target above it.
+        const bar = h('div.st-sheet-bar', { 'aria-hidden': 'true' });
+        bar.append(h('span.st-sheet-bar-fill'));
+        bar.querySelector('.st-sheet-bar-fill').style.width =
+          Math.max(1, Math.min(100, b.pct)) + '%';
+        card.append(bar);
+      }
+      card.append(line('Structural function', b.function,
+        'The structural function has not been written for this beat yet.'));
+      card.append(line('In ' + title, b.inFilm,
+        'How ' + title + ' performs this beat has not been written yet.'));
+      if (filled(b.craft)) {
+        card.append(h('p.st-craft', {}, [
+          h('span.st-craft-lab', { text: 'Steal this' }),
+          h('span', { text: b.craft })
+        ]));
+      }
+      list.append(card);
+    });
+    sec.append(list);
+  });
+
+  return sec;
+}
+
+/* ------------------------------------------------------------
    4. SCENES — technique, how, why, and the Tamil gloss
    ------------------------------------------------------------
    Cards rather than rows. The studio's data table is the right
@@ -631,6 +703,9 @@ function render() {
   main.append(renderConcept(study, gaps));
   main.append(renderCharacters(study));
   main.append(renderBeats(study));
+  // Optional: only films with a study.beatSheets entry get this.
+  const sheet = renderBeatSheets(study);
+  if (sheet) main.append(sheet);
   main.append(renderScenes(study));
   main.append(renderGlossary(study));
 

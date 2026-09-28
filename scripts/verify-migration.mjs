@@ -225,17 +225,17 @@ for (const spec of PAGES) {
   // again; a dropdown that escapes the viewport is a layout bug whether
   // or not the page is scrolled sideways by default.
   const overflowOpen = await page.evaluate(() => {
-    const btns = [...document.querySelectorAll('.sh-phase-btn')];
-    if (!btns.length) return { checked: false, overflow: 0, escaped: 0 };
-    document.querySelectorAll('.sh-phase-menu').forEach((m) => { m.hidden = false; });
+    const SEL = '.sh-phase-menu, .tb-menu-panel';
+    if (!document.querySelector(SEL)) return { checked: false, overflow: 0, escaped: 0 };
+    document.querySelectorAll(SEL).forEach((m) => { m.hidden = false; });
     const de = document.documentElement;
-    const escaped = [...document.querySelectorAll('.sh-phase-menu')]
+    const escaped = [...document.querySelectorAll(SEL)]
       .filter((m) => {
         const r = m.getBoundingClientRect();
         return r.width > 0 && (r.right > de.clientWidth + 1 || r.left < -1);
       }).length;
     const overflow = Math.max(0, de.scrollWidth - de.clientWidth);
-    document.querySelectorAll('.sh-phase-menu').forEach((m) => { m.hidden = true; });
+    document.querySelectorAll(SEL).forEach((m) => { m.hidden = true; });
     return { checked: true, overflow, escaped };
   });
 
@@ -300,10 +300,10 @@ for (const spec of PAGES) {
   if (idleWrites > 0) bad.push(`${idleWrites} idle writes`);
   if (overflow > 0) bad.push(`${overflow}px horizontal overflow at 390px`);
   if (overflowOpen.checked && overflowOpen.overflow > 0) {
-    bad.push(`${overflowOpen.overflow}px horizontal overflow at 390px with the phase menus open`);
+    bad.push(`${overflowOpen.overflow}px horizontal overflow at 390px with the dropdowns open`);
   }
   if (overflowOpen.checked && overflowOpen.escaped > 0) {
-    bad.push(`${overflowOpen.escaped} phase menu(s) escape the viewport at 390px`);
+    bad.push(`${overflowOpen.escaped} dropdown(s) escape the viewport at 390px`);
   }
   if (themeSwatches !== null && themeSwatches !== 3) {
     bad.push(`themes do not swap (${themeSwatches} distinct background(s) across paper/sepia/ink)`);

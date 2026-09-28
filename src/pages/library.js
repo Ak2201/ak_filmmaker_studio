@@ -174,9 +174,8 @@ function renderToolbar() {
       h('span.spl-arrow', { text: '←', 'aria-hidden': 'true' }),
       h('span#studioProjLabel.spl-label', { text: 'STUDIO' })
     ]),
-    h('a.tb-link.gold', { href: 'index.html', text: '⌂ HUB' }),
-    h('a.nav-link', { href: 'feature.html', text: 'FEATURE ↗' }),
-    h('a.nav-link', { href: 'short.html', text: 'SHORTS ↗' }),
+    // HUB / FEATURE / SHORTS removed: the shell's rail and phase bar
+    // carry them now, and three more links in a strip was the problem.
     h('nav.nav-jump', { 'aria-label': 'Library sections' },
       SECTIONS.map((s) => h('a.nav-link', { href: `#${s.id}`, text: s.nav }))),
     // No inline onclick anywhere on this page — see wireActions().

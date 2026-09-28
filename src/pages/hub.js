@@ -40,6 +40,7 @@
 // before this line would read the wrong (unscoped) keys.
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
+import { wireActionBar } from '../ui/actionbar.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -311,10 +312,27 @@ function toolbarMarkup() {
         </button>
         <div class="switcher-dropdown" id="switcherDropdown"></div>
       </div>
-      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="Toggle theme">◐</button>
+      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="Theme — paper, sepia, ink">◐</button>
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
-      <button class="btn gold" data-action="export-all" title="Backup all studio data">↓ EXPORT</button>
-      <button class="btn" data-action="import-all">IMPORT</button>
+      <div class="tb-menu align-right" data-tb-backup>
+        <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"
+                aria-expanded="false" aria-haspopup="true" aria-controls="tbm-backup">
+          <span>Backup</span><span class="tb-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="tb-menu-panel" id="tbm-backup" hidden role="menu">
+          <button class="tb-item" type="button" data-action="export-all" role="menuitem"
+                  title="Every project, not just the open one">
+            <span class="tb-item-label">Export everything</span><span class="tb-item-hint">.json</span>
+          </button>
+          <button class="tb-item" type="button" data-action="import-all" role="menuitem">
+            <span class="tb-item-label">Import a backup</span>
+          </button>
+          <div class="tb-sep" role="separator"></div>
+          <button class="tb-item is-danger" type="button" data-action="reset-all" role="menuitem">
+            <span class="tb-item-label">Erase everything</span>
+          </button>
+        </div>
+      </div>
       <input type="file" id="importAllFile" accept=".json" class="visually-hidden" data-action="import-file" aria-label="Import a studio backup">
       <div class="toolbar-stripe" aria-hidden="true"></div>`
   });
@@ -1803,6 +1821,7 @@ function init() {
   // The shared chrome auto-inits on import, before this page has any
   // DOM — so the pieces that need our markup are attached here.
   mountShell();
+  wireActionBar();
   const toolbar = document.querySelector('.toolbar');
   if (toolbar) StudioUI.attachSignInPill(toolbar);
   StudioUI.wireGlossaryPopovers();

@@ -1835,3 +1835,61 @@ a:focus-visible { outline-offset: 3px; }
 @media print {
   .sh-shell { display: none !important; }
 }
+
+/* ============================================================
+   ACTION-BAR MENUS
+   ============================================================ */
+.tb-menu { position: relative; display: inline-block; }
+.tb-menu-btn { display: inline-flex; align-items: center; gap: var(--s1); }
+.tb-caret { font-size: .7em; opacity: .7; }
+
+.tb-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--s1));
+  left: 0;
+  min-width: 220px;
+  padding: var(--s2);
+  background: var(--panel);
+  color: var(--panel-ink);
+  border: 1px solid var(--panel-hair);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-modal);
+  z-index: var(--z-overlay);
+}
+.tb-menu.align-right .tb-menu-panel { left: auto; right: 0; }
+
+.tb-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--panel-ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--t-small);
+}
+.tb-item:hover, .tb-item:focus-visible { background: var(--panel-raised); }
+.tb-item-hint {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--panel-muted);
+  white-space: nowrap;
+}
+/* Destructive sits at the foot, behind a separator, in danger — never
+   the most prominent control on the page. */
+.tb-item.is-danger { color: var(--danger-lift); }
+.tb-item.is-danger:hover { background: var(--danger); color: var(--danger-on); }
+.tb-sep { height: 1px; margin: var(--s2) var(--s2); background: var(--panel-hair); }
+
+@media (max-width: 719px) {
+  .tb-menu { position: static; }
+  .toolbar { position: relative; }
+  .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
+}

@@ -51,6 +51,7 @@ import '../lib/cloud.js';
 import { h, delegate } from '../lib/dom.js';
 import { renderSteps } from '../ui/steps.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
@@ -133,8 +134,10 @@ function renderToolbar() {
     h('option', { value: 'glossary', text: '→ Glossary' })
   ]);
 
+  // Regrouped: the cross-links (HUB, FEATURE, LIBRARY) are gone — the
+  // shell's rail and phase bar carry them now. Exports and the rest sit
+  // behind two named menus, with RESET separated and danger-coloured.
   return h('div.toolbar', {}, [
-    h('span.brand', { text: 'SHORT FILM · CURATED BY ARUNAK' }),
     h('a.studio-proj-link', {
       href: 'index.html', id: 'studioProjLink',
       title: 'Back to Studio · current project'
@@ -147,19 +150,22 @@ function renderToolbar() {
       h('span.progress-text', { id: 'progressText', text: '0%' })
     ]),
     jumper,
+    h('span.save-status', { id: 'saveStatus', role: 'status', text: '●  ready' }),
+    actionMenu('Export', [
+      { label: 'Print',    action: 'print' },
+      '---',
+      { label: 'JSON',     action: 'export-json',     hint: 'data' },
+      { label: 'Fountain', action: 'export-fountain', hint: 'screenplay' }
+    ]),
+    actionMenu('More', [
+      { label: 'Import JSON', action: 'import-json' },
+      '---',
+      { label: 'Reset this blueprint', action: 'reset', danger: true }
+    ], { align: 'right' }),
     h('button.btn.icon-btn', {
       id: 'darkBtn', 'data-action': 'toggle-dark',
-      title: 'Toggle theme', 'aria-label': 'Toggle theme', text: '◐'
+      title: 'Theme — paper, sepia, ink', 'aria-label': 'Toggle theme', text: '◐'
     }),
-    h('span.save-status', { id: 'saveStatus', role: 'status', text: '●  ready' }),
-    h('button.btn', { 'data-action': 'print', text: 'PRINT' }),
-    h('button.btn', { 'data-action': 'export-json', text: 'JSON' }),
-    h('button.btn', { 'data-action': 'export-fountain', text: 'FOUNTAIN' }),
-    h('button.btn', { 'data-action': 'import-json', text: 'IMPORT' }),
-    h('button.btn.danger', { 'data-action': 'reset', text: 'RESET' }),
-    h('a.tb-link.gold', { href: 'index.html', title: 'Back to the Studio hub', text: '⌂ HUB' }),
-    h('a.tb-link', { href: 'feature.html', title: 'Open the feature blueprint', text: 'FEATURE ↗' }),
-    h('a.tb-link', { href: 'library.html', title: 'Open the library', text: 'LIBRARY ↗' }),
     h('input', {
       type: 'file', id: 'importFile', accept: '.json',
       hidden: true, 'data-change': 'import-file', 'aria-label': 'Import blueprint JSON'
@@ -1364,6 +1370,7 @@ updateProgress();
 function reinitChrome() {
   try {
     mountShell();
+    wireActionBar();
     StudioUI.injectReadingProgress();
     StudioUI.buildStepRail();
     StudioUI.wireGlossaryPopovers();

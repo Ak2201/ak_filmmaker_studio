@@ -65,10 +65,11 @@ import StudioUI, {
 } from '../ui/chrome.js';
 import '../lib/cloud.js';
 
-import { esc, fromHTML, delegate } from '../lib/dom.js';
+import { esc, h, fromHTML, delegate } from '../lib/dom.js';
 import { renderSteps, stepIndex, stepFieldKeys } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
@@ -439,44 +440,72 @@ function jumpOptionsHTML() {
     ${group('VOL II · PRE-PROD', STEPS.vol2)}`;
 }
 
-function toolbarHTML() {
-  return `
-<div class="toolbar">
-  <span class="brand">CURATED BY ARUNAK</span>
-  <a href="index.html" id="studioProjLink" class="studio-proj-link" title="Back to Studio · current project">
-    <span class="spl-arrow">←</span>
-    <span class="spl-label" id="studioProjLabel">STUDIO</span>
-  </a>
-  <div class="progress-meter" title="Overall completion across all 24 steps">
-    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
-    <span class="progress-text" id="progressText">0%</span>
-  </div>
-  <select class="step-jumper" id="stepJumper" data-action-change="jumpToStep" title="Jump to any step">
-    <option value="">JUMP TO…</option>
-    ${jumpOptionsHTML()}
-  </select>
-  <button class="btn icon-btn" data-action="toggleDark" title="Toggle theme" id="darkBtn">◐</button>
-  <button class="btn icon-btn" data-action="toggleReadingMode" title="Reading mode (hide inputs)" id="readBtn">▤</button>
-  <span class="toolbar-search">
-    <input type="text" id="searchInput" placeholder="SEARCH ANY FIELD…" autocomplete="off">
-    <span class="search-result-count" id="searchCount"></span>
-  </span>
-  <span class="save-status" id="saveStatus">●  ready</span>
-  <button class="btn" data-action="print">PRINT</button>
-  <button class="btn" data-action="toggleZinePrint" title="Two-up zine layout for printing">ZINE</button>
-  <button class="btn" data-action="exportData">JSON</button>
-  <button class="btn" data-action="exportMarkdown">MD</button>
-  <button class="btn" data-action="emailToSelf" title="Email a summary to yourself">✉ MAIL</button>
-  <button class="btn" data-action="importData">IMPORT</button>
-  <button class="btn" data-action="loadSamplePack" title="Load Por Thozhil pre-filled sample">SAMPLE</button>
-  <button class="btn danger" data-action="resetData">RESET</button>
-  <a class="tb-link gold" href="index.html" title="Back to the Studio hub">⌂ HUB</a>
-  <a class="tb-link" href="library.html" title="Open the Filmmaker's Library">LIBRARY ↗</a>
-  <a class="tb-link" href="short.html" title="Open the Short Film Blueprint">SHORTS ↗</a>
-  <a class="tb-link" href="#pitch-deck" title="Jump to pitch deck">PITCH</a>
-  <a class="tb-link" href="#sync-section" title="Real-time sync settings">SYNC</a>
-  <input type="file" id="importFile" accept=".json" style="display:none;" data-action-change="handleImport">
-</div>`;
+/* The toolbar, regrouped. Twenty flat controls became five visible
+   ones plus two named menus — and five links were DELETED rather than
+   moved, because the shell's rail and phase bar now carry Home,
+   Library and the blueprints.
+
+   Every id the rest of this file queries is preserved verbatim:
+   #studioProjLabel #progressFill #progressText #stepJumper #darkBtn
+   #readBtn #searchInput #searchCount #saveStatus #importFile. */
+function renderToolbar() {
+  const bar = h('div.toolbar');
+
+  const proj = h('a#studioProjLink.studio-proj-link', {
+    href: 'index.html', title: 'Back to Studio · current project'
+  });
+  proj.append(h('span.spl-arrow', { text: '←' }),
+              h('span#studioProjLabel.spl-label', { text: 'STUDIO' }));
+
+  const meter = h('div.progress-meter', { title: 'Overall completion across all 24 steps' });
+  const track = h('div.progress-bar');
+  track.append(h('div#progressFill.progress-fill', { style: 'width:0%;' }));
+  meter.append(track, h('span#progressText.progress-text', { text: '0%' }));
+
+  const jumper = h('select#stepJumper.step-jumper', {
+    'data-action-change': 'jumpToStep', title: 'Jump to any step'
+  });
+  jumper.append(h('option', { value: '', text: 'JUMP TO…' }));
+  jumper.append(fromHTML(jumpOptionsHTML()));
+
+  const search = h('span.toolbar-search');
+  search.append(
+    h('input#searchInput', { type: 'text', placeholder: 'SEARCH ANY FIELD…', autocomplete: 'off' }),
+    h('span#searchCount.search-result-count')
+  );
+
+  const exportMenu = actionMenu('Export', [
+    { label: 'Print',            action: 'print',             title: 'Print or save as PDF' },
+    { label: 'Zine layout',      action: 'toggleZinePrint',   title: 'Two-up zine layout for printing' },
+    '---',
+    { label: 'JSON',             action: 'exportData',        hint: 'data' },
+    { label: 'Markdown',         action: 'exportMarkdown',    hint: 'document' },
+    { label: 'Email to myself',  action: 'emailToSelf',       title: 'Email a summary to yourself' }
+  ]);
+
+  const moreMenu = actionMenu('More', [
+    { label: 'Reading mode',     action: 'toggleReadingMode', hint: '⌃⇧R', title: 'Hide inputs for distraction-free reading', id: 'readBtn' },
+    { label: 'Pitch deck',       href: '#pitch-deck' },
+    { label: 'Sync settings',    href: '#sync-section' },
+    '---',
+    { label: 'Import JSON',      action: 'importData' },
+    { label: 'Load sample',      action: 'loadSamplePack',    title: 'Load the Por Thozhil pre-filled sample' },
+    '---',
+    { label: 'Reset this blueprint', action: 'resetData', danger: true }
+  ], { align: 'right' });
+
+  bar.append(
+    proj,
+    meter,
+    jumper,
+    search,
+    h('span#saveStatus.save-status', { text: '●  ready' }),
+    exportMenu,
+    moreMenu,
+    h('button#darkBtn.btn.icon-btn', { type: 'button', 'data-action': 'toggleDark', title: 'Theme — paper, sepia, ink', text: '◐' }),
+    h('input#importFile', { type: 'file', accept: '.json', style: 'display:none;', 'data-action-change': 'handleImport' })
+  );
+  return bar;
 }
 
 function pitchSectionHTML() {
@@ -530,7 +559,7 @@ function focusTimerHTML() {
 
 function renderPage(app) {
   app.replaceChildren();
-  app.append(fromHTML(toolbarHTML()));
+  app.append(renderToolbar());
 
   const main = document.createElement('main');
   main.id = 'main';
@@ -2456,6 +2485,7 @@ function wirePitchRebuild() {
 function reinitChrome() {
   try {
     mountShell();
+    wireActionBar();
     injectReadingProgress();
     buildStepRail();
     buildBeatVisualizer();

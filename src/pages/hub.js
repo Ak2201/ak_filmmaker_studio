@@ -1582,6 +1582,98 @@ function projectCard(p, currentId) {
   return card;
 }
 
+/* ------------------------------------------------------------
+   FIRST RUN — what a stranger sees before anything is saved.
+
+   Three jobs, in this order: say what the studio is in one line,
+   let them look at something real without committing, and only then
+   ask for a project. The ask used to come first, as a modal, which
+   is why it is now the last thing on the panel rather than the first
+   thing on the screen.
+   ------------------------------------------------------------ */
+
+const TOUR = [
+  { href: 'library.html', label: 'Craft library',  note: 'Rules, directors, rates — no project needed' },
+  { href: 'study.html',   label: 'Case studies',   note: 'Four films, beat by beat' },
+  { href: 'dissect.html', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
+];
+
+function renderFirstRun() {
+  const panel = h('div.empty-projects-state', {}, [
+    h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
+    h('div.eps-title', { text: 'A blank desk.' }),
+    h('div.eps-deck', { text: 'Twenty-two modules for writing, planning and shooting a film — script to call sheet. Everything you write stays in this browser unless you sign in.' })
+  ]);
+
+  const tour = h('div.eps-tour');
+  tour.append(h('div.eps-tour-head', { text: 'Have a look around first' }));
+  TOUR.forEach((t) => {
+    const a = h('a.eps-tour-item', { href: t.href });
+    a.append(h('span.eps-tour-label', { text: t.label }),
+             h('span.eps-tour-note', { text: t.note }));
+    tour.append(a);
+  });
+  panel.append(tour);
+
+  panel.append(h('div.eps-actions', {}, [
+    h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' }),
+    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN A SAMPLE PROJECT' })
+  ]));
+  panel.append(h('div.eps-fine', { text: 'The sample is a real project you can edit or delete — it just arrives with a few fields filled in.' }));
+  return panel;
+}
+
+/* A small, honest demo: enough filled in that the blueprint, the scene
+   list, the stripboard and the budget all have something to show, and
+   little enough that it reads as a starting point rather than a finished
+   film. The content is invented for this purpose. */
+
+const SAMPLE_TITLE = 'Sample — The Last Bus';
+
+const SAMPLE_FIELDS = {
+  s1_whatif:    'What if the last bus out of a town only stops for people who have decided never to come back?',
+  s1_why_me:    'I grew up on the 6:40 from Ambattur. I know what that queue sounds like at night.',
+  s1_image:     'A conductor tearing a ticket in the dark, lit only by the fare box.',
+  s2_log1:      'A night-shift conductor discovers his last passenger has no destination.',
+  s2_log_final: 'On the last bus out of a dying mill town, a conductor counting his final week finds a passenger who will not name a stop — and realises the route only ends for one of them.',
+  s3_theme:     'You cannot leave a place you have not forgiven.',
+  s3_ext:       'Does he get out of the town?',
+  s3_int:       'Does he stop measuring his life in other people\'s departures?',
+  s7_era:       'Present day',
+  s7_location:  'A mill town on the Chennai–Tiruvallur road',
+  s7_duration:  'One night, 9pm to dawn'
+};
+
+const SAMPLE_SCENES = [
+  { number: '1',  intExt: 'INT', dayNight: 'NIGHT', location: 'Bus depot office', eighths: 6,
+    synopsis: 'Raghu signs the night register. The supervisor does not look up.', shootDay: '1' },
+  { number: '2',  intExt: 'EXT', dayNight: 'NIGHT', location: 'Depot forecourt', eighths: 10,
+    synopsis: 'The 11:40 pulls out with four passengers. One of them has no bag.', shootDay: '1' },
+  { number: '3',  intExt: 'INT', dayNight: 'NIGHT', location: 'Bus — moving', eighths: 14,
+    synopsis: 'Raghu works the aisle. The passenger without a bag refuses to name a stop.', shootDay: '2' },
+  { number: '4',  intExt: 'EXT', dayNight: 'DAWN', location: 'Level crossing', eighths: 8,
+    synopsis: 'The bus waits at a closed gate. Nobody gets off.', shootDay: '2' }
+];
+
+function openSampleProject() {
+  const project = Store.createProject({ title: SAMPLE_TITLE, format: 'feature' });
+  // createProject() has already made this the current project, so the
+  // storage proxy scopes both writes below to it.
+  try {
+    localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify(SAMPLE_FIELDS));
+    localStorage.setItem('arunak_scenes_v1', JSON.stringify({
+      scenes: SAMPLE_SCENES.map((s, i) => ({
+        id: 'sample-' + (i + 1), pageNumber: '', elements: {}, ...s
+      }))
+    }));
+  } catch (e) { /* private mode — the project itself still exists */ }
+  Store.notify('projects:changed', { reason: 'sample', project });
+  if (window.StudioUI && StudioUI.toast) {
+    StudioUI.toast('Sample project open. Four scenes, a logline and a theme — edit or delete any of it.',
+      { type: 'ok', duration: 6000 });
+  }
+}
+
 function renderProjects() {
   const grid = $('#projectsGrid');
   const toolbar = $('#projectsToolbar');
@@ -1594,12 +1686,7 @@ function renderProjects() {
   grid.textContent = '';
 
   if (projects.length === 0) {
-    grid.append(h('div.empty-projects-state', {}, [
-      h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
-      h('div.eps-title', { text: 'A blank desk.' }),
-      h('div.eps-deck', { text: 'Every blueprint, every script, every budget lives under a project. Create your first one to start — Por Thozhil, Untitled Thriller, anything.' }),
-      h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' })
-    ]));
+    grid.append(renderFirstRun());
     return;
   }
 
@@ -1802,6 +1889,7 @@ const CLICK_ACTIONS = {
   'refresh-activity':      () => refreshActivity(),
   'clear-activity':        () => clearActivity(),
   'new-project':           () => openProjectModal(),
+  'sample-project':        () => openSampleProject(),
   'close-project-modal':   () => closeProjectModal(),
   'toggle-switcher':       () => toggleProjectSwitcher(),
   'switch-project':        (el) => switchToProject(el.dataset.id),
@@ -1911,12 +1999,13 @@ function init() {
   detectActivity();
   renderActivity();
 
-  // First run: nothing saved anywhere → ask for a project.
-  if (Store.listProjects().length === 0) {
-    setTimeout(() => {
-      if (Store.listProjects().length === 0) openProjectModal();
-    }, 300);
-  }
+  // FIRST RUN. This used to open the new-project modal on a 300ms timer:
+  // a stranger's first sight of the studio was a dialog demanding a title
+  // for a film, in front of a page they had not been allowed to read yet.
+  // The modal is now something you choose. renderProjects() puts a real
+  // first-run panel in the empty grid instead — what this is, three
+  // things to try, and a sample project for people who would rather look
+  // at a filled studio than an empty one.
 
   Store.subscribe('projects:changed', () => { renderProjects(); renderProjectSwitcher(); renderGreeting(); });
   Store.subscribe('current:changed',  () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });

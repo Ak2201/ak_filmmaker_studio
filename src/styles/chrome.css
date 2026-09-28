@@ -1422,9 +1422,75 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--ink);
 }
 .empty-projects-state .eps-deck {
-  max-width: 420px;
-  margin: 0 auto var(--s5);
+  max-width: 460px;
+  margin: 0 auto var(--s6);
   color: var(--ink-muted);
+}
+
+/* The look-around row. Three real destinations that need no project,
+   so the first thing a stranger can do is read rather than fill in a
+   form. Grid, not flex: three equal columns that stack at phone width
+   without any of them going narrower than its own label. */
+.empty-projects-state .eps-tour {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s3);
+  max-width: 660px;
+  margin: 0 auto var(--s6);
+  text-align: left;
+}
+.empty-projects-state .eps-tour-head {
+  grid-column: 1 / -1;
+  margin-bottom: var(--s3);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--accent-deep);
+}
+
+.eps-tour-item {
+  display: block;
+  padding: var(--s4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  text-decoration: none;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+.eps-tour-item:hover,
+.eps-tour-item:focus-visible {
+  border-color: var(--accent);
+  background: var(--paper-sunk);
+}
+.eps-tour-label {
+  display: block;
+  margin-bottom: var(--s1);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+}
+.eps-tour-note {
+  display: block;
+  font-size: var(--t-tiny);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.empty-projects-state .eps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  justify-content: center;
+}
+.empty-projects-state .eps-fine {
+  max-width: 460px;
+  margin: var(--s4) auto 0;
+  font-size: var(--t-tiny);
+  color: var(--ink-faint);
 }
 
 /* ------------------------------------------------------------

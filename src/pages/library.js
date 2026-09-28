@@ -40,6 +40,7 @@ import directors from '../data/directors.json';
 import rules from '../data/rules.json';
 import watchlist from '../data/watchlist.json';
 import rates from '../data/rates.chennai.2024.json';
+import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 
 /* ============================================================
    DERIVED COUNTS — the single source for every number the page
@@ -332,6 +333,7 @@ function renderEquipment() {
     body.append(block);
   }
 
+  body.append(renderScheduleLink());
   body.append(renderCalculator());
   return body;
 }
@@ -570,6 +572,82 @@ function resetCalc() {
   addCalcRow(5);
 }
 
+/* ------------------------------------------------------------
+   THE SCHEDULE → BUDGET LINK
+   ------------------------------------------------------------
+   The estimator has always asked "how many days?" and left the user
+   to know. The stripboard already knows: scenes carry an integer
+   shootDay, and the scene model carries locations and page eighths.
+   Until now those were two islands — you could add a shoot day on the
+   stripboard and the number in the calculator would not move, which
+   made the schedule a drawing rather than a plan.
+
+   Derived on every render, stored nowhere. The scene model is the one
+   representation; a copy of the day count in the calculator's own
+   storage would be the second, and the two would disagree by the end
+   of the week.
+   ------------------------------------------------------------ */
+function scheduleFacts() {
+  let scenes = [];
+  try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; }
+  const dayOf = (s) => { const n = parseInt(s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const scheduled = scenes.filter((s) => dayOf(s) > 0);
+  const days = new Set(scheduled.map(dayOf));
+  return {
+    totalScenes: scenes.length,
+    scheduled: scheduled.length,
+    unscheduled: scenes.length - scheduled.length,
+    days: days.size,
+    locations: new Set(scenes.map((s) => (s.location || '').trim()).filter(Boolean)).size,
+    pages: formatEighths(totalEighths(scenes))
+  };
+}
+
+function renderScheduleLink() {
+  const f = scheduleFacts();
+  const box = h('div.calc-block.calc-schedule');
+  box.append(h('h3', { text: 'From your schedule' }));
+
+  if (!f.totalScenes) {
+    box.append(h('p.hint', {
+      text: 'No scenes yet. Break the script down first and this fills itself in — '
+          + 'the estimator can then use your real shoot-day count instead of a guess.'
+    }));
+    box.append(h('a.mini-btn', { href: './breakdown.html#scenes', text: 'GO TO THE BREAKDOWN' }));
+    return box;
+  }
+
+  box.append(h('div.bd-stats', {}, [
+    h('div.bd-stat', {}, [h('strong', { text: String(f.days) }), h('span', { text: 'shoot days' })]),
+    h('div.bd-stat', {}, [h('strong', { text: String(f.totalScenes) }), h('span', { text: 'scenes' })]),
+    h('div.bd-stat', {}, [h('strong', { text: f.pages }), h('span', { text: 'pages' })]),
+    h('div.bd-stat', {}, [h('strong', { text: String(f.locations) }), h('span', { text: 'locations' })])
+  ]));
+
+  if (!f.days) {
+    box.append(h('p.hint', {
+      text: 'None of these scenes has a shoot day yet. Assign days on the stripboard '
+          + 'and the estimator can use the real count.'
+    }));
+    box.append(h('a.mini-btn', { href: './stripboard.html#stripboard', text: 'SCHEDULE ON THE STRIPBOARD' }));
+    return box;
+  }
+
+  box.append(h('p.hint', {
+    text: f.unscheduled
+      ? f.days + ' scheduled day' + (f.days === 1 ? '' : 's') + ', with ' + f.unscheduled
+        + ' scene' + (f.unscheduled === 1 ? '' : 's') + ' still unscheduled — so this is a floor, not the final count.'
+      : 'Every scene has a day. This is your shoot length.'
+  }));
+  box.append(h('div.calc-actions', {}, [
+    h('button.mini-btn', {
+      type: 'button', 'data-action': 'use-shoot-days', 'data-days': String(f.days),
+      text: 'USE ' + f.days + ' DAYS IN THE ESTIMATE'
+    })
+  ]));
+  return box;
+}
+
 function renderCalculator() {
   return h('div.calc-block', {}, [
     h('h3', { text: 'Quick Cost Estimator' }),
@@ -650,6 +728,31 @@ const ACTIONS = {
   print: () => window.print(),
   'add-row': () => addCalcRow(1),
   'add-5': () => addCalcRow(5),
+  'use-shoot-days': (el) => {
+    const days = parseInt(el && el.dataset ? el.dataset.days : '', 10);
+    if (!Number.isFinite(days) || days <= 0) return;
+    /* Fill EMPTY day fields only. A line already priced at three days
+       is someone's decision — a schedule that silently overwrote it
+       would be worse than no link at all. Rows that were set by hand
+       are reported as left alone rather than quietly skipped. */
+    const fields = [...document.querySelectorAll('#calcRows [data-key$="_days"]')];
+    let filled = 0, kept = 0;
+    fields.forEach((f) => {
+      if (String(f.value).trim()) { kept++; return; }
+      f.value = String(days);
+      f.dispatchEvent(new Event('input', { bubbles: true }));
+      filled++;
+    });
+    updateCalc();
+    saveCalc();
+    const msg = !fields.length
+      ? 'Add a line item first, then this fills its days.'
+      : filled
+        ? filled + ' line' + (filled === 1 ? '' : 's') + ' set to ' + days + ' days'
+          + (kept ? "; " + kept + (kept === 1 ? " you had already set was" : " you had already set were") + " left alone." : ".")
+        : 'Every line already has days set — nothing was overwritten.';
+    if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: 'info', duration: 4000 });
+  },
   reset: resetCalc
 };
 
@@ -658,7 +761,11 @@ function wireActions(root) {
     const fn = ACTIONS[el.dataset.action];
     if (!fn) return;
     e.preventDefault();
-    fn();
+    /* Pass the element through. Every handler here used to take no
+       arguments, so this changes nothing for them — but a handler that
+       needs to read a data- attribute off the button had no way to,
+       and failed silently when it tried. */
+    fn(el, e);
   });
 
   // Typing in a row, or picking a preset, recalculates and saves.

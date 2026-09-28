@@ -18,8 +18,7 @@ release a working writing tool is the wrong trade.
 
 ```bash
 npm ci
-npm run build
-npm run verify
+npm run ship      # build + verify; refuses to pass if the gate is red
 ```
 
 `verify` must print `✓ all pages pass`. It is not a linter — it is the
@@ -89,9 +88,21 @@ local-first app has.
 
 ### 6. Offline / PWA — untested, test it first
 
-The service worker has **never been observed working**: it was blocked
-in every sandbox used to build this. A real HTTPS deployment is the
-first place it can be checked.
+The service worker has **never been observed working**, and the cause
+is now established rather than assumed. On the preview server
+(`localhost`, a secure context, worker served 200 as `text/javascript`
+with valid content and no module syntax) registration still fails with
+Chromium's opaque *"An unknown error occurred when fetching the
+script."*
+
+The discriminating test: a **one-line, trivially valid** worker
+registered from the same origin fails identically. That rules the app
+out — every environment used to build this blocks service-worker
+script fetches. Nothing about `sw.js` is known to be wrong, and
+nothing about it is known to be right either.
+
+A real HTTPS deployment is the first place it can actually be
+checked. Treat this as genuinely unknown, not as working.
 
 1. Load the site, then go offline (DevTools → Network → Offline)
 2. Reload. It should still open and your work should still be there
@@ -166,7 +177,8 @@ account layer is additive — turning it off loses no local work.
 Stated plainly, because "untested" and "broken" are different things
 and only a deployment can tell them apart:
 
-- **Offline / PWA** — never observed working; see step 6
+- **Offline / PWA** — never observed working. Proven to be the build
+  environment blocking worker fetches, not the app; see step 6
 - **Google sign-in** — the code path is built and exercised up to and
   back from the redirect, but no real login has ever completed
 - **RLS, realtime, cross-device sync** — need a live project

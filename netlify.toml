@@ -67,6 +67,9 @@
 
 # ---- clean URLs ----------------------------------------------
 # status 200 = rewrite, not redirect: the address bar keeps /feature.
+# One per page. This listed four when the app had four; nine more
+# shipped since, and /stripboard 404ing while /feature works is the
+# kind of gap nobody notices until someone shares a link.
 
 [[redirects]]
   from = "/studio"
@@ -86,6 +89,51 @@
 [[redirects]]
   from = "/library"
   to = "/library.html"
+  status = 200
+
+[[redirects]]
+  from = "/breakdown"
+  to = "/breakdown.html"
+  status = 200
+
+[[redirects]]
+  from = "/stripboard"
+  to = "/stripboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/reports"
+  to = "/reports.html"
+  status = 200
+
+[[redirects]]
+  from = "/contacts"
+  to = "/contacts.html"
+  status = 200
+
+[[redirects]]
+  from = "/visualize"
+  to = "/visualize.html"
+  status = 200
+
+[[redirects]]
+  from = "/write"
+  to = "/write.html"
+  status = 200
+
+[[redirects]]
+  from = "/plan"
+  to = "/plan.html"
+  status = 200
+
+[[redirects]]
+  from = "/study"
+  to = "/study.html"
+  status = 200
+
+[[redirects]]
+  from = "/dissect"
+  to = "/dissect.html"
   status = 200
 
 [[redirects]]

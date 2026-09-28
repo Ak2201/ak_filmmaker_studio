@@ -1667,55 +1667,118 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 /* ============================================================
-   STUDIO SHELL — global rail + six-phase bar
+   STUDIO SHELL — a vertical app rail and one phase bar
    ------------------------------------------------------------
-   Two layouts, one markup. Below 1100px the shell stacks above the
-   page like any other bar. At 1100px and up the rail detaches to the
-   left edge, which is the StudioBinder-shaped layout — done as a
-   media query so narrow screens never inherit a fixed element that
-   could push the page sideways. verify asserts zero overflow at
-   390px and this must not be the thing that breaks it.
+   Measured against StudioBinder's own app: a 70px dark icon rail
+   fixed to the left edge, and ONE 60px horizontal bar beside it. The
+   arrangement is theirs; the palette, type and icons are this app's.
+
+   The rail being VERTICAL is the point. Home and Library used to
+   occupy a 52px row above every page, on every page, forever — a
+   column costs nothing vertical at all, and the bar below it is now
+   the only horizontal chrome the shell spends.
+
+   At 1100px and up the rail is fixed and the page is inset by it.
+   Below that it slides off-canvas behind the burger in the bar,
+   because 70px of a 390px screen is not navigation, it is a fifth of
+   the page. Off-canvas is a transform, never a negative offset, so it
+   cannot widen the document: verify asserts zero horizontal overflow
+   at 390px and this is exactly the kind of rule that breaks it.
    ============================================================ */
-.sh-shell {
-  position: relative;
-  z-index: var(--z-toolbar);
-  background: var(--chrome);
-  color: var(--chrome-ink);
-  border-bottom: 1px solid var(--chrome-hair);
+:root {
+  --sh-rail-w: 70px;
+  --sh-bar-h:  56px;
 }
 
 .sh-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: calc(var(--z-toolbar) + 2);
   display: flex;
-  align-items: center;
-  gap: var(--s1);
-  padding: var(--s2) var(--s3);
-  border-bottom: 1px solid var(--chrome-hair);
+  flex-direction: column;
+  width: var(--sh-rail-w);
+  padding-top: var(--s2);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  border-right: 1px solid var(--chrome-hair);
+  transform: translateX(-100%);
+  transition: transform var(--speed-slow) var(--ease);
 }
+.rail-shown .sh-rail { transform: none; }
+
+/* Icon over label, the way a rail this narrow has to be: a 70px
+   column cannot hold a horizontal icon+word pair at a legible size. */
 .sh-rail-item {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--s2);
-  padding: var(--s2) var(--s3);
-  min-height: 36px;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: var(--s2) var(--s1);
+  border-left: 2px solid transparent;
   color: var(--chrome-muted);
   text-decoration: none;
-  border-radius: var(--radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
+  text-align: center;
 }
 .sh-rail-item:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
-.sh-rail-item.is-active { color: var(--chrome-ink); background: var(--chrome-fill-strong); }
-.sh-rail-icon { font-size: 1.1em; line-height: 1; }
-
-/* ---- phase bar ---- */
-.sh-phasebar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s1);
-  padding: var(--s2) var(--s3);
+.sh-rail-item.is-active {
+  background: var(--chrome-fill-strong);
+  border-left-color: var(--accent);
+  color: var(--chrome-ink);
 }
+.sh-rail-icon { font-size: 1.35em; line-height: 1; }
+
+/* ---- the single horizontal bar ---- */
+.sh-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-toolbar);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--sh-bar-h);
+  padding: var(--s2) var(--s3);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+.sh-phases { display: flex; flex-wrap: wrap; gap: var(--s1); }
+
+/* The burger sits IN the bar rather than floating over the page: on a
+   narrow screen the rail is not visible, and a control for something
+   you cannot see belongs where you are already looking. */
+.sh-rail-toggle {
+  display: none;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--chrome-hair);
+  border-radius: var(--radius);
+  color: var(--chrome-ink);
+  cursor: pointer;
+}
+.sh-rail-toggle:hover { background: var(--chrome-fill); }
+.sh-burger,
+.sh-burger::before,
+.sh-burger::after {
+  display: block;
+  width: 16px;
+  height: 1.5px;
+  margin-inline: auto;
+  background: currentColor;
+  content: "";
+}
+.sh-burger::before { transform: translateY(-5px); }
+.sh-burger::after  { transform: translateY(3.5px); }
+
+/* ---- phase tabs ---- */
 .sh-phase { position: relative; }
 .sh-phase-btn {
   display: inline-flex;
@@ -1786,7 +1849,7 @@ a:focus-visible { outline-offset: 3px; }
   cursor: pointer;
   font: inherit;
 }
-.sh-mod:hover, .mod:focus-visible { background: var(--panel-raised); }
+.sh-mod:hover, .sh-mod:focus-visible { background: var(--panel-raised); }
 .sh-mod-label { font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; }
 .sh-mod-purpose {
   grid-column: 1 / -1;
@@ -1808,6 +1871,22 @@ a:focus-visible { outline-offset: 3px; }
 }
 .sh-mod.planned { opacity: .72; }
 
+/* ---- wide: the rail is furniture and the page is inset by it ---- */
+@media (min-width: 1100px) {
+  body.has-sh-shell.rail-shown { padding-left: var(--sh-rail-w); }
+  /* The step rail is also fixed to the left edge. Two fixed columns at
+     left:0 is one on top of the other, so it starts where the app rail
+     ends. */
+  body.rail-shown .step-rail,
+  body.rail-shown .step-rail-toggle { left: var(--sh-rail-w); }
+}
+
+/* ---- narrow: off-canvas behind the burger ---- */
+@media (max-width: 1099px) {
+  .sh-rail-toggle { display: block; }
+  .sh-rail { box-shadow: var(--shadow-lg); }
+}
+
 /* Below 720px the menu anchors to the BAR, not to the phase that opened
    it. Anchored per-phase, the rightmost phases (Plan, Shoot) pushed a
    260px menu past the right edge and took the page with them — 96px of
@@ -1817,7 +1896,7 @@ a:focus-visible { outline-offset: 3px; }
    verify did not catch this: it measures overflow with every menu shut.
    Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
 @media (max-width: 719px) {
-  .sh-phasebar { position: relative; }
+  .sh-bar { position: relative; flex-wrap: wrap; }
   .sh-phase { position: static; }
   .sh-phase-menu {
     left: var(--s3);
@@ -1827,38 +1906,15 @@ a:focus-visible { outline-offset: 3px; }
   }
 }
 
-@media (min-width: 1100px) {
-  /* Sticky only where there is room for it. One 52px band plus the
-     page toolbar is a reasonable permanent cost on a laptop; the same
-     two bars on a phone, where the shell stacks into two rows, would
-     be 164px of chrome above a text field, so narrow screens keep
-     today's behaviour and scroll the shell away. */
-  .sh-shell {
-    position: sticky;
-    top: 0;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: stretch;
-  }
-  /* --sh-h is published by mountShell() from the bar's measured
-     height. The fallback matters: if the shell never mounted, the
-     toolbar must still stick to the top rather than to a phantom. */
-  .has-sh-shell .toolbar { top: var(--sh-h, 0px); }
-  /* The rail stays a ROW here. As a column it was two stacked items,
-     which stretched the whole band to 100px — fine when the band
-     scrolled away, wrong now that it is sticky and that height is
-     charged against every screen for the whole session. One row of
-     52px is the difference between a bar and a wall. */
-  .sh-rail {
-    border-bottom: 0;
-    border-right: 1px solid var(--chrome-hair);
-    padding: var(--s2) var(--s3);
-  }
-  .sh-phasebar { align-items: center; }
+/* The page toolbar stacks under the bar rather than over it. */
+.has-sh-shell .toolbar { top: var(--sh-bar-h); }
+@media (max-width: 719px) {
+  .has-sh-shell .toolbar { top: 0; }
 }
 
 @media print {
-  .sh-shell { display: none !important; }
+  .sh-rail, .sh-bar { display: none !important; }
+  body.has-sh-shell { padding-left: 0 !important; }
 }
 
 /* ============================================================

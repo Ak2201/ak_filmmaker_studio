@@ -82,8 +82,20 @@
 .scene-table,
 .beat-table,
 .equip-table {
+  /* display:block turns the table into its own scroll container, so a
+     table wider than the column it sits in scrolls sideways instead of
+     widening the document. That became load-bearing when the app rail
+     took 70px off the content width: the beat table wanted 725px in a
+     770px step, and with the step rail also open it pushed 5px of
+     horizontal scroll onto the whole page.
+
+     A data table is the one thing on a page that legitimately cannot
+     shrink — twelve columns of beats do not reflow — so it scrolls.
+     The internal rows and cells still lay out as a table. */
+  display: block;
+  overflow-x: auto;
   width: 100%;
-  min-width: min(var(--viz-min), 100%);
+  max-width: 100%;
   margin: var(--s4) 0;
   border-collapse: collapse;
   background: var(--paper-raised);

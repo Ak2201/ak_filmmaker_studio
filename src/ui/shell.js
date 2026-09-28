@@ -1,18 +1,36 @@
 /* ============================================================
-   THE SHELL — global rail + six-phase project bar
+   THE SHELL — a vertical app rail and one phase bar
    ------------------------------------------------------------
    Everything here is rendered from src/data/navigation.json. Adding a
    module is a JSON edit; nothing in this file names one.
 
-   Three layers of navigation, which is what makes a 22-module app
-   traversable:
+   THE SHAPE, AND WHERE IT CAME FROM.
 
-     rail       where am I in the product   (Home, Library)
-     phase bar  where am I in the film      (Develop … Shoot)
-     toolbar    what can I do on this page  (already exists per page)
+   Measured from StudioBinder's own app on 28 Sep 2026, because the
+   brief was to match their layout and guessing at it would have been
+   pointless. The structure, in their numbers:
 
-   The old app had only the third, which is why 24 steps on one
-   223,000px page felt like a maze.
+     70px   a DARK ICON RAIL, fixed left. Four app-scope destinations
+            only, icon above an 11px label, 70x76 each.
+     60px   ONE horizontal bar beside it: project identity, a version
+            selector, and the phase tabs — all in a single row.
+     grid   the project overview is a LAUNCHER: one row per phase, a
+            132x150 phase tile, then 165x132 module tiles.
+
+   Only the arrangement is taken. The palette, the icons, the type and
+   the wording here are this app's own.
+
+   Two things in that are worth the rewrite. The app-level navigation
+   is VERTICAL, so it costs no vertical space at all — the version of
+   this shell it replaces spent a whole 52px row on two links, Home
+   and Library, on every page forever. And "show me everything this
+   tool can do" is answered by the launcher on one page, not by making
+   the permanent chrome big enough to list 22 modules. That is how
+   they keep a compact top bar and still feel navigable, and it is the
+   answer to the complaint that started this.
+
+   The phase tabs stay horizontal and keep their dropdowns, which is
+   what they do too.
 
    No inline handlers — a strict CSP ships in vercel.json and
    netlify.toml. Anything clickable is a real <a>, or carries
@@ -20,6 +38,9 @@
    ============================================================ */
 import nav from '../data/navigation.json';
 import { h, delegate } from '../lib/dom.js';
+
+const RAIL_KEY = 'arunak_studio_rail_open_v1';
+const NARROW = '(max-width: 1099px)';
 
 const CURRENT = (() => {
   const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
@@ -46,6 +67,8 @@ function activeModule() {
   }
   return { phase: null, module: null };
 }
+
+/* ---- the module rows inside a phase dropdown --------------- */
 
 function moduleRow(m) {
   const planned = m.status === 'planned';
@@ -79,23 +102,62 @@ function phaseTab(phase, active) {
   return wrap;
 }
 
+/* ---- the two pieces ---------------------------------------- */
+
 function buildRail() {
-  const rail = h('nav.sh-rail', { 'aria-label': 'Studio' });
+  const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
   nav.global.forEach((g) => {
-    const a = h('a.sh-rail-item' + (g.href.toLowerCase() === CURRENT ? '.is-active' : ''), {
-      href: g.href, title: g.purpose
-    });
+    const on = g.href.toLowerCase() === CURRENT;
+    const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
     a.append(h('span.sh-rail-icon', { text: g.icon, 'aria-hidden': 'true' }),
              h('span.sh-rail-label', { text: g.label }));
+    if (on) a.setAttribute('aria-current', 'page');
     rail.append(a);
   });
   return rail;
 }
 
-function buildPhaseBar(active) {
-  const bar = h('div.sh-phasebar', { role: 'navigation', 'aria-label': 'Production phases' });
-  nav.phases.forEach((p) => bar.append(phaseTab(p, active.phase && active.phase.id === p.id)));
+function buildBar(active) {
+  const bar = h('div.sh-bar', { role: 'navigation', 'aria-label': 'Production phases' });
+  // The rail toggle lives in the bar, not floating over the page: on a
+  // narrow screen the rail is gone, and a control for something you
+  // cannot see needs to sit where you are already looking.
+  const toggle = h('button#railToggle.sh-rail-toggle', {
+    type: 'button',
+    'data-action': 'rail-toggle',
+    'aria-controls': 'studioRail',
+    'aria-expanded': 'false',
+    'aria-label': 'Studio menu'
+  });
+  toggle.append(h('span.sh-burger', { 'aria-hidden': 'true' }));
+  bar.append(toggle);
+
+  const tabs = h('div.sh-phases');
+  nav.phases.forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
+  bar.append(tabs);
   return bar;
+}
+
+/* ---- open / closed ----------------------------------------- */
+
+const isNarrow = () => window.matchMedia(NARROW).matches;
+
+function setRail(open) {
+  document.body.classList.toggle('rail-shown', open);
+  const btn = document.getElementById('railToggle');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+  // Only the wide-screen preference is worth keeping. Restoring "open"
+  // on a phone would put 70px of navigation over the page on arrival.
+  if (!isNarrow()) {
+    try { localStorage.setItem(RAIL_KEY, open ? '1' : '0'); } catch (e) {}
+  }
+}
+
+function initialRail() {
+  if (isNarrow()) return false;
+  let v = null;
+  try { v = localStorage.getItem(RAIL_KEY); } catch (e) {}
+  return v !== '0';
 }
 
 function closeAllMenus(except) {
@@ -120,6 +182,10 @@ function wire() {
     btn.setAttribute('aria-expanded', String(open));
   });
 
+  delegate(document, 'click', '[data-action="rail-toggle"]', () => {
+    setRail(!document.body.classList.contains('rail-shown'));
+  });
+
   // A planned module explains itself rather than 404ing or, worse,
   // looking clickable and doing nothing.
   delegate(document, 'click', '[data-action="module-planned"]', (e, btn) => {
@@ -138,49 +204,39 @@ function wire() {
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.sh-phase')) closeAllMenus();
+    // Narrow: the rail is a temporary overlay, so following a link or
+    // tapping the page puts it away again.
+    if (!isNarrow()) return;
+    if (e.target.closest('#studioRail a')) { setRail(false); return; }
+    if (!e.target.closest('#studioRail, [data-action="rail-toggle"]')) setRail(false);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAllMenus();
+    if (e.key !== 'Escape') return;
+    closeAllMenus();
+    if (isNarrow()) setRail(false);
   });
+
+  // Crossing the breakpoint changes what "open" means, so re-decide.
+  window.matchMedia(NARROW).addEventListener('change', () => setRail(initialRail()));
 }
 
-/* Publish the shell's real height as --sh-h so the page toolbar can
-   stick directly beneath it.
-
-   This exists because of a defect worth naming: the shell was
-   position:relative and the toolbar position:sticky, so scrolling a
-   65,000px blueprint threw away the bar that says where you are and
-   kept the one that says what you can do here. The navigation layer
-   was available only at the very top of the longest pages in the app.
-
-   Measured rather than hard-coded: the bar is one row at desktop and
-   two below 1100px, and a wrong constant here means either a gap or
-   the toolbar sliding under the phase menus. */
-function trackShellHeight(shell) {
-  const publish = () => {
-    const h = Math.round(shell.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--sh-h', h + 'px');
-  };
-  publish();
-  if (typeof ResizeObserver === 'function') new ResizeObserver(publish).observe(shell);
-  else window.addEventListener('resize', publish);
-}
-
-/** Mount the shell above the page's own content. Idempotent. */
+/** Mount the shell around the page's own content. Idempotent. */
 export function mountShell() {
-  if (document.querySelector('.sh-shell')) return;
+  if (document.querySelector('.sh-rail')) return;
   const app = document.getElementById('app') || document.body;
   const active = activeModule();
 
   if (active.phase) document.documentElement.setAttribute('data-phase', active.phase.id);
 
-  const shell = h('div.sh-shell');
-  shell.append(buildRail(), buildPhaseBar(active));
-  app.insertBefore(shell, app.firstChild);
+  const rail = buildRail();
+  const bar = buildBar(active);
+  app.insertBefore(bar, app.firstChild);
+  app.insertBefore(rail, app.firstChild);
+
   document.body.classList.add('has-sh-shell');
-  trackShellHeight(shell);
   wire();
-  return shell;
+  setRail(initialRail());
+  return bar;
 }
 
 export default { mountShell };

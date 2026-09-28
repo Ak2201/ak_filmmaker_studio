@@ -738,12 +738,29 @@ const exported = await rtPage.evaluate(async () => {
   const S = window.StudioStore;
   if (!S) return { unavailable: true };
   S.listProjects().forEach((p) => S.deleteProject(p.id));
+  /* Seed EVERY scoped key, not just the feature blueprint.
+
+     The backup map is a hand-maintained list, and this project has now
+     added seven model keys in a day — scenes, contacts, shots, script,
+     locations, workbench, dissect. A key that is registered in
+     SCOPED_KEYS but missed in hub.js's PROJECT_KEYS is exported by
+     nothing and restored by nothing, and the user finds out when a
+     restore comes back empty. That exact bug has happened here before,
+     to the export that called itself a full studio backup.
+
+     Marking every key per project also proves the export keeps the two
+     projects' data apart, which a single-key test cannot. */
+  const seed = (tag) => S.SCOPED_KEYS.forEach((k) => {
+    const body = { __rt: tag + '-' + k };
+    if (k === 'arunak_filmmaker_combined_v1') body.lad_1_logline = tag + '-CONTENT';
+    localStorage.setItem(k, JSON.stringify(body));
+  });
   const a = S.createProject({ title: 'RT Alpha', format: 'feature' });
   S.setCurrentProject(a.id);
-  localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify({ lad_1_logline: 'ALPHA-CONTENT' }));
+  seed('ALPHA');
   const b = S.createProject({ title: 'RT Beta', format: 'short' });
   S.setCurrentProject(b.id);
-  localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify({ lad_1_logline: 'BETA-CONTENT' }));
+  seed('BETA');
 
   // Capture the blob instead of letting the browser download it.
   let blob = null;
@@ -783,13 +800,19 @@ if (!exported.unavailable && exported.text) {
 
   const restored = await rtPage.evaluate(() => {
     const S = window.StudioStore;
-    return S.listProjects().map((p) => ({
-      title: p.title,
-      logline: (() => {
-        const raw = S.rawGet('arunak_filmmaker_combined_v1__' + p.id);
-        try { return JSON.parse(raw || '{}').lad_1_logline || null; } catch (e) { return null; }
-      })()
-    })).sort((x, y) => (x.title > y.title ? 1 : -1));
+    const read = (k, id) => {
+      try { return JSON.parse(S.rawGet(k + '__' + id) || '{}'); } catch (e) { return {}; }
+    };
+    return S.listProjects().map((p) => {
+      const tag = p.title.replace('RT ', '').toUpperCase();
+      const lost = S.SCOPED_KEYS.filter((k) => read(k, p.id).__rt !== tag + '-' + k);
+      return {
+        title: p.title,
+        logline: read('arunak_filmmaker_combined_v1', p.id).lad_1_logline || null,
+        keysChecked: S.SCOPED_KEYS.length,
+        keysLost: lost
+      };
+    }).sort((x, y) => (x.title > y.title ? 1 : -1));
   });
 
   backup = {
@@ -811,6 +834,11 @@ if (!exported.unavailable && exported.text) {
     bad.push(`export carried [${loglines.join(', ')}], expected both projects' content`);
   }
   if (restored.length !== 2) bad.push(`restored ${restored.length} project(s), expected 2`);
+  restored.forEach((r) => {
+    if (r.keysLost && r.keysLost.length) {
+      bad.push(`${r.title}: ${r.keysLost.length} of ${r.keysChecked} scoped keys did not survive the backup (${r.keysLost.join(', ')})`);
+    }
+  });
   const restoredLoglines = restored.map((r) => r.logline).sort().join('|');
   if (restoredLoglines !== 'ALPHA-CONTENT|BETA-CONTENT') {
     bad.push(`restored content [${restoredLoglines}], expected both projects' content`);

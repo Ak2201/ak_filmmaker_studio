@@ -508,7 +508,28 @@ function renderGlossary(study) {
     return sec;
   }
 
-  const list = h('div.gloss-list.st-gloss');
+  /* A real-time filter. 21 terms is already past the point where
+     scanning beats searching, and the list grows every time the studio
+     learns a word. Filtering happens in the DOM against a precomputed
+     haystack rather than re-rendering, so the caret never moves and
+     the film's examples do not flicker while you type. */
+  const filterRow = h('div.st-gloss-filter');
+  const fid = 'glossFilter';
+  filterRow.append(
+    h('label.st-gloss-label', { for: fid, text: 'Filter terms' }),
+    h('input#' + fid + '.st-gloss-input', {
+      type: 'search', autocomplete: 'off', spellcheck: 'false',
+      placeholder: 'subtext, slugline, match cut…',
+      'data-action': 'gloss-filter', 'aria-controls': 'glossList'
+    }),
+    h('span#glossCount.st-gloss-count', {
+      role: 'status', 'aria-live': 'polite',
+      text: terms.length + ' terms'
+    })
+  );
+  sec.append(filterRow);
+
+  const list = h('div#glossList.gloss-list.st-gloss');
   for (const t of terms) {
     const isCore = core.has(String(t.term).toLowerCase());
     const item = h('article.gloss-item' + (isCore ? '.is-core' : ''));
@@ -535,9 +556,22 @@ function renderGlossary(study) {
         text: 'No ' + title + ' example for this term yet.'
       }));
     }
+    /* Everything a reader might type: the term, what it is also called,
+       the definition and this film's example. Matching only the term
+       would make the search useless for "the word for when a thing set
+       up early comes back" — which is how people actually search. */
+    const ex = (t.examples || []).find((e) => e.film === slug);
+    item.setAttribute('data-search', [
+      t.term, (t.aliases || []).join(' '), t.def, t.tanglish, ex && ex.note
+    ].filter(Boolean).join(' ').toLowerCase());
+
     list.append(item);
   }
   sec.append(list);
+  sec.append(h('p#glossNone.st-gloss-none', {
+    hidden: true,
+    text: 'No term matches that. Try a shorter word — the definitions are searched too.'
+  }));
   return sec;
 }
 
@@ -626,6 +660,28 @@ loadDemo();
    top of the page is not what pressing a tab asked for. */
 let refocus = false;
 delegate(document, 'click', '[data-action="demo-pick"]', () => { refocus = true; });
+
+/* Bound once at module scope, not per render: a filter that re-binds on
+   every demo change stacks listeners, and the page re-renders whenever
+   the film changes. */
+delegate(document, 'input', '[data-action="gloss-filter"]', (e, input) => {
+  const q = String(input.value || '').trim().toLowerCase();
+  const items = document.querySelectorAll('#glossList .gloss-item');
+  let shown = 0;
+  items.forEach((el) => {
+    const hit = !q || (el.getAttribute('data-search') || '').includes(q);
+    el.hidden = !hit;
+    if (hit) shown++;
+  });
+  const count = document.getElementById('glossCount');
+  if (count) {
+    count.textContent = q
+      ? shown + ' of ' + items.length + ' terms'
+      : items.length + ' terms';
+  }
+  const none = document.getElementById('glossNone');
+  if (none) none.hidden = shown !== 0;
+});
 
 onDemoChange(() => {
   render();

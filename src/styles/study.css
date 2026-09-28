@@ -634,3 +634,45 @@
   .st-guide, .st-char, .st-scene, .st-beat, .st-gap { break-inside: avoid; }
   .st-sec { padding-block: var(--s5); }
 }
+
+/* ---- glossary filter ----------------------------------------
+   A search row, not a search page: the list is already on screen and
+   the filter narrows it in place. */
+.st-gloss-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+.st-gloss-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-gloss-input {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--sk-card-bg);
+  color: var(--ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  font: inherit;
+  font-size: var(--t-small);
+}
+.st-gloss-input:focus-visible { border-color: var(--accent-deep); outline: none; }
+.st-gloss-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.st-gloss-none {
+  margin: var(--s4) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+}

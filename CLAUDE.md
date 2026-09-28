@@ -66,28 +66,24 @@ derive it.
 To change copy, edit the JSON. To change how copy is presented, edit
 `src/ui/steps.js` or the stylesheets.
 
-**3. Never edit the markup in `legacy/`.** It is the reference `npm run verify`
-diffs against. If it changes, the verifier stops being able to tell a refactor
-from a regression.
+**3. `legacy/` is history, not the oracle.** The four original hand-written
+pages. `npm run extract` still reads them to regenerate `src/data`, so they must
+not be edited — but they are no longer what `npm run verify` diffs against.
 
-There is already one exception, and it is worth knowing before you conclude the
-oracle is compromised. During the migration the trap fixes below — the save
-loop, `escAttr` ordering, anchored `parseNum`, `escapeHTML` on the char map,
-batched `addCalcRow`, a dead watch-list linker — were applied to the `legacy/`
-copies as well as to the new code, so the two could be compared like for like.
-Three of the four files therefore differ from the versions on `origin/main`.
+They were the oracle through the migration and they earned it: they proved the
+rebuild lost no `data-key` and no prose. Then they became a ceiling. Pinning the
+app to 2023 markup meant every deliberate redesign had to be bought with
+`EXPECTED` entries until the allowlist was the document and the check was noise.
 
-Every one of those edits sits inside a `<script>` block, and `legacyFacts()`
-strips `script, style, noscript` before it reads anything. Measured through the
-verifier's own extraction, current and pristine are identical: the same 323 and
-106 `data-key`s, the same word sets, zero divergence across all four files. What
-the oracle is *for* — the storage contract and the visible prose — is intact.
+`scripts/baseline.json` replaces them — see section 04. The first baseline was
+captured from commit `16bf3b4`, which still passed 100% accounted coverage
+against `legacy/`, so the original guarantee is inherited rather than discarded.
+The file records the commit it came from.
 
-So there is nothing here for `EXPECTED` to hold: it allowlists words that go
-missing, and no words differ. Adding entries anyway would create exactly the
-permanent excuses the stale-allowance check exists to prevent. Restoring those
-scripts to their `origin/main` state is a tidiness call with no effect on
-verification. The rule that bites is the markup.
+Three of the four `legacy/` files also differ from `origin/main`: during the
+migration the trap fixes below were applied to them so the two sides could be
+compared like for like. Every one of those edits is inside a `<script>` block,
+which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
 Every colour is a token. This rule previously claimed there were zero raw
@@ -133,8 +129,7 @@ unused; they are not. Do not prune them.
 ## The verification workflow
 
 **Run `npm run build && npm run verify` before every commit.** It serves `dist/`,
-loads all four pages in Chromium, and diffs each against its original in
-`legacy/`:
+loads all four pages in Chromium, and diffs each against `scripts/baseline.json`:
 
 - every `data-key` still present (exact — this is the storage contract)
 - visible-text coverage, with an explicit allowlist of deliberate wording
@@ -160,6 +155,20 @@ Then one studio-level check that is not per page:
 
 Current state: all four pages pass at 100% accounted coverage, and the round
 trip restores both projects.
+
+**Re-baselining.** `npm run baseline` recaptures `scripts/baseline.json` from the
+current build. It is a deliberate act, not a fix for a failing run — the new
+capture becomes the thing every later run is judged against, so a regression
+baked in at that moment is invisible forever after. Re-baseline when a redesign
+is intentional and the output is known good, and say so in the commit. If
+`EXPECTED` is growing, that is the signal to re-baseline rather than to keep
+adding rows.
+
+**What the text check can and cannot see.** Coverage compares word *sets*, not
+sentences. Deleting a sentence whose every word appears elsewhere on the page
+will not trip it — that was equally true of the `legacy/` oracle. The `data-key`
+check is the exact one, and it is the one that protects saved work: a renamed
+key fails the run immediately.
 
 **Known blind spot.** The run loads each page at 1280px and resizes to 390px
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
@@ -276,4 +285,5 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 - Sepia is a real third theme for long writing sessions, not a dark variant.
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.
-- `legacy/` is committed on purpose. It is the test oracle.
+- `legacy/` is committed on purpose — now as the historical record and as the
+  input `npm run extract` parses, not as the verification oracle.

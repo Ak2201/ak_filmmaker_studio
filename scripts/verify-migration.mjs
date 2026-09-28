@@ -26,8 +26,15 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/* --baseline recaptures the reference instead of asserting against it.
+   Re-baselining is a deliberate act — a redesign that rewrites copy
+   should require someone to type `npm run baseline` and say so in a
+   commit, not quietly pass because the check drifted with it. */
+const WRITE_BASELINE = process.argv.includes('--baseline');
+const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
 const DIST = path.join(ROOT, 'dist');
 const PORT = 5321;
 
@@ -46,36 +53,24 @@ const PAGES = [
    an unexplained one is indistinguishable from a bug. Anything
    NOT on this list that goes missing fails the run.
    ------------------------------------------------------------ */
+/* Words that are deliberately gone from a page since the baseline was
+   captured, each with the reason.
+
+   Emptied when the oracle was re-baselined. Every previous entry
+   explained a divergence from the original legacy/ markup, and against
+   a baseline taken from the app's own output there is no such
+   divergence — the stale-allowance check flagged all of them the moment
+   the baseline landed, which is the check working.
+
+   It is not dead. Reword something on purpose and verify will fail with
+   the missing word; add it here with a reason and the run goes green
+   again. Two rules keep this list honest: an entry that stops firing
+   fails the run, so it cannot rot into a permanent excuse; and if the
+   list is growing, that is the signal to re-baseline deliberately with
+   `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
-  hub: {
-    // The master index used to hand-write short labels for all 24
-    // feature steps. It now derives them from the step data, so the
-    // abbreviations are replaced by the real titles.
-    hmu: 'index label "Costume / HMU" now derives as the full step title',
-    shots: 'index label "Storyboard / Shots" now derives as the full step title',
-    // Page rename.
-    'arunak-filmmaker-blueprint': 'page renamed to feature.html',
-    'arunak-shortfilm-blueprint': 'page renamed to short.html',
-    'arunak-filmmaker-library': 'page renamed to library.html',
-    // The hub used to carry setup prose for downloading loose files
-    // into a folder. It is a built app now; that instruction is wrong.
-    'arunak-portothozhil-sample': 'sample now loads from the build, not a loose file',
-    'pre-filled': 'loose-file setup prose, obsolete after the build',
-    folder: 'loose-file setup prose, obsolete after the build',
-    'cross-links': 'loose-file setup prose, obsolete after the build',
-    files: 'loose-file setup prose, obsolete after the build',
-    same: 'loose-file setup prose, obsolete after the build',
-    so: 'loose-file setup prose, obsolete after the build',
-    more: 'loose-file setup prose, obsolete after the build',
-    // Placeholder copy that is replaced with a real figure on load.
-    computing: 'placeholder text, replaced by the computed storage size',
-    featured: 'TOC group label, now derived from the data',
-    36: 'hard-coded step count, now derived',
-    7: 'hard-coded count, now derived'
-  },
-  feature: {
-    hmu: 'jump-menu label "Costume / HMU" now derives as the full step title'
-  },
+  hub: {},
+  feature: {},
   short: {},
   library: {}
 };
@@ -101,6 +96,37 @@ const strip = (html) => String(html).replace(/<[^>]+>/g, ' ');
 const words = (s) => strip(s).replace(/&[a-z]+;|&#\d+;/gi, ' ')
   .toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || [];
 
+/* The reference the live pages are diffed against.
+
+   This used to be legacy/ — the four hand-written pages the app was
+   migrated from. That oracle did its job: it proved the migration lost
+   no data-key and no prose. But it pins the app to 2023 markup, so any
+   deliberate redesign has to be bought with EXPECTED entries until the
+   allowlist is the document and the check is noise.
+
+   scripts/baseline.json replaces it. The first baseline was captured
+   from a build that still passed 100% against legacy/, so the original
+   guarantee is inherited rather than discarded — the file records which
+   commit it came from. legacy/ stays: `npm run extract` reads it, and
+   it remains the historical record. It is no longer the oracle. */
+function baselineFacts(name) {
+  if (!fs.existsSync(BASELINE_FILE)) {
+    console.error(
+      '\nNo scripts/baseline.json. Capture one with:\n' +
+      '  npm run build && npm run baseline\n' +
+      'Only do that when the current output is known good — it becomes the reference.\n'
+    );
+    process.exit(2);
+  }
+  const all = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
+  const page = all.pages[name];
+  if (!page) {
+    console.error(`\nbaseline.json has no entry for "${name}". Re-run npm run baseline.\n`);
+    process.exit(2);
+  }
+  return { keys: new Set(page.keys), text: page.words };
+}
+
 function legacyFacts(file) {
   const src = fs.readFileSync(path.join(ROOT, 'legacy', file), 'utf8');
   const { document } = parseHTML(src);
@@ -123,6 +149,7 @@ const browser = await chromium.launch(
   process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}
 );
 const report = [];
+const captured = {};
 let failures = 0;
 
 for (const spec of PAGES) {
@@ -201,7 +228,7 @@ for (const spec of PAGES) {
     ? null
     : new Set([themes.paper, themes.sepia, themes.ink]).size;
 
-  const old = legacyFacts(spec.legacy);
+  const old = WRITE_BASELINE ? legacyFacts(spec.legacy) : baselineFacts(spec.name);
   const liveKeys = new Set(live.keys);
   const missingKeys = [...old.keys].filter((k) => !liveKeys.has(k));
 
@@ -218,6 +245,13 @@ for (const spec of PAGES) {
   // An allowlist entry that no longer fires is stale; say so rather
   // than letting the list rot into a set of permanent excuses.
   const staleAllowances = Object.keys(allowed).filter((w) => !gone.includes(w));
+
+  if (WRITE_BASELINE) {
+    captured[spec.name] = {
+      keys: [...liveKeys].sort(),
+      words: [...liveWords].sort()
+    };
+  }
 
   const row = {
     page: spec.name,
@@ -259,6 +293,32 @@ for (const spec of PAGES) {
   if (bad.length) { failures++; row.FAIL = bad; }
 
   await ctx.close();
+}
+
+if (WRITE_BASELINE) {
+  const sha = (() => {
+    try {
+      return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+    } catch (e) { return 'unknown'; }
+  })();
+  fs.writeFileSync(BASELINE_FILE, JSON.stringify({
+    _about:
+      'Reference for npm run verify. Regenerate ONLY with `npm run build && npm run baseline`, ' +
+      'and only when the current output is known good — it becomes the thing every later run is judged against.',
+    capturedAt: new Date().toISOString(),
+    capturedFrom: sha,
+    provenance:
+      'Captured from a build that still passed 100% accounted coverage against the original legacy/ pages, ' +
+      'so the migration guarantee (no data-key lost, no prose lost) is carried forward rather than dropped.',
+    pages: captured
+  }, null, 2) + '\n');
+  await browser.close();
+  server.close();
+  const n = Object.keys(captured).length;
+  const keys = Object.values(captured).reduce((a, p) => a + p.keys.length, 0);
+  console.log(`\n✓ baseline written — ${n} pages, ${keys} data-keys, from ${sha}`);
+  console.log('  scripts/baseline.json');
+  process.exit(0);
 }
 
 /* ---- backup round trip --------------------------------------

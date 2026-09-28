@@ -174,7 +174,7 @@ const HOWTO1_HTML       = `
     <p>Steps 1–4 might take an evening. Step 8 (the 15-beat outline) might take a week. Step 11 (the scene list) might take a month. The blueprint is a guide, not a deadline.<span class="tn">Konjam steps oru saayangaalathula mudichidalam, sila steps ku oru vaaram aagum, scene list ku oru maasame aagalaam. Indha blueprint guide thaan, deadline illa.</span></p>
   </div>
   <div class="tip-box" style="margin-top:14px; border-left-color: var(--accent);">
-    <div class="label" style="color: var(--accent);">SHORTCUTS &amp; FEATURES</div>
+    <div class="label">SHORTCUTS &amp; FEATURES</div>
     <p>Progress bar (top toolbar) tracks completion across all 24 steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> dark mode · <kbd>Ctrl+K</kbd> step jumper · <kbd>Ctrl+F</kbd> search · <kbd>Ctrl+Shift+R</kbd> reading mode. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
   </div>
 </section>
@@ -565,7 +565,7 @@ function pitchSectionHTML() {
   <h2>The <em>Pitch Deck.</em></h2>
   <p class="deck">Auto-generated from your filled fields above. The deck refreshes every time you save. For a proper pitch, take this deck, polish the language, and add visuals from your lookbook.</p>
   <div class="pitch-actions">
-    <button class="btn primary" data-action="rebuildPitchDeck" style="border-color: var(--accent); background: var(--accent); color: var(--paper);">↻ REBUILD FROM DATA</button>
+    <button class="btn primary" data-action="rebuildPitchDeck">↻ REBUILD FROM DATA</button>
     <button class="btn" data-action="exportPitchPPTX">EXPORT .PPTX</button>
     <button class="btn" data-action="printPitchOnly">PRINT DECK ONLY</button>
   </div>
@@ -585,7 +585,7 @@ function syncSectionHTML() {
 ${SYNC_FIELDS_HTML}
 
   <div class="sync-actions">
-    <button class="btn primary" data-action="syncSave" style="border-color: var(--accent); background: var(--accent); color: var(--paper);">↑ PUSH NOW</button>
+    <button class="btn primary" data-action="syncSave">↑ PUSH NOW</button>
     <button class="btn" data-action="syncLoad">↓ PULL LATEST</button>
     <button class="btn" data-action="syncTest">TEST CONNECTION</button>
     <button class="btn" data-action="saveSyncConfig">SAVE CONFIG</button>

@@ -435,6 +435,12 @@ for (const spec of PAGES) {
        was cream on cream, focusable and invisible, and a green run said
        nothing. A check that only looks at panels will keep missing the
        things people actually click. */
+    /* WCAG AA for body text. This was 3.0 — a floor chosen to catch
+       text that had VANISHED without crying wolf about muted greys.
+       It did its job: the invisible cases are gone. 4.5 is the real
+       bar, and the gap between the two is where "technically legible"
+       lives. */
+    const AA = 4.5;
     const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
       + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
       + ' .bd-example, .toc-item, .film-card, .ex-card,'
@@ -493,7 +499,7 @@ for (const spec of PAGES) {
             const fg = rgb(cs.color);
             if (!fg) return;
             const r = ratio(fg, groundOf(el));
-            if (r < 3.0) {
+            if (r < AA) {
               /* fg and bg are in the finding on purpose. Without them
                  every investigation starts by guessing which element
                  out of nine matching the selector was the bad one, and

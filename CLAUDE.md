@@ -191,6 +191,23 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   changing anything shows up as a duplicate fingerprint, but a skin whose file
   never loaded produces no duplicate at all, so only the disk-vs-page count
   catches it.
+- **text meets WCAG AA (4.5:1)** on every surface a skin controls, across
+  all four themes crossed with all five skins, with the modals open. The floor
+  was 3.0 while the invisible cases were being cleared; it is 4.5 now, which is
+  the real bar. Two rules came out of getting there and are worth knowing
+  before you pick a colour:
+
+  **A fill is not a text colour.** `--accent`, `--danger` and the six hues are
+  chosen to be painted *behind* something. As text they run 3.3–4.4:1 on a
+  light card in the brighter themes. Text takes `--accent-deep` / `--hue-deep`
+  on a light ground and `--hue-lift` on a dark one. Most of the AA work was
+  this one mistake in fourteen places, including every eyebrow in the app.
+
+  **An inline style beats every stylesheet.** Three of the last four failures
+  were `style="color: var(--accent)"` and `style="color: var(--paper)"` left in
+  `feature.js` markup, silently defeating the token fix. If a token change does
+  not take, grep the markup before you doubt the cascade.
+
 - hue-coded surfaces still distinguish. Where the markup declares a variant
   (`.door.shorts`, `.start-card.f`, `.fest-card.t2`, `.example.alt`) the design
   must render more than one colour, at 3px or wider. This exists because the

@@ -45,7 +45,7 @@
   --shorts-deep:  #163f6f;
   --shorts-wash:  #dde8f4;
 
-  --library:      #9a6d1f;
+  --library:      #94691d;
   --library-deep: #6d4b10;
   --library-wash: #f5ead2;
 
@@ -252,7 +252,7 @@
   --paper-edge:   #d8c6a2;
   --ink:          #2a2116;
   --ink-body:     #453826;
-  --ink-muted:    #7a6748;
+  --ink-muted:    #6a593e;
   --ink-faint:    #9c8865;
   --rule:         #c9b287;
   --rule-hair:    #ddcba6;
@@ -288,30 +288,34 @@
 
   --ink:          #14171d;
   --ink-body:     #353b45;
-  --ink-muted:    #646c7a;
+  --ink-muted:    #626977;
   --ink-faint:    #949cab;
 
   --rule:         #d2d7e0;
   --rule-hair:    #e6e9ef;
 
-  /* Flat and bright: on a grey ground the muted print hues go dull. */
-  --feature:      #dc4f36;
+  /* Flat and bright — but only as bright as white text can sit on.
+     feature, shorts and plan were 3.46-3.86:1 against --on-fill, so
+     they are pulled down to clear 4.5. library stays bright because it
+     carries a DARK on-colour instead (5.49:1); an amber that white can
+     sit on is no longer amber. */
+  --feature:      #c64730;
   --feature-deep: #a5341f;
   --feature-wash: #fdeae6;
 
-  --shorts:       #2f7fe6;
+  --shorts:       #2971cc;
   --shorts-deep:  #1b569f;
   --shorts-wash:  #e5eefc;
 
   --library:      #d99512;
-  --library-deep: #a06a08;
+  --library-deep: #905f07;
   --library-wash: #fdf1da;
 
   --visualize:      #7b52e0;
   --visualize-deep: #56349f;
   --visualize-wash: #efe9fd;
 
-  --plan:           #0f93b0;
+  --plan:           #0c7c95;
   --plan-deep:      #0a687e;
   --plan-wash:      #e0f3f8;
 
@@ -326,7 +330,7 @@
   --ok-wash:      #e1f5ed;
   --warn:         #b57407;
   --warn-wash:    #fdf0d9;
-  --danger:       #cc3826;
+  --danger:       #b5311f;
   --danger-wash:  #fce8e5;
 
   /* The chrome and the ink panels go slate rather than near-black

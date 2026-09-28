@@ -80,7 +80,10 @@
   font-weight: 600;
   letter-spacing: var(--sk-eyebrow-track);
   text-transform: uppercase;
-  color: var(--accent);
+  /* An eyebrow is TEXT on a page ground, so it takes the deep accent,
+     not the fill. At --accent it measured 3.35-3.69:1 in desk, where
+     the accents are bright — every eyebrow in the app, on every page. */
+  color: var(--accent-deep);
 }
 
 /* The page title. Roman, not italic: the italic display face was the
@@ -287,7 +290,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 
 /* The one ink slab left per step. It was three — formula, tip and

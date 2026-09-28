@@ -51,7 +51,10 @@ const PAGES = [
   // at the tech recce.
   { page: 'stripboard.html', legacy: null, name: 'stripboard' },
   { page: 'reports.html',    legacy: null, name: 'reports' },
-  { page: 'contacts.html',   legacy: null, name: 'contacts' }
+  { page: 'contacts.html',   legacy: null, name: 'contacts' },
+  { page: 'visualize.html',  legacy: null, name: 'visualize' },
+  { page: 'write.html',      legacy: null, name: 'write' },
+  { page: 'plan.html',       legacy: null, name: 'plan' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -92,6 +95,9 @@ const EXPECTED = {
   stripboard: {},
   reports: {},
   contacts: {},
+  visualize: {},
+  write: {},
+  plan: {},
   breakdown: {},
   /* Emptied when the oracle was recaptured for the new modules. The two
      entries here explained the volumes→phases rewording, and a baseline
@@ -385,9 +391,16 @@ for (const spec of PAGES) {
       return out;
     };
 
+    /* Containers, AND the controls. `.btn` was not on this list, and
+       that is how a button rendered at 1:1 — --chrome-ink is the same
+       value as --paper in the paper theme, so breakdown's "+ Add scene"
+       was cream on cream, focusable and invisible, and a green run said
+       nothing. A check that only looks at panels will keep missing the
+       things people actually click. */
     const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
       + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
-      + ' .bd-example, .toc-item, .film-card, .ex-card';
+      + ' .bd-example, .toc-item, .film-card, .ex-card,'
+      + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip';
 
     /* Freeze transitions for the duration of the probe.
 
@@ -421,8 +434,16 @@ for (const spec of PAGES) {
            root element already resolved the ink palette. */
         void document.documentElement.offsetHeight;
         document.querySelectorAll(SURFACES).forEach((surface) => {
-          surface.querySelectorAll('*').forEach((el) => {
-            if (el.children.length) return;
+          /* The surface ITSELF counts when it holds text directly. A
+             button's label is usually a bare text node, so walking only
+             its element children measures nothing at all — which is the
+             second half of why the invisible button went unseen. */
+          const own = [...surface.childNodes]
+            .some((n) => n.nodeType === 3 && n.textContent.trim());
+          const targets = [surface.querySelectorAll('*')].flatMap((n) => [...n]);
+          if (own) targets.push(surface);
+          targets.forEach((el) => {
+            if (el !== surface && el.children.length) return;
             if (!el.textContent.trim()) return;
             const cs = getComputedStyle(el);
             if (cs.visibility === 'hidden' || cs.display === 'none') return;

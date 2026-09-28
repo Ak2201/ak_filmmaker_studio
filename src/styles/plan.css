@@ -1,0 +1,482 @@
+/* ============================================================
+   PLAN — calendar, locations, media index
+   ------------------------------------------------------------
+   Only what is genuinely this page's own. The hierarchy (eyebrow →
+   title → deck), the stats strip, the teaching empty state, the
+   icon buttons and the data table are the studio language from
+   modules.css and widgets.css, reused as they are.
+
+   Every colour is a token and every shape is a --sk-* skin variable,
+   so the page is correct in all five skins and all three themes
+   without knowing which is on.
+
+   TWO COLOURS MEAN SOMETHING HERE, AND NOTHING ELSE DOES.
+
+   `--hue` (from .hue-plan in tokens.css) says "this is the Plan
+   phase" on a location card — the same hue the rail and the phase
+   bar give this page.
+
+   `--perm` says how a location stands with whoever owns it, and it
+   is SEMANTIC, not a phase hue: --ok for approved, --warn while it
+   is open, --danger for refused. CLAUDE.md keeps those three out of
+   the volume palette precisely so a status can never be mistaken
+   for a category, and permission is the one status on this page.
+   A place nobody has asked about yet gets the plain hairline, which
+   is the honest answer.
+
+   NARROW. Every row here wraps and every grid track is
+   minmax(min(Xpx, 100%), 1fr), because base.css gives inputs
+   width:100% and a fixed track plus a 100%-wide input is the exact
+   shape that pushed horizontal scroll onto the whole document last
+   time. The scene tables scroll inside themselves — that is
+   .scene-table's own display:block in widgets.css, and it is why a
+   six-column table is safe at 390px.
+   ============================================================ */
+
+.pl-cal,
+.pl-locs,
+.pl-media-sec {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+.pl-cal { padding-block: var(--s6); }
+.pl-locs { padding-block: var(--s6); }
+.pl-media-sec { padding-block: var(--s6) var(--s9); }
+
+/* A .btn in the BODY has to be told the paper palette.
+   chrome.css builds .btn for the toolbar, where it is outlined in
+   --chrome-ink — and --chrome-ink is the light ink that reads on the
+   dark chrome, which in the paper theme is the same value as --paper
+   itself. Dropped straight onto the page, a plain .btn is therefore
+   a cream outline on cream: present, focusable, and invisible. The
+   existing pages sidestep it by only ever using .btn.primary in the
+   body; a secondary action needs the palette stated, and stating it
+   once here is cheaper than a second button component. */
+.pl-jump,
+.pl-add,
+.pl-alt {
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper);
+}
+.pl-jump:hover,
+.pl-add:hover,
+.pl-alt:hover,
+.pl-jump:focus-visible,
+.pl-add:focus-visible,
+.pl-alt:focus-visible {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.pl-jump,
+.pl-add { justify-self: start; display: inline-block; margin-top: var(--s4); }
+
+.pl-empty-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s3);
+}
+
+/* Shared small type: the mono label that names a row or a field. */
+.pl-rowlab,
+.pl-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.pl-none-inline {
+  font-size: var(--t-tiny);
+  color: var(--ink-faint);
+  line-height: var(--lh-snug);
+}
+
+/* ------------------------------------------------------------
+   CHIPS — a derived fact, never an editable one. Everything in a
+   chip on this page was read off a scene: a cast name, a location,
+   a shoot day, a scene number. If it can be typed, it is an input.
+   ------------------------------------------------------------ */
+.pl-chips { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); min-width: 0; }
+.pl-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--s2);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.pl-chip.is-loc { border-left: var(--sk-hue-rule-w) solid var(--hue, var(--plan)); }
+.pl-chip.is-day {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  border-color: var(--rule);
+}
+.pl-chip.is-open { border-color: var(--warn); color: var(--ink-muted); }
+
+/* ------------------------------------------------------------
+   1. THE CALENDAR — one card per shoot day
+   ------------------------------------------------------------ */
+
+.pl-day {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.pl-day:focus-within { border-color: var(--accent); }
+
+.pl-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.pl-day-no {
+  display: inline-grid;
+  place-items: center;
+  min-height: 30px;
+  padding-inline: var(--s3);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+}
+/* The date field. `min-width: 0` on the label as well as the input:
+   a date input has an intrinsic minimum that a flex item will happily
+   honour past the edge of a 390px screen. */
+.pl-day-date {
+  display: grid;
+  gap: 2px;
+  flex: 0 1 12rem;
+  min-width: 0;
+}
+.pl-date {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.pl-day-when {
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.pl-day-meta {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.pl-day-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  min-width: 0;
+}
+.pl-day-row .pl-rowlab { flex: 0 0 auto; }
+
+/* The day's scenes. .scene-table brings the frame and the scroll. */
+.pl-table { margin: 0; }
+.pl-table td.pl-ie,
+.pl-table td.pl-tod,
+.pl-table td.pl-pages {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.pl-table td.pl-pages { font-variant-numeric: tabular-nums; text-align: right; }
+.pl-table td.pl-what { color: var(--ink-body); min-width: 16ch; }
+
+/* ------------------------------------------------------------
+   2. LOCATIONS — the recce card
+   ------------------------------------------------------------ */
+
+.pl-loc {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--perm, var(--hue));
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.pl-loc:focus-within { border-color: var(--accent); }
+
+/* Permission sets --perm, and the left rule and the chip both read
+   it. One declaration per state, in one place, so the card and its
+   badge cannot end up disagreeing. */
+.pl-loc.perm-none { --perm: var(--rule); }
+.pl-loc.perm-open { --perm: var(--warn); }
+.pl-loc.perm-ok   { --perm: var(--ok); }
+.pl-loc.perm-no   { --perm: var(--danger); }
+
+.pl-loc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+}
+.pl-loc-name {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+}
+.pl-perm-chip {
+  padding: 2px var(--s2);
+  border: 1px solid var(--perm, var(--rule));
+  border-radius: var(--radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--perm, var(--ink-muted));
+  white-space: nowrap;
+}
+.pl-loc.perm-none .pl-perm-chip { color: var(--ink-faint); }
+.pl-loc-meta {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.pl-recce {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+}
+.pl-field { display: grid; gap: 2px; min-width: 0; }
+.pl-input,
+.pl-sel,
+.pl-notes {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--t-small);
+}
+.pl-sel { font-family: var(--f-mono); font-size: var(--t-micro); }
+.pl-notes { resize: vertical; line-height: var(--lh-snug); min-height: 3em; }
+.pl-input:focus-visible,
+.pl-sel:focus-visible,
+.pl-notes:focus-visible { border-color: var(--accent); outline: none; }
+
+.pl-loc-scenes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------
+   3. LOOSE ENDS AND ORPHANS
+   ------------------------------------------------------------
+   Scenes with no day, scenes with no place, dates and recce notes
+   whose scenes have gone. Quieter than a card — these are things to
+   notice, not things to work in — and every one of them points at
+   the page that actually owns the fix.
+   ------------------------------------------------------------ */
+
+.pl-loose,
+.pl-orphans {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  margin: var(--s5) 0 var(--s4);
+  padding: var(--s4) var(--s5);
+  background: var(--paper-sunk);
+  border: 1px dashed var(--rule);
+  border-radius: var(--sk-radius);
+}
+.pl-loose-head {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 700;
+}
+.pl-loose-note {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.pl-orphan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-width: 0;
+}
+.pl-orphan-date {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------
+   4. MEDIA — the index, and the notice that says so
+   ------------------------------------------------------------ */
+
+.pl-honest {
+  max-width: 68ch;
+  margin: 0 0 var(--s5);
+  padding: var(--s4) var(--s5);
+  background: var(--accent-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+}
+.pl-honest p {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.pl-honest p:last-child { margin-bottom: 0; }
+
+.pl-media {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+}
+.pl-media:focus-within { border-color: var(--accent); }
+
+.pl-media-bar,
+.pl-media-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.pl-media-title,
+.pl-media-url,
+.pl-media-notes {
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius);
+  font-size: var(--t-small);
+}
+.pl-media-title { flex: 1 1 14rem; }
+.pl-media-url { flex: 1 1 16rem; font-family: var(--f-mono); font-size: var(--t-micro); }
+.pl-media-notes { width: 100%; }
+.pl-media-bar .pl-sel { flex: 0 1 11rem; }
+.pl-media .bd-icon { margin-left: auto; flex: 0 0 auto; }
+
+.pl-media-open {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.pl-media-open[hidden] { display: none; }
+
+/* ------------------------------------------------------------
+   5. NARROW
+   ------------------------------------------------------------ */
+
+@media (max-width: 719px) {
+  .pl-cal, .pl-locs, .pl-media-sec { padding-inline: var(--s4); }
+  .pl-day-meta, .pl-loc-meta { margin-left: 0; }
+  .pl-day-date { flex: 1 1 100%; }
+  .pl-media .bd-icon { margin-left: 0; }
+  .pl-media-bar .pl-sel { flex: 1 1 9rem; }
+  .pl-loose, .pl-orphans { padding: var(--s3) var(--s4); }
+}
+
+/* ------------------------------------------------------------
+   6. PRINT — the calendar and the recce notes are what a unit
+   carries on paper. The media index is a list of links, which is
+   the one thing on the page that is useless printed, and the
+   editing chrome goes with it.
+   ------------------------------------------------------------ */
+
+@media print {
+  .sh-rail,
+  .sh-bar,
+  .pl-media-sec,
+  .pl-jump,
+  .pl-add,
+  .bd-empty { display: none !important; }
+
+  body.has-sh-shell { padding-left: 0 !important; }
+
+  .pl-day,
+  .pl-loc {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: var(--print-paper);
+    color: var(--print-ink);
+    border: 0;
+    border-top: 1px solid var(--print-rule);
+    border-radius: 0;
+    box-shadow: none;
+    padding-inline: 0;
+  }
+  .pl-loose,
+  .pl-orphans { background: var(--print-paper); border-color: var(--print-rule); }
+  .pl-date,
+  .pl-input,
+  .pl-sel,
+  .pl-notes {
+    background: var(--print-paper);
+    color: var(--print-ink);
+    border: 0;
+    border-bottom: 1px solid var(--print-rule);
+    border-radius: 0;
+    padding-inline: 0;
+  }
+  .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
+}

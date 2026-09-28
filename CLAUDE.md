@@ -33,17 +33,27 @@ for hosted previews that shouldn't outlive themselves in a cache.
 
 ```
 index.html feature.html short.html library.html   page entries (Vite MPA)
-breakdown.html                                    scene breakdown (new since v5)
+breakdown.html stripboard.html reports.html       the scene-derived views
+contacts.html visualize.html write.html plan.html the rest of the 22 modules
 arunak-*.html                                     redirect stubs for old URLs
 src/
   data/      ALL content, as JSON. The asset. navigation.json is the IA.
-  lib/       store.js cloud.js dom.js pwa.js scenes.js skin.js
-  ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js actionbar.js
+             steps.feature.json is extracted from legacy/ and will be
+             OVERWRITTEN by `npm run extract`; steps.production.json is
+             hand-written and will not, because phases 03 and 04 never
+             existed in the 2023 pages.
+  lib/       store.js cloud.js dom.js pwa.js skin.js
+             scenes.js contacts.js shots.js script.js locations.js
+             ← one model per thing. Everything else is a VIEW of these.
+  ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
+             actionbar.js launcher.js
   styles/    tokens.css base.css chrome.css editorial.css widgets.css
              modules.css ← the design language, read by every page
              skins/      ← _contract.css + one file per swappable look
-             print.css
+             print.css + one stylesheet per module page
   pages/     hub.js feature.js short.js library.js breakdown.js
+             stripboard.js reports.js contacts.js visualize.js
+             write.js plan.js
   sw.js      service worker (vite-plugin-pwa injectManifest)
 scripts/
   extract/   the parsers that produced src/data — re-runnable, self-checking
@@ -352,12 +362,16 @@ deterministic (same input, byte-identical output).
 In rough priority order. The reasoning behind the ordering is in the revamp plan.
 
 1. **Rename the storage keys** off `arunak_` with a migration. Blocked on a
-   product name. Do it before more people have data, not after.
-2. **Close the chain** — scene → shot → stripboard → day-out-of-days → call
-   sheet. The single feature that would make this worth switching to. It needs a
-   real scene model (INT/EXT, D/N, location, cast IDs, eighths) that the scene
-   list, shot list, schedule and budget all read from; today they are four
-   islands on the same page.
+   product name. This got more urgent, not less: there are now five scoped
+   model keys rather than one, and every new one is another row in the
+   migration that has to be written eventually. Do it before more people have
+   data, not after.
+2. **The chain is closed** — scene → breakdown → stripboard → day out of days
+   → call sheet, all reading `src/lib/scenes.js`. This was the open item that
+   justified the whole rebuild, and it is done. What is left of it is the
+   reverse direction: nothing yet feeds the *budget* from the schedule, so a
+   day added to the stripboard does not move the number in the calculator.
+   That is the next real link, not another module.
 3. **AI, bring-your-own-key.** Key in `localStorage`, per-device, never synced.
    Anthropic's browser calls need `anthropic-dangerous-direct-browser-access`.
    The value is in-place work (dialogue passes, beat critique) using the

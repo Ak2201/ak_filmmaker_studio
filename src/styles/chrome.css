@@ -160,6 +160,25 @@ a:focus-visible { outline-offset: 3px; }
 .btn:hover,
 .tb-link:hover { background: var(--chrome-ink); color: var(--chrome); }
 
+/* A .btn INSIDE THE DOCUMENT is not chrome.
+   --chrome-ink is the toolbar's text colour, and in the paper theme it
+   resolves to #f6f1e6 — the same value as --paper. So a bare .btn
+   dropped into the page body was cream on cream: rendered, focusable,
+   tab-reachable and completely invisible. breakdown.html's "+ Add
+   scene" shipped that way, at a measured 1:1 contrast ratio.
+
+   Existing pages only avoided it by always reaching for .btn.primary
+   in the body, which is luck rather than a rule. `main .btn` is
+   (0,1,1), so .btn.primary at (0,2,0) and .btn.is-danger still win —
+   this only repaints the plain one. */
+main .btn,
+main .tb-link {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+main .btn:hover,
+main .tb-link:hover { background: var(--ink); color: var(--paper); }
+
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
@@ -1867,7 +1886,8 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--hue, var(--panel-gilt));
+  /* On the dark chrome panel a hue must LIFT, not sit at its fill value. */
+  color: var(--hue-lift, var(--panel-gilt));
   border: 1px solid currentColor;
   border-radius: var(--radius);
   padding: 0 var(--s1);

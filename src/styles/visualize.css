@@ -1,0 +1,383 @@
+/* ============================================================
+   VISUALIZE — shot list, storyboard, lookbook
+   ------------------------------------------------------------
+   Only what is genuinely this page's own. The hierarchy (eyebrow →
+   title → deck), the stats strip, the teaching empty states, the
+   `.btn` controls and the `.scene-table` data table are the studio
+   language from modules.css, chrome.css and widgets.css, reused as
+   they are — a "new design language" that only one page speaks is
+   not a language.
+
+   Every colour here is a token and every shape is a --sk-* skin
+   variable, so the page is correct in all five skins and all four
+   themes without knowing which one is on. The phase hue is set once,
+   at the top of each section, and everything below speaks in --hue.
+
+   THE TABLES SCROLL, THE PAGE DOES NOT. `.scene-table` is
+   `display:block; overflow-x:auto`, so its inner rows can be wider
+   than the column it sits in without pushing horizontal scroll onto
+   the document — which is why the column widths below are set on the
+   CELLS and never as a min-width on the table itself. A min-width on
+   the block would be exactly the 390px overflow bug the check looks
+   for. A shot list with seven columns genuinely cannot reflow, so it
+   scrolls, and the rest of the page stays inside the viewport.
+   ============================================================ */
+
+.vz-shots,
+.vz-board,
+.vz-look {
+  --hue: var(--visualize);
+  --hue-on: var(--visualize-on);
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+.vz-shots { padding-block: var(--s6); }
+.vz-board { padding-block: var(--s6); }
+.vz-look  { padding-block: var(--s6) var(--s9); }
+
+.vz-add,
+.vz-add-frame { justify-self: start; margin-top: var(--s3); font-size: var(--t-small); }
+
+/* The local-first disclosure. It is a statement of how the app works,
+   not a warning, so it reads as a note and not as an error. */
+.vz-note {
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+  background: var(--accent-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.vz-note strong { color: var(--ink); }
+
+.vz-fieldset { display: grid; gap: var(--s1); min-width: 0; margin-top: var(--s2); }
+.vz-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------
+   1. THE SHOT LIST — one block per scene
+   ------------------------------------------------------------ */
+
+.vz-scene { display: grid; margin-bottom: var(--s6); min-width: 0; }
+
+.vz-scene-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+}
+.vz-scene-no {
+  padding: 0 var(--s2);
+  background: var(--hue);
+  color: var(--hue-on);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.vz-scene-slug {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.vz-scene-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A scene deleted in the breakdown leaves its shots behind. They are
+   shown, marked, and removable on purpose — never hidden. */
+.vz-scene-head.is-orphan { border-bottom-color: var(--warn); }
+.vz-scene-head.is-orphan .vz-scene-no { background: var(--warn); color: var(--ink); }
+.vz-orphan-note {
+  margin: var(--s2) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  max-width: var(--measure);
+}
+
+/* Column sizing lives on the cells, for the reason in the header. */
+.vz-table { margin-top: var(--s3); }
+.vz-table th { white-space: nowrap; }
+.vz-table .vz-c-no   { width: 5rem; min-width: 5rem; }
+.vz-table .vz-c-lens { min-width: 6rem; }
+.vz-table .vz-c-desc { min-width: 15rem; }
+.vz-table .vz-c-done { min-width: 6rem; }
+.vz-table .vz-c-ctrl { width: 6rem; min-width: 6rem; }
+.vz-table td { vertical-align: top; }
+
+/* Selects are not covered by the shared in-table field rule, which
+   only names .pp-table — so they get the same flush treatment here
+   instead of the full-bleed form control from base.css. */
+.vz-table select {
+  width: 100%;
+  min-width: 7rem;
+  padding: var(--s2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  color: var(--ink);
+  cursor: pointer;
+}
+.vz-table select:hover { border-color: var(--rule); }
+.vz-table select:focus-visible { border-color: var(--accent); outline: none; background: var(--paper); }
+.vz-table .vz-no {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* A checkbox is the one control that must not be 100% wide. */
+.vz-check { display: inline-flex; align-items: center; gap: var(--s2); cursor: pointer; }
+.vz-check input[type="checkbox"] {
+  width: auto;
+  min-width: 0;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--ok);
+}
+.vz-check-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
+}
+.vz-row.is-done .vz-desc,
+.vz-row.is-done .vz-no { opacity: .55; }
+.vz-row.is-done .vz-check-lab { color: var(--ok); }
+
+.vz-table .row-ctrl { white-space: nowrap; }
+
+/* ------------------------------------------------------------
+   2. THE STORYBOARD — a column per shot, grouped by scene
+   ------------------------------------------------------------ */
+
+.vz-bd-scene { margin-bottom: var(--s6); min-width: 0; }
+
+.vz-strip {
+  display: grid;
+  /* min() keeps the track from demanding 260px inside a 358px column
+     minus its padding — the narrow-viewport overflow this page is
+     checked for. */
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: var(--sk-grid-gap);
+  margin-top: var(--s3);
+}
+
+.vz-shotcol {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.vz-shotcol-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.vz-shotcol-no {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--hue);
+  font-variant-numeric: tabular-nums;
+}
+.vz-shotcol-spec {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-shotcol-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+}
+.vz-shotcol-desc {
+  margin: 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.vz-shotcol-desc:empty { display: none; }
+
+.vz-frame {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+  padding: var(--s3);
+  background: var(--paper);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+}
+
+/* The slate stands in for the drawing. It is a frame-shaped space
+   holding the reference, because this app stores no images — see the
+   note the page prints above the board. */
+.vz-frame-slate {
+  position: relative;
+  display: grid;
+  place-content: center;
+  gap: var(--s2);
+  min-height: 6rem;
+  aspect-ratio: 16 / 9;
+  padding: var(--s4) var(--s3) var(--s3);
+  background: var(--paper-sunk);
+  border: 1px dashed var(--rule);
+  border-radius: var(--sk-radius);
+  text-align: center;
+  overflow: hidden;
+}
+.vz-frame-badge {
+  position: absolute;
+  top: var(--s1);
+  left: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
+}
+.vz-frame-view { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.vz-frame-link {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent);
+}
+.vz-frame-desc {
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.vz-frame-none {
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-faint);
+}
+
+.vz-frame input {
+  padding: var(--s2);
+  font-size: var(--t-tiny);
+  border-radius: var(--sk-radius);
+}
+.vz-frame-acts { display: flex; gap: var(--s1); justify-content: flex-end; margin-top: var(--s1); }
+
+/* ------------------------------------------------------------
+   3. THE LOOKBOOK — named boards of references
+   ------------------------------------------------------------ */
+
+.vz-boardcard {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.vz-board-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.vz-board-name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.vz-board-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.vz-board-acts { display: flex; gap: var(--s1); margin-left: auto; }
+.vz-board-none {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+
+.vz-boardcard .vz-fieldset input {
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-small);
+  border-radius: var(--sk-radius);
+}
+
+.vz-table .vz-c-ref { min-width: 13rem; }
+.vz-entry-link {
+  display: inline-block;
+  margin-top: var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   4. NARROW — 390px is the width this page is checked at.
+   Nothing here changes what is on screen, only how much air it
+   gets; the tables keep their own scroll and the frame grid
+   collapses to one column on its own.
+   ------------------------------------------------------------ */
+@media (max-width: 719px) {
+  .vz-shots, .vz-board, .vz-look { padding-inline: var(--s4); }
+  .vz-board-acts { margin-left: 0; }
+  .vz-scene-slug { flex-basis: 100%; }
+}
+
+/* ------------------------------------------------------------
+   5. PRINT — the shot list and the lookbook are handed to people
+   on paper. What goes on paper is the writing, not the controls.
+   ------------------------------------------------------------ */
+@media print {
+  .vz-add,
+  .vz-add-frame,
+  .vz-note,
+  .row-ctrl,
+  .vz-c-ctrl,
+  .vz-frame-acts,
+  .vz-board-acts { display: none !important; }
+
+  .vz-table { overflow: visible; }
+  .vz-shotcol,
+  .vz-boardcard,
+  .vz-bd-scene { break-inside: avoid; }
+  .vz-strip { grid-template-columns: repeat(3, 1fr); }
+}

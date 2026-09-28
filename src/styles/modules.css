@@ -359,12 +359,12 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 .bd-chip-name { color: var(--ink); }
 .bd-chip-x {
   background: none; border: 0; padding: 0 2px;
-  color: var(--ink-faint); cursor: pointer; font: inherit; line-height: 1;
+  color: var(--ink-muted); cursor: pointer; font: inherit; line-height: 1;
 }
 .bd-chip-x:hover { color: var(--danger); }
 
@@ -491,13 +491,15 @@
   padding: 0 var(--s1);
   border: 1px solid currentColor;
   border-radius: var(--radius);
-  color: var(--hue);
+  color: var(--hue-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
 }
 .lx-mod.is-planned { opacity: .66; }
-.lx-mod.is-planned .lx-flag { color: var(--ink-faint); }
+/* --ink-faint is for text you are not meant to read yet; SOON is a
+   label that has to be read. On Desk's white card faint was 2.53:1. */
+.lx-mod.is-planned .lx-flag { color: var(--ink-muted); }
 
 @media (max-width: 719px) {
   .lx-row { grid-template-columns: 1fr; }

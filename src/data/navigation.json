@@ -56,22 +56,22 @@
           "id": "screenplay",
           "label": "Screenplay",
           "purpose": "Write and format the script",
-          "status": "partial",
-          "href": "short.html#step-07",
-          "note": "The short blueprint has a structured editor with Fountain export. A full feature screenplay editor is not built."
+          "status": "built",
+          "href": "write.html#screenplay"
         },
         {
           "id": "revisions",
           "label": "Revisions",
           "purpose": "Coloured revision history",
-          "status": "planned",
-          "note": "White, Blue, Pink, Yellow, Green — the industry revision order, with changed pages marked."
+          "status": "built",
+          "href": "write.html#revisions"
         },
         {
           "id": "docs",
           "label": "Documents",
           "purpose": "Treatments, notes, one-pagers",
-          "status": "planned"
+          "status": "built",
+          "href": "write.html#documents"
         }
       ]
     },
@@ -135,22 +135,22 @@
           "id": "shot-list",
           "label": "Shot List",
           "purpose": "Shots per scene, with size and move",
-          "status": "partial",
-          "href": "feature.html#step-16"
+          "status": "built",
+          "href": "visualize.html#shot-list"
         },
         {
           "id": "storyboard",
           "label": "Storyboard",
           "purpose": "Frames against the shot list",
-          "status": "planned"
+          "status": "built",
+          "href": "visualize.html#storyboard"
         },
         {
           "id": "lookbook",
           "label": "Lookbook",
           "purpose": "Reference images per department",
-          "status": "partial",
-          "href": "feature.html#step-15",
-          "note": "Step 15 is prose. Image support needs the media store."
+          "status": "built",
+          "href": "visualize.html#lookbook"
         }
       ]
     },
@@ -178,14 +178,15 @@
           "id": "calendar",
           "label": "Calendar",
           "purpose": "Prep, shoot and post dates",
-          "status": "planned"
+          "status": "built",
+          "href": "plan.html#calendar"
         },
         {
           "id": "media",
           "label": "Media",
           "purpose": "Your own reference files",
-          "status": "planned",
-          "note": "Needs a storage layer — IndexedDB locally, Supabase Storage when synced."
+          "status": "built",
+          "href": "plan.html#media"
         }
       ]
     },
@@ -199,8 +200,8 @@
           "id": "locations",
           "label": "Locations",
           "purpose": "Recce notes and logistics",
-          "status": "partial",
-          "href": "feature.html#step-21"
+          "status": "built",
+          "href": "plan.html#locations"
         },
         {
           "id": "call-sheets",

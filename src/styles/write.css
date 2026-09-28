@@ -1,0 +1,396 @@
+/* ============================================================
+   WRITE — screenplay, revisions, documents
+   ------------------------------------------------------------
+   The page's own layer. Everything structural — the head, the stat
+   strip, the empty states, the cards, the icon buttons — is the
+   shared language in modules.css and is NOT redrawn here. What is
+   here is the one thing that page cannot know about: a screenplay
+   has a fixed geometry, and six element types each sit at their own
+   measure on the page.
+
+   NO LITERAL SHAPES, NO LITERAL COLOURS. Every radius, padding,
+   border width and face is a --sk-* variable from the skin contract
+   (src/styles/skins/_contract.css) and every colour is a token from
+   tokens.css, so this reads correctly under all five skins and all
+   four themes. The element indents are the one set of raw numbers,
+   and they are PERCENTAGES of the column rather than pixels — that
+   is what keeps a 390px screen from scrolling sideways, and it is
+   also what a screenplay's indents actually are: fractions of the
+   text measure, not distances.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   SECTIONS — the three bands, same measure as the head.
+   ------------------------------------------------------------ */
+.wr-section {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: var(--s6) var(--s7);
+}
+.wr-section + .wr-section { border-top: 1px solid var(--rule-hair); }
+.wr-section .bd-sub { max-width: var(--sk-deck-measure); }
+
+/* ------------------------------------------------------------
+   THE PAGE GAUGE — pages, lines, minutes, and the one export.
+   ------------------------------------------------------------ */
+.wr-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+  padding-block: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.wr-gauge { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.wr-gauge-num {
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--ink);
+}
+.wr-gauge-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  /* --ink-muted, not --ink-faint. Faint is the token for a label beside
+     a number you have already read; these are the readout itself, and at
+     11px uppercase the faint ink measures 2.5:1 in Desk. */
+  color: var(--ink-muted);
+}
+.wr-gauge-sep { color: var(--rule); }
+.wr-export { white-space: nowrap; }
+
+/* ------------------------------------------------------------
+   THE SCREENPLAY PAGE
+   ------------------------------------------------------------
+   One card, and inside it a row per element: the type on the left
+   where it can be changed without hunting for a menu, the text in
+   the middle at its own measure, the three row actions on the right.
+   ------------------------------------------------------------ */
+.wr-page {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s5);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+
+.wr-el {
+  /* The two numbers the whole format rests on. Overridden per type
+     below; the default is a full-measure element (action). */
+  --wr-indent: 0%;
+  --wr-measure: 100%;
+
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  gap: var(--s2);
+  align-items: start;
+}
+/* A new scene gets air above it, the way a printed page does. */
+.wr-el.t-scene { margin-top: var(--s4); }
+.wr-el.t-scene:first-child { margin-top: 0; }
+
+.wr-type {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  background: transparent;
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+
+.wr-text {
+  /* Indent and measure are the format. Both are percentages of the
+     text column, so they shrink with it and cannot overflow: every
+     pair below sums to 100% or less. */
+  width: var(--wr-measure);
+  margin-left: var(--wr-indent);
+  min-height: 0;          /* base.css floors a textarea at 4.5em */
+  padding: var(--s1) var(--s2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--sk-radius);
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  line-height: 1.45;
+  resize: none;           /* the page autosizes it to its content */
+  overflow: hidden;
+}
+.wr-text:hover { border-color: var(--rule-hair); }
+.wr-text:focus { background: var(--paper); }
+
+.wr-el.t-scene      { --wr-indent: 0%;  --wr-measure: 100%; }
+.wr-el.t-action     { --wr-indent: 0%;  --wr-measure: 100%; }
+.wr-el.t-character  { --wr-indent: 22%; --wr-measure: 60%; }
+.wr-el.t-paren      { --wr-indent: 17%; --wr-measure: 45%; }
+.wr-el.t-dialogue   { --wr-indent: 11%; --wr-measure: 70%; }
+.wr-el.t-transition { --wr-indent: 40%; --wr-measure: 60%; }
+
+.wr-el.t-scene .wr-text,
+.wr-el.t-character .wr-text,
+.wr-el.t-transition .wr-text { text-transform: uppercase; font-weight: 700; }
+.wr-el.t-transition .wr-text { text-align: right; }
+.wr-el.t-paren .wr-text { font-style: italic; color: var(--ink-muted); }
+.wr-el.t-scene .wr-text { color: var(--ink); }
+
+.wr-el-acts { display: flex; gap: var(--s1); }
+.wr-add { display: inline-block; margin-top: var(--s5); }
+
+/* ------------------------------------------------------------
+   REVISIONS
+   ------------------------------------------------------------
+   THE SWATCHES ARE INDICATIVE, THE NAME IS AUTHORITATIVE. A
+   production's revision colours are names of paper stock, not screen
+   values, and inventing nine hex literals here would put nine colours
+   outside tokens.css and get three of them wrong in sepia and ink.
+   So each colour maps to the nearest token in the palette, the card
+   prints the name in words, and the swatch keeps its hairline so that
+   White and Buff — which are very nearly the page — still read as
+   swatches rather than as holes.
+   ------------------------------------------------------------ */
+.wr-snap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+}
+.wr-snap-name { flex: 1 1 18rem; width: auto; min-width: 0; }
+.wr-snap .btn { white-space: nowrap; }
+
+.wr-rev-list { display: grid; gap: var(--s3); }
+.wr-rev {
+  --rev-ink: var(--rule);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--rev-ink);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.wr-rev.c-white     { --rev-ink: var(--paper-raised); }
+.wr-rev.c-blue      { --rev-ink: var(--shorts); }
+.wr-rev.c-pink      { --rev-ink: var(--shoot); }
+.wr-rev.c-yellow    { --rev-ink: var(--warn); }
+.wr-rev.c-green     { --rev-ink: var(--ok); }
+.wr-rev.c-goldenrod { --rev-ink: var(--library); }
+.wr-rev.c-buff      { --rev-ink: var(--paper-sunk); }
+.wr-rev.c-salmon    { --rev-ink: var(--feature-lift); }
+.wr-rev.c-cherry    { --rev-ink: var(--feature-deep); }
+
+.wr-rev-swatch {
+  width: var(--s5);
+  height: var(--s5);
+  background: var(--rev-ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius);
+}
+.wr-rev-body { display: grid; gap: 2px; min-width: 0; }
+.wr-rev-colour {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-rev-name { font-family: var(--f-display); font-size: var(--t-lg); color: var(--ink); }
+.wr-rev-meta {
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.wr-rev-acts { display: flex; align-items: center; gap: var(--s2); }
+
+/* A revision name or a document title is user text in a fixed track.
+   Without this a single 60-character word pushes the grid wider than
+   the screen, which at 390px is a sideways-scrolling page. */
+.wr-rev-name,
+.wr-rev-meta,
+.wr-doc-title,
+.wr-doc-meta { overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------
+   DOCUMENTS — a list, and one editor under it.
+   ------------------------------------------------------------ */
+.wr-doc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  align-items: start;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+.wr-doc {
+  display: grid;
+  gap: 2px;
+  padding: var(--s3) var(--s4);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.wr-doc:hover { border-left-color: var(--accent); }
+.wr-doc.is-open { border-left-color: var(--accent); background: var(--accent-wash); }
+.wr-doc-kind {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.wr-doc-title { font-family: var(--f-display); font-size: var(--t-small); }
+.wr-doc-meta {
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.wr-doc-new { align-self: start; justify-self: start; }
+
+.wr-editor {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.wr-editor-head {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--s3);
+}
+.wr-field { display: grid; gap: var(--s1); min-width: 0; }
+.wr-field > span {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-body {
+  min-height: 18em;
+  line-height: var(--lh-body);
+  resize: vertical;
+}
+.wr-editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wr-words {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-words strong {
+  font-size: var(--t-small);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   .btn ON PAPER
+   ------------------------------------------------------------
+   .btn in chrome.css is drawn for the dark toolbar: transparent
+   ground, --chrome-ink type. Dropped into the document body that is
+   near-white text on near-white paper. Scoped to this page's main so
+   nothing shared moves; the fix belongs in chrome.css eventually, and
+   this is a note that it does.
+   ------------------------------------------------------------ */
+#main .btn {
+  color: var(--ink);
+  border-color: var(--rule);
+  padding: var(--s2) var(--s4);
+}
+#main .btn:hover:not(:disabled) { background: var(--ink); color: var(--paper-raised); }
+#main .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+}
+#main .btn.primary:hover:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--accent-on);
+}
+#main .btn.danger { background: none; color: var(--danger); border-color: var(--danger); }
+#main .btn.danger:hover:not(:disabled),
+#main .btn.danger:focus-visible {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--danger-on);
+}
+#main .btn:disabled { opacity: .4; cursor: default; }
+
+/* ------------------------------------------------------------
+   NARROW — 390px is the one that has to hold.
+   ------------------------------------------------------------
+   The type column drops under the row, the indents shrink to a
+   fraction that still reads as an indent, and every indent + measure
+   pair still sums to 100% or less so nothing pushes the page sideways.
+   ------------------------------------------------------------ */
+@media (max-width: 719px) {
+  .wr-section { padding-inline: var(--s4); padding-block: var(--s5) var(--s6); }
+  .wr-page { padding: var(--s4) var(--s3); }
+
+  .wr-el { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s2); }
+  .wr-type { grid-column: 1; }
+  .wr-el-acts { grid-column: 2; }
+  .wr-text { grid-column: 1 / -1; }
+
+  .wr-el.t-character  { --wr-indent: 12%; --wr-measure: 88%; }
+  .wr-el.t-paren      { --wr-indent: 9%;  --wr-measure: 80%; }
+  .wr-el.t-dialogue   { --wr-indent: 5%;  --wr-measure: 95%; }
+  .wr-el.t-transition { --wr-indent: 25%; --wr-measure: 75%; }
+
+  .wr-rev { grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); }
+  .wr-rev-acts { grid-column: 1 / -1; }
+  .wr-editor-head { grid-template-columns: 1fr; }
+  .wr-bar { gap: var(--s3); }
+}
+
+/* ------------------------------------------------------------
+   PRINT — the screenplay, without the machinery around it.
+   ------------------------------------------------------------ */
+@media print {
+  .wr-type,
+  .wr-el-acts,
+  .wr-bar,
+  .wr-snap,
+  .wr-add,
+  .wr-doc-new,
+  .wr-editor-foot { display: none; }
+  .wr-page { border: 0; padding: 0; box-shadow: none; }
+  .wr-el { grid-template-columns: 1fr; }
+  .wr-text { border: 0; background: none; }
+}

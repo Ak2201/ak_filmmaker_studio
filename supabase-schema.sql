@@ -39,7 +39,10 @@ create table if not exists public.project_data (
                 'feature','short','library',
                 'feature_prefs','short_prefs','library_prefs','activity',
                 'scenes',
-                'contacts'
+                'contacts',
+                'shots',
+                'script',
+                'locations'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),

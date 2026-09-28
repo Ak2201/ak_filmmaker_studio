@@ -1,0 +1,52 @@
+/* ============================================================
+   THE SKIN CONTRACT
+   ------------------------------------------------------------
+   A skin is ONE file that sets the variables below. Nothing else.
+   No selectors of its own, no new class names, no JavaScript.
+
+   Drop a file into src/styles/skins/ and it is live: skin.js globs
+   this directory, and the picker is built by reading the loaded
+   stylesheets back for `:root[data-skin="…"]` rules. There is no
+   registry to update, which is the same reason the step list lives
+   in JSON — a hand-maintained list of the things that exist is a
+   list that goes stale.
+
+   A skin file looks like this, and this is the whole of it:
+
+     :root[data-skin="mine"] {
+       --sk-name: "My Skin";
+       --sk-radius: 0;
+       --sk-title-style: italic;
+       ...
+     }
+
+   RULES FOR A SKIN
+   1. Set --sk-name. The picker shows it; a skin without one is
+      listed by its id, which is nobody's idea of a label.
+   2. Set every variable, or inherit: unset variables fall through
+      to the studio defaults below, so a three-line skin is legal.
+   3. Use TOKENS for colour, never literals. A skin that hard-codes a
+      hex value is a skin that breaks in sepia. (Writing one here
+      would also trip the raw-colour grep in CLAUDE.md, which does not
+      read comments — hence the prose.) The three themes
+      (paper / sepia / ink) are orthogonal to the skin: theme picks
+      the palette, skin picks the shapes and the type. Both must
+      work in all combinations, which is why colour here is always
+      var(--something).
+   4. Do not add selectors. The moment a skin needs `.film-card`,
+      the language is missing a variable — add the variable to this
+      contract instead, so every other skin gets it too.
+
+   WHAT EACH GROUP CONTROLS
+
+   geometry   corner radius, how much air a card and a band get
+   surfaces   what a card is made of, and the one dark slab
+   rules      the left rule: width and colour, split into the one
+              that carries data (tier, category) and the one that
+              is decoration. A skin sets the decorative one to a
+              hairline to get the quiet look, or to 4px of accent
+              to get the printed-matter look.
+   type       the display sizes and whether the face is italic
+   pacing     how tall a cover is — the difference between "a book
+              you open" and "a tool you work in"
+   ============================================================ */

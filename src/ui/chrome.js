@@ -23,6 +23,8 @@
    ============================================================ */
 import Store from '../lib/store.js';
 import { registerSW } from '../lib/pwa.js';
+import { actionMenu } from './actionbar.js';
+import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
 import glossaryData from '../data/glossary.json';
 
@@ -205,6 +207,83 @@ StudioUI.attachThemePicker = function (host) {
   wrap.querySelectorAll('button').forEach(b =>
     b.classList.toggle('active', b.dataset.theme === cur));
 };
+
+// ============================================================
+// APPEARANCE — theme and skin, one menu, four pages
+// ------------------------------------------------------------
+// These are the same kind of setting: neither changes the document,
+// both change how it looks, and both are per-device. They used to be
+// a single ◐ button that cycled three themes, which cannot express a
+// second axis at all — three themes times N skins is a grid, not a
+// cycle.
+//
+// Built here rather than in each page's toolbar because there is
+// nothing page-specific about it, and because a skin dropped into
+// src/styles/skins/ has to appear on all four pages without four
+// edits. The choices are read live from skin.js, which reads them
+// from the stylesheets.
+// ============================================================
+function appearanceMenu() {
+  /* A glyph, not the word: this replaces a 32px icon button, and a
+     110px "Appearance ▾" in its place wrapped the feature toolbar onto
+     a second row — 40px of permanent chrome bought with one label. */
+  return actionMenu('◐', [
+    {
+      label: 'Theme',
+      action: 'set-theme',
+      attr: 'data-theme-choice',
+      value: currentTheme(),
+      choices: [
+        { value: 'paper', label: 'Paper' },
+        { value: 'sepia', label: 'Sepia' },
+        { value: 'ink',   label: 'Ink' }
+      ]
+    },
+    {
+      label: 'Design',
+      action: 'set-skin',
+      attr: 'data-skin-choice',
+      value: currentSkin(),
+      choices: listSkins().map((sk) => ({ value: sk.id, label: sk.label }))
+    }
+  ], { align: 'right', compact: true, ariaLabel: 'Appearance — theme and design' });
+}
+StudioUI.appearanceMenu = appearanceMenu;
+
+/* Mount it wherever a page kept the old ◐ button, replacing it. One
+   call site per page would be four call sites; this is one. */
+function upgradeThemeButton(root) {
+  const host = (root || document).querySelector('#darkBtn');
+  if (!host || !host.parentElement) return;
+  if (host.parentElement.querySelector('.tb-menu[data-appearance]')) return;
+  const menu = appearanceMenu();
+  menu.setAttribute('data-appearance', '');
+  host.replaceWith(menu);
+}
+StudioUI.upgradeThemeButton = upgradeThemeButton;
+
+/* Self-wired, so no page has to add an entry to its ACTIONS map for a
+   setting none of them owns. */
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-theme-choice], [data-skin-choice]');
+    if (!t) return;
+    if (t.hasAttribute('data-theme-choice')) applyTheme(t.getAttribute('data-theme-choice'));
+    else {
+      const id = t.getAttribute('data-skin-choice');
+      applySkin(id);
+      const label = (listSkins().find((sk) => sk.id === id) || {}).label || id;
+      StudioUI.toast('Design: ' + label, { type: 'info', duration: 1400 });
+    }
+    // Reflect the new state without rebuilding the menu.
+    const grp = t.parentElement;
+    grp.querySelectorAll('.tb-choice').forEach((b) => {
+      const on = b === t;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', String(on));
+    });
+  });
+}
 
 // ============================================================
 // READING PROGRESS BAR
@@ -1293,8 +1372,10 @@ global.StudioUI = StudioUI;
 // ============================================================
 // AUTO-INIT
 // ============================================================
-// Apply theme NOW (before DOMContentLoaded) to avoid flash.
+// Apply theme and skin NOW (before DOMContentLoaded) to avoid a flash
+// of the wrong palette or the wrong design.
 try { loadTheme(); } catch (e) {}
+try { loadSkin(); } catch (e) {}
 
 function autoInit() {
   try {
@@ -1305,6 +1386,7 @@ function autoInit() {
     registerSW();
 
     loadTheme();
+    loadSkin();
     injectSkipLink();
     injectReadingProgress();
     ensureToastHost();
@@ -1319,6 +1401,7 @@ function autoInit() {
     // Auto-attach sign-in pill to the toolbar on every page
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) attachSignInPill(toolbar);
+    upgradeThemeButton(toolbar);
     // Mobile bar on blueprints (auto-detect)
     if (document.querySelector('section.step') && window.matchMedia('(max-width: 720px)').matches) {
       StudioUI.attachMobileActionBar();

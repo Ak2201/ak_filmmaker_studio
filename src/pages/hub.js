@@ -46,6 +46,7 @@ import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/widgets.css';
+import '../styles/modules.css';
 import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -1828,6 +1829,9 @@ function init() {
   StudioUI.autoAriaLabels();
   StudioUI.polishEmptyStates();
   syncThemeIcon();
+  // Swaps the ◐ cycle button for the Appearance menu (theme + design).
+  // After this the button is gone, which is why syncThemeIcon() runs first.
+  StudioUI.upgradeThemeButton(toolbar);
 
   renderGreeting();
   renderProjects();

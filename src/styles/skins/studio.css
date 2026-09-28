@@ -1,0 +1,65 @@
+/* ============================================================
+   SKIN: STUDIO — the default, and the defaults.
+   ------------------------------------------------------------
+   The quiet one. Hairlines, air, one dark slab per step, roman
+   display type. This is the language described at the top of
+   modules.css, expressed as the contract in _contract.css.
+
+   The bare `:root` block is load-bearing, not a convenience. It is
+   the same trap the theme fell into: the stylesheets key off
+   `:root[data-skin]`, so a page that has not run skin.js yet — or a
+   browser where localStorage throws — would render with every
+   --sk-* unset and every card would lose its border and its
+   padding. Declaring the defaults on bare :root means the app is
+   correct before any JavaScript runs, and the skin attribute only
+   ever *changes* the look, never supplies it.
+   ============================================================ */
+
+:root,
+:root[data-skin="studio"] {
+  --sk-name: "Studio";
+
+  /* geometry */
+  --sk-radius:        var(--radius);
+  --sk-card-pad:      var(--s4) var(--s5);
+  --sk-band-pad:      var(--s8);
+  --sk-grid-gap:      var(--s4);
+
+  /* surfaces */
+  --sk-card-bg:       var(--paper-raised);
+  --sk-card-line:     var(--rule-hair);
+  --sk-card-line-w:   1px;
+  --sk-card-ink:      var(--ink-body);
+  --sk-card-shadow:   none;
+
+  /* the one dark slab */
+  --sk-slab-bg:       var(--panel);
+  --sk-slab-ink:      var(--panel-ink);
+  --sk-slab-rule-w:   3px;
+  --sk-slab-rule-c:   var(--panel-gilt);
+
+  /* rules: the hue-carrying one, and the decorative one */
+  --sk-hue-rule-w:    3px;
+  --sk-deco-rule-w:   1px;
+  --sk-deco-rule-c:   var(--rule-hair);
+  --sk-deco-bg:       var(--paper-raised);
+  --sk-deco-ink:      var(--ink-body);
+
+  /* type */
+  --sk-title-size:    clamp(2rem, 4.5vw, 3rem);
+  --sk-title-style:   normal;
+  --sk-title-lh:      1.04;
+  --sk-h2-size:       var(--t-2xl);
+  --sk-h2-style:      normal;
+  --sk-deck-size:     var(--t-base);
+  --sk-deck-style:    normal;
+  --sk-deck-measure:  62ch;
+  --sk-eyebrow-track: var(--track-label);
+  --sk-stepnum-size:  var(--t-2xl);
+  --sk-card-h-size:   var(--t-lg);
+  --sk-card-h-style:  normal;
+
+  /* pacing */
+  --sk-cover-min:     0;
+  --sk-cover-pad:     var(--s8) var(--gutter);
+}

@@ -1,57 +1,150 @@
 /* ============================================================
-   MODULE PAGES — the new visual language
+   THE STUDIO LANGUAGE
    ------------------------------------------------------------
-   The editorial pages are dense on purpose: printed matter, mono
-   labels, tight rhythm. That reads as cluttered on a working screen,
-   which is the complaint. Module pages go the other way, taking the
-   things that make StudioBinder legible:
+   This began as breakdown.html's private stylesheet. It is now the
+   one every page reads, because a "new design language" that only
+   one page speaks is not a language — it is an exception.
+
+   The editorial pages were dense on purpose: printed matter, mono
+   labels, tight rhythm, a coloured rule down the side of every
+   thought. That reads as clutter on a working screen, which was the
+   complaint. The five rules below are what makes StudioBinder
+   legible, restated for this app:
 
      air            generous padding; one idea per band
-     hierarchy      eyebrow → large heading → muted deck → one action
+     hierarchy      eyebrow → heading → muted deck → one action
      quiet chrome   hairline borders, no boxes inside boxes
-     colour = data  hue means a category, never decoration
-     one CTA        a single filled button per view; everything else quiet
+     colour = data  a hue means a category, never decoration
+     one CTA        a single filled button per view; the rest quiet
 
-   Same tokens as the rest of the app — this is a different
-   arrangement of the design system, not a second one.
+   The fourth rule is the one that did the work. Before this pass the
+   feature page drew 182 panels with a 3–4px coloured rule down the
+   left. Ninety per cent of them were the SAME colour on every
+   instance, so the colour distinguished nothing — it was texture. A
+   rule survives here only where its hue varies to mean something
+   (festival tier, element category, which film an example is from)
+   or where it marks a quotation, which is a typographic convention
+   rather than decoration.
+
+   Same tokens as the rest of the app — a different arrangement of
+   the design system, not a second one. Where a rule below names both
+   a .bd- class and an editorial class, that is deliberate: they are
+   the same object, and defining it twice is how the two languages
+   drifted apart in the first place.
+
+   NOTHING HERE HARD-CODES A SHAPE. Every radius, padding, border
+   width, display size and italic is a --sk-* variable, and a skin is
+   one file that sets them (src/styles/skins/, contract in
+   _contract.css). That is what makes the design swappable instead of
+   merely changed: "studio" below is the default skin, "press" is the
+   look this replaced, "binder" is a third, and each is ~20 lines with
+   no selector of its own. Adding a shape here that is not a variable
+   is how that stops being true.
    ============================================================ */
 
-/* ---- page frame ---- */
-.bd-head,
-.bd-list,
-.bd-elements,
-.bd-empty {
-  max-width: var(--measure-wide);
-  margin-inline: auto;
-  padding-inline: var(--s5);
-}
-.bd-head { padding-block: var(--s7) var(--s5); }
+/* ------------------------------------------------------------
+   1. HIERARCHY — eyebrow, title, deck. Four words of structure,
+   repeated on every page, so a reader never has to work out which
+   size means what.
+   ------------------------------------------------------------ */
 
-.bd-eyebrow {
+/* The eyebrow: mono, small, accent. Says what KIND of thing follows. */
+.bd-eyebrow,
+.section-head .label,
+.how-to .label,
+.phase .label,
+.master-mark,
+.cover-mark,
+.hero-vol,
+.por-thozil .label,
+.why-this .label,
+.disclaimer .label,
+.ask-label,
+.ex-label,
+.ex-card .meta,
+.watch-step .step-tag,
+.fest-card .tier,
+.beat-cell .pos,
+.prod-field label,
+.gloss-cat,
+.step-check h4,
+.formula-box .label,
+.formula .lab,
+.tip-box .label,
+.why-box .lab,
+.director-card .study .lab,
+.ladder-rung .target {
   margin: 0 0 var(--s3);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  font-weight: 600;
+  letter-spacing: var(--sk-eyebrow-track);
   text-transform: uppercase;
   color: var(--accent);
 }
-.bd-title {
+
+/* The page title. Roman, not italic: the italic display face was the
+   book's voice and it fought every form control on the page. One word
+   may carry the accent via <em>, which is enough character. */
+.bd-title,
+.master-title,
+.cover-title,
+.vol-cover h1,
+.hero h1 {
   margin: 0 0 var(--s3);
   font-family: var(--f-display);
-  font-size: clamp(2rem, 4.5vw, 3rem);
-  line-height: 1.04;
+  font-size: var(--sk-title-size);
+  font-weight: 800;
+  font-style: var(--sk-title-style);
+  line-height: var(--sk-title-lh);
   letter-spacing: var(--track-tight);
 }
-.bd-deck {
-  max-width: 62ch;
+
+/* Section headings, one step down. */
+.bd-h2,
+.section-head h2,
+.how-to h2,
+.glossary h2,
+.pitch-section h2,
+.phase h2,
+.interlude h2 {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--sk-h2-size);
+  font-weight: 800;
+  font-style: var(--sk-h2-style);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+}
+
+/* The deck: one muted paragraph under a heading, then stop. */
+.bd-deck,
+.section-head .deck,
+.how-to .deck,
+.glossary .deck,
+.pitch-section .deck,
+.sync-section .deck,
+.step-deck,
+.hero-deck,
+.master-sub,
+.cover-sub,
+.vol-cover .sub {
+  max-width: var(--sk-deck-measure);
   margin: 0 0 var(--s5);
-  font-size: var(--t-base);
+  font-size: var(--sk-deck-size);
+  font-style: var(--sk-deck-style);
   line-height: var(--lh-body);
   color: var(--ink-muted);
 }
 
-/* ---- stat strip: numbers first, label second ---- */
-.bd-stats {
+/* ------------------------------------------------------------
+   2. STAT STRIP — numbers first, label second, hairline above and
+   below. The hub's hero stats and the breakdown's counts were the
+   same object drawn twice.
+   ------------------------------------------------------------ */
+.bd-stats,
+.hero-stats,
+.hub-stat-strip {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s6);
@@ -59,14 +152,22 @@
   border-top: 1px solid var(--rule-hair);
   border-bottom: 1px solid var(--rule-hair);
 }
-.bd-stat { display: flex; flex-direction: column; gap: 2px; }
-.bd-stat strong {
+.bd-stat,
+.hero-stat,
+.hub-stat-strip .hss-item { display: flex; flex-direction: column; gap: 2px; }
+.bd-stat strong,
+.hero-stat .num,
+.hub-stat-strip .hss-num {
   font-family: var(--f-display);
   font-size: var(--t-xl);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  color: var(--ink);
 }
-.bd-stat span {
+.bd-stat span,
+.hero-stat .lab,
+.hub-stat-strip .hss-lab {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -74,7 +175,187 @@
   color: var(--ink-faint);
 }
 
-/* ---- empty state: the module teaches itself ---- */
+/* ------------------------------------------------------------
+   3. SURFACES — one card, used everywhere.
+   ------------------------------------------------------------
+   Seventeen objects across four pages were "a paper block with a
+   coloured left rule". This is the one of them. A hairline says
+   "this is a container"; it does not also try to say what kind.
+   ------------------------------------------------------------ */
+.bd-scene,
+.film-card,
+.director-card,
+.rule-card,
+.watch-step,
+.gloss-item,
+.tool-card,
+.index-col,
+.ex-card,
+.ladder-rung,
+.step-check,
+.por-thozil,
+.why-this,
+.disclaimer,
+.tip-box,
+.why-box {
+  padding: var(--sk-card-pad);
+  background: var(--sk-deco-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-deco-ink);
+}
+
+/* Colour still marks these — in the eyebrow, which is one line of
+   accent type rather than a slab of it. */
+.por-thozil { background: var(--accent-wash); }
+
+/* The hub's three blueprint doors and the start cards are hue-coded —
+   feature / shorts / library — so their rule keeps its full width.
+   This is the case the "colour = data" rule exists to protect, and it
+   is the one the first pass broke: folding them into the plain card
+   above left the doors with a 1px rule and repainted the feature
+   door's hue to the generic hairline, so three blueprints read as
+   two. Padding and shadow stay with the door in editorial.css; what
+   the language owns here is the surface. */
+.door {
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: var(--sk-hue-rule-w) solid var(--feature);
+  border-radius: var(--sk-radius);
+}
+.door.shorts  { border-top-color: var(--shorts); }
+.door.library { border-top-color: var(--library); }
+.start-card {
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--library);
+  border-radius: var(--sk-radius);
+}
+.start-card.f { border-left-color: var(--feature); }
+.start-card.s { border-left-color: var(--shorts); }
+.start-card.l { border-left-color: var(--library); }
+
+/* Where the hue DOES carry data it keeps the rule: tier, category,
+   which volume, which of two films. */
+.fest-card,
+.vs-card,
+.example,
+.bd-el {
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.fest-card.t1 { border-left-color: var(--accent); }
+.fest-card.t2 { border-left-color: var(--library); }
+.fest-card.t3 { border-left-color: var(--rule); }
+.vs-card.feature,
+.example.alt { border-left-color: var(--library); }
+/* An example pair on the feature page is two different films and the
+   hue says which. The short page's pairs are not marked that way, so
+   there the same rule is one colour on every card — decoration by the
+   definition above. It gets the hairline instead. Stated as "a group
+   with nothing to contrast", not as "the short page", because the rule
+   is about the markup, not about which file rendered it. */
+.examples:not(:has(.alt)) .example {
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+}
+.bd-el { border-left-color: var(--hue); }
+
+/* A quotation keeps its rule. That is 500 years old and is not
+   decoration — it is how a reader knows the words are borrowed. */
+.bd-example {
+  max-width: 62ch;
+  margin: 0 auto var(--s6);
+  padding: var(--s4) var(--s5);
+  text-align: left;
+  background: var(--sk-card-bg);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.bd-example-film {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* The one ink slab left per step. It was three — formula, tip and
+   why — and three dark blocks in a column read as a wall. */
+.formula-box,
+.formula {
+  max-width: var(--measure-wide);
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s5);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+  border: 0;
+  border-left: var(--sk-slab-rule-w) solid var(--sk-slab-rule-c);
+  border-radius: var(--sk-radius);
+}
+.formula-box .label,
+.formula .lab { color: var(--panel-gilt); }
+
+/* No boxes inside boxes. A card that finds itself inside a card
+   drops its own ground and keeps only the hairline — this is the
+   rule that took nesting depth from four to two. */
+.bd-scene .bd-scene,
+.film-card .example, .film-card .ex-card, .film-card .tip-box, .film-card .why-box,
+.director-card .study,
+.ladder-rung .example, .ladder-rung .ex-card,
+.step-check .tip-box, .step-check .why-box,
+.ex-card .tip-box, .ex-card .why-box,
+.por-thozil .tip-box, .por-thozil .why-box,
+.door .start-card, .index-col .tool-card {
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--rule-hair);
+  border-radius: 0;
+  padding: var(--s2) 0 var(--s2) var(--s4);
+  color: inherit;
+}
+
+/* ------------------------------------------------------------
+   4. CHIPS — hue carries the category.
+   ------------------------------------------------------------ */
+.bd-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.bd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2) var(--s1) var(--s3);
+  border: 1px solid var(--hue);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: var(--t-tiny);
+}
+.bd-chip-cat {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue);
+}
+.bd-chip-name { color: var(--ink); }
+.bd-chip-x {
+  background: none; border: 0; padding: 0 2px;
+  color: var(--ink-faint); cursor: pointer; font: inherit; line-height: 1;
+}
+.bd-chip-x:hover { color: var(--danger); }
+
+/* ------------------------------------------------------------
+   5. EMPTY STATE — the module teaches itself.
+   ------------------------------------------------------------ */
 .bd-empty { padding-block: var(--s8); text-align: center; }
 .bd-empty-mark { font-size: 3rem; line-height: 1; color: var(--accent); opacity: .5; }
 .bd-empty h2 {
@@ -110,40 +391,24 @@
 }
 .bd-how-step strong { font-family: var(--f-display); font-size: var(--t-small); }
 .bd-how-step p { margin: 0; font-size: var(--t-small); color: var(--ink-muted); line-height: var(--lh-snug); }
-
-/* The worked example, same idea as the glossary: the concept is not
-   abstract if a film everyone has seen already did it. */
-.bd-example {
-  max-width: 62ch;
-  margin: 0 auto var(--s6);
-  padding: var(--s4) var(--s5);
-  text-align: left;
-  background: var(--paper-raised);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  font-size: var(--t-small);
-  line-height: var(--lh-body);
-  color: var(--ink-body);
-}
-.bd-example-film {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--accent);
-}
 .bd-cta { font-size: var(--t-small); padding: var(--s3) var(--s5); }
 
-/* ---- scene cards: one row of facts, one line of story ---- */
-.bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
-.bd-scene {
-  display: grid;
-  gap: var(--s3);
-  padding: var(--s4);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+/* ============================================================
+   BREAKDOWN — what is genuinely this page's own.
+   ============================================================ */
+
+.bd-head,
+.bd-list,
+.bd-elements,
+.bd-empty {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
 }
+.bd-head { padding-block: var(--s7) var(--s5); }
+
+.bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+.bd-scene { display: grid; gap: var(--s3); }
 .bd-scene:focus-within { border-color: var(--accent); }
 .bd-scene-bar {
   display: flex;
@@ -213,67 +478,24 @@
 .bd-icon.is-danger { color: var(--danger); border-color: var(--danger); }
 .bd-icon.is-danger:hover { background: var(--danger); color: var(--danger-on); }
 
-/* ---- element chips: hue carries the category ---- */
-.bd-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.bd-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  padding: var(--s1) var(--s2) var(--s1) var(--s3);
-  border: 1px solid var(--phase-hue);
-  border-left-width: 3px;
-  border-radius: var(--radius);
-  background: var(--paper);
-  font-size: var(--t-tiny);
-}
-.bd-chip-cat {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--phase-hue);
-}
-.bd-chip-name { color: var(--ink); }
-.bd-chip-x {
-  background: none; border: 0; padding: 0 2px;
-  color: var(--ink-faint); cursor: pointer; font: inherit; line-height: 1;
-}
-.bd-chip-x:hover { color: var(--danger); }
-
 .bd-add-el { display: inline-flex; gap: var(--s2); flex: 1 1 18rem; min-width: 0; }
 .bd-add-name { flex: 1; min-width: 0; }
-
 .bd-add { justify-self: start; }
 
-/* ---- element index ---- */
 .bd-elements { padding-block: var(--s6) var(--s8); }
-.bd-h2 {
-  margin: 0 0 var(--s2);
-  font-family: var(--f-display);
-  font-size: var(--t-2xl);
-  letter-spacing: var(--track-tight);
-}
 .bd-sub, .bd-none { margin: 0 0 var(--s5); color: var(--ink-muted); font-size: var(--t-small); }
 .bd-el-grid {
   display: grid;
   gap: var(--s3);
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
-.bd-el {
-  display: grid;
-  gap: 2px;
-  padding: var(--s3) var(--s4);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule-hair);
-  border-left: 3px solid var(--phase-hue);
-  border-radius: var(--radius);
-}
+.bd-el { display: grid; gap: 2px; padding: var(--s3) var(--s4); }
 .bd-el-cat {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--phase-hue);
+  color: var(--hue);
 }
 .bd-el-name { font-family: var(--f-display); font-size: var(--t-small); }
 .bd-el-scenes { font-size: var(--t-tiny); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
@@ -281,6 +503,6 @@
 @media (max-width: 719px) {
   .bd-head, .bd-list, .bd-elements, .bd-empty { padding-inline: var(--s4); }
   .bd-head { padding-block: var(--s5) var(--s4); }
-  .bd-stats { gap: var(--s4); }
+  .bd-stats, .hero-stats, .hub-stat-strip { gap: var(--s4); }
   .bd-scene-acts { margin-left: 0; }
 }

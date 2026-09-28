@@ -1555,7 +1555,18 @@ a:focus-visible { outline-offset: 3px; }
 
 /* --- 560px: phone ------------------------------------------ */
 @media (max-width: 560px) {
+  /* The toolbar wraps here rather than scrolling sideways, because a
+     control you have to swipe to find is a control you do not know is
+     there. Wrapped, it is four rows and 175px — and sticky, that was
+     391px of permanent chrome above a text field on an 844px phone.
+     Forty-six per cent of the screen, while writing.
+
+     So on a phone it scrolls away. What you actually need while typing
+     is already elsewhere and already fixed: the bottom action bar
+     (attachMobileActionBar) and the save indicator. The toolbar is
+     one flick up. */
   .toolbar {
+    position: static;
     flex-wrap: wrap;
     overflow-x: visible;
   }
@@ -1725,14 +1736,14 @@ a:focus-visible { outline-offset: 3px; }
 .sh-phase-btn:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
 .sh-phase.is-active .sh-phase-btn {
   color: var(--chrome-ink);
-  border-color: var(--phase-hue);
+  border-color: var(--hue);
 }
 /* The dot is the whole colour system in 8px: six phases, six hues,
    legible before the label is read. */
 .sh-phase-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--phase-hue);
+  background: var(--hue);
   flex: none;
 }
 
@@ -1747,7 +1758,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--panel);
   color: var(--panel-ink);
   border: 1px solid var(--panel-hair);
-  border-top: 2px solid var(--phase-hue);
+  border-top: 2px solid var(--hue);
   border-radius: var(--radius);
   box-shadow: var(--shadow-modal);
   z-index: var(--z-overlay);
@@ -1790,7 +1801,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--phase-hue, var(--panel-gilt));
+  color: var(--hue, var(--panel-gilt));
   border: 1px solid currentColor;
   border-radius: var(--radius);
   padding: 0 var(--s1);
@@ -1817,19 +1828,33 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 @media (min-width: 1100px) {
+  /* Sticky only where there is room for it. One 52px band plus the
+     page toolbar is a reasonable permanent cost on a laptop; the same
+     two bars on a phone, where the shell stacks into two rows, would
+     be 164px of chrome above a text field, so narrow screens keep
+     today's behaviour and scroll the shell away. */
   .sh-shell {
+    position: sticky;
+    top: 0;
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: stretch;
   }
+  /* --sh-h is published by mountShell() from the bar's measured
+     height. The fallback matters: if the shell never mounted, the
+     toolbar must still stick to the top rather than to a phantom. */
+  .has-sh-shell .toolbar { top: var(--sh-h, 0px); }
+  /* The rail stays a ROW here. As a column it was two stacked items,
+     which stretched the whole band to 100px — fine when the band
+     scrolled away, wrong now that it is sticky and that height is
+     charged against every screen for the whole session. One row of
+     52px is the difference between a bar and a wall. */
   .sh-rail {
-    flex-direction: column;
-    align-items: stretch;
     border-bottom: 0;
     border-right: 1px solid var(--chrome-hair);
-    padding: var(--s3) var(--s2);
+    padding: var(--s2) var(--s3);
   }
-  .sh-rail-item { justify-content: flex-start; }
+  .sh-phasebar { align-items: center; }
 }
 
 @media print {
@@ -1892,4 +1917,45 @@ a:focus-visible { outline-offset: 3px; }
   .tb-menu { position: static; }
   .toolbar { position: relative; }
   .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
+}
+
+/* ---- choice groups inside a menu ----------------------------
+   A radio row, not a command: Theme and Design are settings you
+   try, so all the options are visible at once and the panel stays
+   open while you compare them. */
+.tb-group { padding: var(--s2) var(--s3) var(--s3); }
+.tb-group-label {
+  margin-bottom: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.tb-choices { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.tb-choice {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: var(--s1) var(--s3);
+  background: none;
+  border: 1px solid var(--panel-hair);
+  border-radius: var(--radius);
+  color: var(--panel-muted);
+  cursor: pointer;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tb-choice:hover { background: var(--panel-raised); color: var(--panel-ink); }
+.tb-choice.active {
+  background: var(--panel-gilt);
+  border-color: var(--panel-gilt);
+  color: var(--panel);
+}
+.tb-menu-btn.is-compact {
+  min-width: 34px;
+  padding-inline: var(--s2);
+  text-align: center;
 }

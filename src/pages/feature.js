@@ -49,6 +49,7 @@ import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/widgets.css';
+import '../styles/modules.css';
 import '../styles/print.css';
 
 /* ---- store FIRST ------------------------------------------
@@ -2496,6 +2497,7 @@ function reinitChrome() {
     StudioUI.polishEmptyStates();
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) attachSignInPill(toolbar);
+    StudioUI.upgradeThemeButton(toolbar);
     if (window.matchMedia('(max-width: 720px)').matches) StudioUI.attachMobileActionBar();
   } catch (e) {
     console.warn('[feature] chrome re-init', e);

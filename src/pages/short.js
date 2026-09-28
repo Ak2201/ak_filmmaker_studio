@@ -43,6 +43,7 @@ import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/widgets.css';
+import '../styles/modules.css';
 import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -1379,6 +1380,7 @@ function reinitChrome() {
     StudioUI.polishEmptyStates();
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) StudioUI.attachSignInPill(toolbar);
+    StudioUI.upgradeThemeButton(toolbar);
     if (window.matchMedia('(max-width: 720px)').matches) StudioUI.attachMobileActionBar();
   } catch (e) {
     // The chrome extras are a polish layer; none of them is a reason to

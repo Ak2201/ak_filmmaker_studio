@@ -25,23 +25,42 @@ let seq = 0;
 
 /**
  * A dropdown of actions.
- * items: [{ label, action?, href?, title?, danger?, hint?, id? } | '---']
+ * items: [
+ *   { label, action?, href?, title?, danger?, hint?, id? }   a command
+ * | { label, choices: [{ value, label }], action, attr, value }  a choice group
+ * | '---'                                                    a separator
+ * ]
+ *
+ * A choice group is a radio row inside the menu — one label, N buttons,
+ * exactly one checked. Theme and skin are both this shape, and neither
+ * is a command: picking "Sepia" does not close the conversation, it
+ * changes a setting you may want to try three of.
  */
 export function actionMenu(label, items, opts = {}) {
   const id = 'tbm-' + (++seq);
   const wrap = h('div.tb-menu' + (opts.align === 'right' ? '.align-right' : ''));
-  const btn = h('button.btn.tb-menu-btn', {
+  const btn = h('button.btn.tb-menu-btn' + (opts.compact ? '.is-compact' : ''), {
     type: 'button',
     'data-action': 'tb-menu-toggle',
     'aria-expanded': 'false',
     'aria-haspopup': 'true',
     'aria-controls': id
   });
-  btn.append(h('span', { text: label }), h('span.tb-caret', { text: '▾', 'aria-hidden': 'true' }));
+  /* A compact menu is a glyph, so the label has to reach a screen
+     reader some other way — and a title, so it reaches everyone else
+     on hover. A bare ◐ with no accessible name is a button that says
+     nothing to anyone who cannot see it. */
+  if (opts.ariaLabel) {
+    btn.setAttribute('aria-label', opts.ariaLabel);
+    btn.setAttribute('title', opts.ariaLabel);
+  }
+  btn.append(h('span', { text: label }));
+  if (!opts.compact) btn.append(h('span.tb-caret', { text: '▾', 'aria-hidden': 'true' }));
 
   const panel = h('div.tb-menu-panel', { id, hidden: true, role: 'menu' });
   for (const item of items) {
     if (item === '---') { panel.append(h('div.tb-sep', { role: 'separator' })); continue; }
+    if (item.choices) { panel.append(choiceGroup(item)); continue; }
     const props = { role: 'menuitem', title: item.title || '' };
     if (item.id) props.id = item.id;
     let el;
@@ -94,6 +113,29 @@ function closeMenus(except) {
     const b = p.parentElement && p.parentElement.querySelector('.tb-menu-btn');
     if (b) b.setAttribute('aria-expanded', 'false');
   });
+}
+
+/* A radio row. The buttons carry the value on a data attribute the
+   caller names, so whoever owns the setting binds one delegated
+   listener for it and this file stays ignorant of what a skin is. */
+function choiceGroup(item) {
+  const grp = h('div.tb-group', { role: 'group', 'aria-label': item.label });
+  grp.append(h('div.tb-group-label', { text: item.label }));
+  const row = h('div.tb-choices');
+  for (const c of item.choices) {
+    const b = h('button.tb-choice' + (c.value === item.value ? '.active' : ''), {
+      type: 'button',
+      role: 'menuitemradio',
+      'aria-checked': String(c.value === item.value),
+      'data-action': item.action,
+      title: c.title || c.label
+    });
+    b.setAttribute(item.attr || 'data-value', c.value);
+    b.append(h('span', { text: c.label }));
+    row.append(b);
+  }
+  grp.append(row);
+  return grp;
 }
 
 let wired = false;

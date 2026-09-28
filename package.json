@@ -9,7 +9,8 @@
     "icons": "node scripts/make-icons.mjs",
     "extract": "node scripts/extract/feature-steps.mjs && node scripts/extract/short-steps.mjs && node scripts/extract/library.mjs && node scripts/extract/relink.mjs",
     "verify": "node scripts/verify-migration.mjs",
-    "baseline": "node scripts/verify-migration.mjs --baseline"
+    "baseline": "node scripts/verify-migration.mjs --baseline",
+    "density": "node scripts/density.mjs"
   },
   "repository": {
     "type": "git",

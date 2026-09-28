@@ -345,14 +345,26 @@
 [data-phase="plan"]      { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); }
 [data-phase="shoot"]     { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); }
 
-/* Per-phase swatch, for the nav itself — independent of --accent so a
-   phase pill keeps its own colour on a page belonging to another phase. */
-.sh-ph-develop   { --phase-hue: var(--feature); }
-.sh-ph-write     { --phase-hue: var(--library); }
-.sh-ph-breakdown { --phase-hue: var(--shorts); }
-.sh-ph-visualize { --phase-hue: var(--visualize); }
-.sh-ph-plan      { --phase-hue: var(--plan); }
-.sh-ph-shoot     { --phase-hue: var(--shoot); }
+/* One swatch variable, --hue, set by two families of class.
+
+   .sh-ph-* maps a PHASE to its hue, for the nav itself — independent of
+   --accent so a phase pill keeps its own colour on a page belonging to
+   another phase.
+
+   .hue-* names the hue directly, for things whose colour is a category
+   rather than a phase: the breakdown's element chips, where Cast and
+   Props are not phases and never were. breakdown.js used to write
+   `.sh-ph-feature` and `.sh-ph-library`, which match nothing here — so
+   every chip and every element card fell back to currentColor and the
+   page's whole "colour = the category" idea rendered in grey. Named
+   classes rather than a lookup in JS, because the values belong to
+   tokens.css and nowhere else. */
+.sh-ph-develop,   .hue-feature   { --hue: var(--feature); }
+.sh-ph-write,     .hue-library   { --hue: var(--library); }
+.sh-ph-breakdown, .hue-shorts    { --hue: var(--shorts); }
+.sh-ph-visualize, .hue-visualize { --hue: var(--visualize); }
+.sh-ph-plan,      .hue-plan      { --hue: var(--plan); }
+.sh-ph-shoot,     .hue-shoot     { --hue: var(--shoot); }
 
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); }

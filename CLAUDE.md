@@ -21,6 +21,7 @@ npm run dev       # vite dev server, no service worker
 npm run build     # static output in dist/
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below
+npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
 ```
@@ -32,17 +33,23 @@ for hosted previews that shouldn't outlive themselves in a cache.
 
 ```
 index.html feature.html short.html library.html   page entries (Vite MPA)
+breakdown.html                                    scene breakdown (new since v5)
 arunak-*.html                                     redirect stubs for old URLs
 src/
-  data/      ALL content, as JSON. The asset.
-  lib/       store.js cloud.js dom.js pwa.js
-  ui/        chrome.js (toolbar/theme/toasts) steps.js (step renderer)
-  styles/    tokens.css base.css chrome.css editorial.css widgets.css print.css
-  pages/     hub.js feature.js short.js library.js
+  data/      ALL content, as JSON. The asset. navigation.json is the IA.
+  lib/       store.js cloud.js dom.js pwa.js scenes.js skin.js
+  ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js actionbar.js
+  styles/    tokens.css base.css chrome.css editorial.css widgets.css
+             modules.css ← the design language, read by every page
+             skins/      ← _contract.css + one file per swappable look
+             print.css
+  pages/     hub.js feature.js short.js library.js breakdown.js
   sw.js      service worker (vite-plugin-pwa injectManifest)
 scripts/
   extract/   the parsers that produced src/data — re-runnable, self-checking
-  verify-migration.mjs
+  verify-migration.mjs   the gate
+  density.mjs            the design-density report
+  baseline.json          what verify diffs against
 legacy/      the original hand-written pages. Reference only. NEVER EDIT.
 ```
 
@@ -112,6 +119,29 @@ exists to restate a colour for dark mode is a bug. Tokens are declared in bare
 and the JS half has to hold up its end, which it did not for a while. See the
 theme trap below.
 
+**7. Shapes come from the skin, not from the rule that draws them.**
+`src/styles/modules.css` is the design language every page reads. Nothing in it
+hard-codes a radius, a padding, a border width, a display size or an italic:
+each is a `--sk-*` variable, and a *skin* is one file in `src/styles/skins/`
+that sets them. `skins/_contract.css` lists the variables and the four rules a
+skin follows; `studio` is the default, `press` is the printed-matter look this
+replaced, `binder` is flat and dense.
+
+This is what makes the design swappable rather than merely changed, and it is
+cheap to break: one `border-radius: 4px` typed into a rule is a shape one skin
+can never override. Two things keep it honest —
+
+- a skin is discovered, never registered. `skin.js` globs the directory and
+  reads the picker back out of the CSSOM, so dropping a file in is the whole
+  installation. The same reason the steps live in JSON: a hand-written list of
+  what exists is wrong by the second change.
+- `verify` asserts that every skin file on disk reached the page, that each
+  produces a distinct look, and that none of them overflows at 390px.
+
+Theme and skin are orthogonal: theme picks the palette, skin picks the shapes.
+All nine combinations have to work, which is why a skin never writes a literal
+colour — only `var(--token)`.
+
 **5. No inline `onclick` / `onchange` anywhere.**
 A strict CSP ships in `vercel.json`; an inline handler breaks the page under it.
 Use `delegate()` from `src/lib/dom.js` with `data-action` attributes. Some `raw`
@@ -145,6 +175,21 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   `:root[data-theme]`; when `applyTheme()` only set body classes every theme
   rendered identically and nothing above noticed, because the text, the keys and
   the handlers are all still correct on a page with the wrong palette.
+- the skins: every file in `src/styles/skins/` reached the page, each produces a
+  distinct set of `--sk-*` values, and none overflows at 390px. Three
+  assertions rather than one because they fail differently — a skin that stops
+  changing anything shows up as a duplicate fingerprint, but a skin whose file
+  never loaded produces no duplicate at all, so only the disk-vs-page count
+  catches it.
+- hue-coded surfaces still distinguish. Where the markup declares a variant
+  (`.door.shorts`, `.start-card.f`, `.fest-card.t2`, `.example.alt`) the design
+  must render more than one colour, at 3px or wider. This exists because the
+  redesign's main move — folding decorative left rules into hairline cards —
+  swallowed two groups that were carrying data, and the hub's three blueprints
+  came out reading as two. No other check could see it: the keys, the words,
+  the handlers and the overflow are all correct on a page whose colour coding
+  has collapsed. The check keys off the *variant* rather than asking "do these
+  differ?", so a group that is legitimately uniform is not flagged.
 
 Then one studio-level check that is not per page:
 
@@ -174,6 +219,15 @@ key fails the run immediately.
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
 by then — the mobile action bar never attaches during a verify run and its
 layout is untested. Check viewport-gated chrome by hand at 390px.
+
+**Checks that can skip themselves.** The hue-coding assertion reports each
+group as passed, failed *or skipped*, because a group that never appears looks
+exactly like one that passes if you only print the ones that ran. The
+breakdown's chips exist only once a scene does, so the run seeds two scenes on
+that page — after the text and key capture, so the empty state is still what
+the baseline is compared against. Gating a check on something the bug itself
+would remove is the trap here: the first version skipped the breakdown groups
+whenever their class names were wrong, which is when they mattered.
 
 ## Traps already paid for
 
@@ -215,6 +269,35 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   the other projects on disk. When an operation really is studio-wide, iterate
   `listProjects()` and address each project explicitly through
   `rawGet`/`rawSet`/`rawRemove(key + '__' + id)`, which bypass the proxy.
+- **`--hue` is set by a class, and the class has to exist.** Two families
+  set it: `.sh-ph-*` maps a phase to its hue for the nav, and `.hue-*` names
+  the hue directly for things whose colour is a *category*. `breakdown.js`
+  wrote `.sh-ph-feature` and `.sh-ph-library` for its element chips — names in
+  neither family, matching no rule — so `--hue` was never defined, the borders
+  fell back to `currentColor`, and the page that introduced "colour = the
+  category" rendered every category in grey from the day it shipped. Nothing
+  noticed for two commits, because a CSS variable that is never defined fails
+  silently by design. If you add a hue, add it in `tokens.css` and nowhere
+  else.
+- **A skin's defaults belong on bare `:root` too.** `studio.css` declares its
+  `--sk-*` values on `:root` *and* on `:root[data-skin="studio"]`. Only the
+  second looks necessary. The first is what makes the app correct before
+  `skin.js` has run and when `localStorage` throws — without it every card on
+  the page loses its border and its padding for the length of one paint. Same
+  shape of bug as the theme trap below, one level up: the JS sets an attribute
+  the CSS keys off, so the CSS has to be right when the JS has not run.
+- **Sticky the navigation, not just the page's own bar.** For a while the shell
+  (rail + phases) was `position: relative` and the page toolbar was `sticky`.
+  Scrolling a 65,000px blueprint therefore discarded the bar that says *where
+  you are* and kept the one that says *what you can do here* — the navigation
+  layer existed only at the very top of the longest pages in the app. The shell
+  is sticky at ≥1100px now and publishes its measured height as `--sh-h` for the
+  toolbar to sit under. Below 1100px it still scrolls away on purpose: the two
+  bars stack there, and 164px of chrome above a text field on a phone is worse
+  than losing the nav. For the same reason `.toolbar` is `position: static`
+  below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
+  phone, permanently. What you need while typing is the fixed bottom action bar
+  and the save indicator; the toolbar is one flick up.
 - **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
   matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
   match nothing. When `applyTheme()` set only the classes, all three themes
@@ -249,6 +332,16 @@ Finish the conversion. Adding the renderer while leaving the `raw` block in the
 JSON means the page builds the static markup, throws it away and replaces it —
 two representations of one thing, and in the short film's case 5.2KB shipped to
 be discarded.
+
+**Change the look** → do NOT edit `modules.css` to make it darker, rounder or
+denser. Write a skin: one file in `src/styles/skins/` setting the `--sk-*`
+variables in `_contract.css`, and it appears in the Appearance menu on all five
+pages with no other edit. Edit `modules.css` only to change the *language* —
+what objects exist and how they are arranged — and when you do, every shape you
+add must be a variable, or you have quietly made it unskinnable.
+
+**Change the palette** → `tokens.css`, under `[data-theme]`. That is the other
+axis; see invariant 7.
 
 **Re-run extraction** → `npm run extract` reads `legacy/`, rewrites `src/data`,
 self-checks coverage, and fixes the old page filenames. Safe to re-run; it is

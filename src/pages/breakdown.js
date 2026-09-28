@@ -122,7 +122,7 @@ function renderScene(scene, i, total) {
     const names = scene.elements[cat.id] || [];
     if (!names.length) continue;
     for (const name of names) {
-      const chip = h(`span.bd-chip.sh-ph-${cat.hue}`, { title: cat.label });
+      const chip = h(`span.bd-chip.hue-${cat.hue}`, { title: cat.label });
       chip.append(
         h('span.bd-chip-cat', { text: cat.label }),
         h('span.bd-chip-name', { text: name }),
@@ -181,7 +181,7 @@ function renderElements() {
   const grid = h('div.bd-el-grid');
   for (const item of index) {
     const cat = catById[item.category] || { label: item.category, hue: 'feature' };
-    grid.append(h(`div.bd-el.sh-ph-${cat.hue}`, {}, [
+    grid.append(h(`div.bd-el.hue-${cat.hue}`, {}, [
       h('span.bd-el-cat', { text: cat.label }),
       h('strong.bd-el-name', { text: item.name }),
       h('span.bd-el-scenes', {

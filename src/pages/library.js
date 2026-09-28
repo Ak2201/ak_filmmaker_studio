@@ -28,6 +28,7 @@ import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/widgets.css';
+import '../styles/modules.css';
 import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -715,6 +716,7 @@ function render() {
   try {
     mountShell();
     StudioUI.attachSignInPill(toolbar);
+    StudioUI.upgradeThemeButton(toolbar);
     StudioUI.autoAriaLabels();
     // The craft rules and film notes are exactly where a term needs
     // explaining; .section-body is in the tagger's scope.

@@ -144,6 +144,28 @@ function wire() {
   });
 }
 
+/* Publish the shell's real height as --sh-h so the page toolbar can
+   stick directly beneath it.
+
+   This exists because of a defect worth naming: the shell was
+   position:relative and the toolbar position:sticky, so scrolling a
+   65,000px blueprint threw away the bar that says where you are and
+   kept the one that says what you can do here. The navigation layer
+   was available only at the very top of the longest pages in the app.
+
+   Measured rather than hard-coded: the bar is one row at desktop and
+   two below 1100px, and a wrong constant here means either a gap or
+   the toolbar sliding under the phase menus. */
+function trackShellHeight(shell) {
+  const publish = () => {
+    const h = Math.round(shell.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--sh-h', h + 'px');
+  };
+  publish();
+  if (typeof ResizeObserver === 'function') new ResizeObserver(publish).observe(shell);
+  else window.addEventListener('resize', publish);
+}
+
 /** Mount the shell above the page's own content. Idempotent. */
 export function mountShell() {
   if (document.querySelector('.sh-shell')) return;
@@ -156,6 +178,7 @@ export function mountShell() {
   shell.append(buildRail(), buildPhaseBar(active));
   app.insertBefore(shell, app.firstChild);
   document.body.classList.add('has-sh-shell');
+  trackShellHeight(shell);
   wire();
   return shell;
 }

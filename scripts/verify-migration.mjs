@@ -48,6 +48,16 @@ const PAGES = [
   { page: 'breakdown.html', legacy: null, name: 'breakdown' }
 ];
 
+/* Every skin the source tree defines. Read from disk rather than
+   listed here, for the same reason the steps come from JSON: a
+   hand-written list of what exists is wrong by the second change.
+   `_contract.css` is documentation, not a skin — it sets nothing. */
+const SKIN_FILES = fs
+  .readdirSync(path.join(ROOT, 'src', 'styles', 'skins'))
+  .filter((f) => f.endsWith('.css') && !f.startsWith('_'))
+  .map((f) => f.replace(/\.css$/, ''))
+  .sort();
+
 /* ------------------------------------------------------------
    KNOWN DIVERGENCES
    ------------------------------------------------------------
@@ -218,6 +228,142 @@ for (const spec of PAGES) {
     ? null
     : new Set([themes.paper, themes.sepia, themes.ink]).size;
 
+  /* --- skins must actually swap, and all of them must have loaded ---
+
+     Same failure mode as the theme, one level up. A skin is a file of
+     --sk-* variables and the language reads them; if the glob stops
+     picking a file up, or a skin's variables are all overridden, or
+     someone hard-codes a shape back into modules.css, then the picker
+     still lists the skin and choosing it still sets the attribute and
+     the page still renders correctly — just identically. Nothing else
+     in this run would notice.
+
+     Two assertions, because they catch different things. The
+     FINGERPRINT catches a skin that no longer changes anything. The
+     COUNT catches a skin file that never reached the browser at all,
+     which the fingerprint cannot see: a skin that does not exist
+     produces no duplicate. */
+  const skins = await page.evaluate(() => {
+    const api = window.StudioSkin;
+    if (!api) return { unavailable: true };
+    const before = document.documentElement.getAttribute('data-skin');
+    const probe = () => {
+      const de = getComputedStyle(document.documentElement);
+      // Read the contract, not one element: a skin is allowed to leave
+      // any given object untouched, but not to leave all of them.
+      return [
+        'title-size', 'title-style', 'radius', 'card-pad', 'deco-rule-w',
+        'deco-rule-c', 'deck-size', 'h2-size', 'stepnum-size', 'cover-min'
+      ].map((k) => de.getPropertyValue('--sk-' + k).trim()).join('|');
+    };
+    const out = {}, wide = [];
+    api.listSkins().forEach((sk) => {
+      api.applySkin(sk.id);
+      out[sk.id] = probe();
+      // The viewport is already 390px here. A skin is free to be
+      // roomier or larger-typed than the default; it is not free to
+      // push the page sideways on a phone, and only the default one
+      // is measured by the check above.
+      const de = document.documentElement;
+      const over = Math.max(0, de.scrollWidth - de.clientWidth);
+      if (over > 0) wide.push(sk.id + ' +' + over + 'px');
+    });
+    api.applySkin(before || 'studio');
+    return { out, ids: Object.keys(out), wide };
+  });
+  /* The breakdown's chips and element cards only exist once a scene
+     does, so on an empty studio the hue assertions below would report
+     "nothing to check" forever — a check that never runs is a check
+     that does not exist. Seed two scenes with elements in different
+     categories and reload.
+
+     AFTER the text and key capture above, deliberately: the baseline
+     for this page was captured in its empty state, and seeding before
+     the capture would delete the teaching empty state's prose from the
+     page and fail the coverage check for the right words and the
+     wrong reason. */
+  if (spec.name === 'breakdown') {
+    await page.evaluate(() => {
+      const scene = (n, location, elements) => ({
+        id: 'verify-' + n, number: String(n), intExt: 'INT', dayNight: 'DAY',
+        location, synopsis: '', eighths: 8, pageNumber: '', elements
+      });
+      // Through the proxy on purpose: this is the project-scoped key,
+      // and writing it raw would put the scenes where nothing reads them.
+      localStorage.setItem('arunak_scenes_v1', JSON.stringify({
+        scenes: [
+          scene(1, 'Police Station', { cast: ['Prakash'], props: ['Iron sickle'] }),
+          scene(2, 'Forest Road', { cast: ['Kumaresan'], wardrobe: ['Khaki uniform'] })
+        ]
+      }));
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+  }
+
+  /* --- colour that means something must still mean it ---
+
+     modules.css has one rule with teeth: a coloured rule survives only
+     where its hue varies to say WHICH. Folding the rest into a plain
+     hairline card is most of this redesign — and the first pass folded
+     in two that were carrying data. The hub's three blueprint doors
+     came out with a 1px rule and the feature door's hue repainted to
+     the generic hairline, so three blueprints read as two.
+
+     Nothing else here could see it. The keys, the words, the handlers
+     and the overflow are all identical on a page whose colour coding
+     has quietly collapsed — which is the same reason the theme check
+     exists. So: every hue group must still render more than one
+     colour, at a width you can actually see. */
+  const hueGroups = await page.evaluate(() => {
+    /* `variant` names the class that says "this one is a different
+       KIND". Where it exists, the check asks whether the design still
+       SHOWS that difference — a question with an answer. Asking
+       instead "do these differ?" of any group at all would flag sets
+       that are legitimately uniform, and the short page has one: its
+       example pairs carry no .alt, so one hue there is correct.
+
+       The breakdown's two groups deliberately have NO variant, and
+       that is a correction rather than an omission. Gating them on
+       `.bd-chip.hue-library` made the check blind to precisely the bug
+       it was written for: when breakdown.js wrote the wrong class
+       name, the variant stopped existing, the group was skipped, and
+       the run went green with every chip rendering grey. A gate that
+       disappears along with the thing it guards is not a gate. These
+       two are seeded above, so two elements in different categories
+       are always present and distinct colours can simply be required. */
+    const GROUPS = [
+      { sel: '.door', variant: '.door.shorts', side: 'Top', what: 'hub blueprint doors' },
+      { sel: '.start-card', variant: '.start-card.f', side: 'Left', what: 'hub start cards' },
+      { sel: '.fest-card', variant: '.fest-card.t2', side: 'Left', what: 'festival tiers' },
+      { sel: '.example', variant: '.example.alt', side: 'Left', what: 'worked examples' },
+      { sel: '.bd-chip', side: 'Left', what: 'breakdown element chips' },
+      { sel: '.bd-el', side: 'Left', what: 'breakdown element index' }
+    ];
+    return GROUPS.map((g) => {
+      const els = [...document.querySelectorAll(g.sel)];
+      /* Reported as skipped rather than dropped. A group that never
+         appears on any page looks exactly like a group that passes if
+         you only print the ones that ran — and the breakdown's chips
+         only exist once the page has scenes, so on an empty studio
+         these two assertions do not fire at all. Say so. */
+      if (els.length < 2 || (g.variant && !document.querySelector(g.variant))) {
+        return { what: g.what, skipped: els.length < 2 ? 'fewer than two present' : 'no variant present' };
+      }
+      const seen = new Set(), widths = new Set();
+      els.forEach((el) => {
+        const cs = getComputedStyle(el);
+        seen.add(cs['border' + g.side + 'Color']);
+        widths.add(parseFloat(cs['border' + g.side + 'Width']) || 0);
+      });
+      return { what: g.what, colours: seen.size, minWidth: Math.min(...widths) };
+    });
+  });
+  const hueBroken = hueGroups.filter((g) => !g.skipped && (g.colours < 2 || g.minWidth < 3));
+
+  const skinCount = skins.unavailable ? null : skins.ids.length;
+  const skinFingerprints = skins.unavailable ? null : new Set(Object.values(skins.out)).size;
+
   // --- overflow with every phase menu OPEN ---
   // The plain overflow check above measures a page with all menus shut,
   // and missed a 260px dropdown anchored to the rightmost phase pushing
@@ -284,6 +430,10 @@ for (const spec of PAGES) {
     hOverflowMenusOpen: overflowOpen.overflow,
     menusEscapingViewport: overflowOpen.escaped,
     distinctThemes: themeSwatches,
+    skins: skinCount,
+    distinctSkins: skinFingerprints,
+    skinsOverflowing: skins.unavailable ? null : skins.wide,
+    hueGroups,
     errors
   };
   report.push(row);
@@ -307,6 +457,26 @@ for (const spec of PAGES) {
   }
   if (themeSwatches !== null && themeSwatches !== 3) {
     bad.push(`themes do not swap (${themeSwatches} distinct background(s) across paper/sepia/ink)`);
+  }
+  if (skinCount !== null && skinCount !== SKIN_FILES.length) {
+    bad.push(
+      `${SKIN_FILES.length} skin file(s) on disk but ${skinCount} reached the page ` +
+      `(disk: ${SKIN_FILES.join(', ')}; page: ${skins.ids.join(', ')})`
+    );
+  }
+  if (skinFingerprints !== null && skinFingerprints !== skinCount) {
+    bad.push(
+      `skins do not swap (${skinFingerprints} distinct look(s) across ${skinCount} skins)`
+    );
+  }
+  for (const g of hueBroken) {
+    bad.push(
+      `${g.what}: colour no longer distinguishes them ` +
+      `(${g.colours} distinct hue(s), thinnest rule ${g.minWidth}px)`
+    );
+  }
+  if (!skins.unavailable && skins.wide.length) {
+    bad.push(`horizontal overflow at 390px under skin(s): ${skins.wide.join(', ')}`);
   }
   if (errors.length) bad.push(`${errors.length} console/page errors`);
   if (!live.hasMain) bad.push('no <main id="main">');

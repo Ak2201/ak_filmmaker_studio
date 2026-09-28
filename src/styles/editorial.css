@@ -35,7 +35,7 @@
 .phase,
 .interlude,
 .final-page {
-  padding: var(--s8) var(--gutter);
+  padding: var(--sk-band-pad) var(--gutter);
 }
 .section-inner,
 .hero-inner,
@@ -70,13 +70,16 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 100vh;
+  /* These were min-height:100vh — a full screen of title before any
+     work, on a tool people open to type into. The cover is as tall as
+     its own content under the studio skin, so the first field is above
+     the fold; a skin that wants the book back sets --sk-cover-min. */
+  min-height: var(--sk-cover-min);
   overflow: hidden;
   background: linear-gradient(160deg, var(--paper) 0%, var(--paper-sunk) 100%);
   border-bottom: 1px solid var(--rule);
 }
-.vol-cover { min-height: 90vh; }
-.hero { justify-content: flex-start; min-height: 0; }
+.hero { justify-content: flex-start; }
 
 /* The ring behind the title: one element, one rule, three pages. */
 .master-cover::after,
@@ -86,7 +89,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(380px, 60vw);
+  width: min(260px, 40vw);
   aspect-ratio: 1;
   max-width: 100%;
   transform: translate(-50%, -50%);
@@ -109,16 +112,7 @@
 .vol-cover > *,
 .hero > * { position: relative; z-index: 1; }
 
-.master-mark,
-.cover-mark,
-.hero-vol {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--accent);
-}
+/* .master-mark/.cover-mark/.hero-vol are eyebrows — modules.css §1. */
 .master-mark::before,
 .cover-mark::before,
 .hero-vol::before { content: "— "; }
@@ -138,35 +132,13 @@
   margin-bottom: var(--s6);
 }
 
-.master-title,
-.cover-title,
-.vol-cover h1,
-.hero h1 {
-  margin: var(--s7) 0 var(--s5);
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-4xl), 11vw, var(--t-6xl));
-  font-weight: 800;
-  font-style: italic;
-  line-height: var(--lh-display);
-  letter-spacing: var(--track-tight);
-}
-.vol-cover h1 { font-size: clamp(var(--t-4xl), 9vw, var(--t-5xl)); }
+/* Titles are modules.css §1; what is left here is the per-volume
+   size bump and the second-word weight change. */
 .master-title .light,
 .cover-title .light,
 .vol-cover h1 .light,
 .hero h1 .light { font-weight: 400; font-style: normal; color: var(--ink-muted); }
 
-.master-sub,
-.cover-sub,
-.vol-cover .sub,
-.hero-deck {
-  max-width: var(--measure);
-  margin-bottom: var(--s7);
-  font-size: clamp(var(--t-lg), 2vw, var(--t-xl));
-  font-style: italic;
-  line-height: var(--lh-snug);
-  color: var(--ink-muted);
-}
 .hero-deck { color: var(--ink-body); }
 .hero-deck em { color: var(--accent); font-weight: 600; }
 .hero-deck em.s { color: var(--shorts); }
@@ -177,7 +149,7 @@
 .vol-byline {
   display: inline-block;
   padding-top: var(--s3);
-  border-top: 2px solid var(--ink);
+  border-top: 1px solid var(--rule);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-wide);
@@ -223,8 +195,10 @@
 }
 .meta-field {
   padding: var(--s3);
-  background: var(--paper-raised);
-  border-left: 3px solid var(--accent);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
 }
 .meta-field label {
   display: block;
@@ -243,7 +217,6 @@
   border-bottom: 1px solid var(--rule);
   font-family: var(--f-body);
   font-size: var(--t-small);
-  font-style: italic;
   color: var(--ink);
 }
 .meta-field input:focus,
@@ -253,9 +226,10 @@
 .toc-item {
   display: block;
   padding: var(--s3) var(--s4);
-  background: var(--panel);
-  color: var(--panel-ink);
-  border-left: 3px solid var(--panel-gilt);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+  border-left: var(--sk-slab-rule-w) solid var(--sk-slab-rule-c);
+  border-radius: var(--sk-radius);
   text-decoration: none;
   transition: transform var(--speed) var(--ease);
 }
@@ -275,48 +249,12 @@
 }
 .toc-item .desc { margin-top: var(--s1); font-size: var(--t-tiny); color: var(--panel-muted); }
 
-/* Hero stats and the hub's stat strip */
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
-  gap: var(--s4);
-  padding-top: var(--s6);
-  border-top: 1px solid var(--rule);
-}
-.hero-stat .num,
-.hub-stat-strip .hss-num {
-  font-family: var(--f-display);
-  font-size: var(--t-3xl);
-  font-weight: 800;
-  font-style: italic;
-  line-height: 1;
-  letter-spacing: var(--track-tight);
-  color: var(--accent);
-  font-variant-numeric: tabular-nums lining-nums;
-}
+/* Hero stats and the hub's stat strip are one object now — modules.css
+   §2. What stays here is the only part that is data: a stat that counts
+   shorts or library entries wears that volume's hue. */
 .hero-stat.s .num { color: var(--shorts); }
 .hero-stat.l .num,
 .hero-stat.g .num { color: var(--library); }
-.hero-stat .lab,
-.hub-stat-strip .hss-lab {
-  margin-top: var(--s2);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.hub-stat-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s4);
-  margin-top: var(--s3);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--rule-hair);
-}
-.hub-stat-strip .hss-item { display: flex; flex-direction: column; gap: 2px; }
-.hub-stat-strip .hss-num { font-size: var(--t-xl); color: var(--ink); }
 .greeting-block { font-family: var(--f-body); font-size: var(--t-small); color: var(--ink-muted); margin-bottom: var(--s2); }
 .greeting-block strong { color: var(--ink); font-weight: 600; }
 
@@ -342,29 +280,8 @@
   break-before: page;
 }
 .section-head .left { max-width: var(--measure); }
-.section-head .label,
-.how-to .label,
-.phase .label {
-  margin-bottom: var(--s3);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-.section-head h2,
-.how-to h2,
-.glossary h2,
-.pitch-section h2 {
-  margin-bottom: var(--s3);
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-2xl), 5vw, var(--t-4xl));
-  font-weight: 800;
-  font-style: italic;
-  line-height: var(--lh-tight);
-  letter-spacing: var(--track-tight);
-}
+/* Section eyebrows: modules.css §1. */
+/* Section headings: modules.css §1. */
 .section-head h2 em,
 .how-to h2 em,
 .glossary h2 em,
@@ -384,19 +301,7 @@
 /* ------------------------------------------------------------
    DECKS & HINTS — the standing-text voice of the studio.
    ------------------------------------------------------------ */
-.section-head .deck,
-.how-to .deck,
-.glossary .deck,
-.pitch-section .deck,
-.sync-section .deck,
-.step-deck {
-  max-width: var(--measure);
-  margin-bottom: var(--s5);
-  font-size: var(--t-lg);
-  font-style: italic;
-  line-height: var(--lh-snug);
-  color: var(--ink-muted);
-}
+/* Decks: modules.css §1. */
 .hint,
 .ask-hint,
 .equip-block .hint,
@@ -444,18 +349,13 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 70vh;
+  min-height: 0;
+  padding-block: var(--s8);
 }
 .phase .label { color: var(--panel-gilt); margin-bottom: var(--s2); }
+/* Type from modules.css §1; these two only need the ink ground's colour. */
 .phase h2,
-.interlude h2 {
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-2xl), 5vw, var(--t-4xl));
-  font-weight: 800;
-  font-style: italic;
-  line-height: var(--lh-tight);
-  color: var(--panel-ink);
-}
+.interlude h2 { color: var(--panel-ink); }
 .phase h2 em,
 .interlude h2 em { color: var(--panel-gilt); }
 .phase p,
@@ -485,11 +385,13 @@
   gap: var(--s5);
   margin-bottom: var(--s3);
   padding-bottom: var(--s3);
-  border-bottom: 2px solid var(--accent);
+  /* was 2px solid --accent: a heavy coloured bar under all 24 steps.
+     The number is already accent-coloured; the rule need only separate. */
+  border-bottom: 1px solid var(--rule);
 }
 .step-num {
   font-family: var(--f-mono);
-  font-size: var(--t-5xl);
+  font-size: var(--sk-stepnum-size);
   font-weight: 800;
   line-height: 1;
   letter-spacing: var(--track-tight);
@@ -499,9 +401,9 @@
 .step-title {
   flex: 1;
   font-family: var(--f-display);
-  font-size: clamp(var(--t-2xl), 4vw, var(--t-3xl));
+  font-size: var(--sk-h2-size);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-h2-style);
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
 }
@@ -581,41 +483,23 @@
    eye (.formula-box, .tip-box), paper for the ones that sit in
    the reading flow.
    ------------------------------------------------------------ */
-.formula-box,
-.formula,
-.tip-box,
-.why-box,
+/* .formula-box / .formula keep the ink ground (modules.css §3).
+   .tip-box, .why-box, .director-card .study and the two data cards
+   used to share it, which put three dark slabs in one step — a wall.
+   They are paper cards now; only the eyebrow stays coloured. */
 .resume-card,
-.data-card,
-.director-card .study {
+.data-card {
   background: var(--panel);
   color: var(--panel-ink);
-  border-left: 4px solid var(--panel-gilt);
+  border-left: 3px solid var(--panel-gilt);
 }
-.formula-box,
-.formula,
 .tip-box,
-.why-box {
-  max-width: var(--measure-wide);
-  margin: var(--s4) 0 var(--s5);
-  padding: var(--s5);
-}
-.why-box { border-left-color: var(--accent-lift); }
+.why-box { max-width: var(--measure-wide); margin: var(--s4) 0 var(--s5); }
 
-.formula-box .label,
-.formula .lab,
-.tip-box .label,
-.why-box .lab,
-.director-card .study .lab {
-  margin-bottom: var(--s2);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--panel-gilt);
-}
-.why-box .lab { color: var(--accent-lift); }
+/* These labels are eyebrows too — modules.css §1. Only .formula-box and
+   .formula still sit on ink, and modules gives those two the gilt; the
+   rest went to paper in this pass and take the accent like every other
+   eyebrow. */
 .formula-box .label::before,
 .formula .lab::before { content: "∑  "; }
 
@@ -634,42 +518,19 @@
   font-weight: 400;
   color: var(--panel-gilt);
 }
-.tip-box p,
-.why-box p,
 .formula p { font-size: var(--t-small); line-height: var(--lh-body); color: var(--panel-ink); }
+.tip-box p,
+.why-box p { font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); }
 .formula p { font-style: italic; }
 
 /* Por Thozhil — the craft lesson. Paper, gilt-ruled. */
+/* Surface: modules.css §3. Only the measure is this file's business. */
 .por-thozil,
 .why-this,
-.disclaimer {
-  max-width: var(--measure-wide);
-  margin: var(--s4) 0 var(--s5);
-  padding: var(--s4) var(--s5);
-  background: var(--paper-sunk);
-  border-left: 4px solid var(--accent);
-}
-.por-thozil { background: var(--accent-wash); }
-.disclaimer { border: 1px solid var(--library); border-left: 4px solid var(--library); }
-.por-thozil .label,
-.why-this .label,
-.disclaimer .label,
-.ask-label,
-.ex-label,
-.ex-card .meta,
-.watch-step .step-tag,
-.fest-card .tier,
-.beat-cell .pos,
-.prod-field label,
-.ladder-rung .target,
-.gloss-cat {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--accent);
-}
+.disclaimer { max-width: var(--measure-wide); margin: var(--s4) 0 var(--s5); }
+/* Every eyebrow on the four editorial pages is one object — modules.css
+   §1. This list lived here as well for a while, which is how an eyebrow
+   ends up meaning two slightly different things. */
 .por-thozil .label::before { content: "⚒  "; }
 .por-thozil .trade {
   margin: var(--s2) 0;
@@ -710,16 +571,12 @@
 }
 /* The same gloss on an ink ground. */
 .formula-box .tn,
-.formula .tn,
-.tip-box .tn,
-.why-box .tn {
+.formula .tn {
   border-top-color: var(--panel-hair);
   color: var(--panel-muted);
 }
 .formula-box .tn::before,
-.formula .tn::before,
-.tip-box .tn::before,
-.why-box .tn::before { color: var(--panel-gilt); }
+.formula .tn::before { color: var(--panel-gilt); }
 
 /* ------------------------------------------------------------
    EXAMPLES — the feature blueprint set these on ink and the
@@ -734,16 +591,7 @@
   max-width: var(--measure-wide);
   margin: var(--s4) 0;
 }
-.example,
-.ex-card,
-.vs-card {
-  padding: var(--s4);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule-hair);
-  border-left: 3px solid var(--accent);
-}
-.example.alt,
-.vs-card.feature { border-left-color: var(--library); }
+/* Surfaces: modules.css §3. */
 .example.alt .ex-label,
 .vs-card.feature h4 { color: var(--library); }
 .example p,
@@ -838,22 +686,7 @@ select.field-input {
    step readable; both marker states are honoured because both
    scripts set their own class.
    ------------------------------------------------------------ */
-.step-check {
-  max-width: var(--measure-wide);
-  margin-top: var(--s5);
-  padding: var(--s4) var(--s5);
-  background: var(--paper-sunk);
-  border-left: 4px solid var(--accent);
-}
-.step-check h4 {
-  margin-bottom: var(--s3);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--accent);
-}
+.step-check { max-width: var(--measure-wide); margin-top: var(--s5); }
 .step-check ul { list-style: none; }
 .step-check li {
   position: relative;
@@ -883,12 +716,7 @@ select.field-input {
    ------------------------------------------------------------ */
 .ladder-intro { margin-bottom: var(--s6); }
 .ladder-rungs { display: grid; gap: var(--s4); counter-reset: rung; padding-left: var(--s4); }
-.ladder-rung {
-  position: relative;
-  padding: var(--s5);
-  background: var(--paper-sunk);
-  border-left: 4px solid var(--accent);
-}
+.ladder-rung { position: relative; }
 .ladder-rung::before {
   content: counter(rung);
   counter-increment: rung;
@@ -938,6 +766,8 @@ select.field-input {
 .tools-grid,
 .start-grid { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
 
+/* Surface and the one surviving left rule (festival tier): modules.css §3.
+   The other six rules were the same colour on every instance. */
 .film-card,
 .director-card,
 .rule-card,
@@ -948,23 +778,11 @@ select.field-input {
 .tool-card,
 .index-col,
 .door {
-  padding: var(--s5);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
   break-inside: avoid;
   transition: transform var(--speed-slow) var(--ease-out),
               box-shadow var(--speed-slow) var(--ease-out),
               border-color var(--speed-slow) var(--ease-out);
 }
-.film-card,
-.watch-step { border-left: 4px solid var(--accent); }
-.director-card { border-left: 4px solid var(--ok); }
-.rule-card,
-.gloss-item { border-left: 3px solid var(--library); }
-.fest-card.t1 { border-left: 4px solid var(--accent); }
-.fest-card.t2 { border-left: 4px solid var(--library); }
-.fest-card.t3 { border-left: 4px solid var(--rule); }
 .fest-card.t2 .tier { color: var(--library); }
 .fest-card.t3 .tier { color: var(--ink-muted); }
 
@@ -984,9 +802,9 @@ select.field-input {
 .tool-card h5 {
   margin-bottom: var(--s2);
   font-family: var(--f-display);
-  font-size: var(--t-xl);
+  font-size: var(--sk-card-h-size);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
 }
@@ -1121,13 +939,11 @@ select.field-input {
   flex-direction: column;
   overflow: hidden;
   padding: var(--s6) var(--s5) var(--s5);
-  border-top: 4px solid var(--feature);
+  /* border-top is the hue rule — modules.css §3, so it scales with the skin. */
   color: var(--ink);
   text-decoration: none;
   box-shadow: var(--shadow-sm);
 }
-.door.shorts  { border-top-color: var(--shorts); }
-.door.library { border-top-color: var(--library); }
 .door-tag { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); color: var(--feature); }
 .door.shorts .door-tag  { color: var(--shorts); }
 .door.library .door-tag { color: var(--library); }
@@ -1282,11 +1098,8 @@ select.field-input {
   color: var(--ink);
   text-decoration: none;
   cursor: pointer;
-  border-left: 3px solid var(--library);
 }
-.start-card.f { border-left-color: var(--feature); }
-.start-card.s { border-left-color: var(--shorts); }
-.start-card.l { border-left-color: var(--library); }
+/* The hue rule and its three colours: modules.css §3. */
 .start-card .question,
 .start-card .arrow {
   font-family: var(--f-mono);

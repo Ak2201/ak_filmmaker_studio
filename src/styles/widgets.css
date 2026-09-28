@@ -29,9 +29,10 @@
 .pitch-slide,
 .ai-prompt-block,
 .sync-warning {
-  background: var(--panel);
-  color: var(--panel-ink);
-  border-left: 4px solid var(--panel-gilt);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+  border-left: var(--sk-slab-rule-w) solid var(--sk-slab-rule-c);
+  border-radius: var(--sk-radius);
 }
 .ai-prompt-block {
   max-width: var(--measure-wide);
@@ -523,8 +524,10 @@
 }
 .beat-cell {
   padding: var(--s3);
-  background: var(--paper);
-  border-left: 3px solid var(--accent);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
 }
 .beat-cell .pos { display: block; margin-bottom: var(--s1); }
 .beat-cell h4 {
@@ -690,9 +693,11 @@
    ------------------------------------------------------------ */
 .palette-picker {
   margin-top: var(--s3);
-  padding: var(--s4) var(--s5);
-  background: var(--paper-sunk);
-  border-left: 3px solid var(--accent);
+  padding: var(--sk-card-pad);
+  background: var(--sk-deco-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
 }
 .palette-row {
   display: flex;
@@ -810,10 +815,11 @@
 .script-editor { max-width: var(--measure-wide); margin: var(--s5) 0; }
 .scene-block {
   margin-bottom: var(--s4);
-  padding: var(--s4) var(--s5);
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule-hair);
-  border-left: 4px solid var(--accent);
+  padding: var(--sk-card-pad);
+  background: var(--sk-deco-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
 }
 .scene-block .scene-header {
   display: flex;
@@ -877,8 +883,11 @@
   position: relative;
   margin: var(--s3) 0;
   padding: var(--s3) var(--s4);
-  background: var(--paper-raised);
-  border-left: 3px solid var(--library);
+  background: var(--sk-card-bg);
+  /* This rule stays coloured: inside a scene block it is what tells
+     dialogue from action at a glance, which is data, not texture. */
+  border-left: var(--sk-hue-rule-w) solid var(--library);
+  border-radius: var(--sk-radius);
 }
 .dialogue-block .dlg-row {
   display: grid;
@@ -1042,9 +1051,11 @@
 .dept-block,
 .char-block,
 .prod-field {
-  padding: var(--s5);
-  background: var(--paper-sunk);
-  border-left: 4px solid var(--accent);
+  padding: var(--sk-card-pad);
+  background: var(--sk-deco-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
 }
 .dept-block h4,
 .char-block h4 {
@@ -1062,7 +1073,7 @@
   gap: var(--s3);
 }
 .prod-grid { max-width: var(--measure-wide); margin: var(--s4) 0; gap: var(--s4); }
-.prod-field { border-left-width: 3px; padding: var(--s3) var(--s4); }
+.prod-field { padding: var(--s3) var(--s4); }
 .dept-fields label {
   display: block;
   margin-bottom: var(--s1);

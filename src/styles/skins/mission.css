@@ -1,0 +1,77 @@
+/* ============================================================
+   SKIN: MISSION — austere, uppercase, hairline.
+   ------------------------------------------------------------
+   Built from the DESIGN.md template installed by `getdesign`: a
+   dark canvas, condensed uppercase display type set very tight, a
+   single ghost pill button per band, all-caps eyebrow microtext,
+   and chrome reduced to hairlines. Those are generic design
+   primitives, and that is all that is taken — the name, the
+   palette and the type here are this app's own. A skin named
+   after the company whose site the template describes, wearing
+   its wordmark colours, would be the one thing that makes a
+   Tamil-cinema tool look like a knock-off instead of a product.
+
+   Pairs with the Ink theme, which is where the dark canvas comes
+   from — palette is the theme's job, shape is the skin's, and
+   this skin deliberately adds no colour of its own. On Paper it
+   is the same austerity in reverse: black on white. Both work.
+
+   The face is a CONDENSED system stack. Every other face here is
+   fetched from Google Fonts; the template names a licensed
+   display face, and a skin is not the place to add a fourth web
+   font in front of first paint.
+   ============================================================ */
+
+:root[data-skin="mission"] {
+  --sk-name: "Mission";
+
+  --sk-display: "Arial Narrow", "Helvetica Neue Condensed", "Liberation Sans Narrow",
+                system-ui, -apple-system, Arial, sans-serif;
+  --sk-body:    system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Square everything, except the one button shape that is a pill. */
+  --sk-radius:        0;
+  --sk-btn-radius:    var(--radius-pill);
+
+  --sk-card-pad:      var(--s5) var(--s6);
+  --sk-band-pad:      var(--s9);
+  --sk-grid-gap:      var(--s5);
+
+  /* No card ground at all: on this design a container is a hairline
+     and nothing else, so the canvas runs unbroken behind everything. */
+  --sk-card-bg:       transparent;
+  --sk-card-line:     var(--rule);
+  --sk-card-line-w:   1px;
+  --sk-card-shadow:   none;
+
+  --sk-slab-bg:       transparent;
+  --sk-slab-ink:      var(--ink);
+  --sk-slab-muted:    var(--ink-muted);
+  --sk-slab-accent:   var(--accent-deep);
+  --sk-slab-rule-w:   1px;
+  --sk-slab-rule-c:   var(--rule);
+
+  --sk-hue-rule-w:    3px;
+  --sk-deco-rule-w:   1px;
+  --sk-deco-rule-c:   var(--rule);
+  --sk-deco-bg:       transparent;
+  --sk-deco-ink:      var(--ink-body);
+
+  /* Very large, very tight, all caps — the one loud thing. */
+  --sk-title-size:      clamp(2.4rem, 7vw, 5rem);
+  --sk-title-style:     normal;
+  --sk-title-lh:        0.95;
+  --sk-title-transform: uppercase;
+  --sk-h2-size:         var(--t-2xl);
+  --sk-h2-style:        normal;
+  --sk-deck-size:       var(--t-base);
+  --sk-deck-style:      normal;
+  --sk-deck-measure:    56ch;
+  --sk-eyebrow-track:   var(--track-wide);
+  --sk-stepnum-size:    var(--t-3xl);
+  --sk-card-h-size:     var(--t-lg);
+  --sk-card-h-style:    normal;
+
+  --sk-cover-min:     0;
+  --sk-cover-pad:     var(--s9) var(--gutter);
+}

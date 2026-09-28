@@ -69,6 +69,7 @@ import '../lib/cloud.js';
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
 import { renderSteps, stepIndex, stepFieldKeys } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
+import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 
@@ -84,7 +85,7 @@ let statusEl = null;
 let saveTimer, savedAt = 0;
 let sceneCount = 0, shotCount = 0, castCount = 0, locCount = 0;
 
-const ALL_STEPS = [...STEPS.vol1, ...STEPS.vol2];
+const ALL_STEPS = [...STEPS.vol1, ...STEPS.vol2, ...PROD.production, ...PROD.post];
 
 /* ============================================================
    MARKUP
@@ -99,10 +100,12 @@ const MASTER_COVER_HTML = `
   <div>
     <div class="master-mark">A complete guide to building a film, from idea to camera</div>
     <h1 class="master-title">The <span class="light">Filmmaker's</span><br>Blueprint.</h1>
-    <p class="master-sub">Two volumes. Twenty-four guided steps. From the first "what if?" to "ROLL CAMERA." Examples from <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
+    <p class="master-sub">Four phases. Thirty-two guided steps. From the first "what if?" through "ROLL CAMERA" to delivery. Examples from <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
     <div class="vol-stamps">
       <span class="vol-stamp gold">VOL I · STORY · 12 STEPS</span>
-      <span class="vol-stamp green">VOL II · PRE-PRODUCTION · 12 STEPS</span>
+      <span class="vol-stamp green">PHASE 02 · PRE-PRODUCTION · 12 STEPS</span>
+      <span class="vol-stamp">PHASE 03 · PRODUCTION · 4 STEPS</span>
+      <span class="vol-stamp">PHASE 04 · POST-PRODUCTION · 4 STEPS</span>
     </div>
     <div class="meta-grid">
       <div class="meta-field"><label>Project title</label><input type="text" data-key="meta_title" placeholder="Untitled film"></div>
@@ -119,7 +122,7 @@ const MASTER_COVER_HTML = `
 const VOL1_COVER_HTML   = `
 <section class="vol-cover" id="vol-1">
   <div>
-    <div class="master-mark">VOLUME I</div>
+    <div class="master-mark">PHASE 01</div>
     <div class="vol-tag">STORY · 12 STEPS</div>
     <h1>The <span class="light">Story</span><br>Blueprint.</h1>
     <p class="sub">From a vague idea to a structured screenplay in twelve guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
@@ -154,7 +157,7 @@ const VOL1_COVER_HTML   = `
 `;
 const HOWTO1_HTML       = `
 <section class="how-to">
-  <h2>How to use <em>Volume I.</em></h2>
+  <h2>How to use <em>the Story phase.</em></h2>
   <p class="deck">Twelve steps, in order. Each step builds on the one before it. Don't skip ahead — the sequence is the method.</p>
   <ol>
     <li><strong>Work in order.</strong> Step 1 is always the spark. By Step 12 you have a scene-by-scene outline ready to draft.</li>
@@ -228,14 +231,49 @@ const LADDER_HTML       = `
 const INTERLUDE_HTML    = `
 <section class="interlude">
   <div class="arrow">▼ ▼ ▼</div>
-  <h2>Volume I ends. <em>Volume II begins.</em></h2>
+  <h2>The story is locked. <em>Now the film gets made.</em></h2>
   <p>Your script is locked. The story has a backbone. Now: every decision — visual, sonic, logistic — must serve it. Pre-production is where the film is secretly directed.</p>
+</section>
+`;
+/* Phases 03 and 04 did not exist while this was a two-volume book: the
+   2023 pages stopped at the tech recce. A blueprint that ends the day
+   before the shoot is a writing tool, not a filmmaking one. */
+const PHASE3_COVER_HTML = `
+<section class="vol-cover" id="phase-3">
+  <div>
+    <div class="master-mark">PHASE 03</div>
+    <div class="vol-tag">PRODUCTION &middot; 4 STEPS</div>
+    <h1>The <span class="light">Production</span><br>Blueprint.</h1>
+    <p class="sub">The shoot itself — call sheets, continuity, dailies and the wrap. Checklists rather than prompts, because a shoot day is a list you work through before the light goes, not a question you sit with.</p>
+    <div class="meta-grid">
+      <div class="meta-field"><label>First day of shoot</label><input type="text" data-key="p3_start" placeholder="DD / MM / YYYY"></div>
+      <div class="meta-field"><label>Shoot days planned</label><input type="text" data-key="p3_days" placeholder="e.g. 28"></div>
+      <div class="meta-field"><label>1st AD</label><input type="text" data-key="p3_ad"></div>
+      <div class="meta-field"><label>Unit base</label><input type="text" data-key="p3_base" placeholder="Chennai, Madurai&hellip;"></div>
+    </div>
+  </div>
+</section>
+`;
+const PHASE4_COVER_HTML = `
+<section class="vol-cover" id="phase-4">
+  <div>
+    <div class="master-mark">PHASE 04</div>
+    <div class="vol-tag">POST-PRODUCTION &middot; 4 STEPS</div>
+    <h1>The <span class="light">Post-Production</span><br>Blueprint.</h1>
+    <p class="sub">Assembly to delivery. Half the film is made here, and it is the half that gets budgeted last — so it is written down first.</p>
+    <div class="meta-grid">
+      <div class="meta-field"><label>Editor</label><input type="text" data-key="p4_editor"></div>
+      <div class="meta-field"><label>Sound designer</label><input type="text" data-key="p4_sound"></div>
+      <div class="meta-field"><label>Composer</label><input type="text" data-key="p4_music"></div>
+      <div class="meta-field"><label>Target lock date</label><input type="text" data-key="p4_lock" placeholder="DD / MM / YYYY"></div>
+    </div>
+  </div>
 </section>
 `;
 const VOL2_COVER_HTML   = `
 <section class="vol-cover vol-2" id="vol-2">
   <div>
-    <div class="master-mark">VOLUME II</div>
+    <div class="master-mark">PHASE 02</div>
     <div class="vol-tag">PRE-PRODUCTION · 12 STEPS</div>
     <h1>The <span class="light">Pre-Production</span><br>Blueprint.</h1>
     <p class="sub">From a locked script to "ROLL CAMERA" — twelve guided steps for direction, design, and the discipline of pre-production.</p>
@@ -252,7 +290,7 @@ const VOL2_COVER_HTML   = `
 `;
 const HOWTO2_HTML       = `
 <section class="how-to vol-2">
-  <h2>How to use <em>Volume II.</em></h2>
+  <h2>How to use <em>Pre-production.</em></h2>
   <p class="deck">Pre-production is where most films secretly succeed or fail. The script is locked. Now every decision must serve the story.</p>
   <ol>
     <li><strong>The script must be locked first.</strong> Don't start pre-production with an unfinished screenplay.</li>
@@ -434,15 +472,19 @@ function jumpOptionsHTML() {
   return `
     <optgroup label="OVERVIEW">
       <option value="top">↑ Master cover</option>
-      <option value="vol-1">→ Vol I cover</option>
+      <option value="vol-1">→ Story cover</option>
       <option value="treatment-ladder">→ Treatment Ladder</option>
-      <option value="vol-2">→ Vol II cover</option>
+      <option value="vol-2">→ Pre-production cover</option>
+      <option value="phase-3">→ Production cover</option>
+      <option value="phase-4">→ Post-production cover</option>
       <option value="pitch-deck">→ Pitch Deck</option>
       <option value="sync-section">→ Real-time Sync</option>
       <option value="glossary">→ Glossary</option>
     </optgroup>
-    ${group('VOL I · STORY', STEPS.vol1)}
-    ${group('VOL II · PRE-PROD', STEPS.vol2)}`;
+    ${group('PHASE 01 · STORY', STEPS.vol1)}
+    ${group('PHASE 02 · PRE-PRODUCTION', STEPS.vol2)}
+    ${group('PHASE 03 · PRODUCTION', PROD.production)}
+    ${group('PHASE 04 · POST-PRODUCTION', PROD.post)}`;
 }
 
 /* The toolbar, regrouped. Twenty flat controls became five visible
@@ -573,7 +615,7 @@ function renderPage(app) {
   main.append(fromHTML(VOL1_COVER_HTML));
   main.append(fromHTML(HOWTO1_HTML));
 
-  // Vol I steps 01–02, the treatment ladder interlude, then 03–12.
+  // Story steps 01–02, the treatment ladder interlude, then 03–12.
   // The ladder sits between steps 02 and 03 in the original.
   const vol1Host = document.createElement('div');
   renderSteps(vol1Host, STEPS.vol1);
@@ -586,7 +628,7 @@ function renderPage(app) {
   main.append(fromHTML(VOL2_COVER_HTML));
   main.append(fromHTML(HOWTO2_HTML));
 
-  // Vol II steps, with the three phase dividers at 13 / 17 / 21.
+  // Pre-production steps, with the three dividers at 13 / 17 / 21.
   const vol2Host = document.createElement('div');
   renderSteps(vol2Host, STEPS.vol2);
   const vol2Sections = [...vol2Host.children];
@@ -595,6 +637,16 @@ function renderPage(app) {
     if (PHASES[i]) main.append(fromHTML(PHASES[i]));
     main.append(sec);
   });
+
+  main.append(fromHTML(PHASE3_COVER_HTML));
+  const prodHost = document.createElement('div');
+  renderSteps(prodHost, PROD.production);
+  main.append(...prodHost.children);
+
+  main.append(fromHTML(PHASE4_COVER_HTML));
+  const postHost = document.createElement('div');
+  renderSteps(postHost, PROD.post);
+  main.append(...postHost.children);
 
   main.append(fromHTML(pitchSectionHTML()));
   main.append(fromHTML(syncSectionHTML()));
@@ -1328,7 +1380,7 @@ function resetData() {
 }
 
 /* ============================================================
-   CHARACTER RELATIONSHIP MAP (Vol I Step 6)
+   CHARACTER RELATIONSHIP MAP (Story · Step 6)
    ============================================================ */
 function renderCharMap() {
   const svg = document.getElementById('charMapSvg');
@@ -1343,7 +1395,7 @@ function renderCharMap() {
   // Layout positions
   const cx = 360, cy = 180;
   const positions = {
-    protagonist: { x: cx, y: cy, name: protag, label: 'PROTAGONIST', conn: 'Vol I Step 4' },
+    protagonist: { x: cx, y: cy, name: protag, label: 'PROTAGONIST', conn: 'Story · Step 4' },
     antagonist:  { x: cx + 240, y: cy, name: antag, label: 'ANTAGONIST', conn: 'opposes' },
     ally:        { x: cx - 240, y: cy - 90, name: ally, label: 'ALLY', conn: 'reflects' },
     lover:       { x: cx - 240, y: cy + 90, name: lover, label: 'LOVE / MIRROR', conn: 'pulls toward need' },
@@ -1387,7 +1439,7 @@ function renderCharMap() {
 }
 
 /* ============================================================
-   SCENE CHARGE TIMELINE (Vol I Step 11)
+   SCENE CHARGE TIMELINE (Story · Step 11)
    ============================================================ */
 function renderSceneChart() {
   const wrap = document.getElementById('sceneChart');

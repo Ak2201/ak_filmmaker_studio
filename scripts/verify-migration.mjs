@@ -84,7 +84,16 @@ const SKIN_FILES = fs
 const EXPECTED = {
   hub: {},
   breakdown: {},
-  feature: {},
+  feature: {
+    /* The blueprint stopped at the tech recce and was described as two
+       volumes of twelve steps. It now runs four phases and thirty-two
+       steps, through the shoot and out the other side, so the master
+       cover no longer counts volumes. Two words, so two entries —
+       re-baselining for this would have thrown away the check's grip
+       on the other 2,000. */
+    'volumes': 'the two volumes became four phases: Story, Pre-production, Production, Post-production',
+    'twenty-four': 'twenty-four steps became thirty-two with Production and Post-production'
+  },
   short: {},
   library: {}
 };

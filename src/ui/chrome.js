@@ -512,8 +512,15 @@ function buildStepRail() {
                   : 'step-auto-' + Math.random().toString(36).slice(2, 7);
     }
 
+    /* Four phases now, not two volumes. Derived from the step number
+       because that is what the rail has to hand — the step data knows
+       its own phase, but buildStepRail reads the rendered DOM. */
+    const n = parseInt(num, 10);
     const group = isLadder ? 'INTERLUDE'
-                : (parseInt(num, 10) <= 12 ? 'VOL I' : 'VOL II');
+                : n <= 12 ? 'STORY'
+                : n <= 24 ? 'PRE-PRODUCTION'
+                : n <= 28 ? 'PRODUCTION'
+                : 'POST-PRODUCTION';
     if (group !== currentGroup) {
       currentGroup = group;
       groupEl = document.createElement('div');

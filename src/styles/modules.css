@@ -98,6 +98,7 @@
   font-style: var(--sk-title-style);
   line-height: var(--sk-title-lh);
   letter-spacing: var(--track-tight);
+  text-transform: var(--sk-title-transform);
 }
 
 /* Section headings, one step down. */

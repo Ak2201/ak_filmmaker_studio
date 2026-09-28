@@ -60,4 +60,11 @@
               network round trip on first paint.
    pacing     how tall a cover is — the difference between "a book
               you open" and "a tool you work in"
+
+   Two more that exist because a skin asked for them, which is the
+   process this contract describes: --sk-title-transform (a design
+   whose headings are all caps is a different design) and
+   --sk-btn-radius, separate from --sk-radius because a pill button
+   beside a square card is a real combination and one radius cannot
+   express it.
    ============================================================ */

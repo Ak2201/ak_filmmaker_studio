@@ -145,7 +145,7 @@ a:focus-visible { outline-offset: 3px; }
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  border-radius: var(--radius);
+  border-radius: var(--sk-btn-radius, var(--radius));
   transition: background var(--speed) var(--ease),
               border-color var(--speed) var(--ease),
               color var(--speed) var(--ease);

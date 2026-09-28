@@ -21,6 +21,7 @@
 
   /* geometry */
   --sk-radius:        var(--radius);
+  --sk-btn-radius:    var(--radius);
   --sk-card-pad:      var(--s4) var(--s5);
   --sk-band-pad:      var(--s8);
   --sk-grid-gap:      var(--s4);
@@ -52,6 +53,7 @@
   --sk-body:          var(--face-serif);
   --sk-title-size:    clamp(2rem, 4.5vw, 3rem);
   --sk-title-style:   normal;
+  --sk-title-transform: none;
   --sk-title-lh:      1.04;
   --sk-h2-size:       var(--t-2xl);
   --sk-h2-style:      normal;

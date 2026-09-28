@@ -65,6 +65,8 @@ export default defineConfig({
         visualize:  resolve(__dirname, 'visualize.html'),
         write:      resolve(__dirname, 'write.html'),
         plan:       resolve(__dirname, 'plan.html'),
+        study:      resolve(__dirname, 'study.html'),
+        dissect:    resolve(__dirname, 'dissect.html'),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

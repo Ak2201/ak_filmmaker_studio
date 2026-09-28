@@ -43,6 +43,20 @@
           "purpose": "Terms, explained through four Tamil films",
           "status": "built",
           "href": "feature.html#glossary"
+        },
+        {
+          "id": "case-studies",
+          "label": "Case Studies",
+          "purpose": "Four Tamil films, taken apart for craft",
+          "status": "built",
+          "href": "study.html"
+        },
+        {
+          "id": "dissection",
+          "label": "Dissection",
+          "purpose": "Take a finished film apart, then your own",
+          "status": "built",
+          "href": "dissect.html"
         }
       ]
     },

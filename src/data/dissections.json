@@ -1,0 +1,225 @@
+{
+  "_about": "Worked dissections for the dissection module. CRAFT ANALYSIS ONLY — the dramatic function a sequence performs, the technique used, why it works. No plot summaries, no character fates, no quoted dialogue, no naming the mechanism of a reveal. A dissection you could follow instead of watching the film teaches nothing you could not get by watching, and it is not ours to publish. Sequences are labelled by FUNCTION, never by event. Schema, AREAS, ACTS and coverage() live in src/lib/dissect.js. Hand-written; npm run extract does not touch this file.",
+  "films": [
+    {
+      "meta": {
+        "slug": "darkknight",
+        "title": "The Dark Knight",
+        "director": "Christopher Nolan",
+        "year": "2008",
+        "genre": "Crime · Moral thriller",
+        "hue": "visualize"
+      },
+      "thesis": "That order is a performance a community agrees to keep up, and the surest way to end it is not force but a demonstration that the people upholding the rules will suspend them first.",
+      "engine": "Escalation, not pursuit. The antagonist wants no acquirable object, so nothing can be taken from him and the second act cannot run on chase-and-capture. Instead every protagonist decision is answered with a harder condition — which means the plot advances on the heroes' initiative rather than the villain's, and each advance costs more than the last.",
+      "sequences": [
+        {
+          "id": "s1",
+          "label": "A prologue that closes itself",
+          "act": "1",
+          "at": "~0:00",
+          "fn": "Sets the film's processing speed and its willingness to withhold, before either of those things costs the audience anything.",
+          "technique": "A self-contained operation with its own beginning, middle and end, cut so that comprehension arrives one beat after the action rather than ahead of it.",
+          "why": "An audience that has just kept up with a sequence it was never briefed on will extend that trust for two more hours. An opening like this is a contract about difficulty, not an introduction."
+        },
+        {
+          "id": "s2",
+          "label": "The competent baseline",
+          "act": "1",
+          "at": "~0:12",
+          "fn": "Establishes what this world's institutions can do when they are working, so that every later failure is measurable against something.",
+          "technique": "Procedural scenes staged as small wins — a plan made, coordinated and carried off — with the professionals visibly enjoying each other's company.",
+          "why": "You cannot dismantle a status quo you never built. A film about collapse owes its whole second half to how solid the first half was allowed to look."
+        },
+        {
+          "id": "s3",
+          "label": "The antagonist sets the terms",
+          "act": "1",
+          "at": "~0:25",
+          "fn": "Replaces the film's question. It stops being whether the heroes can win and becomes what they will agree to in order to.",
+          "technique": "An adversary written as a proposition rather than an objective. He states a rule about how people behave under pressure, and the film then arranges itself to test that rule.",
+          "why": "An antagonist with a goal gives the protagonist something to guard. An antagonist with an argument gives the protagonist something to answer — and an answer can be wrong, which is a deeper jeopardy and costs nothing to stage."
+        },
+        {
+          "id": "s4",
+          "label": "The demand goes public",
+          "act": "1",
+          "at": "~0:40",
+          "fn": "Turns a private investigation into a civic emergency and starts a clock the protagonists did not set and cannot stop.",
+          "technique": "The ultimatum is addressed to the city rather than to the hero, so pressure arrives through crowds, press and colleagues instead of through a threat delivered in a room.",
+          "why": "Externalising the deadline turns every bystander into a scene partner. The hero is now opposed by the people he is protecting, which generates far more friction than being opposed by the villain alone."
+        },
+        {
+          "id": "s5",
+          "label": "The bill is sent to someone else",
+          "act": "2",
+          "at": "~0:50",
+          "fn": "Establishes the film's governing cruelty: the protagonist's choices are paid for by third parties.",
+          "technique": "Consequence is displaced one person sideways from the decision, and the cut goes to whoever is paying rather than to whoever decided.",
+          "why": "Guilt plays harder than danger. A hero who can be hurt is in a thriller; a hero whose virtue hurts other people is in a moral one, and only the second kind has to change."
+        },
+        {
+          "id": "s6",
+          "label": "A dilemma built as a set piece",
+          "act": "2",
+          "at": "~1:05",
+          "fn": "Converts an ethical question into physical action, so the audience experiences the argument instead of hearing it.",
+          "technique": "Two incompatible obligations, a countdown, and a geography laid out clearly enough that the audience can do the arithmetic themselves.",
+          "why": "A theme staged as a choice under time pressure cannot be skimmed. This is the film's whole method — every idea it has is eventually given a clock and a floor plan."
+        },
+        {
+          "id": "s7",
+          "label": "Force is applied and does not work",
+          "act": "2",
+          "at": "~1:15",
+          "fn": "Exhausts the protagonist's default method, which is the precondition for him having to find another one.",
+          "technique": "A large action sequence whose outcome is technically a success and dramatically a defeat: the objective is achieved and the situation is worse.",
+          "why": "Spectacle earns its place when it moves the argument. An action sequence that only raises the pulse is an expensive intermission."
+        },
+        {
+          "id": "s8",
+          "label": "The win that was the plan",
+          "act": "2",
+          "at": "~1:22",
+          "fn": "Midpoint reversal. The protagonists' best result turns out to have been the intended one, which re-reads everything before it without reshooting any of it.",
+          "technique": "The reversal is delivered structurally rather than verbally — the film simply keeps running past what looked like its climax, and the remaining runtime does the telling.",
+          "why": "A midpoint that inverts the meaning of the first act doubles that act's value for free, and resets the audience's estimate of how much film is left, which is the cheapest suspense available."
+        },
+        {
+          "id": "s9",
+          "label": "Two efforts turn out to be one trap",
+          "act": "2",
+          "at": "~1:30",
+          "fn": "Strips the protagonists of the sense that they are ahead, and hands the initiative to the antagonist for the rest of the act.",
+          "technique": "Cross-cutting between parallel efforts the audience believes are independent, so that the collapse of one is the collapse of both.",
+          "why": "Cross-cutting conventionally promises a rescue. Using the same grammar to deliver a trap lands without warning, precisely because the form has been telling the audience something else."
+        },
+        {
+          "id": "s10",
+          "label": "The institution suspends its own rule",
+          "act": "2",
+          "at": "~1:45",
+          "fn": "Delivers the thesis as behaviour rather than as dialogue: the defenders of the order are the first to set it aside, and the film makes the audience complicit by letting it work.",
+          "technique": "The transgression is introduced as a solution — efficient, effective, proposed by a sympathetic character — and the objection is given to someone the audience respects rather than to someone who can be dismissed.",
+          "why": "An argument the film wins too easily teaches nothing. Give the wrong answer the practical advantages and the right answer only the moral ones, and a thriller becomes a debate the audience has to hold both sides of."
+        },
+        {
+          "id": "s11",
+          "label": "The pressure finds the weakest joint",
+          "act": "2",
+          "at": "~1:55",
+          "fn": "All hope lost. The antagonist stops attacking the protagonist and attacks the thing the protagonist was defending.",
+          "technique": "The low point is written as the loss of an argument, not the loss of a fight: what gives way is a principle, held by the character who had been the film's best evidence for it.",
+          "why": "If the antagonist's claim is about people, the most devastating refutation of the hero is a person. Defeat by proof is much harder to come back from than defeat by force, which is exactly why the third act has somewhere to go."
+        },
+        {
+          "id": "s12",
+          "label": "The claim is put to the test",
+          "act": "3",
+          "at": "~2:05",
+          "fn": "Stages the film's central proposition as an experiment, with the audience as the control group.",
+          "technique": "A closed situation with stated rules, a visible timer, and no protagonist able to intervene — the outcome rests entirely with people the film has deliberately not characterised.",
+          "why": "A theme is only proven when the hero is not allowed to solve it. Taking the protagonist's hands off the wheel for the decisive test is the boldest structural choice in the picture, and the one most often copied badly."
+        },
+        {
+          "id": "s13",
+          "label": "The confrontation settles the argument, not the pursuit",
+          "act": "3",
+          "at": "~2:15",
+          "fn": "Closes the antagonist line without making capture the point, so the film's question is answered rather than merely stopped.",
+          "technique": "The physical objective is dispatched briskly and the scene keeps going, spending its length on the exchange of positions instead of the exchange of blows.",
+          "why": "When the conflict was always ideological, an action climax that ends on a win leaves the actual story unfinished. Give the last minutes to whatever the first act said the film was about."
+        },
+        {
+          "id": "s14",
+          "label": "The ending chooses the thesis over the hero",
+          "act": "3",
+          "at": "~2:25",
+          "fn": "Charges the price the film has spent two hours arguing must be paid, and charges it to the protagonist rather than to circumstance.",
+          "technique": "A resolution that is structurally a sacrifice and emotionally a defeat, played as neither — quietly, in motion, and cut off before anyone on screen is allowed to react to it.",
+          "why": "An ending that costs the protagonist something he chose is the only proof that the dilemma was real. An ending that costs nothing reveals the dilemma to have been decoration."
+        }
+      ],
+      "motifs": [
+        {
+          "id": "m1",
+          "name": "The stated rule",
+          "what": "Characters announce, in plain terms and early, the principle they operate by.",
+          "plant": "Given to several characters in the first act as ordinary self-description, so it registers as characterisation rather than as setup.",
+          "payoff": "Every later crisis is engineered to make one of those rules expensive, and the audience scores each character against words they heard them say themselves."
+        },
+        {
+          "id": "m2",
+          "name": "A choice handed to chance",
+          "what": "A recurring device by which a character declines to own a decision and outsources it.",
+          "plant": "Introduced with nothing at stake, as a piece of business the film does not comment on.",
+          "payoff": "It returns when the stakes are at their highest; because the grammar was taught for free, the later instance can be played in silence and still read."
+        },
+        {
+          "id": "m3",
+          "name": "Appearance as currency",
+          "what": "Who a person is taken to be, as distinct from who they are, is treated as an asset that can be spent, borrowed or destroyed.",
+          "plant": "Established early through costume, title and reputation, all presented as practical working advantages rather than as themes.",
+          "payoff": "The third act trades in those assets directly, so the climax can be about identity without one line of dialogue announcing that it is."
+        },
+        {
+          "id": "m4",
+          "name": "The crowd as jury",
+          "what": "Groups of ordinary people are repeatedly shown deciding something, in frame, while the leads watch and cannot intervene.",
+          "plant": "First used decoratively — reaction shots that appear to be there for scale.",
+          "payoff": "By the time a group decision carries the plot, the audience has been trained to read a crowd as an agent rather than as scenery, and no explanation is needed."
+        },
+        {
+          "id": "m5",
+          "name": "Escalation by answer",
+          "what": "Each protagonist move is met not with resistance but with a harder version of the same question.",
+          "plant": "The pattern is set the first time a working solution produces a worse problem.",
+          "payoff": "It becomes the film's clock. The audience stops asking whether the heroes will act and starts dreading what their next action will cost."
+        }
+      ],
+      "craft": [
+        {
+          "area": "structure",
+          "lesson": "Escalation is a legitimate substitute for pursuit. If your antagonist wants nothing you can take away, your second act cannot run on chase-and-capture — build it so each protagonist decision is answered with a harder condition, and the structure advances on their initiative instead of stalling."
+        },
+        {
+          "area": "structure",
+          "lesson": "Let the apparent climax land at the midpoint. Resolving the stated objective with an hour still to run, and making that resolution the problem, buys you a second half the audience cannot forecast from the first."
+        },
+        {
+          "area": "character",
+          "lesson": "Give the antagonist an argument rather than an objective, then make a sympathetic character the evidence against it. The strongest test of a theme is a person who embodies it, standing exactly where the pressure will fall."
+        },
+        {
+          "area": "dialogue",
+          "lesson": "Have people state their principles early, casually, in their own words. The line is cheap when it is spoken and pays for the rest of the film, because every later choice is measured against a standard the audience watched the character set."
+        },
+        {
+          "area": "image",
+          "lesson": "Stage the argument instead of stating it. Every ethical question here is eventually given a countdown and a floor plan, so the audience does the moral arithmetic with their hands rather than nodding along to a speech."
+        },
+        {
+          "area": "image",
+          "lesson": "Use scale to isolate, not to impress. Hard-edged wide compositions that set one figure against an institution are the film's subject rendered as framing, and they cost nothing beyond choosing the lens and the position."
+        },
+        {
+          "area": "editing",
+          "lesson": "Cross-cutting promises convergence and rescue; audiences read it that way before they read the content. Establish the convention honestly, then spend it once to deliver a trap, and it lands with no setup line required."
+        },
+        {
+          "area": "sound",
+          "lesson": "A rising tone that never resolves is a clock you never have to show. Sustained pitch climbing without cadence produces dread carrying no information, which is exactly what you want under a sequence whose facts you are withholding."
+        }
+      ],
+      "questions": [
+        "What does my antagonist want that I could simply hand them? If the answer is an object, my second act will be a chase. If the answer is for the protagonist to be proved wrong, I have an argument — and arguments escalate by themselves.",
+        "Which of my protagonist's stated principles is the story built to make expensive? If I cannot name one, the ending will cost nothing and the audience will feel it.",
+        "Where is my midpoint, and does it invert the first half or merely continue it? If I deleted the second half, would the first half still mean the same thing?",
+        "Who pays for my hero's best decision? A story in which only the hero suffers for the hero's choices is smaller than one where the bill goes sideways to someone who did not choose.",
+        "Have I staged my theme or argued it? Name the scene where the idea is a choice with a clock on it. If there is no such scene, the idea is still only dialogue.",
+        "Which of my motifs is planted and never paid off? List every recurring image, then name the scene that cashes each one. Anything with no scene beside it is either a debt to the audience or a habit to cut.",
+        "Does my climax resolve the pursuit or the question? If the last ten minutes are only about winning, the first act promised something I am not delivering."
+      ]
+    }
+  ]
+}

@@ -150,34 +150,47 @@ a:focus-visible { outline-offset: 3px; }
               border-color var(--speed) var(--ease),
               color var(--speed) var(--ease);
 }
+/* A BUTTON BELONGS TO THE DOCUMENT UNLESS IT SAYS OTHERWISE.
+
+   This used to be the other way round: .btn was painted in
+   --chrome-ink, and a `main .btn` rule repainted it for the page body.
+   That made the toolbar the default and the document the exception,
+   which is backwards — and it meant a component could only be correct
+   if its host happened to wrap it in a <main>. A component cannot know
+   that. One did not, and measured 1:1.
+
+   --chrome-ink is also the same value as --paper in the paper theme,
+   so getting this wrong is not a slightly-off button, it is an
+   invisible one. Chrome now opts IN. */
 .btn,
 .tb-link {
   background: transparent;
-  color: var(--chrome-ink);
-  border: 1px solid var(--chrome-ink);
+  color: var(--ink);
+  border: 1px solid var(--rule);
   padding: var(--s2) var(--s3);
 }
 .btn:hover,
-.tb-link:hover { background: var(--chrome-ink); color: var(--chrome); }
+.tb-link:hover { background: var(--ink); color: var(--paper); }
 
-/* A .btn INSIDE THE DOCUMENT is not chrome.
-   --chrome-ink is the toolbar's text colour, and in the paper theme it
-   resolves to #f6f1e6 — the same value as --paper. So a bare .btn
-   dropped into the page body was cream on cream: rendered, focusable,
-   tab-reachable and completely invisible. breakdown.html's "+ Add
-   scene" shipped that way, at a measured 1:1 contrast ratio.
-
-   Existing pages only avoided it by always reaching for .btn.primary
-   in the body, which is luck rather than a rule. `main .btn` is
-   (0,1,1), so .btn.primary at (0,2,0) and .btn.is-danger still win —
-   this only repaints the plain one. */
-main .btn,
-main .tb-link {
-  color: var(--ink);
-  border-color: var(--rule);
+/* The chrome surfaces are dark in every theme, so their buttons take
+   the chrome palette. This list is the whole set of them. */
+.toolbar .btn,
+.toolbar .tb-link,
+.sh-bar .btn,
+.sh-rail .btn,
+.studio-no-project-banner .btn {
+  color: var(--chrome-ink);
+  border-color: var(--chrome-ink);
 }
-main .btn:hover,
-main .tb-link:hover { background: var(--ink); color: var(--paper); }
+.toolbar .btn:hover,
+.toolbar .tb-link:hover,
+.sh-bar .btn:hover,
+.sh-rail .btn:hover,
+.studio-no-project-banner .btn:hover {
+  background: var(--chrome-ink);
+  color: var(--chrome);
+}
+
 
 .btn.primary {
   background: var(--accent);

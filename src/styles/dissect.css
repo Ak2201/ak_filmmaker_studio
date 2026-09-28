@@ -1,0 +1,524 @@
+/* ============================================================
+   DISSECTION — the worked example, and the reader's own beside it
+   ------------------------------------------------------------
+   Only what is genuinely this page's own. The hierarchy (eyebrow →
+   title → deck), the stats strip, the teaching empty state, the icon
+   buttons and the sub/none type are the studio language from
+   modules.css and widgets.css, reused as they are.
+
+   Every colour is a token and every shape is a --sk-* skin variable,
+   so the page is correct in all five skins and all four themes
+   without knowing which is on.
+
+   WHERE THE HUE GOES, AND WHY IT IS NEVER TEXT HERE.
+   The film's own hue (meta.hue → .hue-visualize) is used one way
+   only: as the rule down the edge of a card. Neither --hue-deep nor
+   --hue-lift appears on this page, and the reason is that neither
+   one is safe on any ground this page actually has.
+
+   --hue-deep is the light-ground variant, and the page ground is
+   --paper, which is dark on ink — a "deep" purple word on a dark
+   brown page. --hue-lift is the dark-ground variant, and the claim
+   slabs looked like the place for it, because --sk-slab-bg is near
+   black in the Studio skin. It is not in the others: Binder and
+   Console build the slab out of --paper-sunk and Mission makes it
+   transparent, so --hue-lift measured 1.75:1 there — a pale lilac
+   label on cream, which renders perfectly and cannot be read. The
+   slab's own ink variables (--sk-slab-ink / --sk-slab-accent) are
+   the only text colours that follow the slab when a skin flips it,
+   which is exactly what the skin contract says they are for.
+
+   NO --ink-faint ON THIS PAGE. It is the studio's third ink and it
+   measures 3.6:1 on --paper-raised, under AA for the 11px mono
+   labels this page is full of. Every label, marker and helper line
+   here is --ink-muted instead, which clears 4.5:1 on paper, desk and
+   ink. It does NOT clear it in sepia — 4.24:1 on --paper-raised and
+   3.7:1 on --paper-sunk — and neither does modules.css's own .bd-sub
+   or .bd-eyebrow on the same page, which is the tell: that is the
+   sepia palette, not this module. So the two chips sitting on
+   --paper-sunk take --ink-body to stay clear of the worst of it, and
+   the rest matches its neighbours rather than diverging alone. The
+   real fix is one pass over --ink-muted in tokens.css, where it
+   would fix six pages instead of this one. base.css's placeholder
+   ink (--ink-faint, 2.8–3.6:1 depending on theme) is the same story.
+
+   Likewise the dangling-motif label is --ink rather than --warn:
+   --warn on --warn-wash is 4.1:1, so the warning is carried by the
+   rule, the wash and the chips, which is where a colour belongs.
+
+   THE TWO HALVES ARE DIFFERENT SURFACES ON PURPOSE. The example is
+   a document — read it. Yours is a form — fill it. They carry the
+   same fields in the same order, so the form is a document with the
+   answers removed, but a reader should never have to work out which
+   half they are looking at.
+
+   NARROW. base.css gives inputs display:block and width:100%, which
+   is the exact shape that has pushed horizontal scroll onto this
+   app before: a fixed grid track plus a 100%-wide input overflows
+   its column. So every track here is minmax(min(Xpx, 100%), 1fr),
+   every flex child that holds an input has min-width: 0, and the
+   row bars wrap.
+   ============================================================ */
+
+.ds-example,
+.ds-mine {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+}
+.ds-example { padding-block: var(--s5) var(--s7); }
+.ds-mine { padding-block: var(--s7) var(--s9); border-top: 1px solid var(--rule); }
+
+.ds-h { margin: var(--s7) 0 var(--s2); }
+.ds-example .bd-sub { max-width: var(--measure); }
+
+/* ------------------------------------------------------------
+   1. THE FILM HEAD — the one place the hue fills a block
+   ------------------------------------------------------------ */
+.ds-film {
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+}
+.ds-film-title {
+  margin: var(--s1) 0 2px;
+  font-family: var(--f-display);
+  font-size: var(--sk-h2-size);
+  font-style: var(--sk-h2-style);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.ds-film-meta {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   2. THESIS AND ENGINE — two slabs, because they are the claims
+   the rest of the page is evidence for.
+   ------------------------------------------------------------ */
+.ds-claims {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  margin-top: var(--s4);
+}
+.ds-claim {
+  display: grid;
+  gap: 2px;
+  padding: var(--sk-card-pad);
+  border-radius: var(--sk-radius);
+  border-left: var(--sk-slab-rule-w) solid var(--hue, var(--sk-slab-rule-c));
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+}
+.ds-claim-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--sk-slab-accent);
+}
+.ds-claim-sub { font-size: var(--t-tiny); color: var(--sk-slab-ink); }
+.ds-claim-body {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--sk-slab-ink);
+}
+
+/* ------------------------------------------------------------
+   3. SEQUENCES — one column per act.
+   Three acts side by side on a wide screen is the shape of the
+   thing being taught: the reader can see at a glance that the
+   middle column is twice the height of the others, which is what
+   a second act IS.
+   ------------------------------------------------------------ */
+.ds-acts {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  align-items: start;
+}
+.ds-act { display: grid; gap: var(--s3); align-content: start; min-width: 0; }
+.ds-act-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+  margin: 0;
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--rule);
+}
+.ds-act-name {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.ds-act-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ds-seq {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  box-shadow: var(--sk-card-shadow);
+  min-width: 0;
+}
+.ds-seq-top { display: grid; gap: 2px; }
+.ds-seq-at {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.ds-seq-label {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+/* A definition list, because that is what this is: three named
+   answers about one thing. The labels are the mono voice the whole
+   studio uses for "this is a field, not prose". */
+.ds-seq-body { display: grid; gap: var(--s1); margin: 0; }
+.ds-seq-body dt {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ds-seq-body dd {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.ds-seq-body dd:last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------
+   4. MOTIFS — plant → payoff, drawn as the chain it is
+   ------------------------------------------------------------ */
+.ds-motifs {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+}
+.ds-motif {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  min-width: 0;
+}
+.ds-motif-name {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  color: var(--ink);
+}
+.ds-motif-what {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.ds-chain {
+  display: grid;
+  gap: var(--s2);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule-hair);
+}
+.ds-chain-half { display: grid; gap: 2px; min-width: 0; }
+.ds-chain-half p {
+  margin: 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.ds-chain-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ds-chain-arrow { align-self: center; color: var(--ink-muted); }
+
+/* ------------------------------------------------------------
+   5. CRAFT NOTES AND QUESTIONS
+   ------------------------------------------------------------ */
+.ds-craft {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+.ds-craft-card {
+  display: grid;
+  gap: var(--s2);
+  align-content: start;
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  min-width: 0;
+}
+.ds-craft-area {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ds-craft-lesson {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+
+.ds-questions {
+  display: grid;
+  gap: var(--s3);
+  max-width: var(--measure);
+  margin: 0;
+  padding-left: var(--s5);
+}
+.ds-question {
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.ds-question::marker {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   6. YOUR DISSECTION — the same fields, as a form
+   ------------------------------------------------------------ */
+.ds-mine-head { margin-bottom: var(--s5); }
+.ds-mine-head .bd-sub { max-width: var(--measure); }
+.ds-stats { margin-bottom: var(--s5); }
+
+/* The dangling-motif panel. Semantic colour, never a phase hue: a
+   finding is a status, and CLAUDE.md keeps --warn out of the volume
+   palette precisely so it can never read as a category. */
+.ds-dangle {
+  display: grid;
+  gap: var(--s1);
+  margin-bottom: var(--s6);
+  padding: var(--sk-card-pad);
+  border: 1px solid var(--warn);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+  background: var(--warn-wash);
+}
+.ds-dangle.is-clear {
+  border-color: var(--rule-hair);
+  border-left-color: var(--rule);
+  background: var(--paper-sunk);
+}
+.ds-dangle-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.ds-dangle.is-clear .ds-dangle-lab { color: var(--ink-body); }
+.ds-dangle-body {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.ds-dangle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-dangle-list li {
+  padding: 2px var(--s2);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+.ds-form-block { margin-bottom: var(--s7); }
+.ds-block-h {
+  margin: 0 0 2px;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.ds-block-sub {
+  margin: 0 0 var(--s4);
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.ds-none {
+  margin: 0 0 var(--s3);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.ds-rows { display: grid; gap: var(--s4); }
+
+/* A .btn in the BODY has to be told the paper palette — chrome.css
+   builds .btn for the dark toolbar, where its outline is --chrome-ink,
+   and that is the light ink which in the paper theme equals --paper
+   itself. Dropped on the page as-is it is cream on cream: present,
+   focusable and invisible. plan.css states the same three lines for
+   the same reason. */
+.ds-add {
+  justify-self: start;
+  display: inline-block;
+  margin-top: var(--s4);
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper);
+}
+.ds-add:hover,
+.ds-add:focus-visible {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* ---- one editable row -------------------------------------- */
+.ds-row {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  min-width: 0;
+}
+.ds-row:focus-within { border-color: var(--accent); }
+/* The finding, shown on the row that has it as well as in the panel.
+   A summary nobody can act on from where they are reading is a
+   summary they have to hold in their head. */
+.ds-row-motif.is-dangling { border-left-color: var(--warn); }
+
+.ds-row-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.ds-row-n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px; height: 30px;
+  padding-inline: var(--s2);
+  border-radius: var(--radius);
+  background: var(--paper-sunk);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  /* --ink-body, not --ink-muted. Both chips on this page sit on
+     --paper-sunk, and muted ink on the sunk surface measures 3.7:1
+     in sepia — the one ground where the studio's second ink runs
+     out of room. */
+  color: var(--ink-body);
+}
+/* flex-basis, not a width: the bar wraps at 390px rather than
+   forcing the row wider than the column it sits in. */
+.ds-row-title { flex: 1 1 16rem; min-width: 0; }
+.ds-row-at { flex: 0 1 7rem; min-width: 0; font-family: var(--f-mono); }
+.ds-row-act { flex: 0 1 9rem; min-width: 0; }
+.ds-row-area { flex: 1 1 10rem; min-width: 0; }
+.ds-row-acts { display: flex; gap: var(--s1); margin-left: auto; }
+.ds-icon { flex: none; }
+
+.ds-row-grid {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+.ds-field { display: grid; gap: var(--s1); min-width: 0; }
+.ds-flabel { display: grid; gap: 1px; }
+.ds-flabel-main {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ds-flabel-sub { font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
+
+.ds-craft-input { min-height: 4em; }
+.ds-row-q { grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; }
+.ds-row-q .ds-row-n { margin-top: var(--s1); }
+.ds-q-input { min-height: 4em; }
+
+/* ------------------------------------------------------------
+   NARROW
+   ------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .ds-example, .ds-mine { padding-inline: var(--s4); }
+  .ds-h { margin-top: var(--s6); }
+  /* The plant → payoff chain stacks; the arrow turns a quarter so it
+     still reads as "this leads to that" rather than as punctuation. */
+  .ds-chain { grid-template-columns: minmax(0, 1fr); }
+  .ds-chain-arrow { justify-self: start; rotate: 90deg; }
+  .ds-row-acts { margin-left: 0; }
+  .ds-row-title, .ds-row-at, .ds-row-act, .ds-row-area { flex: 1 1 100%; }
+}
+
+/* ------------------------------------------------------------
+   PRINT — a dissection is a document worth carrying into a room.
+   The form half goes; the worked example and whatever the reader
+   has written both print as prose.
+   ------------------------------------------------------------ */
+@media print {
+  .ds-add, .ds-row-acts { display: none; }
+  .ds-acts, .ds-motifs, .ds-craft { grid-template-columns: minmax(0, 1fr); }
+  .ds-seq, .ds-motif, .ds-craft-card, .ds-row { break-inside: avoid; }
+}

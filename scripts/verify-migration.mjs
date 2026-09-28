@@ -54,7 +54,9 @@ const PAGES = [
   { page: 'contacts.html',   legacy: null, name: 'contacts' },
   { page: 'visualize.html',  legacy: null, name: 'visualize' },
   { page: 'write.html',      legacy: null, name: 'write' },
-  { page: 'plan.html',       legacy: null, name: 'plan' }
+  { page: 'plan.html',       legacy: null, name: 'plan' },
+  { page: 'study.html',      legacy: null, name: 'study' },
+  { page: 'dissect.html',    legacy: null, name: 'dissect' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -98,6 +100,8 @@ const EXPECTED = {
   visualize: {},
   write: {},
   plan: {},
+  study: {},
+  dissect: {},
   breakdown: {},
   /* Emptied when the oracle was recaptured for the new modules. The two
      entries here explained the volumes→phases rewording, and a baseline

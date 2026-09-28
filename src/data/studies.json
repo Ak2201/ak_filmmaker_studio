@@ -1,0 +1,610 @@
+{
+  "_about": "Case studies for the demo-film selector. CRAFT ANALYSIS ONLY — structural function, directorial decisions, why a technique works. No scene-by-scene plot summaries and no quoted dialogue: a study you could follow instead of watching the film is both a worse lesson and not ours to publish. Schema and validate() live in src/lib/studies.js. Hand-written; npm run extract does not touch this file.",
+  "films": [
+    {
+      "meta": {
+        "slug": "96",
+        "title": "96",
+        "director": "C. Prem Kumar",
+        "year": "2018",
+        "genre": "Romance · Memory",
+        "hue": "shorts"
+      },
+      "concept": {
+        "premise": "Two classmates meet again at a school reunion after twenty-two years apart, and have one night in which to account for the lives they actually lived.",
+        "hook": "It asks a question almost everyone carries privately: what would you say to the person you never got over, if you got exactly one evening and no second chance?",
+        "howBuilt": "The premise is established before the reunion begins, by showing the protagonist alone and at work for long enough that his ordinariness registers. The film buys its later emotion by spending its first act on a man with no story — so that when the past arrives, the audience already knows precisely what it is interrupting.",
+        "yourTurn": "State your premise as a question your audience has already asked themselves, then name the one constraint that forces an answer — a deadline, a single night, a closing door. A premise without a constraint is a situation, not a story."
+      },
+      "logline": {
+        "line": "When a travel photographer attends his school reunion after twenty-two years, a single night with the classmate he never stopped loving forces him to face the life he chose instead.",
+        "protagonist": "A travel photographer who has arranged his adult life to avoid the subject",
+        "incident": "The reunion puts him in a room with her again",
+        "conflict": "Both have lived twenty-two years that cannot be undone, and neither will say so directly",
+        "goal": "To get through one night without lying about what it meant",
+        "cost": "If he stays silent, he loses the only chance to know that it was mutual",
+        "yourTurn": "Write yours as: WHEN [incident], a [flawed protagonist] must [goal] or [cost]. If you cannot name the cost, you do not yet know why the story ends."
+      },
+      "characters": [
+        {
+          "name": "Ram",
+          "role": "protagonist",
+          "flaw": "Mistakes restraint for integrity — he will not ask for anything he is not offered",
+          "want": "To get through the reunion",
+          "need": "To find out that he was loved back, and to be able to hear it",
+          "external": "The evening ends and they return to separate lives",
+          "internal": "He confirms to himself that not asking was the right choice, and stays that way",
+          "arc": "From a man who protects himself with silence to one who lets himself be told"
+        },
+        {
+          "name": "Janaki",
+          "role": "mirror",
+          "flaw": "Has built a life that works, and will not pretend it has not",
+          "want": "To see him and be unharmed by it",
+          "need": "To say the thing out loud once, for its own sake",
+          "external": "She carries the unsaid back into a life that has no room for it",
+          "internal": "She loses the chance to be honest without being unfaithful to her own choices",
+          "arc": "From guarded warmth to a clear-eyed honesty that costs her nothing she is not willing to pay"
+        }
+      ],
+      "beats": [
+        {
+          "id": "opening",
+          "label": "Opening Image",
+          "act": "1",
+          "function": "Establish the protagonist's ordinary world and the shape of what is missing from it.",
+          "inFilm": "The film opens on the protagonist's working solitude rather than on romance, which sets the baseline the rest of the film measures against.",
+          "craft": "Open on the life the story will interrupt, not on the interruption."
+        },
+        {
+          "id": "inciting",
+          "label": "Inciting Incident",
+          "act": "1",
+          "function": "Something arrives that the protagonist cannot ignore and cannot fully control.",
+          "inFilm": "The reunion is arranged. The incident is social and low-stakes on its surface, which is the point: the pressure is entirely internal.",
+          "craft": "An inciting incident does not have to be dramatic. It has to be unavoidable."
+        },
+        {
+          "id": "pp1",
+          "label": "Plot Point 1",
+          "act": "1",
+          "function": "The protagonist commits, and the story's real question is posed.",
+          "inFilm": "The two are finally in the same room. From here the film abandons plot almost entirely and runs on the question of whether either will speak plainly.",
+          "craft": "Once your question is posed, stop adding events. Events after this point dilute rather than build."
+        },
+        {
+          "id": "midpoint",
+          "label": "Midpoint",
+          "act": "2",
+          "function": "A shift from reacting to acting — the protagonist stops avoiding the subject.",
+          "inFilm": "The evening moves from a group to the two of them, and the conversation stops being about the past in general and becomes about them specifically.",
+          "craft": "Shrink the world at the midpoint. Fewer people, smaller rooms, less escape."
+        },
+        {
+          "id": "allLost",
+          "label": "All Hope Is Lost",
+          "act": "2",
+          "function": "The cost becomes concrete and the goal looks unreachable.",
+          "inFilm": "The facts of twenty-two years are stated rather than dramatised. Nothing is destroyed; it is simply established that it is too late, which is worse.",
+          "craft": "In a romance, the low point is usually information, not catastrophe."
+        },
+        {
+          "id": "climax",
+          "label": "Climax",
+          "act": "3",
+          "function": "The protagonist acts on the need rather than the want.",
+          "inFilm": "The resolution is verbal and quiet. The film's whole structure exists to make a short exchange carry the weight of an act break.",
+          "craft": "Earn a small climax with a large setup, and it will read as large."
+        },
+        {
+          "id": "resolution",
+          "label": "Resolution",
+          "act": "3",
+          "function": "Show the changed equilibrium and what it cost.",
+          "inFilm": "The lives resume. The film declines to reward the audience with a reversal, and that refusal is the ending's argument.",
+          "craft": "An ending that withholds the obvious gift has to give something else instead — here, certainty."
+        }
+      ],
+      "scenes": [
+        {
+          "title": "The reunion's first recognition",
+          "technique": "Subtext",
+          "how": "The dialogue stays on logistics and old classmates while the staging — distance, who looks away first, who speaks to the group instead — carries the actual content.",
+          "why": "The audience does the emotional work themselves, which binds them to the scene more tightly than being told would.",
+          "tanglish": "Pesuradhu vera, solradhu vera. Dialogue la oru vishayam, kannula innoru vishayam."
+        },
+        {
+          "title": "Objects standing in for years",
+          "technique": "Show, don't tell",
+          "how": "Small physical details — what has been kept, what has been replaced — do the work of exposition about two decades.",
+          "why": "A kept object is evidence. Evidence is more persuasive than testimony, and faster.",
+          "tanglish": "Oru porul vechurundha, adhu pesama ellaam sollidum."
+        },
+        {
+          "title": "Time as the antagonist",
+          "technique": "Stakes without a villain",
+          "how": "There is no opposing character. The obstacle is elapsed time and the commitments made inside it.",
+          "why": "It proves antagonism is a function, not a person: anything that reliably opposes the goal will do.",
+          "tanglish": "Villain kidaiyaadhu. Kadandha kaalam thaan edhiri."
+        }
+      ],
+      "directorNotes": [
+        "Spends the first act establishing ordinariness, so the second act's small gestures read as large.",
+        "Keeps the camera still and lets performance carry scenes that a more restless film would cut.",
+        "Uses music to mark memory rather than to instruct the audience how to feel about the present.",
+        "Refuses the reversal the genre promises, and makes the refusal the point."
+      ],
+      "glossary": [
+        "subtext",
+        "want",
+        "need",
+        "stakes",
+        "character arc",
+        "climax"
+      ]
+    },
+    {
+      "meta": {
+        "slug": "porthozhil",
+        "title": "Por Thozhil",
+        "director": "Vignesh Raja",
+        "year": "2023",
+        "genre": "Investigative Crime Thriller",
+        "hue": "feature"
+      },
+      "concept": {
+        "premise": "A trainee officer who is frightened of the work is partnered with an unforgiving veteran on a methodical murder investigation, and the case can only be solved as fast as his nerve improves.",
+        "hook": "The suspense engine is not only who did it but whether the investigator can stay in the room. The audience is given two things to worry about, and can guess at only one of them.",
+        "howBuilt": "Established by giving the rookie a visible, unglamorous physical reaction to the job in the first act and never letting a later scene forgive it. He is then paired with a senior officer who states the rules of the work out loud, so procedure doubles as exposition and as a continuous examination of the junior. By the time the investigation accelerates, a second scoreboard is already running.",
+        "yourTurn": "Find the second question your thriller can ask alongside 'who'. A procedural answers one question and stops; a procedural fastened to a person who might fail at being present answers two, and only one of them is guessable from the poster."
+      },
+      "logline": {
+        "line": "A fearful trainee officer partnered with an unforgiving veteran must out-think a methodical killer before his own nerve, rather than the evidence, ends the investigation.",
+        "protagonist": "A trainee officer who is competent on paper and unreliable in the room",
+        "incident": "A posting places him beside the one colleague who will not let him look away",
+        "conflict": "Every step of the procedure demands precisely the composure he does not have, and the method under investigation rewards patience over force",
+        "goal": "To stay in the investigation long enough to be useful to it",
+        "cost": "Another flinch costs the case, the next person in the pattern, and the last version of himself he could still defend",
+        "yourTurn": "Test your logline by deleting the crime. If nothing personal is still at risk, you have described a plot and not a story — add the internal stake before you add another suspect."
+      },
+      "characters": [
+        {
+          "name": "Prakash",
+          "role": "protagonist",
+          "flaw": "Treats his fear as a verdict on what he is rather than a condition he is in",
+          "want": "To close the case he has been handed by rank rather than by choice",
+          "need": "To stop borrowing his nerve from the man standing next to him",
+          "external": "The investigation moves on without him and someone else pays for the delay",
+          "internal": "He confirms the sentence he has already passed on himself and stays inside it",
+          "arc": "From a man who looks away on instinct to the one who looks longest"
+        },
+        {
+          "name": "Loganathan",
+          "role": "mirror",
+          "flaw": "Has built an armour of detachment and can no longer tell it apart from professionalism",
+          "want": "A partner who can do the job without being carried",
+          "need": "To admit the work has cost him something, so that coldness stops passing for clarity",
+          "external": "The method he trusts stops producing an answer in time",
+          "internal": "He loses the belief that distance is what keeps him intact",
+          "arc": "From a man who only instructs to one who can be argued with by his own trainee"
+        },
+        {
+          "name": "The killer",
+          "role": "antagonist",
+          "flaw": "A logic so internally consistent that it cannot adapt to anyone willing to reason from inside it",
+          "want": "To continue an established pattern without interruption",
+          "need": "Deliberately withheld — the film writes him as a fixed system rather than a wounded man",
+          "external": "The pattern is interrupted and becomes legible",
+          "internal": "Nothing, by design; no redemption is offered, which keeps the film's moral weight on the investigators",
+          "arc": "Flat on purpose. An antagonist who does not move is the ruler the protagonist's movement is measured against."
+        }
+      ],
+      "beats": [
+        {
+          "id": "opening",
+          "label": "Opening Image",
+          "act": "1",
+          "function": "Establish the ordinary world and the shape of what is missing from it.",
+          "inFilm": "The film opens by establishing the investigative machinery as routine and competent, and the protagonist as the least steady thing inside it. Because the room's standard is set first, his unsteadiness reads as a fact about him rather than as atmosphere.",
+          "craft": "Set the room's standard before you introduce the character who cannot meet it."
+        },
+        {
+          "id": "inciting",
+          "label": "Inciting Incident",
+          "act": "1",
+          "function": "Something arrives that the protagonist can neither ignore nor control.",
+          "inFilm": "The posting itself. The film declines to make the disturbance an atrocity; what breaks the protagonist's normal is an assignment and a partner, which keeps the pressure internal from the first act onward.",
+          "craft": "When the plot is already supplying horror, let the inciting incident supply the personal obligation instead."
+        },
+        {
+          "id": "pp1",
+          "label": "Plot Point 1",
+          "act": "1",
+          "function": "The protagonist commits, and the story's real question is posed.",
+          "inFilm": "The search narrows from a general hunt to a specific method, locking the team into a way of working that only patience can sustain. The commitment looks procedural, but because the protagonist's weakness is composure under duration, committing to the method is the same act as committing to his own examination.",
+          "craft": "Choose an act-two method that is made out of your protagonist's weakness. Then the plot cannot advance without the arc advancing."
+        },
+        {
+          "id": "midpoint",
+          "label": "Midpoint",
+          "act": "2",
+          "function": "A turn from reacting to acting, and a shift in what the story is actually about.",
+          "inFilm": "The midpoint invalidates the shape of the investigation rather than adding to it. What the team believed it was solving stops existing, and from that point the protagonist starts generating theories instead of receiving them.",
+          "craft": "A midpoint that deletes an assumption beats one that adds information. The audience has to re-read everything it has seen, and re-reading feels like acceleration."
+        },
+        {
+          "id": "allLost",
+          "label": "All Hope Is Lost",
+          "act": "2",
+          "function": "The cost becomes concrete and the goal looks unreachable.",
+          "inFilm": "The low point arrives as a loss of standing rather than as a set piece. The protagonist's own worst estimate of himself is confirmed where others can see it, and the film lets that verdict sit without offering comfort. Nothing is destroyed; what is taken away is his permission to continue.",
+          "craft": "Take the protagonist's authority rather than his safety. Authority is harder to win back, and it costs nothing to shoot."
+        },
+        {
+          "id": "climax",
+          "label": "Climax",
+          "act": "3",
+          "function": "The protagonist acts on the need rather than the want.",
+          "inFilm": "The case turns on a deduction the protagonist has to make alone, without the person he has been borrowing courage from. The film sequences it so the arc completes first and the case closes as a consequence, not the other way round.",
+          "craft": "Make the plot's solution require the exact capacity the character lacked in act one, and the ending will feel inevitable instead of clever."
+        },
+        {
+          "id": "resolution",
+          "label": "Resolution",
+          "act": "3",
+          "function": "Show the changed equilibrium and what it cost to reach it.",
+          "inFilm": "The film declines to celebrate. Its closing movement treats the work as continuing and the protagonist as changed but marked, which keeps the theme — that sustained attention has a price — intact through the last frame.",
+          "craft": "If your theme says courage costs something, the resolution should still be showing the invoice."
+        }
+      ],
+      "scenes": [
+        {
+          "title": "Procedure as a character test",
+          "technique": "Exposition",
+          "how": "The rules of the work are explained to the trainee by the senior officer, so the audience is briefed while a character is being examined on the same material.",
+          "why": "Exposition a character can fail at stops being exposition. It becomes conflict with information attached, and nobody checks their phone during it.",
+          "tanglish": "Rules sollumbodhu, oruthan test aagitu irukkanum. Appo thaan exposition-um drama aagum."
+        },
+        {
+          "title": "A detail that is a character note first",
+          "technique": "Setup and payoff",
+          "how": "The observation that eventually matters is introduced while the scene is ostensibly about something else, and is framed as a quirk of a person rather than as evidence.",
+          "why": "An audience filters constantly for relevance. Hide the plant inside characterisation and it slips past the filter, then detonates on the second viewing.",
+          "tanglish": "Clue-a clue maadhiri kaatinaa adhu clue illa, announcement. Character detail maadhiri vechaa thaan velai seiyum."
+        },
+        {
+          "title": "Withholding the frame, not the facts",
+          "technique": "Suspense over surprise",
+          "how": "The mechanics of the investigation are shown openly; only the arrangement that makes them mean something is held back.",
+          "why": "Surprise lasts a second, suspense lasts a reel. Keeping the pieces visible and the pattern hidden buys the second without giving up the first.",
+          "tanglish": "Ellaam kaamikkalaam. Edhu edhoda sambandham-nu mattum sollaama vidu."
+        }
+      ],
+      "directorNotes": [
+        "Casts the senior officer as the film's standard of composure, so the junior has something to be measured against in every frame.",
+        "Keeps the violence largely off screen and spends the running time on waiting, which is where this genre's tension actually lives.",
+        "Lets sound design carry information the dialogue refuses to state, so the audience is listening as hard as the investigators.",
+        "Writes an antagonist with a private, coherent logic rather than an appetite — a system can be reasoned toward, and a reasoning protagonist needs one.",
+        "Times the final deduction to the completion of the arc rather than to the availability of evidence."
+      ],
+      "glossary": [
+        "setup",
+        "payoff",
+        "exposition",
+        "obstacle",
+        "stakes",
+        "character arc",
+        "antagonist"
+      ]
+    },
+    {
+      "meta": {
+        "slug": "dragon",
+        "title": "Dragon",
+        "director": "Ashwath Marimuthu",
+        "year": "2025",
+        "genre": "Drama · Character study",
+        "hue": "library"
+      },
+      "concept": {
+        "premise": "A college dropout who talked his way into a corporate career on a forged degree is recognised by the one man who can prove it, and can only keep the life he invented by going back and actually earning it.",
+        "hook": "The shortcut is charming and the bill is not. The audience is made complicit in the con for an hour, then handed the invoice at the same moment the protagonist is.",
+        "howBuilt": "Built by playing the opening movement as comedy and letting the audience enjoy the protagonist's nerve without reservation. The forged credential is introduced as a joke and the count of unfinished papers as a running gag, so when both are re-read as arithmetic the tonal shift arrives as a consequence rather than as a change of genre.",
+        "yourTurn": "Decide now which of your first-act laughs will be re-read in the third act, and plant it twice. A joke that turns into evidence is the cheapest durable setup there is, because the audience memorised it for fun."
+      },
+      "logline": {
+        "line": "A young man living on a forged degree is recognised by his former dean and given one term to clear the papers he never passed, or lose the job, the engagement and the last person still willing to believe him.",
+        "protagonist": "A young man whose one real talent is being believed, and who has never tested whether he is worth believing",
+        "incident": "The one man who knows what he actually is recognises him",
+        "conflict": "The debt is real, the clock is short, and every day spent paying it is a day the invented life can collapse on its own",
+        "goal": "To convert a lie into a fact before either of his two lives discovers the other",
+        "cost": "Failure costs the job, the engagement and his father's belief — three separate losses, each with a face attached",
+        "yourTurn": "Write the cost as three specific people rather than one abstraction. 'He loses everything' is not a stake; 'he loses her, the job, and the only person who ever defended him' is three, and each can be lost separately."
+      },
+      "characters": [
+        {
+          "name": "Ragavan",
+          "role": "protagonist",
+          "flaw": "Believes the result is the only thing anybody ever audits",
+          "want": "Status large enough to be seen by the people who wrote him off",
+          "need": "Self-respect he did not manufacture",
+          "external": "Career, marriage and standing dissolve together, because they were all built on the same document",
+          "internal": "He becomes permanently a man who can only be liked by people who do not know him",
+          "arc": "From a boy who buys the outcome to a man who chooses the loss that buys the truth"
+        },
+        {
+          "name": "The dean",
+          "role": "antagonist",
+          "flaw": "Cannot tell the difference between enforcing a rule and being right about a person",
+          "want": "The rule applied without exception to the one student who proved it could be ignored",
+          "need": "To see what the rule costs and still choose it, with his eyes open",
+          "external": "The precedent collapses and the institution's word stops meaning anything",
+          "internal": "He finds out whether his rigour was ever for the students or only for himself",
+          "arc": "Immovable by design; the film saves whatever yield he has for the latest possible moment, so it reads as earned rather than granted"
+        },
+        {
+          "name": "The classmate",
+          "role": "mirror",
+          "flaw": "Absorbed a cost that was not his and never billed it to anyone",
+          "want": "To be left out of somebody else's second chance",
+          "need": "To be acknowledged, which is not the same thing as being compensated",
+          "external": "He stays an invisible line item in another man's success",
+          "internal": "He keeps believing honesty is simply the slower route to the same destination",
+          "arc": "Static on purpose. The mirror is not there to change; it is there to price the protagonist's choice in a currency the audience can read."
+        }
+      ],
+      "beats": [
+        {
+          "id": "opening",
+          "label": "Opening Image",
+          "act": "1",
+          "function": "Establish the ordinary world and the ability the story will test.",
+          "inFilm": "The film opens in a comic register with the protagonist performing a fluency he does not possess. It establishes the skill that will both save and indict him — persuasion — before it establishes anything he actually knows.",
+          "craft": "Open on the ability your character will misuse, not on the misuse. Then the audience likes him before it has to judge him."
+        },
+        {
+          "id": "inciting",
+          "label": "Inciting Incident",
+          "act": "1",
+          "function": "Something arrives that the protagonist cannot ignore and cannot manage away.",
+          "inFilm": "Recognition. Everything before it is setup; from the moment he is identified the film has a clock, a creditor and a second life to protect, all obtained from a single encounter.",
+          "craft": "The strongest inciting incident is a person rather than an event, because a person keeps arriving."
+        },
+        {
+          "id": "pp1",
+          "label": "Plot Point 1",
+          "act": "1",
+          "function": "The protagonist commits, and the story's real question is posed.",
+          "inFilm": "He accepts the terms and re-enters the life he ran from. The commitment is humiliating rather than heroic, which is exactly what lets act two be funny and act three be unarguable.",
+          "craft": "If the act-one commitment costs dignity instead of safety, comedy and drama can share one spine without either apologising."
+        },
+        {
+          "id": "midpoint",
+          "label": "Midpoint",
+          "act": "2",
+          "function": "The protagonist stops reacting and starts acting; the goal itself changes shape.",
+          "inFilm": "The objective converts from concealment to completion — he stops managing the man who knows and starts doing the work. The film marks the turn by changing what a scene is for, from dodging to counting.",
+          "craft": "At the midpoint, change the verb. Reacting characters hide; acting characters keep score."
+        },
+        {
+          "id": "allLost",
+          "label": "All Hope Is Lost",
+          "act": "2",
+          "function": "The cost becomes concrete and the goal looks unreachable.",
+          "inFilm": "The low point is an accounting rather than an exposure. The protagonist is shown the bill in a form he cannot argue with, and it was paid by somebody who never took the shortcut. The film withholds catastrophe and delivers a reckoning instead.",
+          "craft": "Let the darkest beat be information the protagonist cannot unlearn, and leave him nobody to blame for it."
+        },
+        {
+          "id": "climax",
+          "label": "Climax",
+          "act": "3",
+          "function": "The protagonist acts on the need rather than the want.",
+          "inFilm": "He is not caught; he chooses the loss. Routing the ending through a voluntary act means the theme, and not the plot mechanism, gets the last word.",
+          "craft": "If your theme is about honesty, the climax has to be a choice the protagonist could have avoided. A confession extracted under pressure proves nothing."
+        },
+        {
+          "id": "resolution",
+          "label": "Resolution",
+          "act": "3",
+          "function": "Show the changed equilibrium and what it cost.",
+          "inFilm": "The new life is smaller than the invented one and better founded. The closing movement is careful to present the reduced version as sufficient rather than as a punishment, which is what keeps the film an argument instead of a warning.",
+          "craft": "A cautionary tale that ends in ruin teaches nobody anything. End on a smaller, real life and the argument holds."
+        }
+      ],
+      "scenes": [
+        {
+          "title": "The gag that becomes arithmetic",
+          "technique": "Setup and payoff",
+          "how": "A number used repeatedly as comic shorthand is later restated as a workload with a deadline attached. Nothing new is introduced; only the register changes.",
+          "why": "The audience already memorised the number for free, because it was funny. Payoff costs nothing when the setup was entertaining on its own terms.",
+          "tanglish": "Modhal-la comedy-a sollu. Appuram adhey vishayathaiye seriousa sollu — audience mind-la already irukkum."
+        },
+        {
+          "title": "An antagonist who is simply correct",
+          "technique": "Obstacle design",
+          "how": "The opposing character is given a position the audience cannot dismiss and a manner that offers the protagonist nothing to push against.",
+          "why": "Malice can be defeated. A correct rule has to be satisfied, and satisfying it is the only thing that makes the protagonist do the work himself.",
+          "tanglish": "Villain kitta thappu irundha easy. Avan sollradhu sari-nu aaidhuna thaan hero-kku velai."
+        },
+        {
+          "title": "Two tones on one subject",
+          "technique": "Tonal control",
+          "how": "Comedy and drama are played on the same material rather than in alternating blocks; the jokes are about the exact thing the drama will later indict.",
+          "why": "Tonal shifts break a film when the two tones are about different subjects. Sharing a subject makes the shift read as the audience's understanding deepening rather than as the film losing its nerve.",
+          "tanglish": "Comedy-um dramavum rendu vera vishayam-a irundha padam odanjidum. Onnaave irundha, adhu valarchi."
+        }
+      ],
+      "directorNotes": [
+        "Buys the audience's affection for the con in act one, then charges them for it in act three.",
+        "Gives the antagonist a correct position and no cruelty, which quietly removes the easy exit from the plot.",
+        "Places the real consequence on a secondary character, so the protagonist's loss is moral rather than merely inconvenient.",
+        "Uses a running joke as the film's load-bearing setup, so the most important exposition arrives disguised as entertainment.",
+        "Ends on a reduced life presented as sufficient, refusing both the punishment ending and the reward ending."
+      ],
+      "glossary": [
+        "the lie",
+        "want",
+        "need",
+        "setup",
+        "payoff",
+        "midpoint",
+        "antagonist",
+        "theme"
+      ]
+    },
+    {
+      "meta": {
+        "slug": "vikramvedha",
+        "title": "Vikram Vedha",
+        "director": "Pushkar–Gayathri",
+        "year": "2017",
+        "genre": "Neo-noir · Moral thriller",
+        "hue": "visualize"
+      },
+      "concept": {
+        "premise": "An encounter cop who has never doubted which side he is on is drawn into a contest with a gangster who will only answer questions by telling stories.",
+        "hook": "The film hands its antagonist the narration and puts the audience's own moral certainty on trial alongside the protagonist's.",
+        "howBuilt": "The folk-tale frame is declared at the outset rather than sprung, so the shape of the film is public from the first reel. Each story is then handed over as a deliberate choice by the person telling it, which converts backstory into an act of aggression and makes the audience lean into information it would otherwise sit through.",
+        "yourTurn": "If your film needs a lot of backstory, give the telling of it to whoever profits from the listener hearing it, and let them pick the moment. Exposition someone wants to deliver is a scene. Exposition nobody wants to deliver is a delay."
+      },
+      "logline": {
+        "line": "An encounter cop hunting a gangster finds himself handed three stories that leave him unable to tell his own side from the other one.",
+        "protagonist": "A police officer whose competence has never been separated from his conviction that he is the good one",
+        "incident": "The man he is hunting chooses the terms of his own capture",
+        "conflict": "The antagonist opposes him with an argument rather than with force, and an argument cannot be shot",
+        "goal": "To finish the hunt cleanly, the way every previous one finished",
+        "cost": "Losing does not cost him his life; it costs him the right to believe the record he has already filed",
+        "yourTurn": "Ask what your protagonist would have to stop believing in order to lose. If the answer is 'nothing, he would just die', you have written a chase, not a climax."
+      },
+      "characters": [
+        {
+          "name": "Vikram",
+          "role": "protagonist",
+          "flaw": "Has confused a clean record with a clean conscience",
+          "want": "To find and finish his target, cleanly and on the department's terms",
+          "need": "To admit that his certainty was a convenience rather than a moral position",
+          "external": "The case, the unit's standing, and the version of events he has already written down",
+          "internal": "The self-image that is the only thing making the work bearable",
+          "arc": "Erodes in three graded stages, one per story, from certainty to a decision he has to make with no cover left"
+        },
+        {
+          "name": "Vedha",
+          "role": "antagonist",
+          "flaw": "Believes a good enough question settles a matter, so he keeps asking instead of answering",
+          "want": "To be caught, but only on terms he sets",
+          "need": "To be understood by exactly the one person obliged to condemn him",
+          "external": "He loses control of the telling and becomes merely a suspect",
+          "internal": "He loses the only listener capable of grasping what he did and why",
+          "arc": "Holds his position throughout. He is not the one who changes, which is precisely what makes the protagonist's change measurable."
+        },
+        {
+          "name": "Priya",
+          "role": "mirror",
+          "flaw": "Applies a principle without flinching, including to the people she lives with",
+          "want": "The law applied as it is written rather than as it is convenient",
+          "need": "To learn whether her principle survives contact with her own household",
+          "external": "Her professional position becomes untenable at home",
+          "internal": "She discovers whether her rigour was ever actually tested",
+          "arc": "The film's control group: she already holds the position the protagonist claims to hold, and the gap between them is the argument."
+        }
+      ],
+      "beats": [
+        {
+          "id": "opening",
+          "label": "Opening Image",
+          "act": "1",
+          "function": "Establish the ordinary world, and the belief the story exists to test.",
+          "inFilm": "The film opens by establishing the protagonist's method as routine, sanctioned and effective, and by inviting the audience to approve of it. The whole argument depends on the audience having agreed with him first.",
+          "craft": "If your theme is about certainty, spend the opening making the audience share it. You cannot dismantle a belief the audience never held."
+        },
+        {
+          "id": "inciting",
+          "label": "Inciting Incident",
+          "act": "1",
+          "function": "Something arrives that the protagonist cannot ignore and cannot control.",
+          "inFilm": "The hunted man arranges his own capture. The incident is an inversion — the protagonist gets exactly what he wanted and instantly loses authorship of it — and because it is the antagonist's choice rather than luck, the film pays no coincidence tax for it.",
+          "craft": "An inciting incident the antagonist volunteers costs nothing in contrivance and buys you a character who is already ahead of the plot."
+        },
+        {
+          "id": "pp1",
+          "label": "Plot Point 1",
+          "act": "1",
+          "function": "The protagonist commits, and the story's real question is posed.",
+          "inFilm": "The first story is told and the film's machinery is declared: this will be settled in argument, not in pursuit. The protagonist commits to listening, which is the one activity his method has never required of him.",
+          "craft": "Make the act-one commitment an activity your protagonist is bad at. Then every scene of act two is both plot and character."
+        },
+        {
+          "id": "midpoint",
+          "label": "Midpoint",
+          "act": "2",
+          "function": "A turn from reacting to acting, and a change in what is being investigated.",
+          "inFilm": "The second story lands and the direction of the investigation reverses: the protagonist begins auditing his own record instead of his target's. The film changes the object of the search without changing a single location.",
+          "craft": "The most economical midpoint changes what is being investigated rather than where. It costs one scene and re-prices every scene before it."
+        },
+        {
+          "id": "allLost",
+          "label": "All Hope Is Lost",
+          "act": "2",
+          "function": "The cost becomes concrete and the goal looks unreachable.",
+          "inFilm": "The low point withdraws the protagonist's institutional cover and his moral cover in the same movement, leaving him a position he can no longer defend from either direction. No external disaster is required; the film has been removing supports since the first story.",
+          "craft": "Build the low point as the last support being withdrawn. Then it reads as arithmetic the audience did themselves, rather than as a plot event."
+        },
+        {
+          "id": "climax",
+          "label": "Climax",
+          "act": "3",
+          "function": "The protagonist acts on the need rather than the want.",
+          "inFilm": "The final question is not settled by another story. The film withholds the very device it trained the audience to expect and makes the protagonist answer for himself, which is what turns a structural conceit into a theme.",
+          "craft": "Take away your own device in the last act. A pattern you break deliberately is the strongest statement that pattern can make."
+        },
+        {
+          "id": "resolution",
+          "label": "Resolution",
+          "act": "3",
+          "function": "Show the changed equilibrium and refuse to over-explain it.",
+          "inFilm": "The ending declines to arbitrate. Both positions remain arguable and the film closes on the protagonist's choice rather than on a verdict about it.",
+          "craft": "If your theme is that the line moves, do not draw it in the last scene."
+        }
+      ],
+      "scenes": [
+        {
+          "title": "A riddle that is really a confession",
+          "technique": "Subtext",
+          "how": "The antagonist's stories are framed as moral puzzles addressed to the listener while functioning as disclosure about the teller.",
+          "why": "The listener has to engage in order to answer, and engaging is how he gets implicated. Subtext that demands a reply is stronger than subtext the audience merely notices.",
+          "tanglish": "Kelvi maadhiri kekkuraan, aana adhu confession. Badhil sollavey avan andha kadhaikkulla vandhutaan."
+        },
+        {
+          "title": "Exposition as an attack",
+          "technique": "Exposition",
+          "how": "Backstory is delivered only by the character who gains from the listener knowing it, and only at the moment when knowing it costs the listener most.",
+          "why": "Information becomes a weapon the second someone chooses when to hand it over. The audience stops tracking facts and starts tracking intent, which is far more watchable.",
+          "tanglish": "Thagaval yaaru kudukkuraanga, eppo kudukkuraanga — adhu thaan scene. Suma sonna adhu notice."
+        },
+        {
+          "title": "A structure announced in advance",
+          "technique": "Declared form",
+          "how": "The film states its own shape at the start, so the audience knows how many stories are coming and can spend its attention on what each one will cost instead of on what form the next one will take.",
+          "why": "Declared structure converts curiosity into suspense. The audience stops guessing the format and starts dreading the content.",
+          "tanglish": "Kadhai enna shape-la varum-nu munnadiye sollidu. Appo audience 'enna varum' nu illaama, 'evlo vali kudukkum' nu yosippaanga."
+        }
+      ],
+      "directorNotes": [
+        "Declares the folk-tale structure in the opening so the audience tracks meaning rather than form.",
+        "Gives the antagonist the narration and the better questions, and trusts the protagonist's arc to remain the film's spine anyway.",
+        "Keeps the moral argument inside plot mechanics — every debate carries a consequence, so no scene is only a debate.",
+        "Withholds the pattern's final repetition, so the last decision cannot be outsourced to another story.",
+        "Puts a character who genuinely holds the protagonist's stated principles inside his own house, which makes the hypocrisy legible without a speech."
+      ],
+      "glossary": [
+        "subtext",
+        "exposition",
+        "reveal",
+        "antagonist",
+        "theme",
+        "protagonist",
+        "climax"
+      ]
+    }
+  ]
+}

@@ -82,12 +82,14 @@ const CONTACTS_KEY = 'arunak_contacts_v1';
 const SHOTS_KEY    = 'arunak_shots_v1';
 const SCRIPT_KEY   = 'arunak_script_v1';
 const LOCS_KEY     = 'arunak_locations_v1';
+const BENCH_KEY    = 'arunak_workbench_v1';
+const DISSECT_KEY  = 'arunak_dissect_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
-  SHOTS_KEY, SCRIPT_KEY, LOCS_KEY
+  SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY
 ];
 
 /* Backup field name -> storage key, for the keys store.js namespaces
@@ -106,7 +108,9 @@ const PROJECT_KEYS = {
   contacts:          CONTACTS_KEY,
   shots:             SHOTS_KEY,
   script:            SCRIPT_KEY,
-  locations:         LOCS_KEY
+  locations:         LOCS_KEY,
+  workbench:         BENCH_KEY,
+  dissect:           DISSECT_KEY
 };
 
 /* Deliberately NOT per project: the theme is a device preference and the

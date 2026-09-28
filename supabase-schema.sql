@@ -42,7 +42,9 @@ create table if not exists public.project_data (
                 'contacts',
                 'shots',
                 'script',
-                'locations'
+                'locations',
+                'workbench',
+                'dissect'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),

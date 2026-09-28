@@ -1,0 +1,636 @@
+/* ============================================================
+   CASE STUDIES — the demo-film workspace
+   ------------------------------------------------------------
+   This page is the studio language (modules.css) with two objects
+   of its own: the demo selector, and the three-part teaching card.
+
+   Every colour here is a token and every shape is a --sk-* skin
+   variable, so the page is correct under all five skins and all
+   four themes without a single rule that names one of them. Where a
+   hue appears it means WHICH FILM, which is the "colour = data"
+   rule the language is built on — and it follows that rule's
+   corollary: a hue is a FILL. Hue-coloured TEXT uses --hue-deep,
+   which every theme redefines against its own ground; --hue itself
+   would be a mid-tone on paper and on ink alike, and it failed the
+   contrast check on both.
+
+   NO BOXES INSIDE BOXES. The three-part card is one surface with
+   three numbered parts, not three cards in a card: the parts are
+   separated by a hairline and a number, which is the same device
+   the empty states use. Nesting them cost four levels of border on
+   the first pass and read as a stack of receipts.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   THE DEMO SELECTOR
+   ------------------------------------------------------------
+   Sticky under the phase bar, not under the top of the window: the
+   shell's .sh-bar is itself sticky at top:0 and 56px tall, so this
+   parks at --sh-bar-h and the two stack instead of overlapping. Its
+   z-index sits below --z-toolbar for the same reason — the phase
+   menus have to be able to open over it.
+
+   Below 720px it stops being sticky altogether — see the narrow
+   block at the foot of this file for why.
+   ------------------------------------------------------------ */
+.ds-bar {
+  position: sticky;
+  top: var(--sh-bar-h, 56px);
+  z-index: var(--z-rail);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+/* The band is 160-ish pixels and it stays on screen, so every line in
+   it has to earn the space it takes off the reading area. That is why
+   the tab carries three short lines and the note carries one. */
+.ds-inner {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s3) var(--s5);
+}
+.ds-label { margin-bottom: var(--s2); }
+
+.ds-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* A tab is a button, so it needs every one of these resets: the UA
+   stylesheet's font, centre alignment and background all fight a
+   control that is meant to read as a card. */
+.ds-tab {
+  flex: 1 1 11rem;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--s2) var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-top: var(--sk-hue-rule-w) solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--speed) var(--ease),
+              background var(--speed) var(--ease);
+}
+.ds-tab:hover { border-color: var(--hue); }
+.ds-tab:focus-visible { outline: 2px solid var(--hue-deep); outline-offset: 2px; }
+
+/* The selected film. The hue fills the top rule and tints the title;
+   the ground stays paper, because a filled tab under a dark shell bar
+   is three saturated bands in 120px. */
+.ds-tab.is-on {
+  border-color: var(--hue);
+  border-top-color: var(--hue);
+  background: var(--paper-raised);
+}
+.ds-tab.is-on .ds-tab-title { color: var(--hue-deep); }
+
+.ds-tab-title {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+.ds-tab-meta {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.ds-tab-genre {
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+/* A study that is not finished says so on its face, in the shell's
+   own words. --ink-muted rather than --ink-faint: this is a label
+   that has to be read, not one you are meant to skip. */
+.ds-tab-flag {
+  justify-self: start;
+  margin-top: var(--s1);
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+}
+
+.ds-note {
+  margin: var(--s2) 0 0;
+  max-width: var(--measure);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   PAGE RHYTHM — one measure, shared with .bd-head and friends
+   ------------------------------------------------------------ */
+.st-sec {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s7) var(--s5);
+  border-top: 1px solid var(--rule-hair);
+  overflow-wrap: break-word;
+}
+.st-sec:first-of-type { border-top: 0; }
+
+.st-byline {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-head-gap {
+  margin: var(--s4) 0 0;
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--warn);
+}
+
+.st-notes { margin-top: var(--s5); }
+.st-note-list {
+  margin: 0;
+  padding-left: var(--s5);
+  max-width: var(--measure);
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+
+/* ------------------------------------------------------------
+   THE THREE-PART CARD — definition, this film, your turn
+   ------------------------------------------------------------ */
+.st-guide {
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.st-guide-title {
+  margin: 0 0 var(--s4);
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+
+.st-three {
+  display: grid;
+  gap: var(--s5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.st-part {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: var(--s3);
+  row-gap: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule-hair);
+}
+.st-part:first-child { padding-top: 0; border-top: 0; }
+.st-part-n {
+  grid-row: 1 / span 1;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  /* The empty states' step marker, to the letter. A hue FILL here was
+     3.8:1 in desk (near-white on the feature hue) and the card's left
+     rule already says which film this is, so the numeral does not have
+     to carry the hue as well. */
+  background: var(--accent-wash);
+  color: var(--accent-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+}
+.st-part-lab {
+  align-self: center;
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-deep);
+}
+/* Everything after the label spans the full width and lines up under
+   it, so a three-paragraph part does not indent into a gutter. */
+.st-part > :not(.st-part-n):not(.st-part-lab) {
+  grid-column: 2 / -1;
+}
+.st-part-body {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.st-part-body + .st-part-body { margin-top: var(--s3); }
+
+/* The instruction is the part a reader acts on, so it gets the one
+   tint on the card. --accent-wash, not a hue wash: the hue already
+   says which film, and this says "do this", which is not film-specific. */
+.st-part.is-turn .st-part-body {
+  padding: var(--s3) var(--s4);
+  background: var(--accent-wash);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+}
+
+/* ------------------------------------------------------------
+   A LABELLED LINE — used by every section
+   ------------------------------------------------------------ */
+.st-line { margin-top: var(--s3); }
+.st-line:first-child { margin-top: 0; }
+.st-line-lab {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-line-body {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+
+/* The honest blank. --warn, because "nobody has written this" is a
+   state the reader should notice once and then stop worrying about;
+   --danger would say something is broken, and nothing is. */
+.st-missing {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--warn);
+}
+
+.st-gap {
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--warn-wash);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+}
+.st-gap-lab { color: var(--warn); }
+.st-gap-body,
+.st-gap-sub {
+  margin: 0 0 var(--s2);
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.st-gap-sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-gap-list {
+  margin: 0;
+  padding-left: var(--s5);
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+
+/* ------------------------------------------------------------
+   LOGLINE — the sentence, then its anatomy
+   ------------------------------------------------------------ */
+.st-logline {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+}
+.st-logline p {
+  margin: 0;
+  max-width: var(--measure);
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+/* .scene-table brings the frame and, crucially, its own horizontal
+   scroll: three columns of prose cannot reflow, so the TABLE scrolls
+   and the page does not. Only the cells are this page's business. */
+.st-anat { margin-top: var(--s4); }
+.st-anat td { font-size: var(--t-small); line-height: var(--lh-snug); }
+.st-anat-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-deep);
+  white-space: nowrap;
+}
+.st-anat-job { color: var(--ink-muted); font-size: var(--t-tiny); }
+
+/* ------------------------------------------------------------
+   CHARACTERS
+   ------------------------------------------------------------ */
+.st-chars {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+.st-char {
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.st-char-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.st-char-name {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  color: var(--ink);
+}
+.st-char-role {
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  color: var(--hue-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+/* Want against need, external against internal. Two columns where
+   there is room and two rows where there is not — the pairing is the
+   lesson, so they never sit in separate cards. */
+.st-pair {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+}
+.st-pair-col { display: grid; align-content: start; gap: 2px; min-width: 0; }
+.st-pair-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-deep);
+}
+.st-pair-job { font-size: var(--t-micro); line-height: var(--lh-snug); color: var(--ink-muted); }
+.st-pair-body {
+  margin: var(--s1) 0 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+
+.st-arc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s4) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+.st-arc-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+/* ------------------------------------------------------------
+   BEATS — three acts, seven beats, in order
+   ------------------------------------------------------------ */
+.st-acts { display: grid; gap: var(--s6); }
+.st-act { display: grid; gap: var(--s3); }
+.st-act-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s3);
+  margin: 0;
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--hue);
+}
+.st-act-no {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--hue-deep);
+}
+.st-act-name {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+
+.st-beat {
+  padding: var(--sk-card-pad);
+  background: var(--sk-deco-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-deco-ink);
+}
+/* A beat with nothing written for this film is drawn, not skipped —
+   a missing beat has to be visible as a hole in the structure. */
+.st-beat.is-missing { border-left-color: var(--warn); }
+.st-beat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.st-beat-label {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  color: var(--ink);
+}
+.st-beat-act {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-craft {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s3) 0 0;
+  padding: var(--s3) var(--s4);
+  background: var(--accent-wash);
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.st-craft-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+/* ------------------------------------------------------------
+   SCENE CRAFT
+   ------------------------------------------------------------ */
+.st-scenes {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+.st-scene {
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+.st-scene-title {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------
+   GLOSSARY — the shared .gloss-item, with this film's example
+   ------------------------------------------------------------ */
+.st-gloss .gloss-item { display: grid; align-content: start; gap: var(--s2); }
+.st-gloss dl { margin: 0; }
+.st-gloss dd { margin: var(--s1) 0 0; }
+.st-gloss .gloss-item.is-core { border-left-color: var(--hue); }
+.st-alias {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: none;
+  color: var(--ink-muted);
+}
+.st-core-flag {
+  justify-self: start;
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  color: var(--hue-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+/* .bd-example centres itself in a band; inside a card it is just the
+   quotation, so it takes the card's width and the film's hue. */
+.st-gloss .bd-example {
+  max-width: none;
+  margin: 0;
+  border-left-color: var(--hue);
+}
+.st-gloss .bd-example-film { color: var(--hue-deep); }
+
+/* ------------------------------------------------------------
+   WORKBENCH HOST — the page owns the band, the module owns the rest
+   ------------------------------------------------------------ */
+.st-wb-host { display: grid; gap: var(--s4); }
+
+/* ------------------------------------------------------------
+   NARROW — 390px is the target. Nothing here may scroll sideways;
+   the one object that legitimately cannot reflow (the anatomy
+   table) scrolls inside itself via .scene-table.
+   ------------------------------------------------------------ */
+@media (max-width: 719px) {
+  /* NOT sticky on a phone. Four films stacked one per row is a band
+     roughly 340px tall, and pinning 40% of an 812px screen to the top
+     for the whole scroll is worse than asking the reader to scroll
+     back for it. Two up instead of four, and it stays with the page.
+     (The shell bar also stops being sticky here, chrome.css.) */
+  .ds-bar { position: static; }
+  .ds-inner { padding: var(--s3) var(--s4); }
+  .ds-tab { flex: 1 1 calc(50% - var(--s2)); }
+  .st-sec { padding: var(--s6) var(--s4); }
+  .st-part { grid-template-columns: 22px 1fr; column-gap: var(--s2); }
+  .st-part-n { width: 22px; height: 22px; }
+  .st-beat-head { justify-content: flex-start; }
+}
+
+/* ------------------------------------------------------------
+   PRINT — a case study is a thing you take into a room
+   ------------------------------------------------------------ */
+@media print {
+  .ds-bar { position: static; border-bottom: 1px solid var(--rule); }
+  .ds-tab:not(.is-on) { display: none; }
+  .st-guide, .st-char, .st-scene, .st-beat, .st-gap { break-inside: avoid; }
+  .st-sec { padding-block: var(--s5); }
+}

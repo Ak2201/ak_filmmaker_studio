@@ -1,0 +1,227 @@
+{
+  "_about": "Craft terms explained, each anchored in four Tamil films the Studio already teaches from. Definitions and examples are original analysis — no plot text or dialogue is reproduced from the films. `tanglish` mirrors the English gloss the way the blueprints already do. Terms are matched case-insensitively against step prose by autoTagGlossary() in src/ui/chrome.js; `aliases` catch the inflections that appear in the copy.",
+  "films": {
+    "dragon": "Dragon (2025, dir. Ashwath Marimuthu)",
+    "96": "96 (2018, dir. C. Prem Kumar)",
+    "porthozhil": "Por Thozhil (2023, dir. Vignesh Raja)",
+    "vikramvedha": "Vikram Vedha (2017, dir. Pushkar–Gayathri)"
+  },
+  "terms": [
+    {
+      "term": "logline",
+      "aliases": ["loglines"],
+      "def": "One sentence carrying the protagonist, their want, the obstacle, and the cost of failure. If it needs a second sentence, the story is not yet decided.",
+      "tanglish": "Oru vaakkiyathula padam. Hero yaaru, enna venum, edhu thadukkudhu, thotta enna nashtam.",
+      "examples": [
+        { "film": "dragon", "note": "A college dropout buys a fake degree to land a corporate job, and must clear 48 real arrears in three months when the one man who knows recognises him." },
+        { "film": "porthozhil", "note": "A fearful rookie officer must out-think a serial killer before his own nerve, not the case, defeats him." },
+        { "film": "96", "note": "Two people who loved each other at sixteen get one night, twenty-two years later, to say what they never said." },
+        { "film": "vikramvedha", "note": "An encounter cop hunting a gangster is handed three stories that make his own certainty unusable." }
+      ]
+    },
+    {
+      "term": "stakes",
+      "aliases": ["stake"],
+      "def": "What is actually lost if the protagonist fails. Stakes must be specific and personal — 'the city is in danger' is a premise, not a stake.",
+      "tanglish": "Thotta enna poidum. Podhuvaa 'ooru azhiyum' illa — ivanukku personal-aa enna poidum.",
+      "examples": [
+        { "film": "dragon", "note": "Exposure costs him the job, the engagement, and his father's belief — three separate losses, each with a face attached." },
+        { "film": "96", "note": "Nothing external is at risk at all. The stake is that the thing unsaid at sixteen stays unsaid forever. Proof that internal stakes carry a whole film." },
+        { "film": "porthozhil", "note": "The next victim is the public stake; the private one is whether the rookie stays a man who runs." },
+        { "film": "vikramvedha", "note": "What is at risk is not the cop's life but his right to believe he is the good one." }
+      ]
+    },
+    {
+      "term": "theme",
+      "aliases": ["thematic"],
+      "def": "The argument the film makes, not the topic it covers. State it as a sentence someone could disagree with.",
+      "tanglish": "Padam enna vaadhaadudhu. Subject illa — oru statement, yaaraavadhu maruththu pesa mudiyanum.",
+      "examples": [
+        { "film": "dragon", "note": "A shortcut is a debt, and it is collected with interest from people who did not take it." },
+        { "film": "96", "note": "Some loves are complete precisely because they were never consummated." },
+        { "film": "porthozhil", "note": "Courage is not the absence of fear but the decision to keep looking." },
+        { "film": "vikramvedha", "note": "Good and evil are positions, and position depends on where you are standing." }
+      ]
+    },
+    {
+      "term": "want",
+      "aliases": ["wants"],
+      "def": "The conscious, stateable goal the protagonist would name if asked. It drives the plot. It is usually the wrong thing.",
+      "tanglish": "Avanukku theriyura aasai. Kepta sollum goal. Adhu porumbaaluma thappaana vishayam.",
+      "examples": [
+        { "film": "dragon", "note": "A salary big enough to outrank his ex-girlfriend's fiancé. He can say it out loud, and it is entirely about being seen." },
+        { "film": "96", "note": "One more evening in the same room. Small, sayable, and not actually what he is missing." },
+        { "film": "porthozhil", "note": "To close the case — a want handed to him by rank rather than chosen." },
+        { "film": "vikramvedha", "note": "To find and finish Vedha, cleanly, the way the previous encounters went." }
+      ]
+    },
+    {
+      "term": "need",
+      "aliases": ["needs"],
+      "def": "What the protagonist must accept to be whole, usually unknown to them and often the opposite of the want. The arc is the distance between the two.",
+      "tanglish": "Avanukku theriyaama theva-padra vishayam. Want-ukku ethir-maari irukkum. Arc-nu solradhu inda rendukkum edaila ulla dooram.",
+      "examples": [
+        { "film": "dragon", "note": "Self-respect he did not fake. He gets it only after confessing and serving the sentence — the want (status) is destroyed to reach it." },
+        { "film": "96", "note": "To let the memory be enough. The want (more time) is refused, and the need is met anyway." },
+        { "film": "porthozhil", "note": "To stop outsourcing his nerve to the senior officer standing next to him." },
+        { "film": "vikramvedha", "note": "To admit that his certainty was a convenience, not a moral position." }
+      ]
+    },
+    {
+      "term": "the lie",
+      "aliases": ["the lie the character believes", "character lie"],
+      "def": "The false belief about themselves or the world that the protagonist carries at page one. The story exists to test it.",
+      "tanglish": "Modhal page-la character nambura poi. Kadhai adha odaikkardhukku thaan irukku.",
+      "examples": [
+        { "film": "dragon", "note": "'The result is what counts; how I got it is nobody's business.' The film spends its whole second half billing him for that sentence." },
+        { "film": "96", "note": "'If I do not touch it, it stays perfect.' True and ruinous at the same time — the film never quite calls it a lie." },
+        { "film": "porthozhil", "note": "'I am not built for this work.' Held so firmly it nearly becomes true." },
+        { "film": "vikramvedha", "note": "'I only shoot the guilty, so I am clean.'" }
+      ]
+    },
+    {
+      "term": "inciting incident",
+      "aliases": ["disturbance", "catalyst"],
+      "def": "The event that makes the old normal unavailable. Not the first dramatic thing that happens — the first thing the protagonist cannot ignore.",
+      "tanglish": "Pazhaya normal-a thirumba mudiyaadha padi maathura event. Modhal drama illa — avanaala ignore panna mudiyaadha modhal vishayam.",
+      "examples": [
+        { "film": "dragon", "note": "The dean recognises him. Everything before that is setup; from here the clock and the blackmail exist." },
+        { "film": "96", "note": "The reunion invitation. Trivial on paper, and it reopens twenty-two years." },
+        { "film": "porthozhil", "note": "The posting itself — the rookie is placed beside the one man who will not let him look away." },
+        { "film": "vikramvedha", "note": "Vedha walks into the station and surrenders, choosing the terms of his own capture." }
+      ]
+    },
+    {
+      "term": "character arc",
+      "aliases": ["arc", "arcs"],
+      "def": "The measurable change in what a character believes, shown through choices rather than stated. Write the first and last decision; the arc is the line between them.",
+      "tanglish": "Character-oda nambikkai maaradhu, dialogue-la sollaama choice-la kaatta-num. Modhal decision, kadaisi decision — adhukku naduvula thaan arc.",
+      "examples": [
+        { "film": "dragon", "note": "First decision: buy the degree. Last decision: confess to four separate people with nothing left to gain. Same man, inverted." },
+        { "film": "porthozhil", "note": "Textbook positive arc — the trainee who flinches becomes the one who makes the deduction that closes the case." },
+        { "film": "96", "note": "A deliberate flat arc. Neither changes, and the film is about discovering they did not need to." },
+        { "film": "vikramvedha", "note": "The cop's certainty erodes in three stages, one per story told to him." }
+      ]
+    },
+    {
+      "term": "setup",
+      "aliases": ["setups", "planting"],
+      "def": "A detail placed early so a later payoff feels earned rather than convenient. A good setup has its own reason to be in the scene.",
+      "tanglish": "Munnadiye vechu, appuram use panna detail. Nalla setup-ku andha scene-la thaniyaa oru reason irukkum.",
+      "examples": [
+        { "film": "porthozhil", "note": "The odd reverse-gear sound, dropped inside a confession about something else entirely. It is a character detail first and a clue second — which is why it does not announce itself." },
+        { "film": "dragon", "note": "The 48 arrears are a running joke long before they become the mechanism of the plot." },
+        { "film": "96", "note": "Photographs, established as his profession, become the film's method of holding time." },
+        { "film": "vikramvedha", "note": "The folk-tale frame is stated up front, so the structure itself is the setup." }
+      ]
+    },
+    {
+      "term": "payoff",
+      "aliases": ["payoffs"],
+      "def": "The later moment a setup pays for. The audience should feel they could have seen it coming and did not.",
+      "tanglish": "Setup panna vishayam palan tharura edam. Paarthavanga 'ithu munnadiye irundhuchey' nu unara-num, aana andha nerathula theriyakoodaadhu.",
+      "examples": [
+        { "film": "porthozhil", "note": "That reverse-gear sound identifies the vehicle and the killer. The clue was always audible; the film simply refused to point at it." },
+        { "film": "dragon", "note": "The arrears he treated as a joke become the exact measure of the debt he has to clear." },
+        { "film": "vikramvedha", "note": "Each folk tale pays off as a moral trap the cop has already walked into." },
+        { "film": "96", "note": "The song withheld for most of the film finally arrives, and carries everything unspoken with it." }
+      ]
+    },
+    {
+      "term": "midpoint",
+      "aliases": [],
+      "def": "The centre turn where the protagonist stops reacting and starts acting, usually on new information that reframes the problem.",
+      "tanglish": "Nadu-la varura thirupam. Ithu varaikkum react panninavan, ippo thaane move edukka aarambikaraan.",
+      "examples": [
+        { "film": "dragon", "note": "He stops dodging the dean and commits to actually clearing the arrears — the goal shifts from hiding to doing." },
+        { "film": "porthozhil", "note": "The prime suspect turns out to be a teacher of the method, not its user. The case the team was solving no longer exists." },
+        { "film": "vikramvedha", "note": "The second tale lands and the cop begins interrogating his own record instead of the gangster." },
+        { "film": "96", "note": "The reunion ends and the night becomes private. The film changes from group nostalgia to two people." }
+      ]
+    },
+    {
+      "term": "obstacle",
+      "aliases": ["obstacles"],
+      "def": "Anything standing between the protagonist and the want. The best obstacles are people with their own defensible reasons.",
+      "tanglish": "Hero-kum avan aasaikkum naduvula nikkura edhuvum. Nalla obstacle-nu solradhu — sariyaana karanam vechirukkura oru manushan.",
+      "examples": [
+        { "film": "dragon", "note": "The dean is not a villain. He is a man enforcing a rule that is entirely correct, which is what makes him immovable." },
+        { "film": "96", "note": "The obstacle is a marriage nobody in the film treats as an enemy, and the characters' own decency." },
+        { "film": "porthozhil", "note": "The rookie's own fear obstructs him more often than the killer does." },
+        { "film": "vikramvedha", "note": "The obstacle is an argument, not a man — Vedha's questions, which cannot be shot." }
+      ]
+    },
+    {
+      "term": "subtext",
+      "aliases": [],
+      "def": "What the scene is about while the characters discuss something else. If the dialogue states the feeling, the subtext has been deleted.",
+      "tanglish": "Pesaradhu onnu, scene-oda artham innonnu. Feeling-a dialogue-la nerada sonna, subtext poidum.",
+      "examples": [
+        { "film": "96", "note": "Almost the entire film. Two people discuss school, food, and a song, and never once state the thing the scene is about." },
+        { "film": "vikramvedha", "note": "Each folk tale is a confession disguised as a riddle." },
+        { "film": "dragon", "note": "The banter with his friends keeps circling money and worth without either word being the subject." },
+        { "film": "porthozhil", "note": "The senior officer's instruction is always procedural on the surface and always about the junior's nerve underneath." }
+      ]
+    },
+    {
+      "term": "exposition",
+      "aliases": [],
+      "def": "Information the audience needs. The craft is not avoiding it but hiding it inside conflict, so it arrives while attention is elsewhere.",
+      "tanglish": "Paarvaiyaalarukku theriya vendiya thagaval. Thavirkuradhu illa — conflict-ukkulla olichu kudukkuradhu thaan vidhai.",
+      "examples": [
+        { "film": "porthozhil", "note": "Procedure is explained to the trainee, so the audience learns the rules while a character is being tested on them." },
+        { "film": "vikramvedha", "note": "Backstory is delivered as three tales the antagonist chooses to tell — exposition becomes an act of aggression." },
+        { "film": "dragon", "note": "The arrears count is repeated as comedy long before it has to be understood as arithmetic." },
+        { "film": "96", "note": "Twenty-two missing years are conveyed by what the two avoid asking." }
+      ]
+    },
+    {
+      "term": "climax",
+      "aliases": [],
+      "def": "The moment the protagonist makes the choice the whole film has been arranging. It answers the theme, not just the plot.",
+      "tanglish": "Padam muzhusaa thayaar panna andha choice-a hero edukkura edam. Plot-ukku mattum illa, theme-ukkum badhil.",
+      "examples": [
+        { "film": "dragon", "note": "The confession. He is not caught — he chooses the loss, which is the only move that answers the theme." },
+        { "film": "porthozhil", "note": "The rookie makes the deduction alone. The case closes because the arc completed, not the other way round." },
+        { "film": "96", "note": "The parting. Refusing the want is the climax." },
+        { "film": "vikramvedha", "note": "The cop has to answer the last question himself, with no third story coming to save him." }
+      ]
+    },
+    {
+      "term": "reveal",
+      "aliases": ["twist"],
+      "def": "New information that reorganises everything already seen. A twist that only surprises is a trick; a reveal makes the earlier scenes mean more on a second watch.",
+      "tanglish": "Munnadi paartha ellathaiyum maathi amaikkura pudhu thagaval. Suma shock kudukkuradhu trick — nalla reveal, rendaam murai paakkumbodhu scene-ellam perusaa theriyum.",
+      "examples": [
+        { "film": "porthozhil", "note": "The suspect is a killer, just not this one — he taught the method. Every interrogation scene before it changes meaning." },
+        { "film": "dragon", "note": "The classmate's ruined life lands as a reveal about the protagonist rather than the plot: the cost was always being paid by someone else." },
+        { "film": "vikramvedha", "note": "Each tale reveals that the cop is already inside the story he is being told." },
+        { "film": "96", "note": "The film withholds almost nothing factually, and still reveals — what changes is what the audience understands the silence to mean." }
+      ]
+    },
+    {
+      "term": "protagonist",
+      "aliases": [],
+      "def": "The character whose choices drive the story and whose belief is tested. Not necessarily the most screen time — the one who changes, or refuses to.",
+      "tanglish": "Yaaroda choice kadhaiya nagarthudho, yaaroda nambikkai test aagudho avan thaan. Screen time mukkiyam illa.",
+      "examples": [
+        { "film": "dragon", "note": "Ragavan. Every plot turn is caused by a decision he made, including the ones that destroy him." },
+        { "film": "porthozhil", "note": "The trainee, not the senior officer — the film belongs to whoever is being changed by it." },
+        { "film": "96", "note": "Shared almost equally, which is rare and a deliberate structural risk." },
+        { "film": "vikramvedha", "note": "The cop, even though the gangster has the better lines and controls the telling." }
+      ]
+    },
+    {
+      "term": "antagonist",
+      "aliases": [],
+      "def": "The force opposing the want. Strongest when it is a person with a coherent philosophy rather than a person with bad intentions.",
+      "tanglish": "Hero-oda aasaiku ethiraana sakthi. Ketta ennam ulla aal illa — sariyaana logic vechirukkuravan thaan strong antagonist.",
+      "examples": [
+        { "film": "vikramvedha", "note": "The purest example here: the antagonist's position is arguable, and the film lets him argue it." },
+        { "film": "dragon", "note": "The dean opposes him with nothing but a correct rule, which is harder to fight than malice." },
+        { "film": "porthozhil", "note": "A killer with a private and coherent logic, which is exactly what makes him findable." },
+        { "film": "96", "note": "No antagonist at all — time is the opposition. Worth studying for how a film holds without one." }
+      ]
+    }
+  ]
+}

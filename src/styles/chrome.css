@@ -1459,6 +1459,42 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--panel-muted);
 }
 
+/* Worked examples from the four anchor films. The popover is a dark
+   panel in every theme, so these read against --panel-ink like the
+   definition above them. */
+.glossary-popover .gp-examples {
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--panel-hair);
+  display: grid;
+  gap: var(--s2);
+}
+.glossary-popover .gp-example {
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--panel-ink);
+}
+.glossary-popover .gp-film {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--panel-gilt);
+}
+
+/* The in-prose affordance. Dotted underline rather than a link colour —
+   these sit inside body copy and should invite a hover, not compete
+   with the real links around them. */
+.glossary-term {
+  border-bottom: 1px dotted var(--accent);
+  cursor: help;
+}
+.glossary-term:hover,
+.glossary-term:focus-visible {
+  background: var(--accent-wash);
+  border-bottom-style: solid;
+}
+
 /* ------------------------------------------------------------
    MOBILE ACTION BAR — phone only, declared once here and shown
    by the phone tier below.

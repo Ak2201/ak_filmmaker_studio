@@ -24,6 +24,7 @@
 import Store from '../lib/store.js';
 import { registerSW } from '../lib/pwa.js';
 import '../styles/chrome-injected.css';
+import glossaryData from '../data/glossary.json';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -703,15 +704,68 @@ function ensurePopover() {
   document.body.appendChild(p);
   return p;
 }
+/* The dictionaries are derived from src/data/glossary.json, so a term is
+   added by editing the JSON and nothing else. The globals stay because
+   the legacy pages set them directly; anything already there wins, so a
+   page can still override an entry. */
+const GLOSSARY = {};   // term -> { def, tanglish, examples }
+(function buildGlossary() {
+  const films = glossaryData.films || {};
+  for (const entry of glossaryData.terms || []) {
+    const record = {
+      def: entry.def,
+      tanglish: entry.tanglish,
+      examples: (entry.examples || []).map((ex) => ({
+        film: films[ex.film] || ex.film,
+        note: ex.note
+      }))
+    };
+    for (const key of [entry.term, ...(entry.aliases || [])]) {
+      GLOSSARY[key.toLowerCase()] = record;
+    }
+  }
+})();
+/** Every term and alias, longest first so "the lie" wins over "lie". */
+const GLOSSARY_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+
 function showPopover(term, anchor) {
-  const dict = global.STUDIO_GLOSSARY || {};
-  const def = dict[term.toLowerCase()] || term;
-  const tn = (global.STUDIO_GLOSSARY_TN || {})[term.toLowerCase()];
+  const key = term.toLowerCase();
+  const entry = GLOSSARY[key];
+  const legacyDef = (global.STUDIO_GLOSSARY || {})[key];
+  const def = legacyDef || (entry && entry.def) || term;
+  const tn = (global.STUDIO_GLOSSARY_TN || {})[key] || (entry && entry.tanglish);
   const p = ensurePopover();
-  p.innerHTML =
-    '<div class="gp-term">' + term.toUpperCase() + '</div>' +
-    '<div>' + def + '</div>' +
-    (tn ? '<div class="gp-tn">' + tn + '</div>' : '');
+  // Built as nodes, not an innerHTML string: the definitions are authored
+  // but the term can come from page text, and this popover is one of the
+  // places a stray "<" used to disappear silently.
+  p.replaceChildren();
+  const head = document.createElement('div');
+  head.className = 'gp-term';
+  head.textContent = term.toUpperCase();
+  p.append(head);
+  const body = document.createElement('div');
+  body.textContent = def;
+  p.append(body);
+  if (tn) {
+    const t = document.createElement('div');
+    t.className = 'gp-tn';
+    t.textContent = tn;
+    p.append(t);
+  }
+  if (entry && entry.examples.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'gp-examples';
+    for (const ex of entry.examples) {
+      const row = document.createElement('div');
+      row.className = 'gp-example';
+      const film = document.createElement('span');
+      film.className = 'gp-film';
+      film.textContent = ex.film;
+      row.append(film, document.createTextNode(' ' + ex.note));
+      wrap.append(row);
+    }
+    p.append(wrap);
+  }
   const rect = anchor.getBoundingClientRect();
   p.classList.add('show');
   requestAnimationFrame(() => {
@@ -728,7 +782,60 @@ function hidePopover() {
   const p = document.getElementById('glossaryPopover');
   if (p) p.classList.remove('show');
 }
+/* Mark up glossary terms in the step prose.
+
+   The alternative was hand-tagging every occurrence across 35 steps of
+   JSON, which would put the term list in two places and guarantee drift
+   the first time a term is added. This derives it instead.
+
+   Deliberately conservative: prose elements only, never inside a field,
+   a heading the step rail reads, or an already-tagged span; one hit per
+   term per step, so a section is annotated rather than speckled. It only
+   wraps text in a span, so the page's visible words do not change and
+   the verifier's coverage check is unaffected. */
+const TAGGABLE = 'p, li, .step-deck, .hint, .why-this .label + p, .formula-box .eq';
+function autoTagGlossary(root) {
+  const scope = root || document;
+  for (const section of scope.querySelectorAll('section.step, section.section-body, .glossary-scope')) {
+    const used = new Set();
+    for (const el of section.querySelectorAll(TAGGABLE)) {
+      if (el.closest('[data-glossary], label, .gp-examples')) continue;
+      for (const node of [...el.childNodes]) {
+        if (node.nodeType !== 3) continue;            // text nodes only
+        const text = node.nodeValue;
+        if (!text || text.length < 4) continue;
+        for (const key of GLOSSARY_KEYS) {
+          if (used.has(key)) continue;
+          // Whole words only, where "word" means what the verifier's
+          // tokeniser means by it: [\p{L}\p{N}] plus apostrophes AND
+          // hyphens. \b is wrong here — it treats "-" as a boundary, so
+          // "want" matched inside "who-want-obstacle-end" and splitting
+          // that text node turned one token into three. Mirror the
+          // tokeniser exactly instead.
+          const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp("(?<![\\p{L}\\p{N}'\u2019-])" + esc + "(?![\\p{L}\\p{N}'\u2019-])", 'iu');
+          const m = re.exec(text);
+          if (!m) continue;
+          const span = document.createElement('span');
+          span.className = 'glossary-term';
+          span.setAttribute('data-glossary', key);
+          span.setAttribute('tabindex', '0');
+          span.setAttribute('role', 'button');
+          span.setAttribute('aria-label', m[0] + ' — what this means, with examples');
+          span.textContent = m[0];
+          const after = node.splitText(m.index);
+          after.nodeValue = after.nodeValue.slice(m[0].length);
+          after.parentNode.insertBefore(span, after);
+          used.add(key);
+          break;                                       // one term per text node
+        }
+      }
+    }
+  }
+}
+
 function wireGlossaryPopovers() {
+  autoTagGlossary();
   document.querySelectorAll('[data-glossary]').forEach(el => {
     if (el._glossaryWired) return;
     el._glossaryWired = true;

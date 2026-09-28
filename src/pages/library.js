@@ -715,6 +715,9 @@ function render() {
   try {
     StudioUI.attachSignInPill(toolbar);
     StudioUI.autoAriaLabels();
+    // The craft rules and film notes are exactly where a term needs
+    // explaining; .section-body is in the tagger's scope.
+    StudioUI.wireGlossaryPopovers();
   } catch (e) { /* cloud/chrome extras are optional */ }
 }
 

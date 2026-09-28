@@ -96,7 +96,7 @@ const MASTER_COVER_HTML = `
   <div>
     <div class="master-mark">A complete guide to building a film, from idea to camera</div>
     <h1 class="master-title">The <span class="light">Filmmaker's</span><br>Blueprint.</h1>
-    <p class="master-sub">Two volumes. Twenty-four guided steps. From the first "what if?" to "ROLL CAMERA." Examples from <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
+    <p class="master-sub">Two volumes. Twenty-four guided steps. From the first "what if?" to "ROLL CAMERA." Examples from <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
     <div class="vol-stamps">
       <span class="vol-stamp gold">VOL I · STORY · 12 STEPS</span>
       <span class="vol-stamp green">VOL II · PRE-PRODUCTION · 12 STEPS</span>
@@ -119,7 +119,7 @@ const VOL1_COVER_HTML   = `
     <div class="master-mark">VOLUME I</div>
     <div class="vol-tag">STORY · 12 STEPS</div>
     <h1>The <span class="light">Story</span><br>Blueprint.</h1>
-    <p class="sub">From a vague idea to a structured screenplay in twelve guided steps. Every example explained in English &amp; Tanglish — using <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
+    <p class="sub">From a vague idea to a structured screenplay in twelve guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Working title</label><input type="text" data-key="v1_title" placeholder="Untitled film"></div>
       <div class="meta-field"><label>Genre</label>
@@ -155,7 +155,7 @@ const HOWTO1_HTML       = `
   <p class="deck">Twelve steps, in order. Each step builds on the one before it. Don't skip ahead — the sequence is the method.</p>
   <ol>
     <li><strong>Work in order.</strong> Step 1 is always the spark. By Step 12 you have a scene-by-scene outline ready to draft.</li>
-    <li><strong>Read the example before you write.</strong> Every step shows how <em>Vikram Vedha</em>, <em>96</em>, and <em>Por Thozhil</em> answered the same question — first in English, then explained in Tanglish for clearer feel.</li>
+    <li><strong>Read the example before you write.</strong> Every step shows how <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em>, and <em>Por Thozhil</em> answered the same question — first in English, then explained in Tanglish for clearer feel.</li>
     <li><strong>Answer in your own words first.</strong> Write the messy version. Polish later.</li>
     <li><strong>Tick the checks at the bottom of each step</strong> only when you genuinely believe you've nailed it.</li>
     <li><strong>Save often.</strong> The page autosaves. Use EXPORT before you close.</li>

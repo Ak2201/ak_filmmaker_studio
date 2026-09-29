@@ -42,6 +42,7 @@
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
 import Store, { rawGet } from '../lib/store.js';
+import { harvestKeys } from '../lib/blueprint-fields.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -87,26 +88,10 @@ const ACTIVITY_KEY = 'arunak_studio_activity_v1';
      of those on the feature blueprint alone, and a count that
      ignored them would report a filled project as a third done.
    ============================================================ */
-const DATA_KEY_RE = /data-key\s*=\s*(?:"([^"]+)"|'([^']+)')/g;
-
-function harvestKeys(node, out) {
-  if (Array.isArray(node)) {
-    for (const item of node) harvestKeys(item, out);
-    return out;
-  }
-  if (!node || typeof node !== 'object') return out;
-  for (const [prop, value] of Object.entries(node)) {
-    if (typeof value === 'string') {
-      if (prop === 'key') { out.add(value); continue; }
-      DATA_KEY_RE.lastIndex = 0;
-      let m;
-      while ((m = DATA_KEY_RE.exec(value)) !== null) out.add(m[1] || m[2]);
-      continue;
-    }
-    harvestKeys(value, out);
-  }
-  return out;
-}
+/* harvestKeys moved to src/lib/blueprint-fields.js — hub.js needed
+   the same derivation to stop reporting 11 saved fields as 100%
+   complete, and two copies of a denominator is how the two pages
+   disagreed in the first place. */
 
 /* The short film's five beats live in their own array and are rendered
    by the `beatviz` block inside step 4. Attributing them to that step

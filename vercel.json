@@ -30,16 +30,26 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
         }
       ]
     }
   ],
   "rewrites": [
     { "source": "/studio", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/feature", "destination": "/feature.html" },
     { "source": "/short", "destination": "/short.html" },
     { "source": "/library", "destination": "/library.html" },
+    { "source": "/breakdown", "destination": "/breakdown.html" },
+    { "source": "/stripboard", "destination": "/stripboard.html" },
+    { "source": "/reports", "destination": "/reports.html" },
+    { "source": "/contacts", "destination": "/contacts.html" },
+    { "source": "/visualize", "destination": "/visualize.html" },
+    { "source": "/write", "destination": "/write.html" },
+    { "source": "/plan", "destination": "/plan.html" },
+    { "source": "/study", "destination": "/study.html" },
+    { "source": "/dissect", "destination": "/dissect.html" },
     { "source": "/shared/:token", "destination": "/index.html?share=:token" }
   ],
   "redirects": [

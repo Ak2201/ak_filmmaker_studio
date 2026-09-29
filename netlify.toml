@@ -11,6 +11,9 @@
   # shipped older Node before now, and the failure is an unhelpful
   # "styleText is not exported from node:util" at build time.
   NODE_VERSION = "22"
+  # package.json now also carries engines.node ">=22.12", which is what
+  # Vercel and most other hosts read. Netlify prefers this explicit pin,
+  # so both exist on purpose — they must not disagree.
 
 # ---- headers -------------------------------------------------
 # Hashed assets are immutable; HTML and the service worker must never be

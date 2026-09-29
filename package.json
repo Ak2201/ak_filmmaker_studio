@@ -13,6 +13,9 @@
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },
+  "engines": {
+    "node": ">=22.12"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ak2201/ak_filmmaker_studio.git"

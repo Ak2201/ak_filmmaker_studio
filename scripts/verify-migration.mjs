@@ -57,13 +57,51 @@
         the second source check below keeps it out, along with
         --rule, --rule-hair and --print-rule, which are worse.
 
-   WHAT THE WHOLESALE WALK STILL CANNOT SEE, so that nobody
-   mistakes it for total coverage: it measures the page in the
-   state this run puts it in, which is why every model is now
-   seeded on every page rather than scenes on the breakdown
-   alone — seven pages reported zero findings purely because
-   they were empty. And ::before/::after content is not a text
-   node. The source checks cover what a rendered walk cannot
+   PSEUDO-ELEMENT GLYPHS ARE MEASURED TOO, and they used not to
+   be. A ::before is not a text node, so the walk above could not
+   see one at all — and in this app pseudo-element content is not
+   decoration. The dash in front of every `.door-contents li`,
+   the ○/● of a checklist, the `TAMIL ·` eyebrow, the numbers on
+   `.rule-card` and `.ladder-rung`, the ⌕ in the search box and
+   the whole of the glossary popover (`content: attr(data-gloss)`)
+   are glyphs a reader is meant to read. A status dot rendered at
+   1.2:1 looked fine to every check in this file.
+
+   So the element walk beside the text walk measures both
+   pseudos, with the pseudo's own background composited in front
+   of its element's through the SAME groundOf(), and skips only
+   what is genuinely not text or genuinely not painted:
+   `content: ""` (a shape — the status dot and the six washes in
+   editorial.css), url()/gradient content (a picture), and a
+   pseudo that is display:none, hidden, transparent, zero-size or
+   on a collapsed box. aria-hidden is NOT a skip: a decoration is
+   still seen, so it still has to be legible.
+
+   Verdict when it was turned on: 13,560 measurements across the
+   four themes, five skins and fifteen pages, and ZERO failures —
+   because the two source checks below already forbid the colours
+   that would have caused them, and they grep `color:` without
+   caring whether the selector names a pseudo-element. That is
+   the source checks doing exactly the job they were added for,
+   and it is why the answer below is worth what it claims.
+
+   WHAT IS STILL UNMEASURED, so that nobody mistakes this for
+   total coverage:
+     - The page in any state this run does not reach. Every model
+       is seeded on every page and every modal that opens is
+       opened, but a hover, a focus ring, an error state or a
+       disabled control is a style nothing here renders.
+     - ::first-line, ::first-letter, ::marker, ::placeholder,
+       ::selection and ::backdrop. Only ::before and ::after are
+       walked; the others take a colour too.
+     - Text painted by SVG `fill`, and text over a background
+       IMAGE or gradient rather than a colour — groundOf reads
+       backgroundColor only, so a glyph on a gradient is measured
+       against whatever sits behind the gradient.
+     - Chrome outside `main`, the modals and the shell on the
+       module pages: breakdown, write and dashboard expose only
+       MAIN and the shortcut sheet to the ROOTS selector.
+   The source checks cover part of what a rendered walk cannot
    reach; between them the answer is "the rule is not broken
    anywhere in the source, and nothing rendered fails".
    ============================================================ */
@@ -866,13 +904,22 @@ for (const spec of PAGES) {
      tokens.css). With those gone the honest check costs nothing to
      turn on, so it is on.
 
-     TWO THINGS STILL LIMIT IT, and neither is a reason to go back to
-     a list. A page renders only the state this run puts it in, so the
+     PSEUDO-ELEMENT GLYPHS ARE WALKED TOO, in the second loop below.
+     They were the last thing here that was not a text node, and in
+     this app they carry real reading — see the note at the top of
+     this file for the list and for the skips.
+
+     WHAT STILL LIMITS IT, and none of it is a reason to go back to a
+     list. A page renders only the state this run puts it in, so the
      models are seeded above and the modals are opened above; text
-     that needs some other state is still unmeasured. And ::before /
-     ::after content is not a text node, so a pseudo-element glyph is
-     invisible to this. The source checks near the top of this file
-     cover what a rendered walk cannot reach. */
+     that needs a hover, a focus, an error or a disabled control is
+     still unmeasured. Only ::before and ::after are walked, not
+     ::marker / ::placeholder / ::selection / ::first-line. groundOf
+     reads backgroundColor, so text over a background IMAGE or a
+     gradient is measured against whatever is behind it. And ROOTS
+     reaches less chrome on the module pages than on the blueprints.
+     The source checks near the top of this file cover part of what a
+     rendered walk cannot reach. */
   const contrast = await page.evaluate(() => {
     const api = window.StudioUI, skinApi = window.StudioSkin;
     if (!api || !skinApi) return { unavailable: true };
@@ -897,9 +944,18 @@ for (const spec of PAGES) {
        near-black — treating it as its own opaque colour reported a
        perfectly legible chip as 1:1 and sent me looking for a bug that
        was in this function. Layers accumulate until one is opaque. */
-    const groundOf = (el) => {
+    /* `top` is an extra layer painted IN FRONT of everything the
+       element stack provides — a pseudo-element's own background,
+       which sits above its originating element's. It is a parameter
+       rather than a second function because the compositing rule is
+       the thing that was hard to get right, and two copies of it
+       would disagree the first time one was touched. Called with one
+       argument it behaves exactly as it always did. */
+    const groundOf = (el, top) => {
       const layers = [];
-      for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      if (top && top.a > 0) layers.push(top);
+      const opaqueYet = () => layers.length > 0 && layers[layers.length - 1].a >= 1;
+      for (let n = el; !opaqueYet() && n && n !== document.documentElement; n = n.parentElement) {
         const p = parse(getComputedStyle(n).backgroundColor);
         if (!p || p.a === 0) continue;
         layers.push(p);
@@ -952,6 +1008,51 @@ for (const spec of PAGES) {
         if (n.tagName === 'MAIN') break;
       }
       return seg.join('>');
+    };
+
+    /* --- is this pseudo-element TEXT, or is it a shape? ---
+
+       A ::before is not a text node, so the walk above cannot see one
+       at all. In this app that is not a technicality: the dash in
+       front of every `.door-contents li`, the ○/● of a checklist, the
+       `TAMIL ·` eyebrow, the numbers on `.rule-card` and
+       `.ladder-rung` and the ⌕ in the search box are all glyphs a
+       reader is meant to read, and every one of them was unmeasured.
+
+       The distinction that keeps this from crying wolf is content.
+       `content: ""` with a background is a DOT, a bar or a corner —
+       a shape, with no foreground to measure, and the status dot at
+       `.lx-mod-state::before` and the six `content: ""` washes in
+       editorial.css are exactly that. They are skipped, and skipping
+       them is not a loophole: there is genuinely no text there.
+
+       Everything that resolves to characters is text and is measured:
+       string literals (including the CSS-escaped ones, which Chrome
+       has already turned into the character by computed-value time),
+       `counter()` / `counters()`, `attr()` — the glossary popover is
+       `content: attr(data-gloss)` and is the largest run of
+       pseudo-element prose in the app — and the quote keywords.
+
+       Images are not text: `url()` and the gradient functions are
+       stripped before the test, so `content: url(x)` is a shape and a
+       hypothetical `url(x) " 3 notes"` still measures the words. The
+       `/ "alt"` tail is the accessible name, never painted, so it is
+       dropped rather than counted as a visible glyph. */
+    const glyphOf = (content) => {
+      if (!content) return '';
+      let c = String(content).trim();
+      if (c === 'none' || c === 'normal') return '';
+      c = c.split(/\s+\/\s+/)[0];
+      c = c.replace(
+        /(?:-webkit-)?(?:url|image-set|(?:repeating-)?(?:linear|radial|conic)-gradient)\([^()]*\)/g, ' ');
+      const LIT = /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g;
+      let out = '', m;
+      while ((m = LIT.exec(c)) !== null) out += (m[1] !== undefined ? m[1] : m[2]);
+      const rest = c.replace(LIT, ' ');
+      // A counter or an attribute is characters whose value we do not
+      // need to know — one stand-in glyph is enough to say "text here".
+      if (/\b(?:counters?|attr)\s*\(/.test(rest) || /\b(?:open|close)-quote\b/.test(rest)) out += '#';
+      return out.trim();
     };
 
     /* Freeze transitions for the duration of the probe.
@@ -1019,6 +1120,75 @@ for (const spec of PAGES) {
               });
             }
           }
+
+          /* --- and now the glyphs that are not text nodes ---
+
+             Same floor, same grounds, same finding shape; the only
+             differences are that the colour comes from
+             getComputedStyle(el, pseudo) rather than the element, and
+             that the pseudo's OWN background composites in front of
+             the element's before the ratio is taken. A chip whose
+             ::before paints a dark pill under a pale glyph is legible
+             and must not be reported against the pale card behind it.
+
+             Elements, not text nodes, obviously — but the element's
+             own text is already covered above, so nothing here is
+             measured twice: `where` carries the ::before / ::after
+             suffix and dedupes separately.
+
+             WHAT IS SKIPPED, AND WHY EACH ONE IS NOT A LOOPHOLE. A
+             glyph nobody can see is not an accessibility failure, and
+             a check that reports one gets switched off:
+               - no glyph at all (see glyphOf) — a shape, not text.
+               - display:none / visibility:hidden / opacity 0 on the
+                 pseudo or on its element. Not painted.
+               - a zero-area originating box. A pseudo on a collapsed
+                 element is not on the screen. `auto` is not zero —
+                 an inline pseudo computes its width to `auto` and is
+                 very much visible, so only a resolved 0 counts.
+               - font-size 0, the old icon-font trick.
+             An aria-hidden decoration is NOT skipped. It is still
+             seen, so it still has to be legible; hiding a dash from a
+             screen reader says nothing about the eye. */
+          const ew = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+          let host = root.nodeType === 1 ? root : null;
+          do {
+            if (!host) continue;
+            if (/^(SCRIPT|STYLE|NOSCRIPT|OPTION|TITLE)$/.test(host.tagName)) continue;
+            const own = getComputedStyle(host);
+            if (own.visibility === 'hidden' || own.display === 'none') continue;
+            if (parseFloat(own.opacity) === 0) continue;
+            const box = host.getBoundingClientRect();
+            if (box.width <= 0 || box.height <= 0) continue;
+            for (const pseudo of ['::before', '::after']) {
+              const ps = getComputedStyle(host, pseudo);
+              if (!ps) continue;
+              const glyph = glyphOf(ps.content);
+              if (!glyph) continue;
+              if (ps.display === 'none' || ps.visibility === 'hidden') continue;
+              if (parseFloat(ps.opacity) === 0) continue;
+              if (parseFloat(ps.fontSize) === 0) continue;
+              const pw = parseFloat(ps.width), ph = parseFloat(ps.height);
+              if (pw === 0 || ph === 0) continue;
+              /* -webkit-text-fill-color wins over color where both are
+                 set, and `transparent` there means the glyph is a mask
+                 for something else — no foreground to measure. */
+              const fill = ps.webkitTextFillColor || ps.color;
+              const fg = rgb(fill === 'currentcolor' ? ps.color : fill);
+              if (!fg) continue;
+              const g = groundOf(host, parse(ps.backgroundColor));
+              const r = ratio(fg, g);
+              if (r < AA) {
+                worst.push({
+                  where: pathOf(host) + pseudo,
+                  text: glyph.slice(0, 24),
+                  fg: `rgb(${fg.map(Math.round).join(',')})`,
+                  bg: `rgb(${g.map(Math.round).join(',')})`,
+                  theme: t, skin: sk.id, ratio: Math.round(r * 100) / 100
+                });
+              }
+            }
+          } while ((host = ew.nextNode()));
         });
       }
     }
@@ -1028,9 +1198,16 @@ for (const spec of PAGES) {
     // One row per distinct place, not one per theme-skin pair.
     const seen = new Map();
     for (const w of worst) if (!seen.has(w.where) || seen.get(w.where).ratio > w.ratio) seen.set(w.where, w);
-    return { fails: [...seen.values()].sort((a, b) => a.ratio - b.ratio).slice(0, 10) };
+    const all = [...seen.values()].sort((a, b) => a.ratio - b.ratio);
+    /* The cap is on what gets PRINTED, not on what was found. It used
+       to be on both, and a run reporting "10 places" when there were
+       173 is a run that understates the size of the job in front of
+       you — which is the one number you need before deciding whether
+       to fix or to escalate. */
+    return { fails: all.slice(0, 10), total: all.length };
   });
   const lowContrast = contrast.unavailable ? [] : contrast.fails;
+  const lowContrastTotal = contrast.unavailable ? 0 : contrast.total;
 
   /* --- colour that means something must still mean it ---
 
@@ -1188,6 +1365,7 @@ for (const spec of PAGES) {
     modalsOpened: modals.unavailable ? null : modals.opened,
     modalInlineHandlers: modals.unavailable ? null : modals.inline,
     lowContrast,
+    lowContrastTotal,
     errors
   };
   report.push(row);
@@ -1242,8 +1420,11 @@ for (const spec of PAGES) {
   for (const c of lowContrast) {
     bad.push(
       `text invisible on its surface: ${c.where} at ${c.ratio}:1 ` +
-      `(${c.theme} + ${c.skin})`
+      `(${c.theme} + ${c.skin}, ${c.fg} on ${c.bg}, "${c.text}")`
     );
+  }
+  if (lowContrastTotal > lowContrast.length) {
+    bad.push(`...and ${lowContrastTotal - lowContrast.length} more place(s) below 4.5:1 (worst 10 shown)`);
   }
   for (const g of hueBroken) {
     bad.push(

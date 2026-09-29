@@ -81,6 +81,13 @@
 # shipped since, and /stripboard 404ing while /feature works is the
 # kind of gap nobody notices until someone shares a link.
 
+# NOTE — this one legitimately differs from vercel.json, which targets
+# "/" rather than "/index.html". Vercel sets cleanUrls:true, so it 308s
+# /index.html to /, and a rewrite POINTING AT /index.html is caught by
+# that redirect and 404s. It did, in production: /studio and the whole
+# /shared/:token share-link route were dead. Netlify has no such
+# rewrite-to-redirect interaction, and /index.html is idiomatic here, so
+# this file keeps it. Do not "fix" the difference without testing both.
 [[redirects]]
   from = "/studio"
   to = "/index.html"

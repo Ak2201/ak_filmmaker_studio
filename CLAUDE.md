@@ -6,8 +6,9 @@ or silently broken a page.
 
 ## What this is
 
-Four browser-based tools for filmmakers — a hub, two step-by-step blueprints,
-and a reference library. Local-first: everything a user writes lives in their
+Browser-based tools for filmmakers — a hub, two step-by-step blueprints, a
+reference library, and the scene-derived production modules built on top of
+them (breakdown, stripboard, reports, contacts, visualize, write, plan). Local-first: everything a user writes lives in their
 browser's `localStorage`. Optional Supabase sync on top. Static build, no server.
 
 It is a **writing tool people keep months of work in.** That single fact decides
@@ -383,12 +384,14 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    model keys rather than one, and every new one is another row in the
    migration that has to be written eventually. Do it before more people have
    data, not after.
-2. **The chain is closed** — scene → breakdown → stripboard → day out of days
-   → call sheet, all reading `src/lib/scenes.js`. This was the open item that
-   justified the whole rebuild, and it is done. What is left of it is the
-   reverse direction: nothing yet feeds the *budget* from the schedule, so a
-   day added to the stripboard does not move the number in the calculator.
-   That is the next real link, not another module.
+2. **The chain is closed in both directions** — scene → breakdown →
+   stripboard → day out of days → call sheet, all reading
+   `src/lib/scenes.js`, and now the budget reads it too: the library's
+   calculator derives shoot days, scenes, pages and locations from the scene
+   model rather than asking for a day count the user already worked out.
+   `USE N DAYS IN THE ESTIMATE` fills only the day fields left blank and says
+   how many it left alone — a hand-set figure is a decision, not a gap. This
+   was the open item that justified the whole rebuild and it is done.
 3. **AI, bring-your-own-key.** Key in `localStorage`, per-device, never synced.
    Anthropic's browser calls need `anthropic-dangerous-direct-browser-access`.
    The value is in-place work (dialogue passes, beat critique) using the
@@ -400,8 +403,14 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    Audit Supabase row-level security before real strangers hold share links.
 6. **Refresh the Chennai rates** (currently 2024-25, shown with that date) and
    turn the festival list into a submission tracker.
-7. First-run experience: a new user currently lands on a blocking "new project"
-   modal in front of a wall of 24 steps.
+7. ~~First-run experience.~~ Done. The hub no longer opens the new-project
+   modal on a timer; the empty grid renders a first-run panel instead — what
+   the studio is, three destinations that need no project at all, then the
+   ask, plus a sample project that seeds a logline, a theme and four scenes
+   across two shoot days so the blueprint, breakdown, stripboard and budget
+   all have something to show. What is *not* done is the wall of 24 steps
+   behind it: a new project still opens on step 1 of 24 with no sense of
+   which ones matter first. That is a steps problem, not a hub problem.
 
 ## Things that are deliberate, not oversights
 

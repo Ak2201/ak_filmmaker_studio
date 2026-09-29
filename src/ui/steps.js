@@ -16,7 +16,9 @@
    exist once, as data, and all three read from here.
    ============================================================ */
 
-import { h, fromHTML } from '../lib/dom.js';
+import { h, fromHTML, delegate } from '../lib/dom.js';
+import SIDECAR from '../data/steps.tanglish.json';
+import { currentLang, onLangChange, langToggle, setLang } from '../lib/lang.js';
 
 /* ---- gloss ------------------------------------------------
    Tanglish was extracted out of its parent prose. Put it back
@@ -26,6 +28,78 @@ import { h, fromHTML } from '../lib/dom.js';
    so the caller passes the right one rather than us guessing. */
 function gloss(text, cls = 'tn') {
   return text ? h(`span.${cls}`, { html: text }) : null;
+}
+
+/* ============================================================
+   TANGLISH FOR THE STEPS
+   ------------------------------------------------------------
+   Two different things share the word "tanglish" in this file and
+   confusing them would be a mess, so:
+
+   A GLOSS (b.tanglish, rendered as a trailing .tn span) is a short
+   companion line for a formula or a craft note. It is shown in BOTH
+   languages, always, because that is what it has always done and a
+   one-line gloss costs nothing.
+
+   A FULL TRANSLATION (src/data/steps.tanglish.json) is a whole
+   paragraph standing in for the English one. Showing both would
+   double the length of all 43 steps, so it REPLACES rather than
+   accompanies, and only in Tanglish mode.
+
+   WHY IT SWAPS IN PLACE AND DOES NOT RE-RENDER. A step is full of
+   <input data-key> fields holding the user's writing. Re-rendering
+   the tree to change a language would throw away anything typed
+   since the last autosave. So the language swap touches prose nodes
+   only, found by data-tl-* markers, and never rebuilds a step.
+   ============================================================ */
+
+const EN = new Map();   // marker key -> the English original
+
+function deckKey(ns, step) { return ns ? ns + ':' + step.id : null; }
+
+/** Swap every marked prose node to the current language, in place. */
+function paintLang() {
+  const tl = currentLang() === 'tl';
+  document.querySelectorAll('[data-tl-deck]').forEach((el) => {
+    const key = el.getAttribute('data-tl-deck');
+    const alt = SIDECAR.decks[key];
+    const en = EN.get('deck:' + key);
+    if (!alt || en == null) return;
+    el.innerHTML = tl ? alt : en;
+  });
+  document.querySelectorAll('[data-tl-why]').forEach((el) => {
+    const key = el.getAttribute('data-tl-why');
+    const [k, i] = [key.slice(0, key.lastIndexOf(':')), +key.slice(key.lastIndexOf(':') + 1)];
+    const alt = (SIDECAR.why[k] || [])[i];
+    const en = EN.get('why:' + key);
+    if (!alt || en == null) return;
+    el.innerHTML = tl ? alt : en;
+  });
+}
+
+onLangChange(paintLang);
+
+// The control is rendered by lib/lang.js and bound once here, so a
+// page only has to decide WHERE it goes, not how it works.
+if (typeof document !== 'undefined') {
+  delegate(document, 'click', '[data-action="set-lang"]', (e, btn) => setLang(btn.dataset.lang));
+}
+
+/* The switch, mounted once per page rather than once per steps host
+   — feature.js calls renderSteps() four times and four identical
+   language toggles down one page would be absurd. It governs every
+   marked node on the page, so it belongs above all of them. */
+export function mountStepsLang(before, ns) {
+  if (!before || document.querySelector('.steps-lang')) return null;
+  const keys = Object.keys(SIDECAR.decks).filter((k) => k.startsWith(ns + ':'));
+  if (!keys.length) return null;   // nothing translated — no control
+  const wrap = h('div.steps-lang');
+  wrap.append(langToggle({
+    hint: 'Switches the step explanations. Field labels, step names and'
+        + ' your own writing are untouched.'
+  }));
+  before.parentNode.insertBefore(wrap, before);
+  return wrap;
 }
 
 /** Prose element carrying an optional trailing gloss. */
@@ -131,7 +205,7 @@ function renderAsk(a) {
    about — the five-beat visualiser, the festival grid — without this
    shared module importing a page's data. Page renderers win over BLOCKS
    so a page can also override a shared one. */
-export function renderStep(step, extra) {
+export function renderStep(step, extra, ns) {
   const section = h('section.step', { id: step.id });
   if (step.vol === 2) section.classList.add('vol-2');
 
@@ -154,8 +228,21 @@ export function renderStep(step, extra) {
     );
   }
 
-  if (step.deck) section.append(prose('p.step-deck', step.deck, step.deckTanglish));
+  if (step.deck) {
+    const key = deckKey(ns, step);
+    const alt = key && SIDECAR.decks[key];
+    const el = prose('p.step-deck', step.deck, alt ? null : step.deckTanglish);
+    if (alt) {
+      // A full translation exists, so the short gloss is dropped in
+      // favour of it and the node is marked for in-place swapping.
+      EN.set('deck:' + key, step.deck);
+      el.setAttribute('data-tl-deck', key);
+      if (currentLang() === 'tl') el.innerHTML = alt;
+    }
+    section.append(el);
+  }
 
+  let whyN = 0;
   for (const block of step.blocks || []) {
     const fn = (extra && extra[block.type]) || BLOCKS[block.type];
     if (!fn) {
@@ -164,15 +251,28 @@ export function renderStep(step, extra) {
       console.warn('[steps] unknown block type:', block.type, block);
       continue;
     }
-    section.append(fn(block));
+    const el = fn(block);
+    if (block.type === 'why') {
+      const key = deckKey(ns, step);
+      const idx = whyN++;
+      const alt = key && (SIDECAR.why[key] || [])[idx];
+      const body = alt && el.querySelector('p');
+      if (body) {
+        const mark = key + ':' + idx;
+        EN.set('why:' + mark, block.body);
+        body.setAttribute('data-tl-why', mark);
+        if (currentLang() === 'tl') body.innerHTML = alt;
+      }
+    }
+    section.append(el);
   }
   return section;
 }
 
 /** Render a list of steps into `host`, replacing its contents. */
-export function renderSteps(host, steps, extra) {
+export function renderSteps(host, steps, extra, ns) {
   const frag = document.createDocumentFragment();
-  for (const s of steps) frag.append(renderStep(s, extra));
+  for (const s of steps) frag.append(renderStep(s, extra, ns));
   host.replaceChildren(frag);
   return host;
 }

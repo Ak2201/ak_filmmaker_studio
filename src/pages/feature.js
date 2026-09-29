@@ -68,7 +68,7 @@ import StudioUI, {
 import '../lib/cloud.js';
 
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
-import { renderSteps, stepIndex, stepFieldKeys } from '../ui/steps.js';
+import { renderSteps, mountStepsLang, stepIndex, stepFieldKeys } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
@@ -621,9 +621,10 @@ function renderPage(app) {
   // Story steps 01–02, the treatment ladder interlude, then 03–12.
   // The ladder sits between steps 02 and 03 in the original.
   const vol1Host = document.createElement('div');
-  renderSteps(vol1Host, STEPS.vol1);
+  renderSteps(vol1Host, STEPS.vol1, null, 'feature');
   const vol1Sections = [...vol1Host.children];
   main.append(vol1Sections[0], vol1Sections[1]);
+  mountStepsLang(vol1Sections[0], 'feature');
   main.append(fromHTML(LADDER_HTML));
   main.append(...vol1Sections.slice(2));
 
@@ -633,7 +634,7 @@ function renderPage(app) {
 
   // Pre-production steps, with the three dividers at 13 / 17 / 21.
   const vol2Host = document.createElement('div');
-  renderSteps(vol2Host, STEPS.vol2);
+  renderSteps(vol2Host, STEPS.vol2, null, 'feature');
   const vol2Sections = [...vol2Host.children];
   const PHASES = { 0: PHASE1_HTML, 4: PHASE2_HTML, 8: PHASE3_HTML };
   vol2Sections.forEach((sec, i) => {
@@ -643,12 +644,12 @@ function renderPage(app) {
 
   main.append(fromHTML(PHASE3_COVER_HTML));
   const prodHost = document.createElement('div');
-  renderSteps(prodHost, PROD.production);
+  renderSteps(prodHost, PROD.production, null, 'production');
   main.append(...prodHost.children);
 
   main.append(fromHTML(PHASE4_COVER_HTML));
   const postHost = document.createElement('div');
-  renderSteps(postHost, PROD.post);
+  renderSteps(postHost, PROD.post, null, 'production');
   main.append(...postHost.children);
 
   main.append(fromHTML(pitchSectionHTML()));
@@ -937,6 +938,14 @@ function assignStepIds() {
           <span class="step-badge" data-step="${n}">EMPTY</span>
         `;
       header.appendChild(meta);
+      // The duration now lives in .step-meta beside the badge, which is
+      // where the redesign put it. The original .step-time was left in
+      // place when that row was added, so every one of the 32 steps has
+      // been printing its duration twice — once boxed on the left, once
+      // plain on the right — since that commit. Remove the original
+      // rather than the copy: .step-time-tag is the one .step-meta
+      // aligns and styles.
+      if (tag) tag.remove();
     }
   });
   // Master cover gets id "top"

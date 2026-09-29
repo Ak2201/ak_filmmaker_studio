@@ -575,51 +575,6 @@
   line-height: 1.7;
 }
 
-/* The language switch. Sits above the section heading because it
-   governs the whole section including that heading — a control placed
-   after the thing it changes reads as belonging to the next block. */
-.lang-switch {
-  display: inline-flex;
-  gap: 0;
-  margin-bottom: var(--s4);
-  border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-radius: var(--sk-radius);
-  overflow: hidden;
-}
-.lang-btn {
-  padding: var(--s2) var(--s4);
-  border: 0;
-  background: transparent;
-  font-family: var(--f-body);
-  font-size: var(--t-tiny);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  color: var(--ink-muted);
-  cursor: pointer;
-  transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
-}
-.lang-btn + .lang-btn { border-left: var(--sk-card-line-w) solid var(--sk-card-line); }
-.lang-btn:hover { background: var(--paper-sunk); color: var(--ink); }
-/* --accent is a fill, so the label on top of it takes --on-fill and
-   never --ink, which would vanish in the dark themes. */
-.lang-btn.is-on {
-  background: var(--accent);
-  color: var(--on-fill);
-}
-/* Says what the switch does and does not do, so nobody waits for the
-   headings to change. */
-.lang-hint {
-  flex: 1 1 100%;
-  margin-top: var(--s2);
-  font-size: var(--t-tiny);
-  line-height: 1.5;
-  color: var(--ink-faint);
-}
-.lang-switch {
-  flex-wrap: wrap;
-  max-width: var(--measure);
-}
-
 .st-sheet-head {
   max-width: var(--measure);
   margin: var(--s5) 0 var(--s5);

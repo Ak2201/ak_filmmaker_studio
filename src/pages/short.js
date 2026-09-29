@@ -51,7 +51,7 @@ import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 
 import { h, delegate } from '../lib/dom.js';
-import { renderSteps } from '../ui/steps.js';
+import { renderSteps, mountStepsLang } from '../ui/steps.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
@@ -485,7 +485,8 @@ function render() {
   renderSteps(stepHost, STEPS.map(({ badge, ...rest }) => rest), {
     beatviz: renderBeatViz,
     festgrid: renderFestivals
-  });
+  }, 'short');
+  mountStepsLang(stepHost.firstElementChild, 'short');
   for (const step of STEPS) {
     if (!step.badge) continue;
     const header = stepHost.querySelector(`#${step.id} .step-header`);

@@ -38,7 +38,7 @@
 // `localStorage.getItem('arunak_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
-import { parseNum } from '../lib/money.js';
+import { parseNum, fmtINR } from '../lib/money.js';
 import { featureKeys, shortKeys, progressAgainst } from '../lib/blueprint-fields.js';
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
@@ -294,13 +294,6 @@ function chunk(arr, n) {
 // ============================================================
 function parseStorage(key) {
   try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
-}
-function fmtINR(n) {
-  if (!n) return '₹ 0';
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000)   return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000)     return '₹ ' + Math.round(n / 1000) + 'k';
-  return '₹ ' + Math.round(n);
 }
 function relTime(ts) {
   const diff = Date.now() - ts;

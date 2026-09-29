@@ -83,7 +83,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WRITE_BASELINE = process.argv.includes('--baseline');
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
 const DIST = path.join(ROOT, 'dist');
-const PORT = 5321;
+/* Overridable, because several worktrees of this repo can be live at
+   once and they all used to bind 5321. The contention was not
+   theoretical: sessions took to running `lsof -ti:5321 | xargs kill -9`
+   as a preamble, which SIGKILLed whoever legitimately held the port —
+   two separate runs died mid-Chromium that way, reporting as
+   "Target page, context or browser has been closed" rather than as
+   what it was. Pass VERIFY_PORT=5322 (or anything free) instead of
+   killing someone else's run. */
+const PORT = Number(process.env.VERIFY_PORT) || 5321;
 
 const PAGES = [
   { page: 'index.html',   legacy: 'index.html',                        name: 'hub' },
@@ -266,7 +274,19 @@ const server = http.createServer((req, res) => {
     + (untranslated.length ? ` (missing: ${untranslated.join(', ')})` : ''));
 }
 
-await new Promise((r) => server.listen(PORT, r));
+await new Promise((resolve, reject) => {
+  server.once('error', (e) => {
+    if (e && e.code === 'EADDRINUSE') {
+      console.error(`\n✗ port ${PORT} is already in use.`);
+      console.error('  Another verify run (possibly in another worktree) holds it.');
+      console.error('  Do NOT kill it — that is how two runs have already died mid-Chromium.');
+      console.error(`  Run this one on its own port instead:  VERIFY_PORT=${PORT + 1} npm run verify\n`);
+      process.exit(2);
+    }
+    reject(e);
+  });
+  server.listen(PORT, resolve);
+});
 
 /* ---- helpers ---------------------------------------------- */
 const strip = (html) => String(html).replace(/<[^>]+>/g, ' ');

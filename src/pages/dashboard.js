@@ -43,6 +43,7 @@
    ============================================================ */
 import Store, { rawGet } from '../lib/store.js';
 import { harvestKeys } from '../lib/blueprint-fields.js';
+import { parseNum, fmtINR, INR } from '../lib/money.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -212,40 +213,19 @@ function firstUnfinished(progress) {
   return null;
 }
 
-/* ---- the budget -------------------------------------------------
-   The library's calculator stores one row as ci_<n>_item / _days /
-   _rate, and the total is days x rate summed. The suffix test is
-   ANCHORED, exactly as library.js writes it: unanchored, a bare "l"
-   anywhere in the rate turned "1 lens day" into a lakh, which is on
-   CLAUDE.md's list of traps already paid for.
+/* parseNum / INR / the short rupee format all come from
+   src/lib/money.js now. This file used to carry its own copy with a
+   note saying "if this ever needs a third caller it should move into
+   a lib" — it did, and the copy outlived the note. It was also the
+   anchored-but-not-whole-string version, which still read
+   "1500 per roll" as 15 crore. */
 
-   Copied rather than imported because a page module must not import
-   another page module. If this ever needs a third caller it should
-   move into a lib — hub.js has a copy too, and hub.js's copy is the
-   UNANCHORED one. */
-function parseNum(s) {
-  if (!s) return 0;
-  s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '');
-  let m = 1;
-  if (/(cr|crore)$/.test(s)) { m = 10000000; s = s.replace(/(crore|cr)$/, ''); }
-  else if (/(lakh|lac|l)$/.test(s)) { m = 100000; s = s.replace(/(lakh|lac|l)$/, ''); }
-  else if (/k$/.test(s)) { m = 1000; s = s.replace(/k$/, ''); }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n * m;
-}
-
-const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
 /* Two figures, because a number card is 190px wide and eight digits in
    the display face wrap onto two lines there. The card face gets the
-   glanceable magnitude, exactly as the library's own caption does; the
-   exact rupee figure goes in the note under it, so nothing is hidden. */
-function fmtShort(n) {
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000) return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000) return '₹ ' + Math.round(n / 1000) + 'k';
-  return '₹ ' + Math.round(n);
-}
+   glanceable magnitude; the exact rupee figure goes in the note under
+   it, so nothing is hidden. */
+const fmtShort = fmtINR;
 
 function budgetStatus() {
   const calc = readBlob(LIB_CALC_KEY);

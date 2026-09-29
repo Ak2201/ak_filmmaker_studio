@@ -249,6 +249,21 @@ key fails the run immediately.
 by then — the mobile action bar never attaches during a verify run and its
 layout is untested. Check viewport-gated chrome by hand at 390px.
 
+This is narrower than it was: overflow is now also measured at 390px *before*
+a project is created, which is the only time the first-run panel exists. That
+measurement is still a resize rather than a fresh load at 390, so it inherits
+the same `matchMedia` caveat. Loading that one case directly into a 390px
+context would close it properly.
+
+**Running two verifies at once.** The server port is `VERIFY_PORT`, default
+5321. Several worktrees of this repo can be live at the same time, and they
+used to fight over it — badly enough that sessions began running
+`lsof -ti:5321 | xargs kill -9` as a preamble, which SIGKILLs whoever
+legitimately holds the port. Two runs died mid-Chromium that way and reported
+it as "Target page, context or browser has been closed", which looks like a
+flaky test and is not. Use `VERIFY_PORT=5322 npm run verify`; the run now says
+so itself rather than crashing on `EADDRINUSE`.
+
 **Checks that can skip themselves.** The hue-coding assertion reports each
 group as passed, failed *or skipped*, because a group that never appears looks
 exactly like one that passes if you only print the ones that ran. The

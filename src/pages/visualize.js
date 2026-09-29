@@ -30,14 +30,28 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/visualize.css';
+import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
-import Scenes from '../lib/scenes.js';
+import PDF from '../lib/pdf.js';
+import Scenes, { formatEighths } from '../lib/scenes.js';
+import Script from '../lib/script.js';
 import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, isLinkable
 } from '../lib/shots.js';
+
+/* Both are lazy chunks, for the reason CLAUDE.md gives for
+   Supabase and pptxgenjs: neither is needed to look at a shot
+   list. The exporter is only reached from a click on Export; the
+   AI module is only reached from a click on Draft, and it is the
+   one module in the studio that can open a network connection —
+   keeping it off the first-paint graph means a page that is never
+   used to draft never even loads the code that could. */
+const exporter = () => import('../lib/shotlist-export.js');
+const aiLib = () => import('../lib/ai.js');
 
 const app = document.getElementById('app');
 
@@ -177,6 +191,25 @@ function renderShotList(scenes, shots) {
     })
   );
 
+  /* The whole-script export. The per-scene one is on each scene,
+     because "this scene" is a thing you ask for while looking at
+     that scene and nowhere else. Both go through the same builder
+     in src/lib/shotlist-export.js — one scope argument apart. */
+  if (shots.length) {
+    wrap.append(h('div.vz-tools.pdf-menu-host', {}, [
+      h('span.vz-tools-lab', {
+        text: shots.length + (shots.length === 1 ? ' setup' : ' setups')
+            + ' across ' + new Set(shots.map((s) => s.sceneId)).size
+            + ' scenes'
+      }),
+      h('span.vz-tools-gap'),
+      actionMenu('Export the shot division', [
+        { label: 'Whole script — PDF', action: 'vz-pdf-all', hint: 'A4' },
+        { label: 'Whole script — CSV', action: 'vz-csv-all', hint: 'spreadsheet' }
+      ], { align: 'right' })
+    ]));
+  }
+
   if (!scenes.length && !shots.length) {
     wrap.append(renderNoScenes());
     return wrap;
@@ -222,9 +255,19 @@ function renderSceneBlock(group) {
   if (group.shots.length) block.append(renderShotTable(group.shots));
 
   if (scene) {
-    block.append(h('button.btn.vz-add', {
-      type: 'button', 'data-action': 'vz-shot-add', text: '+  Add shot'
-    }));
+    const row = h('div.vz-scene-acts.pdf-menu-host', {}, [
+      h('button.btn.vz-add', {
+        type: 'button', 'data-action': 'vz-shot-add', text: '+  Add shot'
+      })
+    ]);
+    // Only offered once there is something to put on the sheet.
+    if (group.shots.length) {
+      row.append(actionMenu('Export this scene', [
+        { label: 'This scene — PDF', action: 'vz-pdf-scene', hint: 'A4' },
+        { label: 'This scene — CSV', action: 'vz-csv-scene', hint: 'spreadsheet' }
+      ], { align: 'right' }));
+    }
+    block.append(row);
   }
   return block;
 }
@@ -246,14 +289,27 @@ function renderShotTable(shots) {
 }
 
 function renderShotRow(shot, i, total) {
-  const row = h('tr.vz-row' + (shot.done ? '.is-done' : ''), { 'data-shot': shot.id });
+  const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai ? '.is-ai' : ''), {
+    'data-shot': shot.id
+  });
 
-  row.append(h('td.vz-c-no', {}, [
+  const no = h('td.vz-c-no', {}, [
     field('input.vz-no', {
       type: 'text', placeholder: String(i + 1),
       'data-shot-field': 'number', 'aria-label': 'Shot number'
     }, shot.number)
-  ]));
+  ]);
+  /* A shot a machine drafted is marked, permanently and visibly,
+     so a person can always tell what they wrote from what was
+     written for them. It is an ordinary shot in every other
+     respect — editable, movable, deletable, exported. */
+  if (shot.ai) {
+    no.append(h('span.vz-ai-tag', {
+      title: 'Drafted by AI — edit or delete it like any other shot',
+      text: 'AI draft'
+    }));
+  }
+  row.append(no);
   row.append(h('td', {}, [picker(SHOT_SIZES, shot.size, 'data-shot-field', 'size', 'Shot size')]));
   row.append(h('td', {}, [picker(SHOT_ANGLES, shot.angle, 'data-shot-field', 'angle', 'Camera angle')]));
   row.append(h('td', {}, [picker(SHOT_MOVEMENTS, shot.movement, 'data-shot-field', 'movement', 'Camera movement')]));
@@ -285,6 +341,277 @@ function renderShotRow(shot, i, total) {
     ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true)
   ]));
   return row;
+}
+
+/* ============================================================
+   SECTION 1b: DRAFT A SHOT DIVISION
+   ------------------------------------------------------------
+   CLAUDE.md open item 3 — bring your own key — applied to the
+   one job on this page a machine is actually good at: turning a
+   scene that is already written into the list of setups that
+   shoots it.
+
+   TWO GATES, INDEPENDENTLY. No key and no script are different
+   problems with different fixes, so the panel says which one it
+   is and what to do about it rather than showing a disabled
+   button. A third condition — no scenes — is the shot list's
+   own empty state above, and the panel defers to it.
+
+   THE SCREENPLAY IS THE USER'S UNPUBLISHED WORK. Nothing here
+   runs on load, nothing runs on a timer. The panel states
+   exactly what leaves the browser and where it goes, and the
+   only thing that sends it is a click on a button that says so.
+
+   NOTHING IS OVERWRITTEN. Drafted shots are APPENDED. A scene
+   that already has shots is unticked by default and says why,
+   and the run that just happened can be undone in one click
+   because the ids it created are still in memory.
+
+   All of the machinery is in src/lib/ai.js and is loaded on
+   demand. The key lives on the device, unscoped and unsynced —
+   the header of that file has the four places it is
+   deliberately absent from.
+   ============================================================ */
+
+/* View state. None of it is stored: a selection is not the
+   user's work, and a run in flight that survived a reload would
+   be a lie about a request that is no longer happening. */
+let aiKeyKnown = false;        // refreshed synchronously before each render
+let aiKeyMasked = '';
+let aiModel = '';
+let aiModels = [];
+let aiEditingKey = false;
+let aiPicked = null;           // Set<sceneId>, or null until first render
+let aiStatus = '';
+let aiError = '';
+let aiRunning = false;
+let aiAbort = null;
+let aiLastRun = [];            // shot ids from the most recent draft
+
+/** Read the key module's state without importing it eagerly. It
+    is imported once, on the first render that needs it, and the
+    answers are cached in the variables above; until then the
+    panel renders its "checking" state, which lasts one frame. */
+let aiReady = false;
+async function primeAI() {
+  if (aiReady) return;
+  try {
+    const AI = await aiLib();
+    aiKeyKnown = AI.hasKey();
+    aiKeyMasked = AI.maskKey();
+    aiModel = AI.getModel();
+    aiModels = AI.AI_MODELS;
+    aiReady = true;
+    render();
+  } catch (e) {
+    console.warn('[visualize] ai', e);
+  }
+}
+
+function aiScenePlan(scenes, shots) {
+  const script = Script.loadScript();
+  const slices = [];
+  let current = null;
+  for (const el of script.elements) {
+    const text = String(el.text ?? '').trim();
+    if (!text) continue;
+    if (el.type === 'scene') { current = { heading: text, elements: [] }; slices.push(current); continue; }
+    if (!current) { current = { heading: '', elements: [] }; slices.push(current); }
+    current.elements.push(el);
+  }
+  const counted = new Map();
+  for (const s of shots) counted.set(s.sceneId, (counted.get(s.sceneId) || 0) + 1);
+
+  return {
+    hasScript: script.elements.length > 0,
+    pages: Script.pageCount(script.elements),
+    rows: scenes.map((scene, i) => ({
+      scene,
+      slice: slices[i] || null,
+      existing: counted.get(scene.id) || 0
+    }))
+  };
+}
+
+function aiKeyForm() {
+  const box = h('div.vz-ai-key');
+  box.append(h('p.vz-ai-lead', {
+    text: 'This uses your own Anthropic API key. It is saved in this browser only — '
+        + 'it is never put in a backup file, never synced to the cloud, and never '
+        + 'attached to a project. Every call is billed to your account.'
+  }));
+  box.append(h('label.vz-fieldset', {}, [
+    h('span.vz-flabel', { text: 'API key' }),
+    h('input.vz-ai-input', {
+      type: 'password', id: 'vz-ai-key', autocomplete: 'off', spellcheck: 'false',
+      placeholder: 'sk-ant-…', 'aria-label': 'Anthropic API key'
+    })
+  ]));
+  box.append(h('div.vz-ai-acts', {}, [
+    h('button.btn.primary', { type: 'button', 'data-action': 'vz-ai-save-key', text: 'Save the key' }),
+    aiEditingKey
+      ? h('button.btn', { type: 'button', 'data-action': 'vz-ai-cancel-key', text: 'Cancel' })
+      : null,
+    h('a.vz-ai-link', {
+      href: 'https://console.anthropic.com/settings/keys',
+      target: '_blank', rel: 'noopener noreferrer',
+      text: 'Where do I get one?  ↗'
+    })
+  ]));
+  return box;
+}
+
+function aiKeyBar() {
+  const bar = h('div.vz-ai-bar');
+  bar.append(h('span.vz-ai-keystate', { text: 'Key on this device: ' + aiKeyMasked }));
+
+  const sel = h('select.vz-sel', { 'data-action': 'vz-ai-model', 'aria-label': 'Model' });
+  aiModels.forEach((m) => {
+    const opt = h('option', { value: m.id, text: m.label + ' — ' + m.hint });
+    if (m.id === aiModel) opt.selected = true;
+    sel.append(opt);
+  });
+  bar.append(h('label.vz-ai-modelwrap', {}, [h('span.vz-flabel', { text: 'Model' }), sel]));
+
+  bar.append(h('span.vz-tools-gap'));
+  bar.append(h('button.btn', { type: 'button', 'data-action': 'vz-ai-edit-key', text: 'Replace key' }));
+  bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'vz-ai-forget-key', text: 'Forget key' }));
+  return bar;
+}
+
+function aiScenePicker(plan) {
+  const list = h('div.vz-ai-scenes', { role: 'group', 'aria-label': 'Scenes to draft' });
+  for (const row of plan.rows) {
+    const id = row.scene.id;
+    const box = h('input', {
+      type: 'checkbox', 'data-action': 'vz-ai-pick', 'data-scene': id,
+      'aria-label': 'Draft shots for scene ' + (row.scene.number || '—')
+    });
+    box.checked = aiPicked.has(id);
+    const label = h('label.vz-ai-pickrow' + (row.existing ? '.has-shots' : ''), {}, [
+      box,
+      h('span.vz-scene-no', { text: row.scene.number || '—' }),
+      h('span.vz-ai-pickslug', { text: slugOf(row.scene) }),
+      h('span.vz-ai-pickmeta', {
+        text: (row.slice ? 'script matched' : 'synopsis only')
+            + (row.existing ? ' · ' + plural(row.existing, 'shot', 'shots') + ' already' : '')
+      })
+    ]);
+    list.append(label);
+  }
+  return list;
+}
+
+function renderAI(scenes, shots) {
+  const wrap = h('section.vz-ai', { id: 'draft' });
+  wrap.append(
+    h('h2.bd-h2', { text: 'Draft a shot division' }),
+    h('p.bd-sub', {
+      text: 'A first pass at the coverage, from the script you have already written. '
+          + 'It is a draft — every shot it makes is an ordinary shot you can change, '
+          + 'reorder or delete, and it is marked so you always know which is which.'
+    })
+  );
+
+  if (!aiReady) {
+    wrap.append(h('p.bd-none', { text: 'Checking this device for a key…' }));
+    return wrap;
+  }
+
+  /* GATE 1 — the key. Independent of everything below it. */
+  if (!aiKeyKnown || aiEditingKey) {
+    if (!aiKeyKnown) {
+      wrap.append(h('p.vz-ai-gate', {}, [
+        h('strong', { text: 'No API key on this device. ' }),
+        h('span', {
+          text: 'Drafting runs against Anthropic’s API and there is no server here to '
+              + 'run it for you, so it needs a key of your own. Paste one below and it '
+              + 'stays on this device.'
+        })
+      ]));
+    }
+    wrap.append(aiKeyForm());
+    if (!aiKeyKnown) return wrap;
+  }
+
+  wrap.append(aiKeyBar());
+
+  /* GATE 2 — the script. Also independent: a key with no script
+     is a different problem with a different answer. */
+  const plan = aiScenePlan(scenes, shots);
+  if (!plan.hasScript) {
+    wrap.append(h('p.vz-ai-gate', {}, [
+      h('strong', { text: 'There is no script yet. ' }),
+      h('span', {
+        text: 'A shot division is a reading of the scene as written — without the '
+            + 'pages there is nothing to read, and a division invented from a slug '
+            + 'line is a guess dressed up as a plan.'
+      })
+    ]));
+    wrap.append(h('a.btn.primary.bd-cta', { href: 'write.html#screenplay', text: 'Write the script  →' }));
+    return wrap;
+  }
+
+  /* The scene list is the shot list's own empty state above. */
+  if (!scenes.length) {
+    wrap.append(h('p.bd-none', {
+      text: 'Break the script into scenes first — a shot belongs to a scene, and the '
+          + 'breakdown is where scenes are made.'
+    }));
+    return wrap;
+  }
+
+  if (aiPicked === null) {
+    // First render: everything that has no shots yet. A scene that is
+    // already covered is not silently re-covered.
+    aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
+  }
+
+  wrap.append(h('div.vz-ai-disclose', {}, [
+    h('strong', { text: 'What gets sent, and where' }),
+    h('p', {
+      text: 'Clicking the button below sends the slug line, the one-line synopsis and '
+          + 'the script text of the ticked scenes to api.anthropic.com, using the key '
+          + 'on this device. Nothing else leaves this browser, and nothing is sent '
+          + 'until you click. Your screenplay is your unpublished work — this is the '
+          + 'only place in the studio that puts any of it on the network.'
+    })
+  ]));
+
+  wrap.append(h('div.vz-ai-picks', {}, [
+    h('button.btn', { type: 'button', 'data-action': 'vz-ai-all', text: 'Tick all' }),
+    h('button.btn', { type: 'button', 'data-action': 'vz-ai-none', text: 'Clear' }),
+    h('span.vz-ai-count', {
+      text: plural(aiPicked.size, 'scene', 'scenes') + ' selected · '
+          + formatEighths(scenes.filter((s) => aiPicked.has(s.id))
+            .reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages'
+    })
+  ]));
+  wrap.append(aiScenePicker(plan));
+
+  wrap.append(h('div.vz-ai-acts', {}, [
+    aiRunning
+      ? h('button.btn.danger', { type: 'button', 'data-action': 'vz-ai-stop', text: 'Stop' })
+      : h('button.btn.primary', {
+        type: 'button', 'data-action': 'vz-ai-run', disabled: aiPicked.size === 0,
+        text: 'Send ' + plural(aiPicked.size, 'scene', 'scenes') + ' and draft the shots'
+      }),
+    aiLastRun.length && !aiRunning
+      ? h('button.btn', {
+        type: 'button', 'data-action': 'vz-ai-undo',
+        text: 'Undo the last draft (' + aiLastRun.length + ')'
+      })
+      : null
+  ]));
+
+  if (aiStatus) wrap.append(h('p.vz-ai-status', { role: 'status', text: aiStatus }));
+  if (aiError) {
+    wrap.append(h('p.vz-ai-error', { role: 'alert' }, [
+      h('strong', { text: 'It did not run. ' }),
+      h('span', { text: aiError })
+    ]));
+  }
+  return wrap;
 }
 
 /* ---- section 2: the storyboard -------------------------------
@@ -576,7 +903,7 @@ function noImageNote(text) {
 }
 
 /* ---- render --------------------------------------------------- */
-function render() {
+function render(focus) {
   const scenes = Scenes.listScenes();
   const shots = Shots.listShots();
   const frames = Shots.listFrames();
@@ -586,12 +913,14 @@ function render() {
   main.append(
     renderHeader(scenes, shots, frames, boards),
     renderShotList(scenes, shots),
+    renderAI(scenes, shots),
     renderStoryboard(scenes, shots, frames),
     renderLookbook(boards)
   );
 
   app.replaceChildren(main);
   mountShell();
+  wireActionBar();
   // Chrome initialises at import time, when #app is still empty — the
   // trap short.js fell into. Re-init after every render.
   try {
@@ -599,7 +928,237 @@ function render() {
     StudioUI.wireGlossaryPopovers();
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[visualize] chrome', e); }
+
+  if (focus) {
+    const node = document.querySelector(focus);
+    if (node) node.focus();
+  }
 }
+
+function say(message, type) {
+  try { StudioUI.toast(message, { type: type || 'info' }); } catch (e) { /* chrome may not be up */ }
+}
+
+function download(text, filename, mime) {
+  const blob = new Blob([text], { type: mime || 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const fileStem = () =>
+  String(PDF.projectTitle() || 'shot-division')
+    .replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'shot_division';
+
+/* ---- the shot division as a document -------------------------
+   One path for both scopes. `scope` is a scene id or 'all', and
+   everything downstream — the document, the CSV, the subtitle,
+   the filename — takes the same argument, so the two cannot
+   drift apart. */
+async function exportShotlist(scope, kind) {
+  let Sheet;
+  try { Sheet = await exporter(); }
+  catch (e) { say('The exporter could not be loaded. Check the connection and try again.', 'warn'); return; }
+
+  const summary = Sheet.summarise(scope);
+  if (!summary.shots) { say('There are no shots in that scope yet.', 'warn'); return; }
+
+  if (kind === 'csv') {
+    const tail = scope === Sheet.ALL ? 'shot_division' : 'shot_division_scene';
+    download(Sheet.toCSV(scope), fileStem() + '_' + tail + '.csv', 'text/csv');
+    say('Exported ' + summary.shots + ' setups as CSV.');
+    return;
+  }
+
+  const main = document.getElementById('main');
+  if (!main) return;
+  let node = null;
+  PDF.exportPDF({
+    scope: 'shotlist',
+    setup: 'a4',
+    label: Sheet.labelFor(scope),
+    title: PDF.projectTitle() + ' — ' + Sheet.labelFor(scope),
+    subtitle: Sheet.subtitleFor(scope),
+    before: () => { node = Sheet.buildDocument(scope); main.append(node); },
+    after: () => { if (node) { node.remove(); node = null; } }
+  });
+}
+
+delegate(document, 'click', '[data-action="vz-pdf-all"]', () => exportShotlist('all', 'pdf'));
+delegate(document, 'click', '[data-action="vz-csv-all"]', () => exportShotlist('all', 'csv'));
+delegate(document, 'click', '[data-action="vz-pdf-scene"]', (e, el) => {
+  const id = sceneIdOf(el);
+  if (id) exportShotlist(id, 'pdf');
+});
+delegate(document, 'click', '[data-action="vz-csv-scene"]', (e, el) => {
+  const id = sceneIdOf(el);
+  if (id) exportShotlist(id, 'csv');
+});
+
+/* ---- the AI panel ---------------------------------------------
+   Every one of these is reached from a click and from nowhere
+   else. Nothing below runs on load. */
+delegate(document, 'click', '[data-action="vz-ai-save-key"]', async () => {
+  const input = document.getElementById('vz-ai-key');
+  const value = input ? input.value.trim() : '';
+  if (input) input.value = '';                 // out of the DOM immediately
+  if (!value) { aiError = 'Paste a key first.'; render(); return; }
+  const AI = await aiLib();
+  if (!AI.looksLikeKey(value)) {
+    aiError = 'That does not look like an Anthropic key — they begin sk-ant- . '
+      + 'Nothing was saved.';
+    render();
+    return;
+  }
+  if (!AI.setKey(value)) {
+    aiError = 'This browser refused to store the key (private mode blocks it). '
+      + 'Drafting needs somewhere to keep it.';
+    render();
+    return;
+  }
+  aiKeyKnown = true;
+  aiKeyMasked = AI.maskKey();
+  aiEditingKey = false;
+  aiError = '';
+  aiStatus = 'Key saved on this device.';
+  render();
+});
+
+delegate(document, 'click', '[data-action="vz-ai-edit-key"]', () => {
+  aiEditingKey = true; aiError = ''; render('#vz-ai-key');
+});
+delegate(document, 'click', '[data-action="vz-ai-cancel-key"]', () => {
+  aiEditingKey = false; aiError = ''; render();
+});
+delegate(document, 'click', '[data-action="vz-ai-forget-key"]', async () => {
+  if (!confirm('Forget the API key stored in this browser?\n\n'
+    + 'Shots already drafted are untouched. You can paste the key again at any time.')) return;
+  const AI = await aiLib();
+  AI.clearKey();
+  aiKeyKnown = false;
+  aiKeyMasked = '';
+  aiEditingKey = false;
+  aiStatus = 'Key removed from this device.';
+  aiError = '';
+  render();
+});
+
+delegate(document, 'change', 'select[data-action="vz-ai-model"]', async (e, sel) => {
+  const AI = await aiLib();
+  if (AI.setModel(sel.value)) aiModel = sel.value;
+});
+
+delegate(document, 'change', 'input[data-action="vz-ai-pick"]', (e, box) => {
+  const id = box.dataset.scene;
+  if (!id || !aiPicked) return;
+  if (box.checked) aiPicked.add(id); else aiPicked.delete(id);
+  render();
+});
+delegate(document, 'click', '[data-action="vz-ai-all"]', () => {
+  aiPicked = new Set(Scenes.listScenes().map((s) => s.id));
+  render();
+});
+delegate(document, 'click', '[data-action="vz-ai-none"]', () => {
+  aiPicked = new Set();
+  render();
+});
+
+delegate(document, 'click', '[data-action="vz-ai-stop"]', () => {
+  if (aiAbort) aiAbort.abort();
+});
+
+delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
+  if (aiRunning) return;
+  const AI = await aiLib();
+  const scenes = Scenes.listScenes();
+  const chosen = scenes.filter((s) => aiPicked && aiPicked.has(s.id));
+  if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
+
+  const script = Script.loadScript();
+  const slices = AI.sliceScriptByScene(script.elements);
+  const index = new Map(scenes.map((s, i) => [s.id, i]));
+
+  const jobs = chosen.map((scene) => {
+    const slice = slices[index.get(scene.id)] || null;
+    return {
+      sceneId: scene.id,
+      number: scene.number,
+      slug: slugOf(scene),
+      eighths: scene.eighths,
+      synopsis: scene.synopsis,
+      script: slice ? AI.sceneScriptText(slice) : ''
+    };
+  });
+
+  aiRunning = true;
+  aiError = '';
+  aiStatus = 'Starting…';
+  aiAbort = new AbortController();
+  render();
+
+  let result = null;
+  try {
+    result = await AI.draftShotDivision(jobs, {
+      signal: aiAbort.signal,
+      onStatus: (m) => {
+        aiStatus = m;
+        // DOM only. A re-render here would rebuild the panel under
+        // the Stop button the user may be about to press.
+        const node = document.querySelector('.vz-ai-status');
+        if (node) node.textContent = m;
+      }
+    });
+  } catch (err) {
+    aiRunning = false;
+    aiAbort = null;
+    aiStatus = '';
+    aiError = (err && err.message) ? err.message : 'Something went wrong and nothing was changed.';
+    render();
+    return;
+  }
+
+  aiRunning = false;
+  aiAbort = null;
+
+  /* Write. APPEND ONLY — `addShot` puts a shot at the end of its
+     scene and numbers it after the ones already there, so nothing
+     a person wrote is touched or renumbered. */
+  const made = [];
+  for (const [sceneId, list] of result.byScene) {
+    for (const draft of list) {
+      made.push(Shots.addShot(sceneId, { ...draft, ai: true }).id);
+    }
+  }
+  aiLastRun = made;
+
+  if (!made.length) {
+    aiStatus = '';
+    aiError = 'The model came back with no shots. Nothing was added.';
+    render();
+    return;
+  }
+  aiStatus = plural(made.length, 'shot', 'shots') + ' drafted by ' + result.model
+    + ' across ' + plural(result.byScene.size, 'scene', 'scenes')
+    + (result.truncated ? ' — the reply was cut short, so some scenes may be missing.' : '')
+    + ' Every one of them is marked and editable.';
+  aiError = '';
+  render();
+  say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
+});
+
+delegate(document, 'click', '[data-action="vz-ai-undo"]', () => {
+  if (!aiLastRun.length) return;
+  if (!confirm('Remove the ' + aiLastRun.length + ' shots from the last draft?\n\n'
+    + 'Only those shots are removed. Anything you wrote or edited since is kept.')) return;
+  const ids = new Set(aiLastRun);
+  Shots.saveShots(Shots.listShots().filter((s) => !ids.has(s.id)));
+  aiLastRun = [];
+  aiStatus = 'The last draft was removed.';
+  render();
+});
 
 /* ---- events — delegated, no inline handlers -------------------
    An id comes off the button itself when it has one (the empty-state
@@ -739,3 +1298,8 @@ delegate(document, 'change', '[data-entry-field]', (e, el) => {
 });
 
 render();
+/* The AI module is loaded after the first paint, not during it, and
+   all it is asked at this point is whether a key exists on this
+   device — nothing is sent and nothing is written. The panel renders
+   its "checking" line for the one frame this takes. */
+primeAI();

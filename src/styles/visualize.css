@@ -381,3 +381,309 @@
   .vz-bd-scene { break-inside: avoid; }
   .vz-strip { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ============================================================
+   6. THE EXPORT AFFORDANCES
+   ------------------------------------------------------------
+   One row above the scene blocks for the whole script, and one
+   beside "Add shot" for a single scene. Same menu component as
+   the reports page, so there is one thing to learn.
+   ============================================================ */
+.vz-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  padding-block: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.vz-tools-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-tools-gap { flex: 1 1 auto; }
+.vz-scene-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+/* A shot a machine drafted. It sits next to the shot number, so
+   it is read at the same moment as the shot it belongs to. */
+.vz-ai-tag {
+  display: inline-block;
+  margin-top: var(--s1);
+  padding: 0 var(--s1);
+  background: var(--accent-wash);
+  border: 1px solid var(--accent);
+  border-radius: var(--sk-radius);
+  /* --accent-deep, not --accent: an accent is a fill, and as text
+     on a light wash it runs under 4.5:1 in the brighter themes. */
+  color: var(--accent-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+}
+.vz-row.is-ai .vz-c-no { vertical-align: top; }
+
+/* ============================================================
+   7. THE DRAFTING PANEL
+   ------------------------------------------------------------
+   The only part of the studio that can open a network
+   connection, so it looks like a decision rather than a widget:
+   its own band, its own rule, and the disclosure above the
+   button rather than under it.
+   ============================================================ */
+.vz-ai {
+  --hue: var(--visualize);
+  --hue-on: var(--visualize-on);
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: var(--s6);
+  border-top: 1px solid var(--rule-hair);
+}
+.vz-ai-lead,
+.vz-ai-gate {
+  margin: 0 0 var(--s3);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.vz-ai-gate {
+  padding: var(--s3) var(--s4);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+}
+.vz-ai-gate strong { color: var(--ink); }
+
+.vz-ai-key {
+  display: grid;
+  gap: var(--s3);
+  max-width: 34rem;
+  margin-bottom: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+}
+/* --ink-muted, not the --ink-faint that .vz-flabel carries
+   elsewhere on this page. Faint is the token for a label beside a
+   number you have already read; "API key" and "Model" are the
+   labels on two controls you have to find, and at 11px uppercase
+   faint measures 2.5:1 in Desk. Same correction write.css makes
+   for the page gauge. */
+.vz-ai .vz-flabel { color: var(--ink-muted); }
+
+.vz-ai-input {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.vz-ai-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.vz-ai-link {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+
+.vz-ai-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  padding-block: var(--s2);
+  border-block: 1px solid var(--rule-hair);
+}
+.vz-ai-keystate {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.vz-ai-modelwrap { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+
+.vz-ai-disclose {
+  margin-bottom: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--accent-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+}
+.vz-ai-disclose strong { display: block; color: var(--ink); font-family: var(--f-display); }
+.vz-ai-disclose p {
+  margin: var(--s1) 0 0;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+
+.vz-ai-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+.vz-ai-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.vz-ai-scenes {
+  display: grid;
+  gap: var(--s1);
+  margin-bottom: var(--s4);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.vz-ai-pickrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  cursor: pointer;
+}
+.vz-ai-pickrow.has-shots { background: var(--paper-sunk); }
+.vz-ai-pickslug { flex: 1 1 12rem; min-width: 0; color: var(--ink); font-size: var(--t-small); }
+.vz-ai-pickmeta {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.vz-ai-status {
+  margin: var(--s3) 0 0;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.vz-ai-error {
+  margin: var(--s3) 0 0;
+  padding: var(--s3) var(--s4);
+  background: var(--danger-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--danger);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.vz-ai-error strong { color: var(--ink); }
+
+@media (max-width: 719px) {
+  .vz-ai { padding-inline: var(--s4); }
+  .vz-ai-scenes { max-height: none; }
+}
+
+/* ============================================================
+   8. THE SHOT DIVISION AS A DOCUMENT
+   ------------------------------------------------------------
+   Built by src/lib/shotlist-export.js at print time and thrown
+   away again, the same way the screenplay is. Hidden on screen;
+   on paper it is the only thing left.
+
+   Inside @media print the only colours are print.css's four
+   constants, which are theme-independent by design — a shot list
+   printed from the ink theme comes out black on white.
+   ============================================================ */
+.vz-print { display: none; }
+
+@media print {
+  body.pdf-shotlist #main > *:not(.vz-print):not(#pdf-masthead) { display: none !important; }
+  body.pdf-shotlist .vz-print { display: block; }
+
+  .vz-pr-scene { break-inside: auto; margin-bottom: 8pt; }
+  .vz-pr-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6pt;
+    padding-bottom: 2pt;
+    border-bottom: 1px solid var(--print-ink);
+    break-after: avoid;
+    color: var(--print-ink);
+  }
+  .vz-pr-no {
+    min-width: 2.2em;
+    padding: 0 2pt;
+    border: 1px solid var(--print-ink);
+    font-family: var(--f-mono);
+    font-size: 9pt;
+    font-weight: 700;
+    text-align: center;
+  }
+  .vz-pr-slug {
+    flex: 1 1 auto;
+    font-family: var(--f-mono);
+    font-size: 9.5pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .vz-pr-meta { font-family: var(--f-mono); font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; }
+  .vz-pr-syn {
+    margin: 2pt 0 3pt;
+    font-size: 8.5pt;
+    line-height: 1.3;
+    color: var(--print-ink);
+    break-after: avoid;
+  }
+  .vz-pr-none { margin: 3pt 0; font-size: 8.5pt; color: var(--print-ink); }
+
+  .vz-pr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    color: var(--print-ink);
+  }
+  .vz-pr-table thead { display: table-header-group; }
+  .vz-pr-table tr { break-inside: avoid; }
+  .vz-pr-table th,
+  .vz-pr-table td {
+    padding: 2pt 3pt;
+    border: 1px solid var(--print-rule);
+    text-align: left;
+    vertical-align: top;
+    color: var(--print-ink);
+    background: var(--print-paper);
+  }
+  .vz-pr-table thead th {
+    background: var(--print-wash);
+    font-family: var(--f-mono);
+    font-size: 7pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .vz-pr-c-no   { width: 7%; font-weight: 700; }
+  .vz-pr-c-spec { width: 9%; }
+  .vz-pr-c-desc { width: 48%; }
+  .vz-pr-c-done { width: 5%; text-align: center; }
+
+  .vz-pr-total {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10pt;
+    margin-top: 8pt;
+    padding-top: 3pt;
+    border-top: 2px solid var(--print-ink);
+    font-family: var(--f-mono);
+    font-size: 8pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--print-ink);
+    break-inside: avoid;
+  }
+}

@@ -169,6 +169,13 @@
   line-height: 1;
   color: var(--ink);
 }
+/* --ink-muted, not --ink-faint. Faint is the token for text you are
+   not meant to read yet; this is the word that says WHAT the number
+   above it counts, so the number is meaningless without it. On Desk's
+   --paper-sunk it measured 2.34:1 and on the white card 2.53:1.
+   This strip is on the hub, breakdown, plan, contacts, stripboard and
+   reports, and none of it had ever been contrast-checked — .bd-stat
+   was not in the verify probe's SURFACES list. It is now. */
 .bd-stat span,
 .hero-stat .lab,
 .hub-stat-strip .hss-lab {
@@ -176,7 +183,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* ------------------------------------------------------------
@@ -562,12 +569,14 @@
 .bd-scene textarea:focus-visible { border-color: var(--accent); outline: none; }
 .bd-sel { font-family: var(--f-mono); font-size: var(--t-micro); }
 .bd-eighths { display: inline-flex; align-items: center; gap: var(--s2); }
+/* Same call as the stat strip above: this names the unit the input
+   beside it is measured in, so it has to be read. 2.34:1 on Desk. */
 .bd-eighths span {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .bd-eighths input { width: 4.5rem; }
 .bd-pages {
@@ -607,15 +616,23 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 .bd-el { display: grid; gap: 2px; padding: var(--s3) var(--s4); }
+/* --hue-deep, not --hue. A hue is a FILL: painted behind something it
+   is fine, set as text on a light card it runs 2.33:1 in Desk, where
+   --library is a bright amber. --hue-deep is the same colour chosen to
+   be read, and the dark theme redefines it light so this holds on both
+   grounds. .bd-chip-cat — the same category label in chip form, eight
+   rules up — already does this; the two had simply drifted apart. */
 .bd-el-cat {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 .bd-el-name { font-family: var(--f-display); font-size: var(--t-small); }
-.bd-el-scenes { font-size: var(--t-tiny); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* The scene numbers an element appears in — the whole point of the
+   index, not a decoration. 2.53:1 on Desk before. */
+.bd-el-scenes { font-size: var(--t-tiny); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 719px) {
   .bd-head, .bd-list, .bd-elements, .bd-empty { padding-inline: var(--s4); }

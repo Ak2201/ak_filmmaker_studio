@@ -40,6 +40,13 @@
   --sk-slab-rule-c:   var(--panel-gilt);
   --sk-slab-muted:    var(--panel-muted);
   --sk-slab-accent:   var(--panel-gilt);
+  /* The slab is dark here, so these are the --panel-* values the
+     widgets used to reach for directly. Naming them changes nothing
+     in this skin — that is the point: the default look is unmoved and
+     the three light-slab skins stop rendering invisible text. */
+  --sk-slab-fill:       var(--panel-hair-soft);
+  --sk-slab-hair:       var(--panel-hair);
+  --sk-slab-accent-on:  var(--panel);
 
   /* rules: the hue-carrying one, and the decorative one */
   --sk-hue-rule-w:    3px;

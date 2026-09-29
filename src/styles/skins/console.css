@@ -39,6 +39,9 @@
   --sk-slab-rule-c:   var(--accent);
   --sk-slab-muted:    var(--ink-muted);
   --sk-slab-accent:   var(--accent-deep);
+  --sk-slab-fill:       var(--paper-raised);
+  --sk-slab-hair:       var(--rule);
+  --sk-slab-accent-on:  var(--on-fill);
 
   --sk-hue-rule-w:    3px;
   --sk-deco-rule-w:   1px;

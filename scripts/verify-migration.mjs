@@ -18,6 +18,53 @@
      5. no horizontal overflow at phone width.
 
    Run: npm run build && npm run verify
+   ------------------------------------------------------------
+   THE CONTRAST PROBE WALKS A LIST, AND A LIST IS ALWAYS SHORT.
+
+   `SURFACES` further down names the elements the AA check
+   measures. Everything not on it is unmeasured, which is not a
+   theoretical gap: the stat strip shipped at 2.34:1 on seven
+   pages and stayed green for as long as it existed, because
+   nobody had added `.bd-stat` to a string.
+
+   The honest check walks every leaf text node in `main`. That
+   was run across 4 themes x 5 skins x 13 pages, and it is the
+   right end state — but it is not a one-line swap. With the
+   stat strip and element index fixed it still reports 80
+   distinct places, and they are three old faults, not noise:
+
+     1. A HUE USED AS TEXT — 57 of the 80, by far the biggest.
+        The base hues are fills, chosen to be painted behind
+        something. As text they run 1.45-2.5:1: --feature (18
+        places), --library (25 across Desk and sepia), --shorts
+        (10), plus --ok and --warn. Every one wants --hue-deep
+        or the -deep variant of its own name. CLAUDE.md already
+        states this rule; the app does not follow it yet.
+     2. SLAB WIDGETS WHOSE CHILDREN HARD-CODE --panel-* — 8
+        places, and the worst of the three. --panel is dark in
+        every theme, but the SLAB is not: mission makes it
+        transparent, binder and console make it --paper-sunk.
+        .pitch-slide, .calc-block and .page-counter paint their
+        headings and labels --panel-ink / --panel-gilt instead
+        of following --sk-slab-ink / --sk-slab-accent, so under
+        three of the five skins they render cream-on-cream at
+        1.04:1 — text that is invisible, not merely faint. It
+        hides because the DEFAULT skin is the one where it
+        happens to look right.
+     3. --ink-faint AS TEXT — 8 places. This token clears 4.5:1
+        against NO ground in ANY theme (its best case is 4.13:1,
+        on ink; its worst is 2.34:1, on Desk's sunk card), so it
+        is not a text colour at AA. Roughly 41 `color:` rules
+        still reach for it. Six files have already worked around
+        it one at a time, each with its own comment saying the
+        same thing — dissect.css says outright that the real fix
+        is one pass over the palette. That pass is still owed.
+
+   All three are palette-and-skin decisions with a redesign's
+   blast radius, so they are deliberate work, not a side effect
+   of tightening a selector. Until then the list gets longer
+   rather than disappearing — with the standing caveat that a
+   list only ever catches what someone thought to add.
    ============================================================ */
 
 import { chromium } from 'playwright';
@@ -492,9 +539,21 @@ for (const spec of PAGES) {
        bar, and the gap between the two is where "technically legible"
        lives. */
     const AA = 4.5;
+    /* The READOUTS, not just the containers and the controls. The stat
+       strip (.bd-stat / .hero-stat / .hub-stat-strip) is on seven pages
+       and had never been measured once, because a selector list only
+       checks what somebody remembered to add. Its labels sat at 2.34:1
+       in Desk from the day they shipped and every run was green.
+
+       The lesson is the one the steps and the skins already taught: a
+       hand-written list of what exists is wrong by the second change.
+       The honest version of this check walks `main` wholesale — see
+       the note at the top of this file for why that is not a one-line
+       swap yet, and what it currently finds. */
     const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
       + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
       + ' .bd-example, .toc-item, .film-card, .ex-card,'
+      + ' .bd-stat, .hero-stat, .hub-stat-strip, .bd-el,'
       + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip,'
       /* Modals are opened just above so that these are reachable at all.
          Every count in this file used to read the DOM as it stands at

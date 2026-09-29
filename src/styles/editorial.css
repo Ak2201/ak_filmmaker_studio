@@ -251,10 +251,15 @@
 
 /* Hero stats and the hub's stat strip are one object now — modules.css
    §2. What stays here is the only part that is data: a stat that counts
-   shorts or library entries wears that volume's hue. */
-.hero-stat.s .num { color: var(--shorts); }
+   shorts or library entries wears that volume's hue.
+   The hue is the DEEP variant, not the base one: the base is a fill,
+   and --library in Desk is a bright amber that measures 2.33:1 as
+   text on the card. -deep is the same hue chosen to be read, and each
+   theme redefines it for its own ground, so the colour still says
+   which volume this counts without the number going faint. */
+.hero-stat.s .num { color: var(--shorts-deep); }
 .hero-stat.l .num,
-.hero-stat.g .num { color: var(--library); }
+.hero-stat.g .num { color: var(--library-deep); }
 .greeting-block { font-family: var(--f-body); font-size: var(--t-small); color: var(--ink-muted); margin-bottom: var(--s2); }
 .greeting-block strong { color: var(--ink); font-weight: 600; }
 

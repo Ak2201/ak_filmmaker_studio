@@ -48,6 +48,12 @@
   --sk-slab-ink:      var(--ink);
   --sk-slab-muted:    var(--ink-muted);
   --sk-slab-accent:   var(--accent-deep);
+  /* The slab is transparent in this skin, so a field on it is a field
+     on the page: it takes the raised card colour, not a wash of the
+     slab it does not have. */
+  --sk-slab-fill:       var(--paper-raised);
+  --sk-slab-hair:       var(--rule);
+  --sk-slab-accent-on:  var(--on-fill);
   --sk-slab-rule-w:   1px;
   --sk-slab-rule-c:   var(--rule);
 

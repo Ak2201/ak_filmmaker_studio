@@ -43,7 +43,7 @@
   margin-bottom: var(--s3);
   font-size: var(--t-small);
   line-height: var(--lh-body);
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
 .budget-summary .label,
 .ai-prompt-block h4,
@@ -54,7 +54,7 @@
   letter-spacing: var(--track-label);
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .budget-summary .label::before { content: "\03A3  "; }
 
@@ -563,16 +563,16 @@
   font-size: var(--t-2xl);
   font-weight: 800;
   font-style: italic;
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   font-variant-numeric: tabular-nums;
 }
-.budget-total span { color: var(--panel-gilt); }
+.budget-total span { color: var(--sk-slab-accent); }
 .budget-bar {
   display: flex;
   width: 100%;
   height: var(--s4);
   overflow: hidden;
-  background: var(--panel-hair-soft);
+  background: var(--sk-slab-fill);
 }
 .budget-bar-seg { height: 100%; transition: width var(--speed-slow) var(--ease); }
 .budget-bar-seg.atl,
@@ -582,8 +582,8 @@
 .budget-bar-seg.post,
 .budget-legend .post-i { background: var(--shorts-lift); }
 .budget-bar-seg.cont,
-.budget-legend .cont-i { background: var(--panel-hair); }
-.budget-legend { color: var(--panel-muted); }
+.budget-legend .cont-i { background: var(--sk-slab-hair); }
+.budget-legend { color: var(--sk-slab-muted); }
 
 /* ------------------------------------------------------------
    CALCULATOR (library rate card)
@@ -598,9 +598,9 @@
   font-size: var(--t-xl);
   font-weight: 800;
   font-style: italic;
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
 }
-.calc-block .hint { margin-bottom: var(--s4); color: var(--panel-muted); }
+.calc-block .hint { margin-bottom: var(--s4); color: var(--sk-slab-muted); }
 .calc-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
@@ -613,31 +613,31 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .calc-row input,
 .calc-row select {
   padding: var(--s2) var(--s3);
-  background: var(--panel-hair-soft);
-  border: 1px solid var(--panel-hair);
+  background: var(--sk-slab-fill);
+  border: 1px solid var(--sk-slab-hair);
   border-radius: var(--radius);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   font-family: var(--f-body);
   font-size: var(--t-small);
 }
 .calc-row input:focus,
 .calc-row select:focus {
-  outline: 2px solid var(--panel-gilt);
+  outline: 2px solid var(--sk-slab-accent);
   outline-offset: 1px;
-  border-color: var(--panel-gilt);
+  border-color: var(--sk-slab-accent);
 }
 .calc-row .total-cell {
   padding: var(--s2) var(--s3);
-  background: var(--panel-hair-soft);
+  background: var(--sk-slab-fill);
   text-align: right;
   font-family: var(--f-mono);
   font-size: var(--t-small);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
   font-variant-numeric: tabular-nums;
 }
 /* Each grid cell now stacks a label with its field — and the item
@@ -665,7 +665,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .calc-row .calc-note:empty { display: none; }
 .calc-grand {
@@ -675,30 +675,34 @@
   flex-wrap: wrap;
   margin-top: var(--s4);
   padding-top: var(--s3);
-  border-top: 2px solid var(--panel-gilt);
+  border-top: 2px solid var(--sk-slab-accent);
 }
 .calc-grand .lab {
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-label);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .calc-grand .total {
   font-family: var(--f-display);
   font-size: var(--t-2xl);
   font-weight: 800;
   font-style: italic;
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   font-variant-numeric: tabular-nums lining-nums;
 }
-.calc-grand .total span { font-size: var(--t-small); font-style: normal; color: var(--panel-gilt); }
-/* The calculator's own buttons sit on ink, so they invert. */
+.calc-grand .total span { font-size: var(--t-small); font-style: normal; color: var(--sk-slab-accent); }
+/* The calculator's own buttons sit on the SLAB, so they invert against
+   it — which is only the same thing as inverting against ink in the
+   skins where the slab is dark. --sk-slab-accent-on is the text on the
+   accent fill: near-black on studio's pale gold, paper on the deep ink
+   the light-slab skins use. */
 .calc-actions .mini-btn {
-  background: var(--panel-gilt);
-  color: var(--panel);
+  background: var(--sk-slab-accent);
+  color: var(--sk-slab-accent-on);
 }
-.calc-actions .mini-btn:hover { background: var(--panel-ink); color: var(--panel); }
-.calc-actions .mini-btn.danger { background: var(--panel-hair); color: var(--panel-ink); }
+.calc-actions .mini-btn:hover { background: var(--sk-slab-ink); color: var(--sk-slab-bg); }
+.calc-actions .mini-btn.danger { background: var(--sk-slab-hair); color: var(--sk-slab-ink); }
 
 /* ------------------------------------------------------------
    PALETTE PICKER
@@ -781,7 +785,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .pitch-slide .slide-num { position: absolute; top: var(--s5); right: var(--s6); }
 .pitch-slide .slide-label { margin-bottom: var(--s3); }
@@ -792,13 +796,13 @@
   font-weight: 800;
   font-style: italic;
   line-height: var(--lh-tight);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
 }
 .pitch-slide p {
   margin-bottom: var(--s3);
   font-size: var(--t-base);
   line-height: var(--lh-snug);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
 }
 .pitch-slide ul { list-style: none; }
 .pitch-slide ul li {
@@ -806,13 +810,13 @@
   padding: var(--s2) 0 var(--s2) var(--s4);
   font-size: var(--t-small);
   line-height: var(--lh-snug);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
 }
-.pitch-slide ul li::before { content: "—"; position: absolute; left: 0; color: var(--panel-gilt); }
+.pitch-slide ul li::before { content: "—"; position: absolute; left: 0; color: var(--sk-slab-accent); }
 .pitch-slide .footer {
   margin-top: auto;
   padding-top: var(--s4);
-  border-top: 1px dashed var(--panel-hair);
+  border-top: 1px dashed var(--sk-slab-hair);
 }
 .pitch-slide.empty {
   background: var(--paper-sunk);
@@ -1000,7 +1004,7 @@
   font-size: var(--t-2xl);
   font-weight: 800;
   font-style: italic;
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
   font-variant-numeric: tabular-nums;
 }
 .page-counter .pc-lab {
@@ -1008,18 +1012,27 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
+/* The status is carried by the RULE, and the text comes from the slab.
+   --accent-lift is documented in tokens.css as "accent ON a dark
+   panel", and the slab is only a dark panel in two of the five skins:
+   as text on binder's --paper-sunk it measured 1.75:1. There is no
+   --ok-deep or --danger-deep to switch to, and inventing a pair is a
+   palette change rather than a widget fix — so this takes the line
+   dissect.css already drew for the same problem: "the warning is
+   carried by the rule, the wash and the chips, which is where a
+   colour belongs." The three states stay distinguishable by border. */
 .page-counter .pc-status {
   padding: var(--s2) var(--s3);
   border: 1px solid var(--accent-lift);
-  color: var(--accent-lift);
+  color: var(--sk-slab-ink);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
 }
-.page-counter .pc-status.ok   { border-color: var(--ok-lift); color: var(--ok-lift); }
-.page-counter .pc-status.warn { border-color: var(--danger-lift); color: var(--danger-lift); }
+.page-counter .pc-status.ok   { border-color: var(--ok-lift); }
+.page-counter .pc-status.warn { border-color: var(--danger-lift); }
 
 /* ------------------------------------------------------------
    FOCUS TIMER
@@ -1373,18 +1386,21 @@
   min-height: 200px;
   margin-bottom: var(--s3);
   padding: var(--s3) var(--s4);
-  background: var(--panel-hair-soft);
-  border: 1px solid var(--panel-hair);
+  background: var(--sk-slab-fill);
+  border: 1px solid var(--sk-slab-hair);
   border-radius: var(--radius);
-  color: var(--panel-ink);
+  color: var(--sk-slab-ink);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   line-height: var(--lh-body);
   resize: vertical;
 }
-.ai-prompt-block textarea:focus { outline: 2px solid var(--panel-gilt); outline-offset: 1px; }
-.ai-prompt-block .mini-btn { background: var(--panel-gilt); color: var(--panel); }
-.ai-prompt-block .mini-btn:hover { background: var(--panel-ink); }
+.ai-prompt-block textarea:focus { outline: 2px solid var(--sk-slab-accent); outline-offset: 1px; }
+.ai-prompt-block .mini-btn { background: var(--sk-slab-accent); color: var(--sk-slab-accent-on); }
+.ai-prompt-block .mini-btn:hover { background: var(--sk-slab-ink); color: var(--sk-slab-bg); }
+/* .alt keeps --panel: --accent-lift is a LIGHT tint in every theme,
+   so the text on it is dark whatever the slab is doing. It is the one
+   fill here that does not follow the skin. */
 .ai-prompt-block .mini-btn.alt { background: var(--accent-lift); color: var(--panel); }
 
 /* ============================================================
@@ -1426,7 +1442,9 @@
     font-size: var(--t-micro);
     letter-spacing: var(--track-label);
     text-transform: uppercase;
-    color: var(--panel-gilt);
+    /* Still on the slab, so still the slab's accent. This one only
+       exists below 820px, which is why it outlived the others. */
+    color: var(--sk-slab-accent);
   }
   .pitch-slide { padding: var(--s5); }
 

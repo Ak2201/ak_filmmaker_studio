@@ -27,6 +27,12 @@
   --sk-slab-rule-c:   var(--accent);
   --sk-slab-muted:    var(--ink-muted);
   --sk-slab-accent:   var(--accent-deep);
+  /* The slab is --paper-sunk here, so an inset field has to come UP
+     off it rather than down into it, and the accent is a deep ink
+     that wants light text rather than dark. */
+  --sk-slab-fill:       var(--paper-raised);
+  --sk-slab-hair:       var(--rule);
+  --sk-slab-accent-on:  var(--on-fill);
 
   --sk-title-size:    clamp(1.6rem, 3vw, 2.1rem);
   --sk-h2-size:       var(--t-xl);

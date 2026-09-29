@@ -46,6 +46,33 @@
               black to light grey and does not also move the text on
               it produces a card whose every word is invisible, which
               is a bug the page still renders happily.
+
+              That warning was written before it happened, and it
+              happened anyway: the skins all held up their end, but
+              the WIDGETS on the slab reached past --sk-slab-* for
+              --panel-ink and --panel-gilt directly. --panel is dark
+              in every theme; the slab is not. So .pitch-slide,
+              .calc-block and .page-counter rendered cream-on-cream
+              at 1.04:1 under mission, binder and console — and it
+              hid for as long as it did because the DEFAULT skin is
+              the one where those two happen to agree.
+
+              The slab also carries a FILL, a HAIRLINE and an
+              ON-COLOUR, added when that was fixed, because the
+              widgets need somewhere for an inset field, a divider
+              and the text on an accent button to come from:
+
+                --sk-slab-fill    inset surface ON the slab: the
+                                  calculator's inputs, the budget
+                                  bar's track, the prompt textarea
+                --sk-slab-hair    a line ON the slab: field borders,
+                                  the pitch slide's footer rule
+                --sk-slab-accent-on
+                                  text ON --sk-slab-accent used as a
+                                  fill. Dark where the accent is a
+                                  pale gold, light where it is a deep
+                                  ink — it cannot be one value, which
+                                  is exactly why it is a variable.
    rules      the left rule: width and colour, split into the one
               that carries data (tier, category) and the one that
               is decoration. A skin sets the decorative one to a

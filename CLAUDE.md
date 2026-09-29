@@ -290,8 +290,41 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   every later load. Field scans use
   `input[data-key], textarea[data-key], select[data-key]`; checklist items get
   their own `.step-check li` scan.
-- **Unanchored suffix matching.** `parseNum` tests must be anchored (`/(lakh|l)$/`).
-  Unanchored, a bare `l` anywhere made "1 lens day" parse as ₹1,00,000.
+- **Money parsing lives in `src/lib/money.js`, and the rule is NOT "anchor the
+  suffix".** This entry used to say it was, which is how the second half of the
+  bug survived the first fix.
+
+  Unanchored, a bare `l` anywhere made "1 lens day" parse as ₹1,00,000; `cr`
+  matched "crew", `k` matched "bank". Anchoring to `$` fixes those and is still
+  wrong: `/(lakh|lac|l)$/` fires on "1500 per roll", because the last letter of
+  "roll" is an l — a ₹1,500 line read as ₹15,00,00,000. That is worse than the
+  bug it replaced, not better. Once every page shares one wrong parser the
+  figures agree with each other, so nothing looks broken.
+
+  The rule is a **whole-string match**: a suffix counts only when the entire
+  string is a number followed by that suffix and nothing else. Anything with
+  words in it falls through to the number at the front — "1500 per roll" is
+  1500, "3 days" is 3, and "crew 500" is 0 because there is no leading number.
+
+  **Four** pages carried their own copy at one time or another — `library.js`,
+  `hub.js`, `feature.js`, `dashboard.js` — and they disagreed about identical
+  stored data: one row read ₹4,600 in the library's calculator and ₹0.46 on the
+  hub card beside it. Import `parseNum` / `fmtINR` from `money.js`. A local
+  wrapper for *presentation* is fine — `feature.js` prints an em-dash where the
+  rest of the studio prints ₹ 0 — but a local copy of the parse is not.
+
+  The worst of those four is the instructive one: `dashboard.js` was written
+  *after* `money.js` already existed, and still got a fresh copy, with a comment
+  saying it should move into a lib "if this ever needs a third caller". It did.
+  The copy outlived the note. A comment is not a constraint.
+
+  Clearing it took three passes, because each pass grepped for the parser by the
+  names it already knew and concluded from that that it was done. Grep for the
+  behaviour instead; the magnitudes are the tell, and this finds every copy:
+
+  ```bash
+  grep -rn '10000000' src --include=*.js
+  ```
 - **Don't persist the same thing twice.** Scene rows were once written both as
   flat `sm_N_*` keys and inside a `_sceneMap` array; indices renumbered on reload
   and stranded stale keys that inflated the progress denominator forever. One
@@ -383,6 +416,11 @@ variables in `_contract.css`, and it appears in the Appearance menu on all five
 pages with no other edit. Edit `modules.css` only to change the *language* —
 what objects exist and how they are arranged — and when you do, every shape you
 add must be a variable, or you have quietly made it unskinnable.
+
+**Parse or print a rupee figure** → `src/lib/money.js`. `parseNum` for anything
+a person typed, `fmtINR` for a glanceable magnitude, `INR.format` when the
+number matters. Never write a second copy; see the trap above for what that
+costs.
 
 **Change the palette** → `tokens.css`, under `[data-theme]`. That is the other
 axis; see invariant 7.

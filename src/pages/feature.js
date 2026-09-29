@@ -74,6 +74,7 @@ import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
+import { parseNum, fmtINR } from '../lib/money.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
@@ -1084,23 +1085,19 @@ function renderPacingChart() {
 /* ============================================================
    BUDGET CALCULATOR
    ============================================================ */
-function parseAmount(str) {
-  if (!str) return 0;
-  str = String(str).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '');
-  let mult = 1;
-  if (/cr|crore/i.test(str)) { mult = 10000000; str = str.replace(/cr(ore)?/i, ''); }
-  else if (/l|lakh|lac/i.test(str)) { mult = 100000; str = str.replace(/l(akh|ac)?/i, ''); }
-  else if (/k|thou/i.test(str)) { mult = 1000; str = str.replace(/k|thou(sand)?/i, ''); }
-  const n = parseFloat(str);
-  return isNaN(n) ? 0 : n * mult;
-}
+/* The fourth copy of the money parser used to live here, and it was
+   the ORIGINAL unanchored one: /cr|crore/ matched "crew", a bare "l"
+   matched "lens", /k|thou/ matched "bank". hub.js and library.js were
+   moved onto src/lib/money.js; this page was missed, so the feature
+   budget went on reading "1 lens day" as ₹1,00,000 after the others
+   had stopped. parseAmount is that shared parser now. */
+const parseAmount = parseNum;
 
+/* The budget panel shows an em-dash for "nothing entered yet" where
+   the rest of the studio shows ₹ 0. That empty case is the only
+   difference, so it wraps fmtINR rather than forking it. */
 function formatINR(n) {
-  if (n === 0) return '—';
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000) return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000) return '₹ ' + (n / 1000).toFixed(0) + 'k';
-  return '₹ ' + n;
+  return n ? fmtINR(n) : '—';
 }
 
 function updateBudget() {

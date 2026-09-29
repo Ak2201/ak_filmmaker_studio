@@ -1,5 +1,150 @@
 {
   "_about": "Case studies for the demo-film selector. CRAFT ANALYSIS ONLY — structural function, directorial decisions, why a technique works. No scene-by-scene plot summaries and no quoted dialogue: a study you could follow instead of watching the film is both a worse lesson and not ours to publish. Schema and validate() live in src/lib/studies.js. Hand-written; npm run extract does not touch this file.",
+  "beatSheetMethods": [
+    {
+      "id": "save-the-cat",
+      "name": "Save the Cat",
+      "attribution": "Blake Snyder's fifteen-beat sheet, from Save the Cat! (2005)",
+      "baseline": "110 pages",
+      "beats": [
+        {
+          "id": "opening-image",
+          "n": 1,
+          "label": "Opening Image",
+          "pages": "p.1",
+          "pct": 1,
+          "function": "One image that states the before — the world and the flaw, in a form the ending can answer.",
+          "functionTanglish": "Padam aarambikkum podhu hero-oda ulagamum avan kuraiyum oru single image-la. Kadaisi katchi adhukku badhil sollura maadhiri irukkanum."
+        },
+        {
+          "id": "theme-stated",
+          "n": 2,
+          "label": "Theme Stated",
+          "pages": "p.5",
+          "pct": 5,
+          "function": "Someone says the lesson aloud, early, to a hero not ready to hear it.",
+          "functionTanglish": "Padathoda paadam yaaravadhu vaayaala sollidraanga, aarambathulaye - kekka innum thayaraaga illaadha hero kitta."
+        },
+        {
+          "id": "set-up",
+          "n": 3,
+          "label": "Set-Up",
+          "pages": "pp.1–10",
+          "pct": 8,
+          "function": "Show what needs fixing, and the stasis that will not fix it.",
+          "functionTanglish": "Enna sari pannanum, adha sari pannaama nikkura nilamai enna - rendaiyum kaatnum."
+        },
+        {
+          "id": "catalyst",
+          "n": 4,
+          "label": "Catalyst",
+          "pages": "p.12",
+          "pct": 11,
+          "function": "The knock at the door. Something makes the old life untenable.",
+          "functionTanglish": "Kadhava thattura sambavam. Pazhaya vaazhkaiya thodara mudiyaadhapadi edho onnu nadakkudhu."
+        },
+        {
+          "id": "debate",
+          "n": 5,
+          "label": "Debate",
+          "pages": "pp.12–25",
+          "pct": 17,
+          "function": "The hero resists. The question of the film is asked and not yet answered.",
+          "functionTanglish": "Hero thayangraan. Padathoda kelvi kekkapadudhu, badhil innum illa."
+        },
+        {
+          "id": "break-into-two",
+          "n": 6,
+          "label": "Break Into Two",
+          "pages": "p.25",
+          "pct": 23,
+          "function": "The hero chooses the new world. The choice must be active.",
+          "functionTanglish": "Hero pudhu ulagatha thernthedukraan. Adhu oru seyalaa irukkanum, avanukku nadakkura sambavamaa illa."
+        },
+        {
+          "id": "b-story",
+          "n": 7,
+          "label": "B Story",
+          "pages": "p.30",
+          "pct": 27,
+          "function": "The relationship that carries the theme while the A story carries the plot.",
+          "functionTanglish": "Mudhanmai kadhai aasaiya sumakkum podhu, theme-a sumakkura relationship."
+        },
+        {
+          "id": "fun-and-games",
+          "n": 8,
+          "label": "Fun and Games",
+          "pages": "pp.30–55",
+          "pct": 39,
+          "function": "The promise of the premise. What the poster sold, delivered.",
+          "functionTanglish": "Kadhaikkaru enna vaakkuruthi kudutthudho adhu kedaikkura edam. Poster vittadhu ingaye kedaikkum."
+        },
+        {
+          "id": "midpoint",
+          "n": 9,
+          "label": "Midpoint",
+          "pages": "p.55",
+          "pct": 50,
+          "function": "A false victory or a false defeat. Stakes raise, the clock starts.",
+          "functionTanglish": "Poyyaana vetri illa poyyaana thotru. Pandhayam koodudhu, clock odha aarambikkudhu."
+        },
+        {
+          "id": "bad-guys-close-in",
+          "n": 10,
+          "label": "Bad Guys Close In",
+          "pages": "pp.55–75",
+          "pct": 59,
+          "function": "Internal and external pressure converge. Whatever was holding frays.",
+          "functionTanglish": "Ullaiyum veliyilum azhutham serndhu varudhu. Ippadi varaikkum thaangi nindradhu edhuvo adhu vedikka aarambikkudhu."
+        },
+        {
+          "id": "all-is-lost",
+          "n": 11,
+          "label": "All Is Lost",
+          "pages": "p.75",
+          "pct": 68,
+          "function": "The low point. Often a whiff of death — something ends.",
+          "functionTanglish": "Romba keezha iruntha point. Podhuvaa edho onnu sagudhu."
+        },
+        {
+          "id": "dark-night",
+          "n": 12,
+          "label": "Dark Night of the Soul",
+          "pages": "pp.75–85",
+          "pct": 73,
+          "function": "The hero sits in the wreckage before the idea arrives.",
+          "functionTanglish": "Yosanai varadhukku munnadi, thaan undaakkina idipaattukkulla hero okkaandhirukkura neram."
+        },
+        {
+          "id": "break-into-three",
+          "n": 13,
+          "label": "Break Into Three",
+          "pages": "p.85",
+          "pct": 77,
+          "function": "A and B stories meet. The lesson from the B story solves the A story.",
+          "functionTanglish": "Mudhanmai kadhaiyum B-kadhaiyum sandhikkudhu. B-kadhai kuduththa paadam mudhanmai kadhaiya theerkudhu."
+        },
+        {
+          "id": "finale",
+          "n": 14,
+          "label": "Finale",
+          "pages": "pp.85–110",
+          "pct": 89,
+          "function": "The hero proves the lesson by doing the hard version of the thing they dodged.",
+          "functionTanglish": "Thavirthu odina adhe velaiya, kadinamaana vazhila senju paadatha nirupikraan."
+        },
+        {
+          "id": "final-image",
+          "n": 15,
+          "label": "Final Image",
+          "pages": "p.110",
+          "pct": 100,
+          "function": "The after. The opening image, answered.",
+          "functionTanglish": "Adhukku appuram. Thodakka katchikkaana badhil."
+        }
+      ]
+    }
+  ],
   "films": [
     {
       "meta": {
@@ -141,6 +286,105 @@
         "stakes",
         "character arc",
         "climax"
+      ],
+      "beatSheets": [
+        {
+          "method": "save-the-cat",
+          "note": "96 is the hardest of the four to map, and the mismatch is the lesson. Snyder's sheet assumes a hero who wants something and pursues it; this one wants something he decided long ago not to pursue. Every beat is present and in order, but three are inverted - the Break Into Two is a decision to stay rather than to act, Fun and Games is not fun, and the Finale is a goodbye rather than a win. An inverted beat is a choice; a missing one is a hole. These are choices.",
+          "noteTanglish": "Naalu padathulaye 96-a thaan indha sheet-oda porutthi paakkuradhu romba kashtam - andha porundhaadha thanmai thaan paadam. Snyder-oda amaippu, edhavadhu venumnu adha thoraththura hero-va edhirpaakkudhu. Ivano, thoraththuradhilla-nu veku kaalam munnaadiye mudivu pannavan. Ellaa kattangalum varisaiya irukku, aana moonu thalakeezh - Break Into Two-la seyalpaduradhu illa thangaradhu; Fun and Games-la fun-e illa; climax-la vetri illa, oru vidai. Thalakeezhaana kattam oru thervu; vidupatta kattam oru kuzhi. Ivai moonum thervugal.",
+          "beats": {
+            "opening-image": {
+              "inFilm": "A travel photographer detours to the school he left as a boy. The image is a man photographing a place instead of being in it - which is what he has done with the whole of his life since.",
+              "inFilmTanglish": "Oru travel photographer, chinna vayasula vittu ponna school-ukku vazhi maari poraan. Oru edathula irukkuradhukku badhilaa adha photo edukkura manushan - andha naal la irundhu than vaazhkkaiya muzhusaa avan senjadhu adhe thaan.",
+              "craft": "If your ending is quiet, your opening image has to be quiet too. A loud open writes a cheque the last scene cannot cash.",
+              "craftTanglish": "Mudivu amaidhiyaa irundhaa, thodakkamum amaidhiyaave irukkanum. Sathhamaana thodakkam ezhudhura cheque-a kadaisi katchiyaala maathha mudiyaadhu."
+            },
+            "theme-stated": {
+              "inFilm": "Stated by a building rather than a person. The school has not changed and he has; the film puts the argument in the production design and never says it out loud.",
+              "inFilmTanglish": "Oru aalu illa, oru kattidam theme-a solludhu. School maaravillai, avan maariyaachu. Padam andha vaadhatha art department mulamaa vachudradhu, vaayaala oru naalum solradhe illa.",
+              "craft": "A theme can be stated by production design. If the set contradicts the character, you do not need the line.",
+              "craftTanglish": "Theme-a set design-e sollalaam. Kalam character-ukku murana nindraa, vasanam thevaiyillai."
+            },
+            "set-up": {
+              "inFilm": "Expanded far past the template. The first act is largely a man with no story - solitary, competent, unremarkable. That is the investment: the film is buying the size of the interruption before the interruption arrives.",
+              "inFilmTanglish": "Template edhirpaakkuradha vida romba neelam. Mudhal act muzhusum kadhaiye illaadha oru manushan - thaniya, thiramaiyaa, sirappedhum illaama. Adhu thaan mudhaleedu: kurukkeedu varadhukku munnadiye adhoda alava padam vilaikku vaangudhu.",
+              "craft": "The longer you can hold an unremarkable present, the more the past costs when it walks in. This is the one beat worth overspending on.",
+              "craftTanglish": "Sirappatra nigazhkaalatha evvalavu neram thaanga mudiyudho, avvalavu kanamaa kadandha kaalam ulle nuzhaiyum. Selavu panna thagudhiyaana ore kattam idhu thaan."
+            },
+            "catalyst": {
+              "inFilm": "A class group and a reunion date - and the possibility, not the certainty, that she will come. The conditional is deliberate: it turns the next stretch from hesitation into hope.",
+              "inFilmTanglish": "Oru class group, oru reunion thedhi - aval varuvaanu urudhi illa, varalaam-nu oru saathhiyam mattum. Andha nibandhanai vendumnu thaan - adutha pakudhiya thayakkamaa illaama nambikkaiyaa maathhudhu.",
+              "craft": "A conditional catalyst buys you a debate for free. 'She might come' is a whole act; 'she is coming' is a scene.",
+              "craftTanglish": "'Varalaam'-nu oru thoonduko oru debate-a ilavasamaa kudukkudhu. 'Aval varalaam' oru act; 'aval varraa' oru katchi."
+            },
+            "debate": {
+              "inFilm": "Runs as travel. The film puts the question inside a journey, so the protagonist is visibly moving toward a thing he has not agreed to do.",
+              "inFilmTanglish": "Payanamaave nadakkudhu. Kelviya oru payanathukkulla vachudradhaala, oppukkalaadha ondra nokki hero nagaradhu kannukku theriyudhu.",
+              "craft": "Give a passive hero a vehicle. Motion reads as intention even when the character has not formed one.",
+              "craftTanglish": "Seyalatra hero-kku oru vaaganam kudunga. Ulle nokkam uruvaagaama irundhaalum, nagaradhu nokkamaave vaasikkapadum."
+            },
+            "break-into-two": {
+              "inFilm": "Inverted. He does not choose to act - he chooses to stay in the room. The active decision the template asks for is there; what it commits him to is looking, not pursuing.",
+              "inFilmTanglish": "Thalakeezh. Seyalpadanum-nu mudivu panniradhilla - andha arailaye thangaradhaa mudivu panraan. Template kekkura seyal thervu irukku; aana adhu avana kattupaduthuradhu thoraththuradhukku illa, paakkuradhukku.",
+              "craft": "A passive protagonist still needs an active choice. Let them choose to remain somewhere painful; that is a decision, and it is dramatic.",
+              "craftTanglish": "Seyalatra hero-kkum oru seyal thervu thevai. Valikkura oru edathula thangaradhaa avan mudivu pannattum - adhuvum oru mudivu thaan, naadagamaanadhum thaan."
+            },
+            "b-story": {
+              "inFilm": "Not a character but a timeline. The 1994 thread carries the theme while the present carries the plot, and it is cast with different actors - so the B story is literally a second set of faces making the emotional argument.",
+              "inFilmTanglish": "Oru character illa, oru kaala kattam. 1994 izhai theme-a sumakkudhu, nigazhkaalam kadhaiya sumakkudhu. Vera nadigargal - so B-story-nu solradhu ungalukku unmaiyileye vera oru mugak koottam nadathhura unarvu vaadham.",
+              "craft": "A B story does not have to be a person. A second timeline, a parallel case, a recurring object - anything that can hold the theme while the A story holds the want.",
+              "craftTanglish": "B-story oru nabaraave irukkanum-nu avasiyam illa. Innoru kaala kattam, inaiyaana oru vazhakku, thirumba thirumba varra oru porul - theme-a sumakka koodiya edhuvum sari."
+            },
+            "fun-and-games": {
+              "inFilm": "The reunion, and the only genuinely light stretch in the picture. It delivers the promise of the premise as group warmth rather than as romance - which keeps the two of them surrounded, and unable to say anything that matters.",
+              "inFilmTanglish": "Reunion - padathula unmaiyaa ilagaana ore pakudhi. Kaadhalaa illaama koottathu anbaa kadhaikkaru-oda vaakkuruthiya nireverudhu - adhanaala avanga rendu perum koottathukku naduvula, mukkiyamaana edhaiyum solla mudiyaama nikkiraanga.",
+              "craft": "If your premise promises an intimate conversation, spend Fun and Games making it impossible. The audience will want the midpoint badly.",
+              "craftTanglish": "Unga kadhaikkaru oru nerungiya uraiyaadala vaakkuruthi kuduthaa, Fun and Games-a adha saathhiyamatradhaakka selavu pannunga. Midpoint-ukkaaga audience yengiduvaanga."
+            },
+            "midpoint": {
+              "inFilm": "A false victory, and a structural narrowing: the ensemble falls away and the film becomes a two-hander. Nothing is won except time alone - which is exactly what raises the stakes.",
+              "inFilmTanglish": "Poyyaana vetri - melum oru amaippu surukkam: koottam vilaga, padam rendu per kadhaiyaa maarudhu. Thaniyaana neram thavira vera edhuvum kedaikkala - adhu thaan pandhayatha uyarthhudhu.",
+              "craft": "A midpoint can change the size of the cast rather than the size of the problem. Going from many to two is a stakes raise.",
+              "craftTanglish": "Midpoint pirachanaiyoda alava maathhaama, koottathoda alava maathhalaam. Palaril irundhu rendu peraa surunguradhum oru pandhaya uyarvu thaan."
+            },
+            "bad-guys-close-in": {
+              "inFilm": "The antagonist is a departure time and a life already built elsewhere. Neither can be argued with, which is why the film never gives either of them a scene to be argued with in.",
+              "inFilmTanglish": "Edhiri-nu solradhu oru purapadum neram, appuram yaarkanave vera edathula kattapatta oru vaazhkkai. Rendodum vaadhikka mudiyaadhu - adhanaala thaan avatrukku entha katchiyaiyum padam kudukkala.",
+              "craft": "The strongest antagonist in a romance is a schedule. It cannot be persuaded, defeated, or made to behave badly.",
+              "craftTanglish": "Kaadhal kadhaila romba valimaiyaana edhiri oru time-table thaan. Adha sammadhikka vaikka mudiyaadhu, vella mudiyaadhu, kettavanaavum kaatta mudiyaadhu."
+            },
+            "all-is-lost": {
+              "inFilm": "He admits he was at her wedding, standing at the back. She admits she felt it, and had hoped he would stop it. The low point is not that they parted - it is the confirmation that it was reversible, and that both of them let the moment pass.",
+              "inFilmTanglish": "Aval kalyaanathula pinnaadi nindradha avan oppukraan. Thaan adha unarndhadhaagavum, avan adha nirutthanum-nu edhirpaathadhaagavum aval solraa. Pirinjadhu thaazhvu pulli illa - adha maathha mudinjirukkum-nu urudhi aaguradhum, andha kanaththa rendu perume kadandhu poga vittaanga-nu theriyuradhum thaan.",
+              "craft": "The cruellest low point is proof that the loss was avoidable. Grief over fate is soft; grief over a choice is not.",
+              "craftTanglish": "Romba kodiya thaazhvu pulli - izhapa thavirthirukka mudinjirukkum-nu aadhaaram. Vidhiya patthi azhuradhu menmaiyaanadhu; thervu patthi azhuradhu illai."
+            },
+            "dark-night": {
+              "inFilm": "The apartment, and the archive - a uniform, dried flowers, poems. Almost no plot advances; the beat is carried by domestic action and by what neither of them says.",
+              "inFilmTanglish": "Andha veedu, appuram andha sekarippu - oru seerudai, ularndha pookal, kavidhaigal. Kadhai kittathatta nagaraadhu; veetu velaigalum, rendu perum sollaadhadhum thaan indha kattatha sumakkudhu.",
+              "craft": "Withhold plot entirely for one sequence. If the preceding hour has worked, the audience will supply the interior monologue themselves.",
+              "craftTanglish": "Oru varisaikku kadhaiyaiye nagarthaama vidunga. Mundhaya oru mani neram velai senjirundhaa, ulmana vasanatha audience-e nirappikkuvaanga."
+            },
+            "break-into-three": {
+              "inFilm": "The two timelines meet. She tells him to go on and live, and she sings the song she promised in 1994 - the B story discharging its unfinished obligation so the A story can end.",
+              "inFilmTanglish": "Rendu kaala kattangalum sandhikkidhu. Vaazhndhu munneru-nu solraa; 1994-la vaakkuruthi kuduththa paadala paadraa - B-kadhai than nireverraadha kadamaiya mudichuvaikka, mudhanmai kadhai mudiya vazhi pirakkudhu.",
+              "craft": "When your B story is a timeline, Break Into Three is the moment the past hands the present an instruction.",
+              "craftTanglish": "B-kadhai oru kaala kattamaa irukkum podhu, kadandha kaalam nigazhkaalathukku oru kattalaiya kudukkura tharunam thaan Break Into Three."
+            },
+            "finale": {
+              "inFilm": "Inverted, and the film is built for it. The hard version of the thing he dodged at sixteen is not a declaration - it is a goodbye said properly, in person, on time. So the climax is an airport run in reverse.",
+              "inFilmTanglish": "Thalakeezh - adhukkaagave padam kattapattirukku. Padhinaaraam vayasula thavirthadhan kadinamaana vadivam oru kaadhal vaakkumoolam illa - nerila, sariyaana nerathula sollapadum oru vidai. So climax oru thalakeezh airport ottam.",
+              "craft": "Ask what your hero avoided in the backstory, then make the finale that exact act. It will not always be the bold one.",
+              "craftTanglish": "Kadandha kadhaila unga hero edha thavirthaan-nu kettu, adhaiye climax-aakkunga. Adhu eppovum thairiyamaana seyalaa irukkaadhu."
+            },
+            "final-image": {
+              "inFilm": "He folds the clothes she left and puts them in the case with everything else he kept. The opening image was a man holding a memory; the last is the same man putting it away. Answered, not improved.",
+              "inFilmTanglish": "Aval vittu ponna udaigala madichu, micham ellaathodum andha pettila vaikraan. Thodakka katchi oru ninaiva sumandha manushan; irudhi katchi adhe manushan adha thookki vaikkuradhu. Badhil kedaicchadhu, memppattadhu illa.",
+              "craft": "A final image can answer the opening without improving on it. 'Resolved' and 'happy' are different promises; pick one and keep it.",
+              "craftTanglish": "Irudhi katchi thodakkathukku badhil sollalaam - memppaduththaama. 'Theervu' vera, 'magizhchi' vera. Ondra thernthedutthu adhula nilunga."
+            }
+          }
+        }
       ]
     },
     {
@@ -295,6 +539,105 @@
         "stakes",
         "character arc",
         "antagonist"
+      ],
+      "beatSheets": [
+        {
+          "method": "save-the-cat",
+          "note": "Of the four, this is the film the template fits best, and that is worth knowing: the investigative thriller is the form Snyder's sheet was effectively reverse-engineered from, so the beats land close to their marks even at Tamil runtime. Read this one to see the template working cleanly, then read 96 to see what happens when a film argues with it. One structural note before you start: the false solution arrives at the midpoint and is dismantled immediately, which is what buys the back half its dread.",
+          "noteTanglish": "Naalu padathula indha sheet romba sariyaa porundhuradhu idhukku thaan - adhuvum theriyanum. Snyder-oda amaippu kittathatta investigative thriller-la irundhu thaan pirichu eduthhadhu maadhiri. Adhanaala Tamil runtime-lum kattangal thangal edathukku pakkathula vandhu vizhudhu. Template sutthamaa velai seiradha paakka idha padinga; appuram padam adhoda sandai poduna enna aagum-nu paakka 96 padinga. Oru amaippu kurippu: poyyaana theervu midpoint-la varudhu, udanadiyaa pirichu podapadudhu - adhu thaan pin paadhikku andha bayatha vaangi kudukkudhu.",
+          "beats": {
+            "opening-image": {
+              "inFilm": "The threat is introduced as a method, not as a person - pattern first, perpetrator withheld. The image tells you this film will be about reading evidence rather than chasing a face.",
+              "inFilmTanglish": "Achchuruthhal oru aalaa illa, oru muraiyaa arimugam aagudhu - mudhalla pattern, kolaiyaali maraikkapadraan. Indha padam oru mugatha thoraththuradhu pathi illa, aadhaaratha vaasikkuradhu pathi-nu andha katchiye sollidudhu.",
+              "craft": "In a thriller, your opening image should state the genre of your antagonist. A method promises deduction; a face promises pursuit.",
+              "craftTanglish": "Thriller-la, unga thodakka katchi edhiri-oda vagaiya sollanum. Oru murai deduction-a vaakkuruthi kudukkudhu; oru mugam thuraththala vaakkuruthi kudukkudhu."
+            },
+            "theme-stated": {
+              "inFilm": "The film's real argument is that a killer is made, not born - and it is planted early, in the way the veteran insists on asking why rather than only who. The rookie treats it as philosophy. It turns out to be method.",
+              "inFilmTanglish": "Kolaiyaali piranthadhu illa, uruvaakkapadraan - idhu thaan padathoda unmaiyaana vaadham. Idhu aarambathulaye vaikkapadudhu: 'yaaru'-nu mattum illaama 'yen'-nu kekkanum-nu senior valiyuruthhuraaru. Rookie adha philosophy-nu ninaikkiraan. Kadaisila adhu thaan method-aa maarudhu.",
+              "craft": "State the theme as the mentor's working habit, not as a speech. Then act three can prove it by using it.",
+              "craftTanglish": "Theme-a oru pechaa illaama, mentor-oda velai pazhakkamaa sollunga. Appo act three adha upayogichu nirupikkalaam."
+            },
+            "set-up": {
+              "inFilm": "A trainee DSP is attached to a veteran SP and a technical assistant. His inexperience is established against the veteran's instinct - not as comedy, but as a gap the case will eventually force him to close alone.",
+              "inFilmTanglish": "Oru trainee DSP-ya oru senior SP-kkum oru technical assistant-kkum udan anuppraanga. Senior-oda unarvukku edhira avanoda anubhavamenmai nirupikkapadudhu - comedy-aa illa, kadaisila avane thaniya moodavendiya oru edaiveliyaa.",
+              "craft": "Set-Up is an armoury. Any gap you name in the first ten pages should be the thing that closes in the last ten.",
+              "craftTanglish": "Set-Up oru aayudha kidangu. Mudhal patthu page-la neenga peru solra edaiveli, kadaisi patthula moodapadanum."
+            },
+            "catalyst": {
+              "inFilm": "More young women killed the same way. The catalyst is not a single body but a repetition - the moment the case stops being a crime and becomes a pattern.",
+              "inFilmTanglish": "Adhe muraila innum sila ilam pengal kolai. Thoonduko oru udal illa, oru thirumba nadakkudhal - vazhakku oru kutram-aa irukkuradha nirutthi oru pattern-aa maarura tharunam.",
+              "craft": "In a procedural the catalyst is often the second one. Repetition is what converts an incident into a story.",
+              "craftTanglish": "Procedural-la thoonduko podhuvaa rendaavadhu sambavam thaan. Thirumba nadakkuradhu thaan oru sambavatha kadhaiyaa maathhudhu."
+            },
+            "debate": {
+              "inFilm": "Played as visible inadequacy in the field rather than as internal deliberation. The film externalises 'can he do this' by making him fail at small things in front of people who notice.",
+              "inFilmTanglish": "Ullukkulla yosikkuradhaa illaama, field-la theriyura thiramai kuraivaa kaattapadudhu. 'Ivanaala mudiyuma' kelviya, kavanikkura aalunga munnaadi chinna chinna vishayangalla avana thole vaippadhu mulamaa padam veliya kondu varudhu.",
+              "craft": "Dramatise the debate as small public failures. It plays faster than doubt and it earns the later competence.",
+              "craftTanglish": "Debate-a chinna public thoalvigalaa kaattunga. Sandhehatha vida adhu vegamaa odum, appuram varra thiramaikku vilaiyaavum amaiyum."
+            },
+            "break-into-two": {
+              "inFilm": "The 1970s cold cases surface and the investigation becomes historical as well as current. He stops asking to be excused and starts working two timelines at once.",
+              "inFilmTanglish": "1970-kalla moodapatta vazhakkugal veliya varudhu; vichaaranai nigazhkaalam mattumilla, varalaatru vichaaranaiyaavum aagudhu. Thann vidungappa-nu kekkuradha nirutthittu, rendu kaala kattangalaiyum onnaa velai seiya aarambikraan.",
+              "craft": "A good act break adds a dimension rather than a destination. The hero is not somewhere new; the case is.",
+              "craftTanglish": "Nalla act break oru pudhu edathai illa, oru pudhu parimaanatha serkkudhu. Hero pudhu edathukku pogala; vazhakku poidhu."
+            },
+            "b-story": {
+              "inFilm": "The mentor pairing, and it carries the whole thematic argument. The veteran is not a source of clues but a position on the theme - what the work costs, and who is allowed to be shaken by it.",
+              "inFilmTanglish": "Mentor jodi - idhu thaan theme vaadham muzhusaiyum sumakkudhu. Senior oru clue kidangu illa, theme-la oru nilaipaadu - indha velai enna vilai kekkudhu, adhula kalangura urimai yaarukku irukku.",
+              "craft": "In a two-hander procedural, make the partner the theme and the case the plot. Then the case can be solved and the argument still has somewhere to go.",
+              "craftTanglish": "Rendu per procedural-la, partner-a theme-aavum vazhakka plot-aavum vachukkonga. Appo vazhakku theerndhaalum vaadhathukku innum poga edam irukkum."
+            },
+            "fun-and-games": {
+              "inFilm": "The procedure itself - records, interviews, a borrowed book, a house searched. The film trusts the audience to find method satisfying and refuses to decorate it with action.",
+              "inFilmTanglish": "Nadaimurai thaan - aavanangal, vichaaranaigal, oru irval puththagam, oru veedu sodhanai. Muraiye thrupthi tharum-nu audience mela padam nambikkai vaikkudhu; action vachu adha azhagupaduththa maruthudhu.",
+              "craft": "If your premise is an investigation, Fun and Games is the investigation. Resist the urge to put a chase in it.",
+              "craftTanglish": "Unga kadhaikkaru oru vichaaranai-nna, Fun and Games-um andha vichaaranai thaan. Naduvula oru thuraththal vaikkanum-nu thonradha kattupaduththunga."
+            },
+            "midpoint": {
+              "inFilm": "A confession - and the wrong one. A suspect admits to the older killings, which appears to close the case and in fact closes only half of it. The stakes raise because the present killer is still out there and now has a teacher.",
+              "inFilmTanglish": "Oru oppudhal - aana thappaana oppudhal. Pazhaya kolaigala oruthar oppukraar; vazhakku mudinjadhu maadhiri theriyudhu, unmaiyila padhi thaan mudinjirukku. Pandhayam koodudhu - ippo irukkura kolaiyaali innum veliya irukkaan, avanukku oru aasiriyarum irukkaaru.",
+              "craft": "The strongest midpoint answers the question and asks a worse one in the same scene. A solved half is scarier than an open whole.",
+              "craftTanglish": "Romba valimaiyaana midpoint ore katchila kelvikku badhil sollidu, innum modamaana oru kelviya kekkum. Padhi theerndha vazhakku, muzhusaa thirandhirukkura vazhakka vida bayamaanadhu."
+            },
+            "bad-guys-close-in": {
+              "inFilm": "The search narrows and the danger widens - proximity now threatens the people around the investigation, not just the investigators. The pressure stops being professional.",
+              "inFilmTanglish": "Thedal surungudhu, aabathhu virivadaiyudhu - nerukkam ippo vichaaranai seiyuravanga mattumilla, avanga chuthhi irukkuravangalaiyum achchuruthhudhu. Azhutham thozhil rithiyaana azhuthamaa illaama poidhu.",
+              "craft": "Convert the stakes from 'will they solve it' to 'who will they lose'. The first is curiosity; the second is dread.",
+              "craftTanglish": "'Idha theerpaangala' -la irundhu 'yaara izhakka poraanga'-kku pandhayatha maathhunga. Mudhalaavadhu aarvam; rendaavadhu bayam."
+            },
+            "all-is-lost": {
+              "inFilm": "The one living link to the present killer removes himself, and takes the trail with him. The low point is not a defeat in a fight - it is an investigation with nothing left to follow.",
+              "inFilmTanglish": "Ippo irukkura kolaiyaalikkaana uyirodu irundha ore thodarpu thaane vilagikradhu; adhodu thadamum poidhu. Thaazhvu pulli oru sandaila thotradhu illa - thodara edhuvume illaadha oru vichaaranai.",
+              "craft": "Kill the lead, not the hero. An investigation with nowhere to go is a lower point than an investigator who is hurt.",
+              "craftTanglish": "Hero-va illa, thadatha kolunga. Poga edame illaadha vichaaranai, kaayapatta vichaaranaiyaalarai vida aazhamaana thaazhvu pulli."
+            },
+            "dark-night": {
+              "inFilm": "The film drops its procedural rhythm entirely - the only stretch in the picture where the case does not move. In a film built on forward motion, stillness is the beat.",
+              "inFilmTanglish": "Padam than procedural thaalatha muzhusaa vittududhu - vazhakku nagaraadha ore pakudhi idhu thaan. Munnokki nagaruradhaale kattapatta oru padathula, asaiyaama nikkuradhe andha kattam thaan.",
+              "craft": "In a film with a strong rhythm, stopping the rhythm is a beat. You do not need a new location or a new character.",
+              "craftTanglish": "Valuvaana thaalam ulla padathula, thaalatha nirutthuradhe oru kattam. Pudhu location-o pudhu character-o thevaiyillai."
+            },
+            "break-into-three": {
+              "inFilm": "The method changes from tracing a history to reading a grievance - understanding who this killer selects and why. The mentor's insistence on 'why' becomes the practical tool, which is the B story's argument arriving in the A story's hands.",
+              "inFilmTanglish": "Murai maarudhu - oru varalaatra thodaruradhu maari, oru kuraiya vaasikkuradhu. Indha kolaiyaali yaara thernthedukraan, yen-nu purinjukuradhu. Mentor 'yen'-nu valiyuruthhinadhu ippo oru nadaimurai karuviyaa aagudhu - B-kadhaioda vaadham mudhanmai kadhai kaila vandhu serudhu.",
+              "craft": "Break Into Three is where the mentor's habit becomes the hero's instrument. Plant it as an irritation and the reversal costs you nothing.",
+              "craftTanglish": "Mentor-oda pazhakkam hero-oda karuviyaa maarura edam thaan Break Into Three. Adha oru elarachalaa vidhaicha, andha thirumbal ungalukku onnume selavaagaadhu."
+            },
+            "finale": {
+              "inFilm": "The colleague is taken and the pursuit goes into the woods. The mentor is put down and the rookie finishes it - the film is careful that he is not brave, only functional while frightened, which is the harder and truer version.",
+              "inFilmTanglish": "Oru sagaviththagar kadathhapadraar, thuraththal kaattukkulla poidhu. Mentor kizha thallapadraaru, rookie adha mudikraan - avan thairiyasaali-nu padam kaattala; bayathodaye velai seiraan, adhu thaan kadinamaanadhum unmaiyaanadhum.",
+              "craft": "Do not cure the flaw in the finale - have the hero work despite it. Cured flaws are wish fulfilment; managed ones are character.",
+              "craftTanglish": "Climax-la kuraiya kunapaduththaadheenga - adhodaye hero velai seiyattum. Kunamaana kurai oru aasai nirevettram; kaiyaalapatta kurai character."
+            },
+            "final-image": {
+              "inFilm": "He gives his music player to a boy in a violent household. Set against an opening that introduced a killer as a method, the last image is the film answering its own theme: if violence is made, it is interrupted early or not at all.",
+              "inFilmTanglish": "Vanmurai nirandha oru veetla irukkura oru paiyanukku than music player-a kudukraan. Kolaiyaaliya oru muraiyaa arimugapaduththina thodakkathukku edhira vachu paathaa, irudhi katchi padam thanakku thaane badhil solradhu: vanmurai uruvaakkapaduthu-nna, adha aarambathuleye nirutthanum, illaatti nirutthave mudiyaadhu.",
+              "craft": "If your theme says a thing is made, end on someone making a different one. An answer is stronger than a warning.",
+              "craftTanglish": "Oru vishayam uruvaakkapadudhu-nu unga theme sonna, vera onna uruvaakkura oruthar kitta mudinga. Eccharikkaiya vida badhil valimaiyaanadhu."
+            }
+          }
+        }
       ]
     },
     {
@@ -453,148 +796,101 @@
       ],
       "beatSheets": [
         {
-          "id": "save-the-cat",
-          "name": "Save the Cat",
-          "attribution": "Blake Snyder's fifteen-beat sheet, from Save the Cat! (2005)",
-          "baseline": "110 pages",
-          "note": "The seven beats above are the spine every story has. This is one popular way of subdividing it — fifteen beats with page targets, written for a 110-page American screenplay. Dragon runs long by that measure, so the useful part is not whether it hits page 55 on the nose; it is that the beats arrive in this order and each does its job. Where the film departs from the template, the departure is noted — that is where the Tamil commercial form is doing something the template does not account for.",
-          "beats": [
-            {
-              "n": 1,
-              "label": "Opening Image",
-              "pages": "p.1",
-              "pct": 1,
-              "function": "One image that states the before — the world and the flaw, in a form the ending can answer.",
-              "inFilm": "Opens on the protagonist performing competence rather than possessing it. The image is of someone being believed, which is the exact transaction the whole film will interrogate.",
-              "craft": "Make the opening image the thing your final image will contradict. If it cannot be contradicted, it is decoration."
+          "method": "save-the-cat",
+          "note": "Dragon runs 155 minutes against a sheet written for 110 pages, so the page targets are a ruler the film does not use. What survives the conversion is the order and the job of each beat. Two structural facts are worth having in front of you: the film opens on a boy who has genuinely earned something, and it ends on a man earning something much smaller, honestly. Everything between those two images is the cost of the shortcut taken in between.",
+          "beats": {
+            "opening-image": {
+              "inFilm": "2014. A diligent twelfth-standard student wins a gold medal in computer science. This matters more than it looks: the film opens on merit that was actually earned, so the forgery later is not a boy who never could, it is a boy who stopped.",
+              "craft": "Give your hero a real achievement before you give them a shortcut. Otherwise the fall is a diagnosis, not a tragedy.",
+              "inFilmTanglish": "2014. Plus Two-la computer science-la gold medal vaangura oru nalla maanavan. Idhu theriyuradha vida mukkiyam - padam aarambikkuradhe unmaiyaa uzhaichu vaangina thiramaila. Adhanaala apparam varra fake certificate, mudiyaadhavan kadhai illa; nirutthittavan kadhai.",
+              "craftTanglish": "Kurukku vazhi kudukkaradhukku munnadi hero-kku oru unmaiyaana saadhanai kudunga. Illaatti avan vizhuradhu sogam-aa illaama, oru diagnosis maadhiri thaan irukkum."
             },
-            {
-              "n": 2,
-              "label": "Theme Stated",
-              "pages": "p.5",
-              "pct": 5,
-              "function": "Someone says the lesson aloud, early, to a hero not ready to hear it.",
-              "inFilm": "Delivered by an authority figure in a register the protagonist is free to dismiss as nagging. The film plants it as comedy so it can collect on it as judgment.",
-              "craft": "State the theme in the mouth of someone the hero is currently entitled to ignore. The audience files it; the hero does not."
+            "theme-stated": {
+              "inFilm": "Stated as its own inversion, which is the film's cleverest structural move. The rejection comes with a reason — that being well-mannered is what disqualified him — and the film spends two and a half hours proving that reason wrong.",
+              "craft": "You can state the theme as a lie. Put the false thesis in act one, let the hero believe it, and the whole film becomes the rebuttal.",
+              "inFilmTanglish": "Theme-a neraa sollaama, thalakeezhaa solraanga - idhu thaan padathoda romba clever-aana amaippu. Reject pannurathukku oru reason solraanga: nalla paiyanaa irundhadhu thaan kuraiyaam. Andha reason thappunu nirupikkave meedhi rendarai mani neram.",
+              "craftTanglish": "Theme-a oru poyaavum sollalaam. Thappaana vaadhatha act one-la vachu, hero adha nambattum - appo padame adhukkaana marupp-aa maarum."
             },
-            {
-              "n": 3,
-              "label": "Set-Up",
-              "pages": "pp.1–10",
-              "pct": 8,
-              "function": "Show the six things that need fixing, and the stasis that will not fix them.",
-              "inFilm": "The campus world is established as a place where charm substitutes for work and everyone tolerates it. Crucially it establishes the people who will later be owed something.",
-              "craft": "Every person you introduce in the set-up is a debt. The third act is where you pay them."
+            "set-up": {
+              "inFilm": "The plan is stated aloud and in full — engineering, a masters abroad, then marriage. Naming the whole route in act one is what lets the film measure every later compromise against it.",
+              "craft": "Make your hero say the plan out loud early. Every deviation afterwards is then measurable without a line of dialogue.",
+              "inFilmTanglish": "Plan-a full-aa, veliyaave solraan - engineering, veliyoorla masters, apparam kalyaanam. Full route-aiyum act one-laye peru solli sonnadhaala thaan, apparam varra ovvoru compromise-aiyum adhoda alandhu paakka mudiyudhu.",
+              "craftTanglish": "Hero than plan-a aarambathulaye vaayvittu sollattum. Adhukku appuram ovvoru vilagala-yum oru vasanam kooda illaama audience alandhuduvaanga."
             },
-            {
-              "n": 4,
-              "label": "Catalyst",
-              "pages": "p.12",
-              "pct": 11,
-              "function": "The knock at the door. Something external makes the old life untenable.",
-              "inFilm": "A personal rejection, not an institutional one — which matters, because it lets the film make failure a wound rather than a consequence.",
-              "craft": "Choose the catalyst that hurts in the register your theme cares about. An external one starts a plot; a personal one starts a character."
+            "catalyst": {
+              "inFilm": "The rejection. It is personal rather than academic, and the film is precise about the insult: he is turned down for the exact quality the set-up spent ten minutes establishing as a virtue.",
+              "craft": "The sharpest catalyst attacks the trait you just established as good. Same scene, opposite valence.",
+              "inFilmTanglish": "Andha reject. Idhu padippu sambandhamaana vishayam illa, personal. Avamaanam edhula-nu padam romba clear-aa irukku - set-up-la patthu nimisham nalla gunam-nu kaattina adhe vishayathukkaaga thaan avan reject pannapadraan.",
+              "craftTanglish": "Nalladhu-nu neenga ippo thaan nirupicha guna-thaiye thaakkuradhu thaan koormaiyaana catalyst. Adhe vishayam, ethir madhippu."
             },
-            {
-              "n": 5,
-              "label": "Debate",
-              "pages": "pp.12–25",
-              "pct": 17,
-              "function": "The hero resists. The question of the film is asked and not yet answered.",
-              "inFilm": "Compressed harder than the template expects. The protagonist is a person who does not deliberate, and the film shortens the beat to characterise him rather than lengthening it to fill a slot.",
-              "craft": "A short debate is a characterisation, not an omission — if the shortness is the point. Say so in the writing so the reader knows you meant it."
+            "debate": {
+              "inFilm": "Almost absent, and deliberately. He does not weigh anything — he converts humiliation straight into a new identity. The missing deliberation is the characterisation.",
+              "craft": "If your character would not deliberate, do not make them. A skipped debate characterises — as long as the skip is visible.",
+              "inFilmTanglish": "Kittathatta illave illa - adhuvum vendumnu thaan. Avan edhaiyum yosikkala; avamaanatha neraa oru pudhu adayaalamaa maathikraan. Yosikkaadhadhu thaan avanoda character.",
+              "craftTanglish": "Unga character yosikkura aalu illaatti, yosikka vaikkaadheenga. Thavirkkapatta debate-um oru characterisation thaan - andha thavirppu theriyum-naa."
             },
-            {
-              "n": 6,
-              "label": "Break Into Two",
-              "pages": "p.25",
-              "pct": 23,
-              "function": "The hero chooses the new world. The choice must be active.",
-              "inFilm": "He takes the shortcut. The decision is framed as escape and plays as triumph, which is the film setting its own trap: the audience is invited to enjoy the choice it will later be asked to condemn.",
-              "craft": "If the wrong choice does not feel good in the moment, the third act has nothing to reverse."
+            "break-into-two": {
+              "inFilm": "He becomes \"Dragon\". The act-two choice is an identity, not a plan — he does not decide to do anything in particular, he decides to be someone else, and the arrears follow from that rather than from any scheme.",
+              "craft": "A Break Into Two can be a change of self rather than a change of goal. Plot then arrives as consequence, which is harder to write and better to watch.",
+              "inFilmTanglish": "Avan 'Dragon' aagraan. Act two-oda thervu oru plan illa, oru adayaalam - kurippa edhaiyum seiyya mudivu pannala, vera oruthanaa irukka mudivu panraan. Arrears ellaam adhoda vilaivu thaan, edho thittathoda vilaivu illa.",
+              "craftTanglish": "Break Into Two-va goal maatramaa illaama suya maatramaa-vum vechukkalaam. Appo kadhai vilaivaa varum - ezhudha kashtam, paakka super."
             },
-            {
-              "n": 7,
-              "label": "B Story",
-              "pages": "p.30",
-              "pct": 27,
-              "function": "The relationship that carries the theme while the A story carries the plot.",
-              "inFilm": "The mentor line rather than the romance. The romance is A-story fuel; it is the authority figure who holds the thematic argument and can therefore win it in Act Three.",
-              "craft": "Put the theme in the B story so the A story can be about wanting. Then the ending can give the hero the lesson instead of the prize."
+            "b-story": {
+              "inFilm": "Keerthi. The college relationship carries the thematic argument while the A story is busy being funny — she is the one who keeps asking what he intends to become, which is the question the dean will later ask with authority behind it.",
+              "craft": "Let the B story ask the question the authority figure will later enforce. Same question, two volumes.",
+              "inFilmTanglish": "Keerthi. Mudhanmai kadhai comedy-la mulgi irukkum podhu theme-a sumakkuradhu indha college relationship thaan - 'nee enna aaga poara?'-nu thodarndhu kekkuradhu aval. Apparam adhe kelviya thaan dean authority-oda kekkuraaru.",
+              "craftTanglish": "Authority-kaaran apparam valiyuruthha poara adhe kelviya B-story munnadiye kekkattum. Ore kelvi, rendu volume."
             },
-            {
-              "n": 8,
-              "label": "Fun and Games",
-              "pages": "pp.30–55",
-              "pct": 39,
-              "function": "The promise of the premise. What the poster sold, delivered.",
-              "inFilm": "The longest stretch and the most commercially confident — the ascent, played for pleasure. This is where the runtime goes, and where the Tamil form diverges most from a 110-page baseline: the beat is expanded because this is the sequence the audience came for.",
-              "craft": "Fun and games is where you spend length, because it is the only act where the audience does not want the story to move faster."
+            "fun-and-games": {
+              "inFilm": "The college era with Anbu — notoriety, played broad and for laughs. The forty-eight arrears accumulate here as a running joke, which is exactly why the number lands like a sentence when it is read back to him later.",
+              "craft": "Accumulate your third-act problem as a first-half joke. The audience laughed at the number; they will feel complicit when it is totalled.",
+              "inFilmTanglish": "Anbu-vodu college kaalam - peru ketta kaalam, comedy-aa, periya scale-la. Nappatthettu arrears inga oru thodar joke-aa thaan serudhu. Adhanaala thaan apparam adhe number avan munnaadi vaasikkapadum podhu oru thandanai maadhiri vizhudhu.",
+              "craftTanglish": "Third act problem-a first half-la joke-aa serthu vainga. Andha number-a paathu sirichavanga, adhu total pannum podhu thangalukkum pangu irukku-nu feel pannuvaanga."
             },
-            {
-              "n": 9,
-              "label": "Midpoint",
-              "pages": "p.55",
-              "pct": 50,
-              "function": "A false victory or false defeat. Stakes raise, the clock starts.",
-              "inFilm": "A false victory. The protagonist obtains the life he engineered, and the film immediately makes the cost visible to the audience while keeping it invisible to him — the gap between those two is the engine of the next act.",
-              "craft": "At the midpoint, let the audience know something the hero does not. Dread is cheaper than surprise and lasts longer."
+            "midpoint": {
+              "inFilm": "A false victory. The forged degree gets him into the company and he is genuinely good at the job — the film is careful that the competence is real and only the credential is fake, which is what makes the rest of the story an argument rather than a lecture.",
+              "craft": "Make the lie unnecessary. If your hero could have done it honestly, the audience argues with itself for the rest of the film.",
+              "inFilmTanglish": "Poyyaana vetri. Fake certificate avana company-kkulla kondu poidudhu; aana velaila avan unmaiyaave kalakraan. Thiramai unmai, certificate mattum thaan poi - idhula padam romba careful-aa irukku. Adhanaala thaan meedhi kadhai oru lecture-aa illaama oru vaadham-aa nikkudhu.",
+              "craftTanglish": "Poi thevaiyillaadhadhaa irukkattum. Nermaiyaave avan saadhichirukka mudiyum-naa, meedhi padam full-um audience thanakkullaye vaadhaadikittu irupaanga."
             },
-            {
-              "n": 10,
-              "label": "Bad Guys Close In",
-              "pages": "pp.55–75",
-              "pct": 59,
-              "function": "Internal and external pressure converge. The team frays.",
-              "inFilm": "The pressure is almost entirely self-manufactured — there is no villain, only arithmetic. Every person from the set-up returns as an invoice.",
-              "craft": "A film without an antagonist needs its consequences to have a schedule. Make the pressure arrive on dates, not on moods."
+            "bad-guys-close-in": {
+              "inFilm": "Promotions, a proposal, a life assembling itself at speed — and then the dean, who has the one document that undoes all of it. The ultimatum starts a three-month clock, which is the film finally giving its shapeless guilt a deadline.",
+              "craft": "Give guilt a deadline. Remorse without a date on it does not build, it just repeats.",
+              "inFilmTanglish": "Promotion-gal, oru kalyaana pechu, vegamaa kattamaiyura vaazhkai - apparam dean, idhu ellaathaiyum azhikkakoodiya ore document-oda. Andha ultimatum moonu maasa clock-a start pannudhu. Vadivam illaadha kutha unarvukku padam kadaisila oru deadline kudukkudhu.",
+              "craftTanglish": "Kutha unarvukku oru deadline kudunga. Thedhi illaadha varutham valaraadhu, thirumba thirumba varum, adhoda sari."
             },
-            {
-              "n": 11,
-              "label": "All Is Lost",
-              "pages": "p.75",
-              "pct": 68,
-              "function": "The low point. Often a whiff of death — something ends.",
-              "inFilm": "What dies is the constructed self. The film is careful that the loss is of a fiction, not of a person, which keeps the ending earnable.",
-              "craft": "Kill the false self at All Is Lost. If you kill something real, you owe the audience a grief the third act may not have time for."
+            "all-is-lost": {
+              "inFilm": "Not the exposure — the harm. An answer-sheet swap during the arrears attempt costs a classmate a job offer, and the protagonist has now done to someone else a version of the thing that was done to him. This is the moral floor of the film, and it is worse than being caught.",
+              "craft": "The real low point is not exposure, it is becoming the thing that hurt you. Exposure threatens the hero; this indicts him.",
+              "inFilmTanglish": "Ambalam aaguradhu illa - injury panradhu. Arrears exam-la nadakkura answer sheet maatram oru saga maanavanukku kedaicha velaiya pariykkudhu. Thanakku nadandhadhoda oru version-a ippo avan innoruthanukku senjirukkaan. Idhu thaan padathoda moral floor - pidipaduradha vida modam.",
+              "craftTanglish": "Unmaiyaana low point ambalam aaguradhu illa - unna kaayapaduthinadhu edhuvo adhuvaa nee maaruradhu. Ambalam hero-va mirattudhu; idhu avana kutravaaliyaakkudhu."
             },
-            {
-              "n": 12,
-              "label": "Dark Night of the Soul",
-              "pages": "pp.75–85",
-              "pct": 73,
-              "function": "The hero sits in the wreckage before the idea arrives.",
-              "inFilm": "Played quieter than the surrounding film and mostly without comedy — the register shift is the beat. A film that has been funny for ninety minutes announces its seriousness by withdrawing the jokes.",
-              "craft": "You can mark this beat with tone alone. Take away the thing the film has been giving freely and the audience feels the floor drop."
+            "dark-night": {
+              "inFilm": "Guilt, carried quietly, against a wedding that is still scheduled. The film withdraws its comedy almost entirely here — the register shift is how the beat is marked, in a picture that has been funny for two hours.",
+              "craft": "In a comedy, stop being funny. The audience reads the silence faster than any speech about consequences.",
+              "inFilmTanglish": "Kutha unarvu, amaidhiyaa sumakkapadudhu - kalyaanamo innum fix aagiye irukku. Inga padam than comedy-ya muzhusaa eduthududhu. Rendu mani neram sirikka vecha padathula, andha tone maatram thaan indha kattathoda adayaalam.",
+              "craftTanglish": "Comedy padathula, sirikka vekkuradha nirutthunga. Vilaivu pathi pesura entha vasanathaiyum vida andha amaidhiya audience vegamaa purinjupanga."
             },
-            {
-              "n": 13,
-              "label": "Break Into Three",
-              "pages": "p.85",
-              "pct": 77,
-              "function": "A and B stories meet. The lesson from the B story solves the A story.",
-              "inFilm": "The mentor line converges on the plot line exactly here: the thematic argument becomes the practical method. The protagonist does not find a clever way out, he finds the slow way through.",
-              "craft": "The best Break Into Three is not a new idea — it is the old advice, finally taken."
+            "break-into-three": {
+              "inFilm": "He chooses confession over completion. The ultimatum offered him a way to keep everything by passing the exams; he declines the offered exit, which is the B story’s question finally answered in the A story’s currency.",
+              "craft": "Offer your hero a clean way out at the act break, then have them refuse it. A refused exit is worth three scenes of resolve.",
+              "inFilmTanglish": "Exam pass panradha vida oppudhala thernthedukraan. Ellaathaiyum thakka vachukka dean oru vazhi kuduthirundhaaru; andha vazhiya avan maruthudraan. B-story ketta kelvikku, mudhanmai kadhaioda naanayathula kedaicha badhil idhu.",
+              "craftTanglish": "Act break-la hero-kku oru clean-aana thappikkum vazhi kudunga - apparam adha avan maruthattum. Maruthapatta oru vazhi, uruthi pathi moonu katchikku samam."
             },
-            {
-              "n": 14,
-              "label": "Finale",
-              "pages": "pp.85–110",
-              "pct": 89,
-              "function": "The hero proves the lesson by doing the hard version of the thing he dodged.",
-              "inFilm": "The climax is unglamorous by design — the work, done properly, at length. The film stakes its ending on the audience finding diligence satisfying, which it can only do because Act Two made the shortcut so enjoyable.",
-              "craft": "An anticlimactic climax works only if the shortcut was thrilling. Earn the boredom."
+            "finale": {
+              "inFilm": "He confesses before the wedding, surrenders, and serves six months. The film declines every available softening — no reprieve, no technicality, no montage that skips the sentence. The hard version of the thing he dodged is simply the consequence, taken.",
+              "craft": "If your theme is consequence, film the consequence. Skipping the sentence in a cut tells the audience you did not mean it.",
+              "inFilmTanglish": "Kalyaanathukku munnadi oppukraan, sarandaraan, aaru maasam jail. Padam kedaikkura entha melladhaana vazhiyaiyum ethukkala - vilakku illa, sattam nunukkam illa, thandanaiya thaandi pora montage illa. Thavirthu odina adhe velai-oda kadinamaana vadivam, vilaiva ethukkuradhu mattum thaan.",
+              "craftTanglish": "Unga theme 'vilaivu'-nna, andha vilaiva padamaakkunga. Thandanaiya oru cut-la thaandi ponaa, neenga sonnadha neengale nambala-nu audience-ukku theriyum."
             },
-            {
-              "n": 15,
-              "label": "Final Image",
-              "pages": "p.110",
-              "pct": 100,
-              "function": "The after. The opening image, answered.",
-              "inFilm": "The same transaction as the opening — being believed — but now with something behind it. The image rhymes rather than repeats, which is the difference between a resolution and a reset.",
-              "craft": "Shoot your final image with the opening image on the monitor. If they do not rhyme, one of them is wrong."
+            "final-image": {
+              "inFilm": "After release, a modest delivery job. Set against the gold medal of the opening image it is a precise answer rather than a sad one: the first was merit rewarded, the last is merit rebuilt from nothing, and the film argues the second is worth more.",
+              "craft": "Your final image should be smaller than your opening image and worth more. Scale down, value up.",
+              "inFilmTanglish": "Veliya vandhadhukku appuram, oru saadhaarana delivery velai. Thodakka katchi-oda gold medal-ukku edhira vachu paathaa idhu soga mudivu illa, sariyaana badhil: mudhalaavadhu thiramaikku kedaicha parisu; kadaisiyadhu poojyathula irundhu thirumba kattina thiramai. Rendaavadhu thaan periyadhu-nu padam vaadhaadudhu.",
+              "craftTanglish": "Final image thodakka katchiya vida chinnadhaa irukkattum - aana madhippula periyadhaa. Alavula kurai, madhippula ettru."
             }
-          ]
+          },
+          "noteTanglish": "Padam 155 nimisham; indha sheet-a ezhudhinadhu 110 page screenplay-kku. So page number ellaam indha padathukku porundhaadhu. Micham irukkuradhu kattangaloda varisaiyum, ovvondrum senjura velaiyum thaan. Rendu vishayatha manasula vechukkonga: padam aarambikkuradhu unmaiyaa uzhaichu sambadhicha oru paiyan kitta; mudiyuradhu romba chinna onna nermaiyaa sambadhikkura oru manushan kitta. Edaila irukkuradhu ellaam andha kurukku-vazhi-oda vilai."
         }
       ]
     },
@@ -750,6 +1046,105 @@
         "theme",
         "protagonist",
         "climax"
+      ],
+      "beatSheets": [
+        {
+          "method": "save-the-cat",
+          "note": "Vikram Vedha is the one film here that announces its own structure before it starts. The Vikram-Betaal frame - a being who poses questions that have more than one right answer - is stated in an animated prologue and then executed literally: the antagonist tells three stories, each ending in a moral question put to the hero. So Fun and Games is nested. Three self-contained tales sit inside the second act, and each one quietly removes a fact the protagonist thought he owned.",
+          "noteTanglish": "Inga irukkura naalu padathula, than amaippa padam aarambikkuradhukku munnaadiye arivikkura ore padam idhu thaan. Vikramadhithan-Vedhaalam frame - oru kelvikku oru badhilukku mela irukkum-nu solra oru jeevan - animation prologue-la sollapadudhu, appuram adhe padamaave nadakkudhu: edhiri moonu kadhaigal solraan, ovvondrum hero kitta oru arasiyal-thanmai kelvila mudiyudhu. So Fun and Games ullukkulla adukkapattirukku. Rendaam angathukkulla moonu thani kadhaigal, ovvondrum hero thanoda-nu ninaicha oru unmaiya amaidhiyaa eduthuduthu.",
+          "beats": {
+            "opening-image": {
+              "inFilm": "An animated prologue of the old folktale, then an encounter carried out as routine. The image is a man who is certain, doing a certain thing - and a frame that has just told you certainty is the subject.",
+              "inFilmTanglish": "Pazhaya nadodi kadhai animation-la, appuram oru encounter - vazhakkamaana velai maadhiri. Katchi-nu paatha: urudhiyaana oru manushan, urudhiyaana oru velaiya seiraan - appuram andha urudhi thaan padathoda vishayam-nu ippo thaan sonna oru frame.",
+              "craft": "If your film is about a question, put the question in the title card. The audience will read every scene as evidence.",
+              "craftTanglish": "Unga padam oru kelviya patthinadhaa irundhaa, andha kelviya thodakkathuleye vachudunga. Ovvoru katchiyaiyum audience aadhaaramaa vaasippaanga."
+            },
+            "theme-stated": {
+              "inFilm": "Stated by the folktale itself, before a live-action character speaks - every question has more than one defensible answer. The film does not put the theme in a mentor's mouth; it puts it in the structure.",
+              "inFilmTanglish": "Nadodi kadhaiye theme-a solludhu - oru nadigar pesuradhukku munnaadiye. Ovvoru kelvikkum niyaayamaana oru badhilukku mela irukkum. Theme-a oru mentor vaayila padam vaikkala; amaippuleye vachudhu.",
+              "craft": "A frame story can state your theme with no cost to the plot. It is the cheapest thematic statement available and almost nobody uses it.",
+              "craftTanglish": "Oru frame kadhai, plot-ukku onnume selavaagaama unga theme-a sollidum. Kedaikkura mikka milivaana theme statement idhu thaan - kittathatta yaarume idha use panradhillai."
+            },
+            "set-up": {
+              "inFilm": "The squad's moral untroubledness is the set-up. An encounter is performed and then tidied, and nobody in the room treats it as a problem. Establishing the wrong as normal is what gives the rest of the film something to disturb.",
+              "inFilmTanglish": "Andha squad-oda arasiyal-thanmai kavalaiyinmai thaan set-up. Oru encounter nadakkudhu, appuram adha suththam pannuraanga; andha arailaye yaarum adha pirachanaiyaa paakkala. Thappa saadhaaranamaa nirupikkuradhu thaan, meedhi padathukku kalaikka edhaiyo kudukkudhu.",
+              "craft": "Establish the wrong thing as routine, not as sin. A film cannot disturb a moral position the audience was never allowed to hold.",
+              "craftTanglish": "Thappa paavamaa illa, vazhakkamaa nirupikkunga. Audience-a oru nilaipaattula nikka vidaama, andha nilaipaatta padathaala kalaikka mudiyaadhu."
+            },
+            "catalyst": {
+              "inFilm": "The antagonist walks in and surrenders voluntarily. It is the best kind of catalyst - one the hero cannot refuse, cannot control, and did not cause.",
+              "inFilmTanglish": "Edhiri thaanaa ulle vandhu sarandaraan. Idhu thaan romba nalla vagai thoonduko - hero adha maruka mudiyaadhu, kattupaduththa mudiyaadhu, adhukku avan kaaranamum illa.",
+              "craft": "Let the antagonist start the second act. A villain who arrives on his own terms is harder to beat and cheaper to write.",
+              "craftTanglish": "Rendaam angatha edhiriye aarambikkattum. Thanoda nibandhanaila varra villain-a vella kashtam, ezhudha milivu."
+            },
+            "debate": {
+              "inFilm": "Barely exists. The hero does not weigh whether to listen - he begins the interrogation. The absence of deliberation is a characterisation, and the film will spend two hours making him pay for it.",
+              "inFilmTanglish": "Kittathatta illave illa. Kekkalaamaa vendaamaa-nu hero yosikkala - neraa vichaaranai aarambikraan. Yosikkaadhadhu oru characterisation; adhukku vilai kattura maadhiri rendu mani neram padam aakkudhu.",
+              "craft": "A hero who never debates is a hero the third act can humble. Skipping the beat is only a hole if nothing later collects on it.",
+              "craftTanglish": "Oru naalum yosikkaadha hero-va moonaam angam adakkalaam. Andha kattatha vittadhu, apparam adhukku yaarum kanakku kekkala-nna mattum thaan oru kuzhi."
+            },
+            "break-into-two": {
+              "inFilm": "He accepts the terms of the game and agrees to hear the first story. The active choice is to listen - which in this film is the most dangerous thing he can do.",
+              "inFilmTanglish": "Andha vilaiyaattoda nibandhanaiya ethukittu, mudhal kadhaiya kekka oppukraan. Seyal thervu-nu paatha 'kekkuradhu' - indha padathula avan seiyakoodiya romba aabathhaana velai adhu thaan.",
+              "craft": "The riskiest active choice is sometimes agreeing to receive information. Make listening a decision and it becomes drama.",
+              "craftTanglish": "Romba aabathhaana seyal thervu sila samayam 'thagaval-a ethukkuradhu' thaan. Kekkuradha oru mudivaa aakkunga - adhu naadagamaa maarum."
+            },
+            "b-story": {
+              "inFilm": "The defence lawyer at home. She holds the opposing position inside the hero's marriage, so the thematic argument does not need a scene to be scheduled - it is already at his dinner table.",
+              "inFilmTanglish": "Veetla irukkura defence lawyer. Hero-oda kalyaana vaazhkkaikkulleye edhir nilaipaadu irukku - so theme vaadhathukku thaniya oru katchi podavendiya avasiyame illa; adhu yaarkanave avanoda saapaadu mesaila irukku.",
+              "craft": "Put the counter-argument inside the household. A theme you have to schedule a scene for is a theme the film is not really about.",
+              "craftTanglish": "Edhir vaadhatha veettukkulleye vachudunga. Oru theme-ukku thaniya katchi podanum-nna, andha theme pathi padam unmaiyila illa."
+            },
+            "fun-and-games": {
+              "inFilm": "The three stories, nested. This is the promise of the premise and the formal invention at once - each tale is a complete moral riddle, and each one also reframes a fact from the hero's own case. The film is entertaining and dismantling him in the same beat.",
+              "inFilmTanglish": "Moonu kadhaigal, ullukkulla adukkapattu. Idhu thaan kadhaikkaruvin vaakkuruthiyum, adhe samayam amaippu kandupidippum - ovvoru kadhaiyum oru muzhusaana arasiyal-thanmai pudhir; adhodu hero-oda sontha vazhakkula irukkura oru unmaiyaiyum thirumba vaikkudhu. Ore kattathula padam avana kalikkavum vekkudhu, pirikkavum seiyudhu.",
+              "craft": "The best Fun and Games entertains and erodes at the same time. If your second act is only fun, the midpoint has to do all the work alone.",
+              "craftTanglish": "Romba nalla Fun and Games ore samayathula kalikkavum vekkum, arikkavum seiyum. Unga rendaam angam verum fun-aa mattum irundhaa, midpoint thaniyaave ellaa velaiyaiyum senjaaganum."
+            },
+            "midpoint": {
+              "inFilm": "A false defeat, and the cruellest kind: he learns that the encounter from the opening image killed the wrong person, and that he is implicated in it. The certainty established in the set-up collapses in one line.",
+              "inFilmTanglish": "Poyyaana thotru - adhula romba kodiya vagai: thodakka katchila nadandha encounter thappaana aala kondadhu-nu, adhula thaanum sikkirukken-nu therinjukraan. Set-up-la nirupikkapatta andha urudhi ore vaarthaila sarindhu vizhudhu.",
+              "craft": "Aim the midpoint at the opening image. Undoing the first thing you showed is the most economical stakes raise there is.",
+              "craftTanglish": "Midpoint-a thodakka katchi mela kurivachu adinga. Mudhalla neenga kaattinadhaiye thalakeezhaakkuradhu thaan mikka milivaana pandhaya uyarvu."
+            },
+            "bad-guys-close-in": {
+              "inFilm": "The threat relocates to his own side - a partner on the take, a superior running the unit for someone else. The institution he defended in act one becomes the antagonist, which means he cannot call anyone for help.",
+              "inFilmTanglish": "Achchuruthhal avanoda pakkathukke maarudhu - laanjam vaangura oru partner, vera oruthanukkaaga unit-a nadathura oru mela adhigaari. Mudhal angathula avan kaaththa andha amaippe ippo edhiri - adhaala avan yaara koopta-um mudiyaadhu.",
+              "craft": "The strongest Bad Guys Close In is when the hero loses the phone call. Take away who he can ring, not what he can do.",
+              "craftTanglish": "Romba valimaiyaana Bad Guys Close In - hero-kku phone pannura vaaippu poradhu. Avanaala enna seiya mudiyum-nu illa, yaara koopda mudiyum-nu adha edunga."
+            },
+            "all-is-lost": {
+              "inFilm": "The partner is executed by their own people. What dies is not only a man but the last version of the institution the hero could still have believed in.",
+              "inFilmTanglish": "Partner-a avanga aatkaleye kondraanga. Sagiradhu oru manushan mattumilla - hero innum nambikirundha andha amaippoda kadaisi vadivamum thaan.",
+              "craft": "Kill the belief, not just the friend. A death only lands as All Is Lost if it takes an idea with it.",
+              "craftTanglish": "Nanban mattumilla, nambikkaiyaiyum kolunga. Oru saavu, oru karuthaiyum serthu eduthu ponaa mattum thaan All Is Lost-aa vizhum."
+            },
+            "dark-night": {
+              "inFilm": "A man with no side. Not the law, which has been shown to be for sale, and not the gang, which he has spent a career shooting at. The beat is defined by the absence of anywhere to stand.",
+              "inFilmTanglish": "Entha pakkamume illaadha oru manushan. Sattam illa - adhu vilaikku vikkapaduradhu nirupikkapattaachu; gang-um illa - andha velaiye avan career muzhusum suttu thallaradhu thaan. Nikka edame illaadhadhu thaan indha kattatha varaiyarukkudhu.",
+              "craft": "Dark Night of the Soul is not sadness, it is homelessness. Remove the position, not the mood.",
+              "craftTanglish": "Dark Night of the Soul-nu solradhu sogam illa, edamindri poradhu. Manonilaiya illa, nilaipaatta edunga."
+            },
+            "break-into-three": {
+              "inFilm": "He adopts the antagonist's method. Having spent the film being asked questions and answering them badly, he stops answering and starts choosing - which is exactly what the folktale said a man in his position would eventually have to do.",
+              "inFilmTanglish": "Edhiri-oda muraiyaiye avan ethukraan. Padam muzhusum kelvigal kekkapattu, molla badhil sollittu irundhavan - ippo badhil solradha nirutthittu thernthedukka aarambikraan. Avan nilaimaila irukkura oruthan kadaisila idha thaan seiya vendi varum-nu andha nadodi kadhai sonnadhum idhu thaan.",
+              "craft": "Let the hero finish the film using the antagonist's tool. It is the only way to prove the antagonist was an argument and not an obstacle.",
+              "craftTanglish": "Edhiri-oda karuviya vachu hero padatha mudikkattum. Edhiri oru thadai illa oru vaadham-nu nirupikka idhu thaan ore vazhi."
+            },
+            "finale": {
+              "inFilm": "The two of them clear the corrupt unit together, and the hero personally finishes the man who ran it. The hard version of the thing he dodged is not violence - he was always willing to do violence. It is choosing who deserves it, with no institution left to decide for him.",
+              "inFilmTanglish": "Rendu perum serndhu andha oozhal unit-a sutthapaduthuraanga; adha nadathhinavana hero thaane mudikraan. Avan thavirthu odina velai-oda kadinamaana vadivam vanmurai illa - vanmurai seiya avan eppovume thayaraa thaan irundhaan. Yaaru adhukku thagudhiyaanavan-nu thaane thernthedukkuradhu thaan - adha avanukkaaga mudivu pannura amaippu ippo illa.",
+              "craft": "If your hero was always capable of the act, make the finale about who chooses it. Capability is not a climax; responsibility is.",
+              "craftTanglish": "Unga hero-kku andha seyala seiyura thiramai eppovume irundhuchunna, climax-a 'adha yaaru thernthedukraanga'-nu aakkunga. Thiramai oru climax illa; poruppu thaan."
+            },
+            "final-image": {
+              "inFilm": "A standoff, and the question left open. The film returns the riddle to the audience instead of resolving it - which is not an evasion but the folktale's own ending, honoured. The frame promised questions with more than one answer, and the last frame refuses to pick one.",
+              "inFilmTanglish": "Oru standoff, kelvi thirandhe vidapadudhu. Pudhira theerkkaama audience kitta padam thirumba kudukkudhu - idhu thappikkuradhu illa, andha nadodi kadhaioda sontha mudivukku madhippu kudukkuradhu. Oru badhilukku mela irukkum-nu frame vaakkuruthi kudutthudhu; kadaisi frame ondra thernthedukka maruthudhu.",
+              "craft": "You may end on the question if you opened on it. An unanswered ending is a cheat only when the film never said it was asking.",
+              "craftTanglish": "Kelvila aarambichirundhaa, kelvilaye mudikkalaam. Padam kekkudhu-nu sollaama irundhaa mattum thaan badhil illaadha mudivu oru emaaththal."
+            }
+          }
+        }
       ]
     }
   ]

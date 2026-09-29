@@ -109,6 +109,30 @@ export const BEATS = [
   { id: 'resolution', label: 'Resolution',       act: '3' }
 ];
 
+/* ------------------------------------------------------------
+   NAMED BEAT SHEETS — the method half
+   ------------------------------------------------------------
+   A published beat sheet (Save the Cat, and any other added later)
+   is described once in studies.json under beatSheetMethods: the beat
+   names, their page targets, and the structural job each does. Those
+   are properties of the method, not of a film, so a film's own entry
+   carries only its half — how that picture discharges each beat.
+
+   Exposed through here rather than by importing the JSON into a
+   page, for the same reason getStudy() exists: the data shape is
+   this module's business.
+   ------------------------------------------------------------ */
+
+/** Every beat-sheet method the build shipped. */
+export function listBeatSheetMethods() {
+  return (studies.beatSheetMethods || []).slice();
+}
+
+/** @returns {object|null} the method a film's sheet refers to. */
+export function getBeatSheetMethod(id) {
+  return listBeatSheetMethods().find((m) => m.id === id) || null;
+}
+
 const DEMO_KEY = 'arunak_studio_demo_v1';
 
 /** Every study the build shipped, in display order. */
@@ -174,8 +198,10 @@ export function validate(study) {
 }
 
 if (typeof window !== 'undefined') {
-  window.StudioStudies = { listStudies, getStudy, currentSlug, currentStudy, selectDemo, loadDemo, validate, BEATS };
+  window.StudioStudies = { listStudies, getStudy, currentSlug, currentStudy, selectDemo, loadDemo, validate, BEATS,
+    listBeatSheetMethods, getBeatSheetMethod };
 }
 
 export { DEMO_KEY };
-export default { listStudies, getStudy, currentSlug, currentStudy, selectDemo, loadDemo, onDemoChange, validate, BEATS };
+export default { listStudies, getStudy, currentSlug, currentStudy, selectDemo, loadDemo, onDemoChange, validate, BEATS,
+  listBeatSheetMethods, getBeatSheetMethod };

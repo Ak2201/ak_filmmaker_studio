@@ -55,9 +55,10 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import {
   BEATS, listStudies, getStudy, currentStudy, currentSlug,
-  loadDemo, onDemoChange, validate
+  loadDemo, onDemoChange, validate, getBeatSheetMethod
 } from '../lib/studies.js';
 import { renderDemoSelector } from '../ui/demo-selector.js';
+import { t, langToggle, currentLang, setLang, onLangChange, initLang } from '../lib/lang.js';
 import glossary from '../data/glossary.json';
 
 const app = document.getElementById('app');
@@ -442,65 +443,93 @@ function renderBeats(study) {
 /* ------------------------------------------------------------
    3b. NAMED BEAT SHEET — an optional second reading of the spine
    ------------------------------------------------------------
-   The seven beats above are the structure this studio teaches. A
-   named sheet is somebody else's subdivision of the same spine, and
-   a film can carry any number of them (or none) via
-   study.beatSheets. Nothing here names a film or a method; the
-   section simply does not render when a study has no sheet.
+   Two halves, deliberately separated in the data.
 
-   Page targets are shown as given by the method and as a percentage
-   of the whole, because a page number written for a 110-page script
-   means very little against a Tamil commercial runtime — the
-   percentage is the part that travels.
+   THE METHOD (studies.json → beatSheetMethods) owns what belongs to
+   the template: the beat names, their page targets, and the
+   structural job each one does. Those are facts about the sheet, not
+   about any film, so they are written once. The first version of
+   this section duplicated all fifteen function lines inside every
+   film, which is four copies of one sentence waiting to drift.
+
+   THE FILM (film.beatSheets[].beats) owns only its own half — how
+   this picture discharges that beat, and what to steal from it.
+   Keyed by beat id, so a film that has not written one yet renders
+   as a named hole rather than vanishing, exactly like the seven
+   canonical beats above.
+
+   LANGUAGE. Every string exists in English and Tamil; the *Ta
+   fields carry the Tamil. The toggle rebuilds this section alone and
+   restores scroll, because re-rendering the page would throw the
+   reader back to the top of a very long document.
    ------------------------------------------------------------ */
+
 function renderBeatSheets(study) {
-  const sheets = (study.beatSheets || []).filter((s) => s && (s.beats || []).length);
+  const sheets = (study.beatSheets || []).filter((s) => s && getBeatSheetMethod(s.method));
   if (!sheets.length) return null;
   const title = study.meta.title;
 
   const sec = section('beatsheet', 'How it is built',
-    sheets.length === 1 ? 'The ' + sheets[0].name + ' sheet' : 'Named beat sheets',
-    'The same spine, subdivided by a published method — and marked where '
+    sheets.length === 1
+      ? 'The ' + getBeatSheetMethod(sheets[0].method).name + ' sheet'
+      : 'Named beat sheets',
+    'The same spine, subdivided by a published method \u2014 and marked where '
     + title + ' departs from it.');
 
+  // The switch governs the whole section, so it sits above the
+  // heading rather than after it.
+  sec.insertBefore(langToggle({
+    hint: currentLang() === 'tl'
+      ? 'Vilakkam mattum Tanglish-la. Kattathoda peru, page number ellaam English-laye.'
+      : 'Switches the explanation only. Beat names and page targets stay in English.'
+  }), sec.firstChild);
+
   sheets.forEach((sheet) => {
+    const method = getBeatSheetMethod(sheet.method);
+
     const head = h('div.st-sheet-head');
-    head.append(h('h3.st-sheet-name', { text: sheet.name }));
-    if (sheet.attribution) head.append(h('p.st-sheet-attr', { text: sheet.attribution }));
-    if (sheet.baseline) {
+    head.append(h('h3.st-sheet-name', { text: method.name }));
+    if (filled(method.attribution)) {
+      head.append(h('p.st-sheet-attr', { text: method.attribution }));
+    }
+    if (filled(method.baseline)) {
       head.append(h('p.st-sheet-base', {}, [
         h('span.st-sheet-base-lab', { text: 'Written against' }),
-        h('span', { text: sheet.baseline })
+        h('span', { text: method.baseline })
       ]));
     }
-    if (sheet.note) head.append(h('p.st-sheet-note', { text: sheet.note }));
+    if (filled(t(sheet, 'note'))) head.append(h('p.st-sheet-note', { text: t(sheet, 'note') }));
     sec.append(head);
 
     const list = h('ol.st-sheet');
-    sheet.beats.forEach((b) => {
-      const card = h('li.st-beat.st-sheet-beat' + (filled(b.inFilm) ? '' : '.is-missing'));
+    // Driven by the METHOD's beats, never by the film's object, so a
+    // beat the film has not written is a visible hole rather than a
+    // gap in the numbering.
+    method.beats.forEach((mb) => {
+      const fb = (sheet.beats || {})[mb.id] || {};
+      const card = h('li.st-beat.st-sheet-beat' + (filled(fb.inFilm) ? '' : '.is-missing'));
       card.append(h('div.st-beat-head', {}, [
-        h('span.st-sheet-n', { text: String(b.n != null ? b.n : '') }),
-        h('span.st-beat-label', { text: b.label }),
-        h('span.st-sheet-page', { text: b.pages || '' })
+        h('span.st-sheet-n', { text: String(mb.n != null ? mb.n : '') }),
+        h('span.st-beat-label', { text: mb.label }),
+        h('span.st-sheet-page', { text: mb.pages || '' })
       ]));
-      if (typeof b.pct === 'number') {
-        // The bar is decoration for a sighted reader and noise for a
-        // screen reader, which already has the page target above it.
+      if (typeof mb.pct === 'number') {
+        // Decoration for a sighted reader, noise for a screen reader,
+        // which already has the page target on the line above.
         const bar = h('div.st-sheet-bar', { 'aria-hidden': 'true' });
-        bar.append(h('span.st-sheet-bar-fill'));
-        bar.querySelector('.st-sheet-bar-fill').style.width =
-          Math.max(1, Math.min(100, b.pct)) + '%';
+        const fill = h('span.st-sheet-bar-fill');
+        fill.style.width = Math.max(1, Math.min(100, mb.pct)) + '%';
+        bar.append(fill);
         card.append(bar);
       }
-      card.append(line('Structural function', b.function,
+      card.append(line('Structural function', t(mb, 'function'),
         'The structural function has not been written for this beat yet.'));
-      card.append(line('In ' + title, b.inFilm,
+      card.append(line('In ' + title, t(fb, 'inFilm'),
         'How ' + title + ' performs this beat has not been written yet.'));
-      if (filled(b.craft)) {
+      if (filled(t(fb, 'craft'))) {
         card.append(h('p.st-craft', {}, [
           h('span.st-craft-lab', { text: 'Steal this' }),
-          h('span', { text: b.craft })
+          h('span', { text: t(fb, 'craft') })
         ]));
       }
       list.append(card);
@@ -510,6 +539,37 @@ function renderBeatSheets(study) {
 
   return sec;
 }
+
+/* Swap the section in place rather than re-rendering the page: this
+   can be beat 9 of 15 in a document several screens long, and
+   throwing the reader back to the top to change language is not what
+   pressing a one-word button asked for.
+
+   Anchored to the SECTION, not to an absolute offset \u2014 English and
+   Tanglish set to different heights, so restoring window.scrollY
+   leaves the reader a hundred pixels adrift. */
+function swapBeatSheetLanguage() {
+  const old = document.getElementById('beatsheet');
+  const study = currentStudy();
+  if (!old || !study) return;
+  const wasAt = old.getBoundingClientRect().top;
+  const fresh = renderBeatSheets(study);
+  if (!fresh) return;
+  old.replaceWith(fresh);
+  window.scrollBy(0, fresh.getBoundingClientRect().top - wasAt);
+  const again = document.querySelector('#beatsheet .lang-btn.is-on');
+  if (again) again.focus({ preventScroll: true });
+  try { StudioUI.autoAriaLabels(); } catch (err) { /* chrome not up yet */ }
+}
+
+delegate(document, 'click', '[data-action="set-lang"]', (e, btn) => {
+  setLang(btn.dataset.lang);
+});
+
+// setLang() broadcasts; this page answers by rebuilding the one
+// section that has translated content. Other pages subscribe the same
+// way, which is why the toggle lives in lib and not here.
+onLangChange(swapBeatSheetLanguage);
 
 /* ------------------------------------------------------------
    4. SCENES — technique, how, why, and the Tamil gloss
@@ -728,6 +788,10 @@ function render() {
    missing preference back to a film that exists. It runs BEFORE the
    subscription below, because it broadcasts: subscribing first would
    render the page once for the load and once for the first paint. */
+// Stamp data-lang before the first render so the CSS below is right
+// on the first paint rather than after it.
+initLang();
+
 loadDemo();
 
 /* A film change costs the clicked button its node, so hand focus to

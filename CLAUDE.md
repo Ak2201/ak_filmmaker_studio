@@ -433,8 +433,10 @@ deterministic (same input, byte-identical output).
 
 In rough priority order. The reasoning behind the ordering is in the revamp plan.
 
-1. **Rename the storage keys** off `arunak_` with a migration. Blocked on a
-   product name. This got more urgent, not less: there are now five scoped
+1. **Rename the storage keys** off `arunak_` with a migration. No longer
+   blocked on a name: the prefix is **`fms_`** (Film Maker Studio). Not yet
+   done — 36 distinct keys across 24 files, and it touches the storage
+   contract, so it wants a quiet tree and a pass of its own. This got more urgent, not less: there are now five scoped
    model keys rather than one, and every new one is another row in the
    migration that has to be written eventually. Do it before more people have
    data, not after.
@@ -456,9 +458,15 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    `api.anthropic.com`; without it the browser refuses the request.
    Two independent gates: no key, and no script.
 
-   What is left of this item is the rest of the value: in-place work on
-   the writing itself — dialogue passes, beat critique — using the
-   blueprint as context. Still not a chat box.
+   The rest of it is done too: dialogue passes and beat critique, in
+   place, gated twice, sharing one `callModel()` fetch/stream/abort path
+   with the shot division rather than a third copy. A model cannot tell a
+   writer they wrote something they did not — a quotation that is not word
+   for word is stripped and counted.
+
+   Left: `src/pages/visualize.js` still carries its own key form and key
+   bar instead of `src/ui/ai-panel.js`. That is the third copy the module
+   exists to prevent.
 4. ~~**Script import and a proper screenplay PDF.**~~ Done.
    `src/lib/script-import.js` reads `.fountain`, plain screenplay text and
    `.fdx` (via `DOMParser`, no dependency) and fills BOTH the script
@@ -472,9 +480,34 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    number inside the heading text is), and the plain-text parser is
    heuristic — it round-trips our own export exactly, but a third-party
    `.txt` may need a type corrected by hand.
-5. **Finish collaboration.** The comments API in `src/lib/cloud.js` is fully
-   written — threads, suggestions, accept/reject — with no UI attached.
-   Audit Supabase row-level security before real strangers hold share links.
+5. ~~**Finish collaboration.**~~ Done, with residuals that matter.
+   `src/ui/comments.js` attaches a thread to a FIELD, not a character
+   offset — the text under a note is about to change. Accepting a
+   suggestion dispatches a bubbling `input`/`change` from the field itself,
+   so the page's own save path, its derived widgets and the cloud push all
+   run in their usual order; the row is marked accepted only after the
+   value lands.
+
+   `docs/SECURITY-RLS.md` holds the audit. It found three high-severity
+   holes, each of which the UI actively lied about: a share link could not
+   be revoked or expired (claiming one wrote a *permanent* collaborator
+   row, and revoke deleted the token while the access stayed); an `edit`
+   collaborator could move the project into an account they owned and then
+   delete that account, cascading the whole project away; and a view-only
+   link handed over the crew's email addresses, because comments stamped
+   the signed-in email into `author_name`. Fixed in an appended schema
+   section, along with comment-status forgery, replies cascading away with
+   a deleted parent, and three account-tier escalations.
+
+   **What is left is not small: the audit is STATIC.** `supabase-schema.sql`
+   has still never run against a database, and the doc ends with ten live
+   checks needing two real accounts. Also open — share tokens are stored in
+   plaintext (a product call: the owner's "re-copy this link" depends on
+   it), there is no `claim_invite()` so account invites cannot be claimed
+   at all, and Supabase Realtime could not be verified statically, because
+   DELETE payloads are documented as not RLS-filtered the way INSERT and
+   UPDATE are.
+
 6. ~~**`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**~~
    Done, and the second half of it is the part worth keeping.
 
@@ -509,16 +542,45 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    coverage: page state this run does not reach, and `::before` /
    `::after` content, which is not a text node.
 
-7. **Refresh the Chennai rates** (currently 2024-25, shown with that date) and
-   turn the festival list into a submission tracker.
+7. **Chennai rates — partly done, and the remainder is a sourcing problem
+   rather than a coding one.** Camera bodies are verified against a Chennai
+   rental house and tagged CHECKED with a link and a date. Everything else
+   — every lens, light, grip, sound and post item, and all eleven crew
+   rates — is unchanged and now reads NOT UPDATED, because no Chennai rate
+   card for any of it is published anywhere reachable.
+
+   The crew section is the interesting one: **there is no current union
+   floor to quote, because none exists.** The 2022 FEFSI–TFPC wage MoU
+   expired 9 March 2025, was never replaced, and is in Madras HC mediation.
+   That absence, cited, is worth more to a producer than a two-year-old
+   number presented as a rate.
+
+   Two traps for whoever picks this up. Do NOT apply an inflation
+   multiplier to close the gap — the overlay says so in its own `method`
+   field. And the 2026 vendor figures run about 3x BELOW the 2024-25
+   ranges, probably body-versus-package but unconfirmed, so both are shown:
+   replacing a market range with one vendor's list price would make a
+   filmmaker under-budget threefold.
+
+   The festival list is now a submission tracker that **enforces** the
+   never-premiere-before-a-rejection rule rather than printing it. Two
+   findings need a human: MAMI looks dormant (its own page still
+   advertises 2024), and IFFI Goa's listing shows no short-film category
+   although the blueprint sends shorts there.
+
+   Still owed: `src/ui/budget.js` prices off the 2024-25 figures only — it
+   imports the base file and not the overlay.
+
 8. ~~First-run experience.~~ Done. The hub no longer opens the new-project
    modal on a timer; the empty grid renders a first-run panel instead — what
    the studio is, three destinations that need no project at all, then the
    ask, plus a sample project that seeds a logline, a theme and four scenes
    across two shoot days so the blueprint, breakdown, stripboard and budget
-   all have something to show. What is *not* done is the wall of 24 steps
-   behind it: a new project still opens on step 1 of 24 with no sense of
-   which ones matter first. That is a steps problem, not a hub problem.
+   all have something to show. The wall of 24 steps behind it is handled
+   too: a ten-step spine, and for each step the thing IN THIS APP that
+   reads its answers, derived from `src/data/steps.priority.json` rather
+   than hand-listed. The filter can never strand you on a hidden step —
+   jumping or searching to one turns it off and says why.
 
 ## Things that are deliberate, not oversights
 

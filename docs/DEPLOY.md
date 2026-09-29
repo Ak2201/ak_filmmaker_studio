@@ -57,6 +57,26 @@ Vercel config (`vercel.json`) is also present if you prefer it. Pick
 one and delete the other eventually — two header files that must agree
 is a bug waiting to happen.
 
+### 3b. Why the two host configs differ on two rewrites
+
+`vercel.json` sends `/studio` and `/shared/:token` to `/`.
+`netlify.toml` sends them to `/index.html`. That is deliberate.
+
+Vercel sets `cleanUrls: true`, which 308-redirects `/index.html` to
+`/`. A rewrite whose *destination* is `/index.html` gets swallowed by
+that redirect and 404s — both of those routes were dead in production
+because of it, including the entire share-link route. Netlify has no
+such interaction and `/index.html` is idiomatic there.
+
+Do not "fix" the difference to make the files match without testing
+both hosts.
+
+And do not try to explain this inside `vercel.json`. JSON has no
+comments, and Vercel's schema rejects unknown properties — adding a
+`_comment` key fails the build with "should NOT have additional
+property", which is a deploy that never happens rather than an error
+you see locally. This section exists because that was tried.
+
 ### 4. Verify the headers actually landed
 
 Do not skip this. The app **depends** on the CSP being enforced: it

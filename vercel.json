@@ -35,7 +35,6 @@
       ]
     }
   ],
-  "_comment_rewrites": "Destinations are / and not /index.html on purpose. cleanUrls:true makes Vercel 308 /index.html to /, which swallows any rewrite aimed at it - /studio and the /shared/:token share route both 404d in production because of exactly that. netlify.toml keeps /index.html because it has no such interaction; the two files differ here deliberately.",
   "rewrites": [
     { "source": "/studio", "destination": "/" },
     { "source": "/dashboard", "destination": "/dashboard.html" },

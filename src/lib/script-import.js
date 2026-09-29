@@ -77,14 +77,32 @@ function looksIndented(text) {
 /* ------------------------------------------------------------
    SHARED VOCABULARY
    ------------------------------------------------------------ */
-const SLUG_RE   = /^(INT|EXT|EST|I\/E|INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT)[.\s]/i;
+/* A slug line may wear its scene number on the front. Final Draft's
+   own text export writes "12  INT. KITCHEN - DAY  12", and a script
+   that has been through a production office almost always does.
+   Without the optional prefix that line matches nothing, is not a
+   scene heading, and the scene it opens does not exist in the
+   breakdown — the number was the reason the line stopped looking
+   like a slug. `parseSlug` takes the number off again.
+
+   The prefix is digits with at most one letter on either side (12,
+   12A, A12), and it must be followed by INT/EXT — which is what
+   keeps "5 EXTREMELY LOUD" out: EXT there is followed by R. */
+const SCENE_NO  = String.raw`[A-Za-z]?\d+[A-Za-z]?`;
+const SLUG_RE   = new RegExp(
+  '^(?:' + SCENE_NO + '[.)]?\\s+)?(INT|EXT|EST|I\\/E|INT\\.?\\s*\\/\\s*EXT|EXT\\.?\\s*\\/\\s*INT)[.\\s]', 'i');
 const TRANS_RE  = /^(FADE (IN|OUT|TO)|CUT TO|SMASH CUT|MATCH CUT|DISSOLVE TO|WIPE TO|IRIS (IN|OUT)|TIME CUT|INTERCUT|BACK TO|JUMP CUT|FADE TO BLACK)\b/i;
 const ENDS_TO   = /\bTO:\s*$/;
 const CUE_OK    = /^[^a-z]*$/;                       // no lowercase letters at all
 const CUE_TAIL  = /\s*\((V\.?O\.?|O\.?S\.?|O\.?C\.?|CONT'?D|CONTINUED|SUBTITLED|FILTERED|PRE-?LAP)\)\s*$/i;
 const PAGE_NO   = /^\s*\d+[.)]?\s*$/;
 const MORE_LINE = /^\s*\(\s*MORE\s*\)\s*$/i;
-const CONTINUED = /^\s*\(?\s*CONTINUED\s*\)?\s*$/i;
+/* Page furniture, in the forms it actually appears in: CONTINUED,
+   (CONTINUED), CONTINUED: and (CONTINUED:). The trailing colon is
+   what Final Draft's own text export writes at the foot of a page
+   and it was not matched, so one line of furniture per page came
+   through as an action line. */
+const CONTINUED = /^\s*\(?\s*CONTINUED\s*:?\s*\)?\s*:?\s*$/i;
 
 const isUpperish = (s) => {
   const t = String(s).replace(CUE_TAIL, '').trim();
@@ -233,6 +251,35 @@ function speech(b, cueLine, push) {
    had. So the parser classifies line by line on the indent and
    then REJOINS consecutive lines of one kind, which is what
    undoes the wrap the exporter applied.
+
+   THE LEFT MARGIN IS NOT ALWAYS COLUMN ZERO. This studio's text
+   export writes action flush left, because the sheet's 1.5in
+   gutter belongs to the page setup. Plenty of other applications
+   bake the gutter into the file, so every line arrives 10 or 15
+   spaces further right — and to a parser reading absolute columns
+   that file is a screenplay with no action in it at all, because
+   action at column 15 tests as dialogue and dialogue at 25 tests
+   as a character cue. The whole document comes back as one long
+   conversation.
+
+   The slug lines say where the margin is. They are flush against
+   it in every layout there has ever been, and this parser can
+   recognise one by its words rather than its position, so the most
+   common slug indent IS column zero and every other indent is read
+   relative to it. A file already flush left measures zero and
+   nothing changes — our own export round-trips byte for byte
+   either way. A file with no recognisable slug line is left alone
+   rather than shifted on a guess.
+
+   WHAT IS STILL A GUESS. Everything else here. The columns below
+   are the common ones, not a standard: a script typed with a
+   two-space dialogue indent, or one whose cues are not uppercase,
+   or a novel someone saved as .txt, will come back with lines of
+   the wrong type. They will all come back — nothing is dropped —
+   and the type of any line can be changed in the editor. This
+   parser is a good first pass over a plain text file, and calling
+   it more than that would be a lie a user finds out about on page
+   forty.
    ------------------------------------------------------------ */
 function parseText(raw) {
   const warnings = [];
@@ -269,6 +316,15 @@ function parseText(raw) {
     if (CONTINUED.test(line)) { skipped.continued++; continue; }
     const indent = line.match(/^ */)[0].length;
     rows.push({ indent, text: t });
+  }
+
+  /* Re-origin on the slug lines, then every column below is read
+     from the page's own left margin rather than from the file's. */
+  const margin = leftMargin(rows);
+  if (margin) {
+    for (const row of rows) { if (row) row.indent = Math.max(0, row.indent - margin); }
+    warnings.push('Every line in that file sits ' + margin + ' spaces in from the left. '
+      + 'The scene headings were taken as the left margin and the other indents read from there.');
   }
 
   const classify = (row, prev) => {
@@ -317,7 +373,41 @@ function parseText(raw) {
   if (skipped.pageNumbers) {
     warnings.push(skipped.pageNumbers + ' page number line(s) were recognised and skipped.');
   }
+  if (skipped.more || skipped.continued) {
+    warnings.push((skipped.more + skipped.continued) + ' page-break line(s) — (MORE) and CONTINUED — '
+      + 'were recognised and skipped; the speeches they interrupted were rejoined.');
+  }
   return { elements, meta: {}, warnings, skipped };
+}
+
+/** Where the page's left margin is, in columns, measured from the
+    scene headings — which sit on it in every layout. The most
+    common slug indent wins, so one stray heading cannot move the
+    whole document; a file with no recognisable heading, or one
+    whose headings are already flush left, measures 0 and the
+    caller changes nothing.
+
+    Capped at 30. Past that the "margin" is not a margin, it is a
+    centred title page or a file this parser has misread, and
+    shifting a whole script by 40 columns on that reading would
+    turn every action line into dialogue — the exact failure this
+    is here to prevent, inverted. */
+const MAX_MARGIN = 30;
+function leftMargin(rows) {
+  const counts = new Map();
+  for (const row of rows) {
+    if (!row || !SLUG_RE.test(row.text)) continue;
+    counts.set(row.indent, (counts.get(row.indent) || 0) + 1);
+  }
+  if (!counts.size) return 0;
+  let best = 0;
+  let bestN = 0;
+  for (const [indent, n] of counts) {
+    // A tie goes to the smaller indent: the margin is the leftmost
+    // column the headings agree on, never further right than one.
+    if (n > bestN || (n === bestN && indent < best)) { best = indent; bestN = n; }
+  }
+  return best > 0 && best <= MAX_MARGIN ? best : 0;
 }
 
 /* Only (CONT'D) is stripped from a cue — (V.O.) and (O.S.) are
@@ -333,6 +423,22 @@ const CUE_TAIL_ONLY_CONTD = /\s*\(\s*CONT'?D\s*\)\s*$/i;
    attribute is the element type, already decided by whoever
    wrote the script. That makes it the most reliable of the three
    parsers here and the only one that does not guess.
+
+   THE SCENE NUMBER IS AN ATTRIBUTE, NOT TEXT. Final Draft keeps a
+   locked scene number on the paragraph —
+   <Paragraph Type="Scene Heading" Number="12"> — and leaves the
+   heading text itself as "INT. KITCHEN - DAY". Reading only the
+   text therefore gives every scene its ordinal, so a script whose
+   writer says scene 47 arrives in this studio as scene 12, and the
+   stripboard, the sides, the call sheet and the shot list all
+   inherit the wrong one. Two vocabularies on one production is a
+   worse failure than a missed import, because it looks like it
+   worked.
+
+   Numbers are STRINGS. Real files carry 12A (an insert cut in
+   after 12) and A12 (one cut in before it); `Number(x)` on either
+   is NaN, and `parseInt` silently turns A12 into nothing and 12A
+   into 12. Nothing here coerces.
    ------------------------------------------------------------ */
 const FDX_TYPE = {
   'scene heading': 'scene',
@@ -344,6 +450,23 @@ const FDX_TYPE = {
   'shot': 'action',
   'general': 'action'
 };
+
+/** The locked scene number Final Draft wrote on this paragraph, as
+    the string it is, or ''. `Number` on the Paragraph is where the
+    format puts it; `SceneProperties` is checked second because a
+    couple of other applications that write .fdx put it there and
+    reading one more attribute costs nothing. Whitespace only, or an
+    attribute that is absent, is not a number. */
+function fdxNumber(p) {
+  const direct = String(p.getAttribute('Number') || '').trim();
+  if (direct) return direct;
+  const props = p.querySelector('SceneProperties');
+  if (props) {
+    const nested = String(props.getAttribute('Number') || props.getAttribute('SceneNumber') || '').trim();
+    if (nested) return nested;
+  }
+  return '';
+}
 
 function parseFDX(raw) {
   const warnings = [];
@@ -380,6 +503,20 @@ function parseFDX(raw) {
       elements.push(blankElement({ type: 'action', text }));
       continue;
     }
+    if (type === 'scene') {
+      /* `sceneNumber` rides on the element only as far as
+         `scenesFrom`, which is in this module. It is never stored:
+         src/pages/write.js rebuilds every incoming element with
+         `blankElement({ type, text })` before it saves, so the
+         script model keeps its two fields and the number lives in
+         the scene model, where the stripboard reads it. One
+         representation per thing. */
+      const number = fdxNumber(p);
+      elements.push(number
+        ? blankElement({ type, text, sceneNumber: number })
+        : blankElement({ type, text }));
+      continue;
+    }
     elements.push(blankElement({ type, text }));
   }
   if (skipped.unknown) {
@@ -395,8 +532,11 @@ function parseFDX(raw) {
    reports and the budget read. Filling it is the half of the
    import that makes the rest of the studio work.
 
-     · number   the leading or trailing number in the slug, if
-                the script carries one; otherwise the ordinal.
+     · number   the scene number the file locked (.fdx), else the
+                leading or trailing number in the slug, else the
+                heading's position. Ranked, never coerced to an
+                integer, and never handed to two scenes at once —
+                see the note on `scenesFrom`.
      · intExt   matched against scenes.js's own vocabulary.
      · dayNight likewise, with the common synonyms mapped and
                 everything else left at the default and counted.
@@ -420,8 +560,14 @@ export function parseSlug(slug) {
   let text = String(slug || '').trim().replace(/\s+/g, ' ');
   const out = { number: '', intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
 
-  // A leading or trailing scene number, as Final Draft writes it.
-  const lead = text.match(/^(\d+[A-Za-z]?)[.\s]+(?=(INT|EXT|EST|I\/E))/i);
+  /* A leading or trailing scene number, as Final Draft writes it.
+     The leading form is anchored by the INT/EXT that has to follow
+     it, so it can safely take the lettered numbers a production
+     office uses — 12A for an insert, A12 for one that came before
+     12. The trailing form has no such anchor, so it stays digits
+     with at most one letter after them: widening it would eat the
+     A12 out of "INT. LOADING BAY A12". */
+  const lead = text.match(new RegExp('^(' + SCENE_NO + ')[.)]?[\\s]+(?=(INT|EXT|EST|I\\/E))', 'i'));
   if (lead) { out.number = lead[1]; text = text.slice(lead[0].length).trim(); }
   const tail = text.match(/\s+(\d+[A-Za-z]?)\s*$/);
   if (tail && !out.number) { out.number = tail[1]; text = text.slice(0, tail.index).trim(); }
@@ -454,39 +600,99 @@ export function parseSlug(slug) {
 }
 
 /** Cut the element list at every scene heading, the same way
-    src/lib/ai.js does. One derivation, two callers. */
+    src/lib/ai.js does. One derivation, two callers.
+    `number` is the scene number the FILE carried on the heading —
+    only .fdx has somewhere to put one that is not the text — and
+    is '' for the other two parsers. */
 export function sliceScenes(elements) {
   const out = [];
   let current = null;
   for (const el of elements) {
-    if (el.type === 'scene') { current = { heading: el.text, elements: [] }; out.push(current); continue; }
+    if (el.type === 'scene') {
+      current = { heading: el.text, number: String(el.sceneNumber || '').trim(), elements: [] };
+      out.push(current);
+      continue;
+    }
     if (!current) continue;                        // anything before the first slug is a preamble
     current.elements.push(el);
   }
   return out;
 }
 
+/* THE SCENE NUMBER HAS THREE SOURCES AND THEY ARE RANKED.
+
+     1. the file's own attribute  (.fdx Number="12")
+     2. a number inside the heading text ("12  INT. KITCHEN - DAY")
+     3. the heading's position in the script
+
+   1 beats 2 because a Final Draft file that carries both is a file
+   whose writer locked the numbers and then moved a scene; the
+   locked one is the one on the call sheet. 2 beats 3 because a
+   number somebody typed is still a decision and an ordinal is not.
+
+   WHAT A HALF-NUMBERED FILE DOES. Every number the script carries
+   is reserved BEFORE a single ordinal is handed out, so a fallback
+   can never take a number that belongs to a real scene further
+   down. Doing this in one pass — number as you go — is how the
+   writer's scene 1 at the bottom of the file loses its number to
+   the unnumbered scene at the top. The fallbacks are positions,
+   skipped forward past anything reserved, and the preview says how
+   many there were: inventing 13 because the scene above it was 12
+   would be this module guessing at a production's numbering, which
+   is not information it has. */
 export function scenesFrom(elements) {
   const slices = sliceScenes(elements);
-  const rows = [];
   let guessed = 0;
-  slices.forEach((slice, i) => {
+  const numbering = { fromFile: 0, fromHeading: 0, ordinal: 0, conflicted: 0, duplicated: 0 };
+
+  // Pass 1 — what the script says, before anything is invented.
+  const draft = slices.map((slice) => {
     const parsed = parseSlug(slice.heading);
     if (parsed.guessedTime) guessed++;
+    const fromFile = String(slice.number || '').trim();
+    const inHeading = String(parsed.number || '').trim();
+    if (fromFile && inHeading && fromFile.toUpperCase() !== inHeading.toUpperCase()) numbering.conflicted++;
+    if (fromFile) numbering.fromFile++;
+    else if (inHeading) numbering.fromHeading++;
+    return { slice, parsed, number: fromFile || inHeading };
+  });
+
+  // Pass 2 — reserve them all, and keep the first of any repeat.
+  const taken = new Set();
+  for (const row of draft) {
+    const key = row.number.toUpperCase();
+    if (!key) continue;
+    if (taken.has(key)) { row.number = ''; numbering.duplicated++; continue; }
+    taken.add(key);
+  }
+
+  // Pass 3 — the rows, with positions filling the gaps.
+  let next = 1;
+  const rows = draft.map((row, i) => {
+    let number = row.number;
+    if (!number) {
+      next = Math.max(next, i + 1);
+      while (taken.has(String(next))) next++;
+      number = String(next);
+      taken.add(number);
+      next++;
+      numbering.ordinal++;
+    }
+    const { slice, parsed } = row;
     const lines = slice.elements.reduce((n, el) => n + elementLines(el), 0)
       + elementLines({ type: 'scene', text: slice.heading });
     const eighths = Math.max(1, Math.round((lines / LINES_PER_PAGE) * 8));
     const firstAction = slice.elements.find((el) => el.type === 'action');
-    rows.push(blankScene({
-      number: parsed.number || String(i + 1),
+    return blankScene({
+      number,
       intExt: parsed.intExt,
       dayNight: parsed.dayNight,
       location: parsed.location,
       eighths,
       synopsis: firstAction ? String(firstAction.text).replace(/\s+/g, ' ').trim().slice(0, 180) : ''
-    }));
+    });
   });
-  return { rows, guessed };
+  return { rows, guessed, numbering };
 }
 
 /* ------------------------------------------------------------
@@ -514,9 +720,28 @@ export function parseScript(raw, filename) {
   const counts = {};
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;
 
-  const { rows, guessed } = scenesFrom(elements);
+  const { rows, guessed, numbering } = scenesFrom(elements);
   const lines = elements.reduce((n, el) => n + elementLines(el), 0);
   const warnings = (result.warnings || []).slice();
+
+  /* Where the scene numbers came from is said out loud, because the
+     stripboard, the sides and the call sheet all key off them and a
+     silent renumber is the one import failure that still looks like
+     a success. */
+  const carried = numbering.fromFile + numbering.fromHeading;
+  if (carried && numbering.ordinal) {
+    warnings.push(numbering.ordinal + ' of ' + rows.length + ' scene heading(s) carried no number — '
+      + 'those scenes are numbered by their position, skipping any number the script already uses. '
+      + 'The other ' + carried + ' keep the number the script gave them.');
+  }
+  if (numbering.conflicted) {
+    warnings.push(numbering.conflicted + ' heading(s) had one scene number in the file and a different '
+      + 'one in the heading text — the file’s own number was kept.');
+  }
+  if (numbering.duplicated) {
+    warnings.push(numbering.duplicated + ' scene number(s) appeared twice in that script — the second '
+      + 'scene was numbered by its position instead, so no two scenes share a number.');
+  }
   if (guessed) {
     warnings.push(guessed + ' slug line(s) had no time of day this studio recognises — those scenes default to DAY.');
   }
@@ -529,6 +754,7 @@ export function parseScript(raw, filename) {
     meta: result.meta || {},
     elements,
     scenes: rows,
+    numbering,
     counts,
     lines,
     pages: Math.round((lines / LINES_PER_PAGE) * 10) / 10,

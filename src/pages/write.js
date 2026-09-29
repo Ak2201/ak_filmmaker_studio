@@ -714,6 +714,8 @@ function importPreview(plan) {
         + 'first action line — change it in the breakdown if it is not the sentence '
         + 'you would have written.'
   }));
+  const numbers = sceneNumberNote(plan);
+  if (numbers) wrap.append(h('p.bd-none.wr-imp-note', { text: numbers }));
 
   if (replaceScript && doc.elements.length) {
     wrap.append(h('p.wr-imp-safe', {
@@ -751,6 +753,30 @@ function importPreview(plan) {
 
 const impStat = (value, label) =>
   h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+
+/** Where the scene numbers came from, in one sentence. A number is
+    what the stripboard, the sides and the call sheet call a scene,
+    so a script that says 47 and a studio that says 12 is the one
+    import failure that still looks like it worked. The parser
+    ranks its three sources; this only reports which ones it used. */
+function sceneNumberNote(plan) {
+  const n = (plan && plan.numbering) || {};
+  const carried = (n.fromFile || 0) + (n.fromHeading || 0);
+  const ordinal = n.ordinal || 0;
+  if (!carried) {
+    return ordinal
+      ? 'That file carries no scene numbers, so the scenes are numbered by their position — 1 upwards.'
+      : '';
+  }
+  const source = n.fromFile && n.fromHeading ? 'the file and from the headings'
+    : n.fromFile ? 'the file’s own scene numbers' : 'the headings';
+  if (!ordinal) {
+    return 'All ' + carried + ' scene numbers come from ' + source
+      + ' — the script’s numbering is kept, letters and all.';
+  }
+  return carried + ' scene number(s) come from ' + source + '; the remaining ' + ordinal
+    + ' heading(s) carry none and are numbered by their position, skipping anything already used.';
+}
 
 /** One destination, with the choice it needs. Replace is only
     offered when there is work to lose; with an empty destination

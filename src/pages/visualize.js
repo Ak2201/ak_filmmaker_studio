@@ -31,6 +31,12 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/visualize.css';
 import '../styles/pdf.css';
+/* The panel around the model call — key form, key bar, gates,
+   disclosure — is src/ui/ai-panel.js on every page that has one,
+   and this is the stylesheet that dresses it. Loading it here is
+   what makes the shared markup look like the studio; without it
+   the module's `.ai-*` classes would land on an unstyled page. */
+import '../styles/ai.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
@@ -43,15 +49,10 @@ import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, isLinkable
 } from '../lib/shots.js';
 
-/* Both are lazy chunks, for the reason CLAUDE.md gives for
-   Supabase and pptxgenjs: neither is needed to look at a shot
-   list. The exporter is only reached from a click on Export; the
-   AI module is only reached from a click on Draft, and it is the
-   one module in the studio that can open a network connection —
-   keeping it off the first-paint graph means a page that is never
-   used to draft never even loads the code that could. */
+/* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
+   pptxgenjs: it is not needed to look at a shot list. The
+   exporter is only reached from a click on Export. */
 const exporter = () => import('../lib/shotlist-export.js');
-const aiLib = () => import('../lib/ai.js');
 
 const app = document.getElementById('app');
 
@@ -371,16 +372,27 @@ function renderShotRow(shot, i, total) {
    demand. The key lives on the device, unscoped and unsynced —
    the header of that file has the four places it is
    deliberately absent from.
+
+   THE PANEL AROUND IT IS NOT WRITTEN HERE. The key form, the key
+   bar, the key gate, the disclosure, the status and the error
+   line all come from src/ui/ai-panel.js, exactly as they do for
+   the dialogue pass on write.html and the step critique on
+   feature.html. This page used to carry its own copy of all six,
+   which is the duplication that module exists to prevent — and
+   the worst kind of it, because a hand-copied key form is a
+   hand-copied chance to lose `type="password"`. What is left
+   below is the only thing that is actually about shots.
    ============================================================ */
 
 /* View state. None of it is stored: a selection is not the
    user's work, and a run in flight that survived a reload would
-   be a lie about a request that is no longer happening. */
-let aiKeyKnown = false;        // refreshed synchronously before each render
-let aiKeyMasked = '';
-let aiModel = '';
-let aiModels = [];
-let aiEditingKey = false;
+   be a lie about a request that is no longer happening.
+
+   Nothing here mirrors the key or the model any more. Whether a
+   key exists, what it is masked to and which model is chosen are
+   AI's answers, asked at render time through the panel module —
+   a page-local copy of that state is a copy that can go stale
+   the moment another panel changes it. */
 let aiPicked = null;           // Set<sceneId>, or null until first render
 let aiStatus = '';
 let aiError = '';
@@ -388,24 +400,31 @@ let aiRunning = false;
 let aiAbort = null;
 let aiLastRun = [];            // shot ids from the most recent draft
 
-/** Read the key module's state without importing it eagerly. It
-    is imported once, on the first render that needs it, and the
-    answers are cached in the variables above; until then the
-    panel renders its "checking" state, which lasts one frame. */
-let aiReady = false;
+/** Both modules, imported once. Until they land the panel renders
+    its "checking" state, which lasts one frame. */
+let AIm = null;                // src/lib/ai.js
+let Panelm = null;             // src/ui/ai-panel.js
 async function primeAI() {
-  if (aiReady) return;
+  if (AIm) return true;
+  let mods;
   try {
-    const AI = await aiLib();
-    aiKeyKnown = AI.hasKey();
-    aiKeyMasked = AI.maskKey();
-    aiModel = AI.getModel();
-    aiModels = AI.AI_MODELS;
-    aiReady = true;
-    render();
+    mods = await Promise.all([
+      import('../lib/ai.js'),
+      import('../ui/ai-panel.js')
+    ]);
   } catch (e) {
     console.warn('[visualize] ai', e);
+    return false;
   }
+  [AIm, Panelm] = mods;
+  Panelm.wireAIPanel();
+  // The module owns the key handlers now, so this is the only
+  // thing that redraws the panel when a key is saved, replaced or
+  // forgotten, or the model changes. Without it the buttons still
+  // work and the page still says the old thing.
+  Panelm.onAIChange(() => render());
+  render();
+  return true;
 }
 
 function aiScenePlan(scenes, shots) {
@@ -431,52 +450,6 @@ function aiScenePlan(scenes, shots) {
       existing: counted.get(scene.id) || 0
     }))
   };
-}
-
-function aiKeyForm() {
-  const box = h('div.vz-ai-key');
-  box.append(h('p.vz-ai-lead', {
-    text: 'This uses your own Anthropic API key. It is saved in this browser only — '
-        + 'it is never put in a backup file, never synced to the cloud, and never '
-        + 'attached to a project. Every call is billed to your account.'
-  }));
-  box.append(h('label.vz-fieldset', {}, [
-    h('span.vz-flabel', { text: 'API key' }),
-    h('input.vz-ai-input', {
-      type: 'password', id: 'vz-ai-key', autocomplete: 'off', spellcheck: 'false',
-      placeholder: 'sk-ant-…', 'aria-label': 'Anthropic API key'
-    })
-  ]));
-  box.append(h('div.vz-ai-acts', {}, [
-    h('button.btn.primary', { type: 'button', 'data-action': 'vz-ai-save-key', text: 'Save the key' }),
-    aiEditingKey
-      ? h('button.btn', { type: 'button', 'data-action': 'vz-ai-cancel-key', text: 'Cancel' })
-      : null,
-    h('a.vz-ai-link', {
-      href: 'https://console.anthropic.com/settings/keys',
-      target: '_blank', rel: 'noopener noreferrer',
-      text: 'Where do I get one?  ↗'
-    })
-  ]));
-  return box;
-}
-
-function aiKeyBar() {
-  const bar = h('div.vz-ai-bar');
-  bar.append(h('span.vz-ai-keystate', { text: 'Key on this device: ' + aiKeyMasked }));
-
-  const sel = h('select.vz-sel', { 'data-action': 'vz-ai-model', 'aria-label': 'Model' });
-  aiModels.forEach((m) => {
-    const opt = h('option', { value: m.id, text: m.label + ' — ' + m.hint });
-    if (m.id === aiModel) opt.selected = true;
-    sel.append(opt);
-  });
-  bar.append(h('label.vz-ai-modelwrap', {}, [h('span.vz-flabel', { text: 'Model' }), sel]));
-
-  bar.append(h('span.vz-tools-gap'));
-  bar.append(h('button.btn', { type: 'button', 'data-action': 'vz-ai-edit-key', text: 'Replace key' }));
-  bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'vz-ai-forget-key', text: 'Forget key' }));
-  return bar;
 }
 
 function aiScenePicker(plan) {
@@ -513,42 +486,34 @@ function renderAI(scenes, shots) {
     })
   );
 
-  if (!aiReady) {
+  if (!Panelm) {
     wrap.append(h('p.bd-none', { text: 'Checking this device for a key…' }));
     return wrap;
   }
 
-  /* GATE 1 — the key. Independent of everything below it. */
-  if (!aiKeyKnown || aiEditingKey) {
-    if (!aiKeyKnown) {
-      wrap.append(h('p.vz-ai-gate', {}, [
-        h('strong', { text: 'No API key on this device. ' }),
-        h('span', {
-          text: 'Drafting runs against Anthropic’s API and there is no server here to '
-              + 'run it for you, so it needs a key of your own. Paste one below and it '
-              + 'stays on this device.'
-        })
-      ]));
-    }
-    wrap.append(aiKeyForm());
-    if (!aiKeyKnown) return wrap;
+  /* GATE 1 — the key. Independent of everything below it, which is
+     what `keyGate()`'s null-when-satisfied return buys: it is the
+     panel module that decides whether a form is owed and whether
+     the rest of the panel is allowed past it, so this page cannot
+     get the "replacing a key that already works" case wrong. */
+  const kg = Panelm.keyGate('Drafting');
+  if (kg) {
+    wrap.append(kg);
+    if (kg.dataset.blocking === 'true') return wrap;
   }
-
-  wrap.append(aiKeyBar());
+  wrap.append(Panelm.keyBar());
 
   /* GATE 2 — the script. Also independent: a key with no script
      is a different problem with a different answer. */
   const plan = aiScenePlan(scenes, shots);
   if (!plan.hasScript) {
-    wrap.append(h('p.vz-ai-gate', {}, [
-      h('strong', { text: 'There is no script yet. ' }),
-      h('span', {
-        text: 'A shot division is a reading of the scene as written — without the '
-            + 'pages there is nothing to read, and a division invented from a slug '
-            + 'line is a guess dressed up as a plan.'
-      })
-    ]));
-    wrap.append(h('a.btn.primary.bd-cta', { href: 'write.html#screenplay', text: 'Write the script  →' }));
+    wrap.append(Panelm.gate(
+      'There is no script yet.',
+      'A shot division is a reading of the scene as written — without the '
+        + 'pages there is nothing to read, and a division invented from a slug '
+        + 'line is a guess dressed up as a plan.',
+      h('a.btn.primary.bd-cta', { href: 'write.html#screenplay', text: 'Write the script  →' })
+    ));
     return wrap;
   }
 
@@ -567,16 +532,13 @@ function renderAI(scenes, shots) {
     aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
   }
 
-  wrap.append(h('div.vz-ai-disclose', {}, [
-    h('strong', { text: 'What gets sent, and where' }),
-    h('p', {
-      text: 'Clicking the button below sends the slug line, the one-line synopsis and '
-          + 'the script text of the ticked scenes to api.anthropic.com, using the key '
-          + 'on this device. Nothing else leaves this browser, and nothing is sent '
-          + 'until you click. Your screenplay is your unpublished work — this is the '
-          + 'only place in the studio that puts any of it on the network.'
-    })
-  ]));
+  wrap.append(Panelm.disclose(
+    'Clicking the button below sends the slug line, the one-line synopsis and '
+    + 'the script text of the ticked scenes to api.anthropic.com, using the key '
+    + 'on this device. Nothing else leaves this browser, and nothing is sent '
+    + 'until you click. Your screenplay is your unpublished work — this is the '
+    + 'only place in the studio that puts any of it on the network.'
+  ));
 
   wrap.append(h('div.vz-ai-picks', {}, [
     h('button.btn', { type: 'button', 'data-action': 'vz-ai-all', text: 'Tick all' }),
@@ -604,13 +566,10 @@ function renderAI(scenes, shots) {
       : null
   ]));
 
-  if (aiStatus) wrap.append(h('p.vz-ai-status', { role: 'status', text: aiStatus }));
-  if (aiError) {
-    wrap.append(h('p.vz-ai-error', { role: 'alert' }, [
-      h('strong', { text: 'It did not run. ' }),
-      h('span', { text: aiError })
-    ]));
-  }
+  const status = Panelm.statusLine(aiStatus);
+  if (status) wrap.append(status);
+  const error = Panelm.errorLine(aiError);
+  if (error) wrap.append(error);
   return wrap;
 }
 
@@ -1000,57 +959,14 @@ delegate(document, 'click', '[data-action="vz-csv-scene"]', (e, el) => {
 
 /* ---- the AI panel ---------------------------------------------
    Every one of these is reached from a click and from nowhere
-   else. Nothing below runs on load. */
-delegate(document, 'click', '[data-action="vz-ai-save-key"]', async () => {
-  const input = document.getElementById('vz-ai-key');
-  const value = input ? input.value.trim() : '';
-  if (input) input.value = '';                 // out of the DOM immediately
-  if (!value) { aiError = 'Paste a key first.'; render(); return; }
-  const AI = await aiLib();
-  if (!AI.looksLikeKey(value)) {
-    aiError = 'That does not look like an Anthropic key — they begin sk-ant- . '
-      + 'Nothing was saved.';
-    render();
-    return;
-  }
-  if (!AI.setKey(value)) {
-    aiError = 'This browser refused to store the key (private mode blocks it). '
-      + 'Drafting needs somewhere to keep it.';
-    render();
-    return;
-  }
-  aiKeyKnown = true;
-  aiKeyMasked = AI.maskKey();
-  aiEditingKey = false;
-  aiError = '';
-  aiStatus = 'Key saved on this device.';
-  render();
-});
+   else. Nothing below runs on load.
 
-delegate(document, 'click', '[data-action="vz-ai-edit-key"]', () => {
-  aiEditingKey = true; aiError = ''; render('#vz-ai-key');
-});
-delegate(document, 'click', '[data-action="vz-ai-cancel-key"]', () => {
-  aiEditingKey = false; aiError = ''; render();
-});
-delegate(document, 'click', '[data-action="vz-ai-forget-key"]', async () => {
-  if (!confirm('Forget the API key stored in this browser?\n\n'
-    + 'Shots already drafted are untouched. You can paste the key again at any time.')) return;
-  const AI = await aiLib();
-  AI.clearKey();
-  aiKeyKnown = false;
-  aiKeyMasked = '';
-  aiEditingKey = false;
-  aiStatus = 'Key removed from this device.';
-  aiError = '';
-  render();
-});
-
-delegate(document, 'change', 'select[data-action="vz-ai-model"]', async (e, sel) => {
-  const AI = await aiLib();
-  if (AI.setModel(sel.value)) aiModel = sel.value;
-});
-
+   THE KEY HANDLERS ARE NOT HERE. Save, replace, cancel, forget and
+   the model select are bound once by `wireAIPanel()` in
+   src/ui/ai-panel.js, against `ai-*` data-actions shared with
+   write.html and feature.html, and this page hears about the
+   result through the `onAIChange` subscription in primeAI(). What
+   is below is only the part that is about shots. */
 delegate(document, 'change', 'input[data-action="vz-ai-pick"]', (e, box) => {
   const id = box.dataset.scene;
   if (!id || !aiPicked) return;
@@ -1072,7 +988,14 @@ delegate(document, 'click', '[data-action="vz-ai-stop"]', () => {
 
 delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
   if (aiRunning) return;
-  const AI = await aiLib();
+  // The button only exists once primeAI() has resolved, but a second
+  // call is free and it is the one place that must not run on a null.
+  if (!(await primeAI())) {
+    aiError = 'The drafting module could not be loaded. Check the connection and try again.';
+    render();
+    return;
+  }
+  const AI = AIm;
   const scenes = Scenes.listScenes();
   const chosen = scenes.filter((s) => aiPicked && aiPicked.has(s.id));
   if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
@@ -1107,7 +1030,7 @@ delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
         aiStatus = m;
         // DOM only. A re-render here would rebuild the panel under
         // the Stop button the user may be about to press.
-        const node = document.querySelector('.vz-ai-status');
+        const node = document.querySelector('.vz-ai .ai-status');
         if (node) node.textContent = m;
       }
     });

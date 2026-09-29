@@ -441,6 +441,22 @@
    connection, so it looks like a decision rather than a widget:
    its own band, its own rule, and the disclosure above the
    button rather than under it.
+
+   THE KEY FORM, THE KEY BAR, THE GATES, THE DISCLOSURE, THE
+   STATUS AND THE ERROR LINE ARE NOT STYLED HERE. They are
+   `.ai-*` from src/styles/ai.css, because they are the same
+   objects write.html and feature.html draw and the markup now
+   comes from the same src/ui/ai-panel.js. A dozen `.vz-ai-*`
+   rules used to restate them here, and a second copy of a
+   stylesheet goes stale exactly the way a second copy of a
+   parser does. What is left below is the band, and the scene
+   picker, which is the only part of this panel that is about
+   shots.
+
+   The three rules that follow the band are composition, not a
+   restatement: on write.html the panel sits INSIDE a card, so
+   the key form needs no frame of its own; here the panel IS the
+   band, so it does.
    ============================================================ */
 .vz-ai {
   --hue: var(--visualize);
@@ -451,84 +467,25 @@
   padding-block: var(--s6);
   border-top: 1px solid var(--rule-hair);
 }
-.vz-ai-lead,
-.vz-ai-gate {
-  margin: 0 0 var(--s3);
-  color: var(--ink-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-}
-.vz-ai-gate {
-  padding: var(--s3) var(--s4);
-  background: var(--warn-wash);
-  border-left: var(--sk-hue-rule-w) solid var(--warn);
-  border-radius: var(--sk-radius);
-}
-.vz-ai-gate strong { color: var(--ink); }
+/* The band's own spacing for the shared objects. Every one of
+   these is margin — no colour, no shape, nothing ai.css already
+   decides. */
+.vz-ai > .ai-keygate,
+.vz-ai > .ai-gate,
+.vz-ai > .ai-bar,
+.vz-ai > .ai-disclose { margin-bottom: var(--s4); }
 
-.vz-ai-key {
-  display: grid;
-  gap: var(--s3);
+/* The key form takes the card here because nothing else does:
+   write.html's `.ai-panel` is the card on that page. */
+.vz-ai .ai-key {
   max-width: 34rem;
-  margin-bottom: var(--s4);
   padding: var(--sk-card-pad);
   background: var(--sk-card-bg);
   border: var(--sk-card-line-w) solid var(--sk-card-line);
   border-radius: var(--sk-radius);
 }
-/* --ink-muted, not the --ink-faint that .vz-flabel carries
-   elsewhere on this page. Faint is the token for a label beside a
-   number you have already read; "API key" and "Model" are the
-   labels on two controls you have to find, and at 11px uppercase
-   faint measures 2.5:1 in Desk. Same correction write.css makes
-   for the page gauge. */
-.vz-ai .vz-flabel { color: var(--ink-muted); }
 
-.vz-ai-input {
-  width: 100%;
-  min-width: 0;
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-}
 .vz-ai-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.vz-ai-link {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--accent-deep);
-}
-
-.vz-ai-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s3);
-  margin-bottom: var(--s4);
-  padding-block: var(--s2);
-  border-block: 1px solid var(--rule-hair);
-}
-.vz-ai-keystate {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  color: var(--ink-muted);
-}
-.vz-ai-modelwrap { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-
-.vz-ai-disclose {
-  margin-bottom: var(--s4);
-  padding: var(--s3) var(--s4);
-  background: var(--accent-wash);
-  border-left: var(--sk-hue-rule-w) solid var(--accent);
-  border-radius: var(--sk-radius);
-}
-.vz-ai-disclose strong { display: block; color: var(--ink); font-family: var(--f-display); }
-.vz-ai-disclose p {
-  margin: var(--s1) 0 0;
-  color: var(--ink-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-}
 
 .vz-ai-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .vz-ai-count {
@@ -565,23 +522,11 @@
   letter-spacing: var(--track-label);
   color: var(--ink-muted);
 }
-.vz-ai-status {
-  margin: var(--s3) 0 0;
-  color: var(--ink-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-}
-.vz-ai-error {
-  margin: var(--s3) 0 0;
-  padding: var(--s3) var(--s4);
-  background: var(--danger-wash);
-  border-left: var(--sk-hue-rule-w) solid var(--danger);
-  border-radius: var(--sk-radius);
-  color: var(--ink-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-}
-.vz-ai-error strong { color: var(--ink); }
+/* Status and error are `.ai-status` / `.ai-error` from ai.css.
+   Only the gap above them is this page's business — on write.html
+   the panel's own grid supplies it. */
+.vz-ai > .ai-status,
+.vz-ai > .ai-error { margin-top: var(--s3); }
 
 @media (max-width: 719px) {
   .vz-ai { padding-inline: var(--s4); }

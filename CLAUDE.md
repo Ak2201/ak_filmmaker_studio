@@ -488,9 +488,14 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    writer they wrote something they did not — a quotation that is not word
    for word is stripped and counted.
 
-   Left: `src/pages/visualize.js` still carries its own key form and key
-   bar instead of `src/ui/ai-panel.js`. That is the third copy the module
-   exists to prevent.
+   All three callers now go through `src/ui/ai-panel.js`. visualize.js
+   was the last holdout — it carried a hand-copied key form and key bar,
+   the third copy the module exists to prevent, and it is gone: the page
+   keeps the shot half (pick / run / stop / undo) and the module owns the
+   key, the bar, the gates and the disclosure. A page-local mirror of
+   "does a key exist" is what goes stale, so there isn't one any more;
+   the module asks `ai.js` at render time and pages redraw on
+   `onAIChange`.
 4. ~~**Script import and a proper screenplay PDF.**~~ Done.
    `src/lib/script-import.js` reads `.fountain`, plain screenplay text and
    `.fdx` (via `DOMParser`, no dependency) and fills BOTH the script

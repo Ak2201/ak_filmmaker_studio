@@ -332,9 +332,23 @@ export function toFountain(doc, meta = {}) {
     prev = el.type;
   }
 
-  const out = head.concat(['', 'FADE IN:', '']);
-  if (body.length) out.push(...body, '');
-  out.push('FADE OUT.');
+  /* NO BOOKENDS ARE INVENTED. This used to emit `FADE IN:` and
+     `FADE OUT.` unconditionally, and since the importer reads them
+     back as transition elements — correctly, a real script may open
+     on one — every export/import round trip grew the script by two.
+     Measured 0 -> 2 -> 4 over two passes: a writer who exported to
+     Fountain and came back twice ended up with four transitions they
+     never typed.
+
+     screenplay-export.js's toText() already refuses to do this and
+     says why in as many words ("a file that adds one grows a second
+     copy every time it is exported, imported and exported again").
+     One exporter followed the rule and the other did not, which is
+     the shape of bug this codebase keeps paying for. Whether the
+     script opens on FADE IN: is an element the writer either typed
+     or did not. */
+  const out = head.slice();
+  if (body.length) out.push('', ...body);
   return out.join('\n') + '\n';
 }
 

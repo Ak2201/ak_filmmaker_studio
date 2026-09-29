@@ -95,6 +95,24 @@ const CHECKED_BY_ITEM = (() => {
   return map;
 })();
 
+/* `stale` does not mean "an old number". It means somebody went
+   looking for a current Chennai rate for this item in the re-check
+   pass and did not find one published anywhere — the caveat on each
+   row says so in as many words, and the 2024-25 figure stands.
+
+   That absence is information. CLAUDE.md's rates item makes the
+   argument for the crew rates and it holds here: a producer is
+   better served by "we looked and there is nothing to quote" than by
+   a two-year-old number shown as though nobody had asked. The
+   library already labels these NOT UPDATED; the estimator was
+   showing the figure alone, which is the same fact told less
+   honestly. */
+const STALE_ITEMS = new Set(
+  (rateChecks.rows || [])
+    .filter((r) => r.confidence === 'stale')
+    .map((r) => norm(r.item))
+);
+
 const RATE_BY_ITEM = (() => {
   const map = new Map();
   for (const sec of rates.sections) {
@@ -108,10 +126,14 @@ const RATE_BY_ITEM = (() => {
 /** The rate hint for a line: the verified figure when there is one. */
 function rateHint(name) {
   if (!name) return '';
-  const checked = CHECKED_BY_ITEM.get(norm(name));
+  const key = norm(name);
+  const checked = CHECKED_BY_ITEM.get(key);
   if (checked) return `Checked ${checked.checked}: ${checked.raw}`;
   const card = RATE_BY_ITEM.get(name);
-  return card ? `Rate card ${rates.asOf}: ${card.raw}` : '';
+  if (!card) return '';
+  return STALE_ITEMS.has(key)
+    ? `Rate card ${rates.asOf}: ${card.raw} · no current Chennai rate found`
+    : `Rate card ${rates.asOf}: ${card.raw}`;
 }
 
 /** Legacy behaviour, unchanged: "2.5", "1,20,000", "₹18k", "2L". */

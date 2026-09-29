@@ -56,7 +56,11 @@ const PAGES = [
   { page: 'write.html',      legacy: null, name: 'write' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
   { page: 'study.html',      legacy: null, name: 'study' },
-  { page: 'dissect.html',    legacy: null, name: 'dissect' }
+  { page: 'dissect.html',    legacy: null, name: 'dissect' },
+  // New. Needs a `dashboard` entry in scripts/baseline.json before this
+  // row can pass — baselineFacts() exits 2 without one. Re-baselining is
+  // deliberate, so that is a separate, stated act.
+  { page: 'dashboard.html',  legacy: null, name: 'dashboard' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -178,6 +182,43 @@ const server = http.createServer((req, res) => {
   console.log('✓ Tanglish fields are romanised');
 }
 
+/* ---- data check: the Tanglish sidecar must still address real steps
+   src/data/steps.tanglish.json is keyed `<namespace>:<step id>`, and
+   it decorates files that `npm run extract` REGENERATES. A step that
+   is renumbered, renamed or dropped leaves a key here pointing at
+   nothing, and the symptom is silent: that step simply shows English
+   in Tanglish mode and nobody notices which one.
+
+   Both directions are checked. An orphan key is a fault, and so is a
+   step with no translation, because "43 of 43" is the only version of
+   this that is finished. The second one reports rather than fails, so
+   that adding a step does not block a commit — but it does print the
+   gap every single run. ---------------------------------------- */
+{
+  const NS = {
+    feature:    ['steps.feature.json', ['vol1', 'vol2']],
+    short:      ['steps.short.json', ['steps']],
+    production: ['steps.production.json', ['production', 'post']]
+  };
+  const real = new Set();
+  for (const [ns, [file, arrays]] of Object.entries(NS)) {
+    const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', file), 'utf8'));
+    arrays.forEach((a) => (d[a] || []).forEach((st) => real.add(ns + ':' + st.id)));
+  }
+  const side = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'steps.tanglish.json'), 'utf8'));
+  const orphans = Object.keys(side.decks).filter((k) => !real.has(k))
+    .concat(Object.keys(side.why).filter((k) => !real.has(k)));
+  if (orphans.length) {
+    console.error('\n✗ steps.tanglish.json addresses steps that do not exist:');
+    orphans.forEach((o) => console.error('  ' + o));
+    console.error('  Either the step was renamed/removed, or the key is a typo.\n');
+    process.exit(2);
+  }
+  const untranslated = [...real].filter((k) => !side.decks[k]);
+  console.log(`✓ Tanglish sidecar: ${Object.keys(side.decks).length}/${real.size} step decks`
+    + (untranslated.length ? ` (missing: ${untranslated.join(', ')})` : ''));
+}
+
 await new Promise((r) => server.listen(PORT, r));
 
 /* ---- helpers ---------------------------------------------- */
@@ -241,6 +282,31 @@ for (const spec of PAGES) {
   });
 
   await page.goto(`http://localhost:${PORT}/${spec.page}`, { waitUntil: 'networkidle' });
+
+  /* --- FIRST-RUN WIDTH, measured before a project exists ---------
+     Everything below this point runs with a project created, because
+     the blueprints will not scope storage without one. The cost of
+     that convenience was a blind spot: the hub's first-run panel is
+     the only thing a brand-new user ever sees, and it is replaced by
+     the project grid the instant a project appears — so no width
+     check in this file has ever measured it.
+
+     It pushed the page 238px sideways at 390px, and the gate stayed
+     green throughout. Measure it here, while the studio is genuinely
+     empty, before we spoil the condition.
+
+     Same caveat as the main width check: the page loaded at 1280 and
+     is resized afterwards, so anything gated on matchMedia at load
+     has already decided. See "Known blind spot" in CLAUDE.md. */
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  const firstRun = await page.evaluate(() => ({
+    overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    sawEmptyState: !!document.querySelector('.empty-projects-state, .bd-empty')
+  }));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(250);
+
   // The hub needs a project before the blueprints will scope storage.
   await page.evaluate(() => {
     if (window.StudioStore && !StudioStore.currentProject()) {
@@ -496,6 +562,12 @@ for (const spec of PAGES) {
       + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
       + ' .bd-example, .toc-item, .film-card, .ex-card,'
       + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip,'
+      /* The shell's own wayfinding. Every one of these is text on the
+         dark chrome surface in all four themes, and the breadcrumb
+         and the active phase tab both paint a HUE — the exact mistake
+         the note above this list is about. A "you are here" marker
+         nobody can read is worse than none, so the gate reads them. */
+      + ' .sh-where, .sh-rail-item, .sh-phase-btn,'
       /* Modals are opened just above so that these are reachable at all.
          Every count in this file used to read the DOM as it stands at
          load, which is why four inert inline handlers lived in the auth
@@ -722,6 +794,8 @@ for (const spec of PAGES) {
     inlineHandlers: live.inlineHandlers,
     idleWrites,
     hOverflowAt390: overflow,
+    firstRunOverflowAt390: firstRun.overflow,
+    firstRunEmptyStateSeen: firstRun.sawEmptyState,
     hOverflowMenusOpen: overflowOpen.overflow,
     menusEscapingViewport: overflowOpen.escaped,
     themes: themeCount,
@@ -757,6 +831,10 @@ for (const spec of PAGES) {
   }
   if (idleWrites > 0) bad.push(`${idleWrites} idle writes`);
   if (overflow > 0) bad.push(`${overflow}px horizontal overflow at 390px`);
+  if (firstRun.overflow > 0) {
+    bad.push(`${firstRun.overflow}px horizontal overflow at 390px BEFORE a project exists`
+      + ' (the first-run state — see the note where it is measured)');
+  }
   if (overflowOpen.checked && overflowOpen.overflow > 0) {
     bad.push(`${overflowOpen.overflow}px horizontal overflow at 390px with the dropdowns open`);
   }

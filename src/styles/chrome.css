@@ -400,7 +400,7 @@ a:focus-visible { outline-offset: 3px; }
   transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
 }
 .search-input:focus { border-color: var(--accent); box-shadow: var(--shadow-md); }
-.search-input::placeholder { color: var(--ink-faint); font-style: italic; }
+.search-input::placeholder { color: var(--ink-muted); font-style: italic; }
 .search-icon {
   position: absolute;
   right: var(--s4);
@@ -601,7 +601,7 @@ a:focus-visible { outline-offset: 3px; }
   min-width: 18px;
   font-size: var(--t-micro);
   font-weight: 700;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .step-rail-item.active .sri-num { color: var(--accent-deep); }
@@ -1498,7 +1498,7 @@ a:focus-visible { outline-offset: 3px; }
   max-width: 460px;
   margin: var(--s4) auto 0;
   font-size: var(--t-tiny);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* ------------------------------------------------------------

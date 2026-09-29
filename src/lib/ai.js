@@ -263,7 +263,12 @@ function errorForStatus(status, body) {
     return new AIError('That key was rejected. Check it in the Anthropic console and paste it again.', 'auth');
   }
   if (status === 429) {
-    return new AIError('Rate limited by the API. Wait a minute and try again, or send fewer scenes at once.', 'rate');
+    /* Worded for all three jobs, not just the shot division. This
+       said "send fewer scenes at once" while it had one caller; the
+       dialogue pass and the step critique have no scenes in them and
+       a user reading that would go looking for a control that does
+       not exist. */
+    return new AIError('Rate limited by the API. Wait a minute and try again, or send less at once.', 'rate');
   }
   if (status === 400) {
     return new AIError('The API refused the request' + (detail ? ': ' + detail : '.'), 'request');
@@ -322,24 +327,29 @@ async function readStream(res, onText) {
   return { text, stop };
 }
 
-/**
- * Draft a shot division.
- *
- *   jobs      [{ sceneId, number, slug, eighths, synopsis, script }]
- *   onStatus  called with a short line of progress; DOM only
- *   signal    an AbortSignal, so Stop actually stops
- *
- * Resolves to { byScene: Map<sceneId, shot[]>, truncated, model }.
- * It writes nothing: the caller decides what to keep.
- */
-export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
+/* ---- the one request ----------------------------------------
+   Every job below is the same HTTP call with a different system
+   prompt, a different schema and a different user message, so it
+   is written once. Three jobs sharing one request path means one
+   place where the headers, the streaming, the abort, the status
+   mapping and the JSON parse are correct — and it is why adding
+   the dialogue pass and the beat critique added no new way for a
+   401 to be reported.
+
+   NOTHING IN HERE RUNS ON ITS OWN. `callModel` is reachable only
+   from an exported job, and every exported job is reachable only
+   from a click. The key is read here, used in one header, and
+   never returned, logged or rendered.
+   ------------------------------------------------------------ */
+async function callModel({
+  system, user, schema, maxTokens = 32000, effort = 'medium',
+  onStatus, signal, progress
+}) {
   const key = getKey();
   if (!key) throw new AIError('No API key saved on this device.', 'nokey');
-  if (!jobs || !jobs.length) throw new AIError('No scenes selected.', 'noscenes');
 
   const model = getModel();
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
-  say('Sending ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes') + ' to ' + model + '…');
 
   let res;
   try {
@@ -355,15 +365,15 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 32000,
+        max_tokens: maxTokens,
         stream: true,
         thinking: { type: 'adaptive' },
         output_config: {
-          effort: 'medium',
-          format: { type: 'json_schema', schema: schemaFor() }
+          effort,
+          format: { type: 'json_schema', schema }
         },
-        system: SYSTEM,
-        messages: [{ role: 'user', content: buildPrompt(jobs) }]
+        system,
+        messages: [{ role: 'user', content: user }]
       })
     });
   } catch (e) {
@@ -385,14 +395,16 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
   }
   if (!res.body) throw new AIError('The API returned an empty response.', 'empty');
 
-  say('Drafting…');
-  const { text, stop } = await readStream(res, (sofar) => {
-    // Cheap progress: count the scene keys that have arrived. It is
-    // a substring count of a partial JSON document on purpose — it
-    // is a progress line, not a parse.
-    const n = (sofar.match(/"sceneId"/g) || []).length;
-    if (n) say('Drafting… ' + n + ' of ' + jobs.length + ' scenes');
-  });
+  let text, stop;
+  try {
+    ({ text, stop } = await readStream(res, progress ? (sofar) => {
+      const line = progress(sofar);
+      if (line) say(line);
+    } : null));
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    throw e;
+  }
 
   if (stop === 'refusal') {
     throw new AIError('The model declined this request. Nothing was changed.', 'refusal');
@@ -401,11 +413,53 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
   let parsed = null;
   try { parsed = JSON.parse(text); } catch (e) {
     if (stop === 'max_tokens') {
-      throw new AIError('The reply was cut off before it finished. Try fewer scenes at once.', 'truncated');
+      throw new AIError('The reply was cut off before it finished. Try a smaller piece.', 'truncated');
     }
-    throw new AIError('The reply was not the shot list we asked for, so nothing was added.', 'malformed');
+    throw new AIError('The reply was not the shape we asked for, so nothing was changed.', 'malformed');
   }
-  if (!parsed || !Array.isArray(parsed.scenes)) {
+  if (!parsed || typeof parsed !== 'object') {
+    throw new AIError('The reply was not the shape we asked for, so nothing was changed.', 'malformed');
+  }
+  return { parsed, truncated: stop === 'max_tokens', model };
+}
+
+/** Trim, cap and refuse anything that is not a string. Every field
+    that comes back from a model goes through this before it is shown
+    or stored — the schema makes the shape very likely and "very
+    likely" is not a guarantee a writing tool is built on. */
+const str = (v, max) => String(v ?? '').trim().slice(0, max);
+
+/**
+ * Draft a shot division.
+ *
+ *   jobs      [{ sceneId, number, slug, eighths, synopsis, script }]
+ *   onStatus  called with a short line of progress; DOM only
+ *   signal    an AbortSignal, so Stop actually stops
+ *
+ * Resolves to { byScene: Map<sceneId, shot[]>, truncated, model }.
+ * It writes nothing: the caller decides what to keep.
+ */
+export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
+  if (!jobs || !jobs.length) throw new AIError('No scenes selected.', 'noscenes');
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
+    + ' to ' + getModel() + '…');
+
+  const { parsed, truncated, model } = await callModel({
+    system: SYSTEM,
+    user: buildPrompt(jobs),
+    schema: schemaFor(),
+    onStatus, signal,
+    progress: (sofar) => {
+      // Cheap progress: count the scene keys that have arrived. It is
+      // a substring count of a partial JSON document on purpose — it
+      // is a progress line, not a parse.
+      const n = (sofar.match(/"sceneId"/g) || []).length;
+      return n ? 'Drafting… ' + n + ' of ' + jobs.length + ' scenes' : 'Drafting…';
+    }
+  });
+
+  if (!Array.isArray(parsed.scenes)) {
     throw new AIError('The reply was not the shot list we asked for, so nothing was added.', 'malformed');
   }
 
@@ -427,14 +481,344 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
         size: sizes.has(s.size) ? s.size : 'MS',
         angle: SHOT_ANGLES.includes(s.angle) ? s.angle : SHOT_ANGLES[0],
         movement: SHOT_MOVEMENTS.includes(s.movement) ? s.movement : SHOT_MOVEMENTS[0],
-        lens: String(s.lens ?? '').trim().slice(0, 40),
-        description: String(s.description ?? '').trim().slice(0, 400)
+        lens: str(s.lens, 40),
+        description: str(s.description, 400)
       }))
       .filter((s) => s.description);
     if (shots.length) byScene.set(sceneId, shots);
   }
 
-  return { byScene, truncated: stop === 'max_tokens', model };
+  return { byScene, truncated, model };
+}
+
+/* ============================================================
+   IN-PLACE WORK ON THE WRITING
+   ------------------------------------------------------------
+   CLAUDE.md open item 3, the half that was left: "in-place work
+   on the writing itself — dialogue passes, beat critique — using
+   the blueprint as context. Still not a chat box."
+
+   NOT A CHAT BOX is a constraint on the SHAPE, and the shape is
+   the point. Both jobs below take one specific piece of the
+   user's writing — a speech, a step's answers — and return
+   something about THAT piece. There is no conversation, no
+   history, no second turn. Each call is a whole transaction:
+   here is my speech, here is a pass on it, accept or do not.
+
+   THE BLUEPRINT IS THE CONTEXT, NOT THE SUBJECT. What the writer
+   has already decided about the film — logline, theme, who the
+   protagonist is and what they are lying about — is handed over
+   as ground the model must not contradict. It is assembled by
+   src/lib/blueprint-context.js, which this module deliberately does not
+   import: the context arrives as data so that visualize.html can
+   keep loading this file without 124KB of step JSON.
+
+   NOTHING HERE WRITES ANYTHING. Both jobs resolve to a proposal.
+   The page decides what to show and a person decides what to
+   keep — and when they keep it, it is written through the page's
+   normal save path, marked, and undoable.
+   ============================================================ */
+
+/** The blueprint, rendered for a prompt. Empty in, empty out —
+    a heading with nothing under it is worse than no heading. */
+function contextBlock(context) {
+  const groups = (context || []).filter((g) => g && g.answers && g.answers.length);
+  if (!groups.length) return '';
+  const out = [
+    '--- THE BLUEPRINT ---',
+    'What the writer has already decided about this film. Treat it as settled:',
+    'use it, do not contradict it, and do not restate it back at them.',
+    ''
+  ];
+  for (const g of groups) {
+    out.push(g.step);
+    for (const a of g.answers) out.push('  ' + a.label + ': ' + a.value);
+    out.push('');
+  }
+  return out.join('\n');
+}
+
+/* ------------------------------------------------------------
+   JOB 2 — A PASS ON ONE SPEECH
+   ------------------------------------------------------------
+   Alternatives, never a replacement. The model is asked for up to
+   three versions of one speech and one line on what each changes,
+   and the panel shows them BESIDE the original. Nothing is
+   applied by this function and nothing can be: it returns text.
+   ------------------------------------------------------------ */
+const DIALOGUE_SYSTEM = [
+  'You are a dialogue editor on a Tamil-language independent feature. A writer has',
+  'given you ONE speech out of their screenplay and asked for a pass on it.',
+  '',
+  'Rules:',
+  '· Work on the speech you were given. Do not rewrite the scene, do not add a new',
+  '  line for another character, and do not invent events that are not in the text.',
+  '· Keep the character speaking. A pass that makes every character sound like the',
+  '  same clever writer is a worse draft, not a better one.',
+  '· Cut before you add. Most speeches that need a pass need to be shorter and to',
+  '  stop explaining themselves. Subtext over statement.',
+  '· Match the language of the original exactly — if it is written in Tanglish,',
+  '  romanised Tamil, or English, answer in that. Do not translate the writer.',
+  '· Give at most three versions and make them genuinely different from each other.',
+  '  Three near-identical options is one option and two of them wasted.',
+  '· Each note is ONE line saying what that version changes and what it costs.',
+  '· Say what is already working, in one line, and mean it. If nothing is, say that.',
+  '· Answer only with the JSON the schema describes.'
+].join('\n');
+
+function dialogueSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['keep', 'options'],
+    properties: {
+      keep: {
+        type: 'string',
+        description: 'one line on what already works in the original, or why nothing does'
+      },
+      options: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['text', 'note'],
+          properties: {
+            text: { type: 'string', description: 'the speech, rewritten — dialogue only, no cue, no parenthetical' },
+            note: { type: 'string', description: 'one line: what this version changes and what it costs' }
+          }
+        }
+      }
+    }
+  };
+}
+
+/** The prompt. Built from the speech, the scene it sits in and the
+    blueprint — which is exactly what the panel said it would send. */
+export function buildDialoguePrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+
+  parts.push('--- THE SCENE ---');
+  if (job.slug) parts.push(job.slug);
+  if (job.before) parts.push(job.before);
+  parts.push('');
+  parts.push('--- THE SPEECH TO WORK ON ---');
+  if (job.character) parts.push('character: ' + job.character);
+  if (job.paren) parts.push('parenthetical: ' + job.paren);
+  parts.push('speech:');
+  parts.push(job.speech);
+  parts.push('');
+  if (job.after) {
+    parts.push('--- WHAT COMES AFTER IT ---');
+    parts.push(job.after);
+    parts.push('');
+  }
+  if (job.ask) {
+    parts.push('--- WHAT THE WRITER ASKED FOR ---');
+    parts.push(job.ask);
+    parts.push('');
+  }
+  parts.push('Give a pass on the speech above and nothing else.');
+  return parts.join('\n');
+}
+
+/**
+ * A pass on one speech.
+ *
+ *   job  { speech, character, paren, slug, before, after, ask, context }
+ *
+ * Resolves to { keep, options: [{text, note}], truncated, model }.
+ * WRITES NOTHING. The caller shows the options beside the original
+ * and a person chooses.
+ */
+export async function dialoguePass(job, { onStatus, signal } = {}) {
+  if (!job || !String(job.speech ?? '').trim()) {
+    throw new AIError('There is no speech to work on.', 'nocontent');
+  }
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending one speech to ' + getModel() + '…');
+
+  const { parsed, truncated, model } = await callModel({
+    system: DIALOGUE_SYSTEM,
+    user: buildDialoguePrompt(job),
+    schema: dialogueSchema(),
+    maxTokens: 8000,
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"text"/g) || []).length;
+      return n ? 'Writing… version ' + n : 'Reading the speech…';
+    }
+  });
+
+  /* Re-check everything. A model that returns four options, or an
+     option that is only whitespace, or a note of nine paragraphs, is
+     a model whose output would otherwise become a button the user
+     clicks to overwrite their own line. */
+  const options = (Array.isArray(parsed.options) ? parsed.options : [])
+    .filter((o) => o && typeof o === 'object')
+    .map((o) => ({ text: str(o.text, 2000), note: str(o.note, 300) }))
+    .filter((o) => o.text)
+    .slice(0, 3);
+
+  if (!options.length) {
+    throw new AIError('The reply held no alternative version, so nothing changed.', 'empty-result');
+  }
+  return { keep: str(parsed.keep, 400), options, truncated, model };
+}
+
+/* ------------------------------------------------------------
+   JOB 3 — A CRITIQUE OF ONE STEP
+   ------------------------------------------------------------
+   "Ask what is weak about beat 9 given the theme and the
+   protagonist's stated lie; get a critique that cites the user's
+   own step answers back at them."
+
+   CITING IS ENFORCED, NOT REQUESTED. Every note carries a `quote`
+   that must appear VERBATIM in what the user wrote. It is checked
+   here against the submitted answers, and a quote that does not
+   verify is stripped and counted rather than shown. Asking a
+   model to quote and then printing whatever it returns inside
+   quotation marks is how a tool ends up telling a writer they
+   wrote something they did not.
+   ------------------------------------------------------------ */
+const CRITIQUE_SYSTEM = [
+  'You are a script editor reading one step of a writer\'s blueprint for a',
+  'Tamil-language independent feature. They have asked what is weak in it.',
+  '',
+  'Rules:',
+  '· Read the blueprint context first. The strongest notes are the ones that catch',
+  '  this step contradicting something the writer already decided elsewhere.',
+  '· Every note must QUOTE the writer, verbatim, from the answers given below —',
+  '  a short span, copied character for character, no paraphrase and no ellipsis.',
+  '  A note you cannot anchor to something they actually wrote is a note about a',
+  '  film you imagined. Leave it out.',
+  '· Name the problem in one sentence. Not "consider deepening" — say what does not',
+  '  work and why a reader will feel it.',
+  '· Then one concrete thing to try. A question they can answer, or a change they',
+  '  can make this evening. Not a principle.',
+  '· Three to six notes. A list of twelve is a list nobody acts on.',
+  '· Do not rewrite their work, do not supply the answers, and do not invent plot.',
+  '  This is a critique, not a draft.',
+  '· The verdict is one sentence: is this step strong enough to build on, or not.',
+  '· Match the language the writer used.',
+  '· Answer only with the JSON the schema describes.'
+].join('\n');
+
+function critiqueSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['verdict', 'notes'],
+    properties: {
+      verdict: { type: 'string', description: 'one sentence: strong enough to build on, or not' },
+      notes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['quote', 'problem', 'tryThis'],
+          properties: {
+            quote: { type: 'string', description: 'a short span copied VERBATIM from the writer\'s answers' },
+            problem: { type: 'string', description: 'one sentence naming what does not work' },
+            tryThis: { type: 'string', description: 'one concrete thing to try' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildCritiquePrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+
+  parts.push('--- THE STEP TO CRITIQUE ---');
+  parts.push('step ' + (job.step && job.step.num ? job.step.num : '—')
+    + ': ' + ((job.step && job.step.title) || ''));
+  if (job.step && job.step.deck) parts.push('what this step is for: ' + job.step.deck);
+  parts.push('');
+  parts.push('what the writer has put in it:');
+  for (const a of job.answers || []) {
+    parts.push('  ' + a.label + ': ' + a.value);
+  }
+  parts.push('');
+  parts.push('Critique the step above. Quote only from the answers in this section.');
+  return parts.join('\n');
+}
+
+/* Whitespace, case and the four quotation marks a word processor
+   substitutes are not differences a reader would call a misquote, so
+   they are normalised on both sides before the comparison. Anything
+   else is. */
+function forCompare(s) {
+  return String(s ?? '')
+    .replace(/[‘’ʼ]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * A critique of one step, anchored in what the writer actually wrote.
+ *
+ *   job  { step: {num, title, deck}, answers: [{label, value}], context }
+ *
+ * Resolves to { verdict, notes: [{quote, problem, tryThis}], unverified,
+ * truncated, model }. `unverified` counts notes whose quote did not
+ * appear in the submitted answers; those notes are kept but their
+ * quote is dropped, so nothing is ever attributed to the writer that
+ * they did not write.
+ *
+ * WRITES NOTHING. A critique is commentary on the user's work, not a
+ * change to it.
+ */
+export async function beatCritique(job, { onStatus, signal } = {}) {
+  const answers = (job && Array.isArray(job.answers) ? job.answers : [])
+    .filter((a) => a && String(a.value ?? '').trim());
+  if (!answers.length) {
+    throw new AIError('There is nothing written in this step to critique yet.', 'nocontent');
+  }
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending step ' + ((job.step && job.step.num) || '—') + ' to ' + getModel() + '…');
+
+  const { parsed, truncated, model } = await callModel({
+    system: CRITIQUE_SYSTEM,
+    user: buildCritiquePrompt({ ...job, answers }),
+    schema: critiqueSchema(),
+    maxTokens: 8000,
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"problem"/g) || []).length;
+      return n ? 'Reading… ' + n + (n === 1 ? ' note' : ' notes') : 'Reading what you wrote…';
+    }
+  });
+
+  const haystack = forCompare(answers.map((a) => a.value).join('\n'));
+  let unverified = 0;
+
+  const notes = (Array.isArray(parsed.notes) ? parsed.notes : [])
+    .filter((n) => n && typeof n === 'object')
+    .map((n) => {
+      const quote = str(n.quote, 300);
+      const verified = quote && haystack.includes(forCompare(quote));
+      if (quote && !verified) unverified++;
+      return {
+        quote: verified ? quote : '',
+        problem: str(n.problem, 600),
+        tryThis: str(n.tryThis, 600)
+      };
+    })
+    .filter((n) => n.problem)
+    .slice(0, 8);
+
+  if (!notes.length) {
+    throw new AIError('The reply held no usable notes, so nothing is shown.', 'empty-result');
+  }
+  return { verdict: str(parsed.verdict, 400), notes, unverified, truncated, model };
 }
 
 export default {
@@ -442,5 +826,6 @@ export default {
   getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
   getModel, setModel,
   sliceScriptByScene, sceneScriptText, buildPrompt,
-  draftShotDivision, AIError
+  buildDialoguePrompt, buildCritiquePrompt,
+  draftShotDivision, dialoguePass, beatCritique, AIError
 };

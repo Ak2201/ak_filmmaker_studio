@@ -1,0 +1,401 @@
+/* ============================================================
+   THE FESTIVAL SUBMISSION TRACKER
+   ------------------------------------------------------------
+   One page reads this: short.html, step 10. The catalogue grid
+   (.fest-grid / .fest-card) keeps living in editorial.css and
+   modules.css — it was there before the tracker and it is shared
+   language. What is here is only the campaign board built on top.
+
+   THE TWO RULES THIS FILE FOLLOWS (CLAUDE.md, invariants 4 and 7):
+
+   1. Every colour is a token, and a FILL IS NEVER A TEXT COLOUR.
+      --accent, --danger, --warn and the six hues are chosen to be
+      painted behind something; as text they run 3.3–4.4:1. Text on
+      a light ground takes the -deep variant. Nothing below sets
+      `color:` to a bare fill token.
+
+   2. Every shape is a --sk-* variable. A radius, a padding or a
+      border width typed in here is a shape no skin can override,
+      and there are five of them.
+
+   The rows are cards rather than a table on purpose. A submission
+   has seven fields; seven columns is 900px of table, and the fix
+   for that is a horizontal scroller the reader has to discover.
+   A card wraps at 390px with no scroller and no overflow.
+   ============================================================ */
+
+.fest-block {
+  display: grid;
+  gap: var(--s6);
+}
+
+/* ---- the board ------------------------------------------- */
+.fest-tracker {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+
+.ft-head h4 {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+.fest-tracker .hint {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ---- the premiere guard -----------------------------------
+   The loudest thing on the board, deliberately. The blueprint
+   already teaches "never online-premiere before a top-tier
+   rejection"; a tracker that lets someone break that quietly is
+   worse than no tracker, so the answer is always on screen — the
+   all-clear too, because a missing warning and an unchecked rule
+   look identical. */
+.ft-alerts {
+  display: grid;
+  gap: var(--s2);
+}
+.ft-alert {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s3);
+  align-items: start;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--sk-radius);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+}
+.ft-alert p {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.ft-alert-tag {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+  padding-top: 0.15em;
+}
+
+.ft-alert.danger { background: var(--danger-wash); border-left-color: var(--danger); }
+.ft-alert.danger .ft-alert-tag { color: var(--danger); }
+.ft-alert.warn   { background: var(--warn-wash);   border-left-color: var(--warn); }
+.ft-alert.warn   .ft-alert-tag { color: var(--warn-deep); }
+.ft-alert.ok     { background: var(--ok-wash);     border-left-color: var(--ok); }
+.ft-alert.ok     .ft-alert-tag { color: var(--ok-deep); }
+
+/* ---- the numbers ------------------------------------------ */
+.ft-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-top: 1px solid var(--rule-hair);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.ft-stat {
+  display: grid;
+  gap: 0.15em;
+  min-width: 0;
+}
+.ft-stat-n {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ft-stat-l {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.ft-stat.urgent .ft-stat-n { color: var(--danger); }
+.ft-stat.urgent .ft-stat-l { color: var(--danger); }
+
+.ft-next {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+
+/* ---- the rows --------------------------------------------- */
+.ft-rows {
+  display: grid;
+  gap: var(--s3);
+}
+.ft-empty {
+  margin: 0;
+  padding: var(--s5) var(--s4);
+  text-align: center;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius);
+}
+
+.ft-row {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  /* Tier is data here exactly as it is on the catalogue card, and it
+     is the same three colours, so the two read as one list. */
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+}
+.ft-row.t1 { border-left-color: var(--accent); }
+.ft-row.t2 { border-left-color: var(--library); }
+.ft-row.t3 { border-left-color: var(--rule); }
+
+.ft-row-head {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.ft-row-name {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.ft-name {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 700;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--rule);
+  padding: 0.15em 0;
+}
+.ft-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ft-flag {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  padding: 0.2em 0.5em;
+  white-space: nowrap;
+  color: var(--warn-deep);
+  background: var(--warn-wash);
+  border: 1px solid var(--warn);
+  border-radius: var(--sk-btn-radius);
+}
+
+.ft-del {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  line-height: 1;
+  padding: var(--s2);
+  cursor: pointer;
+  color: var(--ink-muted);
+  background: transparent;
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-btn-radius);
+}
+.ft-del:hover { color: var(--danger); border-color: var(--danger); }
+
+/* 112px, not 140px, and the number is measured rather than chosen:
+   inside a card at 375px the field area is 239px wide, so 140 gives
+   one column and five stacked fields per row — 500px of phone for
+   one festival, and a filmmaker tracks thirteen. 112 fits two.
+   The inputs carry min-width: 0 below so a date field shrinks into
+   its track instead of pushing the page sideways, which is the
+   usual way a grid like this produces horizontal overflow. */
+.ft-row-fields,
+.ft-premiere-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(112px, 100%), 1fr));
+  gap: var(--s3);
+}
+
+.ft-field {
+  display: grid;
+  gap: 0.25em;
+  min-width: 0;
+}
+.ft-field.wide { grid-column: span 2; }
+.ft-field-l {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+
+.ft-field input,
+.ft-field select,
+.ft-notes {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w) solid var(--rule-hair);
+  border-radius: var(--sk-btn-radius);
+  padding: var(--s2);
+}
+.ft-field input:focus-visible,
+.ft-field select:focus-visible,
+.ft-notes:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ft-fee {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.ft-notes { font-size: var(--t-small); }
+
+.ft-row-marks {
+  display: grid;
+  gap: 0.25em;
+}
+.ft-mark {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.ft-mark.soon    { color: var(--warn-deep); }
+.ft-mark.overdue { color: var(--danger); font-weight: 700; }
+
+/* ---- adding, and the premiere decision -------------------- */
+.ft-add {
+  display: flex;
+  gap: var(--s3);
+  align-items: end;
+  flex-wrap: wrap;
+}
+.ft-add .ft-field { flex: 1 1 220px; }
+
+.ft-premiere {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w) dashed var(--rule);
+  border-radius: var(--sk-radius);
+}
+
+/* ---- the catalogue card's provenance block -----------------
+   Eighteen cards that all look equally authoritative is the thing
+   this is here to stop. Six were checked on a real page in 2026;
+   the rest carry a 2023 approximation. The card says which. */
+.fest-check {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--rule-hair);
+}
+.fest-check-tag {
+  justify-self: start;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  padding: 0.15em 0.5em;
+  color: var(--ink-muted);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-btn-radius);
+}
+.fest-check-tag.ok   { color: var(--ok-deep);   background: var(--ok-wash);   border-color: var(--ok); }
+.fest-check-tag.warn { color: var(--warn-deep); background: var(--warn-wash); border-color: var(--warn); }
+
+.fest-check p,
+.fest-check-note {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.fest-check-note { color: var(--ink-muted); }
+
+.fest-dates {
+  margin: 0;
+  padding-left: var(--s4);
+  display: grid;
+  gap: 0.15em;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-body);
+}
+/* A deadline that has gone is struck through rather than deleted:
+   knowing the cycle's shape is what tells you when to look again. */
+.fest-dates li.gone { color: var(--ink-muted); text-decoration: line-through; }
+
+/* ---- the catalogue card's one new control ------------------ */
+.fest-track {
+  margin-top: var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  padding: var(--s2) var(--s3);
+  cursor: pointer;
+  color: var(--accent-deep);
+  background: transparent;
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-btn-radius);
+}
+.fest-track:hover:not(:disabled) {
+  color: var(--accent-on);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fest-track:disabled {
+  cursor: default;
+  color: var(--ink-muted);
+  background: var(--paper-sunk);
+}
+
+/* A filmmaker reading a printed copy is not going to click anything,
+   and the empty fields print as boxes of nothing. The board's facts
+   survive; its controls do not. */
+@media print {
+  .fest-track,
+  .ft-del,
+  .ft-add { display: none !important; }
+  .ft-row,
+  .fest-tracker { break-inside: avoid; }
+}

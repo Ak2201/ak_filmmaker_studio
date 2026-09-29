@@ -88,12 +88,12 @@
   font-weight: 600;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 .pl-none-inline {
   font-size: var(--t-tiny);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   line-height: var(--lh-snug);
 }
 
@@ -262,7 +262,7 @@
   color: var(--perm, var(--ink-muted));
   white-space: nowrap;
 }
-.pl-loc.perm-none .pl-perm-chip { color: var(--ink-faint); }
+.pl-loc.perm-none .pl-perm-chip { color: var(--ink-muted); }
 .pl-loc-meta {
   margin-left: auto;
   font-family: var(--f-mono);

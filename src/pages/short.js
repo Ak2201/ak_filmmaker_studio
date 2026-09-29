@@ -46,11 +46,14 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
+import '../styles/festivals.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 
 import { h, delegate } from '../lib/dom.js';
+import { parseNum, INR, USD } from '../lib/money.js';
+import * as Fest from '../lib/festivals.js';
 import { renderSteps, mountStepsLang } from '../ui/steps.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
@@ -336,15 +339,423 @@ function refreshBeatDots() {
 }
 
 // ============================================================
-// RENDER — festivals (from festivals.json)
+// RENDER — festivals: the catalogue, and the campaign run off it
+// ------------------------------------------------------------
+// festivals.json stays what it was — eighteen reference cards, the
+// same for every reader. Above it now sits the part that is this
+// filmmaker's: what they are targeting, what they sent, what it
+// cost, what came back, and the one warning the blueprint's own
+// advice implies — never online-premiere before a top-tier
+// rejection. src/lib/festivals.js owns the model and the rule; this
+// is a view of it.
+//
+// Nothing in the tracker carries a data-key. Its rows are NOT part
+// of the blueprint blob: a submission campaign outlives a draft and
+// belongs under its own key (arunak_festivals_v1), which is also
+// why saveData() below never sees it.
 // ============================================================
+function festStat(value, label, mod) {
+  return h(`div.ft-stat${mod ? '.' + mod : ''}`, {}, [
+    h('span.ft-stat-n', { text: value }),
+    h('span.ft-stat-l', { text: label })
+  ]);
+}
+
+/** Totals are per currency. A $50 Sundance fee and a ₹500 IFFK fee
+    are not addable, and a tracker that adds them has invented a
+    number. parseNum comes from money.js — no second parser. */
+function feeTotals(list) {
+  const totals = { USD: 0, INR: 0 };
+  for (const s of list) {
+    const n = parseNum(s.fee);
+    if (!n) continue;
+    const cur = totals[s.currency] === undefined ? 'USD' : s.currency;
+    totals[cur] += n;
+  }
+  return totals;
+}
+
+function formatSpend(totals) {
+  const parts = [];
+  if (totals.USD) parts.push('$' + USD.format(Math.round(totals.USD)));
+  if (totals.INR) parts.push('₹' + INR.format(Math.round(totals.INR)));
+  return parts.length ? parts.join(' + ') : '—';
+}
+
+function renderTrackerAlerts(list, premiere) {
+  const conflicts = Fest.premiereConflicts(list, premiere);
+  const box = h('div.ft-alerts', { role: 'status', 'aria-live': 'polite' });
+  if (!conflicts.length) {
+    // "No warning" and "not checked" look identical on a screen, so
+    // the clear case says so out loud.
+    box.append(h('div.ft-alert.ok', {}, [
+      h('span.ft-alert-tag', { text: 'PREMIERE' }),
+      h('p', {
+        text: Fest.premiereHolders(list).length === 0 && list.length
+          ? 'No festival is holding your premiere right now. Nothing here blocks an online release.'
+          : 'Nothing is holding your premiere yet. Add the Tier 1 festivals you are targeting and this will tell you when it is safe to post the film.'
+      })
+    ]));
+    return box;
+  }
+  // The tag names the CODE, not the level. Two different warnings
+  // both shouting "PREMIERE HELD" is how a reader learns to stop
+  // reading the second one.
+  const TAGS = {
+    'online-premiere-scheduled': 'DO NOT POST',
+    'premiere-held':             'PREMIERE HELD',
+    'targets-not-sent':          'UNSENT'
+  };
+  for (const c of conflicts) {
+    box.append(h(`div.ft-alert.${c.level}`, {}, [
+      h('span.ft-alert-tag', { text: TAGS[c.code] || 'CHECK' }),
+      h('p', { text: c.text })
+    ]));
+  }
+  return box;
+}
+
+function renderTrackerRow(s) {
+  const entry = Fest.catalogueEntry(s.festival);
+  const approx = entry && entry.deadlineApprox;
+  const days = s.deadline ? Fest.daysUntil(s.deadline) : null;
+  const overdue = s.status === 'target' && days !== null && days < 0;
+  const soon = s.status === 'target' && days !== null && days >= 0 && days <= 14;
+
+  const field = (label, node) => h('label.ft-field', {}, [
+    h('span.ft-field-l', { text: label }), node
+  ]);
+
+  const row = h(`div.ft-row.t${s.tier || 0}`, { 'data-fest-id': s.id }, [
+    h('div.ft-row-head', {}, [
+      h('div.ft-row-name', {}, [
+        h('input.ft-name', {
+          type: 'text',
+          value: s.festival,
+          placeholder: 'Festival name',
+          'aria-label': 'Festival name',
+          'data-fest-field': 'festival'
+        }),
+        s.premiereRequired
+          ? h('span.ft-flag', { title: 'This festival requires a premiere — it holds your film off the internet until it answers.', text: 'HOLDS PREMIERE' })
+          : null
+      ]),
+      h('button.ft-del', {
+        type: 'button',
+        'data-action': 'fest-remove',
+        title: 'Stop tracking this festival',
+        'aria-label': `Stop tracking ${s.festival || 'this festival'}`,
+        text: '✕'
+      })
+    ]),
+    h('div.ft-row-fields', {}, [
+      field('Status', h('select', {
+        'aria-label': 'Submission status', 'data-fest-field': 'status'
+      }, Fest.STATUSES.map((st) => h('option', {
+        value: st.id, text: st.label, selected: st.id === s.status
+      })))),
+      field('Deadline', h('input', {
+        type: 'date', value: s.deadline, 'aria-label': 'Submission deadline',
+        'data-fest-field': 'deadline'
+      })),
+      field('Submitted', h('input', {
+        type: 'date', value: s.submittedOn, 'aria-label': 'Date submitted',
+        'data-fest-field': 'submittedOn'
+      })),
+      field('Fee paid', h('div.ft-fee', {}, [
+        h('input', {
+          type: 'text', value: s.fee, placeholder: '0',
+          inputmode: 'decimal', 'aria-label': 'Fee paid',
+          'data-fest-field': 'fee'
+        }),
+        h('select', {
+          'aria-label': 'Fee currency', 'data-fest-field': 'currency'
+        }, Fest.CURRENCIES.map((c) => h('option', {
+          value: c, text: c, selected: c === s.currency
+        })))
+      ])),
+      field('Heard back', h('input', {
+        type: 'date', value: s.resultOn, 'aria-label': 'Date you heard back',
+        'data-fest-field': 'resultOn'
+      }))
+    ]),
+    h('input.ft-notes', {
+      type: 'text', value: s.notes,
+      placeholder: 'Notes — which cut you sent, the FilmFreeway reference, who to chase',
+      'aria-label': 'Notes', 'data-fest-field': 'notes'
+    })
+  ]);
+
+  const marks = [];
+  if (overdue) marks.push(h('span.ft-mark.overdue', {
+    text: `Deadline was ${Fest.relativeDays(days)} and it is still only a target.`
+  }));
+  else if (soon) marks.push(h('span.ft-mark.soon', {
+    text: `Deadline ${Fest.relativeDays(days)}.`
+  }));
+  else if (s.status === 'target' && !s.deadline && approx) marks.push(h('span.ft-mark', {
+    text: `The catalogue says ${approx}. Look up the real date and put it in — this cannot warn you about an approximation.`
+  }));
+  if (marks.length) row.append(h('div.ft-row-marks', {}, marks));
+  return row;
+}
+
+function renderTracker() {
+  const list = Fest.listSubmissions();
+  const premiere = Fest.getPremiere();
+  const counts = Fest.statusCounts(list);
+  const next = Fest.nextDeadline(list);
+  const decided = list.filter((s) => Fest.statusMeta(s.status).decided).length;
+
+  const section = h('section.fest-tracker', { id: 'festival-tracker' }, [
+    h('div.ft-head', {}, [
+      h('h4', { text: 'Your submission campaign' }),
+      h('p.hint', {
+        text: 'The cards below are the reference list. This is your run at it — what you '
+            + 'are targeting, what you sent, what it cost and what came back. Saved to '
+            + 'this project in your browser, and included in the studio backup.'
+      })
+    ]),
+    renderTrackerAlerts(list, premiere),
+    h('div.ft-stats', {}, [
+      // A deadline that has gone is the more urgent news, so it sorts
+      // first — and the label has to say so. "NEXT DEADLINE: 14 days
+      // ago" is a sentence that makes a reader distrust the whole box.
+      festStat(next ? Fest.relativeDays(next.days) : '—',
+        next && next.days < 0 ? 'MISSED DEADLINE' : 'NEXT DEADLINE',
+        next && next.days <= 14 ? 'urgent' : ''),
+      festStat(String(list.length), 'TRACKED'),
+      festStat(String(counts.submitted + counts.competition), 'OUT THERE'),
+      festStat(String(decided), 'ANSWERED'),
+      festStat(formatSpend(feeTotals(list)), 'FEES PAID')
+    ]),
+    next ? h('p.ft-next', {
+      text: `Next up: ${next.submission.festival || 'an untitled entry'} — `
+          + `${next.submission.deadline}, ${Fest.relativeDays(next.days)}.`
+    }) : null
+  ]);
+
+  const rows = h('div.ft-rows');
+  if (!list.length) {
+    rows.append(h('p.ft-empty', {
+      text: 'Nothing tracked yet. Pick a festival below, or add one that is not on the list.'
+    }));
+  } else {
+    list.forEach((s) => rows.append(renderTrackerRow(s)));
+  }
+  section.append(rows);
+
+  section.append(h('div.ft-add', {}, [
+    h('label.ft-field', {}, [
+      h('span.ft-field-l', { text: 'Add from the list' }),
+      h('select#festPick', { 'aria-label': 'Choose a festival to track' }, [
+        h('option', { value: '', text: 'Choose a festival…' }),
+        ...Fest.catalogueEntries().map((f) => h('option', {
+          value: f.name, text: `${f.name} — tier ${f.tier}`
+        }))
+      ])
+    ]),
+    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add', text: '+ TRACK IT' }),
+    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add-custom', text: '+ ONE NOT ON THE LIST' })
+  ]));
+
+  section.append(h('div.ft-premiere', {}, [
+    h('div.ft-field-l', { text: 'Your planned online premiere' }),
+    h('p.hint', {
+      text: 'Fill this in and the warning above checks it against every festival still '
+          + 'holding your film. Leave it blank until you have the rejections.'
+    }),
+    h('div.ft-premiere-fields', {}, [
+      h('label.ft-field', {}, [
+        h('span.ft-field-l', { text: 'Date' }),
+        h('input', {
+          type: 'date', value: premiere.onlineDate,
+          'aria-label': 'Planned online premiere date',
+          'data-fest-premiere': 'onlineDate'
+        })
+      ]),
+      h('label.ft-field.wide', {}, [
+        h('span.ft-field-l', { text: 'Where' }),
+        h('input', {
+          type: 'text', value: premiere.note,
+          placeholder: 'YouTube, Vimeo Staff Picks, a platform deal…',
+          'aria-label': 'Where the film premieres online',
+          'data-fest-premiere': 'note'
+        })
+      ])
+    ])
+  ]));
+
+  return section;
+}
+
+/* The card's own provenance line. festivals.json holds the 2023
+   blueprint's approximations ("~Feb each year", "$40–$70"); the
+   overlay holds what was actually looked up, and when. Showing the
+   two together is the point — a reader can see which of the
+   eighteen has a real date behind it and which does not, instead of
+   all eighteen looking equally authoritative. */
+function renderFestCheck(f) {
+  const c = Fest.catalogueEntry(f.name);
+  const chk = (c && c.check) || { status: 'not-checked' };
+  const box = h('div.fest-check');
+
+  if (chk.status === 'checked') {
+    const future = (chk.deadlines || []).filter((d) => d.date > Fest.todayISO());
+    box.append(h('div.fest-check-tag.ok', { text: `CHECKED ${Fest.CHECKED_ON}` }));
+    if (chk.fee) box.append(h('p', { text: chk.fee }));
+    if ((chk.deadlines || []).length) {
+      box.append(h('ul.fest-dates', {}, chk.deadlines.map((d) => {
+        const days = Fest.daysUntil(d.date);
+        const gone = days !== null && days < 0;
+        return h(`li${gone ? '.gone' : ''}`, {
+          text: `${d.label}: ${d.date} — ${Fest.relativeDays(days)}`
+        });
+      })));
+      if (!future.length) {
+        box.append(h('p.fest-check-note', {
+          text: 'Every checked deadline for this edition has passed. The next cycle’s dates were not published when this was looked up.'
+        }));
+      }
+    }
+    (chk.notes || []).forEach((n) => box.append(h('p.fest-check-note', { text: n })));
+    return box;
+  }
+
+  if (chk.status === 'warning' || chk.status === 'blocked') {
+    box.append(h('div.fest-check-tag.warn', {
+      text: chk.status === 'warning' ? 'UNCONFIRMED' : 'COULD NOT CHECK'
+    }));
+    (chk.notes || []).forEach((n) => box.append(h('p.fest-check-note', { text: n })));
+    return box;
+  }
+
+  box.append(h('div.fest-check-tag', { text: 'NOT RE-CHECKED' }));
+  box.append(h('p.fest-check-note', {
+    text: `The line above is the blueprint’s own approximation from 2023 and nobody has verified it since. Look the date and the fee up yourself before you plan around them.`
+  }));
+  return box;
+}
+
 function renderFestivals() {
-  return h('div.fest-grid', {}, festivalData.festivals.map((f) => h(`div.fest-card.t${f.tier}`, {}, [
+  const tracked = new Set(Fest.listSubmissions().map((s) => s.festival));
+  const grid = h('div.fest-grid', {}, festivalData.festivals.map((f) => h(`div.fest-card.t${f.tier}`, {}, [
     h('div.tier', { text: f.tierLabel }),
     h('h4', { text: f.name }),
     h('p', { text: f.description }),
-    h('p.req', { text: f.req })
+    h('p.req', { text: f.req }),
+    renderFestCheck(f),
+    h('button.fest-track', {
+      type: 'button',
+      'data-action': 'fest-track',
+      'data-fest-name': f.name,
+      disabled: tracked.has(f.name),
+      text: tracked.has(f.name) ? 'TRACKED' : '+ TRACK'
+    })
   ])));
+  return h('div.fest-block', {}, [renderTracker(), grid]);
+}
+
+/** Rebuild the tracker and the catalogue's TRACK buttons in place.
+    Called after a change that alters a derived figure — a status, a
+    date, a row added or dropped. NOT called on every keystroke: it
+    would take the caret out of whatever the user is typing in. */
+/* A re-render replaces the element the user is standing in. Note
+   where the caret is first and put it back afterwards, or tabbing
+   out of the notes box destroys the field you just tabbed INTO. */
+function noteFocus() {
+  const el = document.activeElement;
+  if (!el || !el.closest || !el.closest('.fest-block')) return null;
+  const row = el.closest('[data-fest-id]');
+  const key = el.dataset.festField
+    ? `[data-fest-id="${row ? row.dataset.festId : ''}"] [data-fest-field="${el.dataset.festField}"]`
+    : el.dataset.festPremiere
+      ? `[data-fest-premiere="${el.dataset.festPremiere}"]`
+      : null;
+  if (!key) return null;
+  const pos = (typeof el.selectionStart === 'number') ? el.selectionStart : null;
+  return { key, pos };
+}
+function restoreFocus(mark) {
+  if (!mark) return;
+  const el = document.querySelector(`.fest-block ${mark.key}`);
+  if (!el) return;
+  el.focus();
+  if (mark.pos !== null && typeof el.setSelectionRange === 'function') {
+    try { el.setSelectionRange(mark.pos, mark.pos); } catch (e) { /* date inputs refuse */ }
+  }
+}
+
+function refreshTracker() {
+  const host = document.querySelector('.fest-block');
+  if (!host) return;
+  const mark = noteFocus();
+  host.replaceChildren(...renderFestivals().childNodes);
+  restoreFocus(mark);
+}
+
+function trackFestival(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return;
+  // Tracking the same festival twice is a data error, not a feature:
+  // two rows for Sundance means two answers and two premiere claims.
+  if (Fest.listSubmissions().some((s) => s.festival === clean)) {
+    flashStatus('●  already tracked');
+    return;
+  }
+  Fest.addSubmission(Fest.fromCatalogue(clean));
+  refreshTracker();
+  flashStatus('●  saved');
+  const rows = document.querySelectorAll('.ft-row');
+  const target = rows[rows.length - 1] || document.getElementById('festival-tracker');
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeTrackedFestival(row) {
+  if (!row) return;
+  const id = row.dataset.festId;
+  const s = Fest.listSubmissions().find((x) => x.id === id);
+  const label = (s && s.festival) || 'this entry';
+  if (!confirm(`Stop tracking ${label}? The fee, dates and notes go with it.`)) return;
+  Fest.removeSubmission(id);
+  refreshTracker();
+  flashStatus('●  saved');
+}
+
+/**
+ * One listener pair for the whole tracker.
+ *
+ * `input` writes and does NOT re-render — re-rendering on a keystroke
+ * takes the caret out of the field the user is in, which is the bug
+ * that makes a notes box unusable. `change` (a select, a date, or a
+ * text field on blur) writes AND re-renders, because those are the
+ * edits that move a derived figure: the next deadline, the fee total,
+ * the premiere warning.
+ */
+function wireTracker() {
+  const writeField = (el) => {
+    const row = el.closest('[data-fest-id]');
+    if (!row) return false;
+    return !!Fest.updateSubmission(row.dataset.festId, {
+      [el.dataset.festField]: el.value
+    });
+  };
+  const writePremiere = (el) => {
+    Fest.savePremiere({ [el.dataset.festPremiere]: el.value });
+    return true;
+  };
+
+  delegate(document, 'input', '[data-fest-field]', (e, el) => { writeField(el); });
+  delegate(document, 'input', '[data-fest-premiere]', (e, el) => { writePremiere(el); });
+
+  delegate(document, 'change', '[data-fest-field]', (e, el) => {
+    if (writeField(el)) { refreshTracker(); flashStatus('●  saved'); }
+  });
+  delegate(document, 'change', '[data-fest-premiere]', (e, el) => {
+    writePremiere(el);
+    refreshTracker();
+    flashStatus('●  saved');
+  });
 }
 
 // ============================================================
@@ -1280,7 +1691,12 @@ const CLICK_ACTIONS = {
   'export-txt':          () => exportPlainTxt(),
   'print-script':        () => printScriptOnly(),
   'ai-prompt':           (e, el) => buildAIPrompt(el.dataset.arg),
-  'copy-ai-prompt':      () => copyAIPrompt()
+  'copy-ai-prompt':      () => copyAIPrompt(),
+  'fest-track':          (e, el) => trackFestival(el.dataset.festName),
+  'fest-add':            () => trackFestival(
+                                 (document.getElementById('festPick') || {}).value),
+  'fest-add-custom':     () => { Fest.addSubmission({}); refreshTracker(); flashStatus('●  saved'); },
+  'fest-remove':         (e, el) => removeTrackedFestival(el.closest('[data-fest-id]'))
 };
 
 const CHANGE_ACTIONS = {
@@ -1374,6 +1790,7 @@ function wireEvents() {
 // ============================================================
 render();
 wireEvents();
+wireTracker();
 loadPrefs();
 loadData();
 updateProgress();

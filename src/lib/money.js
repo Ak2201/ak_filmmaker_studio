@@ -71,4 +71,14 @@ export function fmtINR(n) {
 /** Exact, grouped Indian-notation figure. Use where the number matters. */
 export const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
-export default { parseNum, fmtINR, INR };
+/** Western grouping, for the one thing in the studio that is not
+    priced in rupees: international festival entry fees, which are
+    quoted and charged in dollars. It lives here rather than in the
+    festival page for the reason the whole file exists — a number
+    formatter written where it is needed is a number formatter
+    written twice by the third caller. Nothing converts between the
+    two; a dollar total and a rupee total are reported side by side,
+    because adding them would require a rate nobody has. */
+export const USD = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+export default { parseNum, fmtINR, INR, USD };

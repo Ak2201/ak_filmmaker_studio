@@ -402,6 +402,41 @@ const server = http.createServer((req, res) => {
     + (untranslated.length ? ` (missing: ${untranslated.join(', ')})` : ''));
 }
 
+/* ---- data check: the priority sidecar must address real steps too
+   src/data/steps.priority.json marks a ten-step spine and maps
+   fifteen steps to what their answers feed. Same rot risk as the
+   Tanglish sidecar and the same fix: it decorates files that
+   `npm run extract` regenerates, so a renumbered step leaves a key
+   pointing at nothing.
+
+   The symptom without this check is quiet: src/ui/steps.js warns to
+   the console on page load, which a developer with the console open
+   sees and CI never does. The agent that built the sidecar asked for
+   this rather than leaving it. ------------------------------------ */
+{
+  const NS = {
+    feature:    ['steps.feature.json', ['vol1', 'vol2']],
+    short:      ['steps.short.json', ['steps']],
+    production: ['steps.production.json', ['production', 'post']]
+  };
+  const real = new Set();
+  for (const [ns, [file, arrays]] of Object.entries(NS)) {
+    const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', file), 'utf8'));
+    arrays.forEach((a) => (d[a] || []).forEach((st) => real.add(ns + ':' + st.id)));
+  }
+  const prio = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'steps.priority.json'), 'utf8'));
+  const refs = [...(prio.spine || []).map((e) => e.step), ...Object.keys(prio.unlocks || {})];
+  const orphans = [...new Set(refs.filter((k) => !real.has(k)))];
+  if (orphans.length) {
+    console.error('\n\u2717 steps.priority.json marks steps that do not exist:');
+    orphans.forEach((o) => console.error('  ' + o));
+    console.error('  A spine rung or an unlocks entry is pointing at a renamed or removed step.\n');
+    process.exit(2);
+  }
+  console.log(`\u2713 steps.priority sidecar: ${(prio.spine || []).length}-step spine, `
+    + `${Object.keys(prio.unlocks || {}).length} unlocks, all resolve`);
+}
+
 await new Promise((resolve, reject) => {
   server.once('error', (e) => {
     if (e && e.code === 'EADDRINUSE') {

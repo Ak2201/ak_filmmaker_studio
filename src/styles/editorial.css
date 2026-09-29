@@ -440,7 +440,7 @@
 .step-badge.in-progress,
 .step-badge.partial { color: var(--warn-deep); border-color: var(--warn); background: var(--warn-wash); }
 .step-badge.complete { color: var(--accent-deep); border-color: var(--accent); background: var(--accent-wash); }
-.step-badge.empty { color: var(--ink-faint); border-color: var(--rule); }
+.step-badge.empty { color: var(--ink-muted); border-color: var(--rule); }
 
 /* Cross-blueprint chips */
 .related-chips {
@@ -455,7 +455,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .related-chip {
   display: inline-flex;
@@ -477,7 +477,7 @@
 .related-chip.feat:hover  { border-color: var(--feature); color: var(--feature-deep); }
 .related-chip.short:hover { border-color: var(--shorts); color: var(--shorts-deep); }
 .related-chip.lib:hover   { border-color: var(--library); color: var(--library-deep); }
-.related-chip .src { font-weight: 700; color: var(--ink-faint); }
+.related-chip .src { font-weight: 700; color: var(--ink-muted); }
 .related-chip:hover .src { color: inherit; }
 
 /* ------------------------------------------------------------
@@ -528,7 +528,11 @@
   font-weight: 400;
   color: var(--sk-slab-accent);
 }
-.formula p { font-size: var(--t-small); line-height: var(--lh-body); color: var(--panel-ink); }
+/* No colour: .formula is a slab and modules.css §3 already gives it
+   --sk-slab-ink. This said --panel-ink, which is the ink for a surface
+   that is dark in every theme — and the slab is not, under mission,
+   binder or console. Same 1.04:1 shape as .director-card .study. */
+.formula p { font-size: var(--t-small); line-height: var(--lh-body); }
 .tip-box p,
 .why-box p { font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); }
 .formula p { font-style: italic; }
@@ -674,7 +678,7 @@ select.field-input {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .word-counter.over { color: var(--danger); }
 .word-counter.good { color: var(--ok-deep); }
@@ -713,11 +717,11 @@ select.field-input {
   top: var(--s1);
   font-size: var(--t-lg);
   line-height: 1;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   transition: color var(--speed) var(--ease);
 }
 .step-check li.checked,
-.step-check li.done { color: var(--ink-faint); text-decoration: line-through; }
+.step-check li.done { color: var(--ink-muted); text-decoration: line-through; }
 .step-check li.checked::before,
 .step-check li.done::before { content: "●"; color: var(--accent-deep); }
 
@@ -912,7 +916,18 @@ select.field-input {
 }
 .director-card .traits dd { color: var(--ink-body); }
 .director-card .study { margin-top: var(--s3); padding: var(--s3) var(--s4); border-left-width: 3px; }
-.director-card .study p { font-size: var(--t-small); color: var(--panel-ink); }
+/* NO COLOUR HERE, deliberately. This said `color: var(--panel-ink)`
+   and measured 1.04:1 — cream on cream, invisible rather than faint,
+   in sepia and desk, on every director in the library.
+
+   It is the same fault the slab widgets had: --panel-ink is the ink
+   for a surface that is dark in EVERY theme, and .study stopped being
+   that surface. The "no boxes inside boxes" rule in modules.css
+   un-slabs a .study nested in a .director-card — background: none,
+   colour inherited — so the ground became the light card while the
+   text kept the dark card's ink. A paragraph that inherits cannot go
+   wrong this way, so it inherits. */
+.director-card .study p { font-size: var(--t-small); }
 .director-card .tn { color: var(--ok-deep); }
 .director-card .tn::before { color: var(--ok-deep); }
 
@@ -1276,7 +1291,7 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 600;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .toc-list .check {

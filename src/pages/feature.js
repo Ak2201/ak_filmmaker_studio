@@ -52,6 +52,8 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
+import '../styles/steps-path.css';
+import '../styles/ai.css';
 
 /* ---- store FIRST ------------------------------------------
    store.js monkey-patches Storage.prototype at module
@@ -68,18 +70,28 @@ import StudioUI, {
 import '../lib/cloud.js';
 
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
-import { renderSteps, mountStepsLang, stepIndex, stepFieldKeys } from '../ui/steps.js';
+import {
+  renderSteps, mountStepsLang, mountStepsPath, stepIndex, stepFieldKeys
+} from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
 import { parseNum, fmtINR } from '../lib/money.js';
+import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
+  from '../ui/comments.js';
+import Blueprint, { BLUEPRINT_KEY } from '../lib/blueprint-context.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
    ============================================================ */
-const STORAGE_KEY  = 'arunak_filmmaker_combined_v1';
+/* The blueprint's blob, imported rather than spelled out again, so
+   that the module which reads these answers as context for a model and
+   the page that writes them cannot disagree about a key holding months
+   of somebody's work. Five other files still write the literal by hand
+   — see the header of src/lib/blueprint-context.js. */
+const STORAGE_KEY  = BLUEPRINT_KEY;
 const PREF_KEY     = 'arunak_filmmaker_prefs_v1';
 const NOTE_PREFIX  = 'arunak_note_';
 const SYNC_CFG_KEY = 'arunak_supabase_cfg_v1';
@@ -616,7 +628,16 @@ function renderPage(app) {
   main.id = 'main';
 
   main.append(fromHTML(MASTER_COVER_HTML));
+
+  /* The spine panel goes between the master cover and the first
+     phase cover — which is to say, before the wall rather than
+     somewhere inside it. CLAUDE.md open item 8: a new project opens
+     on step 01 of 32 with no sense of which ones matter first, and
+     an answer a reader meets on step 07 is an answer they meet after
+     they have already given up. Everything in it derives from
+     src/data/steps.priority.json crossed with the steps below. */
   main.append(fromHTML(VOL1_COVER_HTML));
+  const vol1Cover = main.lastElementChild;
   main.append(fromHTML(HOWTO1_HTML));
 
   // Story steps 01–02, the treatment ladder interlude, then 03–12.
@@ -657,6 +678,13 @@ function renderPage(app) {
   main.append(fromHTML(syncSectionHTML()));
   main.append(fromHTML(GLOSSARY_HTML));
   main.append(fromHTML(FINAL_PAGE_HTML));
+
+  mountStepsPath(vol1Cover, [
+    { ns: 'feature',    steps: STEPS.vol1 },
+    { ns: 'feature',    steps: STEPS.vol2 },
+    { ns: 'production', steps: PROD.production },
+    { ns: 'production', steps: PROD.post }
+  ]);
 
   app.append(main);
   app.append(fromHTML(focusTimerHTML()));
@@ -993,6 +1021,75 @@ function updateStepBadges() {
 }
 
 /* ============================================================
+   THE SPINE — which of the 32 steps matter first
+   ------------------------------------------------------------
+   CLAUDE.md open item 8. The data is src/data/steps.priority.json
+   and the rendering is src/ui/steps.js; what lives here is the
+   page's half — the filter, the live ticks, and making sure the
+   filter can never strand a reader on a step it has hidden.
+
+   THE FILTER IS A CLASS, NOT A RE-RENDER. Every step below is
+   full of <input data-key> holding the user's writing, and
+   rebuilding the tree to change what is on screen throws away
+   anything typed since the last autosave. So it is one class on
+   <body> and one rule in steps-path.css. Nothing is unmounted,
+   no listener is lost, and turning it off restores a page that
+   never went anywhere.
+   ============================================================ */
+function spineOnly() { return document.body.classList.contains('prio-spine-only'); }
+
+function toggleSpineOnly(force) {
+  const on = typeof force === 'boolean' ? force : !spineOnly();
+  document.body.classList.toggle('prio-spine-only', on);
+  const btn = document.querySelector('[data-action="toggleSpineOnly"]');
+  if (btn) {
+    const n = document.querySelectorAll('.step.is-spine').length;
+    const all = document.querySelectorAll('.step').length;
+    btn.textContent = on ? 'Show all ' + all + ' steps' : 'Show only these ' + n;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  const hint = document.querySelector('[data-path-hint]');
+  if (hint) {
+    hint.textContent = on
+      ? 'The other steps are hidden on screen only. Everything you have written in '
+        + 'them is still there, and jumping or searching to one brings them all back.'
+      : 'Nothing is deleted or hidden on disk — this only narrows what is on screen, '
+        + 'and every one of the ' + document.querySelectorAll('.step').length
+        + ' steps keeps whatever you have written in it.';
+  }
+  return on;
+}
+
+/** A hidden step cannot be scrolled to, so anything that navigates to
+    one turns the filter off first rather than appearing to do nothing.
+    Gating navigation on a filter is how a filter becomes a trap. */
+function revealStepFor(node) {
+  if (!spineOnly() || !node) return false;
+  const step = node.closest ? node.closest('.step') : null;
+  if (step && step.classList.contains('is-spine')) return false;
+  if (!step) return false;
+  toggleSpineOnly(false);
+  StudioUI.toast('Showing all steps again — that one is not on the spine.', { type: 'info' });
+  return true;
+}
+
+/** DOM only. Called from refreshAll(), which is called from saveData():
+    a write in here would be the save loop CLAUDE.md names. */
+function updatePathTicks() {
+  document.querySelectorAll('[data-path-step]').forEach((item) => {
+    const step = document.getElementById(item.getAttribute('data-path-step'));
+    const tick = item.querySelector('[data-path-tick]');
+    if (!step || !tick) return;
+    const { total, done } = computeStepCompletion(step);
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    item.classList.toggle('is-done', pct >= 100);
+    item.classList.toggle('is-part', pct > 0 && pct < 100);
+    tick.textContent = pct >= 100 ? '✓' : pct > 0 ? '◐' : '○';
+    tick.setAttribute('title', pct >= 100 ? 'Complete' : pct > 0 ? pct + '% filled' : 'Empty');
+  });
+}
+
+/* ============================================================
    OVERALL PROGRESS
    ============================================================ */
 function updateProgress() {
@@ -1249,6 +1346,9 @@ function updateDarkBtn() {
 function jumpToStep(target) {
   if (!target) return;
   const el = document.getElementById(target);
+  // A step the spine filter has hidden has no box to scroll to, so the
+  // jump would silently do nothing. Show it instead.
+  revealStepFor(el);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.getElementById('stepJumper').value = '';
 }
@@ -1318,6 +1418,7 @@ function saveData() {
 function refreshAll() {
   updateProgress();
   updateStepBadges();
+  updatePathTicks();
   renderPacingChart();
   updateBudget();
   renderCharMap();
@@ -1563,13 +1664,20 @@ function performSearch(q) {
   cnt.textContent = searchHits.length ? searchHits.length : '0';
   if (searchHits.length) {
     searchIdx = 0;
-    searchHits[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showHit(searchHits[0]);
   }
+}
+/* A hit inside a step the spine filter has hidden counts as a hit and
+   scrolls nowhere. Reveal, then scroll — a search that reports "4" and
+   moves the page zero pixels reads as a broken search. */
+function showHit(node) {
+  revealStepFor(node);
+  node.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 function nextSearchHit() {
   if (!searchHits.length) return;
   searchIdx = (searchIdx + 1) % searchHits.length;
-  searchHits[searchIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  showHit(searchHits[searchIdx]);
 }
 
 /* ============================================================
@@ -1871,7 +1979,20 @@ function toggleTimer() {
 }
 
 /* ============================================================
-   LOCAL COMMENTS
+   COMMENTS — the private note, and the shared thread
+   ------------------------------------------------------------
+   CLAUDE.md open item 5. The button and the private note below are
+   unchanged, down to the `arunak_note_` key and the words in the
+   panel: months of somebody's notes are behind that prefix and it is
+   not being renamed to make room for a feature.
+
+   What changed is that the panel is now built by src/ui/comments.js,
+   which puts the shared thread — the comments API in src/lib/cloud.js
+   that has been finished and unattached since P7 — UNDER the note
+   rather than instead of it. Signed out, offline or with no Supabase
+   configured at all, the note half still works and the thread half
+   says which of those it is. Local-first is the product; the account
+   is the option.
    ============================================================ */
 function attachCommentButtons() {
   document.querySelectorAll('.ask-label').forEach(label => {
@@ -1891,39 +2012,28 @@ function attachCommentButtons() {
     btn.dataset.noteKey = key;
     label.appendChild(btn);
     // mark if there's already a note
-    if (localStorage.getItem(NOTE_PREFIX + key)) btn.classList.add('has-note');
+    if (hasNote(key)) btn.classList.add('has-note');
   });
   updateCommentCount();
+
+  /* One pass, after the buttons exist. Quiet by design: it only
+     reaches the network when a Supabase config and a session are both
+     already present, so a page load for everybody else is untouched
+     and the SDK stays a lazy chunk. */
+  mountComments({
+    scope: 'feature',
+    notePrefix: NOTE_PREFIX,
+    onNoteChange: (key, has) => {
+      const btn = document.querySelector('.comment-btn[data-note-key="' + CSS.escape(key) + '"]');
+      if (btn) btn.classList.toggle('has-note', has);
+      updateCommentCount();
+    }
+  });
+  paintBadges();
 }
 
 function toggleCommentPanel(key, ask) {
-  let panel = ask.querySelector('.comment-panel[data-note-key="' + key + '"]');
-  if (panel) {
-    panel.classList.toggle('open');
-    if (panel.classList.contains('open')) panel.querySelector('textarea').focus();
-    return;
-  }
-  panel = document.createElement('div');
-  panel.className = 'comment-panel open';
-  panel.dataset.noteKey = key;
-  const existing = localStorage.getItem(NOTE_PREFIX + key) || '';
-  panel.innerHTML = '<div class="lab">PRIVATE NOTE · saved on this device only</div><textarea placeholder="Type a note. It stays on this browser, attached to this field."></textarea>';
-  const ta = panel.querySelector('textarea');
-  ta.value = existing;
-  ta.addEventListener('input', () => {
-    const val = ta.value.trim();
-    const btn = ask.querySelector('.comment-btn');
-    if (val) {
-      localStorage.setItem(NOTE_PREFIX + key, ta.value);
-      if (btn) btn.classList.add('has-note');
-    } else {
-      localStorage.removeItem(NOTE_PREFIX + key);
-      if (btn) btn.classList.remove('has-note');
-    }
-    updateCommentCount();
-  });
-  ask.appendChild(panel);
-  ta.focus();
+  toggleFieldThread(key, ask);
 }
 
 function updateCommentCount() {
@@ -2191,6 +2301,328 @@ function escapeHTML(s) {
 }
 
 /* ============================================================
+   A CRITIQUE OF ONE STEP
+   ------------------------------------------------------------
+   CLAUDE.md open item 3, the half that was left: "in-place work
+   on the writing itself — dialogue passes, beat critique — using
+   the blueprint as context. Still not a chat box."
+
+   NOT A CHAT BOX. There is no panel bolted to the side of the
+   page and no conversation. There is one quiet line at the foot
+   of each step that says "ask what is weak about this", and what
+   comes back is about THAT step: notes that quote the writer's
+   own answers back at them, with the rest of the blueprint —
+   logline, theme, who the protagonist is — handed over as ground
+   the model is told not to contradict.
+
+   FIVE THINGS THIS MUST GET RIGHT, and each of them is a rule
+   somewhere above in this file or in CLAUDE.md:
+
+   1. IT NEVER RE-RENDERS A STEP. A step is 359 fields of the
+      user's writing; rebuilding one to show a panel would throw
+      away anything typed since the last autosave. Only the
+      `.ai-step` footer is ever replaced, and it holds no fields.
+   2. TWO GATES, INDEPENDENTLY. No key and nothing written are
+      different problems with different fixes, so the panel says
+      which one it is rather than showing a dead button.
+   3. NOTHING IS SENT WITHOUT A CLICK. Not on load, not on focus,
+      not on typing. The panel states what leaves the browser
+      before the button that sends it, not after.
+   4. IT CHANGES NOTHING. A critique is commentary on the user's
+      work, not an edit to it — there is no Accept here because
+      there is nothing to accept. It is marked as model-written,
+      it lives in the DOM only, and Dismiss removes it. That also
+      means it needs no storage key, which matters: a new key
+      needs four registrations and two of them are in hub.js.
+   5. THE QUOTES ARE VERIFIED. src/lib/ai.js drops any quote that
+      does not appear verbatim in what was sent, so this panel
+      can never tell a writer they wrote something they did not.
+   ============================================================ */
+
+/* Everything lazy: the model call, the panel furniture and the
+   blueprint context together are a few tens of kilobytes of code and
+   step JSON that a reader who never clicks should never download. */
+const aiLib = () => import('../lib/ai.js');
+const aiPanelLib = () => import('../ui/ai-panel.js');
+
+/* Per-step view state, none of it stored. A run in flight that
+   survived a reload would be a lie about a request that is no longer
+   happening — the same argument visualize.js makes. */
+const critiques = new Map();      // stepId → { open, running, abort, status, error, result }
+let critiqueSubscribed = false;
+
+const critiqueState = (id) => {
+  if (!critiques.has(id)) {
+    critiques.set(id, { open: false, running: false, abort: null, status: '', error: '', result: null });
+  }
+  return critiques.get(id);
+};
+
+/** One quiet footer per step that actually has fields. Steps whose
+    content is all prose (the covers' neighbours) get nothing, because
+    there would be nothing to critique. */
+function mountStepCritiques() {
+  document.querySelectorAll('.step').forEach((step) => {
+    if (!step.querySelector('input[data-key], textarea[data-key], select[data-key]')) return;
+    if (step.querySelector('.ai-step')) return;
+    const host = h('div.ai-step');
+    host.append(h('button.ai-trigger', {
+      type: 'button', 'data-action': 'aiCritique',
+      text: '◇  Ask what is weak about this step'
+    }));
+    step.append(host);
+  });
+}
+
+/** Replace ONE step's footer. Never the step. */
+function paintCritique(stepId, AI, Panel) {
+  const step = document.getElementById(stepId);
+  const host = step && step.querySelector('.ai-step');
+  if (!host) return;
+  const st = critiqueState(stepId);
+
+  if (!st.open) {
+    host.replaceChildren(h('button.ai-trigger', {
+      type: 'button', 'data-action': 'aiCritique',
+      text: '◇  Ask what is weak about this step'
+    }));
+    return;
+  }
+
+  const panel = h('div.ai-panel');
+  panel.append(h('div.ai-head', {}, [
+    h('h4.ai-title', { text: 'What is weak about this step' }),
+    h('button.bd-icon', {
+      type: 'button', 'data-action': 'aiCritiqueClose',
+      title: 'Close', 'aria-label': 'Close the critique panel', text: '✕'
+    })
+  ]));
+
+  /* GATE 1 — the key. */
+  const kg = Panel.keyGate('A critique');
+  if (kg) {
+    panel.append(kg);
+    if (kg.dataset.blocking === 'true') { host.replaceChildren(panel); return; }
+  }
+  panel.append(Panel.keyBar());
+
+  /* GATE 2 — the writing. Independent of the key: a key with an empty
+     step is a different problem with a different answer. */
+  const answers = Blueprint.stepAnswers(stepId);
+  if (!answers.length) {
+    panel.append(Panel.gate(
+      'There is nothing written in this step yet.',
+      'A critique reads what you wrote — with an empty step there is nothing to '
+      + 'read, and notes invented from a heading are notes about a film nobody '
+      + 'has written. Fill in an answer above and come back.'
+    ));
+    host.replaceChildren(panel);
+    return;
+  }
+
+  const context = Blueprint.blueprintContext({ skipStepId: stepId });
+  const sum = Blueprint.contextSummary(context);
+  const meta = Blueprint.stepMeta(stepId);
+
+  panel.append(Panel.disclose(
+    'Clicking the button below sends ' + answers.length
+    + (answers.length === 1 ? ' answer' : ' answers') + ' from this step, plus '
+    + (sum.fields
+      ? sum.fields + (sum.fields === 1 ? ' answer' : ' answers') + ' from '
+        + sum.steps + ' other spine ' + (sum.steps === 1 ? 'step' : 'steps') + ' as context, '
+      : 'nothing else — no other step has anything in it yet, ')
+    + 'to api.anthropic.com using the key on this device. Nothing else leaves this '
+    + 'browser, and nothing is sent until you click.'
+  ));
+
+  if (sum.fields) {
+    const list = h('details.ai-peek');
+    list.append(h('summary', { text: 'Show me exactly what would be sent' }));
+    const pre = h('pre.ai-peek-body');
+    pre.textContent = AI.buildCritiquePrompt({ step: meta, answers, context });
+    list.append(pre);
+    panel.append(list);
+  }
+
+  panel.append(h('div.ai-acts', {}, [
+    st.running
+      ? h('button.btn.danger', { type: 'button', 'data-action': 'aiCritiqueStop', text: 'Stop' })
+      : h('button.btn.primary', {
+        type: 'button', 'data-action': 'aiCritiqueRun',
+        text: 'Send this step and ask'
+      }),
+    st.result && !st.running
+      ? h('button.btn', { type: 'button', 'data-action': 'aiCritiqueClear', text: 'Dismiss the notes' })
+      : null
+  ]));
+
+  const status = Panel.statusLine(st.status);
+  if (status) panel.append(status);
+  const err = Panel.errorLine(st.error);
+  if (err) panel.append(err);
+
+  if (st.result) panel.append(renderCritiqueResult(st.result, Panel));
+  host.replaceChildren(panel);
+}
+
+function renderCritiqueResult(res, Panel) {
+  const box = h('div.ai-result');
+  box.append(h('div.ai-result-head', {}, [
+    Panel.aiMark('MODEL NOTES'),
+    h('span.ai-result-meta', {
+      text: 'by ' + res.model + ' · not saved, and gone when you reload'
+        + (res.truncated ? ' · the reply was cut short' : '')
+    })
+  ]));
+  if (res.verdict) box.append(h('p.ai-verdict', { text: res.verdict }));
+
+  const list = h('ol.ai-notes');
+  for (const n of res.notes) {
+    const li = h('li.ai-note');
+    if (n.quote) li.append(h('blockquote.ai-quote', { text: '“' + n.quote + '”' }));
+    li.append(h('p.ai-problem', { text: n.problem }));
+    if (n.tryThis) {
+      li.append(h('p.ai-try', {}, [
+        h('span.ai-try-label', { text: 'TRY' }),
+        h('span', { text: n.tryThis })
+      ]));
+    }
+    list.append(li);
+  }
+  box.append(list);
+
+  if (res.unverified) {
+    box.append(h('p.ai-caveat', {
+      text: res.unverified + (res.unverified === 1 ? ' note' : ' notes')
+        + ' came back with a quotation that is not word for word what you wrote, so '
+        + 'the quotation was dropped rather than shown. The note is still there; the '
+        + 'words attributed to you were not.'
+    }));
+  }
+  box.append(h('p.ai-caveat', {
+    text: 'These are notes, not edits. Nothing above this panel was changed, and '
+        + 'nothing here is saved with your blueprint.'
+  }));
+  return box;
+}
+
+/** Repaint every open panel — after a key or model change, which can
+    happen from any one of them. */
+async function repaintCritiques() {
+  const [AI, Panel] = await Promise.all([aiLib(), aiPanelLib()]);
+  for (const [id, st] of critiques) if (st.open) paintCritique(id, AI, Panel);
+}
+
+const stepIdOf = (el) => { const s = el.closest('.step'); return s ? s.id : ''; };
+
+async function withAI() {
+  const [AI, Panel] = await Promise.all([aiLib(), aiPanelLib()]);
+  Panel.wireAIPanel();
+  if (!critiqueSubscribed) {
+    critiqueSubscribed = true;
+    Panel.onAIChange(() => { repaintCritiques(); });
+  }
+  return [AI, Panel];
+}
+
+async function openCritique(el) {
+  const id = stepIdOf(el);
+  if (!id) return;
+  const st = critiqueState(id);
+  st.open = true;
+  st.error = '';
+  const [AI, Panel] = await withAI();
+  paintCritique(id, AI, Panel);
+}
+
+async function closeCritique(el) {
+  const id = stepIdOf(el);
+  if (!id) return;
+  const st = critiqueState(id);
+  if (st.abort) st.abort.abort();
+  st.open = false;
+  st.running = false;
+  st.abort = null;
+  st.status = '';
+  const [AI, Panel] = await withAI();
+  paintCritique(id, AI, Panel);
+}
+
+async function runCritique(el) {
+  const id = stepIdOf(el);
+  if (!id) return;
+  const st = critiqueState(id);
+  if (st.running) return;
+
+  const [AI, Panel] = await withAI();
+
+  /* Read the answers out of the LIVE fields, not the last save. A
+     debounced keystroke that has not landed yet is still what the
+     writer means by "this step", and critiquing a stale copy of their
+     own paragraph is the sort of wrong nobody would ever diagnose. */
+  saveData();
+  const answers = Blueprint.stepAnswers(id);
+  if (!answers.length) { paintCritique(id, AI, Panel); return; }
+
+  st.running = true;
+  st.error = '';
+  st.result = null;
+  st.status = 'Starting…';
+  st.abort = new AbortController();
+  paintCritique(id, AI, Panel);
+
+  let result = null;
+  try {
+    result = await AI.beatCritique({
+      step: Blueprint.stepMeta(id),
+      answers,
+      context: Blueprint.blueprintContext({ skipStepId: id })
+    }, {
+      signal: st.abort.signal,
+      onStatus: (m) => {
+        st.status = m;
+        /* DOM only. A repaint here would rebuild the panel under the
+           Stop button the user may be about to press. */
+        const node = document.querySelector('#' + id + ' .ai-status');
+        if (node) node.textContent = m;
+      }
+    });
+  } catch (err) {
+    st.running = false;
+    st.abort = null;
+    st.status = '';
+    st.error = (err && err.message) ? err.message : 'Something went wrong and nothing was changed.';
+    paintCritique(id, AI, Panel);
+    return;
+  }
+
+  st.running = false;
+  st.abort = null;
+  st.status = result.notes.length
+    + (result.notes.length === 1 ? ' note' : ' notes') + ' from ' + result.model + '.';
+  st.result = result;
+  paintCritique(id, AI, Panel);
+}
+
+async function stopCritique(el) {
+  const id = stepIdOf(el);
+  const st = id && critiques.get(id);
+  if (st && st.abort) st.abort.abort();
+}
+
+async function clearCritique(el) {
+  const id = stepIdOf(el);
+  if (!id) return;
+  const st = critiqueState(id);
+  st.result = null;
+  st.status = '';
+  st.error = '';
+  const [AI, Panel] = await withAI();
+  paintCritique(id, AI, Panel);
+}
+
+
+/* ============================================================
    PPTX EXPORT
    ------------------------------------------------------------
    Was a runtime <script> injection from jsdelivr — a third-party
@@ -2424,13 +2856,19 @@ const ACTIONS = {
   syncSave,
   syncLoad,
   syncTest,
-  saveSyncConfig
+  saveSyncConfig,
+  toggleSpineOnly: () => toggleSpineOnly()
 };
 
 // Actions that need the element they were fired from.
 const ELEMENT_ACTIONS = {
   duplicateRow: (el) => duplicateRow(el),
   deleteRow: (el) => deleteRow(el),
+  aiCritique: (el) => openCritique(el),
+  aiCritiqueClose: (el) => closeCritique(el),
+  aiCritiqueRun: (el) => runCritique(el),
+  aiCritiqueStop: (el) => stopCritique(el),
+  aiCritiqueClear: (el) => clearCritique(el),
   toggleCommentPanel: (el) => {
     const ask = el.closest('.ask, .pp-ask');
     if (ask) toggleCommentPanel(el.dataset.noteKey, ask);
@@ -2631,6 +3069,13 @@ function boot() {
 
   // loadData() ends with refreshAll() — same order as the original.
   loadData();
+
+  /* AFTER loadData, not before. Four steps — the scene, shot, cast and
+     location lists — have no fields at all until loadData() builds
+     their table rows, so a footer mounted at render time skipped
+     exactly the four steps with the most of the user's writing in
+     them, including the scene list, which is on the spine. */
+  mountStepCritiques();
   bridgeTitleToProject();
 
   setInterval(updateSavedAtTimer, 5000);

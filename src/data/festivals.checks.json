@@ -1,0 +1,138 @@
+{
+  "appliesTo": "festivals.json",
+  "lastChecked": "2026-09-29",
+  "why": "festivals.json is rewritten byte-for-byte from legacy/ every time `npm run extract` runs, so anything added to it is deleted by the next extraction without a word. The 2026 verification therefore lives here, in a hand-maintained overlay the extractor does not touch. The base file keeps the blueprint's own undated approximations — \"~Feb each year\" and \"$40–$70\" — because that is what the 2023 page said and rewriting it in place would lose the record. This file says what is actually true on the date given, festival by festival, with the URL it was read from.",
+  "method": "Every date and fee below was read on a page fetched on 29 September 2026. Festivals that were not re-checked say so and are NOT given invented dates: the tracker will not warn about a deadline nobody looked up, and it says which ones those are rather than leaving them looking verified.",
+  "sources": {
+    "filmfreeway": "https://filmfreeway.com",
+    "berlinale": "https://www.berlinale.de/en/film-entry/faq.html",
+    "mami": "https://mami.mumbaifilmfestival.com/festival-guide/"
+  },
+  "festivals": {
+    "Berlinale Shorts": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://www.berlinale.de/en/film-entry/faq.html",
+      "fee": "€75 processing fee for a short film (€175 for a feature), payable once however many sections you apply to, non-refundable.",
+      "deadlines": [
+        { "label": "Short film registration", "date": "2026-11-04" }
+      ],
+      "notes": [
+        "Not on FilmFreeway. The FAQ states you can only submit directly through the Berlinale's own form.",
+        "Feature-length deadline is 21 October 2026; the short-film one is two weeks later."
+      ]
+    },
+    "Sundance Shorts": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://filmfreeway.com/Sundance",
+      "fee": null,
+      "deadlines": [
+        { "label": "Early deadline, shorts", "date": "2026-07-13" },
+        { "label": "Official deadline, shorts", "date": "2026-08-03" },
+        { "label": "Late deadline, shorts", "date": "2026-08-31" }
+      ],
+      "notes": [
+        "For the 2027 festival, 21–31 January 2027. All three short-film deadlines had already passed when this was checked.",
+        "The short-film entry fee could not be read off the listing — the per-category fees were not exposed on the page. Check it on FilmFreeway before you budget for it.",
+        "Shorts and features have different deadlines. The feature dates are three weeks later throughout, which is an easy and expensive thing to misread."
+      ]
+    },
+    "Palm Springs ShortFest": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://filmfreeway.com/PalmSpringsInternationalShortFest",
+      "fee": "US$50 earlybird, $60 regular, $70 late. Student categories $45 / $55 / $65.",
+      "deadlines": [
+        { "label": "Earlybird", "date": "2026-11-01" },
+        { "label": "Regular", "date": "2026-12-31" },
+        { "label": "Late", "date": "2027-02-07" }
+      ],
+      "notes": [
+        "For the 2027 festival, 22–28 June 2027. Notification 14 May 2027.",
+        "Submissions opened 1 September 2026, so the earlybird window is open."
+      ]
+    },
+    "Fantasia (Montreal)": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://filmfreeway.com/FantasiaFilmFestival",
+      "fee": "US$90–140 across the nine categories and five deadline tiers; the international short tier was not isolated on the listing, so read it there before paying.",
+      "deadlines": [
+        { "label": "Earlybird", "date": "2026-12-01" },
+        { "label": "Regular", "date": "2027-01-15" },
+        { "label": "Late", "date": "2027-02-10" },
+        { "label": "Extended", "date": "2027-03-10" },
+        { "label": "Last chance", "date": "2027-04-15" }
+      ],
+      "notes": [
+        "For the 2027 festival, 15 July – 1 August 2027. Notification 28 May 2027.",
+        "Separate INTERNATIONAL, ASIA and CANADIAN short categories. An Indian short goes to ASIA, not INTERNATIONAL — the international one is explicitly for films produced outside Canada and Asia."
+      ]
+    },
+    "Dharamshala International": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://filmfreeway.com/DharamshalaInternationalFilmFestival",
+      "fee": "US$35–75 depending on category and deadline tier; short narratives and short documentaries sit at the bottom of that band.",
+      "deadlines": [
+        { "label": "Early bird", "date": "2026-06-02" },
+        { "label": "Regular", "date": "2026-07-02" },
+        { "label": "Late", "date": "2026-08-02" }
+      ],
+      "notes": [
+        "15th edition, 29 October – 1 November 2026. Notification 11 September 2026. Every deadline for this edition had passed when it was checked.",
+        "Short Narratives is capped at 25 minutes here, not 30."
+      ]
+    },
+    "IFFI · Goa": {
+      "status": "checked",
+      "checked": "2026-09-29",
+      "url": "https://filmfreeway.com/InternationalFilmFestivalofIndiaIFFI-Goa",
+      "fee": "Free to enter the International Competition.",
+      "deadlines": [
+        { "label": "Regular deadline", "date": "2026-08-31" }
+      ],
+      "notes": [
+        "57th edition, 20–28 November 2026. Notification 20 October 2026. The deadline had passed when this was checked.",
+        "The listing shows feature categories only — International Competition, curated non-competitive segments, Best Debut Feature, the ICFT UNESCO Gandhi Medal. No short-film category was visible, so the blueprint's advice to submit a short here needs confirming with the festival."
+      ]
+    },
+    "MAMI · Mumbai Film Festival": {
+      "status": "warning",
+      "checked": "2026-09-29",
+      "url": "https://mami.mumbaifilmfestival.com/festival-guide/",
+      "fee": null,
+      "deadlines": [],
+      "notes": [
+        "No current edition could be found. On 29 September 2026 the festival's own Festival Guide page still opened with \"MAMI Mumbai Film Festival 2024 is here!\" — two years stale — and carried no submission dates.",
+        "Treat MAMI as unconfirmed rather than as a target. Check directly with the festival before you build a campaign around it."
+      ]
+    },
+    "Cannes Court Métrage": {
+      "status": "blocked",
+      "checked": "2026-09-29",
+      "notes": [
+        "Not verified. The official regulations page is behind a bot-detection interstitial, which was not worked around. The blueprint's \"~Feb each year\" is the only guidance here and it is an approximation from 2023. Look the real date up before you plan around it."
+      ]
+    },
+    "TIFF · Toronto": { "status": "not-checked", "checked": "2026-09-29" },
+    "SXSW Shorts": { "status": "not-checked", "checked": "2026-09-29" },
+    "Locarno Pardi di domani": {
+      "status": "blocked",
+      "checked": "2026-09-29",
+      "notes": ["Not verified — the festival's site could not be fetched."]
+    },
+    "Clermont-Ferrand": { "status": "not-checked", "checked": "2026-09-29" },
+    "Aspen ShortsFest": { "status": "not-checked", "checked": "2026-09-29" },
+    "IFFK · Kerala": {
+      "status": "blocked",
+      "checked": "2026-09-29",
+      "notes": ["Not verified — the submission portal requires an account before it shows rules or fees."]
+    },
+    "Sitges (Spain)": { "status": "not-checked", "checked": "2026-09-29" },
+    "Bengaluru International": { "status": "not-checked", "checked": "2026-09-29" },
+    "Vimeo Staff Picks": { "status": "not-checked", "checked": "2026-09-29" },
+    "Short of the Week": { "status": "not-checked", "checked": "2026-09-29" }
+  }
+}

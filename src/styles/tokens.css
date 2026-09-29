@@ -29,8 +29,38 @@
   --ink:          #16130f;
   --ink-body:     #35302a;
   --ink-muted:    #6d6558;
+  /* --ink-faint IS NOT A TEXT COLOUR. Read this before reaching for it.
+
+     It was one, in 41 rules across thirteen stylesheets, and it clears
+     4.5:1 against NO GROUND IN ANY THEME. Best case 4.13:1, on ink's
+     sunk card; worst 2.34:1, on Desk's. It is not mistuned — raising it
+     far enough to clear AA on Desk's sunk card lands it within a
+     hair of --ink-muted, which is to say it deletes itself. The token
+     was MISNAMED: "faint" described how it looked, and what it actually
+     encoded was "below the legibility floor".
+
+     So the third ink is gone as a text colour. Every one of those 41
+     rules now takes --ink-muted, which clears 4.5:1 on every ground in
+     every theme (its own worst case is 4.54:1, paper on the sunk card),
+     and verify greps the source for `color: var(--ink-faint)` and fails
+     the run. Six files had already worked around this one at a time,
+     each with its own comment saying the same thing; those comments can
+     stay as history but nobody needs to write a seventh.
+
+     It survives for what it is genuinely good at — a line, a swatch, a
+     hover border — because a 3:1 hairline is a correct hairline. Use it
+     for `border-color`, `background`, `stroke`. Never for `color` or an
+     SVG `fill` on text.
+
+     THE HIERARCHY IS NOW THREE INKS, NOT FOUR: --ink for the thing
+     itself, --ink-body for running prose, --ink-muted for everything
+     secondary. If two kinds of secondary text need to be told apart,
+     that is a job for size, weight or case — not for a fourth grey
+     nobody can read. */
   --ink-faint:    #958b7b;
 
+  /* Also not text colours, for the same reason and with worse numbers:
+     1.22-1.82:1 across the four themes. A hairline is a hairline. */
   --rule:         #cfc5ae;
   --rule-hair:    #e2d9c6;
 
@@ -240,6 +270,12 @@
   --print-paper: #ffffff;
   --print-ink:   #000000;
   --print-rule:  #888888;
+  /* The print family's SECONDARY INK, and it exists because --print-rule
+     was doing that job: the screenplay preview painted its page-break
+     slugs and its empty state --print-rule, which is 3.54:1 on white.
+     A rule colour is a hairline colour; text on the print page takes
+     this (5.74:1) and the hairlines keep --print-rule. */
+  --print-muted: #666666;
   --print-wash:  #f0f0f0;
 }
 

@@ -1,0 +1,226 @@
+/* ============================================================
+   FIELD COMMENTS
+   ------------------------------------------------------------
+   The panel src/ui/comments.js opens under a field. Two sections:
+   the private note (local, always there) and the shared thread.
+
+   HOUSE RULES OBSERVED HERE
+   - Every colour is a token. Nothing below is a literal.
+   - A FILL IS NEVER A TEXT COLOUR. --shorts paints the panel's rule
+     and the suggestion's edge; the words on those surfaces take
+     --shorts-deep, which tokens.css re-points to a light value under
+     sepia, desk and ink. --ink-faint and --rule never appear as
+     `color` at all.
+   - Every shape is a --sk-* variable, so a skin can flatten or round
+     this the way it does every other card. A literal radius here
+     would be one shape no skin could ever override.
+   - Nothing is wider than its column: the suggestion's WAS/PROPOSED
+     pair is a two-column grid above 560px and one column below, and
+     both long values wrap. A pasted paragraph of dialogue is the
+     normal case, not the edge case.
+   ============================================================ */
+
+.cmt-panel {
+  /* .comment-panel already supplies display/margin/padding/ground.
+     This only adds what the shared half needs. */
+  border-left-color: var(--shorts);
+}
+.cmt-sec + .cmt-sec { margin-top: var(--s4); }
+.cmt-sec .lab {
+  margin-bottom: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--shorts-deep);
+}
+.cmt-sec-thread { padding-top: var(--s3); border-top: 1px solid var(--sk-card-line); }
+
+/* ---- inputs ------------------------------------------------ */
+.cmt-note,
+.cmt-input {
+  width: 100%;
+  min-height: 50px;
+  padding: var(--s2) var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  resize: vertical;
+}
+.cmt-note:focus,
+.cmt-input:focus { border-color: var(--shorts); outline: var(--focus); outline-offset: var(--focus-offset); }
+
+/* ---- states ------------------------------------------------ */
+.cmt-state,
+.cmt-hint,
+.cmt-err {
+  margin: var(--s2) 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.cmt-hint { font-size: var(--t-tiny); color: var(--ink-muted); }
+.cmt-warn { color: var(--warn-deep); }
+.cmt-err  { color: var(--danger-on); background: var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius); }
+.cmt-state .cmt-btn { margin-left: var(--s2); }
+
+/* ---- buttons ----------------------------------------------- */
+.cmt-btn {
+  display: inline-block;
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-btn-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-body);
+  cursor: pointer;
+}
+.cmt-btn:hover { border-color: var(--shorts); color: var(--shorts-deep); }
+.cmt-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.cmt-accept,
+.cmt-post {
+  background: var(--shorts);
+  border-color: var(--shorts);
+  color: var(--shorts-on);
+}
+.cmt-accept:hover,
+.cmt-post:hover { background: var(--shorts-deep); border-color: var(--shorts-deep); color: var(--shorts-on); }
+
+.cmt-link {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cmt-link:hover { color: var(--ink); }
+.cmt-link-danger:hover { color: var(--ink); text-decoration-color: var(--danger); }
+
+/* ---- the thread -------------------------------------------- */
+.cmt-list { display: flex; flex-direction: column; gap: var(--s2); }
+.cmt-item {
+  padding: var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  color: var(--sk-card-ink);
+}
+.cmt-item.is-closed { opacity: .72; }
+.cmt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+.cmt-who  { font-weight: 600; font-size: var(--t-small); color: var(--ink); }
+.cmt-when { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.cmt-body {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cmt-kind,
+.cmt-status {
+  padding: 0 var(--s1);
+  border-radius: var(--sk-btn-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+}
+.cmt-kind            { background: var(--shorts-wash);  color: var(--shorts-deep); }
+.cmt-kind-suggestion { background: var(--library-wash); color: var(--library-deep); }
+.cmt-status-accepted { background: var(--ok-wash);     color: var(--ok-deep); }
+.cmt-status-rejected { background: var(--danger-wash); color: var(--ink); }
+.cmt-status-resolved { background: var(--paper-sunk);  color: var(--ink-body); }
+
+/* ---- a suggestion: what it was, what it would be ----------- */
+.cmt-sugg {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s2);
+  margin: var(--s2) 0;
+}
+@media (min-width: 560px) {
+  .cmt-sugg { grid-template-columns: 1fr 1fr; }
+}
+.cmt-sugg-side {
+  padding: var(--s2);
+  background: var(--paper-sunk);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+  min-width: 0;
+}
+.cmt-sugg-from { border-left-color: var(--rule); }
+.cmt-sugg-to   { border-left-color: var(--shorts); }
+.cmt-sugg-lab {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.cmt-sugg-to .cmt-sugg-lab { color: var(--shorts-deep); }
+.cmt-sugg-txt {
+  display: block;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cmt-acts,
+.cmt-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+.cmt-replies { margin-top: var(--s2); padding-left: var(--s3); border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c); }
+.cmt-reply + .cmt-reply { margin-top: var(--s2); }
+.cmt-reply .cmt-when { margin-left: var(--s2); }
+.cmt-reply-form { margin-top: var(--s2); display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; }
+
+/* ---- the composer ------------------------------------------ */
+.cmt-new { margin-top: var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
+.cmt-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-body);
+}
+.cmt-new-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.cmt-check { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-tiny); color: var(--ink-body); }
+.cmt-new-row .cmt-post { margin-left: auto; }
+.cmt-sugg-new { display: flex; flex-direction: column; gap: var(--s2); }
+
+/* ---- the field button says a thread is open ----------------
+   A fill, not a number. The button is a 24px circle sitting inside a
+   label, and anything absolutely positioned off it is a horizontal
+   overflow waiting to happen at 390px — which is a gate, and a real
+   phone. The count is in the panel, one tap away. --------------- */
+.comment-btn.has-thread {
+  background: var(--shorts);
+  border-color: var(--shorts);
+  color: var(--shorts-on);
+}
+.comment-btn.has-thread.has-note { background: var(--library); border-color: var(--library); }
+
+/* Nothing in a comment belongs on a printed blueprint. */
+@media print {
+  .cmt-sec-thread { display: none !important; }
+}

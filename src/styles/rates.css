@@ -1,0 +1,129 @@
+/* ============================================================
+   THE RATE CARD'S PROVENANCE LAYER
+   ------------------------------------------------------------
+   Read by library.html only. The rate tables themselves live in
+   editorial.css and are not touched here; what this file styles is
+   the evidence underneath each figure — where it came from, when it
+   was last looked at, and how much weight it will bear.
+
+   The whole design problem is one sentence: a 2024-25 figure and a
+   2026-checked figure must not look the same. If they do, the page
+   is lying by typography, and a filmmaker prices a shoot off the
+   wrong one. So a checked figure gets a green tag and a live link
+   to the page it was read on; an unverified one gets a grey tag
+   that says NOT UPDATED; and a figure from somewhere other than
+   Chennai gets a third tag that says it is context, not a rate.
+
+   Tokens for colour, --sk-* for shape, as everywhere. No fill token
+   is used as a text colour: the tags take --ok-deep / --warn-deep,
+   never --ok / --accent / a hue.
+   ============================================================ */
+
+.rate-base {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-check {
+  display: grid;
+  gap: 0.2em;
+  margin-top: var(--s2);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--rule-hair);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+  white-space: normal;
+}
+
+.rate-check-tag,
+.rate-section-check .rate-check-tag {
+  justify-self: start;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  padding: 0.1em 0.45em;
+  color: var(--ink-muted);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-btn-radius);
+}
+
+/* Measured on a page, on a date, with the link to prove it. */
+[data-confidence="checked"] > .rate-check-tag {
+  color: var(--ok-deep);
+  background: var(--ok-wash);
+  border-color: var(--ok);
+}
+/* Real, published, and from the wrong city or the wrong package.
+   Amber rather than green, because believing it is the mistake. */
+[data-confidence="corroborating"] > .rate-check-tag {
+  color: var(--warn-deep);
+  background: var(--warn-wash);
+  border-color: var(--warn);
+}
+/* Two years old and nobody has looked. Grey is the honest colour. */
+[data-confidence="stale"] > .rate-check-tag {
+  color: var(--ink-muted);
+  background: var(--paper-sunk);
+  border-color: var(--rule);
+}
+
+.rate-check-val {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+}
+.rate-check-src a {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rate-check-caveat {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.rate-section-check {
+  display: block;
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+}
+.rate-section-check[data-confidence="checked"] { border-left-color: var(--ok); }
+.rate-section-check a {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rate-orphans {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px dashed var(--rule);
+  border-radius: var(--sk-radius);
+}
+
+/* An absence is a finding. The list of what nobody publishes tells
+   a producer which numbers need a phone call, which is worth as
+   much as the numbers that were found. */
+.rate-notfound {
+  margin-top: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+}
+.rate-notfound ul {
+  margin: var(--s3) 0 0;
+  padding-left: var(--s5);
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}

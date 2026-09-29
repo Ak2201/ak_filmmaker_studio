@@ -54,7 +54,7 @@
 .ct-dept-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -91,7 +91,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* One input treatment for the whole page, the same one the
@@ -257,7 +257,7 @@
   flex: 0 0 auto;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -278,7 +278,7 @@
 }
 .ct-pick-role {
   min-width: 0;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-size: var(--t-tiny);
   overflow: hidden;
   text-overflow: ellipsis;

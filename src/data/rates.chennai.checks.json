@@ -1,0 +1,192 @@
+{
+  "appliesTo": "rates.chennai.2024.json",
+  "lastChecked": "2026-09-29",
+  "why": "rates.chennai.2024.json is the 2024-25 card, extracted verbatim from legacy/ by `npm run extract` and rewritten byte-for-byte every time that runs. Provenance written into it would be deleted by the next extraction, silently. So the verification lives HERE, in a hand-maintained overlay the extractor does not touch — the same arrangement as steps.production.json beside the extracted steps.feature.json. The base file keeps its name because the date in it is still true: it is the 2024-25 card. What is 2026 is in this file, and says so per figure.",
+  "method": "Every figure below was read off a page fetched on the date given, and the exact URL is recorded. Nothing is interpolated, averaged or inflated. There is NO across-the-board adjustment anywhere in this file, and there must not be one: a multiplier applied to a stale number produces a figure that looks measured and is not, which is worse than the stale number it replaces. Where no current source could be found, the 2024-25 figure stands unchanged and the section says how old it is.",
+  "confidence": {
+    "checked": "Read on a published page on the date given. The URL is in `sources`.",
+    "corroborating": "A real published figure, but not Chennai-specific, or not for the same package. Context for the Chennai figure, not a replacement for it.",
+    "stale": "The 2024-25 blueprint figure. No current source was found. Age is shown; treat as historical."
+  },
+  "sources": {
+    "muvimedia": {
+      "name": "MuviMedia, Chennai",
+      "url": "https://muvimedia.in/cameras/",
+      "kind": "A rental house's own published rate card",
+      "place": "Virugambakkam, Chennai 600092",
+      "checked": "2026-09-29",
+      "note": "The page states its rental window as 6am to next day 6am, so these are 24-hour day rates. It carries no last-updated date, so its own currency is unknown beyond the date it was read. It is ONE vendor: a list price, not a market range."
+    },
+    "cybertize": {
+      "name": "Cybertize Media (India-wide rental broker)",
+      "url": "https://cybertizemedia.com/camera-rentals/arri-alexa-35-for-rent-in-india/",
+      "kind": "Broker's published price band",
+      "place": "Serves Delhi, Mumbai and Bangalore primarily — NOT Chennai",
+      "checked": "2026-09-29",
+      "note": "Quoted here only to show whether the Chennai vendor's figure is an outlier. Not a Chennai rate."
+    },
+    "hansindia-fefsi": {
+      "name": "The Hans India — FEFSI moves Madras HC over underpayment to technicians",
+      "url": "https://www.thehansindia.com/news/national/south-indian-film-employees-federation-moves-madras-hc-over-underpayment-to-technicians-983973",
+      "kind": "News report",
+      "published": "2025-06-30",
+      "checked": "2026-09-29"
+    }
+  },
+  "sectionNotes": {
+    "camera-bodies": {
+      "confidence": "checked",
+      "text": "Eight of these twelve bodies were re-checked on 29 September 2026 against one Chennai rental house's published card, and the checked figure is shown beside the 2024-25 range. Read the gap carefully rather than simply believing the newer number: the 2024-25 entries read as market-wide package ranges and the 2026 ones are a single vendor's list price for a body. Where they disagree by a factor of three, that is a question to put to three vendors, not an answer."
+    },
+    "lens-kits": {
+      "confidence": "stale",
+      "text": "No current published Chennai lens-kit rate card was found in this pass. Every figure below is the 2024-25 one, unverified since."
+    },
+    "lighting-and-grip": {
+      "confidence": "stale",
+      "text": "No current published Chennai lighting or grip rate card was found in this pass. Every figure below is the 2024-25 one, unverified since."
+    },
+    "sound-and-power": {
+      "confidence": "stale",
+      "text": "No current published Chennai sound or generator rate card was found in this pass. Every figure below is the 2024-25 one, unverified since."
+    },
+    "crew-daily-rates": {
+      "confidence": "stale",
+      "text": "There is no current agreed union scale to quote, and that is the finding rather than a gap in the search. The FEFSI–TFPC wage agreement is renegotiated roughly every three years; the one signed in 2022 expired on 9 March 2025 and had not been replaced when the dispute reached the Madras High Court, where FEFSI's case was that technicians in the state often earn less than ₹3,000 a day. Until a new agreement is signed there is no floor to cite, so every figure below is the 2024-25 one and should be treated as a negotiating start, not a rate.",
+      "source": "hansindia-fefsi"
+    },
+    "music-and-post": {
+      "confidence": "stale",
+      "text": "No current published Chennai post-production rate card was found in this pass. Every figure below is the 2024-25 one, unverified since."
+    }
+  },
+  "rows": [
+    {
+      "section": "camera-bodies",
+      "item": "ARRI Alexa 35",
+      "confidence": "checked",
+      "value": 25000,
+      "unit": "day",
+      "raw": "₹25,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29",
+      "caveat": "The vendor lists this as \"ARRI S 35\", not \"Alexa 35\". Super-35 ARRI bodies are almost certainly what is meant, and the same card lists the Alexa SXT separately, but the label is the vendor's and it is not unambiguous. Confirm the exact body when you quote."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "ARRI Alexa 35",
+      "confidence": "corroborating",
+      "value": null,
+      "unit": "day",
+      "raw": "₹15,000 – 25,000/day",
+      "source": "cybertize",
+      "checked": "2026-09-29",
+      "caveat": "India-wide broker band for a body-and-essentials package; premium packages with cine lenses are quoted far higher. Not Chennai."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "ARRI Alexa Mini LF",
+      "confidence": "checked",
+      "value": 16000,
+      "unit": "day",
+      "raw": "₹16,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29"
+    },
+    {
+      "section": "camera-bodies",
+      "item": "ARRI Alexa Mini",
+      "confidence": "checked",
+      "value": 8000,
+      "unit": "day",
+      "raw": "₹8,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29",
+      "caveat": "A third of the 2024-25 range. The likeliest reading is that this is a body rate and the older figure was a package, but the vendor's page does not say. Do not budget off either without a written quote."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Sony Venice 2",
+      "confidence": "checked",
+      "value": 16000,
+      "unit": "day",
+      "raw": "₹16,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29"
+    },
+    {
+      "section": "camera-bodies",
+      "item": "RED V-Raptor",
+      "confidence": "checked",
+      "value": 16000,
+      "unit": "day",
+      "raw": "₹16,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29"
+    },
+    {
+      "section": "camera-bodies",
+      "item": "RED Komodo",
+      "confidence": "checked",
+      "value": 4500,
+      "unit": "day",
+      "raw": "₹4,500/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29",
+      "caveat": "Listed as \"Red Komodo 6K Full Body Setup\". The same card prices the Komodo X global-shutter body at ₹6,000/day."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Sony FX6",
+      "confidence": "checked",
+      "value": 4000,
+      "unit": "day",
+      "raw": "₹4,000/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29"
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Sony FX3",
+      "confidence": "checked",
+      "value": 2500,
+      "unit": "day",
+      "raw": "₹2,500/day",
+      "source": "muvimedia",
+      "checked": "2026-09-29"
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Sony FX9",
+      "confidence": "stale",
+      "checked": "2026-09-29",
+      "caveat": "Not on the Chennai card that was checked. 2024-25 figure stands."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Canon C500 Mark II",
+      "confidence": "stale",
+      "checked": "2026-09-29",
+      "caveat": "Not on the Chennai card that was checked. 2024-25 figure stands."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Blackmagic URSA Mini Pro 12K",
+      "confidence": "stale",
+      "checked": "2026-09-29",
+      "caveat": "No Blackmagic body appeared on any Chennai card found in this pass. 2024-25 figure stands."
+    },
+    {
+      "section": "camera-bodies",
+      "item": "Blackmagic Pocket 6K Pro",
+      "confidence": "stale",
+      "checked": "2026-09-29",
+      "caveat": "No Blackmagic body appeared on any Chennai card found in this pass. 2024-25 figure stands."
+    }
+  ],
+  "notFound": [
+    "Any published FEFSI wage scale — a table of daily rates by crew grade. FEFSI's own site carries an undated line claiming a wage agreement was negotiated, with no figures attached; no primary report of a replacement for the expired 2022 MoU was found.",
+    "Any Chennai line producer or production-services day rate. Every company found in this pass quotes on enquiry; the only published number on the government's India Cine Hub portal is a registration fee, not a production rate.",
+    "Any Chennai lens, lighting, grip, sound, generator or post-production rate card. The camera houses publish; the rest of the supply chain does not."
+  ]
+}

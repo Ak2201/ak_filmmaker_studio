@@ -63,7 +63,8 @@ const SCOPED_KEYS = [
   'arunak_script_v1',
   'arunak_locations_v1',
   'arunak_workbench_v1',
-  'arunak_dissect_v1'
+  'arunak_dissect_v1',
+  'arunak_festivals_v1'
   // intentionally NOT scoped: arunak_studio_prefs_v1 (dark mode = global),
   //                            arunak_supabase_cfg_v1 (account-level),
   //                            arunak_note_* (per-field notes, fine global for now)

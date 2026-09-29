@@ -1,0 +1,423 @@
+/* ============================================================
+   THE AI PANELS
+   ------------------------------------------------------------
+   Shared by the dialogue pass on write.html and the step critique
+   on feature.html — the two halves of CLAUDE.md open item 3 —
+   and written once for the same reason src/ui/ai-panel.js exists:
+   three hand-copied key forms is three chances for one of them to
+   lose `type="password"`.
+
+   TWO THINGS THIS STYLESHEET IS RESPONSIBLE FOR, beyond looking
+   like the rest of the studio:
+
+   1. MODEL-WRITTEN TEXT IS ALWAYS DISTINGUISHABLE. `.ai-mark` is
+      the one object that says so and it is the same object in
+      both pages, so a reader learns it once. It is painted in
+      the WARN family, not the accent: the accent is what the app
+      uses for its own emphasis, and a mark that shares a colour
+      with the page's furniture is a mark that reads as
+      furniture. warn-deep on warn-wash is the pairing
+      .step-badge.in-progress already uses and already passes the
+      4.5:1 gate in all four themes.
+   2. THE USER'S WORDS AND THE MODEL'S ARE NEVER CONFUSABLE. In
+      the comparison, the original sits under a plain label on
+      the page's own surface; every model version sits in a card
+      with the mark above it. Side by side at width, stacked on
+      a phone, and the writer's line is always first.
+
+   SHAPES ARE --sk-*, COLOURS ARE TOKENS. No radius, padding,
+   border width or size is a literal here, so all five skins keep
+   control of these panels, and no `color` is a fill.
+   ============================================================ */
+
+/* ---- the quiet footer on a step ----------------------------- */
+.ai-step {
+  margin-top: var(--s5);
+  padding-top: var(--s3);
+  border-top: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+}
+
+.ai-trigger {
+  padding: var(--s1) 0;
+  background: none;
+  border: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.ai-trigger:hover,
+.ai-trigger:focus-visible { color: var(--accent-deep); text-decoration: underline; }
+
+/* ---- the panel ---------------------------------------------- */
+.ai-inline { margin: var(--s3) 0; }
+
+.ai-panel {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.ai-title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+}
+
+/* ---- the key ------------------------------------------------ */
+.ai-keygate { display: grid; gap: var(--s3); }
+
+.ai-key { display: grid; gap: var(--s3); }
+.ai-lead {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+.ai-field { display: grid; gap: var(--s1); min-width: 0; }
+.ai-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ai-key-input,
+.ai-ask-input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+
+/* An error reads as an error through its GROUND, not its ink.
+   There is no --danger-deep token and --danger is a fill: as text
+   it is the exact mistake CLAUDE.md's "a fill is not a text colour"
+   entry is about. So the wash carries the meaning and the type stays
+   at body ink, which measures well above 4.5:1 on that wash in all
+   four themes. */
+.ai-keynote,
+.ai-error {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--danger-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--danger);
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+
+.ai-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.ai-link {
+  font-size: var(--t-small);
+  color: var(--accent-deep);
+}
+
+.ai-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+}
+.ai-keystate {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.ai-modelwrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.ai-sel {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s1) var(--s2);
+  background: transparent;
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-body);
+}
+.ai-gap { flex: 1 1 0; min-width: 0; }
+
+/* ---- the gates ---------------------------------------------- */
+.ai-gate {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+  padding: var(--s3);
+  background: var(--warn-wash);
+  border: var(--sk-card-line-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+}
+.ai-gate p {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--warn-deep);
+}
+.ai-gate strong { color: var(--warn-deep); }
+
+/* ---- what leaves the browser -------------------------------- */
+.ai-disclose {
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius);
+}
+.ai-disclose strong {
+  display: block;
+  margin-bottom: var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.ai-disclose p {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+.ai-peek summary {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.ai-peek-body {
+  margin: var(--s2) 0 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- running, and going wrong ------------------------------- */
+.ai-status {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ---- the mark ----------------------------------------------
+   The one object that says "a model wrote this". Same shape, same
+   colour, both pages. */
+.ai-mark {
+  display: inline-block;
+  padding: var(--s1) var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--warn-deep);
+  background: var(--warn-wash);
+  border: var(--sk-card-line-w) solid var(--warn);
+  border-radius: var(--sk-btn-radius);
+}
+
+.ai-undo {
+  padding: var(--s1) var(--s2);
+  background: none;
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-btn-radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.ai-undo:hover,
+.ai-undo:focus-visible { color: var(--accent-deep); border-color: var(--accent); }
+
+/* ---- the result --------------------------------------------- */
+.ai-result { display: grid; gap: var(--s3); }
+.ai-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.ai-result-meta {
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.ai-verdict {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+
+.ai-notes {
+  display: grid;
+  gap: var(--s4);
+  margin: 0;
+  padding-left: var(--s5);
+}
+.ai-note { max-width: var(--sk-deck-measure); }
+.ai-quote {
+  margin: 0 0 var(--s2);
+  padding-left: var(--s3);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  font-style: italic;
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.ai-problem {
+  margin: 0 0 var(--s2);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.ai-try {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.ai-try-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+
+.ai-caveat {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ---- the comparison ----------------------------------------
+   The writer's line first and on the page's own surface; every
+   model version in a card, behind the mark above them. Stacked on a
+   phone, side by side from 720px — and the writer is first in the
+   source, so it is first in both. */
+.ai-compare {
+  display: grid;
+  gap: var(--s4);
+}
+@media (min-width: 720px) {
+  .ai-compare { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; }
+}
+
+.ai-col-label {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ai-speech {
+  margin: 0;
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-mine {
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius);
+}
+
+.ai-theirs { display: grid; gap: var(--s3); min-width: 0; }
+.ai-option {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  padding: var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+}
+.ai-note-line {
+  margin: 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ---- the mark on an element row (write.html) ---------------- */
+.wr-ai-tag {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+/* An inset shadow rather than a border: .wr-text already carries a
+   1px transparent border that :hover colours in, and adding a real
+   left border here would both fight that rule and move the text
+   column by three pixels on the lines a model touched. */
+.wr-el.has-ai .wr-text {
+  box-shadow: inset var(--sk-hue-rule-w) 0 0 var(--warn);
+}

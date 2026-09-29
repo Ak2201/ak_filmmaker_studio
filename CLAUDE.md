@@ -475,16 +475,39 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 5. **Finish collaboration.** The comments API in `src/lib/cloud.js` is fully
    written — threads, suggestions, accept/reject — with no UI attached.
    Audit Supabase row-level security before real strangers hold share links.
-6. **`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**
-   `.bd-stat span` measures 2.53–2.76:1 in desk; `.bd-el-scenes` and
-   `.bd-el-cat` are also under. Two agents found this independently on
-   four different pages, so it is app-wide, not local. The reason it is
-   invisible is the more important half: `.bd-stat`, `.hero-stat`,
-   `.hub-stat-strip` and `.bd-el` are not in the contrast probe's
-   `SURFACES` list in `verify-migration.mjs`, so the stat strip — which
-   is on seven pages — has never been contrast-checked at all. Widen the
-   probe FIRST, then fix what it finds; fixing the colour first would
-   leave the hole open.
+6. ~~**`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**~~
+   Done, and the second half of it is the part worth keeping.
+
+   `--ink-faint` is no longer a text colour anywhere. It clears 4.5:1
+   against **no ground in any theme** — 4.13:1 at best on the ink
+   theme's sunk card, 2.34:1 at worst on Desk's — and it could not be
+   retuned, because raised far enough to clear AA it lands on
+   `--ink-muted`. It was misnamed rather than mistuned: "faint"
+   described how it looked, and what it encoded was "below the
+   legibility floor". All 41 `color:` rules now take `--ink-muted`
+   (worst case 4.54:1); the token survives for borders, swatches and
+   hover lines, where a 3:1 hairline is a correct hairline. **The ink
+   hierarchy is three deep now, not four** — `--ink`, `--ink-body`,
+   `--ink-muted`. Two kinds of secondary text are told apart by size,
+   weight or case, not by a fourth grey nobody can read.
+
+   Two more went with it: `--rule`/`--rule-hair` as text (1.2–1.8:1),
+   and `--print-rule` as text on the screenplay preview (3.54:1), which
+   is why `--print-muted` now exists.
+
+   **The probe no longer walks a list.** `SURFACES` is gone; the AA
+   check walks every leaf text node in `main`, the open modals and the
+   shell, across 4 themes × 5 skins × every page, and every model is
+   seeded on every page first — an empty page has nothing to walk, and
+   a wholesale walk of an empty state is a list by another name. A
+   second source check greps for `color:`/`fill:` on the four hairline
+   tokens, the same shape as the fill-as-text check beside it, because
+   a grep sees files no test page renders. Verdict at the time of
+   writing: zero findings, from 173.
+
+   What is still unmeasured, so nobody mistakes the walk for total
+   coverage: page state this run does not reach, and `::before` /
+   `::after` content, which is not a text node.
 
 7. **Refresh the Chennai rates** (currently 2024-25, shown with that date) and
    turn the festival list into a submission tracker.

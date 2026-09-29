@@ -692,14 +692,39 @@ async function _pushScope(projectId, scope) {
 
 async function _pushProjectMeta(project) {
   if (!supabase || !session || !project) return;
-  const { error } = await supabase.from('projects').upsert({
+
+  /* UPDATE FIRST, INSERT ONLY IF ABSENT — and never send owner_id on
+     the update.
+
+     This was one upsert that always carried `owner_id: session.user.id`.
+     For the owner that is a no-op. For an `edit` COLLABORATOR it is an
+     attempted ownership transfer, and the `projects_guard_owner`
+     trigger rejects the whole statement with 42501 — so renaming a
+     shared project failed for exactly the people sharing is for, and
+     the failure looked like a sync error rather than a permission one.
+     See docs/SECURITY-RLS.md (P2). The trigger is right; the client was
+     wrong to send the column. */
+  const { data: updated, error: upErr } = await supabase
+    .from('projects')
+    .update({
+      title: project.title,
+      format: project.format,
+      updated_at: project.updatedAt
+    })
+    .eq('id', project.id)
+    .select('id');
+
+  if (!upErr && updated && updated.length) return;
+
+  // Nothing there (or no update rights) → try to create it as ours.
+  const { error } = await supabase.from('projects').insert({
     id: project.id,
     owner_id: session.user.id,
     title: project.title,
     format: project.format,
     created_at: project.createdAt,
     updated_at: project.updatedAt
-  }, { onConflict: 'id' });
+  });
   if (error) {
     console.warn('[push meta]', error);
     _enqueue({ kind: 'meta', project });
@@ -889,7 +914,26 @@ export async function claimShare(token) {
 }
 
 // ============================================================
-// COMMENTS (P7 — minimal API, full UI in next session)
+// COMMENTS
+// ------------------------------------------------------------
+// The thread model: one thread per (project, scope, field_key), which
+// is the same `data-key` string the blueprint saves under. A comment
+// hangs off a FIELD, never off a character offset — this is a form of
+// several hundred inputs, not a prose document, and a field key is the
+// one identifier that survives a rewrite of the value it points at.
+//
+// Replies are one level deep (enforced in the schema, §7.5). A
+// `suggestion` carries the value it was made against (`suggest_from`)
+// and the value it proposes (`suggest_to`); accepting one is a CLIENT
+// act — the page writes `suggest_to` through its normal save path and
+// only then marks the row accepted. The server never touches
+// project_data on a comment's behalf, because then there would be two
+// ways for a value to change and only one of them would be in the
+// local-first save path.
+//
+// Every read below returns [] rather than throwing when the cloud is
+// not configured. A signed-out user is not an error state in this app;
+// it is the normal state.
 // ============================================================
 export async function listComments(projectId, scope, fieldKey) {
   if (!supabase) return [];
@@ -906,6 +950,11 @@ export async function createComment(opts) {
     project_id: opts.projectId,
     scope: opts.scope,
     field_key: opts.fieldKey,
+    // Both identity columns are overwritten server-side by the
+    // comments_set_author trigger; they are sent only because the
+    // columns are NOT NULL and an insert has to satisfy that before
+    // the trigger runs. Do not read them back from here — read the
+    // returned row.
     author_id: session.user.id,
     author_name: getUserEmail() || 'Anonymous',
     body: opts.body,
@@ -914,13 +963,53 @@ export async function createComment(opts) {
     suggest_from: opts.suggestFrom || null,
     suggest_to: opts.suggestTo || null
   };
-  const { error } = await supabase.from('comments').insert(row);
+  const { data, error } = await supabase.from('comments').insert(row).select().single();
   if (error) throw error;
+  return data;
 }
 export async function updateCommentStatus(id, status) {
-  if (!supabase) return;
-  const { error } = await supabase.from('comments').update({ status }).eq('id', id);
+  if (!supabase) return null;
+  if (!session) throw new Error('Sign in to resolve a comment.');
+  const { data, error } = await supabase
+    .from('comments').update({ status }).eq('id', id).select().single();
   if (error) throw error;
+  return data;
+}
+export async function deleteComment(id) {
+  if (!supabase) return;
+  if (!session) throw new Error('Sign in first.');
+  const { error } = await supabase.from('comments').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* What this user may do on this project: 'owner' | 'edit' | 'comment'
+   | 'view' | null.
+
+   The UI needs this to decide whether to offer ACCEPT at all, and
+   asking is cheaper and more honest than guessing: an RLS denial
+   arrives as a 403 in the middle of a click, which is a bad place to
+   discover you were never allowed. Two reads rather than an RPC so
+   nothing new has to be installed in the database.
+
+   Note what it does NOT cover: an account owner/admin reaches the
+   project through `has_project_access()`'s account branch and has no
+   collaborator row, so they come back as null here and the UI treats
+   them as read-only. Wrong in the conservative direction — they can
+   still write, the buttons just aren't offered. A `my_project_role()`
+   RPC is the proper fix. */
+export async function getProjectRole(projectId) {
+  if (!supabase || !session || !projectId) return null;
+  const uid = session.user.id;
+  const { data: own } = await supabase
+    .from('projects').select('owner_id').eq('id', projectId).maybeSingle();
+  if (own && own.owner_id === uid) return 'owner';
+  const { data: col } = await supabase
+    .from('project_collaborators')
+    .select('role')
+    .eq('project_id', projectId)
+    .eq('user_id', uid)
+    .maybeSingle();
+  return (col && col.role) || (own ? 'view' : null);
 }
 
 // ============================================================
@@ -1038,7 +1127,7 @@ const StudioCloud = {
   // sharing
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
   // comments
-  listComments, createComment, updateCommentStatus,
+  listComments, createComment, updateCommentStatus, deleteComment, getProjectRole,
   // misc
   SCOPE_BY_KEY, KEY_BY_SCOPE
 };

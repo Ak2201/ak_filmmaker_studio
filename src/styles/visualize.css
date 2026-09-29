@@ -59,7 +59,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* ------------------------------------------------------------
@@ -98,7 +98,7 @@
 .vz-scene-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -161,7 +161,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .vz-row.is-done .vz-desc,
 .vz-row.is-done .vz-no { opacity: .55; }
@@ -218,7 +218,7 @@
 .vz-shotcol-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .vz-shotcol-desc {
   margin: 0;
@@ -262,7 +262,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .vz-frame-view { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .vz-frame-link {
@@ -279,7 +279,7 @@
 .vz-frame-none {
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 .vz-frame input {
@@ -323,7 +323,7 @@
 .vz-board-count {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .vz-board-acts { display: flex; gap: var(--s1); margin-left: auto; }

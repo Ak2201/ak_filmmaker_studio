@@ -58,7 +58,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -205,7 +205,7 @@
 .rp-pick-pages {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -285,7 +285,7 @@
   line-height: var(--lh-body);
   color: var(--ink-body);
 }
-.rp-side-syn.is-empty { color: var(--ink-faint); font-style: italic; }
+.rp-side-syn.is-empty { color: var(--ink-muted); font-style: italic; }
 .rp-side-els { display: grid; gap: var(--s1); margin-top: var(--s4); }
 .rp-side-el {
   display: grid;

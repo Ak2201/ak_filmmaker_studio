@@ -44,7 +44,8 @@ create table if not exists public.project_data (
                 'script',
                 'locations',
                 'workbench',
-                'dissect'
+                'dissect',
+                'festivals'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),
@@ -697,3 +698,556 @@ create policy proj_insert on public.projects
     owner_id = auth.uid()
     and (account_id is null or public.account_role(account_id) is not null)
   );
+
+-- ============================================================
+-- 7. SECURITY HARDENING (v5)
+-- ------------------------------------------------------------
+-- Everything below was written after a line-by-line audit of the
+-- sections above (docs/SECURITY-RLS.md records the findings and the
+-- reasoning). It is appended rather than edited in place for the same
+-- reason section 6 was: the file is applied top to bottom, every
+-- policy/function/trigger here is drop-then-create, and the last
+-- definition wins. Read the audit before changing any of it — each
+-- guard below closes a named hole, and several of them cannot be
+-- expressed as RLS at all, because a policy cannot see the OLD row.
+--
+-- NOTHING HERE WIDENS ACCESS. The only reachability that changes is
+-- that an account's own owner_id can now manage that account's member
+-- rows before a membership row exists for them (previously nobody
+-- could, which made a fresh account unusable).
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 7.0 Who is asking
+-- ------------------------------------------------------------
+-- Distinguishes a browser holding the anon/authenticated key from a
+-- trusted backend (service_role) or a human in the SQL editor. Not
+-- security definer ON PURPOSE: a definer function would report the
+-- DEFINER's role, so every caller would look privileged.
+create or replace function public.is_privileged_caller()
+returns boolean
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select coalesce(auth.jwt() ->> 'role', current_user)
+         in ('service_role', 'postgres', 'supabase_admin');
+$$;
+grant execute on function public.is_privileged_caller() to authenticated, anon;
+
+create or replace function public.account_owner(aid uuid)
+returns uuid
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select a.owner_id from public.accounts a where a.id = aid;
+$$;
+grant execute on function public.account_owner(uuid) to authenticated;
+
+-- ------------------------------------------------------------
+-- 7.1 A share link that expires must expire the ACCESS, and a
+--     revoked link must actually revoke.
+-- ------------------------------------------------------------
+-- The share dialog offers "7 DAYS" and its revoke button says "Anyone
+-- using it will lose access." Neither was true. claim_share() wrote a
+-- permanent project_collaborators row; after that the shares row was
+-- decoration. Deleting it (revoke) or letting it lapse (expiry)
+-- changed nothing at all, because no policy ever looked at shares
+-- again. A link handed to the wrong person could not be taken back.
+--
+-- Two columns fix it at the source rather than in the caller:
+--   via_share   the grant is OWNED by the link. ON DELETE CASCADE, so
+--               revoking the link deletes the access with it — including
+--               a revoke done straight against the table, not only one
+--               that goes through the app.
+--   expires_at  copied from the link at claim time and honoured in
+--               has_project_access() below.
+-- A grant the owner made by hand has via_share = null and expires_at =
+-- null, so neither mechanism can touch it: a link cannot claim, and
+-- therefore cannot revoke, a manual grant.
+alter table public.project_collaborators
+  add column if not exists via_share uuid references public.shares(id) on delete cascade;
+alter table public.project_collaborators
+  add column if not exists expires_at timestamptz;
+create index if not exists pc_via_share_idx on public.project_collaborators(via_share);
+
+create or replace function public.claim_share(p_token text)
+returns table (project_id uuid, role text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  s_record record;
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in required to claim share' using errcode = '42501';
+  end if;
+  select * into s_record from public.shares
+  where token = p_token
+    and (expires_at is null or expires_at > now())
+  limit 1;
+  if not found then
+    raise exception 'Share is invalid or expired' using errcode = '22023';
+  end if;
+
+  insert into public.project_collaborators (project_id, user_id, role, via_share, expires_at)
+  values (s_record.project_id, auth.uid(), s_record.role, s_record.id, s_record.expires_at)
+  on conflict (project_id, user_id) do update set
+    role = case
+      when public.project_collaborators.role = 'edit' then 'edit'
+      when public.project_collaborators.role = 'comment' and excluded.role = 'view' then 'comment'
+      else excluded.role
+    end,
+    -- A manual grant (via_share is null) is never re-attributed to a
+    -- link: otherwise revoking the link would silently delete access
+    -- the owner granted deliberately.
+    via_share = case
+      when public.project_collaborators.via_share is null then null
+      else excluded.via_share
+    end,
+    expires_at = case
+      when public.project_collaborators.via_share is null then public.project_collaborators.expires_at
+      when public.project_collaborators.expires_at is null or excluded.expires_at is null then null
+      else greatest(public.project_collaborators.expires_at, excluded.expires_at)
+    end;
+
+  return query
+    select s_record.project_id, c.role
+    from public.project_collaborators c
+    where c.project_id = s_record.project_id and c.user_id = auth.uid();
+end;
+$$;
+grant execute on function public.claim_share(text) to authenticated;
+
+-- Housekeeping for the operator: expired links keep answering "invalid
+-- or expired" either way, but there is no reason to keep the bearer
+-- token sitting in the table. Schedule with pg_cron if you have it.
+create or replace function public.purge_expired_shares()
+returns int
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  with gone as (
+    delete from public.shares where expires_at is not null and expires_at <= now()
+    returning 1
+  ) select count(*)::int from gone;
+$$;
+revoke execute on function public.purge_expired_shares() from authenticated, anon;
+
+-- ------------------------------------------------------------
+-- 7.2 has_project_access — honour the collaborator expiry
+-- ------------------------------------------------------------
+-- Same three branches as the section-6 version, plus the expiry test
+-- on the collaborator branch. Owner and account-admin access do not
+-- expire; a link-derived grant does.
+create or replace function public.has_project_access(pid uuid, min_role text default 'view')
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.projects p
+     where p.id = pid and p.owner_id = auth.uid()
+  ) or exists (
+    select 1
+      from public.projects p
+      join public.account_members m on m.account_id = p.account_id
+     where p.id = pid
+       and m.user_id = auth.uid()
+       and m.status  = 'active'
+       and m.role in ('owner','admin')
+  ) or exists (
+    select 1 from public.project_collaborators c
+     where c.project_id = pid
+       and c.user_id    = auth.uid()
+       and (c.expires_at is null or c.expires_at > now())
+       and case min_role
+             when 'view'    then true
+             when 'comment' then c.role in ('comment','edit')
+             when 'edit'    then c.role = 'edit'
+           end
+  );
+$$;
+grant execute on function public.has_project_access(uuid, text) to authenticated, anon;
+
+-- ------------------------------------------------------------
+-- 7.3 projects — an editor may not move the project to another account
+-- ------------------------------------------------------------
+-- proj_update lets an 'edit' collaborator write the row, and nothing
+-- guarded account_id. projects.account_id cascades on account delete
+-- and has_project_access grants account owners/admins full access to
+-- every project in their account, so an editor could:
+--   (a) move the project into an account they own -> permanent access
+--       that survives having their collaborator row deleted, and
+--   (b) then delete that account -> the project and every project_data
+--       row cascade away. A comment-and-edit guest could destroy the
+--       screenplay outright.
+-- A policy cannot express this: WITH CHECK never sees the OLD row.
+create or replace function public.projects_guard_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.owner_id is distinct from old.owner_id and old.owner_id <> auth.uid() then
+    raise exception 'Only the owner can transfer ownership' using errcode = '42501';
+  end if;
+  if new.account_id is distinct from old.account_id then
+    if old.owner_id <> auth.uid() then
+      raise exception 'Only the owner can move a project between accounts' using errcode = '42501';
+    end if;
+    -- and only into an account they are actually in
+    if new.account_id is not null and public.account_role(new.account_id) is null then
+      raise exception 'You are not a member of that account' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists projects_guard_owner on public.projects;
+create trigger projects_guard_owner
+  before update on public.projects
+  for each row execute function public.projects_guard_owner();
+
+-- ------------------------------------------------------------
+-- 7.4 project_data — the writer is who the server says it is
+-- ------------------------------------------------------------
+-- updated_by was whatever the client sent. cloud.js uses it as the
+-- self-echo guard (`if (row.updated_by === session.user.id) return`),
+-- so an editor who stamped a collaborator's id on every write would
+-- make that collaborator's browser ignore the change forever: their
+-- screen quietly stops matching the document. Not a data leak, but
+-- the column is an identity claim and an identity claim from the
+-- client is worth nothing.
+--
+-- updated_at is deliberately NOT forced. It is the clock the
+-- last-write-wins merge in cloud.js compares against markRemoteSeen();
+-- overwriting it server-side would desynchronise that clock and
+-- produce a push/pull ping-pong.
+create or replace function public.project_data_stamp()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  new.updated_by := auth.uid();
+  return new;
+end;
+$$;
+drop trigger if exists project_data_stamp on public.project_data;
+create trigger project_data_stamp
+  before insert or update on public.project_data
+  for each row execute function public.project_data_stamp();
+
+-- ------------------------------------------------------------
+-- 7.5 comments — integrity of a thread, and who may resolve one
+-- ------------------------------------------------------------
+-- Three separate holes, all reachable by a plain 'comment' guest:
+--
+--  1. cm_update's USING allows the AUTHOR, and status is just another
+--     column, so the person making a suggestion could mark their own
+--     suggestion 'accepted'. The value never changes (the accept is
+--     applied client-side by whoever is editing), so what this
+--     produces is a lie in the record: a suggestion that reads as
+--     approved and never was. Resolving is now an edit-level act.
+--  2. parent_id was unconstrained. A reply could point at a comment
+--     in a different project, a different field, or at another reply,
+--     and comments.parent_id cascades on delete.
+--  3. Which made cm_delete worse than it looks: an author deleting
+--     their own root comment cascaded away every reply other people
+--     had written under it. Deleting a comment with replies is now
+--     the project owner's call.
+--
+-- Threads are also capped at one level. That is a product decision as
+-- much as a security one, but it bounds the cascade and it is what the
+-- UI renders.
+alter table public.comments drop constraint if exists comments_body_len;
+alter table public.comments add  constraint comments_body_len
+  check (char_length(body) between 1 and 4000);
+alter table public.comments drop constraint if exists comments_field_len;
+alter table public.comments add  constraint comments_field_len
+  check (char_length(field_key) between 1 and 160);
+alter table public.comments drop constraint if exists comments_scope_fmt;
+alter table public.comments add  constraint comments_scope_fmt
+  check (scope ~ '^[a-z][a-z0-9_]{0,31}$');
+alter table public.comments drop constraint if exists comments_suggest_len;
+alter table public.comments add  constraint comments_suggest_len
+  check (coalesce(char_length(suggest_from), 0) <= 20000
+     and coalesce(char_length(suggest_to),   0) <= 20000);
+
+create or replace function public.comments_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  par record;
+begin
+  if tg_op = 'INSERT' then
+    if new.parent_id is not null then
+      select * into par from public.comments where id = new.parent_id;
+      if not found
+         or par.project_id is distinct from new.project_id
+         or par.scope      is distinct from new.scope
+         or par.field_key  is distinct from new.field_key then
+        raise exception 'A reply must belong to the same field thread as the comment it answers'
+          using errcode = '23514';
+      end if;
+      if par.parent_id is not null then
+        raise exception 'Replies are one level deep' using errcode = '23514';
+      end if;
+    end if;
+    return new;
+  end if;
+
+  -- UPDATE. What a thread is ABOUT never moves.
+  new.project_id   := old.project_id;
+  new.scope        := old.scope;
+  new.field_key    := old.field_key;
+  new.parent_id    := old.parent_id;
+  new.created_at   := old.created_at;
+  new.type         := old.type;
+  new.suggest_from := old.suggest_from;
+  new.suggest_to   := old.suggest_to;
+
+  if new.status is distinct from old.status
+     and not public.has_project_access(new.project_id, 'edit') then
+    raise exception 'Only someone who can edit this project may resolve a comment'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists comments_guard on public.comments;
+create trigger comments_guard
+  before insert or update on public.comments
+  for each row execute function public.comments_guard();
+
+create or replace function public.comments_guard_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if exists (select 1 from public.comments c where c.parent_id = old.id)
+     and not exists (
+       select 1 from public.projects p
+        where p.id = old.project_id and p.owner_id = auth.uid()
+     ) then
+    raise exception 'This comment has replies. Only the project owner can delete it.'
+      using errcode = '42501';
+  end if;
+  return old;
+end;
+$$;
+drop trigger if exists comments_guard_delete on public.comments;
+create trigger comments_guard_delete
+  before delete on public.comments
+  for each row execute function public.comments_guard_delete();
+
+-- author_name used to be the signed-in EMAIL ADDRESS, stamped onto
+-- every comment and readable by everyone with view access — which,
+-- with link sharing, is "whoever was sent the link". A share link
+-- should not hand out the crew's email addresses as a side effect of
+-- them having said something. Prefer a real display name; fall back to
+-- the local part, which identifies a person to their collaborators
+-- without being a working address.
+create or replace function public.comments_set_author()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  claims jsonb;
+  nm     text;
+begin
+  if tg_op = 'INSERT' then
+    claims := coalesce(auth.jwt() -> 'user_metadata', '{}'::jsonb);
+    nm := nullif(trim(coalesce(
+            claims ->> 'full_name',
+            claims ->> 'name',
+            split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 1)
+          )), '');
+    new.author_id   := auth.uid();
+    new.author_name := coalesce(nm, 'Anonymous');
+  else
+    new.author_id   := old.author_id;
+    new.author_name := old.author_name;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists comments_set_author on public.comments;
+create trigger comments_set_author
+  before insert or update on public.comments
+  for each row execute function public.comments_set_author();
+
+-- ------------------------------------------------------------
+-- 7.6 accounts — the plan is not a field the buyer fills in
+-- ------------------------------------------------------------
+-- acc_update let the account owner write any column on their own row,
+-- and seat_limit / storage_limit_mb / plan are columns. The seat-limit
+-- TRIGGER was doing its job perfectly against a limit the person being
+-- limited could set to 9999 with one PATCH against the public REST
+-- endpoint. Enforcing a paid limit in the database only helps if the
+-- limit itself is not client-writable.
+--
+-- Separately: acc_update's USING accepts `account_role(id) = 'owner'`,
+-- which is a MEMBER row, not accounts.owner_id. An owner-role member
+-- could therefore set owner_id to themselves and take the account —
+-- exactly the bug proj_update already had and had fixed.
+--
+-- Not security definer: it asks is_privileged_caller(), which has to
+-- see the real caller.
+create or replace function public.accounts_guard()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if public.is_privileged_caller() then return new; end if;
+  if new.owner_id is distinct from old.owner_id and old.owner_id <> auth.uid() then
+    raise exception 'Only the account owner can transfer the account' using errcode = '42501';
+  end if;
+  if new.plan             is distinct from old.plan
+  or new.seat_limit       is distinct from old.seat_limit
+  or new.storage_limit_mb is distinct from old.storage_limit_mb then
+    raise exception 'Plan and limits are set by billing, not by the client' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists accounts_guard on public.accounts;
+create trigger accounts_guard
+  before update on public.accounts
+  for each row execute function public.accounts_guard();
+
+-- ------------------------------------------------------------
+-- 7.7 account_members — an admin is not a second owner
+-- ------------------------------------------------------------
+-- am_write is `for all` on account_role in ('owner','admin'), with no
+-- distinction between the two and no OLD-row comparison. So an admin
+-- could insert a row for themselves with role='owner', or demote or
+-- DELETE the real owner's row (USING applies to delete; WITH CHECK
+-- does not). From 'owner' they reach accounts_guard's owner_id path
+-- and, via has_project_access, every project in the account.
+--
+-- Two changes. The policies now also admit the account's own
+-- owner_id — without that a freshly created account has no member
+-- rows, account_role() is null, and its creator cannot invite anybody.
+-- The trigger then does what a policy cannot: compares OLD and NEW.
+drop policy if exists am_write on public.account_members;
+create policy am_write on public.account_members
+  for all
+  using (
+    public.account_role(account_id) in ('owner','admin')
+    or public.account_owner(account_id) = auth.uid()
+  )
+  with check (
+    public.account_role(account_id) in ('owner','admin')
+    or public.account_owner(account_id) = auth.uid()
+  );
+
+drop policy if exists am_select on public.account_members;
+create policy am_select on public.account_members
+  for select using (
+    user_id = auth.uid()
+    or public.account_role(account_id) in ('owner','admin')
+    or public.account_owner(account_id) = auth.uid()
+  );
+
+create or replace function public.account_members_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  is_owner bool;
+  row_acc  uuid := coalesce(new.account_id, old.account_id);
+begin
+  is_owner := public.account_owner(row_acc) = auth.uid()
+              or public.account_role(row_acc) = 'owner';
+
+  if tg_op = 'DELETE' then
+    if old.role = 'owner' and not is_owner then
+      raise exception 'Only an account owner can remove an owner' using errcode = '42501';
+    end if;
+    if old.user_id = public.account_owner(row_acc) then
+      raise exception 'The account owner cannot be removed from their own account'
+        using errcode = '42501';
+    end if;
+    return old;
+  end if;
+
+  -- Minting or granting 'owner' is an owner-only act.
+  if new.role = 'owner' and not is_owner then
+    raise exception 'Only an account owner can grant the owner role' using errcode = '42501';
+  end if;
+  if tg_op = 'UPDATE' then
+    if old.role = 'owner' and not is_owner then
+      raise exception 'Only an account owner can change an owner row' using errcode = '42501';
+    end if;
+    if old.user_id is not null and new.user_id is distinct from old.user_id then
+      raise exception 'A claimed seat cannot be reassigned' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists account_members_guard on public.account_members;
+create trigger account_members_guard
+  before insert or update or delete on public.account_members
+  for each row execute function public.account_members_guard();
+
+-- Seats were only counted on INSERT, so flipping a 'revoked' row back
+-- to 'active' walked straight past the limit.
+create or replace function public.enforce_seat_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  used int;
+  lim  int;
+begin
+  if tg_op = 'UPDATE'
+     and not (old.status = 'revoked' and new.status in ('pending','active')) then
+    return new;
+  end if;
+  select seat_limit into lim from public.accounts where id = new.account_id;
+  select count(*) into used
+    from public.account_members
+   where account_id = new.account_id
+     and status in ('pending','active')
+     and (tg_op = 'INSERT' or (account_id, invited_email) <> (new.account_id, new.invited_email));
+  if used >= lim then
+    raise exception 'Seat limit reached for this account (% of %). Add seats to invite more people.', used, lim
+      using errcode = '53400';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists account_members_seat_limit on public.account_members;
+create trigger account_members_seat_limit
+  before insert or update on public.account_members
+  for each row execute function public.enforce_seat_limit();
+
+-- ============================================================
+-- END v5. docs/SECURITY-RLS.md carries the per-table verdict, the
+-- findings that are NOT fixed here (and why), and the checks an
+-- operator should run against a live database — none of the above has
+-- ever been executed against one.
+-- ============================================================

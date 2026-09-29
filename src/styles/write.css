@@ -64,7 +64,12 @@
      11px uppercase the faint ink measures 2.5:1 in Desk. */
   color: var(--ink-muted);
 }
-.wr-gauge-sep { color: var(--rule); }
+/* --ink-muted, not --rule. A separator between two readouts is still
+   a glyph a person's eye lands on, and --rule is a HAIRLINE colour:
+   1.22-1.82:1 as text in every theme, the lowest number in the app
+   after the invisible ones. There is no "decorative text" exemption
+   worth 1.3:1 — if it is in the text flow it takes a text colour. */
+.wr-gauge-sep { color: var(--ink-muted); }
 /* Two controls now — Import, and the Export menu. `nowrap` kept them
    on one line when there was one; with two it has to be allowed to
    break, or 390px pushes the menu off the side of the sheet. */

@@ -57,7 +57,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 .sb-seg-btn,
@@ -116,11 +116,27 @@
    missing wash tokens belongs in tokens.css, not in a workaround
    here; when they exist, these two lines become like the other three.
    ------------------------------------------------------------ */
-.tod-day   { --strip-wash: var(--library-wash); --strip-hue: var(--library);   --strip-on: var(--library-on); }
-.tod-dawn  { --strip-wash: var(--feature-wash); --strip-hue: var(--feature);   --strip-on: var(--feature-on); }
-.tod-night { --strip-wash: var(--shorts-wash);  --strip-hue: var(--shorts);    --strip-on: var(--shorts-on); }
-.tod-dusk  { --strip-wash: var(--paper-sunk);   --strip-hue: var(--shoot);     --strip-on: var(--shoot-on); }
-.tod-cont  { --strip-wash: var(--paper-raised); --strip-hue: var(--visualize); --strip-on: var(--visualize-on); }
+/* FOUR VARIABLES, NOT THREE. --strip-hue is the FILL — the rule down
+   the strip, the badge outline, the filled EXT chip. It is not a text
+   colour, and it was being used as one: the INT badge and the time-of-
+   day word both said `color: var(--strip-hue)` and measured 2.27:1 in
+   Desk, where --library is a bright amber on its own pale wash.
+
+   This is the rule CLAUDE.md states — a fill is never a text colour —
+   reaching the stripboard late, because the local alias hid it. The
+   source check in verify greps for `color: var(--library)` and friends
+   by name, and `--strip-hue` is none of those names. An alias defeats
+   a grep; it does not change the fault.
+
+   --strip-text is the hue as TEXT, and it takes the -deep variant,
+   which is already the token that flips the right way per theme
+   (darker than the ground on paper, lighter than it on ink). Range
+   across the four themes: 4.91 (Desk day) to 10.47. */
+.tod-day   { --strip-wash: var(--library-wash); --strip-hue: var(--library);   --strip-on: var(--library-on);   --strip-text: var(--library-deep); }
+.tod-dawn  { --strip-wash: var(--feature-wash); --strip-hue: var(--feature);   --strip-on: var(--feature-on);   --strip-text: var(--feature-deep); }
+.tod-night { --strip-wash: var(--shorts-wash);  --strip-hue: var(--shorts);    --strip-on: var(--shorts-on);    --strip-text: var(--shorts-deep); }
+.tod-dusk  { --strip-wash: var(--paper-sunk);   --strip-hue: var(--shoot);     --strip-on: var(--shoot-on);     --strip-text: var(--shoot-deep); }
+.tod-cont  { --strip-wash: var(--paper-raised); --strip-hue: var(--visualize); --strip-on: var(--visualize-on); --strip-text: var(--visualize-deep); }
 
 .sb-legend {
   display: flex;
@@ -134,7 +150,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .sb-legend-lab { text-transform: uppercase; color: var(--ink-muted); }
 .sb-legend-item { display: inline-flex; align-items: center; gap: var(--s2); }
@@ -174,7 +190,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -211,7 +227,8 @@
   padding-inline: var(--s2);
   border: 1px solid var(--strip-hue);
   border-radius: var(--sk-radius);
-  color: var(--strip-hue);
+  /* the fill outlines it; the TEXT takes --strip-text */
+  color: var(--strip-text, var(--ink-muted));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
@@ -241,7 +258,7 @@
 /* The word carries the hue as well as the strip does. This is the
    channel that keeps dusk and continuous distinguishable while their
    wash tokens are missing a dark value. */
-.sb-tod { color: var(--strip-hue); font-weight: 700; }
+.sb-tod { color: var(--strip-text, var(--ink-muted)); font-weight: 700; }
 
 .sb-day { display: inline-flex; align-items: center; gap: var(--s2); }
 .sb-day-lab {
@@ -249,7 +266,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .sb-day-sel {
   padding: var(--s1) var(--s2);
@@ -276,7 +293,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .sb-cast-chip {
   padding: 0 var(--s2);
@@ -286,7 +303,7 @@
   font-size: var(--t-tiny);
   color: var(--ink-body);
 }
-.sb-cast-none { font-size: var(--t-tiny); color: var(--ink-faint); }
+.sb-cast-none { font-size: var(--t-tiny); color: var(--ink-muted); }
 
 .sb-synopsis {
   grid-column: 1 / -1;
@@ -347,7 +364,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .sb-grid thead th {
   background: var(--paper-sunk);
@@ -384,7 +401,7 @@
 .sb-cell.is-only { background: var(--accent); color: var(--accent-on); }
 .sb-cell.is-work { background: var(--accent-wash); color: var(--accent-deep); }
 .sb-cell.is-hold { background: var(--warn-wash); color: var(--warn-deep); }
-.sb-cell.is-off  { color: var(--ink-faint); }
+.sb-cell.is-off  { color: var(--ink-muted); }
 
 .sb-note {
   margin: var(--s3) 0 0;
@@ -392,7 +409,7 @@
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
   letter-spacing: var(--track-label);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* ------------------------------------------------------------

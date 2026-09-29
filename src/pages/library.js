@@ -29,6 +29,7 @@ import '../styles/chrome.css';
 import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
+import '../styles/rates.css';
 import '../styles/print.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -361,7 +362,10 @@ function renderEquipment() {
   body.append(h('div.disclaimer', {}, [
     h('div.label', { text: rates.noteLabel }),
     h('p', { html: rates.note }),
-    h('p.hint', { text: provenanceLine() })
+    h('p.hint', { text: provenanceLine() }),
+    h('p.hint', {
+      text: `Re-checked on ${rateChecks.lastChecked}. ${rateChecks.method}`
+    })
   ]));
 
   for (const sec of rates.sections) {
@@ -370,9 +374,26 @@ function renderEquipment() {
     ]);
     if (sec.note) block.append(h('p.hint', { text: sec.note }));
     // Provenance sits with each table, not only in the disclaimer
-    // three screens up — that is where the eye actually is.
+    // three screens up — that is where the eye actually is. It says
+    // what the 2026 pass found for THIS section, which for four of
+    // the six is "nothing published", stated rather than implied.
+    const secNote = (rateChecks.sectionNotes || {})[sec.id];
     block.append(h('p.hint', { text: `Rates as of ${rates.asOf}. Not updated since.` }));
+    if (secNote) {
+      const srcNote = sourceOf(secNote.source);
+      block.append(h('p.hint.rate-section-check', { 'data-confidence': secNote.confidence }, [
+        h('span.rate-check-tag', { text: CONFIDENCE_LABEL[secNote.confidence] || 'NOTE' }),
+        ' ',
+        secNote.text,
+        srcNote ? ' ' : null,
+        srcNote ? h('a', {
+          href: srcNote.url, target: '_blank', rel: 'noopener noreferrer',
+          text: srcNote.name
+        }) : null
+      ]));
+    }
 
+    const matched = new Set();
     const table = h('table.equip-table', {}, [
       h('caption.visually-hidden', {
         text: `${sec.heading} — indicative Chennai rates, ${rates.asOf}`
@@ -380,17 +401,52 @@ function renderEquipment() {
       h('thead', {}, [
         h('tr', {}, (sec.columns || []).map((c) => h('th', { scope: 'col', text: c })))
       ]),
-      h('tbody', {}, (sec.rows || []).map((r) => h('tr', {}, [
-        h('td.item', { text: r.item }),
-        // `raw` is the rate exactly as published. Nothing here is
-        // recomputed, re-inflated or otherwise invented.
-        h('td.rate', { text: r.raw }),
-        h('td.note', { text: r.note || '' })
-      ])))
+      h('tbody', {}, (sec.rows || []).flatMap((r) => {
+        const found = checksFor(sec.id, r.item);
+        found.forEach((c) => matched.add(c));
+        const rate = h('td.rate', {}, [
+          // `raw` is the rate exactly as published in 2024-25.
+          // Nothing here is recomputed, re-inflated or invented.
+          h('span.rate-base', { text: r.raw })
+        ]);
+        found.forEach((c) => rate.append(renderCheck(c)));
+        return [h('tr', {}, [
+          h('td.item', { text: r.item }),
+          rate,
+          h('td.note', { text: r.note || '' })
+        ])];
+      }))
     ]);
     // Wide table, narrow phone: the table scrolls, the page doesn't.
     block.append(h('div.table-wrap', {}, [table]));
+
+    // Anything in the overlay that matched no row is shown here
+    // rather than dropped. The join is by item name and item names
+    // can change; a silent miss would take the evidence with it.
+    const orphans = (CHECKS_BY_SECTION.get(sec.id) || []).filter((c) => !matched.has(c));
+    if (orphans.length) {
+      block.append(h('div.rate-orphans', {}, [
+        h('p.hint', {
+          text: 'Checked, but no row in the table above carries this name any more:'
+        }),
+        ...orphans.map((c) => h('div.rate-check', {}, [
+          h('span.rate-check-tag', { text: c.item }), renderCheck(c)
+        ]))
+      ]));
+    }
     body.append(block);
+  }
+
+  if ((rateChecks.notFound || []).length) {
+    body.append(h('div.rate-notfound', {}, [
+      h('h3', { text: 'What could not be found' }),
+      h('p.hint', {
+        text: `Looked for on ${rateChecks.lastChecked} and not published anywhere `
+            + 'this search could reach. Listed because an absence is a finding: '
+            + 'it tells you which numbers you will have to get on the phone for.'
+      }),
+      h('ul', {}, rateChecks.notFound.map((t) => h('li', { text: t })))
+    ]));
   }
 
   /* The estimator moved to budget.html. It used to render here, at

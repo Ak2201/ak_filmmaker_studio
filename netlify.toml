@@ -40,7 +40,14 @@
     X-Content-Type-Options = "nosniff"
     # The CSP invariant 5 relies on. script-src is 'self' with no
     # 'unsafe-inline': an inline handler breaks the page under it.
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    #
+    # connect-src also names api.anthropic.com, for the bring-your-own-key
+    # drafting panel on visualize.html — a direct browser call to the
+    # Messages API, with the user's own key, from a build that has no
+    # server to make the call for it. Without the entry the fetch is
+    # blocked before it leaves and the only symptom is a TypeError.
+    # This value must stay byte-identical to the one in vercel.json.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
 # ---- old URLs ------------------------------------------------
 # force = true because the stub files still exist in dist/; without it
@@ -74,6 +81,11 @@
 [[redirects]]
   from = "/studio"
   to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/dashboard.html"
   status = 200
 
 [[redirects]]

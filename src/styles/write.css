@@ -65,7 +65,190 @@
   color: var(--ink-muted);
 }
 .wr-gauge-sep { color: var(--rule); }
-.wr-export { white-space: nowrap; }
+/* Two controls now — Import, and the Export menu. `nowrap` kept them
+   on one line when there was one; with two it has to be allowed to
+   break, or 390px pushes the menu off the side of the sheet. */
+.wr-export { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+/* `#main` is load-bearing, not decoration. The ".btn ON PAPER" block
+   further down this file paints every button in the document body
+   with `#main .btn { color: var(--ink) }` — specificity 1,1,0 — so a
+   plain `.wr-export .btn.is-on` (0,3,0) sets the
+   background and loses the colour, and the pressed toggle renders ink
+   on ink: a button with a word in it that nobody can see, in all four
+   themes and all five skins. Measured at 1.0:1 before this line. */
+#main .wr-export .btn.is-on {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ------------------------------------------------------------
+   IMPORT — the panel, and the drop target that is the whole page
+   ------------------------------------------------------------
+   Sits directly under the gauge, above the pages it is about to
+   change. Everything here is a token and a --sk-* variable; the
+   panel is a card in the same language as .wr-page.
+   ------------------------------------------------------------ */
+.wr-imp {
+  display: grid;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.wr-imp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wr-imp-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  color: var(--ink);
+}
+.wr-imp-h3 {
+  margin: var(--s3) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  /* --accent-deep, not --accent. An accent is a fill; as text on a
+     light card it runs under 4.5:1 in the brighter themes, which is
+     the one mistake CLAUDE.md says was made in fourteen places. */
+  color: var(--accent-deep);
+}
+.wr-imp-choose,
+.wr-imp-preview { display: grid; gap: var(--s3); min-width: 0; }
+.wr-imp-lead { margin: 0; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-snug); }
+.wr-imp-privacy {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--accent-wash);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.wr-imp-privacy strong { color: var(--ink); }
+.wr-imp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+/* The input itself is replaced by its own label, which is a real
+   button and reachable by keyboard through the `for` association.
+   `display: none` would take it out of the tab order and out of the
+   accessibility tree with it. */
+.wr-imp-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.wr-imp-file:focus-visible + .wr-imp-pick,
+.wr-imp-pick:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.wr-imp-pick { display: inline-block; }
+.wr-imp-paste {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  resize: vertical;
+}
+
+.wr-imp-read { margin: 0; color: var(--ink); font-size: var(--t-small); }
+.wr-imp-stats { display: flex; flex-wrap: wrap; gap: var(--s5); }
+.wr-imp-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-imp-counts strong { color: var(--ink); }
+
+.wr-imp-dest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--rule-hair);
+}
+.wr-imp-dest strong { color: var(--ink); font-family: var(--f-display); }
+.wr-imp-dest-state,
+.wr-imp-dest-hint {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.wr-imp-dest-hint { flex: 1 0 100%; text-transform: none; letter-spacing: normal; }
+.wr-imp-modes { display: flex; gap: var(--s1); }
+.wr-imp-mode {
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--ink);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+.wr-imp-mode.is-danger { border-color: var(--danger); color: var(--danger); }
+.wr-imp-mode.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.wr-imp-mode.is-on.is-danger { background: var(--danger); border-color: var(--danger); color: var(--on-fill); }
+
+.wr-imp-note { margin: 0; }
+.wr-imp-safe {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--ok-wash);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.wr-imp-warn {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.wr-imp-warn strong { color: var(--ink); }
+.wr-imp-warn ul { margin: 0; padding-left: var(--s4); }
+.wr-imp-warn p { margin: 0; color: var(--ink-body); }
+.wr-imp-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+
+/* A file being dragged over the window. One rule, one outline — a
+   full-screen overlay would have to be a positioned layer above the
+   editor, and an overlay that mis-fires leaves a page nobody can
+   type into. */
+body.wr-dropping .wr-page,
+body.wr-dropping .wr-imp,
+body.wr-dropping .bd-empty {
+  outline: 2px dashed var(--accent);
+  outline-offset: var(--s2);
+}
 
 /* ------------------------------------------------------------
    THE SCREENPLAY PAGE
@@ -393,4 +576,51 @@
   .wr-page { border: 0; padding: 0; box-shadow: none; }
   .wr-el { grid-template-columns: 1fr; }
   .wr-text { border: 0; background: none; }
+  .wr-imp { display: none !important; }
+
+  /* ----------------------------------------------------------
+     THE TYPESET SCREENPLAY — the pages themselves
+     ----------------------------------------------------------
+     styles/pdf.css owns the six element measures and they are
+     unchanged. What is here is the three things that only exist
+     once something knows where the pages break, which is
+     src/lib/screenplay-export.js:
+
+       · a sheet, with a page number at the top right;
+       · (MORE) at the foot of a broken speech;
+       · the two-line gap above a slug line, which the model in
+         src/lib/script.js has always said was two and the
+         stylesheet used to paint as one.
+
+     The paginator has already decided every break, so the
+     browser is told not to second-guess it: `orphans`/`widows`
+     inside a sheet would move a line onto a page that is
+     already full to its last line, and the result is a blank
+     sheet between every two real ones.
+     ---------------------------------------------------------- */
+  body.pdf-screenplay .wr-pg { break-after: page; }
+  body.pdf-screenplay .wr-pg:last-child { break-after: auto; }
+  body.pdf-screenplay .wr-pg .wr-pr { orphans: 1; widows: 1; }
+
+  /* Two lines tall: the number, and the blank under it. Every
+     sheet carries it, including the unnumbered first one, so the
+     text block starts at the same height on all of them. */
+  body.pdf-screenplay .wr-pg-num {
+    width: 60ch;
+    height: 24pt;
+    margin: 0;
+    text-align: right;
+    font-family: var(--f-script);
+    font-size: 12pt;
+    line-height: 1;
+    color: var(--print-ink);
+  }
+
+  body.pdf-screenplay .wr-pr-gap2 { margin-top: 24pt; }
+  body.pdf-screenplay .wr-pr-tight { margin-top: 0; }
+  body.pdf-screenplay .wr-pr-more {
+    margin-top: 0;
+    margin-left: 16ch;
+    width: 28ch;
+  }
 }

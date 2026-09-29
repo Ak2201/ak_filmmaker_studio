@@ -1,0 +1,369 @@
+/* ============================================================
+   DASHBOARD — only what is genuinely this page's own
+   ------------------------------------------------------------
+   The hierarchy (.bd-eyebrow → .bd-title → .bd-deck), the stat
+   strip (.bd-stats), the teaching empty state (.bd-empty, .bd-how)
+   and the buttons are the studio language from modules.css and
+   chrome.css, reused as they are rather than restated here. What is
+   below is the four objects this page adds: the next-step card, the
+   phase meter, the number card and the project row.
+
+   EVERY SHAPE IS A SKIN VARIABLE. A card's corner is --sk-radius,
+   its padding is --sk-card-pad, its edge is --sk-card-line-w of
+   --sk-card-line, and the coloured rule that says WHICH phase is
+   --sk-hue-rule-w. One literal `border-radius: 4px` typed in here
+   is a shape no skin could ever override, which is the whole point
+   of the contract in skins/_contract.css.
+
+   EVERY COLOUR IS A TOKEN, AND A FILL IS NOT A TEXT COLOUR.
+   --hue fills the meter bar; the text beside it takes --ink or
+   --ink-muted. Nothing here paints a word in --hue or --accent,
+   because those are chosen to be painted BEHIND something and run
+   3.3-4.4:1 as text on a light card. --ink-faint is avoided too:
+   at 3.3:1 on paper it is under the 4.5:1 floor, so the small mono
+   labels take --ink-muted, which clears it in all four themes.
+
+   ONE COLOUR MEANS SOMETHING HERE. A phase meter and a number card
+   carry --hue, and the hue is the PHASE the thing belongs to — the
+   same hue the rail and the phase bar give that page. Everything
+   else on this page is ink on paper, because a dashboard that
+   colours every tile is a dashboard where colour says nothing.
+
+   NARROW. Both grids are minmax(min(Xpx, 100%), 1fr) and every row
+   wraps. A fixed track plus a 100%-wide child is the exact shape
+   that pushes horizontal scroll onto the whole document at 390px.
+   ============================================================ */
+
+.db-sec {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: var(--s6);
+}
+.db-sec:last-child { padding-bottom: var(--s9); }
+
+.db-foot {
+  max-width: var(--measure);
+  margin: var(--s4) 0 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  line-height: var(--lh-body);
+}
+.db-none {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  line-height: var(--lh-body);
+}
+
+/* A link inside body prose. --accent-deep is the accent AS TEXT on a
+   light ground; --accent itself measures 3.3-3.7:1 there. */
+.db-link {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.db-link:hover { color: var(--ink); }
+
+.db-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s3);
+}
+
+/* ------------------------------------------------------------
+   1. WHAT IS NEXT — one card, one move
+   ------------------------------------------------------------
+   The step number is set in the display face at --sk-stepnum-size,
+   the same size the blueprint gives its own step numbers, so the
+   two pages agree about how big a step is.
+   ------------------------------------------------------------ */
+.db-next {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s3) var(--s4);
+  align-items: start;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+}
+.db-next-num {
+  font-family: var(--f-display);
+  font-size: var(--sk-stepnum-size);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.db-next-body { min-width: 0; }
+.db-next-where {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.db-next-title {
+  display: block;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  font-weight: 800;
+  color: var(--ink);
+}
+.db-next-deck {
+  max-width: var(--measure);
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.db-next-count {
+  margin: var(--s2) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.db-next-go {
+  grid-column: 2;
+  justify-self: start;
+  display: inline-block;
+}
+
+/* The gaps: a list of things genuinely missing, not a checklist of
+   everything the app can do. */
+.db-gaps {
+  list-style: none;
+  display: grid;
+  gap: var(--s3);
+  margin: var(--s5) 0 0;
+  padding: 0;
+}
+.db-gap {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--s4);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+}
+.db-gap-link {
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.db-gap-link:hover { color: var(--accent-deep); }
+.db-gap-why {
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   2. THE PHASE METER
+   ------------------------------------------------------------ */
+.db-phases {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+.db-phase {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue, var(--accent));
+  border-radius: var(--sk-radius);
+}
+.db-phase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+.db-phase-label {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  color: var(--ink);
+}
+.db-phase-pct {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+/* The bar is the one place a hue FILLS rather than edges, and it
+   carries no text, which is what makes that safe. */
+.db-bar {
+  height: 6px;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.db-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--hue, var(--accent));
+}
+.db-phase-meta {
+  margin: 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   3. THE NUMBER CARD
+   ------------------------------------------------------------ */
+.db-grid {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
+}
+.db-card {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--hue, var(--accent));
+  border-radius: var(--sk-radius);
+  color: var(--ink);
+  text-decoration: none;
+}
+.db-card:hover { border-color: var(--hue, var(--accent)); }
+.db-card:hover .db-card-label { color: var(--hue-deep, var(--accent-deep)); }
+.db-card-num {
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.db-card-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.db-card-note {
+  margin-top: var(--s1);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   4. THE PROJECT ROW
+   ------------------------------------------------------------ */
+.db-projects {
+  display: grid;
+  gap: var(--s2);
+}
+.db-proj {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+}
+.db-proj.is-open { border-left-color: var(--accent); border-left-width: var(--sk-hue-rule-w); }
+.db-proj-body { display: grid; gap: 2px; min-width: 0; }
+.db-proj-title {
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 800;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.db-proj-meta {
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Outlined, not filled: "this one is open" is a state, and a filled
+   pill would read as the page's loudest action. */
+.db-proj-flag {
+  flex: none;
+  padding: 2px var(--s2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--ink);
+}
+.db-proj-open { flex: none; }
+
+/* ------------------------------------------------------------
+   5. THE LOG
+   ------------------------------------------------------------ */
+.db-log {
+  list-style: none;
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+}
+.db-log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.db-log-what {
+  font-size: var(--t-small);
+  color: var(--ink-body);
+  overflow-wrap: anywhere;
+}
+/* Not uppercased, unlike every other mono label on the page: "1m ago"
+   becomes "1M AGO", and M is a month everywhere else in this app. */
+.db-log-when {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
+   NARROW
+   ------------------------------------------------------------ */
+@media (max-width: 719px) {
+  .db-sec { padding-inline: var(--s4); padding-block: var(--s5); }
+  .db-next { grid-template-columns: minmax(0, 1fr); }
+  .db-next-go { grid-column: 1; }
+  .db-next-num { font-size: var(--t-xl); }
+}
+
+@media print {
+  .db-cta-row, .db-proj-open, .db-next-go { display: none; }
+}

@@ -55,6 +55,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index:   resolve(__dirname, 'index.html'),
+        dashboard: resolve(__dirname, 'dashboard.html'),
         feature: resolve(__dirname, 'feature.html'),
         short:   resolve(__dirname, 'short.html'),
         library: resolve(__dirname, 'library.html'),
@@ -75,7 +76,24 @@ export default defineConfig({
         legacyLibrary: resolve(__dirname, 'arunak-filmmaker-library.html')
       },
       output: {
+        /* A few modules under src/lib/ are reached only through
+           `import()` and must be allowed to stay their own chunk.
+           Naming a chunk for them would defeat the dynamic import:
+           `studio` is in every page's entry graph, so anything
+           folded into it is downloaded on first paint whether the
+           page ever uses it or not — which is the rule CLAUDE.md
+           states for Supabase and pptxgenjs, and these are the
+           same shape. Returning undefined leaves the splitter to
+           give each one its own chunk.
+
+             screenplay-export  the typesetter — Save as PDF
+             shotlist-export    the shot division sheet
+             script-import      the .fountain/.txt/.fdx parser
+             ai                 the only module that can open a
+                                network connection, so the page
+                                that never drafts never loads it */
         manualChunks(id) {
+          if (/\/src\/lib\/(screenplay-export|shotlist-export|script-import|ai)\.js$/.test(id)) return;
           if (id.includes('@supabase')) return 'supabase';
           if (id.includes('/src/data/')) return 'data';
           if (id.includes('/src/lib/') || id.includes('/src/ui/')) return 'studio';

@@ -1,0 +1,228 @@
+/* ============================================================
+   THE LAUNCHER — the second layer
+   ------------------------------------------------------------
+   modules.css §6 owns the launcher's LANGUAGE: what a row is, what
+   a phase tile is, what a module tile is. This file owns the three
+   things that were added when the launcher stopped being a grid of
+   links and became a place you orient yourself in:
+
+     the glyph        every phase and module carries one in
+                      navigation.json, geometric or typographic and
+                      never emoji, because the studio is printed
+                      matter
+     the state line   what the module actually holds, derived in
+                      launcher.js from the real models
+     YOU ARE HERE     the hue rule, the marker and the trail in the
+                      head
+
+   It is imported by src/ui/launcher.js, so it travels with the
+   component — a page that renders the launcher gets these rules
+   with no second edit, and a page that does not, does not.
+
+   Every selector is scoped under .lx-grid (or .section-head, for
+   the trail) rather than written flat. Not decoration: launcher.css
+   enters the bundle through launcher.js, which a page imports
+   before its stylesheets, so this file can land BEFORE modules.css
+   in the output and lose every tie. One extra class in the selector
+   settles it whichever order the bundler picks.
+
+   Nothing here touches src/styles/chrome.css, which another hand
+   owns. Nothing here needed to.
+
+   RULES THIS FILE KEEPS
+   - colour is a token, always. Text on the light card takes
+     --hue-deep, which the dark theme redefines lighter for exactly
+     this purpose; text on the phase fill takes --hue-on. A fill is
+     never a text colour.
+   - --hue arrives by inheritance from .lx-row.sh-ph-*, a class
+     family that really exists in tokens.css. No new hue names are
+     invented here; an undefined custom property fails silently and
+     takes the colour coding with it.
+   - shapes come from --sk-*. The one hue rule on the current tile
+     is --sk-hue-rule-w, the same variable the rest of the design
+     uses for a rule that carries data, so a skin can still set it.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. THE GLYPHS
+   ------------------------------------------------------------
+   Set at a size that reads as a mark rather than as a character,
+   and in the mono face so the geometric glyphs line up with the
+   meta type rather than drifting with the serif.
+   ------------------------------------------------------------ */
+.lx-grid .lx-phase-icon {
+  font-family: var(--f-mono);
+  font-size: var(--t-xl);
+  line-height: 1;
+  margin-bottom: var(--s1);
+}
+
+.lx-grid .lx-mod-icon {
+  font-family: var(--f-mono);
+  font-size: var(--t-lg);
+  line-height: 1;
+  color: var(--hue-deep);
+  margin-bottom: var(--s1);
+}
+
+/* ------------------------------------------------------------
+   2. THE TILES
+   ------------------------------------------------------------
+   The <li> is the grid cell now and the tile stretches to fill it,
+   so a row of tiles is one height whatever the length of the
+   purpose line. The list markup is for the screen reader: a nav of
+   twenty-four links reads as four lists of a known length rather
+   than as one undifferentiated run.
+   ------------------------------------------------------------ */
+.lx-grid .lx-mods {
+  list-style: none;
+  margin: 0;
+}
+.lx-grid .lx-mod-cell {
+  display: grid;
+  min-width: 0;
+}
+.lx-grid .lx-mod {
+  height: 100%;
+  min-width: 0;
+  align-content: start;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------
+   3. THE STATE LINE
+   ------------------------------------------------------------
+   Three kinds, and the difference has to survive greyscale and a
+   print, so each one carries a mark as well as a colour:
+
+     work   a filled square in the phase hue, text in --hue-deep
+     empty  a hollow square in the rule colour, text muted
+     ref    no square at all — reference material is not waiting
+            for you to fill it in
+
+   The square is a ::before, deliberately. Making it a child
+   element would give .lx-mod-state children, and the contrast
+   assertion in verify only measures leaf elements — the state line
+   would have quietly stopped being checked.
+   ------------------------------------------------------------ */
+.lx-grid .lx-mod-state {
+  display: block;
+  margin-top: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.lx-grid .lx-mod-state::before {
+  content: '';
+  display: inline-block;
+  width: .5em;
+  height: .5em;
+  margin-right: .6em;
+  vertical-align: baseline;
+  background: var(--rule);
+}
+.lx-grid .lx-mod-state.is-work {
+  color: var(--hue-deep);
+}
+.lx-grid .lx-mod-state.is-work::before {
+  background: var(--hue);
+}
+.lx-grid .lx-mod-state.is-ref::before {
+  display: none;
+}
+
+/* The phase tile's own readout, under the "n of n ready" count.
+   Solid --hue-on rather than the count's .8 opacity: the count is
+   a fact about the build and can recede, this is a fact about the
+   user's film and should not. */
+.lx-grid .lx-phase-work {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-on);
+}
+
+/* ------------------------------------------------------------
+   4. YOU ARE HERE
+   ------------------------------------------------------------
+   The complaint this whole layer answers is "I do not know where I
+   am", so the current position is said three ways: a rule in the
+   phase hue down the side of the tile, a marker on its face, and
+   the trail in the section head. aria-current carries it to a
+   screen reader, which none of the three would.
+   ------------------------------------------------------------ */
+.lx-grid .lx-row.is-here {
+  border-color: var(--hue);
+}
+.lx-grid .lx-mod.is-here {
+  border-left-width: var(--sk-hue-rule-w);
+  border-left-color: var(--hue);
+}
+.lx-grid .lx-mod.is-here .lx-mod-label {
+  color: var(--hue-deep);
+}
+.lx-grid .lx-mod-here {
+  margin-top: var(--s2);
+  justify-self: start;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--hue-deep);
+}
+
+.section-head .right .lx-worked {
+  margin-top: var(--s1);
+}
+.section-head .right .lx-here-line {
+  margin-top: var(--s3);
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+}
+.section-head .right .lx-here-tag {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+.section-head .right .lx-here-trail {
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------
+   5. KEYBOARD
+   ------------------------------------------------------------
+   base.css already gives everything focusable an outline. The tile
+   needs one thing on top: a focused tile can sit at the bottom of
+   a scrolled row, and an outline drawn with offset gets clipped by
+   the row's `overflow: hidden`. Raising the focused tile out of
+   the stacking order is enough to bring the ring back.
+   ------------------------------------------------------------ */
+.lx-grid .lx-mod:focus-visible {
+  position: relative;
+  z-index: 1;
+  border-color: var(--hue);
+}
+
+/* ------------------------------------------------------------
+   6. THE PHONE
+   ------------------------------------------------------------
+   The row stacks below 720px (modules.css §6) and the phase tile
+   turns into a baseline-aligned strip. The two readouts have to
+   join that strip rather than force a fourth line, and the glyph
+   has to stop claiming a line of its own.
+   ------------------------------------------------------------ */
+@media (max-width: 719px) {
+  .lx-grid .lx-phase-icon {
+    margin-bottom: 0;
+    font-size: var(--t-lg);
+  }
+  .lx-grid .lx-phase-work {
+    margin-top: 0;
+  }
+}

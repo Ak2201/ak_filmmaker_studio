@@ -1409,6 +1409,9 @@ a:focus-visible { outline-offset: 3px; }
 
 .empty-projects-state {
   grid-column: 1 / -1;
+  min-width: 0;          /* a grid item's default min-width:auto is
+                            min-content, which is how a wide child
+                            drags the whole track past the viewport */
   padding: var(--s7) var(--s5);
   text-align: center;
 }
@@ -1433,7 +1436,12 @@ a:focus-visible { outline-offset: 3px; }
    without any of them going narrower than its own label. */
 .empty-projects-state .eps-tour {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  /* min(180px, 100%) rather than a bare 180px. auto-fit reduces the
+     COLUMN COUNT to fit, but it cannot shrink a track below its own
+     minimum — so three 180px tracks set a 564px floor that the parent
+     grid inherited, and the hub pushed 238px sideways at 390px. The
+     min() lets the track collapse with the viewport instead. */
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: var(--s3);
   max-width: 660px;
   margin: 0 auto var(--s6);
@@ -1789,14 +1797,44 @@ a:focus-visible { outline-offset: 3px; }
 
    At 1100px and up the rail is fixed and the page is inset by it.
    Below that it slides off-canvas behind the burger in the bar,
-   because 70px of a 390px screen is not navigation, it is a fifth of
+   because 76px of a 390px screen is not navigation, it is a fifth of
    the page. Off-canvas is a transform, never a negative offset, so it
    cannot widen the document: verify asserts zero horizontal overflow
    at 390px and this is exactly the kind of rule that breaks it.
+
+   THE RAIL IS 76px, NOT THE 70px THAT WAS MEASURED. A rail is only
+   as narrow as its longest label: "Dashboard" is 74px of 11px mono
+   at --track-label, and at 70px it spilled visibly past the rail's
+   own edge. Two changes rather than one, because they fail
+   differently — the label drops most of its tracking (a 70px column
+   cannot afford 0.15em on nine characters) AND the column gains 6px,
+   so a label one letter longer than today's worst case still lands
+   inside. `overflow-wrap` is the backstop under both: a future label
+   that beats them both wraps rather than escapes.
+
+   BELOW 1100px THE RAIL IS AN OVERLAY, AND IT NOW LOOKS LIKE ONE.
+   It was already fixed, already above the toolbar, and already
+   covering it — the page toolbar sat at left:0 underneath a drawer
+   that gave no sign of being a drawer, so "CURATED BY ARUNAK ·
+   STUDIO" rendered as "…D BY ARUNAK" and the Backup button as
+   "up ·", with nothing on screen to say why. Overlay is the right
+   choice — pushing the page would spend a fifth of a phone on
+   navigation, which is the decision the off-canvas transform was
+   made for — so the fix is to commit to it: a scrim dims what the
+   drawer is covering, tapping the scrim closes it, and focus is
+   trapped inside while it is open. A drawer that hides the control
+   you were reaching for is only a bug while it is pretending not to
+   be a drawer.
    ============================================================ */
 :root {
-  --sh-rail-w: 70px;
-  --sh-bar-h:  56px;
+  --sh-rail-w: 76px;
+  /* Two variables, not one. --sh-bar-min is the floor the bar is laid
+     out to; --sh-bar-h is its MEASURED height, republished by
+     shell.js for the page toolbar to sit under. Sharing one variable
+     made the bar's own min-height read back its measured value, so a
+     bar that wrapped to two rows could never return to one. */
+  --sh-bar-min: 56px;
+  --sh-bar-h:   56px;
 }
 
 .sh-rail {
@@ -1815,7 +1853,24 @@ a:focus-visible { outline-offset: 3px; }
 }
 .rail-shown .sh-rail { transform: none; }
 
-/* Icon over label, the way a rail this narrow has to be: a 70px
+/* The scrim only exists below the breakpoint, where the rail is a
+   drawer. Above it the rail is furniture and dimming the page you
+   are working in would be absurd. */
+.sh-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-toolbar) + 1);
+  display: none;
+  background: var(--scrim);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+@media (max-width: 1099px) {
+  body.rail-shown .sh-scrim { display: block; }
+}
+
+/* Icon over label, the way a rail this narrow has to be: a 76px
    column cannot hold a horizontal icon+word pair at a legible size. */
 .sh-rail-item {
   display: flex;
@@ -1825,21 +1880,36 @@ a:focus-visible { outline-offset: 3px; }
   gap: 4px;
   min-height: 64px;
   padding: var(--s2) var(--s1);
-  border-left: 2px solid transparent;
+  border-left: var(--sk-hue-rule-w) solid transparent;
   color: var(--chrome-muted);
   text-decoration: none;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  /* Not --track-label. Nine tracked characters do not fit a rail. */
+  letter-spacing: .02em;
   text-transform: uppercase;
   text-align: center;
 }
+.sh-rail-label {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: var(--lh-snug);
+}
 .sh-rail-item:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
+/* "You are here" in the rail is a filled cell with a hue bar down its
+   edge, not a tint. The old state was a 2px line and an 8%-alpha
+   wash: correct, and invisible at a glance, which is the whole
+   complaint this shell is answering. */
 .sh-rail-item.is-active {
   background: var(--chrome-fill-strong);
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-lift);
   color: var(--chrome-ink);
+  font-weight: 700;
 }
+/* Same reason as .sh-where-here .sh-where-icon below: the active
+   cell's ground is lifted, so its glyph is ink and the hue is the
+   rule. */
+.sh-rail-item.is-active .sh-rail-icon { color: var(--chrome-ink); }
 .sh-rail-icon { font-size: 1.35em; line-height: 1; }
 
 /* ---- the single horizontal bar ---- */
@@ -1849,14 +1919,111 @@ a:focus-visible { outline-offset: 3px; }
   z-index: var(--z-toolbar);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--s2);
-  min-height: var(--sh-bar-h);
+  min-height: var(--sh-bar-min);
   padding: var(--s2) var(--s3);
   background: var(--chrome);
   color: var(--chrome-ink);
   border-bottom: 1px solid var(--chrome-hair);
 }
-.sh-phases { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.sh-phases { display: flex; flex-wrap: wrap; gap: var(--s1); min-width: 0; }
+
+/* ============================================================
+   YOU ARE HERE — the breadcrumb
+   ------------------------------------------------------------
+   Studio › Phase › Module, in that order, first thing in the bar.
+   It exists because the file name does not identify the module:
+   breakdown.html is two modules, plan.html is three and two of
+   those are in different phases. An active tab cannot say which.
+
+   The hue comes from the .sh-ph-* class shell.js puts on the nav
+   element, so the icons carry the phase's colour and the current
+   segment carries its rule. Every colour here is a token and
+   every one of them is a LIFT or an ink: the bar is dark chrome in
+   all four themes, so a hue at its fill value would sit at about
+   2.4:1 on it. --hue-lift is the version of a hue meant for a dark
+   ground; the fallback is --accent-lift, for the hub and the
+   dashboard, which belong to no phase and would otherwise leave
+   --hue undefined and the glyph painted in currentColor.
+   ============================================================ */
+.sh-where {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.sh-where-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--chrome-muted);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.sh-where-step, button.sh-where-step { cursor: pointer; }
+a.sh-where-step:hover,
+button.sh-where-step:hover,
+a.sh-where-step:focus-visible,
+button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(--chrome-ink); }
+.sh-where-text { overflow: hidden; text-overflow: ellipsis; }
+.sh-where-icon {
+  flex: none;
+  width: 1.2em;
+  font-size: 1.2em;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0;
+  color: var(--hue-lift, var(--accent-lift));
+}
+.sh-where-sep { flex: none; color: var(--chrome-muted); }
+/* The destination reads as a destination: full ink, weight, its own
+   cell, and the phase's hue as a rule down its leading edge. */
+.sh-where-here {
+  background: var(--chrome-fill-strong);
+  border-color: var(--chrome-hair-strong);
+  border-left: var(--sk-hue-rule-w) solid var(--hue, var(--accent));
+  color: var(--chrome-ink);
+  font-weight: 700;
+}
+/* The current segment's own glyph goes to ink, not to the hue.
+
+   --hue-lift is "the hue on a DARK ground", and an 18%-alpha wash
+   over the chrome is not one: the gate measured the Develop glyph at
+   3.76:1 inside the lifted cell on ten of thirteen pages, against
+   6.5:1 on the bare bar two pixels to its left. The rule has not
+   changed — a fill is not a text colour — the ground did. The hue
+   still names the place; it does it as the rule down the edge, which
+   is a fill doing a fill's job. */
+.sh-where-here .sh-where-icon { color: var(--chrome-ink); }
+/* What this place is FOR, in sentence case, where the bar is wide
+   enough to say it without pushing the phase tabs to a second row. */
+.sh-where-purpose {
+  min-width: 0;
+  overflow: hidden;
+  padding-left: var(--s2);
+  color: var(--chrome-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
+  text-transform: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1379px) { .sh-where-purpose { display: none; } }
 
 /* The burger sits IN the bar rather than floating over the page: on a
    narrow screen the rail is not visible, and a control for something
@@ -1906,18 +2073,29 @@ a:focus-visible { outline-offset: 3px; }
   cursor: pointer;
 }
 .sh-phase-btn:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
+/* The active phase is FILLED with its hue, not outlined in it. One
+   border-colour apart from five identical neighbours is a difference
+   you have to go looking for, and going looking is the complaint.
+   --hue/--hue-on is the pair tokens.css validates for a hue used as
+   a fill — the one place amber gets a dark on-colour instead of
+   white — so this is legible in all four themes by construction. */
 .sh-phase.is-active .sh-phase-btn {
-  color: var(--chrome-ink);
+  background: var(--hue);
   border-color: var(--hue);
+  color: var(--hue-on);
+  font-weight: 700;
 }
 /* The dot is the whole colour system in 8px: six phases, six hues,
-   legible before the label is read. */
+   legible before the label is read. On the active tab the hue has
+   moved to the fill, so the dot inverts rather than disappearing
+   into a background of its own colour. */
 .sh-phase-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--hue);
   flex: none;
 }
+.sh-phase.is-active .sh-phase-dot { background: var(--hue-on); }
 
 /* ---- module dropdown ---- */
 .sh-phase-menu {
@@ -1945,12 +2123,13 @@ a:focus-visible { outline-offset: 3px; }
 }
 .sh-mod {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 0 var(--s2);
   width: 100%;
   padding: var(--s2) var(--s3);
   background: none;
   border: 0;
+  border-left: var(--sk-hue-rule-w) solid transparent;
   border-radius: var(--radius);
   text-align: left;
   text-decoration: none;
@@ -1959,9 +2138,35 @@ a:focus-visible { outline-offset: 3px; }
   font: inherit;
 }
 .sh-mod:hover, .sh-mod:focus-visible { background: var(--panel-raised); }
-.sh-mod-label { font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; }
+/* The one you are reading right now, named in the list of its
+   siblings. Opening the phase menu and having to work out which of
+   six rows you came from is the same problem one level down. */
+.sh-mod.is-here {
+  background: var(--panel-raised);
+  border-left-color: var(--hue, var(--accent));
+}
+.sh-mod.is-here .sh-mod-label { color: var(--hue-lift, var(--accent-lift)); }
+/* Explicit placement: the icon spans both rows, the purpose runs
+   under the label and the flag. Auto-placement put the flag on a
+   third row the moment the purpose spanned the full width. */
+.sh-mod-icon {
+  grid-area: 1 / 1 / 3 / 2;
+  align-self: center;
+  width: 1.4em;
+  font-family: var(--f-mono);
+  font-size: var(--t-base);
+  line-height: 1;
+  text-align: center;
+  color: var(--hue-lift, var(--accent-lift));
+}
+.sh-mod-label {
+  grid-area: 1 / 2 / 2 / 3;
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
 .sh-mod-purpose {
-  grid-column: 1 / -1;
+  grid-area: 2 / 2 / 3 / 4;
   font-size: var(--t-tiny);
   color: var(--panel-muted);
   line-height: var(--lh-snug);
@@ -1969,6 +2174,7 @@ a:focus-visible { outline-offset: 3px; }
 /* "Planned" is stated, not implied by a dead link. A module that looks
    clickable and does nothing is worse than one that says SOON. */
 .sh-mod-flag {
+  grid-area: 1 / 3 / 2 / 4;
   align-self: start;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -2006,7 +2212,7 @@ a:focus-visible { outline-offset: 3px; }
    verify did not catch this: it measures overflow with every menu shut.
    Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
 @media (max-width: 719px) {
-  .sh-bar { position: relative; flex-wrap: wrap; }
+  .sh-bar { position: relative; }
   .sh-phase { position: static; }
   .sh-phase-menu {
     left: var(--s3);
@@ -2014,6 +2220,20 @@ a:focus-visible { outline-offset: 3px; }
     min-width: 0;
     max-width: none;
   }
+  /* Two rows on purpose: where you are, then where else you could
+     go. Sharing one row, six wrapped tabs push the breadcrumb to a
+     width where it says "…ELEMENTS" and nothing else. */
+  .sh-phases { flex: 1 1 100%; }
+}
+/* The root segment is the one that can go: the rail's Home item and
+   the studio's own name are both one tap away, and "Breakdown ›
+   Elements" is the part that answers the question. */
+@media (max-width: 479px) {
+  /* :not(.sh-where-here) matters — on the hub the root IS the
+     destination, and hiding it would leave an empty breadcrumb on
+     the one page whose crumb is a single segment. */
+  .sh-where-root:not(.sh-where-here),
+  .sh-where-root:not(.sh-where-here) + .sh-where-sep { display: none; }
 }
 
 /* The page toolbar stacks under the bar rather than over it. */
@@ -2023,7 +2243,7 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 @media print {
-  .sh-rail, .sh-bar { display: none !important; }
+  .sh-rail, .sh-bar, .sh-scrim { display: none !important; }
   body.has-sh-shell { padding-left: 0 !important; }
 }
 

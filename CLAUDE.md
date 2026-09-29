@@ -43,8 +43,9 @@ src/
              OVERWRITTEN by `npm run extract`; steps.production.json is
              hand-written and will not, because phases 03 and 04 never
              existed in the 2023 pages.
-  lib/       store.js cloud.js dom.js pwa.js skin.js
+  lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
+             screenplay-export.js shotlist-export.js script-import.js ai.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js
@@ -392,18 +393,49 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    `USE N DAYS IN THE ESTIMATE` fills only the day fields left blank and says
    how many it left alone — a hand-set figure is a decision, not a gap. This
    was the open item that justified the whole rebuild and it is done.
-3. **AI, bring-your-own-key.** Key in `localStorage`, per-device, never synced.
-   Anthropic's browser calls need `anthropic-dangerous-direct-browser-access`.
-   The value is in-place work (dialogue passes, beat critique) using the
-   blueprint as context — not a chat box.
-4. **Script import** (`.fountain`, `.fdx`) and a proper screenplay PDF. Export
-   exists; import does not, so the tool can't be used on a project in flight.
+3. ~~**AI, bring-your-own-key.**~~ Done, for one job: drafting a shot
+   division from the script. `src/lib/ai.js`, key at `arunak_ai_key_v1`
+   through `rawGet`/`rawSet`/`rawRemove` so the storage proxy cannot scope
+   it, absent from all five registries (`SCOPED_KEYS`, `PROJECT_KEYS`,
+   `ALL_KEYS`, the Supabase scope list, and `GLOBAL_KEYS` — that last one
+   is what `export-all` walks, and it is the one most easily missed).
+   `connect-src` in `vercel.json` and `netlify.toml` names
+   `api.anthropic.com`; without it the browser refuses the request.
+   Two independent gates: no key, and no script.
+
+   What is left of this item is the rest of the value: in-place work on
+   the writing itself — dialogue passes, beat critique — using the
+   blueprint as context. Still not a chat box.
+4. ~~**Script import and a proper screenplay PDF.**~~ Done.
+   `src/lib/script-import.js` reads `.fountain`, plain screenplay text and
+   `.fdx` (via `DOMParser`, no dependency) and fills BOTH the script
+   elements and the scene model — an import that fills only the editor
+   leaves the breakdown, stripboard, budget and reports empty, which is
+   half a job. Nothing is written before a preview; Replace takes a
+   revision first. `src/lib/screenplay-export.js` paginates properly, so
+   `(MORE)`/`(CONT'D)` and page numbers are correct.
+
+   Known gaps, small: `.fdx` `Number="12"` attributes are not read (a
+   number inside the heading text is), and the plain-text parser is
+   heuristic — it round-trips our own export exactly, but a third-party
+   `.txt` may need a type corrected by hand.
 5. **Finish collaboration.** The comments API in `src/lib/cloud.js` is fully
    written — threads, suggestions, accept/reject — with no UI attached.
    Audit Supabase row-level security before real strangers hold share links.
-6. **Refresh the Chennai rates** (currently 2024-25, shown with that date) and
+6. **`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**
+   `.bd-stat span` measures 2.53–2.76:1 in desk; `.bd-el-scenes` and
+   `.bd-el-cat` are also under. Two agents found this independently on
+   four different pages, so it is app-wide, not local. The reason it is
+   invisible is the more important half: `.bd-stat`, `.hero-stat`,
+   `.hub-stat-strip` and `.bd-el` are not in the contrast probe's
+   `SURFACES` list in `verify-migration.mjs`, so the stat strip — which
+   is on seven pages — has never been contrast-checked at all. Widen the
+   probe FIRST, then fix what it finds; fixing the colour first would
+   leave the hole open.
+
+7. **Refresh the Chennai rates** (currently 2024-25, shown with that date) and
    turn the festival list into a submission tracker.
-7. ~~First-run experience.~~ Done. The hub no longer opens the new-project
+8. ~~First-run experience.~~ Done. The hub no longer opens the new-project
    modal on a timer; the empty grid renders a first-run panel instead — what
    the studio is, three destinations that need no project at all, then the
    ask, plus a sample project that seeds a logline, a theme and four scenes

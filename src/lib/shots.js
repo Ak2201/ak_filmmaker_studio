@@ -90,6 +90,12 @@ export function blankShot(patch = {}) {
     lens: '',
     description: '',
     done: false,
+    // Drafted by the AI panel rather than typed by a person. Declared
+    // here so it is part of the record's contract: it survived on an
+    // undeclared field only because listShots() spreads the stored
+    // object over this one, which works until someone rebuilds a shot
+    // from blankShot() and silently drops the provenance.
+    ai: false,
     ...patch
   };
 }

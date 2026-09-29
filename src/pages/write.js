@@ -42,12 +42,22 @@ import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
+import Scenes from '../lib/scenes.js';
 import Script, {
   ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
   revisionColour, typeLabel,
   blankElement, blankDocument,
   pageCount, formatPages, formatRuntime, wordCount, totalLines
 } from '../lib/script.js';
+
+/* The typesetter and the parser are both lazy chunks. Neither is
+   needed to read or write a page, both are a few kilobytes of
+   pure string work, and CLAUDE.md is explicit that anything of
+   that shape stays out of first paint. `import()` is awaited at
+   the click, which is also the first moment either could fail
+   somewhere the user can be told about it. */
+const typesetter = () => import('../lib/screenplay-export.js');
+const importer = () => import('../lib/script-import.js');
 
 const app = document.getElementById('app');
 
@@ -58,6 +68,17 @@ const app = document.getElementById('app');
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
 let openDocId = null;
+
+/* Import view state. `importPlan` is what a file parsed to and what
+   the preview is showing; it is NOT stored, because it is a
+   proposal the user has not accepted yet and a proposal that
+   survives a reload is a proposal nobody remembers making. */
+let importOpen = false;
+let importPlan = null;
+let importName = '';
+let importBusy = false;
+let replaceScript = false;
+let replaceScenes = false;
 
 /* ---- persistence ------------------------------------------- */
 const SAVE_DELAY = 500;
@@ -242,16 +263,30 @@ function renderScreenplay() {
       h('span.wr-gauge-num', { 'data-count': 'runtime', text: formatRuntime(pages) }),
       h('span.wr-gauge-lab', { text: 'on screen' })
     ]),
-    /* Two exports now, so they go behind one named menu instead of
-       two buttons on the gauge row. Both are dead without pages, and
-       both say so rather than silently producing an empty file. */
+    /* The exports go behind one named menu instead of three buttons
+       on the gauge row. All of them are dead without pages, and they
+       say so rather than silently producing an empty file.
+
+       Import is NOT in that menu. It is the one control here that
+       changes what is on the page rather than copying it off, and a
+       destructive-capable action hiding under a verb that means the
+       opposite is how somebody replaces a draft by accident. */
     h('div.wr-export', {}, [
+      h('button.btn' + (importOpen ? '.is-on' : ''), {
+        type: 'button', 'data-action': 'import-toggle',
+        'aria-expanded': importOpen ? 'true' : 'false',
+        'aria-controls': 'wr-import',
+        text: 'Import a script'
+      }),
       actionMenu('Export', [
-        { label: 'Export .fountain', action: 'export-fountain', hint: 'screenplay' },
-        { label: 'Save as PDF',      action: 'export-pdf',      hint: 'US Letter' }
+        { label: 'Save as PDF',        action: 'export-pdf',      hint: 'US Letter' },
+        { label: 'Screenplay text',    action: 'export-text',     hint: '.txt' },
+        { label: 'Export .fountain',   action: 'export-fountain', hint: 'plain text' }
       ], { align: 'right' })
     ])
   ]));
+
+  if (importOpen) section.append(renderImport());
 
   if (!doc.elements.length) {
     section.append(renderScreenplayEmpty());
@@ -264,6 +299,194 @@ function renderScreenplay() {
     type: 'button', 'data-action': 'el-add', text: '+  Add element'
   }));
   return section;
+}
+
+/* ============================================================
+   1b. IMPORT — a script arrives from somewhere else
+   ------------------------------------------------------------
+   CLAUDE.md open item 4. The parsing is in
+   src/lib/script-import.js and writes nothing; everything here
+   is the conversation around it, and the whole point of that
+   split is this panel: a user sees what was understood BEFORE
+   anything is stored.
+
+   THREE WAYS IN, because "if I send a script" is not one
+   gesture: the file picker, a drop anywhere on the page, and a
+   paste straight into the box. All three end at the same
+   `takeScript()`.
+
+   NOTHING IS WRITTEN UNTIL THE LAST BUTTON. The default on
+   both destinations is APPEND — the non-destructive one — and
+   replace is only even offered when there is something to
+   replace. When it is chosen, a revision is taken first, so an
+   import is undone by the Restore button that already exists
+   rather than by a route invented for this feature.
+   ============================================================ */
+const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
+
+function importChooser() {
+  const wrap = h('div.wr-imp-choose');
+
+  wrap.append(h('p.wr-imp-lead', {
+    text: 'Drop a script anywhere on this page, choose a file, or paste the text below. '
+        + 'Fountain (.fountain), a plain screenplay (.txt) and Final Draft (.fdx) all work.'
+  }));
+  wrap.append(h('p.wr-imp-privacy', {}, [
+    h('strong', { text: 'The file is read in this browser. ' }),
+    h('span', {
+      text: 'Nothing is uploaded — the studio has no server, and an import never '
+          + 'touches the network.'
+    })
+  ]));
+
+  const file = h('input', {
+    type: 'file', id: 'wr-imp-file', class: 'wr-imp-file',
+    accept: '.fountain,.spmd,.txt,.fdx,.xml,text/plain',
+    'data-action': 'import-file'
+  });
+  wrap.append(h('div.wr-imp-row', {}, [
+    h('label.btn.primary.wr-imp-pick', { for: 'wr-imp-file', text: 'Choose a file…' }),
+    file
+  ]));
+
+  wrap.append(h('label.wr-field', {}, [
+    h('span', { text: 'Or paste the script' }),
+    h('textarea.wr-imp-paste', {
+      id: 'wr-import-paste', rows: '6', spellcheck: 'false',
+      placeholder: 'Paste the whole script here and it is read straight away.',
+      'aria-label': 'Paste a script to import'
+    })
+  ]));
+  wrap.append(h('button.btn', {
+    type: 'button', 'data-action': 'import-paste', text: 'Read what I pasted'
+  }));
+  return wrap;
+}
+
+function importPreview(plan) {
+  const wrap = h('div.wr-imp-preview');
+  const fmt = plan.format === 'fdx' ? 'Final Draft'
+    : plan.format === 'text' ? 'screenplay text' : 'Fountain';
+
+  wrap.append(h('p.wr-imp-read', {
+    text: 'Read ' + (importName ? '“' + importName + '” ' : '') + 'as ' + fmt + '.'
+  }));
+
+  const stats = h('div.wr-imp-stats');
+  stats.append(impStat(String(plan.elements.length), plan.elements.length === 1 ? 'element' : 'elements'));
+  stats.append(impStat(formatPages(plan.pages), 'pages'));
+  stats.append(impStat(String(plan.scenes.length), plan.scenes.length === 1 ? 'scene' : 'scenes'));
+  wrap.append(stats);
+
+  const counts = h('ul.wr-imp-counts');
+  for (const type of TYPE_ORDER) {
+    if (!plan.counts[type]) continue;
+    counts.append(h('li', {}, [
+      h('strong', { text: String(plan.counts[type]) }),
+      h('span', { text: ' ' + typeLabel(type).toLowerCase() })
+    ]));
+  }
+  if (counts.childElementCount) wrap.append(counts);
+
+  /* What it will do, in words, before it does it. */
+  wrap.append(h('h3.wr-imp-h3', { text: 'Where it goes' }));
+  wrap.append(destination(
+    'The screenplay',
+    doc.elements.length,
+    doc.elements.length === 1 ? 'element already written' : 'elements already written',
+    'import-script-mode', replaceScript,
+    'Add the imported pages after what is there',
+    'Replace the screenplay with the imported pages'
+  ));
+
+  const existingScenes = Scenes.listScenes().length;
+  wrap.append(destination(
+    'The scene list',
+    existingScenes,
+    existingScenes === 1 ? 'scene already broken down' : 'scenes already broken down',
+    'import-scenes-mode', replaceScenes,
+    'Add the imported scenes after the existing ones',
+    'Replace the scene list with the imported scenes'
+  ));
+  wrap.append(h('p.bd-none.wr-imp-note', {
+    text: 'Each scene gets its INT/EXT, time of day, location and a length in eighths '
+        + 'measured from the imported pages. The one-line synopsis is the scene’s '
+        + 'first action line — change it in the breakdown if it is not the sentence '
+        + 'you would have written.'
+  }));
+
+  if (replaceScript && doc.elements.length) {
+    wrap.append(h('p.wr-imp-safe', {
+      text: 'A revision is taken first, so the pages on screen now can be brought back '
+          + 'from the Revisions section below.'
+    }));
+  }
+
+  if (plan.warnings.length) {
+    const warn = h('div.wr-imp-warn');
+    warn.append(h('strong', { text: 'What was not clean' }));
+    const list = h('ul');
+    plan.warnings.slice(0, 8).forEach((w) => list.append(h('li', { text: w })));
+    if (plan.warnings.length > 8) {
+      list.append(h('li', { text: '…and ' + (plan.warnings.length - 8) + ' more of the same kind.' }));
+    }
+    warn.append(list);
+    warn.append(h('p', {
+      text: 'Nothing was dropped. A line this parser could not place became an action '
+          + 'line, and you can change its type in the editor.'
+    }));
+    wrap.append(warn);
+  }
+
+  wrap.append(h('div.wr-imp-acts', {}, [
+    h('button.btn.primary', {
+      type: 'button', 'data-action': 'import-commit', disabled: importBusy || !plan.elements.length,
+      text: importBusy ? 'Importing…' : 'Import this script'
+    }),
+    h('button.btn', { type: 'button', 'data-action': 'import-back', text: 'Choose another file' }),
+    h('button.btn', { type: 'button', 'data-action': 'import-cancel', text: 'Cancel' })
+  ]));
+  return wrap;
+}
+
+const impStat = (value, label) =>
+  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+
+/** One destination, with the choice it needs. Replace is only
+    offered when there is work to lose; with an empty destination
+    the two options mean the same thing and offering both is a
+    question with no answer. */
+function destination(title, existing, existingLabel, action, isReplace, appendText, replaceText) {
+  const box = h('div.wr-imp-dest');
+  box.append(h('strong', { text: title }));
+  if (!existing) {
+    box.append(h('span.wr-imp-dest-state', { text: 'empty — the import fills it' }));
+    return box;
+  }
+  box.append(h('span.wr-imp-dest-state', { text: existing + ' ' + existingLabel }));
+  const row = h('div.wr-imp-modes', { role: 'group', 'aria-label': title + ': add or replace' });
+  [[false, 'Add', appendText], [true, 'Replace', replaceText]].forEach(([value, label, title2]) => {
+    row.append(h('button.wr-imp-mode' + (isReplace === value ? '.is-on' : '') + (value ? '.is-danger' : ''), {
+      type: 'button', 'data-action': action, 'data-mode': value ? 'replace' : 'append',
+      'aria-pressed': String(isReplace === value), title: title2, text: label
+    }));
+  });
+  box.append(row);
+  box.append(h('span.wr-imp-dest-hint', { text: isReplace ? replaceText : appendText }));
+  return box;
+}
+
+function renderImport() {
+  const panel = h('section.wr-imp', { id: 'wr-import', 'aria-label': 'Import a script' });
+  panel.append(h('div.wr-imp-head', {}, [
+    h('h3.wr-imp-title', { text: 'Import a script' }),
+    h('button.bd-icon', {
+      type: 'button', 'data-action': 'import-cancel',
+      title: 'Close the importer', 'aria-label': 'Close the importer', text: '✕'
+    })
+  ]));
+  panel.append(importPlan ? importPreview(importPlan) : importChooser());
+  return panel;
 }
 
 /* ============================================================
@@ -651,8 +874,8 @@ delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
 });
 
 /* ---- Fountain export ---------------------------------------- */
-function download(text, filename) {
-  const blob = new Blob([text], { type: 'text/plain' });
+function download(text, filename, mime) {
+  const blob = new Blob([text], { type: mime || 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -689,52 +912,233 @@ delegate(document, 'click', '[data-action="export-fountain"]', () => {
    textarea has no scrollbar to give it away.
 
    So the PDF is typeset instead, from the same element list, at
-   print time. It is thrown away again on afterprint: a second copy
-   of the script living permanently in the DOM is the "one
-   representation per thing" rule broken, and it would be the copy
-   that goes stale. The measurements are in styles/pdf.css. */
-const PRINT_CLASS = {
-  scene: 'wr-pr-scene',
-  action: 'wr-pr-action',
-  character: 'wr-pr-character',
-  paren: 'wr-pr-paren',
-  dialogue: 'wr-pr-dialogue',
-  transition: 'wr-pr-transition'
-};
+   print time, by src/lib/screenplay-export.js — which also
+   decides where the pages break, because a page number and a
+   (MORE) are both answers to "which page is this". It is thrown
+   away again on afterprint: a second copy of the script living
+   permanently in the DOM is the "one representation per thing"
+   rule broken, and it would be the copy that goes stale. The
+   measurements are in styles/pdf.css and styles/write.css. */
+const exportMeta = () => ({
+  title: Script.projectTitle(),
+  revision: currentRevision(),
+  subtitle: prettyStamp(new Date().toISOString()),
+  date: new Date().toISOString().slice(0, 10)
+});
 
-function buildScreenplayDocument() {
-  const page = h('div.wr-print');
-  const rev = currentRevision();
-  page.append(h('div.wr-pr.wr-pr-title', {}, [
-    h('b', { text: Script.projectTitle() }),
-    h('span', { text: 'Screenplay' }),
-    h('span', { text: rev || prettyStamp(new Date().toISOString()) })
-  ]));
-
-  for (const el of doc.elements) {
-    let text = String(el.text ?? '').trim();
-    if (!text) continue;                       // a blank element is a gap, not a beat
-    // A parenthetical is written without its brackets in the editor,
-    // the way every screenwriting app takes it, and wears them on paper.
-    if (el.type === 'paren' && !/^\(.*\)$/.test(text)) text = '(' + text + ')';
-    page.append(h('p.wr-pr.' + (PRINT_CLASS[el.type] || PRINT_CLASS.action), { text }));
-  }
-  return page;
-}
-
-delegate(document, 'click', '[data-action="export-pdf"]', () => {
+delegate(document, 'click', '[data-action="export-pdf"]', async () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
+  let Typeset;
+  try { Typeset = await typesetter(); }
+  catch (e) { say('The typesetter could not be loaded. Check the connection and try again.'); return; }
+
   let node = null;
   PDF.exportPDF({
     scope: 'screenplay',
     title: Script.projectTitle() + ' — Screenplay',
     subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
       .filter(Boolean).join(' · '),
-    before: () => { node = buildScreenplayDocument(); main.append(node); },
+    before: () => { node = Typeset.buildDocument(doc, exportMeta()); main.append(node); },
     after: () => { if (node) { node.remove(); node = null; } }
   });
+});
+
+delegate(document, 'click', '[data-action="export-text"]', async () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  let Typeset;
+  try { Typeset = await typesetter(); }
+  catch (e) { say('The typesetter could not be loaded. Check the connection and try again.'); return; }
+  const title = Script.projectTitle();
+  download(Typeset.toText(doc, exportMeta()),
+    Script.slugify(title, 'screenplay') + '.txt', 'text/plain');
+  say('Exported ' + Typeset.sheetCount(doc.elements) + ' pages of screenplay text.');
+});
+
+/* ---- import -------------------------------------------------
+   Three ways in, one path through. Nothing below writes until
+   `import-commit`. */
+function resetImport() {
+  importPlan = null;
+  importName = '';
+  importBusy = false;
+  replaceScript = false;
+  replaceScenes = false;
+}
+
+async function takeScript(text, filename) {
+  if (!String(text || '').trim()) { say('That file was empty.'); return; }
+  let Parser;
+  try { Parser = await importer(); }
+  catch (e) { say('The script parser could not be loaded. Check the connection and try again.'); return; }
+
+  let plan;
+  try { plan = Parser.parseScript(text, filename); }
+  catch (e) {
+    console.warn('[write] import', e);
+    say('That file could not be read as a screenplay.');
+    return;
+  }
+
+  if (plan.fatal || !plan.elements.length) {
+    importPlan = null;
+    importOpen = true;
+    render();
+    say(plan.warnings[0] || 'Nothing in that file looked like a screenplay.');
+    return;
+  }
+
+  importPlan = plan;
+  importName = filename || '';
+  importBusy = false;
+  // Default to the safe side on both destinations, every time a new
+  // file is read — a replace chosen for the last file is not consent
+  // for this one.
+  replaceScript = false;
+  replaceScenes = false;
+  importOpen = true;
+  render();
+}
+
+delegate(document, 'click', '[data-action="import-toggle"]', () => {
+  importOpen = !importOpen;
+  if (!importOpen) resetImport();
+  render(importOpen ? '#wr-import-paste' : null);
+});
+delegate(document, 'click', '[data-action="import-cancel"]', () => {
+  importOpen = false;
+  resetImport();
+  render();
+});
+delegate(document, 'click', '[data-action="import-back"]', () => {
+  resetImport();
+  render('#wr-import-paste');
+});
+
+delegate(document, 'change', 'input[data-action="import-file"]', async (e, input) => {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  let Parser;
+  try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
+  let text;
+  try { text = await Parser.readFile(file); }
+  catch (err) { say('That file could not be read.'); return; }
+  takeScript(text, file.name);
+});
+
+delegate(document, 'click', '[data-action="import-paste"]', () => {
+  const box = document.getElementById('wr-import-paste');
+  if (!box || !box.value.trim()) { say('Paste a script into the box first.'); return; }
+  takeScript(box.value, '');
+});
+
+/* A paste into the box reads it immediately — the button beside it
+   stays for the person who typed or dropped text in some other way.
+   `setTimeout` because the value is not in the field yet when the
+   paste event fires. */
+delegate(document, 'paste', '#wr-import-paste', (e, box) => {
+  setTimeout(() => { if (box.value.trim()) takeScript(box.value, ''); }, 0);
+});
+
+delegate(document, 'click', '[data-action="import-script-mode"]', (e, btn) => {
+  replaceScript = btn.dataset.mode === 'replace';
+  render();
+});
+delegate(document, 'click', '[data-action="import-scenes-mode"]', (e, btn) => {
+  replaceScenes = btn.dataset.mode === 'replace';
+  render();
+});
+
+delegate(document, 'click', '[data-action="import-commit"]', () => {
+  const plan = importPlan;
+  if (!plan || importBusy) return;
+
+  /* The last gate, and it names what is about to happen rather
+     than asking "are you sure?". Only shown when something is
+     actually being replaced — a confirm on a safe action is the
+     dialog people learn to click through. */
+  const losing = [];
+  if (replaceScript && doc.elements.length) {
+    losing.push(doc.elements.length + (doc.elements.length === 1 ? ' element' : ' elements') + ' of screenplay');
+  }
+  const existingScenes = Scenes.listScenes();
+  if (replaceScenes && existingScenes.length) {
+    losing.push(existingScenes.length + (existingScenes.length === 1 ? ' scene' : ' scenes'));
+  }
+  if (losing.length && !confirm(
+    'Replace ' + losing.join(' and ') + '?\n\n'
+    + (replaceScript && doc.elements.length
+      ? 'A revision of the current screenplay is taken first, so it can be restored.\n\n'
+      : '')
+    + 'The scene list is not versioned — replacing it cannot be undone.'
+  )) return;
+
+  importBusy = true;
+
+  // 1. the screenplay
+  if (replaceScript && doc.elements.length) {
+    doc.revisions.push(Script.makeRevision(doc.elements, 'Before importing ' + (importName || 'a script')));
+  }
+  const incoming = plan.elements.map((el) => blankElement({ type: el.type, text: el.text }));
+  doc.elements = replaceScript ? incoming : doc.elements.concat(incoming);
+  persistNow();
+
+  // 2. the scene list
+  let renumbered = 0;
+  const taken = new Set(replaceScenes ? [] : existingScenes.map((s) => String(s.number)));
+  const base = replaceScenes ? 0 : existingScenes.length;
+  const rows = plan.scenes.map((s, i) => {
+    let number = String(s.number || '');
+    if (!number || taken.has(number)) { number = String(base + i + 1); renumbered++; }
+    taken.add(number);
+    return { ...s, number };
+  });
+  Scenes.saveScenes(replaceScenes ? rows : existingScenes.concat(rows));
+
+  importOpen = false;
+  resetImport();
+  render();
+  say('Imported ' + incoming.length + ' elements and ' + rows.length
+    + (rows.length === 1 ? ' scene' : ' scenes')
+    + (renumbered ? ' · ' + renumbered + ' renumbered to avoid a clash' : '')
+    + '. The breakdown and the stripboard have them now.');
+});
+
+/* ---- drop a script anywhere ---------------------------------
+   The third way in. It is on the document rather than on a small
+   target because a person dragging a file at a page aims at the
+   page. A drag that is not carrying files is ignored, so dragging
+   text inside a textarea still behaves. */
+function draggingFiles(e) {
+  const dt = e.dataTransfer;
+  return !!dt && Array.from(dt.types || []).includes('Files');
+}
+let dragDepth = 0;
+addEventListener('dragenter', (e) => {
+  if (!draggingFiles(e)) return;
+  dragDepth++;
+  document.body.classList.add('wr-dropping');
+});
+addEventListener('dragover', (e) => { if (draggingFiles(e)) e.preventDefault(); });
+addEventListener('dragleave', (e) => {
+  if (!draggingFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) document.body.classList.remove('wr-dropping');
+});
+addEventListener('drop', async (e) => {
+  if (!draggingFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('wr-dropping');
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file) return;
+  let Parser;
+  try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
+  let text;
+  try { text = await Parser.readFile(file); }
+  catch (err) { say('That file could not be read.'); return; }
+  takeScript(text, file.name);
 });
 
 /* ---- revisions ---------------------------------------------- */

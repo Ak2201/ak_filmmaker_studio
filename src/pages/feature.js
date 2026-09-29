@@ -68,12 +68,13 @@ import StudioUI, {
 import '../lib/cloud.js';
 
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
-import { renderSteps, stepIndex, stepFieldKeys } from '../ui/steps.js';
+import { renderSteps, mountStepsLang, stepIndex, stepFieldKeys } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
+import { parseNum, fmtINR } from '../lib/money.js';
 
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
@@ -621,9 +622,10 @@ function renderPage(app) {
   // Story steps 01–02, the treatment ladder interlude, then 03–12.
   // The ladder sits between steps 02 and 03 in the original.
   const vol1Host = document.createElement('div');
-  renderSteps(vol1Host, STEPS.vol1);
+  renderSteps(vol1Host, STEPS.vol1, null, 'feature');
   const vol1Sections = [...vol1Host.children];
   main.append(vol1Sections[0], vol1Sections[1]);
+  mountStepsLang(vol1Sections[0], 'feature');
   main.append(fromHTML(LADDER_HTML));
   main.append(...vol1Sections.slice(2));
 
@@ -633,7 +635,7 @@ function renderPage(app) {
 
   // Pre-production steps, with the three dividers at 13 / 17 / 21.
   const vol2Host = document.createElement('div');
-  renderSteps(vol2Host, STEPS.vol2);
+  renderSteps(vol2Host, STEPS.vol2, null, 'feature');
   const vol2Sections = [...vol2Host.children];
   const PHASES = { 0: PHASE1_HTML, 4: PHASE2_HTML, 8: PHASE3_HTML };
   vol2Sections.forEach((sec, i) => {
@@ -643,12 +645,12 @@ function renderPage(app) {
 
   main.append(fromHTML(PHASE3_COVER_HTML));
   const prodHost = document.createElement('div');
-  renderSteps(prodHost, PROD.production);
+  renderSteps(prodHost, PROD.production, null, 'production');
   main.append(...prodHost.children);
 
   main.append(fromHTML(PHASE4_COVER_HTML));
   const postHost = document.createElement('div');
-  renderSteps(postHost, PROD.post);
+  renderSteps(postHost, PROD.post, null, 'production');
   main.append(...postHost.children);
 
   main.append(fromHTML(pitchSectionHTML()));
@@ -937,6 +939,14 @@ function assignStepIds() {
           <span class="step-badge" data-step="${n}">EMPTY</span>
         `;
       header.appendChild(meta);
+      // The duration now lives in .step-meta beside the badge, which is
+      // where the redesign put it. The original .step-time was left in
+      // place when that row was added, so every one of the 32 steps has
+      // been printing its duration twice — once boxed on the left, once
+      // plain on the right — since that commit. Remove the original
+      // rather than the copy: .step-time-tag is the one .step-meta
+      // aligns and styles.
+      if (tag) tag.remove();
     }
   });
   // Master cover gets id "top"
@@ -1075,23 +1085,19 @@ function renderPacingChart() {
 /* ============================================================
    BUDGET CALCULATOR
    ============================================================ */
-function parseAmount(str) {
-  if (!str) return 0;
-  str = String(str).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '');
-  let mult = 1;
-  if (/cr|crore/i.test(str)) { mult = 10000000; str = str.replace(/cr(ore)?/i, ''); }
-  else if (/l|lakh|lac/i.test(str)) { mult = 100000; str = str.replace(/l(akh|ac)?/i, ''); }
-  else if (/k|thou/i.test(str)) { mult = 1000; str = str.replace(/k|thou(sand)?/i, ''); }
-  const n = parseFloat(str);
-  return isNaN(n) ? 0 : n * mult;
-}
+/* The fourth copy of the money parser used to live here, and it was
+   the ORIGINAL unanchored one: /cr|crore/ matched "crew", a bare "l"
+   matched "lens", /k|thou/ matched "bank". hub.js and library.js were
+   moved onto src/lib/money.js; this page was missed, so the feature
+   budget went on reading "1 lens day" as ₹1,00,000 after the others
+   had stopped. parseAmount is that shared parser now. */
+const parseAmount = parseNum;
 
+/* The budget panel shows an em-dash for "nothing entered yet" where
+   the rest of the studio shows ₹ 0. That empty case is the only
+   difference, so it wraps fmtINR rather than forking it. */
 function formatINR(n) {
-  if (n === 0) return '—';
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000) return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000) return '₹ ' + (n / 1000).toFixed(0) + 'k';
-  return '₹ ' + n;
+  return n ? fmtINR(n) : '—';
 }
 
 function updateBudget() {

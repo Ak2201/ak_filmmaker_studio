@@ -41,6 +41,7 @@ import rules from '../data/rules.json';
 import watchlist from '../data/watchlist.json';
 import rates from '../data/rates.chennai.2024.json';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
+import { parseNum, fmtINR, INR } from '../lib/money.js';
 
 /* ============================================================
    DERIVED COUNTS — the single source for every number the page
@@ -387,29 +388,10 @@ const RATE_BY_ITEM = (() => {
 })();
 
 /** Legacy behaviour, unchanged: "2.5", "1,20,000", "₹18k", "2L". */
-function parseNum(s) {
-  if (!s) return 0;
-  s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '');
-  let m = 1;
-  // Suffixes must be ANCHORED to the end. The old test was /l|lakh|lac/,
-  // which matched a bare "l" ANYWHERE — so "1 lens day" parsed as 1 lakh.
-  if (/(cr|crore)$/.test(s))        { m = 10000000; s = s.replace(/(crore|cr)$/, ''); }
-  else if (/(lakh|lac|l)$/.test(s)) { m = 100000;   s = s.replace(/(lakh|lac|l)$/, ''); }
-  else if (/k$/.test(s))            { m = 1000;     s = s.replace(/k$/, ''); }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n * m;
-}
-
-/** Abbreviated — lossy by design. Glanceable magnitude only. */
-function fmtINR(n) {
-  if (n === 0) return '₹ 0';
-  if (n >= 10000000) return '₹ ' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000) return '₹ ' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  if (n >= 1000) return '₹ ' + Math.round(n / 1000) + 'k';
-  return '₹ ' + Math.round(n);
-}
-
-const INR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+/* parseNum / fmtINR / INR moved to src/lib/money.js — hub.js had a
+   second, still-unanchored copy of this parser and the dashboard now
+   makes three. The anchoring rule and the trap it guards are
+   documented there. */
 /** Exact, Indian grouping: ₹ 54,000 / ₹ 1,25,00,000. */
 function fmtINRExact(n) {
   if (!n) return '₹ 0';

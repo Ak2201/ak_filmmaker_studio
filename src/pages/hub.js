@@ -38,6 +38,8 @@
 // `localStorage.getItem('arunak_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
+import { parseNum } from '../lib/money.js';
+import { featureKeys, shortKeys, progressAgainst } from '../lib/blueprint-fields.js';
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
 import { wireActionBar } from '../ui/actionbar.js';
@@ -887,11 +889,15 @@ function computeFeatureStatus() {
     }
     if (b && data[k] && String(data[k]).trim()) stepsDone['feat-08'] = stepsDone['feat-08'] || 'partial';
 
-    if (typeof data[k] === 'string') { total++; if (data[k].trim().length > 0) filled++; }
-    else if (data[k] === true) { total++; filled++; }
-    else if (data[k] === false) total++;
   });
-  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  /* The denominator is the fields the blueprint DECLARES, not the
+     keys that happen to be saved. Counting the saved blob meant a
+     project with eleven filled fields read 100% complete, and the
+     resume card offered it as "ready to shoot" while the dashboard
+     said 3% for the same data. See src/lib/blueprint-fields.js. */
+  const prog = progressAgainst(featureKeys(), data);
+  total = prog.total; filled = prog.done;
+  const pct = prog.pct;
   let stage = 'not started';
   if (pct > 0 && pct < 25) stage = 'Vol I early';
   else if (pct < 50) stage = 'Vol I · Story';
@@ -959,10 +965,16 @@ function computeShortStatus() {
       }
       return;
     }
-    if (typeof data[k] === 'string') { total++; if (data[k].trim().length > 0) filled++; }
-    else if (data[k] === true) { total++; filled++; }
-    else if (data[k] === false) total++;
   });
+  /* Same correction as the feature blueprint: the static fields are
+     counted against what the SHORT blueprint declares, not against
+     what happens to be saved. The dynamic rows above (script scenes,
+     dialogue lines) genuinely have no fixed denominator and keep
+     adding to both sides, which is the short editor's own scoring. */
+  {
+    const st = progressAgainst(shortKeys(), data);
+    total += st.total; filled += st.done;
+  }
   const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
   let lastStepNum = null;
   Object.keys(stepsDone).forEach(k => {
@@ -992,13 +1004,14 @@ function computeLibraryStatus() {
   let count = 0, total = 0;
   Object.keys(seenRows).forEach(idx => {
     const r = seenRows[idx];
-    const days = parseFloat((r.days || '').replace(/[^\d.]/g, '')) || 0;
-    const rate = parseFloat((r.rate || '').replace(/[^\d.]/g, '')) || 0;
-    let m = 1;
-    if (/cr|crore/i.test(r.rate || '')) m = 10000000;
-    else if (/l|lakh|lac/i.test(r.rate || '')) m = 100000;
-    else if (/k/i.test(r.rate || '')) m = 1000;
-    const sub = days * rate * m;
+    // Was three unanchored suffix tests, the trap CLAUDE.md names:
+    // `cr` matched "crew", a bare `l` matched "lens", `k` matched
+    // "bank". library.js was fixed years-of-commits ago and this copy
+    // never was, so the hub's budget figure and the calculator's
+    // could disagree about identical data. One parser now, in lib.
+    const days = parseNum(r.days);
+    const rate = parseNum(r.rate);
+    const sub = days * rate;
     if (sub > 0) { count++; total += sub; }
   });
   return { count, total };

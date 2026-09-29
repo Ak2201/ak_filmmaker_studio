@@ -524,3 +524,57 @@ select public.has_project_access('00000000-0000-0000-0000-000000000000','view');
    `role='owner'` → expect 42501; `C` deletes the owner's row → expect 42501.
 10. **Realtime.** Subscribe as `B` to `pd:<A's project>` before any share exists;
     assert no payloads arrive for inserts, updates *and deletes*.
+
+---
+
+## LIVE CHECK 1 — RUN 29 SEP 2026. RESULT: FAILED.
+
+This document's own header says it is a static audit. It was run
+against the real database for the first time on 29 September 2026,
+unauthenticated, with the publishable key. Two findings, and the
+first one means the cloud layer had never worked at all.
+
+### F1 — infinite recursion in the projects policies. BLOCKING.
+
+    GET /rest/v1/projects            500  42P17
+    GET /rest/v1/project_collaborators 500  42P17
+    GET /rest/v1/shares              500  42P17
+
+    infinite recursion detected in policy for relation "projects"
+
+Section 7 redefined `proj_select` as
+`using (public.has_project_access(id, 'view'))`, and
+`has_project_access()` opens by selecting from `public.projects`. A
+policy on projects therefore evaluates a function that reads
+projects. `security definer` did not prevent it.
+
+Fixed in schema section 8 by inlining the three branches into
+`proj_select` so nothing there reads projects, and routing the owner
+test in `pc_select` / `pc_owner_write` / `sh_owner_all` through
+`project_owner_is_caller()`.
+
+**This is the argument for live checks in one finding.** A
+line-by-line reading of the SQL produced a careful audit and twenty
+correct observations, and could not see that the thing did not run.
+
+### F2 — accounts and account_members returned 404. NOT a missing table.
+
+    GET /rest/v1/accounts   404  PGRST205 could not find the table
+
+They exist. A missing relation errors 42P01; `has_project_access()`
+resolves `account_members` and reached recursion instead, which it
+could only do if the table were there. This is PostgREST's schema
+cache. Section 8 ends with `notify pgrst, 'reload schema'`.
+
+### What this run could NOT determine
+
+`project_data` and `comments` returned `[]` with HTTP 200 to an
+anonymous caller. **That is ambiguous and must not be read as a
+pass or a fail.** With RLS on and no matching policy a SELECT returns
+an empty set rather than an error, and the tables are empty anyway,
+so both a working policy and an absent one look identical. Resolving
+it needs one real row: sign in, save something, then repeat the
+anonymous GET. Anything other than `[]` is a leak.
+
+Writes were correctly refused on both (`42501`), which is a genuine
+pass — an anonymous POST is rejected by RLS, not by the gateway.

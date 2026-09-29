@@ -1251,3 +1251,104 @@ create trigger account_members_seat_limit
 -- operator should run against a live database — none of the above has
 -- ever been executed against one.
 -- ============================================================
+
+-- ============================================================
+-- 8. RECURSION FIX (v6)
+-- ------------------------------------------------------------
+-- FOUND BY TESTING THE LIVE DATABASE, which is the point of the ten
+-- checks in docs/SECURITY-RLS.md. The audit that produced section 7
+-- was static and could not have seen this: every read of projects,
+-- project_collaborators and shares failed with
+--
+--     42P17  infinite recursion detected in policy for relation "projects"
+--
+-- so the cloud layer did not work at all, for anyone.
+--
+-- THE LOOP. Section 7 redefined proj_select as
+--     using (public.has_project_access(id, 'view'))
+-- and has_project_access() opens with
+--     select 1 from public.projects p where p.id = pid ...
+-- A policy ON projects therefore has to evaluate a function that
+-- reads projects, which re-enters the same policy. security definer
+-- did not save it here, so this does not rely on it saving us.
+--
+-- THE FIX is to make each policy read only tables OTHER than the one
+-- it guards, and to keep the owner test on the row's own column:
+--
+--   projects.proj_select      -> owner_id on the row itself, plus
+--                                project_collaborators, plus
+--                                account_members. Never projects.
+--   project_collaborators.pc_select
+--                             -> the caller's own rows, plus a
+--                                definer lookup of the owner id.
+--
+-- has_project_access() itself is left exactly as section 7 wrote it.
+-- It is correct and still used by project_data, comments and shares,
+-- none of which it reads — the bug was only ever calling it from a
+-- policy on projects.
+-- ============================================================
+
+-- 8.1 the owner lookup, kept out of any policy that guards projects
+create or replace function public.project_owner_is_caller(pid uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.projects p
+     where p.id = pid and p.owner_id = auth.uid()
+  );
+$$;
+grant execute on function public.project_owner_is_caller(uuid) to authenticated, anon;
+
+-- 8.2 projects — same three branches as has_project_access, inlined so
+--     that nothing here reads projects.
+drop policy if exists proj_select on public.projects;
+create policy proj_select on public.projects
+  for select using (
+    owner_id = auth.uid()
+    or exists (
+      select 1 from public.project_collaborators c
+       where c.project_id = projects.id
+         and c.user_id    = auth.uid()
+         and (c.expires_at is null or c.expires_at > now())
+    )
+    or exists (
+      select 1 from public.account_members m
+       where m.account_id = projects.account_id
+         and m.user_id    = auth.uid()
+         and m.status     = 'active'
+         and m.role in ('owner','admin')
+    )
+  );
+
+-- 8.3 project_collaborators — read your own rows, or any row on a
+--     project you own. The owner test goes through the definer
+--     function so this policy never reads projects directly.
+drop policy if exists pc_select on public.project_collaborators;
+create policy pc_select on public.project_collaborators
+  for select using (
+    user_id = auth.uid()
+    or public.project_owner_is_caller(project_id)
+  );
+
+drop policy if exists pc_owner_write on public.project_collaborators;
+create policy pc_owner_write on public.project_collaborators
+  for all
+  using      (public.project_owner_is_caller(project_id))
+  with check (public.project_owner_is_caller(project_id));
+
+-- 8.4 shares — same treatment; sh_* previously reached projects too.
+drop policy if exists sh_owner_all on public.shares;
+create policy sh_owner_all on public.shares
+  for all
+  using      (public.project_owner_is_caller(project_id))
+  with check (public.project_owner_is_caller(project_id));
+
+-- 8.5 PostgREST caches the schema. accounts and account_members were
+--     returning PGRST205 "could not find the table" while plainly
+--     existing — the function above resolves them, and a missing
+--     relation errors 42P01, not 42P17. Nudge the cache.
+notify pgrst, 'reload schema';

@@ -127,6 +127,57 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' });
   fs.createReadStream(p).pipe(res);
 });
+/* ---- data check: Tanglish must be romanised ----------------
+   Runs before the browser starts, because it needs no browser and
+   because a data fault should fail fast.
+
+   Every translatable string carries its Tanglish alongside as
+   `fooTanglish`, and Tanglish in this codebase is romanised Tamil in
+   the Latin alphabet — that is the convention glossary.json has
+   always used, and it is what makes the text survive fonts that have
+   no Tamil coverage.
+
+   This exists because three stray Tamil characters reached the data
+   file inside otherwise-romanised sentences, from a mangled escape
+   sequence in a generator script. None were visible in review and
+   none broke anything loudly; they would simply have rendered in a
+   substituted font, mid-word, forever. A machine finds them in
+   milliseconds and a person does not find them at all.
+
+   Typographic dashes and curly quotes are allowed: they are the
+   studio's punctuation in both languages. ------------------------ */
+{
+  const ALLOWED = '\u2014\u2013\u2018\u2019\u201c\u201d\u2026';
+  const offences = [];
+  const walk = (node, key) => {
+    if (typeof node === 'string') {
+      if (!/Tanglish$/.test(key)) return;
+      const bad = [...node].filter((c) => c.charCodeAt(0) > 127 && !ALLOWED.includes(c));
+      if (bad.length) {
+        const at = node.indexOf(bad[0]);
+        offences.push(`${key}: "${bad.join('')}" in "...${node.slice(Math.max(0, at - 30), at + 30)}..."`);
+      }
+      return;
+    }
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) return node.forEach((v) => walk(v, key));
+    Object.entries(node).forEach(([k, v]) => walk(v, k));
+  };
+  const dataDir = path.join(ROOT, 'src', 'data');
+  fs.readdirSync(dataDir).filter((f) => f.endsWith('.json')).forEach((f) => {
+    walk(JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf8')), f);
+  });
+  if (offences.length) {
+    console.error('\n✗ Tanglish must be romanised — non-ASCII found in ' + offences.length + ' field(s):');
+    offences.forEach((o) => console.error('  ' + o));
+    console.error('\n  Tanglish is Tamil written in the Latin alphabet, as src/data/glossary.json');
+    console.error('  writes it. If you meant Tamil script, it needs a different field name and');
+    console.error('  the label typography in study.css needs revisiting before it will read right.\n');
+    process.exit(2);
+  }
+  console.log('✓ Tanglish fields are romanised');
+}
+
 await new Promise((r) => server.listen(PORT, r));
 
 /* ---- helpers ---------------------------------------------- */

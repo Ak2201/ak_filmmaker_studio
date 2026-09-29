@@ -19,52 +19,53 @@
 
    Run: npm run build && npm run verify
    ------------------------------------------------------------
-   THE CONTRAST PROBE WALKS A LIST, AND A LIST IS ALWAYS SHORT.
+   THE CONTRAST PROBE NO LONGER WALKS A LIST.
 
-   `SURFACES` further down names the elements the AA check
-   measures. Everything not on it is unmeasured, which is not a
-   theoretical gap: the stat strip shipped at 2.34:1 on seven
-   pages and stayed green for as long as it existed, because
-   nobody had added `.bd-stat` to a string.
+   It used to. `SURFACES` named about thirty selectors and
+   everything not on it was unmeasured — not a theoretical gap:
+   the stat strip shipped at 2.34:1 on seven pages and stayed
+   green for as long as it existed, because nobody had added
+   `.bd-stat` to a string. A list can only be extended, and it
+   was always extended after the bug.
 
-   The honest check walks every leaf text node in `main`. That
-   was run across 4 themes x 5 skins x 13 pages, and it is the
-   right end state — but it is not a one-line swap. With the
-   stat strip and element index fixed it still reports 80
-   distinct places, and they are three old faults, not noise:
+   The probe now walks EVERY LEAF TEXT NODE in `main`, in the
+   open modals and in the shell, across 4 themes x 5 skins x 14
+   pages, at the AA floor of 4.5:1. That was the stated right
+   end state for a long time and could not be turned on, because
+   a wholesale walk reported 173 distinct failures. They were
+   three faults, and all three are closed:
 
-     1. A HUE USED AS TEXT — 57 of the 80, by far the biggest.
-        The base hues are fills, chosen to be painted behind
-        something. As text they run 1.45-2.5:1: --feature (18
-        places), --library (25 across Desk and sepia), --shorts
-        (10), plus --ok and --warn. Every one wants --hue-deep
-        or the -deep variant of its own name. CLAUDE.md already
-        states this rule; the app does not follow it yet.
-     2. SLAB WIDGETS WHOSE CHILDREN HARD-CODE --panel-* — 8
-        places, and the worst of the three. --panel is dark in
-        every theme, but the SLAB is not: mission makes it
-        transparent, binder and console make it --paper-sunk.
-        .pitch-slide, .calc-block and .page-counter paint their
-        headings and labels --panel-ink / --panel-gilt instead
-        of following --sk-slab-ink / --sk-slab-accent, so under
-        three of the five skins they render cream-on-cream at
-        1.04:1 — text that is invisible, not merely faint. It
-        hides because the DEFAULT skin is the one where it
-        happens to look right.
-     3. --ink-faint AS TEXT — 8 places. This token clears 4.5:1
-        against NO ground in ANY theme (its best case is 4.13:1,
-        on ink; its worst is 2.34:1, on Desk's sunk card), so it
-        is not a text colour at AA. Roughly 41 `color:` rules
-        still reach for it. Six files have already worked around
-        it one at a time, each with its own comment saying the
-        same thing — dissect.css says outright that the real fix
-        is one pass over the palette. That pass is still owed.
+     1. A HUE USED AS TEXT — 111 of the 173. The base hues are
+        fills, chosen to be painted behind something; as text
+        they run 1.45-2.5:1. Fixed to --hue-deep / --hue-lift /
+        --hue-on, and held there by the source check below,
+        which greps for the rule being broken anywhere rather
+        than waiting for a page to render it.
+     2. SLAB WIDGETS WHOSE CHILDREN HARD-CODE --panel-*. --panel
+        is dark in every theme; the SLAB is not — mission makes
+        it transparent, binder and console make it --paper-sunk.
+        Cream on cream at 1.04:1, invisible rather than faint,
+        and hidden because the DEFAULT skin is the one where it
+        happens to look right. The last two were
+        `.director-card .study p` and `.formula p`.
+     3. --ink-faint AS TEXT — 41 `color:` rules. The token
+        clears 4.5:1 against NO ground in ANY theme: 4.13:1 at
+        best on the ink theme's sunk card, 2.34:1 at worst on
+        Desk's. It could not be retuned — raised far enough to
+        clear AA it becomes --ink-muted — so it stopped being a
+        text colour at all. tokens.css records the reasoning;
+        the second source check below keeps it out, along with
+        --rule, --rule-hair and --print-rule, which are worse.
 
-   All three are palette-and-skin decisions with a redesign's
-   blast radius, so they are deliberate work, not a side effect
-   of tightening a selector. Until then the list gets longer
-   rather than disappearing — with the standing caveat that a
-   list only ever catches what someone thought to add.
+   WHAT THE WHOLESALE WALK STILL CANNOT SEE, so that nobody
+   mistakes it for total coverage: it measures the page in the
+   state this run puts it in, which is why every model is now
+   seeded on every page rather than scenes on the breakdown
+   alone — seven pages reported zero findings purely because
+   they were empty. And ::before/::after content is not a text
+   node. The source checks cover what a rendered walk cannot
+   reach; between them the answer is "the rule is not broken
+   anywhere in the source, and nothing rendered fails".
    ============================================================ */
 
 import { chromium } from 'playwright';
@@ -115,7 +116,10 @@ const PAGES = [
   // New. Needs a `dashboard` entry in scripts/baseline.json before this
   // row can pass — baselineFacts() exits 2 without one. Re-baselining is
   // deliberate, so that is a separate, stated act.
-  { page: 'dashboard.html',  legacy: null, name: 'dashboard' }
+  { page: 'dashboard.html',  legacy: null, name: 'dashboard' },
+  // The estimator's own page. It was the last block on library.html,
+  // reached by a nav entry pointing at an anchor that never existed.
+  { page: 'budget.html',     legacy: null, name: 'budget' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -293,6 +297,72 @@ const server = http.createServer((req, res) => {
     process.exit(2);
   }
   console.log('✓ no fill used as a text colour');
+}
+
+/* ---- source check: a hairline is never a text colour --------
+   The companion to the check above, and the same argument one step
+   further down the palette. --accent and the hues fail as text
+   because they are chosen to be painted BEHIND something;
+   --ink-faint, --rule, --rule-hair and --print-rule fail as text
+   because they are chosen to be barely there.
+
+   --ink-faint is the one that mattered. It was the studio's third
+   ink, used as `color` in 41 rules across thirteen stylesheets, and
+   it clears 4.5:1 against no ground in any theme — 4.13:1 at best on
+   the ink theme's sunk card, 2.34:1 at worst on Desk's. Retuning it
+   was not available: raised far enough to clear AA it becomes
+   --ink-muted. So it stopped being a text colour, and this is what
+   keeps it from coming back. Six files had already worked around it
+   one at a time, each with a comment saying the same thing; a check
+   says it once.
+
+   SOURCE rather than rendered, for the reason the note at the top of
+   this file gives: a rendered walk only sees the state a test run
+   happens to reach. The wholesale walk below is much better than the
+   selector list it replaced, but a page with no scenes renders no
+   strips, and a rule on a strip is then unmeasured. A grep has no
+   such blind spot.
+
+   SVG `fill` counts. .char-map-svg .char-name is <text>, and its
+   colour comes from `fill` — the one place `color:` is not the
+   property that makes text a colour.
+
+   Borders, backgrounds and strokes are exactly what these tokens are
+   for and are not matched.
+   ------------------------------------------------------------ */
+{
+  const HAIRLINES = 'ink-faint|rule|rule-hair|print-rule';
+  const RE = new RegExp(
+    String.raw`(^|[;{"'\s])(color|fill):\s*var\(--(${HAIRLINES})\)`, 'g');
+  const roots = ['src/styles', 'src/pages', 'src/ui'];
+  const offences = [];
+  const walk = (dir) => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) { walk(full); continue; }
+      if (!/\.(css|js|json)$/.test(ent.name)) continue;
+      fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => {
+        RE.lastIndex = 0;
+        let m;
+        while ((m = RE.exec(line)) !== null) {
+          offences.push(`${path.relative(ROOT, full)}:${i + 1}  --${m[3]}  ${line.trim().slice(0, 90)}`);
+        }
+      });
+    }
+  };
+  roots.forEach((r) => { const d = path.join(ROOT, r); if (fs.existsSync(d)) walk(d); });
+  if (offences.length) {
+    console.error(`\n✗ a hairline used as a text colour, in ${offences.length} place(s):`);
+    offences.slice(0, 20).forEach((o) => console.error('  ' + o));
+    if (offences.length > 20) console.error(`  ...and ${offences.length - 20} more`);
+    console.error('\n  --ink-faint clears 4.5:1 against no ground in any theme, and --rule,');
+    console.error('  --rule-hair and --print-rule are worse (1.2-3.5:1). Secondary text takes');
+    console.error('  --ink-muted; on a slab it takes --sk-slab-muted; on the chrome or an ink');
+    console.error('  panel it takes --chrome-muted / --panel-muted; on the print page it takes');
+    console.error('  --print-muted. These four keep border-color, background and stroke.\n');
+    process.exit(2);
+  }
+  console.log('✓ no hairline used as a text colour');
 }
 
 /* ---- data check: the Tanglish sidecar must still address real steps
@@ -547,32 +617,89 @@ for (const spec of PAGES) {
   /* The breakdown's chips and element cards only exist once a scene
      does, so on an empty studio the hue assertions below would report
      "nothing to check" forever — a check that never runs is a check
-     that does not exist. Seed two scenes with elements in different
-     categories and reload.
+     that does not exist.
 
-     AFTER the text and key capture above, deliberately: the baseline
-     for this page was captured in its empty state, and seeding before
-     the capture would delete the teaching empty state's prose from the
-     page and fail the coverage check for the right words and the
-     wrong reason. */
-  if (spec.name === 'breakdown') {
-    await page.evaluate(() => {
-      const scene = (n, location, elements) => ({
-        id: 'verify-' + n, number: String(n), intExt: 'INT', dayNight: 'DAY',
-        location, synopsis: '', eighths: 8, pageNumber: '', elements
-      });
-      // Through the proxy on purpose: this is the project-scoped key,
-      // and writing it raw would put the scenes where nothing reads them.
-      localStorage.setItem('arunak_scenes_v1', JSON.stringify({
-        scenes: [
-          scene(1, 'Police Station', { cast: ['Prakash'], props: ['Iron sickle'] }),
-          scene(2, 'Forest Road', { cast: ['Kumaresan'], wardrobe: ['Khaki uniform'] })
-        ]
-      }));
+     AFTER the text and key capture above, deliberately: the baselines
+     were captured in the empty state, and seeding before the capture
+     would delete every teaching empty state's prose from the page and
+     fail the coverage check for the right words and the wrong reason.
+     Everything below this line therefore runs against a studio with
+     work in it, and everything above it against an empty one.
+
+     EVERY MODEL, EVERY PAGE — not just the breakdown's scenes.
+
+     The contrast probe below walks the whole document now, and an
+     empty document has almost nothing in it to walk. Seven pages
+     reported zero contrast findings on a run where a seeded copy of
+     the same build reported thirty-five between them: the strips, the
+     day-out-of-days grid, the shot table, the call sheet and the
+     location cards simply were not on the page. A wholesale walk of an
+     empty state is a list by another name.
+
+     So: scenes with elements, shoot days and page counts; two people
+     and a call sheet; two shots, a frame and a board; a recce and two
+     day dates; four script elements. Through the proxy on purpose —
+     these are project-scoped keys, and writing them raw would put the
+     data where nothing reads it. */
+  await page.evaluate(() => {
+    const set = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+    /* The first two scenes are the breakdown's originals, unchanged:
+       the hue assertion needs two elements in different categories and
+       these are what it was written against. */
+    set('arunak_scenes_v1', { scenes: [
+      { id: 'verify-1', number: '1', intExt: 'INT', dayNight: 'DAY',
+        location: 'Police Station', synopsis: '', eighths: 8, pageNumber: '1', shootDay: '1',
+        elements: { cast: ['Prakash'], props: ['Iron sickle'] } },
+      { id: 'verify-2', number: '2', intExt: 'INT', dayNight: 'DAY',
+        location: 'Forest Road', synopsis: '', eighths: 8, pageNumber: '2', shootDay: '1',
+        elements: { cast: ['Kumaresan'], wardrobe: ['Khaki uniform'] } },
+      /* Two more so the other times of day, the EXT badge and a second
+         shoot day exist: .tod-night and .tod-dusk render nothing at all
+         on a board where every scene is INT/DAY. */
+      { id: 'verify-3', number: '3', intExt: 'EXT', dayNight: 'NIGHT',
+        location: 'College gate', synopsis: 'The rejection.', eighths: 12, pageNumber: '3',
+        shootDay: '2', elements: { cast: ['Prakash'], vehicles: ['Jeep'] } },
+      { id: 'verify-4', number: '4', intExt: 'EXT', dayNight: 'EVENING',
+        location: 'Hostel room', synopsis: 'No deliberation.', eighths: 6, pageNumber: '4',
+        shootDay: '', elements: {} }
+    ] });
+    set('arunak_contacts_v1', {
+      contacts: [
+        { id: 'vc1', name: 'Anitha R', role: 'Line Producer', department: 'Production',
+          phone: '98400 00000', email: 'a@example.com', notes: 'Chennai unit' },
+        { id: 'vc2', name: 'Vel S', role: 'Gaffer', department: 'Camera',
+          phone: '', email: '', notes: '' }
+      ],
+      callSheets: [
+        { id: 'vcs1', title: 'Day 1', date: '2025-01-09', generalCall: '06:00',
+          location: 'Police Station', notes: 'Rain cover booked',
+          sceneIds: ['verify-1', 'verify-2'], calls: { vc1: '05:30' } }
+      ]
     });
-    await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
-  }
+    set('arunak_shots_v1', {
+      shots: [
+        { id: 'vsh1', sceneId: 'verify-1', number: '1A', size: 'WS', lens: '35mm',
+          description: 'Establish the hall.' },
+        { id: 'vsh2', sceneId: 'verify-1', number: '1B', size: 'CU', lens: '85mm',
+          description: 'The medal.', done: true }
+      ],
+      frames: [{ id: 'vfr1', shotId: 'vsh1', caption: 'Wide from the balcony', ref: '' }],
+      boards: [{ id: 'vbd1', name: 'Palette', note: 'Warm interiors',
+                 entries: [{ id: 'ven1', title: 'Ratsasan', ref: '', why: 'Night sodium' }] }]
+    });
+    set('arunak_locations_v1', {
+      recces: { 'police station': { permission: 'pending', power: 'genset', notes: 'Ask the AC' } },
+      dayDates: { 1: '2025-01-09', 2: '2025-01-10' }
+    });
+    set('arunak_script_v1', { elements: [
+      { id: 've1', type: 'scene', text: 'INT. POLICE STATION - DAY' },
+      { id: 've2', type: 'action', text: 'Prakash waits.' },
+      { id: 've3', type: 'character', text: 'PRAKASH' },
+      { id: 've4', type: 'dialogue', text: 'I did not sign it.' }
+    ] });
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
 
   /* --- what is inside a modal has never been checked ---
 
@@ -620,12 +747,34 @@ for (const spec of PAGES) {
      right — `innerHTML` still contains them, so the coverage check is
      satisfied by text no human can read.
 
-     So: for every theme crossed with every skin, walk the text inside
-     the surfaces a skin controls and compute the WCAG contrast against
-     the nearest opaque ancestor background. The floor is 3.0 rather
-     than 4.5 on purpose — this is looking for text that has vanished,
-     not auditing the muted greys, and a stricter bar here would cry
-     wolf about --ink-faint until someone turned the check off. */
+     So: for every theme crossed with every skin, walk EVERY LEAF TEXT
+     NODE in `main` and in whatever modals are open, and compute the
+     WCAG contrast against the composited ancestor background. The
+     floor is 4.5 — AA for body text.
+
+     THIS USED TO WALK A LIST, AND THAT IS THE POINT OF THE CHANGE.
+     `SURFACES` named about thirty selectors, and everything not on it
+     was unmeasured: the stat strip shipped at 2.34:1 on seven pages
+     and stayed green for its whole life because nobody added
+     `.bd-stat` to a string. The list could not be completed, only
+     extended, and it was extended reactively — always after the bug.
+
+     The wholesale walk was not available before because 173 distinct
+     places failed it. They were three faults, and all three are now
+     closed: a base hue used as text (111), a slab widget whose
+     children hard-coded --panel-* (the 1.04:1 cases), and --ink-faint
+     used as text (41 rules, a token that clears 4.5:1 against no
+     ground in any theme and is now not a text colour at all — see
+     tokens.css). With those gone the honest check costs nothing to
+     turn on, so it is on.
+
+     TWO THINGS STILL LIMIT IT, and neither is a reason to go back to
+     a list. A page renders only the state this run puts it in, so the
+     models are seeded above and the modals are opened above; text
+     that needs some other state is still unmeasured. And ::before /
+     ::after content is not a text node, so a pseudo-element glyph is
+     invisible to this. The source checks near the top of this file
+     cover what a rendered walk cannot reach. */
   const contrast = await page.evaluate(() => {
     const api = window.StudioUI, skinApi = window.StudioSkin;
     if (!api || !skinApi) return { unavailable: true };
@@ -683,42 +832,38 @@ for (const spec of PAGES) {
        bar, and the gap between the two is where "technically legible"
        lives. */
     const AA = 4.5;
-    /* The READOUTS, not just the containers and the controls. The stat
-       strip (.bd-stat / .hero-stat / .hub-stat-strip) is on seven pages
-       and had never been measured once, because a selector list only
-       checks what somebody remembered to add. Its labels sat at 2.34:1
-       in Desk from the day they shipped and every run was green.
+    /* THE WHOLE DOCUMENT, not a list of selectors. `main` is the page;
+       the modals are added because they are built on first open and
+       live outside it, and the shell is added because the breadcrumb
+       and the phase tabs are wayfinding — a "you are here" marker
+       nobody can read is worse than none.
 
-       The lesson is the one the steps and the skins already taught: a
-       hand-written list of what exists is wrong by the second change.
-       The honest version of this check walks `main` wholesale — see
-       the note at the top of this file for why that is not a one-line
-       swap yet, and what it currently finds. */
-    const SURFACES = '.formula-box, .formula, .resume-card, .data-card, .tip-box,'
-      + ' .why-box, .por-thozil, .why-this, .step-check, .lx-phase, .door,'
-      + ' .bd-example, .toc-item, .film-card, .ex-card,'
-      + ' .bd-stat, .hero-stat, .hub-stat-strip, .bd-el,'
-      + ' .btn, .tb-item, .tb-choice, .bd-icon, .lx-mod, .sh-mod, .bd-chip,'
-      /* The shell's own wayfinding. Every one of these is text on the
-         dark chrome surface in all four themes, and the breadcrumb
-         and the active phase tab both paint a HUE — the exact mistake
-         the note above this list is about. A "you are here" marker
-         nobody can read is worse than none, so the gate reads them. */
-      + ' .sh-where, .sh-rail-item, .sh-phase-btn,'
-      /* Modals are opened just above so that these are reachable at all.
-         Every count in this file used to read the DOM as it stands at
-         load, which is why four inert inline handlers lived in the auth
-         modal undetected. */
-      + ' .cm-card, .cm-eyebrow, .cm-link, .shortcut-sheet, .modal';
+       Anything with text in it is measured, whether or not somebody
+       thought of it. That is the whole difference. */
+    const ROOTS = 'main, .modal, .shortcut-sheet, .shell, .toolbar';
+
+    /* A per-element name, built from the element and its two nearest
+       classed ancestors. The old version printed the matched SURFACE
+       plus the element, which was only ever as specific as the list;
+       with no list there is nothing to print but the path. */
+    const pathOf = (el) => {
+      const seg = [];
+      for (let n = el; n && n.tagName && seg.length < 3; n = n.parentElement) {
+        const cls = (n.className || '').toString().trim().split(/\s+/).filter(Boolean)[0];
+        seg.unshift(n.tagName.toLowerCase() + (cls ? '.' + cls : ''));
+        if (n.tagName === 'MAIN') break;
+      }
+      return seg.join('>');
+    };
 
     /* Freeze transitions for the duration of the probe.
 
        Three findings survived every real fix and would not reproduce
        by hand: two door buttons and a backup chip, always reporting
-       the PREVIOUS combination's colour. They are the only elements in
-       SURFACES with `transition: background`/`color`, and a property
-       mid-transition computes to its in-flight value — at t≈0, the old
-       one. The check was measuring its own switching, not the design.
+       the PREVIOUS combination's colour. Those elements have
+       `transition: background`/`color`, and a property mid-transition
+       computes to its in-flight value — at t≈0, the old one. The check
+       was measuring its own switching, not the design.
 
        A real user never sees this: they change theme once and the
        transition lands. Only a loop that switches sixteen times and
@@ -742,39 +887,40 @@ for (const spec of PAGES) {
            properties — reporting a door button as :root blue while the
            root element already resolved the ink palette. */
         void document.documentElement.offsetHeight;
-        document.querySelectorAll(SURFACES).forEach((surface) => {
-          /* The surface ITSELF counts when it holds text directly. A
-             button's label is usually a bare text node, so walking only
-             its element children measures nothing at all — which is the
-             second half of why the invisible button went unseen. */
-          const own = [...surface.childNodes]
-            .some((n) => n.nodeType === 3 && n.textContent.trim());
-          const targets = [surface.querySelectorAll('*')].flatMap((n) => [...n]);
-          if (own) targets.push(surface);
-          targets.forEach((el) => {
-            if (el !== surface && el.children.length) return;
-            if (!el.textContent.trim()) return;
+        document.querySelectorAll(ROOTS).forEach((root) => {
+          /* TEXT NODES, not elements. Walking elements and asking
+             "does it have children?" misses a label that sits beside a
+             nested <span>, and a button's label is usually a bare text
+             node with no element of its own — which is half of why the
+             1:1 button went unseen for as long as it did. Every run of
+             visible characters on the page is its own measurement. */
+          const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = w.nextNode())) {
+            if (!node.textContent.trim()) continue;
+            const el = node.parentElement;
+            if (!el) continue;
+            if (/^(SCRIPT|STYLE|NOSCRIPT|OPTION|TITLE)$/.test(el.tagName)) continue;
             const cs = getComputedStyle(el);
-            if (cs.visibility === 'hidden' || cs.display === 'none') return;
+            if (cs.visibility === 'hidden' || cs.display === 'none') continue;
             const fg = rgb(cs.color);
-            if (!fg) return;
-            const r = ratio(fg, groundOf(el));
+            if (!fg) continue;
+            const g = groundOf(el);
+            const r = ratio(fg, g);
             if (r < AA) {
               /* fg and bg are in the finding on purpose. Without them
-                 every investigation starts by guessing which element
-                 out of nine matching the selector was the bad one, and
-                 three of mine guessed wrong. */
-              const g = groundOf(el);
+                 every investigation starts by guessing which of nine
+                 similar elements was the bad one, and three of mine
+                 guessed wrong. */
               worst.push({
-                where: (surface.className || '').toString().split(' ')[0]
-                     + ' ' + (el.className || el.tagName).toString().split(' ')[0],
-                text: el.textContent.trim().slice(0, 24),
+                where: pathOf(el),
+                text: node.textContent.trim().slice(0, 24),
                 fg: `rgb(${fg.map(Math.round).join(',')})`,
                 bg: `rgb(${g.map(Math.round).join(',')})`,
                 theme: t, skin: sk.id, ratio: Math.round(r * 100) / 100
               });
             }
-          });
+          }
         });
       }
     }

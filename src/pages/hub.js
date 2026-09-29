@@ -38,6 +38,7 @@
 // `localStorage.getItem('arunak_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
+import { parseNum } from '../lib/money.js';
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
 import { wireActionBar } from '../ui/actionbar.js';
@@ -992,13 +993,14 @@ function computeLibraryStatus() {
   let count = 0, total = 0;
   Object.keys(seenRows).forEach(idx => {
     const r = seenRows[idx];
-    const days = parseFloat((r.days || '').replace(/[^\d.]/g, '')) || 0;
-    const rate = parseFloat((r.rate || '').replace(/[^\d.]/g, '')) || 0;
-    let m = 1;
-    if (/cr|crore/i.test(r.rate || '')) m = 10000000;
-    else if (/l|lakh|lac/i.test(r.rate || '')) m = 100000;
-    else if (/k/i.test(r.rate || '')) m = 1000;
-    const sub = days * rate * m;
+    // Was three unanchored suffix tests, the trap CLAUDE.md names:
+    // `cr` matched "crew", a bare `l` matched "lens", `k` matched
+    // "bank". library.js was fixed years-of-commits ago and this copy
+    // never was, so the hub's budget figure and the calculator's
+    // could disagree about identical data. One parser now, in lib.
+    const days = parseNum(r.days);
+    const rate = parseNum(r.rate);
+    const sub = days * rate;
     if (sub > 0) { count++; total += sub; }
   });
   return { count, total };

@@ -64,7 +64,7 @@ import shipped from '../data/dissections.json';
 export const AREAS = ['structure', 'character', 'dialogue', 'image', 'editing', 'sound'];
 export const ACTS = ['1', '2', '3'];
 
-const KEY = 'arunak_dissect_v1';
+const KEY = 'fms_dissect_v1';
 
 /** The dissections that ship with the app — read-only worked examples. */
 export function listShipped() {

@@ -133,7 +133,7 @@ export function getBeatSheetMethod(id) {
   return listBeatSheetMethods().find((m) => m.id === id) || null;
 }
 
-const DEMO_KEY = 'arunak_studio_demo_v1';
+const DEMO_KEY = 'fms_studio_demo_v1';
 
 /** Every study the build shipped, in display order. */
 export function listStudies() {

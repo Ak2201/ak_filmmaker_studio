@@ -24,7 +24,7 @@
    of the wrong design, and these files are a few hundred bytes each. */
 import.meta.glob('../styles/skins/*.css', { eager: true });
 
-const SKIN_KEY = 'arunak_studio_skin_v1';
+const SKIN_KEY = 'fms_studio_skin_v1';
 const DEFAULT = 'studio';
 
 /* Match `:root[data-skin="name"]`, which is the only selector shape a

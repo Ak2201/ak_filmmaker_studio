@@ -92,9 +92,9 @@ import Blueprint, { BLUEPRINT_KEY } from '../lib/blueprint-context.js';
    of somebody's work. Five other files still write the literal by hand
    — see the header of src/lib/blueprint-context.js. */
 const STORAGE_KEY  = BLUEPRINT_KEY;
-const PREF_KEY     = 'arunak_filmmaker_prefs_v1';
-const NOTE_PREFIX  = 'arunak_note_';
-const SYNC_CFG_KEY = 'arunak_supabase_cfg_v1';
+const PREF_KEY     = 'fms_filmmaker_prefs_v1';
+const NOTE_PREFIX  = 'fms_note_';
+const SYNC_CFG_KEY = 'fms_supabase_cfg_v1';
 
 let statusEl = null;
 let saveTimer, savedAt = 0;
@@ -1462,7 +1462,7 @@ function exportData() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `arunak_blueprint_${t}.json`; a.click();
+  a.href = url; a.download = `fms_blueprint_${t}.json`; a.click();
   URL.revokeObjectURL(url);
   flashStatus('●  exported');
 }
@@ -1880,7 +1880,7 @@ function exportMarkdown() {
   const blob = new Blob([md], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `arunak_blueprint_${t}.md`; a.click();
+  a.href = url; a.download = `fms_blueprint_${t}.md`; a.click();
   URL.revokeObjectURL(url);
   flashStatus('●  exported md');
 }
@@ -1982,7 +1982,7 @@ function toggleTimer() {
    COMMENTS — the private note, and the shared thread
    ------------------------------------------------------------
    CLAUDE.md open item 5. The button and the private note below are
-   unchanged, down to the `arunak_note_` key and the words in the
+   unchanged, down to the `fms_note_` key and the words in the
    panel: months of somebody's notes are behind that prefix and it is
    not being renamed to make room for a feature.
 

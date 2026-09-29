@@ -12,7 +12,7 @@
    READ-ONLY from this module's point of view: src/lib/scenes.js owns
    them and nothing in the Visualize phase ever writes one.
 
-   STORAGE CONTRACT. `arunak_shots_v1` is a new key, and a new key has
+   STORAGE CONTRACT. `fms_shots_v1` is a new key, and a new key has
    to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
      2. PROJECT_KEYS in src/pages/hub.js — included in backups
@@ -44,7 +44,7 @@
    ============================================================ */
 import Store from './store.js';   // load-bearing: namespaces localStorage
 
-export const SHOTS_KEY = 'arunak_shots_v1';
+export const SHOTS_KEY = 'fms_shots_v1';
 
 /* The vocabulary, widest to tightest as a camera department says it.
    Value is the abbreviation that goes on the sheet; the label is what

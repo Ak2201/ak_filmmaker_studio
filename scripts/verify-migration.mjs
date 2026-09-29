@@ -241,6 +241,69 @@ const server = http.createServer((req, res) => {
   console.log('✓ Tanglish fields are romanised');
 }
 
+/* ---- source check: the old storage prefix is gone -----------
+   The arunak_ -> fms_ rename touched 137 string literals across 26
+   files. A half-finished rename is the worst outcome available here:
+   the app writes fms_ and reads arunak_ for one key, so a field
+   saves and never comes back, and nothing looks broken until
+   somebody reopens a project.
+
+   A grep can see that and a person cannot, which is the whole
+   argument for checking it rather than trusting the pass. The one
+   legitimate mention is in store.js's migratePrefix(), which has to
+   name the prefix it is migrating FROM.
+   ------------------------------------------------------------ */
+{
+  const survivors = [];
+  const roots = ['src', 'scripts'];
+  const walk = (dir) => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) { walk(full); continue; }
+      if (!/\.(js|mjs|json|css|html)$/.test(ent.name)) continue;
+      const rel = path.relative(ROOT, full);
+      // This file is the check; naming the prefix is its job.
+      if (rel === path.join('scripts', 'verify-migration.mjs')) continue;
+      // store.js's migratePrefix() has to name what it migrates FROM.
+      if (rel === path.join('src', 'lib', 'store.js')) continue;
+      /* Prose is not a live key. A comment explaining the rename is
+         exactly what a later reader needs; what must not survive is a
+         string literal the app actually reads or writes. Comments are
+         blanked rather than dropped so the reported line numbers stay
+         true, and a multi-line block comment is handled properly:
+         testing whether a line starts with an asterisk missed the
+         continuation lines, which is how this check first flagged
+         its own documentation as a surviving key. */
+      const source = fs.readFileSync(full, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+        .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + ' '.repeat(m.length - lead.length));
+      source.split('\n').forEach((line, i) => {
+        if (!line.includes('arunak_')) return;
+        // hub.js's importer maps legacy note keys out of pre-rename backups.
+        if (rel === path.join('src', 'pages', 'hub.js') && line.includes("indexOf('arunak_')")) return;
+        survivors.push(`${rel}:${i + 1}  ${line.trim().slice(0, 96)}`);
+      });
+    }
+  };
+  roots.forEach((r) => { const d = path.join(ROOT, r); if (fs.existsSync(d)) walk(d); });
+  ['vercel.json', 'netlify.toml', 'supabase-schema.sql'].forEach((f) => {
+    const full = path.join(ROOT, f);
+    if (!fs.existsSync(full)) return;
+    fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => {
+      if (line.includes('arunak_')) survivors.push(`${f}:${i + 1}  ${line.trim().slice(0, 96)}`);
+    });
+  });
+  if (survivors.length) {
+    console.error(`\n\u2717 the old arunak_ storage prefix survives in ${survivors.length} place(s):`);
+    survivors.slice(0, 20).forEach((o) => console.error('  ' + o));
+    if (survivors.length > 20) console.error(`  ...and ${survivors.length - 20} more`);
+    console.error('\n  A key written as fms_ and read as arunak_ saves and never comes back.');
+    console.error('  Only store.js\'s migratePrefix() may name the old prefix.\n');
+    process.exit(2);
+  }
+  console.log('\u2713 no arunak_ storage keys survive');
+}
+
 /* ---- source check: a fill is never a text colour ------------
    CLAUDE.md states the rule and the app spent a long time not
    following it: 111 of 173 AA failures across 14 pages x 4 themes x
@@ -681,7 +744,7 @@ for (const spec of PAGES) {
     /* The first two scenes are the breakdown's originals, unchanged:
        the hue assertion needs two elements in different categories and
        these are what it was written against. */
-    set('arunak_scenes_v1', { scenes: [
+    set('fms_scenes_v1', { scenes: [
       { id: 'verify-1', number: '1', intExt: 'INT', dayNight: 'DAY',
         location: 'Police Station', synopsis: '', eighths: 8, pageNumber: '1', shootDay: '1',
         elements: { cast: ['Prakash'], props: ['Iron sickle'] } },
@@ -698,7 +761,7 @@ for (const spec of PAGES) {
         location: 'Hostel room', synopsis: 'No deliberation.', eighths: 6, pageNumber: '4',
         shootDay: '', elements: {} }
     ] });
-    set('arunak_contacts_v1', {
+    set('fms_contacts_v1', {
       contacts: [
         { id: 'vc1', name: 'Anitha R', role: 'Line Producer', department: 'Production',
           phone: '98400 00000', email: 'a@example.com', notes: 'Chennai unit' },
@@ -711,7 +774,7 @@ for (const spec of PAGES) {
           sceneIds: ['verify-1', 'verify-2'], calls: { vc1: '05:30' } }
       ]
     });
-    set('arunak_shots_v1', {
+    set('fms_shots_v1', {
       shots: [
         { id: 'vsh1', sceneId: 'verify-1', number: '1A', size: 'WS', lens: '35mm',
           description: 'Establish the hall.' },
@@ -722,11 +785,11 @@ for (const spec of PAGES) {
       boards: [{ id: 'vbd1', name: 'Palette', note: 'Warm interiors',
                  entries: [{ id: 'ven1', title: 'Ratsasan', ref: '', why: 'Night sodium' }] }]
     });
-    set('arunak_locations_v1', {
+    set('fms_locations_v1', {
       recces: { 'police station': { permission: 'pending', power: 'genset', notes: 'Ask the AC' } },
       dayDates: { 1: '2025-01-09', 2: '2025-01-10' }
     });
-    set('arunak_script_v1', { elements: [
+    set('fms_script_v1', { elements: [
       { id: 've1', type: 'scene', text: 'INT. POLICE STATION - DAY' },
       { id: 've2', type: 'action', text: 'Prakash waits.' },
       { id: 've3', type: 'character', text: 'PRAKASH' },
@@ -1261,7 +1324,7 @@ const exported = await rtPage.evaluate(async () => {
      projects' data apart, which a single-key test cannot. */
   const seed = (tag) => S.SCOPED_KEYS.forEach((k) => {
     const body = { __rt: tag + '-' + k };
-    if (k === 'arunak_filmmaker_combined_v1') body.lad_1_logline = tag + '-CONTENT';
+    if (k === 'fms_filmmaker_combined_v1') body.lad_1_logline = tag + '-CONTENT';
     localStorage.setItem(k, JSON.stringify(body));
   });
   const a = S.createProject({ title: 'RT Alpha', format: 'feature' });
@@ -1317,7 +1380,7 @@ if (!exported.unavailable && exported.text) {
       const lost = S.SCOPED_KEYS.filter((k) => read(k, p.id).__rt !== tag + '-' + k);
       return {
         title: p.title,
-        logline: read('arunak_filmmaker_combined_v1', p.id).lad_1_logline || null,
+        logline: read('fms_filmmaker_combined_v1', p.id).lad_1_logline || null,
         keysChecked: S.SCOPED_KEYS.length,
         keysLost: lost
       };

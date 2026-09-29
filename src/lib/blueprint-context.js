@@ -23,7 +23,7 @@
    that is already guarding the save loop, and a lib that saves
    on read is how that loop comes back.
 
-   THE STORAGE KEY. `arunak_filmmaker_combined_v1` is the
+   THE STORAGE KEY. `fms_filmmaker_combined_v1` is the
    blueprint's blob and a contract with real users' saved work.
    It is exported here and src/pages/feature.js now imports it
    rather than keeping its own literal — but be honest about the
@@ -31,7 +31,7 @@
    src/ui/chrome.js (three times), src/ui/launcher.js,
    src/lib/store.js and src/lib/cloud.js. This is one fewer copy,
    not the last one, and it is worth finishing when the
-   `arunak_` rename in CLAUDE.md's open item 1 happens — that
+   `fms_` rename in CLAUDE.md's open item 1 happens — that
    pass has to touch every one of these anyway.
 
    IT GOES THROUGH THE PROXY ON PURPOSE. This IS project data —
@@ -56,7 +56,7 @@ import { stepFieldKeys } from './step-keys.js';
 
 /* The blueprint's blob. See the header: one declaration, and
    src/pages/feature.js imports it from here. */
-export const BLUEPRINT_KEY = 'arunak_filmmaker_combined_v1';
+export const BLUEPRINT_KEY = 'fms_filmmaker_combined_v1';
 
 /* Every step on the page, in page order, tagged with its namespace so
    a priority key can be built. Derived from the data, never listed. */

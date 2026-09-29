@@ -8,7 +8,7 @@
      3. A subscribe/notify bus for cross-field cascading
      4. One-time migration of existing single-project data
      5. A preamble (`init()` → `installStorageProxy()`) that makes all
-        legacy `localStorage.getItem('arunak_…')` calls transparently
+        legacy `localStorage.getItem('fms_…')` calls transparently
         scope to the current project — no other code changes needed.
 
    ⚠️  LOAD ORDER — READ THIS BEFORE IMPORTING ANYTHING ELSE  ⚠️
@@ -42,32 +42,32 @@ const global = typeof window !== 'undefined' ? window : globalThis;
 // ============================================================
 // CONSTANTS
 // ============================================================
-const PROJECTS_KEY        = 'arunak_studio_projects_v1';     // array of project meta
-const CURRENT_KEY         = 'arunak_studio_current_project_v1'; // string projectId
-const SCHEMA_VERSION_KEY  = 'arunak_studio_schema_v1';       // for future migrations
+const PROJECTS_KEY        = 'fms_studio_projects_v1';     // array of project meta
+const CURRENT_KEY         = 'fms_studio_current_project_v1'; // string projectId
+const SCHEMA_VERSION_KEY  = 'fms_studio_schema_v1';       // for future migrations
 
 // Legacy per-blueprint keys that should be project-scoped.
 // Anything in this list gets auto-suffixed with `__<projectId>`
 // when read or written through the storage proxy.
 const SCOPED_KEYS = [
-  'arunak_filmmaker_combined_v1',
-  'arunak_shortfilm_blueprint_v1',
-  'arunak_library_calc_v1',
-  'arunak_filmmaker_prefs_v1',
-  'arunak_shortfilm_prefs_v1',
-  'arunak_library_prefs_v1',
-  'arunak_studio_activity_v1',
-  'arunak_scenes_v1',
-  'arunak_contacts_v1',
-  'arunak_shots_v1',
-  'arunak_script_v1',
-  'arunak_locations_v1',
-  'arunak_workbench_v1',
-  'arunak_dissect_v1',
-  'arunak_festivals_v1'
-  // intentionally NOT scoped: arunak_studio_prefs_v1 (dark mode = global),
-  //                            arunak_supabase_cfg_v1 (account-level),
-  //                            arunak_note_* (per-field notes, fine global for now)
+  'fms_filmmaker_combined_v1',
+  'fms_shortfilm_blueprint_v1',
+  'fms_library_calc_v1',
+  'fms_filmmaker_prefs_v1',
+  'fms_shortfilm_prefs_v1',
+  'fms_library_prefs_v1',
+  'fms_studio_activity_v1',
+  'fms_scenes_v1',
+  'fms_contacts_v1',
+  'fms_shots_v1',
+  'fms_script_v1',
+  'fms_locations_v1',
+  'fms_workbench_v1',
+  'fms_dissect_v1',
+  'fms_festivals_v1'
+  // intentionally NOT scoped: fms_studio_prefs_v1 (dark mode = global),
+  //                            fms_supabase_cfg_v1 (account-level),
+  //                            fms_note_* (per-field notes, fine global for now)
 ];
 
 const FORMATS = ['feature', 'short', 'documentary', 'musicvideo', 'adfilm'];
@@ -186,7 +186,7 @@ function touch() {
 // STORAGE PROXY
 // ============================================================
 // Monkey-patches Storage.prototype so that every existing
-// `localStorage.getItem('arunak_filmmaker_combined_v1')` etc.
+// `localStorage.getItem('fms_filmmaker_combined_v1')` etc.
 // is transparently scoped to the current project.
 //
 // Idempotent — safe to call multiple times. Only installs once.
@@ -246,6 +246,97 @@ export function installStorageProxy() {
 // present without a `__<id>` suffix) and no projects yet,
 // create a project "My First Project" and move that data under it.
 // ============================================================
+/* ============================================================
+   THE PREFIX MIGRATION — fms_ -> fms_
+   ------------------------------------------------------------
+   CLAUDE.md invariant 1: every localStorage key is load-bearing, and
+   renaming one without a migration silently orphans somebody's
+   writing. This renames all of them at once, so it is the one change
+   in this repo that most needs to be boring and verifiable.
+
+   FIVE PROPERTIES, each of which is a way this could have gone wrong:
+
+   1. RAW, NOT PROXIED. It runs through the captured _orig* methods,
+      before installStorageProxy() has patched anything. The proxy
+      suffixes SCOPED_KEYS with the open project id; a migration that
+      went through it would rename one project's data and silently
+      skip the rest.
+
+   2. PREFIX-ONLY, so the `__<projectId>` suffix and the open-ended
+      families (note_, studio_backup_) come along without being
+      enumerated. A list of 36 key names would be wrong the first
+      time somebody added the 37th.
+
+   3. SET, VERIFY, THEN REMOVE. The old key is deleted only after the
+      new one is read back and compared. If setItem throws on quota
+      the old value is still there, and the marker is not written, so
+      the next load tries again.
+
+   4. IT NEVER CLOBBERS. If a new-prefix key somehow already holds a
+      different value, the old one is parked under a salvage name
+      rather than either value being dropped.
+
+   5. IDEMPOTENT AND INTERRUPT-SAFE. The marker is written last. A
+      run killed halfway leaves the marker unset and the remaining
+      old keys in place, and the next load finishes the job.
+
+   The middle of the names is deliberately untouched — fms_library_calc_v1
+   becomes fms_library_calc_v1 and not fms_budget_calc_v1, even though
+   the estimator now lives on budget.html. Renaming the middle is a
+   second migration, and hiding it inside this one is how a rename
+   turns into data loss.
+   ============================================================ */
+
+const OLD_PREFIX = 'arunak_';
+const NEW_PREFIX = 'fms_';
+/* In the NEW namespace on purpose: were it an arunak_ key it would
+   rename itself mid-run and the migration would look unfinished. */
+const PREFIX_DONE_KEY = 'fms_studio_prefix_v1';
+
+export function migratePrefix() {
+  let done = null;
+  try { done = _origGet(PREFIX_DONE_KEY); } catch (e) { return { ran: false, reason: 'storage unavailable' }; }
+  if (done === '1') return { ran: false, reason: 'already migrated' };
+
+  const old = [];
+  try {
+    for (let i = 0; i < global.localStorage.length; i++) {
+      const k = global.localStorage.key(i);
+      if (k && k.indexOf(OLD_PREFIX) === 0) old.push(k);
+    }
+  } catch (e) { return { ran: false, reason: 'enumeration failed' }; }
+
+  const moved = [], kept = [], failed = [];
+  for (const k of old) {
+    const nk = NEW_PREFIX + k.slice(OLD_PREFIX.length);
+    let value = null;
+    try { value = _origGet(k); } catch (e) { failed.push(k); continue; }
+    if (value == null) continue;
+
+    let existing = null;
+    try { existing = _origGet(nk); } catch (e) {}
+    if (existing != null && existing !== value) {
+      // Property 4. Park it; do not choose for the user.
+      try { _origSet(NEW_PREFIX + 'salvage_' + k, value); _origRemove(k); kept.push(nk); } catch (e) { failed.push(k); }
+      continue;
+    }
+
+    try {
+      _origSet(nk, value);
+      if (_origGet(nk) !== value) { failed.push(k); continue; }  // property 3
+      _origRemove(k);
+      moved.push(nk);
+    } catch (e) {
+      failed.push(k);   // quota or private mode: old key survives untouched
+    }
+  }
+
+  if (!failed.length) {
+    try { _origSet(PREFIX_DONE_KEY, '1'); } catch (e) {}
+  }
+  return { ran: true, moved: moved.length, collided: kept.length, failed: failed.length, failedKeys: failed };
+}
+
 export function migrateLegacy() {
   if (rawGet(SCHEMA_VERSION_KEY) === '1') return null; // already migrated
   const projects = listProjects();
@@ -255,7 +346,7 @@ export function migrateLegacy() {
     // Try to read the existing feature title for a nice name
     let title = 'My First Project';
     try {
-      const featRaw = rawGet('arunak_filmmaker_combined_v1');
+      const featRaw = rawGet('fms_filmmaker_combined_v1');
       if (featRaw) {
         const feat = JSON.parse(featRaw);
         if (feat && (feat.meta_title || feat.v1_title)) {
@@ -522,6 +613,12 @@ export function injectSharedStyles() {
 // installStorageProxy() only installs once.
 export function init() {
   try {
+    /* FIRST, before anything reads a key and before the proxy is
+       installed. migrateLegacy() reads SCOPED_KEYS by their current
+       names, so the prefix has to be settled before it runs — and
+       the proxy has to be absent, or the rename would only reach the
+       open project. */
+    migratePrefix();
     migrateLegacy();
     installStorageProxy();
     injectSharedStyles();

@@ -16,7 +16,7 @@
    number.
 
    ⚠️  LOAD ORDER — store.js FIRST.
-   It patches Storage.prototype so `arunak_library_calc_v1` is
+   It patches Storage.prototype so `fms_library_calc_v1` is
    scoped to the current project. The calculator's load/save must
    run after that patch is installed. See the banner in
    src/lib/store.js.
@@ -537,7 +537,7 @@ function wireActions(root) {
    ============================================================ */
 function adoptLegacyDarkPref() {
   try {
-    if (localStorage.getItem('arunak_studio_theme_v1')) return; // already chosen
+    if (localStorage.getItem('fms_studio_theme_v1')) return; // already chosen
     const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
     if (p && p.dark) StudioUI.applyTheme('ink');
   } catch (e) {}

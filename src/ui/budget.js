@@ -13,7 +13,7 @@
    rendered in two places sharing one storage key, which would have
    been two DOM trees writing over each other.
 
-   WHAT DELIBERATELY DID NOT CHANGE. `arunak_library_calc_v1` and the
+   WHAT DELIBERATELY DID NOT CHANGE. `fms_library_calc_v1` and the
    `ci_<n>_item|days|rate|custom` data-key shape are byte-for-byte
    what they were. People have saved estimates behind those strings;
    invariant 1 says they are a contract, and moving a page is not a
@@ -53,7 +53,7 @@ import { parseNum, fmtINR, INR } from '../lib/money.js';
         display:none and the three boxes were unlabelled entirely.
      4. No inline onchange/oninput/onclick. One delegated listener.
    ============================================================ */
-const CALC_KEY = 'arunak_library_calc_v1';
+const CALC_KEY = 'fms_library_calc_v1';
 const PRESET_ITEMS = rates.presets;
 
 let calcCount = 0;

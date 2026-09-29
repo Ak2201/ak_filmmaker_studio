@@ -7,7 +7,7 @@
    open item 2 says the same thing, and the export/reset defects found
    earlier were exactly what islands cost.
 
-   STORAGE CONTRACT. `arunak_scenes_v1` is a new key, and a new key has
+   STORAGE CONTRACT. `fms_scenes_v1` is a new key, and a new key has
    to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
      2. PROJECT_KEYS in src/pages/hub.js — included in backups
@@ -22,7 +22,7 @@
    ============================================================ */
 import Store from './store.js';
 
-export const SCENES_KEY = 'arunak_scenes_v1';
+export const SCENES_KEY = 'fms_scenes_v1';
 
 export const INT_EXT    = ['INT', 'EXT', 'INT/EXT'];
 export const DAY_NIGHT  = ['DAY', 'NIGHT', 'DAWN', 'DUSK', 'CONTINUOUS'];

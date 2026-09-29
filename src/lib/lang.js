@@ -33,7 +33,7 @@
    read in is a property of you, not of the film you have open.
    ============================================================ */
 
-export const LANG_KEY = 'arunak_studio_lang_v1';
+export const LANG_KEY = 'fms_studio_lang_v1';
 
 export const LANGS = [
   { id: 'en', label: 'English' },

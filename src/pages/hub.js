@@ -35,7 +35,7 @@
    ============================================================ */
 
 // ⚠ store.js FIRST — it patches Storage.prototype so that every
-// `localStorage.getItem('arunak_…')` scopes to the current project.
+// `localStorage.getItem('fms_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
 import { parseNum, fmtINR } from '../lib/money.js';
@@ -71,24 +71,24 @@ import prodData    from '../data/steps.production.json';
 // ============================================================
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
 // ============================================================
-const PREF_KEY     = 'arunak_studio_prefs_v1';
-const FEATURE_KEY  = 'arunak_filmmaker_combined_v1';
-const SHORT_KEY    = 'arunak_shortfilm_blueprint_v1';
-const LIB_CALC_KEY = 'arunak_library_calc_v1';
-const FEAT_PREFS   = 'arunak_filmmaker_prefs_v1';
-const SHORT_PREFS  = 'arunak_shortfilm_prefs_v1';
-const LIB_PREFS    = 'arunak_library_prefs_v1';
-const SYNC_CFG     = 'arunak_supabase_cfg_v1';
-const NOTE_PREFIX  = 'arunak_note_';
-const ACTIVITY_KEY = 'arunak_studio_activity_v1';
-const SCENES_KEY   = 'arunak_scenes_v1';
-const CONTACTS_KEY = 'arunak_contacts_v1';
-const SHOTS_KEY    = 'arunak_shots_v1';
-const SCRIPT_KEY   = 'arunak_script_v1';
-const LOCS_KEY     = 'arunak_locations_v1';
-const BENCH_KEY    = 'arunak_workbench_v1';
-const DISSECT_KEY  = 'arunak_dissect_v1';
-const FESTIVALS_KEY = 'arunak_festivals_v1';
+const PREF_KEY     = 'fms_studio_prefs_v1';
+const FEATURE_KEY  = 'fms_filmmaker_combined_v1';
+const SHORT_KEY    = 'fms_shortfilm_blueprint_v1';
+const LIB_CALC_KEY = 'fms_library_calc_v1';
+const FEAT_PREFS   = 'fms_filmmaker_prefs_v1';
+const SHORT_PREFS  = 'fms_shortfilm_prefs_v1';
+const LIB_PREFS    = 'fms_library_prefs_v1';
+const SYNC_CFG     = 'fms_supabase_cfg_v1';
+const NOTE_PREFIX  = 'fms_note_';
+const ACTIVITY_KEY = 'fms_studio_activity_v1';
+const SCENES_KEY   = 'fms_scenes_v1';
+const CONTACTS_KEY = 'fms_contacts_v1';
+const SHOTS_KEY    = 'fms_shots_v1';
+const SCRIPT_KEY   = 'fms_script_v1';
+const LOCS_KEY     = 'fms_locations_v1';
+const BENCH_KEY    = 'fms_workbench_v1';
+const DISSECT_KEY  = 'fms_dissect_v1';
+const FESTIVALS_KEY = 'fms_festivals_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
@@ -1271,7 +1271,7 @@ function exportAll() {
   const a = document.createElement('a');
   const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = 'arunak_studio_backup_' + date + '.json';
+  a.download = 'fms_studio_backup_' + date + '.json';
   a.click();
   URL.revokeObjectURL(url);
   const n = projects.length;
@@ -1344,7 +1344,20 @@ function importV2(all) {
       if (all.global[n] !== undefined) localStorage.setItem(GLOBAL_KEYS[n], JSON.stringify(all.global[n]));
     });
   }
-  if (all.notes) Object.keys(all.notes).forEach((k) => localStorage.setItem(k, all.notes[k]));
+  /* Notes are the ONE place a backup file stores a raw storage key
+     rather than a field name, so a file written before the fms_
+     rename carries `arunak_note_*` and would restore keys this build
+     no longer reads. Everything else in the file is keyed by field
+     name (feature_blueprint, scenes, …) and survives the rename
+     untouched — this is the only path that needed fixing, and it
+     needed it in the importer rather than the migration, because the
+     file can arrive at any time. */
+  if (all.notes) {
+    Object.keys(all.notes).forEach((k) => {
+      const key = k.indexOf('arunak_') === 0 ? 'fms_' + k.slice('arunak_'.length) : k;
+      localStorage.setItem(key, all.notes[k]);
+    });
+  }
 
   logActivity('studio', 'Imported ' + added + ' project' + (added === 1 ? '' : 's'));
   return 'Imported ' + added + ' project' + (added === 1 ? '' : 's') + '.';
@@ -1374,7 +1387,14 @@ function importV1(all) {
   if (all.studio_prefs)      localStorage.setItem(PREF_KEY, JSON.stringify(all.studio_prefs));
   if (all.sync_config)       localStorage.setItem(SYNC_CFG, JSON.stringify(all.sync_config));
   if (all.activity_log)      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(all.activity_log));
-  if (all.notes) Object.keys(all.notes).forEach((k) => localStorage.setItem(k, all.notes[k]));
+  // Same legacy-note mapping as the merge path above; a restore and a
+  // merge can both be handed a pre-rename file.
+  if (all.notes) {
+    Object.keys(all.notes).forEach((k) => {
+      const key = k.indexOf('arunak_') === 0 ? 'fms_' + k.slice('arunak_'.length) : k;
+      localStorage.setItem(key, all.notes[k]);
+    });
+  }
   return 'Studio data imported.';
 }
 
@@ -1685,8 +1705,8 @@ function openSampleProject() {
   // createProject() has already made this the current project, so the
   // storage proxy scopes both writes below to it.
   try {
-    localStorage.setItem('arunak_filmmaker_combined_v1', JSON.stringify(SAMPLE_FIELDS));
-    localStorage.setItem('arunak_scenes_v1', JSON.stringify({
+    localStorage.setItem('fms_filmmaker_combined_v1', JSON.stringify(SAMPLE_FIELDS));
+    localStorage.setItem('fms_scenes_v1', JSON.stringify({
       scenes: SAMPLE_SCENES.map((s, i) => ({
         id: 'sample-' + (i + 1), pageNumber: '', elements: {}, ...s
       }))
@@ -2045,7 +2065,7 @@ function init() {
     if ([FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY].includes(baseKey)) {
       setTimeout(() => { updateStatus(); detectActivity(); renderActivity(); }, 200);
     }
-    if (e.key === 'arunak_studio_projects_v1' || e.key === 'arunak_studio_current_project_v1') {
+    if (e.key === 'fms_studio_projects_v1' || e.key === 'fms_studio_current_project_v1') {
       renderProjects();
       renderProjectSwitcher();
     }

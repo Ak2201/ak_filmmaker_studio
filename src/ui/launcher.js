@@ -68,11 +68,11 @@ const BUILT = nav.phases.reduce(
    read here and never written; if one is ever renamed under a
    migration, this file reports "not started" rather than losing
    anything. */
-const FEATURE_KEY = 'arunak_filmmaker_combined_v1';
-const SHORT_KEY   = 'arunak_shortfilm_blueprint_v1';
-const LIB_CALC_KEY = 'arunak_library_calc_v1';
-const DISSECT_KEY  = 'arunak_dissect_v1';
-const WORKBENCH_KEY = 'arunak_workbench_v1';
+const FEATURE_KEY = 'fms_filmmaker_combined_v1';
+const SHORT_KEY   = 'fms_shortfilm_blueprint_v1';
+const LIB_CALC_KEY = 'fms_library_calc_v1';
+const DISSECT_KEY  = 'fms_dissect_v1';
+const WORKBENCH_KEY = 'fms_workbench_v1';
 
 /* ------------------------------------------------------------
    READING THE STUDIO

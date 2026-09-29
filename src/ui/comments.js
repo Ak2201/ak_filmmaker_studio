@@ -37,7 +37,7 @@
       if the write fails, the row stays open and honest.
 
    3. IT DEGRADES HONESTLY, BECAUSE LOCAL-FIRST IS THE PRODUCT.
-      The private note — one textarea, `arunak_note_<key>`, on this
+      The private note — one textarea, `fms_note_<key>`, on this
       device, no account — is the FIRST thing in the panel and it works
       in every state, including no cloud, signed out, and offline. The
       shared thread is a second section underneath that says plainly
@@ -45,7 +45,7 @@
       yet" is only ever printed when we have actually asked the server
       and it answered.
 
-   NO NEW STORAGE KEYS. The private note reuses the `arunak_note_`
+   NO NEW STORAGE KEYS. The private note reuses the `fms_note_`
    prefix that feature.js has always used, so nothing needs adding to
    SCOPED_KEYS / PROJECT_KEYS / ALL_KEYS / the Supabase scope list.
    Panel state is in memory.
@@ -63,7 +63,7 @@ import '../styles/comments.css';
    ------------------------------------------------------------ */
 let CFG = {
   scope: 'feature',              // comments.scope — matches the DB scope name
-  notePrefix: 'arunak_note_',    // existing local key prefix. Do not change.
+  notePrefix: 'fms_note_',    // existing local key prefix. Do not change.
   hostSelector: '.ask, .pp-ask', // the block a panel is appended to
   onNoteChange: null             // (key, hasNote) — page updates its own badge
 };

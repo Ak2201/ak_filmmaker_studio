@@ -119,7 +119,7 @@ StudioUI.notify = StudioUI.toastInfo;
 // ============================================================
 // THEME — paper / ink / sepia (3-state pill)
 // ============================================================
-const THEME_KEY = 'arunak_studio_theme_v1';
+const THEME_KEY = 'fms_studio_theme_v1';
 
 /* The stylesheets match `:root[data-theme]` with the CSS-side names
    light / sepia / dark (see tokens.css). The app's own names are
@@ -186,7 +186,7 @@ function loadTheme() {
   } else {
     // fall back to legacy dark-mode pref
     try {
-      const old = JSON.parse(localStorage.getItem('arunak_studio_prefs_v1') || '{}');
+      const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
       applyTheme(old.dark ? 'ink' : 'paper');
     } catch (e) { applyTheme('paper'); }
   }
@@ -710,7 +710,7 @@ function buildBeatVisualizer() {
   // Read filled state from blueprint storage
   let dataObj = {};
   try {
-    dataObj = JSON.parse(localStorage.getItem('arunak_filmmaker_combined_v1') || '{}');
+    dataObj = JSON.parse(localStorage.getItem('fms_filmmaker_combined_v1') || '{}');
   } catch (e) {}
 
   // Dots
@@ -786,7 +786,7 @@ function refreshBeatFills() {
   const wrap = document.getElementById('beatVisualizer');
   if (!wrap) return;
   let dataObj = {};
-  try { dataObj = JSON.parse(localStorage.getItem('arunak_filmmaker_combined_v1') || '{}'); } catch (e) {}
+  try { dataObj = JSON.parse(localStorage.getItem('fms_filmmaker_combined_v1') || '{}'); } catch (e) {}
   wrap.querySelectorAll('.beat-dot').forEach((dot, i) => {
     const key = 'b' + String(i + 1).padStart(2, '0');
     const filled = dataObj[key] && String(dataObj[key]).trim();
@@ -1288,7 +1288,7 @@ Store.subscribe('current:changed', () => {
   setTimeout(refreshBeatFills, 200);
 });
 window.addEventListener('storage', (e) => {
-  if (e.key && e.key.indexOf('arunak_filmmaker_combined_v1') === 0) {
+  if (e.key && e.key.indexOf('fms_filmmaker_combined_v1') === 0) {
     setTimeout(refreshBeatFills, 100);
   }
 });

@@ -43,7 +43,7 @@
    and the page says so in as many words. It is an index of where the
    files are, not a copy of them.
 
-   STORAGE CONTRACT. `arunak_locations_v1` is registered in the four
+   STORAGE CONTRACT. `fms_locations_v1` is registered in the four
    places the scenes.js header lists:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
      2. PROJECT_KEYS in src/pages/hub.js — included in backups
@@ -59,7 +59,7 @@
 import Store from './store.js';
 import { listScenes, totalEighths } from './scenes.js';
 
-export const LOCATIONS_KEY = 'arunak_locations_v1';
+export const LOCATIONS_KEY = 'fms_locations_v1';
 
 /* Where a location stands with whoever owns it. `tone` is a semantic
    class, never a hue: approved is --ok and refused is --danger, and

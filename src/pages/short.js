@@ -65,8 +65,8 @@ import festivalData from '../data/festivals.json';
 // ============================================================
 // CONSTANTS
 // ============================================================
-const STORAGE_KEY = 'arunak_shortfilm_blueprint_v1';
-const PREF_KEY    = 'arunak_shortfilm_prefs_v1';
+const STORAGE_KEY = 'fms_shortfilm_blueprint_v1';
+const PREF_KEY    = 'fms_shortfilm_prefs_v1';
 
 // Industry rule of thumb: one formatted screenplay page ≈ 210 words
 // ≈ one minute of screen time.
@@ -351,7 +351,7 @@ function refreshBeatDots() {
 //
 // Nothing in the tracker carries a data-key. Its rows are NOT part
 // of the blueprint blob: a submission campaign outlives a draft and
-// belongs under its own key (arunak_festivals_v1), which is also
+// belongs under its own key (fms_festivals_v1), which is also
 // why saveData() below never sees it.
 // ============================================================
 function festStat(value, label, mod) {
@@ -1571,7 +1571,7 @@ function exportData() {
   saveData();
   const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   const t = (data.meta_title || 'short').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'short';
-  downloadFile(JSON.stringify(data, null, 2), 'arunak_short_' + t + '.json', 'application/json');
+  downloadFile(JSON.stringify(data, null, 2), 'fms_short_' + t + '.json', 'application/json');
   flashStatus('●  exported');
 }
 

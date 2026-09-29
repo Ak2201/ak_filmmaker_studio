@@ -72,8 +72,25 @@ Every `data-key` string, and every `localStorage` key, is load-bearing. A user
 who has filled in 24 steps has a blob keyed by those exact strings. Renaming one
 without a migration silently orphans their writing. Do not "tidy" them.
 
-The `arunak_` prefix is historical and should eventually go — but only as one
-deliberate pass with a migration that moves existing data. Not opportunistically.
+The prefix is `fms_`. It was `arunak_` until the rename, which happened as one
+deliberate pass with a migration — `migratePrefix()` in `src/lib/store.js` —
+exactly as this note used to demand. If you rename keys again, copy its five
+properties rather than its code: raw, not through the proxy (or you rename the
+open project's data and silently skip every other project); prefix-only (so the
+`__<projectId>` suffix and the open-ended `note_` family come along without
+being enumerated); set, verify, then remove (never delete the old value until
+the new one reads back); never clobber; and idempotent with the marker written
+last, so a run killed halfway finishes on the next load.
+
+`npm run verify` fails if `arunak_` survives anywhere outside that migration. A
+half-finished rename is the worst outcome available here: the app writes one
+prefix and reads the other, so a field saves and never comes back, and nothing
+looks wrong until somebody reopens a project.
+
+The rename deliberately did NOT touch the middles. `fms_library_calc_v1` still
+says `library` although the estimator now lives on `budget.html`. Renaming a
+middle is a second migration, and hiding it inside the first is how a rename
+turns into data loss.
 
 **2. Content lives in `src/data/*.json`, not in markup.**
 The 24 feature steps used to exist in three places (the markup, the jump
@@ -433,13 +450,20 @@ deterministic (same input, byte-identical output).
 
 In rough priority order. The reasoning behind the ordering is in the revamp plan.
 
-1. **Rename the storage keys** off `arunak_` with a migration. No longer
-   blocked on a name: the prefix is **`fms_`** (Film Maker Studio). Not yet
-   done — 36 distinct keys across 24 files, and it touches the storage
-   contract, so it wants a quiet tree and a pass of its own. This got more urgent, not less: there are now five scoped
-   model keys rather than one, and every new one is another row in the
-   migration that has to be written eventually. Do it before more people have
-   data, not after.
+1. ~~**Rename the storage keys.**~~ Done. The prefix is `fms_`;
+   `migratePrefix()` in `src/lib/store.js` runs first in `init()` — before
+   `migrateLegacy()` and before the storage proxy is installed, because the
+   proxy would have scoped the rename to the open project. 137 string
+   literals across 26 files.
+
+   Proved on a seeded pre-rename studio rather than assumed: every value
+   survived, including the `__<projectId>` suffixes, private notes, theme
+   and the AI key; zero old keys left; idempotent across three consecutive
+   loads. The one real breakage path was backups — project buckets are keyed
+   by field name and survive untouched, but `notes` stores RAW key names, so
+   both importers (V1 and V2) now map `arunak_note_*` forward. Tested with a
+   real exported file rewritten to the old prefix.
+
 2. **The chain is closed in both directions** — scene → breakdown →
    stripboard → day out of days → call sheet, all reading
    `src/lib/scenes.js`, and now the budget reads it too: the library's
@@ -449,7 +473,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    how many it left alone — a hand-set figure is a decision, not a gap. This
    was the open item that justified the whole rebuild and it is done.
 3. ~~**AI, bring-your-own-key.**~~ Done, for one job: drafting a shot
-   division from the script. `src/lib/ai.js`, key at `arunak_ai_key_v1`
+   division from the script. `src/lib/ai.js`, key at `fms_ai_key_v1`
    through `rawGet`/`rawSet`/`rawRemove` so the storage proxy cannot scope
    it, absent from all five registries (`SCOPED_KEYS`, `PROJECT_KEYS`,
    `ALL_KEYS`, the Supabase scope list, and `GLOBAL_KEYS` — that last one

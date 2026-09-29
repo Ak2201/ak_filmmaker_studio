@@ -24,7 +24,7 @@
       dots, the count — by DOM, never by rebuilding the field the
       user is in.
 
-   3. THE WORK IS KEYED PER FILM. `arunak_workbench_v1` holds
+   3. THE WORK IS KEYED PER FILM. `fms_workbench_v1` holds
       { slug: { logline, beats, scratch } }. Switching the demo film
       switches the notes with it, and writing under one film can
       never overwrite another's — the write re-reads the whole blob
@@ -41,7 +41,7 @@ import '../styles/workbench.css';
 import { h, delegate } from '../lib/dom.js';
 import { BEATS } from '../lib/studies.js';
 
-const KEY = 'arunak_workbench_v1';
+const KEY = 'fms_workbench_v1';
 const SAVE_DELAY = 600;
 
 /* A hue is a category, and an unknown category is no category. The

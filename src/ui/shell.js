@@ -39,7 +39,7 @@
 import nav from '../data/navigation.json';
 import { h, delegate } from '../lib/dom.js';
 
-const RAIL_KEY = 'arunak_studio_rail_open_v1';
+const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
 
 const CURRENT = (() => {

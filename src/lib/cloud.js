@@ -27,13 +27,13 @@ import Store from './store.js';
 // SDK is imported dynamically below from '@supabase/supabase-js'
 // (was: https://esm.sh/@supabase/supabase-js@2.45.4 — the version is
 // now pinned in package.json instead of in this URL).
-const CFG_KEY          = 'arunak_supabase_cfg_v1';        // { url, key } — public
-const QUEUE_KEY        = 'arunak_studio_cloud_queue_v1';  // offline queue
-const MIGRATE_FLAG_KEY = 'arunak_studio_migrated_v1';     // <userId> = migrated
-const MIGRATE_LOCK_KEY = 'arunak_studio_migrate_lock_v1'; // ts when running
-const SYNC_META_KEY    = 'arunak_studio_sync_meta_v1';    // per (project,scope) clocks
-const SALVAGE_KEY      = 'arunak_studio_sync_salvage_v1'; // overwritten-local safety net
-const PENDING_SHARE_KEY = 'arunak_studio_pending_share_v1'; // survives an OAuth round trip
+const CFG_KEY          = 'fms_supabase_cfg_v1';        // { url, key } — public
+const QUEUE_KEY        = 'fms_studio_cloud_queue_v1';  // offline queue
+const MIGRATE_FLAG_KEY = 'fms_studio_migrated_v1';     // <userId> = migrated
+const MIGRATE_LOCK_KEY = 'fms_studio_migrate_lock_v1'; // ts when running
+const SYNC_META_KEY    = 'fms_studio_sync_meta_v1';    // per (project,scope) clocks
+const SALVAGE_KEY      = 'fms_studio_sync_salvage_v1'; // overwritten-local safety net
+const PENDING_SHARE_KEY = 'fms_studio_pending_share_v1'; // survives an OAuth round trip
 
 // Map between localStorage scoped-key and DB scope name.
 //
@@ -49,20 +49,20 @@ const PENDING_SHARE_KEY = 'arunak_studio_pending_share_v1'; // survives an OAuth
 // The assertion under this map turns the silent version of that mistake
 // into a console warning at load.
 const SCOPE_BY_KEY = {
-  'arunak_filmmaker_combined_v1':  'feature',
-  'arunak_shortfilm_blueprint_v1': 'short',
-  'arunak_library_calc_v1':        'library',
-  'arunak_filmmaker_prefs_v1':     'feature_prefs',
-  'arunak_shortfilm_prefs_v1':     'short_prefs',
-  'arunak_library_prefs_v1':       'library_prefs',
-  'arunak_studio_activity_v1':     'activity',
-  'arunak_scenes_v1':              'scenes',
-  'arunak_contacts_v1':            'contacts',
-  'arunak_shots_v1':               'shots',
-  'arunak_script_v1':              'script',
-  'arunak_locations_v1':           'locations',
-  'arunak_workbench_v1':           'workbench',
-  'arunak_dissect_v1':             'dissect'
+  'fms_filmmaker_combined_v1':  'feature',
+  'fms_shortfilm_blueprint_v1': 'short',
+  'fms_library_calc_v1':        'library',
+  'fms_filmmaker_prefs_v1':     'feature_prefs',
+  'fms_shortfilm_prefs_v1':     'short_prefs',
+  'fms_library_prefs_v1':       'library_prefs',
+  'fms_studio_activity_v1':     'activity',
+  'fms_scenes_v1':              'scenes',
+  'fms_contacts_v1':            'contacts',
+  'fms_shots_v1':               'shots',
+  'fms_script_v1':              'script',
+  'fms_locations_v1':           'locations',
+  'fms_workbench_v1':           'workbench',
+  'fms_dissect_v1':             'dissect'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])
@@ -570,7 +570,7 @@ export async function pullProjectList() {
         createdAt: row.created_at,
         updatedAt: row.updated_at
       });
-      Store.rawSet('arunak_studio_projects_v1', JSON.stringify(all));
+      Store.rawSet('fms_studio_projects_v1', JSON.stringify(all));
     }
     // For each scope, pull the data
     await pullProjectData(row.id);

@@ -11,8 +11,8 @@
      src/lib/shots.js       shots, frames, boards
      src/lib/script.js      screenplay pages
      src/data/steps.*.json  the blueprint field list
-     arunak_library_calc_v1 the budget rows
-     arunak_studio_activity_v1  what the hub already logs
+     fms_library_calc_v1 the budget rows
+     fms_studio_activity_v1  what the hub already logs
 
    WHY IT STORES NOTHING. A dashboard is the most tempting place in
    an app to invent state — "last visited", "dismissed tips", a
@@ -70,10 +70,10 @@ const app = document.getElementById('app');
 
 /* Storage keys, spelled exactly as store.js's SCOPED_KEYS spells them.
    These are read-only here; not one line of this file writes to them. */
-const FEATURE_KEY = 'arunak_filmmaker_combined_v1';
-const SHORT_KEY = 'arunak_shortfilm_blueprint_v1';
-const LIB_CALC_KEY = 'arunak_library_calc_v1';
-const ACTIVITY_KEY = 'arunak_studio_activity_v1';
+const FEATURE_KEY = 'fms_filmmaker_combined_v1';
+const SHORT_KEY = 'fms_shortfilm_blueprint_v1';
+const LIB_CALC_KEY = 'fms_library_calc_v1';
+const ACTIVITY_KEY = 'fms_studio_activity_v1';
 
 /* ============================================================
    THE BLUEPRINTS, AS A FIELD LIST

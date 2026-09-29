@@ -6,7 +6,7 @@
    day out of days and the cast IDs a scene points at. Same argument
    as src/lib/scenes.js — build it once or build ten islands.
 
-   STORAGE CONTRACT. `arunak_contacts_v1` is a new key, and a new key
+   STORAGE CONTRACT. `fms_contacts_v1` is a new key, and a new key
    has to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
      2. PROJECT_KEYS in src/pages/hub.js — included in backups
@@ -31,7 +31,7 @@
    ============================================================ */
 import Store from './store.js';
 
-export const CONTACTS_KEY = 'arunak_contacts_v1';
+export const CONTACTS_KEY = 'fms_contacts_v1';
 
 /* The departments a unit list is read in, top to bottom: the people
    in front of the camera, then the ones behind it, then the ones who

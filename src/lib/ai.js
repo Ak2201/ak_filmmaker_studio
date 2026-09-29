@@ -5,7 +5,7 @@
    security model: "Key in localStorage, per-device, never synced."
 
    THE KEY IS NOT PROJECT DATA AND IS NOT THE USER'S WORK.
-   `arunak_ai_key_v1` is deliberately absent from all four of the
+   `fms_ai_key_v1` is deliberately absent from all four of the
    places a project key is registered:
 
      1. SCOPED_KEYS in src/lib/store.js  — so it is NOT suffixed
@@ -54,8 +54,8 @@ import { formatEighths } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
 
 /* Per-device, never scoped, never synced. See the header. */
-export const AI_KEY = 'arunak_ai_key_v1';
-export const AI_MODEL_KEY = 'arunak_ai_model_v1';
+export const AI_KEY = 'fms_ai_key_v1';
+export const AI_MODEL_KEY = 'fms_ai_model_v1';
 
 export const API_ORIGIN = 'https://api.anthropic.com';
 const API_URL = API_ORIGIN + '/v1/messages';

@@ -16,7 +16,7 @@
    deadline the USER typed, because a real deadline is a real date
    and "~Feb each year" is not one.
 
-   STORAGE CONTRACT. `arunak_festivals_v1` is a NEW key, and a new
+   STORAGE CONTRACT. `fms_festivals_v1` is a NEW key, and a new
    key has to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
      2. PROJECT_KEYS in src/pages/hub.js — included in backups
@@ -50,7 +50,7 @@ import './store.js';
 import catalogue from '../data/festivals.json';
 import checks from '../data/festivals.checks.json';
 
-export const FESTIVALS_KEY = 'arunak_festivals_v1';
+export const FESTIVALS_KEY = 'fms_festivals_v1';
 
 /* The life of a submission, in order. `live` means the festival is
    still holding a claim on your premiere; `decided` means an answer

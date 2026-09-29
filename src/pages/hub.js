@@ -1629,36 +1629,53 @@ function renderFirstRun() {
   return panel;
 }
 
-/* A small, honest demo: enough filled in that the blueprint, the scene
-   list, the stripboard and the budget all have something to show, and
-   little enough that it reads as a starting point rather than a finished
-   film. The content is invented for this purpose. */
+/* THE SAMPLE PROJECT — Dragon (2025), dir. Ashwath Marimuthu.
 
-const SAMPLE_TITLE = 'Sample — The Last Bus';
+   A real film rather than an invented one, and the same film the
+   case studies and the Save the Cat sheet already take apart. Someone
+   opening the sample can put this page next to study.html and see the
+   same structure from two directions: the blueprint as the writer
+   filled it in, and the analysis of what that produced.
+
+   The fields below are this studio's questions answered FROM the
+   finished film — a reconstruction of the paperwork, not a transcript
+   of it. That is what makes it a useful thing to poke at: every
+   answer is short, specific, and visibly editable. */
+
+const SAMPLE_TITLE = 'Sample — Dragon';
 
 const SAMPLE_FIELDS = {
-  s1_whatif:    'What if the last bus out of a town only stops for people who have decided never to come back?',
-  s1_why_me:    'I grew up on the 6:40 from Ambattur. I know what that queue sounds like at night.',
-  s1_image:     'A conductor tearing a ticket in the dark, lit only by the fare box.',
-  s2_log1:      'A night-shift conductor discovers his last passenger has no destination.',
-  s2_log_final: 'On the last bus out of a dying mill town, a conductor counting his final week finds a passenger who will not name a stop — and realises the route only ends for one of them.',
-  s3_theme:     'You cannot leave a place you have not forgiven.',
-  s3_ext:       'Does he get out of the town?',
-  s3_int:       'Does he stop measuring his life in other people\'s departures?',
+  s1_whatif:    'What if the shortcut worked? What if a forged degree got you the life you wanted, and the only person who could take it away decided to make you earn it instead?',
+  s1_why_me:    'Everyone I studied with knows somebody who padded a CV. Nobody talks about what it costs to stop.',
+  s1_image:     'A gold medal in one hand and a forged certificate in the other, fifteen years apart, both of them opening the same door.',
+  s2_log1:      'A college dropout fakes a degree, builds a career on it, and is found out.',
+  s2_log_final: 'A gifted student who quit after a rejection talks his way into a corporate career on a forged degree — until his old dean offers him a choice: confess and lose everything, or clear forty-eight arrears in three months and keep it.',
+  s3_theme:     'A shortcut is a loan. The interest is paid by somebody else.',
+  s3_ext:       'Can he clear forty-eight arrears in three months?',
+  s3_int:       'Can he become someone whose word is worth what people already assume it is?',
+  s4_arc:       'From a boy who believed being good was not rewarded, to a man who accepts the consequence nobody was forcing on him.',
+  s5_name:      'S. Mayilvahanan, the dean',
+  s5_want:      'That the certificate on the wall should mean what it says.',
+  s5_philosophy: 'An institution that lets one forgery stand has signed every other one it ever issued.',
+  s5_hero:      'He is not wrong. That is the point — giving the antagonist a correct position is what removes the easy exit from the plot.',
   s7_era:       'Present day',
-  s7_location:  'A mill town on the Chennai–Tiruvallur road',
-  s7_duration:  'One night, 9pm to dawn'
+  s7_location:  'An engineering college, and the glass floor of a multinational',
+  s7_duration:  'Roughly four years, compressed around a three-month deadline'
 };
 
+/* Scene one is the 2014 prologue. The three after it are the pivot,
+   so the breakdown, stripboard and budget all have something real to
+   read — two shoot days, three locations, mixed INT/EXT. */
+
 const SAMPLE_SCENES = [
-  { number: '1',  intExt: 'INT', dayNight: 'NIGHT', location: 'Bus depot office', eighths: 6,
-    synopsis: 'Raghu signs the night register. The supervisor does not look up.', shootDay: '1' },
-  { number: '2',  intExt: 'EXT', dayNight: 'NIGHT', location: 'Depot forecourt', eighths: 10,
-    synopsis: 'The 11:40 pulls out with four passengers. One of them has no bag.', shootDay: '1' },
-  { number: '3',  intExt: 'INT', dayNight: 'NIGHT', location: 'Bus — moving', eighths: 14,
-    synopsis: 'Raghu works the aisle. The passenger without a bag refuses to name a stop.', shootDay: '2' },
-  { number: '4',  intExt: 'EXT', dayNight: 'DAWN', location: 'Level crossing', eighths: 8,
-    synopsis: 'The bus waits at a closed gate. Nobody gets off.', shootDay: '2' }
+  { number: '1',  intExt: 'INT', dayNight: 'DAY',   location: 'School auditorium — 2014', eighths: 10,
+    synopsis: 'A gold medal in computer science. He has earned every bit of it, and the film shows him earning it.', shootDay: '1' },
+  { number: '2',  intExt: 'EXT', dayNight: 'DAY',   location: 'School corridor', eighths: 6,
+    synopsis: 'He states the whole plan out loud — engineering, masters abroad, then marriage. Every later compromise is measured against this.', shootDay: '1' },
+  { number: '3',  intExt: 'EXT', dayNight: 'EVENING', location: 'College gate', eighths: 12,
+    synopsis: 'The rejection, and the reason given for it. The film plants its theme here as its own inversion.', shootDay: '2' },
+  { number: '4',  intExt: 'INT', dayNight: 'NIGHT', location: 'Hostel room', eighths: 8,
+    synopsis: 'No deliberation. He converts the humiliation straight into a new name and a new self.', shootDay: '2' }
 ];
 
 function openSampleProject() {

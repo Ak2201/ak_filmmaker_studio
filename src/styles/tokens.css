@@ -82,8 +82,10 @@
 
   /* ---- semantic (never the same hue as a volume) --------- */
   --ok:           #1d6a4f;
+  --ok-deep:      #155c43;   /* the TEXT variant; --ok is a fill */
   --ok-wash:      #dcece4;
   --warn:         #8a5d0c;
+  --warn-deep:    #6d480a;   /* --warn as text was 3.52:1 in desk */
   --warn-wash:    #f6ecd6;
   --danger:       #a32b1c;
   --danger-wash:  #f7e0dc;
@@ -327,8 +329,10 @@
   --library-on:     #3b2905;
 
   --ok:           #17805c;
+  --ok-deep:      #0e6247;
   --ok-wash:      #e1f5ed;
   --warn:         #b57407;
+  --warn-deep:    #7d4f06;
   --warn-wash:    #fdf0d9;
   --danger:       #b5311f;
   --danger-wash:  #fce8e5;
@@ -413,8 +417,10 @@
   --shoot-wash:     #2b1522;
 
     --ok:           #5fbc99;
+    --ok-deep:      #5fbc99;   /* on a dark ground the fill IS the text colour */
     --ok-wash:      #15271f;
     --warn:         #d6a74d;
+    --warn-deep:    #d6a74d;
     --warn-wash:    #2a2113;
     --danger:       #e58471;
     --danger-wash:  #2e1815;
@@ -483,8 +489,10 @@
   --shoot-deep:     #e3a6c6;
 
   --ok:           #5fbc99;
+  --ok-deep:      #5fbc99;
   --ok-wash:      #15271f;
   --warn:         #d6a74d;
+  --warn-deep:    #d6a74d;
   --warn-wash:    #2a2113;
   --danger:       #e58471;
   --danger-wash:  #2e1815;

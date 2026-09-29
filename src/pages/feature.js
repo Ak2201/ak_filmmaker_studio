@@ -183,8 +183,8 @@ const HOWTO1_HTML       = `
 const LADDER_HTML       = `
 <section class="ladder-step" id="treatment-ladder">
   <div class="ladder-intro">
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px;">INTERLUDE · BETWEEN STEPS 02 AND 03</div>
-    <h2 style="font-size: clamp(32px, 5vw, 52px); font-weight: 800; font-style: italic; line-height: 0.95; margin-bottom: 14px;">The <em style="color: var(--accent);">Treatment Ladder.</em></h2>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">INTERLUDE · BETWEEN STEPS 02 AND 03</div>
+    <h2 style="font-size: clamp(32px, 5vw, 52px); font-weight: 800; font-style: italic; line-height: 0.95; margin-bottom: 14px;">The <em style="color: var(--accent-deep);">Treatment Ladder.</em></h2>
     <p style="font-size: 16px; color: var(--ink-muted); font-style: italic; max-width: 720px; line-height: 1.55;">Five rungs from one sentence to a step outline. Each rung is a real document with a target length. Producers and collaborators ask for these in this order. Build them in order, and the script writes itself.</p>
     <!-- No inline surface here: .formula-box IS the slab, and the skin
          decides what a slab is made of. Restating it inline pinned this
@@ -288,7 +288,7 @@ const VOL2_COVER_HTML   = `
       <div class="meta-field"><label>Estimated budget</label><input type="text" data-key="v2_budget"></div>
     </div>
   </div>
-  <div><div class="vol-byline">CURATED BY <span style="color:var(--accent);">ARUNAK</span></div></div>
+  <div><div class="vol-byline">CURATED BY <span style="color:var(--accent-deep);">ARUNAK</span></div></div>
 </section>
 `;
 const HOWTO2_HTML       = `
@@ -362,7 +362,7 @@ const SYNC_INSTR_HTML   = `
   <div class="sync-instructions">
     <h5>Setup steps</h5>
     <ol>
-      <li>Go to <a href="https://supabase.com" target="_blank" style="color:var(--accent);">supabase.com</a> and create a free account &amp; new project.</li>
+      <li>Go to <a href="https://supabase.com" target="_blank" style="color:var(--accent-deep);">supabase.com</a> and create a free account &amp; new project.</li>
       <li>In the Supabase dashboard, open <em>SQL Editor</em> and run this query to create the table:
         <pre>create table projects (
   id text primary key,
@@ -562,7 +562,7 @@ function renderToolbar() {
 function pitchSectionHTML() {
   return `
 <section class="pitch-section" id="pitch-deck">
-  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px;">AUTO-GENERATED · 10 SLIDES</div>
+  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">AUTO-GENERATED · 10 SLIDES</div>
   <h2>The <em>Pitch Deck.</em></h2>
   <p class="deck">Auto-generated from your filled fields above. The deck refreshes every time you save. For a proper pitch, take this deck, polish the language, and add visuals from your lookbook.</p>
   <div class="pitch-actions">
@@ -579,7 +579,7 @@ function pitchSectionHTML() {
 function syncSectionHTML() {
   return `
 <section class="sync-section" id="sync-section">
-  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px;">OPTIONAL · ADVANCED</div>
+  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">OPTIONAL · ADVANCED</div>
   <h3>Real-time <em>Sync.</em></h3>
   <p class="deck">Sync your blueprint across devices using your own Supabase project (free tier works). Your data stays in <em>your</em> Supabase, not anywhere else. Setup takes ~10 minutes; once configured, every save pushes; every reload pulls.</p>
 
@@ -1527,8 +1527,8 @@ function updateVol1Bridge() {
   }
   // User text — escaped before it reaches innerHTML.
   let html = '';
-  if (logline) html += `<strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent);">LOGLINE:</strong> "${escapeHTML(logline)}"`;
-  if (theme) html += `<br><br><strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent);">THEME:</strong> ${escapeHTML(theme)}`;
+  if (logline) html += `<strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">LOGLINE:</strong> "${escapeHTML(logline)}"`;
+  if (theme) html += `<br><br><strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">THEME:</strong> ${escapeHTML(theme)}`;
   content.innerHTML = html;
   bridge.style.display = 'block';
 }

@@ -157,7 +157,7 @@
   max-width: var(--measure);
   font-size: var(--t-small);
   line-height: var(--lh-body);
-  color: var(--warn);
+  color: var(--warn-deep);
 }
 
 .st-notes { margin-top: var(--s5); }
@@ -294,7 +294,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   line-height: var(--lh-snug);
-  color: var(--warn);
+  color: var(--warn-deep);
 }
 
 .st-gap {
@@ -305,7 +305,7 @@
   border-left: var(--sk-hue-rule-w) solid var(--warn);
   border-radius: var(--sk-radius);
 }
-.st-gap-lab { color: var(--warn); }
+.st-gap-lab { color: var(--warn-deep); }
 .st-gap-body,
 .st-gap-sub {
   margin: 0 0 var(--s2);

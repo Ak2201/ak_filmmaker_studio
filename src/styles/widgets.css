@@ -133,7 +133,7 @@
   background: var(--paper-sunk);
   font-family: var(--f-mono);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .pp-table .num {
   width: var(--s7);
@@ -212,14 +212,14 @@
   font-size: var(--t-xl);
   font-weight: 800;
   font-style: italic;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .equip-table td.item { font-weight: 600; color: var(--ink); }
 .equip-table td.rate {
   white-space: nowrap;
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
-  color: var(--accent);
+  color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
 }
 .equip-table td.note { font-size: var(--t-tiny); font-style: italic; color: var(--ink-muted); }
@@ -247,7 +247,7 @@
   cursor: pointer;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.row-ctrl-btn:hover { color: var(--accent); border-color: var(--accent); }
+.row-ctrl-btn:hover { color: var(--accent-deep); border-color: var(--accent); }
 .row-ctrl-btn.del:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-wash); }
 
 /* ------------------------------------------------------------
@@ -282,7 +282,7 @@
   letter-spacing: var(--track-label);
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .beat-visualizer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
 .pacing-viz .label::before    { content: "◢  "; }
@@ -387,7 +387,7 @@
 }
 .scene-stats { margin-top: var(--s5); }
 .pacing-stat strong,
-.scene-stats strong { color: var(--accent); }
+.scene-stats strong { color: var(--accent-deep); }
 
 .beat-tooltip {
   position: absolute;
@@ -852,7 +852,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 /* Everything the writer types in screenplay format is Courier —
    that is what --f-script is for. */
@@ -937,7 +937,11 @@
 }
 .scene-block .add-dialogue-btn:hover,
 .script-editor .add-scene-btn:hover { background: var(--accent-deep); }
-.script-editor .add-scene-btn { background: var(--library); }
+/* The fill was changed to --library here without moving the text
+   colour with it, so the label kept --accent-on from the rule above
+   and rendered at 2.44:1 on the gold. An `on` colour belongs to the
+   fill it sits on, not to whichever fill came first. */
+.script-editor .add-scene-btn { background: var(--library); color: var(--library-on); }
 .script-editor .add-scene-btn:hover { background: var(--library-deep); }
 
 /* Formatted preview — a sheet of screenplay paper, so it keeps
@@ -1168,7 +1172,7 @@
   letter-spacing: var(--track-label);
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--ok-deep);
 }
 .hod-signoff .deck {
   margin-bottom: var(--s4);
@@ -1190,7 +1194,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--ok-deep);
 }
 .hod-row input {
   padding: var(--s2);
@@ -1275,7 +1279,7 @@
   cursor: pointer;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.comment-btn:hover { color: var(--accent); border-color: var(--accent); }
+.comment-btn:hover { color: var(--accent-deep); border-color: var(--accent); }
 .comment-btn.has-note { background: var(--library); border-color: var(--library); color: var(--accent-on); }
 .comment-panel {
   display: none;
@@ -1291,7 +1295,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--library);
+  color: var(--library-deep);
 }
 .comment-panel textarea {
   width: 100%;
@@ -1332,7 +1336,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .sync-fields input {
   width: 100%;
@@ -1351,7 +1355,7 @@
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
-.sync-status.ok  { color: var(--ok); }
+.sync-status.ok  { color: var(--ok-deep); }
 .sync-status.err { color: var(--danger); }
 .sync-instructions {
   margin-top: var(--s4);
@@ -1361,7 +1365,7 @@
   font-size: var(--t-small);
   line-height: var(--lh-snug);
 }
-.sync-instructions h5 { margin-bottom: var(--s2); font-size: var(--t-small); font-weight: 700; color: var(--accent); }
+.sync-instructions h5 { margin-bottom: var(--s2); font-size: var(--t-small); font-weight: 700; color: var(--accent-deep); }
 .sync-instructions ol { margin: var(--s2) 0 var(--s2) var(--s5); }
 .sync-instructions li { padding: 3px 0; }
 .sync-instructions code,

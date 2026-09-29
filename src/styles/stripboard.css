@@ -383,7 +383,7 @@
 .sb-cell.is-finish,
 .sb-cell.is-only { background: var(--accent); color: var(--accent-on); }
 .sb-cell.is-work { background: var(--accent-wash); color: var(--accent-deep); }
-.sb-cell.is-hold { background: var(--warn-wash); color: var(--warn); }
+.sb-cell.is-hold { background: var(--warn-wash); color: var(--warn-deep); }
 .sb-cell.is-off  { color: var(--ink-faint); }
 
 .sb-note {

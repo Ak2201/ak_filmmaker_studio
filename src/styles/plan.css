@@ -418,7 +418,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-deep);
   white-space: nowrap;
 }
 .pl-media-open[hidden] { display: none; }

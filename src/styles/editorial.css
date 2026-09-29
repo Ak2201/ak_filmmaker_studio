@@ -140,9 +140,9 @@
 .hero h1 .light { font-weight: 400; font-style: normal; color: var(--ink-muted); }
 
 .hero-deck { color: var(--ink-body); }
-.hero-deck em { color: var(--accent); font-weight: 600; }
-.hero-deck em.s { color: var(--shorts); }
-.hero-deck em.g { color: var(--library); }
+.hero-deck em { color: var(--accent-deep); font-weight: 600; }
+.hero-deck em.s { color: var(--shorts-deep); }
+.hero-deck em.g { color: var(--library-deep); }
 
 .master-byline,
 .cover-byline,
@@ -157,7 +157,7 @@
 }
 .master-byline span,
 .cover-byline span,
-.vol-byline span { color: var(--accent); font-weight: 600; }
+.vol-byline span { color: var(--accent-deep); font-weight: 600; }
 
 /* Volume stamps. The feature cover outlined them, the short-film
    cover filled them; the outline reads better beside the ring. */
@@ -179,8 +179,8 @@
 }
 .vol-stamp.gold,
 .vol-stamp.blue,
-.vol-tag { border-color: var(--accent); color: var(--accent); }
-.vol-stamp.green { border-color: var(--ok); color: var(--ok); }
+.vol-tag { border-color: var(--accent); color: var(--accent-deep); }
+.vol-stamp.green { border-color: var(--ok); color: var(--ok-deep); }
 .vol-stamp.faded { opacity: .4; }
 .vol-tag { transform: rotate(-2deg); margin-top: var(--s3); }
 
@@ -206,7 +206,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .meta-field input,
 .meta-field select {
@@ -291,10 +291,10 @@
 .how-to h2 em,
 .glossary h2 em,
 .pitch-section h2 em,
-.sync-section h3 em { color: var(--accent); }
-.section-head h2 em.f { color: var(--feature); }
-.section-head h2 em.s { color: var(--shorts); }
-.section-head h2 em.g { color: var(--library); }
+.sync-section h3 em { color: var(--accent-deep); }
+.section-head h2 em.f { color: var(--feature-deep); }
+.section-head h2 em.s { color: var(--shorts-deep); }
+.section-head h2 em.g { color: var(--library-deep); }
 .section-head .right {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -336,7 +336,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-small);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .how-to ol li strong { color: var(--accent-deep); font-weight: 600; }
 
@@ -400,7 +400,7 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: var(--track-tight);
-  color: var(--accent);
+  color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
 }
 .step-title {
@@ -412,7 +412,7 @@
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
 }
-.step-title em { color: var(--accent); }
+.step-title em { color: var(--accent-deep); }
 
 .step-meta {
   display: flex;
@@ -438,8 +438,8 @@
   text-transform: uppercase;
 }
 .step-badge.in-progress,
-.step-badge.partial { color: var(--warn); border-color: var(--warn); background: var(--warn-wash); }
-.step-badge.complete { color: var(--accent); border-color: var(--accent); background: var(--accent-wash); }
+.step-badge.partial { color: var(--warn-deep); border-color: var(--warn); background: var(--warn-wash); }
+.step-badge.complete { color: var(--accent-deep); border-color: var(--accent); background: var(--accent-wash); }
 .step-badge.empty { color: var(--ink-faint); border-color: var(--rule); }
 
 /* Cross-blueprint chips */
@@ -473,10 +473,10 @@
 }
 /* Each chip points at another volume, so it borrows that
    volume's hue rather than the page's accent. */
-.related-chip:hover { border-color: var(--accent); color: var(--accent); }
-.related-chip.feat:hover  { border-color: var(--feature); color: var(--feature); }
-.related-chip.short:hover { border-color: var(--shorts); color: var(--shorts); }
-.related-chip.lib:hover   { border-color: var(--library); color: var(--library); }
+.related-chip:hover { border-color: var(--accent); color: var(--accent-deep); }
+.related-chip.feat:hover  { border-color: var(--feature); color: var(--feature-deep); }
+.related-chip.short:hover { border-color: var(--shorts); color: var(--shorts-deep); }
+.related-chip.lib:hover   { border-color: var(--library); color: var(--library-deep); }
 .related-chip .src { font-weight: 700; color: var(--ink-faint); }
 .related-chip:hover .src { color: inherit; }
 
@@ -577,7 +577,7 @@
   font-style: normal;
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 /* The same gloss on an ink ground. */
 .formula-box .tn,
@@ -603,7 +603,7 @@
 }
 /* Surfaces: modules.css §3. */
 .example.alt .ex-label,
-.vs-card.feature h4 { color: var(--library); }
+.vs-card.feature h4 { color: var(--library-deep); }
 .example p,
 .ex-card p,
 .vs-card li { font-size: var(--t-small); line-height: var(--lh-body); }
@@ -619,12 +619,12 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-style: normal;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .vs-card ul { list-style: none; }
 .vs-card li { position: relative; padding: var(--s1) 0 var(--s1) var(--s4); }
-.vs-card li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
-.vs-card.feature li::before { color: var(--library); }
+.vs-card li::before { content: "—"; position: absolute; left: 0; color: var(--accent-deep); }
+.vs-card.feature li::before { color: var(--library-deep); }
 
 /* ------------------------------------------------------------
    ASKS — the prompt above each field.
@@ -677,7 +677,7 @@ select.field-input {
   color: var(--ink-faint);
 }
 .word-counter.over { color: var(--danger); }
-.word-counter.good { color: var(--ok); }
+.word-counter.good { color: var(--ok-deep); }
 .row-counter {
   display: inline-block;
   margin-left: var(--s3);
@@ -719,7 +719,7 @@ select.field-input {
 .step-check li.checked,
 .step-check li.done { color: var(--ink-faint); text-decoration: line-through; }
 .step-check li.checked::before,
-.step-check li.done::before { content: "●"; color: var(--accent); }
+.step-check li.done::before { content: "●"; color: var(--accent-deep); }
 
 /* ------------------------------------------------------------
    TREATMENT LADDER
@@ -752,6 +752,7 @@ select.field-input {
   font-weight: 700;
 }
 .ladder-rung .target { display: block; margin-bottom: var(--s3); }
+
 .ladder-rung .hint { margin-top: var(--s2); }
 
 /* ------------------------------------------------------------
@@ -793,7 +794,7 @@ select.field-input {
               box-shadow var(--speed-slow) var(--ease-out),
               border-color var(--speed-slow) var(--ease-out);
 }
-.fest-card.t2 .tier { color: var(--library); }
+.fest-card.t2 .tier { color: var(--library-deep); }
 .fest-card.t3 .tier { color: var(--ink-muted); }
 
 @media (hover: hover) {
@@ -872,7 +873,7 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-lg);
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .rule-card .rule-text { font-style: italic; margin-bottom: var(--s2); }
 .rule-card .attrib::before { content: "— "; }
@@ -899,7 +900,7 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--ok);
+  color: var(--ok-deep);
 }
 .director-card .traits {
   display: grid;
@@ -912,8 +913,8 @@ select.field-input {
 .director-card .traits dd { color: var(--ink-body); }
 .director-card .study { margin-top: var(--s3); padding: var(--s3) var(--s4); border-left-width: 3px; }
 .director-card .study p { font-size: var(--t-small); color: var(--panel-ink); }
-.director-card .tn { color: var(--ok); }
-.director-card .tn::before { color: var(--ok); }
+.director-card .tn { color: var(--ok-deep); }
+.director-card .tn::before { color: var(--ok-deep); }
 
 /* Fest card requirement footer */
 .fest-card .req {
@@ -957,9 +958,9 @@ select.field-input {
   text-decoration: none;
   box-shadow: var(--shadow-sm);
 }
-.door-tag { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); color: var(--feature); }
-.door.shorts .door-tag  { color: var(--shorts); }
-.door.library .door-tag { color: var(--library); }
+.door-tag { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); color: var(--feature-deep); }
+.door.shorts .door-tag  { color: var(--shorts-deep); }
+.door.library .door-tag { color: var(--library-deep); }
 .door-num-circle {
   display: inline-flex;
   align-items: center;
@@ -1002,9 +1003,9 @@ select.field-input {
 }
 .door-contents { list-style: none; margin-bottom: var(--s5); font-size: var(--t-small); }
 .door-contents li { position: relative; padding: var(--s1) 0 var(--s1) var(--s4); line-height: var(--lh-snug); }
-.door-contents li::before { content: "—"; position: absolute; left: 0; color: var(--feature); font-weight: 600; }
-.door.shorts .door-contents li::before  { color: var(--shorts); }
-.door.library .door-contents li::before { color: var(--library); }
+.door-contents li::before { content: "—"; position: absolute; left: 0; color: var(--feature-deep); font-weight: 600; }
+.door.shorts .door-contents li::before  { color: var(--shorts-deep); }
+.door.library .door-contents li::before { color: var(--library-deep); }
 
 .door-status {
   margin-bottom: var(--s4);
@@ -1071,9 +1072,9 @@ select.field-input {
   font-weight: 600;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.door-quicklinks .ql:hover { color: var(--feature); border-color: var(--feature); }
-.door.shorts .door-quicklinks .ql:hover  { color: var(--shorts); border-color: var(--shorts); }
-.door.library .door-quicklinks .ql:hover { color: var(--library); border-color: var(--library); }
+.door-quicklinks .ql:hover { color: var(--feature-deep); border-color: var(--feature); }
+.door.shorts .door-quicklinks .ql:hover  { color: var(--shorts-deep); border-color: var(--shorts); }
+.door.library .door-quicklinks .ql:hover { color: var(--library-deep); border-color: var(--library); }
 
 .door-cta {
   display: flex;
@@ -1122,12 +1123,12 @@ select.field-input {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 700;
-  color: var(--library);
+  color: var(--library-deep);
 }
 .start-card .question { margin-bottom: var(--s2); }
 .start-card .arrow { margin-top: auto; }
-.start-card.f .question, .start-card.f .arrow { color: var(--feature); }
-.start-card.s .question, .start-card.s .arrow { color: var(--shorts); }
+.start-card.f .question, .start-card.f .arrow { color: var(--feature-deep); }
+.start-card.s .question, .start-card.s .arrow { color: var(--shorts-deep); }
 .start-card p { flex: 1; margin-bottom: var(--s3); color: var(--ink-muted); }
 .tool-card { border-left-width: 1px; border-left-color: var(--rule-hair); }
 .tool-card:hover { border-color: var(--library); }
@@ -1142,10 +1143,10 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-lg);
   font-weight: 800;
-  color: var(--library);
+  color: var(--library-deep);
 }
-.tool-card.f .tool-icon { color: var(--feature); background: var(--feature-wash); }
-.tool-card.s .tool-icon { color: var(--shorts); background: var(--shorts-wash); }
+.tool-card.f .tool-icon { color: var(--feature-deep); background: var(--feature-wash); }
+.tool-card.s .tool-icon { color: var(--shorts-deep); background: var(--shorts-wash); }
 
 /* ------------------------------------------------------------
    RESUME + DATA CARDS (hub)
@@ -1251,10 +1252,10 @@ select.field-input {
   margin-bottom: var(--s2);
   padding-bottom: var(--s1);
   border-bottom: 1px solid var(--rule-hair);
-  color: var(--feature);
+  color: var(--feature-deep);
 }
-.index-col.shorts .toc-group-label  { color: var(--shorts); }
-.index-col.library .toc-group-label { color: var(--library); }
+.index-col.shorts .toc-group-label  { color: var(--shorts-deep); }
+.index-col.library .toc-group-label { color: var(--library-deep); }
 .toc-list { list-style: none; }
 .toc-list li { padding: 3px 0; font-size: var(--t-small); }
 .toc-list a {
@@ -1267,9 +1268,9 @@ select.field-input {
   text-decoration: none;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.toc-list a:hover { color: var(--feature); border-left-color: var(--feature); }
-.index-col.shorts .toc-list a:hover  { color: var(--shorts); border-left-color: var(--shorts); }
-.index-col.library .toc-list a:hover { color: var(--library); border-left-color: var(--library); }
+.toc-list a:hover { color: var(--feature-deep); border-left-color: var(--feature); }
+.index-col.shorts .toc-list a:hover  { color: var(--shorts-deep); border-left-color: var(--shorts); }
+.index-col.library .toc-list a:hover { color: var(--library-deep); border-left-color: var(--library); }
 .toc-list .num {
   min-width: 22px;
   font-family: var(--f-mono);
@@ -1283,12 +1284,12 @@ select.field-input {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
-  color: var(--feature);
+  color: var(--feature-deep);
   opacity: 0;
   transition: opacity var(--speed) var(--ease);
 }
 .toc-list .check.done { opacity: 1; }
-.index-col.shorts .toc-list .check { color: var(--shorts); }
+.index-col.shorts .toc-list .check { color: var(--shorts-deep); }
 
 .activity-list {
   max-height: 380px;
@@ -1317,10 +1318,10 @@ select.field-input {
   color: var(--ink-muted);
 }
 .activity-row .where { text-transform: uppercase; font-weight: 700; }
-.activity-row .where.feat   { color: var(--feature); }
-.activity-row .where.short  { color: var(--shorts); }
+.activity-row .where.feat   { color: var(--feature-deep); }
+.activity-row .where.short  { color: var(--shorts-deep); }
 .activity-row .where.lib,
-.activity-row .where.studio { color: var(--library); }
+.activity-row .where.studio { color: var(--library-deep); }
 .activity-row .what {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1346,7 +1347,7 @@ select.field-input {
   gap: var(--s2);
   padding: 0;
 }
-.empty-charm::before { content: '·'; color: var(--accent); font-weight: 700; font-style: normal; }
+.empty-charm::before { content: '·'; color: var(--accent-deep); font-weight: 700; font-style: normal; }
 
 /* ------------------------------------------------------------
    GLOSSARY SECTION (in-document, not the popover)
@@ -1365,7 +1366,7 @@ select.field-input {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 
 /* ------------------------------------------------------------

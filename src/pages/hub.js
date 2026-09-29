@@ -1582,7 +1582,7 @@ function projectCard(p, currentId) {
       // The stylesheet has no rule for this one span; the legacy page
       // coloured it inline too, and it reads the accent token rather
       // than a hex, so it still follows the theme.
-      h('span.pc-open', { style: 'color: var(--accent)', text: 'open →' })
+      h('span.pc-open', { style: 'color: var(--accent-deep)', text: 'open →' })
     ])
   ]);
   return card;

@@ -51,7 +51,7 @@ h1, h2, h3, h4, h5, h6 {
 p { margin: 0 0 var(--s4); max-width: var(--measure); }
 p:last-child { margin-bottom: 0; }
 
-a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a { color: var(--accent-deep); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 
 ul, ol { margin: 0 0 var(--s4); padding-left: var(--s5); }
 li { margin-bottom: var(--s1); }

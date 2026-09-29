@@ -49,7 +49,7 @@
   font-weight: 700;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 .ct-dept-count {
   font-family: var(--f-mono);
@@ -132,7 +132,7 @@
   width: auto;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 
 /* ------------------------------------------------------------
@@ -183,7 +183,7 @@
   color: var(--ink-muted);
 }
 .ct-pick-none { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
-.ct-pick-none a { color: var(--accent); }
+.ct-pick-none a { color: var(--accent-deep); }
 
 .ct-pick-list {
   display: grid;
@@ -206,7 +206,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 
 .ct-pick-row {

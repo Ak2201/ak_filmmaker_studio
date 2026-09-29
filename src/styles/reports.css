@@ -99,7 +99,7 @@
   font-size: var(--t-micro);
   font-weight: 700;
   letter-spacing: var(--track-label);
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 .rp-meter {
   height: 8px;
@@ -157,7 +157,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 
 /* ------------------------------------------------------------
@@ -189,7 +189,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
 }
 .rp-pick-slug {
@@ -298,7 +298,7 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--hue);
+  color: var(--hue-deep);
 }
 .rp-side-el-names {
   font-size: var(--t-small);

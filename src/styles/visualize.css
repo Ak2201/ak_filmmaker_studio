@@ -144,7 +144,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   font-variant-numeric: tabular-nums;
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 
 /* A checkbox is the one control that must not be 100% wide. */
@@ -165,7 +165,7 @@
 }
 .vz-row.is-done .vz-desc,
 .vz-row.is-done .vz-no { opacity: .55; }
-.vz-row.is-done .vz-check-lab { color: var(--ok); }
+.vz-row.is-done .vz-check-lab { color: var(--ok-deep); }
 
 .vz-table .row-ctrl { white-space: nowrap; }
 
@@ -203,7 +203,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-small);
   font-weight: 700;
-  color: var(--hue);
+  color: var(--hue-deep);
   font-variant-numeric: tabular-nums;
 }
 .vz-shotcol-spec {
@@ -269,7 +269,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 .vz-frame-desc {
   font-size: var(--t-tiny);
@@ -347,7 +347,7 @@
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 
 /* ------------------------------------------------------------

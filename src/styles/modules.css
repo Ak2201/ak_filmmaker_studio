@@ -86,6 +86,23 @@
   color: var(--accent-deep);
 }
 
+/* THE ONE EYEBROW ON A DARK GROUND.
+   The rule above paints every eyebrow --accent-deep, which is right
+   on the light cards the other twenty-odd sit on. .phase is a dark
+   band. It had its own `color: var(--panel-gilt)` in editorial.css
+   for exactly that reason, but this list is declared later and in a
+   stylesheet that loads after it, so this one won and "PHASE I"
+   rendered #163f6f on #16130f — 1.74:1, invisible.
+
+   The override has to live HERE, after the list that beat it. I put
+   it in editorial.css first and it lost the same argument for the
+   same reason.
+
+   --accent-lift is the hue's dark-ground variant, so this stays
+   volume-correct (feature red, vol-2 blue) rather than going gold
+   for everything. Measured 6.15-8.76:1 across the four dark bands. */
+.phase .label { color: var(--accent-lift); }
+
 /* The page title. Roman, not italic: the italic display face was the
    book's voice and it fought every form control on the page. One word
    may carry the accent via <em>, which is enough character. */
@@ -382,7 +399,7 @@
    5. EMPTY STATE — the module teaches itself.
    ------------------------------------------------------------ */
 .bd-empty { padding-block: var(--s8); text-align: center; }
-.bd-empty-mark { font-size: 3rem; line-height: 1; color: var(--accent); opacity: .5; }
+.bd-empty-mark { font-size: 3rem; line-height: 1; color: var(--accent-deep); opacity: .5; }
 .bd-empty h2 {
   margin: var(--s4) 0 var(--s3);
   font-family: var(--f-display);

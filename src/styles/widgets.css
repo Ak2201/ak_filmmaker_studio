@@ -34,6 +34,36 @@
   border-left: var(--sk-slab-rule-w) solid var(--sk-slab-rule-c);
   border-radius: var(--sk-radius);
 }
+
+/* THE STAT STRIP ON A SLAB.
+   modules.css gives .bd-stat strong `color: var(--ink)` and its label
+   `--ink-muted`, which is right on the light cards the strip was
+   built for. The slab is not one: in studio it is --panel, near
+   black. The numbers rendered #16130f on #16130f — 1:1, gone
+   completely, while the labels stayed dim-but-readable. A budget
+   showing "SHOOT DAYS" with no number under it is worse than showing
+   nothing at all.
+
+   Same fault _contract.css already describes: a widget on the slab
+   reaching past --sk-slab-* for a page-level token. The slab sets
+   `color` on itself and these two rules were overriding the
+   inheritance, so they have to opt back in explicitly.
+
+   The gate could not see this. .bd-stat IS in the contrast probe's
+   SURFACES list, but the strip only exists once the project has
+   scenes, and no page seeds any — the element the check is looking
+   for is not in the DOM. See "Checks that can skip themselves". */
+.budget-summary .bd-stat strong,
+.calc-block .bd-stat strong,
+.pitch-slide .bd-stat strong,
+.budget-summary .hero-stat .num,
+.calc-block .hero-stat .num { color: var(--sk-slab-ink); }
+
+.budget-summary .bd-stat span,
+.calc-block .bd-stat span,
+.pitch-slide .bd-stat span,
+.budget-summary .hero-stat .lab,
+.calc-block .hero-stat .lab { color: var(--sk-slab-muted); }
 .ai-prompt-block {
   max-width: var(--measure-wide);
   margin: var(--s5) 0;
@@ -57,6 +87,18 @@
   color: var(--sk-slab-accent);
 }
 .budget-summary .label::before { content: "\03A3  "; }
+/* A HINT INSIDE A SLAB FOLLOWS THE SLAB.
+   chrome.css paints every .kbd-hint --ink-muted, which is right on a
+   page ground and 2.74:1 on the budget slab in sepia — the same fault
+   as .director-card .study and the pitch slide before it: the surface
+   moved and the text stayed behind. --ink-* is the page's ink family;
+   anything sitting on --sk-slab-bg takes --sk-slab-*. */
+.budget-summary .kbd-hint,
+.calc-block .kbd-hint,
+.page-counter .kbd-hint,
+.pitch-slide .kbd-hint,
+.ai-prompt-block .kbd-hint,
+.sync-warning .kbd-hint { color: var(--sk-slab-muted); }
 
 /* ------------------------------------------------------------
    SCROLL CONTEXTS — one wrapper class, used by every wide thing.
@@ -447,7 +489,7 @@
   fill: var(--ink);
   text-anchor: middle;
 }
-.char-map-svg .char-name.empty { fill: var(--ink-faint); font-style: italic; }
+.char-map-svg .char-name.empty { fill: var(--ink-muted); font-style: italic; }
 .char-map-svg .char-name.protagonist { fill: var(--accent-on); font-weight: 800; }
 
 /* --- Scene charge timeline ---------------------------------- */
@@ -499,7 +541,7 @@
   transform: translateX(-50%);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* Legends — the scene timeline and the budget bar had one each. */
@@ -820,10 +862,10 @@
 }
 .pitch-slide.empty {
   background: var(--paper-sunk);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   border-left-color: var(--rule);
 }
-.pitch-slide.empty * { color: var(--ink-faint); }
+.pitch-slide.empty * { color: var(--ink-muted); }
 
 /* ------------------------------------------------------------
    SCREENPLAY EDITOR
@@ -982,13 +1024,13 @@
   text-align: right;
   font-family: var(--f-mono);
   font-size: 9pt;
-  color: var(--print-rule);
+  color: var(--print-muted);
 }
 .script-preview .sp-empty {
   padding: var(--s8) var(--s5);
   text-align: center;
   font-style: italic;
-  color: var(--print-rule);
+  color: var(--print-muted);
 }
 
 /* Page counter */
@@ -1540,7 +1582,7 @@
   margin-top: var(--s2);
   font-size: var(--t-tiny);
   line-height: 1.5;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 .lang-switch {
   flex-wrap: wrap;

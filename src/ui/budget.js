@@ -1,0 +1,447 @@
+/* ============================================================
+   THE BUDGET — the estimator, as its own thing
+   ------------------------------------------------------------
+   This lived inside library.js, rendered at the foot of the craft
+   library under the Chennai rate tables. That was never quite right
+   and the navigation said so out loud: navigation.json listed Budget
+   under the PLAN phase pointing at `library.html#calculator`, and no
+   element in the app has ever had `id="calculator"`. Clicking Budget
+   dropped you at the top of a reference page with no explanation.
+
+   So it moves here, and the library keeps the rate tables and gains
+   a link. One representation of one thing: the calculator is not
+   rendered in two places sharing one storage key, which would have
+   been two DOM trees writing over each other.
+
+   WHAT DELIBERATELY DID NOT CHANGE. `arunak_library_calc_v1` and the
+   `ci_<n>_item|days|rate|custom` data-key shape are byte-for-byte
+   what they were. People have saved estimates behind those strings;
+   invariant 1 says they are a contract, and moving a page is not a
+   reason to break it. The key keeps its `library` name for the same
+   reason — renaming it would orphan every saved estimate, and that
+   is a migration, not a rename.
+   ============================================================ */
+import { h, delegate } from '../lib/dom.js';
+import rates from '../data/rates.chennai.2024.json';
+import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
+import { parseNum, fmtINR, INR } from '../lib/money.js';
+
+/* ============================================================
+   THE CALCULATOR
+   ------------------------------------------------------------
+   Ported from the legacy inline script (lines ~1428–1559 of
+   legacy/arunak-filmmaker-library.html). The storage key and the
+   `ci_<n>_item|days|rate` data-key shape are unchanged, byte for
+   byte — people have saved estimates behind them.
+
+   What changed, deliberately:
+     1. There is now a custom-name input. The select's first
+        option has always read "Pick item or type below…" and
+        offered "Other (custom)", but there was nothing to type
+        into: the affordance was advertised and absent. It saves
+        under a new `ci_<n>_custom` key, which old data simply
+        does not have (and new data survives an old reader,
+        because the legacy loader ignores keys it can't place).
+     2. Subtotals and the grand total print the exact rupee
+        figure. fmtINR() rounds ≥ ₹1,000 to whole thousands, so a
+        ₹4,600 line read "₹ 5k" — a 400-rupee lie in a budgeting
+        tool. fmtINR survives for the one place space demands it:
+        the ≈ magnitude next to the grand total's caption.
+     3. Every field has a real <label>. They are screen-reader-only
+        at desk widths (the .calc-row.head strip labels the columns
+        there) and become visible below 820px, where that strip is
+        display:none and the three boxes were unlabelled entirely.
+     4. No inline onchange/oninput/onclick. One delegated listener.
+   ============================================================ */
+const CALC_KEY = 'arunak_library_calc_v1';
+const PRESET_ITEMS = rates.presets;
+
+let calcCount = 0;
+
+/* Published ranges, keyed loosely enough to survive punctuation
+   differences between the preset list and the rate tables. Used
+   only to SHOW the card's own figure next to a picked item —
+   never to fill a number in on the user's behalf. */
+const RATE_BY_ITEM = (() => {
+  const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const map = new Map();
+  for (const sec of rates.sections) {
+    for (const row of sec.rows || []) {
+      if (!map.has(norm(row.item))) map.set(norm(row.item), row);
+    }
+  }
+  return { get: (name) => map.get(norm(name)) || null };
+})();
+
+/** Legacy behaviour, unchanged: "2.5", "1,20,000", "₹18k", "2L". */
+/* parseNum / fmtINR / INR moved to src/lib/money.js — hub.js had a
+   second, still-unanchored copy of this parser and the dashboard now
+   makes three. The anchoring rule and the trap it guards are
+   documented there. */
+/** Exact, Indian grouping: ₹ 54,000 / ₹ 1,25,00,000. */
+function fmtINRExact(n) {
+  if (!n) return '₹ 0';
+  return '₹ ' + INR.format(Math.round(n));
+}
+
+/** The item this row is actually about: custom name wins, then preset. */
+function rowItemName(row) {
+  const custom = row.querySelector('[data-key$="_custom"]');
+  const select = row.querySelector('[data-key$="_item"]');
+  const typed = custom && custom.value.trim();
+  if (typed) return typed;
+  const picked = select && select.value.trim();
+  if (picked && picked !== 'Other (custom)') return picked;
+  return '';
+}
+
+function buildCalcRow(idx) {
+  const ids = {
+    item:   `ci_${idx}_item`,
+    custom: `ci_${idx}_custom`,
+    days:   `ci_${idx}_days`,
+    rate:   `ci_${idx}_rate`
+  };
+
+  const select = h('select', { id: ids.item, 'data-key': ids.item }, [
+    h('option', { value: '', text: 'Pick item or type below…' }),
+    ...PRESET_ITEMS.map((i) => h('option', { value: i, text: i }))
+  ]);
+
+  const itemCell = h('div.calc-cell', {}, [
+    h('label.calc-label', { for: ids.item, text: 'Item' }),
+    select,
+    h('label.calc-label', { for: ids.custom, text: 'Custom item name' }),
+    h('input', {
+      id: ids.custom, type: 'text', 'data-key': ids.custom,
+      placeholder: 'or type your own…', autocomplete: 'off'
+    })
+  ]);
+
+  const daysCell = h('div.calc-cell', {}, [
+    h('label.calc-label', { for: ids.days, text: 'Days' }),
+    h('input', {
+      id: ids.days, type: 'text', inputmode: 'decimal',
+      'data-key': ids.days, placeholder: 'Days', autocomplete: 'off'
+    })
+  ]);
+
+  const rateCell = h('div.calc-cell', {}, [
+    h('label.calc-label', { for: ids.rate, text: 'Rate (₹ per day)' }),
+    h('input', {
+      id: ids.rate, type: 'text', inputmode: 'decimal',
+      'data-key': ids.rate, placeholder: '₹/day', autocomplete: 'off'
+    }),
+    h('span.calc-note', { 'data-role': 'card-rate' })
+  ]);
+
+  // The subtotal is output, not a field, so its caption is a plain
+  // <span> rather than a <label for> — but it hides and shows with
+  // the others, so the phone layout never shows a bare number box.
+  const totalCell = h('div.calc-cell', {}, [
+    h('span.calc-label', { text: 'Subtotal' }),
+    h('span.total-cell', { id: `ci_${idx}_subtotal`, text: '₹ 0' })
+  ]);
+
+  return h('div.calc-row', { 'data-row': String(idx) }, [
+    itemCell, daysCell, rateCell, totalCell
+  ]);
+}
+
+/** Build n rows at once, then recalculate and save ONCE. */
+function addCalcRow(n = 1) {
+  const wrap = document.getElementById('calcRows');
+  if (!wrap) return;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    calcCount++;
+    frag.append(buildCalcRow(calcCount));
+  }
+  wrap.append(frag);
+  updateCalc();
+  saveCalc();
+}
+
+function updateCalc() {
+  let total = 0;
+  let count = 0;
+
+  document.querySelectorAll('#calcRows .calc-row').forEach((row) => {
+    const days = parseNum(row.querySelector('[data-key$="_days"]').value);
+    const rate = parseNum(row.querySelector('[data-key$="_rate"]').value);
+    const sub = days * rate;
+
+    const subEl = row.querySelector('.total-cell');
+    subEl.textContent = fmtINRExact(sub);
+
+    // The item the row is about is now part of the row's meaning:
+    // it names the subtotal for assistive tech and shows the rate
+    // card's own figure for the picked item, when there is one.
+    const name = rowItemName(row);
+    row.dataset.item = name;
+    subEl.setAttribute('aria-label',
+      name ? `Subtotal for ${name}: ${fmtINRExact(sub)}` : `Subtotal: ${fmtINRExact(sub)}`);
+
+    const noteEl = row.querySelector('[data-role="card-rate"]');
+    const card = name ? RATE_BY_ITEM.get(name) : null;
+    noteEl.textContent = card ? `Rate card ${rates.asOf}: ${card.raw}` : '';
+
+    if (sub > 0) count++;
+    total += sub;
+  });
+
+  const out = document.getElementById('calcTotal');
+  if (!out) return;
+  const caption = `across ${count} line item${count !== 1 ? 's' : ''}` +
+    // fmtINR's one surviving job: a glance-sized magnitude in a
+    // caption that has no room for eight digits.
+    (total >= 100000 ? ` · ≈${fmtINR(total)}` : '');
+  out.replaceChildren(
+    document.createTextNode(fmtINRExact(total) + ' '),
+    h('span', { text: caption })
+  );
+}
+
+function saveCalc() {
+  const data = {};
+  document.querySelectorAll('#calcRows [data-key]').forEach((el) => {
+    data[el.getAttribute('data-key')] = el.value;
+  });
+  try { localStorage.setItem(CALC_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
+function loadCalc() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CALC_KEY) || '{}');
+    let max = 0;
+    Object.keys(data).forEach((k) => {
+      const m = k.match(/^ci_(\d+)_/);
+      if (m) max = Math.max(max, +m[1]);
+    });
+    const targetRows = Math.max(max, 5);
+    // addCalcRow(n) builds n rows and recalculates ONCE. Calling it in a loop
+    // ran a full DOM sweep + a localStorage write per row on every page load.
+    addCalcRow(targetRows);
+    const wrap = document.getElementById('calcRows');
+    if (!wrap) return;
+
+    /* ASSIGNING TO A <select> IS NOT LIKE ASSIGNING TO AN <input>.
+       `el.value = x` on a select with no matching <option> silently
+       sets it to '' — no throw, no warning. The item field IS a
+       select, built from the 52 Chennai presets, so any saved item
+       that is not one of them landed as blank and the next save
+       wrote that blank straight back over the stored name. Days and
+       rate survived, because they are plain inputs; only the label
+       of the line was destroyed, which is the part that says what
+       you were paying for.
+
+       The custom-name field is exactly the right home for those, so
+       an unrecognised item is rescued into it rather than dropped.
+       Verified against a real case: "Bolex reversal stock - 3 rolls"
+       used to come back empty and now round-trips. */
+    const presets = new Set(PRESET_ITEMS);
+    const rescued = {};
+    Object.keys(data).forEach((k) => {
+      const m = k.match(/^ci_(\d+)_item$/);
+      const v = data[k];
+      if (!m || !v || presets.has(v)) return;
+      rescued[`ci_${m[1]}_custom`] = v;
+    });
+
+    Object.keys(data).forEach((k) => {
+      const el = wrap.querySelector(`[data-key="${k}"]`);
+      if (!el) return;
+      // A rescued name owns its custom field, unless the user had
+      // already typed something there — their text wins.
+      if (rescued[k] && !String(data[k] || '').trim()) { el.value = rescued[k]; return; }
+      if (/^ci_\d+_item$/.test(k) && el.tagName === 'SELECT' && !presets.has(data[k])) return;
+      el.value = data[k];
+    });
+    Object.keys(rescued).forEach((k) => {
+      const el = wrap.querySelector(`[data-key="${k}"]`);
+      if (el && !String(el.value || '').trim()) el.value = rescued[k];
+    });
+    updateCalc();
+  } catch (e) {}
+}
+
+function resetCalc() {
+  if (!confirm('Clear all calculator rows?')) return;
+  try { localStorage.removeItem(CALC_KEY); } catch (e) {}
+  const wrap = document.getElementById('calcRows');
+  if (wrap) wrap.replaceChildren();
+  calcCount = 0;
+  addCalcRow(5);
+}
+
+/* ------------------------------------------------------------
+   THE SCHEDULE → BUDGET LINK
+   ------------------------------------------------------------
+   The estimator has always asked "how many days?" and left the user
+   to know. The stripboard already knows: scenes carry an integer
+   shootDay, and the scene model carries locations and page eighths.
+   Until now those were two islands — you could add a shoot day on the
+   stripboard and the number in the calculator would not move, which
+   made the schedule a drawing rather than a plan.
+
+   Derived on every render, stored nowhere. The scene model is the one
+   representation; a copy of the day count in the calculator's own
+   storage would be the second, and the two would disagree by the end
+   of the week.
+   ------------------------------------------------------------ */
+function scheduleFacts() {
+  let scenes = [];
+  try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; }
+  const dayOf = (s) => { const n = parseInt(s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const scheduled = scenes.filter((s) => dayOf(s) > 0);
+  const days = new Set(scheduled.map(dayOf));
+  return {
+    totalScenes: scenes.length,
+    scheduled: scheduled.length,
+    unscheduled: scenes.length - scheduled.length,
+    days: days.size,
+    locations: new Set(scenes.map((s) => (s.location || '').trim()).filter(Boolean)).size,
+    pages: formatEighths(totalEighths(scenes))
+  };
+}
+
+function renderScheduleLink() {
+  const f = scheduleFacts();
+  const box = h('div.calc-block.calc-schedule');
+  box.append(h('h3', { text: 'From your schedule' }));
+
+  if (!f.totalScenes) {
+    box.append(h('p.hint', {
+      text: 'No scenes yet. Break the script down first and this fills itself in — '
+          + 'the estimator can then use your real shoot-day count instead of a guess.'
+    }));
+    box.append(h('a.mini-btn', { href: './breakdown.html#scenes', text: 'GO TO THE BREAKDOWN' }));
+    return box;
+  }
+
+  box.append(h('div.bd-stats', {}, [
+    h('div.bd-stat', {}, [h('strong', { text: String(f.days) }), h('span', { text: 'shoot days' })]),
+    h('div.bd-stat', {}, [h('strong', { text: String(f.totalScenes) }), h('span', { text: 'scenes' })]),
+    h('div.bd-stat', {}, [h('strong', { text: f.pages }), h('span', { text: 'pages' })]),
+    h('div.bd-stat', {}, [h('strong', { text: String(f.locations) }), h('span', { text: 'locations' })])
+  ]));
+
+  if (!f.days) {
+    box.append(h('p.hint', {
+      text: 'None of these scenes has a shoot day yet. Assign days on the stripboard '
+          + 'and the estimator can use the real count.'
+    }));
+    box.append(h('a.mini-btn', { href: './stripboard.html#stripboard', text: 'SCHEDULE ON THE STRIPBOARD' }));
+    return box;
+  }
+
+  box.append(h('p.hint', {
+    text: f.unscheduled
+      ? f.days + ' scheduled day' + (f.days === 1 ? '' : 's') + ', with ' + f.unscheduled
+        + ' scene' + (f.unscheduled === 1 ? '' : 's') + ' still unscheduled — so this is a floor, not the final count.'
+      : 'Every scene has a day. This is your shoot length.'
+  }));
+  box.append(h('div.calc-actions', {}, [
+    h('button.mini-btn', {
+      type: 'button', 'data-action': 'use-shoot-days', 'data-days': String(f.days),
+      text: 'USE ' + f.days + ' DAYS IN THE ESTIMATE'
+    })
+  ]));
+  return box;
+}
+
+function renderCalculator() {
+  return h('div.calc-block', {}, [
+    h('h3', { text: 'Quick Cost Estimator' }),
+    h('p.hint', {
+      text: 'Add line items, set days × daily rate, get a running total. ' +
+            'Saves to your browser only. Click PRINT to keep a hard copy.'
+    }),
+    // Column captions for the desk layout. Each field carries its
+    // own <label> too, so this strip is decoration to a screen
+    // reader and is hidden from it rather than read twice.
+    h('div.calc-row.head', { 'aria-hidden': 'true' }, [
+      h('span', { text: 'Item' }),
+      h('span', { text: 'Days' }),
+      h('span', { text: 'Rate (₹/day)' }),
+      h('span', { text: 'Subtotal' })
+    ]),
+    h('div#calcRows'),
+    h('div.calc-actions', {}, [
+      h('button.mini-btn', { type: 'button', 'data-action': 'add-row', text: '+ ADD ITEM' }),
+      h('button.mini-btn', { type: 'button', 'data-action': 'add-5', text: '+ ADD 5' }),
+      h('button.mini-btn.danger', { type: 'button', 'data-action': 'reset', text: 'RESET' })
+    ]),
+    h('div.calc-grand', {}, [
+      h('span.lab', { text: 'GRAND TOTAL' }),
+      h('span#calcTotal.total', { 'aria-live': 'polite' }, [
+        '₹ 0 ', h('span', { text: 'across 0 line items' })
+      ])
+    ])
+  ]);
+}
+
+
+/* ------------------------------------------------------------
+   THE PUBLIC SURFACE
+   ------------------------------------------------------------
+   Two calls, because the order matters and getting it wrong is
+   silent: the rows have to exist in the DOM before loadCalc() can
+   put saved values into them.
+   ------------------------------------------------------------ */
+
+/** The estimator and the schedule link, as one block. */
+export function renderBudget() {
+  const frag = document.createDocumentFragment();
+  frag.append(renderScheduleLink());
+  frag.append(renderCalculator());
+  return frag;
+}
+
+/** Fill it from storage and wire it. Call AFTER renderBudget() is in the page. */
+export function initBudget(root) {
+  loadCalc();
+  delegate(root, 'click', '[data-action]', (e, el) => {
+    const fn = BUDGET_ACTIONS[el.dataset.action];
+    if (!fn) return;
+    e.preventDefault();
+    fn(el, e);
+  });
+  // Recompute on every keystroke, save on every change. The save is
+  // the debounced one inside saveCalc(); this is not the save loop.
+  delegate(root, 'input', '.calc-row [data-key]', () => { updateCalc(); saveCalc(); });
+  delegate(root, 'change', '.calc-row select[data-key]', () => { updateCalc(); saveCalc(); });
+}
+
+export const BUDGET_ACTIONS = {
+  'add-row': () => addCalcRow(1),
+  'add-5': () => addCalcRow(5),
+  reset: resetCalc,
+  'use-shoot-days': (el) => {
+    const days = parseInt(el && el.dataset ? el.dataset.days : '', 10);
+    if (!Number.isFinite(days) || days <= 0) return;
+    /* Fill EMPTY day fields only. A line already priced at three days
+       is someone's decision — a schedule that silently overwrote it
+       would be worse than no link at all. Rows that were set by hand
+       are reported as left alone rather than quietly skipped. */
+    const fields = [...document.querySelectorAll('#calcRows [data-key$="_days"]')];
+    let filled = 0, kept = 0;
+    fields.forEach((f) => {
+      if (String(f.value).trim()) { kept++; return; }
+      f.value = String(days);
+      f.dispatchEvent(new Event('input', { bubbles: true }));
+      filled++;
+    });
+    updateCalc();
+    saveCalc();
+    const msg = !fields.length
+      ? 'Add a line item first, then this fills its days.'
+      : filled
+        ? filled + ' line' + (filled === 1 ? '' : 's') + ' set to ' + days + ' days'
+          + (kept ? '; ' + kept + (kept === 1 ? ' you had already set was' : ' you had already set were') + ' left alone.' : '.')
+        : 'Every line already has days set — nothing was overwritten.';
+    if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: 'info', duration: 4000 });
+  }
+};
+
+export default { renderBudget, initBudget, BUDGET_ACTIONS };

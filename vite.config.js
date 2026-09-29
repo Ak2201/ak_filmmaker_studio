@@ -56,6 +56,7 @@ export default defineConfig({
       input: {
         index:   resolve(__dirname, 'index.html'),
         dashboard: resolve(__dirname, 'dashboard.html'),
+        budget:    resolve(__dirname, 'budget.html'),
         feature: resolve(__dirname, 'feature.html'),
         short:   resolve(__dirname, 'short.html'),
         library: resolve(__dirname, 'library.html'),

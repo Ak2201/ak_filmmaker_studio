@@ -38,6 +38,7 @@
   "rewrites": [
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/budget", "destination": "/budget.html" },
     { "source": "/feature", "destination": "/feature.html" },
     { "source": "/short", "destination": "/short.html" },
     { "source": "/library", "destination": "/library.html" },

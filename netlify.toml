@@ -89,6 +89,11 @@
   status = 200
 
 [[redirects]]
+  from = "/budget"
+  to = "/budget.html"
+  status = 200
+
+[[redirects]]
   from = "/feature"
   to = "/feature.html"
   status = 200

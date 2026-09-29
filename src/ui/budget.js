@@ -23,6 +23,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import rates from '../data/rates.chennai.2024.json';
+import rateChecks from '../data/rates.chennai.checks.json';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 
@@ -62,8 +63,39 @@ let calcCount = 0;
    differences between the preset list and the rate tables. Used
    only to SHOW the card's own figure next to a picked item —
    never to fill a number in on the user's behalf. */
+/* THE RATE HINT, AND WHY IT READS TWO FILES.
+
+   rates.chennai.2024.json is the 2024-25 card. A later pass verified
+   part of it against a real Chennai rental house and wrote the
+   findings to rates.chennai.checks.json, tagging each row `checked`
+   or `corroborating` with a source and a date. The library shows
+   those; this estimator did not, because it imported the base file
+   and nothing else.
+
+   That is the same fault this codebase keeps paying for — one fact,
+   two sources, and the stale one on the page people act on. The
+   library would say a body was re-checked at 25,000 while the
+   calculator beside it still suggested the 2024-25 band.
+
+   A CHECKED row wins. A `corroborating` one does not: it is a second
+   vendor agreeing roughly, not a verification, and presenting it as
+   one would overstate what was actually confirmed. Anything with no
+   overlay row keeps the base figure and keeps saying 2024-25, which
+   is honest — most of the card has never been re-checked and the
+   page should not imply otherwise. */
+const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const CHECKED_BY_ITEM = (() => {
+  const map = new Map();
+  for (const row of rateChecks.rows || []) {
+    if (row.confidence !== 'checked') continue;
+    if (!row.raw) continue;
+    if (!map.has(norm(row.item))) map.set(norm(row.item), row);
+  }
+  return map;
+})();
+
 const RATE_BY_ITEM = (() => {
-  const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
   const map = new Map();
   for (const sec of rates.sections) {
     for (const row of sec.rows || []) {
@@ -72,6 +104,15 @@ const RATE_BY_ITEM = (() => {
   }
   return { get: (name) => map.get(norm(name)) || null };
 })();
+
+/** The rate hint for a line: the verified figure when there is one. */
+function rateHint(name) {
+  if (!name) return '';
+  const checked = CHECKED_BY_ITEM.get(norm(name));
+  if (checked) return `Checked ${checked.checked}: ${checked.raw}`;
+  const card = RATE_BY_ITEM.get(name);
+  return card ? `Rate card ${rates.asOf}: ${card.raw}` : '';
+}
 
 /** Legacy behaviour, unchanged: "2.5", "1,20,000", "₹18k", "2L". */
 /* parseNum / fmtINR / INR moved to src/lib/money.js — hub.js had a
@@ -183,8 +224,7 @@ function updateCalc() {
       name ? `Subtotal for ${name}: ${fmtINRExact(sub)}` : `Subtotal: ${fmtINRExact(sub)}`);
 
     const noteEl = row.querySelector('[data-role="card-rate"]');
-    const card = name ? RATE_BY_ITEM.get(name) : null;
-    noteEl.textContent = card ? `Rate card ${rates.asOf}: ${card.raw}` : '';
+    noteEl.textContent = rateHint(name);
 
     if (sub > 0) count++;
     total += sub;

@@ -25,6 +25,27 @@
       listed by its id, which is nobody's idea of a label.
    2. Set every variable, or inherit: unset variables fall through
       to the studio defaults below, so a three-line skin is legal.
+      ONE EXCEPTION, and it is the one that bites. Falling through is
+      safe for a variable whose default is neutral. It is not, for the
+      three that depend on which way the slab POINTS:
+
+        --sk-slab-fill  --sk-slab-hair  --sk-slab-accent-on
+
+      Studio's defaults for those are the dark-slab values, because
+      studio's slab is dark. Set --sk-slab-bg to something light and
+      omit these three and you inherit the opposite polarity. Measured,
+      on a light-slab skin that set the other three and left these
+      alone:
+
+        --sk-slab-accent-on   REAL AA FAILURE. Near-black on a deep
+                              accent fill: the slab's own buttons came
+                              out at 1.74:1 and 2.35:1.
+        --sk-slab-fill        not a contrast failure, a legibility one:
+        --sk-slab-hair        a wash and a hairline mixed for a dark
+                              ground, laid on a light one. The fields
+                              and dividers stop reading as edges.
+
+      So: if you move the slab, move all six slab variables or none.
    3. Use TOKENS for colour, never literals. A skin that hard-codes a
       hex value is a skin that breaks in sepia. (Writing one here
       would also trip the raw-colour grep in CLAUDE.md, which does not

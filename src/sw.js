@@ -44,7 +44,21 @@ const RUNTIME  = `studio-runtime-${BUILD}`;
 const KEEP     = new Set([PRECACHE, RUNTIME]);
 
 const SCOPE = self.registration.scope;
-const PRECACHE_URLS = [...new Set(MANIFEST.map(e => new URL(e.url, SCOPE).href))];
+
+/* The arunak-*.html entries are redirect stubs for the URLs the app
+   shipped under in 2023; vercel.json answers them with a permanent
+   301 to the page that replaced them. Precaching a URL whose entire
+   job is to redirect stores a redirect, and nothing in the app ever
+   navigates to one — they exist for an old bookmark, which the
+   network handles fine. They are also the only manifest entries that
+   redirect for a REASON rather than as a side effect of cleanUrls. */
+const IS_REDIRECT_STUB = /(^|\/)arunak-[^/]*\.html$/;
+const PRECACHE_URLS = [...new Set(
+  MANIFEST
+    .map(e => e.url)
+    .filter(u => !IS_REDIRECT_STUB.test(u))
+    .map(u => new URL(u, SCOPE).href)
+)];
 const SHELL = new URL('index.html', SCOPE).href;
 
 /** Hosts whose responses must never enter a cache. */
@@ -55,6 +69,54 @@ function isNeverCached(url) {
 /** Google Fonts: the stylesheet and the woff2 files it points at. */
 function isFontHost(url) {
   return url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+}
+
+/* ------------------------------------------------------------
+   A response with the redirect taint removed.
+
+   A navigation answered by a service worker MUST NOT be given a
+   response that was itself redirected. Chrome rejects it — "a
+   redirected response was used for a request whose redirect mode is
+   not 'follow'" — and the address bar shows ERR_FAILED. The server is
+   fine, the page is fine, and the URL works in curl, which is what
+   makes this one so hard to place.
+
+   It bit here because vercel.json sets cleanUrls, so 21 of the 68
+   precached URLs answer /page.html with a 308 to /page — every HTML
+   page, index.html among them. fetch() follows that happily and
+   Cache.put stores the result without complaining (both were checked
+   against the real host; neither throws), so the poison goes in
+   quietly at install and only surfaces on the next navigation to a
+   .html URL. /dashboard worked the whole time; /dashboard.html did
+   not.
+
+   Rebuilding the response drops the redirected flag and keeps the
+   status and the headers. Done on the way INTO the cache, so one
+   rebuild serves every later read.
+   ------------------------------------------------------------ */
+async function clean(response) {
+  if (!response || !response.redirected) return response;
+  return new Response(await response.blob(), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
+
+/* A cached response that is redirected cannot be handed to a
+   navigation, and a browser that ran an earlier build already has
+   some. Treat one as a miss AND delete it, so an affected browser
+   heals on its next load instead of needing the user to clear site
+   data — which is not an instruction you can give someone who is
+   just trying to open a page. */
+async function matchUsable(request) {
+  const hit = await caches.match(request, { ignoreSearch: true });
+  if (!hit || !hit.redirected) return hit || undefined;
+  const names = await caches.keys();
+  await Promise.all(names.map(
+    (n) => caches.open(n).then(c => c.delete(request, { ignoreSearch: true })).catch(() => {})
+  ));
+  return undefined;
 }
 
 function isHTML(request) {
@@ -72,10 +134,24 @@ function isHTML(request) {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(PRECACHE)
-      .then(cache => cache.addAll(PRECACHE_URLS))
+      .then(precacheAll)
       .then(() => self.skipWaiting())
   );
 });
+
+/* addAll() was atomic — one 404 failed the whole install, which is
+   the behaviour we want, because a half-populated precache fails
+   later, offline, where it cannot be diagnosed. Promise.all keeps
+   that: it rejects on the first failure. What it adds is clean(),
+   which addAll cannot do, because addAll puts the redirected
+   response straight into the cache. */
+async function precacheAll(cache) {
+  await Promise.all(PRECACHE_URLS.map(async (url) => {
+    const response = await fetch(url, { cache: 'reload' });
+    if (!response.ok) throw new Error('precache ' + url + ': ' + response.status);
+    await cache.put(url, await clean(response));
+  }));
+}
 
 // ------------------------------------------------------------
 // ACTIVATE — drop every cache from an earlier build.
@@ -118,12 +194,17 @@ self.addEventListener('fetch', (event) => {
 
 async function staleWhileRevalidate(request) {
   const cache  = await caches.open(RUNTIME);
-  const cached = (await caches.match(request, { ignoreSearch: true })) || undefined;
+  const cached = await matchUsable(request);
 
   const network = fetch(request)
     .then((response) => {
+      /* type 'basic' is true of a FOLLOWED redirect too, so this
+         guard never caught the redirected copy — clean() is what
+         does. */
       if (response && response.ok && response.type === 'basic') {
-        cache.put(request, response.clone());
+        clean(response.clone())
+          .then(c => cache.put(request, c))
+          .catch(() => {});
       }
       return response;
     })
@@ -134,21 +215,26 @@ async function staleWhileRevalidate(request) {
   if (fresh) return fresh;
 
   // Offline, and this exact page was never cached: the shell will do.
-  const shell = await caches.match(SHELL, { ignoreSearch: true });
+  /* The shell is index.html, which cleanUrls redirects to "/" — so the
+     offline fallback was a redirected response too, and failed the
+     same way the page it was standing in for did. */
+  const shell = await matchUsable(new Request(SHELL));
   if (shell) return shell;
   return new Response('Offline.', { status: 503, headers: { 'Content-Type': 'text/plain' } });
 }
 
 async function cacheFirst(request) {
   const cached = await caches.match(request, { ignoreSearch: false });
-  if (cached) return cached;
+  if (cached && !cached.redirected) return cached;
   try {
     const response = await fetch(request);
     // `opaque` is a cross-origin font we asked for by <link> — cacheable
     // even though we cannot read its status.
     if (response && (response.ok || response.type === 'opaque')) {
       const cache = await caches.open(RUNTIME);
-      cache.put(request, response.clone());
+      clean(response.clone())
+        .then(c => cache.put(request, c))
+        .catch(() => {});
     }
     return response;
   } catch (e) {

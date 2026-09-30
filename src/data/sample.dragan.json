@@ -1,0 +1,714 @@
+{
+  "_about": [
+    "THE SAMPLE PROJECT — Dragan, a feature.",
+    "",
+    "ONE sample, in ONE file. It used to be two: a four-scene 'Sample — Dragon'",
+    "seeded by the hub's first-run panel, and a separate Por Thozhil field dump",
+    "embedded in src/pages/feature.js and fetched from a root JSON file. Two",
+    "samples meant two answers to 'what does a filled studio look like', and the",
+    "short one could not fill a single downstream module.",
+    "",
+    "Everything the hub seeds is here and nowhere else — invariant 2. The hub",
+    "reads this file and writes it through the same models the app reads:",
+    "src/lib/scenes.js, contacts.js, locations.js, shots.js, script.js, and the",
+    "estimator's own ci_<n>_* field shape. No second representation:",
+    "",
+    "  * scene ids are DERIVED from the scene number ('dragan-sc-<number>'), so",
+    "    a shot, a call sheet or a frame refers to a scene by NUMBER here and",
+    "    the hub resolves it once. Nothing in this file writes an id twice.",
+    "  * shoot days, locations, cast and page counts are NOT listed anywhere.",
+    "    They are what the scene rows already say, and the stripboard, day out",
+    "    of days, calendar and budget all read them back off the scenes.",
+    "  * the blueprint's own legacy tables (sl_*, cast_*, loc_*, shot_*) are",
+    "    deliberately left EMPTY. Filling them would be the scene list stored a",
+    "    second time, which is the stranded-key trap CLAUDE.md names.",
+    "  * v2s11_days and v2s11_pages are filled by the hub FROM the scenes, not",
+    "    typed here, so the paperwork cannot disagree with the schedule.",
+    "",
+    "PHASES 03 AND 04 ARE EMPTY ON PURPOSE. Dragan is a film that has not shot",
+    "yet — first day 12 January 2026, draft locked, recce done, two locations",
+    "still waiting on written permission. Ticking the production and",
+    "post-production checklists would describe a shoot that has not happened,",
+    "and a sample that lies about its own state teaches the wrong thing about",
+    "what the progress numbers mean.",
+    "",
+    "Dragan is invented. The names, numbers and rates are plausible Chennai",
+    "figures for a mid-budget Tamil feature, not quotes from a real production."
+  ],
+
+  "title": "Dragan",
+  "format": "feature",
+
+  "blueprint": {
+    "meta_writer": "A. Selvaraghavan (sample)",
+    "meta_started": "Sample data · reconstructed paperwork",
+    "meta_stage": "Both volumes",
+
+    "v1_genre": "Crime / Noir",
+    "v1_draft": "Draft 4 — locked for the floor",
+
+    "v2_director": "Arunkumar A",
+    "v2_producer": "Bhuvana Sekar · Red Ice Pictures",
+    "v2_start": "12 Jan 2026",
+    "v2_budget": "₹ 4.6 crore all-in",
+
+    "s1_whatif": "What if the debt you have been paying for twenty years was never yours — and the proof is in a ledger the man who wrote it will never hand over?",
+    "s1_why_me": "My father paid a lorry loan he had not signed because refusing it would have meant calling a dead man a liar. Nobody in that street thought it was strange.",
+    "s1_image": "A mechanic counting the same eleven thousand rupees twice, on a bench, under an inspection lamp, before he puts it in an envelope he has folded the same way for two hundred and forty months.",
+
+    "s2_log1": "A Chennai mechanic discovers the loan he has been repaying for twenty years is a forgery.",
+    "s2_log2": "A mechanic who has spent twenty years paying his dead brother's debt learns the ledger was faked, and must drive one illegal consignment to get his hands on the original.",
+    "s2_log_final": "SELVAM, a Pudupet lorry mechanic everyone calls Dragan, has paid his dead brother's debt for twenty years — until his niece's college fee forces him to read the ledger properly and see that the signature is not his brother's. To get the original book out of the moneylender's almirah he agrees to drive one consignment north, and discovers the only way to stop paying is to say out loud, in front of the street, that his brother could not write.",
+
+    "s3_theme": "A debt you never owed is still a debt until you refuse it out loud.",
+    "s3_ext": "Can Selvam get the original ledger out of Chettiar's almirah before the fee deadline, without losing the garage or Rafi's hands?",
+    "s3_int": "Can he stop protecting his brother's name at the cost of his niece's future?",
+    "s3_phil": "Is loyalty to the dead a virtue, or the cheapest form of cowardice available to the living?",
+
+    "s4_arc": "A man who spent twenty years paying so nobody would ask a question, standing in the lane and answering it himself.",
+    "s4_name": "SELVAM — 'Dragan'",
+    "s4_age": "44",
+    "s4_want": "The original ledger, and the fee receipt in Kaviya's hand before the 31st.",
+    "s4_need": "To let his brother be smaller than he has been keeping him.",
+    "s4_lie": "If I keep paying, nothing else has to be said.",
+    "s4_wound": "He read the promissory note aloud at fourteen and his brother told him to stop showing off.",
+    "s4_skill": "He can hear a gearbox and name the tooth.",
+    "s4_flaw": "He mistakes silence for protection.",
+
+    "s5_name": "ANBU CHETTIAR",
+    "s5_want": "That the street keeps believing a book is the same thing as the truth.",
+    "s5_philosophy": "I did not invent the interest. I only wrote down what everybody had already agreed to.",
+    "s5_hero": "He is right that Selvam signed nothing and paid anyway. The forgery worked because Selvam wanted it to.",
+    "s5_mirror": "Both men are keeping a dead man's reputation alive — one for money, one for love, and neither for Murugan.",
+    "s5_humanity": "He pays the school fees of four boys in his lane and keeps the receipts in the same almirah.",
+
+    "s6_ally_name": "RAFI — the apprentice",
+    "s6_ally_reflect": "He is the fourteen-year-old Selvam was, and he can read.",
+    "s6_ally_subplot": "He is studying at night for a diploma Selvam does not know about.",
+    "s6_ally_exit": "He is the one who photographs the ledger page, and the one whose hand is broken for it.",
+    "s6_lover_name": "MALLIKA — the brother's widow",
+    "s6_lover_sees": "That the twenty years were never for Murugan.",
+    "s6_lover_goal": "To get Kaviya out of the lane before the lane decides what she is.",
+    "s6_lover_decision": "She tells the police what her husband could and could not write.",
+    "s6_mentor_name": "PERIYASAMY — the lorry owner",
+    "s6_mentor_tool": "He teaches Selvam that a weighbridge slip is also a signature.",
+    "s6_mentor_failure": "He took the same kind of loan in 1996 and never fought it.",
+
+    "s7_era": "Present day, with a 2004 prologue",
+    "s7_location": "North Chennai — Pudupet, Sowcarpet, Vyasarpadi, Kasimedu — and the NH-16 corridor up to Nellore",
+    "s7_duration": "Nineteen days, against a fee deadline of 31 January",
+    "s7_rules": "1. No song sequence. 2. Nobody in this film owns a car. 3. Every document on screen is legible and can be read by the audience. 4. The police are neither saviours nor villains; they are slow. 5. Violence happens off the beat, never on it.",
+    "s7_sensory": "Grease black, ledger red, sodium orange. The sound of a 12-inch impact wrench and a ceiling fan with a bent blade. Rain only once, in the last reel.",
+
+    "s9_chrono": "2004 harbour → 2004 note signed → twenty years of payments (elided) → present-day fee notice → the read → the consignment → the ledger → the lane.",
+    "s9_screen": "Present-day payment first. The 2004 harbour is held back to the middle of the second act, so the audience believes the debt is real for forty minutes.",
+    "s9_why": "The film is about a document being taken on trust. The audience should take it on trust too, and feel the cost of having done so.",
+
+    "s10_setup_1": "Rafi correcting a bill in the first garage scene.",
+    "s10_pay_1": "Rafi reading the forged signature aloud in the office.",
+    "s10_setup_2": "Chettiar licking his thumb before turning a ledger page.",
+    "s10_pay_2": "The smudge that dates the ink.",
+    "s10_setup_3": "The bent fan blade in the office.",
+    "s10_pay_3": "The photograph is blurred because the page is moving.",
+    "s10_setup_4": "Murugan's thumbprint on the ice-lorry permit.",
+    "s10_pay_4": "The note carries a signature, not a thumbprint.",
+    "s10_setup_5": "Kaviya's fee notice hidden under the rice tin.",
+    "s10_pay_5": "The receipt pinned to the same tin in the last shot.",
+
+    "b01": "Pudupet, morning. The lane calls him Dragan. Nobody uses his name.",
+    "b02": "The envelope: eleven thousand, counted twice, carried to Sowcarpet.",
+    "b03": "Chettiar reads the ledger aloud. Twenty years, principal untouched.",
+    "b04": "Kaviya's fee notice. Ninety-two thousand by the 31st.",
+    "b05": "Selvam asks to see the note. Chettiar lets him hold it — that is his mistake.",
+    "b06": "Rafi reads the signature. Murugan could not write his name.",
+    "b07": "The police station: no complaint without the original book.",
+    "b08": "Periyasamy's yard. One consignment north, and the almirah opens.",
+    "b09": "NH-16. Twenty-two hours in a cab with a load he has not seen.",
+    "b10": "Sarasu's dhaba. Vetri joins the cab and the load becomes a threat.",
+    "b11": "Nellore weighbridge. The slip is four tonnes light and Selvam signs it anyway.",
+    "b12": "Back in Sowcarpet, the almirah opens and the ledger is not in it.",
+    "b13": "Rafi's hand. Stanley Hospital corridor, 2 a.m.",
+    "b14": "Mallika says out loud what her husband could not do.",
+    "b15": "The lane, morning. Selvam reads the note aloud himself, to everyone.",
+
+    "s12_note_v1": "The film is eleven scenes of paperwork and one chase. Do not let the chase become the point.",
+
+    "v2s1_draft": "Draft 4, 110 pages, 36 scenes. Locked 22 Dec 2025.",
+    "v2s1_weak": "1. The middle of act two is two dhaba scenes doing one job. 2. Inspector Jeyaraman explains the law twice. 3. The canal chase is written bigger than the budget.",
+    "v2s1_signoff": "Director, producer and DOP on 24 Dec. Editor read it cold on 27 Dec and flagged the dhaba pair.",
+
+    "v2s2_theme": "A debt you never owed is still a debt until you refuse it out loud.",
+    "v2s2_tone1": "Procedural, unhurried, warm about people and cold about paper.",
+    "v2s2_tone2": "Patient · tactile · unsentimental · funny in the garage",
+    "v2s2_refs": "Visaranai for the procedure, Kaala for the lane as an organism, and Sudhir Patwardhan's Bombay paintings for the middle distance.",
+    "v2s2_refuse": "No song sequence. No slow-motion entry. No item of violence the audience enjoys. No montage of the twenty years. No rain until the last reel.",
+    "v2s2_para": "This is a film about a document. Everything we build — the lane, the office, the cab — exists so that when a piece of paper is held up to a bulb, the audience can read it too. If a scene cannot be shot so that the paper in it is legible, we will restage the scene rather than cut away.",
+
+    "v2s3_palette": "Grease black, ledger red, sodium orange",
+    "v2s3_light": "Single-source practicals in the garage. Sodium vapour on all night exteriors. Ravi Varman's daylight interiors for the hospital corridor.",
+    "v2s3_frames": "Waist-level two-shots in the lane. The office always from the visitor's chair. The cab interior only from the passenger side. Kasimedu wide at 18mm, once.",
+    "v2s3_texture": "Cotton gone grey, grease under a fingernail, ledger paper soft at the corner from twenty years of thumbs.",
+    "v2s3_location": "Shared drive · DRAGAN/02_LOOKBOOK",
+
+    "v2s5_camera": "ARRI Alexa 35",
+    "v2s5_aspect": "2.39:1 (Scope / CinemaScope)",
+    "v2s5_fps": "24 fps",
+    "v2s5_res": "4K DCI",
+    "v2s5_lens": "Cooke S4 primes — 18, 25, 32, 50, 75",
+    "v2s5_speciallens": "Vintage 135 for the canal night, one day only",
+    "v2s5_light_phil": "Practicals first. If the room has one bulb, the frame has one bulb. Capture is 4.6K open gate, ProRes 4444, delivered 4K DCI.",
+    "v2s5_grade": "Warm shadows, no crushed blacks — the audience must read paper in the dark.",
+    "v2s5_dn": "50/50 day-night",
+
+    "v2s6_sets": "Garage (built, Madhavaram floor), Chettiar's office (built), house (location), everything else location.",
+    "v2s6_dressed": "The garage wall calendar is a continuity spine — 14 pages, aged in four stages.",
+    "v2s6_heroprops": "The ledger. Three copies: hero, stunt, and one with the forged page for inserts.",
+    "v2s6_recurring": "Rice tin, fee notice, cash envelope folded the same way.",
+    "v2s6_period": "2004 prologue: no smartphones, Nokia 1100, BSNL STD booth board.",
+    "v2s6_pd": "Meera Raghavan",
+    "v2s6_ad": "Elango S",
+    "v2s6_setlead": "Karthi V",
+    "v2s6_artbudget": "₹ 42,00,000",
+
+    "v2s7_designer": "Divya Nandakumar",
+    "v2s7_hair": "Rekha Mohan",
+    "v2s7_makeup": "Rekha Mohan",
+    "v2s7_sfx_need": "Heavy (prosthetics, FX)",
+    "v2s7_protag": "Four shirts, all the same cut, aged differently. One clean shirt, worn twice.",
+    "v2s7_antag": "White veshti, gold-rimmed glasses, a pen in the shirt pocket he never uses.",
+    "v2s7_period": "2004: polyester half-sleeve, rubber slippers, no branding. Prosthetics: Rafi’s hand in a silicone cast, two stages, plus the canal-bank cuts on day 14.",
+
+    "v2s10_composer": "Sanjay Iyer",
+    "v2s10_songs": "0 (no songs)",
+    "v2s10_bgm": "Eleven cues, 26 minutes total. Strings only from reel five. No song sequence; two source cues come off a lane radio.",
+    "v2s10_refs": "Jonny Greenwood's Norwegian Wood score for restraint.",
+    "v2s10_sd": "Sanjay Iyer",
+    "v2s10_psr": "Fathima Zahra",
+    "v2s10_phil": "Silence is a cue. The office has no music at all. Mix is four days at Knack Studios, Chennai.",
+    "v2s10_mix": "5.1 Surround",
+
+    "v2s11_blocks": "Three blocks: Chennai lane and interiors (days 1–9), the NH-16 run (days 10–12), Chennai nights and pickups (days 13–18).",
+    "v2s11_ad": "Nivetha Balan",
+    "v2s11_expday": "Day 14 — Buckingham Canal bank, night, stunt unit.",
+    "v2s11_total": "46000000",
+    "v2s11_atl": "9500000",
+    "v2s11_btl": "24500000",
+    "v2s11_post": "7400000",
+    "v2s11_cont": "10% (standard minimum)",
+    "v2s11_largest": "Camera and lighting package, 18 days with a second unit on day 14.",
+    "v2s11_dop": "Hari Shankar",
+    "v2s11_pd": "Meera Raghavan",
+    "v2s11_editor": "Praveen Antony",
+    "v2s11_composer": "Sanjay Iyer",
+    "v2s11_sound": "Fathima Zahra",
+    "v2s11_cd": "Divya Nandakumar",
+    "v2s11_casting": "Gowri Shankar",
+    "v2s11_pm": "Bhuvana Sekar",
+
+    "v2s12_recce": "8–10 Jan 2026 — Pudupet lane, Sowcarpet office, Vyasarpadi house, Buckingham Canal bank, Kasimedu harbour.",
+    "v2s12_problems": "1. Pudupet lane trades until 21:00 and will not close. 2. Canal bank has no vehicle access for a genny. 3. Kasimedu dawn window is 22 minutes. 4. Sowcarpet office ceiling is 2.4m — no top light. 5. Stanley corridor permission is per-shift, not per-day.",
+    "v2s12_resolutions": "1. Shoot lane 05:30–08:30, two days, AD Nivetha owns the traders. 2. Battery-only lighting on the canal, gaffer Jagan. 3. Two dawn days at Kasimedu, not one. 4. Bounce off a white ceiling tile, DOP Hari agreed. 5. Production exec Yuvaraj holds a shift-by-shift permission file.",
+    "v2s12_note": "Read the note aloud on the first morning. That is the whole film.",
+
+    "p3_start": "12 Jan 2026",
+    "p3_base": "Madhavaram lorry yard",
+    "p3_ad": "Nivetha Balan",
+    "p4_editor": "Praveen Antony",
+    "p4_lock": "28 Mar 2026",
+    "p4_sound": "Knack Studios, Chennai",
+    "p4_music": "Sanjay Iyer",
+
+    "lad_1_logline": "A Pudupet mechanic who has paid his dead brother's debt for twenty years finds the ledger was forged, and has to say so in front of the street that named him.",
+    "lad_2_synopsis": "Selvam repairs lorry gearboxes in Pudupet and pays eleven thousand rupees a month to a Sowcarpet moneylender against a note his brother signed in 2004. When his niece's college fee falls due he asks to see the note, and his apprentice — who can read — tells him the signature is not a man's who used a thumbprint on every other paper he ever touched. The original book is in Chettiar's almirah, and the price of the almirah opening is one consignment driven to Nellore and back.",
+    "lad_3_onepager": "Genre: crime drama. Length: 110 pages / 36 scenes. Budget: ₹4.6 cr. Schedule: 18 days, North Chennai and NH-16. Comparable: Visaranai, Kuttrame Thandanai. The hook is a document the audience can read.",
+    "lad_4_treatment": "See Write → documents → 'Dragan — treatment, draft 4'.",
+    "lad_5_outline": "Fifteen beats, in Vol I step 11. Act two turns on a weighbridge slip, not on a fight.",
+
+    "palette_c1": "#1c1a18",
+    "palette_c1_name": "Grease black",
+    "palette_c2": "#8f2c22",
+    "palette_c2_name": "Ledger red",
+    "palette_c3": "#c8802c",
+    "palette_c3_name": "Sodium orange",
+
+    "hod_dir_name": "Arunkumar A",
+    "hod_dir_date": "2025-12-24",
+    "hod_prod_name": "Bhuvana Sekar",
+    "hod_prod_date": "2025-12-24",
+    "hod_dop_name": "Hari Shankar",
+    "hod_dop_date": "2025-12-24",
+    "hod_pd_name": "Meera Raghavan",
+    "hod_pd_date": "2025-12-29",
+    "hod_ad_name": "Nivetha Balan",
+    "hod_ad_date": "2026-01-02",
+    "hod_sd_name": "Fathima Zahra",
+    "hod_sd_date": "2026-01-05",
+    "hod_comp_name": "Sanjay Iyer",
+    "hod_comp_date": "2026-01-05",
+    "hod_ed_name": "Praveen Antony",
+    "hod_ed_date": "2025-12-27",
+    "hod_cos_name": "Divya Nandakumar",
+    "hod_cos_date": "2025-12-30",
+    "hod_cast_name": "Gowri Shankar",
+    "hod_cast_date": "2025-12-20",
+    "hod_pm_name": "Bhuvana Sekar",
+    "hod_pm_date": "2026-01-02"
+  },
+
+  "blueprintChecks": [
+    "ck_s1_a", "ck_s1_b", "ck_s1_c",
+    "ck_s2_a", "ck_s2_b", "ck_s2_c",
+    "ck_s3_a", "ck_s3_b", "ck_s3_c",
+    "ck_s4_a", "ck_s4_b", "ck_s4_c", "ck_s4_d",
+    "ck_s5_a", "ck_s5_b", "ck_s5_c",
+    "ck_s6_a", "ck_s6_b", "ck_s6_c",
+    "ck_s7_a", "ck_s7_b", "ck_s7_c",
+    "ck_s8_a", "ck_s8_b", "ck_s8_c",
+    "ck_s9_a", "ck_s9_b",
+    "ck_s10_a", "ck_s10_b", "ck_s10_c",
+    "ck_s11_a", "ck_s11_b", "ck_s11_c",
+    "fc_v1_01", "fc_v1_02", "fc_v1_03", "fc_v1_04", "fc_v1_05",
+    "fc_v1_06", "fc_v1_07", "fc_v1_08", "fc_v1_09", "fc_v1_10",
+    "fc_v1_11", "fc_v1_12", "fc_v1_13", "fc_v1_14", "fc_v1_15",
+    "ck_v2s1_a", "ck_v2s1_b", "ck_v2s1_c", "ck_v2s1_d",
+    "ck_v2s2_a", "ck_v2s2_b", "ck_v2s2_c", "ck_v2s2_d",
+    "ck_v2s3_a", "ck_v2s3_b", "ck_v2s3_c",
+    "ck_v2s5_a", "ck_v2s5_b", "ck_v2s5_c",
+    "ck_v2s6_a", "ck_v2s6_b",
+    "ck_v2s7_a", "ck_v2s7_b",
+    "ck_v2s11_a", "ck_v2s11_b", "ck_v2s11_c",
+    "fc_v2_01", "fc_v2_02", "fc_v2_03", "fc_v2_04", "fc_v2_05",
+    "fc_v2_06", "fc_v2_07", "fc_v2_08"
+  ],
+
+  "scenes": [
+    { "number": "1", "intExt": "EXT", "dayNight": "DAWN", "location": "Kasimedu fish harbour", "eighths": 16, "pageNumber": "1", "shootDay": 9,
+      "synopsis": "2004. Two brothers unload ice before first light. Murugan signs a paper he cannot read and hands it back smiling.",
+      "elements": { "cast": ["YOUNG SELVAM", "MURUGAN"], "extras": ["Dock hands (14)", "Ice loaders (6)"], "props": ["Ice hook", "Promissory note (2004)", "Kerosene lamp"], "wardrobe": ["2004 lungi and vest"], "makeup": ["Period hair — Murugan"], "vehicles": ["Ice lorry (1998 TATA)"], "sound": ["Harbour wildtrack"], "special": ["Condor for the dawn wide"] } },
+
+    { "number": "2", "intExt": "EXT", "dayNight": "DAY", "location": "Pudupet auto-parts lane", "eighths": 16, "pageNumber": "3", "shootDay": 1,
+      "synopsis": "Present day. Selvam walks the lane. Every shutter calls him Dragan; not one of them uses his name.",
+      "elements": { "cast": ["SELVAM", "RAFI"], "extras": ["Shopkeepers (22)", "Lane crowd (40)"], "props": ["Gearbox in a gunny sack", "Tea glasses"], "wardrobe": ["Selvam shirt #1 — aged"], "vehicles": ["Hand cart", "Two-wheelers (8)"], "sound": ["Lane ambience", "Radio source cue"], "vfx": ["Rig removal — crane wide"] } },
+
+    { "number": "3", "intExt": "INT", "dayNight": "DAY", "location": "Selvam's garage, Pudupet", "eighths": 24, "pageNumber": "5", "shootDay": 2,
+      "synopsis": "Selvam and Rafi drop a gearbox. On the bench an envelope waits with this month's payment, counted twice.",
+      "elements": { "cast": ["SELVAM", "RAFI"], "props": ["Gearbox (cut-away)", "Torque wrench set", "Cash envelope", "Wall calendar — stage 1"], "wardrobe": ["Rafi polytechnic T-shirt"], "sound": ["Impact wrench"], "special": ["Practical inspection lamps"] } },
+
+    { "number": "4", "intExt": "INT", "dayNight": "DAY", "location": "Anbu Chettiar's office, Sowcarpet", "eighths": 20, "pageNumber": "8", "shootDay": 4,
+      "synopsis": "Chettiar reads the ledger aloud, as he has every month for twenty years. The principal has never moved.",
+      "elements": { "cast": ["SELVAM", "ANBU CHETTIAR", "VETRI"], "extras": ["Office clerks (3)"], "props": ["Ledger — hero", "Rubber stamp", "Steel almirah"], "makeup": ["Chettiar — stained teeth"], "sound": ["Ceiling fan with bent blade"] } },
+
+    { "number": "5", "intExt": "INT", "dayNight": "NIGHT", "location": "Selvam's house, Vyasarpadi", "eighths": 18, "pageNumber": "10", "shootDay": 6,
+      "synopsis": "Mallika serves food she does not eat. Kaviya's fee notice is under the rice tin, where she thinks he will not look.",
+      "elements": { "cast": ["SELVAM", "MALLIKA", "KAVIYA"], "props": ["Fee notice", "Rice tin", "Steel plates"], "wardrobe": ["Mallika cotton sari"], "sound": ["Neighbour's television"] } },
+
+    { "number": "6", "intExt": "INT", "dayNight": "DAY", "location": "Ambedkar College admissions office", "eighths": 24, "pageNumber": "12", "shootDay": 7,
+      "synopsis": "Ninety-two thousand by the 31st, says the clerk, and there is no instalment scheme for a second-year transfer.",
+      "elements": { "cast": ["KAVIYA", "SELVAM"], "extras": ["Students (18)", "Office clerk (1)"], "props": ["Fee challan book", "Admission register"], "wardrobe": ["Kaviya college uniform"], "sound": ["Corridor ambience"] } },
+
+    { "number": "7", "intExt": "EXT", "dayNight": "DUSK", "location": "Marina Loop Road", "eighths": 18, "pageNumber": "15", "shootDay": 8,
+      "synopsis": "Selvam asks Kaviya what she would do if the money did not come. She tells him, and he does not like the answer.",
+      "elements": { "cast": ["SELVAM", "KAVIYA"], "extras": ["Walkers (25)", "Peanut vendor"], "props": ["Peanut cone", "Kaviya's notebook"], "vehicles": ["Selvam's Hero Splendor"], "sound": ["Sea wash"] } },
+
+    { "number": "8", "intExt": "INT", "dayNight": "DAY", "location": "Stanley Hospital corridor", "eighths": 22, "pageNumber": "18", "shootDay": 13,
+      "synopsis": "Dr Nirmala explains, for the second time, that Mallika's medication is not the thing that can be postponed.",
+      "elements": { "cast": ["MALLIKA", "DR. NIRMALA", "SELVAM"], "extras": ["Out-patients (30)", "Nurses (4)"], "props": ["Prescription pad", "Medicine strip"], "wardrobe": ["Doctor's coat"], "makeup": ["Mallika — illness pallor"], "sound": ["Corridor reverb"] } },
+
+    { "number": "9", "intExt": "EXT", "dayNight": "DAY", "location": "Periyasamy's lorry yard, Madhavaram", "eighths": 26, "pageNumber": "20", "shootDay": 15,
+      "synopsis": "Periyasamy offers Selvam a run north. He also tells him what a weighbridge slip is worth in a court.",
+      "elements": { "cast": ["SELVAM", "PERIYASAMY"], "extras": ["Yard drivers (10)", "Cleaners (4)"], "props": ["Weighbridge slip", "Trip sheet book"], "vehicles": ["Ashok Leyland 3718 (hero lorry)", "Yard lorries (6)"], "animals": ["Yard dog"], "sound": ["Air brakes"] } },
+
+    { "number": "10", "intExt": "INT", "dayNight": "DAY", "location": "Ambedkar College admissions office", "eighths": 16, "pageNumber": "24", "shootDay": 7,
+      "synopsis": "Kaviya asks the clerk to hold her seat for nine days and signs an undertaking she has not read.",
+      "elements": { "cast": ["KAVIYA"], "extras": ["Students (12)", "Office clerk (1)"], "props": ["Undertaking form", "Seat register"], "sound": ["Ceiling fan"] } },
+
+    { "number": "11", "intExt": "EXT", "dayNight": "DAY", "location": "Pudupet auto-parts lane", "eighths": 14, "pageNumber": "26", "shootDay": 1,
+      "synopsis": "Vetri collects from four shutters before he reaches Selvam's, so the lane can watch the order of things.",
+      "elements": { "cast": ["VETRI", "SELVAM"], "extras": ["Shopkeepers (14)"], "props": ["Collection diary", "Cash bag"], "vehicles": ["Vetri's Bullet"], "sound": ["Shutter rattle"] } },
+
+    { "number": "12", "intExt": "INT", "dayNight": "DAY", "location": "Selvam's garage, Pudupet", "eighths": 28, "pageNumber": "27", "shootDay": 2,
+      "synopsis": "Rafi corrects the bill Selvam has written. It is the first time the film shows that one of them can read and one of them cannot do it fast.",
+      "elements": { "cast": ["SELVAM", "RAFI"], "props": ["Bill book", "Carbon paper", "Wall calendar — stage 2"], "wardrobe": ["Selvam shirt #2"], "sound": ["Compressor"], "special": ["Insert table for the bill"] } },
+
+    { "number": "13", "intExt": "INT", "dayNight": "DAY", "location": "Selvam's house, Vyasarpadi", "eighths": 24, "pageNumber": "31", "shootDay": 5,
+      "synopsis": "Mallika finds the fee notice where she left it and understands that he has known for four days.",
+      "elements": { "cast": ["MALLIKA", "SELVAM", "KAVIYA"], "props": ["Fee notice", "Rice tin", "Murugan's photograph"], "wardrobe": ["Mallika sari #2"], "sound": ["Street vendor call"] } },
+
+    { "number": "14", "intExt": "INT", "dayNight": "DAY", "location": "Lorry cab — NH-16", "eighths": 30, "pageNumber": "34", "shootDay": 10,
+      "synopsis": "Twenty-two hours of road in one cab. Selvam has not been told what is behind him, and does not ask until Gummidipoondi.",
+      "elements": { "cast": ["SELVAM"], "props": ["Trip sheet", "Steel tiffin box", "Nokia 1100 (Selvam's)"], "vehicles": ["Ashok Leyland 3718", "Camera car", "Highway traffic (12)"], "sound": ["Cab interior wildtrack"], "special": ["Low-loader trailer", "Process rig"] } },
+
+    { "number": "15", "intExt": "INT/EXT", "dayNight": "DUSK", "location": "Lorry cab — NH-16", "eighths": 24, "pageNumber": "38", "shootDay": 10,
+      "synopsis": "Selvam stops for a leak and reads the manifest by the light of the cab door. Two of the four items do not exist.",
+      "elements": { "cast": ["SELVAM"], "props": ["Manifest", "Torch"], "vehicles": ["Ashok Leyland 3718"], "sound": ["Highway pass-bys"], "vfx": ["Sky replacement — two shots"], "special": ["Generator on the hard shoulder"] } },
+
+    { "number": "16", "intExt": "EXT", "dayNight": "NIGHT", "location": "Sarasu's dhaba, Gummidipoondi", "eighths": 34, "pageNumber": "41", "shootDay": 11,
+      "synopsis": "Vetri is waiting at the dhaba with a second driver's licence and Selvam's own name on it.",
+      "elements": { "cast": ["SELVAM", "VETRI", "SARASU"], "extras": ["Drivers (20)", "Dhaba boys (3)"], "props": ["Forged licence", "Aluminium plates", "Kerosene stove"], "wardrobe": ["Vetri leather jacket"], "vehicles": ["Ashok Leyland 3718", "Parked lorries (8)"], "animals": ["Stray dogs (3)"], "sound": ["Dhaba radio", "Generator hum"], "special": ["Balloon light on a scissor lift"] } },
+
+    { "number": "17", "intExt": "INT", "dayNight": "DAY", "location": "Anbu Chettiar's office, Sowcarpet", "eighths": 26, "pageNumber": "45", "shootDay": 4,
+      "synopsis": "Selvam asks to hold the note. Chettiar lets him, because in twenty years nobody has asked twice.",
+      "elements": { "cast": ["SELVAM", "ANBU CHETTIAR"], "props": ["Promissory note (2004)", "Ledger — hero", "Reading glasses"], "makeup": ["Chettiar — thumb ink"], "sound": ["Ceiling fan with bent blade"], "special": ["Macro lens for the signature insert"] } },
+
+    { "number": "18", "intExt": "EXT", "dayNight": "DAY", "location": "Nellore weighbridge", "eighths": 22, "pageNumber": "48", "shootDay": 12,
+      "synopsis": "The slip is four tonnes light. Selvam signs it, and the film records exactly what signing something you have not read looks like.",
+      "elements": { "cast": ["SELVAM", "VETRI"], "extras": ["Weighbridge clerk", "Drivers (8)"], "props": ["Weighbridge slip", "Ball pen"], "vehicles": ["Ashok Leyland 3718", "Queue lorries (5)"], "animals": ["Goat"], "sound": ["Weighbridge bell"] } },
+
+    { "number": "19", "intExt": "INT", "dayNight": "NIGHT", "location": "Selvam's garage, Pudupet", "eighths": 24, "pageNumber": "51", "shootDay": 3,
+      "synopsis": "Rafi reads the signature out loud under the inspection lamp. Murugan used a thumbprint on every paper he ever touched.",
+      "elements": { "cast": ["SELVAM", "RAFI"], "props": ["Promissory note (photograph)", "Murugan's ice-lorry permit", "Magnifying glass"], "wardrobe": ["Rafi night shirt"], "sound": ["Lane night ambience"], "special": ["Single practical on a dimmer"] } },
+
+    { "number": "20", "intExt": "INT", "dayNight": "NIGHT", "location": "Selvam's house, Vyasarpadi", "eighths": 26, "pageNumber": "54", "shootDay": 6,
+      "synopsis": "Selvam asks Mallika whether her husband could write. She says the sentence that ends the second act.",
+      "elements": { "cast": ["SELVAM", "MALLIKA"], "props": ["Murugan's photograph", "Ration card (1998)", "Kerosene lamp"], "wardrobe": ["Mallika night sari"], "makeup": ["Mallika — tears, no running"], "sound": ["Rain on asbestos (first rain)"] } },
+
+    { "number": "21", "intExt": "EXT", "dayNight": "DUSK", "location": "Marina Loop Road", "eighths": 22, "pageNumber": "57", "shootDay": 8,
+      "synopsis": "Inspector Jeyaraman explains, without unkindness, that a photograph of a page is not a document.",
+      "elements": { "cast": ["SELVAM", "INSPECTOR JEYARAMAN"], "extras": ["Walkers (20)"], "props": ["Photograph print", "Jeyaraman's notebook"], "wardrobe": ["Khaki, off duty"], "vehicles": ["Police jeep"], "sound": ["Sea wash"] } },
+
+    { "number": "22", "intExt": "EXT", "dayNight": "NIGHT", "location": "Sarasu's dhaba, Gummidipoondi", "eighths": 30, "pageNumber": "60", "shootDay": 11,
+      "synopsis": "Sarasu has kept every trip sheet for nine years under the cash box, and lets Selvam look.",
+      "elements": { "cast": ["SELVAM", "SARASU"], "extras": ["Drivers (12)", "Dhaba boys (2)"], "props": ["Trip sheet bundle", "Cash box", "Steel tumbler"], "wardrobe": ["Sarasu apron"], "animals": ["Stray dogs (2)"], "sound": ["Dhaba radio"], "special": ["Balloon light on a scissor lift"] } },
+
+    { "number": "23", "intExt": "EXT", "dayNight": "DAY", "location": "Nellore weighbridge", "eighths": 28, "pageNumber": "64", "shootDay": 12,
+      "synopsis": "Selvam goes back for the carbon copy of his own slip, and Vetri understands what he is building.",
+      "elements": { "cast": ["SELVAM", "VETRI"], "extras": ["Weighbridge clerk", "Drivers (6)"], "props": ["Carbon copy", "Weighbridge register"], "vehicles": ["Ashok Leyland 3718", "Vetri's Bullet"], "stunts": ["Vetri shoves Selvam against the cab — non-contact"], "sound": ["Weighbridge bell"] } },
+
+    { "number": "24", "intExt": "EXT", "dayNight": "NIGHT", "location": "Buckingham Canal bank, Vyasarpadi", "eighths": 36, "pageNumber": "67", "shootDay": 14,
+      "synopsis": "The only chase in the film: a loaded lorry on an embankment three metres wider than it is, at eleven kilometres an hour.",
+      "elements": { "cast": ["SELVAM", "VETRI", "RAFI"], "extras": ["Onlookers (15)"], "props": ["Ledger — stunt copy", "Crowbar"], "wardrobe": ["Selvam shirt #3 — torn, 4 copies"], "makeup": ["Selvam — canal mud, blood stage 1"], "vehicles": ["Ashok Leyland 3718 (stunt)", "Vetri's Bullet (stunt)"], "stunts": ["Lorry slide on the embankment", "Bullet lay-down", "Rafi fall to the bank"], "vfx": ["Wire removal", "Water splash augmentation"], "sound": ["No score — effects only"], "special": ["Second unit", "Battery lighting only — no genny access", "Ambulance and standby paramedic"] } },
+
+    { "number": "25", "intExt": "INT", "dayNight": "DAY", "location": "Selvam's garage, Pudupet", "eighths": 20, "pageNumber": "72", "shootDay": 2,
+      "synopsis": "The garage is a garage again. Rafi's tools are laid out for a hand that cannot hold them yet.",
+      "elements": { "cast": ["SELVAM"], "props": ["Rafi's tool roll", "Wall calendar — stage 3", "Diploma admission card"], "wardrobe": ["Selvam clean shirt"], "sound": ["Lane ambience, thinner"] } },
+
+    { "number": "26", "intExt": "INT", "dayNight": "DAY", "location": "Ambedkar College admissions office", "eighths": 24, "pageNumber": "74", "shootDay": 7,
+      "synopsis": "Kaviya pays a part fee out of her own tuition earnings and asks nobody's permission to do it.",
+      "elements": { "cast": ["KAVIYA"], "extras": ["Students (16)", "Office clerk (1)"], "props": ["Part-fee receipt", "Cash in a rubber band"], "wardrobe": ["Kaviya college uniform"], "sound": ["Corridor ambience"] } },
+
+    { "number": "27", "intExt": "INT", "dayNight": "NIGHT", "location": "Stanley Hospital corridor", "eighths": 30, "pageNumber": "77", "shootDay": 18,
+      "synopsis": "Two a.m. Rafi's hand is in a cast and his mother will not look at Selvam.",
+      "elements": { "cast": ["SELVAM", "RAFI", "DR. NIRMALA"], "extras": ["Night out-patients (12)", "Nurses (3)", "Rafi's mother"], "props": ["Cast and sling", "Case sheet"], "makeup": ["Rafi — silicone hand cast, stage 2"], "sound": ["Corridor reverb, night"], "special": ["Practical tube lights on a dimmer"] } },
+
+    { "number": "28", "intExt": "EXT", "dayNight": "DAY", "location": "Periyasamy's lorry yard, Madhavaram", "eighths": 32, "pageNumber": "81", "shootDay": 15,
+      "synopsis": "Periyasamy admits he took the same loan in 1996 and paid it for eleven years without reading it either.",
+      "elements": { "cast": ["SELVAM", "PERIYASAMY"], "extras": ["Yard drivers (8)"], "props": ["1996 loan papers", "Tea glasses"], "vehicles": ["Yard lorries (5)", "Ashok Leyland 3718"], "animals": ["Yard dog"], "sound": ["Air brakes", "Yard ambience"] } },
+
+    { "number": "29", "intExt": "EXT", "dayNight": "NIGHT", "location": "Sowcarpet street", "eighths": 26, "pageNumber": "85", "shootDay": 16,
+      "synopsis": "Selvam waits outside the office from ten until the almirah is opened at midnight for somebody else.",
+      "elements": { "cast": ["SELVAM", "VETRI"], "extras": ["Street crowd (30)", "Shop boys (6)"], "props": ["Almirah key ring", "Selvam's envelope (unopened)"], "vehicles": ["Cycle rickshaws (4)", "Vetri's Bullet"], "sound": ["Sowcarpet night ambience"], "special": ["Sodium-matched lighting balloon"] } },
+
+    { "number": "30", "intExt": "INT", "dayNight": "DAY", "location": "Anbu Chettiar's office, Sowcarpet", "eighths": 34, "pageNumber": "88", "shootDay": 4,
+      "synopsis": "The almirah opens. The ledger is not in it, and Chettiar explains, patiently, that it never was.",
+      "elements": { "cast": ["SELVAM", "ANBU CHETTIAR", "INSPECTOR JEYARAMAN"], "extras": ["Office clerks (3)", "Constables (2)"], "props": ["Steel almirah", "Ledger — forged-page copy", "School fee receipts (Chettiar's)"], "makeup": ["Chettiar — stained teeth"], "sound": ["Ceiling fan with bent blade"], "special": ["Macro lens for the ledger inserts"] } },
+
+    { "number": "31", "intExt": "EXT", "dayNight": "NIGHT", "location": "Buckingham Canal bank, Vyasarpadi", "eighths": 28, "pageNumber": "92", "shootDay": 14,
+      "synopsis": "Selvam finds the ledger where a frightened man would have put it, and does not open it on the bank.",
+      "elements": { "cast": ["SELVAM"], "props": ["Ledger — hero, water-damaged", "Torch", "Plastic sheet"], "wardrobe": ["Selvam shirt #3 — torn"], "makeup": ["Selvam — canal mud, blood stage 2"], "sound": ["Canal night, no score"], "special": ["Second unit", "Battery lighting only", "Water safety team"] } },
+
+    { "number": "32", "intExt": "EXT", "dayNight": "NIGHT", "location": "Sowcarpet street", "eighths": 20, "pageNumber": "96", "shootDay": 16,
+      "synopsis": "Mallika comes to Sowcarpet herself and tells four shopkeepers what her husband could and could not write.",
+      "elements": { "cast": ["MALLIKA", "SELVAM"], "extras": ["Shopkeepers (10)", "Street crowd (24)"], "props": ["Murugan's ice-lorry permit", "Ration card (1998)"], "wardrobe": ["Mallika sari #3"], "sound": ["Street ambience, dropping to nothing"] } },
+
+    { "number": "33", "intExt": "INT", "dayNight": "NIGHT", "location": "Selvam's garage, Pudupet", "eighths": 22, "pageNumber": "98", "shootDay": 3,
+      "synopsis": "Selvam and Jeyaraman photograph twenty-two pages properly, one at a time, with the fan switched off.",
+      "elements": { "cast": ["SELVAM", "INSPECTOR JEYARAMAN"], "props": ["Ledger — hero", "Camera and tripod", "Bench vice as a page weight"], "wardrobe": ["Khaki, off duty"], "sound": ["No fan — room tone only"], "special": ["Practical on a dimmer", "Macro lens"] } },
+
+    { "number": "34", "intExt": "INT", "dayNight": "NIGHT", "location": "Selvam's house, Vyasarpadi", "eighths": 30, "pageNumber": "101", "shootDay": 6,
+      "synopsis": "The three of them eat. Kaviya asks what happens if the case takes four years, and Selvam answers honestly.",
+      "elements": { "cast": ["SELVAM", "MALLIKA", "KAVIYA"], "props": ["Steel plates", "Part-fee receipt", "Rice tin"], "wardrobe": ["Selvam clean shirt (second wearing)"], "sound": ["Rain, ending mid-scene"] } },
+
+    { "number": "35", "intExt": "EXT", "dayNight": "DAWN", "location": "Kasimedu fish harbour", "eighths": 26, "pageNumber": "105", "shootDay": 9,
+      "synopsis": "Selvam stands where the prologue stood and the film shows, for the first time, what Murugan actually put on the paper.",
+      "elements": { "cast": ["SELVAM", "YOUNG SELVAM", "MURUGAN"], "extras": ["Dock hands (14)"], "props": ["Promissory note (2004)", "Ink pad", "Ice hook"], "wardrobe": ["2004 lungi and vest", "Selvam clean shirt"], "makeup": ["Period hair — Murugan"], "vehicles": ["Ice lorry (1998 TATA)"], "vfx": ["Thumbprint insert — clean-up"], "sound": ["Harbour wildtrack"], "special": ["Condor for the dawn wide"] } },
+
+    { "number": "36", "intExt": "INT", "dayNight": "DAY", "location": "Ambedkar College admissions office", "eighths": 20, "pageNumber": "108", "shootDay": 17,
+      "synopsis": "The receipt goes into Kaviya's hand and then onto the rice tin at home, where the notice used to be.",
+      "elements": { "cast": ["KAVIYA", "SELVAM", "MALLIKA"], "extras": ["Students (20)", "Office clerk (1)"], "props": ["Full-fee receipt", "Rice tin", "Drawing pin"], "wardrobe": ["Kaviya college uniform"], "sound": ["Corridor ambience"] } }
+  ],
+
+  "days": {
+    "1": "2026-01-12", "2": "2026-01-13", "3": "2026-01-14", "4": "2026-01-15",
+    "5": "2026-01-16", "6": "2026-01-17", "7": "2026-01-19", "8": "2026-01-20",
+    "9": "2026-01-21", "10": "2026-01-22", "11": "2026-01-23", "12": "2026-01-24",
+    "13": "2026-01-26", "14": "2026-01-27", "15": "2026-01-28", "16": "2026-01-29",
+    "17": "2026-01-30", "18": "2026-01-31"
+  },
+
+  "recces": {
+    "Pudupet auto-parts lane": {
+      "address": "Ellis Road cross, Pudupet, Chennai 600002",
+      "contact": "Traders' association — K. Murthy",
+      "permission": "approved",
+      "power": "Shop supply only, 15A. Bring a silent genny for anything above two 600D units.",
+      "parking": "None in the lane. Unit vehicles on Ellis Road, 200m walk.",
+      "toilets": "Public facility at the Ellis Road junction. Hire two portables.",
+      "bestTime": "05:30–08:30. The lane trades from 09:00 and will not close.",
+      "cost": "₹ 35,000 per day to the association, two days agreed",
+      "notes": "Two days here, both early. The crane wide has to be up before 06:00 or the shutters are in it."
+    },
+    "Selvam's garage, Pudupet": {
+      "address": "Built set — Floor 2, Madhavaram",
+      "contact": "Elango S (art)",
+      "permission": "approved",
+      "power": "Floor supply, 63A three phase",
+      "parking": "Floor compound, 14 vehicles",
+      "toilets": "On the floor",
+      "bestTime": "Any. Blacked out for the two night scenes.",
+      "cost": "₹ 1,80,000 floor rent for 4 days",
+      "notes": "Wall calendar ages in four stages across days 2 and 3 — continuity lives on this set."
+    },
+    "Anbu Chettiar's office, Sowcarpet": {
+      "address": "Built set — Floor 2, Madhavaram",
+      "contact": "Elango S (art)",
+      "permission": "approved",
+      "power": "Floor supply",
+      "parking": "Floor compound",
+      "toilets": "On the floor",
+      "bestTime": "Any",
+      "cost": "Included in floor rent",
+      "notes": "Ceiling is 2.4m by design — no top light. Bounce off the white tile, per DOP."
+    },
+    "Sarasu's dhaba, Gummidipoondi": {
+      "address": "NH-16 service road, km 42, Gummidipoondi",
+      "contact": "Owner — S. Rajammal",
+      "permission": "requested",
+      "power": "None usable. Two 30 KVA gennies, 60m cable run.",
+      "parking": "Service road shoulder, 20 vehicles",
+      "toilets": "Two portables required",
+      "bestTime": "19:00–04:00, both nights",
+      "cost": "₹ 60,000 for two nights plus ₹ 18,000 catering compensation",
+      "notes": "Permission is verbal as of the recce. Yuvaraj chasing the written one — do not lock the date until it lands."
+    },
+    "Buckingham Canal bank, Vyasarpadi": {
+      "address": "Canal bank access off Vyasarpadi Jeeva Nagar",
+      "contact": "Corporation zonal office — Zone 5",
+      "permission": "scouting",
+      "power": "No vehicle access. Battery lighting only.",
+      "parking": "Jeeva Nagar road head, 400m from the set",
+      "toilets": "Two portables at the road head",
+      "bestTime": "20:00–02:00. Embankment is 5.8m wide — the lorry is 2.6m.",
+      "cost": "Not quoted",
+      "notes": "The most exposed day in the film. Second unit, ambulance and a water safety team, and the slide rehearses on the yard before it happens here."
+    },
+    "Kasimedu fish harbour": {
+      "address": "Kasimedu Fishing Harbour, Royapuram",
+      "contact": "Harbour office — Fisheries Department",
+      "permission": "requested",
+      "power": "Harbour supply available at the auction hall, 100m",
+      "parking": "Harbour gate, 10 vehicles only",
+      "toilets": "Harbour facility",
+      "bestTime": "05:42–06:04. Twenty-two minutes of the light we want.",
+      "cost": "₹ 25,000 per day, department receipt",
+      "notes": "Two dawn days, not one. The 2004 dressing goes up in the dark and comes down by 07:00."
+    }
+  },
+
+  "media": [
+    { "title": "Lookbook — lane and sodium nights", "url": "https://example.com/dragan/lookbook-lane", "kind": "Reference image", "why": "", "notes": "38 frames. Sodium reference for scenes 29 and 32.", "linkedTo": "Sowcarpet street" },
+    { "title": "Recce photos — Buckingham Canal bank", "url": "https://example.com/dragan/recce-canal", "kind": "Recce photos", "notes": "Embankment width measured at four points. Read before the stunt meeting.", "linkedTo": "Buckingham Canal bank, Vyasarpadi" },
+    { "title": "Ledger prop artwork, 3 copies", "url": "https://example.com/dragan/ledger-artwork", "kind": "Document", "notes": "Hero, stunt, and the forged-page copy for inserts.", "linkedTo": "Anbu Chettiar's office, Sowcarpet" },
+    { "title": "Kasimedu dawn light test", "url": "https://example.com/dragan/kasimedu-test", "kind": "Video", "notes": "Shot 7 Jan, same week of the year. The window is 22 minutes.", "linkedTo": "Kasimedu fish harbour" }
+  ],
+
+  "contacts": [
+    { "name": "Aravind Sekar", "role": "SELVAM — 'Dragan'", "department": "Cast", "phone": "+91 90000 10001", "email": "aravind@dragan.example", "notes": "Lead. Gearbox workshop done — he can strike a torque wrench on the beat." },
+    { "name": "Lakshmi Priya", "role": "MALLIKA", "department": "Cast", "phone": "+91 90000 10002", "email": "lakshmi@dragan.example", "notes": "Nine days. Scene 32 is hers; keep it late in the schedule." },
+    { "name": "Swetha Ravi", "role": "KAVIYA", "department": "Cast", "phone": "+91 90000 10003", "email": "swetha@dragan.example", "notes": "College permission until 31 Jan only." },
+    { "name": "'Nagappan' Subramani", "role": "ANBU CHETTIAR", "department": "Cast", "phone": "+91 90000 10004", "email": "subramani@dragan.example", "notes": "Four days, all on the office set. Dental prosthetic — 40 minutes in makeup." },
+    { "name": "Deepak Raj", "role": "RAFI", "department": "Cast", "phone": "+91 90000 10005", "email": "deepak@dragan.example", "notes": "Silicone hand cast fitted 6 Jan." },
+    { "name": "Sathish Kumar", "role": "VETRI", "department": "Cast", "phone": "+91 90000 10006", "email": "sathish@dragan.example", "notes": "Rides his own Bullet. Stunt double for the lay-down." },
+    { "name": "R. Jeyachandran", "role": "INSPECTOR JEYARAMAN", "department": "Cast", "phone": "+91 90000 10007", "email": "jeyachandran@dragan.example", "notes": "Three days." },
+    { "name": "Uma Maheswari", "role": "SARASU", "department": "Cast", "phone": "+91 90000 10008", "email": "uma@dragan.example", "notes": "Both dhaba nights, day 11." },
+    { "name": "Anitha George", "role": "DR. NIRMALA", "department": "Cast", "phone": "+91 90000 10009", "email": "anitha@dragan.example", "notes": "Days 13 and 18." },
+    { "name": "K. Ponraj", "role": "PERIYASAMY", "department": "Cast", "phone": "+91 90000 10010", "email": "ponraj@dragan.example", "notes": "Day 15 only — both yard scenes." },
+    { "name": "Master Dhilip", "role": "YOUNG SELVAM", "department": "Cast", "phone": "+91 90000 10011", "email": "dhilip.guardian@dragan.example", "notes": "Minor. Guardian on set, four hours a day, dawn call needs a written exemption." },
+    { "name": "Bharath Kannan", "role": "MURUGAN", "department": "Cast", "phone": "+91 90000 10012", "email": "bharath@dragan.example", "notes": "Day 9 only, both harbour scenes." },
+
+    { "name": "Arunkumar A", "role": "Director", "department": "Direction", "phone": "+91 90000 20001", "email": "arun@dragan.example", "notes": "" },
+    { "name": "Nivetha Balan", "role": "1st AD", "department": "Direction", "phone": "+91 90000 20002", "email": "nivetha@dragan.example", "notes": "Owns the Pudupet traders and the 05:30 calls." },
+    { "name": "Surya Prakash", "role": "2nd AD", "department": "Direction", "phone": "+91 90000 20003", "email": "surya@dragan.example", "notes": "Continuity on the wall calendar." },
+
+    { "name": "Hari Shankar", "role": "Director of Photography", "department": "Camera", "phone": "+91 90000 30001", "email": "hari@dragan.example", "notes": "Alexa 35, Cooke S4." },
+    { "name": "Mohan Das", "role": "Focus puller", "department": "Camera", "phone": "+91 90000 30002", "email": "mohan@dragan.example", "notes": "Macro inserts on days 4 and 3." },
+    { "name": "Jagan R", "role": "Gaffer", "department": "Camera", "phone": "+91 90000 30003", "email": "jagan@dragan.example", "notes": "Battery-only rig for the canal night." },
+
+    { "name": "Fathima Zahra", "role": "Sound recordist", "department": "Sound", "phone": "+91 90000 40001", "email": "fathima@dragan.example", "notes": "Wants the office fan off for every take of scene 33." },
+    { "name": "Vinoth Kumar", "role": "Boom operator", "department": "Sound", "phone": "+91 90000 40002", "email": "vinoth@dragan.example", "notes": "" },
+
+    { "name": "Meera Raghavan", "role": "Production Designer", "department": "Art", "phone": "+91 90000 50001", "email": "meera@dragan.example", "notes": "Both sets on Floor 2, Madhavaram." },
+    { "name": "Elango S", "role": "Art director", "department": "Art", "phone": "+91 90000 50002", "email": "elango@dragan.example", "notes": "Ledger, three copies. Calendar, four stages." },
+
+    { "name": "Divya Nandakumar", "role": "Costume Designer", "department": "Costume", "phone": "+91 90000 60001", "email": "divya@dragan.example", "notes": "Four Selvam shirts, one clean. Torn shirt in four copies for day 14." },
+
+    { "name": "Rekha Mohan", "role": "Hair & Makeup", "department": "Makeup", "phone": "+91 90000 70001", "email": "rekha@dragan.example", "notes": "Chettiar's teeth, Rafi's hand, Selvam's canal mud." },
+
+    { "name": "Bhuvana Sekar", "role": "Producer / Production Manager", "department": "Production", "phone": "+91 90000 80001", "email": "bhuvana@dragan.example", "notes": "" },
+    { "name": "Yuvaraj M", "role": "Production executive", "department": "Production", "phone": "+91 90000 80002", "email": "yuvaraj@dragan.example", "notes": "Holds the Stanley Hospital shift-by-shift permission file." },
+    { "name": "Thenmozhi K", "role": "Accountant", "department": "Production", "phone": "+91 90000 80003", "email": "thenmozhi@dragan.example", "notes": "" },
+
+    { "name": "Praveen Antony", "role": "Editor", "department": "Post", "phone": "+91 90000 90001", "email": "praveen@dragan.example", "notes": "Cutting from day 3." },
+    { "name": "Sanjay Iyer", "role": "Composer / Sound Designer", "department": "Post", "phone": "+91 90000 90002", "email": "sanjay@dragan.example", "notes": "Eleven cues. Nothing in the office." }
+  ],
+
+  "callSheets": [
+    {
+      "title": "Dragan — Day 1",
+      "day": 1,
+      "generalCall": "05:15",
+      "location": "Pudupet auto-parts lane (unit base: Ellis Road)",
+      "notes": "Lane trades from 09:00 and will not close — we are wrapped and off the lane by 08:45, no exceptions. Crane up before 06:00 for the scene 2 wide. Association liaison K. Murthy meets the 1st AD at the Ellis Road junction at 05:00. Two portables on the corner.",
+      "sceneNumbers": ["2", "11"],
+      "calls": {
+        "Nivetha Balan": "04:45",
+        "Hari Shankar": "05:00",
+        "Jagan R": "05:00",
+        "Aravind Sekar": "05:30",
+        "Deepak Raj": "05:30",
+        "Sathish Kumar": "06:30",
+        "Fathima Zahra": "05:15",
+        "Divya Nandakumar": "05:00",
+        "Rekha Mohan": "05:00",
+        "Yuvaraj M": "04:30"
+      }
+    },
+    {
+      "title": "Dragan — Day 11",
+      "day": 11,
+      "generalCall": "17:00",
+      "location": "Sarasu's dhaba, NH-16 service road km 42, Gummidipoondi",
+      "notes": "Night exterior, two scenes, wrap 04:00. Two 30 KVA gennies, 60m cable run — nothing off the dhaba supply. Balloon light on the scissor lift goes up in daylight. Three strays live on the site; animal handler on standby and no food left out between setups. Written permission carried by the production executive.",
+      "sceneNumbers": ["16", "22"],
+      "calls": {
+        "Nivetha Balan": "16:00",
+        "Hari Shankar": "16:15",
+        "Jagan R": "15:00",
+        "Aravind Sekar": "17:30",
+        "Sathish Kumar": "17:30",
+        "Uma Maheswari": "17:00",
+        "Fathima Zahra": "16:30",
+        "Vinoth Kumar": "16:30",
+        "Rekha Mohan": "16:30",
+        "Bhuvana Sekar": "17:00"
+      }
+    }
+  ],
+
+  "shots": [
+    { "scene": "2", "number": "1", "size": "EWS", "angle": "high", "movement": "crane", "lens": "18mm", "description": "Crane down the length of the lane, finding Selvam small in it. One take, before the shutters open." },
+    { "scene": "2", "number": "2", "size": "MS", "angle": "eye level", "movement": "handheld", "lens": "32mm", "description": "Travel with Selvam at waist level. Every greeting comes from off-frame." },
+    { "scene": "2", "number": "3", "size": "CU", "angle": "eye level", "movement": "static", "lens": "50mm", "description": "The gearbox in the gunny sack changing hands. No faces." },
+    { "scene": "2", "number": "4", "size": "MLS", "angle": "low", "movement": "static", "lens": "25mm", "description": "The shutter that calls him Dragan. Held two beats after he leaves frame." },
+
+    { "scene": "3", "number": "1", "size": "WS", "angle": "eye level", "movement": "static", "lens": "25mm", "description": "The garage entire, one practical. Establishes where the bench is for the rest of the film." },
+    { "scene": "3", "number": "2", "size": "MCU", "angle": "eye level", "movement": "static", "lens": "50mm", "description": "Selvam over the gearbox, listening rather than looking." },
+    { "scene": "3", "number": "3", "size": "ECU", "angle": "overhead", "movement": "static", "lens": "100mm macro", "description": "The envelope. Eleven thousand, counted twice, and the fold." },
+    { "scene": "3", "number": "4", "size": "MS", "angle": "eye level", "movement": "pan", "lens": "32mm", "description": "Rafi to the calendar and back. First plant of the date." },
+
+    { "scene": "16", "number": "1", "size": "LS", "angle": "eye level", "movement": "static", "lens": "32mm", "description": "The dhaba from the lorry's cab. Vetri is already in the frame and we do not point at him." },
+    { "scene": "16", "number": "2", "size": "MS", "angle": "eye level", "movement": "dolly", "lens": "50mm", "description": "Push to the table as the licence comes out of the jacket." },
+    { "scene": "16", "number": "3", "size": "ECU", "angle": "overhead", "movement": "static", "lens": "100mm macro", "description": "Selvam's own name on a licence he has never held. Legible — the audience reads it with him." },
+    { "scene": "16", "number": "4", "size": "MCU", "angle": "eye level", "movement": "static", "lens": "75mm", "description": "Sarasu at the stove, hearing all of it and saying nothing." },
+
+    { "scene": "24", "number": "1", "size": "EWS", "angle": "high", "movement": "drone", "lens": "24mm", "description": "The embankment from above: 5.8 metres of bank, 2.6 metres of lorry. The whole chase is in this shot." },
+    { "scene": "24", "number": "2", "size": "MS", "angle": "low", "movement": "track", "lens": "32mm", "description": "Wheel-height track with the near-side tyre, 40cm from the edge. Second unit." },
+    { "scene": "24", "number": "3", "size": "CU", "angle": "eye level", "movement": "handheld", "lens": "50mm", "description": "Selvam in the cab at eleven kilometres an hour, which is the fastest anybody moves in this film." },
+    { "scene": "24", "number": "4", "size": "WS", "angle": "eye level", "movement": "static", "lens": "25mm", "description": "Rafi's fall, in one, from across the water. No cut into it." }
+  ],
+
+  "frames": [
+    { "scene": "2", "shotNumber": "1", "caption": "Crane down the lane — board 1 of 3", "ref": "https://example.com/dragan/board/sc02-01" },
+    { "scene": "3", "shotNumber": "3", "caption": "The envelope, overhead", "ref": "Overhead insert. Bench, one practical, hands only. The fold is the whole shot." },
+    { "scene": "16", "shotNumber": "3", "caption": "The licence insert", "ref": "https://example.com/dragan/board/sc16-03" },
+    { "scene": "24", "shotNumber": "1", "caption": "Embankment from above", "ref": "Drone plate. Bank runs bottom-left to top-right; lorry enters bottom of frame." }
+  ],
+
+  "boards": [
+    { "name": "Palette", "note": "Grease black, ledger red, sodium orange. Nothing else gets to be saturated.",
+      "entries": [
+        { "title": "Ledger red", "ref": "https://example.com/dragan/palette/ledger-red", "why": "The only red in the film. It appears on paper and on nothing else." },
+        { "title": "Sodium orange", "ref": "https://example.com/dragan/palette/sodium", "why": "Every night exterior. We match the lighting balloon to the street, not the other way round." },
+        { "title": "Grease black", "ref": "Swatch card — matte, 8% reflectance", "why": "The garage, the shirts, the gearbox. Warm shadows so paper still reads in it." }
+      ] },
+    { "name": "Light", "note": "Practicals first. If the room has one bulb, the frame has one bulb.",
+      "entries": [
+        { "title": "Single-bulb garage", "ref": "https://example.com/dragan/light/garage", "why": "Scene 19 is lit by the inspection lamp Rafi is holding." },
+        { "title": "Stanley corridor, day", "ref": "https://example.com/dragan/light/corridor", "why": "Windows and tube lights together — no unit source at all in the wide." },
+        { "title": "Battery-only canal", "ref": "Gaffer's test, 4 Jan", "why": "No vehicle access for a genny. Everything on day 14 runs off blocks." }
+      ] }
+  ],
+
+  "script": {
+    "elements": [
+      { "type": "scene", "text": "EXT. KASIMEDU FISH HARBOUR - DAWN (2004)" },
+      { "type": "action", "text": "Ice, and the smell of it. Two brothers work a slab down a ramp with hooks. MURUGAN, thirty, does the pulling. YOUNG SELVAM, fourteen, does the steering." },
+      { "type": "action", "text": "A man in a white shirt waits at the bottom of the ramp with a paper on a clipboard. He has been waiting a while and does not mind." },
+      { "type": "character", "text": "MAN" },
+      { "type": "dialogue", "text": "Here. And here." },
+      { "type": "action", "text": "Murugan wipes his hand on his lungi twice before he takes the pen. Young Selvam leans in to read the page." },
+      { "type": "character", "text": "YOUNG SELVAM" },
+      { "type": "paren", "text": "(reading)" },
+      { "type": "dialogue", "text": "\"...at two percent per month, compounding...\"" },
+      { "type": "character", "text": "MURUGAN" },
+      { "type": "dialogue", "text": "Don't show off." },
+      { "type": "action", "text": "Murugan puts his thumb on the ink pad. He presses it to the paper, slow and careful, the way a man does a thing he is proud of doing properly." },
+      { "type": "action", "text": "The man in the white shirt looks at the thumbprint. Then he takes the clipboard back." },
+      { "type": "transition", "text": "CUT TO:" },
+
+      { "type": "scene", "text": "EXT. PUDUPET AUTO-PARTS LANE - DAY" },
+      { "type": "action", "text": "Twenty years later, and a metre narrower. Shutters both sides, stacked to the ceiling with gearboxes, alternators, half a bus. SELVAM, forty-four, walks up the middle of it with a gunny sack on one shoulder." },
+      { "type": "action", "text": "A shutter calls out." },
+      { "type": "character", "text": "SHOPKEEPER 1" },
+      { "type": "dialogue", "text": "Dragan! Fifty-two teeth, not fifty-four. I told you." },
+      { "type": "action", "text": "Selvam does not stop." },
+      { "type": "character", "text": "SELVAM" },
+      { "type": "dialogue", "text": "You told me on Thursday. It was already open on Wednesday." },
+      { "type": "action", "text": "Laughter down the lane. Another shutter." },
+      { "type": "character", "text": "SHOPKEEPER 2" },
+      { "type": "dialogue", "text": "Dragan, tea?" },
+      { "type": "character", "text": "SELVAM" },
+      { "type": "dialogue", "text": "After." },
+      { "type": "action", "text": "Nobody in the lane uses his name. It has been so long that nobody in the lane remembers there is one." },
+      { "type": "transition", "text": "CUT TO:" },
+
+      { "type": "scene", "text": "INT. SELVAM'S GARAGE, PUDUPET - DAY" },
+      { "type": "action", "text": "One room, one bulb on a wandering lead, and a bench that has been in the same place since 2006. RAFI, nineteen, is under the lorry. Selvam is over the gearbox." },
+      { "type": "action", "text": "On the bench: an envelope. Beside it, a wall calendar, January." },
+      { "type": "character", "text": "RAFI" },
+      { "type": "dialogue", "text": "Third gear is the one making the noise." },
+      { "type": "character", "text": "SELVAM" },
+      { "type": "dialogue", "text": "Third gear is telling you about second gear. Listen again." },
+      { "type": "action", "text": "Rafi listens again. Selvam picks up the envelope, opens it, and counts the notes. He counts them a second time, and folds the flap the way he has folded it two hundred and forty times." },
+      { "type": "character", "text": "RAFI" },
+      { "type": "dialogue", "text": "Anna. How much is left on it?" },
+      { "type": "action", "text": "Selvam puts the envelope in his shirt pocket." },
+      { "type": "character", "text": "SELVAM" },
+      { "type": "dialogue", "text": "Same as last month." }
+    ],
+    "documents": [
+      { "title": "Dragan — treatment, draft 4", "kind": "Treatment",
+        "body": "A man pays a debt for twenty years because reading it would mean calling his dead brother a liar.\n\nSELVAM repairs lorry gearboxes in a Pudupet lane where nobody uses his name. On the first of every month he counts eleven thousand rupees into an envelope and carries it to ANBU CHETTIAR in Sowcarpet, against a promissory note his brother MURUGAN signed at the Kasimedu ice ramp in 2004. The principal has never moved. Selvam has never asked it to.\n\nHis niece KAVIYA needs ninety-two thousand rupees by the thirty-first. There is no instalment scheme for a second-year transfer. For the first time in twenty years Selvam asks to hold the note, and Chettiar — who has not been asked twice in two decades — lets him.\n\nRAFI, nineteen, reads it for him. The signature is a signature. Murugan put his thumb on every paper he ever touched, because a thumb was what he had.\n\nWhat follows is not a revenge film. A photograph of a page is not a document, as INSPECTOR JEYARAMAN explains on the Marina without any unkindness at all; the original book is in an almirah, and the price of the almirah opening is one consignment driven to Nellore and back with a manifest that lists two things which do not exist. Selvam drives it. He signs a weighbridge slip four tonnes light, and in signing it he does the exact thing he is trying to undo.\n\nThe almirah opens in the third act and the ledger is not in it. It is on a canal bank in Vyasarpadi, where a frightened man threw it, and getting to it costs Rafi the use of a hand for four months.\n\nThe film ends with the smallest possible act. Selvam stands in the lane at six in the morning and reads the note out loud — all of it, including the part that says his brother could not write his own name. MALLIKA stands next to him while he does it. The receipt goes on the rice tin where the fee notice used to be.\n\n110 pages. 36 scenes. 18 days. No song sequence." },
+      { "title": "Director's statement", "kind": "Director's Statement",
+        "body": "I grew up in a street where at least four families were paying something they had not signed. Nobody thought this was strange, and nobody thought it was a story either, because the whole thing is paperwork and paperwork is supposed to be boring.\n\nSo the discipline of this film is that every document on screen is legible. If a page is held up to a bulb, the audience reads it at the same moment the character does. That one rule decides the lenses (a 100mm macro is on the truck every day), the lighting (practicals first, warm shadows, nothing crushed), and the blocking (the office is always shot from the visitor's chair).\n\nThere is one chase, and it happens at eleven kilometres an hour on an embankment three metres wider than the vehicle on it. It is the most frightening thing in the film precisely because nothing in it is fast.\n\nWhat I do not want: a montage of the twenty years, a slow-motion entry, or a single frame of violence the audience enjoys. What I do want is for somebody to leave the theatre and go home and read something they have been paying." },
+      { "title": "One-pager — for the market", "kind": "One-Pager",
+        "body": "DRAGAN\nCrime drama · Tamil · 110 pages · 18 shoot days · ₹4.6 cr\n\nLOGLINE\nA Pudupet mechanic who has paid his dead brother's debt for twenty years finds the ledger was forged, and has to say so in front of the street that named him.\n\nWHY NOW\nIndia is a country of documents people cannot read and payments they cannot stop. The film is small, specific and has no villain who is wrong.\n\nCOMPARABLES\nVisaranai (2015) · Kuttrame Thandanai (2016) · Jai Bhim (2021) for the procedural spine.\n\nPACKAGE\nDirector Arunkumar A · DOP Hari Shankar · Editor Praveen Antony · PD Meera Raghavan · Producer Bhuvana Sekar, Red Ice Pictures.\n\nSTATUS\nDraft 4 locked 22 Dec 2025. Recce complete. Floor from 12 Jan 2026. Two locations pending written permission." },
+      { "title": "Character bible — Selvam", "kind": "Character Bible",
+        "body": "SELVAM, 44. Called Dragan since 2006, after a dragon on a lorry mudflap he rebuilt; the name stuck because it was easier than his.\n\nWANT: the original ledger, and the fee receipt in Kaviya's hand before the 31st.\nNEED: to let his brother be smaller than he has been keeping him.\nLIE: if I keep paying, nothing else has to be said.\nWOUND: he read the note aloud at fourteen and was told to stop showing off. He has not read anything aloud since.\nSKILL: he can hear a gearbox and name the tooth.\nFLAW: he mistakes silence for protection.\n\nHOW HE CHANGES: nothing external forces the last scene. No police officer needs it, no court requires it, and Kaviya's fee is already paid. He reads the note out loud in the lane because the only way to stop paying a debt you never owed is to say out loud that you never owed it." }
+    ]
+  },
+
+  "calc": [
+    { "item": "ARRI Alexa 35",          "days": "18", "rate": "30000" },
+    { "item": "Cooke S4 lens kit",      "days": "18", "rate": "12000" },
+    { "item": "Aputure 600D Pro",       "days": "18", "rate": "4500"  },
+    { "item": "Dolly + 30ft track",     "days": "6",  "rate": "8000"  },
+    { "item": "Drone + pilot",          "days": "1",  "rate": "35000" },
+    { "item": "Sound recordist + kit",  "days": "18", "rate": "12000" },
+    { "item": "Generator 30 KVA",       "days": "20", "rate": "6500"  },
+    { "item": "Production van",         "days": "18", "rate": "4000"  },
+    { "item": "DOP",                    "days": "18", "rate": "25000" },
+    { "item": "1st AD",                 "days": "25", "rate": "12000" },
+    { "item": "Camera car",             "days": "3",  "rate": "9000"  },
+    { "item": "DI / color grade",       "days": "1",  "rate": "450000" }
+  ]
+}

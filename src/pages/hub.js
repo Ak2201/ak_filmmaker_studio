@@ -67,6 +67,15 @@ import rules       from '../data/rules.json';
 import watchlist   from '../data/watchlist.json';
 import festivals   from '../data/festivals.json';
 import prodData    from '../data/steps.production.json';
+import sample      from '../data/sample.dragan.json';
+
+/* The sample project writes through the same models every page reads,
+   so the ids and key shapes it produces cannot drift from the ones the
+   app expects. `formatEighths` and `locationKey` are imported rather
+   than re-implemented for that reason — a second copy of either is a
+   second representation, and CLAUDE.md is explicit about the cost. */
+import { formatEighths } from '../lib/scenes.js';
+import { locationKey, locationLink } from '../lib/locations.js';
 
 // ============================================================
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
@@ -582,8 +591,8 @@ function startMarkup() {
           </a>
           <a class="start-card" href="${FEATURE_URL}">
             <div class="question">PATH D · I want a complete example</div>
-            <h4>Load the Por Thozhil sample</h4>
-            <p>Open the Feature Blueprint, click <strong>SAMPLE</strong> in the toolbar. Loads a fully filled blueprint based on the 2023 Tamil thriller.</p>
+            <h4>Load the ${esc(sample.title)} sample</h4>
+            <p>Open the Feature Blueprint, click <strong>SAMPLE</strong> in the toolbar. Loads a fully filled blueprint for a ${sampleDays()}-day feature — or take the whole project, ${sample.scenes.length} scenes and a unit list included, from the projects panel. The worked examples inside the steps are still based on <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> and the 2023 Tamil thriller <em>Por Thozhil</em>.</p>
             <span class="arrow">OPEN  →</span>
           </a>
         </div>
@@ -1647,74 +1656,242 @@ function renderFirstRun() {
     h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' }),
     h('button.btn', { 'data-action': 'sample-project', text: 'OPEN A SAMPLE PROJECT' })
   ]));
-  panel.append(h('div.eps-fine', { text: 'The sample is a real project you can edit or delete — it just arrives with a few fields filled in.' }));
+  panel.append(h('div.eps-fine', {
+    text: 'The sample is a real project you can edit or delete — it just arrives with a few '
+        + 'hundred fields filled in: a feature, ' + sample.scenes.length + ' scenes, a crew and a budget, '
+        + 'so every module has something to show.'
+  }));
   return panel;
 }
 
-/* THE SAMPLE PROJECT — Dragon (2025), dir. Ashwath Marimuthu.
+/* ------------------------------------------------------------
+   THE SAMPLE PROJECT — Dragan, a feature.
 
-   A real film rather than an invented one, and the same film the
-   case studies and the Save the Cat sheet already take apart. Someone
-   opening the sample can put this page next to study.html and see the
-   same structure from two directions: the blueprint as the writer
-   filled it in, and the analysis of what that produced.
+   ONE sample. There were two: a four-scene "Sample — Dragon" seeded
+   here, and a separate Por Thozhil field dump inside feature.js with
+   its own copy fetched from a root JSON file. Two samples are two
+   answers to "what does a filled studio look like", and the short one
+   could not fill a single downstream module — four scenes across two
+   shoot days gave the stripboard two strips, the day out of days two
+   columns and the estimator nothing worth deriving from.
 
-   The fields below are this studio's questions answered FROM the
-   finished film — a reconstruction of the paperwork, not a transcript
-   of it. That is what makes it a useful thing to poke at: every
-   answer is short, specific, and visibly editable. */
+   Dragan is a feature: 36 scenes, 110 pages, 18 shoot days, 14
+   locations, 12 speaking parts and 29 people on the unit list, so the
+   breakdown, stripboard, day out of days, call sheet, contacts,
+   visualize, write, plan, budget and dashboard all have something
+   real to render.
 
-const SAMPLE_TITLE = 'Sample — Dragon';
+   THE CONTENT IS NOT HERE. It is src/data/sample.dragan.json —
+   invariant 2, content lives in the data files. This function is the
+   only thing that knows how to WRITE it, and it writes through the
+   same key shapes the app reads back:
 
-const SAMPLE_FIELDS = {
-  s1_whatif:    'What if the shortcut worked? What if a forged degree got you the life you wanted, and the only person who could take it away decided to make you earn it instead?',
-  s1_why_me:    'Everyone I studied with knows somebody who padded a CV. Nobody talks about what it costs to stop.',
-  s1_image:     'A gold medal in one hand and a forged certificate in the other, fifteen years apart, both of them opening the same door.',
-  s2_log1:      'A college dropout fakes a degree, builds a career on it, and is found out.',
-  s2_log_final: 'A gifted student who quit after a rejection talks his way into a corporate career on a forged degree — until his old dean offers him a choice: confess and lose everything, or clear forty-eight arrears in three months and keep it.',
-  s3_theme:     'A shortcut is a loan. The interest is paid by somebody else.',
-  s3_ext:       'Can he clear forty-eight arrears in three months?',
-  s3_int:       'Can he become someone whose word is worth what people already assume it is?',
-  s4_arc:       'From a boy who believed being good was not rewarded, to a man who accepts the consequence nobody was forcing on him.',
-  s5_name:      'S. Mayilvahanan, the dean',
-  s5_want:      'That the certificate on the wall should mean what it says.',
-  s5_philosophy: 'An institution that lets one forgery stand has signed every other one it ever issued.',
-  s5_hero:      'He is not wrong. That is the point — giving the antagonist a correct position is what removes the easy exit from the plot.',
-  s7_era:       'Present day',
-  s7_location:  'An engineering college, and the glass floor of a multinational',
-  s7_duration:  'Roughly four years, compressed around a three-month deadline'
-};
+     fms_filmmaker_combined_v1   the blueprint blob, field → value
+     fms_scenes_v1               { scenes: [...] }        scenes.js
+     fms_contacts_v1             { contacts, callSheets } contacts.js
+     fms_locations_v1            { days, recces, media }  locations.js
+     fms_shots_v1                { shots, frames, boards } shots.js
+     fms_script_v1               { elements, revisions, documents }
+     fms_library_calc_v1         ci_<n>_item|days|rate    ui/budget.js
 
-/* Scene one is the 2014 prologue. The three after it are the pivot,
-   so the breakdown, stripboard and budget all have something real to
-   read — two shoot days, three locations, mixed INT/EXT. */
+   Every one of those is in SCOPED_KEYS, and createProject() has
+   already made the new project current, so the storage proxy suffixes
+   all seven writes with its id. Nothing here goes near rawSet.
 
-const SAMPLE_SCENES = [
-  { number: '1',  intExt: 'INT', dayNight: 'DAY',   location: 'School auditorium — 2014', eighths: 10,
-    synopsis: 'A gold medal in computer science. He has earned every bit of it, and the film shows him earning it.', shootDay: '1' },
-  { number: '2',  intExt: 'EXT', dayNight: 'DAY',   location: 'School corridor', eighths: 6,
-    synopsis: 'He states the whole plan out loud — engineering, masters abroad, then marriage. Every later compromise is measured against this.', shootDay: '1' },
-  { number: '3',  intExt: 'EXT', dayNight: 'EVENING', location: 'College gate', eighths: 12,
-    synopsis: 'The rejection, and the reason given for it. The film plants its theme here as its own inversion.', shootDay: '2' },
-  { number: '4',  intExt: 'INT', dayNight: 'NIGHT', location: 'Hostel room', eighths: 8,
-    synopsis: 'No deliberation. He converts the humiliation straight into a new name and a new self.', shootDay: '2' }
+   ONE REPRESENTATION PER THING. Scene ids are DERIVED from the scene
+   number; the data file refers to a scene by number and never writes
+   an id. Shoot days, locations, cast, page counts and a call sheet's
+   date are likewise never listed in the file — they are what the
+   scene rows and the calendar already say. The blueprint's own legacy
+   scene/cast/location tables (sl_*, cast_*, loc_*) are left empty on
+   purpose: filling them would be the scene list stored twice, which
+   is the stranded-key trap by another name.
+   ------------------------------------------------------------ */
+
+const SAMPLE_TITLE = sample.title;
+
+const sampleSceneId   = (number) => 'dragan-sc-' + String(number);
+const sampleContactId = (i)      => 'dragan-c-' + (i + 1);
+const sampleShotId    = (scene, number) => 'dragan-sh-' + scene + '-' + number;
+
+/** Pages per day as the schedule step's <select> words it. Assigning a
+    value that is not one of its options silently blanks the field —
+    the select trap src/ui/budget.js documents — so this maps the
+    derived figure onto the vocabulary that exists. */
+const PAGES_PER_DAY_BANDS = [
+  [1.5, '~1 page (heavy production)'],
+  [2.5, '~2 pages (standard prestige)'],
+  [3.5, '~3 pages (mainstream)'],
+  [4.5, '~4 pages (TV / fast-paced)'],
+  [Infinity, '~5+ pages (indie / low-budget)']
 ];
+
+function sampleScenes() {
+  return sample.scenes.map((s) => ({ ...s, id: sampleSceneId(s.number) }));
+}
+
+/* The two figures the hub quotes about the sample, derived from the
+   scene rows so the prose cannot drift from the board. Function
+   declarations, because the "where to start" markup is built before
+   this section in source order and reads them. */
+function sampleDays() {
+  return new Set(sample.scenes
+    .map((s) => parseInt(s.shootDay, 10))
+    .filter((n) => Number.isFinite(n) && n > 0)).size;
+}
+
+function samplePages() {
+  return formatEighths(sample.scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0));
+}
+
+/** The blueprint blob: the written answers, the ticked checklists, and
+    the four figures that are DERIVED from the schedule rather than
+    typed beside it, so the paperwork cannot disagree with the board. */
+function sampleBlueprint(scenes) {
+  const fields = { ...sample.blueprint };
+  fields.meta_title = sample.title;
+  fields.v1_title   = sample.title;
+
+  const days = sampleDays();
+  const eighths = scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const perDay = days ? (eighths / 8) / days : 0;
+
+  fields.p3_days     = String(days);
+  fields.v2s11_days  = String(days);
+  fields.v2s11_pages = (PAGES_PER_DAY_BANDS.find(([max]) => perDay < max) || [])[1] || '';
+  fields.v2_shoot    = days + ' days · ' + formatEighths(eighths) + ' pages';
+
+  for (const key of sample.blueprintChecks) fields[key] = true;
+  return fields;
+}
+
+function sampleContacts() {
+  return sample.contacts.map((c, i) => ({ ...c, id: sampleContactId(i) }));
+}
+
+/** A call sheet holds ids, never copies — contacts.js is explicit
+    about it — and its date comes off the shoot-day calendar rather
+    than being written down a second time. */
+function sampleCallSheets(contacts) {
+  const idByName = new Map(contacts.map((c) => [c.name, c.id]));
+  return sample.callSheets.map((cs, i) => ({
+    id: 'dragan-cs-' + (i + 1),
+    title: cs.title,
+    date: sample.days[String(cs.day)] || '',
+    generalCall: cs.generalCall,
+    location: cs.location,
+    notes: cs.notes,
+    sceneIds: (cs.sceneNumbers || []).map(sampleSceneId),
+    calls: Object.fromEntries(Object.entries(cs.calls || {})
+      .map(([name, time]) => [idByName.get(name), time])
+      .filter(([id]) => Boolean(id)))
+  }));
+}
+
+/** Recces are filed under locations.js's normalised key and media
+    under its `loc:` link token, both derived from the location name a
+    scene already carries. */
+function sampleLocations() {
+  const recces = {};
+  for (const [name, rec] of Object.entries(sample.recces)) recces[locationKey(name)] = rec;
+  return {
+    days: { ...sample.days },
+    recces,
+    media: sample.media.map((m, i) => ({
+      id: 'dragan-md-' + (i + 1),
+      title: m.title,
+      url: m.url || '',
+      kind: m.kind,
+      notes: m.notes || '',
+      linkedTo: m.linkedTo ? locationLink(m.linkedTo) : ''
+    }))
+  };
+}
+
+function sampleShots() {
+  const shots = sample.shots.map((s) => ({
+    id: sampleShotId(s.scene, s.number),
+    sceneId: sampleSceneId(s.scene),
+    number: s.number,
+    size: s.size,
+    angle: s.angle,
+    movement: s.movement,
+    lens: s.lens,
+    description: s.description,
+    done: false,
+    ai: false
+  }));
+  const frames = sample.frames.map((f, i) => ({
+    id: 'dragan-fr-' + (i + 1),
+    shotId: sampleShotId(f.scene, f.shotNumber),
+    caption: f.caption,
+    ref: f.ref
+  }));
+  const boards = sample.boards.map((b, i) => ({
+    id: 'dragan-bd-' + (i + 1),
+    name: b.name,
+    note: b.note || '',
+    entries: (b.entries || []).map((e, j) => ({
+      id: 'dragan-bd-' + (i + 1) + '-en-' + (j + 1),
+      title: e.title, ref: e.ref || '', why: e.why || ''
+    }))
+  }));
+  return { shots, frames, boards };
+}
+
+function sampleScript() {
+  const now = new Date().toISOString();
+  return {
+    elements: sample.script.elements.map((e, i) => ({
+      id: 'dragan-el-' + (i + 1), type: e.type, text: e.text
+    })),
+    // No revision history: a snapshot the user did not take is a
+    // fiction, and restoring one would silently replace their draft.
+    revisions: [],
+    documents: sample.script.documents.map((d, i) => ({
+      id: 'dragan-doc-' + (i + 1),
+      title: d.title, kind: d.kind, body: d.body, updated: now
+    }))
+  };
+}
+
+/** The estimator stores one flat field per cell, `ci_<n>_item|days|rate`,
+    1-indexed. Unchanged shape on purpose — invariant 1. */
+function sampleCalc() {
+  const data = {};
+  sample.calc.forEach((row, i) => {
+    const n = i + 1;
+    data['ci_' + n + '_item']   = row.item;
+    data['ci_' + n + '_custom'] = '';
+    data['ci_' + n + '_days']   = row.days;
+    data['ci_' + n + '_rate']   = row.rate;
+  });
+  return data;
+}
 
 function openSampleProject() {
   const project = Store.createProject({ title: SAMPLE_TITLE, format: 'feature' });
   // createProject() has already made this the current project, so the
-  // storage proxy scopes both writes below to it.
+  // storage proxy scopes every write below to it.
+  const scenes   = sampleScenes();
+  const contacts = sampleContacts();
   try {
-    localStorage.setItem('fms_filmmaker_combined_v1', JSON.stringify(SAMPLE_FIELDS));
-    localStorage.setItem('fms_scenes_v1', JSON.stringify({
-      scenes: SAMPLE_SCENES.map((s, i) => ({
-        id: 'sample-' + (i + 1), pageNumber: '', elements: {}, ...s
-      }))
+    localStorage.setItem(FEATURE_KEY,  JSON.stringify(sampleBlueprint(scenes)));
+    localStorage.setItem(SCENES_KEY,   JSON.stringify({ scenes }));
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify({
+      contacts, callSheets: sampleCallSheets(contacts)
     }));
+    localStorage.setItem(LOCS_KEY,     JSON.stringify(sampleLocations()));
+    localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots()));
+    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript()));
+    localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc()));
   } catch (e) { /* private mode — the project itself still exists */ }
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {
-    StudioUI.toast('Sample project open. Four scenes, a logline and a theme — edit or delete any of it.',
+    StudioUI.toast(
+      sample.title + ' is open — ' + scenes.length + ' scenes, ' + samplePages()
+      + ' pages, ' + sampleDays() + ' shoot days, ' + contacts.length
+      + ' on the unit list. Edit or delete any of it.',
       { type: 'ok', duration: 6000 });
   }
 }

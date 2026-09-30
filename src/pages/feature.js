@@ -75,6 +75,13 @@ import {
 } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
+/* The ONE sample in the studio. The hub seeds the whole project from
+   this file; the SAMPLE button here fills this page's fields from the
+   same `blueprint` block, so the two cannot describe different films.
+   It used to be a second sample — a Por Thozhil field dump embedded
+   below and fetched from a root JSON file — which is the "one fact,
+   two sources" fault CLAUDE.md keeps paying for. */
+import SAMPLE from '../data/sample.dragan.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
@@ -552,7 +559,7 @@ function renderToolbar() {
     { label: 'Sync settings',    href: '#sync-section' },
     '---',
     { label: 'Import JSON',      action: 'importData' },
-    { label: 'Load sample',      action: 'loadSamplePack',    title: 'Load the Por Thozhil pre-filled sample' },
+    { label: 'Load sample',      action: 'loadSamplePack',    title: 'Load the ' + SAMPLE.title + ' pre-filled sample blueprint' },
     '---',
     { label: 'Reset this blueprint', action: 'resetData', danger: true }
   ], { align: 'right' });
@@ -2104,28 +2111,45 @@ function computeProgress() {
 
 /* ============================================================
    SAMPLE PACK LOADER
+   ------------------------------------------------------------
+   Fills this page's fields from the ONE sample in the studio,
+   src/data/sample.dragan.json — the same file the hub seeds a whole
+   sample project from. It used to be a second sample: a Por Thozhil
+   field dump embedded in this file, with a third copy fetched from
+   arunak-portothozhil-sample.json at the site root and silently
+   preferred when it happened to be served. Three sources for one
+   fact, which is the fault this codebase keeps paying for.
+
+   Two real bugs came out with them:
+
+     1. `el.value = true` ON AN <li>. HTMLLIElement.value is an
+        ordinal, not a string — the trap CLAUDE.md names. The
+        checklists carry data-key on <li>, so a sample with ticks in
+        it set li.value to 1 and ticked nothing. Checklist items are
+        now toggled the way loadData() toggles them, by class.
+     2. The fetch. A page loaded from file:// fell through to the
+        embedded copy, so the same button produced two different
+        blueprints depending on how the page was served. There is no
+        fetch now; the data is a build-time import.
    ============================================================ */
-async function loadSamplePack() {
-  if (!confirm('This will REPLACE your current data with the Por Thozhil sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
+function loadSamplePack() {
+  if (!confirm('This will REPLACE your current data with the ' + SAMPLE.title
+    + ' sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
   try {
-    // Try fetching the companion file first
-    let sample = null;
-    try {
-      const res = await fetch('arunak-portothozhil-sample.json');
-      if (res.ok) sample = await res.json();
-    } catch (e) { /* fetch may fail on file:// — fall through to embedded */ }
-    if (!sample) {
-      // Embedded fallback — minimal Por Thozhil data so demo works without companion file
-      sample = { ...EMBEDDED_SAMPLE };
-    }
-    // Strip _about meta
-    delete sample._about;
-    // Apply
-    Object.keys(sample).forEach(k => {
+    const fields = { ...SAMPLE.blueprint, meta_title: SAMPLE.title, v1_title: SAMPLE.title };
+    for (const key of SAMPLE.blueprintChecks) fields[key] = true;
+
+    Object.keys(fields).forEach(k => {
       const el = document.querySelector(`[data-key="${CSS.escape(k)}"]`);
       if (!el) return;
-      if (el.type === 'checkbox') el.checked = !!sample[k];
-      else el.value = sample[k];
+      // <li> first: it has no .type and no meaningful .value, so any
+      // assignment branch that reaches it is wrong.
+      if (el.tagName === 'LI') {
+        const on = !!fields[k];
+        el.classList.toggle('checked', on);
+        el.setAttribute('aria-checked', on ? 'true' : 'false');
+      } else if (el.type === 'checkbox') el.checked = !!fields[k];
+      else el.value = fields[k];
     });
     // Trigger any listeners
     document.querySelectorAll('[data-key]').forEach(el => {
@@ -2134,29 +2158,11 @@ async function loadSamplePack() {
     });
     saveData();
     updateProgress();
-    alert('✓ Por Thozhil sample loaded. Scroll through to see what a complete blueprint looks like.');
+    alert('✓ ' + SAMPLE.title + ' sample loaded. Scroll through to see what a complete blueprint looks like.');
   } catch (err) {
     alert('Could not load sample: ' + err.message);
   }
 }
-
-const EMBEDDED_SAMPLE = {
-  meta_title: 'Por Thozhil',
-  meta_writer: 'Vignesh Raja & Alfred Prakash (sample)',
-  meta_started: 'Sample data',
-  meta_stage: 'Both volumes',
-  v1_title: 'Por Thozhil',
-  v1_genre: 'Crime / Noir',
-  v1_draft: 'Locked — sample',
-  s1_whatif: 'What if a serial killer who stopped after 1979 starts killing again — and a faint-hearted, book-smart rookie has to partner with a reclusive veteran cop to stop him?',
-  s2_log_final: 'When a serial killer who stopped after 1979 starts killing again, a faint-hearted rookie cop must overcome his fear and partner with a reclusive veteran to catch the killer before more young women die.',
-  s3_theme: 'Motive matters more than evidence.',
-  s4_name: 'Prakash',
-  s4_want: 'To do well in his first big case so he can prove himself.',
-  s4_need: 'To accept (or quit) cop work on his own terms.',
-  v2s2_theme: 'Motive matters more than evidence — and patience matters more than force.',
-  v2s2_refuse: 'No songs. No comedy track. No romantic subplot. No mass-hero entry. No daytime ambience. No gore for shock value.'
-};
 
 /* ============================================================
    PITCH DECK BUILDER (HTML slides)

@@ -1077,11 +1077,11 @@ function openMigrationModal(count) {
       '<div class="cm-card" style="max-width:440px;">' +
         '<div class="cm-eyebrow">MIGRATION</div>' +
         '<h2>' + count + ' project' + (count === 1 ? '' : 's') + ' found <em>locally.</em></h2>' +
-        '<p class="cm-deck">Upload to your cloud account so you can edit them on any device, share with collaborators, and never lose work to a cleared browser.</p>' +
-        '<p class="cm-hint">You can decide later — projects stay on this device until uploaded.</p>' +
+        '<p class="cm-deck">Add them to your account so you can edit them on any device, share with collaborators, and never lose work to a cleared browser.</p>' +
+        '<p class="cm-hint">You can decide later, and nothing moves either way: adding a project to your account leaves it on this device too, reachable whether you are signed in or out.</p>' +
         '<div class="cm-actions">' +
           '<button class="cm-btn" id="mmNo">NOT NOW</button>' +
-          '<button class="cm-btn primary" id="mmYes">UPLOAD ALL</button>' +
+          '<button class="cm-btn primary" id="mmYes">ADD TO MY ACCOUNT</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);

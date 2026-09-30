@@ -1234,8 +1234,22 @@ function exportAll() {
   /* v2: EVERY project, not just the active one.
      v1 read the scoped keys straight off localStorage, so the storage
      proxy quietly resolved them to whichever project happened to be
-     open. The file said "full studio backup" and contained one film. */
-  const projects = Store.listProjects();
+     open. The file said "full studio backup" and contained one film.
+
+     listAllProjects, not listProjects: the list is now filtered by
+     ACCOUNT NAMESPACE as well, so the scoped version would have
+     reproduced that same sentence one dimension along — a file
+     calling itself a full studio backup while holding only the
+     namespace you happened to be standing in. The buckets below are
+     read with rawGet by project id, which is namespace-blind, so
+     widening the list is the whole fix.
+
+     Safe to widen because the importer does NOT carry `ns` across:
+     it passes id/title/format to createProject, which stamps the
+     IMPORTING namespace. So a backup taken while signed in restores
+     VISIBLY when signed out, rather than into a namespace the reader
+     cannot see. */
+  const projects = Store.listAllProjects();
   const all = {
     _exported: new Date().toISOString(),
     _from: "The Filmmaker's Studio",
@@ -1411,8 +1425,14 @@ function resetAll() {
   /* This said "erases EVERYTHING" and then called removeItem for each
      scoped key — which the storage proxy resolved to the ACTIVE project
      only. Other projects survived a wipe the user was told was total.
-     Now it means what it says: every project, then the globals. */
-  const projects = Store.listProjects();
+     Now it means what it says: every project, then the globals.
+
+     The account namespace put the same trap back: listProjects()
+     AND deleteProject() are both namespace-scoped, so this promised
+     to erase everything while leaving every account-only project on
+     disk. purgeProjectEverywhere() is the namespace-blind form and
+     exists for exactly this one caller. */
+  const projects = Store.listAllProjects();
   const n = projects.length;
   if (!confirm('This erases EVERYTHING — ' + n + ' project' + (n === 1 ? '' : 's') +
                ', both blueprints, library calc, all prefs, all comments. ' +
@@ -1421,10 +1441,14 @@ function resetAll() {
 
   // deleteProject already wipes that project's namespaced keys, using
   // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
-  projects.forEach((p) => Store.deleteProject(p.id));
+  projects.forEach((p) => Store.purgeProjectEverywhere(p.id));
 
   // Anything still unsuffixed (a studio that predates projects), then globals.
   ALL_KEYS.forEach((k) => Store.rawRemove(k));
+  // The per-namespace open-project pointers. ALL_KEYS knows the bare
+  // name; an account pointer is `…@<uid>`, which it has never heard of,
+  // so a wipe left one behind aiming at a project that no longer exists.
+  Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));
 
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -2242,7 +2266,11 @@ function init() {
     if ([FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY].includes(baseKey)) {
       setTimeout(() => { updateStatus(); detectActivity(); renderActivity(); }, 200);
     }
-    if (e.key === 'fms_studio_projects_v1' || e.key === 'fms_studio_current_project_v1') {
+    // The open-project pointer is per namespace: bare on the device,
+    // `…@<uid>` inside an account. Matching only the bare name meant a
+    // cross-tab project switch never re-rendered while signed in.
+    if (e.key === 'fms_studio_projects_v1' ||
+        (e.key || '').startsWith('fms_studio_current_project_v1')) {
       renderProjects();
       renderProjectSwitcher();
     }

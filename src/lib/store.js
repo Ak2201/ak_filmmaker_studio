@@ -10,6 +10,10 @@
      5. A preamble (`init()` → `installStorageProxy()`) that makes all
         legacy `localStorage.getItem('fms_…')` calls transparently
         scope to the current project — no other code changes needed.
+     6. An ACCOUNT dimension on top of the project one, which renames
+        no key: see the ACCOUNT NAMESPACE section below, and
+        docs/STORAGE-MODEL.md. Signed out is exactly what it always
+        was; signed in sees one account's projects.
 
    ⚠️  LOAD ORDER — READ THIS BEFORE IMPORTING ANYTHING ELSE  ⚠️
    ------------------------------------------------------------
@@ -45,6 +49,12 @@ const global = typeof window !== 'undefined' ? window : globalThis;
 const PROJECTS_KEY        = 'fms_studio_projects_v1';     // array of project meta
 const CURRENT_KEY         = 'fms_studio_current_project_v1'; // string projectId
 const SCHEMA_VERSION_KEY  = 'fms_studio_schema_v1';       // for future migrations
+
+/* WHICH ACCOUNT THIS DEVICE IS SIGNED INTO — the second dimension.
+   See the ACCOUNT NAMESPACE section below for the whole design. The
+   value is a Supabase user id, or absent for "signed out". Absent is
+   the normal state and is not an error. */
+const ACCOUNT_KEY         = 'fms_studio_account_v1';
 
 // Legacy per-blueprint keys that should be project-scoped.
 // Anything in this list gets auto-suffixed with `__<projectId>`
@@ -91,6 +101,109 @@ export function jsonGet(k, fallback) {
 }
 export function jsonSet(k, v) { return rawSet(k, JSON.stringify(v)); }
 
+/* ============================================================
+   ACCOUNT NAMESPACE — the second dimension
+   ------------------------------------------------------------
+   This file already had ONE dimension: a scoped key is suffixed
+   `__<projectId>`. An account is the second, and the whole design
+   below exists to add it WITHOUT RENAMING A SINGLE EXISTING KEY.
+
+   WHY NO RENAME. Every `fms_*` string is a contract with saved work
+   (CLAUDE.md invariant 1). The prefix rename cost 137 literals, a
+   five-property migration and a seeded pre-rename studio to prove it.
+   A second such pass, to bolt an account id onto 15 scoped key names,
+   would put every existing user's months of writing through that risk
+   again for no gain — because the id in `__<projectId>` is ALREADY
+   unique per project, and a project belongs to one namespace.
+
+   SO THE NAMESPACE IS A PROPERTY OF THE PROJECT, NOT OF THE KEY.
+   The single projects list at `fms_studio_projects_v1` keeps its key
+   and its shape (an array of meta objects); each entry gains one
+   additive field, `ns`, listing the namespaces it is visible in:
+
+       ns absent  or  ns: ['']        this device, signed out
+       ns: ['', '<uid>']              this device AND that account
+       ns: ['<uid>']                  that account only (came from the cloud)
+
+   `listProjects()` filters on the current namespace, so signing in
+   changes which projects you can SEE, and therefore which project ids
+   exist to be suffixed — and data separation follows from that,
+   through key strings that are byte-identical to today's.
+
+     • SIGNED OUT is the device namespace and is EXACTLY today's app:
+       same list key, same pointer key, same `__<projectId>` blobs, no
+       login wall, no migration, nothing moved.
+     • SIGNED IN shows that account's projects only. Two accounts
+       cannot see each other's work because no project entry can ever
+       carry two account ids: `createProject` stamps one namespace,
+       and adoption (below) only touches device-ONLY entries. The one
+       way an id reaches two accounts is the server saying so — a
+       claimed share — which is what sharing means.
+     • EXISTING LOCAL WORK IS NEVER MOVED. Signing in does not take a
+       device project away; `adoptDeviceProjects()` ADDS the account to
+       its `ns`, so the same project (and the same single copy of its
+       data — one representation per thing) is reachable both signed in
+       and signed out.
+
+   THE POINTER is the one thing that must differ per namespace, or
+   signing in would leave "current project" aimed at a project you
+   cannot see. The bare `fms_studio_current_project_v1` stays the
+   DEVICE pointer, unchanged in name and in value format; an account
+   uses `fms_studio_current_project_v1@<uid>`. That is a new key, not
+   a renamed one, so there is nothing to migrate.
+
+   IDENTITY IS READ, NEVER DERIVED. `Storage.prototype` is patched at
+   module evaluation, long before the Supabase SDK is even fetched, so
+   this file cannot ask who is signed in — it reads the id that
+   cloud.js last persisted at `fms_studio_account_v1`, raw, exactly as
+   ai.js reads its key. Like the AI key it is in none of the five
+   registries (SCOPED_KEYS, PROJECT_KEYS, ALL_KEYS, the Supabase scope
+   list, GLOBAL_KEYS) — an account id is not project data, must never
+   be project-scoped, must never sync, and must never ride inside a
+   backup file and make another machine claim to be somebody.
+
+   CAPTURED ONCE PER PAGE LOAD, on purpose. A page that read the
+   namespace live would load 359 fields from one namespace and then
+   autosave them into another the moment a session changed underneath
+   it. `_ns` is therefore fixed for the life of the document, and
+   `setAccount()` reloads when it needs the change to be visible now.
+   ============================================================ */
+const DEVICE_NS = '';
+
+function readAccountNs() {
+  const v = rawGet(ACCOUNT_KEY);
+  return (typeof v === 'string' && v.trim()) ? v.trim() : DEVICE_NS;
+}
+
+/* Fixed for this document. See the note above. */
+const _ns = readAccountNs();
+
+/** '' when signed out (the device namespace), else the account id. */
+export function currentNamespace() { return _ns; }
+/** The signed-in account id, or null. Null is the normal state. */
+export function currentAccountId() { return _ns || null; }
+/** Is this page reading and writing an account's data rather than the device's? */
+export function isAccountNamespace(id) {
+  return id == null ? _ns !== DEVICE_NS : String(id) === _ns;
+}
+
+const currentKeyFor = (ns) => (ns ? CURRENT_KEY + '@' + ns : CURRENT_KEY);
+
+/* Namespaces an entry is visible in.
+
+   An ABSENT `ns` means the device: that is what every project written
+   before this change has, and it is what keeps the signed-out app
+   byte-identical. An EMPTY ARRAY is read the same way rather than as
+   "visible nowhere" — `[]` is truthy and has burned this codebase
+   before (the `_sceneMap` trap), and the safe direction for a
+   local-first tool is "still on the device", never "gone". */
+function nsOf(p) {
+  const v = p && p.ns;
+  if (Array.isArray(v) && v.length) return v.filter((x) => typeof x === 'string');
+  return [DEVICE_NS];
+}
+const visibleIn = (p, ns) => nsOf(p).indexOf(ns) >= 0;
+
 // ============================================================
 // PROJECTS — list / CRUD
 // ============================================================
@@ -99,9 +212,63 @@ function uuid() {
   return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
 
-export function listProjects() {
+/* EVERY project on this device, all namespaces. Read this — never
+   `listProjects()` — before writing the list back, or you save a
+   filtered copy and delete every other namespace's projects. */
+function allProjectMeta() {
   const arr = jsonGet(PROJECTS_KEY, []);
   return Array.isArray(arr) ? arr : [];
+}
+function saveAllProjects(arr) { jsonSet(PROJECTS_KEY, arr); }
+
+/* The projects THIS namespace can see. Signed out that is every
+   project written before accounts existed, unchanged. */
+export function listProjects() {
+  return allProjectMeta().filter((p) => visibleIn(p, _ns));
+}
+
+/* Every project on the device regardless of namespace.
+
+   For genuinely device-wide operations — a full backup, a real reset —
+   in the same spirit as the `rawGet(key + '__' + id)` rule for
+   studio-wide work in CLAUDE.md. An export built from `listProjects()`
+   now holds one NAMESPACE's films, which is the 2024 "full studio
+   backup that contained a single film" bug wearing a new hat. */
+export function listAllProjects() { return allProjectMeta(); }
+
+/* Namespace-BLIND removal, for the one operation that promises to
+   erase everything.
+
+   deleteProject() is namespace-scoped ON PURPOSE: deleting a film
+   inside your account must not reach the copy that still lives on the
+   device. resetAll() makes the opposite promise — "this erases
+   EVERYTHING" — and the scoped version cannot keep it. Called from the
+   device namespace it computes `rest = ns.filter(n => n !== '')`,
+   which for an account-only project is the whole array, so the entry
+   survives, `gone` stays false and the blobs are never wiped. Every
+   account-only project would have outlived a wipe the user was told
+   was total.
+
+   That is the 2024 single-film bug wearing the account dimension: an
+   operation that is genuinely studio-wide has to say so explicitly
+   rather than inherit whatever scope the proxy happens to be in. */
+export function purgeProjectEverywhere(id) {
+  saveAllProjects(allProjectMeta().filter((p) => p.id !== id));
+  SCOPED_KEYS.forEach((k) => rawRemove(k + '__' + id));
+  _invalidateCurrent();
+  return true;
+}
+
+/* Every per-namespace open-project pointer, so a total wipe can clear
+   the `…@<uid>` ones too — they are new key forms and therefore not in
+   ALL_KEYS, which only knows the bare name. */
+export function currentPointerKeys() {
+  const out = [CURRENT_KEY];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CURRENT_KEY + '@')) out.push(k);
+  }
+  return out;
 }
 
 export function getProject(id) {
@@ -109,54 +276,112 @@ export function getProject(id) {
   return listProjects().find(p => p.id === id) || null;
 }
 
-function saveProjects(arr) { jsonSet(PROJECTS_KEY, arr); }
-
 export function createProject(meta) {
   meta = meta || {};
   const now = new Date().toISOString();
+  /* `meta.ns` is for callers that must file a project somewhere other
+     than the open namespace — migrateLegacy(), which files pre-account
+     data on the device where its owner can always reach it. */
+  const ns = (Array.isArray(meta.ns) && meta.ns.length)
+    ? meta.ns.filter((x) => typeof x === 'string')
+    : [_ns];
+  const arr0 = allProjectMeta();
+  /* A caller-supplied id that is already on this device gets a fresh
+     one instead of a second list entry.
+
+     hub.js's importer checks for collisions against `listProjects()`,
+     which now answers for one namespace — so restoring a backup while
+     signed in could offer an id that already exists in the device
+     namespace, and two entries sharing an id would share their
+     `__<projectId>` blobs and restore straight over somebody's film.
+     The id is the join between a project and its data; it cannot be
+     allowed to mean two things. */
+  const wanted = meta.id && !arr0.some((p) => p.id === meta.id) ? meta.id : null;
   const project = {
-    id:         meta.id || uuid(),
+    id:         wanted || uuid(),
     title:      (meta.title || 'Untitled Project').trim(),
     format:     FORMATS.indexOf(meta.format) >= 0 ? meta.format : 'feature',
     createdAt:  now,
-    updatedAt:  now
+    updatedAt:  now,
+    ns:         ns
   };
-  const arr = listProjects();
-  arr.push(project);
-  saveProjects(arr);
-  setCurrentProject(project.id);
+  arr0.push(project);
+  saveAllProjects(arr0);
+  _invalidateCurrent();
+  if (ns.indexOf(_ns) >= 0) setCurrentProject(project.id);
   notify('projects:changed', { reason: 'create', project });
   return project;
 }
 
 export function updateProject(id, patch) {
-  const arr = listProjects();
-  const idx = arr.findIndex(p => p.id === id);
+  const arr = allProjectMeta();
+  // Visible-only: a page never renames a project it cannot see.
+  const idx = arr.findIndex(p => p.id === id && visibleIn(p, _ns));
   if (idx < 0) return null;
-  Object.assign(arr[idx], patch || {}, { updatedAt: new Date().toISOString() });
-  saveProjects(arr);
+  const next = Object.assign({}, patch || {});
+  delete next.ns;               // membership is not editable through here
+  delete next.id;
+  Object.assign(arr[idx], next, { updatedAt: new Date().toISOString() });
+  saveAllProjects(arr);
   notify('projects:changed', { reason: 'update', project: arr[idx] });
   notify('project:meta', arr[idx]);
   return arr[idx];
 }
 
+/* Delete means "remove it from where I am standing".
+
+   For a project that lives only here, that is the old behaviour
+   exactly: entry dropped, data wiped. For one the user adopted into an
+   account, deleting it INSIDE the account drops the account's
+   membership and leaves the device copy — the data is still the copy
+   that was on this machine before they ever signed in, and a sign-in
+   is not a licence to erase it. The blobs are wiped only when no
+   namespace refers to them any more, so nothing is ever orphaned and
+   nothing is ever deleted out from under the other side. */
 export function deleteProject(id) {
-  const arr = listProjects().filter(p => p.id !== id);
-  saveProjects(arr);
-  // wipe namespaced data
-  SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id));
-  if (currentProjectId() === id) {
-    // pick another, or clear
-    const next = arr[0] ? arr[0].id : null;
-    rawSet(CURRENT_KEY, next || '');
+  const arr = allProjectMeta();
+  const idx = arr.findIndex(p => p.id === id);
+  let gone = true;
+  if (idx >= 0) {
+    const rest = nsOf(arr[idx]).filter((n) => n !== _ns);
+    if (rest.length) { arr[idx].ns = rest; gone = false; }
+    else             { arr.splice(idx, 1); }
+    saveAllProjects(arr);
+  }
+  if (gone) SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id));
+  _invalidateCurrent();
+  if (rawGet(currentKeyFor(_ns)) === id) {
+    const mine = listProjects();
+    const next = mine[0] ? mine[0].id : null;
+    rawSet(currentKeyFor(_ns), next || '');
+    _invalidateCurrent();
     notify('current:changed', { id: next });
   }
   notify('projects:changed', { reason: 'delete', id });
   return true;
 }
 
+/* The open project id — VALIDATED against this namespace.
+
+   The storage proxy suffixes every scoped write with whatever this
+   returns, so a pointer left behind by another namespace would aim
+   this page's saves straight into another account's blob. Hence the
+   membership check, and hence the memo: the proxy calls this on every
+   single localStorage access, and parsing the project list 359 times
+   per page load to answer the same question is not free. The cache is
+   keyed on the raw pointer and dropped by every membership change, so
+   it can only ever be as stale as the list it was read from. Reads
+   only — nothing here writes, which is what the gate's four idle
+   seconds are watching for. */
+let _curCache = { raw: undefined, id: null };
+function _invalidateCurrent() { _curCache = { raw: undefined, id: null }; }
+
 export function currentProjectId() {
-  return rawGet(CURRENT_KEY) || null;
+  const raw = rawGet(currentKeyFor(_ns)) || null;
+  if (_curCache.raw === raw) return _curCache.id;
+  const id = (raw && listProjects().some((p) => p.id === raw)) ? raw : null;
+  _curCache = { raw, id };
+  return id;
 }
 
 export function currentProject() {
@@ -165,7 +390,8 @@ export function currentProject() {
 
 export function setCurrentProject(id) {
   if (!getProject(id)) return false;
-  rawSet(CURRENT_KEY, id);
+  rawSet(currentKeyFor(_ns), id);
+  _invalidateCurrent();
   notify('current:changed', { id });
   return true;
 }
@@ -175,11 +401,124 @@ export function setCurrentProject(id) {
 function touch() {
   const id = currentProjectId();
   if (!id) return;
-  const arr = listProjects();
+  const arr = allProjectMeta();
   const idx = arr.findIndex(p => p.id === id);
   if (idx < 0) return;
   arr[idx].updatedAt = new Date().toISOString();
-  saveProjects(arr);
+  saveAllProjects(arr);   // NOT the filtered list — see allProjectMeta()
+}
+
+// ============================================================
+// ACCOUNT — identity in, projects brought across
+// ============================================================
+
+/* Record which account this device is signed into.
+
+   Called by cloud.js on every auth transition, and by nothing else.
+   Returns true when the effective namespace CHANGED, which is the
+   caller's signal to stop what it was doing: the page it is running on
+   still holds the previous namespace's data in its fields, and a
+   reload is on its way.
+
+   `{ reload: false }` for an involuntary sign-out — a refresh token
+   that expired while the tab sat open. Yanking the document out from
+   under somebody mid-sentence is worse than letting the page finish
+   its life writing to the namespace it loaded from, which is where
+   that data belongs anyway. */
+export function setAccount(id, opts) {
+  const next = (typeof id === 'string' && id.trim()) ? id.trim() : DEVICE_NS;
+  const prev = readAccountNs();
+  if (next !== prev) {
+    if (next) rawSet(ACCOUNT_KEY, next); else rawRemove(ACCOUNT_KEY);
+    notify('account:changed', { account: next || null, previous: prev || null });
+  }
+  if (next === _ns) return false;
+  if (!opts || opts.reload !== false) _scheduleReload();
+  return true;
+}
+
+let _reloading = false;
+function _scheduleReload() {
+  if (_reloading) return;
+  _reloading = true;      // one reload per document; cannot loop
+  try {
+    if (global.location && typeof global.location.reload === 'function') {
+      setTimeout(() => { try { global.location.reload(); } catch (e) {} }, 0);
+    }
+  } catch (e) {}
+}
+
+/* Device projects no account has taken yet.
+
+   Only device-ONLY entries are offered. That single condition is what
+   makes cross-account separation provable rather than hoped for: an
+   entry can gain at most one account id this way, so no two accounts
+   ever end up pointing at the same blob by accident. */
+export function listAdoptableProjects() {
+  if (_ns === DEVICE_NS) return [];
+  return allProjectMeta().filter((p) => {
+    const ns = nsOf(p);
+    return ns.length === 1 && ns[0] === DEVICE_NS;
+  });
+}
+
+/* Bring this device's own projects into the signed-in account.
+
+   ADDS, never moves: the entry keeps its device membership, so the
+   work is still there when the user signs out, and there is still
+   exactly one copy of the data (CLAUDE.md: don't persist the same
+   thing twice). The user is asked first — cloud.js owns that prompt. */
+export function adoptDeviceProjects() {
+  if (_ns === DEVICE_NS) return [];
+  const arr = allProjectMeta();
+  const taken = [];
+  arr.forEach((p) => {
+    const ns = nsOf(p);
+    if (ns.length === 1 && ns[0] === DEVICE_NS) {
+      p.ns = [DEVICE_NS, _ns];
+      taken.push(p);
+    }
+  });
+  if (taken.length) {
+    saveAllProjects(arr);
+    _invalidateCurrent();
+    notify('projects:changed', { reason: 'adopt', count: taken.length });
+  }
+  return taken;
+}
+
+/* File a project the server told us about into this namespace.
+
+   cloud.js used to append to the list with a raw write to a hard-coded
+   key literal, which would now land a pulled project in no namespace
+   at all. It goes through here instead so membership is stamped in one
+   place. A project id that already exists keeps its data and simply
+   gains this namespace — that happens when a share is claimed, which
+   is the one legitimate way one project reaches two accounts. */
+export function upsertProjectMeta(meta) {
+  if (!meta || !meta.id) return null;
+  const arr = allProjectMeta();
+  const idx = arr.findIndex((p) => p.id === meta.id);
+  if (idx < 0) {
+    arr.push({
+      id:        meta.id,
+      title:     meta.title || 'Untitled Project',
+      format:    FORMATS.indexOf(meta.format) >= 0 ? meta.format : 'feature',
+      createdAt: meta.createdAt || new Date().toISOString(),
+      updatedAt: meta.updatedAt || new Date().toISOString(),
+      ns:        [_ns]
+    });
+  } else {
+    const ns = nsOf(arr[idx]);
+    if (ns.indexOf(_ns) < 0) ns.push(_ns);
+    arr[idx].ns = ns;
+    if (meta.title)     arr[idx].title = meta.title;
+    if (meta.format)    arr[idx].format = meta.format;
+    if (meta.updatedAt) arr[idx].updatedAt = meta.updatedAt;
+  }
+  saveAllProjects(arr);
+  _invalidateCurrent();
+  return arr[idx < 0 ? arr.length - 1 : idx];
 }
 
 // ============================================================
@@ -206,8 +545,14 @@ export function installStorageProxy() {
     if (typeof k !== 'string') return k;
     if (SCOPED_KEYS.indexOf(k) < 0) return k;
     const id = currentProjectId();
-    if (!id) return k; // no current project → fall back to legacy unsuffixed key
-    return k + '__' + id;
+    if (id) return k + '__' + id;
+    /* No project open. The bare, unsuffixed key is the pre-projects
+       slot — it is DEVICE data by definition, written before accounts
+       or projects existed, so an account gets its own holding slot
+       rather than reading and overwriting it. Without this, two
+       different accounts with no project selected would both be
+       writing into the same bare key. */
+    return _ns === DEVICE_NS ? k : k + '@' + _ns;
   }
 
   const originalGet    = proto.getItem;
@@ -355,7 +700,14 @@ export function migrateLegacy() {
       }
     } catch (e) {}
 
-    const project = createProject({ title, format: 'feature' });
+    /* Filed on the DEVICE, whoever happens to be signed in.
+
+       This data predates both projects and accounts: it is somebody's
+       single-blueprint studio from 2023, sitting in unsuffixed keys.
+       Filing it inside whichever account was open would put work that
+       was never behind an account behind one, and it would vanish at
+       sign-out. On the device it is reachable forever. */
+    const project = createProject({ title, format: 'feature', ns: [DEVICE_NS] });
 
     // Move legacy keys to namespaced keys
     SCOPED_KEYS.forEach(k => {
@@ -560,6 +912,7 @@ const StudioStore = {
 
   // projects
   listProjects,
+  listAllProjects, purgeProjectEverywhere, currentPointerKeys,
   getProject,
   createProject,
   updateProject,
@@ -567,6 +920,15 @@ const StudioStore = {
   currentProjectId,
   currentProject,
   setCurrentProject,
+  upsertProjectMeta,
+
+  // account namespace
+  currentNamespace,
+  currentAccountId,
+  isAccountNamespace,
+  setAccount,
+  listAdoptableProjects,
+  adoptDeviceProjects,
 
   // bus
   subscribe,
@@ -586,7 +948,8 @@ const StudioStore = {
 
   // constants
   FORMATS,
-  SCOPED_KEYS
+  SCOPED_KEYS,
+  ACCOUNT_KEY
 };
 
 export const VERSION = StudioStore.VERSION;
@@ -723,5 +1086,5 @@ autoBridgeTitle();
 // migrate later, so keep the global assignment.
 global.StudioStore = StudioStore;
 
-export { FORMATS, SCOPED_KEYS, StudioStore };
+export { FORMATS, SCOPED_KEYS, ACCOUNT_KEY, StudioStore };
 export default StudioStore;

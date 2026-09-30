@@ -92,6 +92,36 @@ says `library` although the estimator now lives on `budget.html`. Renaming a
 middle is a second migration, and hiding it inside the first is how a rename
 turns into data loss.
 
+**There are now TWO scoping dimensions, and no key was renamed to get the
+second one.** Keys were already suffixed per project (`fms_scenes_v1__<id>`).
+Accounts are scoped by a `ns` field on each entry in `fms_studio_projects_v1` —
+absent or `[""]` means this device signed out, `["<uid>"]` an account, both
+means adopted — so `listProjects()` filters and data separation follows from
+list separation: a project id only exists to be suffixed if the open namespace
+can see it. Blob keys are byte-identical to before, which is why signed-out
+studios need no migration and none was written. The one new key form is the
+per-namespace pointer: bare `fms_studio_current_project_v1` stays the device
+pointer, an account uses `…@<uid>`. `fms_studio_account_v1` holds the identity
+and is deliberately in NONE of the five registries — `GLOBAL_KEYS` most of all,
+because that is what `export-all` walks and an account id inside a backup would
+make another machine claim to be somebody. Full reasoning in
+`docs/STORAGE-MODEL.md`.
+
+**The second dimension put the studio-wide trap straight back.** `exportAll()`
+and `resetAll()` in `hub.js` were built from `listProjects()`, which now filters
+by account too — so the backup would again have called itself a full studio
+backup while holding one namespace, and "this erases EVERYTHING" would have left
+every account-only project on disk. Both read `listAllProjects()` now, and reset
+uses `purgeProjectEverywhere()`, which exists for that one caller because
+`deleteProject()` is namespace-scoped on purpose: deleting a film inside your
+account must not reach the copy on the device. `resetAll()` also sweeps
+`currentPointerKeys()`, since `ALL_KEYS` only knows the bare pointer name.
+Proved by script, both directions: a backup containing both namespaces, and a
+reset leaving nothing but an empty list. Widening the export is only safe
+because the importer does not carry `ns` across — it passes id/title/format to
+`createProject`, which stamps the importing namespace, so a backup taken signed
+in restores visibly when signed out.
+
 **2. Content lives in `src/data/*.json`, not in markup.**
 The 24 feature steps used to exist in three places (the markup, the jump
 dropdown, and `exportMarkdown()`) with nothing keeping them in step. Now the

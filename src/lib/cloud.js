@@ -266,6 +266,26 @@ export async function ensureClient() {
       session = sess;
       if (sess) _signingIn = false;
       notifyAuth(event, sess);
+      if (sess) {
+        /* WHO IS SIGNED IN IS STORAGE STATE, and store.js is the only
+           thing that can act on it — it patched Storage.prototype
+           before this file was even parsed, so it reads the id from
+           localStorage rather than asking us. Tell it first, before
+           anything below reads or writes a project.
+
+           A true return means this document is still holding the
+           PREVIOUS namespace's data in its fields and a reload is
+           already scheduled. Uploading or pulling now would push those
+           fields into the account that is about to open, which is the
+           one way this design can lose somebody's writing. Stop. */
+        if (Store.setAccount(sess.user.id)) { idleSync(); return; }
+      } else {
+        /* Involuntary: a refresh token that expired while the tab sat
+           open. Persist it for the next load, but do NOT reload — see
+           setAccount()'s note. The deliberate signOut() path below
+           asks for the reload itself. */
+        Store.setAccount(null, { reload: false });
+      }
       if (sess && wasNull) {
         // First time signed in this load — try migration
         maybeMigrateLocalToCloud();
@@ -457,9 +477,21 @@ export function isSigningIn() { return _signingIn; }
    project — the user keeps every word on this device and can carry on
    writing offline. The queue survives too: it holds changes that have
    not reached the account yet, and dropping it would turn "sign out"
-   into "discard my unsynced edits". */
+   into "discard my unsynced edits".
+
+   What it DOES clear is the namespace: the device's own projects come
+   back into view, including anything that was there before this
+   account ever existed. The account's own projects stay on disk under
+   their own namespace, untouched, waiting for the next sign-in — sign
+   out is not a delete. This is a deliberate click, so it takes the
+   reload that makes the switch visible immediately. */
 export async function signOut() {
-  if (!supabase) { session = null; idleSync(); return; }
+  if (!supabase) {
+    session = null;
+    Store.setAccount(null);       // may reload; nothing left to await
+    idleSync();
+    return;
+  }
   try {
     await supabase.auth.signOut();
   } catch (e) {
@@ -470,14 +502,40 @@ export async function signOut() {
   tearDownChannels();
   Store.rawRemove(PENDING_SHARE_KEY);
   setSync(SYNC_STATES.OFF, 'Signed out — your projects are still on this device');
+  /* LAST, and after the await on purpose. This schedules a reload, and
+     a reload that lands before auth-js has finished clearing its own
+     stored session would restore that session on the next load and
+     sign the user straight back in. */
+  Store.setAccount(null);
 }
 
 // ============================================================
 // MIGRATION
 // ============================================================
+/* "You have work on this device. Put it in the account too?"
+   ------------------------------------------------------------
+   What changed with account namespaces: `Store.listProjects()` now
+   answers for the OPEN namespace, so once signed in it returns the
+   account's projects — which on a first sign-in is an empty list. The
+   question this function asks is about the DEVICE's projects, so it
+   has to ask for those explicitly.
+
+   `listAdoptableProjects()` returns device projects that no account
+   has taken yet. Accepting ADDS this account to them: the device keeps
+   them (sign out and they are still there, the same single copy), and
+   the account gains them and starts syncing them. It is not a move and
+   not a duplicate.
+
+   A device project another account already adopted is not offered, so
+   this can never be the path by which two accounts end up sharing one
+   film. Copying a film between accounts is what the backup file is
+   for. */
 async function maybeMigrateLocalToCloud() {
   if (!session) return;
   const userId = session.user.id;
+  /* The page still belongs to a different namespace and a reload is
+     inbound — see the setAccount() note in ensureClient(). */
+  if (!Store.isAccountNamespace(userId)) return;
   const flag = Store.rawGet(MIGRATE_FLAG_KEY);
   if (flag === userId) return;  // already migrated for this user
   // Avoid race when two tabs sign in at the same time
@@ -488,9 +546,9 @@ async function maybeMigrateLocalToCloud() {
   if (_migrationPromise) return _migrationPromise;
   _migrationPromise = (async () => {
     try {
-      const local = Store.listProjects();
+      const local = Store.listAdoptableProjects();
       if (!local.length) {
-        // Nothing to migrate — but still pull cloud projects
+        // Nothing to bring across — but still pull cloud projects
         await pullProjectList();
         Store.rawSet(MIGRATE_FLAG_KEY, userId);
         return;
@@ -499,14 +557,26 @@ async function maybeMigrateLocalToCloud() {
       const ok = await askMigratePrompt(local.length);
       if (!ok) {
         // Don't re-prompt; mark as migrated even though we didn't do anything,
-        // so they can sign in/out without the prompt re-appearing.
+        // so they can sign in/out without the prompt re-appearing. The
+        // projects stay exactly where they are — on the device, visible
+        // the moment they sign out again.
         Store.rawSet(MIGRATE_FLAG_KEY, userId);
         await pullProjectList();
         return;
       }
-      await uploadAllLocalProjects(local);
+      /* Membership first, upload second. The upload reads each
+         project's blobs by id through rawGet, so it does not depend on
+         the namespace — but the realtime attach and every later push
+         do, and a project that reached the server without being in
+         this namespace would sync in one direction only. */
+      const taken = Store.adoptDeviceProjects();
+      await uploadAllLocalProjects(taken.length ? taken : local);
       Store.rawSet(MIGRATE_FLAG_KEY, userId);
-      toast('Uploaded ' + local.length + ' project' + (local.length === 1 ? '' : 's') + ' to cloud.', 'success');
+      /* Also pull: this account may have projects from another device,
+         and the old code pulled them only if the user said NO. */
+      await pullProjectList();
+      toast('Added ' + local.length + ' project' + (local.length === 1 ? '' : 's') +
+            ' to your account. They are still on this device too.', 'success');
     } catch (e) {
       console.warn('[StudioCloud] migrate failed', e);
       toast('Migration failed: ' + (e.message || e), 'error');
@@ -567,20 +637,23 @@ export async function pullProjectList() {
   if (error) { console.warn('[pull list]', error); return; }
   if (!data) return;
   // Merge into local: any project_id we don't have, add it.
+  //
+  // Through Store.upsertProjectMeta() rather than the raw write to a
+  // hard-coded 'fms_studio_projects_v1' this used to do. Two reasons
+  // that write is gone: it appended to the list THIS NAMESPACE can
+  // see and saved that filtered copy back, which would delete every
+  // other namespace's projects; and a project filed with no namespace
+  // stamp would be invisible to the account that just pulled it.
   const localIds = new Set(Store.listProjects().map(p => p.id));
   for (const row of data) {
     if (!localIds.has(row.id)) {
-      // Add to local list directly via Store internals (bypass createProject which
-      // would set as current). We use a direct write to projects key.
-      const all = Store.listProjects();
-      all.push({
+      Store.upsertProjectMeta({
         id: row.id,
         title: row.title,
         format: row.format,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       });
-      Store.rawSet('fms_studio_projects_v1', JSON.stringify(all));
     }
     // For each scope, pull the data
     await pullProjectData(row.id);
@@ -1194,9 +1267,28 @@ async function boot() {
 
   // If signed in already (session restored), attach to current project + run migration check
   if (session) {
+    /* The namespace before anything else, for the reason in
+       ensureClient(). `ensureClient()` reads the stored session
+       synchronously into `session` BEFORE it registers the auth
+       listener, so a restored session produces no SIGNED_IN event and
+       this is the only place that learns about it. A true return means
+       this document loaded in the wrong namespace (first sign-in, or a
+       different account last time) and a reload is on its way. */
+    if (Store.setAccount(session.user.id)) return;
     await maybeMigrateLocalToCloud();
     attachToCurrentProject();
     setTimeout(_flushQueue, 1500);
+  } else if (supabase) {
+    /* We got as far as a client and there is no session: the stored
+       account id is stale (signed out elsewhere, or a token that died
+       while this browser was closed). Clear it so the next load opens
+       the device's own studio.
+
+       Only when `supabase` exists. If the cloud is not configured in
+       this browser at all we cannot tell a signed-out user from an
+       unreachable one, and clearing on that guess would hide an
+       account's projects from the person who wrote them. */
+    Store.setAccount(null, { reload: false });
   }
   idleSync();
   // Always handle ?share= if present, even before sign-in

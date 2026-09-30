@@ -256,7 +256,27 @@ function buildCalcRow(idx) {
 }
 
 /** Build n rows at once, then recalculate and save ONCE. */
-function addCalcRow(n = 1) {
+/* `persist` exists because LOADING MUST NEVER WRITE.
+
+   This function ends by saving, which is right when a person clicks
+   ADD ROW — the new empty line should survive a reload. It was
+   catastrophic from loadCalc(), which called it BEFORE putting the
+   saved values back on the page: the save wrote the freshly built
+   EMPTY rows straight over fms_library_calc_v1, and the restore that
+   followed only ever touched the DOM. So the page looked correct and
+   storage did not. Open budget.html, touch nothing, navigate away,
+   and the estimate was gone on the next load — the figures came back
+   only if you happened to edit a field, because that is what wrote
+   the DOM back.
+
+   Found while seeding a sample project: the dashboard read
+   "₹ 25,65,000 across 12 line items" before visiting the budget page
+   and "₹ 0 · Nothing costed yet" after it.
+
+   The idle-write assertion in `verify` cannot see this. It measures
+   four seconds of QUIET AFTER LOAD, and this write happens during
+   load, inside the same turn that builds the rows. */
+function addCalcRow(n = 1, persist = true) {
   const wrap = document.getElementById('calcRows');
   if (!wrap) return;
   const frag = document.createDocumentFragment();
@@ -266,7 +286,7 @@ function addCalcRow(n = 1) {
   }
   wrap.append(frag);
   updateCalc();
-  saveCalc();
+  if (persist) saveCalc();
 }
 
 function updateCalc() {
@@ -327,7 +347,9 @@ function loadCalc() {
     const targetRows = Math.max(max, 5);
     // addCalcRow(n) builds n rows and recalculates ONCE. Calling it in a loop
     // ran a full DOM sweep + a localStorage write per row on every page load.
-    addCalcRow(targetRows);
+    // persist:false because the rows are EMPTY at this point and the saved
+    // values go on below — saving here overwrote them. See addCalcRow.
+    addCalcRow(targetRows, false);
     const wrap = document.getElementById('calcRows');
     if (!wrap) return;
 

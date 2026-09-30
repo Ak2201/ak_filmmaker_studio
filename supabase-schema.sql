@@ -9,9 +9,27 @@
 --   Redirect URLs:      https://ak-filmmaker-studio.vercel.app/*
 --                       http://localhost:*
 --
--- And in Authentication → Providers:
---   - Enable Email (magic link is on by default)
---   - Enable Google (paste your OAuth client ID + secret from Google Cloud Console)
+-- And in Authentication → Providers — GOOGLE ONLY, and this is not a
+-- cosmetic preference. The app ships exactly one sign-in call
+-- (signInWithGoogle in src/lib/cloud.js); every other provider you
+-- leave enabled is still reachable, because the anon key is public by
+-- design and anyone can call this project's /auth/v1 endpoints
+-- directly. A provider nobody's UI offers is a way in nobody's UI
+-- shows.
+--   - Enable  Google (paste your OAuth client ID + secret from Google
+--             Cloud Console)
+--   - DISABLE Email. This turns off both the magic-link/OTP path and
+--             email+password signup. The app used to offer magic links
+--             and no longer does; leaving the provider on means an
+--             account can be created and a session minted without ever
+--             touching Google, which is the thing "Google only" is
+--             supposed to rule out.
+--   - DISABLE Anonymous sign-ins, and every other provider (Apple,
+--             GitHub, phone/SMS, SAML, …). Default-off, so this is a
+--             check rather than a change — but check it, because an
+--             anonymous session satisfies `auth.uid() is not null` and
+--             therefore passes the "is the caller signed in?" half of
+--             every policy below.
 -- ============================================================
 
 -- ============================================================

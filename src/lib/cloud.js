@@ -3,7 +3,7 @@
    ------------------------------------------------------------
    Ported from studio-cloud.js. Layered on top of StudioStore
    (local-first). Adds:
-     - Supabase auth (magic link + Google)
+     - Supabase auth (Google, and only Google — see AUTH below)
      - Cloud sync of every project (push debounced, pull realtime)
      - Sharing (links + claim flow)
      - Comments (per-data-key threads, suggestion accept/reject)
@@ -285,7 +285,21 @@ export async function ensureClient() {
 }
 
 // ============================================================
-// AUTH
+// AUTH — GOOGLE ONLY
+// ------------------------------------------------------------
+// There is exactly one way in: `signInWithGoogle()` below. The
+// magic-link / OTP path that used to sit beside it (`signInWithEmail`,
+// `sb.auth.signInWithOtp`) is gone, and no password, second provider or
+// anonymous-session call has ever existed here. If you add one, you are
+// adding a second set of redirect, session and error states to keep
+// correct, plus a credential this app would then be responsible for.
+//
+// THIS IS HALF THE FENCE. Removing a client call does not disable a
+// provider: Supabase will still mint a session for any provider enabled
+// under Authentication → Providers, called directly against the project
+// URL with the public anon key. Email/Anonymous/everything-but-Google
+// must be turned OFF in the dashboard for "Google only" to be true. The
+// header of supabase-schema.sql says so as a setup step.
 // ============================================================
 const authListeners = new Set();
 export function onAuth(cb) { authListeners.add(cb); return () => authListeners.delete(cb); }
@@ -325,14 +339,23 @@ export function authRedirectTarget() {
 //     below). No credential of ours ever appears in a query string.
 //   pkce → the return URL carries `?code=…` in the QUERY STRING, and
 //     the exchange needs a verifier held in THIS browser's storage.
-//     That breaks the existing magic-link path the moment someone
-//     opens the emailed link on their phone instead of the laptop
-//     that asked for it, which is most people.
 //
-// The cost of implicit is that a refresh token passes through
-// `location.hash` and therefore through the tab's history entry. We
-// replace that entry immediately, below. If this app ever drops the
-// magic-link path, switch to pkce.
+// The reason for implicit USED TO BE the magic-link path: pkce breaks
+// the moment someone opens the emailed link on their phone instead of
+// the laptop that asked for it, because the verifier is in the laptop's
+// storage. That path is gone — Google is now the only way in, and a
+// Google redirect always comes back to the browser that started it, so
+// pkce would hold.
+//
+// So this is now INERTIA, not a constraint, and it is worth naming as
+// such: the cost of implicit is that a refresh token passes through
+// `location.hash` and therefore through the tab's history entry (we
+// replace that entry immediately, below). Switching to
+// `flowType: 'pkce'` is the better position and the detector below
+// already reads `?code=`; it is deliberately NOT part of the
+// remove-the-other-providers change, because the only sign-in path in
+// the app cannot be re-verified without a live Supabase project, and
+// `npm run verify` never signs in.
 //
 // auth-js throws the provider's own `#error=access_denied&…` away
 // inside its initialiser, so the only way to tell a user WHY Google
@@ -387,21 +410,8 @@ function takePendingShare() {
   return t || null;
 }
 
-export async function signInWithEmail(email) {
-  const sb = await ensureClient();
-  if (!sb) throw new Error('Cloud is not set up in this browser yet. Add your Supabase URL and anon key first.');
-  stashPendingShare();
-  setSync(SYNC_STATES.SYNCING, 'Sending your sign-in link…');
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: authRedirectTarget() }
-  });
-  if (error) { idleSync(); throw error; }
-  idleSync();
-  return true;
-}
-
-/* Google.
+/* Google. The only sign-in in this file, by design — see the AUTH
+   banner above.
 
    `signInWithOAuth` does a top-level navigation to Google; it injects
    no script and posts no form, so the strict CSP (`script-src 'self'`,
@@ -1114,9 +1124,9 @@ const StudioCloud = {
   // config
   getCfg, setCfg,
   isConfigured: () => !!(getCfg() && getCfg().url && getCfg().key),
-  // auth
+  // auth — Google only; nothing else belongs on this line
   ensureClient,
-  signInWithEmail, signInWithGoogle, signOut,
+  signInWithGoogle, signOut,
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, authRedirectTarget,
   // sync

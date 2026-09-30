@@ -17,6 +17,11 @@
    app keeps saving to this device, and the copy says so rather
    than implying the network is load-bearing.
 
+   ONE WAY IN: Google. There used to be a magic-link/OTP path beside
+   it; it is gone, along with the email field that fed it. Anything
+   that reads like a second way in — a password field, another
+   provider, an anonymous session — is a regression, not a feature.
+
    LOAD ORDER: imports ../lib/store.js first, for the reason in the
    banner at the top of that file. The import looks unused. It is not.
    ============================================================ */
@@ -219,19 +224,18 @@ function ensureCloudAuthModal() {
       })
     ]),
 
-    // ---- the two ways in -------------------------------------------
+    // ---- the only way in -------------------------------------------
+    // Google, and nothing else. One path means one set of states to
+    // get right, one thing to explain, and no password for this app to
+    // hold, lose or leak. It is also the only provider enabled on the
+    // Supabase side — see the header of supabase-schema.sql; a button
+    // removed here is not a provider disabled there.
     h('div#cmAuthBlock', {}, [
       h('button#cmGoogle.cm-btn.google', { type: 'button', 'data-auth-action': 'google' }, [
         h('span.g-mark', { html: GOOGLE_MARK, 'aria-hidden': 'true' }),
         h('span.cm-btn-label', { text: 'CONTINUE WITH GOOGLE' })
       ]),
-      h('div.cm-divider', {}, [h('span', { text: 'OR' })]),
-      h('label', { for: 'cmEmail', text: 'Email address' }),
-      h('input#cmEmail', { type: 'email', placeholder: 'you@studio.com', autocomplete: 'email' }),
-      h('button#cmMagic.cm-btn.primary', { type: 'button', 'data-auth-action': 'magic' }, [
-        h('span.cm-btn-label', { text: 'SEND MAGIC LINK' })
-      ]),
-      h('p.cm-hint', { text: 'We email you a one-time link. No password to remember or lose.' }),
+      h('p.cm-hint', { text: 'Google is the only way in. There is no password for this app to remember or lose, and no email address stored here until you sign in.' }),
       h('a.cm-link', { href: '#', 'data-auth-action': 'show-cfg', text: 'Configure your own Supabase project →' })
     ])
   ]);
@@ -243,12 +247,16 @@ function ensureCloudAuthModal() {
   }, [card]);
   document.body.appendChild(m);
 
-  // A <form> with no inline onsubmit: Enter in the email field should
-  // send the link rather than reload the page.
+  // A <form> with no inline onsubmit: Enter in either config field
+  // should save the config rather than reload the page. With the email
+  // path gone the auth block has no text input left, so Enter there can
+  // only come from the Google button, which the click delegate already
+  // handles — preventDefault and stop, rather than starting a second
+  // redirect on top of the first.
   card.addEventListener('submit', (e) => {
     e.preventDefault();
     const block = m.querySelector('#cmConfigBlock');
-    if (block && !block.hidden) saveConfig(); else sendMagicLink();
+    if (block && !block.hidden) saveConfig();
   });
   m.addEventListener('click', (e) => { if (e.target === m) closeCloudAuthModal(); });
   return m;
@@ -316,8 +324,11 @@ export function openCloudAuthModal(opts) {
 
   m.classList.add('show');
   setTimeout(() => {
+    /* Focus the first thing you would actually use. With the email
+       field gone that is the Google button itself — not a text input,
+       so nothing here assumes one exists. */
     const ip = m.querySelector('#cmConfigBlock').hidden
-      ? m.querySelector('#cmEmail')
+      ? m.querySelector('#cmGoogle')
       : m.querySelector('#cmCfgUrl');
     if (ip) ip.focus();
   }, 80);
@@ -380,25 +391,6 @@ export async function startGoogle() {
   }
 }
 
-export async function sendMagicLink() {
-  const c = cloud();
-  if (!c) return;
-  const m = ensureCloudAuthModal();
-  const email = m.querySelector('#cmEmail').value.trim();
-  if (!email) { setModalError('Enter the email address to send the link to.'); return; }
-  setModalError('');
-  setBusy('cmMagic', true, 'SENDING…', 'SEND MAGIC LINK');
-  try {
-    await c.signInWithEmail(email);
-    toastOk('Check your inbox for the sign-in link.');
-    closeCloudAuthModal();
-  } catch (e) {
-    setModalError(errText(e));
-  } finally {
-    setBusy('cmMagic', false, 'SENDING…', 'SEND MAGIC LINK');
-  }
-}
-
 // ============================================================
 // ONE DELEGATED LISTENER
 // ============================================================
@@ -419,7 +411,6 @@ delegate(document, 'click', '[data-auth-action]', async (e, el) => {
     }
     case 'close':    closeCloudAuthModal(); break;
     case 'google':   await startGoogle(); break;
-    case 'magic':    await sendMagicLink(); break;
     case 'save-cfg': await saveConfig(); break;
     case 'show-cfg': showConfigBlock(); break;
     case 'settings': closeAccountMenu(); openCloudAuthModal({ mode: 'settings' }); break;
@@ -472,6 +463,5 @@ export default {
   closeCloudAuthModal,
   showConfigBlock,
   saveConfig,
-  startGoogle,
-  sendMagicLink
+  startGoogle
 };

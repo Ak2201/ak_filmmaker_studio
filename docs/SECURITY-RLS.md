@@ -821,3 +821,19 @@ overflow.
    `cloud.js` does not touch `accounts` or `account_members` at all.
 5. Realtime DELETE payloads are documented as not RLS-filtered the way
    INSERT and UPDATE are. Unverified.
+6. **Google is the only sign-in the app offers, and nothing in this
+   repository can make that true.** The client now ships exactly one
+   auth call — `signInWithGoogle()` in `src/lib/cloud.js`; the
+   magic-link/OTP path and its email field are gone. That is the UI
+   half. The other half is a dashboard setting: Supabase mints a
+   session for any provider enabled under Authentication → Providers,
+   and the `/auth/v1` endpoints take the public anon key, so a provider
+   no button points at is still a working way in. Until **Email is
+   disabled** (it covers both magic link and email+password signup) and
+   **Anonymous sign-ins are confirmed off**, "Google only" describes the
+   markup and not the project. The Anonymous case is the sharper one for
+   everything above: an anonymous session gives a non-null `auth.uid()`,
+   which satisfies the "is the caller signed in?" half of every policy
+   in this document. Setup steps are in the header of
+   `supabase-schema.sql`; verifying them is a live check, like the rest
+   of this list.

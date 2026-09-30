@@ -60,9 +60,17 @@ match something the code computes.
   *fragment* (`#access_token=…`), which is never transmitted to any
   server, and the app replaces the history entry immediately so nothing
   lingers in the address bar. This is deliberate: PKCE would put a
-  `?code=` in the query string and would break the existing magic-link
-  path the moment somebody opens the emailed link on a different device
-  from the one that asked for it. The reasoning is written out in
+  `?code=` in the query string. That reason has EXPIRED: it was the
+  magic-link path, where PKCE breaks the moment somebody opens the
+  emailed link on a different device from the one that asked for it,
+  and that path is gone — Google is now the only way in, and a Google
+  redirect always returns to the browser that started it. So PKCE
+  would now hold, and is the better position, because implicit passes
+  a refresh token through `location.hash` and therefore the history
+  entry. It has deliberately NOT been switched: it is the single way
+  into the account, `npm run verify` never signs in, and it cannot be
+  re-verified without a live Supabase project. Do it as its own
+  change, against a real project. The reasoning is written out in
   `src/lib/cloud.js` under "COMING BACK FROM THE PROVIDER".
 - **The anon key is public by design.** It ships in the browser and that
   is fine — access is decided by the row-level policies in
@@ -274,8 +282,10 @@ anyone without secrets in it.
      (Project Settings → Data API → Project URL)
    - **Anon (public) key** — Project Settings → API Keys → `anon` /
      `publishable`. Not the `service_role` key.
-3. **SAVE & CONTINUE.** The dialog switches to **Sign in** with both ways
-   in: **CONTINUE WITH GOOGLE** and the magic-link email path below it.
+3. **SAVE & CONTINUE.** The dialog switches to **Sign in**, which offers
+   exactly one way in: **CONTINUE WITH GOOGLE**. There is no email or
+   magic-link option, and no password field — if you see one, you are
+   not on this build.
 
 ---
 

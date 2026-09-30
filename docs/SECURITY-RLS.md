@@ -578,3 +578,118 @@ anonymous GET. Anything other than `[]` is a leak.
 
 Writes were correctly refused on both (`42501`), which is a genuine
 pass — an anonymous POST is rejected by RLS, not by the gateway.
+
+---
+
+## LIVE CHECK 2 — RUN 30 SEP 2026. RESULT: F1 FIXED, F2 WAS WRONG.
+
+Run through the Supabase SQL editor against `conhlrulxfwkhsnymakz`,
+then verified from outside with the publishable key. Both findings
+above are corrected below; **neither was right.**
+
+### F1 — fixed, but not by section 8, and not for the stated reason.
+
+Section 8 **never executed.** The sweep after it was reported as run
+came back byte-identical to the sweep before, and the decisive probe
+was a function call: `project_owner_is_caller` — created only by
+section 8 — returned `PGRST202 not found in the schema cache`, while
+section 7's `has_project_access` returned `false / 200`. A section
+whose function does not exist did not run.
+
+It could not have run. It has four references this database does not
+satisfy: `public.account_members` (no such table), `projects.account_id`
+(no such column), `c.expires_at` on project_collaborators (no such
+column), and policy `sh_owner_all` (the names are `sh_owner_select`
+and `sh_owner_write`). `create policy` against a missing relation
+aborts the block.
+
+**The diagnosis above is also wrong.** The deployed `proj_select` was
+never `has_project_access(id,'view')` — it was, and pg_policies said
+so plainly:
+
+    projects.proj_select
+      (owner_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM project_collaborators c
+                  WHERE c.project_id = projects.id AND c.user_id = auth.uid())
+
+    project_collaborators.pc_select
+      (user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM projects p
+                  WHERE p.id = project_collaborators.project_id
+                    AND p.owner_id = auth.uid())
+
+A mutual loop between two policies on two tables. Postgres names the
+relation you entered through, so the 42P17 said `projects` and the
+message was read as if projects alone were at fault — the error named
+the door, not the room.
+
+`security definer` "did not prevent it" was asserted on no evidence,
+and the evidence against it was already in the same sweep:
+`project_data` returned **200** throughout, and `pd_select`'s only
+test is `has_project_access()`, which reads projects. A definer
+function reading projects was demonstrably fine the whole time.
+
+Fixed by **schema section 9**, written against the live catalogue
+rather than the file: `project_owner_is_caller()` as `security
+definer`, and `pc_select` / `pc_owner_write` / `sh_owner_select` /
+`sh_owner_write` / `cm_update` / `cm_delete` routed through it.
+`proj_select` was left untouched — once project_collaborators has no
+outgoing RLS edge, the cycle is gone.
+
+Verified:
+
+| endpoint (anon, publishable key) | before | after |
+|---|---|---|
+| `/rest/v1/projects` | 500 `42P17` | **200 `[]`** |
+| `/rest/v1/project_collaborators` | 500 `42P17` | **200 `[]`** |
+| `/rest/v1/shares` | 500 `42P17` | **200 `[]`** |
+| `/rest/v1/project_data` | 200 `[]` | 200 `[]` |
+| `/rest/v1/comments` | 200 `[]` | 200 `[]` |
+| `rpc/project_owner_is_caller` | 404 `PGRST202` | **200 `false`** |
+
+and in the catalogue: RLS on for all five tables, 14 policies, zero
+policies reading the table they guard.
+
+### F2 — withdrawn. The tables genuinely do not exist.
+
+    select c.relname from pg_class c join pg_namespace n
+      on n.oid = c.relnamespace
+     where n.nspname='public' and c.relkind='r';
+
+    comments, project_collaborators, project_data, projects, shares
+
+`accounts` and `account_members` are **absent**, so `PGRST205` was
+accurate and the schema cache was never the problem.
+
+The reasoning that produced F2 — "a missing relation errors 42P01,
+and `has_project_access()` resolves `account_members`, so it must
+exist" — fails twice. The deployed `has_project_access` does not
+mention `account_members` at all (it predates the account tier; four
+functions exist in total: `has_project_access`, `claim_share`,
+`resolve_share`, `rls_auto_enable`). And even had it, the recursion
+fires in the first branch, so the later branch is never reached. An
+error that arrives before a line runs says nothing about that line.
+
+**What this means beyond the finding:** sections 6 and 7 of
+`supabase-schema.sql` have never run either. `projects_guard_owner`
+and `comments_set_author` — both from section 5, line 268 onward —
+are also absent, so the original run stopped somewhere near line 200.
+The database is roughly sections 1-4 plus section 9.
+
+`src/lib/cloud.js` touches only the five tables that exist, so the
+app is not broken by the absence; the account tier is unbuilt rather
+than half-built. Section 9 deliberately does not create it.
+
+### Still open after this run
+
+1. **The ambiguous `[]` is still ambiguous.** `projects` holds 0 rows
+   (`auth.users` holds 1). Until one real row exists and an anonymous
+   GET still returns `[]`, an empty result proves nothing. This is the
+   single highest-value check remaining and it is cheap: sign in, save
+   a project, re-run the sweep. Anything other than `[]` is a leak.
+2. **Sections 5-7 are not deployed.** Everything section 7 hardened —
+   share expiry and revocation, the account-move escalation, comment
+   author-name leakage, comment status forgery — is unfixed in the
+   live database, because the code that fixes it was never applied.
+   The audit above describes a database that does not exist.
+3. The remaining eight live checks, which need two real accounts.

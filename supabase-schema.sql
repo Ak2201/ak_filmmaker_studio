@@ -1253,6 +1253,50 @@ create trigger account_members_seat_limit
 -- ============================================================
 
 -- ============================================================
+-- SECTION 8 BELOW NEVER RAN, AND CANNOT. SEE SECTION 9.
+-- ------------------------------------------------------------
+-- Kept verbatim because the way it was wrong is the lesson. It
+-- was written from the file rather than from the database, and
+-- every one of its four failures is a thing the file asserts and
+-- the database does not have:
+--
+--   public.account_members   no such table   (section 6 never ran)
+--   projects.account_id      no such column  (section 6 never ran)
+--   c.expires_at             no such column  (section 7 never ran)
+--   policy sh_owner_all      not the name    (sh_owner_select /
+--                                             sh_owner_write)
+--
+-- `create policy` against a missing relation aborts the block, so
+-- the section failed on its first statement after the function and
+-- committed nothing — including the `notify pgrst` at the end.
+-- Nothing in the editor's output said so loudly enough to notice,
+-- and the sweep afterwards came back byte-identical, which is what
+-- eventually gave it away.
+--
+-- ITS DIAGNOSIS OF THE LOOP IS ALSO WRONG. Section 8 says the cycle
+-- is proj_select -> has_project_access() -> projects. The deployed
+-- proj_select never called has_project_access at all. The real loop
+-- was between two policies on two tables:
+--
+--   projects.proj_select  reads project_collaborators
+--   project_collaborators.pc_select  reads projects
+--
+-- Postgres reports mutual policy recursion against whichever
+-- relation you entered through, so the 42P17 named `projects` and
+-- the error message was read as if projects alone were at fault.
+--
+-- WHAT THE DATABASE ACTUALLY CONTAINS, verified 30 Sep 2026:
+-- five tables (projects, project_data, project_collaborators,
+-- shares, comments) and four functions (has_project_access,
+-- claim_share, resolve_share, rls_auto_enable). Sections 6 and 7
+-- are absent entirely; the run that created this database stopped
+-- somewhere around line 200. src/lib/cloud.js touches only those
+-- five tables, so the account tier is unbuilt rather than broken,
+-- and section 9 deliberately does not create it.
+-- ============================================================
+
+
+-- ============================================================
 -- 8. RECURSION FIX (v6)
 -- ------------------------------------------------------------
 -- FOUND BY TESTING THE LIVE DATABASE, which is the point of the ten
@@ -1352,3 +1396,149 @@ create policy sh_owner_all on public.shares
 --     existing — the function above resolves them, and a missing
 --     relation errors 42P01, not 42P17. Nudge the cache.
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- 9. RECURSION FIX (v7) — WRITTEN AGAINST THE LIVE DATABASE
+-- ------------------------------------------------------------
+-- RAN SUCCESSFULLY 30 SEP 2026 against conhlrulxfwkhsnymakz.
+-- This is the first section of this file that has ever executed
+-- and been verified from outside afterwards.
+--
+-- THE LOOP, correctly this time:
+--
+--   projects.proj_select
+--     -> exists (select 1 from project_collaborators ...)
+--        -> project_collaborators.pc_select
+--           -> exists (select 1 from projects ...)
+--              -> projects.proj_select            <-- 42P17
+--
+-- Two policies on two tables, each reading the other's. Cutting
+-- either edge is enough; cutting the one on project_collaborators
+-- is the right half, because projects' own policy is the one that
+-- has to answer "may this caller see this row" for the app's main
+-- read path and should stay inlined and indexable.
+--
+-- THE CUT is a security definer function. It runs as the function
+-- owner, who is the table owner, and table owners bypass RLS unless
+-- the table is FORCE ROW LEVEL SECURITY — so the read of projects
+-- inside it does not re-enter proj_select.
+--
+-- That this works was already observable before the fix and was
+-- missed: project_data returned 200 while projects returned 500,
+-- and pd_select's only test is has_project_access(), which reads
+-- projects. A definer function reading projects was demonstrably
+-- fine. Section 8's header asserts the opposite ("security definer
+-- did not save it here") on no evidence.
+--
+-- SCOPE. This fixes the recursion and nothing else. It does not
+-- create the account tier (sections 6-7), does not add expires_at
+-- to project_collaborators, and does not backfill any of section
+-- 7's hardening. All of that is still absent from the database and
+-- is tracked in docs/SECURITY-RLS.md. Mixing a hardening pass into
+-- an outage fix is how you end up unable to say which change broke
+-- what.
+-- ============================================================
+
+-- 9.1 the owner lookup. Reads projects from outside RLS, so nothing
+--     that guards project_collaborators, shares or comments has to
+--     reach projects through a policy any more.
+create or replace function public.project_owner_is_caller(pid uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+  select exists (
+    select 1 from public.projects p
+     where p.id = pid and p.owner_id = auth.uid()
+  );
+$fn$;
+
+-- anon needs execute as well as authenticated: a policy that invokes
+-- a function the caller cannot execute errors rather than returning
+-- false, which would break every anonymous share-link read.
+grant execute on function public.project_owner_is_caller(uuid) to authenticated, anon;
+
+-- 9.2 project_collaborators — this is the edge that closed the loop.
+drop policy if exists pc_select on public.project_collaborators;
+create policy pc_select on public.project_collaborators
+  for select using (
+    user_id = auth.uid() or public.project_owner_is_caller(project_id)
+  );
+
+drop policy if exists pc_owner_write on public.project_collaborators;
+create policy pc_owner_write on public.project_collaborators
+  for all using      (public.project_owner_is_caller(project_id))
+          with check (public.project_owner_is_caller(project_id));
+
+-- 9.3 shares — not part of the cycle, but it reached projects the
+--     same way and would have joined the cycle the moment anything
+--     on projects consulted shares. Note the real policy names.
+drop policy if exists sh_owner_select on public.shares;
+create policy sh_owner_select on public.shares
+  for select using (public.project_owner_is_caller(project_id));
+
+drop policy if exists sh_owner_write on public.shares;
+create policy sh_owner_write on public.shares
+  for all using      (public.project_owner_is_caller(project_id))
+          with check (public.project_owner_is_caller(project_id));
+
+-- 9.4 comments — same treatment for the two that inlined the owner
+--     lookup. cm_select already went through has_project_access and
+--     is left alone.
+drop policy if exists cm_update on public.comments;
+create policy cm_update on public.comments
+  for update using (
+    author_id = auth.uid() or public.project_owner_is_caller(project_id)
+  );
+
+drop policy if exists cm_delete on public.comments;
+create policy cm_delete on public.comments
+  for delete using (
+    author_id = auth.uid() or public.project_owner_is_caller(project_id)
+  );
+
+-- ------------------------------------------------------------
+-- 9.5 VERIFICATION, run after the above. Both were run on
+--     30 Sep 2026 and both passed.
+--
+-- (a) no policy may read the table it guards, and none may form a
+--     cycle with another. The direct case, as SQL:
+--
+--   select c.relname,
+--          (select count(*) from pg_policies p
+--            where p.schemaname='public' and p.tablename=c.relname
+--              and (coalesce(p.qual,'')||coalesce(p.with_check,''))
+--                  ~ ('FROM ' || c.relname)) as self_reading
+--     from pg_class c join pg_namespace n on n.oid=c.relnamespace
+--    where n.nspname='public' and c.relkind='r';
+--
+--     RESULT: self_reading = 0 for all five tables. The only
+--     remaining RLS edge between tables is
+--     projects -> project_collaborators, and project_collaborators
+--     now has no outgoing edge, so the graph is acyclic.
+--
+-- (b) the check that actually matters, from outside, anonymously,
+--     with the publishable key — because (a) is a claim about the
+--     catalogue and this is a claim about the database:
+--
+--   for t in projects project_data project_collaborators shares comments; do
+--     curl -s -o /dev/null -w "$t %{http_code}\n" \
+--       "$SUPABASE_URL/rest/v1/$t?select=*&limit=1" \
+--       -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
+--   done
+--
+--     BEFORE: projects 500, project_collaborators 500, shares 500
+--             (42P17), project_data 200, comments 200.
+--     AFTER:  all five 200, body [].
+--
+-- WHAT (b) DOES NOT PROVE, and this was claimed once already in
+-- this project and was wrong: an empty [] from an anonymous read is
+-- NOT evidence that RLS is denying anything. With RLS on and no
+-- matching policy a SELECT returns [] rather than an error, so an
+-- empty table and a correctly locked table are indistinguishable
+-- from outside. projects is empty (0 rows, 1 user in auth.users).
+-- Resolving it needs one real row to exist and then still come back
+-- as [] to an anonymous caller. That check is NOT done.
+-- ============================================================

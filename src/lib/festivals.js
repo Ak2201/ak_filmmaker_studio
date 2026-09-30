@@ -108,13 +108,21 @@ export function catalogueEntry(name) {
  * festival was not checked, or when every checked deadline has
  * already gone: seeding a row with a date in the past would have
  * the tracker open shouting about a deadline nobody chose.
+ *
+ * A deadline marked `seedable: false` is skipped here while staying
+ * on the card. Clermont-Ferrand is why: its National competition
+ * closes after both International dates, so the soonest FUTURE date
+ * on that festival is one a film from Chennai cannot enter, and
+ * seeding it would have the tracker count down to a deadline the
+ * user is ineligible for — the same fault as counting down to an
+ * approximation, one step further along. Listed, not seeded.
  */
 export function nextCheckedDeadline(name, fromISO = todayISO()) {
   const entry = catalogueEntry(name);
   const list = (entry && entry.check && entry.check.deadlines) || [];
   if (!Array.isArray(list)) return null;
   const future = list
-    .filter((d) => d && d.date && d.date > fromISO)
+    .filter((d) => d && d.date && d.date > fromISO && d.seedable !== false)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
   return future[0] || null;
 }
@@ -151,7 +159,9 @@ export function fromCatalogue(name) {
     tier: entry ? entry.tier : 0,
     premiereRequired: entry ? entry.premiereRequired : false,
     deadline: next ? next.date : '',
-    notes: next ? `${next.label} (checked ${CHECKED_ON})` : ''
+    notes: next
+      ? `${next.label} (checked ${(entry && entry.check && entry.check.checked) || CHECKED_ON})`
+      : ''
   });
 }
 

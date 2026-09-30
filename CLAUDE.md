@@ -610,10 +610,38 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    filmmaker under-budget threefold.
 
    The festival list is now a submission tracker that **enforces** the
-   never-premiere-before-a-rejection rule rather than printing it. Two
-   findings need a human: MAMI looks dormant (its own page still
-   advertises 2024), and IFFI Goa's listing shows no short-film category
-   although the blueprint sends shorts there.
+   never-premiere-before-a-rejection rule rather than printing it.
+
+   **The IFFI finding is closed, and it was a real deadline error.** The
+   entry used to say no short-film category was visible; a short does
+   have a route, and it is Indian Panorama's Non-Feature section, not
+   the International Competition. Its deadline was 10 August 2026 for
+   the online form and 17 August for the stamped hard copy — three
+   weeks EARLIER than the 31 August FilmFreeway date the overlay showed
+   as the single "Regular deadline". A Chennai filmmaker reading that
+   one as theirs missed the festival by three weeks. Both routes are
+   now listed with the route in the label, because the fix is telling
+   them apart rather than picking one. Indian Panorama is also a postal
+   submission to NFDC Mumbai, not an upload.
+
+   **MAMI still looks dormant** and still needs a human — unchanged.
+
+   Two things learned while re-checking, both now enforced by the file:
+   a festival carries the date ITS OWN entry was read, because
+   re-checking four of eighteen used to restamp the other fourteen as
+   fresh (the card read the file's single `lastChecked`); and an
+   aggregator listing is not a source. Aspen is the case for the
+   second — its own site publishes no next-edition dates while
+   secondary listings happily do, so the entry stays `not-checked` and
+   says why, which `not-checked` entries can now do because that
+   branch renders its notes.
+
+   A deadline may also be marked `seedable: false` — listed on the card
+   but never seeded into a submission. Clermont-Ferrand needs it: its
+   National competition closes AFTER both International dates, so the
+   soonest future deadline on that festival is French-productions-only
+   and tracking it would have counted down to a deadline the user
+   cannot enter.
 
    Still owed: `src/ui/budget.js` prices off the 2024-25 figures only — it
    imports the base file and not the overlay.

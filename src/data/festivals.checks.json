@@ -1,12 +1,16 @@
 {
   "appliesTo": "festivals.json",
-  "lastChecked": "2026-09-29",
+  "lastChecked": "2026-09-30",
   "why": "festivals.json is rewritten byte-for-byte from legacy/ every time `npm run extract` runs, so anything added to it is deleted by the next extraction without a word. The 2026 verification therefore lives here, in a hand-maintained overlay the extractor does not touch. The base file keeps the blueprint's own undated approximations — \"~Feb each year\" and \"$40–$70\" — because that is what the 2023 page said and rewriting it in place would lose the record. This file says what is actually true on the date given, festival by festival, with the URL it was read from.",
-  "method": "Every date and fee below was read on a page fetched on 29 September 2026. Festivals that were not re-checked say so and are NOT given invented dates: the tracker will not warn about a deadline nobody looked up, and it says which ones those are rather than leaving them looking verified.",
+  "method": "Every date and fee below was read off the festival's own page, and each festival carries the date ITS entry was read — `checked` — because they were not all read on the same day. Most were read on 29 September 2026; IFFI, SXSW, Clermont-Ferrand and Aspen were re-read on the 30th. The card shows the per-festival date rather than this file's `lastChecked`, so re-checking four of eighteen cannot silently restamp the other fourteen as fresh. Festivals that were not re-checked say so and are NOT given invented dates: the tracker will not warn about a deadline nobody looked up, and it says which ones those are rather than leaving them looking verified. An aggregator listing is not a source here — where a festival's own site carried no dates, the entry stays unchecked and says that is why, even when a secondary site would have supplied a number.",
   "sources": {
     "filmfreeway": "https://filmfreeway.com",
     "berlinale": "https://www.berlinale.de/en/film-entry/faq.html",
-    "mami": "https://mami.mumbaifilmfestival.com/festival-guide/"
+    "mami": "https://mami.mumbaifilmfestival.com/festival-guide/",
+    "iffi": "https://www.iffigoa.org/indian-panorama/indian-panorama-rules-regulations",
+    "sxsw": "https://sxsw.com/film-submissions/",
+    "clermont": "https://www.lecourt-clermont.org/en/pros/submit-a-film/",
+    "shortfilmdepot": "https://shortfilmdepot.com"
   },
   "festivals": {
     "Berlinale Shorts": {
@@ -87,15 +91,20 @@
     },
     "IFFI · Goa": {
       "status": "checked",
-      "checked": "2026-09-29",
-      "url": "https://filmfreeway.com/InternationalFilmFestivalofIndiaIFFI-Goa",
-      "fee": "Free to enter the International Competition.",
+      "checked": "2026-09-30",
+      "url": "https://www.iffigoa.org/indian-panorama/indian-panorama-rules-regulations",
+      "fee": "Indian Panorama non-feature ₹3,540 including 18% GST (features ₹11,800). The International Cinema section is free to enter.",
       "deadlines": [
-        { "label": "Regular deadline", "date": "2026-08-31" }
+        { "label": "Indian Panorama non-feature, online form", "date": "2026-08-10" },
+        { "label": "Indian Panorama non-feature, hard copy and material", "date": "2026-08-17" },
+        { "label": "International Cinema, via FilmFreeway", "date": "2026-08-31" }
       ],
       "notes": [
-        "57th edition, 20–28 November 2026. Notification 20 October 2026. The deadline had passed when this was checked.",
-        "The listing shows feature categories only — International Competition, curated non-competitive segments, Best Debut Feature, the ICFT UNESCO Gandhi Medal. No short-film category was visible, so the blueprint's advice to submit a short here needs confirming with the festival."
+        "57th edition, 20–28 November 2026. Every deadline for this edition had passed when this was checked.",
+        "A short film DOES have a route here. This entry used to say no short-film category was visible and that the blueprint's advice needed confirming with the festival; it has now been confirmed from the Indian Panorama regulations. The route is Indian Panorama's Non-Feature section — \"documentary / non-fiction / short fiction\" — and NOT the International Competition, whose listing really does show feature categories only — the International Competition proper, curated non-competitive segments, Best Debut Feature and the ICFT UNESCO Gandhi Medal.",
+        "The non-feature deadline is three weeks EARLIER than the FilmFreeway date this entry used to show on its own: 10 August for the online form and 17 August for the stamped hard copy and the material, against 31 August for International Cinema. A short filmmaker reading the later date as theirs misses this festival by three weeks, which is why both routes are now listed with the route in the label rather than one date called \"Regular\".",
+        "Indian Panorama is a postal submission to NFDC in Mumbai, not a FilmFreeway upload. Eligibility for the 57th: completed between 1 August 2025 and 31 July 2026.",
+        "Notification 20 October 2026, read on 29 September 2026 and not re-read on the 30th."
       ]
     },
     "MAMI · Mumbai Film Festival": {
@@ -117,14 +126,54 @@
       ]
     },
     "TIFF · Toronto": { "status": "not-checked", "checked": "2026-09-29" },
-    "SXSW Shorts": { "status": "not-checked", "checked": "2026-09-29" },
+    "SXSW Shorts": {
+      "status": "checked",
+      "checked": "2026-09-30",
+      "url": "https://sxsw.com/film-submissions/",
+      "fee": "US$55 first deadline, $70 second, $90 final.",
+      "deadlines": [
+        { "label": "First deadline, shorts", "date": "2026-08-25" },
+        { "label": "Second deadline, shorts", "date": "2026-09-15" },
+        { "label": "Final deadline, shorts", "date": "2026-10-01" }
+      ],
+      "notes": [
+        "2027 festival, 15–21 March 2027, Austin. Notification by 9 February 2027.",
+        "THE FINAL DEADLINE IS STILL OPEN as this was checked — the only one of the eighteen that was. Narrative, documentary and animated shorts up to 40 minutes. All deadlines close 11.59pm PT, which is the following morning in India.",
+        "Fees rise at each tier, so the $90 is what a late entry costs, not the price of entering."
+      ]
+    },
     "Locarno Pardi di domani": {
       "status": "blocked",
       "checked": "2026-09-29",
       "notes": ["Not verified — the festival's site could not be fetched."]
     },
-    "Clermont-Ferrand": { "status": "not-checked", "checked": "2026-09-29" },
-    "Aspen ShortsFest": { "status": "not-checked", "checked": "2026-09-29" },
+    "Clermont-Ferrand": {
+      "status": "checked",
+      "checked": "2026-09-30",
+      "url": "https://www.lecourt-clermont.org/en/pros/submit-a-film/",
+      "fee": "€13 plus delivery, charged as one ShortFilmDepot stamp. No earlybird discount. Film schools and distributors entering several films by different directors get 50%.",
+      "deadlines": [
+        { "label": "International competition, films finished Oct–Dec 2025", "date": "2026-07-09" },
+        { "label": "International competition, films finished in 2026", "date": "2026-09-24" },
+        { "label": "XR competition", "date": "2026-09-24" },
+        { "label": "National competition — FRENCH productions only", "date": "2026-10-01", "seedable": false }
+      ],
+      "notes": [
+        "49th edition, 29 January – 6 February 2027. Selection notified late November 2026, announced early December.",
+        "The eligibility window, not the tier, decides which International date is yours: a film finished in 2025 had to be in by 9 July, one finished in 2026 by 24 September. Both have passed for this edition.",
+        "The 1 October date is the National competition and is for French productions only — it is listed so it is not mistaken for an International extension that a film from Chennai could use.",
+        "Submission is only through ShortFilmDepot, not FilmFreeway. International competition caps at 40 minutes and has NO premiere requirement, which makes it a rare safe first festival."
+      ]
+    },
+    "Aspen ShortsFest": {
+      "status": "not-checked",
+      "checked": "2026-09-30",
+      "url": "https://aspenfilm.org/festival/2026-shortsfest/",
+      "notes": [
+        "Looked up and deliberately left unchecked. On 30 September 2026 Aspen Film's own site still carried only the 35th edition, April 2026, and no call for entries, no submission dates and no fees for the next one. Secondary listings do advertise a 36th edition and a date for submissions opening, but the festival's own pages do not, and this file does not launder an aggregator's figure into a verified one.",
+        "So: Oscar-qualifying and worth entering, but come back to the festival's own site for the real dates rather than planning around a number from here."
+      ]
+    },
     "IFFK · Kerala": {
       "status": "blocked",
       "checked": "2026-09-29",

@@ -602,7 +602,14 @@ function renderFestCheck(f) {
 
   if (chk.status === 'checked') {
     const future = (chk.deadlines || []).filter((d) => d.date > Fest.todayISO());
-    box.append(h('div.fest-check-tag.ok', { text: `CHECKED ${Fest.CHECKED_ON}` }));
+    /* The festival's OWN check date, not the file's. They are not all
+       read on the same day — re-checking four of eighteen used to
+       restamp the other fourteen as fresh, because this read the
+       overlay's single lastChecked. CHECKED_ON stays as the fallback
+       for an entry that predates per-festival dates. */
+    box.append(h('div.fest-check-tag.ok', {
+      text: `CHECKED ${chk.checked || Fest.CHECKED_ON}`
+    }));
     if (chk.fee) box.append(h('p', { text: chk.fee }));
     if ((chk.deadlines || []).length) {
       box.append(h('ul.fest-dates', {}, chk.deadlines.map((d) => {
@@ -634,6 +641,14 @@ function renderFestCheck(f) {
   box.append(h('p.fest-check-note', {
     text: `The line above is the blueprint’s own approximation from 2023 and nobody has verified it since. Look the date and the fee up yourself before you plan around them.`
   }));
+  /* An unchecked entry may still have something to say, and until this
+     line existed it could not say it. Aspen is the case: its own site
+     was read and carried no call for entries at all, while aggregators
+     happily advertise dates for it. That is a finding — "we looked,
+     the festival has not published, do not trust the listing you will
+     find elsewhere" — and it is worth more than the generic sentence
+     above. Without this the note was data nobody reads. */
+  (chk.notes || []).forEach((n) => box.append(h('p.fest-check-note', { text: n })));
   return box;
 }
 

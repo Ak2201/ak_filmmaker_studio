@@ -279,6 +279,14 @@ stale allowances, so it would need editing daily. `npm run baseline` goes green
 until midnight. Neither is a redesign, and no copy went missing: check whether
 the missing words are all bare integers before reaching for either.
 
+**The service worker is a second blind spot, and it shipped a broken page.**
+The run's Chromium has no service worker, so nothing in `verify` exercises the
+worker, its precache or its fetch handler — and a route sweep cannot either,
+because HTTP is not where it fails. A `.html` URL that 404s nowhere and returns
+200 to `curl` can still be ERR_FAILED in a browser that has the worker
+installed. See the redirected-response trap below. Check one `.html` URL in a
+real browser after any change to `sw.js`, `vercel.json` or the page entries.
+
 **Known blind spot.** The run loads each page at 1280px and resizes to 390px
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
 by then — the mobile action bar never attaches during a verify run and its
@@ -419,6 +427,48 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   `documentElement` exists before `<body>`, so that also avoids a flash — and
   keeps the classes in the same call, because four pages still read them as
   state. `verify` asserts three distinct backgrounds now.
+- **A service worker must never answer a navigation with a *redirected*
+  response.** Chrome refuses it — "a redirected response was used for a request
+  whose redirect mode is not 'follow'" — and shows **ERR_FAILED**. This one cost
+  a day of looking in the wrong place, because every tool that is not a browser
+  says the site is fine: `/dashboard.html` returned 308 → `/dashboard` → 200 with
+  the right title under `curl`, the page was deployed, and `/dashboard` worked
+  the whole time. Only the typed `.html` form failed, and only in a browser that
+  had the worker installed.
+
+  `vercel.json` sets `cleanUrls`, so `/page.html` answers with a 308 to `/page`.
+  That made **21 of the 68 precached URLs redirects** — every HTML page,
+  `index.html` among them, so the offline shell was broken the same way. Three
+  things then had to be true at once, which is why it survived review:
+
+  - `fetch()` follows the 308 and resolves **200**, with `redirected: true`.
+  - `Cache.put` and `cache.addAll` **both accept** that response. Neither
+    throws. Do not assume otherwise — the guess that atomic `addAll` would fail
+    the install was wrong, and checking it against the real host is what
+    corrected the diagnosis.
+  - the guard was `response.type === 'basic'`, which is **also true of a
+    followed redirect**, so nothing filtered the tainted copy.
+
+  So the poison went in quietly at install and surfaced only on a later
+  navigation. `clean()` rebuilds a response without the flag on the way INTO
+  the cache; `precacheAll()` replaces `addAll` to get that rebuild while keeping
+  its atomicity (`Promise.all` rejects on the first failure); `matchUsable()`
+  treats an already-tainted entry as a miss **and deletes it**, so an affected
+  browser heals on its next load — "clear your site data" is not an instruction
+  you can give someone who is just trying to open a page.
+
+  `cleanUrls` is deliberately left ON: the worker is now correct against any
+  host, which is the durable fix. If you add a redirect rule, a rewrite, or a
+  new page entry, nothing needs changing — but if you ever put `addAll` back, or
+  cache a response without `clean()`, this returns exactly as before. The
+  `arunak-*.html` stubs are excluded from the precache outright: their whole job
+  is to 301, and an old bookmark is what the network is for.
+
+  **`verify` cannot see this, and neither can a route sweep.** Both were green
+  throughout — verify because its Chromium context has no service worker, and a
+  sweep because HTTP was never the problem. The commit before this one reported
+  "all 15 production routes return 200" and was correct and useless. Check a
+  `.html` URL in a real browser with the worker installed.
 
 ## How to do common things
 

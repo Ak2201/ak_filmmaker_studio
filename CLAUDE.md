@@ -261,6 +261,24 @@ will not trip it — that was equally true of the `legacy/` oracle. The `data-ke
 check is the exact one, and it is the one that protects saved work: a renamed
 key fails the run immediately.
 
+**The oracle cannot hold a clock, and there are two of them.** Anything the
+pages compute from today's date varies without anybody editing copy, so it is
+removed from *both* sides rather than allowed. The hub's greeting is a fixed
+word set (`CLOCK`). The short film's festival countdowns are not: they are
+numbers, and which numbers depends on when the baseline was captured. A
+baseline taken on 29 September failed on the 30th with `13 unexplained missing
+words (108, 119, 131, 134, 162, 198)` — all 13 a bare integer from
+`festivals.checks.json` counting down, or, for a deadline already past,
+counting up. `COUNTDOWN` in the verify script derives them from that same file
+at the baseline's own `capturedAt` and at now, and excludes only the tokens
+that differ, so "in", "days" and "ago" keep their coverage.
+
+If this recurs, the two obvious fixes are both wrong. An `EXPECTED` entry names
+integers that are stale tomorrow — and the anti-rot check then fails the run for
+stale allowances, so it would need editing daily. `npm run baseline` goes green
+until midnight. Neither is a redesign, and no copy went missing: check whether
+the missing words are all bare integers before reaching for either.
+
 **Known blind spot.** The run loads each page at 1280px and resizes to 390px
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
 by then — the mobile action bar never attaches during a verify run and its

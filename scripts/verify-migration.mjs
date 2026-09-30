@@ -588,6 +588,117 @@ function baselineFacts(name) {
   return { keys: new Set(page.keys), text: page.words };
 }
 
+/* ---- the other clock: the festival countdown ----------------
+   Same fault as CLOCK further down, and the same remedy — the oracle
+   cannot contain a clock, so the clock comes out of both sides. It
+   gets more words than the greeting because the remedy had to be
+   derived rather than listed.
+
+   The short film's festival tracker prints live countdowns from the
+   dates in festivals.checks.json: "in 33 days", "119 days ago". Every
+   one of them moves with the calendar, and in BOTH directions — a
+   future deadline counts down, a past one counts up. A baseline
+   captured on 29 September therefore failed on 30 September with 13
+   unexplained missing words, all 13 a bare integer and not one of
+   them copy anybody had touched. Left alone it fails again the next
+   day, with a different 13.
+
+   Two things keep this from being a second hand-written word set:
+
+   - WHICH numbers vary depends on the date the baseline was captured,
+     so they are computed from the same file the page reads, at the two
+     dates that matter: the baseline's own capturedAt and now.
+   - Only what actually DIFFERS between those two dates is a clock.
+     "in", "days" and "ago" are on the page at both, so they cancel
+     out and keep their coverage — as does any number that happens to
+     land on the same value twice. What is excluded is exactly what
+     moved, so the cost is small and it is worth having measured
+     rather than asserted: on the day this was written, 42 word-slots
+     across all 15 pages, 1.11% of the short film's words and under
+     0.6% of every other page's, every one of them a bare integer.
+     Immediately after a re-baseline the cost is zero, because the two
+     dates are the same day and the difference is empty.
+
+   That second point is also why "today" / "tomorrow" / "yesterday"
+   need no special case: relativeDays prints those instead of a number
+   within a day of a deadline, and the symmetric difference picks them
+   up on the two runs where they change while leaving them checked on
+   every other run. It covers the one case where a whole phrase goes,
+   too: once every deadline in the overlay is in the past, nothing on
+   the page says "in N days" any more, so "in" is excluded on that run
+   and on no other. Simulated across the 400 days after this baseline,
+   the derivation absorbed every countdown shift with no leaks, and
+   the only non-numeric words it ever removed were those four.
+
+   An EXPECTED entry cannot do this job, which is worth saying because
+   it is the obvious first reach. It would name integers that are
+   wrong tomorrow, and the anti-rot check would then fail the run for
+   stale allowances — so the list would need editing every day, and on
+   any day nobody edited it, it would be hiding real deletions behind
+   numbers that no longer mean anything. Nor is this a re-baseline:
+   recapturing would go green until midnight and change nothing. */
+const COUNTDOWN = (() => {
+  /* Mirrors relativeDays / daysUntil / todayISO in
+     src/lib/festivals.js. A second copy of a parser is a trap in this
+     codebase — see the money.js entry in CLAUDE.md — but this is not a
+     path the app can reach: verify is a node script whose job is to
+     predict what the browser will render. Keep the two in step.
+     Calendar-day arithmetic in UTC so a DST boundary cannot shift a
+     count by one; local components for "today", because that is the
+     day the browser running the page thinks it is. */
+  const todayISO = (d = new Date()) => {
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const daysUntil = (iso, from) => {
+    const a = ISO.exec(String(iso));
+    const b = ISO.exec(String(from));
+    if (!a || !b) return null;
+    const ms = Date.UTC(+a[1], +a[2] - 1, +a[3]) - Date.UTC(+b[1], +b[2] - 1, +b[3]);
+    return Math.round(ms / 86400000);
+  };
+  const relativeDays = (n) => {
+    if (n === null) return '';
+    if (n === 0) return 'today';
+    if (n === 1) return 'tomorrow';
+    if (n === -1) return 'yesterday';
+    return n > 0 ? `in ${n} days` : `${-n} days ago`;
+  };
+
+  let dates = [];
+  try {
+    const data = JSON.parse(fs.readFileSync(
+      path.join(ROOT, 'src', 'data', 'festivals.checks.json'), 'utf8'));
+    dates = Object.values(data.festivals || {})
+      .flatMap((f) => (f && f.deadlines) || [])
+      .map((d) => d && d.date)
+      .filter((d) => ISO.test(String(d)));
+  } catch (e) { /* no overlay on disk means no countdowns on the page */ }
+
+  let capturedAt = null;
+  try {
+    capturedAt = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).capturedAt;
+  } catch (e) { /* no baseline yet — nothing to reconcile against */ }
+  if (!dates.length || !capturedAt) return new Set();
+
+  const vocabulary = (on) =>
+    new Set(dates.flatMap((d) => words(relativeDays(daysUntil(d, on)))));
+  const then = vocabulary(todayISO(new Date(capturedAt)));
+  const now = vocabulary(todayISO());
+  return new Set([...then, ...now].filter((w) => !(then.has(w) && now.has(w))));
+})();
+
+/* Said out loud rather than applied quietly. An exclusion nobody can
+   see is how a check quietly stops checking: if this line ever lists
+   a word that is not a festival countdown, the derivation is wrong. */
+if (!WRITE_BASELINE) {
+  console.log(COUNTDOWN.size
+    ? `\u2713 festival countdown moved since the baseline; ${COUNTDOWN.size} ` +
+      `clock word(s) out of both sides: ${[...COUNTDOWN].sort().join(', ')}`
+    : '\u2713 festival countdown unchanged since the baseline');
+}
+
 
 /* ---- run --------------------------------------------------- */
 // Playwright resolves its own downloaded browser. PW_CHROMIUM overrides
@@ -1322,12 +1433,16 @@ for (const spec of PAGES) {
      the word "good" leaves the page. `npm run verify` could not pass
      between 21:00 and 05:00 and nobody had run it at night yet. */
   const CLOCK = new Set(['morning', 'afternoon', 'evening', 'late', 'good', 'working']);
-  const gone = [...new Set(old.text)]
-    .filter((w) => !CLOCK.has(w))
-    .filter((w) => !liveWords.has(w));
+  /* Both clocks come out of both sides, and out of the denominator
+     too — as CLOCK always was. A word the oracle cannot hold an
+     opinion about is not coverage that was lost, and leaving it in the
+     total would put 100% permanently out of reach. */
+  const varying = (w) => CLOCK.has(w) || COUNTDOWN.has(w);
+  const stable = [...new Set(old.text)].filter((w) => !varying(w));
+  const gone = stable.filter((w) => !liveWords.has(w));
   const missingWords = gone.filter((w) => !(w in allowed));       // unexplained
   const explained = gone.filter((w) => w in allowed);             // deliberate
-  const total = [...new Set(old.text)].filter((w) => !CLOCK.has(w)).length;
+  const total = stable.length;
   const coverage = ((total - gone.length) / total) * 100;
   // Coverage counting deliberate rewording as intact — this is the
   // number that must be 100%.

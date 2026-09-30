@@ -1542,3 +1542,165 @@ create policy cm_delete on public.comments
 -- Resolving it needs one real row to exist and then still come back
 -- as [] to an anonymous caller. That check is NOT done.
 -- ============================================================
+
+-- ============================================================
+-- 10. SECTIONS 6 AND 7 APPLIED, PLUS THE REPAIRS THEY NEEDED
+-- ------------------------------------------------------------
+-- RAN 30 SEP 2026, immediately after section 9, in this order:
+-- section 6 whole, section 7 in five parts (7.0-7.4, then 7.5 in
+-- three, then 7.6-7.7), then the repairs below. Every part returned
+-- "Success. No rows returned" and was re-read from the catalogue
+-- afterwards rather than assumed.
+--
+-- Sections 6 and 7 applied UNCHANGED. What follows is only the set of
+-- things that were wrong once they were live, found by reading the
+-- catalogue and by probing the REST API anonymously.
+--
+-- CONTEXT FOR ANYONE RE-RUNNING THIS FILE ON A FRESH DATABASE: the
+-- repairs below are corrections to sections 5 and 7, not to section 9.
+-- On a clean run they still apply, because the file's own text still
+-- contains what they fix. They are appended rather than edited in
+-- place, per the convention the rest of this file follows.
+-- ============================================================
+
+-- 10.1 proj_update ignored the collaborator expiry.
+--
+-- Section 5 writes proj_update with an INLINE collaborator test:
+--   exists (select 1 from project_collaborators c
+--            where c.project_id = id and c.user_id = auth.uid()
+--              and c.role = 'edit')
+-- and section 7.1's entire purpose is that an expired or revoked share
+-- must expire the ACCESS. It added expires_at and taught
+-- has_project_access() to honour it — but nothing taught proj_update,
+-- because proj_update never called has_project_access().
+--
+-- The result was a split: an expired collaborator lost SELECT (through
+-- proj_select -> has_project_access) and KEPT UPDATE. They could not
+-- read the project row and could still write it. Worse for being
+-- silent, since the app would show them nothing while their writes
+-- still landed.
+--
+-- Routing it through has_project_access(id,'edit') honours the expiry,
+-- matches what every other write policy in the file already does, and
+-- removes the last RLS edge out of projects.
+drop policy if exists proj_update on public.projects;
+create policy proj_update on public.projects
+  for update
+  using      (public.has_project_access(id, 'edit'))
+  with check (public.has_project_access(id, 'edit'));
+
+-- 10.2 cm_update had no WITH CHECK, and section 9 did not add one.
+--
+-- An UPDATE policy with no WITH CHECK reuses its USING expression for
+-- the NEW row. USING asks "are you the author", which stays true
+-- however project_id changes — the hole section 5 documents for
+-- proj_update, present on cm_update the whole time. Section 9
+-- recreated this policy and left it without one, which was a chance to
+-- fix it that was missed rather than a regression introduced.
+drop policy if exists cm_update on public.comments;
+create policy cm_update on public.comments
+  for update
+  using (
+    author_id = auth.uid() or public.project_owner_is_caller(project_id)
+  )
+  with check (
+    public.has_project_access(project_id, 'comment')
+    and (author_id = auth.uid() or public.project_owner_is_caller(project_id))
+  );
+
+-- 10.3 sh_owner_write lost `created_by = auth.uid()`. THIS ONE WAS A
+--      REGRESSION, introduced by section 9 and caught here.
+--
+-- Section 5's WITH CHECK is `exists(owner...) and created_by =
+-- auth.uid()`. Section 9 replaced the whole expression with
+-- project_owner_is_caller(project_id) and dropped the second
+-- conjunct with it, so a project owner could mint a share row
+-- attributed to somebody else. Restored.
+drop policy if exists sh_owner_write on public.shares;
+create policy sh_owner_write on public.shares
+  for all
+  using      (public.project_owner_is_caller(project_id))
+  with check (public.project_owner_is_caller(project_id)
+              and created_by = auth.uid());
+
+-- 10.4 REVOKE FROM TWO ROLES IS NOT A REVOKE.
+--
+-- Section 7.1 ends with
+--   revoke execute on function public.purge_expired_shares()
+--     from authenticated, anon;
+-- and that function DELETES ROWS. Postgres grants EXECUTE on every new
+-- function to PUBLIC by default, and revoking from two named roles
+-- leaves the PUBLIC grant untouched — so anon still inherited it.
+--
+-- Confirmed live, not reasoned about: an anonymous POST to
+-- /rest/v1/rpc/purge_expired_shares with the publishable key returned
+-- 200 and the delete count. Anyone with the key, which ships in the
+-- client, could purge the shares table.
+--
+-- account_role() and account_owner() had the same shape: granted to
+-- authenticated on purpose, and to PUBLIC by accident, which handed
+-- anon an account-membership oracle.
+revoke execute on function public.purge_expired_shares() from public, anon, authenticated;
+revoke execute on function public.account_owner(uuid)    from public, anon;
+revoke execute on function public.account_role(uuid)     from public, anon;
+
+-- The three that anon legitimately needs keep their grants, because a
+-- policy invoking a function the caller cannot execute ERRORS rather
+-- than returning false, which would break every share-link read:
+--   has_project_access, project_owner_is_caller, resolve_share.
+
+-- 10.5 Realtime. Section 5's publication block had never run either.
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+     where pubname='supabase_realtime' and schemaname='public' and tablename='project_data') then
+    alter publication supabase_realtime add table public.project_data;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+     where pubname='supabase_realtime' and schemaname='public' and tablename='comments') then
+    alter publication supabase_realtime add table public.comments;
+  end if;
+end $$;
+
+-- ------------------------------------------------------------
+-- 10.6 VERIFICATION. All of this was run on 30 Sep 2026 and passed.
+--
+-- (a) catalogue: 20 policies across 7 tables, RLS enabled on all 7,
+--     ZERO policies missing a WITH CHECK on UPDATE/ALL, and ZERO
+--     policies that read any RLS-protected table. Every cross-table
+--     test now goes through a security definer function, so policy
+--     recursion is structurally impossible rather than merely absent:
+--
+--   select tablename||'.'||policyname||
+--          case when cmd in ('UPDATE','ALL') and with_check is null
+--               then '  <<NO WITH CHECK>>' else '' end ||
+--          case when (coalesce(qual,'')||coalesce(with_check,''))
+--                    ~ 'FROM (public\.)?(projects|project_collaborators|shares
+--                       |comments|accounts|account_members|project_data)'
+--               then '  RLS-EDGE' else '' end
+--     from pg_policies where schemaname='public' order by 1;
+--
+-- (b) anonymous REST sweep with the publishable key:
+--       all 7 tables            200 []   (accounts and account_members
+--                                         no longer PGRST205)
+--       POST projects           401 42501 new row violates RLS
+--       POST accounts           401 42501 new row violates RLS
+--       rpc purge_expired_shares 401 42501 permission denied
+--       rpc account_owner        401 42501 permission denied
+--       rpc account_role         401 42501 permission denied
+--       rpc has_project_access   200 false
+--       rpc project_owner_is_caller 200 false
+--       rpc resolve_share        200 []
+--
+-- (c) the app: all 15 production routes plus 15 .html entries, the 3
+--     legacy stubs and /shared/:token return 200; all 15 pages render
+--     under Playwright with real content, zero console errors and zero
+--     horizontal overflow.
+--
+-- STILL NOT PROVEN, and it is the same gap as before: projects holds 0
+-- rows. An anonymous [] cannot distinguish "RLS denied it" from
+-- "nothing is there". Every write path above is genuinely proven (a
+-- 42501 is a refusal, not an empty set); every READ path is not. One
+-- real row, saved by a signed-in user, then still [] to an anonymous
+-- caller, closes it. Until then the read side is unverified.
+-- ============================================================

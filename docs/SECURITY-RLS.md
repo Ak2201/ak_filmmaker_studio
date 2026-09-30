@@ -693,3 +693,131 @@ than half-built. Section 9 deliberately does not create it.
    live database, because the code that fixes it was never applied.
    The audit above describes a database that does not exist.
 3. The remaining eight live checks, which need two real accounts.
+
+---
+
+## LIVE CHECK 3 — RUN 30 SEP 2026. SECTIONS 6 AND 7 ARE NOW DEPLOYED.
+
+The gap named at the end of LIVE CHECK 2 — "sections 5-7 are not
+deployed, so everything section 7 hardened is unfixed live" — is
+closed. Section 6 (the account tier) and section 7 (the hardening)
+both ran, unchanged, and were re-read from the catalogue afterwards.
+
+The database now has 7 tables, 20 policies, 13 triggers and 18
+functions. `accounts` and `account_members` exist; `projects.account_id`
+exists; `project_collaborators` has `via_share` and `expires_at`; every
+trigger from sections 5-7 is present.
+
+**This run found four more things, none of which a static reading had
+caught, and one of which was live and exploitable.** They are fixed in
+schema section 10.
+
+### F3 — `purge_expired_shares` was callable by anyone. HIGH. FIXED.
+
+    POST /rest/v1/rpc/purge_expired_shares   200   0
+
+with nothing but the publishable key, which ships in the client. The
+function deletes rows from `shares`.
+
+Section 7.1 ends with `revoke execute ... from authenticated, anon`.
+Postgres grants EXECUTE on every new function to **PUBLIC** by default,
+and revoking from two named roles does not touch the PUBLIC grant. The
+revoke read as if it did the job and did nothing.
+
+`account_role()` and `account_owner()` had the same shape — granted to
+`authenticated` deliberately and to PUBLIC by accident — which handed an
+anonymous caller an account-membership oracle. All three are now revoked
+from `public` explicitly, and re-tested: `401 42501 permission denied`.
+
+The three functions anon legitimately needs keep their grants, because a
+policy that invokes a function the caller cannot execute **errors**
+rather than returning false, which would break every share-link read:
+`has_project_access`, `project_owner_is_caller`, `resolve_share`.
+
+*The general lesson, worth more than the finding:* `revoke ... from
+<role>` on a function is almost never sufficient. Check `proacl`. A
+default-privilege grant is invisible in the source of the file that
+creates the function.
+
+### F4 — an expired collaborator kept UPDATE on the project row. FIXED.
+
+Section 7.1 exists so that an expired or revoked share expires the
+**access**. It added `expires_at` and taught `has_project_access()` to
+honour it. But `proj_update` never called `has_project_access()` — it
+carried an inline collaborator test written back in section 5:
+
+    exists (select 1 from project_collaborators c
+             where c.project_id = id and c.user_id = auth.uid()
+               and c.role = 'edit')
+
+No expiry test. So an expired collaborator lost SELECT and **kept
+UPDATE**: they could not read the project row and could still write it.
+Silent in the worst way — the app shows them nothing while their writes
+still land. Now `has_project_access(id,'edit')` on both USING and WITH
+CHECK.
+
+### F5 — `cm_update` had no WITH CHECK. FIXED.
+
+The same shape section 5 documents for `proj_update`: with no WITH
+CHECK, Postgres reuses USING for the new row, and USING only asks "are
+you the author", which stays true however `project_id` changes. Section
+9 recreated this policy and left it without one — a missed chance
+rather than a regression. Both `proj_update` and `cm_update` now have
+explicit WITH CHECK, and the catalogue is asserted to contain **zero**
+UPDATE/ALL policies without one.
+
+### F6 — section 9 dropped `created_by = auth.uid()`. REGRESSION. FIXED.
+
+This one was mine. Section 5's `sh_owner_write` WITH CHECK is
+`exists(owner…) and created_by = auth.uid()`. Section 9 replaced the
+whole expression with `project_owner_is_caller(project_id)` and dropped
+the second conjunct with it, so a project owner could mint a share row
+attributed to someone else. Restored in 10.3.
+
+*Worth naming as a pattern:* rewriting a policy to fix the expression in
+its USING clause quietly rewrites its WITH CHECK too. Diff both.
+
+### Verification
+
+Catalogue: 20 policies, **zero** missing a WITH CHECK on UPDATE/ALL,
+**zero** reading any RLS-protected table. Every cross-table test now
+goes through a `security definer` function, so policy recursion is
+structurally impossible rather than merely absent.
+
+Anonymous REST, publishable key:
+
+| probe | result |
+|---|---|
+| SELECT on all 7 tables | `200 []` — `accounts` no longer `PGRST205` |
+| `POST /projects` | `401 42501` new row violates RLS |
+| `POST /accounts` | `401 42501` new row violates RLS |
+| `rpc/purge_expired_shares` | `401 42501` permission denied |
+| `rpc/account_owner`, `rpc/account_role` | `401 42501` permission denied |
+| `rpc/has_project_access`, `rpc/project_owner_is_caller` | `200 false` |
+| `rpc/resolve_share` | `200 []` |
+
+The app, against production: all 15 routes, 15 `.html` entries, 3 legacy
+stubs and `/shared/:token` return 200; all 15 pages render under
+Playwright with real content, zero console errors, zero horizontal
+overflow.
+
+### Still open
+
+1. **The read side is still unproven, and this has not moved.**
+   `projects` holds 0 rows, so an anonymous `[]` cannot distinguish "RLS
+   denied it" from "nothing is there". Every WRITE path above is
+   genuinely proven — a `42501` is a refusal, not an empty set — and
+   every READ path is not. One real row, saved by a signed-in user, then
+   still `[]` anonymously, closes it. **This is the last cheap check and
+   it should be done next.**
+2. The remaining live checks needing two real accounts: collaborator
+   isolation, share claim/expiry/revoke end to end, the comment-status
+   and reply-cascade guards, and the account-tier escalations. The
+   guards all exist now, so these are testable for the first time.
+3. Share tokens are still stored in plaintext — a product call, because
+   the owner's "re-copy this link" depends on it.
+4. There is still no `claim_invite()`, so account invites cannot be
+   claimed. The account tier is deployed but not reachable from the UI;
+   `cloud.js` does not touch `accounts` or `account_members` at all.
+5. Realtime DELETE payloads are documented as not RLS-filtered the way
+   INSERT and UPDATE are. Unverified.

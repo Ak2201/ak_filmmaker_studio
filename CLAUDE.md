@@ -693,8 +693,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    and tracking it would have counted down to a deadline the user
    cannot enter.
 
-   Still owed: `src/ui/budget.js` prices off the 2024-25 figures only — it
-   imports the base file and not the overlay.
+   ~~Still owed: `src/ui/budget.js` prices off the 2024-25 figures only.~~
+   Done, and the second half of it is the part worth keeping. Reading the
+   overlay was the easy half and was already finished; the estimator then
+   showed the CHECKED figure *instead of* the band, which walked straight
+   into the 3x trap named two paragraphs above. Alexa Mini hinted ₹8,000
+   against a 25,000–35,000 card, Komodo ₹4,500 against 15,000–22,000 — a
+   filmmaker anchored to the hint under-budgets the biggest line in the
+   shoot threefold. `rateHint()` now shows **both**, names the multiple
+   when the gap is material, and says the checked figure is one vendor's
+   list price that may be body-only. Where they agree — FX6, 4,000 against
+   a 4,000–7,000 band — there is no warning, because there is nothing
+   wrong. It only ever hinted, never autofilled, which is why this was a
+   misleading note rather than a wrong total.
+
+   The library had this right all along by rendering the check rows BESIDE
+   the card row instead of over it. The estimator is the page people type
+   numbers into, and it was the one replacing — worth remembering next time
+   a fix means "make page B agree with page A".
+
+   `budget.html`'s own provenance line was the same fault in prose: it
+   asserted every preset was 2024-25 while the hints underneath it showed
+   2026 dates. It counts the overlay now instead of asserting.
 
 8. ~~First-run experience.~~ Done. The hub no longer opens the new-project
    modal on a timer; the empty grid renders a first-run panel instead — what

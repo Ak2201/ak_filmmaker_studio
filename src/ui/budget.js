@@ -123,13 +123,57 @@ const RATE_BY_ITEM = (() => {
   return { get: (name) => map.get(norm(name)) || null };
 })();
 
-/** The rate hint for a line: the verified figure when there is one. */
+/* How far BELOW the 2024-25 band a checked figure sits, as a
+   multiple, or '' when the two roughly agree.
+
+   The band's LOW end is the fair comparison: if the vendor figure
+   clears that, there is nothing to warn about. parseNum takes the
+   number at the front of "25,000 – 35,000", which is that low end —
+   money.js's whole-string rule, and the reason this needs no second
+   parser of its own. */
+function bandGap(card, checked) {
+  const low = parseNum(card.raw);
+  const now = Number(checked.value);
+  if (!low || !now || low <= now * 1.5) return '';
+  const x = low / now;
+  return x >= 10 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, '');
+}
+
+/** The rate hint for a line: BOTH figures, when the card has one. */
+/* A CHECKED figure joins the card's band, it does not replace it.
+
+   This returned the checked figure alone, which is precisely the
+   trap CLAUDE.md's rates item names two paragraphs above the line
+   that asked for this file to read the overlay at all: the 2026
+   vendor figures run about 3x BELOW the 2024-25 ranges — Alexa Mini
+   at 8,000 against a 25,000–35,000 band, Komodo at 4,500 against
+   15,000–22,000 — probably body-versus-package, but unconfirmed. A
+   hint showing only the lower one anchors the user to it on the
+   single biggest line in a shoot.
+
+   It never autofilled, which is the only reason this was a
+   misleading note and not a wrong total. The library had it right
+   already, because it renders the check rows BESIDE the card row
+   rather than over it. The estimator is the page people actually
+   type numbers into, and it was the one replacing. */
 function rateHint(name) {
   if (!name) return '';
   const key = norm(name);
-  const checked = CHECKED_BY_ITEM.get(key);
-  if (checked) return `Checked ${checked.checked}: ${checked.raw}`;
   const card = RATE_BY_ITEM.get(name);
+  const checked = CHECKED_BY_ITEM.get(key);
+
+  if (checked) {
+    const head = `Checked ${checked.checked}: ${checked.raw}`;
+    if (!card) return head;
+    const both = `${head} · card ${rates.asOf} said ${card.raw}`;
+    const gap = bandGap(card, checked);
+    return gap
+      ? `${both} — about ${gap}x more. The checked figure is one vendor's list `
+        + `price and may be body-only; budget the band until you have confirmed `
+        + `what it includes.`
+      : both;
+  }
+
   if (!card) return '';
   return STALE_ITEMS.has(key)
     ? `Rate card ${rates.asOf}: ${card.raw} · no current Chennai rate found`

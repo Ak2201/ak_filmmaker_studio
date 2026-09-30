@@ -391,11 +391,88 @@ function runSpy() {
 let lastBarH = 0;
 function measureBar() {
   const bar = document.querySelector('.sh-bar');
-  if (!bar) return;
-  const px = Math.round(bar.getBoundingClientRect().height);
-  if (!px || px === lastBarH) return;
-  lastBarH = px;
-  document.documentElement.style.setProperty('--sh-bar-h', px + 'px');
+  if (bar) {
+    const px = Math.round(bar.getBoundingClientRect().height);
+    if (px && px !== lastBarH) {
+      lastBarH = px;
+      document.documentElement.style.setProperty('--sh-bar-h', px + 'px');
+    }
+  }
+  measureChrome();
+}
+
+/* THE WHOLE PINNED BAND, for the same reason and one layer out.
+
+   --sh-bar-h answers "where does the page toolbar park". It does not
+   answer "how much of the top of the viewport is covered", and that
+   is the number every in-page jump needs. Following #projects put the
+   section's top edge at y=0 — underneath the whole pinned stack: 118
+   to 158px on the hub depending on whether the toolbar has wrapped,
+   118px on the library, 226px on study.html — so the eyebrow and the
+   heading of the section you asked for were the two things guaranteed
+   to be hidden, and you landed mid-paragraph. Measured before the
+   fix: all six of the hub's nav actions, all five of the library's,
+   and every `scrollIntoView({ block: 'start' })` in the app, which is
+   the step rail and the jump menu too.
+
+   The fix is `scroll-padding-top` on the scroll container, which the
+   browser applies to fragment navigation, scrollIntoView and scroll
+   snapping alike — ONE rule rather than a scroll-margin on each
+   target, because a hand-kept list of every anchor in the app is
+   wrong by the second section anybody adds.
+
+   WHAT COUNTS AS THE BAND, and why it is derived rather than listed.
+   A band is a sticky or fixed element that is (a) laid out as a top
+   chrome layer — a direct child of #app, of <body> or of <main> —
+   (b) anchored to a `top` offset rather than a side, and (c) wide
+   enough to span the page. Those three things are true of .sh-bar,
+   of .toolbar and of study.html's .ds-bar, and false of the two
+   sticky things that are NOT chrome you scroll under: stripboard's
+   .sb-grid-name is anchored left, and the workbench's .wb-ref is a
+   third of the width and nested deeper. Naming the four selectors
+   would have been shorter and would have gone stale the first time a
+   page grew a fifth bar.
+
+   Each candidate's bottom is its computed `top` plus its height, not
+   its current rect: the bar is only pinned once you have scrolled,
+   and the measurement has to be right at the top of the document,
+   which is exactly when a fragment jump is about to happen.
+
+   The width and position tests are what make this correct at every
+   breakpoint for free, and they are the reason this reads the cascade
+   rather than a breakpoint of its own. Below 720px both .sh-bar and
+   .toolbar are `relative` — deliberately, so the phase and toolbar
+   menus can pin themselves to the bar — so nothing is pinned, the
+   band measures 0, and a jump gets no padding, which is right: that
+   is the width at which the chrome scrolls away on purpose. Measured
+   across the breakpoints: 118px at 1280, 158px at 900 (the toolbar
+   wraps), 110px at 800, 0 from 719px down. A rule keyed to a
+   hard-coded 1100px or 560px would have had to be kept in step with
+   three other files; this one cannot drift. */
+let lastBand = -1;
+function measureChrome() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const de = document.documentElement;
+  let band = 0;
+  /* A small, structural candidate set rather than a walk of the
+     document: this runs on resize frames, and the hub is several
+     thousand nodes. */
+  for (const el of document.querySelectorAll('#app > *, body > *, main > *')) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'sticky' && cs.position !== 'fixed') continue;
+    const top = parseFloat(cs.top);
+    if (!Number.isFinite(top) || top < 0 || top > vh / 2) continue;
+    const r = el.getBoundingClientRect();
+    /* A row of chrome is at least a line of text tall. The floor is
+       what keeps .reading-progress out of the sum — 2px, fixed, full
+       width, and not a thing anything is hidden behind. */
+    if (r.height < 16 || r.width < vw * 0.5) continue;
+    band = Math.max(band, Math.round(top + r.height));
+  }
+  if (band === lastBand) return;
+  lastBand = band;
+  de.style.setProperty('--sh-chrome-h', band + 'px');
 }
 
 /* ---- open / closed ----------------------------------------- */
@@ -560,6 +637,20 @@ function wire() {
     if (raf) return;
     raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); });
   });
+
+  /* One more measurement after everything has landed. The page
+     toolbar is rendered by the PAGE, which on several of them happens
+     after mountShell() — so the two frames below are not always late
+     enough to see it, and a band measured without the toolbar is a
+     band that is 62 to 102px short. `load` is, and it is the last
+     chance before a direct visit to page.html#fragment settles.
+
+     The readyState branch is not belt-and-braces: dashboard.js mounts
+     the shell at import time but the lazy chunks do not, so `load`
+     has already fired for some callers and a listener alone would
+     never run for them. */
+  if (document.readyState === 'complete') requestAnimationFrame(measureBar);
+  else window.addEventListener('load', measureBar);
 
   /* Scrolling is the other thing that moves you without a page load,
      and on the fragment pages it is the one that happens. Passive and

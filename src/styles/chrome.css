@@ -908,21 +908,11 @@ a:focus-visible { outline-offset: 3px; }
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
-.cm-divider {
-  display: flex;
-  align-items: center;
-  margin: var(--s5) 0;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  /* --ink-faint is for text you are not meant to read yet; this is a
-     word the user reads to understand the choice. 2.76:1 before. */
-  color: var(--ink-muted);
-}
-.cm-divider::before,
-.cm-divider::after { content: ''; flex: 1; height: 1px; background: var(--rule-hair); }
-.cm-divider span { padding: 0 var(--s3); }
+/* .cm-divider is gone with the OR it separated. It was the "or" between
+   CONTINUE WITH GOOGLE and the magic-link email field, and Google is now
+   the only way in, so there is nothing left to divide. Removed rather
+   than left behind: a rule with no element is a false lead for whoever
+   next reads this file looking for the auth modal's layout. */
 .cm-link {
   display: block;
   margin-top: var(--s4);
@@ -1835,6 +1825,36 @@ a:focus-visible { outline-offset: 3px; }
      bar that wrapped to two rows could never return to one. */
   --sh-bar-min: 56px;
   --sh-bar-h:   56px;
+  /* A third, and it answers a different question again: --sh-bar-h is
+     where the page toolbar parks, --sh-chrome-h is how much of the top
+     of the viewport the whole pinned stack covers. shell.js measures
+     and republishes it; see measureChrome() for what counts.
+
+     The value declared here is what the app uses before that has run,
+     and it is the bar alone rather than a guess at the stack, for the
+     same reason a skin declares its defaults on bare :root: the JS
+     sets a property the CSS keys off, so the CSS has to be right when
+     the JS has not run yet. Too small is a jump that lands slightly
+     high; too large is a jump that lands past the heading. */
+  --sh-chrome-h: var(--sh-bar-min);
+}
+
+/* WHERE A FRAGMENT JUMP LANDS.
+
+   Every in-page destination in the app is a fragment — the hub's six
+   nav actions, the library's five, the shell's phase menu, the step
+   rail, the jump dropdown — and the chrome above them is sticky. With
+   no scroll padding the browser puts the section's top edge at y=0,
+   which is underneath all of it: clicking PROJECTS hid "SECTION 0 ·
+   YOUR PROJECTS" and "Your projects." and landed the reader in the
+   middle of the paragraph below them. One property on the scroll
+   container fixes the lot, including every scrollIntoView, which is
+   why it lives here and not as a scroll-margin on each target.
+
+   The gutter is deliberate. Flush against the chrome, a heading reads
+   as clipped by it rather than as the top of a section. */
+html {
+  scroll-padding-top: calc(var(--sh-chrome-h) + var(--s3));
 }
 
 .sh-rail {

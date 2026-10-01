@@ -1722,3 +1722,222 @@ end $$;
 -- real row, saved by a signed-in user, then still [] to an anonymous
 -- caller, closes it. Until then the read side is unverified.
 -- ============================================================
+
+-- ============================================================
+-- 11. CLAIM_INVITE (v8) — the account tier's missing half
+-- ------------------------------------------------------------
+-- NOT RUN AGAINST ANY DATABASE. Written from the file and from the
+-- catalogue readings recorded in docs/SECURITY-RLS.md. Treat every
+-- claim below as reasoning, not as a test result, until the live
+-- checks in that document's section on this function have been run.
+--
+-- THE GAP THIS CLOSES, quoted from the audit (finding A6):
+--   "account_members.user_id stays null until an invite is claimed,
+--    and nothing in the schema ever claims one."
+-- am_write requires the caller to already be an owner/admin of the
+-- account they are being invited to, so an invitee cannot flip their
+-- own row; am_select matches on user_id = auth.uid(), which is null
+-- on a pending row, so they cannot even see it. Section 6 built the
+-- invite table, section 7 hardened it, and nobody could ever join.
+--
+-- WHY THIS IS NOT claim_share(p_token) WITH A DIFFERENT TABLE NAME.
+-- The audit suggested "a claim_invite(p_token) RPC modelled on
+-- claim_share()". It is modelled on it in shape — one security
+-- definer RPC, no new RLS policy, the self-claim path bypassing the
+-- table's own write policy — and deliberately NOT in its credential.
+--
+-- A share token is a bearer credential: whoever holds the string gets
+-- the access, and docs/SECURITY-RLS.md opens by saying so and by
+-- noting that nothing in a database can fix it. For one project that
+-- is an accepted trade. For an ACCOUNT it is not:
+-- account_members.role of 'owner' or 'admin' is read by
+-- has_project_access(), which grants edit on EVERY project in the
+-- account, unconditionally, with no collaborator row. A forwardable
+-- string that confers that is a worse credential than anything else
+-- in this file, and it would also need a token column, a
+-- distribution channel and an expiry — three new things, each of
+-- which can be wrong.
+--
+-- The invite already has a credential, and the table says so in its
+-- own comment: "the email is the stable key". So the authorisation
+-- here is "the identity provider says you are the person this invite
+-- was addressed to", which is checkable, unforwardable, and needs no
+-- new column. Google is the only sign-in method the app offers, so
+-- the email is attested by Google rather than typed by the claimant.
+--
+-- WHERE THE EMAIL COMES FROM, and why not from the JWT. auth.jwt()
+-- is what comments_set_author() reads, and for a DISPLAY NAME that is
+-- fine. This is an authorisation decision, so it reads auth.users
+-- instead — the row the provider wrote — and requires
+-- email_confirmed_at to be set. Two things follow:
+--   * an anonymous Supabase session has a non-null auth.uid() and no
+--     email at all, so it cannot match any invite. The is_anonymous
+--     test below is belt and braces; the email requirement is the
+--     belt. "Signed in" is not "has an account" anywhere in this file.
+--   * an alias does not match. An invite to alice@example.com is not
+--     claimable by alice+film@example.com. That is deliberate, and it
+--     is the support question this will generate.
+--
+-- A PENDING 'owner' INVITE IS NOT CLAIMABLE, on purpose. The claim is
+-- an UPDATE on account_members, so account_members_guard still fires,
+-- and section 7.7 makes granting or changing an owner row owner-only
+-- — the claimant is not an owner, so the guard would refuse with a
+-- message about granting roles, which is not what happened. The
+-- filter below excludes those rows instead, so the guard is never
+-- reached and the behaviour is stated here rather than discovered.
+-- To add a second owner: invite them as 'admin', let them claim, then
+-- promote the row as the owner. An owner-role member can write
+-- accounts (acc_update), so handing that out through a self-claim
+-- flow is the one widening this function refuses to do.
+--
+-- SEATS. enforce_seat_limit() counts 'pending' and 'active' together
+-- and returns early on an UPDATE that is not revoked -> pending/active,
+-- so claiming consumes no additional seat: the invite already spent
+-- it. That is correct, and it is why the trigger is not touched here.
+--
+-- AN EMPTY RESULT IS THE NORMAL ANSWER. The client calls this once per
+-- sign-in and almost every call has nothing to claim. Raising for that
+-- would make a routine sign-in look like a failure, so the sweeping
+-- form (p_account_id null) returns zero rows and never raises. Naming
+-- one account is a deliberate "accept this invite", so that form does
+-- raise when there is nothing to accept.
+-- ============================================================
+
+-- The PK is (account_id, invited_email); an email-only lookup cannot
+-- use it. Partial, because the only rows this function ever looks for
+-- are the unclaimed ones.
+create index if not exists account_members_email_idx
+  on public.account_members(invited_email) where user_id is null;
+
+create or replace function public.claim_invite(p_account_id uuid default null)
+returns table (account_id uuid, account_name text, role text, status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid         uuid := auth.uid();
+  mail        text;
+  claimed_ids uuid[];
+begin
+  if uid is null then
+    raise exception 'Sign in required to accept an invite' using errcode = '42501';
+  end if;
+
+  -- An anonymous session satisfies auth.uid() is not null, which is the
+  -- "are you signed in" half of every policy in this file. It is not an
+  -- account. It also has no email, so the lookup below would refuse it
+  -- anyway; this says so where a reader will see it.
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'An anonymous session cannot accept an invite' using errcode = '42501';
+  end if;
+
+  -- The provider's row, not the token's claims. normalise_member_email()
+  -- lowercases and trims invited_email on write, so compare like for like.
+  select lower(trim(u.email)) into mail
+    from auth.users u
+   where u.id = uid
+     and u.email_confirmed_at is not null
+     and nullif(trim(u.email), '') is not null;
+
+  if mail is null then
+    raise exception 'A confirmed email address is required to accept an invite'
+      using errcode = '42501';
+  end if;
+
+  -- security definer, so this UPDATE is not subject to am_write. That is
+  -- the whole point: am_write asks whether the caller already runs the
+  -- account, and an invitee by definition does not. No new policy is
+  -- added, because any policy wide enough to let a stranger write this
+  -- row would be wide enough to let them write somebody else's.
+  --
+  -- Every column reference is qualified on purpose: the OUT parameters
+  -- of a `returns table` function are plpgsql variables, and this
+  -- function has OUT parameters called account_id, role and status. A
+  -- bare `role` or `status` in here is ambiguous at run time. Keep them
+  -- qualified.
+  with claimed as (
+    update public.account_members m
+       set user_id   = uid,
+           status    = 'active',
+           joined_at = now()
+     where m.invited_email = mail
+       and m.user_id is null
+       and m.status        = 'pending'
+       -- see the header: an owner row is an owner's to grant
+       and m.role         <> 'owner'
+       and (p_account_id is null or m.account_id = p_account_id)
+       -- account_members_user_idx is unique on (account_id, user_id)
+       -- where user_id is not null. Somebody invited twice under two
+       -- addresses would otherwise hit 23505 instead of a clear answer.
+       and not exists (
+         select 1 from public.account_members x
+          where x.account_id = m.account_id
+            and x.user_id    = uid
+       )
+    returning m.account_id as acc
+  )
+  select array_agg(c.acc) into claimed_ids from claimed c;
+
+  if claimed_ids is null then
+    if p_account_id is not null then
+      raise exception 'No invite on that account for this email address is available to claim'
+        using errcode = '22023';
+    end if;
+    return;   -- nothing was pending. Not an error; see the header.
+  end if;
+
+  return query
+    select a.id, a.name, m.role, m.status
+      from public.account_members m
+      join public.accounts a on a.id = m.account_id
+     where m.user_id    = uid
+       and m.account_id = any (claimed_ids);
+end;
+$fn$;
+
+-- Section 10.4 is the reason this is two statements and not one.
+-- Postgres grants EXECUTE on every new function to PUBLIC by default,
+-- and `revoke ... from authenticated, anon` leaves that grant in place
+-- — which is how purge_expired_shares() ended up callable with nothing
+-- but the publishable key that ships in the client. Revoke from PUBLIC
+-- explicitly, then grant the one role that should have it.
+--
+-- anon must NOT have it: this function writes account_members, and the
+-- 10.4 exemption does not apply — no RLS policy invokes claim_invite(),
+-- so revoking it cannot make a policy error instead of returning false.
+-- The body would refuse an anonymous caller too; that is the second
+-- line of defence, not the first.
+revoke execute on function public.claim_invite(uuid) from public, anon;
+grant  execute on function public.claim_invite(uuid) to authenticated;
+
+-- PostgREST resolves `rpc/claim_invite` out of its schema cache.
+notify pgrst, 'reload schema';
+
+-- ------------------------------------------------------------
+-- 11.1 WHAT HAS NOT BEEN VERIFIED
+--
+-- Nothing above has run. The specific unverified assumptions, so that
+-- whoever runs it knows what to watch:
+--
+--   a) a security definer function owned by `postgres` can SELECT
+--      auth.users. The section-6 backfill reads auth.users, but from a
+--      DO block in the SQL editor, which is not the same privilege
+--      context. If this is wrong, claim_invite() fails on its first
+--      call with 42501 "permission denied for table users", and the
+--      fix is a grant on auth.users to the function's owner, not a
+--      rewrite of the function.
+--   b) Google sign-in sets auth.users.email_confirmed_at. If it does
+--      not, every claim refuses with "A confirmed email address is
+--      required" and the predicate has to be reconsidered — do NOT
+--      relax it to `email is not null` without first deciding whether
+--      an unconfirmed address is an identity.
+--   c) a data-modifying CTE feeding `select array_agg(...) into` inside
+--      plpgsql. Chosen over `get diagnostics row_count` after
+--      `return query` deliberately: this shape does not depend on which
+--      Postgres version started setting ROW_COUNT there.
+--   d) that the OUT-parameter/column ambiguity discussed above does not
+--      fire. It is a run-time error in plpgsql, not a create-time one,
+--      so a successful `create function` proves nothing about it. The
+--      first live call is the test.
+-- ------------------------------------------------------------

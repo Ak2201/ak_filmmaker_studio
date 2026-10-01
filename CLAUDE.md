@@ -654,10 +654,31 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    has still never run against a database, and the doc ends with ten live
    checks needing two real accounts. Also open — share tokens are stored in
    plaintext (a product call: the owner's "re-copy this link" depends on
-   it), there is no `claim_invite()` so account invites cannot be claimed
-   at all, and Supabase Realtime could not be verified statically, because
+   it), and Supabase Realtime could not be verified statically, because
    DELETE payloads are documented as not RLS-filtered the way INSERT and
    UPDATE are.
+
+   `claim_invite()` now EXISTS — schema section 11, wired in `cloud.js`,
+   with nine live checks written into `docs/SECURITY-RLS.md`. It has never
+   been executed against a database, so it closes the gap on paper only.
+   The credential is deliberately the EMAIL, not a token: an `owner`/`admin`
+   row is read by `has_project_access()` and grants `edit` on every project
+   in the account with no collaborator row, so a forwardable bearer string
+   conferring that would be the most dangerous credential in the system.
+   Google is the only sign-in, so the address is attested rather than typed.
+   An `owner`-role invite is deliberately not claimable; invite as `admin`
+   and promote.
+
+   **The RECEIVING end is done and the SENDING end is not, which is the
+   bigger half.** Nothing in any UI inserts a pending `account_members` row
+   and `cloud.js` has no account-tier reads, so an invite has to be typed
+   into the SQL editor by hand. An Account panel — list members, invite by
+   email, revoke — needs no new SQL at all: `am_select` already permits
+   owner/admin to read and `am_write` already permits them to insert. Until
+   it exists, `claim_invite()` is a door with nothing on the other side.
+   Also still open from the audit's A6: an invitee cannot SEE an invite
+   before claiming (`am_select` matches on `user_id`, null while pending),
+   so the flow auto-joins on sign-in with no preview and no decline.
 
 6. ~~**`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**~~
    Done, and the second half of it is the part worth keeping.

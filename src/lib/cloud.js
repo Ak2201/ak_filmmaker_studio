@@ -88,6 +88,7 @@ let _applyingRemote = false;  // echo-loop guard
 let _activeChannels = [];     // realtime subscriptions for current project
 let _migrationPromise = null; // single-flight migration guard
 let _signingIn = false;       // an OAuth redirect is in flight
+let _invitesCheckedFor = null; // user id whose account invites we swept
 
 // ============================================================
 // SYNC STATUS — one visible answer to "is my writing safe?"
@@ -290,9 +291,14 @@ export async function ensureClient() {
         // First time signed in this load — try migration
         maybeMigrateLocalToCloud();
         attachToCurrentProject();
+        // An invite is addressed to an email, so it can only be matched
+        // once there is a session to read an email off. This is that
+        // moment; handlePendingInvites() is idempotent per user id.
+        handlePendingInvites();
       }
       if (!sess) {
         tearDownChannels();
+        _invitesCheckedFor = null;
       }
       idleSync();
     });
@@ -500,6 +506,7 @@ export async function signOut() {
   session = null;
   _signingIn = false;
   tearDownChannels();
+  _invitesCheckedFor = null;
   Store.rawRemove(PENDING_SHARE_KEY);
   setSync(SYNC_STATES.OFF, 'Signed out — your projects are still on this device');
   /* LAST, and after the await on purpose. This schedules a reload, and
@@ -997,6 +1004,68 @@ export async function claimShare(token) {
 }
 
 // ============================================================
+// ACCOUNT INVITES
+// ------------------------------------------------------------
+// An account invite is a row in `account_members` with user_id null and
+// status 'pending', keyed by the email address the owner typed. Nothing
+// used to turn that row into a membership: the table's own write policy
+// asks whether the caller already runs the account, which an invitee by
+// definition does not, and its read policy matches on user_id, which is
+// null until the claim. So the invite could be created and never
+// accepted. `claim_invite()` (schema section 11) is the way in.
+//
+// There is NO TOKEN and no invite link, deliberately — the schema
+// section explains why at length. The credential is the signed-in
+// email, read server-side out of auth.users. Which is why the client
+// half is this small: there is nothing to carry, nothing to stash
+// across the Google round trip, and nothing to strip out of the URL
+// afterwards. Sign in with the address you were invited at and the
+// claim succeeds; sign in with any other and it finds nothing.
+//
+// An empty result is the normal answer, not a failure. Almost every
+// sign-in has nothing pending, so this must stay silent in that case —
+// a toast on every sign-in saying "no invites" is noise, and an error
+// toast would be a lie.
+export async function claimInvites(accountId) {
+  if (!supabase || !session) throw new Error('Sign in first to accept an invite.');
+  const { data, error } = await supabase.rpc('claim_invite', {
+    p_account_id: accountId || null
+  });
+  if (error) throw error;
+  return data || [];
+}
+
+// Once per signed-in user per page load. `_invitesCheckedFor` (declared
+// with the rest of the module state) holds a user id rather than a bare
+// boolean, so signing out and in as somebody else re-checks rather than
+// inheriting the previous person's answer.
+async function handlePendingInvites() {
+  if (!supabase || !session || !session.user) return;
+  const uid = session.user.id;
+  if (_invitesCheckedFor === uid) return;
+  _invitesCheckedFor = uid;
+  let claimed = [];
+  try {
+    claimed = await claimInvites();
+  } catch (e) {
+    // Includes the case where the function does not exist yet: a
+    // database still on section 10 answers PGRST202. Nothing the person
+    // can act on, and nothing that should interrupt a sign-in.
+    console.warn('[StudioCloud] invite check skipped', e.message || e);
+    return;
+  }
+  if (!claimed.length) return;
+  for (const row of claimed) {
+    toast('Joined ' + (row.account_name || 'an account') + ' as ' + row.role + '.', 'success', 3200);
+  }
+  // An 'owner' or 'admin' membership grants access to every project in
+  // that account (has_project_access), so the studio they just joined
+  // has projects in it that were invisible a second ago. A 'member'
+  // membership grants none, and the pull is then a no-op.
+  await pullProjectList();
+}
+
+// ============================================================
 // COMMENTS
 // ------------------------------------------------------------
 // The thread model: one thread per (project, scope, field_key), which
@@ -1209,6 +1278,8 @@ const StudioCloud = {
   listSalvage, restoreSalvage,
   // sharing
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
+  // account invites
+  claimInvites,
   // comments
   listComments, createComment, updateCommentStatus, deleteComment, getProjectRole,
   // misc
@@ -1278,6 +1349,11 @@ async function boot() {
     await maybeMigrateLocalToCloud();
     attachToCurrentProject();
     setTimeout(_flushQueue, 1500);
+    // Also on a restored session, not only on a fresh sign-in: the
+    // invite may have been created while this browser already held a
+    // session, and onAuthStateChange's first-sign-in branch never
+    // fires on a page load that starts out signed in.
+    handlePendingInvites();
   } else if (supabase) {
     /* We got as far as a client and there is no session: the stored
        account id is stale (signed out elsewhere, or a token that died

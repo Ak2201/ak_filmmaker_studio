@@ -417,7 +417,7 @@ account's own owner a power they already had by every other route.
 Flipping a `revoked` row back to `active` walked straight past it. §7.7 checks that
 transition too, excluding the row being updated from its own count.
 
-### A6 — pending invites cannot be claimed. **Functional gap. Not fixed.**
+### A6 — pending invites cannot be claimed. **Functional gap. Addressed in schema §11, UNRUN.**
 
 `account_members.user_id` stays null until an invite is claimed, and *nothing in the
 schema ever claims one* — there is no `claim_invite()` RPC, and `am_write` requires
@@ -425,6 +425,14 @@ the caller to already be an owner/admin of the account they are being invited to
 `am_select` matches on `user_id = auth.uid()`, which is null, so an invitee cannot
 even see the invite. The invite flow does not work end to end. Out of scope for a
 security fix; it needs a `claim_invite(p_token)` RPC modelled on `claim_share()`.
+
+Schema section 11 adds `claim_invite(p_account_id uuid default null)`, and
+`src/lib/cloud.js` calls it once per signed-in user. **It has never been executed
+against a database.** Its security model, the one place it refuses to widen, and
+the nine live checks it needs are in the section "CLAIM_INVITE (§11)" at the end of
+this document. The suggestion above — *"a `claim_invite(p_token)` RPC"* — was
+**not** followed on the credential: there is no token. The reasoning is in that
+section and at length in the schema.
 
 ### A7 — `seat_limit` defaults to 1 and the backfill consumes it. **Note.**
 
@@ -816,9 +824,14 @@ overflow.
    guards all exist now, so these are testable for the first time.
 3. Share tokens are still stored in plaintext — a product call, because
    the owner's "re-copy this link" depends on it.
-4. There is still no `claim_invite()`, so account invites cannot be
-   claimed. The account tier is deployed but not reachable from the UI;
-   `cloud.js` does not touch `accounts` or `account_members` at all.
+4. ~~There is still no `claim_invite()`, so account invites cannot be
+   claimed.~~ Written, as schema section 11, and wired into
+   `cloud.js`. **Not deployed and not tested** — see the section below,
+   which is the only part of this document describing SQL that has
+   never run against anything. The account tier is still not reachable
+   from the UI: `cloud.js` now calls `rpc/claim_invite`, and nothing
+   anywhere lets an owner CREATE an invite, so the flow is closed at
+   the accepting end and open at the sending end.
 5. Realtime DELETE payloads are documented as not RLS-filtered the way
    INSERT and UPDATE are. Unverified.
 6. **Google is the only sign-in the app offers, and nothing in this
@@ -837,3 +850,182 @@ overflow.
    in this document. Setup steps are in the header of
    `supabase-schema.sql`; verifying them is a live check, like the rest
    of this list.
+---
+
+## CLAIM_INVITE (§11) — WRITTEN 1 OCT 2026. NOT RUN. NOT TESTED.
+
+Everything above this line has at least been probed against a live database.
+This section has not. It closes finding **A6** on paper and the paper is all
+there is: the SQL parses (all 181 top-level statements and all 15 PL/pgSQL
+bodies, libpg_query via `pglast`) and parsing is not permission testing —
+the same sentence this document opens with, and the lesson LIVE CHECK 1
+through 3 kept re-teaching.
+
+### What it is
+
+    public.claim_invite(p_account_id uuid default null)
+      returns table (account_id uuid, account_name text, role text, status text)
+      language plpgsql
+      security definer
+      set search_path = public, pg_temp
+
+It turns a pending `account_members` row into a membership: sets `user_id` to
+the caller, `status` to `active`, `joined_at` to `now()`. With no argument it
+sweeps every pending invite addressed to the caller's verified email. With an
+account id it accepts exactly that one.
+
+### The credential is the email, not a token
+
+The A6 note suggested *"a `claim_invite(p_token)` RPC modelled on
+`claim_share()`"*. This is modelled on `claim_share()` in **shape** — one
+`security definer` RPC, no new RLS policy, the self-claim bypassing the
+table's own write policy — and deliberately not in its **credential**.
+
+This document's first framing sentence is that a share link is a bearer
+credential and nothing in a database can fix that. For one project that is an
+accepted trade. For an account it is not: `account_members.role` of `owner` or
+`admin` is read by `has_project_access()`, which grants `edit` on **every
+project in the account**, unconditionally, with no collaborator row — the
+third entry in "What would leak one user's projects to another". A forwardable
+string conferring that would be the most dangerous credential in the system,
+and it would need a token column, a delivery channel and an expiry, none of
+which exist.
+
+`account_members` already has a credential and its own comment says so: *"the
+email is the stable key"*. So the authorisation is "the identity provider says
+you are the person this invite was addressed to". Google is the only sign-in
+method, so the address is attested by Google, not typed by the claimant.
+
+The email is read from `auth.users` — `email_confirmed_at is not null` and a
+non-empty `email` — not from `auth.jwt()`. `comments_set_author()` reads the
+JWT, which is right for a display name and wrong for an authorisation
+decision.
+
+### Why an anonymous session cannot use it
+
+An anonymous Supabase session has a **non-null `auth.uid()`**, which satisfies
+the "is the caller signed in" half of every policy in this file. It is not an
+account. Two independent refusals: an anonymous user has no email at all, so
+the `auth.users` lookup finds nothing and the function raises `42501`; and the
+`is_anonymous` claim is tested explicitly before that. The EXECUTE grant is
+the third, below.
+
+### Grants
+
+    revoke execute on function public.claim_invite(uuid) from public, anon;
+    grant  execute on function public.claim_invite(uuid) to authenticated;
+
+The revoke names `public` first and on purpose. **F3 in LIVE CHECK 3 was
+exactly this mistake:** `revoke execute ... from authenticated, anon` left the
+default `PUBLIC` grant untouched, and `purge_expired_shares` — which deletes
+rows — answered an anonymous POST with 200 and a count. `revoke ... from
+<role>` on a function is almost never sufficient; check `proacl`.
+
+`claim_invite` writes `account_members`, so `anon` must not hold EXECUTE. The
+§10.4 exemption — the three functions `anon` keeps, because a policy that
+invokes a function the caller cannot execute **errors** instead of returning
+false — does not apply: no RLS policy invokes `claim_invite()`.
+
+### What it refuses to do, deliberately
+
+**A pending `owner`-role invite is not claimable.** The claim is an UPDATE, so
+`account_members_guard` (§7.7) still fires, and granting or changing an `owner`
+row is owner-only there — the claimant is not an owner, so the guard would
+refuse with a message about granting roles, which is not what the person did.
+The function filters those rows out instead, so the guard is never reached and
+the behaviour is documented rather than discovered. An `owner`-role member can
+write `accounts` (`acc_update`), which is A2's path; a self-claim flow is not
+the place to hand that out. To add a second owner: invite as `admin`, let them
+claim, promote the row as the owner.
+
+**No new policy.** `am_write` stays owner/admin-only. Any policy wide enough to
+let a stranger write their own pending row would be wide enough to let them
+write somebody else's.
+
+**No seat is consumed by claiming.** `enforce_seat_limit()` counts `pending`
+and `active` together and returns early on an UPDATE that is not
+`revoked -> pending/active`, so the seat was spent when the invite was created
+(A7: a backfilled personal account has `seat_limit = 1` and one owner row, so
+its first invite raises `53400` before any of this is reached).
+
+**Nothing is frozen that was not already.** No policy `USING` or `WITH CHECK`
+in this file was rewritten, so neither of the two traps that bit §9 — a
+rewritten `USING` silently rewriting its `WITH CHECK` (F6), and an UPDATE/ALL
+policy with no `WITH CHECK` at all (F5) — is in play. The catalogue assertion
+"zero UPDATE/ALL policies without a `WITH CHECK`" still holds unchanged.
+
+### Assumptions that could not be tested
+
+1. **A `security definer` function owned by `postgres` can SELECT
+   `auth.users`.** The §6 backfill reads `auth.users`, but from a `DO` block in
+   the SQL editor, which is not the same privilege context. If this is wrong,
+   the first call fails `42501 permission denied for table users`, and the fix
+   is a grant on `auth.users` to the function's owner, not a rewrite.
+2. **Google sign-in sets `auth.users.email_confirmed_at`.** If it does not,
+   every claim refuses with "A confirmed email address is required". Do not
+   relax the predicate to `email is not null` without first deciding whether an
+   unconfirmed address is an identity.
+3. **`auth.uid()` inside the function and inside the triggers it fires is the
+   claimant**, not the definer. The file already depends on this for
+   `comments_set_author()` and `claim_share()`, so it is an inherited
+   assumption rather than a new one — but it has never been proven either.
+4. **The `is_anonymous` JWT claim is present** on anonymous sessions. If the
+   claim is absent the test is a no-op and the email requirement carries the
+   whole refusal.
+5. **No PL/pgSQL variable/column ambiguity at run time.** The OUT parameters
+   are called `account_id`, `role` and `status`, which are also column names on
+   `account_members`. Every column reference in the body is qualified for that
+   reason. `create function` does not catch this class of error; the first call
+   does.
+6. **A data-modifying CTE feeding `select array_agg(...) into`** behaves as
+   written. Chosen over `get diagnostics row_count` after `return query` so the
+   result does not depend on which Postgres version started setting ROW_COUNT
+   there.
+
+### Live checks — none of these have been run
+
+Needs two real Google accounts, `A` (account owner) and `B`, and `B`'s address
+in `A`'s hands.
+
+1. **It exists and `anon` cannot call it.** With the publishable key, signed
+   out: `POST /rest/v1/rpc/claim_invite` with `{}` → expect
+   `401 42501 permission denied for function claim_invite`. Not `PGRST202`;
+   that would mean section 11 never ran. Then check `proacl` on the function
+   and assert it names `authenticated` and nothing else.
+2. **The invite exists.** As `A`, insert the pending row — nothing in the UI
+   does this yet:
+   `insert into account_members (account_id, invited_email, role, invited_by)
+    values (<A's account>, '<B's email>', 'admin', auth.uid())`.
+   Expect success, or `53400` if `seat_limit` is still 1 (A7) — raise the seat
+   limit as `service_role`, since `accounts_guard` refuses it from a client
+   (A1).
+3. **`B` cannot see it before claiming.** As `B`:
+   `select * from account_members` → expect 0 rows (`am_select` matches on
+   `user_id`, still null). This is the half of A6 the function does not fix.
+4. **`B` cannot claim it by hand.** As `B`:
+   `update account_members set user_id = auth.uid(), status = 'active'` →
+   expect 0 rows affected or `42501`. If this succeeds, `am_write` has been
+   widened and the function is beside the point.
+5. **The claim works.** As `B`: `select * from claim_invite()` → expect one row
+   `(A's account id, A's account name, 'admin', 'active')`. Then
+   `select user_id, status, joined_at from account_members
+     where account_id = <A's account>` as `A` → `user_id` is `B`, status
+   `active`, `joined_at` set.
+6. **It is idempotent.** `B` calls `claim_invite()` again → expect **0 rows and
+   no error**. This is the case the client hits on every sign-in.
+7. **Another person's invite is not claimable.** Invite a third address;
+   as `B`, `claim_invite()` → expect 0 rows, and the third row's `user_id`
+   still null. Then `claim_invite('<A's account>')` as a user with no invite →
+   expect `22023`.
+8. **An `owner` invite is refused, not half-applied.** As `A`, insert a pending
+   row with `role = 'owner'` for `B`'s address; as `B`, `claim_invite()` →
+   expect 0 rows claimed, the row untouched, and `accounts.owner_id` unchanged.
+9. **The membership is the one intended.** As `B`, now an `admin` of `A`'s
+   account: `select id from projects` → expect `A`'s projects (the
+   `has_project_access` account branch). Then repeat with a `member`-role
+   invite on a second account → expect **none** of that account's projects,
+   which is the documented privacy-preserving default and the assertion that
+   catches the role being written wrong.
+
+Check 9 is the one that proves "landed with the right account membership"
+rather than merely "a row changed".

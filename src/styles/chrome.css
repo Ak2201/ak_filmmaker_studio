@@ -1492,6 +1492,109 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 /* ------------------------------------------------------------
+   THE ADOPTION PANEL — "these films are on the device only".
+
+   Sits above the project grid, inside an account, for as long as
+   there is something to bring in. It is a notice rather than a card
+   in the grid because it is not a project and must not be mistaken
+   for one.
+
+   Every colour here is a token and every text colour is an INK:
+   --accent-deep for the eyebrow, never --accent, which is a fill and
+   runs 3.3-4.4:1 as text on a light card. Nothing is set inline, so
+   a token change actually takes.
+   ------------------------------------------------------------ */
+.adopt-panel {
+  min-width: 0;                    /* see .empty-projects-state */
+  margin-bottom: var(--s5);
+  padding: var(--s5);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+.adopt-eyebrow {
+  margin-bottom: var(--s2);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.adopt-title {
+  margin-bottom: var(--s2);
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  color: var(--ink);
+}
+.adopt-deck {
+  max-width: 62ch;
+  margin: 0 0 var(--s4);
+  font-size: var(--t-small);
+  line-height: 1.55;
+  color: var(--ink-body);
+}
+.adopt-affects {
+  margin-bottom: var(--s2);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.adopt-list {
+  display: grid;
+  /* min() for the same reason the tour row uses it: auto-fit drops
+     columns but cannot shrink a track below its own minimum, so a
+     bare 220px would set a floor the hub overflows at 390px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
+  padding: 0;
+  list-style: none;
+}
+.adopt-item {
+  display: flex;
+  gap: var(--s2);
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-sunk);
+}
+.adopt-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+}
+.adopt-fmt {
+  flex: none;
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.adopt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.adopt-fine {
+  max-width: 62ch;
+  margin-top: var(--s3);
+  font-size: var(--t-tiny);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------
    GLOSSARY — the dotted term and its popover. .gloss carried a
    CSS-only tooltip, [data-glossary] a JS-positioned popover;
    the term styling is shared, the surfaces are not.

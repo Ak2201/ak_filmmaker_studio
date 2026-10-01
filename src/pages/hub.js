@@ -444,6 +444,11 @@ function projectsMarkup() {
           <button class="btn primary" data-action="new-project">+ NEW PROJECT</button>
         </div>
 
+        <!-- Standing control for device projects an account has not
+             taken yet. Empty and hidden in the device namespace, which
+             is every state npm run verify can reach. renderAdoptNotice() -->
+        <div id="adoptNotice" hidden></div>
+
         <div class="projects-toolbar" id="projectsToolbar" hidden>
           <input type="search" class="projects-search" id="projectsSearch"
                  placeholder="Search projects by name…" data-action="filter-projects"
@@ -1920,9 +1925,134 @@ function openSampleProject() {
   }
 }
 
+/* ------------------------------------------------------------
+   DEVICE PROJECTS, INSIDE AN ACCOUNT — the standing control.
+
+   cloud.js offers this ONCE, on a first sign-in. A one-shot offer is
+   not a control: dismiss it, or write a film next month while signed
+   out, and there was no way left in the whole app to bring that work
+   into the account. This panel is the way, and it is deliberately NOT
+   dismissible — it is answered by acting, and it takes itself off the
+   page the moment `listAdoptableProjects()` comes back empty.
+
+   THE GATE IS THE STORE'S ANSWER, never a page-local copy of it.
+   `listAdoptableProjects()` returns [] in the device namespace, so
+   "is somebody signed in" and "is there anything to bring in" are one
+   question, asked once, of the only file that knows. A page-local
+   mirror of "am I signed in" is exactly what goes stale — the AI key
+   bar stopped keeping one for this reason.
+
+   THE WORDING IS LOAD-BEARING. An earlier version of this flow said
+   UPLOAD ALL. Both halves of that were wrong: nothing is uploaded
+   (membership is a local `ns` field — the server is not involved) and
+   nothing moves. `adoptDeviceProjects()` ADDS the account to each
+   entry's `ns`, so there is ONE copy of the data listed in TWO
+   namespaces, and signing out still finds it. "Move" and "upload"
+   both promise something the storage model does not do, and a backup
+   that turned out to hold one film is what this studio's history says
+   those promises cost.
+   ------------------------------------------------------------ */
+
+/** Who the projects would become reachable as. The account id lives in
+    `fms_studio_account_v1`, but the id is not a thing a person
+    recognises, so the email comes off the live session and "this
+    account" is the honest fallback when it cannot be read. */
+function adoptAccountLabel() {
+  try {
+    const email = window.StudioCloud && StudioCloud.getUserEmail && StudioCloud.getUserEmail();
+    return email || 'this account';
+  } catch (e) { return 'this account'; }
+}
+
+function renderAdoptNotice() {
+  const host = $('#adoptNotice');
+  if (!host) return;
+
+  const adoptable = Store.listAdoptableProjects();
+  host.textContent = '';
+  host.hidden = adoptable.length === 0;
+  if (!adoptable.length) return;
+
+  const n   = adoptable.length;
+  const one = n === 1;
+
+  const panel = h('div.adopt-panel', {
+    role: 'region', 'aria-label': 'Projects on this device only'
+  }, [
+    h('div.adopt-eyebrow', { text: 'ON THIS DEVICE ONLY' }),
+    h('div.adopt-title', {
+      text: one
+        ? 'One project is on this device and not in this account.'
+        : n + ' projects are on this device and not in this account.'
+    }),
+    h('p.adopt-deck', {
+      text: 'Nothing is copied and nothing is taken away. '
+          + (one ? 'It stays' : 'They stay') + ' on this device, in this browser, exactly where '
+          + (one ? 'it is' : 'they are') + ' — and also become reachable while you are signed in as '
+          + adoptAccountLabel() + '. One copy of the work, listed in both places: sign out and '
+          + (one ? 'it is' : 'they are') + ' still here.'
+    })
+  ]);
+
+  /* REQUIREMENT, not decoration: say which films, by name, BEFORE
+     doing it. "3 projects" is a number somebody has to trust; three
+     titles are a number they can check. */
+  panel.append(h('div.adopt-affects', {
+    text: one ? 'This affects one project:' : 'This affects all ' + n + ' of them:'
+  }));
+  const list = h('ul.adopt-list');
+  adoptable.forEach((p) => list.append(h('li.adopt-item', {}, [
+    h('span.adopt-name', { text: p.title }),
+    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format).toUpperCase() })
+  ])));
+  panel.append(list);
+
+  panel.append(h('div.adopt-actions', {}, [
+    h('button.btn.primary', {
+      'data-action': 'adopt-device-projects',
+      text: one ? 'ADD IT TO THIS ACCOUNT' : 'ADD ALL ' + n + ' TO THIS ACCOUNT'
+    })
+  ]));
+  panel.append(h('div.adopt-fine', {
+    text: 'A film can belong to this device and to one account. To put one into a '
+        + 'different account, download a backup here and import it there.'
+  }));
+
+  host.append(panel);
+}
+
+function adoptDeviceProjectsNow() {
+  const taken = Store.adoptDeviceProjects();
+  if (!taken.length) { renderAdoptNotice(); return; }
+
+  logActivity('studio', taken.length === 1
+    ? 'Added "' + taken[0].title + '" to ' + adoptAccountLabel()
+    : 'Added ' + taken.length + ' device projects to ' + adoptAccountLabel(), '#projects');
+
+  StudioUI.toastSuccess(
+    (taken.length === 1 ? '"' + taken[0].title + '" is' : taken.length + ' projects are')
+    + ' now in ' + adoptAccountLabel() + ' — and still on this device.',
+    { duration: 5000 });
+
+  /* adoptDeviceProjects() notifies projects:changed, which init()'s
+     subscription already turns into renderProjects(). Re-rendering
+     here as well is not belt-and-braces: it is what makes the result
+     visible WITHOUT A MANUAL RELOAD even if this page is ever mounted
+     without that subscription, and renderProjects() is idempotent. */
+  renderProjects();
+  renderProjectSwitcher();
+  updateStatus();
+  renderGreeting();
+}
+
 function renderProjects() {
   const grid = $('#projectsGrid');
   const toolbar = $('#projectsToolbar');
+  /* One call site, so every path that already re-renders the grid —
+     projects:changed, current:changed, a cross-tab storage event,
+     adoption itself — refreshes the panel too, and none of them has
+     to know it exists. */
+  renderAdoptNotice();
   if (!grid) return;
   const projects  = Store.listProjects();
   const currentId = Store.currentProjectId();
@@ -2136,6 +2266,7 @@ const CLICK_ACTIONS = {
   'clear-activity':        () => clearActivity(),
   'new-project':           () => openProjectModal(),
   'sample-project':        () => openSampleProject(),
+  'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
   'toggle-switcher':       () => toggleProjectSwitcher(),
   'switch-project':        (el) => switchToProject(el.dataset.id),

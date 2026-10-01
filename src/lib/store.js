@@ -482,7 +482,13 @@ export function adoptDeviceProjects() {
   if (taken.length) {
     saveAllProjects(arr);
     _invalidateCurrent();
-    notify('projects:changed', { reason: 'adopt', count: taken.length });
+    /* The adopted projects travel in the payload, not just a count.
+       cloud.js has to know WHICH ones to push, and the count told it
+       only that something happened. Without this an adopted project
+       joined the account namespace locally and never got a server row,
+       so it reached no other device — adoption that looked like it
+       worked and silently did half the job. */
+    notify('projects:changed', { reason: 'adopt', count: taken.length, projects: taken });
   }
   return taken;
 }

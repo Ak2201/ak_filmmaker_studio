@@ -1189,6 +1189,25 @@ Store.subscribe('projects:changed', (info) => {
   if (!info) return;
   if (info.reason === 'create' || info.reason === 'update') {
     if (info.project) _pushProjectMeta(info.project);
+  } else if (info.reason === 'adopt') {
+    /* Adoption from the hub control is the same operation as the
+       first-sign-in prompt, performed later — so it runs the same
+       function rather than a second implementation of it.
+       uploadAllLocalProjects() pushes meta AND every scope, which is
+       what an adopted project needs: it was created while signed out,
+       so the server has never seen it or its data.
+
+       Fire and forget with a catch, like the delete branch: a
+       subscriber is synchronous, and a failed push must not take the
+       local adoption down with it. The adoption already happened on
+       disk and is correct there; this is the copy going up. */
+    if (Array.isArray(info.projects) && info.projects.length) {
+      uploadAllLocalProjects(info.projects).catch((e) => {
+        console.warn('[adopt push]', e);
+        setSync(navigator.onLine ? SYNC_STATES.ERROR : SYNC_STATES.OFFLINE,
+                'Added here, not yet uploaded');
+      });
+    }
   } else if (info.reason === 'delete') {
     if (info.id) {
       _deleteProjectInCloud(info.id).catch(e => {

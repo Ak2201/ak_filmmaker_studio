@@ -38,6 +38,7 @@
    ============================================================ */
 import nav from '../data/navigation.json';
 import { h, delegate } from '../lib/dom.js';
+import { openPalette } from './palette.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -244,6 +245,43 @@ function buildBar(active) {
   const tabs = h('div.sh-phases');
   nav.phases.forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
   bar.append(tabs);
+
+  /* The palette's handle. ⌘K is the fast way in and it is also
+     invisible: a shortcut nobody has been told about is a feature
+     that does not exist for most of the people using the app. So
+     the binding gets a control, the control states the key it
+     stands for, and the key keeps working for everyone who has
+     learned it.
+
+     It sits at the END of the bar rather than next to the
+     breadcrumb on purpose. The crumb answers "where am I"; this
+     answers "take me somewhere else", and they are opposite
+     questions that should not share an edge. */
+  /* ⌘ on a Mac, Ctrl everywhere else. A key cap printing the
+     wrong modifier is worse than no key cap: it teaches a binding
+     that does nothing, and the person concludes the feature is
+     broken rather than that the label is. navigator.platform is
+     deprecated but is the only one of the three spellings present
+     in every engine this app runs in, so all three are tried and
+     the fallback is the one that is right more often. */
+  const mac = (() => {
+    try {
+      const d = navigator.userAgentData;
+      if (d && d.platform) return /mac/i.test(d.platform);
+      return /mac/i.test(navigator.platform || navigator.userAgent || '');
+    } catch (e) { return false; }
+  })();
+  const find = h('button.sh-find', {
+    type: 'button',
+    'data-action': 'palette-open',
+    'aria-label': 'Search the studio',
+    'aria-keyshortcuts': 'Meta+K Control+K',
+    title: 'Search the studio  (' + (mac ? '⌘K' : 'Ctrl K') + ')'
+  });
+  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }),
+              h('span.sh-find-label', { text: 'Search', 'aria-hidden': 'true' }),
+              h('kbd.sh-find-key', { text: mac ? '⌘K' : 'Ctrl K', 'aria-hidden': 'true' }));
+  bar.append(find);
   return bar;
 }
 
@@ -393,9 +431,28 @@ function measureBar() {
   const bar = document.querySelector('.sh-bar');
   if (!bar) return;
   const px = Math.round(bar.getBoundingClientRect().height);
-  if (!px || px === lastBarH) return;
-  lastBarH = px;
-  document.documentElement.style.setProperty('--sh-bar-h', px + 'px');
+  if (px && px !== lastBarH) {
+    lastBarH = px;
+    document.documentElement.style.setProperty('--sh-bar-h', px + 'px');
+  }
+  /* --sh-bar-h is the bar's HEIGHT and is used for layout whether or
+     not the bar is pinned. --sh-stick-h is how much of the viewport
+     it permanently covers, which is a different number: below 1100px
+     the shell scrolls away with the page, so it covers nothing, and
+     an anchor offset built on the height would push every jump
+     target a bar's worth too far down on exactly the screens with
+     the least room.
+
+     Asked of the computed style rather than re-stating the
+     breakpoint here. The breakpoint lives in chrome.css; a second
+     copy in JS is a second copy to keep in step, and this one would
+     fail silently — a jump landing 56px low looks like nothing. */
+  let stick = 0;
+  try {
+    const pos = getComputedStyle(bar).position;
+    if (pos === 'sticky' || pos === 'fixed') stick = px || lastBarH;
+  } catch (e) { /* jsdom and friends */ }
+  document.documentElement.style.setProperty('--sh-stick-h', stick + 'px');
 }
 
 /* ---- open / closed ----------------------------------------- */
@@ -475,6 +532,11 @@ let wired = false;
 function wire() {
   if (wired) return;
   wired = true;
+
+  delegate(document, 'click', '[data-action="palette-open"]', (e) => {
+    e.preventDefault();
+    openPalette();
+  });
 
   delegate(document, 'click', '[data-action="phase-toggle"]', (e, btn) => {
     const menu = btn.parentElement.querySelector('.sh-phase-menu');

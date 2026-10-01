@@ -657,3 +657,109 @@
   .bd-stats, .hero-stats, .hub-stat-strip { gap: var(--s4); }
   .bd-scene-acts { margin-left: 0; }
 }
+
+/* ------------------------------------------------------------
+   8. INTERACTIVE SURFACES — the state layer
+   ------------------------------------------------------------
+   The language had hover states and no PRESS state, anywhere. On a
+   phone that is the whole of the feedback: there is no hover, so a
+   tap on a module tile did nothing visible at all until the next
+   page painted — which on a cold load is long enough to tap again.
+
+   Three rules, and the third is the one that is easy to get wrong.
+
+   1. ONLY WHAT IS ACTUALLY INTERACTIVE. The selectors below are
+      all `a.x` / `button.x`, never the bare class. A .film-card is
+      a link on the library page and a static block on the hub; a
+      lift applied to the class would make the static one claim to
+      be clickable, and a card that lifts under the pointer and
+      does nothing when pressed is a worse card than one that never
+      moved.
+
+   2. THE SHAPE OF THE MOVE BELONGS TO THE SKIN. --sk-lift,
+      --sk-press and --sk-card-shadow-hover are set per skin, so
+      Studio and Press stay flat printed matter (lift 0, shadow
+      none) while Atelier and Console lift. Typing a 2px translate
+      in here would be a move no skin could refuse — the same
+      mistake as a hard-coded radius, one layer up.
+
+   3. IT MUST NOT CHANGE THE BOX. transform only: never width,
+      padding, margin or border-width. A control that grows its box
+      on press reflows every sibling in the row, which on a grid of
+      22 launcher tiles is the whole grid twitching because you
+      touched one of them.
+
+   Both the lift and the press scale are multiplied by --motion, so
+   prefers-reduced-motion flattens the travel to zero rather than
+   merely making it fast. See the note in tokens.css.
+   ------------------------------------------------------------ */
+:is(a, button).door,
+:is(a, button).film-card,
+:is(a, button).director-card,
+:is(a, button).tool-card,
+:is(a, button).start-card,
+:is(a, button).fest-card,
+:is(a, button).ex-card,
+:is(a, button).rule-card,
+.lx-mod {
+  transition: transform var(--speed) var(--ease-out),
+              box-shadow var(--speed) var(--ease-out),
+              border-color var(--speed) var(--ease),
+              background-color var(--speed) var(--ease);
+}
+:is(a, button).door:hover,
+:is(a, button).film-card:hover,
+:is(a, button).director-card:hover,
+:is(a, button).tool-card:hover,
+:is(a, button).start-card:hover,
+:is(a, button).fest-card:hover,
+:is(a, button).ex-card:hover,
+:is(a, button).rule-card:hover,
+.lx-mod:hover,
+.lx-mod:focus-visible {
+  transform: translateY(calc(-1 * var(--sk-lift, 0px) * var(--motion)));
+  box-shadow: var(--sk-card-shadow-hover, var(--sk-card-shadow));
+}
+:is(a, button).door:active,
+:is(a, button).film-card:active,
+:is(a, button).director-card:active,
+:is(a, button).tool-card:active,
+:is(a, button).start-card:active,
+:is(a, button).fest-card:active,
+:is(a, button).ex-card:active,
+:is(a, button).rule-card:active,
+.lx-mod:active {
+  transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
+  box-shadow: var(--sk-card-shadow);
+  transition-duration: var(--speed-tap);
+}
+
+/* The small controls. These are everywhere — toolbars, menus,
+   chips, the action bar — and they are the ones a finger is
+   actually on. The scale is the same variable, so a skin that
+   turns press feedback off turns it off once. */
+.btn:active,
+.tb-link:active,
+.mini-btn:active,
+.bd-icon:active,
+.tb-item:active,
+.tb-choice:active,
+.step-jumper:active,
+.lx-phase:active {
+  transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
+}
+
+/* A disabled control does not respond to being pressed, which is
+   the point of it being disabled — and `cursor: not-allowed` says
+   so before the press does. Without this the transform above fires
+   on :active regardless, and the one state that must read as
+   "nothing will happen" animates like the states that work. */
+.btn:disabled, .mini-btn:disabled, .bd-icon:disabled,
+.btn[aria-disabled="true"], .lx-mod[disabled] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.btn:disabled:active, .mini-btn:disabled:active, .bd-icon:disabled:active,
+.btn[aria-disabled="true"]:active {
+  transform: none;
+}

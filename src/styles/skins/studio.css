@@ -32,6 +32,16 @@
   --sk-card-line-w:   1px;
   --sk-card-ink:      var(--ink-body);
   --sk-card-shadow:   none;
+  /* Studio is printed matter: a page does not lift off the desk when
+     you look at it. The hover state here is the hairline going to
+     --rule, which modules.css does anyway; the elevation stays flat
+     and the travel stays zero. The variables exist so the skins that
+     DO want a lift can have one without a selector. */
+  --sk-card-shadow-hover: none;
+  --sk-lift:          0px;
+  --sk-press:         0.985;
+  --sk-field-radius:  var(--radius);
+  --sk-focus-w:       2px;
 
   /* the one dark slab */
   --sk-slab-bg:       var(--panel);

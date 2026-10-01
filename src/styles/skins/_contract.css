@@ -116,3 +116,54 @@
    beside a square card is a real combination and one radius cannot
    express it.
    ============================================================ */
+
+/* ============================================================
+   ADDED BY THE INTERACTION PASS — five more variables.
+   ------------------------------------------------------------
+   Rule 4 of this contract says that the moment a skin needs a
+   selector, the LANGUAGE is missing a variable. These five are
+   that, written down rather than typed into a rule:
+
+   --sk-card-shadow-hover
+        The card's elevation while the pointer is on it. Separate
+        from --sk-card-shadow because "flat at rest, lifted on
+        hover" and "always flat" are different designs and one
+        shadow value cannot express both. A skin that wants no
+        hover elevation sets it equal to --sk-card-shadow; it does
+        not get a `box-shadow: none` typed into modules.css.
+
+   --sk-lift
+        How far an interactive card travels toward the reader on
+        hover, as a LENGTH. Always multiplied by --motion where it
+        is used, so prefers-reduced-motion flattens it to 0 without
+        the skin or the rule knowing anything about that.
+
+   --sk-press
+        The scale a control takes while held. Unitless, and it is
+        a scale rather than a translate on purpose: a translate
+        moves the thing out from under the finger that is pressing
+        it. 0.98 is firm; 1 is a skin that does not do this.
+
+        This is the one that must not shift layout. It is applied
+        to transform only — never to width, padding or margin —
+        because a control that resizes its box on press reflows
+        everything beside it, which is the "Stable Interaction
+        States" rule from the far side of the same problem.
+
+   --sk-field-radius
+        Inputs, separately from --sk-radius and --sk-btn-radius.
+        Three radii rather than one because a design with pill
+        buttons, square cards and softly-rounded fields is a real
+        design, and the app already had two of the three.
+
+   --sk-focus-w
+        The focus ring's width. A dense skin wants a thinner ring
+        than a spacious one; the COLOUR is not a skin's business
+        and stays on --focus in tokens.css, because a focus ring
+        that a skin could recolour is a focus ring a skin can make
+        invisible.
+
+   All five fall through to studio's defaults on bare :root, and
+   all five are polarity-neutral — so unlike the six slab
+   variables, a skin may safely set none of them.
+   ============================================================ */

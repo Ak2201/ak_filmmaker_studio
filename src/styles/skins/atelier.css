@@ -1,0 +1,126 @@
+/* ============================================================
+   SKIN: ATELIER — the studio as a place you work in daily.
+   ------------------------------------------------------------
+   Six skins now, and a sixth is only worth shipping if it is a
+   DESIGN rather than a dial. The five that exist cover: quiet
+   printed matter (studio), loud printed matter (press), a
+   condensed broadsheet (mission), a dense ring binder (binder),
+   and a flat application (console). The gap between them is the
+   one most working tools actually occupy — soft edges, real
+   elevation, generous air, and a face that is neither all-serif
+   nor all-sans.
+
+   So Atelier pairs them: Fraunces for display, the system sans
+   for running text. That split is the whole idea. The serif is
+   doing the job a serif is good at — a title you read once, at
+   size — and the sans is doing the job a sans is good at, which
+   is eleven thousand words of scene description at 16px on a
+   screen. Studio sets both to the serif and console sets both to
+   the sans; neither of those is this, and the difference is
+   visible in one paragraph.
+
+   NO NEW FONT. Rule 3's footnote in the contract is that a skin
+   pulling a web font puts a network round trip in front of first
+   paint for a look the user may leave in a minute. Fraunces is
+   already fetched for the display face; the sans is the system
+   stack console proved is enough. The cost of this file is the
+   file.
+
+   THE SLAB IS LIGHT HERE, so all six slab variables move
+   together — the exception the contract names as the one that
+   bites. Set --sk-slab-bg light and inherit --sk-slab-accent-on
+   from studio's dark-slab default and the slab's own buttons come
+   out near-black on a deep accent fill at 1.74:1. They are all
+   six below.
+
+   Colour is var(--token) throughout, so all four themes work:
+   on ink the "light" slab resolves to --paper-sunk, which is
+   darker than the page, and the ink on it follows. The slab is
+   defined by its RELATIONSHIP to the page, not by a lightness.
+   ============================================================ */
+
+:root[data-skin="atelier"] {
+  --sk-name: "Atelier";
+
+  /* ---- type: serif display, system sans body ---------------- */
+  --sk-display: var(--face-serif);
+  --sk-body:    system-ui, -apple-system, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+
+  /* ---- geometry --------------------------------------------
+     12px is the one real departure from the app's 2px house
+     radius, and it is deliberate rather than a drift: the studio
+     is printed matter and THIS skin is not. Buttons go further
+     to a pill, because a pill beside a softly-rounded card is
+     the combination --sk-btn-radius exists to express. Fields
+     sit between the two so a form does not read as a row of
+     lozenges. */
+  --sk-radius:        12px;
+  --sk-btn-radius:    var(--radius-pill);
+  --sk-field-radius:  10px;
+  --sk-card-pad:      var(--s5) var(--s5);
+  --sk-band-pad:      var(--s8);
+  --sk-grid-gap:      var(--s5);
+
+  /* ---- surfaces --------------------------------------------
+     A card here is a raised sheet, not a ruled box: the hairline
+     drops to --rule-hair and the separation is carried by the
+     shadow instead. That only works if the shadow MOVES — a
+     constant elevation is just a darker border — so the hover
+     state lifts and the press state settles. */
+  --sk-card-bg:       var(--paper-raised);
+  --sk-card-line:     var(--rule-hair);
+  --sk-card-line-w:   1px;
+  --sk-card-ink:      var(--ink-body);
+  --sk-card-shadow:       var(--shadow-sm);
+  --sk-card-shadow-hover: var(--shadow-md);
+  --sk-lift:          2px;
+  --sk-press:         0.975;
+  --sk-focus-w:       2px;
+
+  /* ---- the slab, all six together --------------------------
+     Sunk rather than near-black: on a page of raised cards the
+     emphatic surface is the one that goes DOWN, because
+     everything else has already gone up. Inverting it here would
+     put the loudest thing in the design inside a step. */
+  --sk-slab-bg:        var(--paper-sunk);
+  --sk-slab-ink:       var(--ink-body);
+  --sk-slab-muted:     var(--ink-muted);
+  --sk-slab-accent:    var(--accent-deep);
+  --sk-slab-fill:      var(--paper-raised);
+  --sk-slab-hair:      var(--rule);
+  --sk-slab-accent-on: var(--on-fill);
+  --sk-slab-rule-w:    3px;
+  --sk-slab-rule-c:    var(--accent);
+
+  /* ---- rules ------------------------------------------------
+     The hue-carrying rule keeps its 3px, because that one is
+     DATA — it is how a festival tier and an element category are
+     told apart, and thinning it to match the design would delete
+     information to gain a look. The decorative rule goes to a
+     hairline, which is the quiet half of the same choice. */
+  --sk-hue-rule-w:    3px;
+  --sk-deco-rule-w:   1px;
+  --sk-deco-rule-c:   var(--rule-hair);
+  --sk-deco-bg:       var(--paper-raised);
+  --sk-deco-ink:      var(--ink-body);
+
+  /* ---- display sizes ---------------------------------------- */
+  --sk-title-size:    clamp(2.1rem, 4vw, 3.25rem);
+  --sk-title-style:   normal;
+  --sk-title-transform: none;
+  --sk-title-lh:      1.02;
+  --sk-h2-size:       var(--t-2xl);
+  --sk-h2-style:      normal;
+  --sk-deck-size:     var(--t-lg);
+  --sk-deck-style:    normal;
+  --sk-deck-measure:  58ch;
+  --sk-eyebrow-track: var(--track-label);
+  --sk-stepnum-size:  var(--t-2xl);
+  --sk-card-h-size:   var(--t-lg);
+  --sk-card-h-style:  normal;
+
+  /* ---- pacing ----------------------------------------------- */
+  --sk-cover-min:     0;
+  --sk-cover-pad:     var(--s8) var(--gutter);
+}

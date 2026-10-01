@@ -36,6 +36,7 @@ import {
 import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
 import glossaryData from '../data/glossary.json';
+import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palette.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -65,13 +66,32 @@ function injectSkipLink() {
 // ============================================================
 // TOAST
 // ============================================================
-function ensureToastHost() {
-  let host = document.getElementById('toastHost');
+/* TWO HOSTS, and the difference is the politeness.
+
+   A toast must never steal focus, so the ordinary one is
+   aria-live="polite": it waits for the reader to finish the
+   sentence it is already on. That is right for "SAVED" and wrong
+   for "COULD NOT SAVE — STORAGE IS FULL", which is a message about
+   work that is being lost while the queue drains. An error goes in
+   a role="alert" region, which is assertive and interrupts.
+
+   Separate elements rather than flipping the attribute on one,
+   because changing aria-live on a live region is not reliably
+   picked up — several screen readers bind the politeness when the
+   region enters the accessibility tree and never re-read it. */
+function ensureToastHost(assertive) {
+  const id = assertive ? 'toastHostAlert' : 'toastHost';
+  let host = document.getElementById(id);
   if (host) return host;
   host = document.createElement('div');
-  host.id = 'toastHost';
+  host.id = id;
   host.className = 'toast-host';
-  host.setAttribute('aria-live', 'polite');
+  if (assertive) {
+    host.setAttribute('role', 'alert');
+  } else {
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
+  }
   host.setAttribute('aria-atomic', 'true');
   document.body.appendChild(host);
   return host;
@@ -79,7 +99,7 @@ function ensureToastHost() {
 
 StudioUI.toast = function (msg, opts) {
   opts = opts || {};
-  const host = ensureToastHost();
+  const host = ensureToastHost(opts.type === 'error');
   const t = document.createElement('div');
   t.className = 'toast' + (opts.type ? ' ' + opts.type : '');
   const ms = document.createElement('span');
@@ -98,14 +118,61 @@ StudioUI.toast = function (msg, opts) {
   }
   host.appendChild(t);
   requestAnimationFrame(() => t.classList.add('show'));
-  const duration = opts.duration || 3200;
-  let timer;
+
+  /* A TOAST WITH AN ACTION MUST NOT TIME OUT.
+
+     The default 3.2s is right for a notice you only have to read.
+     It is wrong the moment the toast carries a button, because the
+     button is the only route to the thing it offers: "Undo delete"
+     that vanishes after three seconds is an undo a keyboard user
+     reaching it by Tab, or anyone reading it with a screen reader,
+     will routinely miss. The one place in this app that matters
+     most is the one that offers to put a deleted scene back.
+
+     So an actionable toast stays until it is dismissed or acted on,
+     and every toast pauses while the pointer or the keyboard is on
+     it — a countdown that keeps running while you are reading the
+     message is a countdown measuring the wrong thing. */
+  const duration = opts.duration != null ? opts.duration : (opts.action ? 0 : 3200);
+  let timer = null;
+  let remaining = duration;
+  let startedAt = 0;
   function dismiss() {
     clearTimeout(timer);
+    timer = null;
     t.classList.remove('show');
     setTimeout(() => { try { host.removeChild(t); } catch (e) {} }, 260);
   }
-  if (duration > 0) timer = setTimeout(dismiss, duration);
+  function start() {
+    if (!(remaining > 0)) return;
+    startedAt = Date.now();
+    timer = setTimeout(dismiss, remaining);
+  }
+  function pause() {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    remaining -= Date.now() - startedAt;
+  }
+  /* A toast that will not dismiss itself needs a way to be
+     dismissed. Without this, declining the offer — the ordinary
+     case, because most deletes are deliberate — leaves the notice
+     on screen over the page for the rest of the session. */
+  if (!(duration > 0)) {
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '\u00d7';
+    close.addEventListener('click', dismiss);
+    t.appendChild(close);
+  }
+
+  t.addEventListener('mouseenter', pause);
+  t.addEventListener('mouseleave', start);
+  t.addEventListener('focusin', pause);
+  t.addEventListener('focusout', start);
+  start();
   return { dismiss };
 };
 
@@ -394,7 +461,8 @@ const DEFAULT_SHORTCUTS = [
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },
   { keys: ['G'],          label: 'Jump to end' },
-  { keys: ['/'],          label: 'Focus the search input on this page' }
+  { keys: ['/'],          label: 'Focus the search input on this page' },
+  { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, settings' }
 ];
 function ensureShortcutSheet() {
   if (document.getElementById('shortcutSheet')) return;
@@ -431,6 +499,9 @@ function closeShortcutSheet() {
   const el = document.getElementById('shortcutSheet');
   if (el) el.classList.remove('show');
 }
+StudioUI.openPalette  = openPalette;
+StudioUI.closePalette = closePalette;
+StudioUI.togglePalette = togglePalette;
 StudioUI.openShortcutSheet  = openShortcutSheet;
 StudioUI.closeShortcutSheet = closeShortcutSheet;
 
@@ -444,7 +515,18 @@ function isTextInput(el) {
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 document.addEventListener('keydown', (e) => {
+  /* ⌘K / Ctrl-K, and it is checked BEFORE the text-input guard
+     because the palette is the one binding that has to work while
+     you are typing in a scene synopsis. e.key is lower-cased by the
+     browser under Meta on some layouts and not others, hence the
+     toLowerCase rather than a comparison to 'k'. */
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && String(e.key).toLowerCase() === 'k') {
+    e.preventDefault();
+    togglePalette();
+    return;
+  }
   if (e.key === 'Escape') {
+    if (isPaletteOpen()) { closePalette(); return; }
     closeShortcutSheet();
     closeCloudAuthModal();
     const sd = document.getElementById('shareDialog');
@@ -956,32 +1038,105 @@ function wireGlossaryPopovers() {
 // ============================================================
 // MOBILE BOTTOM ACTION BAR
 // ============================================================
+/* ============================================================
+   THE MOBILE ACTION BAR
+   ------------------------------------------------------------
+   The working notes list this as a known blind spot: the verify
+   run loads at 1280px and resizes to 390 afterwards, so anything
+   gated on matchMedia at LOAD has already decided, and this bar
+   never attaches during a run. Three things were wrong with it,
+   and all three are the same bug seen from different sides —
+   the decision was made once and never revisited.
+
+   1. IT DECIDED AT LOAD AND NEVER AGAIN. A phone turned to
+      landscape crosses 720px, and the bar stayed. Turned back,
+      and a page loaded in landscape never got one. The media
+      query is LISTENED to now, not sampled.
+
+   2. IT RESERVED A GUESS. `padding-bottom: var(--s8)` is 64px;
+      the bar is a row of 48px targets plus padding plus
+      env(safe-area-inset-bottom), which on a phone with a gesture
+      bar is more than 64. So the last control on every long
+      blueprint sat under it. The height is measured and published
+      as --mab-h, and the page reserves that.
+
+   3. IT HAD NO WAY INTO THE STUDIO. The four items were Studio,
+      Top, Bottom and Keys — and Keys is a shortcut sheet, on the
+      one device with no keyboard. Search replaces it: the palette
+      is the whole of navigation on a phone, and ⌘K is not
+      reachable there.
+   ============================================================ */
+const MAB_QUERY = '(max-width: 720px)';
+
+function mobileBarItems() {
+  return [
+    { icon: '⌕', label: 'SEARCH', onClick: () => openPalette() },
+    { icon: '←', label: 'STUDIO', href: 'index.html' },
+    { icon: '↑', label: 'TOP',    onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+    { icon: '↓', label: 'END',    onClick: () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }) }
+  ];
+}
+
+function measureMobileBar() {
+  const bar = document.getElementById('mobileActionbar');
+  const px = bar ? Math.round(bar.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty('--mab-h', px + 'px');
+}
+
 StudioUI.attachMobileActionBar = function (config) {
   if (document.getElementById('mobileActionbar')) return;
   config = config || {};
-  const items = config.items || [
-    { icon: '←', label: 'STUDIO', href: 'index.html' },
-    { icon: '↑', label: 'TOP', onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-    { icon: '↓', label: 'BOTTOM', onClick: () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }) },
-    { icon: '?', label: 'KEYS', onClick: openShortcutSheet }
-  ];
+  const items = config.items || mobileBarItems();
   const bar = document.createElement('div');
   bar.id = 'mobileActionbar';
   bar.className = 'mobile-actionbar';
   bar.setAttribute('role', 'toolbar');
+  /* A toolbar role with no name is "toolbar" and nothing else to a
+     screen reader, on a page that already has two other toolbars. */
+  bar.setAttribute('aria-label', 'Page actions');
   items.forEach(it => {
-    const tag = it.href ? 'a' : 'button';
-    const el = document.createElement(tag);
-    if (it.href) el.href = it.href;
+    const el = document.createElement(it.href ? 'a' : 'button');
+    if (it.href) el.href = it.href; else el.type = 'button';
     el.setAttribute('aria-label', it.label);
-    el.innerHTML = '<span class="mab-icon" aria-hidden="true">' + it.icon + '</span>' +
-                   '<span>' + it.label + '</span>';
+    const icon = document.createElement('span');
+    icon.className = 'mab-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = it.icon;
+    const text = document.createElement('span');
+    text.textContent = it.label;
+    el.append(icon, text);
     if (it.onClick) el.addEventListener('click', it.onClick);
     bar.appendChild(el);
   });
   document.body.appendChild(bar);
   document.body.classList.add('has-mobile-actionbar');
+  requestAnimationFrame(measureMobileBar);
 };
+
+StudioUI.detachMobileActionBar = function () {
+  const bar = document.getElementById('mobileActionbar');
+  if (bar) bar.remove();
+  document.body.classList.remove('has-mobile-actionbar');
+  document.documentElement.style.setProperty('--mab-h', '0px');
+};
+
+/* Attach and detach as the viewport crosses the breakpoint, rather
+   than sampling it once. `change` on a MediaQueryList is the event
+   that fires for a rotation as well as a resize, which a window
+   resize listener on a phone does not reliably do. */
+function syncMobileActionBar() {
+  let mq;
+  try { mq = window.matchMedia(MAB_QUERY); } catch (e) { return; }
+  const apply = () => {
+    if (mq.matches) StudioUI.attachMobileActionBar();
+    else StudioUI.detachMobileActionBar();
+  };
+  apply();
+  if (mq.addEventListener) mq.addEventListener('change', apply);
+  else if (mq.addListener) mq.addListener(apply);   // Safari < 14
+  window.addEventListener('resize', () => requestAnimationFrame(measureMobileBar));
+}
+StudioUI.syncMobileActionBar = syncMobileActionBar;
 
 // ============================================================
 // FIELD-SAVED FLASH ON BLUR (any [data-key] field)
@@ -1233,6 +1388,48 @@ global.StudioUI = StudioUI;
 try { loadTheme(); } catch (e) {}
 try { loadSkin(); } catch (e) {}
 
+/* ============================================================
+   THE PAGE TOOLBAR'S HEIGHT, when it is pinned.
+   ------------------------------------------------------------
+   The other half of --scroll-offset. shell.js publishes the shell
+   bar's sticky height; this publishes the toolbar's, and tokens.css
+   adds them. Both ask the computed style rather than restating a
+   breakpoint, because the toolbar is sticky above 560px, static
+   below it, and under the shell bar or at the top of the viewport
+   depending on 720px — three rules in chrome.css that a fourth copy
+   in here could only get wrong.
+
+   Zero when there is no toolbar at all, which is most of the
+   scene-derived modules. */
+let lastToolbarH = -1;
+function measureToolbar() {
+  const tb = document.querySelector('.toolbar');
+  let px = 0;
+  if (tb) {
+    try {
+      const pos = getComputedStyle(tb).position;
+      if (pos === 'sticky' || pos === 'fixed') {
+        px = Math.round(tb.getBoundingClientRect().height);
+      }
+    } catch (e) { /* no layout engine */ }
+  }
+  if (px === lastToolbarH) return;
+  lastToolbarH = px;
+  document.documentElement.style.setProperty('--tb-h', px + 'px');
+}
+StudioUI.measureToolbar = measureToolbar;
+
+/* Plain resize, debounced to a frame. Not a ResizeObserver: this
+   writes a custom property that other rules lay out against, and an
+   observer watching an element whose size it can influence is one
+   notification loop away from the console error the verify gate
+   counts as a failure. The same reasoning shell.js records. */
+let _tbRaf = 0;
+window.addEventListener('resize', () => {
+  if (_tbRaf) return;
+  _tbRaf = requestAnimationFrame(() => { _tbRaf = 0; measureToolbar(); });
+});
+
 function autoInit() {
   try {
     // Offline support for EVERY page, not just the hub. This lives here
@@ -1258,9 +1455,24 @@ function autoInit() {
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) attachSignInPill(toolbar);
     upgradeThemeButton(toolbar);
-    // Mobile bar on blueprints (auto-detect)
-    if (document.querySelector('section.step') && window.matchMedia('(max-width: 720px)').matches) {
-      StudioUI.attachMobileActionBar();
+    /* Two frames, for the same reason shell.js measures twice: once
+       for layout and once for Fraunces and JetBrains Mono to land.
+       A toolbar measured in the fallback face is a toolbar measured
+       at the wrong height. */
+    requestAnimationFrame(() => {
+      measureToolbar();
+      requestAnimationFrame(measureToolbar);
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(measureToolbar).catch(() => {});
+    }
+    /* Every page with a document in it, not only the blueprints.
+       The bar is how you move around on a phone — the rail is
+       behind a toggle and ⌘K does not exist there — so limiting it
+       to `section.step` left the eleven scene-derived modules with
+       no navigation at all below 720px. */
+    if (document.querySelector('section.step, main, #app, .wrap')) {
+      syncMobileActionBar();
     }
   } catch (e) {
     console.warn('[StudioUI] init error', e);
@@ -1308,6 +1520,9 @@ export {
   autoAriaLabels,
   openShortcutSheet,
   closeShortcutSheet,
+  openPalette,
+  closePalette,
+  togglePalette,
   attachSignInPill,
   refreshSignInPill,
   openCloudAuthModal,

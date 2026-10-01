@@ -29,6 +29,15 @@
   --sk-card-bg:       var(--paper-raised);
   --sk-card-line:     var(--rule-hair);
   --sk-card-shadow:   var(--shadow-sm);
+  /* An application's cards do lift, but barely — this is a tool,
+     not a card game. One step up the elevation scale and a single
+     pixel of travel; the press scale is shallower than Atelier's
+     for the same reason. */
+  --sk-card-shadow-hover: var(--shadow-md);
+  --sk-lift:          1px;
+  --sk-press:         0.985;
+  --sk-field-radius:  4px;
+  --sk-focus-w:       2px;
 
   /* The one dark slab per step goes light here. On a grey ground
      with white cards, a near-black block is the only thing on the

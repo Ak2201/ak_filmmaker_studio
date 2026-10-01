@@ -48,9 +48,10 @@ src/
              screenplay-export.js shotlist-export.js script-import.js ai.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
-             actionbar.js launcher.js
+             actionbar.js launcher.js palette.js
   styles/    tokens.css base.css chrome.css editorial.css widgets.css
              modules.css ← the design language, read by every page
+             palette.css ← the command palette's own sheet
              skins/      ← _contract.css + one file per swappable look
              print.css + one stylesheet per module page
   pages/     hub.js feature.js short.js library.js breakdown.js
@@ -154,7 +155,17 @@ hard-codes a radius, a padding, a border width, a display size or an italic:
 each is a `--sk-*` variable, and a *skin* is one file in `src/styles/skins/`
 that sets them. `skins/_contract.css` lists the variables and the four rules a
 skin follows; `studio` is the default, `press` is the printed-matter look this
-replaced, `binder` is flat and dense.
+replaced, `binder` is flat and dense, `console` is the flat application,
+`mission` is a condensed broadsheet, and `atelier` is the soft-edged daily tool
+— serif display over a system sans, real elevation, pill buttons. Six.
+
+The contract gained five variables with Atelier, and the reason is rule 4 of
+the contract itself: `--sk-card-shadow-hover`, `--sk-lift`, `--sk-press`,
+`--sk-field-radius`, `--sk-focus-w`. A skin that wanted a hover elevation and a
+press scale needed a selector in `modules.css` to get them, which is the
+definition of a missing variable. All five fall through to studio's defaults
+and all five are polarity-neutral, so unlike the six slab variables a skin may
+safely set none of them.
 
 This is what makes the design swappable rather than merely changed, and it is
 cheap to break: one `border-radius: 4px` typed into a rule is a shape one skin
@@ -211,7 +222,7 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   never loaded produces no duplicate at all, so only the disk-vs-page count
   catches it.
 - **text meets WCAG AA (4.5:1)** on every surface a skin controls, across
-  all four themes crossed with all five skins, with the modals open. The floor
+  all four themes crossed with all six skins, with the modals open. The floor
   was 3.0 while the invisible cases were being cleared; it is 4.5 now, which is
   the real bar. Two rules came out of getting there and are worth knowing
   before you pick a colour:
@@ -263,8 +274,17 @@ key fails the run immediately.
 
 **Known blind spot.** The run loads each page at 1280px and resizes to 390px
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
-by then — the mobile action bar never attaches during a verify run and its
-layout is untested. Check viewport-gated chrome by hand at 390px.
+by then. Check viewport-gated chrome by hand at 390px.
+
+The mobile action bar used to be the headline example of this and is no longer:
+it LISTENS to the media query instead of sampling it, so it attaches and
+detaches as the viewport crosses 720px and a verify run's resize now produces
+one. That was a real bug as well as an untested path — a phone turned to
+landscape kept a bar that no longer fitted, and a page loaded in landscape never
+got one at all. Its height is measured and published as `--mab-h`, because the
+`padding-bottom: 64px` that reserved space for it is less than a 48px row plus
+padding plus `env(safe-area-inset-bottom)` on any phone with a gesture bar, and
+the last control on every long page sat underneath it.
 
 This is narrower than it was: overflow is now also measured at 390px *before*
 a project is created, which is the only time the first-run panel exists. That
@@ -392,6 +412,39 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
   phone, permanently. What you need while typing is the fixed bottom action bar
   and the save indicator; the toolbar is one flick up.
+- **A sticky bar and no `scroll-margin` is a jump that lands behind it.**
+  Nothing in the app set `scroll-margin` and two bars are sticky above the
+  content — the shell at `--sh-bar-h`, the page toolbar under it. The browser
+  scrolls a fragment target to y=0, and y=0 is behind both. So the step rail,
+  `j`/`k`, the glossary links, `#elements`, every fragment the breadcrumb
+  resolves and the skip link itself delivered you to a heading you could not
+  see, with the first two lines of the thing you asked for under the chrome. It
+  was never reported as a scrolling bug because it reads as the page landing in
+  the wrong place. `--scroll-offset` in `tokens.css` is the fix and it is
+  computed, not guessed: `--sh-stick-h` and `--tb-h` are published by the two
+  owners, each asking `getComputedStyle().position` rather than restating a
+  breakpoint, so the offset is zero for a bar that is not pinned at this width
+  and correct when the bar wraps to two rows at 390px. The heights are
+  measured TWICE, once for layout and once after `document.fonts.ready`, for
+  the same reason `shell.js` already did: a bar measured in the fallback face
+  is a bar measured at the wrong height.
+- **`--motion` is a multiplier on DISTANCE, and it needs to be.** `base.css`
+  clamps every duration to 0.01ms under `prefers-reduced-motion`, which stops
+  things taking time but does not stop them travelling — a card that teleports
+  six pixels is still a card that moved, and the jump is the part that matters
+  to a reader with vestibular sensitivity. Every translate and scale in the
+  app is written `calc(<distance> * var(--motion))` and the same media query
+  sets `--motion: 0`. If you add a transform, multiply it.
+- **A toast with an action must not time out.** 3.2s is right for a notice you
+  only have to read and wrong the moment it carries a button, because the
+  button is the only route to what it offers: an "Undo delete" that vanishes
+  after three seconds is an undo that anyone reaching it by Tab, or reading it
+  with a screen reader, will routinely miss. An actionable toast now stays
+  until dismissed or acted on and grows its own close control; every toast
+  pauses its countdown on hover and on focus. Errors go to a second host with
+  `role="alert"` rather than the polite one — the politeness is bound when a
+  live region enters the accessibility tree and several readers never re-read
+  it, so flipping `aria-live` on one element does not work.
 - **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
   matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
   match nothing. When `applyTheme()` set only the classes, all three themes
@@ -430,9 +483,31 @@ be discarded.
 **Change the look** → do NOT edit `modules.css` to make it darker, rounder or
 denser. Write a skin: one file in `src/styles/skins/` setting the `--sk-*`
 variables in `_contract.css`, and it appears in the Appearance menu on all five
-pages with no other edit. Edit `modules.css` only to change the *language* —
+pages with no other edit. If the shape you want is not a variable yet, ADD THE
+VARIABLE to `_contract.css` — that is rule 4, and Atelier's five additions are
+what following it looks like. Edit `modules.css` only to change the *language* —
 what objects exist and how they are arranged — and when you do, every shape you
 add must be a variable, or you have quietly made it unskinnable.
+
+**Add something to the command palette** → usually nothing. `src/ui/palette.js`
+derives its index: modules and global entries from `navigation.json`, skins
+from `skin.js` reading the CSSOM, themes from `StudioUI.themeOrder()`, projects
+from `listProjects()`, and scenes and contacts from their own models. A module
+added to `navigation.json` is searchable with no edit here, which is the same
+rule that keeps the steps in JSON. A genuinely new KIND of thing gets a
+function returning `entry({…})` objects; a new MODEL goes in `loadContent()`,
+which is dynamically imported on first open so none of it is in any page's
+first paint.
+
+Two things it must not do. It must not write to storage — `verify` asserts zero
+`localStorage` writes across four idle seconds, and a map that recorded its own
+opening would trip it, correctly. (Recents are in memory for the session and
+deliberately do not survive it; the alternative was a new key in a contract
+that holds months of people's work, bought for a reordered list.) And a row's
+hue class must come from the right family: `.sh-ph-*` for a phase, `.hue-*` for
+a category. A phase id written as `hue-develop` matches neither rule in
+`tokens.css`, `--hue` stays undefined and the row falls back to the accent
+without an error — the breakdown shipped exactly that for two commits.
 
 **Parse or print a rupee figure** → `src/lib/money.js`. `parseNum` for anything
 a person typed, `fmtINR` for a glanceable magnitude, `INR.format` when the
@@ -559,7 +634,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 
    **The probe no longer walks a list.** `SURFACES` is gone; the AA
    check walks every leaf text node in `main`, the open modals and the
-   shell, across 4 themes × 5 skins × every page, and every model is
+   shell, across 4 themes × 6 skins × every page, and every model is
    seeded on every page first — an empty page has nothing to walk, and
    a wholesale walk of an empty state is a list by another name. A
    second source check greps for `color:`/`fill:` on the four hairline
@@ -610,6 +685,47 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    reads its answers, derived from `src/data/steps.priority.json` rather
    than hand-listed. The filter can never strand you on a hidden step —
    jumping or searching to one turns it off and says why.
+
+9. **The interaction pass.** A command palette, a sixth skin, a motion
+   scale and a set of state fixes. Four of these are worth knowing about
+   because they changed shared machinery rather than one page:
+
+   - `src/ui/palette.js` + `palette.css` — ⌘K / Ctrl-K over the whole
+     studio. Wired once in `chrome.js`, so every page has it; a handle in
+     the shell bar (`.sh-find`) makes the binding visible, because a
+     shortcut nobody has been told about is a feature that does not exist
+     for most people. It is the combobox pattern, not a div with a keydown
+     handler: focus stays in the field and the active row is named by
+     `aria-activedescendant`, which is the one mechanism that reports a
+     selection the focus did not move to. The handle hides below 720px —
+     the bottom action bar carries SEARCH there, and at 375px the handle
+     wrapped the shell bar to a third row, which is ~300px of chrome above
+     the first word of the page.
+   - `--scroll-offset`, `--motion`, the four-step speed scale and
+     `--ease-spring` in `tokens.css`; see the traps above for the first two.
+   - `base.css` gained the document-level interaction rules: `touch-action:
+     manipulation` on controls (never on the body — disabling pinch-zoom is
+     a WCAG failure), 44px minimum targets under `pointer: coarse` only,
+     `accent-color` so native checkboxes and ranges stop being the
+     browser's blue on a sepia page, themed scrollbars, `text-wrap: pretty`
+     on prose and `overflow-wrap: anywhere` with the `min-width: 0` that
+     makes it actually work on a flex child.
+   - `actionbar.js` menus answer to the arrow keys, Home and End, return
+     focus to the button that opened them, and treat Tab as one stop rather
+     than eight. `role="menu"` is a promise, and it was not being kept.
+
+   **NOT VERIFIED BY THE GATE.** `npm run build` and `npm run verify` need
+   Node >= 22.12 and the machine this was written on has Node 20, where
+   Vite's bundler fails to load at all (`node:util` has no `styleText`
+   export before 22). So this work was checked statically — every changed
+   module parsed, every relative import resolved, every custom property
+   declared, every brace balanced, and every new text/ground pair in
+   `palette.css` and `chrome.css` measured for WCAG AA across all four
+   themes and all six accent hues (164/164 clear 4.5:1) — and visually, by
+   serving the real stylesheets to a browser through a standalone harness
+   at 1280px and 375px. **Run `npm run build && npm run verify` on Node 22
+   before merging.** The three assertions most likely to have something to
+   say are the idle-write one, the skin count, and the AA walk.
 
 ## Things that are deliberate, not oversights
 

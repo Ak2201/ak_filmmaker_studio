@@ -467,8 +467,24 @@ function render() {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
 
-  if (!scenes.length) main.append(renderEmpty());
-  else main.append(renderReports(scenes, numbers), renderSides(scenes, numbers));
+  /* #reports and #sides are nav destinations (navigation.json), so
+     they have to exist before any scene does — otherwise the phase
+     menu resolves to nothing on exactly the studio that has never
+     seen this page. See the note in breakdown.js's render(). */
+  if (!scenes.length) {
+    main.append(
+      h('section.rp-sec', { id: 'reports' }, [renderEmpty()]),
+      h('section.rp-sec', { id: 'sides' }, [
+        h('p.bd-eyebrow.rp-noprint', { text: 'Sides' }),
+        h('h2.bd-h2.rp-noprint', { text: 'Pages for the day.' }),
+        h('p.bd-sub.rp-noprint', {
+          text: 'Nothing to print yet. Once the breakdown has scenes you tick the '
+              + 'ones being shot and each prints with its slug line, its length, '
+              + 'what happens and everything tagged to it.'
+        })
+      ])
+    );
+  } else main.append(renderReports(scenes, numbers), renderSides(scenes, numbers));
 
   app.replaceChildren(main);
   mountShell();

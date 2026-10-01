@@ -440,8 +440,22 @@ function render() {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
 
+  /* #stripboard and #dood are nav destinations (navigation.json), so
+     they have to exist before any scene does — otherwise the phase
+     menu resolves to nothing on exactly the studio that has never
+     seen this page. See the note in breakdown.js's render(). */
   if (!scenes.length) {
-    main.append(renderEmpty());
+    main.append(
+      h('section.sb-board', { id: 'stripboard' }, [renderEmpty()]),
+      h('section.sb-dood', { id: 'dood' }, [
+        h('h2.bd-h2', { text: 'Day Out of Days' }),
+        h('p.bd-sub', {
+          text: 'Who is needed, and on which day. It builds itself from the cast '
+              + 'tags and the shoot days on the breakdown, so there is nothing to '
+              + 'fill in here and nothing to show until there are scenes.'
+        })
+      ])
+    );
   } else {
     main.append(renderBoard(scenes), renderDood(scenes));
   }

@@ -429,6 +429,30 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   noticed for two commits, because a CSS variable that is never defined fails
   silently by design. If you add a hue, add it in `tokens.css` and nowhere
   else.
+- **A nav target must not depend on data existing.** `navigation.json` sent the
+  Breakdown phase to `breakdown.html#scenes` and `#elements`, Reports to
+  `#reports` / `#sides`, the Stripboard to `#stripboard` / `#dood` — and all six
+  ids lived only on the POPULATED branch of those pages' `render()`. On a studio
+  with no scenes the fragment resolved to nothing and the browser stayed put, so
+  the phase menu looked broken to exactly the person who had never opened the
+  page. 6 of the 18 fragment hrefs in `navigation.json` were absent from the
+  DOM, in both the no-project and the project-without-scenes states.
+
+  The ids now sit on wrappers that always render, with the empty state inside
+  the one it belongs to; `renderElements()` needed nothing, because it already
+  kept its id and carried its own copy when the index was empty — which is the
+  pattern the other two were missing. Same family as the `--hue`-class trap and
+  the skin-defaults trap below: something the markup promises has to be there
+  before the data or the JS arrives, and a CSS variable, a shape and a fragment
+  target all fail silently by design when it is not.
+
+  `verify` does not check this and still does not: it loads each page at its
+  URL without a fragment, so it cannot tell whether an anchor resolves. The
+  check that would catch it is 18 fragment loads across the empty,
+  project-only and seeded states — 0 missing and 0 obscured is the bar, and
+  both halves matter, because `scroll-padding-top` and the id's existence are
+  two different bugs with one symptom. `shell.js`'s own `fragmentTargets()` spy
+  was silently inert on those three pages for the same reason.
 - **A skin's defaults belong on bare `:root` too.** `studio.css` declares its
   `--sk-*` values on `:root` *and* on `:root[data-skin="studio"]`. Only the
   second looks necessary. The first is what makes the app correct before

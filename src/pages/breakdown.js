@@ -201,14 +201,32 @@ function render() {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
 
+  /* A NAV TARGET MUST NOT DEPEND ON DATA EXISTING.
+
+     navigation.json sends the Breakdown phase to breakdown.html#scenes
+     and #elements, and both ids used to live only on the populated
+     branch. So on a studio with no scenes yet the fragment resolved to
+     nothing and the browser stayed where it was — the phase menu
+     looked broken to precisely the person who had never used the page.
+     Measured before the fix: 6 of the 18 fragment hrefs in
+     navigation.json were absent from the DOM, all 6 on the three
+     scene-derived pages, in BOTH the no-project and the
+     project-without-scenes states.
+
+     Same shape as the hue-class trap and the skin-defaults trap: a
+     thing the markup promises has to be there when the JS or the data
+     has not arrived. So the ids move onto wrappers that always render,
+     and the empty state lives inside the one it belongs to.
+     renderElements() needed nothing — it already keeps its id and
+     carries its own teaching copy when the index is empty. */
+  const list = h('section.bd-list', { id: 'scenes' });
   if (!scenes.length) {
-    main.append(renderEmpty());
+    list.append(renderEmpty());
   } else {
-    const list = h('section.bd-list', { id: 'scenes' });
     scenes.forEach((s, i) => list.append(renderScene(s, i, scenes.length)));
     list.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
-    main.append(list, renderElements());
   }
+  main.append(list, renderElements());
 
   app.replaceChildren(main);
   mountShell();

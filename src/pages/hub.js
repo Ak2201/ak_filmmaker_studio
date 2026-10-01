@@ -329,13 +329,13 @@ const $ = (sel) => document.querySelector(sel);
 function toolbarMarkup() {
   return h('div.toolbar', {
     html: `
-      <span class="brand">CURATED BY ARUNAK · STUDIO</span>
-      <a class="nav-link" href="#projects">PROJECTS</a>
-      <a class="nav-link" href="#doors">BLUEPRINTS</a>
-      <a class="nav-link" href="#start">START</a>
-      <a class="nav-link" href="#tools">TOOLS</a>
-      <a class="nav-link" href="#index">INDEX</a>
-      <a class="nav-link" href="#activity">ACTIVITY</a>
+      <span class="brand">Arunak</span>
+      <a class="nav-link" href="#projects">Projects</a>
+      <a class="nav-link" href="#doors">Blueprints</a>
+      <a class="nav-link" href="#start">Start</a>
+      <a class="nav-link" href="#tools">Tools</a>
+      <a class="nav-link" href="#index">Index</a>
+      <a class="nav-link" href="#activity">Activity</a>
       <div class="switcher-wrap">
         <button class="project-switcher empty" id="projectSwitcherBtn"
                 data-action="toggle-switcher" title="Switch project" aria-haspopup="true" aria-expanded="false">
@@ -843,10 +843,8 @@ function toggleDark() {
 function syncThemeIcon() {
   const darkBtn = document.getElementById('darkBtn');
   if (!darkBtn) return;
-  const cur = document.body.classList.contains('sepia') ? 'sepia'
-            : document.body.classList.contains('dark') ? 'ink'
-            : 'paper';
-  darkBtn.textContent = cur === 'ink' ? '☀' : (cur === 'sepia' ? '◉' : '◐');
+  const cur = document.body.classList.contains('dark') ? 'ink' : 'paper';
+  darkBtn.textContent = cur === 'ink' ? '☀' : '◐';
 }
 
 // ============================================================

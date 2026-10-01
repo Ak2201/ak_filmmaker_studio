@@ -125,24 +125,36 @@ const THEME_KEY = 'fms_studio_theme_v1';
    light / sepia / dark (see tokens.css). The app's own names are
    paper / sepia / ink and the STORED value keeps those — THEME_KEY is
    part of the storage contract. Map between the two here, once. */
-const CSS_THEME = { paper: 'light', sepia: 'sepia', desk: 'desk', ink: 'dark' };
-/* The order the ⌃⇧D cycle walks, and the order the picker lists.
-   Warm → warmer → cool → dark, which is the only arrangement where
-   each step is a small change from the one before. */
-const THEME_ORDER = ['paper', 'sepia', 'desk', 'ink'];
+const CSS_THEME = { ink: 'dark', paper: 'light' };
+/* TWO themes now, and ink is the default.
+
+   sepia and desk are gone. Four palettes meant four sets of every
+   colour decision to keep at 4.5:1 across every skin, and the two
+   that were removed were variations on paper rather than choices
+   anybody needed — a tool for grading suites and edit bays is dark
+   by trade, and that is now the base rather than an option.
+
+   ink is FIRST deliberately: this list is the ⌃⇧D cycle order, the
+   picker order, and what `themeOrder()` hands the verify gate, which
+   reads the list from the app rather than repeating it. Dropping two
+   themes therefore needed no change to the gate — it asserts that the
+   number of distinct backgrounds equals the number of themes, not
+   that there are three of them. */
+const THEME_ORDER = ['ink', 'paper'];
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
 function currentTheme() {
   switch (document.documentElement.getAttribute('data-theme')) {
-    case 'sepia': return 'sepia';
-    case 'desk':  return 'desk';
     case 'dark':  return 'ink';
     case 'light': return 'paper';
   }
-  if (document.body && document.body.classList.contains('sepia')) return 'sepia';
-  if (document.body && document.body.classList.contains('dark'))  return 'ink';
-  return 'paper';
+  if (document.body && document.body.classList.contains('dark')) return 'ink';
+  /* Falls back to INK, not paper. The bare :root in tokens.css now
+     carries the dark palette, so ink is what an unstamped document
+     actually renders — returning 'paper' here would have the picker
+     disagree with the page on first load. */
+  return 'ink';
 }
 
 function applyTheme(theme) {
@@ -153,7 +165,7 @@ function applyTheme(theme) {
   // Without it the picker is a no-op: nothing sets [data-theme="light"],
   // so `@media (prefers-color-scheme: dark)` wins and a user who chose
   // paper gets ink. Sepia becomes unreachable entirely.
-  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'light');
+  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'dark');
 
   if (!document.body) {
     // Document not parsed yet — defer the body half until ready
@@ -164,8 +176,7 @@ function applyTheme(theme) {
   // feature.js and short.js still read them as state. Set them in the
   // same call as the attribute so the two can never disagree.
   document.body.classList.remove('dark', 'sepia');
-  if (theme === 'ink')   document.body.classList.add('dark');
-  if (theme === 'sepia') document.body.classList.add('sepia');
+  if (theme === 'ink') document.body.classList.add('dark');
   try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   // Update any picker UIs
   document.querySelectorAll('.theme-picker button').forEach(b => {
@@ -175,7 +186,7 @@ function applyTheme(theme) {
   const darkBtn = document.getElementById('darkBtn');
   if (darkBtn) {
     darkBtn.textContent =
-      theme === 'ink' ? '☀' : theme === 'sepia' ? '◉' : theme === 'desk' ? '▣' : '◐';
+      theme === 'ink' ? '☀' : '◐';
   }
 }
 function loadTheme() {
@@ -184,11 +195,22 @@ function loadTheme() {
   if (THEME_ORDER.indexOf(t) >= 0) {
     applyTheme(t);
   } else {
-    // fall back to legacy dark-mode pref
+    /* INK IS THE DEFAULT, and every fallback here has to say so.
+
+       These three lines were the reason the new default did not take:
+       the bare :root in tokens.css carries the dark palette, but
+       loadTheme ran on every load and stamped 'paper' for anyone
+       without a stored choice — including, now, everyone who had
+       chosen sepia or desk, because those names are no longer in
+       THEME_ORDER and fall through to here.
+
+       The legacy dark-mode pref is still honoured when it is set to
+       light explicitly; absent, it is not evidence of a preference and
+       does not get to override the default. */
     try {
       const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
-      applyTheme(old.dark ? 'ink' : 'paper');
-    } catch (e) { applyTheme('paper'); }
+      applyTheme(old.dark === false ? 'paper' : 'ink');
+    } catch (e) { applyTheme('ink'); }
   }
 }
 StudioUI.applyTheme = applyTheme;
@@ -209,10 +231,8 @@ StudioUI.attachThemePicker = function (host) {
   wrap.setAttribute('role', 'radiogroup');
   wrap.setAttribute('aria-label', 'Theme');
   [
-    { theme: 'paper', label: 'Paper', icon: '◐' },
-    { theme: 'sepia', label: 'Sepia', icon: '◉' },
-    { theme: 'desk',  label: 'Desk',  icon: '▣' },
-    { theme: 'ink',   label: 'Ink',   icon: '☀' }
+    { theme: 'ink',   label: 'Ink',   icon: '☀' },
+    { theme: 'paper', label: 'Paper', icon: '◐' }
   ].forEach(({ theme, label, icon }) => {
     const b = document.createElement('button');
     b.dataset.theme = theme;
@@ -259,14 +279,21 @@ function appearanceMenu() {
         label: t.charAt(0).toUpperCase() + t.slice(1)
       }))
     },
-    {
+    /* The Design group appears only when there is a choice to make.
+       There is one skin now, and a radio group with a single option is
+       a control that cannot do anything — so it is omitted rather than
+       shown disabled. Driven by the COUNT, not by deleting the group:
+       drop a second file into src/styles/skins/ and the picker comes
+       back on its own, which is the same discovery rule skin.js has
+       always used. */
+    ...(listSkins().length > 1 ? [{
       label: 'Design',
       action: 'set-skin',
       attr: 'data-skin-choice',
       value: currentSkin(),
       choices: listSkins().map((sk) => ({ value: sk.id, label: sk.label }))
-    }
-  ], { align: 'right', compact: true, ariaLabel: 'Appearance — theme and design' });
+    }] : [])
+  ], { align: 'right', compact: true, ariaLabel: 'Appearance — theme' });
 }
 StudioUI.appearanceMenu = appearanceMenu;
 

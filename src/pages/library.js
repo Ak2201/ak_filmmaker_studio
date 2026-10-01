@@ -229,7 +229,7 @@ const SECTIONS = [
    ============================================================ */
 function renderToolbar() {
   return h('header.toolbar', { role: 'banner' }, [
-    h('span.brand', { text: 'CURATED BY ARUNAK · LIBRARY · COMPANION' }),
+    h('span.brand', { text: 'Arunak' }),
     h('a#studioProjLink.studio-proj-link', {
       href: 'index.html',
       title: 'Back to Studio · current project'
@@ -543,9 +543,7 @@ function adoptLegacyDarkPref() {
   } catch (e) {}
 }
 function syncThemeButton() {
-  const theme = document.body.classList.contains('sepia') ? 'sepia'
-              : document.body.classList.contains('dark') ? 'ink'
-              : 'paper';
+  const theme = document.body.classList.contains('dark') ? 'ink' : 'paper';
   // applyTheme also updates #darkBtn's glyph, which did not exist
   // when StudioUI ran its own boot.
   StudioUI.applyTheme(theme);

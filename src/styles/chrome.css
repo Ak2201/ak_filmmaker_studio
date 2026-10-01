@@ -136,12 +136,17 @@ a:focus-visible { outline-offset: 3px; }
    ------------------------------------------------------------ */
 .btn,
 .tb-link,
+/* Sentence case and the body face. Tracked-out all-caps mono nav
+   labels are the single most recognisable piece of template chrome,
+   and the nav is the one surface on every page. Mono stays for
+   tabular DATA, which is what it is good at. */
 .nav-link,
 .mini-btn,
 .step-jumper {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  font-family: var(--f-body);
+  font-size: var(--t-xs);
+  letter-spacing: normal;
+  text-transform: none;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -2010,7 +2015,7 @@ html {
   font-size: var(--t-micro);
   /* Not --track-label. Nine tracked characters do not fit a rail. */
   letter-spacing: .02em;
-  text-transform: uppercase;
+  text-transform: none;
   text-align: center;
 }
 .sh-rail-label {
@@ -2036,6 +2041,11 @@ html {
 .sh-rail-icon { font-size: 1.35em; line-height: 1; }
 
 /* ---- the single horizontal bar ---- */
+/* ONE BAND, not two stacked ones. Both bars were already painted
+   var(--chrome); the only thing dividing them was this hairline, so
+   removing it is the whole merge. The navigation now reads as a
+   single band with the phase spine above the page controls, which is
+   also 1px less chrome above every text field. */
 .sh-bar {
   position: sticky;
   top: 0;
@@ -2048,7 +2058,7 @@ html {
   padding: var(--s2) var(--s3);
   background: var(--chrome);
   color: var(--chrome-ink);
-  border-bottom: 1px solid var(--chrome-hair);
+  border-bottom: 0;
 }
 .sh-phases { display: flex; flex-wrap: wrap; gap: var(--s1); min-width: 0; }
 
@@ -2076,10 +2086,10 @@ html {
   flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-sm);
+  letter-spacing: normal;
+  text-transform: none;
 }
 .sh-where-step {
   display: inline-flex;
@@ -2192,7 +2202,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  text-transform: none;
   cursor: pointer;
 }
 .sh-phase-btn:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
@@ -2454,7 +2464,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 .tb-choice:hover { background: var(--panel-raised); color: var(--panel-ink); }

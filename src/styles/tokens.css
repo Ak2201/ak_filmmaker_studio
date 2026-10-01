@@ -21,14 +21,14 @@
   /* ---- ink & paper -------------------------------------- */
   /* Warm bond paper rather than the old #f5ecd6, which was
      saturated enough to tint photographs and lookbook swatches. */
-  --paper:        #f6f1e6;
-  --paper-raised: #fdfaf3;
-  --paper-sunk:   #ebe4d3;
-  --paper-edge:   #e0d7c2;
+  --paper:        #15171a;
+  --paper-raised: #1d2024;
+  --paper-sunk:   #0f1113;
+  --paper-edge:   #2a2e34;
 
-  --ink:          #16130f;
-  --ink-body:     #35302a;
-  --ink-muted:    #6d6558;
+  --ink:          #e8eaed;
+  --ink-body:     #c9ccd1;
+  --ink-muted:    #9097a0;
   /* --ink-faint IS NOT A TEXT COLOUR. Read this before reaching for it.
 
      It was one, in 41 rules across thirteen stylesheets, and it clears
@@ -57,44 +57,44 @@
      secondary. If two kinds of secondary text need to be told apart,
      that is a job for size, weight or case — not for a fourth grey
      nobody can read. */
-  --ink-faint:    #958b7b;
+  --ink-faint:    #6b7280;
 
   /* Also not text colours, for the same reason and with worse numbers:
      1.22-1.82:1 across the four themes. A hairline is a hairline. */
-  --rule:         #cfc5ae;
-  --rule-hair:    #e2d9c6;
+  --rule:         #343a42;
+  --rule-hair:    #23272c;
 
   /* ---- the three volumes -------------------------------- */
   /* Each blueprint owns a hue. Used for the spine stripe, step
      numbers, progress fills and the hub's door cards. */
-  --feature:      #b0311c;
-  --feature-deep: #7d1f0e;
-  --feature-wash: #f7e3dd;
+  --feature:      #e05340;
+  --feature-deep: #f08a72;
+  --feature-wash: #2a1a16;
 
-  --shorts:       #245e9e;
-  --shorts-deep:  #163f6f;
-  --shorts-wash:  #dde8f4;
+  --shorts:       #3b82c4;
+  --shorts-deep:  #7fb8e8;
+  --shorts-wash:  #152430;
 
-  --library:      #94691d;
-  --library-deep: #6d4b10;
-  --library-wash: #f5ead2;
+  --library:      #b98b2e;
+  --library-deep: #e0b86a;
+  --library-wash: #2a2315;
 
   /* ---- three more, for the six-phase spine ----------------
      develop / write / breakdown reuse the volume hues that
      already exist; visualize / plan / shoot are new. Chosen to
      stay clear of --ok (green) and --warn (amber), because a
      phase colour must never read as a status. */
-  --visualize:      #6a4a9c;
-  --visualize-deep: #48306e;
-  --visualize-wash: #ebe4f5;
+  --visualize:      #8a6ad6;
+  --visualize-deep: #b89ce8;
+  --visualize-wash: #1f1b2e;
 
-  --plan:           #14657a;
-  --plan-deep:      #0d4453;
-  --plan-wash:      #dbeaf0;
+  --plan:           #2b94ad;
+  --plan-deep:      #6fc6d9;
+  --plan-wash:      #11262c;
 
-  --shoot:          #8a2f62;
-  --shoot-deep:     #5e1f43;
-  --shoot-wash:     #f3dfeb;
+  --shoot:          #d05d92;
+  --shoot-deep:     #e890b4;
+  --shoot-wash:     #2b1622;
 
   /* ---- lifted volume hues ---------------------------------
      The editorial panels (.formula-box, .step-check, .example,
@@ -111,14 +111,14 @@
   --danger-lift:  #e58471;
 
   /* ---- semantic (never the same hue as a volume) --------- */
-  --ok:           #1d6a4f;
-  --ok-deep:      #155c43;   /* the TEXT variant; --ok is a fill */
-  --ok-wash:      #dcece4;
-  --warn:         #8a5d0c;
-  --warn-deep:    #6d480a;   /* --warn as text was 3.52:1 in desk */
-  --warn-wash:    #f6ecd6;
-  --danger:       #a32b1c;
-  --danger-wash:  #f7e0dc;
+  --ok:           #2e9e74;
+  --ok-deep:      #6ed3a8;   /* the TEXT variant; --ok is a fill */
+  --ok-wash:      #112620;
+  --warn:         #c08a1e;
+  --warn-deep:    #dcae53;   /* --warn as text was 3.52:1 in desk */
+  --warn-wash:    #2a2111;
+  --danger:       #e8604a;
+  --danger-wash:  #2c1613;
 
   /* ---- per-page accent ----------------------------------
      Each page sets --accent once, on <html data-volume="...">.
@@ -136,7 +136,7 @@
      time, so the colour silently fell back to the inherited one and
      landed on its own background: a door numeral at exactly 1:1. A
      cycle does not warn; it just makes text disappear. */
-  --on-fill:      #fdfaf3;
+  --on-fill:      #0f1113;
   --accent-on:    var(--on-fill);   /* text ON an accent fill */
 
   /* Text ON each hue used as a FILL. Mostly --accent-on, because five
@@ -162,12 +162,12 @@
      surface in light and sepia; in dark they lift off the page
      instead of inverting. Declared here so no component ever
      re-states a colour for a theme. */
-  --chrome:             #16130f;
+  --chrome:             #0e1012;
   --chrome-ink:         #f6f1e6;
   --chrome-muted:       #a8a091;
-  --chrome-hair:        rgba(246, 241, 230, .12);
+  --chrome-hair:        rgba(232, 234, 237, .12);
   --chrome-hair-strong: rgba(246, 241, 230, .30);
-  --chrome-fill:        rgba(246, 241, 230, .08);
+  --chrome-fill:        rgba(232, 234, 237, .08);
   --chrome-fill-strong: rgba(246, 241, 230, .18);
 
   /* ---- dark editorial panel ------------------------------
@@ -180,7 +180,7 @@
   --panel-hair-soft:  rgba(242, 234, 216, .07);
   --panel-gilt:       var(--library-lift);
 
-  --scrim: rgba(22, 19, 15, .62);
+  --scrim: rgba(10, 12, 14, .72);
 
   /* ---- type --------------------------------------------- */
   /* The raw stacks, and then the two SEMANTIC faces that point at
@@ -192,7 +192,17 @@
      face having to be found and rewritten. The fallback is the stack,
      not --f-display, because --sk-display defaulting back to
      --f-display would be a cycle and resolve to nothing. */
-  --face-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  /* The type was replaced with the palette. Fraunces is gone: a
+     high-contrast serif display on a warm ground is the single
+     commonest tell of generated design, and it was also the reason
+     the old look could not be told apart from a template.
+     --face-serif keeps its NAME on purpose — it is referenced in
+     eleven stylesheets and renaming it buys nothing — but it now
+     names the body sans. No Tamil webfont: Tanglish in this
+     codebase is romanised Tamil in the Latin alphabet, so the Latin
+     faces already cover it. */
+  --face-serif:   'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --face-display: 'Bricolage Grotesque', 'Instrument Sans', ui-sans-serif, sans-serif;
 
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
@@ -231,9 +241,9 @@
   --radius:      2px;      /* the studio is printed matter, not iOS */
   --radius-lg:   4px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(22, 19, 15, .06);
-  --shadow-md: 0 6px 18px rgba(22, 19, 15, .08);
-  --shadow-lg: 0 18px 42px rgba(22, 19, 15, .14);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, .46);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, .54);
   /* Panels and overlays are dark in every theme, so their shadow
      is constant too — a themed shadow under a constant surface
      was one of the drifts in the old files. */
@@ -279,236 +289,48 @@
   --print-wash:  #f0f0f0;
 }
 
-/* ============================================================
-   SEPIA — a third mode, for long writing sessions.
-   Warmer and lower-contrast than paper; not a dark theme.
-   ============================================================ */
-:root[data-theme="sepia"] {
-  --paper:        #efe2c8;
-  --paper-raised: #f7eed9;
-  --paper-sunk:   #e4d4b4;
-  --paper-edge:   #d8c6a2;
-  --ink:          #2a2116;
-  --ink-body:     #453826;
-  --ink-muted:    #6a593e;
-  --ink-faint:    #9c8865;
-  --rule:         #c9b287;
-  --rule-hair:    #ddcba6;
-}
 
-/* ============================================================
-   DESK — a fourth mode: cool neutral ground, white cards.
-   ------------------------------------------------------------
-   Paper and sepia are printed matter and ink is that printed
-   matter at night. This one is not paper at all: it is a screen
-   a crew works on in an office, which is a different job. The
-   ground goes cool grey so white cards read as raised, the rules
-   get crisp, and the hues go flat and bright rather than
-   ink-on-paper muted.
-
-   It exists because the layout went from a book to an
-   application, and a warm bond-paper palette under a fixed rail
-   and a launcher grid reads as a costume. The Console skin is
-   its intended partner — theme picks the palette, skin picks the
-   shapes — but the two are independent and all pairings work.
-
-   The hues are this app's own, chosen to stay distinct from each
-   other at small sizes (an 8px phase dot) and clear of --ok and
-   --warn, because a phase colour must never read as a status.
-   ============================================================ */
-:root[data-theme="desk"] {
-  color-scheme: light;
-
-  --paper:        #f4f5f7;
-  --paper-raised: #ffffff;
-  --paper-sunk:   #eaecf1;
-  --paper-edge:   #dcdfe6;
-
-  --ink:          #14171d;
-  --ink-body:     #353b45;
-  --ink-muted:    #626977;
-  --ink-faint:    #949cab;
-
-  --rule:         #d2d7e0;
-  --rule-hair:    #e6e9ef;
-
-  /* Flat and bright — but only as bright as white text can sit on.
-     feature, shorts and plan were 3.46-3.86:1 against --on-fill, so
-     they are pulled down to clear 4.5. library stays bright because it
-     carries a DARK on-colour instead (5.49:1); an amber that white can
-     sit on is no longer amber. */
-  --feature:      #c64730;
-  --feature-deep: #a5341f;
-  --feature-wash: #fdeae6;
-
-  --shorts:       #2971cc;
-  --shorts-deep:  #1b569f;
-  --shorts-wash:  #e5eefc;
-
-  --library:      #d99512;
-  --library-deep: #905f07;
-  --library-wash: #fdf1da;
-
-  --visualize:      #7b52e0;
-  --visualize-deep: #56349f;
-  --visualize-wash: #efe9fd;
-
-  --plan:           #0c7c95;
-  --plan-deep:      #0a687e;
-  --plan-wash:      #e0f3f8;
-
-  --shoot:          #c63a84;
-  --shoot-deep:     #90275e;
-  --shoot-wash:     #fce6f1;
-
-  /* The one bright enough to need dark text on it. */
-  --library-on:     #3b2905;
-
-  --ok:           #17805c;
-  --ok-deep:      #0e6247;
-  --ok-wash:      #e1f5ed;
-  --warn:         #b57407;
-  --warn-deep:    #7d4f06;
-  --warn-wash:    #fdf0d9;
-  --danger:       #b5311f;
-  --danger-wash:  #fce8e5;
-
-  /* The chrome and the ink panels go slate rather than near-black
-     warm, so the dark surfaces belong to the same palette as the
-     light ones instead of looking borrowed from the paper theme. */
-  --chrome:             #1e2129;
-  --chrome-ink:         #f2f4f8;
-  --chrome-muted:       #99a2b2;
-  --chrome-hair:        rgba(242, 244, 248, .14);
-  --chrome-hair-strong: rgba(242, 244, 248, .32);
-  --chrome-fill:        rgba(242, 244, 248, .08);
-  --chrome-fill-strong: rgba(242, 244, 248, .16);
-
-  --panel:            #1e2129;
-  --panel-raised:     #2a2e3a;
-  --panel-ink:        #eef1f6;
-  --panel-muted:      #9aa3b2;
-  --panel-hair:       rgba(238, 241, 246, .16);
-  --panel-hair-soft:  rgba(238, 241, 246, .08);
-
-  /* Soft and short, the way a shadow reads on a grey ground. */
-  --shadow-sm: 0 1px 2px rgba(20, 23, 29, .06);
-  --shadow-md: 0 2px 8px rgba(20, 23, 29, .08);
-  --shadow-lg: 0 8px 24px rgba(20, 23, 29, .12);
-}
 
 /* ============================================================
    DARK — "ink". Not an inversion: the paper becomes a graded
    print viewed on a monitor, so the accents lift in lightness
    and drop in saturation to stay legible on a dark ground.
    ============================================================ */
-/* The guard here used to be an EXCLUSION LIST —
-   :root:not([data-theme="light"]):not([data-theme="sepia"]) — which
-   meant every new theme had to remember to add itself to it, and the
-   penalty for forgetting was silent: "desk" rendered as ink on any
-   machine set to dark mode, and only on those machines. Exactly the
-   trap CLAUDE.md records from the other direction, where paper did it.
-
-   :not([data-theme]) states the real rule instead. The OS preference
-   decides only when the user has not chosen, and applyTheme() always
-   stamps the attribute, so any choice wins on any OS. A theme added
-   later cannot get this wrong because there is nothing to update. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    color-scheme: dark;
-    --paper:        #16140f;
-    --paper-raised: #201d16;
-    --paper-sunk:   #100e0a;
-    --paper-edge:   #302b21;
-
-    --ink:          #f2ead8;
-    --ink-body:     #ded5c2;
-    --ink-muted:    #a29885;
-    --ink-faint:    #7d7361;
-
-    --rule:         #453e31;
-    --rule-hair:    #2b2720;
-
-    --feature:      #e08a6d;
-    --feature-deep: #b0311c;
-    --feature-wash: #2e1b14;
-
-    --shorts:       #71a6dd;
-    --shorts-deep:  #245e9e;
-    --shorts-wash:  #15232f;
-
-    --library:      #d9ab5c;
-    --visualize:    #b394e0;
-    --plan:         #63b6cc;
-    --shoot:        #d183b0;
-    --library-deep: #9a6d1f;
-    --library-wash: #2c2415;
-  /* The other three washes were never given dark values, so on ink they
-     stayed at their :root light tints — a pale block behind light text
-     on any page whose accent is visualize, plan or shoot. Three hues
-     had a dark wash and three did not, which is the kind of gap a
-     palette only reveals on the page that happens to use it. */
-  --visualize-wash: #231b33;
-  --plan-wash:      #11262d;
-  --shoot-wash:     #2b1522;
-
-    --ok:           #5fbc99;
-    --ok-deep:      #5fbc99;   /* on a dark ground the fill IS the text colour */
-    --ok-wash:      #15271f;
-    --warn:         #d6a74d;
-    --warn-deep:    #d6a74d;
-    --warn-wash:    #2a2113;
-    --danger:       #e58471;
-    --danger-wash:  #2e1815;
-
-    /* One line flips every on-fill colour in this theme. */
-  --on-fill:      #16140f;
-
-    --chrome:       #201d16;
-    --chrome-hair:  rgba(242, 234, 216, .10);
-    --chrome-fill:  rgba(242, 234, 216, .07);
-    --scrim:        rgba(0, 0, 0, .72);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
-    --shadow-md: 0 6px 18px rgba(0, 0, 0, .45);
-    --shadow-lg: 0 18px 42px rgba(0, 0, 0, .6);
-  }
-}
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper:        #16140f;
-  --paper-raised: #201d16;
-  --paper-sunk:   #100e0a;
-  --paper-edge:   #302b21;
+  --paper:        #15171a;
+  --paper-raised: #1d2024;
+  --paper-sunk:   #0f1113;
+  --paper-edge:   #2a2e34;
 
-  --ink:          #f2ead8;
-  --ink-body:     #ded5c2;
-  --ink-muted:    #a29885;
-  --ink-faint:    #7d7361;
+  --ink:          #e8eaed;
+  --ink-body:     #c9ccd1;
+  --ink-muted:    #9097a0;
+  --ink-faint:    #6b7280;
 
-  --rule:         #453e31;
-  --rule-hair:    #2b2720;
+  --rule:         #343a42;
+  --rule-hair:    #23272c;
 
-  --feature:      #e08a6d;
-  --feature-wash: #2e1b14;
+  --feature:      #e05340;
+  --feature-wash: #2a1a16;
 
-  --shorts:       #71a6dd;
-  --shorts-wash:  #15232f;
+  --shorts:       #3b82c4;
+  --shorts-wash:  #152430;
 
-  --library:      #d9ab5c;
-  --visualize:    #b394e0;
-  --plan:         #63b6cc;
-  --shoot:        #d183b0;
-  --library-wash: #2c2415;
+  --library:      #b98b2e;
+  --visualize:    #8a6ad6;
+  --plan:         #2b94ad;
+  --shoot:        #d05d92;
+  --library-wash: #2a2315;
   /* The other three washes were never given dark values, so on ink they
      stayed at their :root light tints — a pale block behind light text
      on any page whose accent is visualize, plan or shoot. Three hues
      had a dark wash and three did not, which is the kind of gap a
      palette only reveals on the page that happens to use it. */
-  --visualize-wash: #231b33;
-  --plan-wash:      #11262d;
-  --shoot-wash:     #2b1522;
+  --visualize-wash: #1f1b2e;
+  --plan-wash:      #11262c;
+  --shoot-wash:     #2b1622;
 
   /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
      on ink the ground is dark — so deep has to go lighter, not darker.
@@ -517,32 +339,86 @@
      gloss rendered dark-on-dark. --accent-deep resolves from these
      through [data-volume] and [data-phase], so this is the one place
      the whole family is fixed. */
-  --feature-deep:   #f0ab90;
-  --shorts-deep:    #a0c7ea;
-  --library-deep:   #ebc588;
-  --visualize-deep: #cbb2ee;
-  --plan-deep:      #8fcede;
-  --shoot-deep:     #e3a6c6;
+  --feature-deep:   #f08a72;
+  --shorts-deep:    #7fb8e8;
+  --library-deep:   #e0b86a;
+  --visualize-deep: #b89ce8;
+  --plan-deep:      #6fc6d9;
+  --shoot-deep:     #e890b4;
 
-  --ok:           #5fbc99;
-  --ok-deep:      #5fbc99;
-  --ok-wash:      #15271f;
-  --warn:         #d6a74d;
-  --warn-deep:    #d6a74d;
-  --warn-wash:    #2a2113;
-  --danger:       #e58471;
-  --danger-wash:  #2e1815;
+  --ok:           #2e9e74;
+  --ok-deep:      #6ed3a8;
+  --ok-wash:      #112620;
+  --warn:         #c08a1e;
+  --warn-deep:    #dcae53;
+  --warn-wash:    #2a2111;
+  --danger:       #e8604a;
+  --danger-wash:  #2c1613;
 
-  --on-fill:      #16140f;
+  --on-fill:      #0f1113;
 
-  --chrome:       #201d16;
-  --chrome-hair:  rgba(242, 234, 216, .10);
-  --chrome-fill:  rgba(242, 234, 216, .07);
-  --scrim:        rgba(0, 0, 0, .72);
+  --chrome:       #0e1012;
+  --chrome-hair:  rgba(232, 234, 237, .12);
+  --chrome-fill:  rgba(232, 234, 237, .08);
+  --scrim:        rgba(10, 12, 14, .72);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
-  --shadow-md: 0 6px 18px rgba(0, 0, 0, .45);
-  --shadow-lg: 0 18px 42px rgba(0, 0, 0, .6);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, .46);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, .54);
+}
+
+/* ============================================================
+   LIGHT — the one alternate. Dark is the default now, so this is
+   the override rather than the base: a cool neutral ground, not the
+   warm bond paper it replaced. Two themes, both of which have to
+   hold 4.5:1 on every text node the AA walk reaches.
+   ============================================================ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper:        #f4f5f7;
+  --paper-raised: #ffffff;
+  --paper-sunk:   #e9ebee;
+  --paper-edge:   #dcdfe4;
+  --ink:          #15171a;
+  --ink-body:     #35393f;
+  --ink-muted:    #5c636d;
+  --ink-faint:    #8b929c;
+  --rule:         #c6cad1;
+  --rule-hair:    #dfe2e7;
+  --feature:      #c23a22;
+  --feature-deep: #8e2714;
+  --feature-wash: #fbe6e1;
+  --shorts:       #2a6ca8;
+  --shorts-deep:  #1b4a76;
+  --shorts-wash:  #e3edf7;
+  --library:      #96701f;
+  --library-deep: #6e5214;
+  --library-wash: #f7eeda;
+  --visualize:      #6b4bb8;
+  --visualize-deep: #4b3384;
+  --visualize-wash: #ece6f8;
+  --plan:           #17707f;
+  --plan-deep:      #0f4e59;
+  --plan-wash:      #ddeef1;
+  --shoot:          #a22f66;
+  --shoot-deep:     #74204a;
+  --shoot-wash:     #f9e2ec;
+  --ok:           #1d6a4f;
+  --ok-deep:      #14503b;
+  --ok-wash:      #dff0e8;
+  --warn:         #8a5d0c;
+  --warn-deep:    #65430a;
+  --warn-wash:    #f8eeda;
+  --danger:       #ab2d1c;
+  --danger-wash:  #fbe3df;
+  --on-fill:      #ffffff;
+  --chrome:             #15171a;
+  --chrome-hair:        rgba(244, 245, 247, .14);
+  --chrome-fill:        rgba(244, 245, 247, .09);
+  --scrim: rgba(21, 23, 26, .58);
+  --shadow-sm: 0 1px 2px rgba(21, 23, 26, .07);
+  --shadow-md: 0 2px 8px rgba(21, 23, 26, .09);
+  --shadow-lg: 0 8px 28px rgba(21, 23, 26, .12);
 }
 
 /* ============================================================

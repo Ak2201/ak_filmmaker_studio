@@ -501,6 +501,30 @@ Ranked, after section 7:
 
 None of these have been run. They need two real accounts, `A` (owner) and `B`.
 
+**These are automated now — run `npm run live-checks`.** All 15 distinct
+assertions in the numbered list below are implemented in
+`scripts/live-checks.mjs`, along with the checks from LIVE CHECK 1–3 and the
+findings, for 34 in total. `docs/LIVE-CHECKS.md` has the environment
+variables, what each check proves and what a failure means. The SQL below
+stays as the readable statement of intent.
+
+Two things about that harness are worth knowing before you trust a green run.
+It **refuses to start** on a `service_role` key — that key is BYPASSRLS, so
+every check would pass and prove nothing — and it exits non-zero when checks
+merely did not run, because "ran but incomplete" is not a pass. And nearly
+every check carries a **positive control**: a refusal proves nothing if the
+actor never had the access in the first place, so the harness confirms B *can*
+rename a project before asserting B cannot move it, and reports NOT RUN rather
+than PASS when a control fails.
+
+**16 items are deliberately NOT automated**, listed with reasons in §6 of
+`docs/LIVE-CHECKS.md`. The important one: the catalogue assertions — 20
+policies, zero UPDATE/ALL without a `WITH CHECK`, zero policies reading their
+own table, RLS on all seven tables, `proacl` — **cannot be automated at all**,
+because PostgREST exposes only the `public` schema and no arbitrary-SQL RPC, so
+not even a service_role key over REST can read `pg_catalog`. Their behavioural
+consequences are covered; the structural properties still need the SQL editor.
+
 ```sql
 -- 0. as anon (the anon key, signed out)
 select count(*) from projects;            -- expect 0
@@ -823,7 +847,10 @@ overflow.
    and reply-cascade guards, and the account-tier escalations. The
    guards all exist now, so these are testable for the first time.
 3. Share tokens are still stored in plaintext — a product call, because
-   the owner's "re-copy this link" depends on it.
+   the owner's "re-copy this link" depends on it. **There is no automated
+   check for this and there should not be:** it is accepted behaviour, not a
+   defect, so there is nothing to assert. Said here so a future reader does
+   not go looking for the check and conclude it was forgotten.
 4. ~~There is still no `claim_invite()`, so account invites cannot be
    claimed.~~ Written, as schema section 11, and wired into
    `cloud.js`. **Not deployed and not tested** — see the section below,

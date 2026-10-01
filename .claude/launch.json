@@ -1,14 +1,57 @@
 {
   "version": "0.0.1",
+  "_why": [
+    "Two dev servers, detected from package.json: `vite` (dev) and `vite preview`.",
+    "CLAUDE.md distinguishes them and the distinction matters: dev runs with NO",
+    "service worker, preview serves the real build and exercises the actual",
+    "worker. The ERR_FAILED bug this repo already paid for was invisible to dev",
+    "and to curl, and only reproduced in a browser with the worker installed —",
+    "so `preview` is the config to reach for after touching sw.js, vercel.json",
+    "or the page entries.",
+    "",
+    "runtimeExecutable is an ABSOLUTE PATH TO NODE 22, not `npm`, on purpose.",
+    "package.json pins engines >=22.12 and the system node here is 20.11.1.",
+    "A bare `npm run dev` therefore dies with `SyntaxError: The requested module",
+    "'node:util' does not provide an export named 'styleText'` from inside",
+    "rolldown — which reads like a dependency bug and is really Node-too-old.",
+    "Calling vite's own bin with a known-good node skips both the npm wrapper",
+    "and the PATH lookup that reintroduces node 20.",
+    "",
+    "FRAGILE, AND KNOWINGLY SO: that node path is a session-scoped scratchpad",
+    "download, not an installation. There is no durable Node 22 on this machine",
+    "(no nvm, no node@22 in homebrew, /usr/local/bin/node is 20.11.1). When it",
+    "disappears, install Node 22 properly and replace both runtimeExecutable",
+    "values with that path — or with plain \"npm\" once `node -v` reports 22.",
+    "",
+    "preview sits on 4174, not vite preview's default 4173: a long-running",
+    "vite preview from the MAIN checkout already holds 4173 on this machine.",
+    "Several worktrees of this repo are live at once and this is the same port",
+    "contention CLAUDE.md records for VERIFY_PORT — the fix there was to move,",
+    "not to kill whoever legitimately holds it."
+  ],
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/private/tmp/claude-504/-Users-arun-9285-filmmakers-studio/d1f93e0f-38b8-4b08-bd55-189d6fac50e4/scratchpad/node/node-v22.20.0-darwin-arm64/bin/node",
       "runtimeArgs": [
-        "run",
-        "dev"
+        "node_modules/vite/bin/vite.js",
+        "--port",
+        "5173",
+        "--strictPort"
       ],
       "port": 5173
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "/private/tmp/claude-504/-Users-arun-9285-filmmakers-studio/d1f93e0f-38b8-4b08-bd55-189d6fac50e4/scratchpad/node/node-v22.20.0-darwin-arm64/bin/node",
+      "runtimeArgs": [
+        "node_modules/vite/bin/vite.js",
+        "preview",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "port": 4174
     }
   ]
 }

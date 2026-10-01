@@ -49,8 +49,19 @@
     # Messages API, with the user's own key, from a build that has no
     # server to make the call for it. Without the entry the fetch is
     # blocked before it leaves and the only symptom is a TypeError.
+    #
+    # connect-src ALSO names the two Google Fonts hosts. Beside style-src
+    # and font-src that looks redundant and is not: a service worker's own
+    # fetch() is governed by connect-src, and sw.js intercepts those hosts
+    # deliberately (isFontHost -> cacheFirst) to cache the faces for
+    # offline use. Without these two entries that fetch is refused,
+    # cacheFirst finds nothing cached, rethrows, respondWith rejects, and
+    # the page takes an ERR_FAILED on the stylesheet — so the fonts never
+    # load and every returning visitor renders in fallback serif. The
+    # first-ever visit, the dev server and `npm run verify` all look
+    # correct, because none of them has a service worker controlling it.
     # This value must stay byte-identical to the one in vercel.json.
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
 # ---- old URLs ------------------------------------------------
 # force = true because the stub files still exist in dist/; without it

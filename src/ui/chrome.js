@@ -1110,6 +1110,23 @@ StudioUI.attachMobileActionBar = function (config) {
   });
   document.body.appendChild(bar);
   document.body.classList.add('has-mobile-actionbar');
+  /* MEASURE NOW, THEN AGAIN.
+
+     requestAnimationFrame DOES NOT RUN IN A BACKGROUND TAB, and a
+     page opened in one is ordinary: open-in-new-tab, a restored
+     session, a PWA cold start behind another app. Measuring only in
+     a rAF meant --mab-h stayed unset for as long as the tab was
+     hidden, the body fell back to 64px, and the bar is 69 — so the
+     last control on the page sat under it until the tab was
+     focused, at which point it silently corrected itself. A bug
+     that fixes itself the moment you look at it is a bug nobody
+     reports.
+
+     getBoundingClientRect() forces layout and works in a hidden
+     tab, so the first measurement is synchronous. The rAF stays as
+     the refinement for when the web fonts land and the labels
+     change height. */
+  measureMobileBar();
   requestAnimationFrame(measureMobileBar);
 };
 
@@ -1459,6 +1476,11 @@ function autoInit() {
        for layout and once for Fraunces and JetBrains Mono to land.
        A toolbar measured in the fallback face is a toolbar measured
        at the wrong height. */
+    /* Synchronously first — see the note on the action bar: a rAF
+       does not run while the tab is hidden, and --tb-h feeds
+       --scroll-offset, so an unset value sends every in-page jump
+       on a backgrounded page straight back behind the toolbar. */
+    measureToolbar();
     requestAnimationFrame(() => {
       measureToolbar();
       requestAnimationFrame(measureToolbar);

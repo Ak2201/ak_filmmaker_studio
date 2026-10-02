@@ -1765,9 +1765,23 @@ a:focus-visible { outline-offset: 3px; }
      the last control on every long page sat underneath it. The
      fallback keeps the page correct for the frame before the
      measurement lands. */
-  body.has-mobile-actionbar { padding-bottom: calc(var(--mab-h, 64px) + var(--s3)); }
+  /* The fallback is 80px, not 64. It is what the page reserves for
+     the one frame before the measurement lands, and a fallback that
+     is SMALLER than the thing it stands in for is not a fallback —
+     measured, the bar is about 69px before any safe-area inset. Err
+     generous: too much bottom padding for one frame is invisible,
+     too little hides a control. */
+  body.has-mobile-actionbar { padding-bottom: calc(var(--mab-h, 80px) + var(--s3)); }
+  /* EVERY bottom-anchored float, not two of them. The save
+     indicator and the toast host were lifted above the bar; the
+     focus timer was not, and it sits at --z-float while the bar
+     sits one below — so on a blueprint at 375px a pill covered the
+     END button completely. A fixed element at `bottom: 16px` on a
+     page with a bottom bar is a collision waiting for the bar to
+     exist, and the list of them has to be the whole list. */
   body.has-mobile-actionbar .save-indicator,
-  body.has-mobile-actionbar .toast-host { bottom: calc(var(--mab-h, 64px) + var(--s3)); }
+  body.has-mobile-actionbar .focus-timer,
+  body.has-mobile-actionbar .toast-host { bottom: calc(var(--mab-h, 80px) + var(--s3)); }
 }
 
 /* ============================================================

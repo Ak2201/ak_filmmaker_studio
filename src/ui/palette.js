@@ -31,15 +31,31 @@
       people's work, bought for the convenience of a reordered
       list.
 
-   3. THE CONTENT IS LOADED LATE. navigation.json is already in
-      every page's graph. scenes/contacts/script/shots are not, on
-      most pages, so they arrive by dynamic import on the FIRST
-      open and the overlay renders without waiting for them. The
-      shell is on screen in the same frame as the keystroke; the
-      scene rows land a few milliseconds later and the list
-      re-scores. A palette that made you wait for a chunk before
-      showing you anything would be slower than the rail it
-      replaces.
+   3. THE CONTENT IS LOADED LATE — and the build is worth reading
+      on what that does and does not buy. navigation.json is in
+      every page's graph already. scenes.js and contacts.js arrive
+      by dynamic import, so the overlay renders without waiting for
+      them: the shell is on screen in the same frame as the
+      keystroke and the rows land after. That part is real.
+
+      What it does NOT do is move them into a separate chunk. The
+      bundler says so out loud —
+
+        [INEFFECTIVE_DYNAMIC_IMPORT] src/lib/scenes.js is
+        dynamically imported by src/ui/palette.js but also
+        statically imported by src/lib/ai.js, locations.js,
+        script-import.js, breakdown.js, …
+
+      — because a module that anything else on the page imports
+      statically is in the main chunk whatever this file does. On
+      breakdown.html the scene model was already loaded before the
+      palette existed. The dynamic import is still the right shape:
+      it is free where the module is already there, and it genuinely
+      defers on the pages that do not import it (the blueprints, the
+      library), which is where a palette would otherwise have added
+      two models to first paint. Do not "fix" the warning by making
+      these static — that would pull both models into every page in
+      the studio to silence a message that is telling the truth.
 
    ACCESSIBILITY. This is the combobox pattern, not a div with a
    keydown handler: role="combobox" on the input with

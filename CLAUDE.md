@@ -714,18 +714,45 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
      focus to the button that opened them, and treat Tab as one stop rather
      than eight. `role="menu"` is a promise, and it was not being kept.
 
-   **NOT VERIFIED BY THE GATE.** `npm run build` and `npm run verify` need
-   Node >= 22.12 and the machine this was written on has Node 20, where
-   Vite's bundler fails to load at all (`node:util` has no `styleText`
-   export before 22). So this work was checked statically — every changed
-   module parsed, every relative import resolved, every custom property
-   declared, every brace balanced, and every new text/ground pair in
-   `palette.css` and `chrome.css` measured for WCAG AA across all four
-   themes and all six accent hues (164/164 clear 4.5:1) — and visually, by
-   serving the real stylesheets to a browser through a standalone harness
-   at 1280px and 375px. **Run `npm run build && npm run verify` on Node 22
-   before merging.** The three assertions most likely to have something to
-   say are the idle-write one, the skin count, and the AA walk.
+   **Gate run, on Node 22.** All fifteen pages: 720 `data-key`s present and
+   0 lost, 100% accounted coverage everywhere but `short`, 0 idle writes, 0
+   horizontal overflow at 390px, 6/6 skins distinct and reaching every page,
+   0 console errors, 0 low-contrast findings from the AA walk across 4
+   themes x 6 skins with the modals open, and the backup round trip
+   restoring both projects.
+
+   **`short` fails, and it is a clock rather than a regression.** 12
+   missing words, all numeric: 36 57 58 63 78 89 93 108 119 134 162 198.
+   Each is exactly 3 less than its baseline value and `scripts/baseline.json`
+   was captured 3 days earlier, because the short page prints "in N days"
+   countdowns to festival deadlines through `daysUntil()` in
+   `src/lib/festivals.js`. `main` fails identically on the same day, which
+   is how this was established rather than assumed. **The text check on
+   `short` therefore fails on every day except the one the baseline was
+   captured on.** Either the capture should exclude date-derived text or
+   the page should be rendered against a frozen `fromISO` during a verify
+   run; re-baselining only moves the failure to tomorrow.
+
+   **Three things the browser found that static checks could not:**
+
+   - `requestAnimationFrame` does not run in a background tab, and every
+     measured height in the chrome was published from inside one. A page
+     opened in a background tab — open-in-new-tab, a restored session, a
+     PWA cold start — had no `--mab-h`, no `--tb-h` and no `--sh-stick-h`
+     until it was looked at, so the anchor offset was zero and the body
+     reserved a 64px fallback for a 69px bar. All three now measure
+     synchronously first, with the rAF kept as the post-font refinement.
+     `getBoundingClientRect()` forces layout and works while hidden.
+   - The hub already bound ⌘K to its own hero search and labelled the
+     field with it, so on `index.html` both handlers fired: the palette
+     opened AND the field behind its scrim took focus. The key belongs to
+     the palette, which answers the same everywhere; the hub's field keeps
+     `/`, which `chrome.js` already bound, and its badge says so now.
+   - The focus timer is `position: fixed; bottom: 16px` at `--z-float`,
+     one above the action bar, so at 375px on a blueprint it covered the
+     END button completely. The save indicator and the toast host had
+     already been lifted above the bar and the timer had not — when a
+     bottom bar exists, the list of floats to lift has to be all of them.
 
 ## Things that are deliberate, not oversights
 

@@ -674,6 +674,13 @@ export function mountShell() {
      same schedule because mountShell() is not always called after the
      page has rendered — dashboard.js mounts at import time, when #app
      is still empty, the same trap chrome.js records one level up. */
+  /* Synchronously first. The two rAF passes below are for layout
+     and for the web fonts, and they are still right — but a rAF
+     does not run at all while the tab is hidden, and --sh-stick-h
+     feeds --scroll-offset. A page restored into a background tab
+     would otherwise have no anchor offset until it was looked at. */
+  measureBar();
+  runSpy();
   requestAnimationFrame(() => {
     measureBar();
     runSpy();

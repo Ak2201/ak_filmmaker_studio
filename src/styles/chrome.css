@@ -511,10 +511,50 @@ a:focus-visible { outline-offset: 3px; }
   font-style: italic;
   color: var(--ink-muted);
 }
-.search-hit {
+/* A MATCH HAS TO OUTRANK THE FIELD'S RESTING STYLE, AND IT DID NOT.
+
+   Reported as "search any field is not working". The search worked:
+   it found the hits, counted them and scrolled to the first one. What
+   failed was saying WHICH field, and the cascade is the whole story.
+
+   Three rules set a background on a matched input, in this order:
+
+     input, textarea, select          --paper-raised   (base.css)
+     .search-hit                      --accent-wash    (here)
+     .meta-field input, … select      transparent      (editorial.css)
+
+   `.meta-field input` is (0,1,1) and `.search-hit` is (0,1,0), and
+   editorial.css is imported AFTER this file — so the highlight lost on
+   specificity and on order. Measured on a hit: background
+   rgba(0,0,0,0), identical to every unmatched field beside it.
+
+   What did survive was `outline: var(--focus)`, which is the FOCUS
+   ring — so the one visible mark on a match was the same mark the
+   browser puts on the field you are typing in, on a field the search
+   had deliberately not focused. Ambiguous at best, and invisible as
+   an answer to "where is it".
+
+   THE DOUBLED CLASS IS DELIBERATE. `.search-hit.search-hit` is
+   (0,2,0), which beats (0,1,1) whatever the import order is — and
+   import order here differs per page, so a tie-break on order would
+   be correct on feature.html and wrong on the next page to load these
+   two sheets in the other sequence. A state class must outrank the
+   component's resting style; raising specificity is how CSS says so.
+
+   The ring is --accent rather than --focus for the same reason: found
+   and focused are different states and must not share a mark. */
+.search-hit.search-hit {
+  /* The wash is the nice-to-have and the RING is the guarantee. On a
+     text node the wash paints; on a live <input> inside .meta-field it
+     measured transparent here even with a literal and !important,
+     while the outline from this same rule applied — unexplained, and a
+     synthetic input with this class in the same parent paints fine. So
+     the mark a reader relies on must not be the fill. 3px of --accent,
+     which no form-control background rule can touch. */
   background: var(--accent-wash);
-  outline: var(--focus);
+  outline: 3px solid var(--accent);
   outline-offset: var(--focus-offset);
+  border-radius: var(--sk-field-radius, var(--radius));
 }
 .search-flash { animation: search-flash 1.6s ease; }
 @keyframes search-flash {

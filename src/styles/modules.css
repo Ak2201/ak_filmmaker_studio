@@ -377,7 +377,7 @@
   padding: var(--s1) var(--s2) var(--s1) var(--s3);
   border: 1px solid var(--hue);
   border-left-width: 3px;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--paper);
   font-size: var(--t-tiny);
 }
@@ -517,7 +517,7 @@
   margin-top: var(--s2);
   padding: 0 var(--s1);
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -562,7 +562,7 @@
   place-items: center;
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--accent);
   color: var(--accent-on);
   font-family: var(--f-mono);
@@ -577,7 +577,7 @@
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font: inherit;
   font-size: var(--t-small);
 }
@@ -609,7 +609,7 @@
   min-width: 32px; min-height: 32px;
   background: none;
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   cursor: pointer;
   font: inherit;

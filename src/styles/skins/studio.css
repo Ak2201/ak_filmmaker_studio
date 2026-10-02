@@ -68,6 +68,12 @@
   /* type */
   --sk-display:       var(--face-serif);
   --sk-body:          var(--face-serif);
+  /* The default size of running text, and the default absence of
+     a skin stylesheet. Both declared here rather than left unset,
+     for the reason the whole of this file is declared on bare
+     :root: the app has to be correct before skin.js runs. */
+  --sk-body-size:     var(--t-base);
+  --sk-font-url:      none;
   --sk-title-size:    clamp(2rem, 4.5vw, 3rem);
   --sk-title-style:   normal;
   --sk-title-transform: none;

@@ -158,8 +158,10 @@ each is a `--sk-*` variable, and a *skin* is one file in `src/styles/skins/`
 that sets them. `skins/_contract.css` lists the variables and the four rules a
 skin follows; `studio` is the default, `press` is the printed-matter look this
 replaced, `binder` is flat and dense, `console` is the flat application,
-`mission` is a condensed broadsheet, and `atelier` is the soft-edged daily tool
-— serif display over a system sans, real elevation, pill buttons. Six.
+`mission` is a condensed broadsheet, `atelier` is the soft-edged daily tool
+— serif display over a system sans, real elevation, pill buttons — and
+`bright` is the platform register: Sora over Inter, 20px corners, 17px body,
+roomy bands, and elevation TINTED WITH --accent. Seven.
 
 The contract gained five variables with Atelier, and the reason is rule 4 of
 the contract itself: `--sk-card-shadow-hover`, `--sk-lift`, `--sk-press`,
@@ -426,6 +428,19 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
   phone, permanently. What you need while typing is the fixed bottom action bar
   and the save indicator; the toolbar is one flick up.
+- **`var(--radius)` in a component is as unskinnable as `4px` was.** The rule
+  everyone remembered was "do not type a literal radius into `modules.css`".
+  The one nobody did was that reaching for the raw TOKEN is the same bug with
+  better manners: `--radius` is 2px and fixed, `--sk-radius` is what a skin
+  sets, and 80 rules across eleven stylesheets took the first one. That is
+  about forty per cent of the radii in the app, and the symptom is a skin that
+  works on the surfaces somebody happened to check — the hub's first-run cards
+  stayed at 2px under a 20px skin and looked like a rendering fault rather
+  than a missing variable. All 80 now read
+  `var(--sk-radius, var(--radius))`, which is a no-op for every existing skin
+  because `studio.css` sets `--sk-radius: var(--radius)`. The 14
+  `var(--radius-pill)` uses are left alone: a pill is a shape with a meaning,
+  not a radius with a value. If you add a surface, it takes `--sk-radius`.
 - **A sticky bar and no `scroll-margin` is a jump that lands behind it.**
   Nothing in the app set `scroll-margin` and two bars are sticky above the
   content — the shell at `--sh-bar-h`, the page toolbar under it. The browser

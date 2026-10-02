@@ -167,3 +167,52 @@
    all five are polarity-neutral — so unlike the six slab
    variables, a skin may safely set none of them.
    ============================================================ */
+
+/* ============================================================
+   ADDED BY THE BRIGHT SKIN — two more.
+   ------------------------------------------------------------
+   --sk-body-size
+        The running text size. It was --t-base for every skin,
+        which is a size and not a design decision — a dense
+        application wants 16px and a roomy marketing-register
+        one wants 17 or 18, and the difference is most of why
+        the second FEELS roomy. Falls back to --t-base, so a
+        skin that does not care says nothing.
+
+        It moves body text only. The type SCALE stays in
+        tokens.css: a skin that could redefine --t-lg would be
+        a skin that could break every heading in the app.
+
+   --sk-font-url
+        A stylesheet a skin needs, fetched only while that skin
+        is the one in use.
+
+        Rule 3's footnote says a skin that pulls in a web font
+        costs a network round trip on first paint, and it is
+        right — but it was describing the only mechanism that
+        existed, which was adding a <link> to every page's head.
+        That charges the font to everyone, including the people
+        on the other five skins who will never see it.
+
+        skin.js reads this out of the CSSOM, exactly as it
+        already reads --sk-name, and injects or removes one
+        <link> as the skin changes. Nobody on another skin
+        fetches anything. The skin file stays declarative and
+        still has no JavaScript in it.
+
+        TWO CONSTRAINTS, both enforced in skin.js rather than
+        trusted here:
+
+          · https only, and only from the font hosts the
+            Content Security Policy in vercel.json already
+            names. A skin is a stylesheet in this repository
+            and not user input, but a value that becomes a
+            <link href> should be checked where it is used, not
+            where it is written.
+          · the face must still degrade. Name a real fallback
+            stack after it in --sk-display / --sk-body: the
+            link is injected AFTER first paint by definition,
+            so there is always a frame without it, and on a
+            metered or blocked connection there is always a
+            page without it.
+   ============================================================ */

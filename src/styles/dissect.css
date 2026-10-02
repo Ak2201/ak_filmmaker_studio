@@ -376,7 +376,7 @@
 .ds-dangle-list li {
   padding: 2px var(--s2);
   border: 1px solid var(--warn);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--paper);
   font-size: var(--t-tiny);
   line-height: var(--lh-snug);
@@ -455,7 +455,7 @@
   place-items: center;
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--paper-sunk);
   font-family: var(--f-mono);
   font-size: var(--t-micro);

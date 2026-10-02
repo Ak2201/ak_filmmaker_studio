@@ -30,7 +30,10 @@ body {
   background: var(--paper);
   color: var(--ink-body);
   font-family: var(--f-body);
-  font-size: var(--t-base);
+  /* The skin's, falling back to the scale's. See --sk-body-size in
+     skins/_contract.css: 16px and 18px are different designs, not a
+     preference, and the roominess of a design is mostly this. */
+  font-size: var(--sk-body-size, var(--t-base));
   font-optical-sizing: auto;
   line-height: var(--lh-body);
   min-height: 100vh;
@@ -104,7 +107,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 :focus-visible {
   outline: var(--focus);
   outline-offset: 2px;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 :focus:not(:focus-visible) { outline: none; }
 

@@ -58,7 +58,7 @@ a:focus-visible { outline-offset: 3px; }
   letter-spacing: var(--track-label);
   font-weight: 600;
   text-decoration: none;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   transition: top var(--speed-slow) var(--ease);
 }
 .skip-link:focus-visible,
@@ -353,7 +353,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--chrome-fill);
   color: var(--chrome-ink);
   border: 1px solid var(--chrome-hair-strong);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -392,7 +392,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s4) var(--s8) var(--s4) var(--s5);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-base);
   color: var(--ink);
@@ -408,7 +408,7 @@ a:focus-visible { outline-offset: 3px; }
   transform: translateY(-50%);
   padding: var(--s1) var(--s2);
   background: var(--paper-sunk);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   color: var(--ink-muted);
@@ -428,7 +428,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: 2px var(--s2);
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
@@ -453,7 +453,7 @@ a:focus-visible { outline-offset: 3px; }
   z-index: var(--z-float);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-lg);
   transition: max-height var(--speed-slow) var(--ease);
 }
@@ -579,7 +579,7 @@ a:focus-visible { outline-offset: 3px; }
   margin-bottom: 1px;
   color: var(--ink-body);
   text-decoration: none;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
 }
 .step-rail-item:hover { background: var(--paper-sunk); }
@@ -756,7 +756,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--paper-raised);
   color: var(--ink);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
   transform: translateY(var(--s2));
   transition: transform var(--speed-slow) var(--ease-out);
@@ -812,7 +812,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-base);
   color: var(--ink);
@@ -832,7 +832,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s1) var(--s2);
   background: transparent;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   cursor: pointer;
   font-size: var(--t-lg);
   color: var(--ink-muted);
@@ -858,7 +858,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s3) var(--s4);
   background: transparent;
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -977,7 +977,7 @@ a:focus-visible { outline-offset: 3px; }
   margin: var(--s1) 0 var(--s4);
   padding: var(--s2);
   background: var(--paper-sunk);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .share-result input {
   flex: 1;
@@ -1008,7 +1008,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s2) var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .si-meta { display: flex; flex-direction: column; gap: 2px; }
 .si-role {
@@ -1032,7 +1032,7 @@ a:focus-visible { outline-offset: 3px; }
   height: var(--s6);
   background: transparent;
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   cursor: pointer;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
@@ -1088,7 +1088,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--paper-raised);
   color: var(--ink);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-lg);
 }
 .account-menu.show,
@@ -1109,7 +1109,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s2) var(--s3);
   background: transparent;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   cursor: pointer;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1134,7 +1134,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s2) var(--s3);
   background: transparent;
   border: 1px solid var(--chrome-hair-strong);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--chrome-ink);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1240,7 +1240,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s2) var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-small);
   color: var(--ink);
@@ -1253,7 +1253,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s2) var(--s3);
   background: transparent;
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1280,7 +1280,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s5);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   cursor: pointer;
   transition: transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out),
               border-color var(--speed-slow) var(--ease-out);
@@ -1321,7 +1321,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s1) var(--s2);
   background: var(--paper-raised);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
@@ -1354,7 +1354,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: 0;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   color: var(--ink-muted);
@@ -1369,7 +1369,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s1) var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1463,7 +1463,7 @@ a:focus-visible { outline-offset: 3px; }
   display: block;
   padding: var(--s4);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--paper-raised);
   text-decoration: none;
   transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
@@ -1548,7 +1548,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--panel);
   color: var(--panel-ink);
   border-left: 3px solid var(--panel-gilt);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
   font-family: var(--f-body);
   font-size: var(--t-small);
@@ -1624,7 +1624,7 @@ a:focus-visible { outline-offset: 3px; }
 .shimmer {
   background: linear-gradient(90deg, var(--paper-sunk) 0%, var(--paper-raised) 50%, var(--paper-sunk) 100%);
   background-size: 200% 100%;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   animation: shimmer 1.4s ease-in-out infinite;
 }
 @keyframes shimmer {
@@ -1744,7 +1744,7 @@ a:focus-visible { outline-offset: 3px; }
     padding: var(--s3) var(--s2);
     background: transparent;
     border: 0;
-    border-radius: var(--radius);
+    border-radius: var(--sk-radius, var(--radius));
     color: var(--chrome-ink);
     font-family: var(--f-mono);
     font-size: var(--t-micro);
@@ -1987,7 +1987,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s1) var(--s2);
   background: none;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--chrome-muted);
   font: inherit;
   letter-spacing: inherit;
@@ -2057,7 +2057,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   padding: 0;
   background: none;
   border: 1px solid var(--chrome-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--chrome-ink);
   cursor: pointer;
 }
@@ -2085,7 +2085,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   padding: var(--s2) var(--s3);
   background: none;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--chrome-muted);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -2130,7 +2130,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   color: var(--panel-ink);
   border: 1px solid var(--panel-hair);
   border-top: 2px solid var(--hue);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
   z-index: var(--z-overlay);
 }
@@ -2151,7 +2151,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   background: none;
   border: 0;
   border-left: var(--sk-hue-rule-w) solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   text-align: left;
   text-decoration: none;
   color: var(--panel-ink);
@@ -2203,7 +2203,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   /* On the dark chrome panel a hue must LIFT, not sit at its fill value. */
   color: var(--hue-lift, var(--panel-gilt));
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   padding: 0 var(--s1);
 }
 .sh-mod.planned { opacity: .72; }
@@ -2284,7 +2284,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   background: var(--panel);
   color: var(--panel-ink);
   border: 1px solid var(--panel-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
   z-index: var(--z-overlay);
 }
@@ -2299,7 +2299,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   padding: var(--s2) var(--s3);
   background: none;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--panel-ink);
   text-align: left;
   text-decoration: none;
@@ -2346,7 +2346,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   padding: var(--s1) var(--s3);
   background: none;
   border: 1px solid var(--panel-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--panel-muted);
   cursor: pointer;
   font-family: var(--f-mono);

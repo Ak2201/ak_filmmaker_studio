@@ -263,7 +263,15 @@
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
   --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --f-script:  'Courier Prime', 'Courier New', Courier, monospace;
+  /* 'Noto Sans Tamil' LAST, which the gate asserts in source. It is
+     there for Tamil glyphs the Courier faces do not have, and it has
+     to come after them: CSS falls back per GLYPH, so a family listed
+     earlier claims every Latin character it can draw too, and on the
+     eleven module pages that never request Courier Prime it would
+     quietly replace the fixed-width grid pageCount() is arithmetic
+     on. Kept through the redesign — the display and body faces
+     changed, this one did not. */
+  --f-script:  'Courier Prime', 'Courier New', Courier, 'Noto Sans Tamil', monospace;
 
   /* A real scale (1.25), replacing the ad-hoc 10/11/13/14/16/18
      px values scattered through the old files. */
@@ -319,10 +327,39 @@
   --focus: 2px solid var(--accent);
   --focus-offset: 2px;
 
+  /* ---- motion ---------------------------------------------
+     Kept from the interface revamp, because it is a capability
+     rather than a look. --motion is the DISTANCE half of the
+     reduced-motion switch: a 0.01ms transition still ends with the
+     element six pixels from where it started, and for a reader with
+     vestibular sensitivity the jump is the problem, not the glide.
+     Every translate and scale is written
+     `calc(<distance> * var(--motion))`, so the media query at the
+     foot of this file flattens the move to zero and the element
+     simply arrives. One switch, both halves.
+
+     Exit is shorter than enter on purpose (~65%): a thing leaving
+     should get out of the way faster than it asked to come in. */
+  --motion:       1;
+  --speed-tap:  0.08s;
   --speed:      0.15s;
-  --speed-slow: 0.28s;
+  --speed-slow: 0.26s;
+  --speed-lazy: 0.4s;
+  --speed-exit: 0.17s;
   --ease:     cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.55, 0, 1, 0.45);
+  /* A spring with a real overshoot, for things that appear under a
+     deliberate command (the palette, a sheet). Never for data rows:
+     an overshoot on a table reads as sloppy, not alive. */
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+
+  /* ---- anchored scrolling --------------------------------
+     Both heights are measured and published by their owners, so this
+     stays correct when the bar wraps to two rows at 390px. The plate
+     is inside --sh-stick-h, because measureBar() adds it to the
+     number it publishes. */
+  --scroll-offset: calc(var(--sh-stick-h, 0px) + var(--tb-h, 0px) + var(--s4));
 
   /* ---- stacking ----------------------------------------- */
   --z-rail:    50;
@@ -346,6 +383,84 @@
 }
 
 
+
+/* ============================================================
+   THE UN-CHOSEN STATE — kept from upstream, and it is a fix rather
+   than a preference. The bare :root above carries the LIGHT palette,
+   which is the default; this says what to do when the reader has
+   expressed no choice and their OS has.
+
+   `:root:not([data-theme])` is the whole trick. applyTheme() always
+   stamps the attribute, so an explicit choice wins on any OS, and a
+   theme added later cannot get this wrong because there is nothing
+   here to update.
+
+   THE VALUES ARE THE DARK BLOCK'S, and they are duplicated because
+   CSS has no way to share one declaration list between a selector
+   and a media query. Same hazard as the [data-theme="light"] block
+   repeating bare :root: change a dark value in one place and not the
+   other and you get a page that is correct until the reader touches
+   the picker. They were generated from the block below when this
+   merge was resolved; keep them in step by hand.
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --paper:        #120f1c;
+    --paper-raised: #1b1727;
+    --paper-sunk:   #0d0b15;
+    --paper-edge:   #2a2440;
+    --ink:          #ece9f6;
+    --ink-body:     #c9c4db;
+    --ink-muted:    #9a94b0;
+    --ink-faint:    #6d6785;
+    --rule:         #322c48;
+    --rule-hair:    #241f35;
+    --feature:      #9575f8;
+    --feature-wash: #241a3d;
+    --shorts:       #60a5fa;
+    --shorts-wash:  #16233c;
+    --library:      #d6a44a;
+    --visualize:    #e879f9;
+    --plan:         #2dd4bf;
+    --shoot:        #f472b6;
+    --library-wash: #2e2415;
+    --visualize-wash: #2e1030;
+    --plan-wash:    #11302c;
+    --shoot-wash:   #33182a;
+    --feature-deep: #b69bfb;
+    --shorts-deep:  #93c5fd;
+    --library-deep: #e8c384;
+    --visualize-deep: #f0abfc;
+    --plan-deep:    #7fe8da;
+    --shoot-deep:   #f9a8d4;
+    --ok:           #34d399;
+    --ok-deep:      #6ee7b7;
+    --ok-wash:      #102b22;
+    --warn:         #d6a44a;
+    --warn-deep:    #e8c384;
+    --warn-wash:    #2e2415;
+    --danger:       #f87171;
+    --danger-wash:  #341a1c;
+    --on-fill:      #120f1c;
+    --brand:        #9575f8;
+    --brand-deep:   #b69bfb;
+    --brand-wash:   #241a3d;
+    --brand-lift:   #b69bfb;
+    --chrome:             #16121f;
+    --chrome-ink:         #f3f0fb;
+    --chrome-muted:       #a49dbb;
+    --chrome-hair:        rgba(243, 240, 251, .12);
+    --chrome-hair-strong: rgba(243, 240, 251, .28);
+    --chrome-fill:        rgba(243, 240, 251, .08);
+    --chrome-fill-strong: rgba(243, 240, 251, .16);
+    --chrome-accent:      var(--brand-lift);
+    --scrim:        rgba(9, 7, 16, .72);
+    --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
+    --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
+  }
+}
 
 /* ============================================================
    DARK — the alternate. Not an inversion of the light palette: the
@@ -580,3 +695,15 @@
    mid-document. It is the one in-page accent change in the studio,
    and it rides the same token as everything else. */
 .vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); }
+
+
+/* ============================================================
+   REDUCED MOTION — the distance half of the switch.
+   ------------------------------------------------------------
+   base.css clamps DURATION; this clamps DISTANCE. Both are needed:
+   a 0.01ms transition still ends with the element six pixels from
+   where it started.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion: 0; }
+}

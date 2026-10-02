@@ -67,6 +67,24 @@
   --sk-deco-bg:         var(--paper-raised);
   --sk-deco-ink:        var(--ink-body);
 
+  /* ---- interaction, from the merged contract ---------------
+     These five came in with the interface revamp and they are a
+     capability rather than a look: the variables exist so a skin can
+     have a lift without needing a selector of its own. The values
+     here are this design's answers.
+
+     The note they arrived with said "Studio is printed matter: a page
+     does not lift off the desk when you look at it", and set them to
+     zero. That was right for a flat, shadowless card. This card
+     already carries a 1px shadow, so a hover that does nothing is
+     the odd one out — --shadow-md and 1px of travel, which is the
+     smallest move that reads as a response. */
+  --sk-card-shadow-hover: var(--shadow-md);
+  --sk-lift:            1px;
+  --sk-press:           0.985;
+  --sk-field-radius:    var(--radius);
+  --sk-focus-w:         2px;
+
   /* ---- rules: colour only where colour is data ------------
      The data-carrying rule stays at 4px, which is above the 3px the
      gate asserts for hue-coded variants and is the whole of the
@@ -91,6 +109,11 @@
      descenders, so 0.92 collides the lines of a two-line hero. */
   --sk-display:         var(--face-display);
   --sk-body:            var(--face-serif);
+  /* --sk-font-url stays `none`: the face is in every page's own
+     <link>, so skin.js has no second stylesheet to fetch. A skin that
+     brings its own face is what that variable is for. */
+  --sk-body-size:       var(--t-base);
+  --sk-font-url:        none;
   --sk-title-size:      clamp(2.5rem, 6.4vw, 4.75rem);
   --sk-title-lh:        1.0;
   --sk-title-style:     normal;

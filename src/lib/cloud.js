@@ -62,7 +62,14 @@ const SCOPE_BY_KEY = {
   'fms_script_v1':              'script',
   'fms_locations_v1':           'locations',
   'fms_workbench_v1':           'workbench',
-  'fms_dissect_v1':             'dissect'
+  'fms_dissect_v1':             'dissect',
+  // festivals was in SCOPED_KEYS and NOT here, so it saved locally
+  // and never reached the account — exactly the failure the note
+  // above describes, recurring. The scope name is already in the
+  // CHECK constraint, so this one line is the whole fix.
+  'fms_festivals_v1':           'festivals',
+  'fms_scriptgen_v1':           'scriptgen',
+  'fms_songs_v1':               'songs'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])

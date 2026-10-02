@@ -488,7 +488,7 @@
 .step-badge {
   padding: var(--s1) var(--s3);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   text-transform: uppercase;
 }
 .step-badge.in-progress,
@@ -518,7 +518,7 @@
   padding: var(--s1) var(--s3);
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-body);
   text-decoration: none;
   font-family: var(--f-mono);
@@ -576,7 +576,7 @@
 .formula-box .eq code {
   padding: 2px var(--s2);
   background: var(--sk-slab-fill);
-  border-radius: var(--radius);
+  border-radius: var(--sk-field-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-small);
   font-weight: 400;
@@ -700,7 +700,7 @@ select.field-input {
   padding: var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-base);
   line-height: var(--lh-snug);
@@ -1093,7 +1093,7 @@ select.field-input {
   padding: var(--s3) var(--s4);
   background: var(--paper);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-size: var(--t-small);
 }
 .status-row {
@@ -1145,7 +1145,7 @@ select.field-input {
   padding: var(--s1) var(--s2);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   text-decoration: none;
   font-family: var(--f-mono);
@@ -1168,7 +1168,7 @@ select.field-input {
      door numerals: five hues take near-white, amber does not, and in
      Desk this button was white on #d99512 at 2.4:1. */
   color: var(--feature-on);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -1219,7 +1219,7 @@ select.field-input {
   margin-bottom: var(--s2);
   padding: var(--s1) var(--s3);
   background: var(--library-wash);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   text-align: center;
   font-family: var(--f-mono);
   font-size: var(--t-lg);
@@ -1238,7 +1238,7 @@ select.field-input {
   max-width: 760px;
   margin-bottom: var(--s6);
   padding: var(--s5) var(--s6);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-lg);
 }
 .resume-card.has-data { display: block; }
@@ -1276,7 +1276,7 @@ select.field-input {
   padding: var(--s3) var(--s4);
   background: var(--sk-slab-accent);
   color: var(--accent-on);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   text-decoration: none;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1300,7 +1300,7 @@ select.field-input {
   gap: var(--s3);
   margin-top: var(--s5);
   padding: var(--s5) var(--s6);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-sm);
 }
 .data-card .left { flex: 1; min-width: 280px; }
@@ -1311,7 +1311,7 @@ select.field-input {
   background: var(--sk-slab-fill);
   color: var(--sk-slab-ink);
   border: 1px solid var(--sk-slab-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-btn-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -1377,7 +1377,7 @@ select.field-input {
   overflow-y: auto;
   background: var(--paper-raised);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .activity-row {
   display: grid;
@@ -1501,7 +1501,7 @@ select.field-input {
   margin-right: var(--s2);
   padding: 2px var(--s2);
   background: var(--sk-slab-fill);
-  border-radius: var(--radius);
+  border-radius: var(--sk-field-radius, var(--radius));
   color: var(--sk-slab-accent);
 }
 .file-list .note { margin-top: var(--s3); text-align: center; opacity: .7; }

@@ -39,6 +39,7 @@
 import nav from '../data/navigation.json';
 import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
+import { openPalette } from './palette.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -313,6 +314,43 @@ function buildBar(active) {
   const tabs = h('div.sh-phases');
   nav.phases.forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
   bar.append(tabs);
+
+  /* The palette's handle. ⌘K is the fast way in and it is also
+     invisible: a shortcut nobody has been told about is a feature
+     that does not exist for most of the people using the app. So
+     the binding gets a control, the control states the key it
+     stands for, and the key keeps working for everyone who has
+     learned it.
+
+     It sits at the END of the bar rather than next to the
+     breadcrumb on purpose. The crumb answers "where am I"; this
+     answers "take me somewhere else", and they are opposite
+     questions that should not share an edge. */
+  /* ⌘ on a Mac, Ctrl everywhere else. A key cap printing the
+     wrong modifier is worse than no key cap: it teaches a binding
+     that does nothing, and the person concludes the feature is
+     broken rather than that the label is. navigator.platform is
+     deprecated but is the only one of the three spellings present
+     in every engine this app runs in, so all three are tried and
+     the fallback is the one that is right more often. */
+  const mac = (() => {
+    try {
+      const d = navigator.userAgentData;
+      if (d && d.platform) return /mac/i.test(d.platform);
+      return /mac/i.test(navigator.platform || navigator.userAgent || '');
+    } catch (e) { return false; }
+  })();
+  const find = h('button.sh-find', {
+    type: 'button',
+    'data-action': 'palette-open',
+    'aria-label': 'Search the studio',
+    'aria-keyshortcuts': 'Meta+K Control+K',
+    title: 'Search the studio  (' + (mac ? '⌘K' : 'Ctrl K') + ')'
+  });
+  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }),
+              h('span.sh-find-label', { text: 'Search', 'aria-hidden': 'true' }),
+              h('kbd.sh-find-key', { text: mac ? '⌘K' : 'Ctrl K', 'aria-hidden': 'true' }));
+  bar.append(find);
   return bar;
 }
 
@@ -477,88 +515,34 @@ function measureBar() {
     de.style.setProperty('--sh-plate-h', plateH + 'px');
   }
   const bar = document.querySelector('.sh-bar');
-  if (bar) {
-    const px = Math.round(bar.getBoundingClientRect().height) + plateH;
-    if (px && px !== lastBarH) {
-      lastBarH = px;
-      de.style.setProperty('--sh-bar-h', px + 'px');
-    }
+  if (!bar) return;
+  /* The plate is pinned ABOVE the bar, so what the page toolbar has to
+     clear is the two of them together. plateH is 0 below the narrow
+     breakpoint, where neither is pinned — which is also what keeps
+     --sh-stick-h below correct, since it reads this same number. */
+  const px = Math.round(bar.getBoundingClientRect().height) + plateH;
+  if (px && px !== lastBarH) {
+    lastBarH = px;
+    de.style.setProperty('--sh-bar-h', px + 'px');
   }
-  measureChrome();
-}
+  /* --sh-bar-h is the bar's HEIGHT and is used for layout whether or
+     not the bar is pinned. --sh-stick-h is how much of the viewport
+     it permanently covers, which is a different number: below 1100px
+     the shell scrolls away with the page, so it covers nothing, and
+     an anchor offset built on the height would push every jump
+     target a bar's worth too far down on exactly the screens with
+     the least room.
 
-/* THE WHOLE PINNED BAND, for the same reason and one layer out.
-
-   --sh-bar-h answers "where does the page toolbar park". It does not
-   answer "how much of the top of the viewport is covered", and that
-   is the number every in-page jump needs. Following #projects put the
-   section's top edge at y=0 — underneath the whole pinned stack: 118
-   to 158px on the hub depending on whether the toolbar has wrapped,
-   118px on the library, 226px on study.html — so the eyebrow and the
-   heading of the section you asked for were the two things guaranteed
-   to be hidden, and you landed mid-paragraph. Measured before the
-   fix: all six of the hub's nav actions, all five of the library's,
-   and every `scrollIntoView({ block: 'start' })` in the app, which is
-   the step rail and the jump menu too.
-
-   The fix is `scroll-padding-top` on the scroll container, which the
-   browser applies to fragment navigation, scrollIntoView and scroll
-   snapping alike — ONE rule rather than a scroll-margin on each
-   target, because a hand-kept list of every anchor in the app is
-   wrong by the second section anybody adds.
-
-   WHAT COUNTS AS THE BAND, and why it is derived rather than listed.
-   A band is a sticky or fixed element that is (a) laid out as a top
-   chrome layer — a direct child of #app, of <body> or of <main> —
-   (b) anchored to a `top` offset rather than a side, and (c) wide
-   enough to span the page. Those three things are true of .sh-bar,
-   of .toolbar and of study.html's .ds-bar, and false of the two
-   sticky things that are NOT chrome you scroll under: stripboard's
-   .sb-grid-name is anchored left, and the workbench's .wb-ref is a
-   third of the width and nested deeper. Naming the four selectors
-   would have been shorter and would have gone stale the first time a
-   page grew a fifth bar.
-
-   Each candidate's bottom is its computed `top` plus its height, not
-   its current rect: the bar is only pinned once you have scrolled,
-   and the measurement has to be right at the top of the document,
-   which is exactly when a fragment jump is about to happen.
-
-   The width and position tests are what make this correct at every
-   breakpoint for free, and they are the reason this reads the cascade
-   rather than a breakpoint of its own. Below 720px both .sh-bar and
-   .toolbar are `relative` — deliberately, so the phase and toolbar
-   menus can pin themselves to the bar — so nothing is pinned, the
-   band measures 0, and a jump gets no padding, which is right: that
-   is the width at which the chrome scrolls away on purpose. Measured
-   across the breakpoints: 118px at 1280, 158px at 900 (the toolbar
-   wraps), 110px at 800, 0 from 719px down. A rule keyed to a
-   hard-coded 1100px or 560px would have had to be kept in step with
-   three other files; this one cannot drift. */
-let lastBand = -1;
-function measureChrome() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const de = document.documentElement;
-  let band = 0;
-  /* A small, structural candidate set rather than a walk of the
-     document: this runs on resize frames, and the hub is several
-     thousand nodes. */
-  for (const el of document.querySelectorAll('#app > *, body > *, main > *')) {
-    const cs = getComputedStyle(el);
-    if (cs.position !== 'sticky' && cs.position !== 'fixed') continue;
-    const top = parseFloat(cs.top);
-    if (!Number.isFinite(top) || top < 0 || top > vh / 2) continue;
-    const r = el.getBoundingClientRect();
-    /* A row of chrome is at least a line of text tall. The floor is
-       what keeps .reading-progress out of the sum — 2px, fixed, full
-       width, and not a thing anything is hidden behind. */
-    if (r.height < 16 || r.width < vw * 0.5) continue;
-    band = Math.max(band, Math.round(top + r.height));
-  }
-  if (band === lastBand) return;
-  lastBand = band;
-  de.style.setProperty('--sh-chrome-h', band + 'px');
+     Asked of the computed style rather than re-stating the
+     breakpoint here. The breakpoint lives in chrome.css; a second
+     copy in JS is a second copy to keep in step, and this one would
+     fail silently — a jump landing 56px low looks like nothing. */
+  let stick = 0;
+  try {
+    const pos = getComputedStyle(bar).position;
+    if (pos === 'sticky' || pos === 'fixed') stick = px || lastBarH;
+  } catch (e) { /* jsdom and friends */ }
+  document.documentElement.style.setProperty('--sh-stick-h', stick + 'px');
 }
 
 /* ---- open / closed ----------------------------------------- */
@@ -638,6 +622,11 @@ let wired = false;
 function wire() {
   if (wired) return;
   wired = true;
+
+  delegate(document, 'click', '[data-action="palette-open"]', (e) => {
+    e.preventDefault();
+    openPalette();
+  });
 
   delegate(document, 'click', '[data-action="phase-toggle"]', (e, btn) => {
     const menu = btn.parentElement.querySelector('.sh-phase-menu');
@@ -729,20 +718,6 @@ function wire() {
     raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); });
   });
 
-  /* One more measurement after everything has landed. The page
-     toolbar is rendered by the PAGE, which on several of them happens
-     after mountShell() — so the two frames below are not always late
-     enough to see it, and a band measured without the toolbar is a
-     band that is 62 to 102px short. `load` is, and it is the last
-     chance before a direct visit to page.html#fragment settles.
-
-     The readyState branch is not belt-and-braces: dashboard.js mounts
-     the shell at import time but the lazy chunks do not, so `load`
-     has already fired for some callers and a listener alone would
-     never run for them. */
-  if (document.readyState === 'complete') requestAnimationFrame(measureBar);
-  else window.addEventListener('load', measureBar);
-
   /* Scrolling is the other thing that moves you without a page load,
      and on the fragment pages it is the one that happens. Passive and
      rAF-throttled: this reads geometry and paints chrome, it never
@@ -796,6 +771,13 @@ export function mountShell() {
      same schedule because mountShell() is not always called after the
      page has rendered — dashboard.js mounts at import time, when #app
      is still empty, the same trap chrome.js records one level up. */
+  /* Synchronously first. The two rAF passes below are for layout
+     and for the web fonts, and they are still right — but a rAF
+     does not run at all while the tab is hidden, and --sh-stick-h
+     feeds --scroll-offset. A page restored into a background tab
+     would otherwise have no anchor offset until it was looked at. */
+  measureBar();
+  runSpy();
   requestAnimationFrame(() => {
     measureBar();
     runSpy();

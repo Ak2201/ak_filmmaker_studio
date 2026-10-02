@@ -50,7 +50,7 @@
    ============================================================ */
 import { rawGet, rawSet, rawRemove } from './store.js';
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
-import { formatEighths } from './scenes.js';
+import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
 
 /* Per-device, never scoped, never synced. See the header. */
@@ -829,3 +829,491 @@ export default {
   buildDialoguePrompt, buildCritiquePrompt,
   draftShotDivision, dialoguePass, beatCritique, AIError
 };
+
+/* ============================================================
+   FROM A SYNOPSIS TO A SCRIPT
+   ------------------------------------------------------------
+   Three jobs, run in order, each a checkpoint the writer reads
+   before the next one spends anything:
+
+     draftBeatSheet  synopsis -> this story's version of the 15
+                     Save the Cat beats. Small and cheap, and the
+                     place to argue with the structure.
+     draftSceneList  beats -> scene headings, one line each. Writes
+                     the SCENE MODEL, so the breakdown, stripboard,
+                     budget and reports have something the moment
+                     it lands.
+     draftScenePages a BATCH of those scenes -> script elements.
+
+   WHY THREE AND NOT ONE. A feature is about 20,000 words. Tamil
+   tokenises at roughly three to six tokens a word against English's
+   one and a third, so a Tamil feature is 60,000-120,000 output
+   tokens — several times what one response can carry, and the
+   ceiling here is 32,000. One call cannot do it, and a call that
+   tries gets cut off at `max_tokens` with the writer billed for
+   everything up to the cut. Batching is not an optimisation, it is
+   the only shape that works.
+
+   AND IT HAS TO RESUME. The state lives in `scriptgen.js` with a
+   cursor, so a stopped, failed or closed-tab run continues from the
+   last finished batch. Restarting a feature from scene one because
+   scene forty timed out would charge the writer twice for the same
+   pages.
+
+   LANGUAGE. See SCRIPT_LANGS. The default is Tamil dialogue under
+   English action, which is what Tamil sets actually shoot from, and
+   it is also the only mode whose page count is arithmetic rather
+   than a guess — see the note on the constant.
+   ============================================================ */
+
+/* The four modes, and the typographic fact behind the default.
+   `--f-script` is Courier Prime, which ships `latin` and
+   `latin-ext` and no Tamil subset; no monospaced Tamil font exists
+   to swap in. Screenplay page maths — 55 lines a page, a page a
+   minute — is arithmetic on a fixed-width grid, so it is exact for
+   Latin and an estimate for Tamil. Modes that put Tamil in the
+   structural elements say so rather than printing a number the
+   grid cannot support. */
+export const SCRIPT_LANGS = [
+  {
+    id: 'ta-dialogue',
+    label: 'Tamil dialogue, English slugs and action',
+    hint: 'what Tamil crews shoot from — and the page count stays exact',
+    exactPages: true
+  },
+  {
+    id: 'tanglish',
+    label: 'Tanglish throughout',
+    hint: 'romanised Tamil; fits the Courier grid, so the page count stays exact',
+    exactPages: true
+  },
+  {
+    id: 'ta-full',
+    label: 'Tamil throughout',
+    hint: 'action in Tamil too — page count becomes an estimate',
+    exactPages: false
+  },
+  { id: 'en', label: 'English', hint: '', exactPages: true }
+];
+const langById = Object.fromEntries(SCRIPT_LANGS.map((l) => [l.id, l]));
+export const scriptLang = (id) => langById[id] || langById['ta-dialogue'];
+export const pagesAreExact = (id) => scriptLang(id).exactPages;
+
+/* What each mode asks for, element by element. Written out rather
+   than described, because "write it in Tamil" produced headings in
+   Tamil with INT./EXT. transliterated, which no AD can scan. */
+const LANG_RULES = {
+  'ta-dialogue': [
+    'LANGUAGE — this is the standard Tamil shooting-script register:',
+    '· Scene headings: English. INT./EXT., the location, DAY/NIGHT.',
+    '· Action lines: English, plain and present tense.',
+    '· Character names: English capitals (ANBU, not in Tamil script).',
+    '· Dialogue: TAMIL SCRIPT. Natural spoken Tamil, not literary Tamil.',
+    '· Parentheticals: English.',
+    'An English craft word inside Tamil dialogue is correct when that is',
+    'what the character would say — "sir", "office", "train" are Tamil now.'
+  ],
+  tanglish: [
+    'LANGUAGE — Tanglish, the romanised register this studio uses:',
+    '· Scene headings, action, character names, parentheticals: English.',
+    '· Dialogue: Tamil written in ROMAN letters, spoken register.',
+    '  "Naan varuven", not "நான் வருவேன்" and not "I will come".',
+    '· Do not use Tamil script anywhere. The whole point of this mode is',
+    '  that every glyph fits the Courier grid.'
+  ],
+  'ta-full': [
+    'LANGUAGE — Tamil throughout:',
+    '· Dialogue, action and parentheticals: Tamil script.',
+    '· Scene headings: keep INT./EXT. and DAY/NIGHT in English capitals,',
+    '  because they are the structural keywords an AD scans a stack for,',
+    '  and put the location in Tamil.',
+    '· Character names: English capitals, so the breakdown can match them.'
+  ],
+  en: ['LANGUAGE — English throughout.']
+};
+const langRules = (id) => (LANG_RULES[scriptLang(id).id] || LANG_RULES.en).join('\n');
+
+const SCRIPT_SYSTEM = [
+  'You are a Tamil screenwriter working on an independent feature shot in and',
+  'around Chennai on a small budget. You write the script, not a treatment of',
+  'the script.',
+  '',
+  'Craft rules:',
+  '· Write what the camera sees and what the microphone hears. Nothing else.',
+  '  No interiority, no "he realises", no "she remembers" — if the audience',
+  '  cannot see it, it is not in an action line.',
+  '· Action in the present tense, in short paragraphs. Four lines is long.',
+  '· Dialogue is how people speak, with the hesitations and the half-sentences.',
+  '  Nobody explains the plot to someone who already knows it.',
+  '· Budget is a craft constraint, not an afterthought. Crowds, rain, night',
+  '  exteriors, vehicles and children cost money. Prefer two people in a room',
+  '  with something at stake.',
+  '· No song sequences unless the synopsis asks for one. If it does, write the',
+  '  situation and the cut, not lyrics.',
+  '· Do not describe camera or editing. No "CUT TO" between every scene, no',
+  '  "we PAN across". The scene heading is the cut.',
+  '· Answer only with the JSON the schema describes.'
+].join('\n');
+
+/* ---- stage 1: the beat sheet -------------------------------
+   The fifteen beats are NOT invented here. They come from
+   src/data/studies.json through the caller, so the model fills in
+   this story's version of a vocabulary the app already teaches and
+   already renders — and the schema pins the ids, so a beat cannot
+   be renamed, merged or dropped. */
+function beatSchemaFor(beatIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['logline', 'beats'],
+    properties: {
+      logline: { type: 'string', description: 'one sentence: who wants what, and what stands in the way' },
+      beats: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'happens'],
+          properties: {
+            id: { type: 'string', enum: beatIds.slice() },
+            happens: { type: 'string', description: 'what happens at this beat IN THIS STORY, two or three sentences' }
+          }
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Stage 1. Synopsis -> this story's fifteen beats.
+ *
+ *   job  { synopsis, format, lang, beats:[{id,label,pages,function}] }
+ *
+ * Resolves to { logline, byBeat: Map<beatId, happens>, truncated, model }.
+ * Writes nothing.
+ */
+export async function draftBeatSheet(job, { onStatus, signal } = {}) {
+  const synopsis = str(job && job.synopsis, 6000);
+  if (!synopsis) throw new AIError('Write a synopsis first — a paragraph is enough.', 'nosynopsis');
+  const beats = Array.isArray(job.beats) ? job.beats : [];
+  if (!beats.length) throw new AIError('The beat vocabulary did not load.', 'nobeats');
+
+  const ids = beats.map((b) => String(b.id));
+  const lines = [
+    'Here is the synopsis for a Tamil ' + (job.format === 'short' ? 'short film' : 'feature')
+      + '. Place it on the fifteen-beat structure below.',
+    '',
+    'SYNOPSIS:',
+    synopsis,
+    '',
+    'Fill in every beat. Where the synopsis is silent, INVENT something that',
+    'serves the story it is telling — that is the job — but never contradict',
+    'what the synopsis actually says.',
+    '',
+    langRules(job.lang),
+    '',
+    'Write `happens` in ENGLISH for every mode. This is the writer\'s own',
+    'planning document, not a page of the script.',
+    '',
+    'THE BEATS:'
+  ];
+  for (const b of beats) {
+    lines.push('· ' + b.id + '  (' + b.label + ', ' + (b.pages || '') + ') — ' + (b.function || ''));
+  }
+
+  const { parsed, truncated, model } = await callModel({
+    system: SCRIPT_SYSTEM,
+    user: lines.join('\n'),
+    schema: beatSchemaFor(ids),
+    maxTokens: 12000,
+    effort: 'high',
+    onStatus,
+    signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"happens"/g) || []).length;
+      return n ? 'Shaping the structure… ' + n + ' of ' + ids.length + ' beats' : 'Shaping the structure…';
+    }
+  });
+
+  if (!Array.isArray(parsed.beats)) {
+    throw new AIError('The reply was not a beat sheet, so nothing was saved.', 'malformed');
+  }
+  const wanted = new Set(ids);
+  const byBeat = new Map();
+  for (const b of parsed.beats) {
+    if (!b || typeof b !== 'object') continue;
+    const id = String(b.id ?? '');
+    if (!wanted.has(id)) continue;          // never write a beat we did not offer
+    const happens = str(b.happens, 1200);
+    if (happens) byBeat.set(id, happens);
+  }
+  return { logline: str(parsed.logline, 400), byBeat, truncated, model };
+}
+
+/* ---- stage 2: the scene list -------------------------------
+   Produces rows shaped for `blankScene()` in scenes.js, because
+   the point of this stage is that the rest of the studio lights
+   up before a single page is written. script-import.js learned
+   this the same way: an import that fills only the editor leaves
+   the breakdown, stripboard, budget and reports empty, which is
+   half a job. */
+function sceneListSchema(beatIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['scenes'],
+    properties: {
+      scenes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['intExt', 'location', 'dayNight', 'synopsis', 'eighths', 'beat'],
+          properties: {
+            intExt: { type: 'string', enum: INT_EXT.slice() },
+            location: { type: 'string', description: 'the location as it appears in the slug line' },
+            dayNight: { type: 'string', enum: DAY_NIGHT.slice() },
+            synopsis: { type: 'string', description: 'one line: what happens in this scene' },
+            eighths: { type: 'integer', minimum: 1, maximum: 48,
+              description: 'length in eighths of a page; 8 is one full page' },
+            beat: { type: 'string', enum: beatIds.slice() },
+            cast: { type: 'array', items: { type: 'string' },
+              description: 'character names appearing, in English capitals' }
+          }
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Stage 2. Beats -> a scene list.
+ *
+ *   job  { synopsis, logline, format, lang, beats:[{id,label,happens}], target }
+ *
+ * Resolves to { scenes:[…], truncated, model }. Writes nothing.
+ */
+export async function draftSceneList(job, { onStatus, signal } = {}) {
+  const beats = Array.isArray(job.beats) ? job.beats : [];
+  if (!beats.length) throw new AIError('Draft the beat sheet first.', 'nobeats');
+  const target = Math.max(8, Math.min(120, Number(job.target) || (job.format === 'short' ? 14 : 48)));
+  const ids = beats.map((b) => String(b.id));
+
+  const lines = [
+    'Break this story into a scene list of about ' + target + ' scenes.',
+    '',
+    'LOGLINE: ' + str(job.logline, 400),
+    '',
+    'SYNOPSIS:',
+    str(job.synopsis, 6000),
+    '',
+    'THE BEATS, already agreed — every scene must serve one of them, and each',
+    'beat must be served by at least one scene:'
+  ];
+  for (const b of beats) {
+    lines.push('· ' + b.id + ' (' + b.label + '): ' + str(b.happens, 1200));
+  }
+  lines.push('');
+  lines.push(langRules(job.lang));
+  lines.push('');
+  lines.push([
+    'Rules for this stage:',
+    '· Put the scenes in screen order.',
+    '· `location` is a place a location manager could go and find. Reuse the',
+    '  same wording for the same place every time — the breakdown groups on it,',
+    '  and "ANBU\'S HOUSE" and "Anbu house" become two locations and two days.',
+    '· `eighths` is length in eighths of a page: 8 is one page. Most scenes are',
+    '  4 to 16. The total should land near ' + (job.format === 'short' ? '15' : '100') + ' pages.',
+    '· `synopsis` is ONE line in English whatever the script language is. It is',
+    '  what the stripboard and the call sheet print.',
+    '· Night exteriors and crowds cost money. Earn them.'
+  ].join('\n'));
+
+  const { parsed, truncated, model } = await callModel({
+    system: SCRIPT_SYSTEM,
+    user: lines.join('\n'),
+    schema: sceneListSchema(ids),
+    maxTokens: 24000,
+    effort: 'high',
+    onStatus,
+    signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"location"/g) || []).length;
+      return n ? 'Laying out scenes… ' + n + ' so far' : 'Laying out scenes…';
+    }
+  });
+
+  if (!Array.isArray(parsed.scenes)) {
+    throw new AIError('The reply was not a scene list, so nothing was saved.', 'malformed');
+  }
+  const okInt = new Set(INT_EXT);
+  const okDay = new Set(DAY_NIGHT);
+  const beatSet = new Set(ids);
+  const scenes = parsed.scenes
+    .filter((s) => s && typeof s === 'object')
+    .map((s) => ({
+      intExt: okInt.has(s.intExt) ? s.intExt : 'INT',
+      location: str(s.location, 120),
+      dayNight: okDay.has(s.dayNight) ? s.dayNight : 'DAY',
+      synopsis: str(s.synopsis, 500),
+      // clamp rather than trust: an eighths of 0 makes a strip with no
+      // height and an eighths of 900 makes a one-scene shoot day.
+      eighths: Math.max(1, Math.min(48, Math.round(Number(s.eighths) || 8))),
+      beat: beatSet.has(s.beat) ? s.beat : '',
+      cast: (Array.isArray(s.cast) ? s.cast : [])
+        .map((c) => str(c, 60)).filter(Boolean).slice(0, 24)
+    }))
+    .filter((s) => s.location);
+  if (!scenes.length) {
+    throw new AIError('The reply held no usable scenes, so nothing was saved.', 'malformed');
+  }
+  return { scenes, truncated, model };
+}
+
+/* ---- stage 3: the pages ------------------------------------
+   One call per BATCH of scenes, not per script and not per scene.
+   Per script does not fit; per scene pays the context cost once
+   per scene and loses the rhythm between them. A batch gets the
+   scenes around it as context and writes only its own. */
+const PAGE_ELEMENT_TYPES = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
+
+function pagesSchema(sceneIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['scenes'],
+    properties: {
+      scenes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sceneId', 'elements'],
+          properties: {
+            sceneId: { type: 'string', enum: sceneIds.slice() },
+            elements: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['type', 'text'],
+                properties: {
+                  type: { type: 'string', enum: PAGE_ELEMENT_TYPES.slice() },
+                  text: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Stage 3. A batch of scenes -> script elements.
+ *
+ *   job {
+ *     lang, logline, format,
+ *     scenes: [{ sceneId, slug, synopsis, eighths, cast, beatLabel }],
+ *     before: [{ slug, synopsis }],   // the two scenes just before
+ *     after:  [{ slug, synopsis }],   // the two just after
+ *     characters: [string]            // the running cast, for consistency
+ *   }
+ *
+ * Resolves to { byScene: Map<sceneId, element[]>, truncated, model }.
+ * Writes nothing.
+ */
+export async function draftScenePages(job, { onStatus, signal } = {}) {
+  const scenes = Array.isArray(job.scenes) ? job.scenes : [];
+  if (!scenes.length) throw new AIError('No scenes in this batch.', 'noscenes');
+  const ids = scenes.map((s) => String(s.sceneId));
+
+  const pages = scenes.reduce((n, s) => n + (Number(s.eighths) || 8), 0) / 8;
+  const lines = [
+    'Write the full script for the ' + scenes.length
+      + (scenes.length === 1 ? ' scene' : ' scenes') + ' marked WRITE THIS below.',
+    'About ' + (Math.round(pages * 10) / 10) + ' pages in total across the batch.',
+    '',
+    'LOGLINE: ' + str(job.logline, 400),
+    ''
+  ];
+  if (Array.isArray(job.characters) && job.characters.length) {
+    lines.push('CHARACTERS ALREADY ESTABLISHED (keep the spelling exactly): '
+      + job.characters.slice(0, 40).join(', '));
+    lines.push('');
+  }
+  if (Array.isArray(job.before) && job.before.length) {
+    lines.push('COMES AFTER (context only — do NOT write these):');
+    for (const s of job.before) lines.push('  ' + s.slug + ' — ' + str(s.synopsis, 300));
+    lines.push('');
+  }
+  lines.push('WRITE THIS:');
+  for (const s of scenes) {
+    lines.push('--- SCENE ---');
+    lines.push('sceneId: ' + s.sceneId);
+    lines.push('heading: ' + s.slug);
+    lines.push('length: ' + formatEighths(s.eighths) + ' pages');
+    if (s.beatLabel) lines.push('serves the beat: ' + s.beatLabel);
+    if (s.synopsis) lines.push('what happens: ' + s.synopsis);
+    if (Array.isArray(s.cast) && s.cast.length) lines.push('in the scene: ' + s.cast.join(', '));
+    lines.push('');
+  }
+  if (Array.isArray(job.after) && job.after.length) {
+    lines.push('LEADS INTO (context only — do NOT write these):');
+    for (const s of job.after) lines.push('  ' + s.slug + ' — ' + str(s.synopsis, 300));
+    lines.push('');
+  }
+  lines.push(langRules(job.lang));
+  lines.push('');
+  lines.push([
+    'Element rules:',
+    '· Start each scene with exactly ONE `scene` element whose text is the',
+    '  heading given above, copied as it stands.',
+    '· `character` holds a name only. The parenthetical goes in `paren`, and',
+    '  `paren` text is written WITHOUT the surrounding brackets.',
+    '· `dialogue` follows the `character` it belongs to. One speech per element.',
+    '· Use `transition` almost never.',
+    '· Hit the length. A scene marked 4/8 is half a page, not two pages.',
+    '· Return one entry per sceneId, keyed by the exact sceneId given.'
+  ].join('\n'));
+
+  const { parsed, truncated, model } = await callModel({
+    system: SCRIPT_SYSTEM,
+    user: lines.join('\n'),
+    schema: pagesSchema(ids),
+    maxTokens: 32000,
+    effort: 'high',
+    onStatus,
+    signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"sceneId"/g) || []).length;
+      return n ? 'Writing… scene ' + n + ' of ' + scenes.length : 'Writing…';
+    }
+  });
+
+  if (!Array.isArray(parsed.scenes)) {
+    throw new AIError('The reply was not script pages, so nothing was added.', 'malformed');
+  }
+  const wanted = new Set(ids);
+  const okTypes = new Set(PAGE_ELEMENT_TYPES);
+  const byScene = new Map();
+  for (const entry of parsed.scenes) {
+    if (!entry || typeof entry !== 'object') continue;
+    const sceneId = String(entry.sceneId ?? '');
+    if (!wanted.has(sceneId)) continue;
+    const els = (Array.isArray(entry.elements) ? entry.elements : [])
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => ({
+        type: okTypes.has(e.type) ? e.type : 'action',
+        // A scene's worth of text, not a novel. The cap is per element.
+        text: str(e.text, 4000)
+      }))
+      .filter((e) => e.text);
+    if (els.length) byScene.set(sceneId, els);
+  }
+  if (!byScene.size) {
+    throw new AIError('The reply held no usable pages, so nothing was added.', 'malformed');
+  }
+  return { byScene, truncated, model };
+}

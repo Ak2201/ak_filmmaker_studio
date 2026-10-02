@@ -233,6 +233,30 @@
   color: var(--ink-muted);
 }
 
+/* FIGURES IN A COLUMN STAY IN A COLUMN.
+
+   --f-mono stopped being a monospace when the label face changed, and
+   a proportional "1" is narrower than a proportional "8" — which is
+   invisible in a label and wrong in a table of rates, page counts or
+   running times. Every data table in the app gets tabular figures
+   here, once, rather than each page remembering to ask.
+
+   Listed by selector because that is what these tables have in common:
+   there is no shared class, and giving `table` the rule app-wide would
+   also catch the prose tables in the library, where proportional
+   figures are correct. */
+.pp-table td,  .pp-table th,
+.scene-table td,  .scene-table th,
+.beat-table td,   .beat-table th,
+.equip-table td,  .equip-table th,
+.pl-table td,     .pl-table th,
+.rp-table td,     .rp-table th,
+.vz-table td,     .vz-table th,
+.vz-pr-table td,  .vz-pr-table th,
+.ct-doc-table td, .ct-doc-table th {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------
    3. SURFACES — one card, used everywhere.
    ------------------------------------------------------------

@@ -1433,7 +1433,7 @@
 .sync-instructions pre {
   background: var(--panel);
   color: var(--panel-gilt);
-  font-family: var(--f-mono);
+  font-family: var(--f-code);
   font-size: var(--t-micro);
   border-radius: var(--sk-radius, var(--radius));
 }

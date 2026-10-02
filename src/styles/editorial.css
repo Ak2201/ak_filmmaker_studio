@@ -577,7 +577,7 @@
   padding: 2px var(--s2);
   background: var(--sk-slab-fill);
   border-radius: var(--sk-field-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-code);
   font-size: var(--t-small);
   font-weight: 400;
   color: var(--sk-slab-accent);
@@ -922,18 +922,54 @@ select.field-input {
   color: var(--ink-body);
 }
 .film-card .lesson strong { color: var(--accent-deep); }
-.rule-card { position: relative; counter-increment: rule; padding-left: var(--s8); }
+/* THE NUMBER IS IN THE FLOW, and it had to stop being out of it.
+
+   It was `position: absolute` in a gutter reserved by
+   `padding-left: var(--s8)` on this same rule. That gutter cannot
+   survive: `modules.css` lists .rule-card among the cards it gives
+   `padding: var(--sk-card-pad)`, it is imported AFTER this file, and a
+   `padding` shorthand resets `padding-left`. So the number sat at
+   left: 12px and the text started at 24px, and all fifty rules
+   rendered with the numeral printed through the first word —
+   "01If you can show it, don't say it."
+
+   The same load order is recorded two other places in this codebase
+   (`.phase .label` in modules.css, the inline-style traps in
+   CLAUDE.md); the lesson each time is that the fix has to live where
+   it cannot be overridden, not where it reads best. A grid column is
+   not a padding value, so nothing downstream can reset it.
+
+   It is also the design the rest of the app uses for a numeral on a
+   card — a washed tile, like the hub's door numbers — instead of a
+   bare mono figure in the margin. */
+.rule-card {
+  counter-increment: rule;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--s2) var(--s4);
+}
 .rule-card::before {
   content: counter(rule, decimal-leading-zero);
-  position: absolute;
-  left: var(--s3);
-  top: var(--s5);
-  font-family: var(--f-mono);
-  font-size: var(--t-lg);
-  font-weight: 800;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--s6);
+  height: var(--s6);
+  border-radius: var(--radius);
+  background: var(--accent-wash);
   color: var(--accent-deep);
+  font-size: var(--t-small);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
-.rule-card .rule-text { font-style: italic; margin-bottom: var(--s2); }
+/* Both children placed explicitly. Left to auto-placement they would
+   fill column 1 under the tile on any card whose attribution wraps. */
+.rule-card .rule-text { grid-column: 2; grid-row: 1; }
+.rule-card .attrib    { grid-column: 2; grid-row: 2; }
+.rule-card .rule-text { font-style: var(--sk-deck-style); margin-bottom: 0; }
 .rule-card .attrib::before { content: "— "; }
 .rules-grid { counter-reset: rule; }
 

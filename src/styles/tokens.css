@@ -262,7 +262,32 @@
 
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
-  --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* --f-mono IS NOT A MONOSPACE ANY MORE, and the name is kept on
+     purpose: 321 rules across twenty stylesheets name it, and renaming
+     a token referenced that widely buys a diff and nothing else. What
+     it means now is "the LABEL face" — the eyebrow, the chip, the stat
+     caption, the table header, the breadcrumb, the tag.
+
+     Swapping the display and body faces changed about a third of the
+     app's text and left the other two thirds in JetBrains Mono, which
+     is why the redesign looked half-applied: tracked-out mono caps on
+     every label is the single most recognisable piece of the look it
+     replaced. One token moves all of it.
+
+     A font-family token cannot carry `font-variant-numeric`, so the
+     column alignment mono used to give for free is restored where it
+     is actually load-bearing: one rule in modules.css puts
+     tabular-nums on every data table's cells, joining the 54 rules
+     that already ask for it on individual figures. A proportional 1 in
+     a budget column is the reason mono was chosen for those.
+
+     Genuine code keeps a real monospace — see --f-code. */
+  --f-mono:    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* CODE, and only code: the sync panel's snippets, a kbd cap, an
+     equation chip. These are the places where character-for-character
+     fidelity is the point rather than a texture. */
+  --f-code:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   /* 'Noto Sans Tamil' LAST, which the gate asserts in source. It is
      there for Tamil glyphs the Courier faces do not have, and it has
      to come after them: CSS falls back per GLYPH, so a family listed

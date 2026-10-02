@@ -60,6 +60,25 @@ import Script, {
 const typesetter = () => import('../lib/screenplay-export.js');
 const importer = () => import('../lib/script-import.js');
 
+/* The picker's accept list, taken from the parser rather than kept
+   beside it. The panel is built before the dynamic import can
+   resolve, so it ships a literal and this corrects it as soon as
+   the module is in hand — which is before anyone can have chosen a
+   file through it, because opening the panel is what loads it. */
+function refreshAccept(Parser) {
+  const input = document.getElementById('wr-imp-file');
+  if (input && Parser && Parser.ACCEPT) input.setAttribute('accept', Parser.ACCEPT);
+}
+
+/* A read failure now has something worth saying. The PDF reader
+   can tell a scan from a script and a subset font from a readable
+   one, and each refusal is a sentence about what to do instead —
+   collapsing those into "that file could not be read" throws away
+   the only part that helps. */
+function readFailed(err) {
+  return (err && err.message) || 'That file could not be read.';
+}
+
 /* ============================================================
    A PASS ON ONE SPEECH
    ------------------------------------------------------------
@@ -629,7 +648,8 @@ function importChooser() {
 
   wrap.append(h('p.wr-imp-lead', {
     text: 'Drop a script anywhere on this page, choose a file, or paste the text below. '
-        + 'Fountain (.fountain), a plain screenplay (.txt) and Final Draft (.fdx) all work.'
+        + 'A PDF (.pdf), Fountain (.fountain), a plain screenplay (.txt) and '
+        + 'Final Draft (.fdx) all work.'
   }));
   wrap.append(h('p.wr-imp-privacy', {}, [
     h('strong', { text: 'The file is read in this browser. ' }),
@@ -641,7 +661,13 @@ function importChooser() {
 
   const file = h('input', {
     type: 'file', id: 'wr-imp-file', class: 'wr-imp-file',
-    accept: '.fountain,.spmd,.txt,.fdx,.xml,text/plain',
+    /* A first guess, corrected from Parser.ACCEPT the moment the
+       lazy import resolves — see refreshAccept(). The panel renders
+       before the parser loads, so it cannot read the real list
+       here, and a literal that silently falls behind the parser is
+       how a format becomes unpickable while still being
+       importable. */
+    accept: '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf',
     'data-action': 'import-file'
   });
   wrap.append(h('div.wr-imp-row', {}, [
@@ -665,8 +691,9 @@ function importChooser() {
 
 function importPreview(plan) {
   const wrap = h('div.wr-imp-preview');
-  const fmt = plan.format === 'fdx' ? 'Final Draft'
-    : plan.format === 'text' ? 'screenplay text' : 'Fountain';
+  /* From the plan, not from a ternary here. See formatLabel in
+     script-import.js for what the ternary cost. */
+  const fmt = plan.formatLabel || plan.format;
 
   wrap.append(h('p.wr-imp-read', {
     text: 'Read ' + (importName ? '“' + importName + '” ' : '') + 'as ' + fmt + '.'
@@ -1484,9 +1511,10 @@ delegate(document, 'change', 'input[data-action="import-file"]', async (e, input
   if (!file) return;
   let Parser;
   try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
+  refreshAccept(Parser);
   let text;
   try { text = await Parser.readFile(file); }
-  catch (err) { say('That file could not be read.'); return; }
+  catch (err) { say(readFailed(err)); return; }
   takeScript(text, file.name);
 });
 
@@ -1598,9 +1626,10 @@ addEventListener('drop', async (e) => {
   if (!file) return;
   let Parser;
   try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
+  refreshAccept(Parser);
   let text;
   try { text = await Parser.readFile(file); }
-  catch (err) { say('That file could not be read.'); return; }
+  catch (err) { say(readFailed(err)); return; }
   takeScript(text, file.name);
 });
 

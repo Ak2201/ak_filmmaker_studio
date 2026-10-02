@@ -367,15 +367,27 @@ context would close it properly.
 **Only its WIDTH is measured, though — none of its COPY is.** The text and
 `data-key` capture runs *after* `createProject()`, because the blueprints will
 not scope storage without a project, and creating one replaces the first-run
-panel with the project grid. So every word on that panel is outside
-`baseline.json` entirely: `renderFirstRun()` can say anything, drift any
-number, or lose a sentence, and the hub still reports 100% coverage. That is
-how `Twenty-two modules` sat two behind the data — nothing was ever going to
-notice. The flip side is that editing that panel produces **no** gate fallout,
-so an `EXPECTED.hub` row for a word removed from it is stale the moment it is
+panel with the project grid. So the panel contributes **nothing** to
+`baseline.json`: `renderFirstRun()` can say anything, drift any number, or lose
+a sentence, and the hub still reports 100% coverage. That is how
+`Twenty-two modules` sat two behind the data — nothing was ever going to
+notice.
+
+Be precise about what that does and does not mean, because the obvious
+shorthand is wrong. Plenty of the panel's words ARE in the hub's baseline —
+`modules`, `film`, `script`, `browser`, `desk`, `call`, `sheet` — put there by
+the launcher and the cover, not by the panel. What is true is the one-way half:
+a word that appears ONLY on the panel can never be in the baseline, so no edit
+to the panel can ever produce a missing word. The gate's silence is structural,
+not a measurement that happened to pass.
+
+The flip side is that editing that panel produces **no** gate fallout, so an
+`EXPECTED.hub` row for a word removed from it is stale the moment it is
 written, and the anti-rot check fails the run for it (proved: the run reports
 `stale allowlist entries: twenty-two`). Read the panel in a browser; the gate
-cannot.
+cannot. The number it quotes was wrong twice for this reason — first stale, then
+derived from the total instead of the built count — and both times every check
+was green.
 
 **Running two verifies at once.** The server port is `VERIFY_PORT`, default
 5321. Several worktrees of this repo can be live at the same time, and they

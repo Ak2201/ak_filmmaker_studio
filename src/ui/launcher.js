@@ -57,14 +57,31 @@ import { listContacts, listCallSheets } from '../lib/contacts.js';
 import { locationIndex, listMedia, listDayDates, shootDayOf, castOf } from '../lib/locations.js';
 import '../styles/launcher.css';
 
-/* Exported because it is quoted as prose elsewhere. The hub's first-run
-   deck hand-wrote this figure ("Twenty-two modules") and had drifted two
-   behind the data by the time anybody checked. Invariant 2: one
-   derivation per thing, so the map and the sentence about the map cannot
-   disagree. Renamed on the way out — "total" says nothing at an import
-   site. */
-export const MODULE_COUNT = nav.phases.reduce((n, p) => n + p.modules.length, 0);
-const BUILT = nav.phases.reduce(
+/* TWO derived figures, and which one a sentence quotes is not a detail.
+   MODULE_COUNT is how many modules the MAP has; BUILT_MODULE_COUNT is
+   how many a visitor can actually open. The launcher prints both, side
+   by side ("N OF M BUILT"), under a label that says it is a map and a
+   deck that says the ones still to come say so — so the total is the
+   right figure here, because the qualifier is right next to it.
+
+   BUILT_MODULE_COUNT is the exported one, because what quotes it is
+   PROSE: the hub's first-run deck, the one sentence somebody reads
+   before they have committed anything. A promise has no qualifier
+   beside it, so it has to be the figure that is true today.
+   navigation.json's own _about sets that rule — "Never let a module
+   claim 'built' before it is" — and this file already honours it three
+   ways: the SOON/PARTIAL flag, a <button> instead of an <a>, and the
+   pair below.
+
+   The deck hand-wrote "Twenty-two modules" and had drifted two behind
+   the data, which is what invariant 2 is for. But deriving it from the
+   total would have swapped a stale promise for a premature one: today
+   built === total, so nothing would look wrong until the next
+   status: 'planned' module landed, and then a stranger would be told
+   the studio has a tool that navigates nowhere. Derive the right
+   number, not merely a derived one. */
+const MODULE_COUNT = nav.phases.reduce((n, p) => n + p.modules.length, 0);
+export const BUILT_MODULE_COUNT = nav.phases.reduce(
   (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
 
 /* The three blueprint-era blobs have no model module of their own —
@@ -365,7 +382,7 @@ export function renderLauncher() {
       })
     ]),
     h('div.right', {}, [
-      h('div', { text: `${BUILT} OF ${MODULE_COUNT} BUILT` }),
+      h('div', { text: `${BUILT_MODULE_COUNT} OF ${MODULE_COUNT} BUILT` }),
       h('div.lx-worked', { text: `${worked} HOLD WORK` }),
       hereLine(at)
     ])

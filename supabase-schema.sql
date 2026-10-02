@@ -63,7 +63,9 @@ create table if not exists public.project_data (
                 'locations',
                 'workbench',
                 'dissect',
-                'festivals'
+                'festivals',
+                'scriptgen',
+                'songs'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),
@@ -1941,3 +1943,103 @@ notify pgrst, 'reload schema';
 --      so a successful `create function` proves nothing about it. The
 --      first live call is the test.
 -- ------------------------------------------------------------
+
+-- ============================================================
+-- 12. TWO MORE SYNC SCOPES: scriptgen and songs
+-- ------------------------------------------------------------
+-- RAN 02 OCT 2026, in two steps, on conhlrulxfwkhsnymakz. Recorded
+-- here as one section, and the reason is a numbering collision worth
+-- writing down rather than quietly resolving.
+--
+-- THESE SECTIONS WERE WRITTEN TWICE, ON TWO BRANCHES, BOTH AS "11".
+-- `main` appended section 11 (claim_invite) while `revamped-ui`
+-- appended its own 11 (the scriptgen scope) and 12 (songs). Nothing
+-- in the SQL overlapped — both branches only ever appended — but the
+-- numbers did, so merging them naively produces two section 11s and
+-- a file whose numbering lies about what ran in what order.
+--
+-- Resolved by keeping claim_invite as 11, because it was on the trunk,
+-- and folding the two scope widenings into this one section. They are
+-- safe to fold: each is the same `drop constraint, add constraint`
+-- against the same column, so the second already superseded the first
+-- the moment it ran. Preserving both as separate sections would have
+-- carried one dead statement for the sake of a chronology that the
+-- next reader cannot act on. The ORDER of 11 and 12 does not matter
+-- either — claim_invite touches functions, this touches a CHECK, and
+-- neither reads the other.
+--
+-- (Section 8 is still kept verbatim under its banner, by contrast,
+-- because THAT one is instructive: it never ran, and how it was wrong
+-- is the lesson. A superseded statement that worked is not.)
+--
+-- WHAT THE TWO SCOPES HOLD
+--   scriptgen  `fms_scriptgen_v1` — the synopsis-to-script job: the
+--              synopsis, the agreed fifteen beats, the scene list and
+--              a cursor. The beats and the scene list are the writer's
+--              work rather than run state, so the key is project
+--              scoped and syncs.
+--   songs      `fms_songs_v1` — four to six rows on a Tamil feature,
+--              each a production unit with its own days, dancers,
+--              playback state and unit.
+--
+-- The CHECK in section 2 is edited in place as well, for a database
+-- created fresh from this file. This section is what an EXISTING
+-- database needs, because `create table if not exists` will not
+-- re-run and a column CHECK is not replaced by re-declaring it.
+--
+-- The constraint name is looked up rather than typed: Postgres
+-- generates `project_data_scope_check` for an inline column CHECK,
+-- but a database that has been through a rename would not have it.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs'
+    ));
+end $$;
+
+-- VERIFY. cloud.js derives its scope list from Store.SCOPED_KEYS and
+-- warns at load about any scoped key with no scope name, so the two
+-- halves check each other; this is the half Postgres enforces.
+--
+--   select string_agg(m[1], ' ' order by m[1])
+--     from pg_constraint con
+--     join pg_class c on c.oid = con.conrelid
+--     join pg_namespace n on n.oid = c.relnamespace,
+--          regexp_matches(pg_get_constraintdef(con.oid),
+--                         '''([a-z_]+)''::text', 'g') as m
+--    where n.nspname='public' and c.relname='project_data'
+--      and con.contype='c';
+--
+-- RESULT 02 OCT 2026, read back off the live database:
+--   activity contacts dissect feature feature_prefs festivals library
+--   library_prefs locations scenes script scriptgen short short_prefs
+--   shots songs workbench
+-- Seventeen, matching SCOPE_BY_KEY exactly.
+--
+-- STILL NOT RUN: section 11, claim_invite. The live catalogue holds 18
+-- functions and claim_invite is not among them, so the account tier
+-- still cannot be joined. That section's own header says it has never
+-- been run; this is a second confirmation from the database rather
+-- than a new finding.
+-- ============================================================

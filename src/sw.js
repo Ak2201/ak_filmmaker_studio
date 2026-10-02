@@ -38,7 +38,29 @@ function digest(s) {
   return h.toString(36);
 }
 
-const BUILD    = digest(JSON.stringify(MANIFEST));
+/* The CSP a worker runs under is captured when it INSTALLS, from the
+   headers of the response that delivered this script. It is not re-read
+   afterwards. So a header-only change — one to vercel.json / netlify.toml
+   with no source change — reaches nobody already carrying a worker: this
+   file's bytes are identical, the browser's update check installs nothing,
+   and the old policy stays enforced indefinitely.
+
+   That is not hypothetical. connect-src gained the two Google Fonts hosts
+   on 2026-10-01, because this worker intercepts those hosts on purpose
+   (isFontHost -> cacheFirst) and a worker's own fetch() is a connect-src
+   operation. The header went live and changed nothing for existing
+   visitors: the font fetch was still refused, cacheFirst still had nothing
+   cached, still rethrew, and the studio still rendered in fallback serif.
+   Measured: 0 font entries in the runtime cache before, 5 after, and the
+   display faces collapsing onto the width of a nonexistent font.
+
+   Folding the epoch into BUILD fixes both halves. It changes this script's
+   bytes, so every client installs a fresh worker that re-reads the header,
+   and it rotates the cache names, so activate() sweeps whatever the old
+   policy managed to cache. Bump it whenever the CSP changes. */
+const CSP_EPOCH = '2026-10-01-fonts';
+
+const BUILD    = digest(CSP_EPOCH + JSON.stringify(MANIFEST));
 const PRECACHE = `studio-precache-${BUILD}`;
 const RUNTIME  = `studio-runtime-${BUILD}`;
 const KEEP     = new Set([PRECACHE, RUNTIME]);

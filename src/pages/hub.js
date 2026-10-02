@@ -90,13 +90,14 @@ const BENCH_KEY    = 'fms_workbench_v1';
 const DISSECT_KEY  = 'fms_dissect_v1';
 const FESTIVALS_KEY = 'fms_festivals_v1';
 const SCRIPTGEN_KEY = 'fms_scriptgen_v1';
+const SONGS_KEY     = 'fms_songs_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY
+  SCRIPTGEN_KEY, SONGS_KEY
 ];
 
 /* Backup field name -> storage key, for the keys store.js namespaces
@@ -119,7 +120,8 @@ const PROJECT_KEYS = {
   workbench:         BENCH_KEY,
   dissect:           DISSECT_KEY,
   festivals:         FESTIVALS_KEY,
-  scriptgen:         SCRIPTGEN_KEY
+  scriptgen:         SCRIPTGEN_KEY,
+  songs:             SONGS_KEY
 };
 
 /* Deliberately NOT per project: the theme is a device preference and the

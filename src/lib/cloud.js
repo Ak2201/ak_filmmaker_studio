@@ -68,7 +68,8 @@ const SCOPE_BY_KEY = {
   // above describes, recurring. The scope name is already in the
   // CHECK constraint, so this one line is the whole fix.
   'fms_festivals_v1':           'festivals',
-  'fms_scriptgen_v1':           'scriptgen'
+  'fms_scriptgen_v1':           'scriptgen',
+  'fms_songs_v1':               'songs'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])

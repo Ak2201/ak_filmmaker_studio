@@ -46,7 +46,8 @@ create table if not exists public.project_data (
                 'workbench',
                 'dissect',
                 'festivals',
-                'scriptgen'
+                'scriptgen',
+                'songs'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),
@@ -1750,7 +1751,7 @@ begin
       'feature','short','library',
       'feature_prefs','short_prefs','library_prefs','activity',
       'scenes','contacts','shots','script','locations',
-      'workbench','dissect','festivals','scriptgen'
+      'workbench','dissect','festivals','scriptgen','songs'
     ));
 end $$;
 
@@ -1764,4 +1765,47 @@ end $$;
 --    where c.relname = 'project_data' and con.contype = 'c';
 --
 -- RESULT 02 OCT 2026: 16 scopes, matching SCOPE_BY_KEY exactly.
+-- ============================================================
+
+-- ============================================================
+-- 12. A NEW SYNC SCOPE: songs
+-- ------------------------------------------------------------
+-- RAN 02 OCT 2026. Same shape as section 11, same reason: the CHECK
+-- above is edited in place for a future database created from this
+-- file, and an EXISTING database needs the statement below, because
+-- `create table if not exists` will not re-run and a column CHECK is
+-- not replaced by re-declaring it.
+--
+-- `fms_songs_v1` is the song list — four to six rows on a Tamil
+-- feature, each a production unit with its own days, dancers,
+-- playback state and unit. It is the writer's and the producer's
+-- work, so it is project-scoped and syncs like the rest.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs'
+    ));
+end $$;
+-- RESULT 02 OCT 2026: 17 scopes, matching SCOPE_BY_KEY exactly.
 -- ============================================================

@@ -235,7 +235,28 @@ const SKIN_FILES = fs
    list is growing, that is the signal to re-baseline deliberately with
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
-  hub: {},
+  hub: {
+    /* The launcher prints "N of M ready" per phase, derived from
+       navigation.json. Adding the Songs module took Breakdown from
+       "6 of 6" to "7 of 7", so the word "6" left the page and the
+       baseline still expects it.
+
+       This is an allowance rather than an exclusion because it is a
+       one-off consequence of a known-good change: the count is
+       correct, the baseline is simply older than the module. It keeps
+       firing while Breakdown has seven modules, and goes stale — and
+       therefore fails — only if the phase returns to six, which would
+       mean a module was removed and somebody should look.
+
+       WORTH KNOWING FOR NEXT TIME: every module added to
+       navigation.json will collide with the baseline this same way,
+       because a derived count is in the oracle. That is the shape of
+       problem the CLOCK exclusion below solves properly; the counts
+       cannot be excluded the same way without blinding the check to
+       every digit on the page. If this grows past two or three rows,
+       re-baseline rather than keep adding them. */
+    '6': 'Breakdown phase went from 6 modules to 7 when Songs was added'
+  },
   stripboard: {},
   reports: {},
   contacts: {},

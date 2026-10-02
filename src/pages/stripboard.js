@@ -47,6 +47,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
+import * as Songs from '../lib/songs.js';
 
 const app = document.getElementById('app');
 const CAST = 'cast';
@@ -59,7 +60,10 @@ const GROUPINGS = [
   { id: 'script',   label: 'Script order' },
   { id: 'location', label: 'Location' },
   { id: 'time',     label: 'Day / night' },
-  { id: 'day',      label: 'Shoot day' }
+  { id: 'day',      label: 'Shoot day' },
+  // A song is shot as a block, usually by its own unit, so seeing its
+  // strips together is how its days get scheduled at all.
+  { id: 'song',     label: 'Song' }
 ];
 
 /* Time of day → a phase hue. The class sets --strip-hue in the
@@ -150,6 +154,13 @@ const how = (n, title, body) =>
     h('p', { text: body })
   ]);
 
+/* Songs, indexed by id, read once per grouping pass rather than once
+   per scene — groupScenes runs over every strip on the board. */
+let _songCache = null;
+const songById = () => (_songCache || (_songCache = Object.fromEntries(
+  Songs.listSongs().map((sg) => [sg.id, sg])
+)));
+
 /* ---- grouping — a view, never a write ------------------------ */
 function groupScenes(scenes, mode) {
   if (mode === 'script') {
@@ -168,6 +179,19 @@ function groupScenes(scenes, mode) {
     } else if (mode === 'time') {
       const label = `${scene.intExt} · ${scene.dayNight}`;
       put(label, label, scene);
+    } else if (mode === 'song') {
+      /* Reads songs.js and writes nothing, like every other grouping
+         here. The sort key is the song's POSITION, not its title, so
+         the blocks come out in the order a producer counts them —
+         "song three" means the third one. */
+      const sg = songById()[scene.songId];
+      if (sg) {
+        const n = parseInt(sg.number, 10);
+        put(Number.isFinite(n) ? n : 9e8,
+          (sg.number ? sg.number + '. ' : '') + (sg.title || Songs.kindLabel(sg.kind)), scene);
+      } else {
+        put(Infinity, 'Not part of a song', scene);
+      }
     } else {
       const d = shootDayOf(scene);
       put(d ? d : Infinity, d ? `Day ${d}` : 'Not scheduled yet', scene);
@@ -175,7 +199,7 @@ function groupScenes(scenes, mode) {
   }
 
   const groups = [...buckets.values()];
-  if (mode === 'day') {
+  if (mode === 'day' || mode === 'song') {
     groups.sort((a, b) => a.key - b.key);
   } else if (mode === 'time') {
     const rank = (g) => {
@@ -436,6 +460,11 @@ const LONG = {
 
 /* ---- render --------------------------------------------------- */
 function render() {
+  // Dropped every render, not every page load. A cache that outlives
+  // the data it mirrors is the thing that goes stale and then lies —
+  // visualize.js kept a page-local copy of "does a key exist" and it
+  // was wrong the moment the key changed anywhere else.
+  _songCache = null;
   const scenes = Scenes.listScenes();
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));

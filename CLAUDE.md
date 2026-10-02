@@ -47,7 +47,7 @@ src/
   lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
              screenplay-export.js shotlist-export.js script-import.js
-             pdf-text.js ai.js scriptgen.js
+             pdf-text.js ai.js scriptgen.js songs.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -474,6 +474,16 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   `role="alert"` rather than the polite one — the politeness is bound when a
   live region enters the accessibility tree and several readers never re-read
   it, so flipping `aria-live` on one element does not work.
+- **The baseline contains derived counts, so adding a module fails it.**
+  The launcher prints "N of M ready" per phase from `navigation.json`.
+  Adding the Songs module took Breakdown from "6 of 6" to "7 of 7", so the
+  word `6` left the hub and `verify` reported an unexplained missing word
+  on a page nothing had edited. It is allowed in `EXPECTED.hub` with that
+  reason. Every future module will collide the same way; this is the shape
+  of problem the CLOCK exclusion solves properly, and the counts cannot be
+  excluded the same way without blinding the check to every digit on the
+  page. Past two or three such rows, re-baseline instead.
+
 - **A font family covers more than you asked it for.** Adding Noto Sans
   Tamil to `--f-script` to get Tamil glyphs also handed it every Latin
   glyph, because the family ships latin subsets as well and Courier Prime

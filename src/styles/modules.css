@@ -211,6 +211,7 @@
    "this is a container"; it does not also try to say what kind.
    ------------------------------------------------------------ */
 .bd-scene,
+.bd-song,
 .film-card,
 .director-card,
 .rule-card,
@@ -549,6 +550,88 @@
 .bd-head { padding-block: var(--s7) var(--s5); }
 
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+/* ---- songs --------------------------------------------------
+   The card shell comes from the shared paper block above; what is
+   here is only the arrangement inside it. No radius, padding,
+   border width or italic is written as a literal — a shape typed in
+   here is a shape no skin can override, which is the one way this
+   stylesheet is cheap to break. */
+.bd-songs {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s6) var(--s5);
+  display: grid;
+  gap: var(--s4);
+}
+.bd-song { display: grid; gap: var(--s3); }
+.bd-song:focus-within { border-color: var(--accent); }
+.bd-song-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.bd-song-no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px; height: 30px;
+  padding-inline: var(--s2);
+  border-radius: var(--sk-radius);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+}
+.bd-song-title { flex: 1 1 14rem; min-width: 0; }
+.bd-song-acts { display: flex; gap: var(--s1); margin-inline-start: auto; }
+.bd-song-sit { width: 100%; min-width: 0; resize: vertical; }
+.bd-song-grid {
+  display: grid;
+  /* min() so the column floor can never sum past a narrow viewport —
+     three columns of minmax(180px,1fr) is a 564px floor, which is how
+     the first-run panel overflowed by 238px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: var(--s3);
+}
+.bd-song-grid > * { min-width: 0; }
+.bd-song-f { display: grid; gap: var(--s1); min-width: 0; }
+.bd-song-f > span {
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+.bd-song-f input { width: 100%; min-width: 0; }
+.bd-song-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+}
+/* A day disagreement or a song with no track to play. --warn is a
+   FILL: it stays on the rule and the wash, and the words take
+   --ink-body. As text it runs 3.3-4.4:1 on a light card. */
+.bd-song-warn {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.bd-scene-songlink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+.bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 .bd-scene { display: grid; gap: var(--s3); }
 .bd-scene:focus-within { border-color: var(--accent); }
 .bd-scene-bar {

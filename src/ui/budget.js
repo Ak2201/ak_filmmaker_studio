@@ -25,6 +25,7 @@ import { h, delegate } from '../lib/dom.js';
 import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
+import * as Songs from '../lib/songs.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 
 /* ============================================================
@@ -357,13 +358,38 @@ function scheduleFacts() {
   const dayOf = (s) => { const n = parseInt(s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
   const scheduled = scenes.filter((s) => dayOf(s) > 0);
   const days = new Set(scheduled.map(dayOf));
+  /* Song days the scene count CANNOT see.
+     A song is usually planned long before its scenes exist, so its
+     days live on the song row. Counting every song's days on top of
+     the scene-derived total would double-count any song whose scenes
+     ARE already on the board, so only songs with no scheduled scenes
+     contribute. Without this a four-song film budgets its shoot
+     several days short and nothing on the page says why. */
+  let songs = [];
+  try { songs = Songs.listSongs(); } catch (e) { songs = []; }
+  let songDaysUncounted = 0;
+  let songsUncounted = 0;
+  for (const sg of songs) {
+    const f = Songs.songFacts(sg, scenes);
+    if (f.scriptDays > 0) continue;        // already inside days.size
+    if (f.plannedDays > 0) {
+      songDaysUncounted += f.plannedDays;
+      songsUncounted += 1;
+    }
+  }
+
   return {
     totalScenes: scenes.length,
     scheduled: scheduled.length,
     unscheduled: scenes.length - scheduled.length,
     days: days.size,
     locations: new Set(scenes.map((s) => (s.location || '').trim()).filter(Boolean)).size,
-    pages: formatEighths(totalEighths(scenes))
+    pages: formatEighths(totalEighths(scenes)),
+    songCount: songs.length,
+    songDaysUncounted,
+    songsUncounted,
+    // what the estimate should actually use
+    totalDays: days.size + songDaysUncounted
   };
 }
 
@@ -403,10 +429,25 @@ function renderScheduleLink() {
         + ' scene' + (f.unscheduled === 1 ? '' : 's') + ' still unscheduled — so this is a floor, not the final count.'
       : 'Every scene has a day. This is your shoot length.'
   }));
+
+  /* Song days are listed separately rather than folded in silently,
+     because the number they change is the one the whole estimate
+     scales on, and a day count that grew without saying why is a day
+     count nobody trusts. */
+  if (f.songDaysUncounted) {
+    box.append(h('p.hint', {
+      text: 'Plus ' + f.songDaysUncounted
+        + (f.songDaysUncounted === 1 ? ' day' : ' days') + ' for '
+        + f.songsUncounted + (f.songsUncounted === 1 ? ' song' : ' songs')
+        + ' whose scenes are not on the board yet. Songs are planned before their '
+        + 'scenes exist, so the scene count cannot see those days — '
+        + f.totalDays + ' is the figure to budget.'
+    }));
+  }
   box.append(h('div.calc-actions', {}, [
     h('button.mini-btn', {
-      type: 'button', 'data-action': 'use-shoot-days', 'data-days': String(f.days),
-      text: 'USE ' + f.days + ' DAYS IN THE ESTIMATE'
+      type: 'button', 'data-action': 'use-shoot-days', 'data-days': String(f.totalDays),
+      text: 'USE ' + f.totalDays + ' DAYS IN THE ESTIMATE'
     })
   ]));
   return box;

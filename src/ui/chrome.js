@@ -126,21 +126,30 @@ const THEME_KEY = 'fms_studio_theme_v1';
    paper / sepia / ink and the STORED value keeps those — THEME_KEY is
    part of the storage contract. Map between the two here, once. */
 const CSS_THEME = { ink: 'dark', paper: 'light' };
-/* TWO themes now, and ink is the default.
+/* TWO themes, and PAPER is the default again.
 
    sepia and desk are gone. Four palettes meant four sets of every
    colour decision to keep at 4.5:1 across every skin, and the two
    that were removed were variations on paper rather than choices
-   anybody needed — a tool for grading suites and edit bays is dark
-   by trade, and that is now the base rather than an option.
+   anybody needed.
 
-   ink is FIRST deliberately: this list is the ⌃⇧D cycle order, the
+   The default moved back with the redesign, and the three places that
+   had to move with it are all in this file: THEME_ORDER's first
+   entry, currentTheme()'s fallback and loadTheme()'s. The identity is
+   a lavender ground with white surfaces and a violet brand — a dark
+   default would mean every screenshot, every first impression and
+   every unstamped first paint shows a palette that is now the
+   alternate. The bare :root in tokens.css carries the light values
+   for the same reason, and these three have to agree with it or the
+   picker says one thing while the page renders another.
+
+   paper is FIRST deliberately: this list is the ⌃⇧D cycle order, the
    picker order, and what `themeOrder()` hands the verify gate, which
-   reads the list from the app rather than repeating it. Dropping two
-   themes therefore needed no change to the gate — it asserts that the
-   number of distinct backgrounds equals the number of themes, not
-   that there are three of them. */
-const THEME_ORDER = ['ink', 'paper'];
+   reads the list from the app rather than repeating it. The gate
+   asserts that the number of distinct backgrounds equals the number of
+   themes, so neither dropping a theme nor reordering this needs a
+   change there. */
+const THEME_ORDER = ['paper', 'ink'];
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
@@ -150,11 +159,12 @@ function currentTheme() {
     case 'light': return 'paper';
   }
   if (document.body && document.body.classList.contains('dark')) return 'ink';
-  /* Falls back to INK, not paper. The bare :root in tokens.css now
-     carries the dark palette, so ink is what an unstamped document
-     actually renders — returning 'paper' here would have the picker
-     disagree with the page on first load. */
-  return 'ink';
+  /* Falls back to PAPER. The bare :root in tokens.css carries the
+     light palette, so paper is what an unstamped document actually
+     renders — returning 'ink' here would have the picker disagree
+     with the page on first load, which is the bug this comment
+     recorded in the other direction. */
+  return 'paper';
 }
 
 function applyTheme(theme) {
@@ -165,7 +175,7 @@ function applyTheme(theme) {
   // Without it the picker is a no-op: nothing sets [data-theme="light"],
   // so `@media (prefers-color-scheme: dark)` wins and a user who chose
   // paper gets ink. Sepia becomes unreachable entirely.
-  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'dark');
+  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'light');
 
   if (!document.body) {
     // Document not parsed yet — defer the body half until ready
@@ -195,22 +205,21 @@ function loadTheme() {
   if (THEME_ORDER.indexOf(t) >= 0) {
     applyTheme(t);
   } else {
-    /* INK IS THE DEFAULT, and every fallback here has to say so.
+    /* PAPER IS THE DEFAULT, and every fallback here has to say so.
 
-       These three lines were the reason the new default did not take:
-       the bare :root in tokens.css carries the dark palette, but
-       loadTheme ran on every load and stamped 'paper' for anyone
-       without a stored choice — including, now, everyone who had
-       chosen sepia or desk, because those names are no longer in
-       THEME_ORDER and fall through to here.
+       This branch runs for anyone with no stored choice, and also for
+       anyone whose stored choice is a theme that no longer exists —
+       sepia and desk are not in THEME_ORDER and fall through to here.
 
-       The legacy dark-mode pref is still honoured when it is set to
-       light explicitly; absent, it is not evidence of a preference and
-       does not get to override the default. */
+       The legacy dark-mode pref is honoured when it is set to dark
+       EXPLICITLY. Absent, it is not evidence of a preference and does
+       not override the default; the test is `=== true` rather than
+       a truthiness check so a missing key and a false one behave the
+       same way. */
     try {
       const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
-      applyTheme(old.dark === false ? 'paper' : 'ink');
-    } catch (e) { applyTheme('ink'); }
+      applyTheme(old.dark === true ? 'ink' : 'paper');
+    } catch (e) { applyTheme('paper'); }
   }
 }
 StudioUI.applyTheme = applyTheme;

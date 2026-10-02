@@ -96,16 +96,20 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s3) var(--s5);
   background: var(--chrome);
   color: var(--chrome-ink);
-  border-bottom: 2px solid var(--accent);
+  /* A hairline. The 2px accent rule under the toolbar was the band's
+     edge when the band was dark and the page was not; with a white
+     band on a tinted page the page provides the contrast and a 2px
+     coloured line reads as a second, competing nav. */
+  border-bottom: 1px solid var(--chrome-hair);
   backdrop-filter: var(--blur-chrome);
   -webkit-backdrop-filter: var(--blur-chrome);
 }
 .toolbar .brand {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 600;
-  color: var(--panel-gilt);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: normal;
+  font-weight: 700;
+  color: var(--chrome-ink);
   margin-right: auto;
 }
 /* The hub reads the three volumes at once, so its toolbar wears
@@ -220,13 +224,17 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--chrome);
 }
 
+/* `.gold` is the chrome's emphatic link. The name is older than the
+   palette and nothing in the app writes the class any more, but the
+   colour had to move with the surface regardless: --panel-gilt is a
+   pale violet meant for a dark slab and was 1.5:1 on the white band. */
 .btn.gold,
 .tb-link.gold {
-  border-color: var(--panel-gilt);
-  color: var(--panel-gilt);
+  border-color: var(--chrome-accent);
+  color: var(--chrome-accent);
 }
 .btn.gold:hover,
-.tb-link.gold:hover { background: var(--panel-gilt); color: var(--chrome); }
+.tb-link.gold:hover { background: var(--chrome-accent); color: var(--chrome); }
 
 .nav-link {
   color: var(--chrome-ink);
@@ -235,8 +243,8 @@ a:focus-visible { outline-offset: 3px; }
 }
 .nav-link:hover {
   background: var(--chrome-fill);
-  border-color: var(--chrome-hair-strong);
-  color: var(--panel-gilt);
+  border-color: transparent;
+  color: var(--chrome-accent);
 }
 
 .icon-btn,
@@ -303,8 +311,14 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--chrome-muted);
   font-variant-numeric: tabular-nums;
 }
-.progress-text { min-width: var(--s6); text-align: right; color: var(--panel-gilt); }
+.progress-text { min-width: var(--s6); text-align: right; color: var(--chrome-accent); }
 .save-status { padding: 0 var(--s3); }
+/* The one state the indicator has. feature.js used to write this as an
+   inline `style.color`, which beat this stylesheet and painted the band
+   its own old colours; it sets a class now. --chrome-accent, because
+   the only question that matters is what the BAND is, and that is the
+   token which knows. */
+.save-status.is-busy { color: var(--chrome-accent); }
 
 .step-jumper {
   max-width: 180px;
@@ -370,7 +384,7 @@ a:focus-visible { outline-offset: 3px; }
   right: var(--s2);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--panel-gilt);
+  color: var(--chrome-accent);
   pointer-events: none;
 }
 .search-result-count {
@@ -380,7 +394,7 @@ a:focus-visible { outline-offset: 3px; }
   transform: translateY(-50%);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  color: var(--panel-gilt);
+  color: var(--chrome-accent);
   pointer-events: none;
 }
 
@@ -486,7 +500,7 @@ a:focus-visible { outline-offset: 3px; }
 .search-result.r-library .kind { color: var(--library-deep); }
 .search-result h5 {
   font-size: var(--t-small);
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   font-weight: 600;
 }
 .search-result p { font-size: var(--t-tiny); color: var(--ink-muted); line-height: var(--lh-snug); }
@@ -777,7 +791,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-display);
   font-size: var(--t-2xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
   margin-bottom: var(--s2);
@@ -1037,32 +1051,48 @@ a:focus-visible { outline-offset: 3px; }
 /* ------------------------------------------------------------
    ACCOUNT — sign-in pill, account menu
    ------------------------------------------------------------ */
+/* THE ONE FILLED CONTROL IN THE CHROME. Signing in is what turns a
+   browser's localStorage into something that survives the browser, so
+   it is the chrome's primary action and now looks like one — filled
+   brand, not an outline among six outlines. --brand/--brand-on rather
+   than --accent, because the accent follows [data-phase] and this
+   button means the same thing on all thirteen pages.
+
+   Still a pill, and still the body sans at a readable size: 11px
+   tracked-out mono on the one control a new visitor is meant to find
+   was the old look's habit, not a decision. */
 .sign-in-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
   max-width: 220px;
-  padding: var(--s2) var(--s3);
-  background: transparent;
-  border: 1px solid var(--chrome-hair-strong);
+  padding: var(--s2) var(--s4);
+  background: var(--brand);
+  border: 1px solid var(--brand);
   border-radius: var(--radius-pill);
-  color: var(--chrome-ink);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  color: var(--brand-on);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: normal;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.sign-in-pill:hover { background: var(--chrome-fill); border-color: var(--chrome-ink); }
+.sign-in-pill:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
 .sign-in-pill .sip-dot {
   width: 6px;
   height: 6px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--panel-gilt);
+  /* ON the brand fill now, not on the band: --brand-on, and --ok-lift
+     for signed-in because a mid-green dot on deep violet is the one
+     pair here that needs lifting off its ground. Neither is a *-lift
+     chosen for a dark page — the question is what the dot sits on,
+     which is the button. */
+  background: var(--brand-on);
+  opacity: .55;
 }
-.sign-in-pill.signed-in .sip-dot { background: var(--ok-lift); }
+.sign-in-pill.signed-in .sip-dot { background: var(--ok-lift); opacity: 1; }
 .sign-in-pill .sip-label,
 .project-switcher .ps-label {
   overflow: hidden;
@@ -1140,7 +1170,7 @@ a:focus-visible { outline-offset: 3px; }
 }
 .project-switcher:hover { background: var(--chrome-fill); border-color: var(--chrome-ink); }
 .project-switcher .ps-caret { opacity: .6; }
-.project-switcher.empty { color: var(--panel-gilt); border-color: var(--panel-gilt); }
+.project-switcher.empty { color: var(--danger); border-color: var(--danger); }
 
 .switcher-dropdown {
   position: absolute;
@@ -1216,7 +1246,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-display);
   font-size: clamp(var(--t-2xl), 4vw, var(--t-3xl));
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-h2-style);
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
 }
@@ -1307,7 +1337,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   line-height: var(--lh-tight);
   color: var(--ink);
 }
@@ -1320,7 +1350,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   color: var(--ink);
 }
 .project-card .pc-meta {
@@ -1416,7 +1446,7 @@ a:focus-visible { outline-offset: 3px; }
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   color: var(--ink);
 }
 .empty-projects-state .eps-deck {
@@ -1855,7 +1885,7 @@ a:focus-visible { outline-offset: 3px; }
   }
   .mobile-actionbar button:hover,
   .mobile-actionbar a:hover { background: var(--chrome-fill); }
-  .mobile-actionbar .mab-icon { font-size: var(--t-small); line-height: 1; color: var(--panel-gilt); }
+  .mobile-actionbar .mab-icon { font-size: var(--t-small); line-height: 1; color: var(--chrome-accent); }
   body.has-mobile-actionbar { padding-bottom: var(--s8); }
   body.has-mobile-actionbar .save-indicator,
   body.has-mobile-actionbar .toast-host { bottom: var(--s9); }
@@ -1933,6 +1963,14 @@ a:focus-visible { outline-offset: 3px; }
      bar that wrapped to two rows could never return to one. */
   --sh-bar-min: 56px;
   --sh-bar-h:   56px;
+  /* The brand plate above the bar. Declared here with the plate's
+     one-line height rather than 0, for the documented reason a skin
+     declares its defaults on bare :root: shell.js republishes this,
+     and .sh-bar parks on it, so the value has to be right for the
+     paint BEFORE the JS has measured anything. At 0 the bar would
+     start on top of the plate and drop into place. */
+  --sh-plate-min: 38px;
+  --sh-plate-h:   38px;
   /* A third, and it answers a different question again: --sh-bar-h is
      where the page toolbar parks, --sh-chrome-h is how much of the top
      of the viewport the whole pinned stack covers. shell.js measures
@@ -2048,19 +2086,34 @@ html {
    also 1px less chrome above every text field. */
 .sh-bar {
   position: sticky;
-  top: 0;
+  top: var(--sh-plate-h);
   z-index: var(--z-toolbar);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--s2);
   min-height: var(--sh-bar-min);
-  padding: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
   background: var(--chrome);
   color: var(--chrome-ink);
-  border-bottom: 0;
+  /* The band is white in the light theme, so it needs an edge against
+     the page: the old `border-bottom: 0` was correct when band and
+     page were a dark surface meeting a dark one. */
+  border-bottom: 1px solid var(--chrome-hair);
 }
-.sh-phases { display: flex; flex-wrap: wrap; gap: var(--s1); min-width: 0; }
+/* The phase pills take the middle of the band, which puts the
+   breadcrumb on the left and the page's own controls on the right —
+   the three-part nav this design is built around. `auto` margins
+   rather than justify-content, so the group still collapses to the
+   left when the bar wraps on a narrow screen instead of stranding
+   itself in the middle of a row of its own. */
+.sh-phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  min-width: 0;
+  margin-inline: auto;
+}
 
 /* ============================================================
    YOU ARE HERE — the breadcrumb
@@ -2194,14 +2247,18 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   align-items: center;
   gap: var(--s2);
   min-height: 36px;
-  padding: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
   background: none;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   color: var(--chrome-muted);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  /* The body sans at a readable size, not 11px tracked-out mono. A
+     nav label is a word you read, and mono tracking is for columns of
+     figures. */
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: normal;
   text-transform: none;
   cursor: pointer;
 }
@@ -2345,7 +2402,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
    verify did not catch this: it measures overflow with every menu shut.
    Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
 @media (max-width: 719px) {
-  .sh-bar { position: relative; }
+  .sh-bar { position: relative; top: auto; }
+  /* Relative, which is also what makes measureBar() publish a plate
+     height of 0 here: nothing is pinned, so nothing parks on it. */
+  .sh-plate { position: relative; top: auto; }
   .sh-phase { position: static; }
   .sh-phase-menu {
     left: var(--s3);
@@ -2376,7 +2436,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 }
 
 @media print {
-  .sh-rail, .sh-bar, .sh-scrim { display: none !important; }
+  .sh-rail, .sh-bar, .sh-scrim, .sh-plate { display: none !important; }
   body.has-sh-shell { padding-left: 0 !important; }
 }
 
@@ -2477,4 +2537,94 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   min-width: 34px;
   padding-inline: var(--s2);
   text-align: center;
+}
+
+
+/* ============================================================
+   THE BRAND PLATE
+   ------------------------------------------------------------
+   One line above the navigation: what is new, and where to go for
+   it. Purple in BOTH themes — it is the product's plate, not the
+   page's ground, which is the same reasoning that keeps --panel dark
+   in both. Its three colours are therefore constant tokens
+   (--brand-bar, --brand-bar-ink, --brand-bar-accent) and must not be
+   routed through anything that inverts.
+
+   The dots advance it. Nothing else does, and shell.js explains why
+   at buildPlate(): a strip that cycles on a timer is a clock, in the
+   one place that appears on every page, and the gate compares each
+   page's words against a baseline captured once.
+   ============================================================ */
+.sh-plate {
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--z-toolbar) + 2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  min-height: var(--sh-plate-min);
+  padding: var(--s2) var(--s4);
+  background: linear-gradient(90deg, var(--brand-bar) 0%, var(--brand-bar-2) 55%, var(--brand-bar) 100%);
+  color: var(--brand-bar-ink);
+}
+.sh-plate-slides { min-width: 0; }
+.sh-plate-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  color: inherit;
+  text-decoration: none;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.sh-plate-item:hover .sh-plate-text { text-decoration: underline; }
+.sh-plate-item:hover .sh-plate-arrow { transform: translateX(2px); }
+.sh-plate-flag {
+  flex: none;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  font-size: var(--t-micro);
+  color: var(--brand-bar-accent);
+}
+/* Clipped rather than wrapped: the plate is parked on a measured
+   height and the bar below it is parked on that measurement, so a
+   message that wraps to three lines on a phone would push the whole
+   navigation down the screen. */
+.sh-plate-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sh-plate-arrow { flex: none; transition: transform var(--speed) var(--ease); }
+.sh-plate-dots { display: flex; align-items: center; gap: 5px; flex: none; }
+/* One dot is a control that can do nothing. */
+.sh-plate-dots:has(.sh-plate-dot:only-child) { display: none; }
+.sh-plate-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand-bar-ink) 38%, transparent);
+  cursor: pointer;
+  transition: background var(--speed) var(--ease), width var(--speed) var(--ease);
+}
+.sh-plate-dot:hover { background: color-mix(in srgb, var(--brand-bar-ink) 70%, transparent); }
+.sh-plate-dot.is-on { width: 18px; border-radius: var(--radius-pill); background: var(--brand-bar-ink); }
+/* The dots are the one target here small enough to need help on a
+   phone, and a 7px circle is below every pointer guideline. The tap
+   area is grown without growing the plate. */
+@media (pointer: coarse) {
+  .sh-plate-dot { position: relative; }
+  .sh-plate-dot::after { content: ""; position: absolute; inset: -9px; }
+}
+@media (max-width: 559px) {
+  .sh-plate { gap: var(--s2); padding-inline: var(--s3); }
+  .sh-plate-flag { display: none; }
 }

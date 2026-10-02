@@ -1434,11 +1434,19 @@ function refreshAll() {
   updatePalette();
 }
 
+/* A CLASS, NOT AN INLINE COLOUR, and this is the trap CLAUDE.md names:
+   an inline style beats every stylesheet, so these two lines quietly
+   defeated the save indicator's own rule in chrome.css. They were
+   --paper (white on the dark band) and --panel-gilt (pale gold on it),
+   which was right while the band was dark and wrong the moment it went
+   white: the gate measured "saving..." at 1:1 and "saved · just now" at
+   1.77:1 on the light theme. The state is state; the colour for it
+   belongs to the sheet that owns the surface. */
 function debouncedSave() {
   clearTimeout(saveTimer);
   if (statusEl) {
     statusEl.textContent = '●  saving...';
-    statusEl.style.color = 'var(--paper)';
+    statusEl.classList.add('is-busy');
   }
   saveTimer = setTimeout(saveData, 400);
 }
@@ -1446,11 +1454,12 @@ function debouncedSave() {
 function flashStatus(msg) {
   if (!statusEl) return;
   statusEl.textContent = msg;
-  statusEl.style.color = 'var(--panel-gilt)';
+  statusEl.classList.add('is-busy');
 }
 
 function updateSavedAtTimer() {
   if (!savedAt || !statusEl) return;
+  statusEl.classList.remove('is-busy');
   const sec = Math.floor((Date.now() - savedAt) / 1000);
   let text = '●  saved · just now';
   if (sec >= 60 && sec < 3600) text = `●  saved · ${Math.floor(sec / 60)}m ago`;

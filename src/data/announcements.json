@@ -1,0 +1,40 @@
+{
+  "_about": [
+    "The brand plate at the very top of every page. Content, so it lives",
+    "here rather than in markup — invariant 2 — and a destination is a",
+    "real href in the app, checked against navigation.json by hand when",
+    "you add one. A plate pointing at a module that does not exist is",
+    "worse than no plate.",
+    "",
+    "IT DOES NOT ROTATE ON A TIMER, AND THAT IS DELIBERATE. The verify",
+    "gate captures each page's visible words and fails a later run for",
+    "words that have gone missing; text that changes by itself is a",
+    "clock, and CLAUDE.md records what a clock costs — a baseline taken",
+    "on 29 September failed on the 30th over festival countdowns. A",
+    "timed carousel would have put three messages into rotation and only",
+    "one of them into the baseline. So index 0 is what every load shows",
+    "and the dots advance it only when somebody clicks."
+  ],
+  "items": [
+    {
+      "flag": "New",
+      "text": "Draft a shot division from your script — bring your own API key",
+      "href": "visualize.html"
+    },
+    {
+      "flag": "New",
+      "text": "Import a Fountain, FDX or plain screenplay and fill the scene model with it",
+      "href": "write.html"
+    },
+    {
+      "flag": "Updated",
+      "text": "The budget now derives shoot days, scenes and pages from your scenes",
+      "href": "budget.html"
+    },
+    {
+      "flag": "Note",
+      "text": "Chennai camera rates checked against a rental house; crew rates have no union floor to quote",
+      "href": "library.html#rates"
+    }
+  ]
+}

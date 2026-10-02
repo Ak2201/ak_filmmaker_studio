@@ -6,12 +6,18 @@
    its own body.dark override list — roughly 2,400 lines of
    near-identical CSS that drifted apart page by page.
 
-   Three themes, and the distinction matters: the viewer may have
-   chosen light, chosen dark, or (the default) chosen nothing at
-   all. So the bare :root carries the COMPLETE light palette,
-   prefers-color-scheme redefines it for the un-chosen state, and
-   [data-theme] wins over both. Sepia is a deliberate third mode
-   for long writing sessions, not a variant of either.
+   TWO themes, and LIGHT is the default one. The bare :root carries
+   the COMPLETE light palette and [data-theme] wins over it, which
+   means the bare block and the [data-theme="light"] block hold the
+   same values on purpose: one is what the app renders before anyone
+   has chosen, the other is what an explicit choice of light has to
+   beat a prefers-color-scheme-dark OS with. Dark restates every
+   value it changes rather than inheriting — see the chrome family
+   in that block for what inheriting cost.
+
+   The palette is a violet one. Ground is a lavender-tinted white,
+   surfaces are plain white, and the product's own colour is --brand,
+   which is a seventh hue alongside the six that mean a phase.
 
    Components must never read a raw hex. If a value is missing
    here, add it here.
@@ -19,16 +25,19 @@
 
 :root {
   /* ---- ink & paper -------------------------------------- */
-  /* Warm bond paper rather than the old #f5ecd6, which was
-     saturated enough to tint photographs and lookbook swatches. */
-  --paper:        #15171a;
-  --paper-raised: #1d2024;
-  --paper-sunk:   #0f1113;
-  --paper-edge:   #2a2e34;
+  /* A lavender-tinted white page with plain white surfaces on top of
+     it. The tint is what stops a white card on a white page from
+     needing a heavy border to be a card at all: --paper-raised is
+     lighter than --paper, so depth comes from luminance and the
+     border can stay a hairline. */
+  --paper:        #f7f5fc;
+  --paper-raised: #ffffff;
+  --paper-sunk:   #f1eefa;
+  --paper-edge:   #e4dff3;
 
-  --ink:          #e8eaed;
-  --ink-body:     #c9ccd1;
-  --ink-muted:    #9097a0;
+  --ink:          #171233;
+  --ink-body:     #3f3960;
+  --ink-muted:    #615a7d;
   /* --ink-faint IS NOT A TEXT COLOUR. Read this before reaching for it.
 
      It was one, in 41 rules across thirteen stylesheets, and it clears
@@ -57,68 +66,96 @@
      secondary. If two kinds of secondary text need to be told apart,
      that is a job for size, weight or case — not for a fourth grey
      nobody can read. */
-  --ink-faint:    #6b7280;
+  --ink-faint:    #9a93b0;
 
   /* Also not text colours, for the same reason and with worse numbers:
      1.22-1.82:1 across the four themes. A hairline is a hairline. */
-  --rule:         #343a42;
-  --rule-hair:    #23272c;
+  --rule:         #ded8ef;
+  --rule-hair:    #ebe7f7;
 
   /* ---- the three volumes -------------------------------- */
   /* Each blueprint owns a hue. Used for the spine stripe, step
      numbers, progress fills and the hub's door cards. */
-  --feature:      #e05340;
-  --feature-deep: #f08a72;
-  --feature-wash: #2a1a16;
+  --feature:      #6d28d9;
+  --feature-deep: #5b21b6;
+  --feature-wash: #ede9fe;
 
-  --shorts:       #3b82c4;
-  --shorts-deep:  #7fb8e8;
-  --shorts-wash:  #152430;
+  --shorts:       #2563eb;
+  --shorts-deep:  #1d4ed8;
+  --shorts-wash:  #e3ebfe;
 
-  --library:      #b98b2e;
-  --library-deep: #e0b86a;
-  --library-wash: #2a2315;
+  --library:      #8f5a07;
+  --library-deep: #6f4506;
+  --library-wash: #fdf1d6;
 
   /* ---- three more, for the six-phase spine ----------------
      develop / write / breakdown reuse the volume hues that
      already exist; visualize / plan / shoot are new. Chosen to
      stay clear of --ok (green) and --warn (amber), because a
      phase colour must never read as a status. */
-  --visualize:      #8a6ad6;
-  --visualize-deep: #b89ce8;
-  --visualize-wash: #1f1b2e;
+  --visualize:    #b21ec4;
+  --visualize-deep: #951aa4;
+  --visualize-wash: #fae8ff;
 
-  --plan:           #2b94ad;
-  --plan-deep:      #6fc6d9;
-  --plan-wash:      #11262c;
+  --plan:         #0f766e;
+  --plan-deep:    #0d5f58;
+  --plan-wash:    #d7f1ee;
 
-  --shoot:          #d05d92;
-  --shoot-deep:     #e890b4;
-  --shoot-wash:     #2b1622;
+  --shoot:        #c71e66;
+  --shoot-deep:   #a81854;
+  --shoot-wash:   #fde3ee;
 
   /* ---- lifted volume hues ---------------------------------
      The editorial panels (.formula-box, .step-check, .example,
      .final-page, pitch slides …) are dark in EVERY theme, so the
      volume hues need a version that stays legible on near-black.
      These are constant across themes for exactly that reason. */
-  --feature-lift:   #e08a6d;
-  --shorts-lift:    #71a6dd;
-  --library-lift:   #d9ab5c;
-  --visualize-lift: #b394e0;
-  --plan-lift:      #63b6cc;
-  --shoot-lift:     #d183b0;
-  --ok-lift:      #5fbc99;
-  --danger-lift:  #e58471;
+  --feature-lift: #b69bfb;
+  --shorts-lift:  #93c5fd;
+  --library-lift: #e8c384;
+  --visualize-lift: #f0abfc;
+  --plan-lift:    #7fe8da;
+  --shoot-lift:   #f9a8d4;
+  --ok-lift:      #6ee7b7;
+  --danger-lift:  #fca5a5;
 
   /* ---- semantic (never the same hue as a volume) --------- */
-  --ok:           #2e9e74;
-  --ok-deep:      #6ed3a8;   /* the TEXT variant; --ok is a fill */
-  --ok-wash:      #112620;
-  --warn:         #c08a1e;
-  --warn-deep:    #dcae53;   /* --warn as text was 3.52:1 in desk */
-  --warn-wash:    #2a2111;
-  --danger:       #e8604a;
-  --danger-wash:  #2c1613;
+  --ok:           #15803d;
+  --ok-deep:      #166534;   /* the TEXT variant; --ok is a fill */
+  --ok-wash:      #dcf5e4;
+  --warn:         #a04c08;
+  --warn-deep:    #7f3c06;   /* --warn as text was 3.52:1 in desk */
+  --warn-wash:    #fdf0d9;
+  --danger:       #c62828;
+  --danger-wash:  #fde4e2;
+
+  /* ---- the brand hue -------------------------------------
+     The six hues above each mean a PHASE, and the gate holds them
+     apart for that reason. This one means the PRODUCT: the nav's
+     primary action, the hub, the announcement strip, and every eyebrow
+     on a page that belongs to no single phase. A seventh hue rather
+     than a reuse of --visualize, because the day visualize shifts to
+     tell itself apart from plan is not the day the primary button
+     should change colour.
+
+     --brand-bar is the one surface that is purple in EVERY theme, for
+     the same reason --panel is dark in every theme: it is a brand
+     plate, not a page ground. Its ink is therefore constant too, and
+     deliberately NOT routed through --on-fill, which inverts. */
+  --brand:            #6d28d9;
+  --brand-deep:       #5b21b6;
+  --brand-wash:       #ede9fe;
+  --brand-lift:       #b69bfb;
+  /* Routed through --on-fill like the six hues, NOT stated as white.
+     White is right on the light theme's fill and wrong on the dark
+     theme's, which is lighter — the gate measured the dark fill at
+     4.23:1 with white on it and 4.46:1 with near-black, which is to
+     say it was the fill that was wrong rather than the text. */
+  --brand-on:         var(--on-fill);
+  --brand-bar:        #4c1d95;
+  --brand-bar-2:      #6d28d9;
+  --brand-bar-ink:    #f4f0fe;
+  --brand-bar-accent: #fbbf24;
 
   /* ---- per-page accent ----------------------------------
      Each page sets --accent once, on <html data-volume="...">.
@@ -136,16 +173,17 @@
      time, so the colour silently fell back to the inherited one and
      landed on its own background: a door numeral at exactly 1:1. A
      cycle does not warn; it just makes text disappear. */
-  --on-fill:      #0f1113;
+  --on-fill:      #ffffff;
   --accent-on:    var(--on-fill);   /* text ON an accent fill */
 
-  /* Text ON each hue used as a FILL. Mostly --accent-on, because five
-     of the six hues are dark enough for near-white. Amber is not: in
-     the Desk palette --library is #d99512, and white on it is 2.4:1 —
-     the launcher's phase tiles and the hub's door numerals were both
-     unreadable there. A hue used as a fill needs a stated on-colour;
-     "the accent's on-colour" is an assumption that holds until one
-     hue gets bright. */
+  /* Text ON each hue used as a FILL. All six route to --accent-on
+     here, and that is a property of this palette rather than a law:
+     every fill was chosen so white clears 4.5:1 on it, which is why
+     --library is #8f5a07 and not the brighter amber a swatch would
+     prefer. The indirection stays because the moment one hue is
+     brightened for looks, that hue needs its own on-colour and this
+     is where it says so — "the accent's on-colour" is an assumption
+     that holds only until somebody picks a yellow. */
   --feature-on:   var(--on-fill);
   --shorts-on:    var(--on-fill);
   --library-on:   var(--on-fill);
@@ -162,25 +200,43 @@
      surface in light and sepia; in dark they lift off the page
      instead of inverting. Declared here so no component ever
      re-states a colour for a theme. */
-  --chrome:             #0e1012;
-  --chrome-ink:         #f6f1e6;
-  --chrome-muted:       #a8a091;
-  --chrome-hair:        rgba(232, 234, 237, .12);
-  --chrome-hair-strong: rgba(246, 241, 230, .30);
-  --chrome-fill:        rgba(232, 234, 237, .08);
-  --chrome-fill-strong: rgba(246, 241, 230, .18);
+  --chrome:       #ffffff;
+  --chrome-ink:   #171233;
+  --chrome-muted: #615a7d;
+  --chrome-hair:  rgba(23, 18, 51, .10);
+  --chrome-hair-strong: rgba(23, 18, 51, .22);
+  --chrome-fill:  rgba(109, 40, 217, .08);
+  --chrome-fill-strong: rgba(109, 40, 217, .15);
+  /* THE ACCENT ON THE CHROME SURFACE, and it has to be its own token
+     rather than --brand-deep, because the band is white in the light
+     theme and near-black in the dark one. Eight rules in chrome.css
+     used --panel-gilt for this — the toolbar's brand, the search
+     count, the empty project switcher, the mobile bar's icons. That
+     was correct for exactly as long as the chrome and the panel were
+     both dark surfaces; the day the band went white, --panel-gilt on
+     it measured 1.5:1. Same shape of bug as the slab widgets in
+     _contract.css: a widget reaching past its surface's own token for
+     one that happens to agree with it. */
+  --chrome-accent:      var(--brand-deep);
 
   /* ---- dark editorial panel ------------------------------
      Ink-on-paper contrast blocks. Dark in every theme. */
-  --panel:            #16130f;
-  --panel-raised:     #221e18;
-  --panel-ink:        #f2ead8;
-  --panel-muted:      #a29885;
-  --panel-hair:       rgba(242, 234, 216, .14);
-  --panel-hair-soft:  rgba(242, 234, 216, .07);
-  --panel-gilt:       var(--library-lift);
+  --panel:        #1a1430;
+  --panel-raised: #251d42;
+  --panel-ink:    #f1eefb;
+  --panel-muted:  #a79fc4;
+  --panel-hair:   rgba(241, 238, 251, .14);
+  --panel-hair-soft: rgba(241, 238, 251, .07);
+  /* Violet, not gold: --panel is the floating-surface family now — the
+     toast, the tooltip, the popover, the phase menu — and its accent
+     is the BRAND's, which is violet in both themes. Pointed at
+     --brand-lift rather than --visualize-lift, which is where it
+     briefly sat: visualize is fuchsia, so that would have given every
+     tooltip in the app a phase's colour for no reason. 10.0:1 on
+     --panel. */
+  --panel-gilt:       var(--brand-lift);
 
-  --scrim: rgba(10, 12, 14, .72);
+  --scrim:        rgba(23, 18, 51, .55);
 
   /* ---- type --------------------------------------------- */
   /* The raw stacks, and then the two SEMANTIC faces that point at
@@ -201,8 +257,8 @@
      names the body sans. No Tamil webfont: Tanglish in this
      codebase is romanised Tamil in the Latin alphabet, so the Latin
      faces already cover it. */
-  --face-serif:   'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
-  --face-display: 'Bricolage Grotesque', 'Instrument Sans', ui-sans-serif, sans-serif;
+  --face-serif:   'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --face-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
@@ -230,7 +286,7 @@
 
   --track-label: 0.15em;   /* uppercase mono labels */
   --track-wide:  0.32em;   /* cover stamps, phase eyebrows */
-  --track-tight: -0.022em; /* display headings */
+  --track-tight:  -0.03em; /* display headings */
 
   /* ---- space (4px base) --------------------------------- */
   --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
@@ -238,17 +294,17 @@
   --s9: 96px;  --s10: 128px;
 
   /* ---- edges & elevation -------------------------------- */
-  --radius:      2px;      /* the studio is printed matter, not iOS */
-  --radius-lg:   4px;
+  --radius:       10px;      /* the studio is printed matter, not iOS */
+  --radius-lg:    18px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, .46);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, .54);
+  --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
+  --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
+  --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
   /* Panels and overlays are dark in every theme, so their shadow
      is constant too — a themed shadow under a constant surface
      was one of the drifts in the old files. */
-  --shadow-panel: 0 12px 36px rgba(0, 0, 0, .35);
-  --shadow-modal: 0 30px 80px rgba(0, 0, 0, .35);
+  --shadow-panel: 0 18px 48px rgba(16, 10, 34, .30);
+  --shadow-modal: 0 36px 90px rgba(16, 10, 34, .34);
   --blur-chrome:  saturate(180%) blur(20px);
 
   --measure:       68ch;   /* max line length for running text */
@@ -292,45 +348,50 @@
 
 
 /* ============================================================
-   DARK — "ink". Not an inversion: the paper becomes a graded
-   print viewed on a monitor, so the accents lift in lightness
-   and drop in saturation to stay legible on a dark ground.
+   DARK — the alternate. Not an inversion of the light palette: the
+   ground keeps the violet cast but the hues go UP in lightness,
+   because a hue that reads as deep on white reads as a hole on
+   near-black. Every value the light default sets and dark changes is
+   restated below, including the whole chrome family.
    ============================================================ */
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper:        #15171a;
-  --paper-raised: #1d2024;
-  --paper-sunk:   #0f1113;
-  --paper-edge:   #2a2e34;
+  --paper:        #120f1c;
+  --paper-raised: #1b1727;
+  --paper-sunk:   #0d0b15;
+  --paper-edge:   #2a2440;
 
-  --ink:          #e8eaed;
-  --ink-body:     #c9ccd1;
-  --ink-muted:    #9097a0;
-  --ink-faint:    #6b7280;
+  --ink:          #ece9f6;
+  --ink-body:     #c9c4db;
+  --ink-muted:    #9a94b0;
+  --ink-faint:    #6d6785;
 
-  --rule:         #343a42;
-  --rule-hair:    #23272c;
+  --rule:         #322c48;
+  --rule-hair:    #241f35;
 
-  --feature:      #e05340;
-  --feature-wash: #2a1a16;
+  /* #9575f8 rather than #8b5cf6: --feature-on is --on-fill, which is
+     near-black here, and on #8b5cf6 that measured 4.46:1. A fill is
+     chosen to carry its own on-colour, so the fill moved. */
+  --feature:      #9575f8;
+  --feature-wash: #241a3d;
 
-  --shorts:       #3b82c4;
-  --shorts-wash:  #152430;
+  --shorts:       #60a5fa;
+  --shorts-wash:  #16233c;
 
-  --library:      #b98b2e;
-  --visualize:    #8a6ad6;
-  --plan:         #2b94ad;
-  --shoot:        #d05d92;
-  --library-wash: #2a2315;
+  --library:      #d6a44a;
+  --visualize:    #e879f9;
+  --plan:         #2dd4bf;
+  --shoot:        #f472b6;
+  --library-wash: #2e2415;
   /* The other three washes were never given dark values, so on ink they
      stayed at their :root light tints — a pale block behind light text
      on any page whose accent is visualize, plan or shoot. Three hues
      had a dark wash and three did not, which is the kind of gap a
      palette only reveals on the page that happens to use it. */
-  --visualize-wash: #1f1b2e;
-  --plan-wash:      #11262c;
-  --shoot-wash:     #2b1622;
+  --visualize-wash: #2e1030;
+  --plan-wash:    #11302c;
+  --shoot-wash:   #33182a;
 
   /* "Deep" means the emphatic version of a hue AGAINST THE GROUND, and
      on ink the ground is dark — so deep has to go lighter, not darker.
@@ -339,86 +400,121 @@
      gloss rendered dark-on-dark. --accent-deep resolves from these
      through [data-volume] and [data-phase], so this is the one place
      the whole family is fixed. */
-  --feature-deep:   #f08a72;
-  --shorts-deep:    #7fb8e8;
-  --library-deep:   #e0b86a;
-  --visualize-deep: #b89ce8;
-  --plan-deep:      #6fc6d9;
-  --shoot-deep:     #e890b4;
+  --feature-deep: #b69bfb;
+  --shorts-deep:  #93c5fd;
+  --library-deep: #e8c384;
+  --visualize-deep: #f0abfc;
+  --plan-deep:    #7fe8da;
+  --shoot-deep:   #f9a8d4;
 
-  --ok:           #2e9e74;
-  --ok-deep:      #6ed3a8;
-  --ok-wash:      #112620;
-  --warn:         #c08a1e;
-  --warn-deep:    #dcae53;
-  --warn-wash:    #2a2111;
-  --danger:       #e8604a;
-  --danger-wash:  #2c1613;
+  --ok:           #34d399;
+  --ok-deep:      #6ee7b7;
+  --ok-wash:      #102b22;
+  --warn:         #d6a44a;
+  --warn-deep:    #e8c384;
+  --warn-wash:    #2e2415;
+  --danger:       #f87171;
+  --danger-wash:  #341a1c;
 
-  --on-fill:      #0f1113;
+  --on-fill:      #120f1c;
 
-  --chrome:       #0e1012;
-  --chrome-hair:  rgba(232, 234, 237, .12);
-  --chrome-fill:  rgba(232, 234, 237, .08);
-  --scrim:        rgba(10, 12, 14, .72);
+  /* THE BRAND, RESTATED FOR THE DARK GROUND — and this is what the
+     gate caught. --brand-deep is the brand as TEXT, and without these
+     four lines it stayed at the light theme's #5b21b6 on every dark
+     page: measured 1.95-2.1:1 on three of them, the shortcut sheet's
+     heading, the budget's eyebrow and the dashboard's inline link.
+     It reached all of them through one hop, because [data-volume] is
+     declared after [data-phase] in this file, so `studio` wins and
+     --accent-deep IS --brand-deep on thirteen pages.
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, .46);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, .54);
+     Same trap as the chrome family below, one hue further in: a token
+     declared once on bare :root has only the default theme's value. */
+  --brand:        #9575f8;
+  --brand-deep:   #b69bfb;
+  --brand-wash:   #241a3d;
+  --brand-lift:   #b69bfb;
+
+  /* THE NAV BAND IS LIGHT NOW, SO DARK HAS TO SAY IT IS DARK.
+     The chrome family used to be declared once, on bare :root, and
+     inherited by both themes, because the band was dark in all of
+     them. It is white in the light theme now — so all seven have to be
+     restated here, not just the three that used to differ. Inheriting
+     the other four is how the dark theme would have ended up with a
+     white band carrying white text. */
+  --chrome:             #16121f;
+  --chrome-ink:         #f3f0fb;
+  --chrome-muted:       #a49dbb;
+  --chrome-hair:        rgba(243, 240, 251, .12);
+  --chrome-hair-strong: rgba(243, 240, 251, .28);
+  --chrome-fill:        rgba(243, 240, 251, .08);
+  --chrome-fill-strong: rgba(243, 240, 251, .16);
+  --chrome-accent:      var(--brand-lift);
+  --scrim:        rgba(9, 7, 16, .72);
+
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
+  --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
 }
 
 /* ============================================================
-   LIGHT — the one alternate. Dark is the default now, so this is
-   the override rather than the base: a cool neutral ground, not the
-   warm bond paper it replaced. Two themes, both of which have to
-   hold 4.5:1 on every text node the AA walk reaches.
+   LIGHT — the default, restated. Identical to the bare :root above,
+   and the duplication is the point: bare :root is what renders
+   before anyone chooses, and this block is what an explicit choice
+   of light needs in order to win. Keep the two in step — a value
+   changed in one and not the other produces a page that is correct
+   until the viewer touches the theme picker.
    ============================================================ */
 :root[data-theme="light"] {
   color-scheme: light;
-  --paper:        #f4f5f7;
+  --paper:        #f7f5fc;
   --paper-raised: #ffffff;
-  --paper-sunk:   #e9ebee;
-  --paper-edge:   #dcdfe4;
-  --ink:          #15171a;
-  --ink-body:     #35393f;
-  --ink-muted:    #5c636d;
-  --ink-faint:    #8b929c;
-  --rule:         #c6cad1;
-  --rule-hair:    #dfe2e7;
-  --feature:      #c23a22;
-  --feature-deep: #8e2714;
-  --feature-wash: #fbe6e1;
-  --shorts:       #2a6ca8;
-  --shorts-deep:  #1b4a76;
-  --shorts-wash:  #e3edf7;
-  --library:      #96701f;
-  --library-deep: #6e5214;
-  --library-wash: #f7eeda;
-  --visualize:      #6b4bb8;
-  --visualize-deep: #4b3384;
-  --visualize-wash: #ece6f8;
-  --plan:           #17707f;
-  --plan-deep:      #0f4e59;
-  --plan-wash:      #ddeef1;
-  --shoot:          #a22f66;
-  --shoot-deep:     #74204a;
-  --shoot-wash:     #f9e2ec;
-  --ok:           #1d6a4f;
-  --ok-deep:      #14503b;
-  --ok-wash:      #dff0e8;
-  --warn:         #8a5d0c;
-  --warn-deep:    #65430a;
-  --warn-wash:    #f8eeda;
-  --danger:       #ab2d1c;
-  --danger-wash:  #fbe3df;
+  --paper-sunk:   #f1eefa;
+  --paper-edge:   #e4dff3;
+  --ink:          #171233;
+  --ink-body:     #3f3960;
+  --ink-muted:    #615a7d;
+  --ink-faint:    #9a93b0;
+  --rule:         #ded8ef;
+  --rule-hair:    #ebe7f7;
+  --feature:      #6d28d9;
+  --feature-deep: #5b21b6;
+  --feature-wash: #ede9fe;
+  --shorts:       #2563eb;
+  --shorts-deep:  #1d4ed8;
+  --shorts-wash:  #e3ebfe;
+  --library:      #8f5a07;
+  --library-deep: #6f4506;
+  --library-wash: #fdf1d6;
+  --visualize:    #b21ec4;
+  --visualize-deep: #951aa4;
+  --visualize-wash: #fae8ff;
+  --plan:         #0f766e;
+  --plan-deep:    #0d5f58;
+  --plan-wash:    #d7f1ee;
+  --shoot:        #c71e66;
+  --shoot-deep:   #a81854;
+  --shoot-wash:   #fde3ee;
+  --ok:           #15803d;
+  --ok-deep:      #166534;
+  --ok-wash:      #dcf5e4;
+  --warn:         #a04c08;
+  --warn-deep:    #7f3c06;
+  --warn-wash:    #fdf0d9;
+  --danger:       #c62828;
+  --danger-wash:  #fde4e2;
   --on-fill:      #ffffff;
-  --chrome:             #15171a;
-  --chrome-hair:        rgba(244, 245, 247, .14);
-  --chrome-fill:        rgba(244, 245, 247, .09);
-  --scrim: rgba(21, 23, 26, .58);
-  --shadow-sm: 0 1px 2px rgba(21, 23, 26, .07);
-  --shadow-md: 0 2px 8px rgba(21, 23, 26, .09);
-  --shadow-lg: 0 8px 28px rgba(21, 23, 26, .12);
+  --chrome:             #ffffff;
+  --chrome-ink:         #171233;
+  --chrome-muted:       #615a7d;
+  --chrome-hair:        rgba(23, 18, 51, .10);
+  --chrome-hair-strong: rgba(23, 18, 51, .22);
+  --chrome-fill:        rgba(109, 40, 217, .08);
+  --chrome-fill-strong: rgba(109, 40, 217, .15);
+  --chrome-accent:      var(--brand-deep);
+  --scrim:        rgba(23, 18, 51, .55);
+  --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
+  --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
+  --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
 }
 
 /* ============================================================
@@ -475,7 +571,10 @@
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }
 [data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
-[data-volume="studio"]  { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
+/* The studio itself is not one of the six phases, so it takes the brand
+   hue rather than borrowing the library's amber. This one line is what
+   paints the hub. */
+[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); }
 
 /* Volume II of the feature blueprint (production) switches accent
    mid-document. It is the one in-page accent change in the studio,

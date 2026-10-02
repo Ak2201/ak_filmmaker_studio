@@ -49,8 +49,8 @@
    3. Use TOKENS for colour, never literals. A skin that hard-codes a
       hex value is a skin that breaks in sepia. (Writing one here
       would also trip the raw-colour grep in CLAUDE.md, which does not
-      read comments — hence the prose.) The three themes
-      (paper / sepia / ink) are orthogonal to the skin: theme picks
+      read comments — hence the prose.) The two themes
+      (light / dark) are orthogonal to the skin: theme picks
       the palette, skin picks the shapes and the type. Both must
       work in all combinations, which is why colour here is always
       var(--something).
@@ -115,4 +115,28 @@
    --sk-btn-radius, separate from --sk-radius because a pill button
    beside a square card is a real combination and one radius cannot
    express it.
+
+   And four more, for the same reason and worth reading as a worked
+   example of rule 4. The eyebrow — the small label above a heading,
+   drawn by one rule in modules.css for twenty-five different
+   selectors — was mono, uppercase, --t-micro, with only its tracking
+   exposed. A sentence-case sans eyebrow is a different design, and
+   the only way to get one was to edit the rule that draws it, which
+   would have made the choice unskinnable for every future skin.
+   So the rule now reads:
+
+     --sk-eyebrow-face       the face. Mono for a labelled,
+                             instrument-panel look; the body sans for
+                             a product one.
+     --sk-eyebrow-transform  uppercase or none. Pair with the
+                             tracking: tracked-out lowercase is a
+                             mistake, not a style.
+     --sk-eyebrow-size       --t-micro reads as a caption at 11px,
+                             which is right for a caps label and too
+                             small for a sentence.
+     --sk-eyebrow-track      was already here.
+
+   The ONE eyebrow on a dark ground (.phase .label) keeps its own
+   colour override in modules.css, which is a colour question rather
+   than a shape one and so is not a skin's business.
    ============================================================ */

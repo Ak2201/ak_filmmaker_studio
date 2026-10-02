@@ -390,6 +390,17 @@ function heroMarkup() {
 
         <p class="hero-deck">Three companion blueprints, one reference library. Build a <em>feature</em>, draft a <em class="s">short</em>, study the <em class="g">craft</em> — all from one desk.</p>
 
+        <!-- Two destinations, one of them filled. Both are sections of
+             this page that the toolbar already links to, so this adds a
+             pair of buttons rather than a pair of pages: the hub's own
+             nav is a row of six quiet links and nothing in the hero
+             said what to do first. One CTA per view is the rule in
+             modules.css, which is why only the first is .primary. -->
+        <div class="hero-cta">
+          <a class="btn primary" href="#doors">Explore the blueprints<span class="arrow" aria-hidden="true">→</span></a>
+          <a class="btn" href="#start">How it works</a>
+        </div>
+
         <div class="resume-card" id="resumeCard">
           <div class="lab">PICK UP WHERE YOU LEFT OFF</div>
           <!-- No inline colour here. This element carried an inline

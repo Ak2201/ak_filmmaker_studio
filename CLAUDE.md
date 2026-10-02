@@ -152,15 +152,60 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. This rule previously claimed there were zero raw
-colours outside that file; there were nine, and a claim nobody can verify stops
-being enforceable. The real position, with the two intended exceptions:
+Every colour is a token. **The palette is violet**: a lavender-tinted page,
+plain white surfaces, and `--brand` — a seventh hue beside the six that mean a
+phase — for the product's own voice. `[data-volume="studio"]` points `--accent`
+at it, which is the one line that paints the hub.
 
-- `src/styles/chrome-injected.css` — nine colour declarations (three hex, six
-  `rgba()`). It is a verbatim port of the style string `studio-store.js` used to
-  inject at runtime. The chrome surface is dark in *every* theme while
-  `--danger` is not, so substituting tokens naively would cut contrast in paper.
-  It wants a considered pass, not a find-and-replace.
+Two tokens exist because the surfaces under them moved, and both are worth
+knowing before you reach for a near neighbour:
+
+- **`--brand` is not `--visualize`.** The six hues are held apart by the gate
+  because each means a phase. The brand means the product, so the day visualize
+  shifts to tell itself apart from plan is not the day the primary button
+  changes colour.
+- **`--chrome-accent` is not `--panel-gilt`.** The nav band is **white in the
+  light theme** and near-black in the dark one, so the accent on it cannot be
+  the dark slab's. Eight rules in `chrome.css` used `--panel-gilt` for this and
+  were correct for exactly as long as chrome and panel were both dark; the day
+  the band went white it measured 1.5:1.
+
+**`--panel` and the slab are now two different things.** They used to be one,
+which is why `_contract.css` has a long warning about widgets on the slab
+reaching past `--sk-slab-*` for `--panel-ink`: the two agreed, so the mistake
+was invisible. They no longer agree.
+
+- **`--panel` is the FLOATING family** — toast, tooltip, glossary popover,
+  phase menu, focus timer, the sync instructions' code block. Dark in both
+  themes, deliberately: a dark surface over a light page is how a temporary
+  thing reads as temporary. `--panel-gilt` is its accent and points at
+  `--brand-lift`, so an overlay never wears a phase's colour.
+- **`--sk-slab-*` is the IN-PAGE family** and it follows the theme. The phase
+  bands, the formula boxes, the step checks, the resume and data cards, the
+  budget summary, the pitch slide, the final page, the library's contents
+  cards. A brand-washed tint: lavender in light, deep violet in dark, reached
+  through ordinary page tokens rather than a second palette.
+
+That is why nothing in a slab takes a `*-lift` colour any more. A lift is a hue
+mixed for a ground that is dark *in every theme*, and the slab is not one —
+`--accent-deep` already resolves to the lifted value inside
+`[data-theme="dark"]`, so one token is right on both. If you add a slab widget,
+colour it from `--sk-slab-*` or from `--ink` / `--ink-muted` / `--accent-deep`,
+never from `--panel-*`.
+
+This rule previously claimed there were zero raw colours outside `tokens.css`;
+there were nine, and a claim nobody can verify stops being enforceable. There
+is now **one** intended exception, because the other one closed:
+
+- ~~`src/styles/chrome-injected.css` — nine colour declarations.~~ Gone. That
+  entry justified them: the chrome surface was dark in every theme while
+  `--danger` was not, so naive substitution would have cut contrast in paper,
+  and it wanted a considered pass rather than a find-and-replace. The band is
+  white now, which turned the exception into a bug — `#f5ecd6` on `#ffffff` is
+  1.09:1 — so the considered pass happened, forced rather than volunteered.
+  Every value reads the chrome family; the no-project state reads
+  `--danger-wash` under `--danger` instead of three hand-mixed alphas of one
+  hex; the hard-coded 10px and 1.5px track went with them.
 - The palette picker's seed colours — `palette_c1..c3` in `src/pages/feature.js`
   and the matching swatches in `steps.feature.json`. `<input type="color">`
   requires a hex literal and these are the user's editable starting values.
@@ -230,10 +275,19 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
 - zero `localStorage` writes during four seconds of idle (see the save loop below)
 - zero horizontal overflow at 390px
 - zero console errors
-- the three themes produce three distinct backgrounds. The stylesheets key off
-  `:root[data-theme]`; when `applyTheme()` only set body classes every theme
-  rendered identically and nothing above noticed, because the text, the keys and
-  the handlers are all still correct on a page with the wrong palette.
+- every theme produces a distinct background. The assertion counts themes
+  rather than naming three of them, and reads the list from `themeOrder()` in
+  the app, so dropping one or reordering them needs no change here. There are
+  **two now, and `paper` is the default** — which is three lines in
+  `chrome.js` (`THEME_ORDER`'s first entry, `currentTheme()`'s fallback,
+  `loadTheme()`'s) that have to agree with whichever palette the bare `:root`
+  in `tokens.css` carries. They disagreed once in each direction; both times
+  the picker said one thing and the page rendered another.
+
+  The check exists because the stylesheets key off `:root[data-theme]`: when
+  `applyTheme()` only set body classes every theme rendered identically and
+  nothing above noticed, because the text, the keys and the handlers are all
+  still correct on a page with the wrong palette.
 - the skins: every file in `src/styles/skins/` reached the page, each produces a
   distinct set of `--sk-*` values, and none overflows at 390px. Three
   assertions rather than one because they fail differently — a skin that stops
@@ -472,6 +526,37 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
   phone, permanently. What you need while typing is the fixed bottom action bar
   and the save indicator; the toolbar is one flick up.
+- **A token declared once on bare `:root` has only the DEFAULT theme's
+  value**, and a palette swap is when you find out which tokens those are.
+  Two families were declared in one place because every theme agreed about
+  them, and both broke the moment the themes stopped agreeing:
+
+  - the **chrome** family. `--chrome`, `--chrome-hair` and `--chrome-fill`
+    differed per theme and were overridden; `--chrome-ink`, `--chrome-muted`
+    and the two `-strong` variants were inherited, because the band was dark
+    in every theme. Flipping the light theme's band to white would have given
+    the dark theme a white band carrying white text. All seven are stated in
+    both blocks now.
+  - the **brand** family. `--brand-deep` is the brand as text and stayed at
+    the light theme's `#5b21b6` on every dark page — the gate measured
+    1.95–2.1:1 on the shortcut sheet's heading, the budget's eyebrow and the
+    dashboard's inline link. It reached all three through one hop:
+    `[data-volume]` is declared *after* `[data-phase]` in `tokens.css`, so
+    `studio` wins and `--accent-deep` **is** `--brand-deep` on thirteen pages.
+
+  The tell is a token whose value is a hex rather than a `var()` sitting
+  outside a `[data-theme]` block. The AA walk catches it, which is how both of
+  these were found rather than shipped.
+
+- **A card inside the slab is not a card on the page.** `--sk-slab-fill`
+  exists for an inset surface ON the slab, and the stat strip needed it the
+  day it stopped being a ruled band and became a row of cards: the slab sets
+  `color` on itself and two rules in `widgets.css` opt the numbers back into
+  `--sk-slab-ink`, which is correct only while the item has no surface of its
+  own. Give it a white one and the number renders at 1.14:1 — the same
+  "number gone, label dim" failure those rules were written to fix, arrived at
+  from the opposite direction.
+
 - **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
   matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
   match nothing. When `applyTheme()` set only the classes, all three themes
@@ -804,8 +889,22 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 
 ## Things that are deliberate, not oversights
 
-- `radius: 2px`. The studio is printed matter, not iOS.
-- Sepia is a real third theme for long writing sessions, not a dark variant.
+- ~~`radius: 2px`. The studio is printed matter, not iOS.~~ **Corrected, not
+  contradicted.** The radius is `--sk-radius: 16px` and buttons are pills. That
+  note was true of the design it described — a plate on a page. This design is a
+  working product surface: a card is a panel you act inside, and a 2px corner on
+  a 1px hairline reads as a rendering artefact rather than as a decision. It is
+  one line in one skin file either way, which is the point of the contract.
+- ~~Sepia is a real third theme.~~ Gone, along with desk. Two themes, light
+  (`paper`) and dark (`ink`), and light is the default.
+- The brand plate at the top of every page **does not rotate on a timer**, and
+  that is not a styling preference. Visible text that changes by itself is a
+  clock in the one element that appears on every page, and the gate compares
+  each page's words against a baseline captured once — three messages in
+  rotation, one in the baseline, every later run failing for words that "went
+  missing". The dots advance it on click and nothing else. See
+  `src/data/announcements.json`, which says so where the next person to add an
+  item will be looking.
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.
 - `legacy/` is committed on purpose — now as the historical record and as the

@@ -75,11 +75,16 @@
 .director-card .study .lab,
 .ladder-rung .target {
   margin: 0 0 var(--s3);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
+  /* Four variables rather than four values. This one rule draws the
+     eyebrow for twenty-five selectors, so "mono, uppercase, 11px" was
+     a design decision hard-coded in the only place that could not be
+     overridden — exactly what rule 4 of the skin contract is about.
+     See _contract.css for the group. */
+  font-family: var(--sk-eyebrow-face, var(--f-mono));
+  font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
   letter-spacing: var(--sk-eyebrow-track);
-  text-transform: uppercase;
+  text-transform: var(--sk-eyebrow-transform, uppercase);
   /* An eyebrow is TEXT on a page ground, so it takes the deep accent,
      not the fill. At --accent it measured 3.35-3.69:1 in desk, where
      the accents are bright — every eyebrow in the app, on every page. */
@@ -101,7 +106,13 @@
    --accent-lift is the hue's dark-ground variant, so this stays
    volume-correct (feature red, vol-2 blue) rather than going gold
    for everything. Measured 6.15-8.76:1 across the four dark bands. */
-.phase .label { color: var(--accent-lift); }
+/* --accent-deep, not --accent-lift. The comment above is still the
+   reason this override exists — it has to live here, after the list
+   that beat it — but the slab it sits on follows the theme now, so the
+   always-dark variant is the wrong one: --accent-deep already IS the
+   lifted value inside [data-theme="dark"]. Measured 7.57:1 on the
+   light slab and 7.03:1 on the dark one. */
+.phase .label { color: var(--accent-deep); }
 
 /* The page title. Roman, not italic: the italic display face was the
    book's voice and it fought every form control on the page. One word
@@ -163,24 +174,43 @@
    below. The hub's hero stats and the breakdown's counts were the
    same object drawn twice.
    ------------------------------------------------------------ */
+/* Cards, not a ruled band. Two hairlines across the full width read as
+   a divider that happens to contain numbers; a row of surfaces reads as
+   a set of figures, which is what it is. The strip keeps its own
+   variables rather than reusing .film-card so the numbers can sit
+   tighter than a card of prose. */
 .bd-stats,
 .hero-stats,
 .hub-stat-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s6);
-  padding-block: var(--s4);
-  border-top: 1px solid var(--rule-hair);
-  border-bottom: 1px solid var(--rule-hair);
+  gap: var(--s3);
+  padding-block: 0;
+  border: 0;
 }
 .bd-stat,
 .hero-stat,
-.hub-stat-strip .hss-item { display: flex; flex-direction: column; gap: 2px; }
+.hub-stat-strip .hss-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* flex-basis, not width: six stats fit a desk, two fit a phone, and
+     nothing has to name a breakpoint for that to happen. min-width is
+     what keeps the longest label from forcing horizontal overflow at
+     390px, which the gate measures. */
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: var(--s4);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
 .bd-stat strong,
 .hero-stat .num,
 .hub-stat-strip .hss-num {
   font-family: var(--f-display);
-  font-size: var(--t-xl);
+  font-size: var(--t-2xl);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;

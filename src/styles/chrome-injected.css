@@ -1,10 +1,29 @@
 /* ============================================================
    SHARED CHROME STYLES
    ------------------------------------------------------------
-   Ported verbatim from the CSS string that studio-store.js used
-   to inject at runtime as <style id="studio-store-styles">.
-   The rules are unchanged — only the delivery mechanism moved,
-   so the bundler can process/minify them like every other sheet.
+   Ported from the CSS string that studio-store.js used to inject at
+   runtime as <style id="studio-store-styles">. The delivery mechanism
+   moved first, so the bundler could process it like every other
+   sheet; the VALUES moved here.
+
+   THE NINE RAW COLOURS ARE GONE, and the reason they survived this
+   long is worth keeping. CLAUDE.md listed them as one of two intended
+   exceptions to "every colour is a token", on the grounds that the
+   chrome surface was dark in every theme while --danger was not, so
+   substituting tokens naively would cut contrast in the light theme.
+   That was true and it is no longer the situation: the band is WHITE
+   in the light theme now, so the cream text and the six cream rgba()
+   layers were not a considered exception any more, they were
+   invisible — #f5ecd6 on #ffffff is 1.09:1.
+
+   So this is the considered pass that note asked for, forced by the
+   redesign rather than volunteered. Every value reads the chrome
+   family, which is stated per theme in tokens.css, and the
+   no-project state reads the danger family's wash/fill pair rather
+   than three hand-mixed alphas of one hex. The hard-coded px went
+   with them, for the same reason: a 10px label and a 1.5px track were
+   the old mono chrome, and this control sits beside controls that are
+   no longer set that way.
 
    Imported by src/lib/store.js and src/ui/chrome.js.
    ============================================================ */
@@ -12,24 +31,26 @@
 .studio-proj-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: #f5ecd6;
+  gap: var(--s2);
+  color: var(--chrome-ink);
   text-decoration: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  padding: 6px 11px;
-  border-radius: 2px;
-  border: 1px solid rgba(244, 237, 224, 0.3);
-  background: rgba(244, 237, 224, 0.04);
-  transition: all 0.15s;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: normal;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  border: 1px solid var(--chrome-hair-strong);
+  background: var(--chrome-fill);
+  transition: background var(--speed) var(--ease),
+              border-color var(--speed) var(--ease),
+              color var(--speed) var(--ease);
   max-width: 260px;
   font-weight: 600;
 }
 
 .studio-proj-link:hover {
-  background: rgba(244, 237, 224, 0.15);
-  border-color: rgba(244, 237, 224, 0.6);
+  background: var(--chrome-fill-strong);
+  border-color: var(--chrome-ink);
 }
 
 .studio-proj-link .spl-arrow {
@@ -43,14 +64,21 @@
   max-width: 200px;
 }
 
+/* NO PROJECT is a warning, so it takes the danger family's tint-plus-
+   text pair — --danger-wash behind --danger — which is the same pair
+   tokens.css validates everywhere else a hue appears as a tint under
+   words. The old version mixed three alphas of one hex and set a
+   fourth colour for the text; it read correctly on exactly one
+   surface. */
 .studio-proj-link.no-project {
-  border-color: #b03a1f;
-  background: rgba(176, 58, 31, 0.18);
-  color: #ffbfa8;
+  border-color: var(--danger);
+  background: var(--danger-wash);
+  color: var(--danger);
 }
 
 .studio-proj-link.no-project:hover {
-  background: rgba(176, 58, 31, 0.32);
+  background: var(--danger);
+  color: var(--danger-on);
 }
 
 /* ------------------------------------------------------------
@@ -63,7 +91,13 @@
 .studio-no-project-banner {
   position: sticky;
   top: 0;
-  z-index: calc(var(--z-toolbar) + 1);   /* was a literal 101: one above the toolbar */
+  /* Above the brand plate, which is +2: both are sticky at top 0, so
+     one of them covers the other once the page scrolls, and "you have
+     no project, nothing you type is being saved" outranks an
+     announcement. +3 rather than a shuffle of the other two, because
+     this banner exists only in the state where it is the only thing
+     worth reading. (Was a literal 101: one above the toolbar.) */
+  z-index: calc(var(--z-toolbar) + 3);
   padding: var(--s2) var(--s4);
   text-align: center;
   background: var(--danger);

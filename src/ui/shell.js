@@ -37,6 +37,7 @@
    data-action and is bound by delegate().
    ============================================================ */
 import nav from '../data/navigation.json';
+import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
@@ -222,6 +223,74 @@ function buildRail() {
   return rail;
 }
 
+/* THE BRAND PLATE — one line of purple above the navigation.
+
+   It is the product's own strip rather than the page's: purple in
+   both themes, like --panel is dark in both themes, because it is a
+   plate and not a ground.
+
+   NO TIMER. The dots advance it on click and nothing else, which is
+   not a styling preference — a strip that cycles by itself is a clock
+   in the one place every page shows, and the gate compares each
+   page's visible words against a captured baseline. Three messages in
+   rotation, one message in the baseline, and every run after the
+   first fails for words that "went missing". announcements.json says
+   the same thing at the top of the file, where the next person to add
+   an item will be looking.
+
+   Rendered even with one item; the dots are hidden by CSS below two,
+   because a single dot is a control that cannot do anything. */
+function buildPlate() {
+  const items = (announce && announce.items) || [];
+  if (!items.length) return null;
+  const plate = h('div.sh-plate', { role: 'region', 'aria-label': 'Studio announcements' });
+  const slides = h('div.sh-plate-slides');
+  items.forEach((it, i) => {
+    const a = h('a.sh-plate-item' + (i === 0 ? '.is-on' : ''), {
+      href: it.href,
+      hidden: i !== 0
+    });
+    if (it.flag) a.append(h('span.sh-plate-flag', { text: it.flag }));
+    a.append(h('span.sh-plate-text', { text: it.text }));
+    a.append(h('span.sh-plate-arrow', { text: '→', 'aria-hidden': 'true' }));
+    slides.append(a);
+  });
+  plate.append(slides);
+
+  const dots = h('div.sh-plate-dots', { role: 'tablist', 'aria-label': 'Announcement' });
+  items.forEach((it, i) => {
+    dots.append(h('button.sh-plate-dot' + (i === 0 ? '.is-on' : ''), {
+      type: 'button',
+      'data-action': 'plate-go',
+      'data-index': String(i),
+      'aria-label': it.text,
+      'aria-selected': String(i === 0),
+      role: 'tab'
+    }));
+  });
+  plate.append(dots);
+  return plate;
+}
+
+/** Show one announcement. Index is clamped, so a stale dot cannot blank the plate. */
+function showPlate(i) {
+  const items = [...document.querySelectorAll('.sh-plate-item')];
+  const dots = [...document.querySelectorAll('.sh-plate-dot')];
+  if (!items.length) return;
+  const at = Math.max(0, Math.min(items.length - 1, i | 0));
+  items.forEach((el, n) => {
+    el.hidden = n !== at;
+    el.classList.toggle('is-on', n === at);
+  });
+  dots.forEach((el, n) => {
+    el.classList.toggle('is-on', n === at);
+    el.setAttribute('aria-selected', String(n === at));
+  });
+  /* The messages are different lengths, so the plate's height can
+     change and the bar below it is parked on that measurement. */
+  measureBar();
+}
+
 function buildBar(active) {
   const bar = h('div.sh-bar', { role: 'navigation', 'aria-label': 'Studio navigation' });
   // The rail toggle lives in the bar, not floating over the page: on a
@@ -389,13 +458,30 @@ function runSpy() {
    custom property affecting layout is one notification loop away
    from a console error the verify gate counts. */
 let lastBarH = 0;
+let lastPlateH = -1;
 function measureBar() {
+  const de = document.documentElement;
+  /* The plate is pinned ABOVE the bar, so the bar's `top` is the
+     plate's height and --sh-bar-h — which the working notes define as
+     "where does the page toolbar park" — is the plate plus the bar.
+     Measured off the computed position rather than the rect, because
+     below the narrow breakpoint both are `relative`: nothing is
+     pinned there, the plate scrolls away like any other block, and
+     its height must not be added to an offset. */
+  const plate = document.querySelector('.sh-plate');
+  const plateH = plate && getComputedStyle(plate).position === 'sticky'
+    ? Math.round(plate.getBoundingClientRect().height)
+    : 0;
+  if (plateH !== lastPlateH) {
+    lastPlateH = plateH;
+    de.style.setProperty('--sh-plate-h', plateH + 'px');
+  }
   const bar = document.querySelector('.sh-bar');
   if (bar) {
-    const px = Math.round(bar.getBoundingClientRect().height);
+    const px = Math.round(bar.getBoundingClientRect().height) + plateH;
     if (px && px !== lastBarH) {
       lastBarH = px;
-      document.documentElement.style.setProperty('--sh-bar-h', px + 'px');
+      de.style.setProperty('--sh-bar-h', px + 'px');
     }
   }
   measureChrome();
@@ -584,6 +670,11 @@ function wire() {
     if (tabBtn) tabBtn.setAttribute('aria-expanded', String(open));
   });
 
+  // The plate's dots. The only thing that advances it — see buildPlate.
+  delegate(document, 'click', '[data-action="plate-go"]', (e, btn) => {
+    showPlate(Number(btn.dataset.index));
+  });
+
   // A planned module explains itself rather than 404ing or, worse,
   // looking clickable and doing nothing.
   delegate(document, 'click', '[data-action="module-planned"]', (e, btn) => {
@@ -682,6 +773,7 @@ export function mountShell() {
 
   const rail = buildRail();
   const bar = buildBar(active);
+  const plate = buildPlate();
   const scrim = h('button.sh-scrim', {
     type: 'button',
     'data-action': 'rail-close',
@@ -689,6 +781,7 @@ export function mountShell() {
     'aria-hidden': 'true'
   });
   app.insertBefore(bar, app.firstChild);
+  if (plate) app.insertBefore(plate, app.firstChild);
   app.insertBefore(rail, app.firstChild);
   app.insertBefore(scrim, app.firstChild);
 

@@ -112,32 +112,86 @@
 .vol-cover > *,
 .hero > * { position: relative; z-index: 1; }
 
-/* .master-mark/.cover-mark/.hero-vol are eyebrows — modules.css §1. */
+/* .master-mark/.cover-mark are eyebrows — modules.css §1. The em-dash
+   prefix stays on those two and comes OFF .hero-vol, which is a pill
+   now: a dash leading into a filled badge reads as a stray glyph. */
 .master-mark::before,
-.cover-mark::before,
-.hero-vol::before { content: "— "; }
+.cover-mark::before { content: "— "; }
+
+/* THE HERO'S TWO PILLS. .hero-vol says what the studio is for and
+   .hero-edition says which edition it is — two different kinds of
+   label, so they take two hues rather than two shades of one. Both
+   are tinted wash with the matching deep ink on top, which is the
+   pair tokens.css validates for a hue used as a tint behind text;
+   neither uses the base hue, which would be a fill. */
+.hero-vol,
 .hero-edition {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+.hero-vol { background: var(--accent-wash); color: var(--accent-deep); }
+.hero-edition {
+  background: var(--library-wash);
+  color: var(--library-deep);
+  /* The only one that stays tracked caps: it is a stamp, not a
+     sentence, and it is the shorter of the two. */
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
 }
+/* Left-aligned, not space-between: two pills pushed to opposite ends
+   of a 1280px row read as two unrelated things. */
 .hero-top {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  justify-content: flex-start;
+  align-items: center;
   flex-wrap: wrap;
-  gap: var(--s4);
+  gap: var(--s2);
   margin-bottom: var(--s6);
 }
 
 /* Titles are modules.css §1; what is left here is the per-volume
    size bump and the second-word weight change. */
+/* ONE WORD IN THE ACCENT, at the same weight as the rest. It used to
+   be the reverse — 400 weight and --ink-muted — which made the
+   middle of every display title read as a dropout rather than as
+   emphasis. The accent follows [data-volume], so the hub's is violet,
+   the feature's is red and the short's is blue without a rule each. */
 .master-title .light,
 .cover-title .light,
 .vol-cover h1 .light,
-.hero h1 .light { font-weight: 400; font-style: normal; color: var(--ink-muted); }
+.hero h1 .light { font-weight: 800; font-style: normal; color: var(--accent-deep); }
+
+/* The hero's button pair. --s6 under it because the next thing down
+   is a card and two surfaces that nearly touch read as one. */
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin: 0 0 var(--s6);
+}
+.hero-cta .btn {
+  /* .btn is inline by default, which is right for a row of toolbar
+     links and wrong here: inline ignores `gap`, so the arrow would
+     sit against the label. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5);
+  font-size: var(--t-base);
+}
+.hero-cta .btn .arrow { transition: transform var(--speed) var(--ease); }
+.hero-cta .btn:hover .arrow { transform: translateX(3px); }
 
 .hero-deck { color: var(--ink-body); }
 .hero-deck em { color: var(--accent-deep); font-weight: 600; }
@@ -245,7 +299,7 @@
   margin-top: var(--s1);
   font-size: var(--t-lg);
   font-weight: 600;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
 }
 .toc-item .desc { margin-top: var(--s1); font-size: var(--t-tiny); color: var(--sk-slab-muted); }
 
@@ -346,8 +400,8 @@
 .phase,
 .interlude {
   text-align: center;
-  background: var(--panel);
-  color: var(--panel-ink);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
 }
 .phase { padding-block: var(--s6); }
 .interlude {
@@ -357,26 +411,26 @@
   min-height: 0;
   padding-block: var(--s8);
 }
-.phase .label { color: var(--panel-gilt); margin-bottom: var(--s2); }
+.phase .label { color: var(--sk-slab-accent); margin-bottom: var(--s2); }
 /* Type from modules.css §1; these two only need the ink ground's colour. */
 .phase h2,
-.interlude h2 { color: var(--panel-ink); }
+.interlude h2 { color: var(--sk-slab-ink); }
 .phase h2 em,
-.interlude h2 em { color: var(--panel-gilt); }
+.interlude h2 em { color: var(--sk-slab-accent); }
 .phase p,
 .interlude p {
   max-width: var(--measure);
   margin: var(--s3) auto 0;
   font-size: var(--t-base);
   font-style: italic;
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
 .interlude .arrow {
   margin-bottom: var(--s5);
   font-family: var(--f-mono);
   font-size: var(--t-small);
   letter-spacing: var(--track-wide);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 
 /* ------------------------------------------------------------
@@ -521,7 +575,7 @@
 }
 .formula-box .eq code {
   padding: 2px var(--s2);
-  background: var(--panel-hair-soft);
+  background: var(--sk-slab-fill);
   border-radius: var(--radius);
   font-family: var(--f-mono);
   font-size: var(--t-small);
@@ -586,7 +640,7 @@
 /* The same gloss on an ink ground. */
 .formula-box .tn,
 .formula .tn {
-  border-top-color: var(--panel-hair);
+  border-top-color: var(--sk-slab-hair);
   color: var(--sk-slab-muted);
 }
 .formula-box .tn::before,
@@ -615,7 +669,7 @@
 .vs-card h4 {
   margin-bottom: var(--s2);
   font-size: var(--t-base);
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   font-weight: 700;
 }
 .vs-card h4 {
@@ -752,7 +806,7 @@ select.field-input {
 .ladder-rung h4 {
   margin-bottom: var(--s1);
   font-size: var(--t-lg);
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   font-weight: 700;
 }
 .ladder-rung .target { display: block; margin-bottom: var(--s3); }
@@ -898,7 +952,7 @@ select.field-input {
   font-family: var(--f-display);
   font-size: var(--t-2xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
 }
 .director-card .era {
   font-family: var(--f-mono);
@@ -976,29 +1030,41 @@ select.field-input {
 .door-tag { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); color: var(--feature-deep); }
 .door.shorts .door-tag  { color: var(--shorts-deep); }
 .door.library .door-tag { color: var(--library-deep); }
+/* A TILE, not a dot. Washed rather than filled: the card's hue is
+   already stated by its 4px top rule, and a second saturated block of
+   the same colour three rows down makes the hue read as decoration.
+   --hue-wash behind --hue-deep is the pair for a tint with text on it
+   — measured 7.57:1 (feature), 5.61 (shorts), 6.11 (library). The
+   class name says circle and the shape is a rounded square; the name
+   is in hub.js markup and renaming it buys a diff and nothing else. */
 .door-num-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--s5);
-  height: var(--s5);
-  border-radius: 50%;
-  background: var(--feature);
-  color: var(--feature-on);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 700;
+  flex: none;
+  width: var(--s7);
+  height: var(--s7);
+  border-radius: var(--radius-lg);
+  background: var(--feature-wash);
+  color: var(--feature-deep);
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 800;
   letter-spacing: 0;
 }
-.door.shorts .door-num-circle  { background: var(--shorts);  color: var(--shorts-on); }
-.door.library .door-num-circle { background: var(--library); color: var(--library-on); }
+.door.shorts .door-num-circle  { background: var(--shorts-wash);  color: var(--shorts-deep); }
+.door.library .door-num-circle { background: var(--library-wash); color: var(--library-deep); }
+/* font-style through the skin, not a literal. The door is the one
+   card with its own heading rule, and it was the one card whose
+   heading stayed italic when the skin said roman — so the hub's three
+   biggest headings disagreed with every other card in the app. */
 .door h3 {
   margin-bottom: var(--s1);
   font-family: var(--f-display);
   font-size: var(--t-2xl);
   font-weight: 800;
-  font-style: italic;
-  line-height: 1;
+  font-style: var(--sk-card-h-style);
+  line-height: 1.1;
   letter-spacing: var(--track-tight);
 }
 .door h3 .light {
@@ -1012,7 +1078,7 @@ select.field-input {
 .door .door-sub {
   margin: var(--s3) 0 var(--s4);
   font-size: var(--t-small);
-  font-style: italic;
+  font-style: var(--sk-deck-style);
   line-height: var(--lh-body);
   color: var(--ink-body);
 }
@@ -1222,9 +1288,9 @@ select.field-input {
 .resume-card .resume-btn.alt {
   background: transparent;
   color: var(--sk-slab-ink);
-  border: 1px solid var(--panel-hair);
+  border: 1px solid var(--sk-slab-hair);
 }
-.resume-card .resume-btn.alt:hover { background: var(--panel-hair-soft); }
+.resume-card .resume-btn.alt:hover { background: var(--sk-slab-fill); }
 
 .data-card {
   display: flex;
@@ -1242,9 +1308,9 @@ select.field-input {
 .data-card .right { display: flex; flex-wrap: wrap; gap: var(--s3); }
 .data-card .mb {
   padding: var(--s2) var(--s3);
-  background: var(--panel-hair-soft);
+  background: var(--sk-slab-fill);
   color: var(--sk-slab-ink);
-  border: 1px solid var(--panel-hair);
+  border: 1px solid var(--sk-slab-hair);
   border-radius: var(--radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1391,8 +1457,8 @@ select.field-input {
   position: relative;
   overflow: hidden;
   text-align: center;
-  background: var(--panel);
-  color: var(--panel-ink);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
 }
 .final-page .quote {
   max-width: var(--measure);
@@ -1401,42 +1467,42 @@ select.field-input {
   font-style: italic;
   line-height: var(--lh-snug);
 }
-.final-page .quote .feature { color: var(--feature-lift); font-weight: 600; }
-.final-page .quote .shorts  { color: var(--shorts-lift); font-weight: 600; }
-.final-page .quote .library { color: var(--library-lift); font-weight: 600; }
+.final-page .quote .feature { color: var(--feature-deep); font-weight: 600; }
+.final-page .quote .shorts  { color: var(--shorts-deep); font-weight: 600; }
+.final-page .quote .library { color: var(--library-deep); font-weight: 600; }
 .final-page .signature {
   margin-top: var(--s6);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-wide);
   font-weight: 700;
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
-.final-page .signature span { color: var(--panel-ink); }
+.final-page .signature span { color: var(--sk-slab-ink); }
 .final-page .vol {
   margin-top: var(--s3);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-wide);
-  color: var(--accent-lift);
+  color: var(--accent-deep);
 }
 .file-list {
   max-width: 600px;
   margin: var(--s6) auto 0;
   padding-top: var(--s6);
-  border-top: 1px solid var(--panel-hair);
+  border-top: 1px solid var(--sk-slab-hair);
   text-align: left;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   line-height: 1.8;
-  color: var(--panel-muted);
+  color: var(--sk-slab-muted);
 }
 .file-list code {
   margin-right: var(--s2);
   padding: 2px var(--s2);
-  background: var(--panel-hair-soft);
+  background: var(--sk-slab-fill);
   border-radius: var(--radius);
-  color: var(--panel-gilt);
+  color: var(--sk-slab-accent);
 }
 .file-list .note { margin-top: var(--s3); text-align: center; opacity: .7; }
 

@@ -53,6 +53,25 @@
    SURFACES list, but the strip only exists once the project has
    scenes, and no page seeds any — the element the check is looking
    for is not in the DOM. See "Checks that can skip themselves". */
+/* AND THE CARD UNDER IT. The two rules below opt the numbers back
+   into the slab's inks, which is correct only while the stat item has
+   no surface of its own. It has one now — modules.css made the strip
+   a row of cards instead of a ruled band — so a white card inside the
+   slab was carrying slab-coloured text: the gate measured the number
+   at 1.14:1 and its label at 2.5:1 in the light theme, which is this
+   comment block's own failure reached from the opposite direction.
+
+   --sk-slab-fill is the contract's token for an inset surface ON the
+   slab, which is exactly what this is. */
+.budget-summary .bd-stat,
+.calc-block .bd-stat,
+.pitch-slide .bd-stat,
+.budget-summary .hero-stat,
+.calc-block .hero-stat {
+  background: var(--sk-slab-fill);
+  border-color: var(--sk-slab-hair);
+}
+
 .budget-summary .bd-stat strong,
 .calc-block .bd-stat strong,
 .pitch-slide .bd-stat strong,
@@ -148,8 +167,8 @@
 .beat-table th,
 .equip-table th {
   padding: var(--s2) var(--s3);
-  background: var(--panel);
-  color: var(--panel-gilt);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-accent);
   text-align: left;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -253,7 +272,7 @@
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   color: var(--accent-deep);
 }
 .equip-table td.item { font-weight: 600; color: var(--ink); }
@@ -587,7 +606,7 @@
 .beat-cell h4 {
   margin-bottom: var(--s2);
   font-size: var(--t-small);
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   font-weight: 700;
 }
 .beat-cell textarea { min-height: var(--s8); font-size: var(--t-small); }
@@ -639,7 +658,7 @@
   font-family: var(--f-display);
   font-size: var(--t-xl);
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   color: var(--sk-slab-ink);
 }
 .calc-block .hint { margin-bottom: var(--s4); color: var(--sk-slab-muted); }
@@ -836,7 +855,7 @@
   font-family: var(--f-display);
   font-size: clamp(var(--t-2xl), 3vw, var(--t-3xl));
   font-weight: 800;
-  font-style: italic;
+  font-style: var(--sk-card-h-style);
   line-height: var(--lh-tight);
   color: var(--sk-slab-ink);
 }
@@ -1077,8 +1096,8 @@
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
 }
-.page-counter .pc-status.ok   { border-color: var(--ok-lift); }
-.page-counter .pc-status.warn { border-color: var(--danger-lift); }
+.page-counter .pc-status.ok   { border-color: var(--ok); }
+.page-counter .pc-status.warn { border-color: var(--danger); }
 
 /* ------------------------------------------------------------
    FOCUS TIMER
@@ -1447,7 +1466,7 @@
 /* .alt keeps --panel: --accent-lift is a LIGHT tint in every theme,
    so the text on it is dark whatever the slab is doing. It is the one
    fill here that does not follow the skin. */
-.ai-prompt-block .mini-btn.alt { background: var(--accent-lift); color: var(--panel); }
+.ai-prompt-block .mini-btn.alt { background: var(--sk-slab-accent); color: var(--sk-slab-accent-on); }
 
 /* ============================================================
    RESPONSIVE

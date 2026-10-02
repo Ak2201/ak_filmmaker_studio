@@ -476,6 +476,213 @@
   margin-bottom: var(--s1);
 }
 
+/* ------------------------------------------------------------
+   A BEAT SHEET SHOWN AS A WORKED EXAMPLE
+   ------------------------------------------------------------
+   Rendered by src/ui/beat-example.js into the step language's own
+   .example card, so the surface, the heading and the gloss are
+   already defined. These four rules are only the list INSIDE it:
+   fifteen beats, each a label with a page target, what the film did,
+   and what to steal.
+
+   Every value is a token and the two shapes are --sk-*, because a
+   list that sets its own radius is a list one skin can never
+   restyle. No colour of its own either — it inherits the card's.
+
+   THE CARD IS NOT AN .example. See the header of beat-example.js:
+   that class means "the left rule says which of two films this is",
+   and the gate's hue assertion is page-scoped, so one honestly
+   uniform group there drags down the page's contrasting pairs. This
+   is one worked example and never a pair, so it has its own
+   surface — built from the same --sk-card-* variables .example
+   takes, with the DECO hairline on the left rather than a hue,
+   because there is no second card for a hue to tell it apart from.
+   ------------------------------------------------------------ */
+.beat-eg-card {
+  max-width: var(--measure-wide);
+  margin: var(--s4) 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.beat-eg-title {
+  margin-bottom: var(--s2);
+  font-size: var(--t-base);
+  font-style: var(--sk-card-h-style);
+  font-weight: 700;
+}
+.beat-eg-note {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.beat-eg {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.beat-eg-row {
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+}
+.beat-eg-row:first-child { padding-top: 0; border-top: 0; }
+.beat-eg-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s1);
+}
+.beat-eg-head strong {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+/* The page target is a figure on a ruler, so it gets the tabular
+   treatment and the quieter ink. --ink-muted, never --ink-faint:
+   that token clears 4.5:1 against no ground in any theme. */
+.beat-eg-pg {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.beat-eg-in,
+.beat-eg-craft {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+}
+.beat-eg-craft { margin-top: var(--s1); color: var(--ink-muted); }
+/* "Steal" is a label on the line it introduces, not a heading above
+   it — the advice is one sentence and a block heading would outweigh
+   it. */
+.beat-eg-steal {
+  margin-right: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+
+/* ------------------------------------------------------------
+   TWO WAYS INTO A BLUEPRINT
+   ------------------------------------------------------------
+   Rendered by src/ui/blueprint-entry.js into the slot .st-path
+   occupies, so it reads the same --sk-card-* family rather than
+   inventing a second panel surface. The two choice cards are the
+   HUB's own .eps-tour-item / -label / -note (chrome.css), which is
+   why there are no rules for them here: the two first-run
+   experiences are meant to be the same object, and a near-copy of
+   that card would be two objects that merely resemble each other.
+
+   Every shape is --sk-* and every colour is a token. The grid
+   copies the hub's minmax(min(…), 1fr) trick exactly, and for the
+   same reason: auto-fit reduces the column COUNT to fit but cannot
+   shrink a track below its own minimum, so a bare 200px floor
+   pushes the page sideways at 390px.
+   ------------------------------------------------------------ */
+.bp-entry {
+  position: relative;
+  margin: var(--s7) 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+}
+
+/* Dismiss. Top-right of the panel, and --ink-muted rather than
+   --ink-faint: that token clears 4.5:1 against no ground in any
+   theme. base.css already gives it a 44px target under a coarse
+   pointer, so there is no size written here. */
+.bp-entry-x {
+  position: absolute;
+  top: var(--s3);
+  right: var(--s3);
+  padding: var(--s1) var(--s2);
+  border: 0;
+  border-radius: var(--sk-radius, var(--radius));
+  background: transparent;
+  font-size: var(--t-small);
+  line-height: 1;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+.bp-entry-x:hover,
+.bp-entry-x:focus-visible {
+  background: var(--paper-sunk);
+  color: var(--accent-deep);
+}
+
+.bp-entry-eyebrow {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--sk-eyebrow-track);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+.bp-entry-title {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--sk-h2-size);
+  font-style: var(--sk-h2-style);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+}
+
+.bp-entry-deck {
+  max-width: var(--sk-deck-measure);
+  margin: 0 0 var(--s5);
+  font-size: var(--sk-deck-size);
+  font-style: var(--sk-deck-style);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+.bp-entry-ways {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--s3);
+  margin: 0 0 var(--s5);
+}
+
+.bp-entry-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+
+.bp-entry-fine {
+  max-width: var(--sk-deck-measure);
+  margin: var(--s4) 0 0;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+@media print {
+  /* A way IN is not part of the document. The printed blueprint is
+     the blueprint, the same argument steps-path.css makes about its
+     own controls. */
+  .bp-entry { display: none; }
+}
+
 /* --- Character relationship map ----------------------------- */
 .char-map-svg .conn-line {
   fill: none;

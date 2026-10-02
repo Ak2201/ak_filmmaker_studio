@@ -177,6 +177,19 @@ let openDocId = null;
 let importOpen = false;
 let importPlan = null;
 let importName = '';
+
+/* ---- the synopsis upload's own state -----------------------
+   `synPending` is a file that has been READ and not yet applied,
+   which exists for one reason: the synopsis field may already have
+   writing in it, and an upload that overwrites it is the same
+   mistake the screenplay importer is careful about. Nothing here
+   touches gen.synopsis until applySynopsis().
+
+   `synNote` is what the last load did, in the real numbers — a
+   truncation the writer discovers later is a truncation that lost
+   their words. */
+let synPending = null;
+let synNote = null;     // { text, warn }
 let importBusy = false;
 let replaceScript = false;
 let replaceScenes = false;
@@ -892,6 +905,188 @@ const GEN_FORMATS = [
   { id: 'short', label: 'Short', hint: 'about 15 pages' }
 ];
 
+/* ---- loading a synopsis off the disk ------------------------
+   The synopsis stage could only be typed or pasted into, and a
+   synopsis usually already exists as a file. So: a picker and a
+   drop target that END AT THE TEXTAREA. There is no second
+   pipeline behind this and no new stored key — scriptgen.js
+   already persists gen.synopsis, and the beats still come from the
+   existing `gen-beats` button, which is where the model is.
+
+   A SYNOPSIS IS PROSE, NOT A SCREENPLAY, so it is deliberately
+   NOT routed through parseScript() / detectFormat() / scenesFrom().
+   Those read a FORMATTED screenplay — their whole job is to find
+   scene headings and fill the script elements and the scene model
+   from the columns the text sits in. A synopsis has no headings
+   and no columns, and handing it to them would produce a scene
+   list invented out of paragraph indentation. The reading is
+   shared, because that part is format work rather than screenplay
+   work: readFile() in script-import.js already turns a File into
+   text and already takes a PDF through pdf-text.js, so a PDF
+   synopsis works through the one call site that handles the
+   extractor's refusals properly instead of a second copy of them. */
+
+/* The field's ceiling, stated once and in one place. It is the
+   textarea's own maxlength: about two or three pages of prose, which
+   is a synopsis, and roughly one request's worth of input for a beat
+   sheet. A forty-page treatment is not a synopsis, and the ONE thing
+   that must not happen is keeping its first sixth without saying so. */
+const SYN_LIMIT = 6000;
+
+/* Prose formats only — see above for why a .fountain or a .fdx is not
+   on this list even though readFile() would happily read them. */
+const SYN_ACCEPT = '.txt,.text,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf';
+
+const countFmt = (n) => Number(n).toLocaleString('en-IN');
+
+/* Written once, printed by both branches of renderGenerate(). Two
+   copies of a sentence about what leaves the browser is two chances
+   for one of them to be more generous than the code. */
+const GEN_DISCLOSURE =
+  'What is sent: the synopsis you wrote, the beats as they stand, and for each '
+  + 'batch of scenes its own slug lines plus the two scenes either side for '
+  + 'continuity. Not your other projects, not your notes, not the rest of the '
+  + 'screenplay. Nothing is sent until you press a button, and the key never '
+  + 'leaves this device except as the one header that authorises the request.';
+
+/** A document's text as paragraphs.
+
+    A PDF arrives from pdf-text.js as INDENTED lines, because in a
+    screenplay the indentation is the element type. In a synopsis it
+    is nothing — it is where the margin happened to be — so the
+    leading space comes off, a single newline inside a paragraph
+    becomes a space, and a blank line stays a paragraph break. */
+function prosify(text) {
+  return String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/([^\n])\n(?!\n)/g, '$1 ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Cut to `limit`, at a word boundary rather than through a word. */
+function clipTo(text, limit) {
+  if (text.length <= limit) return text;
+  const hard = text.slice(0, limit);
+  const space = hard.lastIndexOf(' ');
+  return (space > limit - 400 ? hard.slice(0, space) : hard).trimEnd();
+}
+
+/**
+ * Read a file into a synopsis.
+ *
+ * NO KEY IS NEEDED and none is asked for: extraction is local, and
+ * the only thing on this stage that calls a model is the button
+ * underneath. `importer()` is the script-import chunk, loaded for
+ * readFile() alone.
+ */
+async function takeSynopsis(file) {
+  if (!file) return;
+  let Parser;
+  try { Parser = await importer(); }
+  catch (e) {
+    say('The file reader could not be loaded. Check the connection and try again.');
+    return;
+  }
+  let raw;
+  try { raw = await Parser.readFile(file); }
+  catch (err) { say(readFailed(err)); return; }
+
+  const prose = prosify(String(raw));
+  if (!prose) { say('There was no text in that file.'); return; }
+
+  const kept = clipTo(prose, SYN_LIMIT);
+  const pending = { name: file.name || 'that file', text: kept, read: prose.length, kept: kept.length };
+
+  /* NEVER CLOBBER. An empty field has nothing to lose, so the text
+     goes straight in. A field with writing in it gets asked first —
+     the same property the screenplay importer holds, and the reason
+     this function writes nothing itself. */
+  if (String(gen.synopsis || '').trim()) {
+    synPending = pending;
+    synNote = null;
+    render();
+    return;
+  }
+  applySynopsis(pending);
+}
+
+/** The only thing that writes a loaded file into the field. */
+function applySynopsis(p) {
+  gen.synopsis = p.text;
+  Scriptgen.save(gen);
+  synPending = null;
+  const cut = p.kept < p.read;
+  synNote = {
+    warn: cut,
+    text: cut
+      ? 'Loaded ' + countFmt(p.kept) + ' of ' + countFmt(p.read) + ' characters from \u201c'
+        + p.name + '\u201d \u2014 the rest was NOT kept. The field holds '
+        + countFmt(SYN_LIMIT) + ' characters, which is a synopsis rather than a '
+        + 'treatment. The file on your disk is untouched, so if the part that '
+        + 'matters was at the end, trim it there and load it again.'
+      : 'Loaded all ' + countFmt(p.read) + ' characters from \u201c' + p.name + '\u201d.'
+  };
+  render('#wr-gen-synopsis');
+  say(cut ? 'Loaded, and truncated \u2014 read the note under the field.' : 'Synopsis loaded.');
+}
+
+/** The picker, the drop target, and whatever the last load has to say. */
+function synopsisUpload() {
+  const box = h('div.wr-syn-up');
+  box.append(h('p.wr-imp-lead', {
+    text: 'Or load it from a file. Plain text (.txt), Markdown (.md) and PDF all '
+      + 'work \u2014 drop one on this box, or choose it.'
+  }));
+  box.append(h('p.wr-imp-privacy', {}, [
+    h('strong', { text: 'Read in this browser, and no API key needed. ' }),
+    h('span', {
+      text: 'Nothing is uploaded \u2014 the studio has no server. Reading a file is '
+        + 'local; only drafting the beats below calls a model.'
+    })
+  ]));
+
+  /* The input comes BEFORE its label on purpose: the focus ring is
+     published by `.wr-imp-file:focus-visible + .wr-imp-pick`, and a
+     sibling combinator cannot reach backwards. */
+  box.append(h('div.wr-imp-row', {}, [
+    h('input.wr-imp-file', {
+      type: 'file', id: 'wr-syn-file', accept: SYN_ACCEPT, 'data-action': 'syn-file'
+    }),
+    h('label.btn.wr-imp-pick', { for: 'wr-syn-file', text: 'Choose a file\u2026' })
+  ]));
+
+  if (synPending) {
+    const p = synPending;
+    const cut = p.kept < p.read;
+    box.append(h('div.wr-gen-warn', {}, [
+      h('p', {
+        text: '\u201c' + p.name + '\u201d read as ' + countFmt(p.kept)
+          + (cut ? ' of ' + countFmt(p.read) : '') + ' characters'
+          + (cut ? ', the rest over the ' + countFmt(SYN_LIMIT) + '-character limit' : '')
+          + '. There are already ' + countFmt(String(gen.synopsis).length)
+          + ' characters in the synopsis field, and replacing them cannot be undone '
+          + 'from here.'
+      }),
+      /* KEEP is the primary button. The destructive option is never
+         the one a reader presses by reflex. */
+      h('div.wr-gen-acts', {}, [
+        h('button.btn.primary', {
+          type: 'button', 'data-action': 'syn-keep', text: 'Keep what I have'
+        }),
+        h('button.btn', {
+          type: 'button', 'data-action': 'syn-replace', text: 'Replace the synopsis'
+        })
+      ])
+    ]));
+  } else if (synNote) {
+    box.append(h(synNote.warn ? 'p.wr-gen-warn' : 'p.wr-gen-note', { text: synNote.text }));
+  }
+  return box;
+}
+
 /* Mirrored from SCRIPT_LANGS in ai.js so the panel renders before the
    model code loads. ai.js stays the authority — it is what the prompt
    is built from — and the ids are what tie the two together. */
@@ -931,6 +1126,7 @@ function renderGenSynopsis() {
           + 'less it invents.',
         'aria-label': 'Synopsis'
       }, gen.synopsis)),
+    synopsisUpload(),
     h('div.wr-gen-opts', {}, [
       labelled('Length', field('select.wr-gen-format', { id: 'wr-gen-format' }, gen.format,
         )),
@@ -957,9 +1153,32 @@ function renderGenSynopsis() {
         + 'no monospaced Tamil font exists to count against. Everything else works.'
     }));
   }
+  /* THE GATE IS ON THE BUTTON, NOT ON THE STAGE. Everything above
+     this line is a writing surface and a local file read; the thing
+     that needs a key is the request. The whole stage used to sit
+     behind keyGate(), which meant somebody with no key could not
+     even open their own treatment in the field. */
+  if (!AIm) {
+    wrap.append(
+      h('p.wr-gen-note', {
+        text: 'Drafting the beat sheet needs your own Anthropic API key, kept on '
+          + 'this device and sent to nobody but api.anthropic.com. Loading and '
+          + 'editing the synopsis above needs nothing.'
+      }),
+      h('div.wr-gen-acts', {}, [
+        h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })
+      ])
+    );
+    return wrap;
+  }
+  if (!Panelm.hasKey()) {
+    wrap.append(Panelm.keyGate('draft a script from a synopsis'));
+    return wrap;
+  }
+
   wrap.append(
     h('div.wr-gen-acts', {}, [
-      h('button.btn.is-primary', {
+      h('button.btn.primary', {
         type: 'button', 'data-action': 'gen-beats', disabled: genBusy,
         text: genBusy ? 'Working…' : 'Draft the beat sheet'
       }),
@@ -1012,7 +1231,7 @@ function renderGenBeats() {
   }
   wrap.append(
     h('div.wr-gen-acts', {}, [
-      h('button.btn.is-primary', {
+      h('button.btn.primary', {
         type: 'button', 'data-action': 'gen-scenes', disabled: genBusy,
         text: genBusy ? 'Working…' : 'Lay out the scenes'
       }),
@@ -1086,7 +1305,7 @@ function renderGenPages() {
           + ' scenes, so this list is about ' + p.batches + ' requests.'
     }),
     h('div.wr-gen-acts', {}, [
-      h('button.btn.is-primary', {
+      h('button.btn.primary', {
         type: 'button', 'data-action': 'gen-run-all', disabled: genBusy,
         text: genBusy ? 'Writing…' : (p.done ? 'Resume and write the rest' : 'Write all ' + p.left + ' scenes')
       }),
@@ -1118,6 +1337,29 @@ function renderGenerate() {
     })
   );
 
+  const stage = genStage();
+  const keyed = !!(AIm && Panelm && Panelm.hasKey());
+
+  /* STAGE 1 IS NOT AN AI STAGE, and gating it whole made it look
+     like one. Writing a synopsis is writing, and LOADING one off the
+     disk is local extraction — neither sends anything anywhere. So
+     the field, its upload and the length and language choices sit in
+     front of the gate, and renderGenSynopsis() puts the gate on the
+     one control that spends money. Before this, somebody without a
+     key could not so much as open their own treatment in the field,
+     which is a gate on the wrong thing.
+
+     Stages 2 and 3 are model OUTPUT the whole way down — there is
+     nothing on them to read or edit until a request has run — so
+     they stay gated whole. */
+  if (stage === 'synopsis') {
+    if (keyed) section.append(Panelm.keyBar());
+    section.append(renderGenSynopsis());
+    section.append(...genStatusBlock());
+    if (keyed) section.append(Panelm.disclose(GEN_DISCLOSURE));
+    return section;
+  }
+
   if (!AIm) {
     section.append(
       h('p.wr-gen-note', {
@@ -1136,18 +1378,10 @@ function renderGenerate() {
   }
 
   section.append(Panelm.keyBar());
-  const stage = genStage();
-  if (stage === 'synopsis') section.append(renderGenSynopsis());
-  else if (stage === 'beats') section.append(renderGenBeats());
+  if (stage === 'beats') section.append(renderGenBeats());
   else section.append(renderGenPages());
   section.append(...genStatusBlock());
-  section.append(Panelm.disclose(
-    'What is sent: the synopsis you wrote, the beats as they stand, and for each '
-    + 'batch of scenes its own slug lines plus the two scenes either side for '
-    + 'continuity. Not your other projects, not your notes, not the rest of the '
-    + 'screenplay. Nothing is sent until you press a button, and the key never '
-    + 'leaves this device except as the one header that authorises the request.'
-  ));
+  section.append(Panelm.disclose(GEN_DISCLOSURE));
   return section;
 }
 
@@ -1931,6 +2165,16 @@ addEventListener('drop', async (e) => {
   document.body.classList.remove('wr-dropping');
   const file = e.dataTransfer.files && e.dataTransfer.files[0];
   if (!file) return;
+  /* ONE DROP HANDLER, TWO DESTINATIONS. The synopsis box is a drop
+     target inside a page that already takes a drop ANYWHERE as a
+     screenplay import, so the choice is made here rather than by a
+     second listener racing this one for the same event. Aiming at
+     the box means "this is a synopsis"; aiming anywhere else still
+     means "this is a script". */
+  if (e.target && e.target.closest && e.target.closest('.wr-syn-up')) {
+    takeSynopsis(file);
+    return;
+  }
   let Parser;
   try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
   refreshAccept(Parser);
@@ -2116,6 +2360,31 @@ delegate(document, 'change', '#wr-gen-format, #wr-gen-lang', () => {
 delegate(document, 'input', '#wr-gen-synopsis', (e, ta) => {
   gen.synopsis = ta.value;
   Scriptgen.save(gen);
+  /* A note about the last load stops being true the moment the
+     writer edits the field, so it goes. Cleared without a re-render:
+     this is the one surface that must never rebuild under the caret. */
+  if (synNote) { synNote = null; const n = document.querySelector('.wr-syn-up .wr-gen-note, .wr-syn-up .wr-gen-warn'); if (n) n.remove(); }
+});
+
+/* ---- loading a synopsis ------------------------------------- */
+delegate(document, 'change', 'input[data-action="syn-file"]', (e, input) => {
+  const file = input.files && input.files[0];
+  /* The value is cleared so choosing the SAME file twice still fires
+     a change event — otherwise a writer who declines the replace and
+     then changes their mind has to pick a different file. */
+  input.value = '';
+  takeSynopsis(file);
+});
+
+delegate(document, 'click', '[data-action="syn-replace"]', () => {
+  if (synPending) applySynopsis(synPending);
+});
+
+delegate(document, 'click', '[data-action="syn-keep"]', () => {
+  synPending = null;
+  synNote = null;
+  render('#wr-gen-synopsis');
+  say('Kept what you had. The file was not used.');
 });
 delegate(document, 'input', '[data-beat-text]', (e, ta) => {
   const b = gen.beats.find((x) => x.id === ta.dataset.beatText);
@@ -2224,4 +2493,22 @@ delegate(document, 'click', '[data-action="gen-reset"]', () => {
   render();
 });
 
-render();
+/* ARRIVED AT BY ITS OWN FRAGMENT. The importer renders only while
+   `importOpen`, so #wr-import names an element that does not exist
+   until somebody has already found the button — which makes a link to
+   it from anywhere else a dead link that lands at the top of the page.
+   The feature blueprint's ways-in panel offers "I already have a
+   script" and this is the only importer in the app, so the fragment
+   has to open it rather than point at where it would be.
+
+   Same family as the nav-target trap in CLAUDE.md: a fragment target
+   that depends on state fails silently, and the person it fails for
+   is the one who has never opened the page. The fix there was to make
+   the id unconditional; here the PANEL is the target, so the state is
+   what the fragment sets. Read once, at boot, and never again — a
+   later hashchange is the browser scrolling, not a request to
+   reopen a panel somebody may have just closed. */
+const wantsImporter = typeof location !== 'undefined' && location.hash === '#wr-import';
+if (wantsImporter) importOpen = true;
+
+render(wantsImporter ? '#wr-import-paste' : null);

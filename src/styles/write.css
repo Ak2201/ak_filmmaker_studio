@@ -250,6 +250,7 @@
    type into. */
 body.wr-dropping .wr-page,
 body.wr-dropping .wr-imp,
+body.wr-dropping .wr-syn-up,
 body.wr-dropping .bd-empty {
   outline: 2px dashed var(--accent);
   outline-offset: var(--s2);
@@ -696,6 +697,35 @@ body.wr-dropping .bd-empty {
 }
 
 .wr-gen-acts { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+/* .wr-imp-warn already resets this for the importer's own block; the
+   generate panel's warn box grows children now too. */
+.wr-gen-warn p { margin: 0; }
+
+/* ------------------------------------------------------------
+   LOADING A SYNOPSIS OFF THE DISK
+   ------------------------------------------------------------
+   A box on the synopsis stage, and almost nothing of its own: the
+   lead line, the privacy line, the picker row and the warn block are
+   all classes that already exist on this page (.wr-imp-lead,
+   .wr-imp-privacy, .wr-imp-row, .wr-imp-file/-pick, .wr-gen-warn),
+   so the two file-reading surfaces in this file look like one
+   feature rather than two.
+
+   DASHED, because it is also a drop target and a dashed edge is what
+   says so before anything is dragged. Shapes from --sk-*, no colour
+   of its own. The min-width:0 is the grid-child rule — a flex or
+   grid item's auto minimum is min-content, which is how a long
+   filename in the note below drags a track past a 390px viewport.
+   ------------------------------------------------------------ */
+.wr-syn-up {
+  display: grid;
+  gap: var(--s3);
+  min-width: 0;
+  padding: var(--s3);
+  border: var(--sk-card-line-w) dashed var(--sk-card-line);
+  border-radius: var(--sk-radius);
+}
+.wr-syn-up > * { min-width: 0; }
 
 .wr-gen-check {
   display: flex;

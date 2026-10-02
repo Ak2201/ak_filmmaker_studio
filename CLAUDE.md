@@ -22,6 +22,7 @@ npm run dev       # vite dev server, no service worker
 npm run build     # static output in dist/
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below
+npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
@@ -45,7 +46,8 @@ src/
              existed in the 2023 pages.
   lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
-             screenplay-export.js shotlist-export.js script-import.js ai.js
+             screenplay-export.js shotlist-export.js script-import.js
+             pdf-text.js ai.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -580,10 +582,43 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    revision first. `src/lib/screenplay-export.js` paginates properly, so
    `(MORE)`/`(CONT'D)` and page numbers are correct.
 
+   **PDF too.** It is the format a script actually arrives in and it
+   had no reader. `src/lib/pdf-text.js` turns a PDF back into indented
+   text and PARSER 2 reads it — a PDF has no element types in it, what
+   it has is POSITIONS, and in a screenplay the position IS the type
+   (cue at 3.7in, parenthetical at 3.1in, dialogue at 2.5in, action at
+   1.5in). Those are the columns `parseText()` has always read, so
+   there is no second classifier and no second place for the two to
+   disagree.
+
+   **No library, and that is three decisions rather than a shortcut.**
+   `script-src 'self'` with no `worker-src` means a blob: worker — how
+   most bundled PDF engines start — is refused by the browser; a
+   megabyte outside the service worker's manifest is an import that
+   works at the desk and fails on location; and this needs one thing
+   from a PDF, which is where each run of text sits.
+   `DecompressionStream('deflate')` is native and is the piece that
+   used to require one.
+
+   **The refusals are the feature.** Encrypted, scanned, and
+   subset-fonts-with-no-ToUnicode-map are each detected and declined
+   with a sentence saying what to do instead, because an extractor
+   that half-works produces mojibake and mojibake imported into
+   somebody's script is worse than an import that stopped.
+   `npm run test:pdf` builds real PDFs — compressed, packed in object
+   streams, Type0/Identity-H — and asserts the columns survive. 43
+   assertions, no browser, no dependencies, ~1s. It found two bugs
+   while being written and the first is the one to know:
+   **DecompressionStream throws on ANY trailing byte, and the spec
+   says the EOL before `endstream` is not part of the stream** — so
+   every writer emits one and nothing compressed decoded at all.
+
    Known gaps, small: `.fdx` `Number="12"` attributes are not read (a
-   number inside the heading text is), and the plain-text parser is
-   heuristic — it round-trips our own export exactly, but a third-party
-   `.txt` may need a type corrected by hand.
+   number inside the heading text is); the plain-text parser is
+   heuristic — it round-trips our own export exactly, but a
+   third-party `.txt` may need a type corrected by hand; and the PDF
+   reader assumes a monospaced advance within a run, which is every
+   screenplay and not every PDF.
 5. ~~**Finish collaboration.**~~ Done, with residuals that matter.
    `src/ui/comments.js` attaches a thread to a FIELD, not a character
    offset — the text under a note is about to change. Accepting a

@@ -57,7 +57,13 @@ import { listContacts, listCallSheets } from '../lib/contacts.js';
 import { locationIndex, listMedia, listDayDates, shootDayOf, castOf } from '../lib/locations.js';
 import '../styles/launcher.css';
 
-const TOTAL = nav.phases.reduce((n, p) => n + p.modules.length, 0);
+/* Exported because it is quoted as prose elsewhere. The hub's first-run
+   deck hand-wrote this figure ("Twenty-two modules") and had drifted two
+   behind the data by the time anybody checked. Invariant 2: one
+   derivation per thing, so the map and the sentence about the map cannot
+   disagree. Renamed on the way out — "total" says nothing at an import
+   site. */
+export const MODULE_COUNT = nav.phases.reduce((n, p) => n + p.modules.length, 0);
 const BUILT = nav.phases.reduce(
   (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
 
@@ -350,7 +356,7 @@ export function renderLauncher() {
       h('div.label', { text: 'THE MAP · EVERY MODULE BY PHASE' }),
       h('h2#lxHeading', {}, [
         document.createTextNode('Six phases, '),
-        h('em', { text: `${TOTAL} modules.` })
+        h('em', { text: `${MODULE_COUNT} modules.` })
       ]),
       h('p.deck', {
         text: 'A film moves through these in order, and so does the studio. '
@@ -359,7 +365,7 @@ export function renderLauncher() {
       })
     ]),
     h('div.right', {}, [
-      h('div', { text: `${BUILT} OF ${TOTAL} BUILT` }),
+      h('div', { text: `${BUILT} OF ${MODULE_COUNT} BUILT` }),
       h('div.lx-worked', { text: `${worked} HOLD WORK` }),
       hereLine(at)
     ])

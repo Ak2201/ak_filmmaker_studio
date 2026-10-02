@@ -364,6 +364,19 @@ measurement is still a resize rather than a fresh load at 390, so it inherits
 the same `matchMedia` caveat. Loading that one case directly into a 390px
 context would close it properly.
 
+**Only its WIDTH is measured, though — none of its COPY is.** The text and
+`data-key` capture runs *after* `createProject()`, because the blueprints will
+not scope storage without a project, and creating one replaces the first-run
+panel with the project grid. So every word on that panel is outside
+`baseline.json` entirely: `renderFirstRun()` can say anything, drift any
+number, or lose a sentence, and the hub still reports 100% coverage. That is
+how `Twenty-two modules` sat two behind the data — nothing was ever going to
+notice. The flip side is that editing that panel produces **no** gate fallout,
+so an `EXPECTED.hub` row for a word removed from it is stale the moment it is
+written, and the anti-rot check fails the run for it (proved: the run reports
+`stale allowlist entries: twenty-two`). Read the panel in a browser; the gate
+cannot.
+
 **Running two verifies at once.** The server port is `VERIFY_PORT`, default
 5321. Several worktrees of this repo can be live at the same time, and they
 used to fight over it — badly enough that sessions began running

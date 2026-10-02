@@ -228,8 +228,16 @@ const SECTIONS = [
    CHROME
    ============================================================ */
 function renderToolbar() {
-  return h('header.toolbar', { role: 'banner' }, [
-    h('span.brand', { text: 'Arunak' }),
+  /* A div, not a <header role="banner">, and no wordmark.
+
+     Both for the same reason: this strip is no longer the top of the
+     page. shell.js adopts it into .sh-bar as that band's right-hand
+     zone, and .sh-bar is role="navigation" — a banner landmark nested
+     inside a navigation one is a landmark tree that lies about the
+     page. The band above IS the banner. "Arunak" went with it: the
+     breadcrumb two inches to the left says "Studio › Library", and the
+     cover byline and the colophon both still carry the name. */
+  return h('div.toolbar', {}, [
     h('a#studioProjLink.studio-proj-link', {
       href: 'index.html',
       title: 'Back to Studio · current project'
@@ -558,8 +566,10 @@ function render() {
 
   const toolbar = renderToolbar();
 
-  // The toolbar is site chrome, not document content: it sits
-  // before <main> so the skip link actually skips it.
+  // The toolbar is site chrome, not document content: it sits before
+  // <main> so the skip link actually skips it — and mountShell() then
+  // moves it into .sh-bar, which is also before <main>, so that stays
+  // true after the adoption.
   const main = h('main#main', { role: 'main' });
   main.append(renderCover());
   SECTIONS.forEach((s, i) => {

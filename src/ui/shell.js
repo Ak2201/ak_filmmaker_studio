@@ -186,27 +186,108 @@ function renderCrumb(crumb, loc) {
 
   if (atHome) {
     crumb.append(h('span.sh-where-purpose', { text: home.purpose }));
-    return;
+  } else {
+    if (loc.phase) {
+      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
+      crumb.append(crumbStep('button', '.sh-where-phase', loc.phase.icon, loc.phase.label, {
+        type: 'button',
+        'data-action': 'crumb-phase',
+        'data-phase': loc.phase.id,
+        'aria-haspopup': 'true',
+        title: loc.phase.blurb
+      }));
+    }
+
+    if (here) {
+      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
+      crumb.append(crumbStep('span', '.sh-where-here', here.icon, here.label, {
+        'aria-current': 'page'
+      }));
+      if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
+    }
   }
 
-  if (loc.phase) {
-    crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
-    crumb.append(crumbStep('button', '.sh-where-phase', loc.phase.icon, loc.phase.label, {
-      type: 'button',
-      'data-action': 'crumb-phase',
-      'data-phase': loc.phase.id,
-      'aria-haspopup': 'true',
-      title: loc.phase.blurb
-    }));
-  }
+  /* The last segment of the crumb is "what else is ON this page", for
+     the pages that have sections. It is RE-APPENDED rather than
+     rebuilt, because the crumb is thrown away and re-created on every
+     hashchange and every scroll tick (see the note above), and the
+     rows inside this menu are the page's own anchors — moved, not
+     copied, so re-creating them is not an option. Moving a node is
+     cheap and keeps its href, its id and anything bound to it. */
+  if (pageNavEl) crumb.append(pageNavEl);
+}
 
-  if (here) {
-    crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
-    crumb.append(crumbStep('span', '.sh-where-here', here.icon, here.label, {
-      'aria-current': 'page'
-    }));
-    if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
-  }
+/* ---- ON THIS PAGE -------------------------------------------
+   The hub and the library each carried a strip of in-page section
+   links in their own toolbar — six and five of them. Six section
+   links cannot share a row with six phase pills, and the two rows
+   they needed were the second navigation band this collapse exists
+   to remove.
+
+   So they become a dropdown on the end of the breadcrumb, which is
+   the right place for them on the evidence already in this file: the
+   crumb answers "where am I", the phase segment already answers "what
+   is next to me", and a section of the page you are on is the third
+   question in that family. It reuses .sh-phase-menu wholesale rather
+   than growing a second kind of dropdown — same panel, same rows,
+   same close-on-outside-click, same below-720px pinning that stops a
+   260px menu pushing the page sideways.
+
+   DERIVED, not listed. Nothing here names a page or a section: it
+   picks up whatever `a.nav-link[href^="#"]` the page put in its own
+   toolbar, so feature.html and short.html (which have a step jumper
+   instead and no nav links) get no menu and need no opt-out, and the
+   eleven module pages have no toolbar at all. */
+let pageNavEl = null;
+
+function buildPageNav(toolbar) {
+  const links = [...toolbar.querySelectorAll('a.nav-link[href^="#"]')];
+  if (!links.length) return null;
+
+  const wrap = h('div.sh-pagenav');
+  const btn = h('button#pageNavBtn.sh-pagenav-btn', {
+    type: 'button',
+    'data-action': 'pagenav-toggle',
+    'aria-expanded': 'false',
+    'aria-controls': 'pageNavMenu',
+    'aria-label': 'Sections of this page',
+    title: 'Jump to a section of this page'
+  });
+  /* "Sections", not "On this page". The longer label is the clearer
+     one and it measured 121px against 85px in the band's mono — on
+     the hub at 900px that difference is the line break that puts the
+     six phase pills on a row of their own, which is a 36px row of
+     permanent chrome bought with four words. The full phrasing is
+     still said twice, in the panel's own head and in the accessible
+     name. */
+  btn.append(h('span.sh-pagenav-label', { text: 'Sections' }),
+             h('span.sh-pagenav-caret', { text: '▾', 'aria-hidden': 'true' }));
+
+  /* A DISCLOSURE, not a `role="menu"`. The phase menus beside it claim
+     the menu role and the working notes are explicit about what that
+     costs: `role="menu"` is a promise of arrow keys, Home, End and one
+     Tab stop, and the note on actionbar.js records it being made and
+     not kept. Nothing here implements any of that, so it does not
+     claim it — aria-expanded and aria-controls on the button, plain
+     links inside, Tab walks them and Escape closes. The shared class
+     is for the surface; the role would have been for the behaviour. */
+  const menu = h('div#pageNavMenu.sh-phase-menu.sh-pagenav-menu', { hidden: true });
+  menu.append(h('div.sh-phase-menu-head', { text: 'Sections of this page' }));
+  links.forEach((a) => {
+    const label = a.textContent.trim();
+    a.textContent = '';
+    a.className = 'sh-mod';
+    a.append(h('span.sh-mod-label', { text: label }));
+    menu.append(a);
+  });
+  /* The <nav> wrapper the library kept them in is now an empty box
+     with a border down each side — furniture for nothing. */
+  toolbar.querySelectorAll('.nav-jump').forEach((n) => {
+    if (!n.querySelector('a')) n.remove();
+  });
+
+  wrap.append(btn, menu);
+  return wrap;
 }
 
 /* ---- the two pieces ---------------------------------------- */
@@ -354,6 +435,56 @@ function buildBar(active) {
   return bar;
 }
 
+/* ---- THE PAGE'S OWN CONTROLS, IN THE SAME BAND --------------
+   Four pages — the hub, the two blueprints and the library — built a
+   `.toolbar` of their own and it was a SECOND sticky row under this
+   one. Two bands of navigation is the thing this collapse removes:
+   118-158px of permanent chrome on a desktop, 320-400px on a phone,
+   and two places to look for a control.
+
+   The whole `.toolbar` ELEMENT is moved into the bar rather than its
+   children, which is the smaller change in every direction that
+   matters:
+
+     - every id the pages query survives either way (#saveStatus,
+       #projectSwitcherBtn, #darkBtn, #searchInput, #progressFill …) —
+       moving a node does not touch its id. Verified by a walk of all
+       four pages' ids after adoption, not assumed.
+     - but so does everything else that keys off the ELEMENT:
+       `document.querySelector('.toolbar')`, which chrome.js's autoInit
+       and all four pages use to find a host for the sign-in pill and
+       the Appearance menu; the `.toolbar .btn` rules in chrome.css
+       that give chrome buttons the chrome palette; `.toolbar` in
+       print.css; and the live reference library.js holds in a local.
+       Adopting the children and dropping the element would have
+       quietly broken all of those and none of them loudly.
+
+   What makes it one band rather than a nested bar is CSS, not JS:
+   `.sh-bar > .toolbar` is static, unpainted and unpadded. See the
+   note in chrome.css. */
+function adoptPageTools(bar) {
+  const tools = document.querySelector('.toolbar');
+  const find = bar.querySelector('.sh-find');
+  if (!tools || !find || tools.closest('.sh-bar')) return;
+  // The section links come out first: they belong on the crumb, not
+  // in the right-hand zone with the save state and the backups.
+  pageNavEl = buildPageNav(tools);
+  bar.append(tools);
+  /* The palette handle joins the group rather than sitting beside it,
+     and that is a layout fix rather than a tidy-up. Flex breaks lines
+     using each item's hypothetical size BEFORE anything shrinks, so a
+     139px handle next to a 1006px strip could not share a line at
+     1100px even though the line had 1068px and the strip was
+     perfectly willing to shrink — the handle took a third row of its
+     own, 34px of chrome for one button. Inside the group it is one
+     more thing that wraps with everything else.
+
+     First in the group, so the right-hand zone reads search → project
+     → appearance → backups → account, and so the `order: -1` rule
+     that pulls it to the front below 900px has nothing left to do. */
+  tools.insertBefore(find, tools.firstChild);
+}
+
 /* ---- keeping the statement true ----------------------------
    A breadcrumb that is right at load and wrong thereafter is worse
    than no breadcrumb: it is a confident lie, and the user's whole
@@ -483,13 +614,18 @@ function runSpy() {
 
 /* The bar's height is measured, not assumed.
 
-   `.toolbar` sits at `top: var(--sh-bar-h)`, and that was a literal
-   56px — true only while the bar is one row. It already was not: six
-   phase tabs wrap below about 900px, so between there and the
-   breakpoint the page toolbar has been sliding under the shell. The
-   breadcrumb makes the bar wrap sooner, so this stops being a latent
-   bug and becomes a visible one. Measure it and publish it, which is
-   what the working notes always claimed happened.
+   It used to be a literal 56px, which was true only while the bar is
+   one row, and it already was not: six phase tabs wrap below about
+   900px. The page toolbar parked on this value and was therefore
+   sliding under the shell between there and the breakpoint.
+
+   The page toolbar is INSIDE this bar now, so nothing parks on
+   --sh-bar-h any more on the four pages that have one. Two things
+   still read it and both are page furniture that stacks under the
+   whole band: study.css's `.ds-bar` and the workbench's pinned
+   reference panel. It is also what makes the bar's own wrapping
+   visible to anything that needs to clear it, which is why it is
+   still measured rather than deleted.
 
    A plain resize listener rather than a ResizeObserver: the height
    only changes with the viewport, and an observer that writes a
@@ -557,13 +693,17 @@ function measureBar() {
    A band is a sticky or fixed element that is (a) laid out as a top
    chrome layer — a direct child of #app, of <body> or of <main> —
    (b) anchored to a `top` offset rather than a side, and (c) wide
-   enough to span the page. Those three things are true of .sh-bar,
-   of .toolbar and of study.html's .ds-bar, and false of the two
-   sticky things that are NOT chrome you scroll under: stripboard's
+   enough to span the page. Those three things are true of .sh-bar, of
+   the plate and of study.html's .ds-bar, and false of the two sticky
+   things that are NOT chrome you scroll under: stripboard's
    .sb-grid-name is anchored left, and the workbench's .wb-ref is a
-   third of the width and nested deeper. Naming the four selectors
-   would have been shorter and would have gone stale the first time a
-   page grew a fifth bar.
+   third of the width and nested deeper. Naming the selectors would
+   have been shorter and would have gone stale the first time a page
+   grew another bar — which is exactly what happened in the other
+   direction when .toolbar stopped being one. It was a candidate
+   until the two bands were collapsed; now it is a child of .sh-bar,
+   so it is not a `#app > *` and drops out of the candidate set with
+   no edit here. The band is the one band.
 
    Each candidate's bottom is its computed `top` plus its height, not
    its current rect: the bar is only pinned once you have scrolled,
@@ -600,6 +740,19 @@ function measureChrome() {
        what keeps .reading-progress out of the sum — 2px, fixed, full
        width, and not a thing anything is hidden behind. */
     if (r.height < 16 || r.width < vw * 0.5) continue;
+    /* AND IT HAS TO CROSS THE PAGE, not merely be wide.
+       `width >= half the viewport` is a proxy for "spans the page"
+       and it stops being one on a phone, where half the viewport is
+       195px and the step rail is 220px — fixed, `top: 64px`, 804px
+       tall and translated off-canvas. It passed all three tests and
+       made the band 868px on the two blueprints at 390px, which is a
+       scroll-padding-top of nearly a whole screen: every fragment
+       jump on the longest pages in the app landed a screen low. The
+       note above already says a left-anchored rail is not a band;
+       this is the test that says so. A real top band straddles the
+       middle of the viewport, and nothing anchored to one edge
+       does. */
+    if (r.left > vw * 0.5 || r.right < vw * 0.5) continue;
     band = Math.max(band, Math.round(top + r.height));
   }
   if (band === lastBand) return;
@@ -675,7 +828,12 @@ function closeAllMenus(except) {
   document.querySelectorAll('.sh-phase-menu').forEach((m) => {
     if (m === except) return;
     m.hidden = true;
-    const btn = m.parentElement && m.parentElement.querySelector('.sh-phase-btn');
+    /* Both openers, because the "on this page" menu reuses this panel
+       and its button is not a .sh-phase-btn. A menu closed with its
+       button still reporting aria-expanded="true" is a screen reader
+       told the opposite of what is on screen. */
+    const btn = m.parentElement
+      && m.parentElement.querySelector('.sh-phase-btn, .sh-pagenav-btn');
     if (btn) btn.setAttribute('aria-expanded', 'false');
   });
 }
@@ -697,6 +855,24 @@ function wire() {
     menu.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
   });
+
+  /* "On this page" — the same panel as a phase menu, opened from the
+     end of the breadcrumb. */
+  delegate(document, 'click', '[data-action="pagenav-toggle"]', (e, btn) => {
+    const menu = document.getElementById('pageNavMenu');
+    if (!menu) return;
+    const open = menu.hidden;
+    closeAllMenus(menu);
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+
+  /* Following a row inside it puts it away. The phase menus never
+     needed this because their rows go to another page and the menu
+     goes with it; these rows are fragments of the page you are
+     already on, so the menu would otherwise stay open over the
+     section it just took you to. */
+  delegate(document, 'click', '.sh-pagenav-menu .sh-mod', () => closeAllMenus());
 
   delegate(document, 'click', '[data-action="rail-toggle"]', () => {
     setRail(!document.body.classList.contains('rail-shown'));
@@ -746,7 +922,7 @@ function wire() {
     // .sh-where-phase opens a menu too, so a click on it must not be
     // treated as a click "outside" — the generic close below runs
     // after the delegate above and would shut what it just opened.
-    if (!e.target.closest('.sh-phase, .sh-where-phase')) closeAllMenus();
+    if (!e.target.closest('.sh-phase, .sh-where-phase, .sh-pagenav')) closeAllMenus();
     // Narrow: the rail is a temporary overlay, so following a link or
     // tapping the page puts it away again.
     if (!isNarrow()) return;
@@ -822,6 +998,14 @@ export function mountShell() {
   app.insertBefore(rail, app.firstChild);
   app.insertBefore(scrim, app.firstChild);
 
+  /* The page's own toolbar becomes the right-hand zone of this bar.
+     All four pages that build one render it before they call
+     mountShell(), which is what makes a single adopt-after-render
+     pass enough; a page that ever renders its toolbar later would
+     need to call mountShell() after it, and mountShell() is
+     idempotent so that is safe. */
+  adoptPageTools(bar);
+
   crumbEl = bar.querySelector('#studioWhere');
   document.body.classList.add('has-sh-shell');
   wire();
@@ -847,6 +1031,34 @@ export function mountShell() {
     requestAnimationFrame(() => { measureBar(); runSpy(); });
   });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureBar).catch(() => {});
+
+  /* AND AGAIN WHENEVER THE BAND'S CONTENTS CHANGE.
+
+     Everything above measures on a schedule — now, next frame, the
+     frame after, and when the fonts land — and a schedule cannot see
+     a control that arrives later. Several do, and all of them are
+     inside the band now that the page's toolbar is: the sign-in pill
+     (`attachSignInPill`, after a lazily-imported cloud module
+     resolves), the Appearance menu that replaces the ◐ button, and
+     the project switcher's label once a project exists. Measured on
+     the feature blueprint at 1280px: the band settled at 102px and
+     --sh-chrome-h stayed at the 146px it had been during load, so
+     every fragment jump on that page landed 44px low. The resize
+     listener could not help — nothing had resized.
+
+     A MutationObserver rather than a ResizeObserver, which is what
+     the note on measureBar() warns off: what this writes is two
+     custom properties on <html>, and <html> is not in the observed
+     subtree, so there is no notification loop to get wrong. rAF
+     throttled for the same reason the scroll and resize listeners
+     are. */
+  if (typeof MutationObserver === 'function') {
+    let mraf = 0;
+    new MutationObserver(() => {
+      if (mraf) return;
+      mraf = requestAnimationFrame(() => { mraf = 0; measureBar(); });
+    }).observe(bar, { childList: true, subtree: true });
+  }
   return bar;
 }
 

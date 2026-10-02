@@ -332,9 +332,18 @@ const $ = (sel) => document.querySelector(sel);
 // MARKUP
 // ============================================================
 function toolbarMarkup() {
+  /* NO WORDMARK. "Arunak" used to sit at the head of this strip,
+     beside a breadcrumb one row above it that already read
+     "Studio › …" — the same information twice, in the one place on the
+     page where space is permanent. The colophon's byline at the foot
+     of the page is where the curator's name belongs.
+
+     The six section links below are still built here and are still
+     this page's own. shell.js lifts them into an "on this page" menu
+     on the end of the breadcrumb; see buildPageNav() in shell.js for
+     why they are discovered there rather than declared. */
   return h('div.toolbar', {
     html: `
-      <span class="brand">Arunak</span>
       <a class="nav-link" href="#projects">Projects</a>
       <a class="nav-link" href="#doors">Blueprints</a>
       <a class="nav-link" href="#start">Start</a>

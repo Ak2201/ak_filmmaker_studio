@@ -83,7 +83,15 @@ a:focus-visible { outline-offset: 3px; }
 }
 
 /* ------------------------------------------------------------
-   TOOLBAR
+   TOOLBAR — the page's own controls.
+
+   These declarations are the FALLBACK, for a page that renders a
+   toolbar and never mounts the shell. Every page in the app mounts
+   it, so in practice the rules that apply are the `.sh-bar >
+   .toolbar` block further down: the strip is a zone of the one
+   navigation band, not a band of its own. Keeping the standalone
+   form correct costs nothing and is what makes the strip survive
+   being looked at on its own.
    ------------------------------------------------------------ */
 .toolbar {
   position: sticky;
@@ -103,14 +111,6 @@ a:focus-visible { outline-offset: 3px; }
   border-bottom: 1px solid var(--chrome-hair);
   backdrop-filter: var(--blur-chrome);
   -webkit-backdrop-filter: var(--blur-chrome);
-}
-.toolbar .brand {
-  font-family: var(--f-body);
-  font-size: var(--t-small);
-  letter-spacing: normal;
-  font-weight: 700;
-  color: var(--chrome-ink);
-  margin-right: auto;
 }
 /* The hub reads the three volumes at once, so its toolbar wears
    all three rather than one accent. */
@@ -1225,6 +1225,21 @@ a:focus-visible { outline-offset: 3px; }
   min-width: 280px;
   padding: 0;
 }
+/* On a phone it pins to the BAR, not to the control — the same remedy
+   the phase menus and the toolbar menus already have, for the same
+   reason and one control along. `right: 0` on its own wrapper is
+   correct while the switcher sits in the middle of a bar of its own,
+   and wrong once it is in the navigation band's right-hand zone: at
+   390px the wrapper is 143px from the left edge, so a 280px panel
+   hanging off its right edge starts at -137 and is a third off the
+   screen. Nothing in the gate can see that — a panel off the LEFT
+   edge does not scroll the document, so the overflow check and the
+   menus-open check both read zero. `static` on the wrapper is what
+   hands the pinning to .sh-bar, which is `relative` at this width. */
+@media (max-width: 560px) {
+  .switcher-wrap { position: static; }
+  .switcher-dropdown { left: var(--s3); right: var(--s3); min-width: 0; }
+}
 .switcher-dropdown .sd-item {
   display: flex;
   flex-direction: column;
@@ -1731,7 +1746,6 @@ a:focus-visible { outline-offset: 3px; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .toolbar .brand { flex-shrink: 0; }
   .progress-meter { border: none; padding: 0 var(--s2); }
   .share-row { grid-template-columns: 1fr; }
   .share-row .cm-btn { width: 100%; }
@@ -1756,13 +1770,6 @@ a:focus-visible { outline-offset: 3px; }
     position: static;
     flex-wrap: wrap;
     overflow-x: visible;
-  }
-  .toolbar .brand {
-    flex-basis: 100%;
-    margin-right: 0;
-    padding-bottom: var(--s2);
-    border-bottom: 1px solid var(--chrome-hair);
-    text-align: center;
   }
   .progress-meter { flex: 1; }
   .progress-bar { width: 100%; min-width: 70px; }
@@ -2348,9 +2355,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
    Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
 @media (max-width: 719px) {
   .sh-bar { position: relative; top: auto; }
-  /* Relative, which is also what makes measureBar() publish a plate
-     height of 0 here: nothing is pinned, so nothing parks on it. */
-  .sh-plate { position: relative; top: auto; }
+  /* The plate's own un-pinning lives at the END of its section, not
+     here — this block is declared BEFORE `.sh-plate { position:
+     sticky }`, so a rule for it here loses the order tie-break and
+     does nothing. See the note beside it. */
   .sh-phase { position: static; }
   .sh-phase-menu {
     left: var(--s3);
@@ -2374,10 +2382,167 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   .sh-where-root:not(.sh-where-here) + .sh-where-sep { display: none; }
 }
 
-/* The page toolbar stacks under the bar rather than over it. */
-.has-sh-shell .toolbar { top: var(--sh-bar-h); }
+/* ---- ONE BAND -----------------------------------------------
+   The page's own `.toolbar` used to be a SECOND sticky row, parked at
+   `top: var(--sh-bar-h)` under this one. Four pages built one — the
+   hub, the two blueprints and the library — so four pages carried two
+   rows of navigation: 117 to 180px of permanent chrome on a desktop
+   before the brand plate, and 240 to 360px on a phone.
+
+   shell.js moves the element into `.sh-bar`, and these declarations
+   are what make it a ZONE of that band rather than a bar inside a
+   bar. Everything that painted it as a surface of its own comes off:
+   it keeps its own gap and its flex row and nothing else.
+
+   The three things that must go, and why each one is listed:
+     - `position: sticky` + `top`, or it pins itself inside an
+       already-pinned parent and `measureChrome()` counts it twice.
+     - the background, the hairline and the blur, or the band has a
+       visible seam down it at the point where one used to end.
+     - the padding, because the band already has its own and two sets
+       of inline padding is a gap you cannot explain by looking at it.
+
+   `z-index: auto` matters more than it looks: the toolbar menus are
+   absolutely positioned children, and a positioned ancestor with a
+   lower stacking context than the phase menus would put a Backup
+   panel behind one. Static and auto leaves them all in the bar's
+   context, which is where the phase menus already are. */
+.sh-bar > .toolbar {
+  position: static;
+  z-index: auto;
+  /* It GROWS and hugs the right edge. Growing is not decoration: the
+     zone is itself a wrapping flex row, so every pixel it is not
+     given is a pixel of its own content wrapping to a second internal
+     line — the feature blueprint's strip was 85px and two lines at
+     1280px before this, with 200px of slack sitting unclaimed beside
+     it. Right-aligned because this is the band's right-hand zone:
+     breadcrumb, phases, then the page's own controls. */
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 0;
+  /* Tighter BETWEEN controls, unchanged between rows. 8px eight times
+     over is 64px, and 64px is the difference between the feature
+     blueprint's strip fitting on one line at 1280px and wrapping to
+     two — which costs 41px of permanent chrome to buy air between
+     controls that already have their own borders. */
+  column-gap: var(--s1);
+  background: none;
+  border-bottom: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* NOT OVERRIDDEN between 561 and 820px, where the standalone
+     toolbar rule above makes it scroll sideways instead of wrapping.
+     That behaviour is deliberately kept for the zone: it is the one
+     thing holding the band to three rows at 720px, and letting the
+     strip wrap there adds two more — the trade this file argues
+     against everywhere, since 164px of chrome above a text field is
+     worse than a control you have to swipe to. Below 560px the base
+     rule already wraps rather than scrolls, for the opposite reason,
+     and that stands too. Neither behaviour is new here. */
+}
+/* Six phase pills, a breadcrumb and a page's whole control strip do
+   not share a row at 1280px with 16px of padding either side of
+   every pill. The pills lose 4px a side on the four pages that have
+   a strip, and keep it on the eleven that do not — which is what
+   `:has(> .toolbar)` buys that a media query could not: the
+   constraint is "this bar is carrying a page's controls", not "the
+   window is this wide". */
+.sh-bar:has(> .toolbar) .sh-phase-btn { padding-inline: var(--s3); }
+
+/* And the breadcrumb stops GROWING on those four pages. `.sh-where`
+   is `flex: 1 1 auto`, which is harmless while it is the only
+   flexible thing in the bar and is not once the page's own controls
+   share the row: the crumb absorbed every pixel of slack — measured
+   at 545px against 388px of content on the feature blueprint — and
+   pushed the control strip onto a line of its own. Free space belongs
+   to the auto margins on .sh-phases, which is what centres them.
+
+   Scoped rather than changed outright, deliberately. On a bar with no
+   control strip the crumb's growing is a 22px imprecision in where
+   the pills sit and nothing else, and scoping is what keeps the
+   eleven module pages rendering pixel-for-pixel as they did before
+   this collapse — checked by comparing screenshots at six widths,
+   not by reasoning about it. */
+.sh-bar:has(> .toolbar) .sh-where { flex: 0 1 auto; }
+
+/* And the palette handle gives up its words on those four pages, for
+   the reason the 900px rule further down already gives in full: the
+   label collapses before the glyph does, because "Search" and the key
+   cap are the parts a person can infer from a magnifier and the
+   magnifier is the part they cannot. 139px becomes 29px.
+
+   The arithmetic, on the feature blueprint at 1280px with the rail
+   open: the right-hand zone has 1172px and its controls want 1207,
+   so the account pill wrapped to a THIRD row of the band — 44px of
+   permanent chrome for one button, and the one page where this
+   collapse would have made the chrome TALLER than the two bars it
+   replaced (184px against 160). Without the words the zone wants
+   1097 and fits on one line, and the band is 140px.
+
+   ⌘K still works, is still announced through aria-keyshortcuts, and
+   is still spelled out in the control's title. The eleven pages with
+   no control strip keep the full handle. */
+.sh-bar:has(> .toolbar) .sh-find-label,
+.sh-bar:has(> .toolbar) .sh-find-key { display: none; }
+.sh-bar:has(> .toolbar) .sh-find { padding: var(--s1) var(--s2); }
+
+/* ---- "ON THIS PAGE" -----------------------------------------
+   The last segment of the breadcrumb on the pages that have
+   sections. The panel is a .sh-phase-menu — same surface, same
+   rows, same pinning below 720px — so there is nothing here but the
+   handle and the one grid correction the rows need.
+   ------------------------------------------------------------ */
+.sh-pagenav { position: relative; flex: none; }
+.sh-pagenav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  /* The crumb's own metrics, not a size of its own: same padding and
+     type as .sh-where-step, so the control is the height of the
+     segments it sits beside without stating a number anybody has to
+     keep in step with them. */
+  padding: var(--s1) var(--s2);
+  background: none;
+  border: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--chrome-muted);
+  cursor: pointer;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sh-pagenav-btn:hover,
+.sh-pagenav-btn:focus-visible,
+.sh-pagenav-btn[aria-expanded="true"] {
+  background: var(--chrome-fill);
+  color: var(--chrome-ink);
+}
+.sh-pagenav-caret { font-size: .7em; }
+/* A section row has no icon and no status flag, so the three-column
+   grid .sh-mod declares for a module leaves two empty tracks and a
+   column gap in front of every label. */
+.sh-pagenav-menu .sh-mod { grid-template-columns: 1fr; }
+.sh-pagenav-menu .sh-mod-label { grid-area: auto; }
+/* `.sh-phase-menu` draws its top edge as `2px solid var(--hue)`, and a
+   phase menu always has a hue because .sh-phase carries .sh-ph-*.
+   This panel hangs off the breadcrumb, and the two pages that have one
+   — the hub and the library — belong to no phase, so --hue is
+   undefined, the whole border-top declaration is invalid at
+   computed-value time and the edge silently disappears. Same trap the
+   working notes record for the breakdown's element chips. A declared
+   fallback, the way .sh-where-here already does it. */
+.sh-pagenav-menu { border-top: 2px solid var(--hue, var(--accent)); }
+
+/* Below 720px the panel pins itself to the bar rather than to its
+   opener, the way .sh-phase does and for the same measured reason —
+   a 260px menu anchored to a control near the right edge takes the
+   page sideways with it. `static` is what hands the pinning to
+   .sh-bar, which is `relative` at this width. */
 @media (max-width: 719px) {
-  .has-sh-shell .toolbar { top: 0; }
+  .sh-pagenav { position: static; }
 }
 
 @media print {
@@ -2689,6 +2854,24 @@ html {
   .sh-plate-dot { position: relative; }
   .sh-plate-dot::after { content: ""; position: absolute; inset: -9px; }
 }
+/* THE PLATE SCROLLS AWAY ON A PHONE, and this rule has to sit here
+   rather than with the other narrow-width shell overrides.
+
+   It was written up there, in the `max-width: 719px` block beside
+   `.sh-bar { position: relative }` where it belongs by meaning — and
+   it never once applied. That block is declared ~430 lines ABOVE
+   `.sh-plate { position: sticky }`, the specificity is identical, so
+   the later rule won and 38px of brand plate stayed pinned on every
+   phone on all fifteen pages. measureBar() then added it to
+   --sh-bar-h, which is how a dead CSS rule became a wrong number.
+
+   Same lesson as the search highlight two sections up and as
+   `.phase .label` in modules.css: when two rules tie, the fix has to
+   live where it cannot be ordered out, not where it reads best. */
+@media (max-width: 719px) {
+  .sh-plate { position: relative; top: auto; }
+}
+
 @media (max-width: 559px) {
   .sh-plate { gap: var(--s2); padding-inline: var(--s3); }
   .sh-plate-flag { display: none; }

@@ -45,7 +45,8 @@ create table if not exists public.project_data (
                 'locations',
                 'workbench',
                 'dissect',
-                'festivals'
+                'festivals',
+                'scriptgen'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),
@@ -1703,4 +1704,64 @@ end $$;
 -- 42501 is a refusal, not an empty set); every READ path is not. One
 -- real row, saved by a signed-in user, then still [] to an anonymous
 -- caller, closes it. Until then the read side is unverified.
+-- ============================================================
+
+-- ============================================================
+-- 11. A NEW SYNC SCOPE: scriptgen
+-- ------------------------------------------------------------
+-- RAN 02 OCT 2026.
+--
+-- `fms_scriptgen_v1` holds the synopsis-to-script job: the synopsis,
+-- the agreed fifteen beats, the scene list and a cursor saying how
+-- far the pages have been written. The beats and the scene list are
+-- the writer's work, not run state, so the key is project-scoped and
+-- syncs like everything else.
+--
+-- The CHECK above is edited in place as well, for a database created
+-- from this file in future. This section is what an EXISTING database
+-- needs, because `create table if not exists` will not re-run and a
+-- column CHECK is not replaced by re-declaring it.
+--
+-- The constraint name is not assumed. Postgres generates
+-- `project_data_scope_check` for an inline column CHECK, but a
+-- database that has been through a rename would not have it, so the
+-- name is looked up from the catalogue rather than typed.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen'
+    ));
+end $$;
+
+-- VERIFY: every scope name cloud.js can send must be accepted here.
+-- cloud.js derives its list from Store.SCOPED_KEYS and warns at load
+-- about any scoped key with no scope name, so the two halves check
+-- each other; this is the half Postgres enforces.
+--
+--   select pg_get_constraintdef(con.oid)
+--     from pg_constraint con join pg_class c on c.oid = con.conrelid
+--    where c.relname = 'project_data' and con.contype = 'c';
+--
+-- RESULT 02 OCT 2026: 16 scopes, matching SCOPE_BY_KEY exactly.
 -- ============================================================

@@ -47,7 +47,7 @@ src/
   lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
              screenplay-export.js shotlist-export.js script-import.js
-             pdf-text.js ai.js
+             pdf-text.js ai.js scriptgen.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -239,6 +239,18 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   were `style="color: var(--accent)"` and `style="color: var(--paper)"` left in
   `feature.js` markup, silently defeating the token fix. If a token change does
   not take, grep the markup before you doubt the cascade.
+
+- **`--f-script` keeps its Tamil face LAST.** The screenplay stack names
+  Noto Sans Tamil because Courier Prime ships `latin`/`latin-ext` only and
+  no monospaced Tamil font exists. Google serves that family as three
+  `@font-face` blocks — tamil, latin-ext, latin — so the family claims
+  Latin too: put it before `'Courier New'` and it becomes the first
+  *available* font on every page that never loaded Courier Prime, and
+  takes every glyph. Measured, a slug line went from 600px of Courier New
+  to 534px of proportional sans. Nothing errors and nothing overflows —
+  the fixed-width grid `pageCount()` is arithmetic on has simply stopped
+  being fixed-width. The check asserts a Tamil family is present and sits
+  after the last Courier family.
 
 - hue-coded surfaces still distinguish. Where the markup declares a variant
   (`.door.shorts`, `.start-card.f`, `.fest-card.t2`, `.example.alt`) the design
@@ -447,6 +459,15 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   `role="alert"` rather than the polite one — the politeness is bound when a
   live region enters the accessibility tree and several readers never re-read
   it, so flipping `aria-live` on one element does not work.
+- **A font family covers more than you asked it for.** Adding Noto Sans
+  Tamil to `--f-script` to get Tamil glyphs also handed it every Latin
+  glyph, because the family ships latin subsets as well and Courier Prime
+  is not loaded on the eleven module pages — only `index`, `feature`,
+  `short` and `library` request any webfont at all. CSS fallback is per
+  glyph, which is what makes the mixed document work, but it only skips a
+  family that has *no* glyph. Order the stack so the narrow-coverage face
+  is last. `verify` asserts it now.
+
 - **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
   matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
   match nothing. When `applyTheme()` set only the classes, all three themes
@@ -565,7 +586,26 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    writer they wrote something they did not — a quotation that is not word
    for word is stripped and counted.
 
-   All three callers now go through `src/ui/ai-panel.js`. visualize.js
+   A fourth job is in: **a synopsis becomes a script.**
+   `src/lib/scriptgen.js` owns the job, `ai.js` owns the three calls
+   (`draftBeatSheet`, `draftSceneList`, `draftScenePages`) and the
+   writing still lands in `script.js` and `scenes.js`. It is staged
+   because it has to be: a Tamil feature is 60,000-120,000 output
+   tokens against a 32,000 ceiling, so one call cannot do it and a
+   call that tries is billed up to the cut. Stage 2 commits the SCENE
+   MODEL before any pages exist, so the breakdown, stripboard, budget
+   and reports light up even if stage 3 never runs — the same lesson
+   `script-import.js` learned. A cursor makes it resumable, because a
+   run that dies at scene forty must not re-bill thirty-nine scenes.
+
+   The honest part: screenplay page maths is 55 lines of fixed-width
+   Courier, so the default mode keeps Tamil in the DIALOGUE and leaves
+   slugs and action in English — which is what Tamil crews shoot from
+   anyway, and the only arrangement where the page count stays
+   arithmetic. Tamil-throughout is offered and labels its page count an
+   estimate rather than printing a number the grid cannot support.
+
+   All three earlier callers go through `src/ui/ai-panel.js`. visualize.js
    was the last holdout — it carried a hand-copied key form and key bar,
    the third copy the module exists to prevent, and it is gone: the page
    keeps the shot half (pick / run / stop / undo) and the module owns the

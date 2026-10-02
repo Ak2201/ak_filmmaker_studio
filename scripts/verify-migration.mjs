@@ -507,6 +507,58 @@ const server = http.createServer((req, res) => {
   console.log('✓ no hairline used as a text colour');
 }
 
+/* ---- source check: a Tamil face must sit BEHIND the monospace ones
+   `--f-script` is the screenplay stack and it now names a Tamil font,
+   because Courier Prime ships `latin`/`latin-ext` only and no
+   monospaced Tamil font exists — so a Tamil script set in it otherwise
+   falls through to whatever the OS picks.
+
+   THE ORDER IS THE WHOLE THING, and getting it wrong is silent. Google
+   serves Noto Sans Tamil as three @font-face blocks — tamil, latin-ext
+   and latin — all under one family name, so the family claims Latin
+   too. Placed BEFORE 'Courier New' it becomes the first available font
+   on any page that has not loaded Courier Prime and takes every glyph:
+   measured, a slug line went from 600px of Courier New to 534px of
+   proportional sans. Nothing errors, nothing overflows, the text and
+   the keys are all still correct — the fixed-width grid the page count
+   is arithmetic on has simply stopped being fixed-width.
+
+   So: the Tamil family must appear, and it must come after the last
+   monospace family that covers Latin. ------------------------------- */
+{
+  const tokens = fs.readFileSync(path.join(ROOT, 'src', 'styles', 'tokens.css'), 'utf8');
+  const bad = [];
+  // every declaration of --f-script, in every theme block
+  const decls = tokens.match(/--f-script:[^;]+;/g) || [];
+  if (!decls.length) bad.push('no --f-script declaration found at all');
+  const TAMIL = /Noto Sans Tamil|Latha|Nirmala|Tamil/i;
+  for (const d of decls) {
+    const list = d.replace(/--f-script:\s*/, '').replace(/;$/, '')
+      .split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, ''));
+    const tamilAt = list.findIndex((f) => TAMIL.test(f));
+    if (tamilAt === -1) { bad.push('no Tamil family in: ' + d.trim()); continue; }
+    // the Latin-covering monospace faces this stack relies on
+    const monoAt = list.map((f, i) => (/^(Courier Prime|Courier New|Courier)$/i.test(f) ? i : -1))
+      .filter((i) => i >= 0);
+    const lastMono = monoAt.length ? Math.max(...monoAt) : -1;
+    if (lastMono === -1) { bad.push('no Courier family in: ' + d.trim()); continue; }
+    if (tamilAt < lastMono) {
+      bad.push('Tamil family is at position ' + (tamilAt + 1) + ' but the last Courier '
+        + 'family is at ' + (lastMono + 1) + ' — it will claim Latin too: ' + d.trim());
+    }
+  }
+  if (bad.length) {
+    console.error('\n✗ --f-script font order is wrong:');
+    bad.forEach((b) => console.error('  ' + b));
+    console.error('\n  The Tamil family goes LAST, after Courier Prime / Courier New /');
+    console.error('  Courier. Before them it is the first available font on pages that');
+    console.error('  never loaded Courier Prime, and it silently replaces the');
+    console.error('  fixed-width grid that pageCount() is arithmetic on.\n');
+    process.exit(2);
+  }
+  console.log('✓ --f-script keeps Tamil behind the monospace faces');
+}
+
 /* ---- data check: the Tanglish sidecar must still address real steps
    src/data/steps.tanglish.json is keyed `<namespace>:<step id>`, and
    it decorates files that `npm run extract` REGENERATES. A step that

@@ -629,3 +629,138 @@ body.wr-dropping .bd-empty {
     width: 28ch;
   }
 }
+
+/* ============================================================
+   GENERATE — a synopsis becomes a script
+   ------------------------------------------------------------
+   Shapes come from the skin (--sk-*), colours from tokens.css, and
+   text colours are the three-deep ink hierarchy: --ink, --ink-body,
+   --ink-muted. No --ink-faint and no fill used as a text colour —
+   the hue tokens are chosen to be painted BEHIND something, and as
+   text they run 3.3-4.4:1 on a light card.
+   ============================================================ */
+.wr-gen-form,
+.wr-gen-beats,
+.wr-gen-pages { display: grid; gap: var(--s4); }
+
+.wr-gen-synopsis {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  resize: vertical;
+}
+
+.wr-gen-opts {
+  display: grid;
+  /* min() so a 180px floor cannot sum past a 390px viewport — three
+     columns of minmax(180px,1fr) is a 564px floor, which is how the
+     first-run panel overflowed by 238px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--s4);
+}
+.wr-gen-opts > * { min-width: 0; }
+.wr-gen-opts select { width: 100%; min-width: 0; }
+
+.wr-gen-note,
+.wr-gen-cost {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+}
+.wr-gen-logline {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-style: italic;
+  line-height: var(--lh-snug);
+}
+
+/* An estimate, a truncation, a cost — things the writer must not
+   discover afterwards. Same shape as .wr-imp-warn above and for the
+   same reason: --warn is a FILL, so it stays on the rule and on the
+   wash, and the words take --ink-body. A fill used as a text colour
+   runs 3.3-4.4:1 on a light card. */
+.wr-gen-warn {
+  margin: 0;
+  padding: var(--s3);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+
+.wr-gen-acts { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+
+.wr-gen-check {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  cursor: pointer;
+}
+
+/* ---- the beats --------------------------------------------- */
+.wr-gen-beatlist {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: genbeat;
+}
+.wr-gen-beat {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s3);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  background: var(--paper);
+  counter-increment: genbeat;
+}
+.wr-gen-beat-name {
+  color: var(--ink);
+  font-family: var(--f-display);
+  font-size: var(--t-small);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+.wr-gen-beat-name::before {
+  content: counter(genbeat) ". ";
+  color: var(--ink-muted);
+}
+.wr-gen-beat-text {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  resize: vertical;
+}
+
+/* ---- progress ---------------------------------------------- */
+.wr-gen-stats { display: flex; flex-wrap: wrap; gap: var(--s5); }
+
+.wr-gen-bar {
+  height: var(--s3);
+  overflow: hidden;
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius);
+  background: var(--paper-sunk);
+}
+.wr-gen-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--speed-slow) var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr-gen-bar-fill { transition: none; }
+}

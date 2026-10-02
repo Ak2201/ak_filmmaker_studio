@@ -197,7 +197,33 @@
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
   --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --f-script:  'Courier Prime', 'Courier New', Courier, monospace;
+  /* Courier Prime ships `latin` and `latin-ext` and has NO Tamil
+     subset, and there is no monospaced Tamil font to swap in — so a
+     Tamil script set in this stack falls through to whatever system
+     Tamil face the OS picks, with metrics that match nothing.
+     Naming Noto Sans Tamil here fixes it without a JS language
+     probe, because CSS font fallback is PER GLYPH: Latin keeps the
+     fixed-width grid, Tamil codepoints take Noto. That is exactly
+     the mixed document the default script language produces —
+     English slugs and action over Tamil dialogue — and it needs no
+     class on the element.
+
+     IT GOES LAST, AFTER the Latin monospace fallbacks, and that
+     order is the whole trick. Google serves Noto Sans Tamil as
+     THREE @font-face blocks — tamil, latin-ext and latin — all
+     under one family name, so the family claims Latin as well.
+     Placed second it was the first AVAILABLE font on any page that
+     does not load Courier Prime, and it took every glyph: measured,
+     a slug line went from 600px of Courier New to 534px of
+     proportional sans, which is the monospace grid gone. Behind
+     Courier New it can only pick up what the monospace faces have
+     no glyph for, which is precisely Tamil — and that holds whether
+     Courier Prime loaded or a reader merely has Noto installed.
+
+     Do NOT add letter-spacing to anything using this stack. Tracking
+     splits a Tamil cluster into its parts, which is how the Tamil
+     experiment broke the first time. */
+  --f-script:  'Courier Prime', 'Courier New', Courier, 'Noto Sans Tamil', monospace;
 
   /* A real scale (1.25), replacing the ad-hoc 10/11/13/14/16/18
      px values scattered through the old files. */

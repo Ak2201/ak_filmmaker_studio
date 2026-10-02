@@ -64,7 +64,8 @@ const SCOPED_KEYS = [
   'fms_locations_v1',
   'fms_workbench_v1',
   'fms_dissect_v1',
-  'fms_festivals_v1'
+  'fms_festivals_v1',
+  'fms_scriptgen_v1'
   // intentionally NOT scoped: fms_studio_prefs_v1 (dark mode = global),
   //                            fms_supabase_cfg_v1 (account-level),
   //                            fms_note_* (per-field notes, fine global for now)

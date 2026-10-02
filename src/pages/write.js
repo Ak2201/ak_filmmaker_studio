@@ -44,6 +44,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
+import * as Scriptgen from '../lib/scriptgen.js';
 import Script, {
   ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
   revisionColour, typeLabel,
@@ -179,6 +180,25 @@ let importName = '';
 let importBusy = false;
 let replaceScript = false;
 let replaceScenes = false;
+
+/* Generation state. `gen` is the persisted job and IS the user's work
+   — the synopsis and the agreed beats — so it is stored. Everything
+   beside it is this run: a busy flag, the abort controller behind Stop,
+   the last status line, the last error, and whether the user asked for
+   one batch or for all of them.
+
+   `genAll` is the only thing in here that can spend money more than
+   once per click, so it is read at the TOP of each loop turn and
+   cleared by Stop. A loop that re-read it from a stale closure would
+   keep billing after Stop, which is the one bug this feature cannot
+   be allowed to have. */
+let gen = Scriptgen.load();
+let genBusy = false;
+let genAbort = null;
+let genStatus = '';
+let genError = '';
+let genAll = false;
+let genReplaceScenes = false;
 
 /* ---- persistence ------------------------------------------- */
 const SAVE_DELAY = 500;
@@ -845,6 +865,292 @@ function renderImport() {
 /* ============================================================
    2. REVISIONS
    ============================================================ */
+/* ============================================================
+   GENERATE — a synopsis becomes a script
+   ------------------------------------------------------------
+   Three stages, each one a checkpoint the writer reads before the
+   next one spends anything. The arithmetic behind that shape is in
+   scriptgen.js; what matters here is that every button says what it
+   will cost before it costs it.
+
+   TWO THINGS THIS PANEL REFUSES TO PRETEND.
+
+   A page count in Tamil-throughout mode is an ESTIMATE, and it says
+   so. `pageCount()` is 55 lines of 12pt Courier — arithmetic on a
+   fixed-width Latin grid. Courier Prime has no Tamil subset and no
+   monospaced Tamil font exists, so Tamil in the action lines makes
+   the grid a guess. The default mode keeps Tamil in dialogue only,
+   where the structural elements stay Latin and the count stays exact.
+
+   And the model wrote this, not the filmmaker. Generated pages land
+   in the editor as a draft under a revision, never as "your script" —
+   the same posture the dialogue pass takes.
+   ============================================================ */
+
+const GEN_FORMATS = [
+  { id: 'feature', label: 'Feature', hint: 'about 100 pages' },
+  { id: 'short', label: 'Short', hint: 'about 15 pages' }
+];
+
+/* Mirrored from SCRIPT_LANGS in ai.js so the panel renders before the
+   model code loads. ai.js stays the authority — it is what the prompt
+   is built from — and the ids are what tie the two together. */
+const GEN_LANGS = [
+  { id: 'ta-dialogue', label: 'Tamil dialogue · English slugs and action',
+    hint: 'what Tamil crews shoot from, and the page count stays exact', exact: true },
+  { id: 'tanglish', label: 'Tanglish throughout',
+    hint: 'romanised Tamil; fits the Courier grid', exact: true },
+  { id: 'ta-full', label: 'Tamil throughout',
+    hint: 'action in Tamil too — the page count becomes an estimate', exact: false },
+  { id: 'en', label: 'English', hint: '', exact: true }
+];
+const genLang = (id) => GEN_LANGS.find((l) => l.id === id) || GEN_LANGS[0];
+
+function genStage() {
+  if (!gen.beats.length) return 'synopsis';
+  if (!gen.scenes.length) return 'beats';
+  return gen.cursor >= gen.scenes.length ? 'done' : 'pages';
+}
+
+function genStatusBlock() {
+  const rows = [];
+  if (genStatus) rows.push(Panelm ? Panelm.statusLine(genStatus) : h('p.ai-status', { text: genStatus }));
+  if (genError) rows.push(Panelm ? Panelm.errorLine(genError) : h('p.ai-error', { text: genError }));
+  return rows;
+}
+
+/* ---- stage 1 form ------------------------------------------ */
+function renderGenSynopsis() {
+  const wrap = h('div.wr-gen-form');
+  wrap.append(
+    labelled('Synopsis',
+      field('textarea.wr-gen-synopsis', {
+        id: 'wr-gen-synopsis', rows: '7', maxlength: '6000',
+        placeholder: 'A paragraph or three. Who it is about, what they want, what '
+          + 'is in the way, and how it ends if you know. The more you give it, the '
+          + 'less it invents.',
+        'aria-label': 'Synopsis'
+      }, gen.synopsis)),
+    h('div.wr-gen-opts', {}, [
+      labelled('Length', field('select.wr-gen-format', { id: 'wr-gen-format' }, gen.format,
+        )),
+      labelled('Language', field('select.wr-gen-lang', { id: 'wr-gen-lang' }, gen.lang))
+    ])
+  );
+  // Options are appended rather than written as markup so the two lists
+  // stay the single source they are declared as.
+  const fmt = wrap.querySelector('#wr-gen-format');
+  for (const f of GEN_FORMATS) {
+    fmt.append(h('option', { value: f.id, text: f.label + ' — ' + f.hint,
+      selected: f.id === gen.format }));
+  }
+  const lang = wrap.querySelector('#wr-gen-lang');
+  for (const l of GEN_LANGS) {
+    lang.append(h('option', { value: l.id, text: l.label, selected: l.id === gen.lang }));
+  }
+  const chosen = genLang(gen.lang);
+  if (chosen.hint) wrap.append(h('p.wr-gen-note', { text: chosen.hint }));
+  if (!chosen.exact) {
+    wrap.append(h('p.wr-gen-warn', {
+      text: 'Tamil in the action lines means the page count and the runtime become '
+        + 'estimates. Screenplay page maths is 55 lines of fixed-width Courier, and '
+        + 'no monospaced Tamil font exists to count against. Everything else works.'
+    }));
+  }
+  wrap.append(
+    h('div.wr-gen-acts', {}, [
+      h('button.btn.is-primary', {
+        type: 'button', 'data-action': 'gen-beats', disabled: genBusy,
+        text: genBusy ? 'Working…' : 'Draft the beat sheet'
+      }),
+      genBusy ? h('button.btn', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null
+    ]),
+    h('p.wr-gen-cost', {
+      text: 'One request. This is the cheap stage — argue with the structure here, '
+        + 'not after a hundred pages exist.'
+    })
+  );
+  return wrap;
+}
+
+/* ---- stage 2: the beats, editable -------------------------- */
+function renderGenBeats() {
+  const wrap = h('div.wr-gen-beats');
+  if (gen.logline) {
+    wrap.append(h('p.wr-gen-logline', { text: gen.logline }));
+  }
+  wrap.append(h('p.bd-sub', {
+    text: 'Fifteen beats, the Save the Cat spine the blueprint already teaches. '
+      + 'Edit any of them — the scene list is built from what is written here, not '
+      + 'from the synopsis, so a correction now is a correction to everything after.'
+  }));
+  const list = h('ol.wr-gen-beatlist');
+  gen.beats.forEach((b, i) => {
+    list.append(h('li.wr-gen-beat', { 'data-beat': b.id }, [
+      h('strong.wr-gen-beat-name', { text: b.label || b.id }),
+      field('textarea.wr-gen-beat-text', {
+        rows: '3', maxlength: '1200', 'data-beat-text': b.id,
+        'aria-label': (b.label || b.id) + ' — what happens'
+      }, b.happens)
+    ]));
+  });
+  wrap.append(list);
+
+  const scenes = Scenes.listScenes();
+  if (scenes.length) {
+    wrap.append(h('label.wr-gen-check', {}, [
+      field('input', {
+        type: 'checkbox', 'data-action': 'gen-replace-scenes',
+        checked: genReplaceScenes || false
+      }),
+      h('span', {
+        text: 'Replace the ' + scenes.length + ' scene'
+          + (scenes.length === 1 ? '' : 's') + ' already on the board'
+          + (genReplaceScenes ? '' : ' (otherwise the new ones are added after them)')
+      })
+    ]));
+  }
+  wrap.append(
+    h('div.wr-gen-acts', {}, [
+      h('button.btn.is-primary', {
+        type: 'button', 'data-action': 'gen-scenes', disabled: genBusy,
+        text: genBusy ? 'Working…' : 'Lay out the scenes'
+      }),
+      genBusy ? h('button.btn', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
+      h('button.btn', { type: 'button', 'data-action': 'gen-beats', disabled: genBusy,
+        text: 'Draft the beats again' })
+    ]),
+    h('p.wr-gen-cost', {
+      text: 'One request. This one writes the SCENE BOARD — so the breakdown, '
+        + 'stripboard, day out of days and budget all have something to read, '
+        + 'whether or not you go on to the pages.'
+    })
+  );
+  return wrap;
+}
+
+/* ---- stage 3: the pages ------------------------------------ */
+function renderGenPages() {
+  const wrap = h('div.wr-gen-pages');
+  const p = Scriptgen.progress(gen);
+  const rep = Scriptgen.pageReport(gen);
+  const done = p.left === 0;
+
+  wrap.append(h('div.wr-gen-stats', {}, [
+    stat(p.done + ' / ' + p.total, 'scenes written'),
+    stat(String(p.pct) + '%', 'of the list'),
+    stat(formatPages(rep.pages) + (rep.exact ? '' : ' ≈'),
+      rep.exact ? 'pages' : 'pages (estimate)')
+  ]));
+
+  wrap.append(h('div.wr-gen-bar', {
+    role: 'progressbar', 'aria-valuenow': String(p.pct),
+    'aria-valuemin': '0', 'aria-valuemax': '100',
+    'aria-label': 'Scenes written'
+  }, [h('span.wr-gen-bar-fill', { style: 'width:' + p.pct + '%' })]));
+
+  if (!rep.exact) {
+    wrap.append(h('p.wr-gen-warn', {
+      text: 'The page figure is an estimate: this draft puts Tamil in the action '
+        + 'lines, and the page grid it would be counted on is a fixed-width Latin one.'
+    }));
+  }
+  if (gen.truncations) {
+    wrap.append(h('p.wr-gen-warn', {
+      text: gen.truncations + (gen.truncations === 1 ? ' batch was' : ' batches were')
+        + ' cut off at the length limit, so those scenes may stop mid-page. They are '
+        + 'in the editor and can be rewritten scene by scene.'
+    }));
+  }
+
+  if (done) {
+    wrap.append(
+      h('p.wr-gen-note', {
+        text: 'All ' + p.total + ' scenes are written. They are in the screenplay above, '
+          + 'under a revision taken before the first one landed — so Restore still '
+          + 'means "back to what I wrote".'
+      }),
+      h('div.wr-gen-acts', {}, [
+        h('button.btn', { type: 'button', 'data-action': 'gen-reset', text: 'Start a new one' })
+      ])
+    );
+    return wrap;
+  }
+
+  wrap.append(
+    h('p.wr-gen-note', {
+      text: p.done
+        ? 'Stopped at scene ' + p.done + '. Resuming continues from there — the '
+          + 'scenes already written are not sent again and not paid for again.'
+        : 'Nothing written yet. Each request covers ' + Scriptgen.BATCH_SIZE
+          + ' scenes, so this list is about ' + p.batches + ' requests.'
+    }),
+    h('div.wr-gen-acts', {}, [
+      h('button.btn.is-primary', {
+        type: 'button', 'data-action': 'gen-run-all', disabled: genBusy,
+        text: genBusy ? 'Writing…' : (p.done ? 'Resume and write the rest' : 'Write all ' + p.left + ' scenes')
+      }),
+      h('button.btn', {
+        type: 'button', 'data-action': 'gen-run-one', disabled: genBusy,
+        text: 'Just the next ' + Math.min(Scriptgen.BATCH_SIZE, p.left)
+      }),
+      genBusy ? h('button.btn.is-danger', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
+      h('button.btn', { type: 'button', 'data-action': 'gen-reset', disabled: genBusy,
+        text: 'Start over' })
+    ]),
+    h('p.wr-gen-cost', {
+      text: 'About ' + p.batches + (p.batches === 1 ? ' request' : ' requests')
+        + ' left. Stop is immediate and keeps everything already written.'
+    })
+  );
+  return wrap;
+}
+
+function renderGenerate() {
+  const section = h('section.wr-section', { id: 'generate' });
+  section.append(
+    h('h2.bd-h2', { text: 'From a synopsis' }),
+    h('p.bd-sub', {
+      text: 'A synopsis becomes a beat sheet, the beat sheet becomes a scene board, '
+        + 'and the scene board becomes pages. You read each one before the next one '
+        + 'runs. Everything it writes is a draft by a machine, and it lands under a '
+        + 'revision so your own pages are never what gets overwritten.'
+    })
+  );
+
+  if (!AIm) {
+    section.append(
+      h('p.wr-gen-note', {
+        text: 'Needs your own Anthropic API key, kept on this device and sent to '
+          + 'nobody but api.anthropic.com.'
+      }),
+      h('div.wr-gen-acts', {}, [
+        h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })
+      ])
+    );
+    return section;
+  }
+  if (!Panelm.hasKey()) {
+    section.append(Panelm.keyGate('draft a script from a synopsis'));
+    return section;
+  }
+
+  section.append(Panelm.keyBar());
+  const stage = genStage();
+  if (stage === 'synopsis') section.append(renderGenSynopsis());
+  else if (stage === 'beats') section.append(renderGenBeats());
+  else section.append(renderGenPages());
+  section.append(...genStatusBlock());
+  section.append(Panelm.disclose(
+    'What is sent: the synopsis you wrote, the beats as they stand, and for each '
+    + 'batch of scenes its own slug lines plus the two scenes either side for '
+    + 'continuity. Not your other projects, not your notes, not the rest of the '
+    + 'screenplay. Nothing is sent until you press a button, and the key never '
+    + 'leaves this device except as the one header that authorises the request.'
+  ));
+  return section;
+}
+
 function renderRevisionsEmpty() {
   return h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '◐', 'aria-hidden': 'true' }),
@@ -1044,7 +1350,8 @@ function renderDocuments() {
    ============================================================ */
 function render(focus) {
   const main = h('main', { id: 'main' });
-  main.append(renderHeader(), renderScreenplay(), renderRevisions(), renderDocuments());
+  main.append(renderHeader(), renderScreenplay(), renderGenerate(),
+    renderRevisions(), renderDocuments());
   app.replaceChildren(main);
   autosizeAll();
   requestAnimationFrame(autosizeAll);   // again once layout has settled
@@ -1729,6 +2036,192 @@ delegate(document, 'change', '[data-doc-field]', (e, el) => {
   const list = document.querySelector('.wr-doc-list');
   const card = list && list.querySelector(`[data-doc="${d.id}"]`);
   if (card) card.replaceWith(renderDocCard(d));
+});
+
+/* ============================================================
+   GENERATE — handlers
+   ------------------------------------------------------------
+   Every one of these can spend the user's money, so each is a
+   click and none is a side effect. There is no timer, no retry
+   and no "while we're here".
+   ============================================================ */
+
+/** Read the stage-1 form back off the DOM before a run, so what is
+    sent is what is on screen rather than what was last re-rendered. */
+function readGenForm() {
+  const syn = document.getElementById('wr-gen-synopsis');
+  const fmt = document.getElementById('wr-gen-format');
+  const lang = document.getElementById('wr-gen-lang');
+  if (syn) gen.synopsis = syn.value;
+  if (fmt) gen.format = fmt.value;
+  if (lang) gen.lang = lang.value;
+}
+
+/** Read the edited beats back. The textareas are the authority at this
+    point — the writer has been invited to correct them, and sending the
+    model's own version instead would make that invitation a lie. */
+function readGenBeats() {
+  for (const ta of document.querySelectorAll('[data-beat-text]')) {
+    const b = gen.beats.find((x) => x.id === ta.dataset.beatText);
+    if (b) b.happens = ta.value;
+  }
+}
+
+function genBegin() {
+  genBusy = true;
+  genError = '';
+  genStatus = '';
+  genAbort = new AbortController();
+}
+function genEnd() {
+  genBusy = false;
+  genAbort = null;
+  genAll = false;
+}
+const genSay = (m) => {
+  genStatus = m;
+  const line = document.querySelector('#generate .ai-status');
+  if (line) line.textContent = m;
+};
+
+/* One place that turns a thrown thing into a line the user can act
+   on, so the three stages cannot disagree about what a 401 means. */
+function genFail(err) {
+  if (err && (err.kind === 'aborted' || err.name === 'AbortError')) {
+    genStatus = '';
+    genError = 'Stopped. Everything already written is kept.';
+    return;
+  }
+  genError = (err && err.message) || 'Something went wrong, and nothing was changed.';
+  console.warn('[write] gen', err);
+}
+
+delegate(document, 'click', '[data-action="gen-open"]', async () => {
+  if (await primeAI()) render();
+});
+
+delegate(document, 'change', '[data-action="gen-replace-scenes"]', (e, box) => {
+  genReplaceScenes = !!box.checked;
+  render();
+});
+
+/* The language hint and the estimate warning depend on the choice, so
+   the two selects re-render. The synopsis textarea does NOT — it is a
+   writing surface and must never re-render under the caret. */
+delegate(document, 'change', '#wr-gen-format, #wr-gen-lang', () => {
+  readGenForm();
+  Scriptgen.save(gen);
+  render();
+});
+delegate(document, 'input', '#wr-gen-synopsis', (e, ta) => {
+  gen.synopsis = ta.value;
+  Scriptgen.save(gen);
+});
+delegate(document, 'input', '[data-beat-text]', (e, ta) => {
+  const b = gen.beats.find((x) => x.id === ta.dataset.beatText);
+  if (!b) return;
+  b.happens = ta.value;
+  Scriptgen.save(gen);
+});
+
+delegate(document, 'click', '[data-action="gen-beats"]', async () => {
+  if (genBusy) return;
+  if (!await primeAI()) return;
+  readGenForm();
+  if (!gen.synopsis.trim()) {
+    genError = 'Write a synopsis first — a paragraph is enough.';
+    render();
+    return;
+  }
+  genBegin();
+  render();
+  try {
+    const res = await Scriptgen.runBeats(gen, { onStatus: genSay, signal: genAbort.signal });
+    gen = res.job;
+    genStatus = '';
+    if (res.missing > 0) {
+      genError = res.missing + ' of the fifteen beats came back empty. Fill them in '
+        + 'by hand, or draft the beats again.';
+    } else {
+      say('Beat sheet drafted.');
+    }
+  } catch (err) { genFail(err); }
+  genEnd();
+  render();
+});
+
+delegate(document, 'click', '[data-action="gen-scenes"]', async () => {
+  if (genBusy) return;
+  if (!await primeAI()) return;
+  readGenBeats();
+  Scriptgen.save(gen);
+  genBegin();
+  render();
+  try {
+    const res = await Scriptgen.runScenes(gen, {
+      onStatus: genSay, signal: genAbort.signal, replaceScenes: genReplaceScenes
+    });
+    gen = res.job;
+    genStatus = '';
+    say(res.scenes + ' scenes on the board. The breakdown and stripboard can read them now.');
+  } catch (err) { genFail(err); }
+  genEnd();
+  render();
+});
+
+/* One batch, or all of them.
+
+   `genAll` is checked at the TOP of every turn and cleared by Stop, so
+   Stop ends the loop after at most the batch already in flight — which
+   the AbortSignal cuts anyway. Reading a captured copy instead would
+   keep the loop billing after the user asked it to stop, and that is
+   the one failure this feature is not allowed to have. */
+async function genRun(all) {
+  if (genBusy) return;
+  if (!await primeAI()) return;
+  genBegin();
+  genAll = all;
+  render();
+  try {
+    for (;;) {
+      const res = await Scriptgen.runNextBatch({
+        onStatus: genSay, signal: genAbort.signal
+      });
+      gen = res.job;
+      // Re-render between batches: the progress bar is the only honest
+      // report of how far a run that might still fail has actually got.
+      render();
+      if (res.done) { say('The draft is complete.'); break; }
+      if (!genAll) break;
+      if (!genAbort) break;          // Stop ran between turns
+    }
+    genStatus = '';
+  } catch (err) { genFail(err); }
+  genEnd();
+  render();
+}
+
+delegate(document, 'click', '[data-action="gen-run-one"]', () => genRun(false));
+delegate(document, 'click', '[data-action="gen-run-all"]', () => genRun(true));
+
+delegate(document, 'click', '[data-action="gen-stop"]', () => {
+  genAll = false;
+  if (genAbort) { try { genAbort.abort(); } catch (e) { /* already gone */ } }
+});
+
+/* Clears the JOB, not the writing. The pages stay in the editor and
+   the revision taken before them stays in the list — a reset that
+   silently deleted a hundred written pages would be the worst button
+   in the app. */
+delegate(document, 'click', '[data-action="gen-reset"]', () => {
+  if (genBusy) return;
+  Scriptgen.clear();
+  gen = Scriptgen.load();
+  genStatus = '';
+  genError = '';
+  genReplaceScenes = false;
+  say('Started over. The pages already written are untouched, in the screenplay above.');
+  render();
 });
 
 render();

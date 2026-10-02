@@ -1,0 +1,53 @@
+/* ============================================================
+   SKIN: PRESS — the studio as printed matter.
+   ------------------------------------------------------------
+   The app's original look, recovered as a skin rather than thrown
+   away: italic display type, full-height covers, a coloured rule
+   down the side of every box, ink grounds for the callouts.
+
+   It is here for two reasons. It is a real preference — some people
+   want the book, and long-form writing suits it. And it is the
+   proof that the contract is a contract: if a skin can restore a
+   design this different without one selector of its own, the
+   variables cover enough surface for the next one.
+
+   Not a byte-exact restoration of the pre-redesign CSS. The nuances
+   that were per-object rather than systemic — por thozhil's wash
+   ground, the ok-green rule on a director card — are gone, because
+   a variable cannot express a rule that applied to exactly one
+   class. That is the honest cost of parameterising a design, and it
+   is most of the point: the ones that could not be expressed are
+   precisely the ones that were decoration.
+   ============================================================ */
+
+:root[data-skin="press"] {
+  --sk-name: "Press";
+
+  --sk-radius:        0;
+  --sk-card-pad:      var(--s5);
+  --sk-band-pad:      var(--s8);
+
+  --sk-card-bg:       var(--paper-raised);
+  --sk-card-line:     var(--rule-hair);
+
+  --sk-hue-rule-w:    4px;
+  --sk-deco-rule-w:   4px;
+  --sk-deco-rule-c:   var(--accent);
+  --sk-deco-bg:       var(--paper-sunk);
+
+  --sk-title-size:    clamp(var(--t-4xl), 11vw, var(--t-6xl));
+  --sk-title-style:   italic;
+  --sk-title-lh:      var(--lh-display);
+  --sk-h2-size:       clamp(var(--t-2xl), 5vw, var(--t-4xl));
+  --sk-h2-style:      italic;
+  --sk-deck-size:     var(--t-lg);
+  --sk-deck-style:    italic;
+  --sk-deck-measure:  var(--measure);
+  --sk-eyebrow-track: var(--track-wide);
+  --sk-stepnum-size:  var(--t-5xl);
+  --sk-card-h-size:   var(--t-xl);
+  --sk-card-h-style:  italic;
+
+  --sk-cover-min:     100vh;
+  --sk-cover-pad:     var(--s8) var(--gutter);
+}

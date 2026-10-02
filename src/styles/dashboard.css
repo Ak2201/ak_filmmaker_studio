@@ -311,7 +311,7 @@
   flex: none;
   padding: 2px var(--s2);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 600;

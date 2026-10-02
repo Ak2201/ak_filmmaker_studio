@@ -22,6 +22,7 @@ npm run dev       # vite dev server, no service worker
 npm run build     # static output in dist/
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below
+npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
@@ -45,12 +46,14 @@ src/
              existed in the 2023 pages.
   lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
-             screenplay-export.js shotlist-export.js script-import.js ai.js
+             screenplay-export.js shotlist-export.js script-import.js
+             pdf-text.js ai.js scriptgen.js songs.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
-             actionbar.js launcher.js
+             actionbar.js launcher.js palette.js
   styles/    tokens.css base.css chrome.css editorial.css widgets.css
              modules.css ← the design language, read by every page
+             palette.css ← the command palette's own sheet
              skins/      ← _contract.css + one file per swappable look
              print.css + one stylesheet per module page
   pages/     hub.js feature.js short.js library.js breakdown.js
@@ -184,7 +187,19 @@ hard-codes a radius, a padding, a border width, a display size or an italic:
 each is a `--sk-*` variable, and a *skin* is one file in `src/styles/skins/`
 that sets them. `skins/_contract.css` lists the variables and the four rules a
 skin follows; `studio` is the default, `press` is the printed-matter look this
-replaced, `binder` is flat and dense.
+replaced, `binder` is flat and dense, `console` is the flat application,
+`mission` is a condensed broadsheet, `atelier` is the soft-edged daily tool
+— serif display over a system sans, real elevation, pill buttons — and
+`bright` is the platform register: Sora over Inter, 20px corners, 17px body,
+roomy bands, and elevation TINTED WITH --accent. Seven.
+
+The contract gained five variables with Atelier, and the reason is rule 4 of
+the contract itself: `--sk-card-shadow-hover`, `--sk-lift`, `--sk-press`,
+`--sk-field-radius`, `--sk-focus-w`. A skin that wanted a hover elevation and a
+press scale needed a selector in `modules.css` to get them, which is the
+definition of a missing variable. All five fall through to studio's defaults
+and all five are polarity-neutral, so unlike the six slab variables a skin may
+safely set none of them.
 
 This is what makes the design swappable rather than merely changed, and it is
 cheap to break: one `border-radius: 4px` typed into a rule is a shape one skin
@@ -241,7 +256,7 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   never loaded produces no duplicate at all, so only the disk-vs-page count
   catches it.
 - **text meets WCAG AA (4.5:1)** on every surface a skin controls, across
-  all four themes crossed with all five skins, with the modals open. The floor
+  all four themes crossed with all six skins, with the modals open. The floor
   was 3.0 while the invisible cases were being cleared; it is 4.5 now, which is
   the real bar. Two rules came out of getting there and are worth knowing
   before you pick a colour:
@@ -256,6 +271,18 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
   were `style="color: var(--accent)"` and `style="color: var(--paper)"` left in
   `feature.js` markup, silently defeating the token fix. If a token change does
   not take, grep the markup before you doubt the cascade.
+
+- **`--f-script` keeps its Tamil face LAST.** The screenplay stack names
+  Noto Sans Tamil because Courier Prime ships `latin`/`latin-ext` only and
+  no monospaced Tamil font exists. Google serves that family as three
+  `@font-face` blocks — tamil, latin-ext, latin — so the family claims
+  Latin too: put it before `'Courier New'` and it becomes the first
+  *available* font on every page that never loaded Courier Prime, and
+  takes every glyph. Measured, a slug line went from 600px of Courier New
+  to 534px of proportional sans. Nothing errors and nothing overflows —
+  the fixed-width grid `pageCount()` is arithmetic on has simply stopped
+  being fixed-width. The check asserts a Tamil family is present and sits
+  after the last Courier family.
 
 - hue-coded surfaces still distinguish. Where the markup declares a variant
   (`.door.shorts`, `.start-card.f`, `.fest-card.t2`, `.example.alt`) the design
@@ -319,8 +346,17 @@ real browser after any change to `sw.js`, `vercel.json` or the page entries.
 
 **Known blind spot.** The run loads each page at 1280px and resizes to 390px
 *afterwards*, so anything gated on `matchMedia` at load time has already decided
-by then — the mobile action bar never attaches during a verify run and its
-layout is untested. Check viewport-gated chrome by hand at 390px.
+by then. Check viewport-gated chrome by hand at 390px.
+
+The mobile action bar used to be the headline example of this and is no longer:
+it LISTENS to the media query instead of sampling it, so it attaches and
+detaches as the viewport crosses 720px and a verify run's resize now produces
+one. That was a real bug as well as an untested path — a phone turned to
+landscape kept a bar that no longer fitted, and a page loaded in landscape never
+got one at all. Its height is measured and published as `--mab-h`, because the
+`padding-bottom: 64px` that reserved space for it is less than a 48px row plus
+padding plus `env(safe-area-inset-bottom)` on any phone with a gesture bar, and
+the last control on every long page sat underneath it.
 
 This is narrower than it was: overflow is now also measured at 390px *before*
 a project is created, which is the only time the first-run panel exists. That
@@ -485,6 +521,71 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
   phone, permanently. What you need while typing is the fixed bottom action bar
   and the save indicator; the toolbar is one flick up.
+- **`var(--radius)` in a component is as unskinnable as `4px` was.** The rule
+  everyone remembered was "do not type a literal radius into `modules.css`".
+  The one nobody did was that reaching for the raw TOKEN is the same bug with
+  better manners: `--radius` is 2px and fixed, `--sk-radius` is what a skin
+  sets, and 80 rules across eleven stylesheets took the first one. That is
+  about forty per cent of the radii in the app, and the symptom is a skin that
+  works on the surfaces somebody happened to check — the hub's first-run cards
+  stayed at 2px under a 20px skin and looked like a rendering fault rather
+  than a missing variable. All 80 now read
+  `var(--sk-radius, var(--radius))`, which is a no-op for every existing skin
+  because `studio.css` sets `--sk-radius: var(--radius)`. The 14
+  `var(--radius-pill)` uses are left alone: a pill is a shape with a meaning,
+  not a radius with a value. If you add a surface, it takes `--sk-radius`.
+- **A sticky bar and no `scroll-margin` is a jump that lands behind it.**
+  Nothing in the app set `scroll-margin` and two bars are sticky above the
+  content — the shell at `--sh-bar-h`, the page toolbar under it. The browser
+  scrolls a fragment target to y=0, and y=0 is behind both. So the step rail,
+  `j`/`k`, the glossary links, `#elements`, every fragment the breadcrumb
+  resolves and the skip link itself delivered you to a heading you could not
+  see, with the first two lines of the thing you asked for under the chrome. It
+  was never reported as a scrolling bug because it reads as the page landing in
+  the wrong place. `--scroll-offset` in `tokens.css` is the fix and it is
+  computed, not guessed: `--sh-stick-h` and `--tb-h` are published by the two
+  owners, each asking `getComputedStyle().position` rather than restating a
+  breakpoint, so the offset is zero for a bar that is not pinned at this width
+  and correct when the bar wraps to two rows at 390px. The heights are
+  measured TWICE, once for layout and once after `document.fonts.ready`, for
+  the same reason `shell.js` already did: a bar measured in the fallback face
+  is a bar measured at the wrong height.
+- **`--motion` is a multiplier on DISTANCE, and it needs to be.** `base.css`
+  clamps every duration to 0.01ms under `prefers-reduced-motion`, which stops
+  things taking time but does not stop them travelling — a card that teleports
+  six pixels is still a card that moved, and the jump is the part that matters
+  to a reader with vestibular sensitivity. Every translate and scale in the
+  app is written `calc(<distance> * var(--motion))` and the same media query
+  sets `--motion: 0`. If you add a transform, multiply it.
+- **A toast with an action must not time out.** 3.2s is right for a notice you
+  only have to read and wrong the moment it carries a button, because the
+  button is the only route to what it offers: an "Undo delete" that vanishes
+  after three seconds is an undo that anyone reaching it by Tab, or reading it
+  with a screen reader, will routinely miss. An actionable toast now stays
+  until dismissed or acted on and grows its own close control; every toast
+  pauses its countdown on hover and on focus. Errors go to a second host with
+  `role="alert"` rather than the polite one — the politeness is bound when a
+  live region enters the accessibility tree and several readers never re-read
+  it, so flipping `aria-live` on one element does not work.
+- **The baseline contains derived counts, so adding a module fails it.**
+  The launcher prints "N of M ready" per phase from `navigation.json`.
+  Adding the Songs module took Breakdown from "6 of 6" to "7 of 7", so the
+  word `6` left the hub and `verify` reported an unexplained missing word
+  on a page nothing had edited. It is allowed in `EXPECTED.hub` with that
+  reason. Every future module will collide the same way; this is the shape
+  of problem the CLOCK exclusion solves properly, and the counts cannot be
+  excluded the same way without blinding the check to every digit on the
+  page. Past two or three such rows, re-baseline instead.
+
+- **A font family covers more than you asked it for.** Adding Noto Sans
+  Tamil to `--f-script` to get Tamil glyphs also handed it every Latin
+  glyph, because the family ships latin subsets as well and Courier Prime
+  is not loaded on the eleven module pages — only `index`, `feature`,
+  `short` and `library` request any webfont at all. CSS fallback is per
+  glyph, which is what makes the mixed document work, but it only skips a
+  family that has *no* glyph. Order the stack so the narrow-coverage face
+  is last. `verify` asserts it now.
+
 - **The theme lives on `:root[data-theme]`, not on a body class.** `tokens.css`
   matches `[data-theme="light"|"sepia"|"dark"]`; `body.dark` / `body.sepia`
   match nothing. When `applyTheme()` set only the classes, all three themes
@@ -565,9 +666,31 @@ be discarded.
 **Change the look** → do NOT edit `modules.css` to make it darker, rounder or
 denser. Write a skin: one file in `src/styles/skins/` setting the `--sk-*`
 variables in `_contract.css`, and it appears in the Appearance menu on all five
-pages with no other edit. Edit `modules.css` only to change the *language* —
+pages with no other edit. If the shape you want is not a variable yet, ADD THE
+VARIABLE to `_contract.css` — that is rule 4, and Atelier's five additions are
+what following it looks like. Edit `modules.css` only to change the *language* —
 what objects exist and how they are arranged — and when you do, every shape you
 add must be a variable, or you have quietly made it unskinnable.
+
+**Add something to the command palette** → usually nothing. `src/ui/palette.js`
+derives its index: modules and global entries from `navigation.json`, skins
+from `skin.js` reading the CSSOM, themes from `StudioUI.themeOrder()`, projects
+from `listProjects()`, and scenes and contacts from their own models. A module
+added to `navigation.json` is searchable with no edit here, which is the same
+rule that keeps the steps in JSON. A genuinely new KIND of thing gets a
+function returning `entry({…})` objects; a new MODEL goes in `loadContent()`,
+which is dynamically imported on first open so none of it is in any page's
+first paint.
+
+Two things it must not do. It must not write to storage — `verify` asserts zero
+`localStorage` writes across four idle seconds, and a map that recorded its own
+opening would trip it, correctly. (Recents are in memory for the session and
+deliberately do not survive it; the alternative was a new key in a contract
+that holds months of people's work, bought for a reordered list.) And a row's
+hue class must come from the right family: `.sh-ph-*` for a phase, `.hue-*` for
+a category. A phase id written as `hue-develop` matches neither rule in
+`tokens.css`, `--hue` stays undefined and the row falls back to the accent
+without an error — the breakdown shipped exactly that for two commits.
 
 **Parse or print a rupee figure** → `src/lib/money.js`. `parseNum` for anything
 a person typed, `fmtINR` for a glanceable magnitude, `INR.format` when the
@@ -623,7 +746,26 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    writer they wrote something they did not — a quotation that is not word
    for word is stripped and counted.
 
-   All three callers now go through `src/ui/ai-panel.js`. visualize.js
+   A fourth job is in: **a synopsis becomes a script.**
+   `src/lib/scriptgen.js` owns the job, `ai.js` owns the three calls
+   (`draftBeatSheet`, `draftSceneList`, `draftScenePages`) and the
+   writing still lands in `script.js` and `scenes.js`. It is staged
+   because it has to be: a Tamil feature is 60,000-120,000 output
+   tokens against a 32,000 ceiling, so one call cannot do it and a
+   call that tries is billed up to the cut. Stage 2 commits the SCENE
+   MODEL before any pages exist, so the breakdown, stripboard, budget
+   and reports light up even if stage 3 never runs — the same lesson
+   `script-import.js` learned. A cursor makes it resumable, because a
+   run that dies at scene forty must not re-bill thirty-nine scenes.
+
+   The honest part: screenplay page maths is 55 lines of fixed-width
+   Courier, so the default mode keeps Tamil in the DIALOGUE and leaves
+   slugs and action in English — which is what Tamil crews shoot from
+   anyway, and the only arrangement where the page count stays
+   arithmetic. Tamil-throughout is offered and labels its page count an
+   estimate rather than printing a number the grid cannot support.
+
+   All three earlier callers go through `src/ui/ai-panel.js`. visualize.js
    was the last holdout — it carried a hand-copied key form and key bar,
    the third copy the module exists to prevent, and it is gone: the page
    keeps the shot half (pick / run / stop / undo) and the module owns the
@@ -640,10 +782,43 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    revision first. `src/lib/screenplay-export.js` paginates properly, so
    `(MORE)`/`(CONT'D)` and page numbers are correct.
 
+   **PDF too.** It is the format a script actually arrives in and it
+   had no reader. `src/lib/pdf-text.js` turns a PDF back into indented
+   text and PARSER 2 reads it — a PDF has no element types in it, what
+   it has is POSITIONS, and in a screenplay the position IS the type
+   (cue at 3.7in, parenthetical at 3.1in, dialogue at 2.5in, action at
+   1.5in). Those are the columns `parseText()` has always read, so
+   there is no second classifier and no second place for the two to
+   disagree.
+
+   **No library, and that is three decisions rather than a shortcut.**
+   `script-src 'self'` with no `worker-src` means a blob: worker — how
+   most bundled PDF engines start — is refused by the browser; a
+   megabyte outside the service worker's manifest is an import that
+   works at the desk and fails on location; and this needs one thing
+   from a PDF, which is where each run of text sits.
+   `DecompressionStream('deflate')` is native and is the piece that
+   used to require one.
+
+   **The refusals are the feature.** Encrypted, scanned, and
+   subset-fonts-with-no-ToUnicode-map are each detected and declined
+   with a sentence saying what to do instead, because an extractor
+   that half-works produces mojibake and mojibake imported into
+   somebody's script is worse than an import that stopped.
+   `npm run test:pdf` builds real PDFs — compressed, packed in object
+   streams, Type0/Identity-H — and asserts the columns survive. 43
+   assertions, no browser, no dependencies, ~1s. It found two bugs
+   while being written and the first is the one to know:
+   **DecompressionStream throws on ANY trailing byte, and the spec
+   says the EOL before `endstream` is not part of the stream** — so
+   every writer emits one and nothing compressed decoded at all.
+
    Known gaps, small: `.fdx` `Number="12"` attributes are not read (a
-   number inside the heading text is), and the plain-text parser is
-   heuristic — it round-trips our own export exactly, but a third-party
-   `.txt` may need a type corrected by hand.
+   number inside the heading text is); the plain-text parser is
+   heuristic — it round-trips our own export exactly, but a
+   third-party `.txt` may need a type corrected by hand; and the PDF
+   reader assumes a monospaced advance within a run, which is every
+   screenplay and not every PDF.
 5. ~~**Finish collaboration.**~~ Done, with residuals that matter.
    `src/ui/comments.js` attaches a thread to a FIELD, not a character
    offset — the text under a note is about to change. Accepting a
@@ -715,7 +890,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 
    **The probe no longer walks a list.** `SURFACES` is gone; the AA
    check walks every leaf text node in `main`, the open modals and the
-   shell, across 4 themes × 5 skins × every page, and every model is
+   shell, across 4 themes × 6 skins × every page, and every model is
    seeded on every page first — an empty page has nothing to walk, and
    a wholesale walk of an empty state is a list by another name. A
    second source check greps for `color:`/`fill:` on the four hairline
@@ -814,6 +989,106 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    reads its answers, derived from `src/data/steps.priority.json` rather
    than hand-listed. The filter can never strand you on a hidden step —
    jumping or searching to one turns it off and says why.
+
+9. **The interaction pass.** A command palette, a sixth skin, a motion
+   scale and a set of state fixes. Four of these are worth knowing about
+   because they changed shared machinery rather than one page:
+
+   - `src/ui/palette.js` + `palette.css` — ⌘K / Ctrl-K over the whole
+     studio. Wired once in `chrome.js`, so every page has it; a handle in
+     the shell bar (`.sh-find`) makes the binding visible, because a
+     shortcut nobody has been told about is a feature that does not exist
+     for most people. It is the combobox pattern, not a div with a keydown
+     handler: focus stays in the field and the active row is named by
+     `aria-activedescendant`, which is the one mechanism that reports a
+     selection the focus did not move to. The handle hides below 720px —
+     the bottom action bar carries SEARCH there, and at 375px the handle
+     wrapped the shell bar to a third row, which is ~300px of chrome above
+     the first word of the page.
+   - `--scroll-offset`, `--motion`, the four-step speed scale and
+     `--ease-spring` in `tokens.css`; see the traps above for the first two.
+   - `base.css` gained the document-level interaction rules: `touch-action:
+     manipulation` on controls (never on the body — disabling pinch-zoom is
+     a WCAG failure), 44px minimum targets under `pointer: coarse` only,
+     `accent-color` so native checkboxes and ranges stop being the
+     browser's blue on a sepia page, themed scrollbars, `text-wrap: pretty`
+     on prose and `overflow-wrap: anywhere` with the `min-width: 0` that
+     makes it actually work on a flex child.
+   - `actionbar.js` menus answer to the arrow keys, Home and End, return
+     focus to the button that opened them, and treat Tab as one stop rather
+     than eight. `role="menu"` is a promise, and it was not being kept.
+
+   **Gate run, on Node 22.** All fifteen pages: 720 `data-key`s present and
+   0 lost, 100% accounted coverage everywhere but `short`, 0 idle writes, 0
+   horizontal overflow at 390px, 6/6 skins distinct and reaching every page,
+   0 console errors, 0 low-contrast findings from the AA walk across 4
+   themes x 6 skins with the modals open, and the backup round trip
+   restoring both projects.
+
+   **The verify run's clock is frozen, and it has to be.** The short
+   blueprint's step 10 prints live countdowns to real festival deadlines
+   — "Short film registration: 2026-11-04 — in 33 days" — through
+   `relativeDays()` in `src/lib/festivals.js`. The baseline records the
+   words a page renders, so the text check on `short` failed on every day
+   except the one the baseline happened to be captured on: twelve missing
+   numeric words, each exactly as many less than its recorded value as
+   there were days since capture, allowlist clean, no explanation.
+
+   A gate that cries wolf daily is a gate people learn to run with
+   `--baseline`, which is exactly how a real regression gets captured as
+   the new truth. `page.clock.setFixedTime()` pins it, and the context is
+   pinned to UTC alongside — `todayISO()` reads the LOCAL calendar date,
+   so an instant near midnight would render a different day depending on
+   where the machine is and the gate would pass in Chennai and fail in
+   California.
+
+   `setFixedTime` rather than `clock.install()` on purpose: it fixes what
+   `Date` reports without pausing timers, and the idle-write assertion
+   waits four REAL seconds. A fully faked clock would have skipped that
+   wait and asserted nothing — a check that silently stops checking is
+   worse than the flake it replaced.
+
+   Three things about `FROZEN_CLOCK` worth knowing before you touch it:
+
+   - **The date was chosen to be the then-current baseline's capture
+     date**, so the twelve countdowns already in the file are the ones
+     this clock renders. The fix therefore cost no re-baseline, and that
+     is also how it was proved: the run went green against the unchanged
+     `baseline.json`.
+   - **It is still checked, not excluded.** Moving the constant seven days
+     forward fails `short` with 13 missing words. The countdown text has
+     deterministic coverage now; it did not lose coverage.
+   - **Changing it is a re-baseline event**, and `baselineFacts()` refuses
+     a baseline whose recorded `clock` differs, naming the real cause
+     instead of reporting missing words. A baseline with no `clock` field
+     predates the freeze and is accepted, because the frozen date is that
+     capture's date.
+
+   No production code changed for any of this. A date seam in
+   `festivals.js` would have been a test hook in a module that already
+   parameterises `fromISO` everywhere — the harness is the right place to
+   decide what "now" means during a run.
+
+   **Three things the browser found that static checks could not:**
+
+   - `requestAnimationFrame` does not run in a background tab, and every
+     measured height in the chrome was published from inside one. A page
+     opened in a background tab — open-in-new-tab, a restored session, a
+     PWA cold start — had no `--mab-h`, no `--tb-h` and no `--sh-stick-h`
+     until it was looked at, so the anchor offset was zero and the body
+     reserved a 64px fallback for a 69px bar. All three now measure
+     synchronously first, with the rAF kept as the post-font refinement.
+     `getBoundingClientRect()` forces layout and works while hidden.
+   - The hub already bound ⌘K to its own hero search and labelled the
+     field with it, so on `index.html` both handlers fired: the palette
+     opened AND the field behind its scrim took focus. The key belongs to
+     the palette, which answers the same everywhere; the hub's field keeps
+     `/`, which `chrome.js` already bound, and its badge says so now.
+   - The focus timer is `position: fixed; bottom: 16px` at `--z-float`,
+     one above the action bar, so at 375px on a blueprint it covered the
+     END button completely. The save indicator and the toast host had
+     already been lifted above the bar and the timer had not — when a
+     bottom bar exists, the list of floats to lift has to be all of them.
 
 ## Things that are deliberate, not oversights
 

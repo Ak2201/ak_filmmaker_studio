@@ -226,3 +226,48 @@
     margin-top: 0;
   }
 }
+
+/* ============================================================
+   THE GRID ARRIVING
+   ------------------------------------------------------------
+   Twenty-two tiles in six rows appear in one frame, which reads
+   as a flash rather than as a page. A short stagger gives the eye
+   an order to follow and tells it the rows are grouped — the same
+   information the phase headings carry, said a second way.
+
+   Three constraints make this safe rather than decorative:
+
+   1. IT IS AN ANIMATION, NOT A TRANSITION FROM HIDDEN. The tiles
+      are fully laid out and fully readable from the first frame;
+      only opacity and a two-pixel offset move. A grid that starts
+      at opacity 0 is a grid that is invisible if the animation
+      never runs — on an engine that does not support it, in a
+      print, or inside a screenshot taken too early.
+
+   2. IT IS CAPPED. nth-child is enumerated to 12 and everything
+      after it shares the last delay. An unbounded `--i * 30ms`
+      across 22 tiles is 660ms before the last one settles, which
+      is long enough to be waiting rather than watching.
+
+   3. REDUCED MOTION REMOVES IT ENTIRELY — both the fade and the
+      travel, because the travel is the part that matters to a
+      reader with vestibular sensitivity.
+   ============================================================ */
+@keyframes lx-arrive {
+  from { opacity: 0; transform: translateY(calc(6px * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+.lx-mod {
+  animation: lx-arrive var(--speed-slow) var(--ease-out) both;
+}
+.lx-mod:nth-child(1)  { animation-delay: 0ms; }
+.lx-mod:nth-child(2)  { animation-delay: 25ms; }
+.lx-mod:nth-child(3)  { animation-delay: 50ms; }
+.lx-mod:nth-child(4)  { animation-delay: 75ms; }
+.lx-mod:nth-child(5)  { animation-delay: 100ms; }
+.lx-mod:nth-child(6)  { animation-delay: 125ms; }
+.lx-mod:nth-child(n+7){ animation-delay: 150ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-mod { animation: none; }
+}

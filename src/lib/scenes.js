@@ -57,6 +57,7 @@ export function blankScene(patch = {}) {
     dayNight: 'DAY',
     location: '',
     synopsis: '',
+    songId: '',          // links this scene to a row in songs.js, or ''
     eighths: 8,          // integer eighths of a page; 8 = one full page
     pageNumber: '',
     elements: {},        // { categoryId: [name, …] }

@@ -98,12 +98,15 @@ const LOCS_KEY     = 'fms_locations_v1';
 const BENCH_KEY    = 'fms_workbench_v1';
 const DISSECT_KEY  = 'fms_dissect_v1';
 const FESTIVALS_KEY = 'fms_festivals_v1';
+const SCRIPTGEN_KEY = 'fms_scriptgen_v1';
+const SONGS_KEY     = 'fms_songs_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
-  SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY
+  SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
+  SCRIPTGEN_KEY, SONGS_KEY
 ];
 
 /* Backup field name -> storage key, for the keys store.js namespaces
@@ -125,7 +128,9 @@ const PROJECT_KEYS = {
   locations:         LOCS_KEY,
   workbench:         BENCH_KEY,
   dissect:           DISSECT_KEY,
-  festivals:         FESTIVALS_KEY
+  festivals:         FESTIVALS_KEY,
+  scriptgen:         SCRIPTGEN_KEY,
+  songs:             SONGS_KEY
 };
 
 /* Deliberately NOT per project: the theme is a device preference and the
@@ -419,7 +424,7 @@ function heroMarkup() {
                  autocomplete="off" spellcheck="false"
                  aria-label="Search the studio" role="combobox" aria-expanded="false"
                  aria-controls="searchResults" data-action="search">
-          <span class="search-icon" aria-hidden="true">⌘ K</span>
+          <span class="search-icon" aria-hidden="true">/</span>
           <div class="search-results" id="searchResults" role="listbox" aria-label="Search results"></div>
           </div>
           <p class="search-tip">Try <kbd>logline</kbd> · <kbd>vetrimaaran</kbd> · <kbd>fountain</kbd> · <kbd>festival</kbd> · <kbd>budget</kbd></p>
@@ -2344,12 +2349,25 @@ function wireEvents() {
     if (!e.target.closest('.switcher-wrap')) closeProjectSwitcher();
   });
 
+  /* ⌘K USED TO LIVE HERE AND NO LONGER DOES.
+
+     This field searches CONTENT — steps, films, directors, glossary
+     terms. The command palette in src/ui/palette.js searches the
+     STUDIO — modules, scenes, people, projects, settings — and it is
+     bound to ⌘K on every page in the app, including this one. Two
+     different indexes answering one key, on one page, is worse than
+     either: you press it and get whichever handler was registered
+     first, and here both were, so it opened the palette AND focused
+     the field behind the palette's scrim.
+
+     So the key goes to the palette, which is the answer that is the
+     same everywhere, and this field keeps `/` — already bound in
+     chrome.js, already in the shortcut sheet, and the convention for
+     "search this page" since the first browser that had one. The
+     badge beside the field says `/` now; it said ⌘ K, which after
+     the palette landed was a label making a promise the page could
+     not keep. */
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-      e.preventDefault();
-      const inp = $('#searchInput');
-      if (inp) { inp.focus(); inp.select(); }
-    }
     if (e.key === 'Escape') {
       closeProjectModal();
       closeProjectSwitcher();

@@ -281,7 +281,7 @@
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
@@ -307,7 +307,7 @@
   padding: var(--s5);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   /* The chart keeps its readable width and this frame scrolls, rather
      than the chart shrinking or the page growing sideways. */
   overflow-x: auto;
@@ -662,7 +662,7 @@
   padding: var(--s2) var(--s3);
   background: var(--sk-slab-fill);
   border: 1px solid var(--sk-slab-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--sk-slab-ink);
   font-family: var(--f-body);
   font-size: var(--t-small);
@@ -907,7 +907,7 @@
   padding: var(--s2) var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-script);
   font-size: var(--t-small);
   line-height: var(--lh-snug);
@@ -969,7 +969,7 @@
   background: var(--accent);
   color: var(--accent-on);
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -1161,7 +1161,7 @@
   padding: var(--s2) var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-small);
   color: var(--ink);
@@ -1242,7 +1242,7 @@
   padding: var(--s2);
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-small);
   color: var(--ink);
@@ -1345,7 +1345,7 @@
   padding: var(--s2) var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-body);
   font-size: var(--t-small);
   color: var(--ink);
@@ -1385,7 +1385,7 @@
   padding: var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   color: var(--ink);
@@ -1416,7 +1416,7 @@
   color: var(--panel-gilt);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .sync-instructions code { padding: 2px var(--s2); }
 .sync-instructions pre {
@@ -1434,7 +1434,7 @@
   padding: var(--s3) var(--s4);
   background: var(--sk-slab-fill);
   border: 1px solid var(--sk-slab-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--sk-slab-ink);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);

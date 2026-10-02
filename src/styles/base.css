@@ -30,7 +30,10 @@ body {
   background: var(--paper);
   color: var(--ink-body);
   font-family: var(--f-body);
-  font-size: var(--t-base);
+  /* The skin's, falling back to the scale's. See --sk-body-size in
+     skins/_contract.css: 16px and 18px are different designs, not a
+     preference, and the roominess of a design is mostly this. */
+  font-size: var(--sk-body-size, var(--t-base));
   font-optical-sizing: auto;
   line-height: var(--lh-body);
   min-height: 100vh;
@@ -76,10 +79,19 @@ input, textarea, select {
   width: 100%;
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--sk-field-radius, var(--radius));
   padding: var(--s3);
-  transition: border-color var(--speed), box-shadow var(--speed);
+  transition: border-color var(--speed), box-shadow var(--speed), background-color var(--speed);
 }
+/* One line that themes every native control the app never styled:
+   checkboxes, radios and range thumbs. They were the browser's blue
+   on all four palettes — the single loudest colour on a sepia page,
+   and the only thing in the studio that did not change with the
+   theme. accent-color is honoured by every engine this app targets
+   and degrades to the default where it is not. */
+input[type="checkbox"], input[type="radio"], input[type="range"],
+progress, meter { accent-color: var(--accent); }
+input[type="checkbox"], input[type="radio"] { width: auto; }
 textarea { resize: vertical; min-height: 4.5em; line-height: var(--lh-body); }
 input::placeholder, textarea::placeholder { color: var(--ink-muted); opacity: 1; }
 input:hover, textarea:hover, select:hover { border-color: var(--ink-faint); }
@@ -95,7 +107,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 :focus-visible {
   outline: var(--focus);
   outline-offset: 2px;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 :focus:not(:focus-visible) { outline: none; }
 
@@ -117,3 +129,133 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 }
 
 [hidden] { display: none !important; }
+
+
+/* ============================================================
+   ANCHORED SCROLLING — the fix for a bug that was in every
+   in-page link in the studio.
+   ------------------------------------------------------------
+   Nothing in the app set scroll-margin, and two bars are sticky
+   above the content: the shell at --sh-bar-h and the page toolbar
+   directly under it. The browser scrolls a fragment target to
+   y = 0. y = 0 is behind both bars.
+
+   So every jump in the app — the step rail, `j` and `k`, the
+   glossary links, #elements, every fragment the breadcrumb
+   resolves, every "skip to content" — delivered you to a heading
+   you could not see, with the first two lines of the thing you
+   asked for hidden under the chrome. It read as the page landing
+   in the wrong place, which is why it was never reported as a
+   scrolling bug.
+
+   --scroll-offset is computed in tokens.css from the two measured
+   heights, so it stays right when the bar wraps to two rows at
+   390px rather than being a number somebody guessed.
+   ============================================================ */
+:target,
+[id] > h1, [id] > h2, [id] > h3,
+h1[id], h2[id], h3[id], h4[id],
+section[id], article[id], .step, .ladder-step,
+#main, #content, [data-step] {
+  scroll-margin-top: var(--scroll-offset);
+}
+
+/* The fragment you actually asked for, said out loud for a moment.
+   A jump that lands silently in the middle of a long document
+   leaves you to find the thing yourself; this says "here", then
+   gets out of the way. Both halves are motion-gated: the fade is a
+   duration (base.css clamps it) and there is no travel at all. */
+@keyframes fms-target-flash {
+  from { background-color: var(--accent-wash); }
+  to   { background-color: transparent; }
+}
+:target { animation: fms-target-flash var(--speed-lazy) var(--ease-out) 2; }
+@media (prefers-reduced-motion: reduce) {
+  :target { animation: none; }
+}
+
+/* ============================================================
+   POINTER & TOUCH
+   ============================================================ */
+/* 300ms is a long time to wonder whether a tap registered, and
+   double-tap-to-zoom is not a gesture anything in this app wants.
+   Scoped to controls, never to the page: pinch-zoom on the body is
+   an accessibility feature and disabling it is a WCAG failure. */
+a, button, [role="button"], [role="option"], [role="menuitem"],
+label, summary, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* A target smaller than a finger is a target you hit by luck.
+   Applied only under a COARSE pointer so a mouse-driven dense
+   table is not padded out to phone proportions — the rule is about
+   the finger, not the screen width, which is why it keys off
+   pointer rather than a breakpoint.
+
+   `min-height` plus centring rather than padding: padding would
+   change the box and reflow the row it sits in. */
+@media (pointer: coarse) {
+  button, [role="button"], a.btn, .btn,
+  input[type="checkbox"], input[type="radio"],
+  [role="menuitem"], [role="menuitemradio"], [role="option"], [role="tab"] {
+    min-height: 44px;
+  }
+  button, [role="button"], a.btn, .btn {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* The hit area reaching past the glyph, for the icon-sized
+     controls that genuinely cannot be 44px wide without redrawing
+     the chrome. The ::after is the target; the button keeps its
+     looks. */
+  .sh-rail-toggle, .tb-menu-btn.is-compact, .shortcut-sheet-close {
+    position: relative;
+  }
+  .sh-rail-toggle::after, .tb-menu-btn.is-compact::after,
+  .shortcut-sheet-close::after {
+    content: '';
+    position: absolute;
+    inset: 50% 50%;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ============================================================
+   TEXT THAT DOES NOT BREAK THE LAYOUT
+   ============================================================ */
+/* `pretty` is a last-line heuristic: it stops a paragraph ending on
+   one orphaned word. It is progressive — engines that do not know
+   it ignore the declaration and wrap exactly as before — and it is
+   on PROSE only. Deliberately not on headings: those already take
+   `balance` above, and the two are different jobs. */
+p, .deck, .step-deck, .hint, li { text-wrap: pretty; }
+
+/* A filename, a Supabase share token, a location a user typed
+   without spaces — any one of them is a single word wider than a
+   phone, and a single word wider than its column is horizontal
+   scroll on the whole page. `anywhere` lets it reflow; it is NOT
+   `break-all`, which would hyphenate ordinary prose mid-syllable.
+   The min-width reset is the other half: a flex or grid child
+   defaults to min-content, so it refuses to shrink below its
+   longest word no matter what the wrapping rule says. */
+.scroll-x > *, td, th, dd, .measure, p, li { overflow-wrap: anywhere; }
+.stack > *, .scroll-x { min-width: 0; }
+
+/* ============================================================
+   SCROLLBARS — themed, because an unstyled one is the browser's
+   grey on a sepia page and reads as a seam.
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: content-box; }

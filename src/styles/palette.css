@@ -1,0 +1,250 @@
+/* ============================================================
+   THE COMMAND PALETTE
+   ------------------------------------------------------------
+   Every colour is a token and every shape is a --sk-* variable,
+   for the two reasons the rest of the app follows: a literal
+   colour here breaks in sepia, and a literal radius here is a
+   shape no skin can override. The palette is the newest surface
+   in the studio and it has to answer to the same two axes as the
+   oldest — four themes times six skins, all twenty-four live.
+
+   The one thing it does NOT inherit is the page's accent. A
+   palette opened from plan.html is teal and from feature.html is
+   red, which is correct: it is a surface belonging to the page it
+   was opened over, not a fifth chrome with a colour of its own.
+   ============================================================ */
+
+.pal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--scrim);
+  display: flex;
+  justify-content: center;
+  /* Not centred vertically. A list that grows downward from a
+     fixed point does not move the field you are typing in; a
+     centred box slides up under your hands with every keystroke
+     that changes the result count. */
+  align-items: flex-start;
+  padding: clamp(var(--s4), 10vh, var(--s9)) var(--s4) var(--s4);
+  backdrop-filter: var(--blur-chrome);
+  -webkit-backdrop-filter: var(--blur-chrome);
+  animation: pal-fade var(--speed-slow) var(--ease-out);
+}
+@keyframes pal-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.pal-box {
+  width: min(640px, 100%);
+  max-height: min(68vh, 560px);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-raised);
+  color: var(--ink-body);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  /* The travel is --motion'd, so reduced motion gets the final
+     state with no movement at all rather than a fast movement.
+     Spring easing because this one appears under a deliberate
+     command — see the note on --ease-spring in tokens.css. */
+  animation: pal-rise var(--speed-slow) var(--ease-spring);
+}
+@keyframes pal-rise {
+  from { opacity: 0; transform: translateY(calc(-12px * var(--motion))) scale(calc(1 - 0.02 * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---- the field ------------------------------------------- */
+.pal-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--rule-hair);
+  background: var(--paper-raised);
+  flex: 0 0 auto;
+}
+.pal-field-icon {
+  font-size: var(--t-lg);
+  color: var(--accent-deep);
+  line-height: 1;
+}
+.pal-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  border: 0;
+  background: none;
+  padding: var(--s2) 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  color: var(--ink);
+  border-radius: 0;
+}
+.pal-input:focus { outline: none; box-shadow: none; border-color: transparent; }
+.pal-input::placeholder { color: var(--ink-muted); opacity: 1; }
+/* The field IS the focus ring — the input never shows one of its
+   own, because a 2px outline inside a bordered box reads as a
+   second box. Moving the ring to the container keeps the "where
+   is my keyboard" answer visible without the double edge. */
+.pal-box:focus-within .pal-field { border-bottom-color: var(--accent); }
+
+.pal-esc {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-btn-radius);
+  padding: 2px var(--s2);
+  flex: 0 0 auto;
+}
+
+/* ---- the rows -------------------------------------------- */
+.pal-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--s2);
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* the page behind must not scroll */
+  flex: 1 1 auto;
+}
+.pal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  margin-bottom: 2px;
+  border-radius: var(--sk-radius);
+  cursor: pointer;
+  /* The hue rule is the same device the launcher and the breakdown
+     use: a left edge whose colour is the CATEGORY. Transparent
+     until the row is active, so a static list is not a barcode. */
+  border-left: var(--sk-hue-rule-w) solid transparent;
+  transition: background-color var(--speed-tap), border-color var(--speed-tap);
+}
+.pal-row.is-active {
+  background: var(--accent-wash);
+  border-left-color: var(--hue, var(--accent));
+}
+.pal-row-icon {
+  flex: 0 0 1.5em;
+  text-align: center;
+  font-size: var(--t-base);
+  color: var(--hue-deep, var(--accent-deep));
+  line-height: 1;
+}
+.pal-row-body { flex: 1 1 auto; min-width: 0; }
+.pal-row-label {
+  display: block;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  color: var(--ink);
+  line-height: var(--lh-snug);
+  /* One line, ellipsised. A scene's label carries its slugline and
+     some sluglines are long; a palette row that wraps to three
+     lines shows four results where it should show nine. The full
+     text is in the sub line and at the destination. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pal-row-sub {
+  display: block;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pal-row-tag {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.pal-row-group {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+/* PLANNED and PARTIAL are --ink-muted on a wash, not --warn as
+   text: a fill colour used as text is the mistake this app has
+   paid for fourteen times. The wash carries the warning; the
+   letters stay at a readable contrast. */
+.pal-row-status {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  background: var(--warn-wash);
+  border-radius: var(--sk-btn-radius);
+  padding: 1px var(--s2);
+}
+
+.pal-empty {
+  margin: 0;
+  padding: var(--s5) var(--s5) var(--s6);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  text-align: center;
+  max-width: none;
+}
+
+.pal-foot {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--s4);
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--rule-hair);
+  background: var(--paper-sunk);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* The page behind does not scroll while the palette is open. */
+body.pal-open { overflow: hidden; }
+
+/* ---- phone ------------------------------------------------
+   A sheet, not a floating card: at 390px a centred box with a
+   margin is a box with no room in it. Full width, full height,
+   and the rows grow to a finger — the pointer:coarse rule in
+   base.css already gives every option 44px, so this only has to
+   stop fighting it. */
+@media (max-width: 560px) {
+  .pal-overlay { padding: 0; }
+  .pal-box {
+    width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .pal-row { padding: var(--s3); }
+  /* Both lines wrap here, the label included. On the desktop list
+     an ellipsis buys a ninth visible result and the scroll is
+     cheap; on a full-height sheet there is no ninth result to buy,
+     and "Scene 14 · EXT. BEACH ROA…" hides the half of a slugline
+     a person is actually scanning for. Capped at two lines so one
+     long scene cannot own the screen. */
+  .pal-row-label, .pal-row-sub {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+  .pal-foot { display: none; }   /* no keyboard to shortcut */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pal-overlay, .pal-box { animation: none; }
+}

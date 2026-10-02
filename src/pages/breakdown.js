@@ -24,6 +24,7 @@ import { h, delegate } from '../lib/dom.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
+import * as Songs from '../lib/songs.js';
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -43,7 +44,8 @@ function renderHeader(scenes) {
       stat(String(scenes.length), scenes.length === 1 ? 'scene' : 'scenes'),
       stat(formatEighths(eighths), eighths === 8 ? 'page' : 'pages'),
       stat(String(Scenes.elementIndex().length), 'elements'),
-      stat(String(new Set(scenes.map((s) => s.location).filter(Boolean)).size), 'locations')
+      stat(String(new Set(scenes.map((s) => s.location).filter(Boolean)).size), 'locations'),
+      stat(String(Songs.listSongs().length), 'songs')
     ])
   ]);
 }
@@ -117,6 +119,28 @@ function renderScene(scene, i, total) {
     'data-scene-field': 'synopsis', 'aria-label': 'Scene synopsis'
   }, scene.synopsis));
 
+  /* Which song this scene belongs to, if any. Only offered once a
+     song exists — an empty dropdown on every scene card would be
+     noise on the 95% of films that have not added one yet. */
+  const songs = Songs.listSongs();
+  if (songs.length) {
+    const sel = h('select.bd-sel.bd-scene-song', {
+      'data-scene-field': 'songId', 'aria-label': 'Part of which song'
+    });
+    const none = h('option', { value: '', text: 'Not part of a song' });
+    if (!scene.songId) none.selected = true;
+    sel.append(none);
+    songs.forEach((sg) => {
+      const opt = h('option', {
+        value: sg.id,
+        text: (sg.number ? sg.number + '. ' : '') + (sg.title || Songs.kindLabel(sg.kind))
+      });
+      if (sg.id === scene.songId) opt.selected = true;
+      sel.append(opt);
+    });
+    card.append(h('label.bd-scene-songlink', {}, [h('span', { text: 'song' }), sel]));
+  }
+
   const tags = h('div.bd-tags');
   for (const cat of ELEMENT_CATEGORIES) {
     const names = scene.elements[cat.id] || [];
@@ -166,6 +190,175 @@ function iconBtn(glyph, action, label, disabled, danger) {
     type: 'button', 'data-action': action, title: label,
     'aria-label': label, text: glyph, disabled: disabled || false
   });
+}
+
+/* ---- songs --------------------------------------------------
+   A Tamil feature carries four to six, and until now nothing in this
+   studio knew what one was. The model is in src/lib/songs.js and the
+   reasoning for it being its own model rather than a flag on a scene
+   is at the top of that file.
+
+   The card shows the PLAN and, once scenes are linked, what the script
+   actually says — side by side, never merged. A song planned for two
+   days whose scenes are spread over four is a schedule problem the
+   producer has to see, and overwriting the plan with the derived
+   figure would delete the evidence that there was ever a disagreement.
+   The budget page settled this already: a hand-set figure is a
+   decision, not a gap.
+   ------------------------------------------------------------ */
+function songSelect(options, value, fieldName, label) {
+  const sel = h('select.bd-sel', { 'data-song-field': fieldName, 'aria-label': label });
+  options.forEach((o) => {
+    const opt = h('option', { value: o.id, text: o.label });
+    if (o.id === value) opt.selected = true;
+    sel.append(opt);
+  });
+  return sel;
+}
+
+function songField(spec, props, text) {
+  const el = h(spec, props);
+  if (text !== undefined) el.value = text;
+  return el;
+}
+
+function renderSong(song, i, total, scenes) {
+  const f = Songs.songFacts(song, scenes);
+  const card = h('article.bd-song', { 'data-song': song.id });
+
+  card.append(h('div.bd-song-bar', {}, [
+    h('span.bd-song-no', { text: song.number || String(i + 1) }),
+    songField('input.bd-song-title', {
+      type: 'text', placeholder: 'Song title — or “untitled duet”',
+      'data-song-field': 'title', 'aria-label': 'Song title'
+    }, song.title),
+    songSelect(Songs.SONG_KINDS, song.kind, 'kind', 'Kind of song'),
+    songSelect(Songs.PLAYBACK_STATES, song.playback, 'playback', 'Playback state'),
+    songSelect(Songs.UNITS, song.unit, 'unit', 'Which unit shoots it'),
+    h('div.bd-song-acts', {}, [
+      iconBtn('↑', 'song-up',   'Move earlier', i === 0),
+      iconBtn('↓', 'song-down', 'Move later',   i === total - 1),
+      iconBtn('✕', 'song-del',  'Delete song',  false, true)
+    ])
+  ]));
+
+  card.append(songField('textarea.bd-song-sit', {
+    rows: '2', 'data-song-field': 'situation', 'aria-label': 'Song situation',
+    placeholder: 'What is the song doing in the story? The situation, not the lyrics.'
+  }, song.situation));
+
+  card.append(h('div.bd-song-grid', {}, [
+    h('label.bd-song-f', {}, [
+      h('span', { text: 'planned locations' }),
+      songField('input', {
+        type: 'text', 'data-song-field': 'locations', 'aria-label': 'Planned locations',
+        placeholder: 'Marina, studio floor'
+      }, song.locations)
+    ]),
+    h('label.bd-song-f', {}, [
+      h('span', { text: 'planned days' }),
+      songField('input', {
+        type: 'number', min: '0', max: '60', step: '0.5',
+        'data-song-field': 'days', 'aria-label': 'Planned shoot days'
+      }, String(song.days || ''))
+    ]),
+    h('label.bd-song-f', {}, [
+      h('span', { text: 'dancers' }),
+      songField('input', {
+        type: 'number', min: '0', max: '500', step: '1',
+        'data-song-field': 'dancers', 'aria-label': 'Number of dancers'
+      }, String(song.dancers || ''))
+    ]),
+    h('label.bd-song-f', {}, [
+      h('span', { text: 'choreographer' }),
+      songField('input', {
+        type: 'text', 'data-song-field': 'choreographer', 'aria-label': 'Choreographer'
+      }, song.choreographer)
+    ])
+  ]));
+
+  /* What the script says, when it says anything. Shown as a separate
+     line from the plan above, deliberately. */
+  const facts = h('div.bd-song-facts');
+  if (f.sceneCount) {
+    facts.append(
+      h('span', { text: f.sceneCount + (f.sceneCount === 1 ? ' scene' : ' scenes') + ' linked' }),
+      h('span', { text: formatEighths(f.eighths) + ' pages' }),
+      h('span', {
+        text: f.scriptDays
+          ? f.scriptDays + (f.scriptDays === 1 ? ' shoot day' : ' shoot days') + ' on the board'
+          : 'no shoot day assigned yet'
+      })
+    );
+  } else {
+    facts.append(h('span', {
+      text: 'No scenes linked yet — normal this early. Link them on a scene card above.'
+    }));
+  }
+  card.append(facts);
+
+  if (f.disagrees) {
+    card.append(h('p.bd-song-warn', {
+      text: 'The plan says ' + f.plannedDays
+        + (f.plannedDays === 1 ? ' day' : ' days') + ' and the board has these scenes across '
+        + f.scriptDays + (f.scriptDays === 1 ? ' day' : ' days')
+        + '. Neither has been changed — decide which is right.'
+    }));
+  }
+  /* A song cannot be picturised without a track to play, so a song
+     with shoot days and no recording is a scheduling dependency, not
+     a tidy-up. This is the one status here that can stop a day. */
+  if (!f.ready && f.effectiveDays) {
+    card.append(h('p.bd-song-warn', {
+      text: 'Playback is “' + Songs.playbackLabel(song.playback) + '” but '
+        + f.effectiveDays + (f.effectiveDays === 1 ? ' day is' : ' days are')
+        + ' planned. Picturisation needs a track to play — this day cannot be shot yet.'
+    }));
+  }
+  return card;
+}
+
+function renderSongs(scenes) {
+  const songs = Songs.listSongs();
+  const wrap = h('section.bd-songs', { id: 'songs' });
+  const t = Songs.songTotals(songs, scenes);
+
+  wrap.append(
+    h('h2.bd-h2', { text: 'Songs' }),
+    h('p.bd-sub', {
+      text: 'A song is its own production unit — its own days, its own locations, '
+          + 'often its own unit — and it is usually decided before a scene exists '
+          + 'to hang it on. Plan it here, then link the scenes once they are '
+          + 'written; the stripboard groups by song and the budget counts its days.'
+    })
+  );
+
+  if (songs.length) {
+    wrap.append(h('div.bd-stats', {}, [
+      stat(String(t.count), t.count === 1 ? 'song' : 'songs'),
+      stat(String(t.days), t.days === 1 ? 'shoot day' : 'shoot days'),
+      stat(String(t.linkedScenes), 'linked scenes'),
+      stat(String(t.peakDancers || '—'), 'peak dancers')
+    ]));
+    if (t.blocked) {
+      wrap.append(h('p.bd-song-warn', {
+        text: t.blocked + (t.blocked === 1 ? ' song has' : ' songs have')
+          + ' shoot days planned with no recorded track. Those days cannot be shot.'
+      }));
+    }
+    songs.forEach((sg, i) => wrap.append(renderSong(sg, i, songs.length, scenes)));
+  } else {
+    wrap.append(h('p.bd-none', {
+      text: 'No songs yet. Most Tamil features carry four to six, and the count is '
+          + 'part of what a producer is sold — so it is worth deciding early, even '
+          + 'before the situations are written.'
+    }));
+  }
+
+  wrap.append(h('button.btn.bd-add', {
+    type: 'button', 'data-action': 'song-add', text: '+  Add song'
+  }));
+  return wrap;
 }
 
 /* ---- element index ------------------------------------------ */
@@ -226,7 +419,14 @@ function render() {
     scenes.forEach((s, i) => list.append(renderScene(s, i, scenes.length)));
     list.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
   }
-  main.append(list, renderElements());
+  /* renderSongs() is OUTSIDE the branch for the same reason the #scenes
+     id moved onto an always-rendering wrapper: navigation.json sends
+     the Breakdown phase to breakdown.html#songs, so that id has to
+     exist before any data does. It wants to be unconditional anyway —
+     a song list is decided before the scenes are, so hiding it until a
+     scene exists would hide it at exactly the moment it is most
+     useful. The branch-local version this replaces called it twice. */
+  main.append(list, renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   mountShell();
@@ -277,6 +477,49 @@ delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (!el.value.trim()) return;
   Scenes.tagElement(sceneIdOf(el), cat, el.value);
   render();
+});
+
+/* ---- songs — events ----------------------------------------- */
+const songIdOf = (el) => el.closest('[data-song]')?.dataset.song;
+
+delegate(document, 'click', '[data-action="song-add"]', () => {
+  Songs.addSong();
+  render();
+  const last = document.querySelector('.bd-song:last-of-type .bd-song-title');
+  if (last) last.focus();
+});
+delegate(document, 'click', '[data-action="song-up"]',   (e, el) => { Songs.moveSong(songIdOf(el), -1); render(); });
+delegate(document, 'click', '[data-action="song-down"]', (e, el) => { Songs.moveSong(songIdOf(el),  1); render(); });
+
+/* Deleting a song UNLINKS its scenes rather than deleting them. A
+   song row is a plan; the scenes are pages someone wrote. One button
+   must never take both, and the confirm says which it takes. */
+delegate(document, 'click', '[data-action="song-del"]', (e, el) => {
+  const id = songIdOf(el);
+  const song = Songs.listSongs().find((s) => s.id === id);
+  if (!song) return;
+  const linked = Songs.scenesFor(id);
+  const label = song.title ? ` "${song.title.slice(0, 40)}"` : '';
+  const note = linked.length
+    ? `\n\n${linked.length} scene${linked.length === 1 ? '' : 's'} will be unlinked. `
+      + 'The scenes themselves are kept.'
+    : '';
+  if (!confirm(`Delete song${label}?${note}`)) return;
+  linked.forEach((sc) => Scenes.updateScene(sc.id, { songId: '' }));
+  Songs.removeSong(id);
+  render();
+});
+
+delegate(document, 'change', '[data-song-field]', (e, el) => {
+  const id = songIdOf(el);
+  const key = el.dataset.songField;
+  let value = el.value;
+  if (key === 'days') value = Math.max(0, parseFloat(el.value) || 0);
+  if (key === 'dancers') value = Math.max(0, parseInt(el.value, 10) || 0);
+  Songs.updateSong(id, { [key]: value });
+  // These three change what the card reports about itself — the day
+  // disagreement, the playback block, the header totals.
+  if (key === 'days' || key === 'dancers' || key === 'playback') render();
 });
 
 render();

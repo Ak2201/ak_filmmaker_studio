@@ -211,6 +211,7 @@
    "this is a container"; it does not also try to say what kind.
    ------------------------------------------------------------ */
 .bd-scene,
+.bd-song,
 .film-card,
 .director-card,
 .rule-card,
@@ -377,7 +378,7 @@
   padding: var(--s1) var(--s2) var(--s1) var(--s3);
   border: 1px solid var(--hue);
   border-left-width: 3px;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--paper);
   font-size: var(--t-tiny);
 }
@@ -517,7 +518,7 @@
   margin-top: var(--s2);
   padding: 0 var(--s1);
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -549,6 +550,88 @@
 .bd-head { padding-block: var(--s7) var(--s5); }
 
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+/* ---- songs --------------------------------------------------
+   The card shell comes from the shared paper block above; what is
+   here is only the arrangement inside it. No radius, padding,
+   border width or italic is written as a literal — a shape typed in
+   here is a shape no skin can override, which is the one way this
+   stylesheet is cheap to break. */
+.bd-songs {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s6) var(--s5);
+  display: grid;
+  gap: var(--s4);
+}
+.bd-song { display: grid; gap: var(--s3); }
+.bd-song:focus-within { border-color: var(--accent); }
+.bd-song-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.bd-song-no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px; height: 30px;
+  padding-inline: var(--s2);
+  border-radius: var(--sk-radius);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+}
+.bd-song-title { flex: 1 1 14rem; min-width: 0; }
+.bd-song-acts { display: flex; gap: var(--s1); margin-inline-start: auto; }
+.bd-song-sit { width: 100%; min-width: 0; resize: vertical; }
+.bd-song-grid {
+  display: grid;
+  /* min() so the column floor can never sum past a narrow viewport —
+     three columns of minmax(180px,1fr) is a 564px floor, which is how
+     the first-run panel overflowed by 238px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: var(--s3);
+}
+.bd-song-grid > * { min-width: 0; }
+.bd-song-f { display: grid; gap: var(--s1); min-width: 0; }
+.bd-song-f > span {
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+.bd-song-f input { width: 100%; min-width: 0; }
+.bd-song-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+}
+/* A day disagreement or a song with no track to play. --warn is a
+   FILL: it stays on the rule and the wash, and the words take
+   --ink-body. As text it runs 3.3-4.4:1 on a light card. */
+.bd-song-warn {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w) solid var(--warn);
+  border-radius: var(--sk-radius);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.bd-scene-songlink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+.bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 .bd-scene { display: grid; gap: var(--s3); }
 .bd-scene:focus-within { border-color: var(--accent); }
 .bd-scene-bar {
@@ -562,7 +645,7 @@
   place-items: center;
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   background: var(--accent);
   color: var(--accent-on);
   font-family: var(--f-mono);
@@ -577,7 +660,7 @@
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   font: inherit;
   font-size: var(--t-small);
 }
@@ -609,7 +692,7 @@
   min-width: 32px; min-height: 32px;
   background: none;
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   cursor: pointer;
   font: inherit;
@@ -656,4 +739,110 @@
   .bd-head { padding-block: var(--s5) var(--s4); }
   .bd-stats, .hero-stats, .hub-stat-strip { gap: var(--s4); }
   .bd-scene-acts { margin-left: 0; }
+}
+
+/* ------------------------------------------------------------
+   8. INTERACTIVE SURFACES — the state layer
+   ------------------------------------------------------------
+   The language had hover states and no PRESS state, anywhere. On a
+   phone that is the whole of the feedback: there is no hover, so a
+   tap on a module tile did nothing visible at all until the next
+   page painted — which on a cold load is long enough to tap again.
+
+   Three rules, and the third is the one that is easy to get wrong.
+
+   1. ONLY WHAT IS ACTUALLY INTERACTIVE. The selectors below are
+      all `a.x` / `button.x`, never the bare class. A .film-card is
+      a link on the library page and a static block on the hub; a
+      lift applied to the class would make the static one claim to
+      be clickable, and a card that lifts under the pointer and
+      does nothing when pressed is a worse card than one that never
+      moved.
+
+   2. THE SHAPE OF THE MOVE BELONGS TO THE SKIN. --sk-lift,
+      --sk-press and --sk-card-shadow-hover are set per skin, so
+      Studio and Press stay flat printed matter (lift 0, shadow
+      none) while Atelier and Console lift. Typing a 2px translate
+      in here would be a move no skin could refuse — the same
+      mistake as a hard-coded radius, one layer up.
+
+   3. IT MUST NOT CHANGE THE BOX. transform only: never width,
+      padding, margin or border-width. A control that grows its box
+      on press reflows every sibling in the row, which on a grid of
+      22 launcher tiles is the whole grid twitching because you
+      touched one of them.
+
+   Both the lift and the press scale are multiplied by --motion, so
+   prefers-reduced-motion flattens the travel to zero rather than
+   merely making it fast. See the note in tokens.css.
+   ------------------------------------------------------------ */
+:is(a, button).door,
+:is(a, button).film-card,
+:is(a, button).director-card,
+:is(a, button).tool-card,
+:is(a, button).start-card,
+:is(a, button).fest-card,
+:is(a, button).ex-card,
+:is(a, button).rule-card,
+.lx-mod {
+  transition: transform var(--speed) var(--ease-out),
+              box-shadow var(--speed) var(--ease-out),
+              border-color var(--speed) var(--ease),
+              background-color var(--speed) var(--ease);
+}
+:is(a, button).door:hover,
+:is(a, button).film-card:hover,
+:is(a, button).director-card:hover,
+:is(a, button).tool-card:hover,
+:is(a, button).start-card:hover,
+:is(a, button).fest-card:hover,
+:is(a, button).ex-card:hover,
+:is(a, button).rule-card:hover,
+.lx-mod:hover,
+.lx-mod:focus-visible {
+  transform: translateY(calc(-1 * var(--sk-lift, 0px) * var(--motion)));
+  box-shadow: var(--sk-card-shadow-hover, var(--sk-card-shadow));
+}
+:is(a, button).door:active,
+:is(a, button).film-card:active,
+:is(a, button).director-card:active,
+:is(a, button).tool-card:active,
+:is(a, button).start-card:active,
+:is(a, button).fest-card:active,
+:is(a, button).ex-card:active,
+:is(a, button).rule-card:active,
+.lx-mod:active {
+  transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
+  box-shadow: var(--sk-card-shadow);
+  transition-duration: var(--speed-tap);
+}
+
+/* The small controls. These are everywhere — toolbars, menus,
+   chips, the action bar — and they are the ones a finger is
+   actually on. The scale is the same variable, so a skin that
+   turns press feedback off turns it off once. */
+.btn:active,
+.tb-link:active,
+.mini-btn:active,
+.bd-icon:active,
+.tb-item:active,
+.tb-choice:active,
+.step-jumper:active,
+.lx-phase:active {
+  transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
+}
+
+/* A disabled control does not respond to being pressed, which is
+   the point of it being disabled — and `cursor: not-allowed` says
+   so before the press does. Without this the transform above fires
+   on :active regardless, and the one state that must read as
+   "nothing will happen" animates like the states that work. */
+.btn:disabled, .mini-btn:disabled, .bd-icon:disabled,
+.btn[aria-disabled="true"], .lx-mod[disabled] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.btn:disabled:active, .mini-btn:disabled:active, .bd-icon:disabled:active,
+.btn[aria-disabled="true"]:active {
+  transform: none;
 }

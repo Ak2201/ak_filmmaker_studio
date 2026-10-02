@@ -20,6 +20,13 @@
       "icon": "◈",
       "href": "library.html",
       "purpose": "Films, directors, rules, festivals, rates"
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "icon": "◍",
+      "href": "settings.html",
+      "purpose": "The API key on this device, and how the studio looks"
     }
   ],
   "phases": [

@@ -85,6 +85,12 @@
 /* ---- the key ------------------------------------------------ */
 .ai-keygate { display: grid; gap: var(--s3); }
 
+/* keySection() — the bar, the gate and the disclosure stacked, for a
+   page whose subject is the key rather than a job that needs one. One
+   step looser than .ai-keygate because these are three objects rather
+   than one object's parts. */
+.ai-keysection { display: grid; gap: var(--s4); }
+
 .ai-key { display: grid; gap: var(--s3); }
 .ai-lead {
   margin: 0;

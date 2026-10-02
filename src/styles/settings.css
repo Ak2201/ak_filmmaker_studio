@@ -1,0 +1,100 @@
+/* ============================================================
+   SETTINGS — the page's own layout, and nothing else
+   ------------------------------------------------------------
+   Almost everything this page draws is already drawn by something
+   else. The heading scale, the eyebrow, the deck and the card
+   surface are modules.css; the key form, the key bar, the gate and
+   the disclosure are ai.css; the buttons are chrome.css. `.st-sec`
+   is in modules.css's shared card list rather than re-declared
+   here, because "a paper block with a hairline" is the language's
+   object and a second copy of it is how the two drift apart.
+
+   What is left for this file is the measure, the rhythm between
+   sections, and one object the app did not have yet: a visible
+   radio row for a setting, as opposed to the same choice inside a
+   dropdown menu.
+
+   NO LITERAL SHAPE OR COLOUR. Every radius, padding, border width
+   and gap below is a --sk-* variable or a spacing token, and every
+   colour is a token, so the one skin keeps control of this page and
+   both themes are a palette swap rather than a second stylesheet.
+   The one exception in the app — the palette picker's seed hexes —
+   is not this kind of thing.
+   ============================================================ */
+
+/* The same measure and gutter as .bd-head above it, so the heading
+   and the sections share one left edge. Stated here rather than by
+   adding .st-body to that list because the padding-block differs:
+   a header opens a page and a body continues it. */
+.st-body {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: 0 var(--s7);
+  display: grid;
+  gap: var(--sk-grid-gap);
+}
+
+.st-sec { display: grid; gap: var(--s4); }
+/* The eyebrow, heading and deck carry their own bottom margins from
+   modules.css. Inside a grid that is a double gap, and on a phone it
+   was most of a screen of air before the first control. */
+.st-sec > .bd-eyebrow,
+.st-sec > .bd-h2,
+.st-sec > .bd-sub { margin-bottom: 0; }
+
+/* ---- a radio row -------------------------------------------
+   The Appearance menu in the toolbar offers these same two choices
+   as menuitemradio rows. This is the full-page form of the same
+   control: a label and the options beside it, visible rather than
+   behind a glyph. */
+.st-group {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.st-group-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* The chosen one. Same pairing as .btn.primary — --accent on
+   --accent-on — because it is the same statement: this is the live
+   one. A fill is not a text colour, and this is a fill. */
+.st-choice.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+}
+/* Declared because `.btn:hover` in chrome.css paints ink-on-paper,
+   which on the chosen button would read as "not chosen" for as long
+   as the pointer is on it. Deepening instead says the same thing the
+   primary button says on hover. */
+.st-choice.is-on:hover,
+.st-choice.is-on:focus-visible {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--accent-on);
+}
+
+/* ---- the two kinds of plain paragraph ----------------------- */
+.st-note,
+.st-elsewhere p {
+  max-width: var(--sk-deck-measure);
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+@media (max-width: 719px) {
+  .st-body { padding-inline: var(--s4); }
+}

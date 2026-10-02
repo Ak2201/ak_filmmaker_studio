@@ -175,6 +175,11 @@
   status = 200
 
 [[redirects]]
+  from = "/settings"
+  to = "/settings.html"
+  status = 200
+
+[[redirects]]
   from = "/shared/:token"
   to = "/index.html?share=:token"
   status = 200

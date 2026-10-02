@@ -139,6 +139,42 @@ export function keyGate(what) {
   return wrap;
 }
 
+/* ---- the whole key area, for a page that IS about the key ---
+   The three job panels put the key in FRONT of something: the gate
+   stands between the page and the thing the user came for, so the
+   form comes first and the bar only once there is a key to describe.
+
+   settings.html asks the same objects for the opposite arrangement —
+   the key is the subject here, not an obstacle — so the bar comes
+   first and the form is what "Replace key" opens underneath it.
+
+   That rearrangement lives HERE rather than on the page, for the
+   reason at the top of this file: a settings page composing its own
+   key area would be a page composing its own password field, and a
+   fourth hand-made copy of that is the one that forgets
+   `type="password"`, or leaves the value in the DOM after saving, or
+   words the privacy line more generously than the code deserves. A
+   page asks for the area; it never builds one.
+
+   `what` names the thing a key is needed for, for the gate. `sends`
+   is the disclosure body, and on a settings page it is the only
+   ALWAYS-visible statement of where the key lives and what it is
+   sent to — keyForm()'s lead says it too, but the form is not on
+   screen once a key exists. */
+export function keySection(what, sends) {
+  const sec = h('div.ai-keysection');
+  // The bar reads the key through maskKey() and nothing else.
+  if (AI.hasKey()) sec.append(keyBar());
+  /* Null when a key is present and the user is not replacing it, so
+     this page cannot get the "replacing a key that already works"
+     case wrong either — the module decides, exactly as it does for
+     the three panels. */
+  const kg = keyGate(what);
+  if (kg) sec.append(kg);
+  sec.append(disclose(sends));
+  return sec;
+}
+
 /* ---- what leaves the browser -------------------------------
    Before the button, never after it. CLAUDE.md: the screenplay is
    the user's unpublished work, and this is the only place in the
@@ -236,6 +272,6 @@ function setPanelNote(box, text) {
 
 export default {
   onAIChange, hasKey,
-  keyForm, keyBar, keyGate, gate, disclose,
+  keyForm, keyBar, keyGate, keySection, gate, disclose,
   statusLine, errorLine, aiMark, wireAIPanel
 };

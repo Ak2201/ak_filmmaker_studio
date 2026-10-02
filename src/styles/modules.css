@@ -276,6 +276,11 @@
 .ex-card,
 .ladder-rung,
 .step-check,
+/* A settings section. Added to this list rather than given a card of
+   its own in settings.css: it IS this object — a paper block with a
+   hairline — and declaring it twice is how the shared card and its
+   copies drifted apart the first time. */
+.st-sec,
 .por-thozil,
 .why-this,
 .disclaimer,

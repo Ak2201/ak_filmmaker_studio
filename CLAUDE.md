@@ -721,17 +721,49 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    themes x 6 skins with the modals open, and the backup round trip
    restoring both projects.
 
-   **`short` fails, and it is a clock rather than a regression.** 12
-   missing words, all numeric: 36 57 58 63 78 89 93 108 119 134 162 198.
-   Each is exactly 3 less than its baseline value and `scripts/baseline.json`
-   was captured 3 days earlier, because the short page prints "in N days"
-   countdowns to festival deadlines through `daysUntil()` in
-   `src/lib/festivals.js`. `main` fails identically on the same day, which
-   is how this was established rather than assumed. **The text check on
-   `short` therefore fails on every day except the one the baseline was
-   captured on.** Either the capture should exclude date-derived text or
-   the page should be rendered against a frozen `fromISO` during a verify
-   run; re-baselining only moves the failure to tomorrow.
+   **The verify run's clock is frozen, and it has to be.** The short
+   blueprint's step 10 prints live countdowns to real festival deadlines
+   — "Short film registration: 2026-11-04 — in 33 days" — through
+   `relativeDays()` in `src/lib/festivals.js`. The baseline records the
+   words a page renders, so the text check on `short` failed on every day
+   except the one the baseline happened to be captured on: twelve missing
+   numeric words, each exactly as many less than its recorded value as
+   there were days since capture, allowlist clean, no explanation.
+
+   A gate that cries wolf daily is a gate people learn to run with
+   `--baseline`, which is exactly how a real regression gets captured as
+   the new truth. `page.clock.setFixedTime()` pins it, and the context is
+   pinned to UTC alongside — `todayISO()` reads the LOCAL calendar date,
+   so an instant near midnight would render a different day depending on
+   where the machine is and the gate would pass in Chennai and fail in
+   California.
+
+   `setFixedTime` rather than `clock.install()` on purpose: it fixes what
+   `Date` reports without pausing timers, and the idle-write assertion
+   waits four REAL seconds. A fully faked clock would have skipped that
+   wait and asserted nothing — a check that silently stops checking is
+   worse than the flake it replaced.
+
+   Three things about `FROZEN_CLOCK` worth knowing before you touch it:
+
+   - **The date was chosen to be the then-current baseline's capture
+     date**, so the twelve countdowns already in the file are the ones
+     this clock renders. The fix therefore cost no re-baseline, and that
+     is also how it was proved: the run went green against the unchanged
+     `baseline.json`.
+   - **It is still checked, not excluded.** Moving the constant seven days
+     forward fails `short` with 13 missing words. The countdown text has
+     deterministic coverage now; it did not lose coverage.
+   - **Changing it is a re-baseline event**, and `baselineFacts()` refuses
+     a baseline whose recorded `clock` differs, naming the real cause
+     instead of reporting missing words. A baseline with no `clock` field
+     predates the freeze and is accepted, because the frozen date is that
+     capture's date.
+
+   No production code changed for any of this. A date seam in
+   `festivals.js` would have been a test hook in a module that already
+   parameterises `fromISO` everywhere — the harness is the right place to
+   decide what "now" means during a run.
 
    **Three things the browser found that static checks could not:**
 

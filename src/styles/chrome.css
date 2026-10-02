@@ -1894,6 +1894,23 @@ a:focus-visible { outline-offset: 3px; }
      start on top of the plate and drop into place. */
   --sh-plate-min: 38px;
   --sh-plate-h:   38px;
+  /* A third, answering a different question again: --sh-bar-h is where
+     the page toolbar parks, --sh-chrome-h is how much of the top of the
+     viewport the whole pinned stack covers. shell.js measures and
+     republishes it from measureChrome(); see there for what counts.
+
+     DECLARED, not left to the JS — and this is the one thing this
+     branch adds to main's half of the scroll fix rather than taking.
+     `scroll-padding-top: calc(var(--sh-chrome-h) + var(--s3))` is
+     invalid at computed-value time while --sh-chrome-h is undefined,
+     so the browser drops the whole declaration: no scroll padding at
+     all for the frame before shell.js runs, and permanently on any
+     page that never mounts the shell. The value here is the bar alone
+     rather than a guess at the stack, for the same reason a skin
+     declares its defaults on bare :root. Too small is a jump that
+     lands slightly high; too large is one that lands past the
+     heading. */
+  --sh-chrome-h: var(--sh-bar-min);
 }
 
 .sh-rail {
@@ -2531,6 +2548,23 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   color: var(--panel-ink);
 }
 
+/* WHERE A FRAGMENT JUMP LANDS.
+
+   Every in-page destination in the app is a fragment — the hub's six
+   nav actions, the library's five, the shell's phase menu, the step
+   rail, the jump dropdown — and the chrome above them is sticky. With
+   no scroll padding the browser puts the section's top edge at y=0,
+   which is underneath all of it: clicking PROJECTS hid "SECTION 0 ·
+   YOUR PROJECTS" and "Your projects." and landed the reader in the
+   middle of the paragraph below them. One property on the scroll
+   container fixes the lot, including every scrollIntoView, which is
+   why it lives here and not as a scroll-margin on each target.
+
+   The gutter is deliberate. Flush against the chrome, a heading reads
+   as clipped by it rather than as the top of a section. */
+html {
+  scroll-padding-top: calc(var(--sh-chrome-h) + var(--s3));
+}
 /* ============================================================
    THE BRAND PLATE
    ------------------------------------------------------------

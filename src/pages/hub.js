@@ -43,7 +43,7 @@ import { featureKeys, shortKeys, progressAgainst } from '../lib/blueprint-fields
 import Store from '../lib/store.js';
 import { mountShell } from '../ui/shell.js';
 import { wireActionBar } from '../ui/actionbar.js';
-import { renderLauncher } from '../ui/launcher.js';
+import { renderLauncher, BUILT_MODULE_COUNT } from '../ui/launcher.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -1682,7 +1682,24 @@ function renderFirstRun() {
   const panel = h('div.empty-projects-state', {}, [
     h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
     h('div.eps-title', { text: 'A blank desk.' }),
-    h('div.eps-deck', { text: 'Twenty-two modules for writing, planning and shooting a film — script to call sheet. Everything you write stays in this browser unless you sign in.' })
+    // DERIVED, not written. This sentence said "Twenty-two" while
+    // navigation.json held twenty-four, one line away from the launcher's
+    // own correct reduce over the same file — the hand-written list
+    // invariant 2 exists to stop. A digit rather than a spelled word on
+    // purpose: the alternative is a number-to-words helper for one
+    // caller, and this panel already prints a derived digit further
+    // down ("a feature, 36 scenes").
+    //
+    // The BUILT count, not the total. This is a promise, made to
+    // somebody who has not committed anything yet, with no qualifier
+    // beside it — so it has to be what they can open today, not what
+    // the map lists. The launcher may quote the total because it
+    // prints "N OF M BUILT" right next to it; this cannot.
+    h('div.eps-deck', {
+      text: BUILT_MODULE_COUNT + ' modules for writing, planning and shooting a film — '
+          + 'script to call sheet. Everything you write stays in this browser '
+          + 'unless you sign in.'
+    })
   ]);
 
   const tour = h('div.eps-tour');

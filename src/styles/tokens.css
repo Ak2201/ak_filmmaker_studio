@@ -354,12 +354,6 @@
      an overshoot on a table reads as sloppy, not alive. */
   --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
 
-  /* ---- anchored scrolling --------------------------------
-     Both heights are measured and published by their owners, so this
-     stays correct when the bar wraps to two rows at 390px. The plate
-     is inside --sh-stick-h, because measureBar() adds it to the
-     number it publishes. */
-  --scroll-offset: calc(var(--sh-stick-h, 0px) + var(--tb-h, 0px) + var(--s4));
 
   /* ---- stacking ----------------------------------------- */
   --z-rail:    50;

@@ -1441,47 +1441,13 @@ global.StudioUI = StudioUI;
 try { loadTheme(); } catch (e) {}
 try { loadSkin(); } catch (e) {}
 
-/* ============================================================
-   THE PAGE TOOLBAR'S HEIGHT, when it is pinned.
-   ------------------------------------------------------------
-   The other half of --scroll-offset. shell.js publishes the shell
-   bar's sticky height; this publishes the toolbar's, and tokens.css
-   adds them. Both ask the computed style rather than restating a
-   breakpoint, because the toolbar is sticky above 560px, static
-   below it, and under the shell bar or at the top of the viewport
-   depending on 720px — three rules in chrome.css that a fourth copy
-   in here could only get wrong.
-
-   Zero when there is no toolbar at all, which is most of the
-   scene-derived modules. */
-let lastToolbarH = -1;
-function measureToolbar() {
-  const tb = document.querySelector('.toolbar');
-  let px = 0;
-  if (tb) {
-    try {
-      const pos = getComputedStyle(tb).position;
-      if (pos === 'sticky' || pos === 'fixed') {
-        px = Math.round(tb.getBoundingClientRect().height);
-      }
-    } catch (e) { /* no layout engine */ }
-  }
-  if (px === lastToolbarH) return;
-  lastToolbarH = px;
-  document.documentElement.style.setProperty('--tb-h', px + 'px');
-}
-StudioUI.measureToolbar = measureToolbar;
-
-/* Plain resize, debounced to a frame. Not a ResizeObserver: this
-   writes a custom property that other rules lay out against, and an
-   observer watching an element whose size it can influence is one
-   notification loop away from the console error the verify gate
-   counts as a failure. The same reasoning shell.js records. */
-let _tbRaf = 0;
-window.addEventListener('resize', () => {
-  if (_tbRaf) return;
-  _tbRaf = requestAnimationFrame(() => { _tbRaf = 0; measureToolbar(); });
-});
+/* The page toolbar's height used to be measured and published here
+   as --tb-h, feeding a --scroll-offset this file no longer owns.
+   shell.js's measureChrome() measures the WHOLE pinned band — the
+   shell bar, the toolbar, and any bar a page adds — and publishes
+   --sh-chrome-h for the one scroll-padding-top rule in chrome.css.
+   Two measurements of overlapping things, feeding two offsets that
+   ADD, is worse than either. */
 
 function autoInit() {
   try {
@@ -1512,18 +1478,7 @@ function autoInit() {
        for layout and once for Fraunces and JetBrains Mono to land.
        A toolbar measured in the fallback face is a toolbar measured
        at the wrong height. */
-    /* Synchronously first — see the note on the action bar: a rAF
-       does not run while the tab is hidden, and --tb-h feeds
-       --scroll-offset, so an unset value sends every in-page jump
-       on a backgrounded page straight back behind the toolbar. */
-    measureToolbar();
-    requestAnimationFrame(() => {
-      measureToolbar();
-      requestAnimationFrame(measureToolbar);
-    });
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(measureToolbar).catch(() => {});
-    }
+
     /* Every page with a document in it, not only the blueprints.
        The bar is how you move around on a phone — the rail is
        behind a toggle and ⌘K does not exist there — so limiting it

@@ -46,10 +46,20 @@ import { elementLines, LINES_PER_PAGE } from './script.js';
 export const FORMATS = [
   { id: 'fountain', label: 'Fountain', ext: ['.fountain', '.spmd'] },
   { id: 'text',     label: 'Screenplay text', ext: ['.txt'] },
-  { id: 'fdx',      label: 'Final Draft', ext: ['.fdx'] }
+  { id: 'fdx',      label: 'Final Draft', ext: ['.fdx'] },
+  /* The one a script actually arrives as. It has no parser of its
+     own: src/lib/pdf-text.js turns the page back into indented
+     text and PARSER 2 reads it, because a PDF's columns and a
+     screenplay text file's columns are the same columns. Two
+     classifiers for one layout would be two places to disagree. */
+  { id: 'pdf',      label: 'PDF screenplay', ext: ['.pdf'] }
 ];
 
-export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,text/plain';
+/* The file picker's `accept`. write.js sets the attribute from this
+   once the parser has loaded — it renders before the lazy import
+   resolves, so it starts with a literal and is corrected. This is
+   the source; the literal there is a first guess. */
+export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,.pdf,text/plain,application/pdf';
 
 /** Which parser a file wants. The extension decides, and the
     content breaks the tie when there isn't one — a .txt that
@@ -58,6 +68,12 @@ export const ACCEPT = '.fountain,.spmd,.txt,.fdx,.xml,text/plain';
 export function detectFormat(filename, text) {
   const name = String(filename || '').toLowerCase();
   const head = String(text || '').slice(0, 400);
+  /* A PDF is decided by the name and by its header, and never by
+     its content: by the time this is called the bytes have already
+     been turned into indented text by pdf-text.js, so the content
+     test would say "screenplay text" and the preview would claim
+     the wrong source. */
+  if (name.endsWith('.pdf') || /^%PDF-/.test(head)) return 'pdf';
   if (/^\s*<\?xml/.test(head) && /FinalDraft/i.test(head)) return 'fdx';
   if (name.endsWith('.fdx') || name.endsWith('.xml')) return 'fdx';
   if (name.endsWith('.fountain') || name.endsWith('.spmd')) return 'fountain';
@@ -703,7 +719,9 @@ export function scenesFrom(elements) {
    ------------------------------------------------------------ */
 export function parseScript(raw, filename) {
   const format = detectFormat(filename, raw);
-  const parser = format === 'fdx' ? parseFDX : format === 'text' ? parseText : parseFountain;
+  const parser = format === 'fdx' ? parseFDX
+    : (format === 'text' || format === 'pdf') ? parseText
+    : parseFountain;
   const result = parser(raw);
 
   /* A parenthetical is STORED without its brackets and WEARS them
@@ -723,6 +741,12 @@ export function parseScript(raw, filename) {
   const { rows, guessed, numbering } = scenesFrom(elements);
   const lines = elements.reduce((n, el) => n + elementLines(el), 0);
   const warnings = (result.warnings || []).slice();
+  /* Anything the PDF extractor had to say comes first: it is about
+     the FILE, and the parser's warnings are about the script. A
+     reader working out whether to accept an import wants "three
+     characters would not decode" before "two slug lines had no
+     time of day". */
+  if (raw && raw.pdfWarnings) warnings.unshift(...raw.pdfWarnings);
 
   /* Where the scene numbers came from is said out loud, because the
      stripboard, the sides and the call sheet all key off them and a
@@ -751,6 +775,14 @@ export function parseScript(raw, filename) {
 
   return {
     format,
+    /* The label travels WITH the plan, derived from FORMATS, because
+       the alternative is what was there: write.js carried its own
+       `fdx ? 'Final Draft' : text ? 'screenplay text' : 'Fountain'`
+       ternary, so a fourth format did not get a wrong label — it got
+       the LAST one, silently, and a PDF import announced itself as
+       Fountain. A list of the formats that exist, written out a
+       second time, is a list that is wrong by the next format. */
+    formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
     meta: result.meta || {},
     elements,
     scenes: rows,
@@ -766,12 +798,51 @@ export function parseScript(raw, filename) {
 
 /** Read a File without uploading it anywhere. */
 export function readFile(file) {
+  if (isPDF(file)) return readPDF(file);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
     reader.onerror = () => reject(new Error('That file could not be read.'));
     reader.readAsText(file);
   });
+}
+
+function isPDF(file) {
+  const name = String((file && file.name) || '').toLowerCase();
+  return name.endsWith('.pdf') || (file && file.type === 'application/pdf');
+}
+
+/* A PDF is bytes, not text, so it takes the other FileReader call
+   and a pass through src/lib/pdf-text.js first. That module is
+   imported HERE and dynamically: an import of a .fountain file
+   should not pay for a PDF reader it will never call, and this
+   module is itself already behind a dynamic import in write.js.
+
+   The extractor's refusals are the useful part. It can tell a
+   scan from a script and a subset font from a readable one, and
+   each refusal is a sentence saying what to do instead — so they
+   are thrown with that sentence as the message rather than
+   collapsed into "could not be read". The two call sites in
+   write.js print err.message. */
+async function readPDF(file) {
+  const buffer = await file.arrayBuffer();
+  let extract;
+  try {
+    ({ extractLayoutText: extract } = await import('./pdf-text.js'));
+  } catch (e) {
+    throw new Error('The PDF reader could not be loaded.');
+  }
+  const result = await extract(buffer);
+  if (result.fatal) throw new Error(result.fatal);
+  /* The extractor's own warnings ride along on the string so
+     parseScript can surface them with the parser's. A side channel
+     on a String object is ugly; a second return shape for one of
+     four formats would be uglier, and this keeps readFile's
+     contract — it still resolves to the text of the file. */
+  const text = new String(result.text);
+  text.pdfWarnings = result.warnings;
+  text.pdfPages = result.pages;
+  return text;
 }
 
 export default {

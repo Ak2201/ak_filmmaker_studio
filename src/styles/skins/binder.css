@@ -1,0 +1,42 @@
+/* ============================================================
+   SKIN: BINDER — flat, dense, square.
+   ------------------------------------------------------------
+   Studio with the air taken out and the corners squared off: for
+   long working sessions where you want more rows on screen than
+   breathing room around them, on a big display.
+
+   Thirteen lines. That is the number that matters about this file —
+   a third look for the whole app, with no selector, no markup and
+   no JavaScript, because every shape the language draws is already
+   a variable.
+   ============================================================ */
+
+:root[data-skin="binder"] {
+  --sk-name: "Binder";
+
+  --sk-radius:        0;
+  --sk-card-pad:      var(--s3) var(--s4);
+  --sk-band-pad:      var(--s6);
+  --sk-grid-gap:      var(--s3);
+
+  --sk-card-line:     var(--rule);
+  --sk-card-shadow:   none;
+
+  --sk-slab-bg:       var(--paper-sunk);
+  --sk-slab-ink:      var(--ink);
+  --sk-slab-rule-c:   var(--accent);
+  --sk-slab-muted:    var(--ink-muted);
+  --sk-slab-accent:   var(--accent-deep);
+  /* The slab is --paper-sunk here, so an inset field has to come UP
+     off it rather than down into it, and the accent is a deep ink
+     that wants light text rather than dark. */
+  --sk-slab-fill:       var(--paper-raised);
+  --sk-slab-hair:       var(--rule);
+  --sk-slab-accent-on:  var(--on-fill);
+
+  --sk-title-size:    clamp(1.6rem, 3vw, 2.1rem);
+  --sk-h2-size:       var(--t-xl);
+  --sk-deck-size:     var(--t-small);
+  --sk-stepnum-size:  var(--t-lg);
+  --sk-card-h-size:   var(--t-base);
+}

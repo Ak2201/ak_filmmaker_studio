@@ -117,7 +117,7 @@
   margin-top: var(--s1);
   padding: 0 var(--s1);
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -400,7 +400,7 @@
 .st-char-role {
   padding: 0 var(--s1);
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -704,7 +704,7 @@
   justify-self: start;
   padding: 0 var(--s1);
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
   font-family: var(--f-mono);
   font-size: var(--t-micro);

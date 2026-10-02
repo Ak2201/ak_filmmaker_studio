@@ -1,0 +1,155 @@
+/* ============================================================
+   SKIN: BRIGHT — the platform register
+   ------------------------------------------------------------
+   Asked for by reference to a course-platform site, and what
+   was taken from it is a LANGUAGE, not a page: big bold
+   geometric display type with tight negative tracking, running
+   text a size up from the app's, corners at 20-ish rather than
+   2, cards that are borderless-looking and sit on a soft
+   TINTED shadow, pills and roomy bands. None of its colour,
+   none of its words, none of its images — those are theirs.
+
+   WHY THIS IS A SKIN AND NOT A REDESIGN. Everything above is
+   shape, type and spacing, which is exactly the axis a skin
+   owns. The other axis is the palette, and that stays with the
+   theme: pair this with Desk and the ground goes cool near-
+   white with white cards, which is the register the reference
+   works in. All four themes still work, because nothing here
+   is a colour literal.
+
+   THE ONE THING DELIBERATELY NOT COPIED is the single brand
+   hue. The reference paints one violet over everything, and
+   this app cannot: `colour = the category` is its most
+   load-bearing rule — a hue here means which phase, which
+   tier, which element category, and collapsing six hues into
+   one brand colour would delete information to gain a look.
+   So the elevation is TINTED WITH --accent instead, which is
+   the reference's own trick (its shadows are violet, not
+   grey) applied to whichever hue the page legitimately owns.
+   A breakdown page lifts blue, a feature page lifts red.
+
+   THE FACE IS FETCHED ONLY WHILE THIS SKIN IS ON. See
+   --sk-font-url in _contract.css. Sora and Inter are open
+   fonts; the stack behind them is the system one, because the
+   link is injected after first paint by definition and there
+   is always a frame, and sometimes a whole session, without
+   it.
+   ============================================================ */
+
+:root[data-skin="bright"] {
+  --sk-name: "Bright";
+
+  /* ---- the face ------------------------------------------- */
+  --sk-font-url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@700;800&display=swap";
+  --sk-display: 'Sora', system-ui, -apple-system, 'Segoe UI', Roboto,
+                'Helvetica Neue', Arial, sans-serif;
+  --sk-body:    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+                'Helvetica Neue', Arial, sans-serif;
+  /* 17px, not 16. The single biggest reason the reference reads as
+     roomy rather than dense, and the cheapest half of it to take.
+     Not its 18: this app has a stripboard and a day-out-of-days in
+     it, and a table is a place where one more pixel of body text is
+     one fewer column that fits. */
+  --sk-body-size: 1.0625rem;
+
+  /* ---- geometry -------------------------------------------
+     Three radii, because the reference uses three: cards are the
+     roundest thing on the page, buttons are squarer than you
+     expect next to them, and fields match the buttons so a form
+     does not read as a row of lozenges. */
+  --sk-radius:       20px;
+  --sk-btn-radius:   14px;
+  --sk-field-radius: 14px;
+  --sk-card-pad:     var(--s5) var(--s5);
+  --sk-band-pad:     var(--s9);
+  --sk-grid-gap:     var(--s5);
+
+  /* ---- surfaces -------------------------------------------
+     The hairline stays, at the faintest token, and it is not
+     decoration: .lx-mod and the launcher tiles signal hover by
+     changing border-COLOUR, so a skin that sets the width to 0
+     deletes the hover affordance on the busiest grid in the app
+     and nothing looks broken. The separation is carried by the
+     shadow; the hairline is left to be changed.
+
+     The elevation is tinted with --accent, which is the
+     reference's trick and the thing that makes a white card on a
+     near-white ground read as lifted rather than as a smudge: a
+     neutral grey shadow on a cool ground goes muddy. Two layers,
+     because one cannot be both a contact shadow and an ambient
+     one. color-mix keeps it a TOKEN — a literal rgba here would
+     break in sepia and trip the raw-colour check. */
+  --sk-card-bg:     var(--paper-raised);
+  --sk-card-line:   var(--rule-hair);
+  --sk-card-line-w: 1px;
+  --sk-card-ink:    var(--ink-body);
+  --sk-card-shadow:
+      0 1px 2px color-mix(in oklab, var(--ink) 7%, transparent),
+      0 10px 24px -14px color-mix(in oklab, var(--accent) 50%, transparent);
+  --sk-card-shadow-hover:
+      0 2px 4px color-mix(in oklab, var(--ink) 8%, transparent),
+      0 18px 40px -18px color-mix(in oklab, var(--accent) 65%, transparent);
+  --sk-lift:  3px;
+  --sk-press: 0.97;
+  --sk-focus-w: 3px;
+
+  /* ---- the dark slab ---------------------------------------
+     The reference's emphatic block is a saturated band with white
+     text on it. The honest equivalent here is the slab the
+     language already has, kept DARK — all six variables move
+     together and they move to --panel, which is dark in every one
+     of the four themes.
+
+     Setting it to --accent-deep would have been the closer
+     imitation and a real AA failure: on the ink theme "deep"
+     means the LIGHTER version of a hue, because the ground is
+     dark there, so white-on-deep would be white on pale peach.
+     That is the slab-polarity trap this contract names, and it
+     does not announce itself — the page renders, the words are
+     simply gone. */
+  --sk-slab-bg:        var(--panel);
+  --sk-slab-ink:       var(--panel-ink);
+  --sk-slab-muted:     var(--panel-muted);
+  --sk-slab-accent:    var(--accent-lift);
+  --sk-slab-fill:      var(--panel-hair-soft);
+  --sk-slab-hair:      var(--panel-hair);
+  --sk-slab-accent-on: var(--panel);
+  --sk-slab-rule-w:    4px;
+  --sk-slab-rule-c:    var(--accent-lift);
+
+  /* ---- rules ----------------------------------------------
+     The hue-carrying rule goes UP to 4px, not down. It is the
+     one piece of colour in this design that means something, and
+     a design this quiet needs it louder rather than softer. The
+     decorative one goes to a hairline, which is the other half
+     of the same decision. */
+  --sk-hue-rule-w:  4px;
+  --sk-deco-rule-w: 1px;
+  --sk-deco-rule-c: var(--rule-hair);
+  --sk-deco-bg:     var(--paper-raised);
+  --sk-deco-ink:    var(--ink-body);
+
+  /* ---- display sizes --------------------------------------
+     Big, heavy and tight — the reference sets its h1 at 60px/800
+     with -1.5px of tracking, and the negative tracking is what
+     stops a heavy geometric sans at that size reading as shouty.
+     clamp() rather than its fixed 60px, because this app is read
+     at 390px as often as at 1280. */
+  --sk-title-size:      clamp(2.3rem, 5.2vw, 3.6rem);
+  --sk-title-style:     normal;
+  --sk-title-transform: none;
+  --sk-title-lh:        1.02;
+  --sk-h2-size:         var(--t-3xl);
+  --sk-h2-style:        normal;
+  --sk-deck-size:       var(--t-lg);
+  --sk-deck-style:      normal;
+  --sk-deck-measure:    56ch;
+  --sk-eyebrow-track:   var(--track-wide);
+  --sk-stepnum-size:    var(--t-3xl);
+  --sk-card-h-size:     var(--t-xl);
+  --sk-card-h-style:    normal;
+
+  /* ---- pacing ---------------------------------------------- */
+  --sk-cover-min:  0;
+  --sk-cover-pad:  var(--s9) var(--gutter);
+}

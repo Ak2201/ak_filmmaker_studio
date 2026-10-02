@@ -121,6 +121,47 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
    commit, not quietly pass because the check drifted with it. */
 const WRITE_BASELINE = process.argv.includes('--baseline');
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
+
+/* ============================================================
+   THE CLOCK IS FROZEN, AND THAT IS THE ONLY WAY THIS CHECK CAN
+   MEAN ANYTHING.
+   ------------------------------------------------------------
+   The short blueprint's step 10 prints live countdowns to real
+   festival deadlines — "Short film registration: 2026-11-04 — in
+   33 days" — through relativeDays() in src/lib/festivals.js. The
+   number is derived from today. The baseline records the words a
+   page renders. So the text check on `short` failed on every day
+   except the one the baseline happened to be captured on, and the
+   failure looked exactly like a regression: twelve missing words,
+   no explanation, allowlist clean.
+
+   It is diagnosable in one step once you see it — every missing
+   number is the baseline's value minus the number of days since
+   capture — but nothing in the output says that, and the obvious
+   response (re-baseline) buys one day. A gate that cries wolf
+   daily is a gate people learn to run with --baseline, which is
+   precisely how a real regression gets captured as the new truth.
+
+   page.clock.setFixedTime() pins Date.now() and new Date() without
+   pausing timers, which matters: the idle-write assertion below
+   waits four REAL seconds, and a fully faked clock would have
+   skipped that wait entirely and asserted nothing.
+
+   WHY THIS DATE. It is the capture date of the baseline that was
+   current when the freeze was introduced, chosen so the existing
+   file stayed valid — the twelve countdowns it already records are
+   the ones this clock renders, so the fix cost no re-baseline and
+   could be proved by the run going green against the unchanged
+   file. Changing it is a re-baseline event; the assertion below
+   makes that loud instead of silent.
+
+   NOON UTC, with the context pinned to UTC. todayISO() reads the
+   LOCAL calendar date, so an instant near midnight would render a
+   different day depending on where the machine is, and the gate
+   would pass in Chennai and fail in California.
+   ============================================================ */
+const FROZEN_CLOCK = '2026-09-29T12:00:00Z';
+const FROZEN_TZ = 'UTC';
 const DIST = path.join(ROOT, 'dist');
 /* Overridable, because several worktrees of this repo can be live at
    once and they all used to bind 5321. The contention was not
@@ -194,7 +235,28 @@ const SKIN_FILES = fs
    list is growing, that is the signal to re-baseline deliberately with
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
-  hub: {},
+  hub: {
+    /* The launcher prints "N of M ready" per phase, derived from
+       navigation.json. Adding the Songs module took Breakdown from
+       "6 of 6" to "7 of 7", so the word "6" left the page and the
+       baseline still expects it.
+
+       This is an allowance rather than an exclusion because it is a
+       one-off consequence of a known-good change: the count is
+       correct, the baseline is simply older than the module. It keeps
+       firing while Breakdown has seven modules, and goes stale — and
+       therefore fails — only if the phase returns to six, which would
+       mean a module was removed and somebody should look.
+
+       WORTH KNOWING FOR NEXT TIME: every module added to
+       navigation.json will collide with the baseline this same way,
+       because a derived count is in the oracle. That is the shape of
+       problem the CLOCK exclusion below solves properly; the counts
+       cannot be excluded the same way without blinding the check to
+       every digit on the page. If this grows past two or three rows,
+       re-baseline rather than keep adding them. */
+    '6': 'Breakdown phase went from 6 modules to 7 when Songs was added'
+  },
   stripboard: {},
   reports: {},
   contacts: {},
@@ -466,6 +528,58 @@ const server = http.createServer((req, res) => {
   console.log('✓ no hairline used as a text colour');
 }
 
+/* ---- source check: a Tamil face must sit BEHIND the monospace ones
+   `--f-script` is the screenplay stack and it now names a Tamil font,
+   because Courier Prime ships `latin`/`latin-ext` only and no
+   monospaced Tamil font exists — so a Tamil script set in it otherwise
+   falls through to whatever the OS picks.
+
+   THE ORDER IS THE WHOLE THING, and getting it wrong is silent. Google
+   serves Noto Sans Tamil as three @font-face blocks — tamil, latin-ext
+   and latin — all under one family name, so the family claims Latin
+   too. Placed BEFORE 'Courier New' it becomes the first available font
+   on any page that has not loaded Courier Prime and takes every glyph:
+   measured, a slug line went from 600px of Courier New to 534px of
+   proportional sans. Nothing errors, nothing overflows, the text and
+   the keys are all still correct — the fixed-width grid the page count
+   is arithmetic on has simply stopped being fixed-width.
+
+   So: the Tamil family must appear, and it must come after the last
+   monospace family that covers Latin. ------------------------------- */
+{
+  const tokens = fs.readFileSync(path.join(ROOT, 'src', 'styles', 'tokens.css'), 'utf8');
+  const bad = [];
+  // every declaration of --f-script, in every theme block
+  const decls = tokens.match(/--f-script:[^;]+;/g) || [];
+  if (!decls.length) bad.push('no --f-script declaration found at all');
+  const TAMIL = /Noto Sans Tamil|Latha|Nirmala|Tamil/i;
+  for (const d of decls) {
+    const list = d.replace(/--f-script:\s*/, '').replace(/;$/, '')
+      .split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, ''));
+    const tamilAt = list.findIndex((f) => TAMIL.test(f));
+    if (tamilAt === -1) { bad.push('no Tamil family in: ' + d.trim()); continue; }
+    // the Latin-covering monospace faces this stack relies on
+    const monoAt = list.map((f, i) => (/^(Courier Prime|Courier New|Courier)$/i.test(f) ? i : -1))
+      .filter((i) => i >= 0);
+    const lastMono = monoAt.length ? Math.max(...monoAt) : -1;
+    if (lastMono === -1) { bad.push('no Courier family in: ' + d.trim()); continue; }
+    if (tamilAt < lastMono) {
+      bad.push('Tamil family is at position ' + (tamilAt + 1) + ' but the last Courier '
+        + 'family is at ' + (lastMono + 1) + ' — it will claim Latin too: ' + d.trim());
+    }
+  }
+  if (bad.length) {
+    console.error('\n✗ --f-script font order is wrong:');
+    bad.forEach((b) => console.error('  ' + b));
+    console.error('\n  The Tamil family goes LAST, after Courier Prime / Courier New /');
+    console.error('  Courier. Before them it is the first available font on pages that');
+    console.error('  never loaded Courier Prime, and it silently replaces the');
+    console.error('  fixed-width grid that pageCount() is arithmetic on.\n');
+    process.exit(2);
+  }
+  console.log('✓ --f-script keeps Tamil behind the monospace faces');
+}
+
 /* ---- data check: the Tanglish sidecar must still address real steps
    src/data/steps.tanglish.json is keyed `<namespace>:<step id>`, and
    it decorates files that `npm run extract` REGENERATES. A step that
@@ -580,6 +694,28 @@ function baselineFacts(name) {
     process.exit(2);
   }
   const all = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
+  /* A baseline captured against a different clock cannot be compared
+     against this run, because the pages that print a countdown will
+     differ by exactly the gap between the two dates — and the report
+     will say "missing words", which is the one message guaranteed to
+     send somebody looking at the wrong thing. Say it here instead.
+
+     A baseline with no `clock` predates the freeze. It is accepted
+     silently and deliberately: the frozen date WAS chosen to be that
+     capture's date, so the two agree. The field appears on the next
+     deliberate re-baseline and the check starts biting then. */
+  if (all.clock && all.clock !== FROZEN_CLOCK) {
+    console.error(
+      `\n\u2717 baseline clock mismatch.\n` +
+      `  baseline.json was captured at ${all.clock}\n` +
+      `  this run is frozen at      ${FROZEN_CLOCK}\n` +
+      '  Every countdown on the short blueprint is derived from that date, so the\n' +
+      '  two cannot be compared. Either restore FROZEN_CLOCK in\n' +
+      '  scripts/verify-migration.mjs, or re-baseline deliberately and say so in\n' +
+      '  the commit.\n'
+    );
+    process.exit(2);
+  }
   const page = all.pages[name];
   if (!page) {
     console.error(`\nbaseline.json has no entry for "${name}". Re-run npm run baseline.\n`);
@@ -711,8 +847,14 @@ const captured = {};
 let failures = 0;
 
 for (const spec of PAGES) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    timezoneId: FROZEN_TZ
+  });
   const page = await ctx.newPage();
+  // Before the first navigation: a page that has already rendered
+  // its countdowns has already read the real clock.
+  await page.clock.setFixedTime(new Date(FROZEN_CLOCK));
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => {
@@ -1569,6 +1711,12 @@ if (WRITE_BASELINE) {
       'and only when the current output is known good — it becomes the thing every later run is judged against.',
     capturedAt: new Date().toISOString(),
     capturedFrom: sha,
+    /* The clock the capture ran against. Recorded so a later run can
+       refuse to compare against a baseline taken at a different one
+       — see FROZEN_CLOCK in verify-migration.mjs. Without this the
+       mismatch is twelve numeric words and no reason. */
+    clock: FROZEN_CLOCK,
+    timezone: FROZEN_TZ,
     provenance:
       'Captured from the build at the commit above. The FIRST baseline (16bf3b4) came from a build that ' +
       'still passed 100% against the original legacy/ pages, so the migration guarantee entered the chain ' +
@@ -1596,8 +1744,12 @@ if (WRITE_BASELINE) {
    diff could see it: the hub's markup is identical either way.
 
    Two projects out, two projects back, with their contents matched. */
-const rtCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const rtCtx = await browser.newContext({
+  viewport: { width: 1280, height: 900 },
+  timezoneId: FROZEN_TZ
+});
 const rtPage = await rtCtx.newPage();
+await rtPage.clock.setFixedTime(new Date(FROZEN_CLOCK));
 const rtErrors = [];
 rtPage.on('pageerror', (e) => rtErrors.push(e.message));
 await rtPage.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });

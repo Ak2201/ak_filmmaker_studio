@@ -15,75 +15,80 @@
    ever *changes* the look, never supplies it.
    ============================================================ */
 
-/* ONE LOOK NOW. press, binder, console, mission and the short-lived
-   gate.css are gone: five swappable looks meant five sets of every
-   shape decision to keep correct across every theme, and the brief
-   was one identity rather than a menu of them. The variables stay,
-   because modules.css is written against them and a hard-coded
-   shape is a shape nothing can ever override — the contract is now
-   the single source of this design rather than a switchboard.
-
-   Declared on BARE :root as well as the attribute, which is the
-   documented trap: without it every card loses its border and its
-   padding for the length of one paint before skin.js runs, and all
-   of it if localStorage throws. */
 :root,
 :root[data-skin="studio"] {
-  --sk-name: "Gate";
+  --sk-name: "Studio";
 
-  /* ---- geometry ------------------------------------------- */
-  /* Square. Not because 0 is a style, but because a frame edge
-     is not rounded and a rounded one would be a card again. */
-  --sk-radius:          0;
-  --sk-btn-radius:      0;
-  --sk-card-pad:        var(--s5) var(--s5);
-  --sk-band-pad:        var(--s9) var(--s5);
-  --sk-grid-gap:        var(--s5);
-  --sk-cover-pad:       var(--s9) 0 var(--s5);
-  --sk-cover-min:       0;
+  /* geometry */
+  --sk-radius:        var(--radius);
+  --sk-btn-radius:    var(--radius);
+  --sk-card-pad:      var(--s4) var(--s5);
+  --sk-band-pad:      var(--s8);
+  --sk-grid-gap:      var(--s4);
 
-  /* ---- surfaces: depth by luminance, never by shadow ------ */
-  --sk-card-bg:         var(--paper-sunk);
-  --sk-card-ink:        var(--ink-body);
-  --sk-card-line:       var(--rule-hair);
-  --sk-card-line-w:     0;
-  --sk-card-shadow:     none;
-  --sk-deco-bg:         var(--paper-sunk);
-  --sk-deco-ink:        var(--ink-body);
+  /* surfaces */
+  --sk-card-bg:       var(--paper-raised);
+  --sk-card-line:     var(--rule-hair);
+  --sk-card-line-w:   1px;
+  --sk-card-ink:      var(--ink-body);
+  --sk-card-shadow:   none;
+  /* Studio is printed matter: a page does not lift off the desk when
+     you look at it. The hover state here is the hairline going to
+     --rule, which modules.css does anyway; the elevation stays flat
+     and the travel stays zero. The variables exist so the skins that
+     DO want a lift can have one without a selector. */
+  --sk-card-shadow-hover: none;
+  --sk-lift:          0px;
+  --sk-press:         0.985;
+  --sk-field-radius:  var(--radius);
+  --sk-focus-w:       2px;
 
-  /* ---- rules: the registration edge ----------------------- */
-  /* The data-carrying rule stays well above the 3px the gate
-     asserts for hue-coded variants, because here it is the
-     loudest thing on a card rather than a trim. */
-  --sk-hue-rule-w:      6px;
-  --sk-deco-rule-w:     6px;
-  --sk-deco-rule-c:     var(--rule);
-
-  /* ---- type: the slate, then the script ------------------- */
-  --sk-display:         var(--face-display);
-  --sk-body:            var(--face-serif);
-  --sk-title-size:      clamp(2.4rem, 6vw, 4.5rem);
-  --sk-title-lh:        0.92;
-  --sk-title-style:     normal;
-  --sk-title-transform: none;
-  --sk-h2-size:         var(--t-2xl);
-  --sk-h2-style:        normal;
-  --sk-card-h-size:     var(--t-lg);
-  --sk-card-h-style:    normal;
-  --sk-deck-size:       var(--t-base);
-  --sk-deck-style:      normal;
-  --sk-deck-measure:    58ch;
-  --sk-eyebrow-track:   normal;
-  --sk-stepnum-size:    var(--t-3xl);
-
-  /* ---- the slab: all six, or none ------------------------- */
-  --sk-slab-bg:         var(--panel);
-  --sk-slab-ink:        var(--panel-ink);
-  --sk-slab-muted:      var(--panel-muted);
-  --sk-slab-accent:     var(--panel-gilt);
-  --sk-slab-accent-on:  var(--panel);
+  /* the one dark slab */
+  --sk-slab-bg:       var(--panel);
+  --sk-slab-ink:      var(--panel-ink);
+  --sk-slab-rule-w:   3px;
+  --sk-slab-rule-c:   var(--panel-gilt);
+  --sk-slab-muted:    var(--panel-muted);
+  --sk-slab-accent:   var(--panel-gilt);
+  /* The slab is dark here, so these are the --panel-* values the
+     widgets used to reach for directly. Naming them changes nothing
+     in this skin — that is the point: the default look is unmoved and
+     the three light-slab skins stop rendering invisible text. */
   --sk-slab-fill:       var(--panel-hair-soft);
   --sk-slab-hair:       var(--panel-hair);
-  --sk-slab-rule-w:     6px;
-  --sk-slab-rule-c:     var(--panel-gilt);
+  --sk-slab-accent-on:  var(--panel);
+
+  /* rules: the hue-carrying one, and the decorative one */
+  --sk-hue-rule-w:    3px;
+  --sk-deco-rule-w:   1px;
+  --sk-deco-rule-c:   var(--rule-hair);
+  --sk-deco-bg:       var(--paper-raised);
+  --sk-deco-ink:      var(--ink-body);
+
+  /* type */
+  --sk-display:       var(--face-serif);
+  --sk-body:          var(--face-serif);
+  /* The default size of running text, and the default absence of
+     a skin stylesheet. Both declared here rather than left unset,
+     for the reason the whole of this file is declared on bare
+     :root: the app has to be correct before skin.js runs. */
+  --sk-body-size:     var(--t-base);
+  --sk-font-url:      none;
+  --sk-title-size:    clamp(2rem, 4.5vw, 3rem);
+  --sk-title-style:   normal;
+  --sk-title-transform: none;
+  --sk-title-lh:      1.04;
+  --sk-h2-size:       var(--t-2xl);
+  --sk-h2-style:      normal;
+  --sk-deck-size:     var(--t-base);
+  --sk-deck-style:    normal;
+  --sk-deck-measure:  62ch;
+  --sk-eyebrow-track: var(--track-label);
+  --sk-stepnum-size:  var(--t-2xl);
+  --sk-card-h-size:   var(--t-lg);
+  --sk-card-h-style:  normal;
+
+  /* pacing */
+  --sk-cover-min:     0;
+  --sk-cover-pad:     var(--s8) var(--gutter);
 }

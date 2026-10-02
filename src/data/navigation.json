@@ -136,6 +136,14 @@
           "icon": "✣"
         },
         {
+          "id": "songs",
+          "label": "Songs",
+          "purpose": "Four to six per feature, each its own shoot block",
+          "status": "built",
+          "href": "breakdown.html#songs",
+          "icon": "♫"
+        },
+        {
           "id": "stripboard",
           "label": "Stripboard",
           "purpose": "Order scenes into shoot days",

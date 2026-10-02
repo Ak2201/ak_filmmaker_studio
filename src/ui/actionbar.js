@@ -106,13 +106,77 @@ function clampIntoViewport(panel) {
   }
 }
 
-function closeMenus(except) {
+function closeMenus(except, restoreFocus) {
   document.querySelectorAll('.tb-menu-panel').forEach((p) => {
     if (p === except) return;
+    const wasOpen = !p.hidden;
     p.hidden = true;
     const b = p.parentElement && p.parentElement.querySelector('.tb-menu-btn');
-    if (b) b.setAttribute('aria-expanded', 'false');
+    if (b) {
+      b.setAttribute('aria-expanded', 'false');
+      /* Focus goes back to the button that opened the menu, but ONLY
+         when the close came from the keyboard and focus is still
+         inside the panel. Pulling focus on every close would yank it
+         out of whatever the user clicked next — the menu would be
+         stealing the cursor from the page as a side effect of
+         tidying itself up. */
+      if (wasOpen && restoreFocus && p.contains(document.activeElement)) {
+        try { b.focus(); } catch (e) {}
+      }
+    }
   });
+}
+
+/* ------------------------------------------------------------
+   KEYBOARD INSIDE A MENU
+   ------------------------------------------------------------
+   role="menu" is a promise. A screen reader tells the user they
+   are in a menu, and what that means to anyone who has used one is
+   that the arrow keys move between the items and Escape gets out.
+   This panel had neither: it was a div of buttons with a menu role
+   painted on, so Tab walked through every item one at a time and
+   then kept going into the page behind, and Escape closed the menu
+   without giving focus back to the control that opened it — which
+   on a toolbar of eight menus means the next Tab starts from the
+   top of the document.
+
+   The items include .tb-choice, because a radio row inside the
+   menu is still somewhere the arrow keys have to reach. Theme and
+   Design are both that shape, and they were the two settings
+   furthest from the keyboard.
+   ------------------------------------------------------------ */
+const MENU_ITEMS = '.tb-item, .tb-choice';
+
+function menuItems(panel) {
+  return Array.from(panel.querySelectorAll(MENU_ITEMS))
+    .filter((el) => !el.hidden && !el.disabled);
+}
+
+function focusItem(panel, i) {
+  const items = menuItems(panel);
+  if (!items.length) return;
+  const el = items[(i + items.length) % items.length];
+  try { el.focus(); } catch (e) {}
+}
+
+function onMenuKey(e) {
+  const panel = e.target.closest && e.target.closest('.tb-menu-panel');
+  if (!panel || panel.hidden) return;
+  const items = menuItems(panel);
+  const at = items.indexOf(e.target);
+  switch (e.key) {
+    case 'ArrowDown': e.preventDefault(); focusItem(panel, at + 1); break;
+    case 'ArrowUp':   e.preventDefault(); focusItem(panel, at - 1); break;
+    case 'Home':      e.preventDefault(); focusItem(panel, 0); break;
+    case 'End':       e.preventDefault(); focusItem(panel, items.length - 1); break;
+    /* Tab leaves the menu entirely rather than walking it. A menu is
+       one stop on the page's tab order, not eight — that is the
+       difference between a menu and a toolbar, and it is the whole
+       reason the items are reachable by arrow instead. */
+    case 'Tab':       closeMenus(null, false); break;
+    case 'Escape':    e.preventDefault(); e.stopPropagation(); closeMenus(null, true); break;
+    default: break;
+  }
 }
 
 /* A radio row. The buttons carry the value on a data attribute the
@@ -145,15 +209,35 @@ export function wireActionBar() {
   delegate(document, 'click', '[data-action="tb-menu-toggle"]', (e, btn) => {
     const panel = btn.parentElement.querySelector('.tb-menu-panel');
     const opening = panel.hidden;
-    closeMenus(panel);
+    closeMenus(panel, false);
     panel.hidden = !opening;
     btn.setAttribute('aria-expanded', String(opening));
-    if (opening) clampIntoViewport(panel);
+    if (opening) {
+      clampIntoViewport(panel);
+      /* Focus moves in only when the menu was opened BY THE
+         KEYBOARD. e.detail is 0 for a click synthesised from Enter
+         or Space and non-zero for a real pointer click, which is
+         the one signal that distinguishes them. Pulling focus on a
+         mouse click would steal it from a pointer user who is about
+         to click an item anyway, and on a touch screen it summons
+         the on-screen keyboard for no reason. */
+      if (!e.detail) focusItem(panel, 0);
+    }
   });
   // Any choice closes the menu it came from.
-  delegate(document, 'click', '.tb-item', () => closeMenus());
-  document.addEventListener('click', (e) => { if (!e.target.closest('.tb-menu')) closeMenus(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+  delegate(document, 'click', '.tb-item', () => closeMenus(null, false));
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.tb-menu')) closeMenus(null, false);
+  });
+  document.addEventListener('keydown', onMenuKey, true);
+  /* Escape from ANYWHERE still closes an open menu. onMenuKey only
+     fires when focus is inside the panel, and a menu opened with
+     the mouse leaves focus on the button — so without this, the one
+     key everybody tries first would do nothing for exactly the
+     users who opened it by pointing at it. */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenus(null, false);
+  });
 }
 
 export default { actionMenu, wireActionBar };

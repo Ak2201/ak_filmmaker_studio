@@ -325,3 +325,12 @@
   }
   body.pitch-only-print .pitch-slide * { color: inherit !important; }
 }
+
+/* The palette is chrome, and chrome does not print. Without this a
+   print taken while it is open puts a 640px overlay and a scrim on
+   page one — and the scrim is a near-black fill, which on paper is
+   the whole sheet. */
+@media print {
+  .pal-overlay, .sh-find, .mobile-actionbar { display: none !important; }
+  body.pal-open { overflow: visible !important; }
+}

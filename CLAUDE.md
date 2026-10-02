@@ -589,13 +589,29 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   Scrolling a 65,000px blueprint therefore discarded the bar that says *where
   you are* and kept the one that says *what you can do here* — the navigation
   layer existed only at the very top of the longest pages in the app. The shell
-  is sticky at ≥1100px now and publishes its measured height as `--sh-h` for the
-  toolbar to sit under. Below 1100px it still scrolls away on purpose: the two
-  bars stack there, and 164px of chrome above a text field on a phone is worse
-  than losing the nav. For the same reason `.toolbar` is `position: static`
-  below 560px — wrapped to four rows and stuck, it was 391px, 46% of an 844px
-  phone, permanently. What you need while typing is the fixed bottom action bar
-  and the save indicator; the toolbar is one flick up.
+  is sticky at ≥1100px now and publishes its measured height for the page to
+  sit under. Below 1100px it still scrolls away on purpose, because chrome above
+  a text field on a phone is worse than losing the nav — measured at its worst,
+  a stuck toolbar wrapped to four rows was 391px, 46% of an 844px phone,
+  permanently. What you need while typing is the fixed bottom action bar and the
+  save indicator; the nav is one flick up.
+
+  **THERE IS ONE BAR NOW, so the stacking half of this is history.** The four
+  original pages each built their own `.toolbar` under the shell's bar;
+  `adoptPageTools()` in `shell.js` moves that element INTO `.sh-bar` as a
+  right-hand zone, and the page's section links fold into a SECTIONS disclosure
+  on the breadcrumb. The eleven module pages never had a second bar and are
+  untouched. The trap above is still the lesson — pin the layer that says where
+  you are — but "the two bars stack" describes a layout that no longer exists.
+
+  Two things about that move are worth keeping. It relocates the **element**,
+  not its children: ids survive either way, but `chrome.js`'s `autoInit`, the
+  four pages that use `.toolbar` as the host for the sign-in pill and the
+  Appearance menu, the `.toolbar .btn` chrome-palette rules, `print.css` and a
+  live reference in `library.js` are all keyed off the element, and dropping it
+  would have broken every one of them quietly. And the links are **harvested**
+  from `a.nav-link[href^="#"]` rather than listed, so `shell.js` still names no
+  page and no section.
 - **`var(--radius)` in a component is as unskinnable as `4px` was.** The rule
   everyone remembered was "do not type a literal radius into `modules.css`".
   The one nobody did was that reaching for the raw TOKEN is the same bug with
@@ -614,8 +630,10 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   `var(--radius-pill)` uses are left alone: a pill is a shape with a meaning,
   not a radius with a value. If you add a surface, it takes `--sk-radius`.
 - **A sticky bar and no `scroll-margin` is a jump that lands behind it.**
-  Nothing in the app set `scroll-margin` and two bars are sticky above the
-  content — the shell at `--sh-bar-h`, the page toolbar under it. The browser
+  Nothing in the app set `scroll-margin` and the chrome above the content is
+  sticky. (It was two bars when this was written — the shell and the page
+  toolbar under it; it is one band now, and the fix is the same either way
+  because the band is MEASURED rather than assumed.) The browser
   scrolls a fragment target to y=0, and y=0 is behind both. So the step rail,
   `j`/`k`, the glossary links, `#elements`, every fragment the breadcrumb
   resolves and the skip link itself delivered you to a heading you could not
@@ -664,6 +682,39 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   glyph, which is what makes the mixed document work, but it only skips a
   family that has *no* glyph. Order the stack so the narrow-coverage face
   is last. `verify` asserts it now.
+
+- **A measured number is only as good as its last measurement, and twice it
+  was not.** `--sh-chrome-h` is the pinned band's height, derived by
+  `measureChrome()` from whatever is actually sticky, and it feeds the one
+  `scroll-padding-top` in the app — so a wrong value here is every fragment
+  jump in the studio landing in the wrong place, which reads as a scrolling
+  bug and never as a chrome bug.
+
+  - **It counted the step rail as a band.** The rail is 220px wide, 804px tall
+    and anchored left; half a 390px viewport is 195px, so it passed the
+    "is this wide enough" test. The band measured **868px** on both blueprints
+    at 390px. A candidate must straddle the horizontal centre, which is the
+    test the existing comment already claimed to apply.
+  - **It went stale.** Controls arrive in the band after the last scheduled
+    measure — the sign-in pill from the lazy cloud module, the Appearance menu
+    swap, the switcher label. On feature at 1280 the band settled at 102px
+    while the published value stayed 146px, and nothing had resized so the
+    resize listener never fired. A rAF-throttled `MutationObserver` on
+    `.sh-bar` fixes it, and it writes custom properties on `<html>` —
+    outside the observed subtree, so there is no notification loop. That is
+    the distinction the note warning off a `ResizeObserver` was reaching for.
+
+- **When two rules tie, order decides, and order is not where you wrote it.**
+  Three instances, all of them a state or an override losing to a rule declared
+  later in the same or a later-imported sheet: `.search-hit` under
+  `.meta-field input`; `.sh-plate`'s narrow-width un-pinning under
+  `.sh-plate { position: sticky }` ~430 lines below it, which left 38px of
+  brand plate pinned on every phone AND fed it into `--sh-bar-h`; and
+  `.phase .label`, which is why that override lives in `modules.css` rather
+  than `editorial.css`. The fix always lives where it cannot be ordered out —
+  a doubled class, or the end of the section — never where it reads best. A
+  dead CSS rule is bad enough; a dead CSS rule feeding a measured number is
+  how it becomes arithmetic.
 
 - **A token declared once on bare `:root` has only the DEFAULT theme's
   value**, and a palette swap is when you find out which tokens those are.

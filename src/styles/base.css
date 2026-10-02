@@ -132,33 +132,21 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 
 
 /* ============================================================
-   ANCHORED SCROLLING — the fix for a bug that was in every
-   in-page link in the studio.
+   ANCHORED SCROLLING — one offset, and it lives in chrome.css.
    ------------------------------------------------------------
-   Nothing in the app set scroll-margin, and two bars are sticky
-   above the content: the shell at --sh-bar-h and the page toolbar
-   directly under it. The browser scrolls a fragment target to
-   y = 0. y = 0 is behind both bars.
+   This file briefly carried a --scroll-offset and a
+   scroll-margin-top on every anchorable element. main had already
+   solved the same bug better: ONE scroll-padding-top on <html>,
+   derived from the pinned band measureChrome() actually measures,
+   which also covers scrollIntoView and scroll snapping and cannot
+   go stale the way a hand-kept list of targets does.
 
-   So every jump in the app — the step rail, `j` and `k`, the
-   glossary links, #elements, every fragment the breadcrumb
-   resolves, every "skip to content" — delivered you to a heading
-   you could not see, with the first two lines of the thing you
-   asked for hidden under the chrome. It read as the page landing
-   in the wrong place, which is why it was never reported as a
-   scrolling bug.
-
-   --scroll-offset is computed in tokens.css from the two measured
-   heights, so it stays right when the bar wraps to two rows at
-   390px rather than being a number somebody guessed.
+   THE TWO DO NOT REPLACE EACH OTHER, THEY ADD. scroll-padding
+   shrinks the scrollport; scroll-margin grows the target box. Both
+   at once lands a fragment roughly twice the chrome height too low,
+   and it reads as "the jump is still wrong" rather than as "there
+   are two fixes". So the scroll-margin half is gone.
    ============================================================ */
-:target,
-[id] > h1, [id] > h2, [id] > h3,
-h1[id], h2[id], h3[id], h4[id],
-section[id], article[id], .step, .ladder-step,
-#main, #content, [data-step] {
-  scroll-margin-top: var(--scroll-offset);
-}
 
 /* The fragment you actually asked for, said out loud for a moment.
    A jump that lands silently in the middle of a long document

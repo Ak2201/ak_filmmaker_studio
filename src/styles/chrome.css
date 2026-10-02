@@ -2467,3 +2467,21 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   background: var(--panel-hair);
   color: var(--panel-ink);
 }
+
+/* WHERE A FRAGMENT JUMP LANDS.
+
+   Every in-page destination in the app is a fragment — the hub's six
+   nav actions, the library's five, the shell's phase menu, the step
+   rail, the jump dropdown — and the chrome above them is sticky. With
+   no scroll padding the browser puts the section's top edge at y=0,
+   which is underneath all of it: clicking PROJECTS hid "SECTION 0 ·
+   YOUR PROJECTS" and "Your projects." and landed the reader in the
+   middle of the paragraph below them. One property on the scroll
+   container fixes the lot, including every scrollIntoView, which is
+   why it lives here and not as a scroll-margin on each target.
+
+   The gutter is deliberate. Flush against the chrome, a heading reads
+   as clipped by it rather than as the top of a section. */
+html {
+  scroll-padding-top: calc(var(--sh-chrome-h) + var(--s3));
+}

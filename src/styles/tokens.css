@@ -320,18 +320,6 @@
      an overshoot on a table reads as sloppy, not alive. */
   --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
 
-  /* ---- anchored scrolling -------------------------------
-     THE BUG THIS FIXES: nothing in the app set scroll-margin, and
-     two bars are sticky above the content — the shell at
-     --sh-bar-h and the page toolbar under it. So every in-page
-     jump in the studio (the step rail, `j`/`k`, the glossary
-     links, #elements, every fragment in the breadcrumb) scrolled
-     its target to y=0, which is BEHIND both bars. The heading you
-     asked for was the one thing you could not see.
-
-     Both heights are measured and published by their owners, so
-     this stays correct when the bar wraps to two rows at 390px. */
-  --scroll-offset: calc(var(--sh-stick-h, 0px) + var(--tb-h, 0px) + var(--s4));
 
   /* ---- stacking ----------------------------------------- */
   --z-rail:    50;

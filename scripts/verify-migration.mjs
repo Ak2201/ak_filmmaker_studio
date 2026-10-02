@@ -122,46 +122,33 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WRITE_BASELINE = process.argv.includes('--baseline');
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
 
-/* ============================================================
-   THE CLOCK IS FROZEN, AND THAT IS THE ONLY WAY THIS CHECK CAN
-   MEAN ANYTHING.
-   ------------------------------------------------------------
-   The short blueprint's step 10 prints live countdowns to real
-   festival deadlines — "Short film registration: 2026-11-04 — in
-   33 days" — through relativeDays() in src/lib/festivals.js. The
-   number is derived from today. The baseline records the words a
-   page renders. So the text check on `short` failed on every day
-   except the one the baseline happened to be captured on, and the
-   failure looked exactly like a regression: twelve missing words,
-   no explanation, allowlist clean.
+/* THE VERIFY RUN'S CLOCK IS NOT PINNED, and it must not be.
 
-   It is diagnosable in one step once you see it — every missing
-   number is the baseline's value minus the number of days since
-   capture — but nothing in the output says that, and the obvious
-   response (re-baseline) buys one day. A gate that cries wolf
-   daily is a gate people learn to run with --baseline, which is
-   precisely how a real regression gets captured as the new truth.
+   A FROZEN_CLOCK + a UTC-pinned context used to sit here, solving
+   the same festival-countdown problem that COUNTDOWN solves further
+   down. Two mechanisms, and they are not merely redundant — they
+   contradict each other.
 
-   page.clock.setFixedTime() pins Date.now() and new Date() without
-   pausing timers, which matters: the idle-write assertion below
-   waits four REAL seconds, and a fully faked clock would have
-   skipped that wait entirely and asserted nothing.
+   COUNTDOWN's whole premise is that THE PAGE RENDERS TODAY'S
+   countdowns: it derives the varying numbers from the baseline's
+   capturedAt and from `new Date()` in this script, and removes the
+   symmetric difference. Freezing the browser's clock makes the page
+   render some OTHER day's countdowns, so the set the filter removes
+   is no longer the set the page moved — and whatever it failed to
+   predict leaks as an unexplained missing word. It leaked exactly
+   one ("61") the first time the two were put in the same file.
 
-   WHY THIS DATE. It is the capture date of the baseline that was
-   current when the freeze was introduced, chosen so the existing
-   file stayed valid — the twelve countdowns it already records are
-   the ones this clock renders, so the fix cost no re-baseline and
-   could be proved by the run going green against the unchanged
-   file. Changing it is a re-baseline event; the assertion below
-   makes that loud instead of silent.
+   Pinning the timezone was worse in the same way. COUNTDOWN reads
+   the LOCAL calendar day, because that is the day the browser
+   thinks it is; forcing the browser to UTC while this script stays
+   on the machine's zone makes the two disagree by a day for part of
+   every day.
 
-   NOON UTC, with the context pinned to UTC. todayISO() reads the
-   LOCAL calendar date, so an instant near midnight would render a
-   different day depending on where the machine is, and the gate
-   would pass in Chennai and fail in California.
-   ============================================================ */
-const FROZEN_CLOCK = '2026-09-29T12:00:00Z';
-const FROZEN_TZ = 'UTC';
+   COUNTDOWN is the one that survives, and not only because it was
+   first. It needs no constant to keep in step with the baseline, it
+   costs coverage only on the words that actually moved — zero of
+   them immediately after a re-baseline — and it was simulated
+   across 400 days without a leak. */
 const DIST = path.join(ROOT, 'dist');
 /* Overridable, because several worktrees of this repo can be live at
    once and they all used to bind 5321. The contention was not
@@ -696,28 +683,6 @@ function baselineFacts(name) {
     process.exit(2);
   }
   const all = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
-  /* A baseline captured against a different clock cannot be compared
-     against this run, because the pages that print a countdown will
-     differ by exactly the gap between the two dates — and the report
-     will say "missing words", which is the one message guaranteed to
-     send somebody looking at the wrong thing. Say it here instead.
-
-     A baseline with no `clock` predates the freeze. It is accepted
-     silently and deliberately: the frozen date WAS chosen to be that
-     capture's date, so the two agree. The field appears on the next
-     deliberate re-baseline and the check starts biting then. */
-  if (all.clock && all.clock !== FROZEN_CLOCK) {
-    console.error(
-      `\n\u2717 baseline clock mismatch.\n` +
-      `  baseline.json was captured at ${all.clock}\n` +
-      `  this run is frozen at      ${FROZEN_CLOCK}\n` +
-      '  Every countdown on the short blueprint is derived from that date, so the\n' +
-      '  two cannot be compared. Either restore FROZEN_CLOCK in\n' +
-      '  scripts/verify-migration.mjs, or re-baseline deliberately and say so in\n' +
-      '  the commit.\n'
-    );
-    process.exit(2);
-  }
   const page = all.pages[name];
   if (!page) {
     console.error(`\nbaseline.json has no entry for "${name}". Re-run npm run baseline.\n`);
@@ -850,13 +815,9 @@ let failures = 0;
 
 for (const spec of PAGES) {
   const ctx = await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-    timezoneId: FROZEN_TZ
+    viewport: { width: 1280, height: 900 }
   });
   const page = await ctx.newPage();
-  // Before the first navigation: a page that has already rendered
-  // its countdowns has already read the real clock.
-  await page.clock.setFixedTime(new Date(FROZEN_CLOCK));
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => {
@@ -1713,12 +1674,6 @@ if (WRITE_BASELINE) {
       'and only when the current output is known good — it becomes the thing every later run is judged against.',
     capturedAt: new Date().toISOString(),
     capturedFrom: sha,
-    /* The clock the capture ran against. Recorded so a later run can
-       refuse to compare against a baseline taken at a different one
-       — see FROZEN_CLOCK in verify-migration.mjs. Without this the
-       mismatch is twelve numeric words and no reason. */
-    clock: FROZEN_CLOCK,
-    timezone: FROZEN_TZ,
     provenance:
       'Captured from the build at the commit above. The FIRST baseline (16bf3b4) came from a build that ' +
       'still passed 100% against the original legacy/ pages, so the migration guarantee entered the chain ' +
@@ -1747,11 +1702,9 @@ if (WRITE_BASELINE) {
 
    Two projects out, two projects back, with their contents matched. */
 const rtCtx = await browser.newContext({
-  viewport: { width: 1280, height: 900 },
-  timezoneId: FROZEN_TZ
+  viewport: { width: 1280, height: 900 }
 });
 const rtPage = await rtCtx.newPage();
-await rtPage.clock.setFixedTime(new Date(FROZEN_CLOCK));
 const rtErrors = [];
 rtPage.on('pageerror', (e) => rtErrors.push(e.message));
 await rtPage.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });

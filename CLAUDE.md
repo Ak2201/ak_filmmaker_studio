@@ -1137,44 +1137,44 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    themes x 6 skins with the modals open, and the backup round trip
    restoring both projects.
 
-   **The verify run's clock is frozen, and it has to be.** The short
-   blueprint's step 10 prints live countdowns to real festival deadlines
-   — "Short film registration: 2026-11-04 — in 33 days" — through
-   `relativeDays()` in `src/lib/festivals.js`. The baseline records the
-   words a page renders, so the text check on `short` failed on every day
-   except the one the baseline happened to be captured on: twelve missing
-   numeric words, each exactly as many less than its recorded value as
-   there were days since capture, allowlist clean, no explanation.
+   **The festival countdown comes out of both sides of the oracle, and
+   the run's clock is NOT pinned.** The short film's step 10 prints live
+   countdowns from `festivals.checks.json` — "in 33 days", "119 days
+   ago" — and every one moves with the calendar, in both directions. A
+   baseline captured on the 29th failed on the 30th with 13 unexplained
+   missing words, all bare integers, none of them copy anybody had
+   touched.
 
-   A gate that cries wolf daily is a gate people learn to run with
-   `--baseline`, which is exactly how a real regression gets captured as
-   the new truth. `page.clock.setFixedTime()` pins it, and the context is
-   pinned to UTC alongside — `todayISO()` reads the LOCAL calendar date,
-   so an instant near midnight would render a different day depending on
-   where the machine is and the gate would pass in Chennai and fail in
-   California.
+   `COUNTDOWN` in `scripts/verify-migration.mjs` derives the varying
+   numbers from the same file the page reads, at the two dates that
+   matter — the baseline's own `capturedAt` and now — and removes only
+   the symmetric difference. So "in", "days" and "ago" keep their
+   coverage, as does any number that lands on the same value twice, and
+   immediately after a re-baseline the cost is zero because the two
+   dates are the same day.
 
-   `setFixedTime` rather than `clock.install()` on purpose: it fixes what
-   `Date` reports without pausing timers, and the idle-write assertion
-   waits four REAL seconds. A fully faked clock would have skipped that
-   wait and asserted nothing — a check that silently stops checking is
-   worse than the flake it replaced.
+   **A FROZEN CLOCK USED TO SIT BESIDE IT AND HAD TO GO.** A
+   `FROZEN_CLOCK` constant plus a UTC-pinned context solved the same
+   problem a second way, and the two contradict rather than reinforce:
+   COUNTDOWN's premise is that the page renders TODAY'S countdowns, so
+   freezing the browser makes it strip the wrong set and whatever it
+   failed to predict leaks. Exactly one number leaked ("61") the first
+   time both were in the file.
 
-   Three things about `FROZEN_CLOCK` worth knowing before you touch it:
+   It survived as long as it did by coincidence — the frozen date was
+   the same day the baseline was captured, so the two agreed and
+   nothing failed. With the freeze gone the filter absorbs the real gap
+   (3 days, 32 clock words, green) which is the proof that it was
+   always the one doing the work. Pinning the timezone was wrong in the
+   same shape: COUNTDOWN reads the LOCAL calendar day because that is
+   the day the browser thinks it is, so forcing the page to UTC while
+   this script stays on the machine's zone makes them disagree for part
+   of every day.
 
-   - **The date was chosen to be the then-current baseline's capture
-     date**, so the twelve countdowns already in the file are the ones
-     this clock renders. The fix therefore cost no re-baseline, and that
-     is also how it was proved: the run went green against the unchanged
-     `baseline.json`.
-   - **It is still checked, not excluded.** Moving the constant seven days
-     forward fails `short` with 13 missing words. The countdown text has
-     deterministic coverage now; it did not lose coverage.
-   - **Changing it is a re-baseline event**, and `baselineFacts()` refuses
-     a baseline whose recorded `clock` differs, naming the real cause
-     instead of reporting missing words. A baseline with no `clock` field
-     predates the freeze and is accepted, because the frozen date is that
-     capture's date.
+   Neither an `EXPECTED` entry nor a re-baseline can do this job. The
+   first names integers that are wrong tomorrow, and the anti-rot check
+   then fails for stale allowances. The second goes green until
+   midnight.
 
    No production code changed for any of this. A date seam in
    `festivals.js` would have been a test hook in a module that already

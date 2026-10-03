@@ -70,6 +70,7 @@ export default defineConfig({
         study:      resolve(__dirname, 'study.html'),
         dissect:    resolve(__dirname, 'dissect.html'),
         settings:   resolve(__dirname, 'settings.html'),
+        shoot:      resolve(__dirname, 'shoot.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),

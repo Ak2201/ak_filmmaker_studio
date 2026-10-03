@@ -252,7 +252,21 @@ const EXPECTED = {
      An entry here is a one-off divergence between a known-good page and
      an older oracle. If you find yourself adding a third, the answer is
      `npm run baseline` and a sentence in the commit saying so. */
-  hub: {},
+  /* The launcher prints "N modules" from navigation.json, so adding
+     one takes that number off the page and the word-set check
+     reports it as missing from a file nobody edited. Exactly the
+     collision the note in CLAUDE.md describes, firing for the first
+     time since the last re-baseline: Shoot Day took the map from 25
+     modules to 26.
+
+     An allowance rather than a re-baseline because it is the FIRST
+     row. The guidance is to recapture once two or three of these
+     have piled up — a baseline taken to absorb one derived digit
+     would bake in everything else that happened to be on screen
+     that minute. The anti-rot check will fail the run if this ever
+     stops firing, which is what stops it becoming a permanent
+     excuse. */
+  hub: { '25': 'module count 25 → 26 when shoot.html joined the Shoot phase' },
   stripboard: {},
   reports: {},
   contacts: {},

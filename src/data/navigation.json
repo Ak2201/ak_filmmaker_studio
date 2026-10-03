@@ -258,6 +258,14 @@
       "blurb": "The day itself",
       "modules": [
         {
+          "id": "shoot-day",
+          "label": "Shoot Day",
+          "purpose": "Today's scenes, and what you actually got",
+          "status": "built",
+          "href": "shoot.html",
+          "icon": "▶"
+        },
+        {
           "id": "locations",
           "label": "Locations",
           "purpose": "Recce notes and logistics",

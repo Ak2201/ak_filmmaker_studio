@@ -1,0 +1,178 @@
+/* ============================================================
+   SHOOT DAY — phone first, and that is the whole brief
+   ------------------------------------------------------------
+   Every other page here is laid out for a desk and squeezed down
+   for a phone. This one starts at 390px and widens, because it is
+   held in one hand on a location with a unit waiting.
+
+   Consequences, each deliberate:
+     - targets are 48px tall before `pointer: coarse` has an
+       opinion, not after. base.css raises them on touch; here they
+       are big for everybody, because somebody will be using a
+       tablet on a stand.
+     - the scene heading is the largest thing on a card. On the
+       floor you are looking for a slug line, not prose.
+     - no table anywhere. A table at 390px is a horizontal scroll,
+       and verify measures exactly that.
+
+   Shapes come from --sk-* and colours from tokens, as everywhere.
+   The three states take the SEMANTIC families — ok / warn / the
+   muted ink — never a volume hue, because a hue means a phase.
+   ============================================================ */
+.sd-main {
+  max-width: var(--measure-wide);
+  margin: 0 auto;
+  padding: var(--s5) var(--gutter) var(--s9);
+}
+
+/* ---- the numbers ------------------------------------------- */
+.sd-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin: var(--s4) 0;
+}
+
+.sd-stat {
+  flex: 1 1 8rem;
+  padding: var(--s3);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sd-stat strong {
+  display: block;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+.sd-stat span {
+  display: block;
+  margin-top: var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.sd-where {
+  margin: 0 0 var(--s4);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---- day switcher ------------------------------------------ */
+.sd-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+}
+.sd-day { min-width: 3.25rem; }
+/* The open day, and a day already in the can. Told apart by weight
+   and a rule as well as colour — the hue-coding assertion asks for
+   more than one signal wherever a variant carries data. */
+.sd-day.is-on   { outline: 2px solid var(--accent); outline-offset: var(--focus-offset); }
+.sd-day.is-done { border-color: var(--ok); color: var(--ink-muted); }
+
+/* ---- a scene ------------------------------------------------ */
+.sd-list { display: grid; gap: var(--s3); }
+
+.sd-card {
+  padding: var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sd-card.is-shot    { border-left-color: var(--ok); }
+.sd-card.is-part    { border-left-color: var(--warn); }
+.sd-card.is-dropped { border-left-color: var(--ink-faint); opacity: 0.72; }
+
+.sd-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+
+.sd-num {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+
+/* The biggest thing on the card, on purpose. */
+.sd-slug {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.sd-meta {
+  display: flex;
+  gap: var(--s3);
+  margin: var(--s2) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sd-state { color: var(--ink); }
+
+.sd-syn {
+  margin: var(--s3) 0 0;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  max-width: var(--measure);
+}
+
+.sd-cast { margin: var(--s3) 0 0; }
+.sd-cast.is-none {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.sd-chip {
+  display: inline-block;
+  margin: 0 var(--s2) var(--s2) 0;
+  padding: var(--s1) var(--s2);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  color: var(--ink-body);
+}
+
+/* ---- the three taps ---------------------------------------- */
+.sd-actions {
+  display: flex;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+.sd-btn {
+  flex: 1 1 0;
+  min-height: 48px;      /* before pointer:coarse has an opinion */
+}
+/* The live state is filled rather than outlined, so which one is
+   true is readable at arm's length on a bright location. */
+.sd-btn.is-on.sd-shot    { background: var(--ok);   color: var(--on-fill); border-color: var(--ok); }
+.sd-btn.is-on.sd-part    { background: var(--warn); color: var(--on-fill); border-color: var(--warn); }
+.sd-btn.is-on.sd-dropped { background: var(--ink-muted); color: var(--paper); border-color: var(--ink-muted); }
+
+@media (min-width: 720px) {
+  .sd-list { grid-template-columns: 1fr 1fr; }
+  .sd-actions { gap: var(--s3); }
+}

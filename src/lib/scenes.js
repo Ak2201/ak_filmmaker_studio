@@ -27,6 +27,17 @@ export const SCENES_KEY = 'fms_scenes_v1';
 export const INT_EXT    = ['INT', 'EXT', 'INT/EXT'];
 export const DAY_NIGHT  = ['DAY', 'NIGHT', 'DAWN', 'DUSK', 'CONTINUOUS'];
 
+/* The shoot-day states, in the order the buttons offer them. `tone`
+   is the semantic colour family, never a volume hue — see the note
+   in CLAUDE.md about ok/warn/danger and the six phase hues. */
+export const SHOT_STATES = [
+  { id: 'shot',    label: 'Shot',    tone: 'ok'   },
+  { id: 'part',    label: 'Part',    tone: 'warn' },
+  { id: 'dropped', label: 'Dropped', tone: 'none' }
+];
+export const shotLabel = (id) =>
+  (SHOT_STATES.find((s) => s.id === id) || { label: 'Not shot' }).label;
+
 /* The standard breakdown categories, in the order a 1st AD reads them.
    Colour is a hue token name, not a value — tokens.css owns the value. */
 export const ELEMENT_CATEGORIES = [
@@ -61,6 +72,18 @@ export function blankScene(patch = {}) {
     eighths: 8,          // integer eighths of a page; 8 = one full page
     pageNumber: '',
     elements: {},        // { categoryId: [name, …] }
+    /* WHAT HAPPENED TO THIS SCENE ON THE DAY. Added for shoot.html
+       and deliberately a FIELD rather than a new key: listScenes()
+       spreads blankScene() under every stored row, so a scene
+       written before this existed reads back with shotState '' and
+       needs no migration. Exactly how songId arrived.
+
+       Four states rather than a boolean, because "we got some of
+       it" is the commonest outcome of a shoot day and a tool that
+       cannot say so gets lied to. '' = not shot, 'shot' = complete,
+       'part' = pick-ups owed, 'dropped' = cut from the film. */
+    shotState: '',
+    shotAt: '',          // ISO, when it was last marked
     ...patch
   };
 }
@@ -190,7 +213,7 @@ export function totalEighths(scenes) {
 }
 
 export default {
-  SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES,
+  SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, SHOT_STATES, shotLabel,
   blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene,
   tagElement, untagElement, elementIndex, formatEighths, totalEighths
 };

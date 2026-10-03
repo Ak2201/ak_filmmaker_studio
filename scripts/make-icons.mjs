@@ -56,8 +56,8 @@ function mark({ inset = 0 } = {}) {
   const slash = (x) =>
     `<polygon points="${x},150 ${x + 30},150 ${x + 12},212 ${x - 18},212"/>`;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="The Filmmaker's Studio">
-  <title>The Filmmaker's Studio</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="FilmMakerStudio">
+  <title>FilmMakerStudio</title>
   <defs>
     <clipPath id="board"><rect x="76" y="222" width="360" height="186" rx="10"/></clipPath>
     <clipPath id="stick"><rect x="76" y="150" width="360" height="62" rx="6"/></clipPath>

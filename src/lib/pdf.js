@@ -97,7 +97,7 @@ export function projectTitle() {
     const p = Store && Store.currentProject && Store.currentProject();
     if (p && p.title) return p.title;
   } catch (e) { /* no project yet — the hub may be the first page seen */ }
-  return "The Filmmaker's Studio";
+  return "FilmMakerStudio";
 }
 
 /* A filename, not a sentence. Browsers replace what they cannot use

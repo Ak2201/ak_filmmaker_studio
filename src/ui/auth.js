@@ -236,7 +236,11 @@ function ensureCloudAuthModal() {
         h('span.cm-btn-label', { text: 'CONTINUE WITH GOOGLE' })
       ]),
       h('p.cm-hint', { text: 'Google is the only way in. There is no password for this app to remember or lose, and no email address stored here until you sign in.' }),
-      h('a.cm-link', { href: '#', 'data-auth-action': 'show-cfg', text: 'Configure your own Supabase project →' })
+      /* Hidden unless mayConfigure() says otherwise — see it for why
+         an ordinary visitor should never meet this. Rendered rather
+         than omitted so that showConfigBlock() has something to
+         unhide when an admin signs in without reloading. */
+      h('a#cmCfgLink.cm-link', { href: '#', 'data-auth-action': 'show-cfg', hidden: true, text: 'Configure your own Supabase project →' })
     ])
   ]);
 
@@ -288,10 +292,18 @@ export function openCloudAuthModal(opts) {
   const heading = m.querySelector('#cmHeading');
   setModalError('');
 
+  /* The escape hatch for self-hosters, shown to the people it is for
+     and to nobody else. Set every time the modal opens rather than
+     once at build: isAdmin() reads the SIGNED-IN address, which is
+     null until a sign-in lands, so a value decided at render time
+     would be stale for exactly the person it is meant for. */
+  const cfgLink = m.querySelector('#cmCfgLink');
+  if (cfgLink) cfgLink.hidden = !mayConfigure();
+
   if (c.isConfigured()) {
     m.querySelector('#cmConfigBlock').hidden = true;
     m.querySelector('#cmAuthBlock').hidden = false;
-    if (opts.mode === 'settings') {
+    if (opts.mode === 'settings' && mayConfigure()) {
       heading.innerHTML = 'Account <em>settings.</em>';
       showConfigBlock();
     } else {
@@ -340,7 +352,33 @@ export function closeCloudAuthModal() {
 }
 
 // ----- actions -------------------------------------------------
+/* WHO IS ALLOWED TO RETARGET THIS BROWSER AT ANOTHER DATABASE.
+   ------------------------------------------------------------
+   Two cases, and the second is the one that must not be forgotten:
+
+     - an ADMIN, as named by VITE_ADMIN_EMAILS — a convenience, not a
+       security control. The bundle is public and anybody can call
+       setCfg() from a console; what stops them reading another
+       account's rows is RLS, not this. See isAdmin() in cloud.js.
+     - ANY visitor, when the build carries no project of its own.
+       Without this clause a self-hosted build with empty env vars
+       would hide the only form that could ever configure it, and the
+       app would be permanently unable to sign anybody in — the
+       chicken-and-egg the build-time config exists to break, put back
+       by the fix for it.
+
+   Ordinary visitors to the hosted build meet neither case, which is
+   the point: they came to write a film, and a project URL and a JWT
+   are not their problem. */
+export function mayConfigure() {
+  const c = cloud();
+  if (!c) return false;
+  if (!c.isConfigured || !c.isConfigured()) return true;
+  return !!(c.isAdmin && c.isAdmin());
+}
+
 export function showConfigBlock() {
+  if (!mayConfigure()) return;
   const c = cloud();
   const m = ensureCloudAuthModal();
   m.querySelector('#cmConfigBlock').hidden = false;

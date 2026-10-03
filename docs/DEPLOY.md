@@ -1,4 +1,4 @@
-# Deploying The Filmmaker's Studio
+# Deploying FilmMakerStudio
 
 Static build, no server. The app is **local-first**: everything a user
 writes lives in their own browser. The Supabase account layer is

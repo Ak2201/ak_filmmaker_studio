@@ -91,7 +91,9 @@ const LIB_CALC_KEY = 'fms_library_calc_v1';
 const FEAT_PREFS   = 'fms_filmmaker_prefs_v1';
 const SHORT_PREFS  = 'fms_shortfilm_prefs_v1';
 const LIB_PREFS    = 'fms_library_prefs_v1';
-const SYNC_CFG     = 'fms_supabase_cfg_v1';
+/* Named here but deliberately in no list on this page: see the note
+   at the end of ALL_KEYS for why reset must not wipe it. */
+const SYNC_CFG     = 'fms_supabase_cfg_v1';  // eslint-disable-line no-unused-vars
 /* NOTE_PREFIX is imported from lib/backup.js rather than restated:
    a note's key is the one thing a backup file stores raw, so the
    prefix the exporter walks and the prefix reset sweeps have to be
@@ -111,7 +113,7 @@ const SONGS_KEY     = 'fms_songs_v1';
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
-  PREF_KEY, SYNC_CFG, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
+  PREF_KEY, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
   SCRIPTGEN_KEY, SONGS_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
@@ -122,6 +124,24 @@ const ALL_KEYS = [
      fms_ai_key_v1, which stays out of this list on purpose: that
      one is a credential, this one is a pointer at the work. */
   DRIVE_STATE_KEY
+  /* SYNC_CFG (fms_supabase_cfg_v1) WAS in this list and deliberately
+     is not any more. It holds {url, key} — WHICH Supabase project this
+     browser talks to — and that is a DESTINATION, not work and not a
+     pointer at work the way the Drive key above is. Wiping it never
+     protected anything: reset is local-only, purgeProjectEverywhere()
+     makes no cloud call, so the account's own copy survived either
+     way. All the wipe achieved was making somebody re-fetch a project
+     URL and a long anon key from a dashboard to reach work that had
+     never gone anywhere.
+
+     Keeping it is only safe BECAUSE reset now signs out — see
+     resetAll(). Keeping the config and leaving the session alone
+     would have been worse than either: the supabase-js session lives
+     under `sb-<ref>-auth-token`, which is not an `fms_` key and
+     nothing in this file has ever touched, so the next load would
+     have pulled every account project straight back down and refilled
+     a studio the user had just been told twice could not be
+     recovered. */
 ];
 
 /* PROJECT_KEYS and GLOBAL_KEYS used to be declared here. They are the
@@ -1243,9 +1263,9 @@ function exportOverviewPDF() {
   const open = Store.currentProject();
   PDF.exportPDF({
     scope: 'overview',
-    project: "The Filmmaker's Studio",
+    project: "FilmMakerStudio",
     label: 'Studio overview',
-    title: "The Filmmaker's Studio — overview",
+    title: "FilmMakerStudio — overview",
     subtitle: [
       projects.length + (projects.length === 1 ? ' project' : ' projects'),
       open && open.title ? 'open: ' + open.title : ''
@@ -1309,7 +1329,7 @@ function handleImportAll(e) {
   e.target.value = '';
 }
 
-function resetAll() {
+async function resetAll() {
   /* This said "erases EVERYTHING" and then called removeItem for each
      scoped key — which the storage proxy resolved to the ACTIVE project
      only. Other projects survived a wipe the user was told was total.
@@ -1322,10 +1342,21 @@ function resetAll() {
      exists for exactly this one caller. */
   const projects = Store.listAllProjects();
   const n = projects.length;
-  if (!confirm('This erases EVERYTHING — ' + n + ' project' + (n === 1 ? '' : 's') +
+  /* Say what is kept as well as what goes. The two sentences below are
+     the only place a user is told that an ACCOUNT's copy is a separate
+     thing from this device's — and getting that wrong in either
+     direction is the worst kind of bug this dialog can have. */
+  const c      = window.StudioCloud;
+  const signed = !!(c && c.getSession && c.getSession());
+  if (!confirm('This erases EVERYTHING on this device — ' + n + ' project' + (n === 1 ? '' : 's') +
                ', both blueprints, library calc, all prefs, all comments. ' +
                'EXPORT first if you want to keep anything.\n\nContinue?')) return;
-  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure? This cannot be undone.' +
+               (signed
+                 ? '\n\nYou will be signed out. Projects already in your account stay there — ' +
+                   'this clears the device, not the account. Sign in again to bring them back.'
+                 : '') +
+               '\n\nThe Supabase project URL and key stay, so you do not have to find them again.')) return;
 
   // deleteProject already wipes that project's namespaced keys, using
   // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
@@ -1344,6 +1375,25 @@ function resetAll() {
     if (k && k.startsWith(NOTE_PREFIX)) toRemove.push(k);
   }
   toRemove.forEach((k) => localStorage.removeItem(k));
+
+  /* AFTER the purge, never before. signOut() ends with
+     Store.setAccount(null), which SCHEDULES A RELOAD — run it first
+     and the page can come back before the wipe has finished.
+
+     Signing out is what makes keeping SYNC_CFG safe (see ALL_KEYS).
+     Leave the session alive and the next load pulls the account's
+     projects straight back down, which would make both confirmations
+     above untrue. The session is not an `fms_` key — supabase-js keeps
+     it under `sb-<ref>-auth-token` — so nothing above can clear it and
+     only this call can.
+
+     Purging first is also safe from the sync side: every write above
+     goes through rawRemove, which bypasses the storage proxy and so
+     emits no `saved` event for the cloud subscriber to push. */
+  if (signed) {
+    try { await c.signOut(); }
+    catch (e) { console.warn('[reset] sign-out', e); }
+  }
 
   alert('All studio data cleared — ' + n + ' project' + (n === 1 ? '' : 's') + ' removed. Refreshing…');
   location.reload();

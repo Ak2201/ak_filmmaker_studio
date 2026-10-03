@@ -20,6 +20,11 @@
    bundler can version-pin and code-split it.
    ============================================================ */
 import Store from './store.js';
+/* One constant, for the scope string, so sign-in and the Drive client
+   cannot drift apart about what was consented to. drive.js imports
+   nothing from here, so this is not a cycle, and vite.config folds
+   every src/lib module into one chunk anyway. */
+import { DRIVE_SCOPE } from './drive.js';
 
 // ============================================================
 // CONSTANTS
@@ -228,10 +233,53 @@ export function restoreSalvage(index) {
 // ============================================================
 // CFG (URL + anon key — both public, gated by RLS)
 // ============================================================
+/* THE BUILD KNOWS WHICH PROJECT THIS IS; THE BROWSER MAY OVERRIDE IT.
+   ------------------------------------------------------------
+   This used to read localStorage and nothing else, which made the
+   hosted app impossible to sign in to: ensureClient() needs a URL and
+   a key, signInWithGoogle() needs ensureClient(), so nobody could
+   reach an account until somebody had typed a project URL and a
+   208-character JWT into a modal. That is a chicken-and-egg, not a
+   setup step — there is no account, and therefore no admin, until the
+   config already exists.
+
+   So the deployed build carries its own, the same way it carries the
+   Google client id, and for the same reason: both values are public
+   and ship in the page either way. What guards this database is the
+   row-level policy in supabase-schema.sql. A service_role key would
+   be a different matter entirely and belongs nowhere near a browser —
+   saveConfig() in ui/auth.js refuses one on sight.
+
+   A value SAVED in this browser still wins, because self-hosting is a
+   real use for this app: point it at your own project and the build's
+   default steps aside. That is also why setCfg(null) is a meaningful
+   operation now — it clears the override and falls back rather than
+   un-configuring the app. */
+const BUILT_IN_CFG = (() => {
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+  const url = (env.VITE_SUPABASE_URL || '').trim();
+  const key = (env.VITE_SUPABASE_ANON_KEY || '').trim();
+  return (url && key) ? { url, key, builtIn: true } : null;
+})();
+
 export function getCfg() {
-  try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); }
-  catch (e) { return null; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+    if (saved && saved.url && saved.key) return saved;
+  } catch (e) { /* unreadable storage falls through to the build's own */ }
+  return BUILT_IN_CFG;
 }
+
+/** Did this browser override the build? Admin UI reads it; nothing else should. */
+export function isCfgOverridden() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+    return !!(saved && saved.url && saved.key);
+  } catch (e) { return false; }
+}
+
+/** The build's own, for an admin panel that wants to show what it is falling back to. */
+export function builtInCfg() { return BUILT_IN_CFG; }
 export function setCfg(c) {
   if (c && c.url && c.key) {
     localStorage.setItem(CFG_KEY, JSON.stringify({ url: c.url.trim(), key: c.key.trim() }));
@@ -360,6 +408,54 @@ export function getUserEmail() {
   return session.user.email || (session.user.user_metadata && session.user.user_metadata.email);
 }
 
+/* WHO SEES THE ADMIN CONSOLE — AND WHAT THAT IS WORTH.
+   ------------------------------------------------------------
+   A build-time list of addresses, compared against the signed-in
+   one. Say the limit out loud, because the name invites the wrong
+   assumption: THIS IS NOT A SECURITY BOUNDARY. The bundle is public,
+   the list is in it, and anyone can call the same functions from a
+   devtools console. It decides what is SHOWN, nothing more.
+
+   What actually stops somebody reading or writing rows that are not
+   theirs is RLS, in Postgres, audited in docs/SECURITY-RLS.md. If a
+   panel ever needs to be admin-only for a reason other than tidiness,
+   the check belongs in a policy, not here.
+
+   It is also a BOOTSTRAP and should be replaced. The real tier exists
+   already — account_members.role is owner/admin/member and the
+   policies read it — but this file makes no account-tier reads and no
+   UI creates a member row, so there is currently no way to become an
+   admin except by being named here. See open item 5 in CLAUDE.md. */
+const ADMIN_EMAILS = (() => {
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+  return String(env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+})();
+
+export function isAdmin() {
+  const email = (getUserEmail() || '').trim().toLowerCase();
+  return !!email && ADMIN_EMAILS.includes(email);
+}
+
+/* The Google access token Supabase hands back when sign-in asked for
+   a Google scope of its own. Drive reads it so that ONE consent
+   covers both jobs.
+
+   It is deliberately read off `session` rather than copied anywhere:
+   Supabase returns `provider_token` on the sign-in response ONLY and
+   does not persist it, so this is null again after a reload. That is
+   not a bug to work around here — drive.js re-mints silently through
+   GIS on later loads, which works without a prompt precisely because
+   the consent this token came from was recorded against the same
+   client id. Storing it instead would mean writing a credential to
+   disk, which this app refuses to do for the AI key and should refuse
+   to do for this. */
+export function providerToken() {
+  return (session && session.provider_token) || null;
+}
+
 /* Where the provider sends the browser back to.
 
    The CURRENT page, with query and fragment stripped. Two reasons it
@@ -482,6 +578,20 @@ export async function signInWithGoogle() {
       provider: 'google',
       options: {
         redirectTo: authRedirectTarget(),
+        /* ONE CONSENT FOR BOTH JOBS. Asking for drive.file here means
+           the sign-in screen lists it alongside the e-mail address,
+           the user agrees once, and Drive is connected the moment they
+           land back — instead of meeting a second Google popup later
+           that most people read as the app asking twice.
+
+           This only works because the Drive client id and this one are
+           now the SAME client: Google records consent per client, so
+           with two clients a grant made here taught the other one
+           nothing. See VITE_GOOGLE_CLIENT_ID in .env.
+
+           drive.file is non-sensitive, so adding it needs no
+           verification review and does not change the user cap. */
+        scopes: DRIVE_SCOPE,
         queryParams: { prompt: 'select_account' }
       }
     });
@@ -1304,8 +1414,9 @@ function toast(msg, type, duration) {
 // Shape is identical to the old `window.StudioCloud` global.
 const StudioCloud = {
   // config
-  getCfg, setCfg,
+  getCfg, setCfg, isCfgOverridden, builtInCfg,
   isConfigured: () => !!(getCfg() && getCfg().url && getCfg().key),
+  isAdmin, providerToken,
   /* Read through this global by drive-sync.js, the way src/ui/auth.js
      reaches this module — importing it there would put cloud.js on
      all sixteen page entries. See ownsSync() above. */

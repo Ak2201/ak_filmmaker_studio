@@ -248,7 +248,7 @@ console.log('\n--- the backup object, and what is not in it ---');
   const uploaded = await page.evaluate(() => Object.values(window.__drive.files)[0].body);
   const parsed = JSON.parse(uploaded);
   check('uploaded file is backup v2', parsed._version, 2);
-  check('uploaded file names the studio', parsed._from, "The Filmmaker's Studio");
+  check('uploaded file names the studio', parsed._from, "FilmMakerStudio");
   check('uploaded file holds both projects',
     parsed.projects.map((p) => p.title).sort(), ['Probe Alpha', 'Probe Beta']);
   check('uploaded file holds each project\'s data',
@@ -286,7 +286,7 @@ console.log('\n--- push, and the head-revision guard ---');
   await page.evaluate(() => {
     const f = Object.values(window.__drive.files)[0];
     const body = JSON.stringify({
-      _from: "The Filmmaker's Studio", _version: 2, _exported: new Date().toISOString(),
+      _from: "FilmMakerStudio", _version: 2, _exported: new Date().toISOString(),
       projects: [{ id: 'remote-1', title: 'Written Elsewhere', format: 'feature' }],
       currentProject: null, data: { 'remote-1': { scenes: { logline: 'REMOTE-ONE' } } },
       global: {}, notes: {}
@@ -333,7 +333,7 @@ console.log('\n--- take theirs, and RESTORE vs MERGE ---');
   await page.evaluate((ids) => {
     const f = Object.values(window.__drive.files)[0];
     const body = JSON.stringify({
-      _from: "The Filmmaker's Studio", _version: 2, _exported: new Date().toISOString(),
+      _from: "FilmMakerStudio", _version: 2, _exported: new Date().toISOString(),
       projects: [
         { id: ids.a, title: 'Probe Alpha', format: 'feature' },
         { id: ids.b, title: 'Probe Beta', format: 'short' }

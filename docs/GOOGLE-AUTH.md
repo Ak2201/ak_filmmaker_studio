@@ -103,7 +103,7 @@ match something the code computes.
    correct, if every user has an account in your Google Workspace
    organisation.
 2. **App information**
-   - App name: `The Filmmaker's Studio` — this is the name the user sees
+   - App name: `FilmMakerStudio` — this is the name the user sees
      on the Google consent sheet, so it should be the name they expect.
    - User support email: your address.
    - App logo: optional. Uploading one triggers Google's brand review;
@@ -142,7 +142,7 @@ match something the code computes.
 **APIs & Services → Credentials → + Create credentials → OAuth client ID.**
 
 1. **Application type: Web application.**
-2. **Name:** `Filmmaker's Studio web` (internal label only).
+2. **Name:** `FilmMakerStudio web` (internal label only).
 3. **Authorised JavaScript origins** — scheme and host, **no path, no
    trailing slash**. Add every origin the app is served from:
 

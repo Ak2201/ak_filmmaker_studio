@@ -1,4 +1,4 @@
-# StudioBinder topics vs. The Filmmaker's Studio
+# StudioBinder topics vs. FilmMakerStudio
 
 A roadmap input, not shipped content. Nothing here is built into the app.
 

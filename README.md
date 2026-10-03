@@ -1,4 +1,4 @@
-# The Filmmaker's Studio
+# FilmMakerStudio
 
 > *A working desk for screenwriting, pre-production, and craft study.*
 

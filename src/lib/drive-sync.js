@@ -427,8 +427,55 @@ Store.subscribe('saved', () => {
    script load, not a fetch, not a storage write — unless this
    build has a client id AND this device has connected. That is
    why importing this module costs a page nothing. */
+/* SIGNING IN CONNECTS DRIVE, WITHOUT A SECOND CONSENT.
+   ------------------------------------------------------------
+   Sign-in asks Google for drive.file alongside the e-mail address
+   (see signInWithGoogle in cloud.js), so the session comes back
+   carrying a Google access token. Adopting it here means the user
+   agreed once and Drive is live when they land — rather than meeting
+   a second Google popup later, which reads as the app asking twice
+   and which, being a popup, is the part people's browsers block.
+
+   Deliberately quiet about failure. This runs on every sign-in, most
+   of which will have nothing to adopt: a session restored from
+   storage has no provider_token, because Supabase returns one on the
+   sign-in response only. Nothing is broken when that happens — the
+   button on the settings page still works, and the silent GIS mint
+   still covers later loads, because consent was recorded against the
+   same client id. So a miss is a no-op, not an error to show.
+
+   Note what this does NOT change: once Supabase is signed in it owns
+   live sync (ownsSync), so Drive connects as the BACKUP it is, writes
+   its file, and stays manual. Two live syncers writing the same
+   storage would echo each other forever. */
+function adoptSignInToken(sess) {
+  if (!Drive.isConfigured()) return;
+  const c = (typeof window !== 'undefined') && window.StudioCloud;
+  const tok = c && c.providerToken && c.providerToken();
+  if (!tok) return;
+  if (!Drive.adoptToken(tok, sess && sess.expires_in)) return;
+  /* connect() asks Drive.getToken(), which hands back the token we
+     just adopted instead of opening anything — that is the whole
+     trick. If this device was already connected, there is a file
+     already and reconcile is the right call, not a second create. */
+  const job = isConnected() ? reconcile() : connect();
+  Promise.resolve(job).catch((e) => {
+    console.warn('[drive] connect after sign-in', e);
+    setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. Try the button on Settings.');
+  });
+}
+
 (function boot() {
   if (!Drive.isConfigured()) { setStatus(DRIVE_STATES.OFF, 'Drive backup is not set up in this build'); return; }
+
+  /* Subscribed before the early returns below, because this is the
+     path that CREATES a connection — gating it on already having one
+     would mean it could never make the first. */
+  const c = (typeof window !== 'undefined') && window.StudioCloud;
+  if (c && c.onAuth) {
+    c.onAuth((event, sess) => { if (event === 'SIGNED_IN') adoptSignInToken(sess); });
+  }
+
   if (!isConnected())        { setStatus(DRIVE_STATES.OFF, 'Not connected'); return; }
   if (ownsSync()) {
     setStatus(DRIVE_STATES.MANUAL,

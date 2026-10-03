@@ -5,9 +5,16 @@
 -- (https://supabase.com/dashboard → your project → SQL Editor → New Query → paste → Run)
 --
 -- Before running, in Authentication → URL Configuration:
---   Site URL:           https://ak-filmmaker-studio.vercel.app
---   Redirect URLs:      https://ak-filmmaker-studio.vercel.app/*
---                       http://localhost:*
+--   Site URL:           https://thefilmmakerstudio.vercel.app
+--   (was ak-filmmaker-studio.vercel.app, and before that it pointed at a
+--    DIFFERENT app entirely — filmmakerstudio.vercel.app, the portfolio —
+--    which is where every sign-in that missed the allow list was being sent.)
+--   Redirect URLs:      https://thefilmmakerstudio.vercel.app/**
+--                       http://localhost:**
+--   BOTH NEED THE DOUBLE STAR. Supabase matches these with glob where a
+--   single `*` stops at `.` and `/`, so `http://localhost:*` matched
+--   `http://localhost:5173` and NOTHING with a path after it — every
+--   local sign-in fell through to the Site URL instead.
 --
 -- And in Authentication → Providers — GOOGLE ONLY, and this is not a
 -- cosmetic preference. The app ships exactly one sign-in call

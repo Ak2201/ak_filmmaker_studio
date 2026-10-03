@@ -93,6 +93,36 @@ export function hasToken() {
 /** Drop it. The next call asks Google again. */
 export function forgetToken() { _token = null; }
 
+/* A TOKEN THAT CAME FROM SOMEWHERE ELSE.
+   ------------------------------------------------------------
+   Supabase's Google sign-in can ask for drive.file alongside the
+   e-mail address and hands back the resulting Google access token as
+   `session.provider_token`. Adopting it here is what turns two
+   consent screens into one: the user agrees once, at sign-in, and
+   Drive is live the moment they land back.
+
+   Three things make this safe to accept from outside:
+
+     - it is the same KIND of token initTokenClient() would mint, from
+       the same client id and the same scope, so nothing downstream
+       can tell the difference;
+     - it is held exactly as that one is — a module variable, gone
+       when the document is — and still never written to storage;
+     - it expires, and when it does the GIS path below takes over
+       silently, because the consent it needs was recorded against
+       this same client at sign-in.
+
+   That last point is the reason this is an addition rather than a
+   replacement. Supabase returns `provider_token` on the sign-in
+   response ONLY and persists nothing, so after a reload there is
+   nothing to adopt and the silent GIS mint is the only way back. */
+export function adoptToken(value, expiresInSeconds) {
+  if (typeof value !== 'string' || !value) return false;
+  const ttl = (Number(expiresInSeconds) || 3600) * 1000;
+  _token = { value, expiresAt: Date.now() + ttl - EXPIRY_SLACK_MS };
+  return true;
+}
+
 /* A minute of slack, so a request is never sent with a token that
    expires while it is in flight. */
 const EXPIRY_SLACK_MS = 60 * 1000;
@@ -337,7 +367,7 @@ export async function downloadRevision(fileId, revisionId) {
 export default {
   DRIVE_SCOPE, API_ORIGIN, IDENTITY_ORIGIN, GIS_SRC,
   BACKUP_FILE_NAME, BACKUP_MIME, CLIENT_ID,
-  isConfigured, hasToken, forgetToken, getToken,
+  isConfigured, hasToken, forgetToken, adoptToken, getToken,
   findBackupFile, createBackupFile, uploadBackup,
   readMeta, downloadBackup, listRevisions, downloadRevision,
   __setFetch

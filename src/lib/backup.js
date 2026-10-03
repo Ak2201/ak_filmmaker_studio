@@ -148,7 +148,7 @@ export function buildBackup() {
   const projects = Store.listAllProjects();
   const all = {
     _exported: new Date().toISOString(),
-    _from: "The Filmmaker's Studio",
+    _from: "FilmMakerStudio",
     _curator: 'Arunak',
     _version: 2,
     projects,

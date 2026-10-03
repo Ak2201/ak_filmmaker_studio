@@ -70,6 +70,11 @@ import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
+/* The admin console reuses the sign-in modal's own config form rather
+   than growing a second copy of it. Two forms writing one storage key
+   is two things to keep in step, and setCfg() has exactly one caller
+   for a reason. */
+import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
 
 const app = document.getElementById('app');
 
@@ -378,6 +383,78 @@ function renderElsewhere() {
 }
 
 /* ---- render -------------------------------------------------- */
+/* ---- the admin console -------------------------------------
+   Rendered for nobody unless mayConfigure() says so, which means an
+   address in VITE_ADMIN_EMAILS or a build that carries no project of
+   its own. See mayConfigure() in ui/auth.js for both cases and for
+   why this is tidiness rather than security — the bundle is public,
+   so a panel that is merely NOT DRAWN is not a panel that cannot be
+   reached. RLS is the boundary.
+
+   What it is actually for: the hosted build now carries its own
+   Supabase project, so this exists to say WHICH, and to let somebody
+   running their own copy point it elsewhere without the two fields
+   being in every visitor's face. */
+function renderAdmin() {
+  if (!mayConfigure()) return null;
+
+  const c = window.StudioCloud;
+  const built    = (c && c.builtInCfg && c.builtInCfg()) || null;
+  const override = !!(c && c.isCfgOverridden && c.isCfgOverridden());
+  const live     = (c && c.getCfg && c.getCfg()) || null;
+
+  const sec = section('admin', 'Admin · not shown to other people',
+    'The database this build talks to.',
+    'Everyone else signs in without ever meeting these two values, which is the '
+      + 'point of them being here. The anon key is public by design — what keeps '
+      + 'one account out of another\u2019s projects is the row-level policy on the '
+      + 'database, not the secrecy of this string.');
+
+  sec.append(h('p.st-note', {
+    text: built
+      ? 'This build ships with ' + built.url + ', so a new visitor can sign in '
+        + 'with no setup at all.'
+      : 'This build ships with NO Supabase project, so the form below is the only '
+        + 'way anybody on this browser can sign in. That is why it is visible to '
+        + 'you even though you are not on the admin list.'
+  }));
+
+  sec.append(h('p.st-drive-status', {}, [
+    h('span.st-dot' + (override ? '.is-warn' : '.is-ok'), { 'aria-hidden': 'true' }),
+    h('span', {
+      text: override
+        ? 'THIS BROWSER IS OVERRIDING THE BUILD'
+        : 'USING THE BUILD\u2019S OWN PROJECT'
+    })
+  ]));
+
+  if (live) sec.append(h('p.st-note', { text: 'In use right now: ' + live.url }));
+
+  const row = h('div.st-row');
+  row.append(h('button.btn', {
+    type: 'button', 'data-action': 'admin-configure',
+    text: override ? 'Change the project' : 'Point at another project'
+  }));
+  /* Only offered when there is something to fall back TO. Clearing an
+     override on a build with no project of its own would leave the app
+     unable to sign anybody in, with the form that fixes it now hidden
+     behind an admin check that needs a sign-in. */
+  if (override && built) {
+    row.append(h('button.btn', {
+      type: 'button', 'data-action': 'admin-use-built-in',
+      text: 'Use the build\u2019s project'
+    }));
+  }
+  sec.append(row);
+
+  sec.append(h('p.st-note', {
+    text: 'Reset everything on Home no longer clears this, so a wipe does not cost '
+        + 'you a trip to the Supabase dashboard. It does sign you out.'
+  }));
+
+  return sec;
+}
+
 function render() {
   const main = h('main#main');
 
@@ -393,7 +470,9 @@ function render() {
   ]));
 
   const body = h('div.st-body');
-  body.append(renderKey(), renderDrive(), renderAppearance(), renderElsewhere());
+  /* renderAdmin() returns null for everybody else; append ignores a
+     null, so there is no branch here and no empty section either. */
+  body.append(renderKey(), renderDrive(), renderAppearance(), renderAdmin(), renderElsewhere());
   main.append(body);
 
   app.replaceChildren(main);
@@ -479,6 +558,28 @@ const DRIVE_ACTIONS = {
     if (r && r.ok) location.reload();
   })
 };
+
+/* ---- the admin console's two buttons ------------------------
+   Both delegate to code that already exists: the modal owns the form,
+   cloud.js owns the key. Nothing here writes storage directly, which
+   is what keeps setCfg() a single caller. */
+delegate(document, 'click', '[data-action="admin-configure"]', () => {
+  openCloudAuthModal({ mode: 'settings' });
+});
+
+delegate(document, 'click', '[data-action="admin-use-built-in"]', () => {
+  const c = window.StudioCloud;
+  if (!c || !c.setCfg) return;
+  if (!confirm('Drop this browser\u2019s own Supabase project and go back to the one '
+             + 'this build ships with?\n\nNothing you have written is touched. You '
+             + 'will be signed out of the current project.')) return;
+  /* setCfg(null) CLEARS THE OVERRIDE, it does not un-configure the app
+     — getCfg() falls through to the build's own. That is only true
+     since the build carries one; before, this call was how you broke
+     sign-in. */
+  c.setCfg(null);
+  location.reload();
+});
 
 delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
   const act = el.getAttribute('data-action');

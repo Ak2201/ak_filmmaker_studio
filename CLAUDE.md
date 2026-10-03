@@ -1,4 +1,4 @@
-# The Filmmaker's Studio — working notes
+# FilmMakerStudio — working notes
 
 Read this before changing anything. It is short on purpose; the parts that look
 like fussy rules is there because breaking it has already cost a user their work
@@ -1492,6 +1492,46 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
   gate**: `PAGES` is read from `baseline.json` and neither is in it, so the
   text check, the AA walk and the overflow measurement all skip them. Read
   them in a browser, at 390px, in both themes. Nothing else will.
+
+- **The Supabase URL and anon key are a BUILD setting now**, in `.env` as
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, with anything in
+  `fms_supabase_cfg_v1` treated as an override. Both values are public — RLS is
+  what guards the database — and the reason is a bootstrap, not convenience:
+  `signInWithGoogle()` needs `ensureClient()`, which needs the config, so
+  before this NOBODY could sign in until somebody had typed a project URL and a
+  208-character JWT into a modal. There is no account, and therefore no admin,
+  until the config already exists, which is why "only an admin may configure
+  it" cannot be the whole answer.
+
+- **There is ONE Google OAuth client, and that is a reversal.** Drive briefly
+  had its own, which reads like good isolation and defeats the thing people
+  actually want: Google records consent PER CLIENT ID, so granting `drive.file`
+  during sign-in taught a separate Drive client nothing and GIS still raised a
+  second popup. One consent means one client. `signInWithGoogle()` now asks for
+  `drive.file` alongside the e-mail, and `drive-sync.js` adopts the resulting
+  `session.provider_token` — which Supabase returns on the sign-in response
+  ONLY and never persists, so after a reload the silent GIS mint is the path
+  back, and it works without prompting precisely because the consent was
+  recorded against this same client.
+
+- **The admin console gates by VISIBILITY, which is not a boundary.**
+  `VITE_ADMIN_EMAILS` decides who is shown the Supabase config on
+  `settings.html`. The bundle is public and anyone can call `setCfg()` from a
+  devtools console; what stops them reading another account's rows is RLS. It
+  is also a bootstrap for a tier that already exists —
+  `account_members.role` — which `cloud.js` still makes no reads of. See open
+  item 5.
+
+- **settings.html's CONTENT DEPENDS ON `.env`, so the baseline does too.**
+  This one nearly shipped as a latent failure. The admin section renders when
+  `mayConfigure()` is true, and that includes the case "this build carries no
+  Supabase project" — so a baseline captured with `VITE_SUPABASE_ANON_KEY`
+  blank records 39 words that VANISH the moment the key is filled in, and the
+  text check fails on a page nobody edited. The recapture was reverted and the
+  original baseline still passes, because the FilmMakerStudio rename moved no
+  visible words at all: the old name lived in `<title>`, the manifest and the
+  docs, none of which the word-set check reads. Before re-baselining, diff the
+  capture and ask which env it was taken under.
 
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.

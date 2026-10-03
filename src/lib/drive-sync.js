@@ -608,6 +608,16 @@ function adoptSignInToken(sess) {
       'Cloud sync is signed in, so Drive stays a manual backup here.');
     return;
   }
+  /* No token in hand means no Drive call can be made without opening
+     a popup, and boot is not allowed to open one — see getToken().
+     Say so calmly rather than reporting an error for a state that is
+     ordinary: the hour ran out, or this is a fresh tab. */
+  if (!Drive.hasToken()) {
+    setStatus(DRIVE_STATES.IDLE,
+      'Connected. Open Settings and press Connect to sync this session.');
+    return;
+  }
+
   setStatus(DRIVE_STATES.IDLE, 'Connected');
   /* The silent token request, then reconcile. A failure here is
      ordinary — consent may have been revoked, or the Google

@@ -184,6 +184,32 @@ export function getToken(opts) {
     return Promise.reject(new Error('This build has no Google client id (VITE_GOOGLE_CLIENT_ID).'));
   }
 
+  /* interactive:false MEANS "OPEN NOTHING", AND IT HAS TO BE ENFORCED
+     HERE RATHER THAN BY THE PROMPT ARGUMENT.
+     ------------------------------------------------------------
+     This used to fall through to requestAccessToken({ prompt: '' })
+     and trust the empty prompt to keep it quiet. It does not:
+     google.accounts.oauth2 ALWAYS opens a popup, and the prompt only
+     decides whether the consent screen is drawn inside it.
+
+     The symptom was a user-visible bug and a nasty one, because it
+     looked like the app had forgotten who you were. Drive is
+     connected, so every page load reached this function. Arriving by
+     CLICKING a nav link leaves a fresh user gesture on the document,
+     so the browser permits the popup — and clicking Dashboard or
+     Settings threw up Google's sign-in window at somebody already
+     signed in. Arriving any other way, the popup was blocked and
+     nothing showed, which is why it looked intermittent.
+
+     So a caller that cannot show UI now gets a rejection instead of
+     a window. The only path that may open one is a click: connect()
+     on settings.html. */
+  if (!opts.interactive) {
+    return Promise.reject(new Error(
+      'Drive needs a click to issue a new token — Google will not do it in the background.'
+    ));
+  }
+
   return loadGIS().then((google) => new Promise((resolve, reject) => {
     const done = (resp) => {
       if (!resp || !resp.access_token) {

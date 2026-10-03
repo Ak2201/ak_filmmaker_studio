@@ -468,13 +468,37 @@ function adoptSignInToken(sess) {
 (function boot() {
   if (!Drive.isConfigured()) { setStatus(DRIVE_STATES.OFF, 'Drive backup is not set up in this build'); return; }
 
-  /* Subscribed before the early returns below, because this is the
-     path that CREATES a connection — gating it on already having one
-     would mean it could never make the first. */
-  const c = (typeof window !== 'undefined') && window.StudioCloud;
-  if (c && c.onAuth) {
+  /* WIRED ON A TIMER, AND BOTH HALVES ARE LOAD-BEARING.
+     ------------------------------------------------------------
+     The first version read window.StudioCloud right here, at module
+     evaluation, and did nothing when it was not there yet. It was not
+     there yet: chrome.js imports this file, vite folds every lib
+     module into one chunk, and nothing gives cloud.js an edge that
+     forces it to evaluate first — so the subscription was skipped
+     silently and Drive never connected after a sign-in that had
+     already been granted. Measured, not theorised: the session came
+     back carrying a Google token and the settings page still read
+     NOT CONNECTED.
+
+     setTimeout(0) is what fixes the ordering. Every module in the
+     chunk finishes evaluating before any timer runs, so
+     window.StudioCloud is assigned by then whatever the import graph
+     decides.
+
+     The second half matters as much. Subscribing only to onAuth
+     assumes the event is still AHEAD of us, and after an OAuth
+     redirect it usually is not — the session is read out of the URL
+     during cloud.js's own boot, so SIGNED_IN can fire before anything
+     here is listening. So: subscribe for next time, AND adopt
+     whatever is already in hand. Either path alone leaves the common
+     case broken. */
+  setTimeout(() => {
+    const c = (typeof window !== 'undefined') && window.StudioCloud;
+    if (!c || !c.onAuth) return;
     c.onAuth((event, sess) => { if (event === 'SIGNED_IN') adoptSignInToken(sess); });
-  }
+    /* Already signed in when we got here — the redirect case. */
+    if (c.getSession && c.getSession()) adoptSignInToken(c.getSession());
+  }, 0);
 
   if (!isConnected())        { setStatus(DRIVE_STATES.OFF, 'Not connected'); return; }
   if (ownsSync()) {

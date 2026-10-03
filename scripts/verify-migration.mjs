@@ -245,7 +245,14 @@ const EXPECTED = {
      An entry here is a one-off divergence between a known-good page
      and an older oracle. If you find yourself adding a third, the
      answer is `npm run baseline` and a sentence in the commit. */
-  hub: {},
+  /* The sample project was renamed from the invented "Dragan" to
+     Dragon (2025, dir. Ashwath Marimuthu), and the hub's "I want a
+     complete example" card prints sample.title — so the word `dragan`
+     left the page. A one-off rename is what an allowance is for; if a
+     third of these appears, re-baseline instead. */
+  hub: {
+    'dragan': 'the sample project is Dragon now; the old invented title is gone from the first-run card'
+  },
   stripboard: {},
   reports: {},
   contacts: {},

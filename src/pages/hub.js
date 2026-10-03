@@ -67,7 +67,7 @@ import rules       from '../data/rules.json';
 import watchlist   from '../data/watchlist.json';
 import festivals   from '../data/festivals.json';
 import prodData    from '../data/steps.production.json';
-import sample      from '../data/sample.dragan.json';
+import sample      from '../data/sample.dragon.json';
 
 /* The sample project writes through the same models every page reads,
    so the ids and key shapes it produces cannot drift from the ones the
@@ -1734,7 +1734,7 @@ function renderFirstRun() {
 }
 
 /* ------------------------------------------------------------
-   THE SAMPLE PROJECT — Dragan, a feature.
+   THE SAMPLE PROJECT — Dragon, a feature.
 
    ONE sample. There were two: a four-scene "Sample — Dragon" seeded
    here, and a separate Por Thozhil field dump inside feature.js with
@@ -1744,13 +1744,13 @@ function renderFirstRun() {
    shoot days gave the stripboard two strips, the day out of days two
    columns and the estimator nothing worth deriving from.
 
-   Dragan is a feature: 36 scenes, 110 pages, 18 shoot days, 14
+   It is a feature: 36 scenes, 105 pages, 18 shoot days, 17
    locations, 12 speaking parts and 29 people on the unit list, so the
    breakdown, stripboard, day out of days, call sheet, contacts,
    visualize, write, plan, budget and dashboard all have something
    real to render.
 
-   THE CONTENT IS NOT HERE. It is src/data/sample.dragan.json —
+   THE CONTENT IS NOT HERE. It is src/data/sample.dragon.json —
    invariant 2, content lives in the data files. This function is the
    only thing that knows how to WRITE it, and it writes through the
    same key shapes the app reads back:
@@ -1779,9 +1779,9 @@ function renderFirstRun() {
 
 const SAMPLE_TITLE = sample.title;
 
-const sampleSceneId   = (number) => 'dragan-sc-' + String(number);
-const sampleContactId = (i)      => 'dragan-c-' + (i + 1);
-const sampleShotId    = (scene, number) => 'dragan-sh-' + scene + '-' + number;
+const sampleSceneId   = (number) => 'dragon-sc-' + String(number);
+const sampleContactId = (i)      => 'dragon-c-' + (i + 1);
+const sampleShotId    = (scene, number) => 'dragon-sh-' + scene + '-' + number;
 
 /** Pages per day as the schedule step's <select> words it. Assigning a
     value that is not one of its options silently blanks the field —
@@ -1844,7 +1844,7 @@ function sampleContacts() {
 function sampleCallSheets(contacts) {
   const idByName = new Map(contacts.map((c) => [c.name, c.id]));
   return sample.callSheets.map((cs, i) => ({
-    id: 'dragan-cs-' + (i + 1),
+    id: 'dragon-cs-' + (i + 1),
     title: cs.title,
     date: sample.days[String(cs.day)] || '',
     generalCall: cs.generalCall,
@@ -1867,7 +1867,7 @@ function sampleLocations() {
     days: { ...sample.days },
     recces,
     media: sample.media.map((m, i) => ({
-      id: 'dragan-md-' + (i + 1),
+      id: 'dragon-md-' + (i + 1),
       title: m.title,
       url: m.url || '',
       kind: m.kind,
@@ -1891,17 +1891,17 @@ function sampleShots() {
     ai: false
   }));
   const frames = sample.frames.map((f, i) => ({
-    id: 'dragan-fr-' + (i + 1),
+    id: 'dragon-fr-' + (i + 1),
     shotId: sampleShotId(f.scene, f.shotNumber),
     caption: f.caption,
     ref: f.ref
   }));
   const boards = sample.boards.map((b, i) => ({
-    id: 'dragan-bd-' + (i + 1),
+    id: 'dragon-bd-' + (i + 1),
     name: b.name,
     note: b.note || '',
     entries: (b.entries || []).map((e, j) => ({
-      id: 'dragan-bd-' + (i + 1) + '-en-' + (j + 1),
+      id: 'dragon-bd-' + (i + 1) + '-en-' + (j + 1),
       title: e.title, ref: e.ref || '', why: e.why || ''
     }))
   }));
@@ -1912,13 +1912,13 @@ function sampleScript() {
   const now = new Date().toISOString();
   return {
     elements: sample.script.elements.map((e, i) => ({
-      id: 'dragan-el-' + (i + 1), type: e.type, text: e.text
+      id: 'dragon-el-' + (i + 1), type: e.type, text: e.text
     })),
     // No revision history: a snapshot the user did not take is a
     // fiction, and restoring one would silently replace their draft.
     revisions: [],
     documents: sample.script.documents.map((d, i) => ({
-      id: 'dragan-doc-' + (i + 1),
+      id: 'dragon-doc-' + (i + 1),
       title: d.title, kind: d.kind, body: d.body, updated: now
     }))
   };

@@ -217,6 +217,22 @@ is now **one** intended exception, because the other one closed:
   requires a hex literal and these are the user's editable starting values.
   They are content, not design tokens. Leave them.
 
+**A second AI provider was added without a second request path.** Gemini
+sits beside Anthropic through the same `callModel()`, with a provider table
+supplying the host, the key shape, the model list and the console link, and
+one key form in `ai-panel.js` for both. Three things there fail as "the
+model is broken" rather than as themselves: Anthropic streams LF frame
+separators and Gemini CRLF, so the splitter must accept both; a Gemini
+`thought` part concatenated into the text makes every JSON parse fail; and
+Gemini answers a bad key with **400 + `API_KEY_INVALID`**, not 401, which
+status alone cannot tell from a malformed request.
+
+THE KEY GOES IN A HEADER. Gemini's API also accepts `?key=` on the query
+string — do not use it. A key in a URL is a key in browser history, in proxy
+logs and in any error report that captures a URL. And `connect-src` in
+**both** `vercel.json` and `netlify.toml` must name a new provider's origin
+in the same commit, or the browser refuses the request before it leaves.
+
 Anything else is a bug. To check:
 
 ```bash
@@ -1183,9 +1199,23 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
 8. ~~First-run experience.~~ Done. The hub no longer opens the new-project
    modal on a timer; the empty grid renders a first-run panel instead — what
    the studio is, three destinations that need no project at all, then the
-   ask, plus a sample project that seeds a logline, a theme and four scenes
-   across two shoot days so the blueprint, breakdown, stripboard and budget
-   all have something to show. The wall of 24 steps behind it is handled
+   ask, plus a sample project — Dragon (2025, dir. Ashwath Marimuthu), 36
+   scenes, 105 pages, 18 shoot days, 17 locations and a 29-person unit, so
+   the blueprint, breakdown, stripboard, reports, contacts, plan, visualize,
+   write and budget all have something real to show.
+
+   **It is a reconstruction and says so everywhere it could mislead.** The
+   public facts are credited and right; every piece of paperwork — the
+   schedule, the dates, the budget, the unit, the recces, both call sheets —
+   is invented, and that is stated in `_about`, in the meta fields, in the
+   first line of both call sheets, in the first action element and at the top
+   of all four documents. Two rules keep it honest and apply to any film that
+   replaces it: NO REAL PERSON beside a contact detail (all 29 contacts are
+   invented names on `@dragon.example`; character names are public and live
+   in the role column; `hod_dir_date` is deliberately blank rather than
+   invent a real director's signature date), and NO RETELLING — the script
+   is 27 action, 7 scene headings, 6 transitions and zero dialogue, because
+   `studies.json`'s rule is craft analysis only. The wall of 24 steps behind it is handled
    too: a ten-step spine, and for each step the thing IN THIS APP that
    reads its answers, derived from `src/data/steps.priority.json` rather
    than hand-listed. The filter can never strand you on a hidden step —

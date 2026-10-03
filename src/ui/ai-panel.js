@@ -7,13 +7,24 @@
    things around the one thing that differs:
 
      the key form     when there is no key on this device
-     the key bar      which key, which model, replace, forget
+     the key bar      which key, which provider, which model,
+                      replace, forget
      the gate         what is missing and what to do about it
      the disclosure   what leaves the browser, before it leaves
 
    This module owns those four and the handlers behind them.
-   src/lib/ai.js owns the request; the pages own their own job.
+   src/lib/ai.js owns the request, src/lib/ai-providers.js owns
+   who the key belongs to, and the pages own their own job.
    Nothing here knows what a shot or a speech is.
+
+   TWO PROVIDERS, ONE FORM. Anthropic and Gemini each want a key
+   of a different shape, from a different console, for a different
+   list of models. Not one line of that is written here: the form
+   asks the provider table for its own lead sentence, placeholder,
+   link and model list, so adding a third provider is a row in
+   that table and no edit in this file. A SECOND key form for the
+   second provider would have been the obvious move and is exactly
+   the duplication below.
 
    WHY A MODULE AND NOT A THIRD COPY. The key form is the place a
    user types a credential. Three hand-copied versions of it is
@@ -55,19 +66,50 @@ function announce() {
 
 export function hasKey() { return AI.hasKey(); }
 
-/* ---- the key form ------------------------------------------ */
+/* ---- the provider picker ------------------------------------
+   THERE IS EXACTLY ONE OF THESE ON SCREEN AT A TIME, and which
+   one depends on the thing it is attached to rather than on the
+   page. A key for the ACTIVE provider means the bar renders, and
+   the picker is in the bar; no key means the gate renders, and
+   the picker is at the top of the gate. Those two cases are
+   exhaustive — `hasKey()` is the condition for both — so the
+   control is never absent and never doubled.
+
+   It has to be in the gate as well as the bar, not instead: a
+   user who switches to Gemini with no Gemini key saved would
+   otherwise land on a panel with a key form and no way back to
+   the provider whose key they already have. */
+function providerPicker() {
+  const sel = h('select.ai-sel', { 'data-action': 'ai-provider', 'aria-label': 'Provider' });
+  const current = AI.getProviderId();
+  AI.PROVIDERS.forEach((p) => {
+    const opt = h('option', { value: p.id, text: p.label });
+    if (p.id === current) opt.selected = true;
+    sel.append(opt);
+  });
+  return h('label.ai-provwrap', {}, [h('span.ai-flabel', { text: 'Provider' }), sel]);
+}
+
+/* ---- the key form ------------------------------------------
+   One form, both providers. Which one it is asking for comes out
+   of the provider table — the lead sentence, the placeholder, the
+   label on the field and the link to where a key comes from. A
+   second form for the second provider is the duplication at the
+   top of this file, and it is the copy that gets the privacy line
+   wrong. */
 export function keyForm() {
+  const prov = AI.provider();
   const box = h('div.ai-key');
   box.append(h('p.ai-lead', {
-    text: 'This uses your own Anthropic API key. It is saved in this browser only — '
-        + 'it is never put in a backup file, never synced to the cloud, and never '
-        + 'attached to a project. Every call is billed to your account.'
+    text: 'This uses your own ' + prov.label + ' API key. It is saved in this browser '
+        + 'only — it is never put in a backup file, never synced to the cloud, and '
+        + 'never attached to a project. Every call is billed to your account.'
   }));
   box.append(h('label.ai-field', {}, [
     h('span.ai-flabel', { text: 'API key' }),
     h('input.ai-key-input', {
       type: 'password', autocomplete: 'off', spellcheck: 'false',
-      placeholder: 'sk-ant-…', 'aria-label': 'Anthropic API key'
+      placeholder: prov.keyPlaceholder, 'aria-label': prov.label + ' API key'
     })
   ]));
   box.append(h('div.ai-acts', {}, [
@@ -76,7 +118,7 @@ export function keyForm() {
       ? h('button.btn', { type: 'button', 'data-action': 'ai-cancel-key', text: 'Cancel' })
       : null,
     h('a.ai-link', {
-      href: 'https://console.anthropic.com/settings/keys',
+      href: prov.consoleUrl,
       target: '_blank', rel: 'noopener noreferrer',
       text: 'Where do I get one?  ↗'
     })
@@ -91,9 +133,14 @@ export function keyBar() {
   // enough to tell two keys apart and not enough to use.
   bar.append(h('span.ai-keystate', { text: 'Key on this device: ' + AI.maskKey() }));
 
+  bar.append(providerPicker());
+
+  /* The models are the ACTIVE provider's. One shared list would
+     offer a Claude id to Gemini, which is a 400 at the end of a
+     click instead of a choice that was never there. */
   const sel = h('select.ai-sel', { 'data-action': 'ai-model', 'aria-label': 'Model' });
   const current = AI.getModel();
-  AI.AI_MODELS.forEach((m) => {
+  AI.models().forEach((m) => {
     const opt = h('option', { value: m.id, text: m.label + ' — ' + m.hint });
     if (m.id === current) opt.selected = true;
     sel.append(opt);
@@ -127,10 +174,13 @@ export function keyGate(what) {
   if (!AI.hasKey()) {
     wrap.append(gate(
       'No API key on this device.',
-      what + ' runs against Anthropic’s API and there is no server here to run it '
-        + 'for you, so it needs a key of your own. Paste one below and it stays on '
-        + 'this device.'
+      what + ' runs against ' + AI.provider().apiName + ' and there is no server '
+        + 'here to run it for you, so it needs a key of your own. Paste one below '
+        + 'and it stays on this device.'
     ));
+    /* The only route back to the other provider when this one has
+       no key saved. See providerPicker(). */
+    wrap.append(providerPicker());
   }
   wrap.append(keyForm());
   // `blocking` tells the caller whether to stop here: replacing a key
@@ -221,8 +271,10 @@ export function wireAIPanel() {
     // is not sitting in the DOM while a save is being reported.
     input.value = '';
     if (!AI.looksLikeKey(value)) {
-      setPanelNote(box, 'That does not look like an Anthropic key. They start with '
-        + '"sk-ant-". Nothing was saved.');
+      /* The provider's own sentence. With two providers the likely
+         mistake is pasting one's key into the other's field, and a
+         message naming the shape it expected is what catches it. */
+      setPanelNote(box, AI.provider().keyShapeSays + ' Nothing was saved.');
       return;
     }
     if (!AI.setKey(value)) {
@@ -244,10 +296,23 @@ export function wireAIPanel() {
   });
 
   delegate(document, 'click', '[data-action="ai-forget-key"]', () => {
-    if (!confirm('Forget the API key on this device?\n\n'
+    /* Named, because there can be two keys saved and a confirm that
+       says "the API key" would not say which one is about to go. */
+    const prov = AI.provider();
+    if (!confirm('Forget the ' + prov.label + ' API key on this device?\n\n'
       + 'Nothing you have written is touched. You will need to paste the key again '
       + 'to use any of the model-backed tools.')) return;
     AI.clearKey();
+    editingKey = false;
+    announce();
+  });
+
+  /* Switching provider NEVER touches either key. Both stay saved,
+     so a user with two of them flips between the APIs without
+     pasting anything, and a user with one sees the gate for the
+     other — which is the honest state, not a loss. */
+  delegate(document, 'change', 'select[data-action="ai-provider"]', (e, sel) => {
+    AI.setProvider(sel.value);
     editingKey = false;
     announce();
   });

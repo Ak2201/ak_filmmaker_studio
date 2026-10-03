@@ -76,6 +76,14 @@
 
 import { h } from '../lib/dom.js';
 import { featureKeys, progressAgainst } from '../lib/blueprint-fields.js';
+/* The provider TABLE, not the request path. This panel prints a
+   sentence naming where a key goes and which API it reaches, and
+   that sentence has to be right for whichever provider is set —
+   so it asks rather than restating. ai-providers.js has one import
+   and no model code in it, which is why asking is affordable here:
+   src/lib/ai.js is loaded at a click on write.html and this panel
+   renders on first paint. */
+import { apiHost, providerLabel } from '../lib/ai-providers.js';
 
 /* Dismissed for this page view only — see the header. Not a flag in
    storage, and not a class on <body> either: nothing else reads it. */
@@ -202,8 +210,8 @@ export function blueprintEntry(data) {
   const draftNote = h('span.eps-tour-note', {
     text: 'A synopsis becomes a beat sheet, the beat sheet becomes scenes, and the '
         + 'scenes become pages — you read each one before the next one runs. Needs '
-        + 'your own Anthropic API key, kept on this device and sent to nobody but '
-        + 'api.anthropic.com.'
+        + 'your own ' + providerLabel() + ' API key, kept on this device and sent '
+        + 'to nobody but ' + apiHost() + '.'
   });
   ways.append(h('a.eps-tour-item', { href: 'write.html#generate' }, [
     h('span.eps-tour-label', { text: 'I have a synopsis' }),

@@ -164,12 +164,19 @@
   letter-spacing: var(--track-label);
   color: var(--ink-muted);
 }
-.ai-modelwrap {
+/* The provider picker and the model picker are the same object —
+   a label and a select on one line — so they take one rule. The
+   provider picker also appears on its own inside .ai-keygate, in
+   the one state where there is no bar to put it in, which is why
+   it is a block there rather than a bar item. */
+.ai-modelwrap,
+.ai-provwrap {
   display: flex;
   align-items: center;
   gap: var(--s2);
   min-width: 0;
 }
+.ai-keygate > .ai-provwrap { justify-self: start; }
 .ai-sel {
   min-width: 0;
   max-width: 100%;

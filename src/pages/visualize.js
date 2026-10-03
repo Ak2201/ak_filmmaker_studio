@@ -42,6 +42,11 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+/* The provider TABLE only — not src/lib/ai.js, which this page
+   still reaches with import() at a click. The disclosure below has
+   to name the host the key will actually go to, and a restated
+   hostname is a privacy claim that goes stale. */
+import { apiHost } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
@@ -534,7 +539,7 @@ function renderAI(scenes, shots) {
 
   wrap.append(Panelm.disclose(
     'Clicking the button below sends the slug line, the one-line synopsis and '
-    + 'the script text of the ticked scenes to api.anthropic.com, using the key '
+    + 'the script text of the ticked scenes to ' + apiHost() + ', using the key '
     + 'on this device. Nothing else leaves this browser, and nothing is sent '
     + 'until you click. Your screenplay is your unpublished work — this is the '
     + 'only place in the studio that puts any of it on the network.'

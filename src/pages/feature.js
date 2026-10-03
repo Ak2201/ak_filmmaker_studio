@@ -70,6 +70,11 @@ import StudioUI, {
 import '../lib/cloud.js';
 
 import { esc, h, fromHTML, delegate } from '../lib/dom.js';
+/* The provider TABLE only — not src/lib/ai.js, which this page
+   still reaches with import() at a click. The disclosure below has
+   to name the host the key will actually go to, and a restated
+   hostname is a privacy claim that goes stale. */
+import { apiHost } from '../lib/ai-providers.js';
 import {
   renderSteps, mountStepsLang, mountStepsPath, stepIndex, stepFieldKeys
 } from '../ui/steps.js';
@@ -81,7 +86,7 @@ import PROD from '../data/steps.production.json';
    It used to be a second sample — a Por Thozhil field dump embedded
    below and fetched from a root JSON file — which is the "one fact,
    two sources" fault CLAUDE.md keeps paying for. */
-import SAMPLE from '../data/sample.dragan.json';
+import SAMPLE from '../data/sample.dragon.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
@@ -2259,7 +2264,7 @@ function computeProgress() {
    SAMPLE PACK LOADER
    ------------------------------------------------------------
    Fills this page's fields from the ONE sample in the studio,
-   src/data/sample.dragan.json — the same file the hub seeds a whole
+   src/data/sample.dragon.json — the same file the hub seeds a whole
    sample project from. It used to be a second sample: a Por Thozhil
    field dump embedded in this file, with a third copy fetched from
    arunak-portothozhil-sample.json at the site root and silently
@@ -2583,7 +2588,7 @@ function paintCritique(stepId, AI, Panel) {
       ? sum.fields + (sum.fields === 1 ? ' answer' : ' answers') + ' from '
         + sum.steps + ' other spine ' + (sum.steps === 1 ? 'step' : 'steps') + ' as context, '
       : 'nothing else — no other step has anything in it yet, ')
-    + 'to api.anthropic.com using the key on this device. Nothing else leaves this '
+    + 'to ' + apiHost() + ' using the key on this device. Nothing else leaves this '
     + 'browser, and nothing is sent until you click.'
   ));
 

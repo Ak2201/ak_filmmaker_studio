@@ -4,27 +4,13 @@
    CLAUDE.md open item 3, and its first sentence is the whole
    security model: "Key in localStorage, per-device, never synced."
 
-   THE KEY IS NOT PROJECT DATA AND IS NOT THE USER'S WORK.
-   `fms_ai_key_v1` is deliberately absent from all four of the
-   places a project key is registered:
-
-     1. SCOPED_KEYS in src/lib/store.js  — so it is NOT suffixed
-        with a project id. One key, one device, every project.
-     2. PROJECT_KEYS in src/pages/hub.js — so it is NOT written
-        into the backup file a user emails to themselves.
-     3. ALL_KEYS in src/pages/hub.js     — so "reset the studio"
-        does not silently log you out of your own account. The
-        panel has its own Forget button for that.
-     4. the scope check in supabase-schema.sql — so it CANNOT
-        sync. src/lib/cloud.js derives what it uploads from
-        Store.SCOPED_KEYS; a key that is not in that list has no
-        cloud scope and is never sent.
-
-   Absence in a list in another file is a weak guarantee, so this
-   module does not rely on it: every read and write goes through
-   `rawGet`/`rawSet`/`rawRemove`, which bypass the storage proxy
-   entirely. Even if somebody adds this key to SCOPED_KEYS by
-   accident, it still cannot become project data from here.
+   NEITHER KEY IS PROJECT DATA AND NEITHER IS THE USER'S WORK.
+   `fms_ai_key_v1` and `fms_ai_key_gemini_v1` are deliberately
+   absent from all five of the places a project key is registered,
+   and both are read and written only through `rawGet`/`rawSet`/
+   `rawRemove`, which bypass the storage proxy entirely. The list
+   of the five, and the reason each one matters, is in the header
+   of src/lib/ai-providers.js, which is where the keys live.
 
    THE KEY NEVER COMES BACK OUT. It is written to storage, read
    into the one fetch that needs it, and otherwise only ever
@@ -45,74 +31,53 @@
    a normal web app because the key would be the server's; here
    the key is the user's own, typed on their own device, and there
    is no server to put it on — this studio is a static build.
-   connect-src in vercel.json and netlify.toml has to allow
-   api.anthropic.com or the fetch is blocked before it leaves.
+   Gemini needs no such opt-in, but it needs the same thing of the
+   page: connect-src in vercel.json and netlify.toml has to name
+   BOTH api.anthropic.com and generativelanguage.googleapis.com,
+   or the fetch is blocked before it leaves.
+
+   TWO PROVIDERS, ONE REQUEST PATH. src/lib/ai-providers.js owns
+   who the key belongs to — the host, the key's shape, the model
+   ids, which storage key it lives under. This file owns the one
+   `callModel()` below, and it stays one: the wire format differs
+   between Anthropic and Gemini, so the URL, the headers, the body
+   and the stream frame are each built by a two-line function the
+   one path calls. There is no second fetch, no second abort, no
+   second status map and no second JSON parse, for exactly the
+   reason the three jobs share this path rather than having three.
+
+   THE KEY GOES IN A HEADER ON BOTH SIDES. Anthropic takes
+   `x-api-key`, Gemini takes `x-goog-api-key`. Gemini's REST API
+   ALSO accepts `?key=<KEY>` on the query string and that form is
+   deliberately never used here: a key in a URL lands in browser
+   history, in every proxy log on the way, and in any error report
+   that captures a URL. Nothing in this file interpolates a key
+   into a URL.
    ============================================================ */
-import { rawGet, rawSet, rawRemove } from './store.js';
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
+import Providers, {
+  PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
+  GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
+  getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
+  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
+  models, defaultModel, getModel, setModel
+} from './ai-providers.js';
 
-/* Per-device, never scoped, never synced. See the header. */
-export const AI_KEY = 'fms_ai_key_v1';
-export const AI_MODEL_KEY = 'fms_ai_model_v1';
+/* Re-exported so a caller that only wants "is there a key" or
+   "which host" has one import rather than two, and so that every
+   call site written when there was one provider still reads the
+   same. The table itself lives in ai-providers.js. */
+export {
+  PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
+  GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
+  getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
+  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
+  models, defaultModel, getModel, setModel
+};
 
-export const API_ORIGIN = 'https://api.anthropic.com';
-const API_URL = API_ORIGIN + '/v1/messages';
 const API_VERSION = '2023-06-01';
-
-/* Two current models, both of which support the two things this
-   call needs: adaptive thinking and a JSON schema on the output.
-   The default is the fast one — a shot division is a structured
-   craft task, not a research problem, and the user is waiting. */
-export const AI_MODELS = [
-  { id: 'claude-sonnet-5', label: 'Sonnet 5', hint: 'quick — the default' },
-  { id: 'claude-opus-5',   label: 'Opus 5',   hint: 'slower, more considered' }
-];
-export const DEFAULT_MODEL = AI_MODELS[0].id;
-
-/* ------------------------------------------------------------
-   THE KEY
-   ------------------------------------------------------------ */
-export function getKey() {
-  const k = rawGet(AI_KEY);
-  return typeof k === 'string' ? k.trim() : '';
-}
-export function hasKey() { return getKey().length > 0; }
-
-/** Returns false when storage refused, so the panel can say so
-    rather than pretending the key was kept. */
-export function setKey(value) {
-  const clean = String(value ?? '').trim();
-  if (!clean) return clearKey();
-  return rawSet(AI_KEY, clean);
-}
-export function clearKey() { return rawRemove(AI_KEY); }
-
-/** What the UI is allowed to show. Never the key. The last four
-    characters are enough for a user to tell two keys apart and
-    not enough for anybody else to do anything with. */
-export function maskKey(value) {
-  const k = String(value ?? getKey());
-  if (!k) return '';
-  return '•'.repeat(12) + k.slice(-4);
-}
-
-/** A shape check, not a validity check — only the API can say
-    whether a key works, and this exists so an obvious paste error
-    is caught before it becomes a 401 the user has to interpret. */
-export function looksLikeKey(value) {
-  return /^sk-ant-[A-Za-z0-9_-]{16,}$/.test(String(value ?? '').trim());
-}
-
-export function getModel() {
-  const m = rawGet(AI_MODEL_KEY);
-  return AI_MODELS.some((x) => x.id === m) ? m : DEFAULT_MODEL;
-}
-export function setModel(id) {
-  if (!AI_MODELS.some((x) => x.id === id)) return false;
-  return rawSet(AI_MODEL_KEY, id);
-}
 
 /* ------------------------------------------------------------
    MATCHING THE SCRIPT TO THE SCENES
@@ -257,10 +222,20 @@ export class AIError extends Error {
   constructor(message, kind) { super(message); this.name = 'AIError'; this.kind = kind || 'unknown'; }
 }
 
-function errorForStatus(status, body) {
-  const detail = (body && body.error && body.error.message) ? String(body.error.message) : '';
-  if (status === 401 || status === 403) {
-    return new AIError('That key was rejected. Check it in the Anthropic console and paste it again.', 'auth');
+function errorForStatus(status, body, prov) {
+  const err = (body && body.error) || null;
+  const detail = (err && err.message) ? String(err.message) : '';
+  /* Gemini answers a bad key with 400 INVALID_ARGUMENT and
+     API_KEY_INVALID in the body, not with 401 — so the status code
+     alone cannot tell "your key is wrong" from "your request is
+     wrong", and those are two completely different things to go and
+     do about it. The body is what tells them apart. */
+  const code = (err && err.status) ? String(err.status) : '';
+  const keyRejected = status === 401 || status === 403
+    || (status === 400 && /api[\s_-]?key/i.test(detail + ' ' + code));
+  if (keyRejected) {
+    return new AIError('That key was rejected. Check it in ' + prov.consoleName
+      + ' and paste it again.', 'auth');
   }
   if (status === 429) {
     /* Worded for all three jobs, not just the shot division. This
@@ -273,7 +248,10 @@ function errorForStatus(status, body) {
   if (status === 400) {
     return new AIError('The API refused the request' + (detail ? ': ' + detail : '.'), 'request');
   }
-  if (status === 529) {
+  /* 529 is Anthropic's overloaded code and 503 is Gemini's
+     UNAVAILABLE. Both mean the same thing to the person reading it:
+     come back shortly, nothing was spent on your work. */
+  if (status === 529 || status === 503) {
     return new AIError('The API is overloaded right now. Try again shortly — nothing was changed.', 'overloaded');
   }
   if (status >= 500) {
@@ -286,10 +264,23 @@ function errorForStatus(status, body) {
    Streaming, because a whole-script division is a long output
    and a non-streaming request of that size is a request that
    times out. It also means the panel can count the scenes as
-   they land instead of showing a spinner for ninety seconds. */
-async function readStream(res, onText) {
+   they land instead of showing a spinner for ninety seconds.
+
+   BOTH PROVIDERS SPEAK SSE AND NEITHER SPEAKS THE SAME SSE, so
+   the framing is here — once — and what a frame MEANS is a
+   `read` function passed in. It returns `{ text, stop, error }`
+   and the loop below does not know which API it is reading.
+
+   The separator is `\r?\n\r?\n` rather than `\n\n`: Anthropic
+   sends bare newlines and Gemini sends CRLF, and a splitter that
+   only knows one of them reads the other as a single frame that
+   never ends. The `\r` can also arrive at the end of one network
+   chunk and the `\n` at the start of the next, which is why the
+   match is done on the buffer rather than on the decoded chunk. */
+async function readStream(res, read, onText) {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
+  const SEP = /\r?\n\r?\n/;
   let buffer = '';
   let text = '';
   let stop = null;
@@ -298,34 +289,164 @@ async function readStream(res, onText) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    let cut;
+    let m;
     // SSE frames are separated by a blank line. Anything after the
     // last one is a partial frame and stays in the buffer.
-    while ((cut = buffer.indexOf('\n\n')) >= 0) {
-      const frame = buffer.slice(0, cut);
-      buffer = buffer.slice(cut + 2);
-      for (const line of frame.split('\n')) {
+    while ((m = SEP.exec(buffer))) {
+      const frame = buffer.slice(0, m.index);
+      buffer = buffer.slice(m.index + m[0].length);
+      for (const line of frame.split(/\r?\n/)) {
         if (!line.startsWith('data:')) continue;
         const payload = line.slice(5).trim();
         if (!payload || payload === '[DONE]') continue;
         let evt = null;
         try { evt = JSON.parse(payload); } catch (e) { continue; }
-        if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
-          text += evt.delta.text;
-          if (onText) onText(text);
-        } else if (evt.type === 'message_delta' && evt.delta && evt.delta.stop_reason) {
-          stop = evt.delta.stop_reason;
-        } else if (evt.type === 'error') {
-          throw new AIError(
-            (evt.error && evt.error.message) ? String(evt.error.message) : 'The API ended the stream with an error.',
-            'stream'
-          );
-        }
+        const part = read(evt);
+        if (!part) continue;
+        if (part.error) throw new AIError(part.error, 'stream');
+        if (part.stop) stop = part.stop;
+        if (part.text) { text += part.text; if (onText) onText(text); }
       }
     }
   }
   return { text, stop };
 }
+
+/* ---- the two wire formats ----------------------------------
+   Each of these is the whole difference between the providers.
+   A request builder returns the url, the headers WITHOUT the key,
+   the name of the header the key goes in, and the body; the one
+   caller below adds the key and does the fetch. The key is never
+   part of what these return and never part of a url.
+   ------------------------------------------------------------ */
+
+function anthropicRequest(prov, { model, system, user, schema, maxTokens, effort }) {
+  return {
+    url: prov.origin + '/v1/messages',
+    authHeader: 'x-api-key',
+    headers: {
+      'content-type': 'application/json',
+      'anthropic-version': API_VERSION,
+      // Without this the API refuses a request made from a page.
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: {
+      model,
+      max_tokens: maxTokens,
+      stream: true,
+      thinking: { type: 'adaptive' },
+      output_config: {
+        effort,
+        format: { type: 'json_schema', schema }
+      },
+      system,
+      messages: [{ role: 'user', content: user }]
+    }
+  };
+}
+
+function geminiRequest(prov, { model, system, user, schema, maxTokens, effort }) {
+  /* `?alt=sse` is not optional: without it :streamGenerateContent
+     answers with a JSON array rather than server-sent events, and
+     the reader above would see no frames at all.
+
+     `responseJsonSchema` rather than `responseSchema`, because the
+     schemas in this file are plain JSON Schema — `responseSchema`
+     is an OpenAPI 3.0 subset that rejects `additionalProperties`,
+     which every schema here sets to false on purpose.
+
+     `maxOutputTokens` INCLUDES thinking tokens on this API, which
+     is why the ceilings each job passes are the budget for both
+     halves and not just the answer. `thinkingLevel` takes the same
+     words the Anthropic effort does, so one argument serves both. */
+  return {
+    url: prov.origin + '/v1beta/models/' + encodeURIComponent(model)
+       + ':streamGenerateContent?alt=sse',
+    authHeader: 'x-goog-api-key',
+    headers: { 'content-type': 'application/json' },
+    body: {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: schema,
+        maxOutputTokens: maxTokens,
+        thinkingConfig: { thinkingLevel: effort }
+      }
+    }
+  };
+}
+
+/** Anthropic's stream is typed events: a delta carries the text, a
+    message_delta carries the reason it stopped. */
+function anthropicFrame(evt) {
+  if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
+    return { text: evt.delta.text };
+  }
+  if (evt.type === 'message_delta' && evt.delta && evt.delta.stop_reason) {
+    return { stop: evt.delta.stop_reason };
+  }
+  if (evt.type === 'error') {
+    return {
+      error: (evt.error && evt.error.message)
+        ? String(evt.error.message) : 'The API ended the stream with an error.'
+    };
+  }
+  return null;
+}
+
+/* Gemini's finish reasons, in Anthropic's vocabulary. Normalised
+   HERE rather than at the two places that read `stop`, so that
+   `stop === 'max_tokens'` and `stop === 'refusal'` keep meaning
+   one thing each in the one path below. Everything that is a
+   model declining to answer maps to `refusal`, because that is
+   the sentence the user needs; which filter fired is not. */
+const GEMINI_STOP = {
+  STOP: 'end_turn',
+  MAX_TOKENS: 'max_tokens',
+  SAFETY: 'refusal',
+  RECITATION: 'refusal',
+  BLOCKLIST: 'refusal',
+  PROHIBITED_CONTENT: 'refusal',
+  SPII: 'refusal',
+  IMAGE_SAFETY: 'refusal'
+};
+
+/** Gemini's stream is a whole GenerateContentResponse per frame.
+    The text is in the candidate's parts — and a part marked
+    `thought` is the model's reasoning, not the answer, so it is
+    dropped: concatenated into the JSON it would make every parse
+    fail, which is the kind of bug that reads as "the model is
+    broken". */
+function geminiFrame(evt) {
+  if (evt.error) {
+    return {
+      error: evt.error.message
+        ? String(evt.error.message) : 'The API ended the stream with an error.'
+    };
+  }
+  const blocked = evt.promptFeedback && evt.promptFeedback.blockReason;
+  if (blocked) {
+    return { error: 'The API refused the request before answering (' + blocked + ').' };
+  }
+  const cand = Array.isArray(evt.candidates) ? evt.candidates[0] : null;
+  if (!cand) return null;
+  const parts = (cand.content && Array.isArray(cand.content.parts)) ? cand.content.parts : [];
+  const text = parts
+    .filter((p) => p && typeof p.text === 'string' && !p.thought)
+    .map((p) => p.text).join('');
+  const out = {};
+  if (text) out.text = text;
+  if (cand.finishReason) {
+    out.stop = GEMINI_STOP[cand.finishReason] || String(cand.finishReason).toLowerCase();
+  }
+  return (out.text || out.stop) ? out : null;
+}
+
+const WIRE = {
+  anthropic: { request: anthropicRequest, frame: anthropicFrame },
+  gemini:    { request: geminiRequest,    frame: geminiFrame }
+};
 
 /* ---- the one request ----------------------------------------
    Every job below is the same HTTP call with a different system
@@ -340,50 +461,48 @@ async function readStream(res, onText) {
    from an exported job, and every exported job is reachable only
    from a click. The key is read here, used in one header, and
    never returned, logged or rendered.
+
+   THE PROVIDER IS CHOSEN HERE AND NOWHERE ELSE. Everything above
+   this line — the three jobs, the four script stages, the schemas,
+   the quotation check — is written against this one function and
+   none of it knows which API it is talking to.
    ------------------------------------------------------------ */
 async function callModel({
   system, user, schema, maxTokens = 32000, effort = 'medium',
   onStatus, signal, progress
 }) {
+  const prov = provider();
   const key = getKey();
   if (!key) throw new AIError('No API key saved on this device.', 'nokey');
 
   const model = getModel();
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
 
+  const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
+  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
+
   let res;
   try {
-    res = await fetch(API_URL, {
+    res = await fetch(req.url, {
       method: 'POST',
       signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': API_VERSION,
-        // Without this the API refuses a request made from a page.
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        stream: true,
-        thinking: { type: 'adaptive' },
-        output_config: {
-          effort,
-          format: { type: 'json_schema', schema }
-        },
-        system,
-        messages: [{ role: 'user', content: user }]
-      })
+      /* The key is added HERE, to a header named by the wire
+         format, and it is the last thing to touch it. It is not in
+         `req`, it is not in the url, and it is not in anything
+         logged or thrown below. */
+      headers: { ...req.headers, [req.authHeader]: key },
+      body: JSON.stringify(req.body)
     });
   } catch (e) {
     if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
     /* A blocked connect-src and a dead network are the same
-       TypeError, and a user cannot tell them apart, so name both. */
+       TypeError, and a user cannot tell them apart, so name both.
+       The origin named is THIS provider's: sending somebody to add
+       the wrong host to their CSP is a worse error than none. */
     throw new AIError(
-      'Could not reach api.anthropic.com. Check the connection — and if you are '
+      'Could not reach ' + prov.host + '. Check the connection — and if you are '
       + 'running your own build of the studio, its Content-Security-Policy has to '
-      + 'allow connect-src https://api.anthropic.com.',
+      + 'allow connect-src ' + prov.origin + '.',
       'network'
     );
   }
@@ -391,13 +510,13 @@ async function callModel({
   if (!res.ok) {
     let body = null;
     try { body = await res.json(); } catch (e) { /* not every error is JSON */ }
-    throw errorForStatus(res.status, body);
+    throw errorForStatus(res.status, body, prov);
   }
   if (!res.body) throw new AIError('The API returned an empty response.', 'empty');
 
   let text, stop;
   try {
-    ({ text, stop } = await readStream(res, progress ? (sofar) => {
+    ({ text, stop } = await readStream(res, wire.frame, progress ? (sofar) => {
       const line = progress(sofar);
       if (line) say(line);
     } : null));
@@ -822,9 +941,7 @@ export async function beatCritique(job, { onStatus, signal } = {}) {
 }
 
 export default {
-  AI_KEY, AI_MODEL_KEY, AI_MODELS, DEFAULT_MODEL, API_ORIGIN,
-  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
-  getModel, setModel,
+  ...Providers,
   sliceScriptByScene, sceneScriptText, buildPrompt,
   buildDialoguePrompt, buildCritiquePrompt,
   draftShotDivision, dialoguePass, beatCritique, AIError

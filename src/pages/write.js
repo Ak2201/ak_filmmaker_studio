@@ -42,6 +42,11 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+/* The provider TABLE only — not src/lib/ai.js, which this page
+   still reaches with import() at a click. The disclosure below has
+   to name the host the key will actually go to, and a restated
+   hostname is a privacy claim that goes stale. */
+import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
 import * as Scriptgen from '../lib/scriptgen.js';
@@ -560,7 +565,7 @@ function renderPass(el, i) {
         + sum.steps + ' ' + (sum.steps === 1 ? 'step' : 'steps')
         + ' of your feature blueprint (logline, theme, who the characters are) '
       : 'nothing from your blueprint, because none of its spine steps is filled in yet, ')
-    + 'to api.anthropic.com using the key on this device. The rest of the screenplay '
+    + 'to ' + apiHost() + ' using the key on this device. The rest of the screenplay '
     + 'stays here. Nothing is sent until you click.'
   ));
 
@@ -1161,9 +1166,9 @@ function renderGenSynopsis() {
   if (!AIm) {
     wrap.append(
       h('p.wr-gen-note', {
-        text: 'Drafting the beat sheet needs your own Anthropic API key, kept on '
-          + 'this device and sent to nobody but api.anthropic.com. Loading and '
-          + 'editing the synopsis above needs nothing.'
+        text: 'Drafting the beat sheet needs your own ' + providerLabel() + ' API '
+          + 'key, kept on this device and sent to nobody but ' + apiHost() + '. '
+          + 'Loading and editing the synopsis above needs nothing.'
       }),
       h('div.wr-gen-acts', {}, [
         h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })
@@ -1363,8 +1368,8 @@ function renderGenerate() {
   if (!AIm) {
     section.append(
       h('p.wr-gen-note', {
-        text: 'Needs your own Anthropic API key, kept on this device and sent to '
-          + 'nobody but api.anthropic.com.'
+        text: 'Needs your own ' + providerLabel() + ' API key, kept on this '
+          + 'device and sent to nobody but ' + apiHost() + '.'
       }),
       h('div.wr-gen-acts', {}, [
         h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })

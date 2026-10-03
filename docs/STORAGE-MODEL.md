@@ -134,7 +134,8 @@ next person does not have to rediscover them.
 | --- | --- | --- |
 | `fms_studio_prefs_v1`, `fms_studio_theme_v1`, `fms_studio_skin_v1` | device | appearance is a property of the screen you are at, not of an account |
 | `fms_supabase_cfg_v1` | device | it is what lets you sign in at all; scoping it per account would lock the door and post the key inside |
-| `fms_ai_key_v1` | device | a bring-your-own key typed on this machine; see the header of `src/lib/ai.js` |
+| `fms_ai_key_v1`, `fms_ai_key_gemini_v1` | device | bring-your-own keys typed on this machine, one per provider; see the header of `src/lib/ai-providers.js`. Two keys rather than one renamed key: `fms_ai_key_v1` still means exactly what it meant when Anthropic was the only provider, so adding Gemini needed no migration |
+| `fms_ai_model_v1`, `fms_ai_model_gemini_v1`, `fms_ai_provider_v1` | device | which model, per provider, and which provider is active. A model id is only meaningful to the API it belongs to, so one shared model key would have meant switching provider carried a model the other side has never heard of |
 | `fms_note_*` | device | private notes are keyed by field name only. They are not separated per *project* either and never have been — two projects share a note on the same field. Separating them means renaming an open-ended key family, plus both backup importers, which is a migration of its own and not one to hide inside another change |
 | `fms_studio_cloud_queue_v1`, `fms_studio_sync_meta_v1`, `fms_studio_sync_salvage_v1` | device | all three are keyed by project id inside their value, and project ids do not collide across namespaces |
 

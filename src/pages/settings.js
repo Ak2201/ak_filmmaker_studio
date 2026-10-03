@@ -64,6 +64,9 @@ import '../styles/settings.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+/* The provider table. The key area is composed by ai-panel.js; this
+   page only needs to name the host in its own prose. */
+import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
 
@@ -115,12 +118,16 @@ function choices(label, attr, current, options) {
 
 /* ---- the key ------------------------------------------------ */
 function renderKey() {
+  /* Titled after the provider in use rather than after one of them.
+     A page headed "The Anthropic API key" above a Gemini key bar is
+     a page that is wrong about the only thing it is for. */
   const sec = section('ai', 'This device · never synced',
-    'The Anthropic API key.',
-    'The model-backed tools in this studio run against Anthropic’s API. There is '
+    'The ' + providerLabel() + ' API key.',
+    'The model-backed tools in this studio run against ' + apiName() + '. There is '
       + 'no server here to run them for you, so they use a key of your own — one '
       + 'key, every tool, this browser. Each of them says what it will send and '
-      + 'waits for a click before it sends it.');
+      + 'waits for a click before it sends it. Provider, below, switches which API '
+      + 'they run against; each one keeps its own key, so switching loses neither.');
 
   /* The module's own arrangement of the bar, the gate, the form and
      the disclosure. The disclosure body is this page's, because what
@@ -132,7 +139,7 @@ function renderKey() {
     + 'else. It is not written into a backup file, not synced to the cloud, not '
     + 'attached to a project, and nothing on this page sends it anywhere. The '
     + 'only thing that ever sends it is a tool you have clicked, and the only '
-    + 'place it is ever sent is api.anthropic.com. Every call is billed to your '
+    + 'place it is ever sent is ' + apiHost() + '. Every call is billed to your '
     + 'own account. Forget key removes it from this device; nothing you have '
     + 'written is touched.'
   ));

@@ -154,6 +154,62 @@ function renderMembers(d, myEmail) {
     wrap.append(form);
   }
 
+  if (canManage) wrap.append(filmsBlock(d));
+
+  return wrap;
+}
+
+/* ---- which films are in the account -------------------------
+   ATTACHING A FILM IS AN ACCESS-CONTROL CHANGE, NOT FILING, and
+   this block exists to make that a decision rather than a side
+   effect. has_project_access() grants every ACTIVE owner/admin of
+   the account edit on every project whose account_id matches — so
+   adding a film here hands it to everyone in the account, present
+   and future, and the confirm says exactly that.
+
+   It is also why creating an account does not sweep your films
+   into it. The two actions are separate on purpose: one makes a
+   shared space, the other decides what goes in it. */
+function filmsBlock(d) {
+  const wrap = h('div.acct-films');
+  wrap.append(h('p.acct-label', { text: 'FILMS IN THIS ACCOUNT' }));
+
+  const rows = d.projects || [];
+  if (!rows.length) {
+    wrap.append(h('p.st-note', {
+      text: 'No films have reached the cloud yet. A project appears here once it '
+          + 'has synced — this list is the account\u2019s, not this browser\u2019s.'
+    }));
+    return wrap;
+  }
+
+  const list = h('ul.acct-list');
+  rows.forEach((p) => {
+    const inAcc = p.account_id === d.account.id;
+    const elsewhere = !!p.account_id && !inAcc;
+    const row = h('li.acct-row');
+    row.append(h('div.acct-who', {}, [
+      h('span.acct-mail', { text: p.title || 'Untitled' }),
+      h('span.acct-state', {
+        text: inAcc ? 'shared with this account'
+            : elsewhere ? 'in another account'
+            : 'yours alone'
+      })
+    ]));
+    /* A film held by a DIFFERENT account is not this panel's to
+       move: the owner of that one decides. Shown, not actionable. */
+    if (!elsewhere) {
+      row.append(h('button.btn', {
+        type: 'button',
+        'data-acct-action': inAcc ? 'detach' : 'attach',
+        'data-project': p.id,
+        'data-title': p.title || 'Untitled',
+        text: inAcc ? 'Make it mine alone' : 'Share with the account'
+      }));
+    }
+    list.append(row);
+  });
+  wrap.append(list);
   return wrap;
 }
 
@@ -184,6 +240,7 @@ export async function refresh() {
   setState({ phase: 'loading', error: '' });
   try {
     const d = await Account.loadAccount();
+    if (d) { try { d.projects = await Account.listProjects(); } catch (e) { d.projects = []; } }
     setState({ phase: d ? 'ready' : 'none', data: d, busy: '' });
   } catch (e) {
     setState({ phase: 'none', data: null, error: Account.explain(e), busy: '' });
@@ -232,6 +289,26 @@ delegate(document, 'click', '[data-acct-action]', (e, el) => {
     const role  = (document.getElementById('acctRole')  || {}).value || 'member';
     setState({ busy: 'invite', error: '' });
     Account.inviteMember(state.data.account.id, email, role)
+      .then(() => refresh())
+      .catch((err) => setState({ busy: '', error: Account.explain(err) }));
+    return;
+  }
+
+  if (act === 'attach' || act === 'detach') {
+    const id    = el.getAttribute('data-project');
+    const title = el.getAttribute('data-title');
+    const on    = act === 'attach';
+    const msg = on
+      ? 'Share "' + title + '" with ' + state.data.account.name + '?\n\n'
+        + 'Everybody who is an owner or admin of this account \u2014 now or later \u2014 '
+        + 'will be able to open and EDIT it. Nothing is copied or moved; you stay '
+        + 'its owner.'
+      : 'Take "' + title + '" back out of ' + state.data.account.name + '?\n\n'
+        + 'Members lose access to it. Nothing written is deleted, and anybody '
+        + 'invited to the film itself keeps that.';
+    if (!confirm(msg)) return;
+    setState({ busy: 'films', error: '' });
+    Account.setProjectAccount(id, on ? state.data.account.id : null)
       .then(() => refresh())
       .catch((err) => setState({ busy: '', error: Account.explain(err) }));
     return;

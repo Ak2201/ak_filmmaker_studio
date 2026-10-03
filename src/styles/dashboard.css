@@ -367,3 +367,100 @@
 @media print {
   .db-cta-row, .db-proj-open, .db-next-go { display: none; }
 }
+
+/* ============================================================
+   READINESS — "could you shoot tomorrow?"
+   ------------------------------------------------------------
+   Three states, told apart by MORE THAN COLOUR: the mark changes
+   (tick or bullet), the left rule changes width, and the label
+   carries the count. Colour alone would fail the same people the
+   hue-coding assertion in verify exists to protect, and a 3px rule
+   is what that check asks for where a variant carries data.
+
+   Every value is a token. --ok-deep / --warn-deep / --danger are
+   used as RULES and MARKS, never as body text: a fill read as text
+   runs 3.3-4.4:1, which CLAUDE.md names as the single mistake
+   behind most of the AA work.
+   ============================================================ */
+.rd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rd-row {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+
+.rd-row.is-blocker { border-left-color: var(--danger); border-left-width: 6px; }
+.rd-row.is-gap     { border-left-color: var(--warn); }
+.rd-row.is-pass    { border-left-color: var(--ok); background: transparent; }
+
+.rd-mark {
+  flex: 0 0 auto;
+  font-family: var(--f-mono);
+  font-size: var(--t-base);
+  line-height: var(--lh-snug);
+}
+/* THE MARK IS INK, AND THE RULE CARRIES THE SEVERITY. The first
+   version coloured this glyph per severity and reached for
+   --danger-wash to do it — a BACKGROUND tint used as text, which the
+   AA walk measured at 1.09:1 and failed, three lines below a comment
+   saying not to do exactly that. There is no --danger-deep to fall
+   back on either.
+
+   Which turns out to be the better design anyway: severity is
+   already told three ways that do not depend on colour at all — the
+   glyph (tick or bullet), the left rule's colour, and its width
+   (6px for a blocker against 3px). A fourth signal that only works
+   for people who can see the hue was buying nothing. */
+.rd-row.is-blocker .rd-mark { color: var(--ink); }
+.rd-row.is-gap     .rd-mark { color: var(--ink); }
+.rd-row.is-pass    .rd-mark { color: var(--ink-muted); }
+
+.rd-body { flex: 1 1 auto; min-width: 0; }
+
+.rd-label {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-base);
+  line-height: var(--lh-snug);
+}
+/* A passed check is evidence, not news: it stays legible and stops
+   competing with the things that need doing. */
+.rd-row.is-pass .rd-label { color: var(--ink-muted); }
+
+.rd-items {
+  margin: var(--s2) 0 0;
+  color: var(--ink-body);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+
+.rd-hint {
+  margin: var(--s2) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  max-width: var(--measure);
+}
+
+.rd-go {
+  display: inline-block;
+  margin-top: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--brand-deep);
+}

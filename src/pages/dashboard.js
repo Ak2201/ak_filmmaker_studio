@@ -61,6 +61,8 @@ import Locations from '../lib/locations.js';
 import Contacts from '../lib/contacts.js';
 import Shots from '../lib/shots.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
+/* Derived, never stored — see the header of readiness.js. */
+import { readiness } from '../lib/readiness.js';
 
 import featureData from '../data/steps.feature.json';
 import prodData from '../data/steps.production.json';
@@ -334,6 +336,77 @@ function section(id, eyebrow, title, deck) {
   sec.append(h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
+}
+
+/* ---- readiness --------------------------------------------------
+   The whole section is derived at render time by readiness(); this
+   function only arranges what it returns. No state, no storage, and
+   no opinion about severity — that is decided in the model, where it
+   can be read next to the data it judges.
+
+   PASSED CHECKS ARE SHOWN, not filtered out. A list of only the
+   failures reads identically whether the production is clean or the
+   check silently stopped running, which is the trap the hue
+   assertion in verify already names.
+
+   Returns null when there are no scenes: a wall of green saying
+   nothing is wrong with nothing is the most misleading answer this
+   page could give. */
+function renderReadiness() {
+  const r = readiness();
+  if (!r.hasFilm) return null;
+
+  const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';
+  const deck = r.blockers
+    ? r.blockers + ' thing' + (r.blockers === 1 ? '' : 's') + ' would stop a shoot day, and '
+      + r.gaps + ' more will cost you one.'
+    : r.gaps
+      ? 'Nothing blocks a shoot day. ' + r.gaps + ' thing'
+        + (r.gaps === 1 ? ' is' : 's are') + ' still missing.'
+      : 'Every check passes. Nothing here is missing.';
+
+  const sec = section('readiness', 'Derived from your scenes · nothing to tick',
+    'Could you shoot tomorrow?', deck);
+
+  const list = h('ul.rd-list');
+  /* Failures first and blockers above gaps, because the order IS the
+     advice. Passed checks keep their place at the bottom as evidence
+     the question was asked. */
+  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
+  r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count)
+    .forEach((c) => list.append(readinessRow(c)));
+  sec.append(list);
+
+  const dot = sec.querySelector('.bd-eyebrow');
+  if (dot) dot.classList.add(tone);
+  return sec;
+}
+
+function readinessRow(c) {
+  const row = h('li.rd-row' + (c.passed ? '.is-pass'
+    : c.severity === 'blocker' ? '.is-blocker' : '.is-gap'));
+
+  row.append(h('span.rd-mark', { 'aria-hidden': 'true', text: c.passed ? '\u2713' : '\u2022' }));
+
+  const body = h('div.rd-body');
+  body.append(h('p.rd-label', {
+    text: c.passed ? c.label + ' — none' : c.label + ' — ' + c.count
+  }));
+
+  if (!c.passed) {
+    /* Named, not counted. "3 scenes have no location" sends somebody
+       hunting; naming them is the difference between a report and a
+       task list. Capped because a brand-new import can fail a check
+       on every scene it has. */
+    const shown = c.items.slice(0, 8).join(' · ');
+    const more  = c.items.length > 8 ? ' … and ' + (c.items.length - 8) + ' more' : '';
+    body.append(h('p.rd-items', { text: shown + more }));
+    body.append(h('p.rd-hint', { text: c.hint }));
+    if (c.where) body.append(h('a.rd-go', { href: c.where, text: 'Fix it \u2192' }));
+  }
+
+  row.append(body);
+  return row;
 }
 
 /* ---- header ----------------------------------------------------- */
@@ -693,6 +766,15 @@ function render() {
     } else {
       main.append(renderNext(snap), renderBlueprint(snap), renderChain(snap));
     }
+    /* OUTSIDE the isEmpty branch on purpose. `isEmpty` asks whether
+       the BLUEPRINT has been filled in, and readiness asks about the
+       SCENES — a producer who imported a script and has not answered
+       a single blueprint step is exactly who this is for, and the
+       first version hid it from them. renderReadiness() returns null
+       when there are no scenes, which is the condition that actually
+       governs it. */
+    const ready = renderReadiness();
+    if (ready) main.append(ready);
     main.append(renderProjects(projects, project));
     const activity = renderActivity();
     if (activity) main.append(activity);

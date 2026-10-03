@@ -222,6 +222,44 @@ function raiseConflict(remote) {
  * `force` is only ever reached from the user answering "keep mine"
  * out loud, never from the debounce.
  */
+/* THE HEAD AFTER A WRITE, READ RATHER THAN INFERRED.
+   ------------------------------------------------------------
+   The conflict primitive is one comparison — `remote.headRevisionId
+   !== st.revisionId` — so the only thing that matters is that both
+   sides of it come from the same place. They did not.
+
+   _doPull stored what readMeta() reported, which is authoritative,
+   and it never misbehaved. _doPush and connect()'s create path
+   stored what the UPLOAD response reported, and that is a different
+   value with different rules: Drive's own docs call headRevisionId
+   output-only and populated for binary-content files, and nothing
+   promises that a media PATCH returns the revision the write just
+   produced rather than the one it replaced. CLAUDE.md lists exactly
+   this as unproven. The symptom was unmistakable: a forced push
+   succeeded, syncedAt and revisionId were both recorded, and the
+   very next reconcile said "this backup changed somewhere else" —
+   so every later sync would refuse to upload, for ever, on a file
+   nobody else had touched.
+
+   So after a write, ASK. One GET, the same call reconcile will
+   make, which makes the two sides equal by construction instead of
+   by assumption.
+
+   The fallback keeps a working value rather than losing one: if the
+   re-read fails, take whatever the write returned. And if neither
+   yields an id, null is correct and SAFE — reconcile reads null as
+   "never seen" and refuses to clobber, which is the direction this
+   module is supposed to fail in. */
+async function headAfterWrite(fileId, writeResult) {
+  try {
+    const meta = await Drive.readMeta(fileId);
+    if (meta && meta.headRevisionId) return meta.headRevisionId;
+  } catch (e) {
+    console.warn('[drive] could not re-read the head revision', e);
+  }
+  return (writeResult && writeResult.headRevisionId) || null;
+}
+
 async function _doPush(opts) {
   opts = opts || {};
   if (!isConnected()) return { ok: false, reason: 'not-connected' };
@@ -236,7 +274,7 @@ async function _doPush(opts) {
     const out = await Drive.uploadBackup(st.fileId, serialise(buildBackup()));
     _conflict = null;
     writeState({
-      revisionId: out.headRevisionId || null,
+      revisionId: await headAfterWrite(st.fileId, out),
       link: out.webViewLink || st.link || null,
       syncedAt: new Date().toISOString()
     });
@@ -361,7 +399,7 @@ export async function connect() {
       enabled: true,
       fileId: made.id,
       link: made.webViewLink || null,
-      revisionId: made.headRevisionId || null,
+      revisionId: await headAfterWrite(made.id, made),
       syncedAt: new Date().toISOString()
     });
     setStatus(DRIVE_STATES.SYNCED, 'Backed up to Drive');

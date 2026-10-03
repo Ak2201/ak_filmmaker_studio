@@ -93,6 +93,7 @@ await new Promise((r) => server.listen(PORT, r));
 const FAKE_DRIVE = () => {
   const store = {
     files: {},        // id -> { id, name, body, headRevisionId, modifiedTime }
+    hideHeadOnWrite: false,   // see the media PATCH branch below
     revisions: {},    // id -> [ { id, modifiedTime, body } ]
     nextFile: 1,
     nextRev: 1,
@@ -163,7 +164,18 @@ const FAKE_DRIVE = () => {
       const f = store.files[decodeURIComponent(m[1])];
       if (!f) return json({ error: { message: 'not found' } }, 404);
       newRev(f, String(opts.body));
-      return json(meta(f));
+      /* A WRITE RESPONSE THAT WITHHOLDS THE HEAD. Drive calls
+         headRevisionId output-only and promises it for binary-content
+         files on a GET; nothing promises a media PATCH returns the
+         revision the write just made rather than the one it replaced.
+         This fake was well-behaved, which is exactly why it never
+         caught the bug it was built to catch — a push stored the
+         upload's id, reconcile compared it against readMeta's, and
+         every later sync refused to upload on a file nobody else had
+         touched. Flip this on to reproduce that. */
+      const m2 = meta(f);
+      if (store.hideHeadOnWrite) delete m2.headRevisionId;
+      return json(m2);
     }
     // one revision's contents
     m = u.match(/\/drive\/v3\/files\/([^/]+)\/revisions\/([^?]+)\?/);
@@ -280,6 +292,25 @@ console.log('\n--- push, and the head-revision guard ---');
   check('a push with an unmoved head uploads', ok.ok, true);
   const rev2 = await page.evaluate(() => window.StudioDrive.readState().revisionId);
   check('the push recorded a NEW head revision', rev2 !== rev1, true);
+
+  /* ---- THE REGRESSION THIS HARNESS MISSED --------------------
+     A push whose upload response withholds headRevisionId must still
+     leave the device in sync, because the head is RE-READ after the
+     write rather than taken from it. Before that fix the stored id
+     was null, the next reconcile saw a head that "moved", and a file
+     nobody else had touched produced a permanent conflict: Drive
+     would never upload again.
+
+     Asserted as a round trip rather than by inspecting storage —
+     what matters is the next reconcile's verdict, not the value. */
+  await page.evaluate(() => { window.__drive.hideHeadOnWrite = true; });
+  await page.evaluate(() => window.StudioDrive.push({ force: true }));
+  const quiet = await page.evaluate(() => window.StudioDrive.reconcile());
+  check('a push whose response hides the head still reconciles clean',
+        [quiet.ok, quiet.did], [true, 'nothing']);
+  check('and the device did not land in a conflict',
+        await page.evaluate(() => window.StudioDrive.getDriveStatus().state), 'synced');
+  await page.evaluate(() => { window.__drive.hideHeadOnWrite = false; });
 
   /* Somebody else's device writes the file. Exactly the thing that
      makes last-write-wins destroy a month of work. */

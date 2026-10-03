@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" data-volume="studio">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · The Filmmaker's Studio</title>
+<meta name="description" content="What The Filmmaker's Studio stores, where it stores it, and what never leaves your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+</head>
+<body>
+<main class="legal">
+
+<a class="legal-back" href="/">&larr; The Filmmaker's Studio</a>
+
+<h1>Privacy</h1>
+<p class="legal-sub">What this app stores, where it stores it, and what never leaves your device.</p>
+<p class="legal-date">Last updated 3 October 2026</p>
+
+<div class="legal-key">
+  <p><strong>The Filmmaker's Studio runs entirely in your browser.</strong> There is no
+  server of ours behind it. Everything you write &mdash; scripts, scene breakdowns,
+  budgets, contacts, notes &mdash; is saved in your own browser's local storage on the
+  device you wrote it on, and stays there unless you deliberately turn on one of the
+  optional features below.</p>
+  <p>We do not operate a database of your work, cannot read it, and have no way to
+  recover it for you if you clear your browser data.</p>
+</div>
+
+<h2>What the app stores on your device</h2>
+
+<p>Your work is held in your browser's <code>localStorage</code> under keys beginning
+<code>fms_</code>. This includes every project you create and everything in it, plus your
+preferences &mdash; which theme you chose, which project is open, and so on.</p>
+
+<p>Browser storage is per-browser and per-device. Work saved in Chrome on a laptop is not
+visible in Safari on a phone, and clearing site data for this domain deletes it
+permanently. The Export button on the hub writes the whole studio to a file you keep;
+that file is the only backup the app has unless you connect one of the services below.</p>
+
+<p>The app sets no cookies and runs no analytics, trackers, advertising or
+session-recording of any kind. Nothing measures what you do here.</p>
+
+<h2>Optional: syncing to your own Supabase project</h2>
+
+<p>You may connect an account so that projects follow you between devices and can be
+shared with collaborators. This uses <a href="https://supabase.com" rel="noopener">Supabase</a>, and the
+project it talks to is the one <em>you</em> configure by entering its URL and public
+("anon") key into the app. Your work is written to that database, which belongs to
+whoever owns it &mdash; not to us.</p>
+
+<p>Signing in is handled by Supabase Auth and Google is the only provider offered. When
+you sign in, Supabase stores the email address on your Google account so that projects,
+comments and share invitations can be attributed to you. Your Google password is never
+seen by this app or by Supabase.</p>
+
+<p>If you never enter a Supabase URL and key, none of this happens and no account exists.</p>
+
+<h2>Optional: backing up to your own Google Drive</h2>
+
+<p>You may connect Google Drive to keep one backup file current. Three things about how
+that is built are worth stating plainly:</p>
+
+<ul>
+  <li><strong>The permission requested is <code>drive.file</code>.</strong> It grants access
+  only to files this app itself created. The app cannot see, list, read or alter anything
+  else in your Drive &mdash; not your documents, not your photos, not files another app made.</li>
+
+  <li><strong>It writes one file,</strong> named <code>filmmakers-studio-backup.json</code>,
+  in your own Drive, where you can open, copy, download or delete it yourself. It contains
+  the same thing the Export button produces. Disconnecting Drive from the app never
+  deletes that file.</li>
+
+  <li><strong>The access token is never written to disk.</strong> It is held in memory for
+  the life of the browser tab and is gone when you close it. There is no refresh token and
+  no client secret, because a static site has nowhere safe to keep either.</li>
+</ul>
+
+<p>You can revoke the app's access to your Drive at any time from your
+<a href="https://myaccount.google.com/permissions" rel="noopener">Google account permissions page</a>.</p>
+
+<h2>Optional: AI features with your own API key</h2>
+
+<p>Some tools &mdash; drafting a shot division, critiquing beats, turning a synopsis into a
+script &mdash; call a large language model. They are off unless you supply your own API key
+for Anthropic or Google Gemini.</p>
+
+<p>That key is stored on your device only, under <code>fms_ai_key_v1</code>. It is sent as a
+request header directly from your browser to the provider the key belongs to, and never to
+us. It is <strong>deliberately excluded</strong> from exports and from the Drive backup, so a
+backup file you hand to somebody else does not carry your key. When you use these features,
+the text you send is handled under that provider's own terms and privacy policy, not this one.</p>
+
+<h2>Third parties your browser contacts</h2>
+
+<ul>
+  <li><strong>Google Fonts</strong> (<code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code>)
+  &mdash; typefaces, on every page. Like any request to a third party, this reveals your IP
+  address to Google.</li>
+  <li><strong>Your Supabase project</strong> &mdash; only once you have configured one.</li>
+  <li><strong>Google Identity Services and the Google Drive API</strong> &mdash; only once you
+  connect Drive.</li>
+  <li><strong>Anthropic or Google Gemini</strong> &mdash; only when you run an AI tool with your
+  own key.</li>
+</ul>
+
+<p>Nothing else is contacted. The site's Content-Security-Policy names this exact list, so a
+request to anywhere else is refused by your browser before it is sent.</p>
+
+<h2>Children</h2>
+
+<p>This is a professional filmmaking tool and is not directed at children under 13. No age
+information is collected, because no personal information is collected.</p>
+
+<h2>Changes</h2>
+
+<p>If this policy changes, the date at the top changes with it. Because the app holds no
+contact details for you, there is no mailing list to notify &mdash; the current version is
+always the one on this page.</p>
+
+<h2>Contact</h2>
+
+<p>Questions about this policy, or about data held in a Supabase project you were invited
+to: <a href="mailto:arunaaron85@gmail.com">arunaaron85@gmail.com</a>.</p>
+
+<p class="legal-foot">The Filmmaker's Studio &middot; <a href="/terms">Terms of service</a> &middot; <a href="/">Back to the studio</a></p>
+
+</main>
+<script type="module" src="/src/pages/legal.js"></script>
+</body>
+</html>

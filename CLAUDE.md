@@ -38,6 +38,7 @@ for hosted previews that shouldn't outlive themselves in a cache.
 index.html feature.html short.html library.html   page entries (Vite MPA)
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
+privacy.html terms.html                           the two legal documents
 arunak-*.html                                     redirect stubs for old URLs
 src/
   data/      ALL content, as JSON. The asset. navigation.json is the IA.
@@ -1073,17 +1074,24 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    section, along with comment-status forgery, replies cascading away with
    a deleted parent, and three account-tier escalations.
 
-   **What is left is not small: the audit is STATIC.** `supabase-schema.sql`
-   has still never run against a database, and the doc ends with ten live
-   checks needing two real accounts. Also open — share tokens are stored in
+   **The SCHEMA HAS NOW RUN; the AUDIT is still static.** This note said for
+   a long time that `supabase-schema.sql` had never met a database, and that
+   stopped being true without anybody updating it — which is the failure mode
+   this file exists to avoid. All seven tables are live on the project
+   `conhlrulxfwkhsnymakz`, sections 11 and 12 (`claim_invite`, the scriptgen
+   and songs scopes) included, and the SQL file itself records the two runs.
+   What has NOT happened is the live half of the audit: `docs/SECURITY-RLS.md`
+   ends with ten checks needing two real accounts, and none of them has been
+   executed. Also open — share tokens are stored in
    plaintext (a product call: the owner's "re-copy this link" depends on
    it), and Supabase Realtime could not be verified statically, because
    DELETE payloads are documented as not RLS-filtered the way INSERT and
    UPDATE are.
 
    `claim_invite()` now EXISTS — schema section 11, wired in `cloud.js`,
-   with nine live checks written into `docs/SECURITY-RLS.md`. It has never
-   been executed against a database, so it closes the gap on paper only.
+   with nine live checks written into `docs/SECURITY-RLS.md`. The function is
+   deployed, but none of those nine checks has been run against it, so its
+   BEHAVIOUR is still only argued rather than observed.
    The credential is deliberately the EMAIL, not a token: an `owner`/`admin`
    row is read by `has_project_access()` and grants `edit` on every project
    in the account with no collaborator row, so a forwardable bearer string
@@ -1416,6 +1424,37 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     server, Drive's actual revision retention, and the CSP as a live browser
     enforces it. All six need a real Google account and a deployed host.
 
+    **THE CLIENT ID EXISTS NOW, AND IT IS COMMITTED.** `.env` carries
+    `VITE_GOOGLE_CLIENT_ID` for the Web client "Filmmakers Studio - Drive
+    (browser)" in the Google Cloud project `filmstudio-495419`. Committing it
+    is the deliberate part: Vite inlines every `VITE_*` into the bundle, so
+    the value ships in the page whatever we do, and Vercel builds from git —
+    a value only in the dashboard would make a local build and the deployed
+    one disagree about whether Drive exists at all. What actually guards the
+    account is the client's **Authorised JavaScript origins** list, which is
+    why a new deploy domain is a change in the Google console, not in this
+    repo. Registered today: the vercel.app host, `localhost:5173` (dev) and
+    `localhost:4173` (preview). A real secret still goes in `.env.local`,
+    which is now gitignored; the GIS token model uses no secret at all.
+
+    **Setting it moved the gate.** With a client id present, `settings.html`
+    renders the Drive panel instead of the "this build was made without a
+    Google client id" paragraph — nine words left the page and seventeen
+    arrived, which the text check correctly failed. The answer was
+    `npm run baseline`, not an EXPECTED row: nine allowances for one cause is
+    the list growing, and the diff was confined to `settings` with zero
+    data-key movement on any of the sixteen pages, so the recapture was
+    provably narrow. Check that diff yourself before re-baselining for the
+    same reason; a wider one means something else drifted too.
+
+    **The consent screen is the remaining blocker, and it is not code.** The
+    Google project is still `Testing` with zero test users, which means NO
+    account can consent — including the developer's — so Drive and the
+    Supabase Google sign-in both fail until it is published or a test user is
+    added. Publishing an External app needs a privacy policy and terms of
+    service on the authorised domain, which is what `privacy.html` and
+    `terms.html` are for (see the note on them below).
+
 ## Things that are deliberate, not oversights
 
 - ~~`radius: 2px`. The studio is printed matter, not iOS.~~ **Corrected, not
@@ -1434,6 +1473,26 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
   missing". The dots advance it on click and nothing else. See
   `src/data/announcements.json`, which says so where the next person to add an
   item will be looking.
+- **`privacy.html` and `terms.html` keep their words in the MARKUP**, which
+  every other page here is forbidden to do, and the exception is the point.
+  Those pages exist because Google will not publish an OAuth consent screen
+  without them, so the first readers are a reviewer and a crawler — and a page
+  that renders itself from JS hands both an empty `<div id="app">`. Their only
+  script is `src/pages/legal.js`, which imports two stylesheets and stops: no
+  `store.js` (they touch no storage), no `chrome.js` (no toolbar, no theme
+  picker, no shell to re-init), no `pwa.js`. The rule they are NOT breaking is
+  rule 2: that one exists because the 24 steps are DERIVED and were drifting
+  in three places. These words are derived from nothing and counted by
+  nothing.
+
+  Two consequences to know before editing them. **No skin loads**, because
+  `skin.js` never runs, so `legal.css` may not read a `--sk-*` variable and
+  reads the fixed tokens instead — the one place in this codebase where that
+  is correct rather than the trap named above. And **they are not in the
+  gate**: `PAGES` is read from `baseline.json` and neither is in it, so the
+  text check, the AA walk and the overflow measurement all skip them. Read
+  them in a browser, at 390px, in both themes. Nothing else will.
+
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.
 - `legacy/` is committed on purpose — now as the historical record and as the

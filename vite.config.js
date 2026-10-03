@@ -70,6 +70,10 @@ export default defineConfig({
         study:      resolve(__dirname, 'study.html'),
         dissect:    resolve(__dirname, 'dissect.html'),
         settings:   resolve(__dirname, 'settings.html'),
+        // The two documents Google will not publish an OAuth consent
+        // screen without. They carry no app code — see src/pages/legal.js.
+        privacy:    resolve(__dirname, 'privacy.html'),
+        terms:      resolve(__dirname, 'terms.html'),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

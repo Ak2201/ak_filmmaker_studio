@@ -1,11 +1,19 @@
 /* ============================================================
    SETTINGS — the things that belong to this DEVICE, not the film
    ------------------------------------------------------------
-   Everything on this page is per-device and per-browser. Nothing
-   here is part of a project, nothing here is in a backup file, and
-   nothing here syncs. That is the line the page is drawn along: the
-   hub owns projects and backups, and this owns the small set of
-   choices that follow the machine rather than the work.
+   Almost everything on this page is per-device and per-browser:
+   nothing in the key, Drive or Appearance sections is part of a
+   project, in a backup file, or synced. That is the line the page
+   was drawn along — the hub owns projects and backups, and this owns
+   the choices that follow the machine rather than the work.
+
+   TWO SECTIONS NOW SIT OUTSIDE THAT LINE and the header has to say
+   so rather than let the file assert something untrue. The admin
+   console describes which Supabase project the BUILD talks to, and
+   the account panel is about an account shared with other people —
+   the only thing here that is neither this device nor this film.
+   Both are here because they are settings and there is nowhere
+   better; both render for nobody who is not entitled to see them.
 
    WHY IT EXISTS. The Anthropic API key could only be set from
    inside whichever AI panel a page happened to show — the shot
@@ -75,6 +83,10 @@ import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
    is two things to keep in step, and setCfg() has exactly one caller
    for a reason. */
 import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
+/* The account section builds and refreshes itself; this page only
+   says where it goes. It returns null when signed out, like
+   renderAdmin(), so append stays branchless. */
+import { accountSection } from '../ui/account-panel.js';
 
 const app = document.getElementById('app');
 
@@ -472,7 +484,8 @@ function render() {
   const body = h('div.st-body');
   /* renderAdmin() returns null for everybody else; append ignores a
      null, so there is no branch here and no empty section either. */
-  body.append(renderKey(), renderDrive(), renderAppearance(), renderAdmin(), renderElsewhere());
+  body.append(renderKey(), renderDrive(), renderAppearance(),
+              accountSection(section), renderAdmin(), renderElsewhere());
   main.append(body);
 
   app.replaceChildren(main);

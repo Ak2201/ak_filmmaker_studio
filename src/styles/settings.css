@@ -192,3 +192,110 @@
 @media (max-width: 719px) {
   .st-body { padding-inline: var(--s4); }
 }
+
+/* ============================================================
+   THE ACCOUNT PANEL
+   ------------------------------------------------------------
+   Appended to the settings sheet rather than given its own file:
+   it is one section of one page and a second stylesheet would be a
+   second place to keep the shapes in step. Every value is a token
+   or a --sk-* variable, so a skin still owns the shapes — see
+   invariant 7 and the 80 rules that once took var(--radius)
+   directly.
+   ============================================================ */
+.acct-name {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  color: var(--ink);
+  margin: 0 0 var(--s2);
+}
+
+.acct-seats {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  margin: 0 0 var(--s4);
+}
+/* Not --warn as text: a fill is not a text colour, and --warn-deep
+   is the one mixed to be read. See the AA notes in CLAUDE.md. */
+.acct-seats.is-full { color: var(--warn-deep); }
+
+.acct-list {
+  list-style: none;
+  margin: 0 0 var(--s5);
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.acct-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.acct-who { flex: 1 1 14rem; min-width: 0; }
+
+.acct-mail {
+  display: block;
+  color: var(--ink);
+  font-size: var(--t-base);
+  /* min-width:0 on the flex child above is what makes this bite —
+     the pairing base.css already documents for long prose. */
+  overflow-wrap: anywhere;
+}
+
+.acct-state {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.acct-revoke { flex: 0 0 auto; }
+
+.acct-label {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin: var(--s4) 0 var(--s2);
+}
+
+.acct-input {
+  display: block;
+  width: 100%;
+  max-width: var(--measure);
+  padding: var(--s3);
+  margin-bottom: var(--s3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--radius));
+}
+.acct-input:focus-visible {
+  outline: var(--sk-focus-w, 3px) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+/* --ink on --danger-wash, NOT --danger as the text colour. There is
+   no --danger-deep in tokens.css, so the obvious
+   `var(--danger-deep, var(--danger))` would have fallen through to a
+   FILL used as text — 3.3-4.4:1, the single mistake CLAUDE.md says
+   accounted for most of the AA work. The wash carries the meaning;
+   the ink carries the words. */
+.acct-error {
+  color: var(--ink);
+  background: var(--danger-wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  padding: var(--s3);
+  margin: 0 0 var(--s4);
+  font-size: var(--t-small);
+}

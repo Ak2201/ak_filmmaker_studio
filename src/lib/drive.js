@@ -35,10 +35,15 @@
    that one (see ai.js). There is no refresh token because a
    refresh token needs a client secret and a server to keep it in,
    and this is a static build with neither. Access tokens last
-   about an hour, so expiry is handled by ASKING AGAIN rather than
-   by failing: once consent has been given, Google Identity
-   Services can mint a new one silently from the user's existing
-   Google session.
+   about an hour, so expiry is handled by ASKING AGAIN — and ASKING
+   NEEDS A CLICK. This used to say Google Identity Services could
+   mint a new one "silently from the user's existing Google
+   session"; it cannot. google.accounts.oauth2's token client always
+   opens a popup, `prompt: ''` suppresses the consent SCREEN and not
+   the window, and a popup with no user gesture behind it is blocked
+   (observed: popup_failed_to_open). That is why the Connect control
+   on settings.html is a button, and why an expired token surfaces
+   as an error there rather than quietly refreshing itself.
 
    THE CLIENT ID IS A BUILD SETTING, NOT A STORAGE KEY.
    `VITE_GOOGLE_CLIENT_ID` at build time. An OAuth client id is
@@ -108,9 +113,9 @@ export function forgetToken() { _token = null; }
        can tell the difference;
      - it is held exactly as that one is — a module variable, gone
        when the document is — and still never written to storage;
-     - it expires, and when it does the GIS path below takes over
-       silently, because the consent it needs was recorded against
-       this same client at sign-in.
+     - it expires, and when it does the GIS path below needs a click,
+       because that path is a popup. See the header: there is no
+       silent re-mint in this flow.
 
    That last point is the reason this is an addition rather than a
    replacement. Supabase returns `provider_token` on the sign-in

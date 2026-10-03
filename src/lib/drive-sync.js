@@ -448,76 +448,74 @@ Store.subscribe('saved', () => {
    live sync (ownsSync), so Drive connects as the BACKUP it is, writes
    its file, and stays manual. Two live syncers writing the same
    storage would echo each other forever. */
-/* THE RELOAD BEATS THE CONNECT, SO THE CONNECT HAS TO SURVIVE IT.
+/* WHY THERE IS NO "SILENT MINT" FALLBACK HERE, HAVING TRIED ONE.
    ------------------------------------------------------------
-   adoptSignInToken() below is a fast path and cannot be the only
-   one. cloud.js's auth handler calls notifyAuth() — which is where
-   that runs — and then Store.setAccount(user.id), which on a FIRST
-   sign-in sees the namespace change and schedules location.reload()
-   on a zero timer. connect() is several Drive round trips long, so
-   the reload lands first and the document dies mid-request. Nothing
-   is written, nothing throws, and provider_token does not exist
-   after the reload because Supabase returns it once and never
-   persists it. That is precisely the silence this was debugged out
-   of: Drive off, no state key, no console error.
+   The obvious repair for a missing token is to ask GIS for another
+   one with `prompt: ''`. It cannot work unattended and the failure is
+   worth recording so nobody rebuilds it:
 
-   PERSISTING THE TOKEN WOULD BE THE WRONG FIX. drive.js keeps it in
-   a module variable on purpose and the header there says why; a
-   credential written to storage is the mistake this app already
-   refuses for the AI key.
+     ERROR_CB type=popup_failed_to_open
+     [GSI_LOGGER]: Failed to open popup window ... display=popup
 
-   So use the thing that DOES survive: the consent. Sign-in asked for
-   drive.file and the user granted it, and a grant is recorded
-   against the client id on Google's side, not in this page. After
-   the reload GIS can mint a token silently — no popup, no prompt —
-   because the consent is already there. So we simply try, once per
-   document, whenever somebody is signed in and Drive is not
-   connected yet.
+   google.accounts.oauth2's token client ALWAYS opens a popup. The
+   empty prompt suppresses the consent SCREEN, not the window, and a
+   popup with no user gesture behind it is blocked by every browser.
+   That is why the Connect button on settings.html exists and why it
+   has to be a button. drive.js's header claim that GIS can re-mint
+   "silently" is true of the One Tap / ID-token flow and NOT of this
+   one; it is corrected there.
 
-   interactive:false is doing the safety work. A user who has never
-   granted drive.file gets a rejected promise and nothing else: no
-   popup, no error surfaced, no state written. So this is only ever
-   an auto-connect for people who already said yes. */
+   None of which matters, because the token does not need re-minting:
+   see below. */
 let _autoConnectTried = false;
 
 async function autoConnectIfGranted() {
   if (_autoConnectTried) return;
-  if (!Drive.isConfigured() || isConnected()) return;
-  const c = (typeof window !== 'undefined') && window.StudioCloud;
-  if (!c || !c.getSession || !c.getSession()) return;   // only for the signed in
+  if (!Drive.isConfigured()) return;
+  if (!Drive.hasToken()) return;      // nothing adopted — the button's job
   _autoConnectTried = true;
-
   try {
-    await Drive.getToken({ interactive: false });
-  } catch (e) {
-    /* No consent on record, or the Google session is gone. Both are
-       ordinary and neither is this function's business to report —
-       the button on settings.html is still there. */
-    return;
-  }
-  try {
-    await connect();
+    /* Already connected means the file exists and this is a later
+       load: reconcile, never a second create. */
+    await (isConnected() ? reconcile() : connect());
   } catch (e) {
     console.warn('[drive] auto-connect after sign-in', e);
     setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. Try the button on Settings.');
   }
 }
 
+/* ADOPTS ONLY. Connecting is autoConnectIfGranted()'s job, so that
+   "is there a token" and "what to do about it" stay one decision
+   each — the first version did both and double-fired once the
+   caller started reacting to a return value.
+
+   @returns {boolean} true when Drive now holds a usable token.
+
+   THE TOKEN SURVIVES A RELOAD, WHICH THIS CODE ONCE ASSUMED IT DID
+   NOT. Supabase documents provider_token as returned on the sign-in
+   response and not persisted; supabase-js 2.45.4 nevertheless keeps
+   it inside the session blob it writes to localStorage, so a
+   restored session still carries it. Measured on a reloaded page:
+   persisted true, live true. That single fact is why Drive can
+   connect after a sign-in with no popup and no second consent — and
+   it is pinned to a VERSION, so if the pin moves, check it again.
+
+   This app still never writes the token itself; it reads one the
+   auth library had already stored.
+
+   The expiry is the soft spot. `expires_in` here is the SUPABASE
+   session's, not Google's, and the Google token dies an hour after
+   it was minted — which may be a while before this page loaded. A
+   stale one produces a 401 on the first Drive call; drive.js then
+   asks for an interactive token, which is a popup, which is blocked
+   without a gesture. The result is an error on the settings page and
+   a working Connect button, not a wrong write. */
 function adoptSignInToken(sess) {
-  if (!Drive.isConfigured()) return;
+  if (!Drive.isConfigured() || Drive.hasToken()) return Drive.hasToken();
   const c = (typeof window !== 'undefined') && window.StudioCloud;
   const tok = c && c.providerToken && c.providerToken();
-  if (!tok) return;
-  if (!Drive.adoptToken(tok, sess && sess.expires_in)) return;
-  /* connect() asks Drive.getToken(), which hands back the token we
-     just adopted instead of opening anything — that is the whole
-     trick. If this device was already connected, there is a file
-     already and reconcile is the right call, not a second create. */
-  const job = isConnected() ? reconcile() : connect();
-  Promise.resolve(job).catch((e) => {
-    console.warn('[drive] connect after sign-in', e);
-    setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. Try the button on Settings.');
-  });
+  if (!tok) return false;
+  return Drive.adoptToken(tok, Math.min(Number(sess && sess.expires_in) || 3600, 3600));
 }
 
 (function boot() {
@@ -568,8 +566,13 @@ function adoptSignInToken(sess) {
        provider_token is still SIGNED_IN-only, so adoptSignInToken
        keeps that filter. */
     c.onAuth((event, sess) => {
-      if (event === 'SIGNED_IN') adoptSignInToken(sess);
-      if (sess) autoConnectIfGranted();
+      if (!sess) return;
+      /* ANY event with a session, not SIGNED_IN only. supabase-js
+         2.45.4 announces a RESTORED session as INITIAL_SESSION, which
+         is what every load after the sign-in gets — and those are the
+         loads that can finish, since the sign-in load is the one
+         setAccount() reloads. */
+      if (adoptSignInToken(sess)) autoConnectIfGranted();
     });
 
     /* Already restored before we subscribed — ensureClient() reads the
@@ -578,11 +581,17 @@ function adoptSignInToken(sess) {
        race nobody should have to win. Check now AND once more after
        the restore has had time to land; autoConnectIfGranted() is
        idempotent, so the extra call costs a function call. */
-    if (c.getSession && c.getSession()) {
-      adoptSignInToken(c.getSession());
-      autoConnectIfGranted();
-    }
-    setTimeout(autoConnectIfGranted, 2500);
+    /* Already restored before we subscribed: ensureClient() reads the
+       session behind an await and registers its listener afterwards,
+       so whether INITIAL_SESSION lands before or after this line is a
+       race nobody should have to win. Try now and once more later;
+       both paths are idempotent. */
+    const tryNow = () => {
+      const sess = c.getSession && c.getSession();
+      if (sess && adoptSignInToken(sess)) autoConnectIfGranted();
+    };
+    tryNow();
+    setTimeout(tryNow, 2500);
   }, 0);
 
   if (!isConnected()) {

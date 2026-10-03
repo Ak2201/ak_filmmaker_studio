@@ -443,15 +443,18 @@ export function isAdmin() {
    a Google scope of its own. Drive reads it so that ONE consent
    covers both jobs.
 
-   It is deliberately read off `session` rather than copied anywhere:
-   Supabase returns `provider_token` on the sign-in response ONLY and
-   does not persist it, so this is null again after a reload. That is
-   not a bug to work around here — drive.js re-mints silently through
-   GIS on later loads, which works without a prompt precisely because
-   the consent this token came from was recorded against the same
-   client id. Storing it instead would mean writing a credential to
-   disk, which this app refuses to do for the AI key and should refuse
-   to do for this. */
+   Read off `session` rather than copied anywhere, so this app still
+   never writes a Google credential itself.
+
+   IT IS NOT GONE AFTER A RELOAD, WHICH THIS COMMENT USED TO CLAIM.
+   Supabase documents provider_token as returned on the sign-in
+   response and not persisted — and supabase-js 2.45.4 nevertheless
+   writes it inside the session blob it saves to localStorage, so a
+   RESTORED session still carries it. Measured on a reloaded page:
+   present. drive-sync.js depends on that, because the alternative it
+   was built on does not exist: GIS's token client always opens a
+   popup, so there is no silent re-mint to fall back to. Both facts
+   are pinned to that version; if the pin moves, re-measure. */
 export function providerToken() {
   return (session && session.provider_token) || null;
 }

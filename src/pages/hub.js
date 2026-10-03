@@ -415,7 +415,7 @@ function heroMarkup() {
           <span class="hero-edition">EDITION 01 · CHENNAI · MMXXVI</span>
         </div>
 
-        <h1>The <span class="light">Filmmaker's</span><br>Studio.</h1>
+        <h1><span class="light">FilmMaker</span><br>Studio.</h1>
 
         <p class="hero-deck">Three companion blueprints, one reference library. Build a <em>feature</em>, draft a <em class="s">short</em>, study the <em class="g">craft</em> — all from one desk.</p>
 

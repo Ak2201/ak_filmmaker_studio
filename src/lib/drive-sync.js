@@ -448,6 +448,61 @@ Store.subscribe('saved', () => {
    live sync (ownsSync), so Drive connects as the BACKUP it is, writes
    its file, and stays manual. Two live syncers writing the same
    storage would echo each other forever. */
+/* THE RELOAD BEATS THE CONNECT, SO THE CONNECT HAS TO SURVIVE IT.
+   ------------------------------------------------------------
+   adoptSignInToken() below is a fast path and cannot be the only
+   one. cloud.js's auth handler calls notifyAuth() — which is where
+   that runs — and then Store.setAccount(user.id), which on a FIRST
+   sign-in sees the namespace change and schedules location.reload()
+   on a zero timer. connect() is several Drive round trips long, so
+   the reload lands first and the document dies mid-request. Nothing
+   is written, nothing throws, and provider_token does not exist
+   after the reload because Supabase returns it once and never
+   persists it. That is precisely the silence this was debugged out
+   of: Drive off, no state key, no console error.
+
+   PERSISTING THE TOKEN WOULD BE THE WRONG FIX. drive.js keeps it in
+   a module variable on purpose and the header there says why; a
+   credential written to storage is the mistake this app already
+   refuses for the AI key.
+
+   So use the thing that DOES survive: the consent. Sign-in asked for
+   drive.file and the user granted it, and a grant is recorded
+   against the client id on Google's side, not in this page. After
+   the reload GIS can mint a token silently — no popup, no prompt —
+   because the consent is already there. So we simply try, once per
+   document, whenever somebody is signed in and Drive is not
+   connected yet.
+
+   interactive:false is doing the safety work. A user who has never
+   granted drive.file gets a rejected promise and nothing else: no
+   popup, no error surfaced, no state written. So this is only ever
+   an auto-connect for people who already said yes. */
+let _autoConnectTried = false;
+
+async function autoConnectIfGranted() {
+  if (_autoConnectTried) return;
+  if (!Drive.isConfigured() || isConnected()) return;
+  const c = (typeof window !== 'undefined') && window.StudioCloud;
+  if (!c || !c.getSession || !c.getSession()) return;   // only for the signed in
+  _autoConnectTried = true;
+
+  try {
+    await Drive.getToken({ interactive: false });
+  } catch (e) {
+    /* No consent on record, or the Google session is gone. Both are
+       ordinary and neither is this function's business to report —
+       the button on settings.html is still there. */
+    return;
+  }
+  try {
+    await connect();
+  } catch (e) {
+    console.warn('[drive] auto-connect after sign-in', e);
+    setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. Try the button on Settings.');
+  }
+}
+
 function adoptSignInToken(sess) {
   if (!Drive.isConfigured()) return;
   const c = (typeof window !== 'undefined') && window.StudioCloud;
@@ -495,12 +550,29 @@ function adoptSignInToken(sess) {
   setTimeout(() => {
     const c = (typeof window !== 'undefined') && window.StudioCloud;
     if (!c || !c.onAuth) return;
-    c.onAuth((event, sess) => { if (event === 'SIGNED_IN') adoptSignInToken(sess); });
-    /* Already signed in when we got here — the redirect case. */
-    if (c.getSession && c.getSession()) adoptSignInToken(c.getSession());
+    c.onAuth((event, sess) => {
+      if (event !== 'SIGNED_IN') return;
+      adoptSignInToken(sess);   // fast path, when no reload intervenes
+      autoConnectIfGranted();   // the one that survives the reload
+    });
+    /* Already signed in when we got here — the redirect case, and the
+       load AFTER setAccount's reload, which is the one that actually
+       completes. */
+    if (c.getSession && c.getSession()) {
+      adoptSignInToken(c.getSession());
+      autoConnectIfGranted();
+    }
   }, 0);
 
-  if (!isConnected())        { setStatus(DRIVE_STATES.OFF, 'Not connected'); return; }
+  if (!isConnected()) {
+    setStatus(DRIVE_STATES.OFF, 'Not connected');
+    /* Not awaited: boot returns, and this reports through setStatus
+       like every other Drive operation. The session may not be
+       restored yet, in which case this returns immediately and the
+       onAuth branch above picks it up instead. */
+    autoConnectIfGranted();
+    return;
+  }
   if (ownsSync()) {
     setStatus(DRIVE_STATES.MANUAL,
       'Cloud sync is signed in, so Drive stays a manual backup here.');

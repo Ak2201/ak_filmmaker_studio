@@ -155,7 +155,10 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. **The palette is violet**: a lavender-tinted page,
+Every colour is a token. **The palette is violet, and the default is INK** —
+a near-black ground with a violet cast. The light theme (`paper`) is the
+alternate and is described below as the ground most of this section's worked
+examples were measured against: a lavender-tinted page,
 plain white surfaces, and `--brand` — a seventh hue beside the six that mean a
 phase — for the product's own voice. `[data-volume="studio"]` points `--accent`
 at it, which is the one line that paints the hub.
@@ -222,7 +225,9 @@ grep -rnE '#[0-9a-fA-F]{3,8}\b|rgba?\([0-9]' src --include=*.css --include=*.js 
 
 No `body.dark` rules: paper / sepia / ink are token swaps, and a rule that only
 exists to restate a colour for dark mode is a bug. Tokens are declared in bare
-`:root` first, then overridden under `prefers-color-scheme` and `[data-theme]` —
+`:root` first (the DARK palette, since ink is the default), then overridden
+under `@media (prefers-color-scheme: light)` for the un-chosen state and under
+`[data-theme]` for an explicit choice —
 and the JS half has to hold up its end, which it did not for a while. See the
 theme trap below.
 
@@ -300,11 +305,25 @@ loads all four pages in Chromium, and diffs each against `scripts/baseline.json`
 - every theme produces a distinct background. The assertion counts themes
   rather than naming three of them, and reads the list from `themeOrder()` in
   the app, so dropping one or reordering them needs no change here. There are
-  **two now, and `paper` is the default** — which is three lines in
-  `chrome.js` (`THEME_ORDER`'s first entry, `currentTheme()`'s fallback,
-  `loadTheme()`'s) that have to agree with whichever palette the bare `:root`
-  in `tokens.css` carries. They disagreed once in each direction; both times
-  the picker said one thing and the page rendered another.
+  **two now, and `ink` is the default** — which is FOUR places in
+  `chrome.js` — `THEME_ORDER`'s first entry, `currentTheme()`'s fallback,
+  `loadTheme()`'s fallback branch, and `applyTheme()`'s
+  `CSS_THEME[theme] || …`. This list said THREE until the flip back to ink
+  found the fourth, which is the easy one to leave behind because it only
+  fires for a theme name absent from `CSS_THEME` altogether. All four have to
+  agree with whichever palette the bare `:root` in `tokens.css` carries. They
+  have now disagreed in both directions; each time the picker said one thing
+  and the page rendered another.
+
+  **AND THE GATE CANNOT SEE HALF OF IT.** verify's Chromium runs the page's
+  scripts, so all four fallbacks could be flipped back and the run would stay
+  green as long as they agreed with each other — the bare `:root` half is
+  invisible to it. The check that sees it is a scripts-off probe: load the
+  built page in an iframe with `sandbox="allow-same-origin"`, assert no
+  `[data-theme]` is set and the ground is already the default theme's. That is
+  about fifteen lines and is not in the gate; it was run by hand for the flip
+  to ink, and it is how "no flash of the wrong palette" is actually
+  established.
 
   The check exists because the stylesheets key off `:root[data-theme]`: when
   `applyTheme()` only set body classes every theme rendered identically and
@@ -727,16 +746,33 @@ These were real bugs. Re-introducing one is easy, so they are named here.
     in every theme. Flipping the light theme's band to white would have given
     the dark theme a white band carrying white text. All seven are stated in
     both blocks now.
-  - the **brand** family. `--brand-deep` is the brand as text and stayed at
-    the light theme's `#5b21b6` on every dark page — the gate measured
+  - the **brand** family, WHICH HAS NOW FIRED TWICE, IN OPPOSITE
+    DIRECTIONS — which is the strongest argument the rule could have, so
+    both are kept. First, with light as the default: `--brand-deep` is the
+    brand as text and stayed at the light theme's `#5b21b6` on every dark
+    page — the gate measured
     1.95–2.1:1 on the shortcut sheet's heading, the budget's eyebrow and the
     dashboard's inline link. It reached all three through one hop:
     `[data-volume]` is declared *after* `[data-phase]` in `tokens.css`, so
     `studio` wins and `--accent-deep` **is** `--brand-deep` on thirteen pages.
 
+    Then, flipping back to ink: the same three tokens lived only on bare
+    `:root` with the LIGHT values while dark restated them, so moving the
+    base would have handed the LIGHT theme `--brand-deep: #b69bfb` — a violet
+    mixed to sit on near-black — as its link colour, its eyebrow colour and
+    `--chrome-accent`, on white. The light block states its own four now.
+
   The tell is a token whose value is a hex rather than a `var()` sitting
-  outside a `[data-theme]` block. The AA walk catches it, which is how both of
-  these were found rather than shipped.
+  outside a `[data-theme]` block. The AA walk catches it, which is how these
+  were found rather than shipped — and note that WHICH THEME IS THE DEFAULT IS
+  NOT A FIXED FACT, so "it inherits correctly" is only ever true of the
+  arrangement you are looking at.
+
+  `color-scheme` belongs to this family too, and was missed both times: it was
+  only on the two `[data-theme]` blocks and the media query, never on bare
+  `:root`, so a form control, a scrollbar and a native date picker painted
+  their light-mode UA chrome on a near-black page until the JS ran. CSS cannot
+  restyle those, which makes it the one flash no palette fix can cover.
 
 - **A card inside the slab is not a card on the page.** `--sk-slab-fill`
   exists for an inset surface ON the slab, and the stat strip needed it the
@@ -755,7 +791,9 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   and sepia was unreachable. `applyTheme()` stamps the attribute *first* —
   `documentElement` exists before `<body>`, so that also avoids a flash — and
   keeps the classes in the same call, because four pages still read them as
-  state. `verify` asserts three distinct backgrounds now.
+  state. `verify` counts the themes rather than naming a number of them, so
+  it asserts two distinct backgrounds now and would assert five without an
+  edit.
 - **A service worker must never answer a navigation with a *redirected*
   response.** Chrome refuses it — "a redirected response was used for a request
   whose redirect mode is not 'follow'" — and shows **ERR_FAILED**. This one cost
@@ -1262,7 +1300,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
   a 1px hairline reads as a rendering artefact rather than as a decision. It is
   one line in one skin file either way, which is the point of the contract.
 - ~~Sepia is a real third theme.~~ Gone, along with desk. Two themes, light
-  (`paper`) and dark (`ink`), and light is the default.
+  (`paper`) and dark (`ink`), and **ink is the default**.
 - The brand plate at the top of every page **does not rotate on a timer**, and
   that is not a styling preference. Visible text that changes by itself is a
   clock in the one element that appears on every page, and the gate compares

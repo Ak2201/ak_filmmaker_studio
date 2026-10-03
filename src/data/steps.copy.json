@@ -1,0 +1,42 @@
+{
+  "_about": [
+    "ENGLISH COPY OVERRIDES for steps whose source JSON is generated.",
+    "",
+    "src/data/steps.feature.json and steps.short.json are rewritten by",
+    "`npm run extract`, which parses legacy/. A sentence corrected there is",
+    "correct until the next extraction and then silently is not — so this",
+    "file carries the corrections instead, and extract cannot reach it.",
+    "",
+    "It is the same shape of answer as steps.tanglish.json, which holds the",
+    "full Tanglish translations for the same reason, and steps.priority.json,",
+    "which holds the spine. src/ui/steps.js merges all three. The cost is the",
+    "one steps.priority.json already names in its own notes: a fact about a",
+    "step now lives in two files, split by whether the file happens to be",
+    "generated, and the two halves can drift. That cost is accepted",
+    "deliberately here, because the alternative is worse — teaching the",
+    "extractor to rewrite prose would end the property that makes",
+    "`npm run extract` deterministic and byte-identical against legacy/.",
+    "",
+    "KEYED `<ns>:<stepId>`, the same key steps.tanglish.json uses, so one",
+    "mental model covers both. `deck` replaces the step's deck; `why` is",
+    "keyed by the INDEX of the why block within that step, counted the way",
+    "renderStep() counts it.",
+    "",
+    "The override is applied BEFORE render, not after, so the corrected",
+    "English is what the EN map stores — which means toggling to Tanglish",
+    "and back returns to the correction rather than to the sentence it",
+    "replaced. An override applied to the DOM afterwards would be undone by",
+    "the first language toggle.",
+    "",
+    "Keep this small. It is for copy that has gone WRONG, not for copy",
+    "somebody wants to reword — rewording belongs in legacy/ and the",
+    "extractor, where it stays one source."
+  ],
+  "steps": {
+    "feature:step-08": {
+      "why": {
+        "0": "For each beat, write 1–3 sentences. Not the scene — the function. Dragon's fifteen are laid out below the table as a compass."
+      }
+    }
+  }
+}

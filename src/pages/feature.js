@@ -779,6 +779,48 @@ async function mountBeatExample() {
   }
 }
 
+/* THE TABLE'S OWN BEAT NAMES, DERIVED LIKE EVERYTHING ELSE.
+
+   Step 08's `.beat-table` is a raw block in steps.feature.json, so its
+   fifteen `<strong>NN · Label</strong>` cells are authored HTML that
+   `npm run extract` regenerates — the one place in this feature that
+   could not simply be corrected at source. Three of them had drifted
+   from the method in studies.json: "Setup" for "Set-Up", "Break Into
+   Act 2" for "Break Into Two", "Break Into Act 3" for "Break Into
+   Three". With the worked example sitting directly under the table,
+   the two disagreed about three beat names on one screen.
+
+   Rewritten from getBeatSheetMethod('save-the-cat') rather than from
+   a corrected list, so the table, the example card and the Markdown
+   export now all read the same source and a sixteenth beat or a
+   renamed one needs no edit here. Invariant 2, applied to the one
+   block that cannot hold its own copy.
+
+   Matched by POSITION, not by text: matching on the old label would
+   quietly stop working the moment extract regenerated the block with
+   a different wording, which is the failure this is fixing. The cell
+   count is checked instead, and a mismatch is reported rather than
+   half-applied. */
+async function syncBeatTableLabels() {
+  const cells = document.querySelectorAll('#step-08 .beat-table .beat-name strong');
+  if (!cells.length) return;
+  try {
+    const { getBeatSheetMethod } = await import('../lib/studies.js');
+    const beats = (getBeatSheetMethod('save-the-cat') || {}).beats;
+    if (!Array.isArray(beats)) return;
+    if (beats.length !== cells.length) {
+      console.warn('[feature] beat table has', cells.length, 'rows but the method has',
+        beats.length, '— labels left alone rather than misaligned');
+      return;
+    }
+    beats.forEach((b, i) => {
+      cells[i].textContent = `${String(b.n).padStart(2, '0')} \u00b7 ${b.label}`;
+    });
+  } catch (e) {
+    console.warn('[feature] beat table labels', e);
+  }
+}
+
 /* ---- post-render fixups ------------------------------------ */
 
 /**
@@ -3198,6 +3240,7 @@ function boot() {
      that is about to have its fields rewritten underneath it. Not
      awaited: the page is already usable and the example is an aside. */
   mountBeatExample();
+  syncBeatTableLabels();
 
   setInterval(updateSavedAtTimer, 5000);
 

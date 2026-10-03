@@ -6,38 +6,55 @@
    its own body.dark override list — roughly 2,400 lines of
    near-identical CSS that drifted apart page by page.
 
-   TWO themes, and LIGHT is the default one. The bare :root carries
-   the COMPLETE light palette and [data-theme] wins over it, which
-   means the bare block and the [data-theme="light"] block hold the
+   TWO themes, and DARK is the default one. The bare :root carries
+   the COMPLETE dark palette and [data-theme] wins over it, which
+   means the bare block and the [data-theme="dark"] block hold the
    same values on purpose: one is what the app renders before anyone
-   has chosen, the other is what an explicit choice of light has to
-   beat a prefers-color-scheme-dark OS with. Dark restates every
-   value it changes rather than inheriting — see the chrome family
-   in that block for what inheriting cost.
+   has chosen, the other is what an explicit choice of dark has to
+   beat a prefers-color-scheme-light OS with. Light restates every
+   value it changes rather than inheriting — and that list is now
+   FOUR LONGER than it used to be, because --brand, --brand-deep,
+   --brand-wash and --brand-lift used to live only on bare :root and
+   be inherited by light. With dark on bare :root, inheriting them
+   would have handed the light theme a violet lift as its link and
+   eyebrow colour on white. Same trap the chrome family records one
+   block down, pointed the other way.
 
-   The palette is a violet one. Ground is a lavender-tinted white,
-   surfaces are plain white, and the product's own colour is --brand,
-   which is a seventh hue alongside the six that mean a phase.
+   The palette is a violet one. By default the ground is near-black
+   with a violet cast and the hues sit high in lightness; the light
+   theme is a lavender-tinted white with plain white surfaces. The
+   product's own colour is --brand, a seventh hue alongside the six
+   that mean a phase.
 
    Components must never read a raw hex. If a value is missing
    here, add it here.
    ============================================================ */
 
 :root {
-  /* ---- ink & paper -------------------------------------- */
-  /* A lavender-tinted white page with plain white surfaces on top of
-     it. The tint is what stops a white card on a white page from
-     needing a heavy border to be a card at all: --paper-raised is
-     lighter than --paper, so depth comes from luminance and the
-     border can stay a hairline. */
-  --paper:        #f7f5fc;
-  --paper-raised: #ffffff;
-  --paper-sunk:   #f1eefa;
-  --paper-edge:   #e4dff3;
+  /* The default is DARK, so the bare block has to declare it. Without
+     this line a form control, a scrollbar and a native date picker
+     render their light-mode chrome on a near-black page until
+     applyTheme() stamps [data-theme="dark"] — which is the same class
+     of bug as the palette itself flashing, one layer down in the UA
+     stylesheet. [data-theme="light"] and the prefers-light block below
+     both restate it as `light` for the same reason. */
+  color-scheme: dark;
 
-  --ink:          #171233;
-  --ink-body:     #3f3960;
-  --ink-muted:    #615a7d;
+  /* ---- ink & paper -------------------------------------- */
+  /* A near-black violet-cast page with lifted surfaces on top of it.
+     Depth still comes from luminance rather than a heavy border:
+     --paper-raised is LIGHTER than --paper here too, so a card reads
+     as a card with nothing but a hairline around it. The light theme
+     runs the same idea the other way up — a lavender-tinted white
+     page with plain white surfaces. */
+  --paper:        #120f1c;
+  --paper-raised: #1b1727;
+  --paper-sunk:   #0d0b15;
+  --paper-edge:   #2a2440;
+
+  --ink:          #ece9f6;
+  --ink-body:     #c9c4db;
+  --ink-muted:    #9a94b0;
   /* --ink-faint IS NOT A TEXT COLOUR. Read this before reaching for it.
 
      It was one, in 41 rules across thirteen stylesheets, and it clears
@@ -66,44 +83,44 @@
      secondary. If two kinds of secondary text need to be told apart,
      that is a job for size, weight or case — not for a fourth grey
      nobody can read. */
-  --ink-faint:    #9a93b0;
+  --ink-faint:    #6d6785;
 
   /* Also not text colours, for the same reason and with worse numbers:
      1.22-1.82:1 across the four themes. A hairline is a hairline. */
-  --rule:         #ded8ef;
-  --rule-hair:    #ebe7f7;
+  --rule:         #322c48;
+  --rule-hair:    #241f35;
 
   /* ---- the three volumes -------------------------------- */
   /* Each blueprint owns a hue. Used for the spine stripe, step
      numbers, progress fills and the hub's door cards. */
-  --feature:      #6d28d9;
-  --feature-deep: #5b21b6;
-  --feature-wash: #ede9fe;
+  --feature:      #9575f8;
+  --feature-deep: #b69bfb;
+  --feature-wash: #241a3d;
 
-  --shorts:       #2563eb;
-  --shorts-deep:  #1d4ed8;
-  --shorts-wash:  #e3ebfe;
+  --shorts:       #60a5fa;
+  --shorts-deep:  #93c5fd;
+  --shorts-wash:  #16233c;
 
-  --library:      #8f5a07;
-  --library-deep: #6f4506;
-  --library-wash: #fdf1d6;
+  --library:      #d6a44a;
+  --library-deep: #e8c384;
+  --library-wash: #2e2415;
 
   /* ---- three more, for the six-phase spine ----------------
      develop / write / breakdown reuse the volume hues that
      already exist; visualize / plan / shoot are new. Chosen to
      stay clear of --ok (green) and --warn (amber), because a
      phase colour must never read as a status. */
-  --visualize:    #b21ec4;
-  --visualize-deep: #951aa4;
-  --visualize-wash: #fae8ff;
+  --visualize:    #e879f9;
+  --visualize-deep: #f0abfc;
+  --visualize-wash: #2e1030;
 
-  --plan:         #0f766e;
-  --plan-deep:    #0d5f58;
-  --plan-wash:    #d7f1ee;
+  --plan:         #2dd4bf;
+  --plan-deep:    #7fe8da;
+  --plan-wash:    #11302c;
 
-  --shoot:        #c71e66;
-  --shoot-deep:   #a81854;
-  --shoot-wash:   #fde3ee;
+  --shoot:        #f472b6;
+  --shoot-deep:   #f9a8d4;
+  --shoot-wash:   #33182a;
 
   /* ---- lifted volume hues ---------------------------------
      The editorial panels (.formula-box, .step-check, .example,
@@ -120,14 +137,14 @@
   --danger-lift:  #fca5a5;
 
   /* ---- semantic (never the same hue as a volume) --------- */
-  --ok:           #15803d;
-  --ok-deep:      #166534;   /* the TEXT variant; --ok is a fill */
-  --ok-wash:      #dcf5e4;
-  --warn:         #a04c08;
-  --warn-deep:    #7f3c06;   /* --warn as text was 3.52:1 in desk */
-  --warn-wash:    #fdf0d9;
-  --danger:       #c62828;
-  --danger-wash:  #fde4e2;
+  --ok:           #34d399;
+  --ok-deep:      #6ee7b7;   /* the TEXT variant; --ok is a fill */
+  --ok-wash:      #102b22;
+  --warn:         #d6a44a;
+  --warn-deep:    #e8c384;   /* --warn as text was 3.52:1 in desk */
+  --warn-wash:    #2e2415;
+  --danger:       #f87171;
+  --danger-wash:  #341a1c;
 
   /* ---- the brand hue -------------------------------------
      The six hues above each mean a PHASE, and the gate holds them
@@ -142,9 +159,9 @@
      the same reason --panel is dark in every theme: it is a brand
      plate, not a page ground. Its ink is therefore constant too, and
      deliberately NOT routed through --on-fill, which inverts. */
-  --brand:            #6d28d9;
-  --brand-deep:       #5b21b6;
-  --brand-wash:       #ede9fe;
+  --brand:            #9575f8;
+  --brand-deep:       #b69bfb;
+  --brand-wash:       #241a3d;
   --brand-lift:       #b69bfb;
   /* Routed through --on-fill like the six hues, NOT stated as white.
      White is right on the light theme's fill and wrong on the dark
@@ -173,7 +190,7 @@
      time, so the colour silently fell back to the inherited one and
      landed on its own background: a door numeral at exactly 1:1. A
      cycle does not warn; it just makes text disappear. */
-  --on-fill:      #ffffff;
+  --on-fill:      #120f1c;
   --accent-on:    var(--on-fill);   /* text ON an accent fill */
 
   /* Text ON each hue used as a FILL. All six route to --accent-on
@@ -196,17 +213,19 @@
   --danger-on:    var(--accent-on);
 
   /* ---- chrome -------------------------------------------
-     The toolbar, rail toggle and mobile bar are a single dark
-     surface in light and sepia; in dark they lift off the page
-     instead of inverting. Declared here so no component ever
-     re-states a colour for a theme. */
-  --chrome:       #ffffff;
-  --chrome-ink:   #171233;
-  --chrome-muted: #615a7d;
-  --chrome-hair:  rgba(23, 18, 51, .10);
-  --chrome-hair-strong: rgba(23, 18, 51, .22);
-  --chrome-fill:  rgba(109, 40, 217, .08);
-  --chrome-fill-strong: rgba(109, 40, 217, .15);
+     The toolbar, rail toggle and mobile bar are one surface, and it
+     is NOT constant: near-black on the dark default, white in the
+     light theme. All seven are therefore stated in all three
+     palette blocks — here, [data-theme="dark"] and
+     [data-theme="light"] — so no component ever re-states a colour
+     for a theme and no theme inherits the other's band. */
+  --chrome:       #16121f;
+  --chrome-ink:   #f3f0fb;
+  --chrome-muted: #a49dbb;
+  --chrome-hair:  rgba(243, 240, 251, .12);
+  --chrome-hair-strong: rgba(243, 240, 251, .28);
+  --chrome-fill:  rgba(243, 240, 251, .08);
+  --chrome-fill-strong: rgba(243, 240, 251, .16);
   /* THE ACCENT ON THE CHROME SURFACE, and it has to be its own token
      rather than --brand-deep, because the band is white in the light
      theme and near-black in the dark one. Eight rules in chrome.css
@@ -217,7 +236,7 @@
      it measured 1.5:1. Same shape of bug as the slab widgets in
      _contract.css: a widget reaching past its surface's own token for
      one that happens to agree with it. */
-  --chrome-accent:      var(--brand-deep);
+  --chrome-accent:      var(--brand-lift);
 
   /* ---- dark editorial panel ------------------------------
      Ink-on-paper contrast blocks. Dark in every theme. */
@@ -236,7 +255,7 @@
      --panel. */
   --panel-gilt:       var(--brand-lift);
 
-  --scrim:        rgba(23, 18, 51, .55);
+  --scrim:        rgba(9, 7, 16, .72);
 
   /* ---- type --------------------------------------------- */
   /* The raw stacks, and then the two SEMANTIC faces that point at
@@ -330,9 +349,9 @@
   --radius:       10px;      /* the studio is printed matter, not iOS */
   --radius-lg:    18px;
   --radius-pill: 999px;
-  --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
-  --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
-  --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
+  --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
   /* Panels and overlays are dark in every theme, so their shadow
      is constant too — a themed shadow under a constant surface
      was one of the drifts in the old files. */
@@ -405,88 +424,115 @@
 
 /* ============================================================
    THE UN-CHOSEN STATE — kept from upstream, and it is a fix rather
-   than a preference. The bare :root above carries the LIGHT palette,
+   than a preference. The bare :root above carries the DARK palette,
    which is the default; this says what to do when the reader has
    expressed no choice and their OS has.
 
-   `:root:not([data-theme])` is the whole trick. applyTheme() always
-   stamps the attribute, so an explicit choice wins on any OS, and a
-   theme added later cannot get this wrong because there is nothing
-   here to update.
+   SO THE QUERY IS `light` NOW, not `dark`. The mechanism did not
+   change when the default moved — it inverted, and inverting it is
+   the whole of the work. A block that still asked for
+   `prefers-color-scheme: dark` would be restating the default to a
+   reader who already has it and saying nothing at all to the reader
+   on a light OS, which is the only reader it exists for.
 
-   THE VALUES ARE THE DARK BLOCK'S, and they are duplicated because
+   `:root:not([data-theme])` is the whole trick, and it is unchanged.
+   applyTheme() always stamps the attribute, so an explicit choice
+   wins on any OS, and a theme added later cannot get this wrong
+   because there is nothing here to update.
+
+   THE VALUES ARE THE LIGHT BLOCK'S, and they are duplicated because
    CSS has no way to share one declaration list between a selector
-   and a media query. Same hazard as the [data-theme="light"] block
-   repeating bare :root: change a dark value in one place and not the
-   other and you get a page that is correct until the reader touches
-   the picker. They were generated from the block below when this
-   merge was resolved; keep them in step by hand.
+   and a media query. Same hazard as the [data-theme="dark"] block
+   repeating bare :root: change a light value in one place and not
+   the other and you get a page that is correct until the reader
+   touches the picker. They are copied from the [data-theme="light"]
+   block below, declaration for declaration; keep them in step by
+   hand.
    ============================================================ */
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    color-scheme: dark;
-    --paper:        #120f1c;
-    --paper-raised: #1b1727;
-    --paper-sunk:   #0d0b15;
-    --paper-edge:   #2a2440;
-    --ink:          #ece9f6;
-    --ink-body:     #c9c4db;
-    --ink-muted:    #9a94b0;
-    --ink-faint:    #6d6785;
-    --rule:         #322c48;
-    --rule-hair:    #241f35;
-    --feature:      #9575f8;
-    --feature-wash: #241a3d;
-    --shorts:       #60a5fa;
-    --shorts-wash:  #16233c;
-    --library:      #d6a44a;
-    --visualize:    #e879f9;
-    --plan:         #2dd4bf;
-    --shoot:        #f472b6;
-    --library-wash: #2e2415;
-    --visualize-wash: #2e1030;
-    --plan-wash:    #11302c;
-    --shoot-wash:   #33182a;
-    --feature-deep: #b69bfb;
-    --shorts-deep:  #93c5fd;
-    --library-deep: #e8c384;
-    --visualize-deep: #f0abfc;
-    --plan-deep:    #7fe8da;
-    --shoot-deep:   #f9a8d4;
-    --ok:           #34d399;
-    --ok-deep:      #6ee7b7;
-    --ok-wash:      #102b22;
-    --warn:         #d6a44a;
-    --warn-deep:    #e8c384;
-    --warn-wash:    #2e2415;
-    --danger:       #f87171;
-    --danger-wash:  #341a1c;
-    --on-fill:      #120f1c;
-    --brand:        #9575f8;
-    --brand-deep:   #b69bfb;
-    --brand-wash:   #241a3d;
+    color-scheme: light;
+    --paper:        #f7f5fc;
+    --paper-raised: #ffffff;
+    --paper-sunk:   #f1eefa;
+    --paper-edge:   #e4dff3;
+    --ink:          #171233;
+    --ink-body:     #3f3960;
+    --ink-muted:    #615a7d;
+    --ink-faint:    #9a93b0;
+    --rule:         #ded8ef;
+    --rule-hair:    #ebe7f7;
+    --feature:      #6d28d9;
+    --feature-deep: #5b21b6;
+    --feature-wash: #ede9fe;
+    --shorts:       #2563eb;
+    --shorts-deep:  #1d4ed8;
+    --shorts-wash:  #e3ebfe;
+    --library:      #8f5a07;
+    --library-deep: #6f4506;
+    --library-wash: #fdf1d6;
+    --visualize:    #b21ec4;
+    --visualize-deep: #951aa4;
+    --visualize-wash: #fae8ff;
+    --plan:         #0f766e;
+    --plan-deep:    #0d5f58;
+    --plan-wash:    #d7f1ee;
+    --shoot:        #c71e66;
+    --shoot-deep:   #a81854;
+    --shoot-wash:   #fde3ee;
+    --ok:           #15803d;
+    --ok-deep:      #166534;
+    --ok-wash:      #dcf5e4;
+    --warn:         #a04c08;
+    --warn-deep:    #7f3c06;
+    --warn-wash:    #fdf0d9;
+    --danger:       #c62828;
+    --danger-wash:  #fde4e2;
+    --on-fill:      #ffffff;
+
+    /* THE BRAND, RESTATED FOR THE LIGHT GROUND. These four are new to
+       this block and they are the whole cost of moving the default:
+       they used to sit on bare :root only, with the light values, and
+       light inherited them for free. Bare :root is dark now, so without
+       these the light theme would take --brand-deep #b69bfb — a violet
+       LIFT, chosen for near-black — as its link, eyebrow and
+       --chrome-accent colour on white, which measures about 2:1.
+       --brand-lift is the same value in both themes and is restated
+       anyway, so the two blocks can be diffed line for line. */
+    --brand:        #6d28d9;
+    --brand-deep:   #5b21b6;
+    --brand-wash:   #ede9fe;
     --brand-lift:   #b69bfb;
-    --chrome:             #16121f;
-    --chrome-ink:         #f3f0fb;
-    --chrome-muted:       #a49dbb;
-    --chrome-hair:        rgba(243, 240, 251, .12);
-    --chrome-hair-strong: rgba(243, 240, 251, .28);
-    --chrome-fill:        rgba(243, 240, 251, .08);
-    --chrome-fill-strong: rgba(243, 240, 251, .16);
-    --chrome-accent:      var(--brand-lift);
-    --scrim:        rgba(9, 7, 16, .72);
-    --shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
-    --shadow-md:    0 4px 16px rgba(0, 0, 0, .46);
-    --shadow-lg:    0 18px 48px rgba(0, 0, 0, .54);
+
+    --chrome:             #ffffff;
+    --chrome-ink:         #171233;
+    --chrome-muted:       #615a7d;
+    --chrome-hair:        rgba(23, 18, 51, .10);
+    --chrome-hair-strong: rgba(23, 18, 51, .22);
+    --chrome-fill:        rgba(109, 40, 217, .08);
+    --chrome-fill-strong: rgba(109, 40, 217, .15);
+    --chrome-accent:      var(--brand-deep);
+    --scrim:        rgba(23, 18, 51, .55);
+    --shadow-sm:    0 1px 2px rgba(23, 18, 51, .06);
+    --shadow-md:    0 4px 16px rgba(23, 18, 51, .08);
+    --shadow-lg:    0 18px 48px rgba(23, 18, 51, .12);
   }
 }
 
 /* ============================================================
-   DARK — the alternate. Not an inversion of the light palette: the
-   ground keeps the violet cast but the hues go UP in lightness,
-   because a hue that reads as deep on white reads as a hole on
-   near-black. Every value the light default sets and dark changes is
-   restated below, including the whole chrome family.
+   DARK — the default, restated. Identical to the bare :root above,
+   and the duplication is the point: bare :root is what renders
+   before anyone chooses, and this block is what an explicit choice
+   of dark needs in order to beat a light OS. Keep the two in step —
+   a value changed in one and not the other produces a page that is
+   correct until the viewer touches the theme picker.
+
+   Not an inversion of the light palette: the ground keeps the violet
+   cast but the hues go UP in lightness, because a hue that reads as
+   deep on white reads as a hole on near-black. The comments below
+   still describe these values as the ones dark "changes"; read that
+   as the direction of the design rather than of the cascade, which
+   now runs the other way.
    ============================================================ */
 
 :root[data-theme="dark"] {
@@ -552,29 +598,40 @@
 
   --on-fill:      #120f1c;
 
-  /* THE BRAND, RESTATED FOR THE DARK GROUND — and this is what the
-     gate caught. --brand-deep is the brand as TEXT, and without these
-     four lines it stayed at the light theme's #5b21b6 on every dark
-     page: measured 1.95-2.1:1 on three of them, the shortcut sheet's
-     heading, the budget's eyebrow and the dashboard's inline link.
-     It reached all of them through one hop, because [data-volume] is
-     declared after [data-phase] in this file, so `studio` wins and
-     --accent-deep IS --brand-deep on thirteen pages.
+  /* THE BRAND, RESTATED FOR THE DARK GROUND. The four live on bare
+     :root now too, so this block is the duplicate rather than the
+     rescue — but the trap they were written for has simply moved to
+     the light block, where they are new, and the history is worth
+     keeping either way.
+
+     --brand-deep is the brand as TEXT. When these four existed only
+     on bare :root carrying the LIGHT values, every dark page took
+     #5b21b6 for them: measured 1.95-2.1:1 on three of them, the
+     shortcut sheet's heading, the budget's eyebrow and the
+     dashboard's inline link. They reached all of those through one
+     hop, because [data-volume] is declared after [data-phase] in this
+     file, so `studio` wins and --accent-deep IS --brand-deep on
+     thirteen pages. Flip the default and the identical failure is
+     waiting for light; see the light block for the four lines that
+     stop it.
 
      Same trap as the chrome family below, one hue further in: a token
-     declared once on bare :root has only the default theme's value. */
+     declared once on bare :root has only the default theme's value,
+     and which theme that is, is not a fixed fact. */
   --brand:        #9575f8;
   --brand-deep:   #b69bfb;
   --brand-wash:   #241a3d;
   --brand-lift:   #b69bfb;
 
-  /* THE NAV BAND IS LIGHT NOW, SO DARK HAS TO SAY IT IS DARK.
+  /* THE NAV BAND DIFFERS PER THEME, SO BOTH BLOCKS HAVE TO SAY SO.
      The chrome family used to be declared once, on bare :root, and
      inherited by both themes, because the band was dark in all of
-     them. It is white in the light theme now — so all seven have to be
-     restated here, not just the three that used to differ. Inheriting
-     the other four is how the dark theme would have ended up with a
-     white band carrying white text. */
+     them. It is white in the light theme — so all seven are stated in
+     both blocks, not just the three that used to differ. Inheriting
+     the other four is how one theme ends up with a white band
+     carrying white text; which theme that would be depends on which
+     palette bare :root happens to carry, which is exactly why neither
+     block leaves it to inheritance. */
   --chrome:             #16121f;
   --chrome-ink:         #f3f0fb;
   --chrome-muted:       #a49dbb;
@@ -591,12 +648,20 @@
 }
 
 /* ============================================================
-   LIGHT — the default, restated. Identical to the bare :root above,
-   and the duplication is the point: bare :root is what renders
-   before anyone chooses, and this block is what an explicit choice
-   of light needs in order to win. Keep the two in step — a value
-   changed in one and not the other produces a page that is correct
-   until the viewer touches the theme picker.
+   LIGHT — the alternate. Not an inversion of the dark default: the
+   ground keeps the violet cast but goes to a lavender-tinted white
+   with plain white surfaces, and the hues go DOWN in lightness,
+   because a hue that reads as lifted on near-black reads as a glare
+   on white. Every value the dark default sets and light changes is
+   restated below, including the whole brand and chrome families.
+
+   This block is also what an explicit choice of light has to beat a
+   prefers-color-scheme-light OS with — which is to say it duplicates
+   the media-query block above, exactly as the dark block duplicates
+   bare :root. Four declaration lists, two palettes; CSS has no way to
+   share one list between a selector and a media query. Change a value
+   in one and not its twin and you get a page that is correct until
+   the reader touches the picker.
    ============================================================ */
 :root[data-theme="light"] {
   color-scheme: light;
@@ -637,6 +702,21 @@
   --danger:       #c62828;
   --danger-wash:  #fde4e2;
   --on-fill:      #ffffff;
+
+  /* THE BRAND, RESTATED FOR THE LIGHT GROUND. These four are new to
+     this block and they are the whole cost of moving the default:
+     they used to sit on bare :root only, with the light values, and
+     light inherited them for free. Bare :root is dark now, so without
+     these the light theme would take --brand-deep #b69bfb — a violet
+     LIFT, chosen for near-black — as its link, eyebrow and
+     --chrome-accent colour on white, which measures about 2:1.
+     --brand-lift is the same value in both themes and is restated
+     anyway, so the two blocks can be diffed line for line. */
+  --brand:        #6d28d9;
+  --brand-deep:   #5b21b6;
+  --brand-wash:   #ede9fe;
+  --brand-lift:   #b69bfb;
+
   --chrome:             #ffffff;
   --chrome-ink:         #171233;
   --chrome-muted:       #615a7d;

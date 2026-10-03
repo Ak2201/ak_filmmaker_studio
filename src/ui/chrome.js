@@ -193,30 +193,31 @@ const THEME_KEY = 'fms_studio_theme_v1';
    paper / sepia / ink and the STORED value keeps those — THEME_KEY is
    part of the storage contract. Map between the two here, once. */
 const CSS_THEME = { ink: 'dark', paper: 'light' };
-/* TWO themes, and PAPER is the default again.
+/* TWO themes, and INK is the default.
 
    sepia and desk are gone. Four palettes meant four sets of every
    colour decision to keep at 4.5:1 across every skin, and the two
    that were removed were variations on paper rather than choices
    anybody needed.
 
-   The default moved back with the redesign, and the three places that
-   had to move with it are all in this file: THEME_ORDER's first
-   entry, currentTheme()'s fallback and loadTheme()'s. The identity is
-   a lavender ground with white surfaces and a violet brand — a dark
-   default would mean every screenshot, every first impression and
-   every unstamped first paint shows a palette that is now the
-   alternate. The bare :root in tokens.css carries the light values
-   for the same reason, and these three have to agree with it or the
-   picker says one thing while the page renders another.
+   THE DEFAULT HAS MOVED IN BOTH DIRECTIONS NOW, and each time it was
+   the same four places rather than one: THEME_ORDER's first entry,
+   currentTheme()'s fallback, loadTheme()'s, and applyTheme()'s
+   `CSS_THEME[theme] || …`. All four are in this file, and all four
+   have to agree with WHICH PALETTE THE BARE `:root` IN tokens.css
+   CARRIES. That is the actual invariant; "the default is ink" is
+   just today's value of it. Disagree and the picker says one thing
+   while the page renders another — which has happened once in each
+   direction, and looks like a CSS bug from every angle except this
+   one.
 
-   paper is FIRST deliberately: this list is the ⌃⇧D cycle order, the
+   ink is FIRST deliberately: this list is the ⌃⇧D cycle order, the
    picker order, and what `themeOrder()` hands the verify gate, which
    reads the list from the app rather than repeating it. The gate
    asserts that the number of distinct backgrounds equals the number of
    themes, so neither dropping a theme nor reordering this needs a
    change there. */
-const THEME_ORDER = ['paper', 'ink'];
+const THEME_ORDER = ['ink', 'paper'];
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
@@ -226,12 +227,12 @@ function currentTheme() {
     case 'light': return 'paper';
   }
   if (document.body && document.body.classList.contains('dark')) return 'ink';
-  /* Falls back to PAPER. The bare :root in tokens.css carries the
-     light palette, so paper is what an unstamped document actually
-     renders — returning 'ink' here would have the picker disagree
-     with the page on first load, which is the bug this comment
-     recorded in the other direction. */
-  return 'paper';
+  /* Falls back to INK. The bare :root in tokens.css carries the
+     dark palette, so ink is what an unstamped document actually
+     renders — returning 'paper' here would have the picker disagree
+     with the page on first load, which is the bug this comment has
+     now recorded in both directions. */
+  return 'ink';
 }
 
 function applyTheme(theme) {
@@ -239,10 +240,16 @@ function applyTheme(theme) {
   // off, and documentElement exists long before body does, so setting it
   // ahead of the body guard also avoids a flash of the wrong palette.
   //
-  // Without it the picker is a no-op: nothing sets [data-theme="light"],
-  // so `@media (prefers-color-scheme: dark)` wins and a user who chose
-  // paper gets ink. Sepia becomes unreachable entirely.
-  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'light');
+  // Without it the picker is a no-op: nothing sets [data-theme="dark"],
+  // so `@media (prefers-color-scheme: light)` wins and a user who chose
+  // ink gets paper on a light-mode OS.
+  //
+  // The `|| 'dark'` is the fourth place the default is written down
+  // (THEME_ORDER, currentTheme(), loadTheme() are the others) and it
+  // is the one that is easy to leave behind, because it only fires
+  // for a theme name that is not in CSS_THEME at all. It must name
+  // the same palette bare :root carries.
+  document.documentElement.setAttribute('data-theme', CSS_THEME[theme] || 'dark');
 
   if (!document.body) {
     // Document not parsed yet — defer the body half until ready
@@ -275,21 +282,31 @@ function loadTheme() {
   if (THEME_ORDER.indexOf(t) >= 0) {
     applyTheme(t);
   } else {
-    /* PAPER IS THE DEFAULT, and every fallback here has to say so.
+    /* INK IS THE DEFAULT, and every fallback here has to say so.
 
        This branch runs for anyone with no stored choice, and also for
        anyone whose stored choice is a theme that no longer exists —
        sepia and desk are not in THEME_ORDER and fall through to here.
 
-       The legacy dark-mode pref is honoured when it is set to dark
-       EXPLICITLY. Absent, it is not evidence of a preference and does
-       not override the default; the test is `=== true` rather than
-       a truthiness check so a missing key and a false one behave the
-       same way. */
+       THE LEGACY TEST FLIPS WITH THE DEFAULT, and it flips to
+       `=== false` rather than to `!== false`. The point of the old
+       `=== true` was never "true means ink"; it was "only an
+       EXPLICIT setting may override the default, and absent is not
+       explicit". `fms_studio_prefs_v1.dark` is a dark-mode toggle, so
+       `false` is a reader who deliberately turned dark off — that is
+       a choice of paper and is honoured. Missing, or any non-boolean,
+       is not evidence of anything and gets the default, exactly as a
+       missing key did before.
+
+       Written as `!== false` it would read the same for the two
+       values that exist and silently hand paper to `undefined` the
+       day someone stores a string; the strict test keeps "absent and
+       false behave the same" from being accidentally true rather
+       than deliberately so. */
     try {
       const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
-      applyTheme(old.dark === true ? 'ink' : 'paper');
-    } catch (e) { applyTheme('paper'); }
+      applyTheme(old.dark === false ? 'paper' : 'ink');
+    } catch (e) { applyTheme('ink'); }
   }
 }
 StudioUI.applyTheme = applyTheme;
@@ -309,14 +326,21 @@ StudioUI.attachThemePicker = function (host) {
   wrap.className = 'theme-picker';
   wrap.setAttribute('role', 'radiogroup');
   wrap.setAttribute('aria-label', 'Theme');
-  /* Two, matching THEME_ORDER. A third button here with no
-     [data-theme="sepia"] block in tokens.css is a control that
-     silently does nothing — the same shape of bug as a --hue class
-     that matches no rule. */
-  [
-    { theme: 'paper', label: 'Paper', icon: '◐' },
-    { theme: 'ink',   label: 'Ink',   icon: '☀' }
-  ].forEach(({ theme, label, icon }) => {
+  /* DERIVED from THEME_ORDER rather than listed beside it. The list
+     this replaced claimed in a comment to match THEME_ORDER and was
+     a second copy of it, so reordering the cycle left the picker in
+     the old order and a dropped theme would have left a button with
+     no [data-theme] block behind it — a control that silently does
+     nothing, the same shape of bug as a --hue class matching no
+     rule. The glyphs stay hand-written because a glyph is not
+     derivable; an unknown theme gets a neutral one rather than
+     nothing. */
+  const GLYPH = { paper: '◐', ink: '☀' };
+  THEME_ORDER.map((theme) => ({
+    theme,
+    label: theme.charAt(0).toUpperCase() + theme.slice(1),
+    icon: GLYPH[theme] || '◐'
+  })).forEach(({ theme, label, icon }) => {
     const b = document.createElement('button');
     b.dataset.theme = theme;
     b.title = label + ' theme';

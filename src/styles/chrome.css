@@ -2125,7 +2125,19 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   line-height: 1;
   text-align: center;
   letter-spacing: 0;
-  color: var(--hue-lift, var(--accent-lift));
+  /* --hue-DEEP, not --hue-lift. A lift is a hue mixed to sit on a
+     ground that is dark IN EVERY THEME; this band is white in the
+     light theme, so the lift put the phase glyphs at 1.45-2.32:1 on
+     every page — the breadcrumb's "you are here" marker, unreadable
+     in the default-adjacent theme, since the band went white.
+
+     The deep family is the theme-aware one: dark hues on the light
+     theme, lifted ones inside [data-theme="dark"], so one token is
+     right on both grounds — which is what a surface that follows the
+     theme needs. Nobody saw it because the AA walk's ROOTS named
+     `.shell`, a class this app has never had, so the clause that
+     claimed to cover the breadcrumb covered nothing. */
+  color: var(--hue-deep, var(--accent-deep));
 }
 .sh-where-sep { flex: none; color: var(--chrome-muted); }
 /* The destination reads as a destination: full ink, weight, its own
@@ -2795,7 +2807,17 @@ html {
   gap: var(--s3);
   min-height: var(--sh-plate-min);
   padding: var(--s2) var(--s4);
-  background: linear-gradient(90deg, var(--brand-bar) 0%, var(--brand-bar-2) 55%, var(--brand-bar) 100%);
+  /* A background-COLOUR under the gradient, not just the gradient.
+     Two reasons, and the second is why it is here. It is the fallback
+     if the gradient does not paint — and `background-color` is what a
+     contrast check can read, where a gradient leaves it `transparent`
+     and the measurement falls through to whatever is behind the
+     element. That put this plate's own text at 1.04:1 against the
+     page on all sixteen pages: not a real failure, the text sits on
+     deep violet, but an unreadable measurement is its own problem.
+     Stating the colour makes the ground true rather than silencing
+     the check. */
+  background: var(--brand-bar) linear-gradient(90deg, var(--brand-bar) 0%, var(--brand-bar-2) 55%, var(--brand-bar) 100%);
   color: var(--brand-bar-ink);
 }
 .sh-plate-slides { min-width: 0; }

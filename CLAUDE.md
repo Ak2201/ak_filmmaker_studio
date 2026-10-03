@@ -38,6 +38,7 @@ for hosted previews that shouldn't outlive themselves in a cache.
 index.html feature.html short.html library.html   page entries (Vite MPA)
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
+shoot.html                                        the on-set day view
 privacy.html terms.html                           the two legal documents
 arunak-*.html                                     redirect stubs for old URLs
 src/
@@ -46,7 +47,11 @@ src/
              OVERWRITTEN by `npm run extract`; steps.production.json is
              hand-written and will not, because phases 03 and 04 never
              existed in the 2023 pages.
-  lib/       store.js cloud.js dom.js pwa.js skin.js lang.js money.js
+  lib/       readiness.js  ← what is missing before this film can shoot,
+                           derived at render time and stored nowhere
+             shootday.js   ← the one view that WRITES BACK to a scene
+             account.js    ← the account tier's sending end
+             store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
              screenplay-export.js shotlist-export.js script-import.js
              pdf-text.js ai.js scriptgen.js songs.js
@@ -958,7 +963,8 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    both importers (V1 and V2) now map `arunak_note_*` forward. Tested with a
    real exported file rewritten to the old prefix.
 
-2. **The chain is closed in both directions** — scene → breakdown →
+2. **The chain is closed in both directions** — and now it also runs
+   BACKWARDS, which it never did. scene → breakdown →
    stripboard → day out of days → call sheet, all reading
    `src/lib/scenes.js`, and now the budget reads it too: the library's
    calculator derives shoot days, scenes, pages and locations from the scene
@@ -1100,16 +1106,50 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    An `owner`-role invite is deliberately not claimable; invite as `admin`
    and promote.
 
-   **The RECEIVING end is done and the SENDING end is not, which is the
-   bigger half.** Nothing in any UI inserts a pending `account_members` row
-   and `cloud.js` has no account-tier reads, so an invite has to be typed
-   into the SQL editor by hand. An Account panel — list members, invite by
-   email, revoke — needs no new SQL at all: `am_select` already permits
-   owner/admin to read and `am_write` already permits them to insert. Until
-   it exists, `claim_invite()` is a door with nothing on the other side.
+   **BOTH ENDS EXIST NOW.** `src/lib/account.js` and
+   `src/ui/account-panel.js` are the sending end — create the account, list
+   members, invite by e-mail, revoke — as a section on `settings.html`. It
+   needed NO new SQL: `acc_insert`, `acc_select`, `am_select` and `am_write`
+   already permitted exactly this, and `account_members_guard()` already
+   compares OLD and NEW so an admin cannot promote itself or delete the owner.
+
+   **And section 11 had never actually run.** This file claimed it had. Probed
+   through the app's own client, `accounts`, `account_members` and
+   `projects.account_id` were all present and `claim_invite` was NOT — so the
+   receiving end did not exist either. It has been applied and verified
+   through the app rather than the SQL editor. Take the lesson over the fact:
+   **the schema file's record of its own runs is not evidence.** Ask the
+   database.
+
+   **A HOLE THE AUDIT MISSED, found while building the panel.** `acc_insert`
+   checks only `owner_id = auth.uid()`, and `accounts_guard` — the trigger
+   carrying "Plan and limits are set by billing, not by the client" — is
+   BEFORE UPDATE. So an INSERT carrying `seat_limit: 999, plan: 'pro'` is
+   refused by nothing: any user can mint themselves an unlimited account. The
+   guard is enforced on update and open on insert. `createAccount()` sends
+   only a name and an owner id and lets every limit default, deliberately,
+   rather than writing the shortcut into the product. The fix belongs in
+   `docs/SECURITY-RLS.md` and in a WITH CHECK on that policy.
+
+   **Seats are real and the panel does not argue with them.** `seat_limit`
+   defaults to 1, the owner's own row takes it, and `enforce_seat_limit()`
+   raises 53400 on the next insert. So the invite form is HIDDEN when seats
+   are full and the panel says where seats come from, rather than offering a
+   control whose only outcome is an error.
+
+   **What is still missing.** Projects are not attached to accounts by any
+   UI: `projects.account_id` exists and `has_project_access()` reads it, but
+   nothing sets it, so an admin you invite today sees no films. `account.js`
+   has `setProjectAccount()` ready and the panel deliberately does not call
+   it — attaching a film hands every account admin edit rights on it, which
+   is an access-control decision a person should make on purpose rather than
+   as a side effect of creating an account.
+
    Also still open from the audit's A6: an invitee cannot SEE an invite
    before claiming (`am_select` matches on `user_id`, null while pending),
-   so the flow auto-joins on sign-in with no preview and no decline.
+   so the flow auto-joins on sign-in with no preview and no decline. And the
+   ten live RLS checks in `docs/SECURITY-RLS.md` have still never been run —
+   the schema being deployed is not the same claim as the policies behaving.
 
 6. ~~**`--ink-faint` fails the 4.5:1 floor, and the gate cannot see it.**~~
    Done, and the second half of it is the part worth keeping.
@@ -1375,6 +1415,20 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     **Never clobber a remote you have not seen.** Every push reads
     `headRevisionId` first and refuses if it has moved since this device last
     pulled or pushed; the user gets both sides with their timestamps and picks.
+
+    **AND BOTH SIDES OF THAT COMPARISON MUST COME FROM `readMeta`.** The
+    question "does the upload response carry the head revision" was listed
+    below as unproven; it is proven now and the answer is do not rely on it.
+    `_doPush` and `connect()`'s create path stored what the WRITE returned
+    while `_doReconcile` compared against what `readMeta` returns, and the two
+    disagreed: a forced push succeeded, `revisionId` and `syncedAt` were both
+    recorded, and the very next reconcile declared a conflict on a file
+    nobody else had touched. Left alone `moved` is true for ever and Drive
+    never uploads again. `headAfterWrite()` re-reads the head after every
+    write — one GET, the same call reconcile makes, which makes the two sides
+    equal by construction. The harness missed it because its fake Drive always
+    returned a fresh id on a media PATCH; it can withhold one now, and that
+    check was seen RED before it was trusted.
     "What changed locally" is `max(updatedAt)` across projects against
     `syncedAt` — a clock the storage proxy already keeps, which is why nothing
     here writes a dirty flag and nothing writes on a timer.
@@ -1389,10 +1443,61 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     `studio` chunk, so cloud.js already evaluates on **every** page, not only
     the three that import it by name.
 
-    **The token is never persisted** — in memory, re-minted silently by GIS
-    when the hour runs out. The client id is `VITE_GOOGLE_CLIENT_ID` at build
-    time, not a storage key; a build without it says so instead of offering a
-    button that cannot work.
+    **THE TOKEN, AND THE TWO THINGS THIS PARAGRAPH USED TO GET WRONG.**
+    It is still never persisted BY THIS APP — a module variable, gone with the
+    document. The client id is `VITE_GOOGLE_CLIENT_ID` at build time, not a
+    storage key, and a build without it says so instead of offering a button
+    that cannot work. Both halves below were measured against real Google,
+    which is the only way either could have been settled.
+
+    **There is no silent re-mint. This said there was.**
+    `google.accounts.oauth2`'s token client ALWAYS opens a popup;
+    `prompt: ''` suppresses the consent SCREEN, not the window, and a popup
+    with no user gesture behind it is blocked. A direct probe in the live page
+    returned `popup_failed_to_open`. That is One Tap / ID-token behaviour, not
+    this flow. Consequences worth holding together:
+
+      - `getToken({ interactive: false })` must therefore REJECT rather than
+        fall through to a request, and now does. The version that fell
+        through shipped a user-visible bug: Drive connected means every page
+        load called it, and arriving by CLICKING a nav link leaves a fresh
+        gesture on the document, so the browser allowed the popup — clicking
+        Dashboard or Settings threw Google's sign-in window at somebody
+        already signed in. Arriving any other way it was blocked and nothing
+        showed, which is why it read as intermittent.
+      - an expired token therefore surfaces as an error beside a working
+        Connect button. It cannot refresh itself. That is the design now, not
+        a gap.
+
+    **Signing in connects Drive, and the window is ONE HOUR.** Sign-in asks
+    Google for `drive.file` alongside the e-mail, and Supabase returns the
+    Google token as `session.provider_token`. Supabase's docs say that value
+    is returned once and not persisted; supabase-js 2.45.4 in fact writes it
+    into the session blob in localStorage, so it survives a reload — measured,
+    persisted true and live true on a reloaded page. drive-sync.js adopts it
+    and connects with no popup and no second consent.
+
+    **But it does not survive a REFRESH.** When supabase-js refreshes the
+    access token roughly an hour in, the refresh response carries no
+    `provider_token` and the stored one goes with it. So the automatic
+    connection works on the sign-in and for about an hour after; beyond that
+    Drive needs the button, and the error text says so. Measured: an hour-old
+    session reported no grant live and none persisted.
+
+    That one-hour window is a property of Supabase's refresh flow, not a bug
+    here, and it cannot be closed from a static build. The two real fixes are
+    both out of scope: a server holding a Google refresh token (which needs
+    the client secret this app deliberately has nowhere to keep), or asking
+    for consent again, which is the button. Do not "fix" it by writing the
+    token to storage; that is the mistake ai.js already refuses for the API
+    key.
+
+    **The adoption listens for ANY session-bearing auth event**, not
+    `SIGNED_IN`. supabase-js 2.45.4 announces a RESTORED session as
+    `INITIAL_SESSION`, and restored loads are the only ones that can finish —
+    the load that signs in is the one `Store.setAccount()` reloads out from
+    under it, on a zero timer, which is what killed the first three attempts
+    at this.
 
     **CSP.** Four new entries in BOTH `vercel.json` and `netlify.toml`:
     `script-src https://accounts.google.com/gsi/client`, `connect-src`
@@ -1418,11 +1523,23 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     1280 and 390 in both themes with no overflow, no inline handlers and every
     text node over 4.5:1.
 
-    **What is NOT proved, and cannot be here.** A real Google OAuth consent, a
-    real silent re-grant of an expired token, the real `drive.file` scope
-    behaviour, the real multipart create and media PATCH against Google's
-    server, Drive's actual revision retention, and the CSP as a live browser
-    enforces it. All six need a real Google account and a deployed host.
+    **Five of those six are now PROVED, against real Google.** The list used
+    to read: a real OAuth consent, a real silent re-grant, the real
+    `drive.file` scope, the real create and media PATCH, Drive's revision
+    retention, and the CSP as a live browser enforces it.
+
+      - consent, the scope, the create, the PATCH and the CSP: all exercised
+        on the deployed host. A backup file exists, holds this studio, and
+        Drive lists **four revisions** of it — so the revision history the
+        restore feature rests on is real, not assumed.
+      - the sixth, "a real silent re-grant", is proved to be IMPOSSIBLE
+        rather than proved to work. See the token note above.
+
+    **What is still unproved:** restoring from a revision against real Drive
+    (the list is read, a restore from it is not), and what Drive does with a
+    file somebody edits outside the app. The conflict path has only ever been
+    exercised against a head this device had not seen, never against a
+    genuine second writer.
 
     **THE CLIENT ID EXISTS NOW, AND IT IS COMMITTED.** `.env` carries
     `VITE_GOOGLE_CLIENT_ID` for the Web client "Filmmakers Studio - Drive
@@ -1532,6 +1649,40 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
   visible words at all: the old name lived in `<title>`, the manifest and the
   docs, none of which the word-set check reads. Before re-baselining, diff the
   capture and ask which env it was taken under.
+
+- **`shoot.html` is the only view that WRITES to a scene**, and that is the
+  point of it rather than a shortcut. Everything else derived from the scene
+  model reads: the breakdown, the stripboard, the day out of days, the call
+  sheet, the budget, and now the readiness check. Marking a scene shot is the
+  day answering the plan. It is one FIELD on an existing record —
+  `scenes.shotState` plus `shotAt` — because `listScenes()` spreads
+  `blankScene()` under every stored row, so a scene written before the field
+  existed reads back unshot and no migration exists to get wrong. That is the
+  pattern `songId` established; use it for the next field too.
+
+  Four states, not a boolean: '' / shot / part / dropped. "We got some of it"
+  is the commonest outcome of a shoot day and a tool that cannot say so gets
+  lied to.
+
+  It is also the one page designed at 390px and widened, rather than a desk
+  squeezed down. On the floor the slug line is the biggest thing on the card
+  and the targets are 48px before `pointer: coarse` has an opinion.
+
+- **`src/lib/readiness.js` stores nothing and must stay that way.** Every
+  answer is derived at render time, and it COMPOSES `unplacedScenes()`,
+  `unscheduledScenes()`, `locationIndex()` and `calendarDays()` rather than
+  re-deriving them — two opinions about the same data disagree the first time
+  one of them is edited. Passed checks are rendered, not filtered out: a list
+  of only failures reads identically whether the production is clean or the
+  check stopped running, which is the trap the hue assertion already names.
+
+- **`EXPECTED` is no longer empty, and it holds exactly one row.** Adding a
+  module took `navigation.json` from 25 to 26, the launcher prints that
+  number, and the hub failed for a missing word on a page nobody edited —
+  precisely the collision the note in section 04 predicts. One allowance with
+  its reason is the sanctioned answer for the first one; the guidance to
+  re-baseline applies once two or three have piled up. The anti-rot check is
+  watching it, so it cannot quietly become a permanent excuse.
 
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.

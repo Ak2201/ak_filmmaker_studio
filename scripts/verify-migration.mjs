@@ -185,7 +185,19 @@ const PAGES = [
   { page: 'dashboard.html',  legacy: null, name: 'dashboard' },
   // The estimator's own page. It was the last block on library.html,
   // reached by a nav entry pointing at an anchor that never existed.
-  { page: 'budget.html',     legacy: null, name: 'budget' }
+  { page: 'budget.html',     legacy: null, name: 'budget' },
+  /* The studio-wide settings page: the API keys for both providers, and
+     the appearance controls. Added to this list late — it shipped with
+     ZERO gate coverage, because a page absent from here is invisible to
+     every check in the run: no data-key diff, no text coverage, no
+     overflow measurement, no AA walk, no console-error check.
+
+     That is the trap this row exists to close, and it is a property of
+     the list rather than of the page: anything added to vite.config.js
+     and navigation.json looks wired up and is still unchecked until it
+     is named here too, and nothing fails to tell you so. If you add a
+     page entry, add it here in the same commit and re-baseline. */
+  { page: 'settings.html',   legacy: null, name: 'settings' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -222,37 +234,25 @@ const SKIN_FILES = fs
    list is growing, that is the signal to re-baseline deliberately with
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = {
-  /* EMPTY, and emptied by the mechanism rather than by hand-waving.
+  /* EMPTY, and emptied BY the re-baseline rather than by hand-waving.
 
-     The one entry here allowed the word "6": the launcher prints
-     "N of M ready" per phase from navigation.json, and adding the
-     Songs module took Breakdown from "6 of 6" to "7 of 7", so a digit
-     left the page while the baseline still expected it.
+     It held four rows: `dragan` on the hub (the sample project renamed
+     to Dragon) and `vv` / `included` / `compasses` on feature (step 08's
+     copy corrected through the English-override sidecar). Every one was
+     a real, deliberate wording change, and every one was the right use
+     of this list at the time.
 
-     Its own note said what to do next — "every module added to
-     navigation.json will collide with the baseline this same way...
-     if this grows past two or three rows, re-baseline rather than
-     keep adding them" — and the violet redesign is where that came
-     due: deleting six skins took their names out of the Appearance
-     menu, which would have been twelve more rows for words that can
-     never come back. So the oracle was recaptured instead, and the
-     recapture made this allowance redundant: the page now reads
-     "7 of 7" on both sides, the entry stops firing, and the anti-rot
-     half of this check reports it STALE and fails the run. That is
-     the mechanism working, not a regression — the same thing the
-     feature/short/library note below records.
+     Recapturing the oracle makes them all redundant in the same moment:
+     the baseline now records the pages as they actually read, so those
+     words are not "missing" from anything and the allowances never fire.
+     The anti-rot half of this check would then fail the run for stale
+     allowances — which is the mechanism working, not a regression, and
+     is exactly what happened the last two times this file was emptied.
 
-     An entry here is a one-off divergence between a known-good page
-     and an older oracle. If you find yourself adding a third, the
-     answer is `npm run baseline` and a sentence in the commit. */
-  /* The sample project was renamed from the invented "Dragan" to
-     Dragon (2025, dir. Ashwath Marimuthu), and the hub's "I want a
-     complete example" card prints sample.title — so the word `dragan`
-     left the page. A one-off rename is what an allowance is for; if a
-     third of these appears, re-baseline instead. */
-  hub: {
-    'dragan': 'the sample project is Dragon now; the old invented title is gone from the first-run card'
-  },
+     An entry here is a one-off divergence between a known-good page and
+     an older oracle. If you find yourself adding a third, the answer is
+     `npm run baseline` and a sentence in the commit saying so. */
+  hub: {},
   stripboard: {},
   reports: {},
   contacts: {},
@@ -262,32 +262,12 @@ const EXPECTED = {
   study: {},
   dissect: {},
   breakdown: {},
-  /* Emptied when the oracle was recaptured for the new modules. The two
-     entries here explained the volumes→phases rewording, and a baseline
-     taken after that rewording has no such divergence — so both were
-     reported STALE on the next run, which is the anti-rot half of this
-     mechanism doing its job rather than a failure. */
-  /* Step 08's `why` block used to read "Examples from VV and 96 included
-     as compasses" and showed none — the page never rendered an example at
-     all. It shows Dragon's fifteen now, directly under the beat table, so
-     the sentence was corrected to say so.
-
-     The correction could not be made at source: steps.feature.json is
-     regenerated by `npm run extract`. It lives in src/data/steps.copy.json,
-     the English-override sidecar, and these three words are what left the
-     page with the old sentence.
-
-     "96" is not here because the film is named elsewhere on the page and
-     the word survives; "vv" was the only place that abbreviation appeared.
-     All three are gone for good rather than moved, so these entries keep
-     firing and cannot rot into permanent excuses. */
-  feature: {
-    'vv': 'step 08 why: the worked example is Dragon now, so the sentence no longer abbreviates Vikram Vedha',
-    'included': 'step 08 why: reworded — the examples are rendered now rather than described as included',
-    'compasses': 'step 08 why: reworded to the singular, "as a compass"'
-  },
+  feature: {},
   short: {},
-  library: {}
+  library: {},
+  budget: {},
+  dashboard: {},
+  settings: {}
 };
 
 const MIME = {

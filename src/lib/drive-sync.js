@@ -550,18 +550,39 @@ function adoptSignInToken(sess) {
   setTimeout(() => {
     const c = (typeof window !== 'undefined') && window.StudioCloud;
     if (!c || !c.onAuth) return;
+    /* ANY EVENT THAT CARRIES A SESSION, not just SIGNED_IN, and that
+       distinction is the whole bug.
+
+       supabase-js is pinned at 2.45.4, which announces a session
+       RESTORED from storage as `INITIAL_SESSION`. `SIGNED_IN` fires
+       only when somebody actually signs in. So a handler filtered to
+       SIGNED_IN does nothing on every ordinary page load — which is
+       every load after the one that signed in, and the only loads on
+       which this can succeed, because the first one is about to be
+       reloaded out from under it by setAccount().
+
+       Between that and the getSession() guard below returning early
+       while the session was still being restored, there was no path
+       left that ever reached Google: GIS was never even fetched.
+
+       provider_token is still SIGNED_IN-only, so adoptSignInToken
+       keeps that filter. */
     c.onAuth((event, sess) => {
-      if (event !== 'SIGNED_IN') return;
-      adoptSignInToken(sess);   // fast path, when no reload intervenes
-      autoConnectIfGranted();   // the one that survives the reload
+      if (event === 'SIGNED_IN') adoptSignInToken(sess);
+      if (sess) autoConnectIfGranted();
     });
-    /* Already signed in when we got here — the redirect case, and the
-       load AFTER setAccount's reload, which is the one that actually
-       completes. */
+
+    /* Already restored before we subscribed — ensureClient() reads the
+       session with an await and registers its listener afterwards, so
+       whether INITIAL_SESSION lands before or after this line is a
+       race nobody should have to win. Check now AND once more after
+       the restore has had time to land; autoConnectIfGranted() is
+       idempotent, so the extra call costs a function call. */
     if (c.getSession && c.getSession()) {
       adoptSignInToken(c.getSession());
       autoConnectIfGranted();
     }
+    setTimeout(autoConnectIfGranted, 2500);
   }, 0);
 
   if (!isConnected()) {

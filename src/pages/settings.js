@@ -603,4 +603,23 @@ delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
    polling for it. */
 DriveSync.onDriveStatus(() => { if (!busy) render(); });
 
+/* AND SO DOES AUTH, FOR THE SAME REASON AND A SHARPER ONE.
+   ------------------------------------------------------------
+   renderAdmin() asks mayConfigure(), which asks isAdmin(), which
+   reads the SIGNED-IN e-mail. At first paint there is no session
+   yet — supabase-js restores it asynchronously — so isAdmin() is
+   false for everybody, including an admin, and the panel never
+   renders. It was measured false on the live page while isAdmin()
+   answered true in the console a second later: the state was right
+   and the DOM was a second too old.
+
+   This is the trap the modal's own cfgLink comment already names —
+   "a value decided at render time would be stale for exactly the
+   person it is meant for" — reintroduced one file away, which is
+   how these go. Anything whose VISIBILITY depends on who is signed
+   in has to redraw when that answer arrives. */
+if (window.StudioCloud && window.StudioCloud.onAuth) {
+  window.StudioCloud.onAuth(() => { if (!busy) render(); });
+}
+
 render();

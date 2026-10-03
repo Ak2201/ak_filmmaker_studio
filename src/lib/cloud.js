@@ -244,6 +244,20 @@ export function setCfg(c) {
 
 export const isConfigured = () => !!(getCfg() && getCfg().url && getCfg().key);
 
+/* IS THIS MODULE THE LIVE SYNC RIGHT NOW?
+   ------------------------------------------------------------
+   The same two conditions the `saved` subscriber at the bottom of
+   this file uses to decide whether to push — configured, and a
+   session. Stated once, here, because a SECOND sync backend now
+   has to ask: src/lib/drive-sync.js refuses to sync live while
+   this one is live, since two live syncs in one document echo each
+   other through localStorage forever.
+
+   It is a function rather than a flag for the obvious reason: a
+   flag copied into another module is stale the moment somebody
+   signs out. */
+export function ownsSync() { return !!(isConfigured() && session); }
+
 // ============================================================
 // CLIENT INIT — loads SDK on demand
 // ============================================================
@@ -1292,6 +1306,10 @@ const StudioCloud = {
   // config
   getCfg, setCfg,
   isConfigured: () => !!(getCfg() && getCfg().url && getCfg().key),
+  /* Read through this global by drive-sync.js, the way src/ui/auth.js
+     reaches this module — importing it there would put cloud.js on
+     all sixteen page entries. See ownsSync() above. */
+  ownsSync,
   // auth — Google only; nothing else belongs on this line
   ensureClient,
   signInWithGoogle, signOut,

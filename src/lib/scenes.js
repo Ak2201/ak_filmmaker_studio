@@ -10,7 +10,7 @@
    STORAGE CONTRACT. `fms_scenes_v1` is a new key, and a new key has
    to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
-     2. PROJECT_KEYS in src/pages/hub.js — included in backups
+     2. PROJECT_KEYS in src/lib/backup.js — included in backups
      3. ALL_KEYS in src/pages/hub.js     — cleared by reset
      4. the scope check in supabase-schema.sql — allowed to sync
    Miss #2 and a user's scenes are absent from the file that calls

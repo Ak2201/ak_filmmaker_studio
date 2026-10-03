@@ -85,6 +85,100 @@
   color: var(--accent-on);
 }
 
+/* ---- Drive -------------------------------------------------
+   One status line, one row of buttons, and two lists. Every shape
+   below is a --sk-* variable and every colour is a token, so the
+   skin keeps control of this section exactly as it does the rest
+   of the page.
+
+   TEXT TAKES A *-deep COLOUR, NEVER A FILL. --ok and --warn are
+   mixed to be painted behind something; as text they do not clear
+   4.5:1 on a light card. The dots below are the only place the
+   fills appear, and a dot is a fill. */
+.st-drive-status {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-dot {
+  inline-size: var(--s2);
+  block-size: var(--s2);
+  border-radius: var(--radius-pill);
+  background: var(--ink-muted);
+  flex: none;
+}
+.st-dot.is-ok   { background: var(--ok); }
+.st-dot.is-warn { background: var(--warn); }
+.st-dot.is-bad  { background: var(--danger); }
+
+.st-drive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* ---- the conflict ------------------------------------------
+   A wash rather than a border colour, because this is the one
+   state on the page that has to be read before anything else is
+   clicked. */
+.st-conflict {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--warn);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--warn-wash);
+}
+.st-conflict-h {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--warn-deep);
+}
+.st-conflict-p {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.st-conflict-rows,
+.st-version-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+.st-conflict-rows li,
+.st-version-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.st-conflict-side {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.st-conflict-at,
+.st-version-at { color: var(--ink-muted); }
+.st-version-rows li { justify-content: space-between; }
+.st-versions { display: grid; gap: var(--s3); }
+
 /* ---- the two kinds of plain paragraph ----------------------- */
 .st-note,
 .st-elsewhere p {

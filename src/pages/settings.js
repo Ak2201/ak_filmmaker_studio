@@ -69,6 +69,7 @@ import { h, delegate } from '../lib/dom.js';
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
+import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 
 const app = document.getElementById('app');
 
@@ -179,6 +180,183 @@ function renderAppearance() {
   return sec;
 }
 
+/* ---- Google Drive -------------------------------------------
+   The ONE place in the app where Drive backup is configured, for
+   the reason settings.html exists at all: which cloud folder this
+   browser copies itself into is a property of the browser, not of
+   a film.
+
+   NOTHING ABOUT THE BACKUP FORMAT OR THE SYNC RULES IS DECIDED
+   HERE. src/lib/backup.js owns what a backup is, src/lib/drive.js
+   owns Drive, src/lib/drive-sync.js owns when to push and when to
+   stop and ask. This renders their status and forwards clicks.
+   The same discipline as the API key above: a page that
+   re-implements half of a module is how the studio ended up with
+   four rupee parsers.
+
+   THE EXPORT FILE IS STILL THE HUB'S. No Export / Import buttons
+   are mirrored here — see renderElsewhere(). */
+
+let versions = null;     // null until EARLIER VERSIONS is opened
+let busy = '';           // which control is mid-flight, for the label
+
+const when = (iso) => {
+  if (!iso) return 'never';
+  const d = new Date(iso);
+  if (isNaN(d)) return 'unknown';
+  return d.toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+};
+
+function driveButton(action, label, opts) {
+  opts = opts || {};
+  const b = h('button.btn' + (opts.primary ? '.primary' : ''), {
+    type: 'button',
+    'data-action': action,
+    disabled: !!busy
+  });
+  b.append(h('span', { text: busy === action ? opts.busyLabel || 'Working…' : label }));
+  return b;
+}
+
+/* The conflict, named on both sides with their times. Two buttons
+   and no default: an app that picks one has decided whose month of
+   writing matters less. */
+function conflictCard(st) {
+  const c = st.conflict || {};
+  const card = h('div.st-conflict', { role: 'group', 'aria-label': 'Backup conflict' });
+  card.append(h('p.st-conflict-h', { text: 'Both copies changed.' }));
+  card.append(h('p.st-conflict-p', {
+    text: 'The file in Drive has moved on since this browser last saw it, and this '
+        + 'browser has unsaved-to-Drive changes of its own. Nothing was uploaded and '
+        + 'nothing was overwritten. Drive keeps the earlier version either way, so '
+        + 'neither answer below destroys anything — but only you know which is which.'
+  }));
+  const rows = h('ul.st-conflict-rows');
+  rows.append(h('li', {}, [
+    h('span.st-conflict-side', { text: 'This browser' }),
+    h('span.st-conflict-at', { text: 'last edited ' + when(c.localAt) })
+  ]));
+  rows.append(h('li', {}, [
+    h('span.st-conflict-side', { text: 'In Drive' }),
+    h('span.st-conflict-at', { text: 'last changed ' + when(c.remote && c.remote.modifiedTime) })
+  ]));
+  card.append(rows);
+  card.append(h('div.st-drive-actions', {}, [
+    driveButton('drive-keep-mine', 'Keep mine — upload over Drive', { busyLabel: 'Uploading…' }),
+    driveButton('drive-take-theirs', 'Take theirs — replace this browser', { busyLabel: 'Restoring…' })
+  ]));
+  return card;
+}
+
+function versionList() {
+  const wrap = h('div.st-versions');
+  if (!versions) return wrap;
+  if (!versions.length) {
+    wrap.append(h('p.st-note', { text: 'Drive is not holding any earlier versions of this file yet.' }));
+    return wrap;
+  }
+  const ul = h('ul.st-version-rows');
+  versions.forEach((r) => {
+    ul.append(h('li', {}, [
+      h('span.st-version-at', { text: when(r.modifiedTime) }),
+      h('button.btn.st-version-btn', {
+        type: 'button',
+        'data-action': 'drive-restore-version',
+        'data-rev': r.id,
+        disabled: !!busy
+      }, [h('span', { text: 'Restore this one' })])
+    ]));
+  });
+  wrap.append(ul);
+  return wrap;
+}
+
+function renderDrive() {
+  const st = DriveSync.getDriveStatus();
+  const sec = section('drive', 'This device · your own Drive',
+    'Back up to Google Drive.',
+    'One file in your Drive, written to the same place every time, so Drive’s own '
+      + 'version history is the history of your studio. It holds every project this '
+      + 'browser has — the same file the hub’s Export button writes — and it never '
+      + 'holds the API key above.');
+
+  if (!st.configured) {
+    sec.append(h('p.st-note', {
+      text: 'This build was made without a Google client id, so there is nothing to '
+          + 'connect to. A build that sets VITE_GOOGLE_CLIENT_ID offers the button '
+          + 'here. The hub’s Export still writes the same backup to a file you keep '
+          + 'yourself, and that needs no account at all.'
+    }));
+    return sec;
+  }
+
+  const pill = h('p.st-drive-status', {}, [
+    h('span.st-dot' + (
+      st.state === DRIVE_STATES.SYNCED ? '.is-ok'
+      : st.state === DRIVE_STATES.CONFLICT ? '.is-warn'
+      : st.state === DRIVE_STATES.ERROR ? '.is-bad' : ''), { 'aria-hidden': 'true' }),
+    h('span', { text: st.detail })
+  ]);
+  sec.append(pill);
+
+  if (!st.connected) {
+    sec.append(h('p.st-note', {
+      text: 'Connecting asks Google for permission to one file — the one this app '
+          + 'creates. It cannot see anything else in your Drive. The permission is '
+          + 'held in memory for this tab only and is never written to disk, so '
+          + 'closing the browser ends it and opening it again renews it without '
+          + 'asking you anything.'
+    }));
+    sec.append(h('div.st-drive-actions', {}, [
+      driveButton('drive-connect', 'Connect Google Drive', { primary: true, busyLabel: 'Asking Google…' })
+    ]));
+    return sec;
+  }
+
+  sec.append(h('p.st-note', {
+    text: 'Last synced ' + when(st.syncedAt) + '.'
+        + (st.live
+            ? ' Changes go up a few seconds after you stop typing.'
+            : '')
+  }));
+
+  if (!st.live) {
+    /* Supabase is signed in. Said plainly rather than left as a
+       switch that quietly does nothing. */
+    sec.append(h('p.st-note', {
+      text: 'Cloud sync is signed in on this browser, and two live syncs writing the '
+          + 'same storage would keep waking each other up. So Drive stays a manual '
+          + 'backup while you are signed in: the buttons below still work, and '
+          + 'nothing uploads on its own. Cloud sync also carries comments, share '
+          + 'links and roles, which a Drive file cannot.'
+    }));
+  }
+
+  if (st.state === DRIVE_STATES.CONFLICT) sec.append(conflictCard(st));
+
+  const actions = h('div.st-drive-actions');
+  actions.append(driveButton('drive-backup', 'Back up now', { primary: true, busyLabel: 'Uploading…' }));
+  actions.append(driveButton('drive-restore', 'Restore from Drive', { busyLabel: 'Restoring…' }));
+  actions.append(driveButton('drive-versions', versions ? 'Hide earlier versions' : 'Earlier versions', { busyLabel: 'Reading…' }));
+  actions.append(driveButton('drive-disconnect', 'Disconnect'));
+  sec.append(actions);
+
+  if (versions) sec.append(versionList());
+
+  if (st.link) {
+    sec.append(h('p.st-note', {}, [
+      'The file is yours to open, copy or download: ',
+      h('a', { href: st.link, target: '_blank', rel: 'noopener', text: 'open it in Drive' }),
+      '. Disconnecting here never deletes it.'
+    ]));
+  }
+
+  return sec;
+}
+
 /* ---- the settings that are NOT here -------------------------
    Said out loud, with a route, rather than left as a hole: a page
    called Settings that silently omits backups is a page that makes
@@ -189,11 +367,12 @@ function renderElsewhere() {
   const sec = h('section.st-sec.st-elsewhere');
   sec.append(h('h2.bd-h2', { text: 'What is not on this page' }));
   sec.append(h('p', {}, [
-    'Projects, the full-studio backup and Reset everything are on ',
+    'Projects, the backup file you keep yourself and Reset everything are on ',
     h('a', { href: 'index.html', text: 'Home' }),
-    ', because all three are about the work rather than about this device. '
-    + 'Signing in for cloud sync is the pill in the bar at the top of every '
-    + 'page, this one included.'
+    ', because all three are about the work rather than about this device — and '
+    + 'the Drive section above uploads the very same file rather than a second '
+    + 'kind of one. Signing in for cloud sync is the pill in the bar at the top '
+    + 'of every page, this one included.'
   ]));
   return sec;
 }
@@ -206,15 +385,15 @@ function render() {
     h('p.bd-eyebrow', { text: 'Studio' }),
     h('h1.bd-title', { text: 'Settings.' }),
     h('p.bd-deck', {
-      text: 'Two things belong to this browser rather than to any film: the API '
-          + 'key the model-backed tools use, and how the studio looks. Both were '
-          + 'reachable only from inside whichever page happened to carry the '
-          + 'control. Neither one is in a project, a backup, or the cloud.'
+      text: 'Three things belong to this browser rather than to any film: the API '
+          + 'key the model-backed tools use, where this browser copies itself for '
+          + 'safe keeping, and how the studio looks. None of the three is part of a '
+          + 'project, and the first and the last are in no backup and no cloud.'
     })
   ]));
 
   const body = h('div.st-body');
-  body.append(renderKey(), renderAppearance(), renderElsewhere());
+  body.append(renderKey(), renderDrive(), renderAppearance(), renderElsewhere());
   main.append(body);
 
   app.replaceChildren(main);
@@ -250,5 +429,77 @@ Panel.onAIChange(() => render());
 delegate(document, 'click', '[data-theme-choice], [data-skin-choice]', () => {
   render();
 });
+
+/* ---- Drive --------------------------------------------------
+   Delegated, with `data-action`, because a strict CSP ships and an
+   inline handler breaks the page under it. Every one of these
+   forwards to drive-sync.js and then redraws; none of them decides
+   anything. `busy` is a render flag, not state — it exists so a
+   second click during a five-second upload cannot start a second
+   one. */
+function run(action, fn) {
+  if (busy) return;
+  busy = action;
+  render();
+  Promise.resolve()
+    .then(fn)
+    .catch((e) => {
+      StudioUI.toastError((e && e.message) || 'Drive did not answer.', { duration: 6000 });
+    })
+    .finally(() => { busy = ''; render(); });
+}
+
+const DRIVE_ACTIONS = {
+  'drive-connect':  () => run('drive-connect', () => DriveSync.connect()),
+  'drive-backup':   () => run('drive-backup', () => DriveSync.push()),
+  'drive-restore':  () => run('drive-restore', async () => {
+    /* A restore REPLACES the projects this browser shares with the
+       file. Asked out loud, every time, because the one thing this
+       app refuses is deciding that silently. */
+    if (!confirm('Replace this browser’s copy of every project that is also in the ' +
+                 'Drive backup?\n\nProjects the backup has never heard of are left ' +
+                 'alone. Drive keeps the current version either way.')) return;
+    const r = await DriveSync.pull();
+    if (r && r.ok) location.reload();
+  }),
+  'drive-versions': () => run('drive-versions', async () => {
+    if (versions) { versions = null; return; }
+    versions = await DriveSync.listVersions();
+  }),
+  'drive-disconnect': () => {
+    if (!confirm('Stop syncing to Drive from this browser?\n\nThe file in your Drive ' +
+                 'is not deleted and nothing you have written is touched.')) return;
+    DriveSync.disconnect();
+    versions = null;
+    render();
+  },
+  'drive-keep-mine':   () => run('drive-keep-mine', () => DriveSync.resolveConflict('mine')),
+  'drive-take-theirs': () => run('drive-take-theirs', async () => {
+    const r = await DriveSync.resolveConflict('theirs');
+    if (r && r.ok) location.reload();
+  })
+};
+
+delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
+  const act = el.getAttribute('data-action');
+  if (act === 'drive-restore-version') {
+    const rev = el.getAttribute('data-rev');
+    if (!confirm('Restore the studio from the version saved ' +
+                 'on ' + when((versions || []).find((v) => v.id === rev)?.modifiedTime) +
+                 '?\n\nThis replaces the projects that version contains. Drive keeps ' +
+                 'the current version too, so this is reversible.')) return;
+    return run('drive-restore-version', async () => {
+      const r = await DriveSync.restoreVersion(rev);
+      if (r && r.ok) location.reload();
+    });
+  }
+  const fn = DRIVE_ACTIONS[act];
+  if (fn) fn();
+});
+
+/* Drive reports its own progress — a reconcile that finishes
+   thirty seconds after load has to reach the page without the page
+   polling for it. */
+DriveSync.onDriveStatus(() => { if (!busy) render(); });
 
 render();

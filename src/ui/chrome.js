@@ -37,6 +37,17 @@ import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
 import glossaryData from '../data/glossary.json';
 import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palette.js';
+/* Drive sync, wired once here so EVERY page has it — the same reason
+   the palette is wired here rather than per page. A backup that only
+   runs on the hub is a backup that misses the pages people write on.
+   The import looks unused and is not: drive-sync.js subscribes to
+   `saved` and reconciles on boot at evaluation time, the way cloud.js
+   does. It does nothing at all — no script load, no fetch, no storage
+   write — unless this build carries a Google client id AND this
+   device has connected, so the cost of having it everywhere is the
+   module and nothing else, and vite.config.js already folds every
+   src/lib and src/ui module into the one `studio` chunk anyway. */
+import '../lib/drive-sync.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 

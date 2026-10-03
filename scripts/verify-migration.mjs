@@ -373,8 +373,15 @@ const server = http.createServer((req, res) => {
         .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + ' '.repeat(m.length - lead.length));
       source.split('\n').forEach((line, i) => {
         if (!line.includes('arunak_')) return;
-        // hub.js's importer maps legacy note keys out of pre-rename backups.
-        if (rel === path.join('src', 'pages', 'hub.js') && line.includes("indexOf('arunak_')")) return;
+        /* The backup applier maps legacy note keys forward out of a
+           pre-rename file. Notes are the one thing a backup stores as
+           a RAW key rather than a field name, so this mapping has to
+           name the old prefix. It used to live in src/pages/hub.js and
+           moved to src/lib/backup.js when the format was split out of
+           the page, so that this ONE copy serves the file picker and
+           the Drive restore alike — which is why this allowance names
+           the file it is in rather than a page. */
+        if (rel === path.join('src', 'lib', 'backup.js') && line.includes("indexOf('arunak_')")) return;
         survivors.push(`${rel}:${i + 1}  ${line.trim().slice(0, 96)}`);
       });
     }
@@ -1209,13 +1216,31 @@ for (const spec of PAGES) {
     const AA = 4.5;
     /* THE WHOLE DOCUMENT, not a list of selectors. `main` is the page;
        the modals are added because they are built on first open and
-       live outside it, and the shell is added because the breadcrumb
-       and the phase tabs are wayfinding — a "you are here" marker
-       nobody can read is worse than none.
+       live outside it, and the navigation band is added because the
+       breadcrumb and the phase tabs are wayfinding — a "you are here"
+       marker nobody can read is worse than none.
+
+       `.sh-bar`, NOT `.shell`. This list said `.shell` from the day it
+       was written and `.shell` has never existed in this app: the band
+       shell.js builds is `.sh-bar`. So the clause that claims to cover
+       the breadcrumb and the phase tabs covered nothing, on every page,
+       in every theme, for as long as the check has existed — and it
+       read as deliberate coverage, which is worse than an omission
+       because nobody goes looking for it.
+
+       Same family as the `--hue` class that matched no rule and the
+       `.is-primary` button that matched no rule: a selector naming
+       something that is not there fails silently and looks fine. The
+       difference is that this one was in the thing whose job is to
+       notice.
+
+       `.sh-plate` is in too — it is the one surface whose colours are
+       deliberately constant across themes, so it is the one most
+       likely to be wrong in exactly one of them.
 
        Anything with text in it is measured, whether or not somebody
        thought of it. That is the whole difference. */
-    const ROOTS = 'main, .modal, .shortcut-sheet, .shell, .toolbar';
+    const ROOTS = 'main, .modal, .shortcut-sheet, .sh-bar, .sh-plate, .toolbar';
 
     /* A per-element name, built from the element and its two nearest
        classed ancestors. The old version printed the matched SURFACE

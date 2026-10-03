@@ -46,7 +46,7 @@
    STORAGE CONTRACT. `fms_locations_v1` is registered in the four
    places the scenes.js header lists:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
-     2. PROJECT_KEYS in src/pages/hub.js — included in backups
+     2. PROJECT_KEYS in src/lib/backup.js — included in backups
      3. ALL_KEYS in src/pages/hub.js     — cleared by reset
      4. the scope check in supabase-schema.sql — allowed to sync
    All four are already done for this key.

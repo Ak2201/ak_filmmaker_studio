@@ -9,7 +9,7 @@
    STORAGE CONTRACT. `fms_contacts_v1` is a new key, and a new key
    has to be registered in four places or it silently misbehaves:
      1. SCOPED_KEYS in src/lib/store.js  — namespaced per project
-     2. PROJECT_KEYS in src/pages/hub.js — included in backups
+     2. PROJECT_KEYS in src/lib/backup.js — included in backups
      3. ALL_KEYS in src/pages/hub.js     — cleared by reset
      4. the scope check in supabase-schema.sql — allowed to sync
    All four are already done for this key. Miss #2 and a user's crew

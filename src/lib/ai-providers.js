@@ -28,7 +28,7 @@
 
      1. SCOPED_KEYS in src/lib/store.js  — so neither is suffixed
         with a project id. One key, one device, every project.
-     2. PROJECT_KEYS in src/pages/hub.js — so neither is written
+     2. PROJECT_KEYS in src/lib/backup.js — so neither is written
         into the backup file a user emails to themselves.
      3. GLOBAL_KEYS in src/pages/hub.js  — the other half of that
         backup, and the one most easily missed: `export-all` walks

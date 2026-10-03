@@ -23,6 +23,7 @@ npm run build     # static output in dist/
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below
 npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
+npm run prove:drive # Drive backup, against a faked Drive — see open item 10
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
@@ -48,6 +49,10 @@ src/
              scenes.js contacts.js shots.js script.js locations.js
              screenplay-export.js shotlist-export.js script-import.js
              pdf-text.js ai.js scriptgen.js songs.js
+             backup.js  ← the backup FORMAT: one builder, one applier,
+                          and the PROJECT_KEYS / GLOBAL_KEYS maps that
+                          used to sit in hub.js
+             drive.js drive-sync.js ← Drive, and when to talk to it
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -109,6 +114,19 @@ and is deliberately in NONE of the five registries — `GLOBAL_KEYS` most of all
 because that is what `export-all` walks and an account id inside a backup would
 make another machine claim to be somebody. Full reasoning in
 `docs/STORAGE-MODEL.md`.
+
+**`PROJECT_KEYS` and `GLOBAL_KEYS` live in `src/lib/backup.js` now, not in
+`hub.js`.** They are the backup file's own schema, and the file has a second
+reader and a second writer since Drive sync landed. `ALL_KEYS` stayed on the
+hub, because that one is the reset list.
+
+**`fms_drive_sync_v1` is the third key that is deliberately out of
+`GLOBAL_KEYS`**, for the same shape of reason as the account id: it points at
+one Drive file on one device, so a backup carrying it would make the machine
+that restored it start pushing its own studio into the first machine's file. It
+IS in `ALL_KEYS`, unlike `fms_ai_key_v1` — reset must disconnect Drive, or a
+wiped studio stays pointed at a file full of work and the next keystroke
+uploads the emptiness over it. Reset never deletes the Drive file.
 
 **The second dimension put the studio-wide trap straight back.** `exportAll()`
 and `resetAll()` in `hub.js` were built from `listProjects()`, which now filters
@@ -1320,6 +1338,83 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
      END button completely. The save indicator and the toast host had
      already been lifted above the bar and the timer had not — when a
      bottom bar exists, the list of floats to lift has to be all of them.
+
+10. **Back up to Google Drive — the whole studio, one file, kept current.**
+    `src/lib/drive.js` is the client (auth, find-or-create, upload, download,
+    head revision, revisions) and knows nothing about films;
+    `src/lib/drive-sync.js` is the only place Drive and the studio meet. The UI
+    is on `settings.html`, which is the app-scope page.
+
+    **It REUSES the backup file rather than inventing a format.** `exportAll()`
+    in `hub.js` used to build the v2 object and trigger a download in one
+    function; the seam is cut, and `buildBackup()` / `applyBackup()` in
+    `src/lib/backup.js` are now the only implementations of each. The hub owns
+    the `<a download>` and the file picker, Drive owns the PUT and the GET, and
+    the gate's backup round trip exercises the same code on every run — so the
+    guarantee is inherited rather than re-earned. `applyBackup` has two modes
+    and ONE loop: `merge` (the hub's import, additive, a colliding id lands
+    beside as a marked copy) and `restore` (a Drive pull, a colliding id
+    replaces in place, because a pull is this device catching up with itself
+    rather than importing somebody else's films). Neither mode deletes a local
+    project the file has never heard of.
+
+    **One file, a stable id, and Drive's own revisions are the versioning.**
+    No version scheme is maintained here; "restore the one from Tuesday" is a
+    `revisions` call. The scope is `drive.file` — non-sensitive, no OAuth
+    verification, and unlike `drive.appdata` it puts the file somewhere the
+    person can open, copy and keep, which this app's whole premise requires.
+
+    **Never clobber a remote you have not seen.** Every push reads
+    `headRevisionId` first and refuses if it has moved since this device last
+    pulled or pushed; the user gets both sides with their timestamps and picks.
+    "What changed locally" is `max(updatedAt)` across projects against
+    `syncedAt` — a clock the storage proxy already keeps, which is why nothing
+    here writes a dirty flag and nothing writes on a timer.
+
+    **Only one sync owner.** `cloud.js` gained `ownsSync()` —
+    `isConfigured() && session`, the same two conditions its own `saved`
+    subscriber uses. Drive asks it (through `window.StudioCloud`, as
+    `src/ui/auth.js` does) and goes manual-only when Supabase is live, because
+    two live syncs writing the same storage echo each other forever, and
+    Supabase also carries collaboration that a Drive file cannot. Worth
+    knowing: `vite.config.js` folds every `src/lib` and `src/ui` module into one
+    `studio` chunk, so cloud.js already evaluates on **every** page, not only
+    the three that import it by name.
+
+    **The token is never persisted** — in memory, re-minted silently by GIS
+    when the hour runs out. The client id is `VITE_GOOGLE_CLIENT_ID` at build
+    time, not a storage key; a build without it says so instead of offering a
+    button that cannot work.
+
+    **CSP.** Four new entries in BOTH `vercel.json` and `netlify.toml`:
+    `script-src https://accounts.google.com/gsi/client`, `connect-src`
+    `https://www.googleapis.com` and `https://accounts.google.com/gsi/`,
+    `frame-src https://accounts.google.com/gsi/` (the silent token request is an
+    iframe), and `style-src https://accounts.google.com/gsi/style`.
+
+    **What is proved, and by what.** `settings.html` is NOT in the gate's
+    `PAGES` and `baselineFacts()` hard-exits on a name missing from
+    `baseline.json`, so none of this is in `npm run verify`.
+    `scripts/prove-drive.mjs` builds its own `dist-drive/` with a fake client id
+    and replaces exactly one seam — `fetch` to googleapis.com, and the GIS token
+    client — with an in-memory Drive that counts revisions. Everything above
+    that seam is the shipped code. It asserts the uploaded bytes are a v2
+    backup holding both projects; that the API key's VALUE AND NAME are absent
+    from those bytes with a key set on the device; create-on-first-connect;
+    push with an unmoved head; refusal plus a named conflict when the head has
+    moved; keep-mine and take-theirs; that a pull replaces rather than
+    duplicates; the revision list and a restore from one; manual-only under
+    Supabase ownership with no push on save; a debounced push when Drive is
+    live; zero localStorage writes across four idle seconds with Drive
+    connected; disconnect leaving the Drive file alone; and the settings page at
+    1280 and 390 in both themes with no overflow, no inline handlers and every
+    text node over 4.5:1.
+
+    **What is NOT proved, and cannot be here.** A real Google OAuth consent, a
+    real silent re-grant of an expired token, the real `drive.file` scope
+    behaviour, the real multipart create and media PATCH against Google's
+    server, Drive's actual revision retention, and the CSP as a live browser
+    enforces it. All six need a real Google account and a deployed host.
 
 ## Things that are deliberate, not oversights
 

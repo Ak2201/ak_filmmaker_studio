@@ -189,6 +189,28 @@ export function buildBackup() {
 }
 
 /** What is in a parsed file, without applying any of it. */
+/* The download itself, beside the thing it downloads.
+
+   This was ten lines inside hub.js's exportAll(), which was fine
+   while the hub was the only place anybody could ask for a backup.
+   It is not any more: when the browser runs out of storage the
+   person is mid-sentence on write.html, and the useful answer is the
+   file, not directions to a button on another page. A local wrapper
+   for PRESENTATION is allowed where a local copy of the format would
+   not be — and this is the presentation half, with buildBackup()
+   still the only thing that knows what a backup IS. */
+export function downloadBackup() {
+  const all = buildBackup();
+  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fms_studio_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  return (all.projects || []).length;
+}
+
 export function backupShape(all) {
   const v2 = !!(all && all._version >= 2 && all.data);
   const projects = (v2 && Array.isArray(all.projects)) ? all.projects : [];
@@ -337,6 +359,7 @@ function applyV1(all, opts) {
 }
 
 export default {
+  downloadBackup,
   PROJECT_KEYS, GLOBAL_KEYS, NOTE_PREFIX,
   buildBackup, backupShape, applyBackup
 };

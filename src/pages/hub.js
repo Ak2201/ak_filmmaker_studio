@@ -42,7 +42,7 @@ import { parseNum, fmtINR } from '../lib/money.js';
 import { featureKeys, shortKeys, progressAgainst } from '../lib/blueprint-fields.js';
 import Store from '../lib/store.js';
 import {
-  NOTE_PREFIX, buildBackup, applyBackup, backupShape
+  NOTE_PREFIX, buildBackup, downloadBackup, applyBackup, backupShape
 } from '../lib/backup.js';
 import { DRIVE_STATE_KEY } from '../lib/drive-sync.js';
 import { mountShell } from '../ui/shell.js';
@@ -1289,16 +1289,7 @@ function exportOverviewPDF() {
    used to live here, about listAllProjects and about the importer not
    carrying `ns` across, moved there with the code it explains. */
 function exportAll() {
-  const all = buildBackup();
-  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = 'fms_studio_backup_' + date + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  const n = (all.projects || []).length;
+  const n = downloadBackup();
   logActivity('studio', 'Exported full studio backup — ' + n + ' project' + (n === 1 ? '' : 's'));
 }
 

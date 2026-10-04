@@ -1047,6 +1047,9 @@ const StudioStore = {
   // version
   VERSION: '1.0.0',
 
+  // storage tiers — what is stored, where, and how much room is left
+  storageUsage,
+
   // projects
   listProjects,
   listAllProjects, purgeProjectEverywhere, currentPointerKeys,

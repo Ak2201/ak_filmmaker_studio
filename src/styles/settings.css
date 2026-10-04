@@ -179,6 +179,124 @@
 .st-version-rows li { justify-content: space-between; }
 .st-versions { display: grid; gap: var(--s3); }
 
+/* ---- storage -----------------------------------------------
+   One meter per tier, and only one of them has a bar. The second
+   tier is IndexedDB, measured in hundreds of megabytes that
+   nothing here has measured, so it gets a figure and a sentence
+   rather than a proportion drawn from a number nobody has.
+
+   EVERY SHAPE IS A VARIABLE AND EVERY COLOUR IS A TOKEN, as
+   everywhere else on this page. The one radius below that is not
+   --sk-radius is --radius-pill, which is the exception invariant 7
+   names: a pill is a shape with a meaning, not a radius with a
+   value. The only inline style the section writes is --st-fill,
+   which is a MEASUREMENT — the band is a class, because an inline
+   style beats every stylesheet and a colour written into one can
+   never be themed or skinned out of it. */
+.st-tiers {
+  display: grid;
+  gap: var(--s5);
+}
+
+.st-meter { display: grid; gap: var(--s2); }
+
+.st-meter-head {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+}
+/* The same mono label as .st-group-label and .st-conflict-side: it
+   is the same object — the name of the thing beside its value. */
+.st-meter-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-meter-figure {
+  font-size: var(--t-base);
+  color: var(--ink);
+}
+
+/* The track is the page's sunk surface rather than a tinted one,
+   so it reads as a recess in both themes without a second colour
+   decision. --paper-sunk is darker than --paper-raised in paper
+   and lighter than it in ink, which is what makes one rule do. */
+.st-bar {
+  inline-size: 100%;
+  block-size: var(--s2);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w) solid var(--rule-hair);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+/* A HEALTHY NUMBER LOOKS HEALTHY. The default fill is the accent,
+   which is the product's own colour and means nothing beyond "this
+   is the measured part". A warning hue on a studio with 94% of its
+   room left is how people learn to ignore warning hues. The two
+   bands below are fills, which is what --warn and --danger are
+   mixed to be; no text on this page takes either. */
+.st-bar-fill {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--st-fill, 0%);
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+.st-bar-fill.is-warn { background: var(--warn); }
+.st-bar-fill.is-bad  { background: var(--danger); }
+
+.st-meter-note {
+  max-width: var(--sk-deck-measure);
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+/* --warn-deep is the variant mixed to be READ; --warn is the fill
+   two rules above and would be 3.5:1 here. */
+.st-meter-note.is-warn { color: var(--warn-deep); }
+
+/* ---- a storage alarm ---------------------------------------
+   The shape of .st-conflict, in the danger family, for the two
+   states that have to be read before anything on the page is
+   believed: the second tier did not open, or the first is nearly
+   full.
+
+   --ink ON --danger-wash, never --danger as the text colour.
+   There is no --danger-deep in tokens.css, so the obvious
+   var(--danger-deep, var(--danger)) would fall through to a fill
+   used as text — the single mistake that accounted for most of the
+   AA work. The wash carries the meaning and the ink carries the
+   words, exactly as .acct-error below. */
+.st-alarm {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  border: var(--sk-card-line-w) solid var(--danger);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--danger-wash);
+}
+.st-alarm-h {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.st-alarm-p {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+
 /* ---- the two kinds of plain paragraph ----------------------- */
 .st-note,
 .st-elsewhere p {

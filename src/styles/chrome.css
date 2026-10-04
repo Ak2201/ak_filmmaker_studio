@@ -1189,6 +1189,17 @@ a:focus-visible { outline-offset: 3px; }
   transition: background var(--speed) var(--ease);
 }
 .account-menu .am-item:hover { background: var(--paper-sunk); }
+/* `--danger` AS TEXT, WHICH IS THE ONE PLACE IT IS NOT THE TRAP.
+
+   Invariant 4 says a fill is not a text colour, and this rule looks
+   exactly like the fourteen places that were wrong. It was measured
+   rather than assumed, in all four combinations against the ground it
+   actually sits on (--paper-raised): 6.33:1 and 5.79:1 on ink, 5.62:1
+   and 4.65:1 on paper. It clears AA everywhere because --danger is
+   tuned per theme — #f87171 against the dark ground, #c62828 against
+   the light one — which is precisely what --accent and the six hues
+   are not. Do not "fix" this to --danger-deep; there isn't one, and
+   the numbers are already above the floor. */
 .account-menu .am-item.danger { color: var(--danger); }
 .account-menu .am-item.danger:hover { background: var(--danger-wash); }
 

@@ -1564,13 +1564,22 @@ Store.subscribe('saved', () => {
    notice the writer can afford to miss.
    ------------------------------------------------------------ */
 const _told = new Set();
-function _storageAlarm(kind, msg, action) {
+function _storageAlarm(kind, msg, offerBackup) {
   if (_told.has(kind)) return;     // once per session; the toast stays up
   _told.add(kind);
+  /* `action` is the button's LABEL and `onAction` is the handler —
+     checked against the toast rather than assumed, because an option
+     name it does not read renders no button at all and says nothing,
+     which is the dead-class trap with different spelling. `error`
+     also routes it to the role="alert" host; there is no separate
+     assertive flag. */
   StudioUI.toast(msg, {
-    type: 'error', assertive: true, duration: 0,
-    actionLabel: action ? 'EXPORT A BACKUP' : null,
-    action: action ? () => { location.href = 'index.html#export'; } : null
+    type: 'error',
+    duration: 0,
+    action: offerBackup ? 'DOWNLOAD A BACKUP' : null,
+    onAction: offerBackup ? () => {
+      import('../lib/backup.js').then((m) => m.downloadBackup()).catch(() => {});
+    } : null
   });
 }
 

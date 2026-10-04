@@ -58,8 +58,12 @@
    but a flash of "checking this device…" over the main thing the
    page is for.
    ============================================================ */
-import '../lib/store.js';          /* FIRST — it patches Storage.prototype,
-                                      and the order is load-bearing. */
+import { storageUsage } from '../lib/store.js';
+                                   /* FIRST — it patches Storage.prototype,
+                                      and the order is load-bearing. The named
+                                      import changes nothing about that: the
+                                      module still evaluates before anything
+                                      below it, which is the whole guarantee. */
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -78,6 +82,11 @@ import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
+/* The backup FILE is backup.js's, exactly as it is for the hub's
+   Export and for Drive's upload. This page calls it; it does not
+   know what a backup looks like. Already a static import here
+   through drive-sync.js, so naming it costs nothing. */
+import { downloadBackup } from '../lib/backup.js';
 /* The admin console reuses the sign-in modal's own config form rather
    than growing a second copy of it. Two forms writing one storage key
    is two things to keep in step, and setCfg() has exactly one caller
@@ -197,6 +206,204 @@ function renderAppearance() {
   return sec;
 }
 
+/* ---- where the work physically is ---------------------------
+   TWO TIERS, ONE OF WHICH HAS A WALL.
+
+   src/lib/overflow.js's header makes the case and this section is
+   the user-facing half of it: one feature project measures ~302 KB
+   of JSON, localStorage is billed in UTF-16 code units against
+   roughly 5 MB, and that arithmetic is eight films before a save
+   starts failing. The way it fails is the reason this readout
+   exists at all — `setItem` throws, almost nobody reads the return,
+   and the first symptom is a field that saves and never comes back.
+   A meter is how somebody sees the wall before they hit it.
+
+   THE SMALL TIER IS THE HEADLINE AND THE ONLY ONE WITH A BAR. The
+   big tier is IndexedDB, which browsers allow hundreds of
+   megabytes; drawing a proportion of a ceiling nobody here has
+   measured would be a made-up number next to a real one.
+
+   NOTHING ON THIS PAGE CALLS navigator.storage.estimate(). It
+   reports the whole ORIGIN, service-worker precache included, which
+   is about 2 MB of this app's own assets and none of anybody's
+   work — a headline figure that is mostly us would say the studio
+   is nearly full on the day it is empty. storageUsage() walks the
+   keys instead, which is the same decision for the same reason;
+   see the comment above it in store.js.
+
+   AND IT MEASURES RATHER THAN ASSERTS. Every number below comes
+   out of storageUsage(); the one figure that is not a measurement
+   — the ceiling — says so in its own line of copy rather than
+   being printed to three decimal places and believed. */
+
+/* Chars in, quota bytes out. storageUsage() counts UTF-16 code
+   units because that is the unit browsers bill, and `smallLimit`
+   is quoted in the same unit, so the proportion of the two is
+   sound. Printing "characters" at somebody would be accurate and
+   useless; two bytes per unit is the conversion, and the page says
+   so out loud rather than leaving it in here. */
+function fmtQuota(chars) {
+  const kb = (Number(chars) || 0) * 2 / 1024;
+  if (kb < 1) return 'under 1 KB';
+  if (kb < 1024) return Math.round(kb) + ' KB';
+  return (kb / 1024).toFixed(1) + ' MB';
+}
+
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+/* The one state worth saying loudly, and it is said before any
+   figure: a tier that did not open is not a tier that is empty. */
+function tierDownCard() {
+  const card = h('div.st-alarm', { role: 'group', 'aria-label': 'Storage warning' });
+  card.append(h('p.st-alarm-h', { text: 'The second tier did not open.' }));
+  card.append(h('p.st-alarm-p', {
+    text: 'This browser did not open the database that holds anything over 64 KB, '
+        + 'and two things follow while that is true. A value that large cannot be '
+        + 'stored. One that is already out there cannot be read, so a script may '
+        + 'be showing as empty when it is not. Nothing has been lost: writing to '
+        + 'exactly those values is blocked rather than allowed to save an empty '
+        + 'page over them. Reload before you type anything. If it keeps '
+        + 'happening, the usual cause is a private window, where this database '
+        + 'does not exist at all — and the figure below counts only what is in '
+        + 'the key store, because what is on the other tier could not be counted.'
+  }));
+  return card;
+}
+
+function nearlyFullCard() {
+  const card = h('div.st-alarm', { role: 'group', 'aria-label': 'Storage warning' });
+  card.append(h('p.st-alarm-h', { text: 'The key store is nearly full.' }));
+  card.append(h('p.st-alarm-p', {
+    text: 'From here a save can start failing, and it fails quietly: the field '
+        + 'takes what you typed and the value never comes back. Download the '
+        + 'backup below, then delete a film you have finished with from Home. '
+        + 'Anything over 64 KB has already moved to the database beside this, so '
+        + 'what is left in here is the blueprint answers, the scenes, the '
+        + 'contacts and the schedule.'
+  }));
+  return card;
+}
+
+function renderStorage() {
+  const u = storageUsage();
+  const limit = u.smallLimit > 0 ? u.smallLimit : 0;
+  const share = limit ? u.small / limit : 0;
+  const pct   = Math.max(0, Math.min(100, Math.round(share * 100)));
+  /* Three bands, and the first of them is the whole point. A studio
+     with room to spare is drawn in the accent, not in a warning
+     hue: colouring a healthy number amber is how people learn to
+     ignore amber. */
+  const band  = share >= 0.9 ? 'bad' : share >= 0.75 ? 'warn' : 'ok';
+  /* 0% on a studio that has written something is a lie by rounding. */
+  const shown = (u.small > 0 && pct < 1) ? 'under 1%' : pct + '%';
+
+  const sec = section('storage', 'This device \u00b7 where the work actually sits',
+    'Storage.',
+    'Everything written in this studio is kept by this browser, in two places at '
+      + 'once. The small things \u2014 the blueprint answers, the scenes, the '
+      + 'contacts, the schedule \u2014 stay in the browser\u2019s own key store, '
+      + 'which is the one with a hard wall at the end of it. Anything over 64 KB, '
+      + 'which in practice means a screenplay, is moved to a database beside it '
+      + 'that is measured in hundreds of megabytes. Nobody chooses between them: '
+      + 'the size of the value decides, every time.');
+
+  if (u.tier === 'unavailable') sec.append(tierDownCard());
+  else if (u.tier !== 'ready') {
+    sec.append(h('p.st-note', {
+      text: 'The database beside the key store has not been opened yet, so what is '
+          + 'on it has not been counted and the second figure below is missing '
+          + 'rather than zero.'
+    }));
+  }
+
+  const tiers = h('div.st-tiers');
+
+  /* --- the small tier: the only one with a proportion --- */
+  const smallM = h('div.st-meter');
+  smallM.append(h('p.st-meter-head', {}, [
+    h('span.st-meter-label', { text: 'The browser\u2019s key store' }),
+    h('span.st-meter-figure', { text: fmtQuota(u.small) + ' of about ' + fmtQuota(limit) })
+  ]));
+  smallM.append(h('div.st-bar', {
+    role: 'progressbar',
+    'aria-valuemin': '0',
+    'aria-valuemax': '100',
+    'aria-valuenow': String(pct),
+    'aria-valuetext': shown + ' of the room this browser is likely to allow',
+    'aria-label': 'The browser\u2019s key store'
+  }, [
+    /* A custom property rather than `style="width:…"`, so the one
+       inline style on this page carries a MEASUREMENT and never a
+       colour. An inline style beats every stylesheet, which is why
+       the band below is a class and not a second declaration. */
+    h('span.st-bar-fill' + (band === 'ok' ? '' : '.is-' + band),
+      { style: '--st-fill: ' + pct + '%' })
+  ]));
+  smallM.append(h('p.st-meter-note' + (band === 'warn' ? '.is-warn' : ''), {
+    text: shown + ' full, across ' + plural(u.keys, 'key', 'keys')
+        + ' \u2014 every project this browser holds, not only the open one.'
+        + (band === 'warn'
+            ? ' There is room yet, but this is the point to take a backup rather '
+              + 'than the point after it.'
+            : '')
+  }));
+  tiers.append(smallM);
+
+  /* --- the big tier: counted, never proportioned --- */
+  const bigM = h('div.st-meter');
+  bigM.append(h('p.st-meter-head', {}, [
+    h('span.st-meter-label', { text: 'The database beside it' }),
+    h('span.st-meter-figure', {
+      text: u.tier === 'unavailable' ? 'could not be counted'
+          : u.overflowed ? fmtQuota(u.big) + ' across ' + plural(u.overflowed, 'value', 'values')
+          : 'nothing out here yet'
+    })
+  ]));
+  bigM.append(h('p.st-meter-note', {
+    text: u.tier === 'unavailable'
+      ? 'The database did not open, so this figure is unknown rather than zero. '
+        + 'Whatever is out there is still out there.'
+      : u.overflowed
+        ? 'No bar for this one, because there is no honest proportion to draw: '
+          + 'browsers allow this tier hundreds of megabytes and nothing here has '
+          + 'measured yours. The screenplay is almost certainly the largest thing '
+          + 'in it.'
+        : 'Nothing has outgrown the key store yet. The first thing that does will '
+          + 'almost certainly be a screenplay.'
+  }));
+  tiers.append(bigM);
+
+  sec.append(tiers);
+
+  if (band === 'bad' && u.tier !== 'unavailable') sec.append(nearlyFullCard());
+
+  /* The ceiling is the one figure above that is not a measurement,
+     so it is the one that has to admit it. */
+  sec.append(h('p.st-note', {
+    text: 'About, rather than exactly. Browsers bill the key store two bytes for '
+        + 'every character stored and most of them stop somewhere near 5 MB, but '
+        + 'that is a convention rather than a rule and no browser publishes its '
+        + 'own figure. The ceiling above is a deliberately low estimate, so read '
+        + 'the bar as the shape of the wall rather than its exact position. Both '
+        + 'figures count your work and nothing else: the copy of the app itself '
+        + 'that lets this studio open without a network is held somewhere else '
+        + 'again, and it is in no number on this page.'
+  }));
+
+  sec.append(h('div.st-drive-actions', {}, [
+    h('button.btn.primary', { type: 'button', 'data-action': 'storage-backup' },
+      [h('span', { text: 'Download a backup' })])
+  ]));
+  sec.append(h('p.st-note', {
+    text: 'One file holding every project this browser has \u2014 the same file the '
+        + 'hub\u2019s Export writes and the same one Drive uploads above. It is '
+        + 'the only copy that survives a browser clearing its own storage, which '
+        + 'browsers do without asking.'
+  }));
+
+  return sec;
+}
+
 /* ---- Google Drive -------------------------------------------
    The ONE place in the app where Drive backup is configured, for
    the reason settings.html exists at all: which cloud folder this
@@ -211,8 +418,14 @@ function renderAppearance() {
    re-implements half of a module is how the studio ended up with
    four rupee parsers.
 
-   THE EXPORT FILE IS STILL THE HUB'S. No Export / Import buttons
-   are mirrored here — see renderElsewhere(). */
+   THE EXPORT FILE IS STILL THE HUB'S, and so is IMPORT. The
+   storage section above now offers the download half of it, which
+   reads like a contradiction and is not: a meter that tells
+   somebody they are nearly out of room and offers no way out is a
+   dead end, and chrome.js's quota toast already puts the same
+   button in front of them at the worse moment. Reading the file
+   back — the picker, the merge, the collisions — stays on the hub.
+   See renderElsewhere(). */
 
 let versions = null;     // null until EARLIER VERSIONS is opened
 let busy = '';           // which control is mid-flight, for the label
@@ -474,9 +687,14 @@ function render() {
     h('p.bd-eyebrow', { text: 'Studio' }),
     h('h1.bd-title', { text: 'Settings.' }),
     h('p.bd-deck', {
-      text: 'Three things belong to this browser rather than to any film: the API '
-          + 'key the model-backed tools use, where this browser copies itself for '
-          + 'safe keeping, and how the studio looks. None of the three is part of a '
+      /* COUNTED, NOT ASSERTED — or as close to it as prose gets. A
+         header that says three above four sections is the same fault
+         as the first-run panel that said twenty-two modules over
+         twenty-four, and the gate cannot see either. */
+      text: 'Four things belong to this browser rather than to any film: the API '
+          + 'key the model-backed tools use, where your work is physically kept '
+          + 'and how much room is left, where this browser copies itself for safe '
+          + 'keeping, and how the studio looks. None of the four is part of a '
           + 'project, and the first and the last are in no backup and no cloud.'
     })
   ]));
@@ -484,7 +702,7 @@ function render() {
   const body = h('div.st-body');
   /* renderAdmin() returns null for everybody else; append ignores a
      null, so there is no branch here and no empty section either. */
-  body.append(renderKey(), renderDrive(), renderAppearance(),
+  body.append(renderKey(), renderStorage(), renderDrive(), renderAppearance(),
               accountSection(section), renderAdmin(), renderElsewhere());
   main.append(body);
 
@@ -576,6 +794,24 @@ const DRIVE_ACTIONS = {
    Both delegate to code that already exists: the modal owns the form,
    cloud.js owns the key. Nothing here writes storage directly, which
    is what keeps setCfg() a single caller. */
+/* ---- the backup button --------------------------------------
+   downloadBackup() builds the file, triggers the <a download> and
+   returns how many projects went into it. The count is reported
+   back rather than a cheerful noun, because "backed up" with no
+   number is exactly the reassurance the studio-wide export trap
+   gave twice while holding one film. */
+delegate(document, 'click', '[data-action="storage-backup"]', () => {
+  try {
+    const n = downloadBackup();
+    StudioUI.toast('Backup downloaded \u2014 ' + plural(n, 'project', 'projects')
+                   + ' in the file.');
+  } catch (e) {
+    StudioUI.toastError('The backup could not be written. '
+                        + ((e && e.message) || 'Nothing was changed.'),
+                        { duration: 6000 });
+  }
+});
+
 delegate(document, 'click', '[data-action="admin-configure"]', () => {
   openCloudAuthModal({ mode: 'settings' });
 });

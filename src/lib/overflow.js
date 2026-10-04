@@ -50,7 +50,11 @@ const STORE    = 'blobs';
    So the key stays, with a tiny value that says "the bytes are next
    door, and there are this many of them". The length is carried so
    the usage meter can account for overflowed data without reading
-   any of it back. */
+   any of it back — which also means the stub is not a fixed width:
+   ten characters of marker plus the decimal length, so 15 for a
+   300 KB value and wider for a larger one. Small enough that the
+   distinction never matters; stated because a note claiming a fixed
+   twelve is a note somebody will one day rely on. */
 const STUB_PREFIX = '\u0001fms-idb\u0001';   // escape, not a literal:
 /* a real NUL byte in the source makes git treat this whole file as
    BINARY — `git diff` prints nothing reviewable for it — so the

@@ -169,13 +169,49 @@ function _writeTiered(k, value) {
    and they compared equal. Until then localStorage keeps whatever it
    had: possibly stale, never a pointer to nothing. A crash in the
    window costs one save; a stub written first would cost the file. */
+/* IN FLIGHT, AND THEREFORE AWAITABLE — which it was not, and that
+   cost the import path every screenplay in a backup.
+
+   `setItem` is synchronous and an IndexedDB put is not, so an
+   overflowed write returns `true` while three async hops (the put,
+   the read-back, the stub) are still owed the event loop. For an
+   autosave that is fine: the page stays, the hops run, the gap costs
+   at worst one save. For a caller that is about to DESTROY the page
+   it is total loss, and `handleImportAll()` did exactly that —
+   `alert(…)` then `location.reload()` in one task. The modal stops
+   the transaction's events being dispatched and the reload tears the
+   connection down before they can be, so a restored 300KB script
+   simply was not there afterwards.
+
+   The quieter half was worse: sometimes the bytes landed and the stub
+   did not, which reads back fine from the cache for the rest of the
+   session while the key does not enumerate — so the next exportAll(),
+   resetAll() or migratePrefix() skips it. That is the trap CLAUDE.md
+   names twice, arriving through the restore path.
+
+   So every pending write is tracked and `flushStorage()` waits for
+   all of them. Anything that bulk-writes and then reloads, alerts or
+   navigates must await it first. */
+const _pending = new Set();
+
 function _overflowWrite(k, v) {
-  Overflow.put(k, v).then(async (ok) => {
+  const p = Overflow.put(k, v).then(async (ok) => {
     const back = ok ? await Overflow.readBack(k) : null;
     if (back !== v) { notify('storage:full', { key: k, bytes: v.length }); return; }
-    try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* the stub is 12 bytes */ }
-  });
+    try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* a handful of bytes */ }
+  }).catch(() => { notify('storage:full', { key: k, bytes: v.length }); });
+  _pending.add(p);
+  p.finally(() => _pending.delete(p));
   return true;
+}
+
+/** Settle every overflowed write that is still owed the event loop.
+ *
+ *  Await this before reloading, navigating away or putting up a modal
+ *  after a bulk write. It resolves immediately when nothing is
+ *  pending, which is the common case. */
+export function flushStorage() {
+  return _pending.size ? Promise.all(Array.from(_pending)) : Promise.resolve([]);
 }
 
 function _removeTiered(k) {
@@ -564,7 +600,13 @@ function _scheduleReload() {
   _reloading = true;      // one reload per document; cannot loop
   try {
     if (global.location && typeof global.location.reload === 'function') {
-      setTimeout(() => { try { global.location.reload(); } catch (e) {} }, 0);
+      /* flushStorage() first for the same reason the import path
+         does it: a reload must not outrun a write that is still
+         owed the event loop. The zero-delay timeout alone happens
+         to survive, but only by luck of task ordering. */
+      flushStorage().then(() => {
+        setTimeout(() => { try { global.location.reload(); } catch (e) {} }, 0);
+      });
     }
   } catch (e) {}
 }
@@ -1048,7 +1090,7 @@ const StudioStore = {
   VERSION: '1.0.0',
 
   // storage tiers — what is stored, where, and how much room is left
-  storageUsage,
+  storageUsage, flushStorage,
 
   // projects
   listProjects,

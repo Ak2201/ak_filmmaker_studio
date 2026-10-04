@@ -5,6 +5,7 @@ dev-dist/
 *.log
 .vite/
 dist-drive/
+dist-storage/
 
 # real secrets, never committed
 .env.local

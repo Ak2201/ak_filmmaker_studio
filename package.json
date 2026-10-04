@@ -13,6 +13,7 @@
     "ship": "npm run build && npm run verify",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",
+    "prove:storage": "node scripts/prove-storage.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },

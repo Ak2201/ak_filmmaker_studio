@@ -1319,8 +1319,19 @@ function handleImportAll(e) {
       if (res.added || res.replaced) {
         logActivity('studio', 'Imported ' + res.added + ' project' + (res.added === 1 ? '' : 's'));
       }
-      alert('✓ ' + res.message + ' Refreshing…');
-      location.reload();
+      /* FLUSH BEFORE THE DIALOG, NOT JUST BEFORE THE RELOAD.
+
+         A restored screenplay is over the overflow threshold, so
+         applyBackup() has only STARTED its write when it returns. The
+         alert then blocks the event loop the IndexedDB transaction
+         needs and the reload destroys the connection, and the script
+         is gone — proved, through this exact path. Both halves have
+         to wait: holding the dialog longer made it worse, not better,
+         so moving the flush after it would not have been enough. */
+      Store.flushStorage().then(() => {
+        alert('✓ ' + res.message + ' Refreshing…');
+        location.reload();
+      });
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
@@ -1395,6 +1406,9 @@ async function resetAll() {
     catch (e) { console.warn('[reset] sign-out', e); }
   }
 
+  // Same reason as the import path above: removals clear IndexedDB
+  // records too, and the reload must not outrun them.
+  await Store.flushStorage();
   alert('All studio data cleared — ' + n + ' project' + (n === 1 ? '' : 's') + ' removed. Refreshing…');
   location.reload();
 }

@@ -313,6 +313,14 @@ async function _doPull(opts) {
     let res;
     try {
       res = applyBackup(all, { mode: 'restore', confirm: () => true });
+      /* A restore writes whole projects, and anything over the
+         overflow threshold is still in flight when applyBackup()
+         returns — see flushStorage() in store.js and the import path
+         in hub.js, where not waiting cost the screenplay outright.
+         Nothing reloads here, but writeState() below records this
+         device as level with the remote, and recording that before
+         the bytes have landed is the same lie in a quieter voice. */
+      await Store.flushStorage();
     } finally { _applying = false; }
     _conflict = null;
     /* A restore FROM an older revision leaves this device holding

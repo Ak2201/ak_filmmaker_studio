@@ -102,6 +102,15 @@ export default defineConfig({
         manualChunks(id) {
           if (/\/src\/lib\/(screenplay-export|shotlist-export|script-import|ai)\.js$/.test(id)) return;
           if (id.includes('@supabase')) return 'supabase';
+          /* The sample's 105 pages are the same shape of exception one
+             level down, and the `data` rule below would have swallowed
+             them: `data` is ONE chunk that every page's entry graph
+             pulls, so folding a screenplay into it would put a quarter
+             of a megabyte on the first paint of all twenty pages — to
+             serve one click on the hub. hub.js reaches it with
+             `import()`; returning undefined is what lets that mean
+             something. */
+          if (/\/src\/data\/sample\.dragon\.script\.json$/.test(id)) return;
           if (id.includes('/src/data/')) return 'data';
           if (id.includes('/src/lib/') || id.includes('/src/ui/')) return 'studio';
         }

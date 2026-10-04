@@ -1279,9 +1279,43 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
    replaces it: NO REAL PERSON beside a contact detail (all 29 contacts are
    invented names on `@dragon.example`; character names are public and live
    in the role column; `hod_dir_date` is deliberately blank rather than
-   invent a real director's signature date), and NO RETELLING — the script
-   is 27 action, 7 scene headings, 6 transitions and zero dialogue, because
-   `studies.json`'s rule is craft analysis only. The wall of 24 steps behind it is handled
+   invent a real director's signature date), and NO REPRODUCTION of
+   anybody's actual screenplay.
+
+   **That second rule used to read NO RETELLING and say the script was
+   27 action, 7 scene headings, 6 transitions and ZERO DIALOGUE.** It
+   is a full 36-scene screenplay now — `src/data/sample.dragon.script.json`,
+   2,361 elements, 611 of them spoken — and the old wording was doing two
+   jobs that have come apart. The part that still holds is that none of it
+   is the film's writing: every line is original, written from the sample's
+   own synopses, and each `synopsis` is still the functional line a 1st AD
+   writes rather than a narrative beat. The part that had to go was "zero
+   dialogue", which was never the principle — it was what the pages
+   happened to be while a writing tool's demo project had no script for
+   the Write module, the screenplay PDF, the sides, the page count or the
+   AI shot division to act on. And the scene rows claimed 105 pages while
+   the script held 2.3, which is the sample contradicting itself about the
+   one number every other module is derived from.
+
+   Four things about that file are load-bearing and the first is the one
+   that will be broken first. It is a DYNAMIC import, and
+   `vite.config.js` carries a matching exception, because the rule that
+   folds `src/data/*.json` into the shared `data` chunk would have put a
+   quarter of a megabyte on twenty first paints to serve one click; both
+   halves are needed or the lazy import means nothing. Each scene is
+   written to the length its own `eighths` already claim, measured with
+   `script.js`'s metric, so the schedule and the budget still agree with
+   the pages — it lands at 106.5 against the breakdown's 105.0, which is
+   the difference a real script and a real 1st AD's eighths have, not a
+   bug. The DIALOGUE IS TANGLISH and the slug lines, action and
+   transitions are English, which is what a Tamil unit shoots from and
+   the only arrangement where the fixed-width Courier grid the page count
+   is arithmetic on stays fixed-width. And it is ROMANISED: the gate's
+   romanisation check only walks keys ending `Tanglish`, so it cannot see
+   these elements, and `--f-script` keeps its Tamil face last precisely
+   because a Tamil family claims the Latin glyphs too.
+
+   The wall of 24 steps behind it is handled
    too: a ten-step spine, and for each step the thing IN THIS APP that
    reads its answers, derived from `src/data/steps.priority.json` rather
    than hand-listed. The filter can never strand you on a hidden step —

@@ -1646,7 +1646,8 @@ function renderFirstRun() {
   ]));
   panel.append(h('div.eps-fine', {
     text: 'The sample is a real project you can edit or delete — it just arrives with a few '
-        + 'hundred fields filled in: a feature, ' + sample.scenes.length + ' scenes, a crew and a budget, '
+        + 'hundred fields filled in: a feature, ' + samplePages() + ' pages of script, the '
+        + sample.scenes.length + ' scenes broken down from them, a crew and a budget, '
         + 'so every module has something to show.'
   }));
   return panel;
@@ -1827,10 +1828,14 @@ function sampleShots() {
   return { shots, frames, boards };
 }
 
-function sampleScript() {
+/* `elements` is passed in rather than read off `sample`, because the
+   105 pages live in their own file and arrive by dynamic import — see
+   openSampleProject(). An empty array is a legitimate argument: the
+   project is still worth having without the screenplay. */
+function sampleScript(elements) {
   const now = new Date().toISOString();
   return {
-    elements: sample.script.elements.map((e, i) => ({
+    elements: (elements || []).map((e, i) => ({
       id: 'dragon-el-' + (i + 1), type: e.type, text: e.text
     })),
     // No revision history: a snapshot the user did not take is a
@@ -1857,7 +1862,33 @@ function sampleCalc() {
   return data;
 }
 
-function openSampleProject() {
+/* THE SCREENPLAY IS A LAZY CHUNK, and the await happens before the
+   first write rather than beside it.
+
+   sample.dragon.json is a static import, so every byte of it is in the
+   hub's first paint whether or not anybody ever loads the sample. The
+   36 scenes' pages are ~105 pages of screenplay — far more than the
+   rest of the file put together — and they are needed only after a
+   click, which is exactly the shape palette.js already uses for its
+   content index and vite.config keeps Supabase and pptxgenjs in.
+
+   Awaiting it FIRST keeps the seed below a single synchronous pass:
+   an import that fails (offline, before the chunk was ever cached)
+   leaves a project with everything but its pages, rather than a
+   project half-written. */
+function sampleFailed(err) {
+  if (window.StudioUI && StudioUI.toast) {
+    StudioUI.toast('Could not open the sample project. ' + (err && err.message ? err.message : ''),
+                   { type: 'error' });
+  }
+}
+
+async function openSampleProject() {
+  let pages = [];
+  try {
+    pages = (await import('../data/sample.dragon.script.json')).default.elements || [];
+  } catch (e) { /* no pages; every other model below still seeds */ }
+
   const project = Store.createProject({ title: SAMPLE_TITLE, format: 'feature' });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
@@ -1871,7 +1902,7 @@ function openSampleProject() {
     }));
     localStorage.setItem(LOCS_KEY,     JSON.stringify(sampleLocations()));
     localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots()));
-    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript()));
+    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript(pages)));
     localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc()));
   } catch (e) { /* private mode — the project itself still exists */ }
   Store.notify('projects:changed', { reason: 'sample', project });
@@ -1879,7 +1910,9 @@ function openSampleProject() {
     StudioUI.toast(
       sample.title + ' is open — ' + scenes.length + ' scenes, ' + samplePages()
       + ' pages, ' + sampleDays() + ' shoot days, ' + contacts.length
-      + ' on the unit list. Edit or delete any of it.',
+      + ' on the unit list'
+      + (pages.length ? ', and the script they were broken down from' : '')
+      + '. Edit or delete any of it.',
       { type: 'ok', duration: 6000 });
   }
 }
@@ -2224,7 +2257,11 @@ const CLICK_ACTIONS = {
   'refresh-activity':      () => refreshActivity(),
   'clear-activity':        () => clearActivity(),
   'new-project':           () => openProjectModal(),
-  'sample-project':        () => openSampleProject(),
+  /* openSampleProject() is async now, so a throw here would be an
+     unhandled rejection rather than an error the click surfaces —
+     and `verify` asserts zero console errors, which is the wrong
+     place to find out. */
+  'sample-project':        () => { openSampleProject().catch(sampleFailed); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
   'toggle-switcher':       () => toggleProjectSwitcher(),

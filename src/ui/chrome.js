@@ -1547,6 +1547,50 @@ Store.subscribe('saved', () => {
   }, 450);
 });
 
+/* ------------------------------------------------------------
+   A WRITE THAT DID NOT HAPPEN HAS TO SAY SO.
+
+   `localStorage.setItem` returns undefined whether it stored the
+   value or threw, `rawSet` returned a boolean almost nobody read, and
+   the sample seeder caught the quota error and discarded it. So a
+   full studio looked exactly like a working one until somebody
+   reopened a project and found a day's writing missing — invariant
+   1's failure mode reached by a route the key names cannot guard.
+
+   These four are the only ways a write is lost, and each gets a toast
+   that names what to DO. They are actionable, so they do not time out
+   — see the trap about a three-second undo. `assertive` puts them on
+   the alert host rather than the polite one, because this is not a
+   notice the writer can afford to miss.
+   ------------------------------------------------------------ */
+const _told = new Set();
+function _storageAlarm(kind, msg, action) {
+  if (_told.has(kind)) return;     // once per session; the toast stays up
+  _told.add(kind);
+  StudioUI.toast(msg, {
+    type: 'error', assertive: true, duration: 0,
+    actionLabel: action ? 'EXPORT A BACKUP' : null,
+    action: action ? () => { location.href = 'index.html#export'; } : null
+  });
+}
+
+Store.subscribe('storage:full', (p) => _storageAlarm('full',
+  'This browser is out of storage, so your last change was NOT saved. '
+  + 'Export a backup now, then delete a project you have finished with.', true));
+
+Store.subscribe('storage:error', (p) => _storageAlarm('error',
+  'A change could not be saved to this browser. Export a backup before '
+  + 'you carry on writing.', true));
+
+Store.subscribe('storage:refused', (p) => _storageAlarm('refused',
+  'Your script is held in this browser\'s database and it did not open, '
+  + 'so editing is blocked to stop an empty page being saved over it. '
+  + 'Reload the page; if it keeps happening, do not edit in a private window.', false));
+
+Store.subscribe('storage:degraded', (p) => _storageAlarm('degraded',
+  'Part of this project is stored in a database this browser did not open, '
+  + 'so it is showing as empty. Nothing is lost — reload before editing.', false));
+
 // Watch for storage changes to refresh the beat visualizer
 Store.subscribe('current:changed', () => {
   setTimeout(refreshBeatFills, 200);

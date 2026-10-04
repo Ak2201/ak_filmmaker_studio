@@ -48,7 +48,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    target: 'es2020',
+    /* es2022 for the top-level await in src/lib/store.js, which is
+       what makes the overflow tier hydrate before any page reads a
+       key. See the note above that await. */
+    target: 'es2022',
     // The pages are content-heavy; a slightly larger inline limit
     // keeps the small SVG marks out of the network waterfall.
     assetsInlineLimit: 2048,

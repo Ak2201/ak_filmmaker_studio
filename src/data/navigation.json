@@ -1,5 +1,8 @@
 {
-  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
+  "_about": [
+    "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
+    "PHASE `hue` MUST EQUAL PHASE `id`. Two emitters build the colour class from the hue — launcher.js `sh-ph-${phase.hue}` and shell.js, twice — while palette.js builds it from the id. They only ever agreed because the original six phases had hue === id. Setting hue to a colour name during the four-pillar restructure made the hub emit .sh-ph-feature and .sh-ph-shorts, which match no rule in tokens.css, so --hue was undefined and those phases rendered in currentColor — the silent failure CLAUDE.md records the breakdown shipping for two commits. tokens.css maps the ID to a colour; this field must not disagree with it."
+  ],
   "global": [
     {
       "id": "home",
@@ -31,10 +34,10 @@
   ],
   "phases": [
     {
-      "id": "develop",
-      "label": "Develop",
-      "hue": "develop",
-      "blurb": "Idea to locked outline",
+      "id": "story",
+      "label": "Story",
+      "hue": "story",
+      "blurb": "The spine: theme, stakes, arcs, acts",
       "modules": [
         {
           "id": "feature-blueprint",
@@ -77,13 +80,13 @@
           "icon": "✂"
         }
       ],
-      "icon": "◆"
+      "icon": "◈"
     },
     {
-      "id": "write",
-      "label": "Write",
-      "hue": "write",
-      "blurb": "Pages on the page",
+      "id": "preproduction",
+      "label": "Pre-Production",
+      "hue": "preproduction",
+      "blurb": "Script, breakdown, shots, logistics",
       "modules": [
         {
           "id": "screenplay",
@@ -108,16 +111,7 @@
           "status": "built",
           "href": "write.html#documents",
           "icon": "⌸"
-        }
-      ],
-      "icon": "✎"
-    },
-    {
-      "id": "breakdown",
-      "label": "Breakdown",
-      "hue": "breakdown",
-      "blurb": "Script into elements",
-      "modules": [
+        },
         {
           "id": "scene-list",
           "label": "Scene List",
@@ -151,39 +145,6 @@
           "icon": "♫"
         },
         {
-          "id": "stripboard",
-          "label": "Stripboard",
-          "purpose": "Order scenes into shoot days",
-          "status": "built",
-          "href": "stripboard.html#stripboard",
-          "icon": "☷"
-        },
-        {
-          "id": "sides",
-          "label": "Sides",
-          "purpose": "Per-day pages for cast and crew",
-          "status": "built",
-          "href": "reports.html#sides",
-          "icon": "▫"
-        },
-        {
-          "id": "reports",
-          "label": "Reports",
-          "purpose": "Element, scene and day reports",
-          "status": "built",
-          "href": "reports.html#reports",
-          "icon": "⌗"
-        }
-      ],
-      "icon": "☷"
-    },
-    {
-      "id": "visualize",
-      "label": "Visualize",
-      "hue": "visualize",
-      "blurb": "See it before you shoot it",
-      "modules": [
-        {
           "id": "shot-list",
           "label": "Shot List",
           "purpose": "Shots per scene, with size and move",
@@ -206,16 +167,39 @@
           "status": "built",
           "href": "visualize.html#lookbook",
           "icon": "▩"
-        }
-      ],
-      "icon": "◰"
-    },
-    {
-      "id": "plan",
-      "label": "Plan",
-      "hue": "plan",
-      "blurb": "People, dates, money",
-      "modules": [
+        },
+        {
+          "id": "stripboard",
+          "label": "Stripboard",
+          "purpose": "Order scenes into shoot days",
+          "status": "built",
+          "href": "stripboard.html#stripboard",
+          "icon": "☷"
+        },
+        {
+          "id": "sides",
+          "label": "Sides",
+          "purpose": "Per-day pages for cast and crew",
+          "status": "built",
+          "href": "reports.html#sides",
+          "icon": "▫"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "purpose": "Element, scene and day reports",
+          "status": "built",
+          "href": "reports.html#reports",
+          "icon": "⌗"
+        },
+        {
+          "id": "locations",
+          "label": "Locations",
+          "purpose": "Recce notes and logistics",
+          "status": "built",
+          "href": "plan.html#locations",
+          "icon": "⌂"
+        },
         {
           "id": "budget",
           "label": "Budget",
@@ -249,12 +233,12 @@
           "icon": "◎"
         }
       ],
-      "icon": "◷"
+      "icon": "◐"
     },
     {
-      "id": "shoot",
-      "label": "Shoot",
-      "hue": "shoot",
+      "id": "production",
+      "label": "Production",
+      "hue": "production",
       "blurb": "The day itself",
       "modules": [
         {
@@ -264,14 +248,6 @@
           "status": "built",
           "href": "shoot.html",
           "icon": "▶"
-        },
-        {
-          "id": "locations",
-          "label": "Locations",
-          "purpose": "Recce notes and logistics",
-          "status": "built",
-          "href": "plan.html#locations",
-          "icon": "⌂"
         },
         {
           "id": "call-sheets",
@@ -291,6 +267,23 @@
         }
       ],
       "icon": "◉"
+    },
+    {
+      "id": "post",
+      "label": "Post-Production",
+      "hue": "post",
+      "blurb": "Assembly, effects, sound, delivery",
+      "modules": [
+        {
+          "id": "post-plan",
+          "label": "Post Plan",
+          "purpose": "Assembly, effects, sound and delivery steps",
+          "status": "built",
+          "href": "feature.html#step-29",
+          "icon": "◑"
+        }
+      ],
+      "icon": "◑"
     }
   ]
 }

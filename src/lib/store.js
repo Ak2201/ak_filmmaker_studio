@@ -41,6 +41,8 @@
 // injectSharedStyles() below.
 import '../styles/chrome-injected.css';
 
+import Overflow from './overflow.js';
+
 const global = typeof window !== 'undefined' ? window : globalThis;
 
 // ============================================================
@@ -92,9 +94,126 @@ const _origGet    = global.localStorage.getItem.bind(global.localStorage);
 const _origSet    = global.localStorage.setItem.bind(global.localStorage);
 const _origRemove = global.localStorage.removeItem.bind(global.localStorage);
 
-export function rawGet(k)    { try { return _origGet(k); } catch (e) { return null; } }
-export function rawSet(k, v) { try { _origSet(k, v); return true; } catch (e) { return false; } }
-export function rawRemove(k) { try { _origRemove(k); return true; } catch (e) { return false; } }
+/* ------------------------------------------------------------
+   THE TWO TIERS, AND WHY rawGet IS NOT A BYPASS OF THEM
+
+   `rawGet`/`rawSet`/`rawRemove` exist to skip the PROJECT SCOPING —
+   they address a key by its full name, suffix and all, which is what
+   a studio-wide operation needs. They were never meant to skip the
+   STORAGE MEDIUM, and the difference matters the moment a value can
+   live somewhere other than localStorage.
+
+   Get it wrong and the damage is specific and familiar: `exportAll()`
+   reaches every project through rawGet, so a rawGet that returned the
+   stub instead of the screenplay would write backups full of
+   eight-byte sentinels and call them full studio backups. CLAUDE.md
+   names that trap twice. Both tiers resolve below, for the proxy and
+   for raw callers alike; scoping is a question about the key's NAME,
+   overflow is a question about where its BYTES are, and nothing in
+   this file should ever have to answer both at once.
+   ------------------------------------------------------------ */
+
+function _readTiered(k) {
+  /* The cache leads, not localStorage. An overflowed write lands in
+     the cache synchronously and only stamps its stub once the
+     database has confirmed the bytes (see _writeTiered), so for the
+     width of that window localStorage still holds the PREVIOUS value.
+     Reading it first would serve a stale screenplay to the page that
+     just saved one. */
+  const big = Overflow.cache().get(k);
+  if (big != null) return big;
+  let v = null;
+  try { v = _origGet(k); } catch (e) { return null; }
+  if (!Overflow.isStub(v)) return v;
+  /* A stub with nothing behind it. The database did not open, so the
+     bytes exist and are unreachable. Say so loudly — and note that
+     _writeTiered refuses to overwrite this key, because the quiet
+     version of this moment is an empty editor autosaving itself over
+     somebody's script. */
+  notify('storage:degraded', { key: k, bytes: Overflow.stubLength(v) });
+  return null;
+}
+
+function _writeTiered(k, value) {
+  const v = String(value);
+  let existing = null;
+  try { existing = _origGet(k); } catch (e) {}
+
+  if (Overflow.isStub(existing) && !Overflow.available()) {
+    notify('storage:refused', { key: k, reason: 'overflow-unavailable',
+                                bytes: Overflow.stubLength(existing) });
+    return false;
+  }
+
+  if (v.length > Overflow.THRESHOLD && Overflow.available()) return _overflowWrite(k, v);
+
+  try {
+    _origSet(k, v);
+    if (Overflow.isStub(existing)) Overflow.del(k);   // it shrank; reclaim the big tier
+    return true;
+  } catch (e) {
+    /* Quota. The value is under the threshold but the small tier is
+       full anyway, so the big tier is the rescue rather than the
+       plan. Better a 2 KB note in IndexedDB than a note that was
+       never saved. */
+    if (Overflow.available()) return _overflowWrite(k, v);
+    notify('storage:full', { key: k, bytes: v.length });
+    return false;
+  }
+}
+
+/* SET, VERIFY, THEN REMOVE — the third of the five properties the
+   prefix migration was built on, and it applies here for the same
+   reason. The stub is what makes the old location forget the value,
+   so it is written LAST, after the database has handed the bytes back
+   and they compared equal. Until then localStorage keeps whatever it
+   had: possibly stale, never a pointer to nothing. A crash in the
+   window costs one save; a stub written first would cost the file. */
+function _overflowWrite(k, v) {
+  Overflow.put(k, v).then(async (ok) => {
+    const back = ok ? await Overflow.readBack(k) : null;
+    if (back !== v) { notify('storage:full', { key: k, bytes: v.length }); return; }
+    try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* the stub is 12 bytes */ }
+  });
+  return true;
+}
+
+function _removeTiered(k) {
+  try { _origRemove(k); } catch (e) { return false; }
+  Overflow.del(k);
+  return true;
+}
+
+export function rawGet(k)    { return _readTiered(k); }
+export function rawSet(k, v) { return _writeTiered(k, v); }
+export function rawRemove(k) { return _removeTiered(k); }
+
+/** What the studio is using, for the readout on settings.html. The
+ *  small tier is counted by walking it, because `navigator.storage
+ *  .estimate()` reports the whole origin — service worker precache
+ *  included, which is 2 MB of this app and none of anybody's work. */
+export function storageUsage() {
+  let small = 0, keys = 0;
+  try {
+    for (let i = 0; i < global.localStorage.length; i++) {
+      const k = global.localStorage.key(i);
+      if (!k || k.indexOf(NEW_PREFIX) !== 0) continue;
+      keys++;
+      small += k.length + (_origGet(k) || '').length;
+    }
+  } catch (e) {}
+  return {
+    keys,
+    small,                                  // chars in localStorage
+    big: Overflow.overflowBytes(),          // chars in IndexedDB
+    overflowed: Overflow.cache().size,
+    tier: Overflow.state(),
+    /* Browsers bill localStorage in UTF-16 code units against ~5 MB.
+       Quoting chars rather than that doubled figure is how a studio
+       reads as half full on the day it stops saving. */
+    smallLimit: 5 * 1024 * 1024 / 2
+  };
+}
 
 export function jsonGet(k, fallback) {
   const raw = rawGet(k);
@@ -567,28 +686,38 @@ export function installStorageProxy() {
   const originalSet    = proto.setItem;
   const originalRemove = proto.removeItem;
 
+  /* The proxy answers the NAME question and then hands the key to the
+     tier, which answers the WHERE question. Both halves run for every
+     call on localStorage; sessionStorage is left entirely alone,
+     because it is neither scoped nor large. */
   proto.getItem = function (k) {
     // only intercept on `localStorage` (not sessionStorage)
-    if (this === global.localStorage) k = scopedKey(k);
-    return originalGet.call(this, k);
+    if (this !== global.localStorage) return originalGet.call(this, k);
+    return _readTiered(scopedKey(k));
   };
   proto.setItem = function (k, v) {
-    if (this === global.localStorage) {
-      const orig = k;
-      k = scopedKey(k);
-      const result = originalSet.call(this, k, v);
-      if (k !== orig) {
-        touch();
-        // Tell the UI a save happened (debounced display in src/ui/chrome.js)
-        notify('saved', { key: orig });
-      }
-      return result;
+    if (this !== global.localStorage) return originalSet.call(this, k, v);
+    const orig = k;
+    k = scopedKey(k);
+    const ok = _writeTiered(k, v);
+    if (k !== orig) {
+      touch();
+      // Tell the UI a save happened (debounced display in src/ui/chrome.js)
+      notify('saved', { key: orig });
     }
-    return originalSet.call(this, k, v);
+    /* A REFUSED WRITE IS NOT A SAVED ONE, and `setItem` returns
+       undefined by specification, so there is no return value for a
+       caller to have checked even if one wanted to. The event above
+       says a save happened; this one says it did not, and chrome.js
+       turns it into something the writer can actually see. Silence
+       here is how a full studio looks exactly like a working one. */
+    if (!ok) notify('storage:error', { key: orig, scoped: k });
+    return undefined;
   };
   proto.removeItem = function (k) {
-    if (this === global.localStorage) k = scopedKey(k);
-    return originalRemove.call(this, k);
+    if (this !== global.localStorage) return originalRemove.call(this, k);
+    _removeTiered(scopedKey(k));
+    return undefined;
   };
 }
 
@@ -997,6 +1126,26 @@ export function init() {
     console.warn('[StudioStore] init error', e);
   }
 }
+
+/* HYDRATION RUNS BEFORE init(), AND THE AWAIT IS DELIBERATE.
+
+   CLAUDE.md invariant 6 says store.js must evaluate before anything
+   reads localStorage, and every page entry imports it first for
+   exactly that reason. The overflow tier extends the same rule by one
+   step: the big values have to be IN HAND before the first read, or a
+   page renders an empty script, the user types one character, and the
+   autosave writes that emptiness over a key whose real bytes are
+   sitting in a database nobody waited for.
+
+   A top-level await is what makes that guarantee free. It blocks this
+   module's evaluation, and therefore every importer's, which is
+   precisely the ordering invariant 6 already depends on — no page
+   entry has to remember to call anything, and a page added next year
+   inherits it. The cost is one object-store read, bounded by a
+   timeout inside hydrate() so a wedged database cannot mean an app
+   that never boots. (build.target is es2022 for this; top-level await
+   is not expressible below it.) */
+await Overflow.hydrate();
 
 // Auto-init: run migration + install proxy as soon as we load.
 // (Blueprints relying on existing `localStorage.getItem(KEY)`

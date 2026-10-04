@@ -775,12 +775,32 @@
    page in the app), the launcher's flag and the breakdown's category
    chips in --hue on white (2.33:1 in Desk, where amber is bright). A
    fill colour is almost never a text colour. */
-.sh-ph-develop,   .hue-feature   { --hue: var(--feature);   --hue-on: var(--feature-on);   --hue-deep: var(--feature-deep);   --hue-lift: var(--feature-lift); }
+/* THE FOUR PILLARS. The phase ids changed when the map was restructured
+   — develop/write/breakdown/visualize/plan/shoot became
+   story/preproduction/production/post — and a `.sh-ph-*` class that
+   matches no rule here leaves --hue UNDEFINED, which fails silently by
+   design and renders the whole phase in currentColor. The breakdown
+   shipped exactly that for two commits; see the trap in CLAUDE.md. So
+   the new ids come first, and the old ones stay beneath them because
+   `.sh-ph-*` strings also reach the launcher, the palette and any
+   bookmark or saved activity row written before the rename.
+
+   Four hues for four pillars, drawn from the six that already exist
+   rather than mixing new ones: the gate holds the hues apart and each
+   still means exactly one phase. */
+.sh-ph-story,         .hue-feature   { --hue: var(--feature);   --hue-on: var(--feature-on);   --hue-deep: var(--feature-deep);   --hue-lift: var(--feature-lift); }
+.sh-ph-preproduction, .hue-shorts    { --hue: var(--shorts);    --hue-on: var(--shorts-on);    --hue-deep: var(--shorts-deep);    --hue-lift: var(--shorts-lift); }
+.sh-ph-production,    .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); }
+.sh-ph-post,          .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); }
+
+/* The six that were, kept so nothing written before the restructure
+   renders grey. */
+.sh-ph-develop { --hue: var(--feature);   --hue-on: var(--feature-on);   --hue-deep: var(--feature-deep);   --hue-lift: var(--feature-lift); }
 .sh-ph-write,     .hue-library   { --hue: var(--library);   --hue-on: var(--library-on);   --hue-deep: var(--library-deep);   --hue-lift: var(--library-lift); }
-.sh-ph-breakdown, .hue-shorts    { --hue: var(--shorts);    --hue-on: var(--shorts-on);    --hue-deep: var(--shorts-deep);    --hue-lift: var(--shorts-lift); }
-.sh-ph-visualize, .hue-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); }
+.sh-ph-breakdown { --hue: var(--shorts);    --hue-on: var(--shorts-on);    --hue-deep: var(--shorts-deep);    --hue-lift: var(--shorts-lift); }
+.sh-ph-visualize { --hue: var(--visualize); --hue-on: var(--visualize-on); --hue-deep: var(--visualize-deep); --hue-lift: var(--visualize-lift); }
 .sh-ph-plan,      .hue-plan      { --hue: var(--plan);      --hue-on: var(--plan-on);      --hue-deep: var(--plan-deep);      --hue-lift: var(--plan-lift); }
-.sh-ph-shoot,     .hue-shoot     { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); }
+.sh-ph-shoot { --hue: var(--shoot);     --hue-on: var(--shoot-on);     --hue-deep: var(--shoot-deep);     --hue-lift: var(--shoot-lift); }
 
 [data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
 [data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }

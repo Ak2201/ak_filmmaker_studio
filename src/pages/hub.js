@@ -81,6 +81,15 @@ import sample      from '../data/sample.dragon.json';
 import { formatEighths } from '../lib/scenes.js';
 import { locationKey, locationLink } from '../lib/locations.js';
 
+
+/* The theme toggle's tooltip, derived from the list it describes.
+   It read "Theme — paper, sepia, ink" on three pages long after sepia
+   was dropped and the order reversed: three hand-written copies of
+   StudioUI.themeOrder(), which is the thing they were describing. */
+function themeTitle() {
+  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
+  return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
+}
 // ============================================================
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
 // ============================================================
@@ -373,7 +382,7 @@ function toolbarMarkup() {
         </button>
         <div class="switcher-dropdown" id="switcherDropdown"></div>
       </div>
-      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="Theme — paper, sepia, ink">◐</button>
+      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="${themeTitle()}">◐</button>
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
       <div class="tb-menu align-right" data-tb-backup>
         <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"

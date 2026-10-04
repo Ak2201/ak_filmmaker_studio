@@ -527,7 +527,11 @@ const DEFAULT_SHORTCUTS = [
   { keys: ['Esc'],        label: 'Close any open dialog / dropdown' },
   { keys: ['⌘/Ctrl', 'K'],label: 'Focus search (hub)' },
   { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint' },
-  { keys: ['⌘/Ctrl', 'D'],label: 'Cycle theme (paper → sepia → ink)' },
+  /* Derived, not spelled. This label said "paper → sepia → ink" long
+     after sepia was removed and after the order was reversed — a
+     hand-written copy of THEME_ORDER, which is the list it is
+     describing. Same reason the step list lives in JSON. */
+  { keys: ['⌘/Ctrl', 'D'],label: `Cycle theme (${THEME_ORDER.join(' → ')})` },
   { keys: ['j'],          label: 'Next step (in any blueprint)' },
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },

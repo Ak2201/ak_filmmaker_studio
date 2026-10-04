@@ -50,6 +50,17 @@ import rates from '../data/rates.chennai.2024.json';
    is 2026 is in the overlay and is labelled as such, per figure. */
 import rateChecks from '../data/rates.chennai.checks.json';
 
+
+/* The theme toggle's tooltip, derived from the list it describes.
+   This one said "Cycle theme (paper → sepia → ink)" — a fifth
+   hand-written copy of StudioUI.themeOrder(), and the one that
+   survived the first sweep because it was worded differently from
+   the other four. A list spelled out in five places is wrong in five
+   places the moment the list changes. */
+function themeTitle() {
+  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
+  return order.length ? `Cycle theme (${order.join(' → ')})` : 'Cycle theme';
+}
 /* ============================================================
    DERIVED COUNTS — the single source for every number the page
    says out loud.
@@ -253,7 +264,7 @@ function renderToolbar() {
     h('button#darkBtn.btn.icon-btn', {
       type: 'button',
       'data-action': 'theme',
-      title: 'Cycle theme (paper → sepia → ink)',
+      title: themeTitle(),
       'aria-label': 'Cycle theme',
       text: '◐'
     }),

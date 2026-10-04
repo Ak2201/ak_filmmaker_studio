@@ -101,6 +101,15 @@ import Blueprint, { BLUEPRINT_KEY } from '../lib/blueprint-context.js';
    inside it, after the panel is on the page. */
 import { blueprintEntry, dismissEntry } from '../ui/blueprint-entry.js';
 
+
+/* The theme toggle's tooltip, derived from the list it describes.
+   It read "Theme — paper, sepia, ink" on three pages long after sepia
+   was dropped and the order reversed: three hand-written copies of
+   StudioUI.themeOrder(), which is the thing they were describing. */
+function themeTitle() {
+  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
+  return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
+}
 /* ============================================================
    CONSTANTS — unchanged from the legacy page.
    ============================================================ */
@@ -583,7 +592,7 @@ function renderToolbar() {
     h('span#saveStatus.save-status', { text: '●  ready' }),
     exportMenu,
     moreMenu,
-    h('button#darkBtn.btn.icon-btn', { type: 'button', 'data-action': 'toggleDark', title: 'Theme — paper, sepia, ink', text: '◐' }),
+    h('button#darkBtn.btn.icon-btn', { type: 'button', 'data-action': 'toggleDark', title: themeTitle(), text: '◐' }),
     h('input#importFile', { type: 'file', accept: '.json', style: 'display:none;', 'data-action-change': 'handleImport' })
   );
   return bar;

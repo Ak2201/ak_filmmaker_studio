@@ -265,8 +265,22 @@ const EXPECTED = {
      would bake in everything else that happened to be on screen
      that minute. The anti-rot check will fail the run if this ever
      stops firing, which is what stops it becoming a permanent
-     excuse. */
-  hub: { '25': 'module count 25 → 26 when shoot.html joined the Shoot phase' },
+     excuse.
+
+     AND THAT IS EXACTLY WHAT HAPPENED, one commit later and for an
+     unrelated reason: deriving the theme labels removed the word
+     `sepia` from all SIXTEEN pages, which is sixteen rows — well past
+     the two or three this note draws the line at — so the oracle was
+     recaptured. The recapture absorbed the module count with
+     everything else, the row above stopped firing, and the anti-rot
+     check failed the run exactly as designed. The row is gone; the
+     reason it existed is preserved here and in its own commit.
+
+     The lesson is not that the judgement above was wrong — it was
+     right for one digit. It is that an allowance is only ever valid
+     until the next recapture, whoever makes it and for whatever
+     reason. */
+  hub: {},
   stripboard: {},
   reports: {},
   contacts: {},

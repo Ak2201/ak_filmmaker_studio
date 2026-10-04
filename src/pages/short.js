@@ -62,6 +62,15 @@ import PDF from '../lib/pdf.js';
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
 
+
+/* The theme toggle's tooltip, derived from the list it describes.
+   It read "Theme — paper, sepia, ink" on three pages long after sepia
+   was dropped and the order reversed: three hand-written copies of
+   StudioUI.themeOrder(), which is the thing they were describing. */
+function themeTitle() {
+  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
+  return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
+}
 // ============================================================
 // CONSTANTS
 // ============================================================
@@ -171,7 +180,7 @@ function renderToolbar() {
     ], { align: 'right' }),
     h('button.btn.icon-btn', {
       id: 'darkBtn', 'data-action': 'toggle-dark',
-      title: 'Theme — paper, sepia, ink', 'aria-label': 'Toggle theme', text: '◐'
+      title: themeTitle(), 'aria-label': 'Toggle theme', text: '◐'
     }),
     h('input', {
       type: 'file', id: 'importFile', accept: '.json',

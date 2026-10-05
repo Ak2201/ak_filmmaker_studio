@@ -5,6 +5,7 @@ dev-dist/
 *.log
 .vite/
 dist-drive/
+dist-billing/
 dist-storage/
 dist-extension/
 

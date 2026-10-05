@@ -41,6 +41,9 @@ npm run prove:drive # Drive backup, against a faked Drive — see open item 10
 npm run prove:gate  # invite gate, device lock, admin, screening room (item 11)
 npm run build:extension   # the Chrome extension, into dist-extension/
 npm run prove:extension   # the unpacked extension in Chromium (item 11)
+npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
+npm run test:schema       # the WHOLE schema on a real PostgreSQL + 48 §16 checks
+npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
@@ -1748,6 +1751,55 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     harness sees an interrupted navigation, a person a flash — so
     `landOnInvite()` stands down whenever the site gate is installed.
     One owner per redirect.
+
+12. **Billing — Razorpay, three paid tiers, limits by plan.** Schema
+    section 16, three edge functions, `src/lib/billing.js`, the cards on
+    `settings.html#plan` and `invite.html`, the console on `admin.html`.
+    Four decisions asked before the code and recorded in `docs/BILLING.md`:
+    PREPAID PERIODS (one Razorpay Order buys 30 or 365 days, nothing
+    recurs); the plan sits on the ORGANISATION (`accounts.plan`, which
+    section 6 reserved and `accounts_guard` has defended as "set by
+    billing" since); PAYING GRANTS ENTRY (activation inserts the
+    `studio_members` row, so a stranger who pays is through the gate with
+    no code — a disabled member is refused before an order exists); and
+    the caps are on the CLOUD AND THE EXTENSION, never local work.
+
+    **The price is read from the table by the server, never from the
+    client**, so a console edit is live on the next order with no
+    Razorpay object to update. **The limits are triggers**, each raising
+    `P0402` with the plan and the cap in the sentence; the UI explains,
+    it does not enforce. `cloud.js` does NOT queue a `P0402` on a project
+    insert — retrying every thirty seconds would fail every thirty
+    seconds — the sync status says why, a toast offers the plans once a
+    minute, and the film stays on the device. A lapse is computed from
+    `plan_until`, never scheduled. A refund lapses the plan.
+
+    Three things the first proof run found, each a real bug or a real
+    trap: `planRank` was called on the module's default export and
+    missing from it, which took the WHOLE plan section off the page
+    with one `pageerror` and nothing else visible; the fake Supabase
+    answered a project PATCH with `[]`, so every pulled project was
+    re-inserted and hit the cap — `_pushProjectMeta` updates first and
+    inserts only on an empty answer, and a fake has to honour that or it
+    proves the wrong thing; and the console's "Saved." clears itself
+    with a re-render 2.5s on, under whatever the next form was being
+    filled with.
+
+    **The proof builds its own `dist-billing/`** with a fake public key
+    id and the gate ON, because the committed `.env` carries no key id
+    until the owner has one, and a build without one disables every BUY.
+    That is right for the product and wrong for the fixture. The hex
+    fallback for Checkout's theme colour is gone too: the literal is
+    READ from `--brand`, and a missing token means Razorpay's own colour,
+    not a colour typed here.
+
+    **NOT RUN against the live database or a live Razorpay account.**
+    `test:schema` proves §16 loads and behaves on a real PostgreSQL;
+    `prove:billing` proves the pages against a fake that signs exactly as
+    Razorpay does. The deploy order — run §16, set the secrets, deploy
+    the three functions (`rzp-webhook` with `--no-verify-jwt`), register
+    the webhook, set `VITE_RAZORPAY_KEY_ID`, set the real prices — is in
+    `docs/BILLING.md` §1, and the seeded prices are PLACEHOLDERS.
 
 ## Things that are deliberate, not oversights
 

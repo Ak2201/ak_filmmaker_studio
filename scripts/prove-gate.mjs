@@ -105,6 +105,35 @@ const gateReason = (page) => page.evaluate(() => window.StudioCloud.getGateState
 const syncDetail = (page) => page.evaluate(() => window.StudioCloud.getSyncStatus().detail);
 const writes = () => F.db.calls.filter((c) => c.startsWith('write:')).length;
 const waitGate = (page, want) => page.waitForFunction((w) => window.StudioCloud && window.StudioCloud.getGateState().state === w, want, { timeout: 8000 }).then(() => true, () => false);
+/* A gated page sends a closed visitor to invite.html the moment the gate
+   settles, so any evaluate() after the first poll that sees 'closed' can
+   lose the race to the navigation. Instead the page reports its own
+   closed state to Node from inside, through an exposed function, which
+   survives the navigation. Arm BEFORE the goto; await after. */
+/* The site gate redirects with location.replace(), which aborts whatever
+   the previous page was still fetching; Playwright's waitForURL reports
+   that as net::ERR_ABORTED although the redirect itself lands. Poll the
+   URL instead, which cannot be aborted. */
+async function urlBecomes(page, re, ms = 8000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { if (re.test(page.url())) break; await new Promise((r) => setTimeout(r, 50)); }
+  if (!re.test(page.url())) return false;
+  // Landed; now let the doorway finish loading so the next evaluate() has a DOM to look at.
+  await page.waitForLoadState('load', { timeout: ms }).catch(() => {});
+  return true;
+}
+async function armClosedSnap(page) {
+  const snaps = [];
+  await page.exposeFunction('__gateSnap', (o) => snaps.push(o));
+  await page.addInitScript(() => {
+    const t = setInterval(() => {
+      const c = window.StudioCloud; if (!c || !c.getGateState) return;
+      const g = c.getGateState(); if (g.state !== 'closed') return;
+      clearInterval(t); window.__gateSnap({ reason: g.reason, detail: c.getSyncStatus().detail });
+    }, 10);
+  });
+  return async () => { for (let i = 0; i < 400 && !snaps.length; i++) await new Promise((r) => setTimeout(r, 20)); return snaps[0] || null; };
+}
 
 /* ---- run ------------------------------------------------------ */
 const srv = spawn(process.execPath, [path.join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
@@ -123,17 +152,19 @@ try {
        finding. */
     await page.goto(BASE + 'invite.html');
     await page.evaluate(() => localStorage.setItem('fms_story_v1', JSON.stringify({ v: 1, source: 'WRITTEN WITH NO GATE', framework: 'three_act', marks: [], tension: {} })));
+    const snapA = await armClosedSnap(page);
     await page.goto(BASE + 'settings.html');
-    ok(await waitGate(page, 'closed'), 'a signed-in user is CLOSED when the functions do not exist');
-    ok((await gateReason(page)) === 'notdeployed', "and the reason is 'notdeployed', not 'no invite'");
-    ok(/not switched on/i.test(await syncDetail(page)), 'the sync status says the gate is not switched on');
+    const closed = await snapA();
+    ok(!!closed, 'a signed-in user is CLOSED when the functions do not exist');
+    ok(closed && closed.reason === 'notdeployed', "and the reason is 'notdeployed', not 'no invite'");
+    ok(closed && /not switched on/i.test(closed.detail || ''), 'the sync status says the gate is not switched on');
     await page.waitForTimeout(1200);
     ok(writes() === 0, 'nothing was uploaded');
     /* Under the site gate a closed visitor never sees the hub, so the
        pill's INVITE NEEDED state is unreachable on the website; what
        they get is the doorway, on every page they try. */
     await page.goto(BASE + 'index.html');
-    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'the hub sends a closed visitor to invite.html'), () => ok(false, 'the hub sends a closed visitor to invite.html'));
+    ok(await urlBecomes(page, /invite\.html/), 'the hub sends a closed visitor to invite.html');
     await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#request');
     ok(/not switched on/i.test(await page.textContent('#request')), 'invite.html says the gate is not switched on');
@@ -151,13 +182,16 @@ try {
       const s = { v: 1, source: 'LOCAL WORK THAT MUST SURVIVE', framework: 'three_act', marks: [], tension: {} };
       localStorage.setItem('fms_story_v1', JSON.stringify(s));
     });
+    const snapB = await armClosedSnap(page);
     await page.goto(BASE + 'settings.html');
-    ok(await waitGate(page, 'closed'), 'the gate CLOSES for a non-member');
-    ok((await gateReason(page)) === 'noinvite', "reason 'noinvite'");
+    const closedB = await snapB();
+    ok(!!closedB, 'the gate CLOSES for a non-member');
+    ok(closedB && closedB.reason === 'noinvite', "reason 'noinvite'");
     const writesBefore = writes();
-    ok(/awaiting an invite/i.test(await syncDetail(page)), 'the sync status says why it is paused');
-    await page.waitForSelector('#invite #gtCode');
-    ok(/invite\.html/.test(page.url()), 'settings.html became invite.html — the site gate — and the code box is there');
+    ok(closedB && /awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused');
+    ok(await urlBecomes(page, /invite\.html/), 'settings.html became invite.html — the site gate');
+    await page.waitForSelector('#request [data-ir-form]', { timeout: 8000 });
+    ok(!!(await page.$('#invite #gtCode')), 'and the code box is there');
     ok(!!(await page.$('#request [data-ir-form]')), 'with the request form beside it');
     ok(writes() === writesBefore, 'nothing was uploaded while closed');
     await page.fill('#gtCode', 'amy code 2345 6');
@@ -174,13 +208,13 @@ try {
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-cal', landing: true });
     await page.goto(BASE + 'story.html');
-    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'the first load after a closed sign-in lands on invite.html'), () => ok(false, 'the first load after a closed sign-in lands on invite.html'));
+    ok(await urlBecomes(page, /invite\.html/), 'the first load after a closed sign-in lands on invite.html');
     await page.waitForSelector('#request [data-ir-form]', { timeout: 8000 });
     const who = await page.textContent('#request .ir-who');
     ok(who.includes('cal@example.com') && who.includes('Cal Fernandes'), 'the form shows the attested Google account and name, read-only');
     ok(!(await page.evaluate(() => sessionStorage.getItem('fms_gate_landing'))), 'the landing marker was consumed');
     await page.goto(BASE + 'story.html');
-    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'the NEXT page is bounced too — the whole website is behind the gate now'), () => ok(false, 'the NEXT page is bounced too — the whole website is behind the gate now'));
+    ok(await urlBecomes(page, /invite\.html/), 'the NEXT page is bounced too — the whole website is behind the gate now');
     ok((await page.evaluate(() => document.documentElement.dataset.sitegate || '')) === '', 'invite.html itself is exempt (no data-sitegate)');
 
     console.log('(j) the request, and the approval');
@@ -197,7 +231,7 @@ try {
     ok(/Requested/.test(await page.textContent('#request')), 'the page now says Requested instead of offering the form');
     ok(!!(await page.$('#invite #gtCode')), 'the code box stays available — a code from a friend still works while the request waits');
     await page.goto(BASE + 'index.html');
-    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'while pending, the hub still sends Cal to invite.html'), () => ok(false, 'while pending, the hub still sends Cal to invite.html'));
+    ok(await urlBecomes(page, /invite\.html/), 'while pending, the hub still sends Cal to invite.html');
     ok(writes() === 0, 'still nothing uploaded');
     allErrors.push(...errors);
 
@@ -262,7 +296,7 @@ try {
     const page = await ctx.newPage();
     for (const p of ['index.html', 'breakdown.html', 'settings.html']) {
       await page.goto(BASE + p);
-      await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, `signed out: ${p} → invite.html`), () => ok(false, `signed out: ${p} → invite.html`));
+      ok(await urlBecomes(page, /invite\.html/), `signed out: ${p} → invite.html`);
     }
     const hidden = await page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility);
     ok(hidden === 'visible', 'invite.html renders (it is the one page a stranger may see)');
@@ -316,6 +350,7 @@ try {
     await ctx.route(/accounts\.google\.com|fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
     const page = await ctx.newPage();
     await page.goto(BASE + 'settings.html');
+    await urlBecomes(page, /invite\.html/);   // the site gate; settings.html also has a code box, so wait for the doorway first
     await page.waitForSelector('#invite #gtCode');
     // Intercept the redirect to Google: record it, stay on the page.
     await page.route(SB + '/auth/v1/authorize**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>google</p>' }));
@@ -365,7 +400,7 @@ try {
     F.db.sessions.delete(USERS['tok-amy'].id);
     await B.page.evaluate(() => {}); // B keeps beating on the real 30s timer; force one through the clock-less page
     await B.page.waitForFunction(() => /invite\.html/.test(location.pathname) || window.StudioCloud.getGateState().state === 'closed', null, { timeout: 40000 }).then(() => ok(true, "a revoked member's heartbeat closes the gate"), () => ok(false, "a revoked member's heartbeat closes the gate"));
-    await B.page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'and the site gate walks them out to invite.html'), () => ok(false, 'and the site gate walks them out to invite.html'));
+    ok(await urlBecomes(B.page, /invite\.html/), 'and the site gate walks them out to invite.html');
     await A.ctx.close(); await B.ctx.close();
   }
 

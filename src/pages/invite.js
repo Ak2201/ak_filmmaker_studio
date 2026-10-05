@@ -28,7 +28,9 @@
    name because nothing else on this page would pull it in, and the
    whole page is a view of window.StudioCloud.
    ============================================================ */
-import Store from '../lib/store.js';   /* FIRST — invariant 6. */
+import Store from '../lib/store.js';
+import Billing from '../lib/billing.js';
+import { planCards } from '../ui/plan-cards.js';   /* FIRST — invariant 6. */
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -118,6 +120,18 @@ function render() {
     body.append(sec);
     const code = inviteSection(section, st);
     if (code) body.append(code);
+    /* PAYING GRANTS ENTRY (schema section 16): a plan is the third route
+       through the gate. The cards come from the plans table; a purchase
+       activates server-side and runGate() is asked again. */
+    if (plans) {
+      const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
+        'A paid plan admits this account without an invite. Prepaid, no auto-renewal; the free tier is what an invited member gets.');
+      buy.append(planCards(plans, null, {
+        onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { onStatus }),
+        rerender: render
+      }));
+      body.append(buy);
+    }
     const out = section('meanwhile', 'Meanwhile', 'Nothing here is locked.',
       'The gate guards the cloud, not your work. Every page in the studio opens and saves on this device while you wait; sync starts by itself once you are through.');
     out.append(h('div.iv-actions', {}, [
@@ -145,8 +159,18 @@ document.addEventListener('click', (e) => {
 /* Everything this page shows arrives later than the first paint —
    the session, then the gate's answer a round trip after it — so it
    redraws on each, from the one source. */
+let plans = null;
+async function loadPlans() {
+  const c = cloud();
+  if (!c || !c.isConfigured() || !c.getSession()) return;
+  try { plans = await Billing.listPlans(); } catch (e) { plans = null; }   // section 16 not run: no cards
+  render();
+}
 wireGateUI(render);
 wireRequestUI(render);
+Store.subscribe('gate:changed', () => { if (!plans) loadPlans(); });
+if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(loadPlans, 0));
+loadPlans();
 Store.subscribe('gate:changed', render);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(render, 0));
 render();

@@ -41,6 +41,7 @@ import nav from '../data/navigation.json';
 import { formatCode, normaliseCode } from '../lib/gate.js';
 import { inExtension, onSessionLost, onClipQueued, CLIP_QUEUE_KEY } from '../lib/extension-bridge.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
+import Billing from '../lib/billing.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud;
@@ -136,7 +137,33 @@ const MODES = {
   ]
 };
 
+/* The plan's say over the extension (schema section 16: limits.extension).
+   A client-side gate, and labelled as one in the schema's header: the
+   server cannot tell an extension's request from a page's, so what this
+   buys is an honest panel, not an enforced one. Unknown (section 16 not
+   run, or the status call failed) means allowed. */
+let extAllowed = null;
+async function checkPlan() {
+  try {
+    const st = await Billing.status();
+    extAllowed = !st || !st.limits || st.limits.extension !== false;
+  } catch (e) { extAllowed = true; }
+  render();
+}
+
+function renderNoExtension() {
+  const main = h('main#main.pn-main');
+  main.append(head('Your plan', 'The extension is not in your plan.',
+    'The Free tier covers the website and local work. Starter, Indie and Pro include the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
+  main.append(h('a.btn.primary', { href: '../settings.html#plan', target: '_blank', rel: 'noopener', text: 'SEE PLANS' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I HAVE UPGRADED' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
+  return main;
+}
+
 function renderPipeline() {
+  if (extAllowed === null) { checkPlan(); }
+  if (extAllowed === false) return renderNoExtension();
   const main = h('main#main.pn-main');
   const p = Store.currentProject ? Store.currentProject() : null;
   main.append(head('Pipeline', p ? p.title : 'Filmmaker Studio', p ? null : 'No project open — pick one on the hub, or start in Story.'));
@@ -244,6 +271,8 @@ delegate(document, 'click', '[data-pn]', async (e, el) => {
     await c.takeBack(); render();
   } else if (act === 'signout') {
     await c.signOut(); ui.ticketReady = false; render();
+  } else if (act === 'recheck') {
+    extAllowed = null; render();
   } else if (act === 'stage') {
     ui.stage = ui.stage === el.dataset.stage ? '' : el.dataset.stage; render();
   }

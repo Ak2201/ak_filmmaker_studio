@@ -1,0 +1,54 @@
+/* ============================================================
+   PLANS — the tier cards, the usage list, the console's billing tools
+   ------------------------------------------------------------
+   Tokens for every colour, --sk-* for every shape. The current plan's
+   card is marked by its border AND its eyebrow ("Your plan"), never by
+   colour alone. Prices are display type; limits are a plain list so
+   four cards can be read down as columns.
+   ============================================================ */
+.pl-wrap { display: grid; gap: var(--s4); margin-top: var(--s3); }
+.pl-period { display: inline-flex; gap: var(--s1); }
+.pl-period .btn.is-on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.pl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--s4); align-items: stretch; }
+.pl-card {
+  display: grid; align-content: start; gap: var(--s2);
+  padding: var(--sk-card-pad, var(--s5));
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.pl-card.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.pl-card.is-free { background: var(--paper); }
+.pl-name { font-family: var(--f-display); font-size: var(--t-xl); line-height: var(--lh-tight); margin: 0; color: var(--ink); }
+.pl-blurb { margin: 0; color: var(--ink-body); font-size: var(--t-small); min-height: 2.6em; }
+.pl-price { margin: var(--s1) 0 0; color: var(--ink-body); }
+.pl-price strong { font-family: var(--f-display); font-size: var(--t-2xl); color: var(--ink); }
+.pl-price span { font-size: var(--t-small); color: var(--ink-muted); }
+.pl-save { margin: 0; font-size: var(--t-tiny); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
+.pl-limits { margin: var(--s2) 0; padding-left: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }
+.pl-card .btn { justify-self: start; margin-top: auto; }
+.pl-until { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.pl-note { margin: 0; font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }
+.pl-status { margin: 0; color: var(--ink); background: var(--accent-wash); border-left: 3px solid var(--accent); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+.pl-usage { margin: var(--s3) 0 0; padding-left: var(--s4); display: grid; gap: var(--s1); color: var(--ink-body); font-size: var(--t-small); }
+.pl-usage .is-full { color: var(--ink); font-weight: 600; }
+
+/* ---- the console ------------------------------------------- */
+.ba-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--s3); margin: var(--s3) 0; }
+.ba-stat { padding: var(--s3); background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
+.ba-stat strong { display: block; font-family: var(--f-display); font-size: var(--t-xl); color: var(--ink); }
+.ba-stat span { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.ba-plans { display: grid; gap: var(--s3); }
+.ba-plan { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
+.ba-plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
+.ba-plan-head strong { color: var(--ink); font-family: var(--f-display); font-size: var(--t-lg); }
+.ba-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--s2) var(--s3); }
+.ba-field { display: grid; gap: 2px; min-width: 0; }
+.ba-field label { font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
+.ba-field input, .ba-field select { min-width: 0; max-width: 100%; }
+.ba-field.is-wide { grid-column: 1 / -1; }
+.ba-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.ba-saved { font-size: var(--t-small); color: var(--ok-deep); }
+.ba-grant { display: grid; gap: var(--s2); max-width: 36rem; margin-top: var(--s3); }
+.ba-grant .btn { justify-self: start; }

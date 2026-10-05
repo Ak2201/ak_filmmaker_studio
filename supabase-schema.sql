@@ -3212,3 +3212,686 @@ notify pgrst, 'reload schema';
 --  4. admin: admin_list_users() includes an account that has signed in
 --     but never asked or redeemed (studio_role '' and request_status '').
 -- ============================================================
+
+
+-- ============================================================
+-- 16. BILLING — plans, Razorpay payments, and the limits a plan buys
+-- ------------------------------------------------------------
+-- NOT RUN AGAINST ANY DATABASE. Written for the owner's ask of 5 Oct
+-- 2026: Razorpay payments, three paid tiers, prices set from the
+-- console, restrictions by plan. Decisions taken before a line was
+-- written, each one asked:
+--   * PREPAID PERIODS, not mandates. One Razorpay Order buys a plan for
+--     30 or 365 days; nothing recurs. A price change in the console
+--     takes effect on the next purchase and needs no Razorpay object.
+--   * THE PLAN SITS ON THE ORGANISATION (accounts.plan, which section 6
+--     reserved for exactly this and accounts_guard has defended as
+--     "set by billing" since). A buyer who owns no organisation gets
+--     one made for them at activation, so nobody has to know what an
+--     organisation is to pay.
+--   * PAYING GRANTS ENTRY. Activation inserts the studio_members row,
+--     so a stranger who pays is through the gate (sections 13-14)
+--     without a code. A DISABLED member cannot buy their way back in:
+--     create_pending_payment refuses them before an order exists.
+--   * LIMITS ARE ENFORCED HERE, in triggers, and merely EXPLAINED in the
+--     UI. Local work is never limited; what a plan caps is the cloud —
+--     projects synced, share links live, collaborators per project,
+--     organisation seats — and the extension, which the client gates
+--     (the server cannot tell an extension request from a page's).
+--
+-- WHO WRITES WHAT. The three Razorpay edge functions run as the
+-- service role and call create_pending_payment / activate_payment /
+-- mark_payment_*; those refuse any other caller. The console's three
+-- admin_* RPCs re-check is_studio_admin(). The browser can only READ:
+-- the active plans, its own payments, and billing_status().
+--
+-- A LAPSE IS COMPUTED, NEVER SCHEDULED. accounts.plan keeps the last
+-- plan bought; account_plan() answers 'free' once plan_until is past.
+-- No cron, nothing to forget to run.
+--
+-- ERROR CODE P0402 is "your plan does not allow this" everywhere below
+-- (P0401 is the gate's "no invite"). cloud.js maps it to a toast with
+-- the limit and the plan named, and an upgrade link.
+-- ============================================================
+
+-- 16.1 PLANS ------------------------------------------------------
+-- `limits` keys: projects, collaborators, shares, seats (integers; a
+-- JSON null = unlimited) and extension (boolean). The seed prices are
+-- PLACEHOLDERS for the console to overwrite; nothing below depends on
+-- the numbers. monthly_paise/yearly_paise of 0 means "not sold at this
+-- period" (free is never for sale).
+create table if not exists public.plans (
+  id             text        primary key check (id in ('free','starter','indie','pro')),
+  name           text        not null,
+  blurb          text        not null default '',
+  monthly_paise  int         not null default 0 check (monthly_paise >= 0),
+  yearly_paise   int         not null default 0 check (yearly_paise >= 0),
+  limits         jsonb       not null default '{}'::jsonb,
+  sort           int         not null default 0,
+  active         boolean     not null default true,
+  updated_at     timestamptz not null default now(),
+  updated_by     uuid        references auth.users(id) on delete set null
+);
+insert into public.plans (id, name, blurb, monthly_paise, yearly_paise, limits, sort) values
+  ('free',    'Free',    'Admitted, unpaid. One film in the cloud.',
+     0, 0, '{"projects":1,"collaborators":0,"shares":0,"seats":1,"extension":false}', 0),
+  ('starter', 'Starter', 'One writer, a few films, a couple of readers.',
+     29900, 299900, '{"projects":3,"collaborators":2,"shares":3,"seats":1,"extension":true}', 1),
+  ('indie',   'Indie',   'A small team taking a film through production.',
+     79900, 799900, '{"projects":10,"collaborators":5,"shares":10,"seats":3,"extension":true}', 2),
+  ('pro',     'Pro',     'A production house. No caps.',
+     199900, 1999900, '{"projects":null,"collaborators":null,"shares":null,"seats":10,"extension":true}', 3)
+on conflict (id) do nothing;
+
+alter table public.plans enable row level security;
+drop policy if exists plans_select on public.plans;
+-- Prices are shown to a signed-in non-member on invite.html, so
+-- authenticated reads them; anon has no page that needs them.
+create policy plans_select on public.plans for select to authenticated using (true);
+
+create or replace function public.plan_rank(p text)
+returns int language sql immutable as $$
+  select case p when 'pro' then 3 when 'indie' then 2 when 'starter' then 1 else 0 end;
+$$;
+
+-- 16.2 THE ORGANISATION'S PLAN, WITH AN EXPIRY ---------------------
+alter table public.accounts add column if not exists plan_until  timestamptz;
+alter table public.accounts add column if not exists plan_period text check (plan_period in ('month','year','grant'));
+
+/** The plan an account is on RIGHT NOW: what it bought, unless that has
+ *  lapsed. */
+create or replace function public.account_plan(p_account uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select case when a.plan = 'free' then 'free'
+              when a.plan_until is null or a.plan_until > now() then a.plan
+              else 'free' end
+    from public.accounts a where a.id = p_account;
+$$;
+
+/** The plan a USER is on: the best current plan among the organisations
+ *  they own, else free. Owned, not merely joined — a seat on somebody
+ *  else's Pro does not make your own films Pro. */
+create or replace function public.user_plan(p_user uuid default auth.uid())
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    (select public.account_plan(a.id) from public.accounts a
+      where a.owner_id = p_user
+      order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last
+      limit 1),
+    'free');
+$$;
+
+create or replace function public.user_limits(p_user uuid default auth.uid())
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select p.limits from public.plans p where p.id = public.user_plan(p_user)), '{}'::jsonb);
+$$;
+
+/** An integer cap, or null for unlimited (missing key = unlimited too). */
+create or replace function public.plan_cap(p_limits jsonb, p_key text)
+returns int language sql immutable as $$
+  select case when p_limits ? p_key and jsonb_typeof(p_limits -> p_key) = 'number'
+              then (p_limits ->> p_key)::int else null end;
+$$;
+
+revoke execute on function public.account_plan(uuid)  from public, anon;
+revoke execute on function public.user_plan(uuid)     from public, anon;
+revoke execute on function public.user_limits(uuid)   from public, anon;
+grant  execute on function public.account_plan(uuid)  to authenticated;
+grant  execute on function public.user_plan(uuid)     to authenticated;
+grant  execute on function public.user_limits(uuid)   to authenticated;
+
+-- 16.3 PAYMENTS ----------------------------------------------------
+create table if not exists public.payments (
+  id                   uuid        primary key default gen_random_uuid(),
+  user_id              uuid        not null references auth.users(id) on delete cascade,
+  account_id           uuid        references public.accounts(id) on delete set null,
+  plan_id              text        not null references public.plans(id),
+  period               text        not null check (period in ('month','year','grant')),
+  amount_paise         int         not null check (amount_paise >= 0),
+  currency             text        not null default 'INR',
+  razorpay_order_id    text        unique,
+  razorpay_payment_id  text        unique,
+  status               text        not null default 'created'
+                       check (status in ('created','paid','failed','refunded','granted')),
+  note                 text,
+  created_at           timestamptz not null default now(),
+  paid_at              timestamptz,
+  starts_at            timestamptz,
+  ends_at              timestamptz,
+  raw                  jsonb
+);
+create index if not exists payments_user_idx on public.payments(user_id, created_at desc);
+alter table public.payments enable row level security;
+drop policy if exists pay_select_own on public.payments;
+create policy pay_select_own on public.payments for select using (user_id = auth.uid());
+-- No insert/update/delete policies: the service-role functions below
+-- are the only writers, and they bypass RLS.
+
+-- 16.4 accounts_guard LEARNS ONE MORE CALLER -----------------------
+-- Section 7's guard lets the SERVICE ROLE change plan and limits and
+-- nobody else. The console's admin_grant_plan runs as an administrator
+-- through PostgREST, so auth.jwt()->>'role' is 'authenticated' even
+-- inside a security definer body and is_privileged_caller() says no.
+-- apply_plan() therefore raises a transaction-local flag the guard
+-- honours. `set local` dies with the transaction; a client cannot set
+-- it, because the only statements a client runs are the ones RLS and
+-- these functions let through.
+create or replace function public.accounts_guard()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if public.is_privileged_caller() then return new; end if;
+  if current_setting('fms.billing', true) = 'on' then return new; end if;
+  if new.owner_id is distinct from old.owner_id and old.owner_id <> auth.uid() then
+    raise exception 'Only the account owner can transfer the account' using errcode = '42501';
+  end if;
+  if new.plan             is distinct from old.plan
+  or new.plan_until       is distinct from old.plan_until
+  or new.plan_period      is distinct from old.plan_period
+  or new.seat_limit       is distinct from old.seat_limit
+  or new.storage_limit_mb is distinct from old.storage_limit_mb then
+    raise exception 'Plan and limits are set by billing, not by the client' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+-- 16.5 APPLYING A PLAN ---------------------------------------------
+-- Internal. Renewing the SAME tier before it lapses extends from the
+-- current expiry, so paying early never loses days; buying a different
+-- tier starts today (an upgrade is wanted now; a downgrade is a choice).
+create or replace function public.apply_plan(p_account uuid, p_plan text, p_period text, p_days int)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  a      public.accounts;
+  lim    jsonb;
+  start  timestamptz := now();
+  until  timestamptz;
+begin
+  select * into a from public.accounts x where x.id = p_account for update;
+  if a.id is null then raise exception 'No such account' using errcode = '22023'; end if;
+  select limits into lim from public.plans p where p.id = p_plan;
+  if lim is null then raise exception 'No such plan' using errcode = '22023'; end if;
+  if a.plan = p_plan and a.plan_until is not null and a.plan_until > now() then start := a.plan_until; end if;
+  until := start + make_interval(days => p_days);
+  perform set_config('fms.billing', 'on', true);
+  update public.accounts x
+     set plan = p_plan, plan_until = until, plan_period = p_period,
+         seat_limit = greatest(1, coalesce(public.plan_cap(lim, 'seats'), 1000)),
+         updated_at = now()
+   where x.id = p_account;
+  return until;
+end;
+$fn$;
+revoke execute on function public.apply_plan(uuid, text, text, int) from public, anon, authenticated;
+
+/** The organisation a payment lands on: the one named on the row, else
+ *  the newest one the buyer owns, else a new one in their name. */
+create or replace function public.account_for_buyer(p_user uuid, p_account uuid default null)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  acc  uuid;
+  nm   text;
+  mail text;
+begin
+  if p_account is not null then
+    select id into acc from public.accounts a where a.id = p_account and a.owner_id = p_user;
+    if acc is not null then return acc; end if;
+  end if;
+  select id into acc from public.accounts a where a.owner_id = p_user order by a.created_at desc limit 1;
+  if acc is not null then return acc; end if;
+  select coalesce(nullif(u.raw_user_meta_data ->> 'full_name', ''), split_part(u.email, '@', 1)), lower(u.email)
+    into nm, mail from auth.users u where u.id = p_user;
+  insert into public.accounts (name, owner_id) values (coalesce(nm, 'My') || '''s Studio', p_user) returning id into acc;
+  insert into public.account_members (account_id, invited_email, user_id, role, status, invited_by, joined_at)
+  values (acc, coalesce(mail, p_user::text), p_user, 'owner', 'active', p_user, now())
+  on conflict do nothing;
+  return acc;
+end;
+$fn$;
+revoke execute on function public.account_for_buyer(uuid, uuid) from public, anon, authenticated;
+
+-- 16.6 THE SERVICE-ROLE SURFACE (the edge functions) ---------------
+create or replace function public.billing_require_service()
+returns void language plpgsql as $$
+begin
+  if not public.is_privileged_caller() then
+    raise exception 'Billing functions are called by the payment service only' using errcode = '42501';
+  end if;
+end; $$;
+revoke execute on function public.billing_require_service() from public, anon, authenticated;
+
+/** rzp-order: record the intent before the Razorpay order exists, so a
+ *  failure between the two leaves a 'created' row and never a charge
+ *  without a record. Refuses a disabled member and a plan not for sale. */
+create or replace function public.create_pending_payment(p_user uuid, p_plan text, p_period text, p_account uuid default null)
+returns table (payment_id uuid, amount_paise int, currency text, plan_name text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl  public.plans;
+  amt int;
+  pid uuid;
+begin
+  perform public.billing_require_service();
+  if exists (select 1 from public.studio_members m where m.user_id = p_user and m.disabled_at is not null) then
+    raise exception 'This account has been disabled by an administrator' using errcode = '42501';
+  end if;
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  amt := case p_period when 'month' then pl.monthly_paise when 'year' then pl.yearly_paise else 0 end;
+  if coalesce(amt, 0) <= 0 then raise exception 'That plan is not sold %ly', p_period using errcode = '22023'; end if;
+  if p_account is not null and not exists (select 1 from public.accounts a where a.id = p_account and a.owner_id = p_user) then
+    raise exception 'Not the owner of that organisation' using errcode = '42501';
+  end if;
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise)
+  values (p_user, p_account, p_plan, p_period, amt) returning id into pid;
+  return query select pid, amt, 'INR'::text, pl.name;
+end;
+$fn$;
+
+create or replace function public.attach_razorpay_order(p_payment uuid, p_order_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  perform public.billing_require_service();
+  update public.payments set razorpay_order_id = p_order_id where id = p_payment and status = 'created';
+end;
+$fn$;
+
+/** The one activation, reached from rzp-verify AND rzp-webhook, so a
+ *  payment the browser never reported still lands. Idempotent on the
+ *  payment id: the second caller finds 'paid' and returns the same row. */
+create or replace function public.activate_payment(p_order_id text, p_payment_id text, p_raw jsonb default null)
+returns table (payment_id uuid, account_id uuid, plan_id text, ends_at timestamptz, already boolean)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pay   public.payments;
+  acc   uuid;
+  days  int;
+  until timestamptz;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_order_id = p_order_id for update;
+  if pay.id is null then raise exception 'No payment with that order id' using errcode = '22023'; end if;
+  if pay.status = 'paid' then
+    return query select pay.id, pay.account_id, pay.plan_id, pay.ends_at, true;
+    return;
+  end if;
+  if pay.status <> 'created' and pay.status <> 'failed' then
+    raise exception 'Payment is %', pay.status using errcode = '22023';
+  end if;
+  acc  := public.account_for_buyer(pay.user_id, pay.account_id);
+  days := case pay.period when 'month' then 30 when 'year' then 365 else 0 end;
+  until := public.apply_plan(acc, pay.plan_id, pay.period, days);
+  update public.payments p
+     set status = 'paid', razorpay_payment_id = p_payment_id, paid_at = now(),
+         account_id = acc, starts_at = until - make_interval(days => days), ends_at = until,
+         raw = coalesce(p_raw, p.raw)
+   where p.id = pay.id;
+  -- PAYING GRANTS ENTRY. A new member, or an existing one untouched;
+  -- never a disabled one re-enabled (create_pending_payment refused them).
+  insert into public.studio_members (user_id, role) values (pay.user_id, 'user') on conflict (user_id) do nothing;
+  return query select pay.id, acc, pay.plan_id, until, false;
+end;
+$fn$;
+
+create or replace function public.mark_payment_failed(p_order_id text, p_raw jsonb default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  perform public.billing_require_service();
+  update public.payments p set status = 'failed', raw = coalesce(p_raw, p.raw)
+   where p.razorpay_order_id = p_order_id and p.status = 'created';
+end;
+$fn$;
+
+/** A refund ends the plan it bought, today. The row keeps its history. */
+create or replace function public.mark_payment_refunded(p_payment_id text, p_raw jsonb default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare pay public.payments;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_payment_id = p_payment_id for update;
+  if pay.id is null then return; end if;
+  update public.payments p set status = 'refunded', raw = coalesce(p_raw, p.raw) where p.id = pay.id;
+  if pay.account_id is not null then
+    perform set_config('fms.billing', 'on', true);
+    update public.accounts a set plan_until = least(a.plan_until, now()), updated_at = now()
+     where a.id = pay.account_id and a.plan = pay.plan_id;
+  end if;
+end;
+$fn$;
+
+revoke execute on function public.create_pending_payment(uuid, text, text, uuid) from public, anon, authenticated;
+revoke execute on function public.attach_razorpay_order(uuid, text)              from public, anon, authenticated;
+revoke execute on function public.activate_payment(text, text, jsonb)            from public, anon, authenticated;
+revoke execute on function public.mark_payment_failed(text, jsonb)               from public, anon, authenticated;
+revoke execute on function public.mark_payment_refunded(text, jsonb)             from public, anon, authenticated;
+
+-- 16.7 WHAT THE BROWSER ASKS -----------------------------------------
+/** The signed-in user's plan, limits and usage, in one call. */
+create or replace function public.billing_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid  uuid := auth.uid();
+  pl   text;
+  acc  public.accounts;
+  lim  jsonb;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  pl := public.user_plan(uid);
+  select * into acc from public.accounts a where a.owner_id = uid
+   order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last limit 1;
+  lim := public.user_limits(uid);
+  return jsonb_build_object(
+    'plan',        pl,
+    'plan_name',   (select name from public.plans where id = pl),
+    'limits',      lim,
+    'account_id',  acc.id,
+    'account_name', acc.name,
+    'plan_until',  case when pl <> 'free' then acc.plan_until end,
+    'bought_plan', acc.plan,
+    'lapsed',      acc.plan is not null and acc.plan <> 'free' and acc.plan_until is not null and acc.plan_until <= now(),
+    'disabled',    exists (select 1 from public.studio_members m where m.user_id = uid and m.disabled_at is not null),
+    'member',      exists (select 1 from public.studio_members m where m.user_id = uid and m.disabled_at is null),
+    'usage', jsonb_build_object(
+      'projects',      (select count(*) from public.projects p where p.owner_id = uid),
+      'shares',        (select count(*) from public.shares s join public.projects p on p.id = s.project_id
+                         where p.owner_id = uid and (s.expires_at is null or s.expires_at > now())),
+      'collaborators', (select coalesce(max(c), 0) from (select count(*) c from public.project_collaborators pc
+                         join public.projects p on p.id = pc.project_id where p.owner_id = uid group by pc.project_id) t),
+      'seats',         (select count(*) from public.account_members am where am.account_id = acc.id and am.status in ('pending','active'))
+    ),
+    'payments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'plan_id', x.plan_id, 'period', x.period,
+                   'amount_paise', x.amount_paise, 'status', x.status, 'created_at', x.created_at, 'ends_at', x.ends_at)
+                   order by x.created_at desc)
+                  from (select * from public.payments q where q.user_id = uid order by q.created_at desc limit 12) x), '[]'::jsonb)
+  );
+end;
+$fn$;
+revoke execute on function public.billing_status() from public, anon;
+grant  execute on function public.billing_status() to authenticated;
+
+-- 16.8 THE LIMITS, ENFORCED ------------------------------------------
+-- Each refuses with P0402 and a sentence that names the cap and the
+-- plan. A privileged caller (service role, the SQL editor) is never
+-- capped, so migrations and support never hit a customer's limit.
+create or replace function public.enforce_project_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  pl  := public.user_plan(new.owner_id);
+  cap := public.plan_cap(public.user_limits(new.owner_id), 'projects');
+  if cap is null then return new; end if;
+  select count(*) into n from public.projects p where p.owner_id = new.owner_id;
+  if n >= cap then
+    raise exception 'Your % plan syncs up to % project%. Upgrade to add another to the cloud; it is still saved on this device.',
+      initcap(pl), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists projects_plan_limit on public.projects;
+create trigger projects_plan_limit before insert on public.projects
+  for each row execute function public.enforce_project_limit();
+
+create or replace function public.enforce_share_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid; cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  pl  := public.user_plan(owner);
+  cap := public.plan_cap(public.user_limits(owner), 'shares');
+  if cap is null then return new; end if;
+  select count(*) into n from public.shares s join public.projects p on p.id = s.project_id
+   where p.owner_id = owner and (s.expires_at is null or s.expires_at > now());
+  if n >= cap then
+    raise exception 'Your % plan allows % live share link%. Revoke one, or upgrade.',
+      initcap(pl), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists shares_plan_limit on public.shares;
+create trigger shares_plan_limit before insert on public.shares
+  for each row execute function public.enforce_share_limit();
+
+create or replace function public.enforce_collaborator_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid; cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  pl  := public.user_plan(owner);
+  cap := public.plan_cap(public.user_limits(owner), 'collaborators');
+  if cap is null then return new; end if;
+  select count(*) into n from public.project_collaborators pc where pc.project_id = new.project_id;
+  if n >= cap then
+    raise exception 'This film''s owner is on the % plan, which allows % collaborator% per film.',
+      initcap(pl), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists collaborators_plan_limit on public.project_collaborators;
+create trigger collaborators_plan_limit before insert on public.project_collaborators
+  for each row execute function public.enforce_collaborator_limit();
+
+-- 16.9 THE CONSOLE -----------------------------------------------------
+/** Edit a plan: name, blurb, both prices (paise), limits, on sale. Only
+ *  the keys passed change. Limits are validated key by key. */
+create or replace function public.admin_set_plan(p_id text, p_patch jsonb)
+returns public.plans
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  row public.plans;
+  lim jsonb;
+  k   text;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  select * into row from public.plans p where p.id = p_id for update;
+  if row.id is null then raise exception 'No such plan' using errcode = '22023'; end if;
+  if p_patch ? 'limits' then
+    lim := p_patch -> 'limits';
+    if jsonb_typeof(lim) <> 'object' then raise exception 'limits must be an object' using errcode = '22023'; end if;
+    for k in select jsonb_object_keys(lim) loop
+      if k not in ('projects','collaborators','shares','seats','extension') then
+        raise exception 'Unknown limit "%"', k using errcode = '22023';
+      end if;
+      if k = 'extension' then
+        if jsonb_typeof(lim -> k) <> 'boolean' then raise exception 'extension must be true or false' using errcode = '22023'; end if;
+      elsif jsonb_typeof(lim -> k) not in ('number', 'null') or (jsonb_typeof(lim -> k) = 'number' and (lim ->> k)::numeric < 0) then
+        raise exception '% must be a whole number or null for unlimited', k using errcode = '22023';
+      end if;
+    end loop;
+  end if;
+  if p_id = 'free' and ((p_patch ? 'monthly_paise' and (p_patch ->> 'monthly_paise')::int > 0)
+                     or (p_patch ? 'yearly_paise'  and (p_patch ->> 'yearly_paise')::int  > 0)) then
+    raise exception 'The free plan cannot have a price' using errcode = '22023';
+  end if;
+  update public.plans p
+     set name          = coalesce(nullif(left(trim(p_patch ->> 'name'), 40), ''), p.name),
+         blurb         = case when p_patch ? 'blurb' then left(coalesce(p_patch ->> 'blurb', ''), 200) else p.blurb end,
+         monthly_paise = coalesce((p_patch ->> 'monthly_paise')::int, p.monthly_paise),
+         yearly_paise  = coalesce((p_patch ->> 'yearly_paise')::int,  p.yearly_paise),
+         limits        = case when p_patch ? 'limits' then p.limits || (p_patch -> 'limits') else p.limits end,
+         active        = coalesce((p_patch ->> 'active')::boolean, p.active),
+         updated_at    = now(), updated_by = auth.uid()
+   where p.id = p_id
+   returning * into row;
+  return row;
+end;
+$fn$;
+
+create or replace function public.admin_list_payments(p_limit int default 200)
+returns table (id uuid, email text, account_name text, plan_id text, period text, amount_paise int,
+               status text, razorpay_order_id text, razorpay_payment_id text, note text,
+               created_at timestamptz, paid_at timestamptz, ends_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select p.id, u.email::text, a.name, p.plan_id, p.period, p.amount_paise, p.status,
+           p.razorpay_order_id, p.razorpay_payment_id, p.note, p.created_at, p.paid_at, p.ends_at
+      from public.payments p
+      join auth.users u on u.id = p.user_id
+      left join public.accounts a on a.id = p.account_id
+     order by p.created_at desc
+     limit greatest(1, least(p_limit, 1000));
+end;
+$fn$;
+
+/** A plan without a payment: a comp, a bank transfer, a refund made
+ *  good. Recorded as a 'granted' payment so the ledger stays whole. */
+create or replace function public.admin_grant_plan(p_user uuid, p_plan text, p_days int, p_note text default null)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare acc uuid; until timestamptz;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_days < 1 or p_days > 3660 then raise exception 'Days must be between 1 and 3660' using errcode = '22023'; end if;
+  if not exists (select 1 from public.plans p where p.id = p_plan and p.id <> 'free') then
+    raise exception 'No such paid plan' using errcode = '22023';
+  end if;
+  acc   := public.account_for_buyer(p_user, null);
+  until := public.apply_plan(acc, p_plan, 'grant', p_days);
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise, status, note, paid_at, starts_at, ends_at)
+  values (p_user, acc, p_plan, 'grant', 0, 'granted', left(p_note, 300), now(), until - make_interval(days => p_days), until);
+  insert into public.studio_members (user_id, role) values (p_user, 'user') on conflict (user_id) do nothing;
+  return until;
+end;
+$fn$;
+
+revoke execute on function public.admin_set_plan(text, jsonb)                 from public, anon;
+revoke execute on function public.admin_list_payments(int)                   from public, anon;
+revoke execute on function public.admin_grant_plan(uuid, text, int, text)    from public, anon;
+grant  execute on function public.admin_set_plan(text, jsonb)                 to authenticated;
+grant  execute on function public.admin_list_payments(int)                   to authenticated;
+grant  execute on function public.admin_grant_plan(uuid, text, int, text)    to authenticated;
+
+-- The console's overview gains the money.
+create or replace function public.admin_billing_overview()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'paid_30d_paise',  (select coalesce(sum(amount_paise), 0) from public.payments where status = 'paid' and paid_at > now() - interval '30 days'),
+    'paid_total_paise',(select coalesce(sum(amount_paise), 0) from public.payments where status = 'paid'),
+    'payments_30d',    (select count(*) from public.payments where status = 'paid' and paid_at > now() - interval '30 days'),
+    'active_by_plan',  (select coalesce(jsonb_object_agg(pl, n), '{}'::jsonb) from (
+                          select public.account_plan(a.id) pl, count(*) n from public.accounts a group by 1) t),
+    'lapsing_14d',     (select count(*) from public.accounts a where a.plan <> 'free' and a.plan_until between now() and now() + interval '14 days'),
+    'refunds',         (select count(*) from public.payments where status = 'refunded')
+  );
+end;
+$fn$;
+revoke execute on function public.admin_billing_overview() from public, anon;
+grant  execute on function public.admin_billing_overview() to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 16.10 CHECKS TO RUN, none of which has been run yet --------------
+--  1. authenticated: select * from plans -> four rows; update plans ->
+--     42501 (no policy); admin_set_plan as non-admin -> 42501.
+--  2. admin_set_plan('indie', '{"monthly_paise":59900}') -> row shows
+--     59900; '{"limits":{"bogus":1}}' -> 22023; free with a price -> 22023.
+--  3. authenticated calling create_pending_payment -> 42501; the same
+--     with the service key -> a 'created' row with the plan's price.
+--  4. activate_payment(order, pay) with the service key: payments row
+--     'paid', the buyer owns an account on that plan with plan_until
+--     30/365 days out, the buyer has a studio_members row; a second
+--     call returns already = true and changes nothing.
+--  5. activate for a user who owns no account creates "<Name>'s Studio"
+--     with an owner member row; for one who owns two, uses the newest.
+--  6. same tier bought again before expiry: plan_until moves out by the
+--     period from the OLD expiry; a different tier starts from now().
+--  7. a Free owner with 1 project inserting a second -> P0402 with
+--     "Free plan syncs up to 1 project"; after admin_grant_plan(...,
+--     'starter', 30) the insert succeeds; the third and fourth too;
+--     the fifth -> P0402 naming Starter and 3.
+--  8. shares and project_collaborators: the same shape, against
+--     'shares' and 'collaborators'; a Pro owner is never refused.
+--  9. mark_payment_refunded(pay) sets the account's plan_until to now()
+--     and user_plan() answers 'free' on the next call.
+-- 10. a DISABLED member: create_pending_payment -> 42501.
+-- 11. accounts_guard still refuses a client update of plan/plan_until/
+--     seat_limit (42501) while apply_plan through admin_grant_plan
+--     succeeds (the fms.billing flag).
+-- 12. billing_status() for a Free owner shows usage.projects and the
+--     limits of the free row; for the admin after a grant, the plan.
+-- ============================================================

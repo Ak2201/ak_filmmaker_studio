@@ -98,6 +98,8 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
    renderAdmin(), so append stays branchless. */
 import { accountSection } from '../ui/account-panel.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
+import Billing from '../lib/billing.js';
+import { planCards, usageList } from '../ui/plan-cards.js';
 
 const app = document.getElementById('app');
 
@@ -105,6 +107,44 @@ const app = document.getElementById('app');
    appearanceMenu() derives its theme labels. Derived rather than
    listed, so dropping or adding a theme needs no edit here. */
 const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+/* ---- the plan (schema section 16) ----------------------------
+   The organisation's tier, its usage against the caps, and the cards
+   to buy or change. Everything shown is read from the server each time
+   (billing_status and the plans table); nothing about a plan is
+   remembered in this browser. Rendered for a signed-in account only —
+   a signed-out visitor has no organisation to put a plan on. */
+let billing = { plans: null, st: null, error: '' };
+async function refreshBilling() {
+  const c = window.StudioCloud;
+  if (!c || !c.isConfigured() || !c.getSession()) { billing = { plans: null, st: null, error: '' }; return; }
+  try {
+    const [plans, st] = await Promise.all([Billing.listPlans(), Billing.status()]);
+    billing = { plans, st, error: '' };
+  } catch (e) {
+    // The table or the RPC missing means section 16 has not run: no section, no noise.
+    billing = { plans: null, st: null, error: /does not exist|Could not find|PGRST/i.test(e.message || '') ? '' : (e.message || '') };
+  }
+  if (!busy) render();
+}
+function renderPlan() {
+  const c = window.StudioCloud;
+  if (!c || !c.isConfigured() || !c.getSession() || !billing.plans) return null;
+  const st = billing.st;
+  const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' \u00b7 ' + st.account_name : ''}` : 'Choose a plan.',
+    'What a plan caps is the cloud \u2014 projects synced, share links, collaborators, organisation seats \u2014 and the Chrome extension. Work on this device is never limited.');
+  if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
+  if (st) {
+    const u = usageList(st);
+    if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
+    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan lapsed on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })}. The caps below are the free tier\u2019s until you renew.` }));
+  }
+  sec.append(planCards(billing.plans, st, {
+    onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus }).then(() => refreshBilling()),
+    rerender: () => { if (!busy) render(); }
+  }));
+  return sec;
+}
 
 /* ---- a section ---------------------------------------------- */
 function section(id, eyebrow, title, deck) {
@@ -724,7 +764,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderKey(), renderStorage(), renderDrive(), renderAppearance(),
+  body.append(...[renderKey(), renderPlan(), renderStorage(), renderDrive(), renderAppearance(),
               accountSection(section), inviteSection(section, gateStatus),
               consolePointer(), renderAdmin(), renderElsewhere()].filter(Boolean));
   main.append(body);
@@ -908,6 +948,9 @@ async function refreshGate() {
   if (!busy) render();
 }
 wireGateUI(() => { if (!busy) render(); });
+Store.subscribe('billing:changed', () => refreshBilling());
+if (window.StudioCloud && window.StudioCloud.onAuth) window.StudioCloud.onAuth(() => setTimeout(refreshBilling, 0));
+refreshBilling();
 Store.subscribe('gate:changed', () => refreshGate());
 refreshGate();
 

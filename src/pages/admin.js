@@ -39,6 +39,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
+import { billingAdminSection, wireBillingAdmin } from '../ui/billing-admin.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -217,6 +218,8 @@ function render() {
     body.append(overviewSection(), accountsSection(), usersSection());
     const console_ = adminSection(section, st);
     if (console_) body.append(console_);
+    const bill = billingAdminSection(section, st);
+    if (bill) body.append(bill);
   }
 
   main.append(body);
@@ -235,6 +238,7 @@ document.addEventListener('click', (e) => {
 });
 
 wireGateUI(render);
+wireBillingAdmin(render);
 Store.subscribe('gate:changed', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();

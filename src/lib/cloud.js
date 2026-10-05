@@ -1232,8 +1232,31 @@ async function _pushProjectMeta(project) {
     updated_at: project.updatedAt
   });
   if (error) {
+    /* P0402: the plan's project cap (schema section 16.8). Not a sync
+       failure — retrying every 30 seconds would fail every 30 seconds —
+       so it is NOT queued. The project stays on this device, the
+       status says why, and a toast offers the plan page. The next
+       successful purchase re-runs the queue, and anything saved to
+       this project after that pushes with it. */
+    if (error.code === 'P0402') {
+      console.info('[push meta] plan limit:', error.message);
+      setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
+      planLimitToast(error.message);
+      return;
+    }
     console.warn('[push meta]', error);
     _enqueue({ kind: 'meta', project });
+  }
+}
+
+let _planToastAt = 0;
+function planLimitToast(message) {
+  if (Date.now() - _planToastAt < 60000) return;   // once a minute, not once a keystroke
+  _planToastAt = Date.now();
+  if (window.StudioUI && StudioUI.toast) {
+    StudioUI.toast(message + ' This film is saved on this device.', {
+      type: 'error', action: 'See plans', onAction: () => { location.href = 'settings.html#plan'; }
+    });
   }
 }
 

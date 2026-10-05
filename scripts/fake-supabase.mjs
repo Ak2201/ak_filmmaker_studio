@@ -7,11 +7,54 @@
    route handler for the project's origin. `F.db` is the live state;
    `F.reset()` starts a scenario clean.
    ============================================================ */
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 export const SB = 'https://conhlrulxfwkhsnymakz.supabase.co';
 export const REF = 'conhlrulxfwkhsnymakz';
 export const F = { db: null, reset() { F.db = freshDb(); return F.db; } };
+
+/* ---- section 16: the fake Razorpay ---------------------------------
+   The key secret the fake "edge functions" verify with, and the mode
+   the Checkout stub reads ('pay' | 'dismiss' | 'tamper'). signFor()
+   is what Razorpay does: HMAC-SHA256(order|payment, KEY_SECRET). */
+export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay' };
+export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
+const PLAN_RANK = { free: 0, starter: 1, indie: 2, pro: 3 };
+const DAYS = { month: 30, year: 365 };
+function accountPlan(a) { return !a || a.plan === 'free' ? 'free' : (!a.plan_until || Date.parse(a.plan_until) > Date.now()) ? a.plan : 'free'; }
+function userPlan(uid) {
+  const owned = F.db.accounts.filter((a) => a.owner_id === uid);
+  return owned.map(accountPlan).sort((x, y) => PLAN_RANK[y] - PLAN_RANK[x])[0] || 'free';
+}
+function userLimits(uid) { return (F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {}; }
+function cap(lim, k) { return Number.isInteger(lim[k]) ? lim[k] : null; }
+function accountForBuyer(uid) {
+  let a = F.db.accounts.filter((x) => x.owner_id === uid).sort((x, y) => Date.parse(y.created_at) - Date.parse(x.created_at))[0];
+  if (a) return a;
+  const u = Object.values(USERS).find((x) => x.id === uid);
+  a = { id: 'acc_' + uid.slice(-4), name: ((u && u.name) || (u && u.email.split('@')[0]) || 'My') + "'s Studio", owner_id: uid, plan: 'free', seat_limit: 1, created_at: new Date().toISOString() };
+  F.db.accounts.push(a);
+  F.db.accountMembers.push({ account_id: a.id, invited_email: u ? u.email : '', user_id: uid, role: 'owner', status: 'active' });
+  return a;
+}
+function applyPlan(a, plan, period, days) {
+  const lim = (F.db.plans.find((p) => p.id === plan) || {}).limits || {};
+  let start = Date.now();
+  if (a.plan === plan && a.plan_until && Date.parse(a.plan_until) > Date.now()) start = Date.parse(a.plan_until);
+  a.plan = plan; a.plan_period = period; a.plan_until = new Date(start + days * 86400e3).toISOString();
+  a.seat_limit = Math.max(1, cap(lim, 'seats') ?? 1000);
+  return a.plan_until;
+}
+function activate(orderId, paymentId, raw) {
+  const pay = F.db.payments.find((x) => x.razorpay_order_id === orderId);
+  if (!pay) throw Object.assign(new Error('No payment with that order id'), { code: '22023' });
+  if (pay.status === 'paid') return { already: true, pay };
+  const a = accountForBuyer(pay.user_id);
+  const until = applyPlan(a, pay.plan_id, pay.period, DAYS[pay.period]);
+  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: until, raw });
+  if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
+  return { already: false, pay };
+}
 
 export const USERS = {
   'tok-admin': { id: '00000000-0000-4000-8000-00000000000a', email: 'admin@example.com' },
@@ -51,6 +94,14 @@ export function freshDb() {
       scenes: { scenes: [{ id: 's1', number: '1', intExt: 'INT', dayNight: 'DAY', location: 'College', synopsis: 'The rejection.', eighths: 8, elements: {} }] },
       contacts: { contacts: [{ name: 'SECRET PHONE 98400' }] }
     } },
+    // section 16
+    plans: [
+      { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', monthly_paise: 0, yearly_paise: 0, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
+      { id: 'starter', name: 'Starter', blurb: 'One writer, a few films, a couple of readers.', monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
+      { id: 'indie',   name: 'Indie',   blurb: 'A small team taking a film through production.', monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
+      { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
+    ],
+    payments: [],
     calls: []
   };
 }
@@ -73,6 +124,58 @@ function rpc(name, args, user, route) {
   };
   const fmtD = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   switch (name) {
+    case 'billing_status': {
+      if (!user) return pgErr(route, '42501', 'Sign in first');
+      const pl = userPlan(user.id);
+      const acc = F.db.accounts.filter((a) => a.owner_id === user.id).sort((x, y) => PLAN_RANK[accountPlan(y)] - PLAN_RANK[accountPlan(x)])[0] || null;
+      const lim = userLimits(user.id);
+      return json(route, 200, {
+        plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
+        account_id: acc ? acc.id : null, account_name: acc ? acc.name : null,
+        plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
+        lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),
+        disabled: !!F.db.members.get(user.id)?.disabled_at, member: isMember(user),
+        usage: { projects: F.db.projects.filter((p) => p.owner_id === user.id).length, shares: 0, collaborators: 0,
+                 seats: acc ? F.db.accountMembers.filter((m) => m.account_id === acc.id).length : 0 },
+        payments: F.db.payments.filter((x) => x.user_id === user.id).slice(-12).reverse()
+      });
+    }
+    case 'admin_set_plan': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const p = F.db.plans.find((x) => x.id === args.p_id);
+      if (!p) return pgErr(route, '22023', 'No such plan');
+      const patch = args.p_patch || {};
+      if (patch.limits) for (const k of Object.keys(patch.limits)) if (!['projects','collaborators','shares','seats','extension'].includes(k)) return pgErr(route, '22023', `Unknown limit "${k}"`);
+      if (p.id === 'free' && ((patch.monthly_paise || 0) > 0 || (patch.yearly_paise || 0) > 0)) return pgErr(route, '22023', 'The free plan cannot have a price');
+      if (patch.name) p.name = String(patch.name).trim().slice(0, 40) || p.name;
+      if ('blurb' in patch) p.blurb = String(patch.blurb || '').slice(0, 200);
+      if (Number.isInteger(patch.monthly_paise)) p.monthly_paise = patch.monthly_paise;
+      if (Number.isInteger(patch.yearly_paise)) p.yearly_paise = patch.yearly_paise;
+      if (patch.limits) p.limits = { ...p.limits, ...patch.limits };
+      if (typeof patch.active === 'boolean') p.active = patch.active;
+      return json(route, 200, p);
+    }
+    case 'admin_list_payments': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, [...F.db.payments].reverse().map((x) => ({ ...x, email: (Object.values(USERS).find((u) => u.id === x.user_id) || {}).email,
+        account_name: (F.db.accounts.find((a) => a.id === x.account_id) || {}).name })));
+    }
+    case 'admin_grant_plan': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const a = accountForBuyer(args.p_user);
+      const until = applyPlan(a, args.p_plan, 'grant', args.p_days);
+      F.db.payments.push({ id: 'pay' + F.db.payments.length, user_id: args.p_user, account_id: a.id, plan_id: args.p_plan, period: 'grant', amount_paise: 0,
+        status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: until });
+      if (!F.db.members.has(args.p_user)) F.db.members.set(args.p_user, { role: 'user', disabled_at: null });
+      return json(route, 200, until);
+    }
+    case 'admin_billing_overview': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const paid = F.db.payments.filter((x) => x.status === 'paid');
+      const by = {}; for (const a of F.db.accounts) { const k = accountPlan(a); by[k] = (by[k] || 0) + 1; }
+      return json(route, 200, { paid_30d_paise: paid.reduce((n, x) => n + x.amount_paise, 0), paid_total_paise: paid.reduce((n, x) => n + x.amount_paise, 0),
+        payments_30d: paid.length, active_by_plan: by, lapsing_14d: 0, refunds: F.db.payments.filter((x) => x.status === 'refunded').length });
+    }
     case 'studio_status': {
       const m = user && F.db.members.get(user.id);
       const r = user && F.db.requests.get(user.id);
@@ -250,6 +353,41 @@ export async function handle(route) {
     let args = {}; try { args = JSON.parse(req.postData() || '{}'); } catch (e) {}
     return rpc(m[1], args, user, route);
   }
+  if (url.pathname.startsWith('/rest/v1/plans')) return json(route, 200, user ? [...F.db.plans].sort((a, b) => a.sort - b.sort) : []);
+  if (url.pathname.startsWith('/rest/v1/payments')) return json(route, 200, user ? F.db.payments.filter((x) => x.user_id === user.id) : []);
+
+  /* ---- the two edge functions, as the browser reaches them ---- */
+  if (url.pathname === '/functions/v1/rzp-order' && req.method() === 'POST') {
+    if (!user) return json(route, 401, { error: 'Sign in first.' });
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    const plan = F.db.plans.find((p) => p.id === body.plan && p.active);
+    F.db.calls.push(`fn:rzp-order ${body.plan} ${body.period}`);
+    if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
+    if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
+    const amount = body.period === 'year' ? plan.yearly_paise : plan.monthly_paise;
+    if (!amount) return json(route, 400, { error: `That plan is not sold ${body.period}ly` });
+    const id = 'pay' + F.db.payments.length;
+    const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
+    F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency: 'INR',
+      razorpay_order_id: order_id, razorpay_payment_id: null, status: 'created', created_at: new Date().toISOString() });
+    return json(route, 200, { order_id, amount, currency: 'INR', key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id, prefill: { email: user.email } });
+  }
+  if (url.pathname === '/functions/v1/rzp-verify' && req.method() === 'POST') {
+    if (!user) return json(route, 401, { error: 'Sign in first.' });
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    const expected = await signFor(body.razorpay_order_id || '', body.razorpay_payment_id || '');
+    if (!body.razorpay_signature || expected !== String(body.razorpay_signature).toLowerCase()) {
+      F.db.calls.push('fn:rzp-verify bad');
+      return json(route, 400, { error: 'The payment could not be verified. If money left your account, it will be matched within a few minutes or refunded by Razorpay.' });
+    }
+    const pay = F.db.payments.find((x) => x.razorpay_order_id === body.razorpay_order_id);
+    if (!pay) return json(route, 404, { error: 'No such order.' });
+    if (pay.user_id !== user.id) return json(route, 403, { error: 'That order belongs to another account.' });
+    const r = activate(body.razorpay_order_id, body.razorpay_payment_id, body);
+    F.db.calls.push('fn:rzp-verify ok');
+    return json(route, 200, { ok: true, plan: r.pay.plan_id, ends_at: r.pay.ends_at, account_id: r.pay.account_id, already: r.already });
+  }
+
   if (url.pathname.startsWith('/rest/v1/invite_codes')) {
     if (!user || F.db.members.get(user.id)?.role !== 'admin') return json(route, 200, []);
     return json(route, 200, F.db.codes);
@@ -257,6 +395,26 @@ export async function handle(route) {
   if (url.pathname.startsWith('/rest/v1/invite_redemptions')) return json(route, 200, user && F.db.members.get(user.id)?.role === 'admin' ? F.db.redemptions : []);
   if (url.pathname.startsWith('/rest/v1/projects')) {
     if (req.method() === 'GET') return json(route, 200, user ? F.db.projects.filter((p) => p.owner_id === user.id).map(({ id, title, format }) => ({ id, title, format })) : []);
+    if (req.method() === 'PATCH' && user) {
+      // cloud.js updates first and inserts only on an empty answer, so
+      // the fake must answer a PATCH with the matching row or every
+      // pulled project would be re-inserted and hit the cap.
+      const id = (url.searchParams.get('id') || '').replace(/^eq\./, '');
+      const hit = F.db.projects.filter((p) => p.id === id && p.owner_id === user.id);
+      F.db.calls.push('write:projects'); return json(route, 200, hit.map(({ id }) => ({ id })));
+    }
+    if (req.method() === 'POST' && user) {
+      // 16.8: enforce_project_limit, as the trigger would.
+      const lim = userLimits(user.id), c = cap(lim, 'projects');
+      const n = F.db.projects.filter((p) => p.owner_id === user.id).length;
+      if (c !== null && n >= c) {
+        F.db.calls.push('write:projects:P0402');
+        const pl = userPlan(user.id);
+        return pgErr(route, 'P0402', `Your ${pl[0].toUpperCase() + pl.slice(1)} plan syncs up to ${c} project${c === 1 ? '' : 's'}. Upgrade to add another to the cloud; it is still saved on this device.`);
+      }
+      let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+      F.db.projects.push({ id: body.id || 'p' + F.db.projects.length, title: body.title || '', format: body.format || 'feature', owner_id: user.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    }
     F.db.calls.push('write:projects'); return json(route, 201, []);
   }
   if (url.pathname.startsWith('/rest/v1/')) {

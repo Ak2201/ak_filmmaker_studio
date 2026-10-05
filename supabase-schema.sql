@@ -3217,8 +3217,17 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 16. BILLING — plans, Razorpay payments, and the limits a plan buys
 -- ------------------------------------------------------------
--- NOT RUN AGAINST ANY DATABASE. Written for the owner's ask of 5 Oct
--- 2026: Razorpay payments, three paid tiers, prices set from the
+-- RUN 6 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor (§16 and §17 together, comments stripped, the text
+-- verified byte-for-byte against this file first): "Success. No rows
+-- returned". Verified through PostgREST afterwards: every function
+-- here answers 401/42501 to anon where admin_billing_overview had
+-- answered PGRST202 from the live console that morning. The EDGE
+-- FUNCTIONS (rzp-order, rzp-verify, rzp-webhook) and the Razorpay
+-- secrets are NOT deployed — those need a personal access token and
+-- a Razorpay account, docs/BILLING.md §1 steps 2-5 — so the plans,
+-- the limits and the console's billing view are live and a purchase
+-- is not yet possible. Written for the owner's ask of 5 Oct 2026: Razorpay payments, three paid tiers, prices set from the
 -- console, restrictions by plan. Decisions taken before a line was
 -- written, each one asked:
 --   * PREPAID PERIODS, not mandates. One Razorpay Order buys a plan for

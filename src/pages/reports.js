@@ -37,6 +37,8 @@ import PDF from '../lib/pdf.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
+import { loadScript } from '../lib/script.js';
+import Analysis, { formatDuration } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -454,6 +456,109 @@ function pdfSides() {
   });
 }
 
+/* ---- screen time (PRD 2.0 FR-602) ---------------------------
+   An ESTIMATE, and the section says so in its first sentence. Beside
+   every figure sits the page-a-minute rule it refines, so a reader can
+   see when the two disagree — a dialogue-heavy page plays long, a page
+   of terse action plays longer than its words — rather than trusting
+   one number with no context. */
+function renderScreenTime(scenes, numbers) {
+  const sec = h('section.rp-sec', { id: 'screentime' });
+  sec.append(
+    h('p.bd-eyebrow', { text: 'Screen time' }),
+    h('h2.bd-h2', { text: 'How long it will play.' }),
+    h('p.bd-sub', { text: 'An estimate per scene from the script: dialogue at speaking pace, action by the rhythm of its sentences, '
+      + 'two seconds to establish each heading. The page-a-minute figure is beside it; a scene with no script text uses that alone.' })
+  );
+  if (!scenes.length) {
+    sec.append(h('p.bd-none', { text: 'No scenes yet. Import or write a script and the estimate appears here, scene by scene.' }));
+    return sec;
+  }
+  const st = Analysis.screenTime(scenes, loadScript().elements);
+  sec.append(h('div.bd-stats.rp-stats', {}, [
+    stat(formatDuration(st.total), 'estimated running time'),
+    stat(formatDuration(st.byPage), 'by page count'),
+    stat(st.fromScript + ' / ' + scenes.length, 'scenes read from the script')
+  ]));
+  const table = h('table.scene-table.rp-table');
+  table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule.' }));
+  table.append(h('thead', {}, [h('tr', {}, [th('Scene'), th('Slug line'), th('Estimate', 'numeric'), th('By pages', 'numeric'), th('Dialogue words', 'numeric'), th('Read from')])]));
+  const body = h('tbody');
+  for (const r of st.rows) {
+    body.append(h('tr', {}, [
+      td(numbers.get(r.scene.id) || r.scene.number || '\u2014', 'mono'),
+      td(r.heading || slugOf(r.scene), 'loc'),
+      td(formatDuration(r.seconds), 'numeric'),
+      td(formatDuration(r.byPage), 'numeric'),
+      td(r.method === 'script' ? String(r.dialogueWords) : '\u2014', 'numeric'),
+      td(r.method === 'script' ? 'script' : 'page count', 'mono')
+    ]));
+  }
+  table.append(body);
+  sec.append(h('div.rp-scroll', {}, [table]));
+  return sec;
+}
+
+/* ---- the cast matrix (PRD 2.0 FR-604) ------------------------
+   Characters down, scenes across. A character is in a scene if the
+   breakdown tags them OR the script gives them a cue there — the union,
+   because an unfinished breakdown and an unwritten scene are both
+   ordinary. Dense scenes (many of the cast at once) are the expensive
+   days to schedule, so they are named, not just shaded. */
+function renderCastMatrix(scenes, numbers) {
+  const sec = h('section.rp-sec', { id: 'cast-matrix' });
+  sec.append(
+    h('p.bd-eyebrow', { text: 'Cast matrix' }),
+    h('h2.bd-h2', { text: 'Who is in what, and with whom.' }),
+    h('p.bd-sub', { text: 'Every character against every scene, from the breakdown\u2019s cast tags and the script\u2019s cues. '
+      + 'The pairs who share the most scenes and the scenes that call the most of the cast are the scheduling constraints.' })
+  );
+  const cm = scenes.length ? Analysis.castMatrix(scenes, loadScript().elements) : null;
+  if (!cm || !cm.characters.length) {
+    sec.append(h('p.bd-none', { text: 'No cast yet. Tag cast on the breakdown or write character cues in the script, and the grid fills in.' }));
+    return sec;
+  }
+  const table = h('table.scene-table.rp-table.rp-matrix');
+  table.append(h('caption.rp-caption', { text: `${plural(cm.characters.length, 'character', 'characters')} across ${plural(scenes.length, 'scene', 'scenes')}. \u25CF in the scene; the last row counts the cast each scene calls.` }));
+  const head = h('tr', {}, [th('Character'), th('Scenes', 'numeric')]);
+  cm.density.forEach((d) => head.append(h('th.rp-mx-col' + (d.high ? '.is-dense' : ''), { scope: 'col', text: numbers.get(d.scene.id) || d.scene.number || '\u2014' })));
+  table.append(h('thead', {}, [head]));
+  const body = h('tbody');
+  for (const c of cm.characters) {
+    const row = h('tr', {}, [h('th.loc', { scope: 'row', text: c.name }), td(String(c.scenes.size), 'numeric')]);
+    cm.density.forEach((d) => {
+      const on = c.scenes.has(d.scene.id);
+      row.append(h('td.rp-mx-cell' + (on ? '.is-on' : '') + (d.high ? '.is-dense' : ''), {
+        text: on ? '\u25CF' : '', 'aria-label': on ? `${c.name} in scene ${numbers.get(d.scene.id) || d.scene.number}` : undefined
+      }));
+    });
+    body.append(row);
+  }
+  const foot = h('tr', {}, [h('th.loc', { scope: 'row', text: 'Cast called' }), td('')]);
+  cm.density.forEach((d) => foot.append(td(String(d.count), 'numeric' + (d.high ? ' is-dense' : ''))));
+  table.append(body, h('tfoot', {}, [foot]));
+  sec.append(h('div.rp-scroll', {}, [table]));
+
+  const cols = h('div.rp-mx-notes');
+  const pairs = cm.interactions.slice(0, 8);
+  const pl = h('div.rp-mx-note', {}, [h('h3.rp-h3', { text: 'Most scenes together' })]);
+  if (pairs.length) {
+    const ol = h('ol.rp-mx-list');
+    pairs.forEach((p) => ol.append(h('li', { text: `${p.a.name} & ${p.b.name} \u2014 ${plural(p.shared, 'scene', 'scenes')}` })));
+    pl.append(ol);
+  } else pl.append(h('p.bd-none', { text: 'No two characters share a scene yet.' }));
+  const dense = cm.density.filter((d) => d.high);
+  const dl = h('div.rp-mx-note', {}, [h('h3.rp-h3', { text: `Dense scenes (${cm.threshold}+ cast)` })]);
+  if (dense.length) {
+    const ol = h('ol.rp-mx-list');
+    dense.forEach((d) => ol.append(h('li', { text: `Scene ${numbers.get(d.scene.id) || d.scene.number} \u2014 ${slugOf(d.scene)}: ${d.count} cast` })));
+    dl.append(ol);
+  } else dl.append(h('p.bd-none', { text: 'No scene calls more than a handful of the cast.' }));
+  cols.append(pl, dl);
+  sec.append(cols);
+  return sec;
+}
+
 /* ---- render ------------------------------------------------- */
 function render() {
   const scenes = Scenes.listScenes();
@@ -485,6 +590,7 @@ function render() {
       ])
     );
   } else main.append(renderReports(scenes, numbers), renderSides(scenes, numbers));
+  main.append(renderScreenTime(scenes, numbers), renderCastMatrix(scenes, numbers));
 
   app.replaceChildren(main);
   mountShell();

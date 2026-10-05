@@ -1,0 +1,72 @@
+{
+  "_about": "STRUCTURAL BEAT FRAMEWORKS for the Story stage (story.html). Data, not code, for invariant 2: the beat matrix, the framework switcher, the pacing heatmap's expected curve and the AI beat-extraction prompt all read this one file, so a beat renamed here is renamed everywhere at once.\n\nEach beat carries `at` - where it conventionally falls, as a fraction of the story (0 = first page, 1 = last) - and `tension`, the conventional dramatic pressure there on a 1-10 scale. `at` is what lets a highlight survive a framework switch: a passage tagged as the Midpoint in Save the Cat! has a position in the synopsis, and the nearest beat in the Story Circle is found by that position rather than by name. `tension` is the dashed reference line the heatmap draws the story's own curve against. Both are conventions, not rules; the heatmap flags a departure, it does not forbid one.\n\nBEAT IDS ARE STORAGE KEYS. A tagged highlight stores `<framework id>:<beat id>`. Renaming an id orphans every highlight tagged with it - change the label, never the id.",
+  "default": "three_act",
+  "frameworks": [
+    {
+      "id": "three_act",
+      "label": "Three-Act Structure",
+      "short": "3-Act",
+      "blurb": "Setup, confrontation, resolution - the frame most Indian features are cut to.",
+      "beats": [
+        { "id": "setup", "label": "Setup", "at": 0.05, "tension": 2, "act": 1, "prompt": "The ordinary world, the protagonist and what they want before anything happens to them." },
+        { "id": "inciting", "label": "Inciting Incident", "at": 0.12, "tension": 5, "act": 1, "prompt": "The event that knocks the ordinary world off balance." },
+        { "id": "plot_point_1", "label": "Plot Point 1", "at": 0.25, "tension": 6, "act": 1, "prompt": "The protagonist commits; there is no going back to Act One." },
+        { "id": "midpoint", "label": "Midpoint", "at": 0.5, "tension": 7, "act": 2, "prompt": "A reversal or revelation that changes what the story is about." },
+        { "id": "plot_point_2", "label": "Plot Point 2", "at": 0.75, "tension": 8, "act": 2, "prompt": "The lowest point, or the discovery that sends the story into its final act." },
+        { "id": "climax", "label": "Climax", "at": 0.9, "tension": 10, "act": 3, "prompt": "The central conflict is confronted and decided." },
+        { "id": "resolution", "label": "Resolution", "at": 0.98, "tension": 3, "act": 3, "prompt": "The new normal, and what the journey cost." }
+      ]
+    },
+    {
+      "id": "save_the_cat",
+      "label": "Save the Cat!",
+      "short": "Save the Cat!",
+      "blurb": "Blake Snyder's fifteen beats - precise about where each turn lands.",
+      "beats": [
+        { "id": "opening_image", "label": "Opening Image", "at": 0.0, "tension": 2, "act": 1, "prompt": "A snapshot of the protagonist's world before the story changes it." },
+        { "id": "theme_stated", "label": "Theme Stated", "at": 0.05, "tension": 2, "act": 1, "prompt": "Someone states, usually to the protagonist, what the story is really about." },
+        { "id": "setup", "label": "Set-Up", "at": 0.06, "tension": 3, "act": 1, "prompt": "The world, the cast and the flaws that need fixing." },
+        { "id": "catalyst", "label": "Catalyst", "at": 0.1, "tension": 5, "act": 1, "prompt": "The life-changing event - the telegram, the knock at the door." },
+        { "id": "debate", "label": "Debate", "at": 0.15, "tension": 4, "act": 1, "prompt": "The protagonist resists: should I go?" },
+        { "id": "break_into_two", "label": "Break into Two", "at": 0.22, "tension": 6, "act": 1, "prompt": "The protagonist chooses to enter the upside-down world of Act Two." },
+        { "id": "b_story", "label": "B Story", "at": 0.25, "tension": 4, "act": 2, "prompt": "A second story - often love or friendship - that carries the theme." },
+        { "id": "fun_and_games", "label": "Fun and Games", "at": 0.35, "tension": 5, "act": 2, "prompt": "The promise of the premise: the scenes the poster is selling." },
+        { "id": "midpoint", "label": "Midpoint", "at": 0.5, "tension": 7, "act": 2, "prompt": "A false victory or a false defeat; the stakes are raised." },
+        { "id": "bad_guys_close_in", "label": "Bad Guys Close In", "at": 0.6, "tension": 7, "act": 2, "prompt": "Pressure from outside and doubt from inside tighten." },
+        { "id": "all_is_lost", "label": "All Is Lost", "at": 0.75, "tension": 8, "act": 2, "prompt": "The opposite of the Midpoint; a whiff of death." },
+        { "id": "dark_night", "label": "Dark Night of the Soul", "at": 0.78, "tension": 6, "act": 2, "prompt": "The protagonist sits with the loss before finding the way through." },
+        { "id": "break_into_three", "label": "Break into Three", "at": 0.8, "tension": 8, "act": 3, "prompt": "The A and B stories meet and the solution appears." },
+        { "id": "finale", "label": "Finale", "at": 0.9, "tension": 10, "act": 3, "prompt": "The protagonist applies the lesson and defeats the problem." },
+        { "id": "final_image", "label": "Final Image", "at": 1.0, "tension": 2, "act": 3, "prompt": "The mirror of the Opening Image - proof that change has happened." }
+      ]
+    },
+    {
+      "id": "story_circle",
+      "label": "Hero's Journey / Story Circle",
+      "short": "Story Circle",
+      "blurb": "Dan Harmon's eight-step distillation of the Hero's Journey.",
+      "beats": [
+        { "id": "you", "label": "1. You", "at": 0.02, "tension": 2, "act": 1, "prompt": "A character in a zone of comfort." },
+        { "id": "need", "label": "2. Need", "at": 0.12, "tension": 4, "act": 1, "prompt": "But they want something." },
+        { "id": "go", "label": "3. Go", "at": 0.25, "tension": 6, "act": 1, "prompt": "They enter an unfamiliar situation." },
+        { "id": "search", "label": "4. Search", "at": 0.37, "tension": 6, "act": 2, "prompt": "They adapt to it." },
+        { "id": "find", "label": "5. Find", "at": 0.5, "tension": 7, "act": 2, "prompt": "They get what they wanted." },
+        { "id": "take", "label": "6. Take", "at": 0.65, "tension": 9, "act": 2, "prompt": "They pay a heavy price for it." },
+        { "id": "return", "label": "7. Return", "at": 0.85, "tension": 8, "act": 3, "prompt": "They return to their familiar situation." },
+        { "id": "change", "label": "8. Change", "at": 0.98, "tension": 3, "act": 3, "prompt": "Having changed." }
+      ]
+    }
+  ],
+  "pacing": {
+    "_about": "What the heatmap flags. `lowTension` is the score at or below which a stretch counts as slack; `minRun` is how much of the story (as a fraction) must stay that low before it is worth saying. The window ids name the region in the warning, so the copy lives here too.",
+    "windows": 24,
+    "lowTension": 3.5,
+    "minRun": 0.12,
+    "regions": [
+      { "from": 0.0, "to": 0.25, "label": "Act 1" },
+      { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+      { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+      { "from": 0.75, "to": 1.0, "label": "Act 3" }
+    ]
+  }
+}

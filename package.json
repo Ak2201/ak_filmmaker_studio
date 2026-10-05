@@ -10,6 +10,8 @@
     "extract": "node scripts/extract/feature-steps.mjs && node scripts/extract/short-steps.mjs && node scripts/extract/library.mjs && node scripts/extract/relink.mjs",
     "verify": "node scripts/verify-migration.mjs",
     "test:pdf": "node scripts/test-pdf-text.mjs",
+    "test:story": "node scripts/test-story.mjs",
+    "test:screenplay": "node scripts/test-screenplay.mjs",
     "ship": "npm run build && npm run verify",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

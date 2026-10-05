@@ -399,3 +399,49 @@
   body.pdf-overview .tool-card,
   body.pdf-overview .mobile-bar { display: none !important; }
 }
+
+/* ------------------------------------------------------------
+   PITCH DECK (PRD 2.0 FR-605) — src/lib/pitch-deck.js builds
+   #pitchDeck into #main for one print job; everything else in #main
+   is hidden, one slide per landscape page. Screen: never shown.
+   Print colours only — the four --print-* constants.
+   ------------------------------------------------------------ */
+.pd-deck { display: none; }
+@media print {
+  body.pdf-pitch #main > *:not(#pitchDeck) { display: none !important; }
+  body.pdf-pitch .pd-deck { display: block; color: var(--print-ink); }
+  /* Headings carry screen colours from editorial.css; on paper every
+     word in the deck is print ink unless it says otherwise. */
+  body.pdf-pitch .pd-deck :is(h1, h2, h3, p, li, strong, span, div) { color: var(--print-ink); }
+  body.pdf-pitch .pd-slide {
+    break-after: page;
+    break-inside: avoid;
+    box-sizing: border-box;
+    min-height: 150mm;        /* under the 184mm landscape page area, so no slide spills */
+    padding: 6mm 4mm;
+    display: flex;
+    flex-direction: column;
+    gap: 5mm;
+  }
+  body.pdf-pitch .pd-slide:last-child { break-after: auto; }
+  body.pdf-pitch .pd-cover { justify-content: center; }
+  body.pdf-pitch .pd-deck .pd-eyebrow { font-family: var(--f-mono); font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; color: var(--print-muted); margin: 0; }
+  body.pdf-pitch .pd-cover-title { font-family: var(--f-display); font-size: 44pt; line-height: 1.05; margin: 0; }
+  body.pdf-pitch .pd-logline { font-size: 18pt; line-height: 1.35; max-width: 220mm; margin: 0; }
+  body.pdf-pitch .pd-deck .pd-world { font-size: 11pt; color: var(--print-muted); margin: 0; }
+  body.pdf-pitch .pd-title { font-family: var(--f-display); font-size: 24pt; margin: 0; }
+  body.pdf-pitch .pd-body { font-size: 11.5pt; line-height: 1.5; margin: 0; max-width: 240mm; }
+  body.pdf-pitch .pd-theme { font-size: 13pt; font-style: italic; border-left: 2pt solid var(--print-rule); padding-left: 4mm; margin: 0; }
+  body.pdf-pitch .pd-beats { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 10mm; }
+  body.pdf-pitch .pd-beats li { break-inside: avoid; margin-bottom: 3mm; display: grid; gap: 1mm; font-size: 10.5pt; line-height: 1.4; }
+  body.pdf-pitch .pd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+  body.pdf-pitch .pd-card { border: 0.75pt solid var(--print-rule); padding: 4mm; break-inside: avoid; display: grid; gap: 2mm; align-content: start; }
+  body.pdf-pitch .pd-deck .pd-role { font-family: var(--f-mono); font-size: 8pt; letter-spacing: .1em; text-transform: uppercase; color: var(--print-muted); margin: 0; }
+  body.pdf-pitch .pd-name { font-size: 14pt; margin: 0; }
+  body.pdf-pitch .pd-scenes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4mm 10mm; }
+  body.pdf-pitch .pd-scenes li { display: grid; grid-template-columns: 12mm 1fr; gap: 3mm; break-inside: avoid; font-size: 10.5pt; }
+  body.pdf-pitch .pd-num { font-family: var(--f-mono); font-weight: 700; }
+  body.pdf-pitch .pd-numbers { display: flex; flex-wrap: wrap; gap: 14mm; margin-top: 10mm; }
+  body.pdf-pitch .pd-numbers strong { display: block; font-family: var(--f-display); font-size: 36pt; line-height: 1; }
+  body.pdf-pitch .pd-deck .pd-numbers span { font-family: var(--f-mono); font-size: 9pt; letter-spacing: .1em; text-transform: uppercase; color: var(--print-muted); }
+}

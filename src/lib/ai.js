@@ -1434,3 +1434,88 @@ export async function draftScenePages(job, { onStatus, signal } = {}) {
   }
   return { byScene, truncated, model };
 }
+
+/* ---- Story stage: map a synopsis onto a beat framework ------
+   PRD FR-504. The PRD asks for "exact start/end text offsets"; this
+   asks for VERBATIM QUOTES instead and story.js finds the offsets,
+   because a language model counting characters is a model inventing
+   numbers. A quote that is not word for word in the synopsis is
+   dropped and counted there — the rule dialoguePass and beatCritique
+   already keep: a model cannot tell a writer they wrote something
+   they did not.
+
+   Unlike draftBeatSheet, this INVENTS NOTHING. Where the synopsis has
+   no passage for a beat, the beat is left out; an empty beat card is
+   information, a plausible invented one is not. */
+function beatMapSchema(beatIds) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['beats'],
+    properties: {
+      beats: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['beat', 'quote', 'rationale', 'tension'],
+          properties: {
+            beat: { type: 'string', enum: beatIds.slice() },
+            quote: { type: 'string', description: 'a passage copied EXACTLY, character for character, from the synopsis — one to three sentences' },
+            rationale: { type: 'string', description: 'one sentence: why this passage performs this beat' },
+            tension: { type: 'integer', minimum: 1, maximum: 10, description: 'dramatic tension at this point in THIS story, 1 calm to 10 peak' }
+          }
+        }
+      }
+    }
+  };
+}
+
+/**
+ *   job  { synopsis, framework: { label, beats:[{id,label,prompt}] } }
+ * Resolves to { rows:[{beat,quote,rationale,tension}], truncated, model }.
+ * Writes nothing.
+ */
+export async function draftBeatMap(job, { onStatus, signal } = {}) {
+  const synopsis = str(job && job.synopsis, 24000);
+  if (!synopsis) throw new AIError('Add a synopsis first — paste it, or import a file.', 'nosynopsis');
+  const fw = job.framework || {};
+  const beats = Array.isArray(fw.beats) ? fw.beats : [];
+  if (!beats.length) throw new AIError('The beat framework did not load.', 'nobeats');
+  const ids = beats.map((b) => String(b.id));
+  const lines = [
+    'Here is a synopsis. Find the passage that performs each beat of the ' + (fw.label || 'framework') + ' structure below.',
+    '',
+    'RULES:',
+    '· `quote` must be copied EXACTLY from the synopsis — same words, same spelling, same punctuation. Do not paraphrase, shorten with ellipses or fix typos.',
+    '· Leave a beat OUT if no passage performs it. Do not invent, and do not reuse one passage for two beats.',
+    '· Score `tension` for this story as written, not for the convention.',
+    '',
+    'THE BEATS:'
+  ];
+  for (const b of beats) lines.push('· ' + b.id + ' (' + b.label + ') — ' + (b.prompt || ''));
+  lines.push('', 'SYNOPSIS:', synopsis);
+
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a story editor mapping a synopsis onto a structural framework. You quote, you never rewrite.',
+    user: lines.join('\n'),
+    schema: beatMapSchema(ids),
+    maxTokens: 8000,
+    effort: 'medium',
+    onStatus,
+    signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"quote"/g) || []).length;
+      return n ? 'Reading the structure… ' + n + ' of ' + ids.length + ' beats' : 'Reading the structure…';
+    }
+  });
+  if (!Array.isArray(parsed.beats)) {
+    throw new AIError('The reply was not a beat map, so nothing was changed.', 'malformed');
+  }
+  const wanted = new Set(ids);
+  const rows = parsed.beats
+    .filter((b) => b && typeof b === 'object' && wanted.has(String(b.beat ?? '')))
+    .map((b) => ({ beat: String(b.beat), quote: String(b.quote ?? '').trim().slice(0, 2000),
+                   rationale: str(b.rationale, 400), tension: Number(b.tension) }));
+  return { rows, truncated, model };
+}

@@ -197,7 +197,13 @@ const PAGES = [
      and navigation.json looks wired up and is still unchecked until it
      is named here too, and nothing fails to tell you so. If you add a
      page entry, add it here in the same commit and re-baseline. */
-  { page: 'settings.html',   legacy: null, name: 'settings' }
+  { page: 'settings.html',   legacy: null, name: 'settings' },
+  /* shoot.html shipped exactly the way the note above warns about —
+     in vite.config.js and navigation.json, absent from here — and was
+     unchecked from the day it landed. Both rows arrive with the
+     re-baseline that regrouped six phases into the PRD's five stages. */
+  { page: 'shoot.html',      legacy: null, name: 'shoot' },
+  { page: 'story.html',      legacy: null, name: 'story' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -295,7 +301,9 @@ const EXPECTED = {
   library: {},
   budget: {},
   dashboard: {},
-  settings: {}
+  settings: {},
+  shoot: {},
+  story: {}
 };
 
 const MIME = {
@@ -1089,6 +1097,19 @@ for (const spec of PAGES) {
       { id: 've3', type: 'character', text: 'PRAKASH' },
       { id: 've4', type: 'dialogue', text: 'I did not sign it.' }
     ] });
+    /* The Story stage: one hand tag, one placed by position, a tension
+       override and a clipping, so the matrix, the marks (both kinds),
+       the heatmap and the vault are all on the page to be walked. */
+    const syn = 'A student is turned down for a college seat. He becomes somebody else. '
+              + 'Years later the one man who knows recognises him and hands him a deadline.';
+    set('fms_story_v1', { v: 1, source: syn, sourceName: 'verify', framework: 'three_act', logline: '',
+      tension: { 'three_act:inciting': 6 },
+      marks: [
+        { id: 'vm1', start: 0, end: 44, text: syn.slice(0, 44), tags: { three_act: 'inciting' }, origin: 'manual', rationale: '' },
+        { id: 'vm2', start: 72, end: syn.length, text: syn.slice(72), tags: {}, origin: 'ai', rationale: 'The deadline turns it.' }
+      ] });
+    set('fms_idea_vault_v1', [{ id: 'vv1', snippet: 'A headline about forged degrees.', url: 'https://example.com/a',
+      title: '', at: 1759000000000, beat: '' }]);
   });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(700);

@@ -31,11 +31,28 @@
   ],
   "phases": [
     {
-      "id": "develop",
-      "label": "Develop",
-      "hue": "develop",
-      "blurb": "Idea to locked outline",
+      "id": "story",
+      "label": "Story",
+      "hue": "story",
+      "blurb": "Idea, logline, beats",
+      "icon": "◆",
       "modules": [
+        {
+          "id": "story-beats",
+          "label": "Beats & Pacing",
+          "purpose": "Synopsis against a framework, with a tension curve",
+          "status": "built",
+          "href": "story.html",
+          "icon": "≈"
+        },
+        {
+          "id": "idea-vault",
+          "label": "Idea Vault",
+          "purpose": "Clippings from the web, kept with the film",
+          "status": "built",
+          "href": "story.html#vault",
+          "icon": "✦"
+        },
         {
           "id": "feature-blueprint",
           "label": "Feature Blueprint",
@@ -76,14 +93,14 @@
           "href": "dissect.html",
           "icon": "✂"
         }
-      ],
-      "icon": "◆"
+      ]
     },
     {
-      "id": "write",
-      "label": "Write",
-      "hue": "write",
-      "blurb": "Pages on the page",
+      "id": "screenplay",
+      "label": "Screenplay",
+      "hue": "screenplay",
+      "blurb": "Pages, scenes and their elements",
+      "icon": "✎",
       "modules": [
         {
           "id": "screenplay",
@@ -108,16 +125,7 @@
           "status": "built",
           "href": "write.html#documents",
           "icon": "⌸"
-        }
-      ],
-      "icon": "✎"
-    },
-    {
-      "id": "breakdown",
-      "label": "Breakdown",
-      "hue": "breakdown",
-      "blurb": "Script into elements",
-      "modules": [
+        },
         {
           "id": "scene-list",
           "label": "Scene List",
@@ -143,6 +151,14 @@
           "icon": "✣"
         },
         {
+          "id": "auto-tag",
+          "label": "Auto-Tagging",
+          "purpose": "Cast, props, vehicles, stunts and sound read from the script",
+          "status": "built",
+          "href": "breakdown.html#suggest",
+          "icon": "⌖"
+        },
+        {
           "id": "songs",
           "label": "Songs",
           "purpose": "Four to six per feature, each its own shoot block",
@@ -159,29 +175,37 @@
           "icon": "☷"
         },
         {
-          "id": "sides",
-          "label": "Sides",
-          "purpose": "Per-day pages for cast and crew",
+          "id": "screen-time",
+          "label": "Screen Time",
+          "purpose": "Running time per scene, from dialogue and action rhythm",
           "status": "built",
-          "href": "reports.html#sides",
-          "icon": "▫"
+          "href": "reports.html#screentime",
+          "icon": "◔"
         },
         {
-          "id": "reports",
-          "label": "Reports",
-          "purpose": "Element, scene and day reports",
+          "id": "cast-matrix",
+          "label": "Cast Matrix",
+          "purpose": "Characters against scenes; who shares the most",
           "status": "built",
-          "href": "reports.html#reports",
-          "icon": "⌗"
+          "href": "reports.html#cast-matrix",
+          "icon": "▦"
+        },
+        {
+          "id": "pitch-deck",
+          "label": "Pitch Deck",
+          "purpose": "One click to a landscape PDF for investors",
+          "status": "built",
+          "href": "story.html#pitch",
+          "icon": "▭"
         }
-      ],
-      "icon": "☷"
+      ]
     },
     {
-      "id": "visualize",
-      "label": "Visualize",
-      "hue": "visualize",
-      "blurb": "See it before you shoot it",
+      "id": "preprod",
+      "label": "Pre-Production",
+      "hue": "preprod",
+      "blurb": "See it, cost it, staff it, schedule it",
+      "icon": "◷",
       "modules": [
         {
           "id": "shot-list",
@@ -206,16 +230,7 @@
           "status": "built",
           "href": "visualize.html#lookbook",
           "icon": "▩"
-        }
-      ],
-      "icon": "◰"
-    },
-    {
-      "id": "plan",
-      "label": "Plan",
-      "hue": "plan",
-      "blurb": "People, dates, money",
-      "modules": [
+        },
         {
           "id": "budget",
           "label": "Budget",
@@ -241,6 +256,38 @@
           "icon": "▦"
         },
         {
+          "id": "locations",
+          "label": "Locations",
+          "purpose": "Recce notes and logistics",
+          "status": "built",
+          "href": "plan.html#locations",
+          "icon": "⌂"
+        },
+        {
+          "id": "dood",
+          "label": "Day Out of Days",
+          "purpose": "Cast availability across days",
+          "status": "built",
+          "href": "stripboard.html#dood",
+          "icon": "⁙"
+        },
+        {
+          "id": "sides",
+          "label": "Sides",
+          "purpose": "Per-day pages for cast and crew",
+          "status": "built",
+          "href": "reports.html#sides",
+          "icon": "▫"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "purpose": "Element, scene and day reports",
+          "status": "built",
+          "href": "reports.html#reports",
+          "icon": "⌗"
+        },
+        {
           "id": "media",
           "label": "Media",
           "purpose": "Your own reference files",
@@ -248,14 +295,14 @@
           "href": "plan.html#media",
           "icon": "◎"
         }
-      ],
-      "icon": "◷"
+      ]
     },
     {
-      "id": "shoot",
-      "label": "Shoot",
-      "hue": "shoot",
+      "id": "production",
+      "label": "Production",
+      "hue": "production",
       "blurb": "The day itself",
+      "icon": "◉",
       "modules": [
         {
           "id": "shoot-day",
@@ -266,31 +313,39 @@
           "icon": "▶"
         },
         {
-          "id": "locations",
-          "label": "Locations",
-          "purpose": "Recce notes and logistics",
-          "status": "built",
-          "href": "plan.html#locations",
-          "icon": "⌂"
-        },
-        {
           "id": "call-sheets",
           "label": "Call Sheets",
           "purpose": "Who, where, what time",
           "status": "built",
           "href": "contacts.html#call-sheets",
           "icon": "✉"
+        }
+      ]
+    },
+    {
+      "id": "post",
+      "label": "Post-Production",
+      "hue": "post",
+      "blurb": "In development",
+      "icon": "◈",
+      "modules": [
+        {
+          "id": "edit-log",
+          "label": "Edit Log",
+          "purpose": "Coming next: what was shot against what the cut needs, read from the shoot day's marks",
+          "status": "planned",
+          "href": "",
+          "icon": "✂"
         },
         {
-          "id": "dood",
-          "label": "Day Out of Days",
-          "purpose": "Cast availability across days",
-          "status": "built",
-          "href": "stripboard.html#dood",
-          "icon": "⁙"
+          "id": "deliverables",
+          "label": "Deliverables",
+          "purpose": "Coming next: censor certificate, subtitles, DCP and festival formats as one checklist",
+          "status": "planned",
+          "href": "",
+          "icon": "☑"
         }
-      ],
-      "icon": "◉"
+      ]
     }
   ]
 }

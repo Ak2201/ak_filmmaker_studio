@@ -1,0 +1,35 @@
+{
+  "_about": "WHAT AUTO-TAGGING LOOKS FOR in a scene's action lines (PRD 2.0 FR-603). Read by src/lib/screenplay-analysis.js `suggestElements()`. Content, not code, for invariant 2.\n\nCAST is not in this file: a character is whoever has a CUE in the scene, plus anybody introduced in capitals in the action (\"RAVI, 30s, counts coins\") — the screenplay convention that a speaking part is capitalised on first appearance. That needs no word list.\n\nSOUND also reads the convention: a sound effect written in capitals in action (\"the phone RINGS\", \"a GUNSHOT\") is a cue, which is how a sound department breaks a script down. The words below catch the ones written in lower case.\n\nEvery entry is a lower-case whole word or phrase. Matching is whole-word, so `car` does not fire on `scarf` and `bus` does not fire on `business`. Tamil-production vocabulary (auto, lorry, two-wheeler, nadaswaram) is listed alongside English because that is how Chennai scripts are written.\n\nA SUGGESTION IS NOT A TAG. The breakdown shows every suggestion with the line it came from and adds only what somebody accepts; nothing here writes to a scene by itself.",
+  "props": [
+    "phone", "mobile", "cellphone", "letter", "envelope", "certificate", "degree", "file", "folder", "document", "documents",
+    "photo", "photograph", "laptop", "notebook", "diary", "pen", "book", "newspaper", "ticket", "passport", "wallet", "purse",
+    "bag", "suitcase", "briefcase", "backpack", "key", "keys", "ring", "watch", "chain", "medal", "trophy", "garland",
+    "gun", "pistol", "revolver", "rifle", "knife", "sickle", "aruval", "sword", "rod", "stick", "bat", "bottle", "glass",
+    "cup", "tumbler", "plate", "kettle", "umbrella", "torch", "lantern", "candle", "lighter", "cigarette", "camera",
+    "money", "cash", "notes", "coins", "cheque", "card", "remote", "radio", "tv", "television", "lamp", "mirror", "rope",
+    "handcuffs", "badge", "helmet", "lunch box", "tiffin box", "flowers", "jasmine", "thali", "mangalsutra", "kolam"
+  ],
+  "vehicles": [
+    "car", "cars", "jeep", "police jeep", "bike", "motorbike", "motorcycle", "scooter", "two-wheeler", "bicycle", "cycle",
+    "auto", "autorickshaw", "auto-rickshaw", "rickshaw", "bus", "van", "truck", "lorry", "tractor", "train", "taxi", "cab",
+    "ambulance", "boat", "ferry", "helicopter", "plane", "aeroplane", "jcb", "tempo"
+  ],
+  "stunts": [
+    "fight", "fights", "fighting", "punch", "punches", "punched", "kick", "kicks", "kicked", "slap", "slaps", "slapped",
+    "falls", "fell", "jumps", "jumped", "leaps", "crash", "crashes", "crashed", "collides", "chase", "chases", "chased",
+    "stabs", "stabbed", "shoots", "shot", "explodes", "explosion", "blast", "brawl", "tackles", "thrown", "throws him",
+    "hangs from", "dives", "rolls", "skids", "overturns", "set on fire", "on fire", "drowns", "drowning"
+  ],
+  "sound": [
+    "music", "song", "radio plays", "horn", "honks", "siren", "sirens", "doorbell", "bell", "temple bell", "nadaswaram",
+    "thavil", "drums", "drumbeat", "whistle", "applause", "thunder", "rain", "crowd noise", "chanting", "ringtone",
+    "rings", "ringing", "gunshot", "gunshots", "explosion", "scream", "screams", "footsteps", "knock", "knocks",
+    "vibrates", "beep", "beeps", "alarm", "playback"
+  ],
+  "soundCaps": {
+    "_about": "Words that, written IN CAPITALS in an action line, mark a sound cue by convention. Lower-case occurrences of the same words are ordinary prose and are not cues.",
+    "words": ["RINGS", "RING", "BANG", "BANGS", "SLAM", "SLAMS", "CRASH", "CRASHES", "GUNSHOT", "GUNSHOTS", "BEEP", "BEEPS",
+              "BUZZ", "BUZZES", "HONK", "HONKS", "KNOCK", "KNOCKS", "SCREAM", "SCREAMS", "THUD", "SHATTERS", "EXPLODES",
+              "EXPLOSION", "WHISTLE", "WHISTLES", "SIREN", "SIRENS", "THUNDER", "CLICK", "CLICKS", "CREAKS", "BOOM"]
+  }
+}

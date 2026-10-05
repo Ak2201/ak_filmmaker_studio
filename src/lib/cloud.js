@@ -74,7 +74,9 @@ const SCOPE_BY_KEY = {
   // CHECK constraint, so this one line is the whole fix.
   'fms_festivals_v1':           'festivals',
   'fms_scriptgen_v1':           'scriptgen',
-  'fms_songs_v1':               'songs'
+  'fms_songs_v1':               'songs',
+  'fms_story_v1':               'story',
+  'fms_idea_vault_v1':          'idea_vault'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])

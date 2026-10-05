@@ -600,6 +600,7 @@
 
 .bd-head,
 .bd-list,
+.bd-suggest,
 .bd-elements,
 .bd-empty {
   max-width: var(--measure-wide);
@@ -609,6 +610,21 @@
 .bd-head { padding-block: var(--s7) var(--s5); }
 
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+
+/* ---- suggested from the script (FR-603) ---------------------
+   A suggestion is a chip that is also a button: the same shape and
+   the same category hue as a tag, so the eye already knows what it
+   will become, with a "+" to say it is not one yet. */
+.bd-suggest { padding-block: var(--s6); border-top: var(--sk-card-line-w, 1px) solid var(--rule); }
+.bd-sug-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-block: var(--s3); }
+.bd-sug-count { color: var(--ink-muted); font-size: var(--t-small); }
+.bd-sug-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s4); }
+.bd-sug-scene { display: grid; gap: var(--s2); }
+.bd-sug-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
+.bd-sug-slug { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; overflow-wrap: anywhere; }
+.bd-sug-scene-all { margin-inline-start: auto; font-size: var(--t-tiny); }
+button.bd-chip.bd-sug { font: inherit; font-size: var(--t-tiny); cursor: pointer; border-style: dashed; border-left-style: solid; }
+button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: solid; }
 /* ---- songs --------------------------------------------------
    The card shell comes from the shared paper block above; what is
    here is only the arrangement inside it. No radius, padding,

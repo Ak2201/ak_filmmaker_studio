@@ -1,0 +1,39 @@
+/* ============================================================
+   TABS — the section strip (src/ui/tabs.js)
+   ------------------------------------------------------------
+   Pinned under the shell's band: --sh-chrome-h is the measured height
+   of whatever is sticky above, published by shell.js. Tokens and
+   --sk-* only; the active tab is marked by fill AND aria-selected,
+   never by colour alone (the fill carries --accent-on text).
+   ============================================================ */
+.tabs {
+  position: sticky;
+  top: var(--sh-chrome-h, 0px);
+  z-index: var(--z-toolbar);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  padding: var(--s2) 0;
+  margin: 0 0 var(--s4);
+  background: var(--paper);
+  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+}
+.tabs-tab {
+  appearance: none;
+  font: inherit;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: transparent;
+  padding: var(--s1) var(--s3);
+  border: var(--sk-card-line-w) solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.tabs-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
+.tabs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
+.tabs-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+[role="tabpanel"][hidden] { display: none; }
+@media print { .tabs { display: none; } [role="tabpanel"][hidden] { display: block; } }

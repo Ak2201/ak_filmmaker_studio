@@ -46,52 +46,13 @@ const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
 
-/* THE CATEGORIES. One strip across the top of the console, one entry
-   per section below it, pinned under the shell so it is in reach from
-   anywhere down the page. They are LINKS to the sections, not tabs
-   that hide the rest: every section keeps its id and stays in the
-   document, so a deep link (#billing) lands, the gate's proofs find
-   their controls without first picking a tab, and the page can be
-   read top to bottom as well as jumped around. The one that is on
-   screen is marked by an IntersectionObserver, not by the hash. */
-const CATEGORIES = [
-  ['overview',      'Overview'],
-  ['organisations', 'Organisations'],
-  ['people',        'People'],
-  ['admin-console', 'Access'],
-  ['billing',       'Billing'],
-  ['features',      'Features']
-];
-let onScreen = 'overview';
-let spy = null;
-function categoryBar() {
-  const nav = h('nav.ad-tabs', { 'aria-label': 'Console sections' });
-  for (const [id, label] of CATEGORIES) {
-    nav.append(h('a.ad-tab' + (onScreen === id ? '.is-on' : ''), { href: '#' + id, 'data-ad-tab': id, text: label,
-      ...(onScreen === id ? { 'aria-current': 'location' } : {}) }));
-  }
-  return nav;
-}
-function watchSections() {
-  if (spy) spy.disconnect();
-  if (typeof IntersectionObserver !== 'function') return;
-  spy = new IntersectionObserver((entries) => {
-    const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-    if (!hit) return;
-    const id = hit.target.id;
-    if (id === onScreen) return;
-    onScreen = id;
-    document.querySelectorAll('.ad-tab').forEach((t) => {
-      const on = t.dataset.adTab === id;
-      t.classList.toggle('is-on', on);
-      if (on) t.setAttribute('aria-current', 'location'); else t.removeAttribute('aria-current');
-    });
-  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
-  CATEGORIES.forEach(([id]) => { const el = document.getElementById(id); if (el) spy.observe(el); });
-}
+/* THE CATEGORIES are the shell's tabs now (src/ui/tabs.js): every
+   section below is one tab, named by data-tab-label, one on screen at
+   a time, picked by the hash. admin.html#billing lands on Billing. */
+const TAB_LABELS = { overview: 'Overview', organisations: 'Organisations', people: 'People', 'admin-console': 'Access', billing: 'Billing', features: 'Features' };
 
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.ad-sec.st-sec', { id });
+  const sec = h('section.ad-sec.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
@@ -260,7 +221,6 @@ function render() {
     body.append(sec);
   } else {
     if (ov.phase === 'idle') loadOverview();
-    body.append(categoryBar());
     body.append(overviewSection(), accountsSection(), usersSection());
     const console_ = adminSection(section, st);
     if (console_) body.append(console_);
@@ -278,7 +238,6 @@ function render() {
     StudioUI.wireGlossaryPopovers();
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[admin] chrome', e); }
-  if (isAdmin) watchSections();
 }
 
 document.addEventListener('click', (e) => {

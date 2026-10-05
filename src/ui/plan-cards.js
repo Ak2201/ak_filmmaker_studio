@@ -23,6 +23,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName } from '../lib/billing.js';
+import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
 import '../styles/plans.css';
 
 const period = 'lifetime';     // the only period there is
@@ -36,6 +37,36 @@ const LIMIT_LINES = [
   ['shares',        (n) => n === null ? 'Unlimited share links' : n === 0 ? 'No share links' : `${n} live share link${n === 1 ? '' : 's'}`],
   ['seats',         (n) => n === null ? 'Unlimited organisation seats' : `${n} organisation seat${n === 1 ? '' : 's'}`]
 ];
+
+/* WHAT A PLAN INCLUDES, counted from the console's Features matrix
+   (plans.features, schema section 18): every built module plus the
+   capabilities, except `sample_only`, which is a restriction and is
+   said in words instead. A missing key is included (plan-gate.js reads
+   it as allowed), so the count agrees with what the pages will do. */
+function featureSummary(p) {
+  const f = (p && p.features) || {};
+  const incl = (key) => f[key] !== false;
+  const stages = PlanGate.moduleCatalogue().map((s) => ({ label: s.label, items: s.modules.map((m) => ({ ...m, on: incl(m.id) })) }));
+  const caps = CAPABILITIES.filter(([k]) => k !== 'sample_only').map(([k, label]) => ({ id: k, label, on: incl(k) }));
+  const all = [...stages.flatMap((s) => s.items), ...caps];
+  return { stages, caps, total: all.length, included: all.filter((x) => x.on).length, sampleOnly: f.sample_only === true };
+}
+function featureBlock(p) {
+  const s = featureSummary(p);
+  const wrap = h('div.pl-features');
+  wrap.append(h('p.pl-features-n', {}, [h('strong', { text: `${s.included} of ${s.total}` }), h('span', { text: ' features' })]));
+  if (s.sampleOnly) wrap.append(h('p.pl-features-note', { text: 'Sample project only' }));
+  const det = h('details.pl-what', {}, [h('summary', { text: 'What’s included' })]);
+  for (const st of s.stages) {
+    const on = st.items.filter((i) => i.on);
+    det.append(h('p.pl-what-stage', { text: `${st.label} · ${on.length} of ${st.items.length}` }));
+    det.append(h('ul.pl-what-list', {}, st.items.map((i) => h('li' + (i.on ? '' : '.is-off'), { text: i.label }))));
+  }
+  det.append(h('p.pl-what-stage', { text: `Capabilities · ${s.caps.filter((c) => c.on).length} of ${s.caps.length}` }));
+  det.append(h('ul.pl-what-list', {}, s.caps.map((c) => h('li' + (c.on ? '' : '.is-off'), { text: c.label }))));
+  wrap.append(det);
+  return wrap;
+}
 
 function limitList(limits) {
   const ul = h('ul.pl-limits');
@@ -64,6 +95,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
       h('span', { text: p.id === 'free' ? '' : price === null ? ' not for sale' : ' once · yours for good' })
     ]));
     card.append(limitList(p.limits));
+    card.append(featureBlock(p));
     /* A button only where there is something to buy: a higher tier.
        The current tier says so instead, and a lower one offers nothing
        — paying to have less is not a thing this page will sell. */

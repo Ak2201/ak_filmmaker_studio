@@ -75,33 +75,3 @@
 .ad-tag.is-pending { color: var(--warn-deep, var(--accent-deep)); }
 .ad-tag.is-off     { color: var(--danger); }
 
-/* ---- the categories ------------------------------------------
-   Pinned under the shell's band; --sh-chrome-h is the measured height
-   of whatever is sticky above, published by shell.js, so the strip
-   sits flush under it at every width. Links, not tabs: see admin.js. */
-.ad-tabs {
-  position: sticky;
-  top: var(--sh-chrome-h, 0px);
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s1);
-  padding: var(--s2) 0;
-  margin: 0 0 var(--s2);
-  background: var(--paper);
-  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
-}
-.ad-tab {
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--ink-muted);
-  padding: var(--s1) var(--s3);
-  border: var(--sk-card-line-w) solid transparent;
-  border-radius: var(--radius-pill);
-}
-.ad-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
-.ad-tab.is-on { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
-.ad-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }

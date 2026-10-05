@@ -47,12 +47,13 @@ any other build, because it measures every page signed out. `npm run
 prove:gate` refuses the open build. `npm run ship` does both in order. The
 build stamps which it is into `<meta name="fms-site-gate">` on every app page.
 
-**The application console** is `admin.html`: the studio in numbers (schema
+**The application console** is `admin.html`, six tabs — Overview (schema
 §15: everyone who has signed in, members, the queue, organisations, seats,
-films, live sessions), the organisations list, everyone who has ever signed
-in, and the gate's controls (requests, codes, members, sessions), which moved
-there from `settings.html`. Reached from the account menu, or from the
-pointer on Settings. Shown by the server-reported role; every RPC re-checks.
+films, live sessions), Organisations, People, Access (requests, codes,
+members, sessions, moved there from `settings.html`), Billing and Features.
+One tab on screen at a time; `admin.html#billing` lands on Billing. Reached
+from the rail (shown to admins), the account menu, or the pointer on
+Settings. Shown by the server-reported role; every RPC re-checks.
 
 ## 1. Order of operations
 

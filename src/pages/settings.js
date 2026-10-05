@@ -149,8 +149,11 @@ function renderPlan() {
 }
 
 /* ---- a section ---------------------------------------------- */
+/* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
+   prose and the heading is a sentence, so neither reads as a tab. */
+const TAB_LABELS = { ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.st-sec', { id });
+  const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
     h('p.bd-eyebrow', { text: eyebrow }),
     h('h2.bd-h2', { text: title }),

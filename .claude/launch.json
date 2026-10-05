@@ -27,12 +27,13 @@
     "vite preview from the MAIN checkout already holds 4173 on this machine.",
     "Several worktrees of this repo are live at once and this is the same port",
     "contention CLAUDE.md records for VERIFY_PORT — the fix there was to move,",
-    "not to kill whoever legitimately holds it."
+    "not to kill whoever legitimately holds it.",
+    "preview-open serves dist-verify/ (the OPEN build, `npm run build:open` with VERIFY_DIST) on 4175, for looking at a page signed out; dist/ is gated and sends a signed-out browser to invite.html. The node path is the durable ~/.local/node22 install now (2026-10-06)."
   ],
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "/private/tmp/claude-504/-Users-arun-9285-filmmakers-studio/d1f93e0f-38b8-4b08-bd55-189d6fac50e4/scratchpad/node/node-v22.20.0-darwin-arm64/bin/node",
+      "runtimeExecutable": "/Users/arun-9285/.local/node22/bin/node",
       "runtimeArgs": [
         "node_modules/vite/bin/vite.js",
         "--port",
@@ -43,7 +44,7 @@
     },
     {
       "name": "preview",
-      "runtimeExecutable": "/private/tmp/claude-504/-Users-arun-9285-filmmakers-studio/d1f93e0f-38b8-4b08-bd55-189d6fac50e4/scratchpad/node/node-v22.20.0-darwin-arm64/bin/node",
+      "runtimeExecutable": "/Users/arun-9285/.local/node22/bin/node",
       "runtimeArgs": [
         "node_modules/vite/bin/vite.js",
         "preview",
@@ -52,6 +53,20 @@
         "--strictPort"
       ],
       "port": 4174
+    },
+    {
+      "name": "preview-open",
+      "runtimeExecutable": "/Users/arun-9285/.local/node22/bin/node",
+      "runtimeArgs": [
+        "node_modules/vite/bin/vite.js",
+        "preview",
+        "--outDir",
+        "dist-verify",
+        "--port",
+        "4175",
+        "--strictPort"
+      ],
+      "port": 4175
     }
   ]
 }

@@ -42,6 +42,7 @@ import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
+import { installTabs } from './tabs.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -1094,6 +1095,10 @@ export function mountShell() {
       mraf = requestAnimationFrame(() => { mraf = 0; measureBar(); });
     }).observe(bar, { childList: true, subtree: true });
   }
+  /* The page's sections as tabs, where the page is one of the tabbed
+     ones (src/ui/tabs.js decides). After the bar, so --sh-chrome-h is
+     already published for the strip to sit under. */
+  installTabs();
   return bar;
 }
 

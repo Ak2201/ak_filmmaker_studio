@@ -27,6 +27,14 @@
 .pl-price span { font-size: var(--t-small); color: var(--ink-muted); }
 .pl-save { margin: 0; font-size: var(--t-tiny); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ok-deep); }
 .pl-limits { margin: var(--s2) 0; padding-left: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }
+.pl-features { display: grid; gap: var(--s1); margin: var(--s1) 0; }
+.pl-features-n { margin: 0; color: var(--ink-body); font-size: var(--t-small); }
+.pl-features-n strong { font-family: var(--f-display); font-size: var(--t-lg); color: var(--ink); }
+.pl-features-note { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
+.pl-what > summary { cursor: pointer; font-size: var(--t-small); color: var(--ink-muted); }
+.pl-what-stage { margin: var(--s2) 0 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.pl-what-list { margin: var(--s1) 0 0; padding-left: var(--s4); font-size: var(--t-small); color: var(--ink-body); display: grid; gap: 2px; }
+.pl-what-list .is-off { color: var(--ink-muted); text-decoration: line-through; }
 .pl-card .btn { justify-self: start; margin-top: auto; }
 .pl-until { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
 .pl-note { margin: 0; font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }

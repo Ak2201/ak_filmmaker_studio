@@ -112,6 +112,9 @@ src/
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
+             tabs.js ← a page's sibling sections as tabs, on the twelve
+                       pages it names; hash picks the tab, nothing is
+                       removed from the DOM (the gate reads innerHTML)
              gate-ui.js invite-request.js ← the gate's two faces: the
                        code box + admin console, and the request block
                        invite.html and the extension panel both draw
@@ -975,6 +978,24 @@ five variables Atelier left behind are what following it looks like. Edit `modul
 what objects exist and how they are arranged — and when you do, every shape you
 add must be a variable, or you have quietly made it unskinnable.
 
+**Tabs, not scrolling (owner, 6 Oct 2026).** `src/ui/tabs.js` turns the
+top-level `section[id]` siblings of a page into tabs — a strip pinned under
+the shell, one section shown, the rest `hidden` — on an explicit list of
+twelve pages: settings, admin, library, study, dissect, breakdown,
+stripboard, reports, contacts, visualize, write, plan. The list is a UI
+decision, not a derivation: the two blueprints are a reading flow with a
+step rail, the hub is the landing page the gate drives, invite.html is two
+routes meant to be read together, story.html is its editor. The hash picks
+the tab (deep links and the phase menu's `page.html#frag` land right; an
+in-page link to another section switches to it), `replaceState` keeps the
+back button honest, and a hand-dispatched `hashchange` keeps the crumb in
+step. Labels: `data-tab-label` on the section, else the navigation.json
+module whose fragment is the id, else the section's heading. Re-applied by
+a MutationObserver because settings and admin replace `main` on every
+render. **A proof that targets a section inside a hidden tab reaches it by
+hash** (`admin.html#billing`), not by scrolling — three proofs were edited
+for exactly that.
+
 **Add something to the command palette** → usually nothing. `src/ui/palette.js`
 derives its index: modules and global entries from `navigation.json`, skins
 from `skin.js` reading the CSSOM, themes from `StudioUI.themeOrder()`, projects
@@ -1745,10 +1766,10 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `chromiumapp.org` redirect URL on the Supabase allow-list before
       Google sign-in works.
 
-    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 104
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 107
     ((a) asserts CLOSED when undeployed; (i)–(k) the landing,
     request/approve and decline; (l) the site gate; (m) the console;
-    (n) code-only entry and the invite link), `prove:billing` 62
+    (n) code-only entry and the invite link), `prove:billing` 65
     ((i) the Features matrix, the free tier's sample-only hub, a locked
     page), `prove:extension` 28, all against the real GATED build. What is
     NOT proved: the 13.8/14.5/15.1 live checks against the database

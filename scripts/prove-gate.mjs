@@ -241,7 +241,7 @@ try {
     allErrors.push(...errors);
 
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html');
+    await A.page.goto(BASE + 'admin.html#admin-console');   // the Access tab (src/ui/tabs.js)
     await A.page.waitForSelector('#admin-console .gt-requests', { timeout: 10000 });
     const con = await A.page.textContent('#admin-console');
     ok(/Invite requests \(1 waiting\)/.test(con) && con.includes('cal@example.com') && con.includes('Amy sent me'), 'the console lists the request with who, the note and when');
@@ -274,7 +274,7 @@ try {
     F.db.sessions.delete(USERS['tok-admin'].id);
     const A2 = await newContext(browser, { tok: 'tok-admin' });
     A2.page.on('dialog', (d) => d.accept('Not this season — ask Amy to vouch for you.'));
-    await A2.page.goto(BASE + 'admin.html');
+    await A2.page.goto(BASE + 'admin.html#admin-console');
     await A2.page.waitForSelector('#admin-console [data-gate-action="decline"]', { timeout: 10000 });
     await A2.page.click('#admin-console [data-gate-action="decline"]');
     await A2.page.waitForFunction(() => /\(0 waiting\)/.test(document.querySelector('#admin-console').textContent), null, { timeout: 8000 });
@@ -337,6 +337,11 @@ try {
     ok(/1\s*Organisations/.test(text.replace(/\s+/g, ' ')) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is listed with its owner, seats and films');
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
+    const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
+    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Billing,Features', 'the console is six tabs, Overview selected: ' + tabs.join(', '));
+    ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
+    await A.page.click('.tabs [data-tab="people"]');
+    ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');
     await A.page.setViewportSize({ width: 390, height: 844 });
     ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the console does not overflow at 390px');
     allErrors.push(...A.errors); await A.ctx.close();
@@ -470,7 +475,7 @@ try {
   F.db.sessions.clear();
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'admin.html');
+    await page.goto(BASE + 'admin.html#admin-console');
     await page.waitForSelector('#admin-console .gt-table', { timeout: 10000 });
     ok((await page.textContent('#admin-console')).includes('AMYC-ODE2-3456'), 'codes are listed in their spoken form');
     ok(/Invite requests \(0 waiting\)/.test(await page.textContent('#admin-console')), 'the request queue is drawn even when empty — an absent section reads the same as a passing one');

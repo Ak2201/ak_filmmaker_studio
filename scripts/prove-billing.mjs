@@ -117,7 +117,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'settings.html');
+    await page.goto(BASE + 'settings.html#plan');   // the Plan TAB; the section is hidden under any other
     ok(await waitGate(page, 'open'), 'Amy (a member) is through the gate');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     const p = await prices(page);
@@ -215,7 +215,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'admin.html');
+    await page.goto(BASE + 'admin.html#billing');   // the Billing tab
     await page.waitForSelector('#billing .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#billing .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
@@ -244,7 +244,7 @@ try {
     allErrors.push(...errors); await ctx.close();
 
     const amy = await newContext(browser, { tok: 'tok-amy' });
-    await amy.page.goto(BASE + 'settings.html');
+    await amy.page.goto(BASE + 'settings.html#plan');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     ok((await prices(amy.page)).find((x) => x[0] === 'indie')[1] === '₹599', 'the cards show the edited price');
     ok((await amy.page.getAttribute('#plan .is-current', 'data-plan')) === 'pro', 'and Amy sees Pro as her plan after the grant');
@@ -300,6 +300,16 @@ try {
     await amy.page.waitForTimeout(800);
     ok(!(await amy.page.$('.pg-lock')), 'a module still ticked (scene list) opens normally');
     ok(await amy.page.evaluate(() => !!document.querySelector('[data-module-id="story-beats"].is-locked .pg-flag')), 'the phase menu marks Story · Beats with a PLAN flag');
+    /* The cards count what the matrix left ticked: every built module
+       plus five capabilities (sample_only is said in words, not counted). */
+    const built = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8')).phases.flatMap((p) => p.modules).filter((m) => m.status !== 'planned').length;
+    const total = built + 5;
+    await amy.page.goto(BASE + 'settings.html#plan');
+    await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });
+    const counts = await amy.page.$$eval('#plan .pl-card', (cards) => Object.fromEntries(cards.map((c) => [c.dataset.plan, (c.querySelector('.pl-features-n') || {}).textContent])));
+    ok(counts.free === `${total - 4} of ${total} features`, `the Free card counts ${total - 4} of ${total} (three modules and new projects unticked): ${counts.free}`);
+    ok(counts.pro === `${total} of ${total} features`, `the Pro card counts everything: ${counts.pro}`);
+    ok(/Sample project only/.test(await amy.page.textContent('#plan .pl-card[data-plan="free"]')), 'and Free says "Sample project only" in words');
     allErrors.push(...amy.errors); await amy.ctx.close();
   }
 } catch (e) {

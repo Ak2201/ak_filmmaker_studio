@@ -203,7 +203,10 @@ const PAGES = [
      unchecked from the day it landed. Both rows arrive with the
      re-baseline that regrouped six phases into the PRD's five stages. */
   { page: 'shoot.html',      legacy: null, name: 'shoot' },
-  { page: 'story.html',      legacy: null, name: 'story' }
+  { page: 'story.html',      legacy: null, name: 'story' },
+  // The screening room's entry form. The room itself needs a live pass
+  // and is proved by scripts/prove-gate.mjs instead.
+  { page: 'screening.html',  legacy: null, name: 'screening' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -303,7 +306,8 @@ const EXPECTED = {
   dashboard: {},
   settings: {},
   shoot: {},
-  story: {}
+  story: {},
+  screening: {}
 };
 
 const MIME = {

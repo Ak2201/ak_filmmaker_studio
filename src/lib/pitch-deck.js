@@ -44,13 +44,21 @@ function blueprint() {
 const txt = (v) => String(v ?? '').trim();
 const clip = (s, n) => (s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s);
 
-/** Everything the deck needs, read once. Exported for tests and for a
- *  page that wants to show what will be in the deck before printing. */
+/** Everything the deck needs, from this browser's open project. */
 export function collectPitch() {
-  const bp = blueprint();
-  const story = loadStory();
-  const scenes = listScenes();
-  const script = loadScript();
+  return collectFrom({
+    bp: blueprint(), story: loadStory(), scenes: listScenes(), script: loadScript(),
+    title: txt(Store.currentProject && Store.currentProject() && Store.currentProject().title)
+  });
+}
+
+/** The same, from data handed in — the screening room builds a deck
+ *  from a pass's snapshot, which never touches this browser's storage.
+ *  `story` may be a raw stored row; it is normalised here. */
+export function collectFrom({ bp = {}, story = null, scenes = [], script = null, title = '' } = {}) {
+  story = { marks: [], tension: {}, source: '', framework: 'three_act', ...(story || {}) };
+  if (!Array.isArray(story.marks)) story.marks = [];
+  script = script && Array.isArray(script.elements) ? script : { elements: [] };
   const fw = frameworkById(story.framework);
 
   const logline = txt(bp.s2_log_final) || txt(bp.s2_log2) || txt(bp.s2_log1) || txt(story.logline);
@@ -98,9 +106,9 @@ export function collectPitch() {
   if (locs.size) numbers.push([String(locs.size), 'locations']);
 
   return {
-    // The open project's title; never the app's own name, which is what
-    // pdf.js falls back to for a running header and is wrong on a cover.
-    title: txt(Store.currentProject && Store.currentProject() && Store.currentProject().title) || 'Untitled film',
+    // Never the app's own name, which is what pdf.js falls back to for a
+    // running header and is wrong on a cover.
+    title: txt(title) || 'Untitled film',
     genre: txt(bp.v1_genre),
     logline, synopsis,
     theme: txt(bp.s3_theme),
@@ -176,4 +184,4 @@ export function exportPitchPDF() {
   });
 }
 
-export default { collectPitch, buildDeck, slideCount, exportPitchPDF };
+export default { collectPitch, collectFrom, buildDeck, slideCount, exportPitchPDF };

@@ -2656,6 +2656,85 @@ $fn$;
 revoke execute on function public.screening_open(text, text) from public;
 grant  execute on function public.screening_open(text, text) to anon, authenticated;
 
+-- 13.6b THE GATE AS A BOUNDARY, NOT A SCREEN --------------------
+-- Everything above makes the gate CHECKABLE; nothing above makes it
+-- BINDING. cloud.js stops syncing for a non-member, but a client that
+-- skips that check could still insert projects with the publishable
+-- key — the lesson VITE_ADMIN_EMAILS already taught: visibility is not
+-- a boundary. So the two writes that put a studio in the cloud are
+-- refused here for a signed-in user who has not redeemed a code:
+--   * creating a project (projects INSERT), and
+--   * writing data to a project you OWN (project_data INSERT/UPDATE).
+-- A collaborator writing to SOMEBODY ELSE's project is not refused: a
+-- member invited them, through a share or an account, and that grant
+-- is the member's decision. Reads are not gated at all — revoking a
+-- code must never make somebody's own work unreadable to them.
+--
+-- Additive on purpose: TRIGGERS, not edits to the existing policies,
+-- so not one line of sections 1-12 changes and nothing that already
+-- passes their checks can start failing for another reason.
+
+create or replace function public.is_studio_member(p_user uuid default auth.uid())
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (select 1 from public.studio_members m
+                  where m.user_id = p_user and m.disabled_at is null);
+$$;
+revoke execute on function public.is_studio_member(uuid) from public, anon;
+grant  execute on function public.is_studio_member(uuid) to authenticated;
+
+create or replace function public.require_studio_member_projects()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  -- auth.uid() is null for the service role and the SQL editor, which
+  -- must keep working (migrations, the admin bootstrap above).
+  if auth.uid() is not null and not public.is_studio_member(auth.uid()) then
+    raise exception 'Redeem an invite code to sync projects to the cloud' using errcode = 'P0401';
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.require_studio_member_data()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid;
+begin
+  if auth.uid() is null then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  if owner = auth.uid() and not public.is_studio_member(auth.uid()) then
+    raise exception 'Redeem an invite code to sync projects to the cloud' using errcode = 'P0401';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists projects_require_member on public.projects;
+create trigger projects_require_member before insert on public.projects
+  for each row execute function public.require_studio_member_projects();
+drop trigger if exists project_data_require_member on public.project_data;
+create trigger project_data_require_member before insert or update on public.project_data
+  for each row execute function public.require_studio_member_data();
+
+-- GRANDFATHERING. Everybody who already owns a cloud project when this
+-- section runs becomes a member, so turning the gate on locks out
+-- strangers and nobody who was already here. Idempotent; run again
+-- after a restore and it changes nothing that exists.
+insert into public.studio_members (user_id, role)
+select distinct p.owner_id, 'user' from public.projects p
+on conflict (user_id) do nothing;
+
 -- 13.7 TWO MORE SYNC SCOPES: story and idea_vault ------------------
 -- Same procedure as section 12, for the same reason: cloud.js derives
 -- its scope list from Store.SCOPED_KEYS and warns at load about any
@@ -2706,4 +2785,9 @@ notify pgrst, 'reload schema';
 --  9. anon: screening_open with a valid pass -> the four scopes and
 --     nothing else; after expires_at -> refused.
 -- 10. anon: rpc/session_require_member -> refused (no grant to anyone).
+-- 11. signed in, no membership: insert into projects -> P0401; upsert
+--     project_data on a project you own -> P0401; on a project shared
+--     with you for edit -> allowed.
+-- 12. after running this section, every owner_id in projects has a
+--     studio_members row (grandfathering).
 -- ============================================================

@@ -25,6 +25,7 @@ import Store from './store.js';
    nothing from here, so this is not a cycle, and vite.config folds
    every src/lib module into one chunk anyway. */
 import { DRIVE_SCOPE } from './drive.js';
+import { createGate, startHeartbeat } from './gate.js';
 
 // ============================================================
 // CONSTANTS
@@ -147,6 +148,8 @@ function setSync(state, detail) {
 function idleSync() {
   const q = _readQueue().length;
   if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
+  if (_gateState === 'closed') return setSync(SYNC_STATES.OFF, 'Signed in — redeem an invite code to sync');
+  if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
   if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
   setSync(SYNC_STATES.SYNCED, 'Everything is in your account');
 }
@@ -306,7 +309,107 @@ export const isConfigured = () => !!(getCfg() && getCfg().url && getCfg().key);
    It is a function rather than a flag for the obvious reason: a
    flag copied into another module is stale the moment somebody
    signs out. */
-export function ownsSync() { return !!(isConfigured() && session); }
+export function ownsSync() { return !!(isConfigured() && session && syncAllowed()); }
+
+// ============================================================
+// THE GATE (PRD 2.0 §4.1-4.2, schema section 13)
+// ------------------------------------------------------------
+// After a sign-in: is this account through the invite gate, and does
+// this browser hold the account's one active session? Both answers can
+// only PAUSE sync. Nothing here touches a project on this device —
+// local-first is the contract, and a revoked code or a lost lock is a
+// reason to stop uploading, never a reason to take somebody's work
+// out of their hands. src/lib/gate.js has the full reasoning, including
+// why every check FAILS OPEN until section 13 has run.
+//
+//   'unknown'  not asked yet, or the question could not be answered
+//   'open'     through the gate (or no gate deployed) — sync as before
+//   'closed'   signed in, gate deployed, no redeemed code — no sync
+//   'lost'     another device took the session — no sync until taken back
+// ============================================================
+const Gate = createGate(() => ensureClient());
+let _gateState = 'unknown';
+let _heartbeat = null;
+let _gateRole = '';
+function syncAllowed() { return _gateState !== 'closed' && _gateState !== 'lost'; }
+function setGate(state) {
+  _gateState = state;
+  idleSync();
+  Store.notify('gate:changed', { state, role: _gateRole });
+}
+export function getGateState() { return { state: _gateState, role: _gateRole }; }
+
+async function askTakeover(info) {
+  try {
+    const { takeoverDialog } = await import('../ui/gate-ui.js');
+    return await takeoverDialog(info);
+  } catch (e) {
+    return window.confirm('Your account is currently active in another Chrome window. '
+      + 'Would you like to terminate that session and continue here?');
+  }
+}
+
+function onLockLost(reason) {
+  _heartbeat = null;
+  tearDownChannels();
+  if (reason === 'revoked') {
+    _gateRole = '';
+    setGate('closed');
+    toast('Your invite has been revoked, so sync is paused. Everything on this device is still here.', 'error', 8000);
+    return;
+  }
+  setGate('lost');
+  if (window.StudioUI && StudioUI.toast) {
+    StudioUI.toast('This account is now active on another device, so sync is paused here. Your work on this device is safe.', {
+      type: 'error', action: 'Take over', onAction: () => { takeBack(); }
+    });
+  }
+}
+
+async function takeBack() {
+  try {
+    await Gate.takeover();
+    _heartbeat = startHeartbeat(Gate, { onLost: onLockLost });
+    setGate('open');
+    attachToCurrentProject();
+    toast('Sync resumed on this device.', 'success');
+  } catch (e) {
+    toast('Could not take the session back: ' + (e.message || e), 'error', 5000);
+  }
+}
+
+/** Resolves true when sync may run. Never throws. */
+async function runGate() {
+  if (!session) return false;
+  let st;
+  try { st = await Gate.status(); }
+  catch (e) { _gateState = 'unknown'; return true; }   // network: behave as before
+  if (!st.deployed) { _gateState = 'open'; return true; }
+  if ((!st.registered || st.disabled) && Gate.hasPendingTicket()) {
+    try {
+      await Gate.redeemPending();
+      st = await Gate.status();
+      if (st.registered) toast('Invite code accepted — your studio will sync to this account.', 'success', 4000);
+    } catch (e) {
+      toast(e.message || 'That invite code could not be redeemed.', 'error', 6000);
+    }
+  }
+  _gateRole = st.role || '';
+  if (!st.registered || st.disabled) { setGate('closed'); return false; }
+
+  let r = 'ok';
+  try { r = await Gate.acquire(); } catch (e) { r = 'ok'; }   // lock RPC unavailable: do not block
+  if (r !== 'ok' && r.conflict) {
+    const take = await askTakeover(r);
+    if (!take) { setGate('lost'); return false; }
+    try { await Gate.takeover(); } catch (e) { setGate('lost'); return false; }
+  }
+  if (_heartbeat) _heartbeat.stop();
+  _heartbeat = startHeartbeat(Gate, { onLost: onLockLost });
+  setGate('open');
+  return true;
+}
+export { Gate };
 
 // ============================================================
 // CLIENT INIT — loads SDK on demand
@@ -359,17 +462,23 @@ export async function ensureClient() {
         Store.setAccount(null, { reload: false });
       }
       if (sess && wasNull) {
-        // First time signed in this load — try migration
-        maybeMigrateLocalToCloud();
-        attachToCurrentProject();
-        // An invite is addressed to an email, so it can only be matched
-        // once there is a session to read an email off. This is that
-        // moment; handlePendingInvites() is idempotent per user id.
-        handlePendingInvites();
+        // First time signed in this load. The gate decides first whether
+        // this account may sync at all; see runGate().
+        runGate().then((ok) => {
+          // An account-tier invite is addressed to an email and is
+          // separate from the studio's invite CODE; it is matched
+          // whether or not sync is open. Idempotent per user id.
+          handlePendingInvites();
+          if (!ok) return;
+          maybeMigrateLocalToCloud();
+          attachToCurrentProject();
+        });
       }
       if (!sess) {
         tearDownChannels();
         _invitesCheckedFor = null;
+        if (_heartbeat) { _heartbeat.stop(); _heartbeat = null; }
+        _gateState = 'unknown'; _gateRole = '';
       }
       idleSync();
     });
@@ -634,11 +743,16 @@ export async function signOut() {
     idleSync();
     return;
   }
+  if (_heartbeat) { _heartbeat.stop(); _heartbeat = null; }
+  // Free the device lock now rather than in 90 seconds. Best effort,
+  // and BEFORE the session goes: the RPC needs the JWT to say whose.
+  await Gate.release();
   try {
     await supabase.auth.signOut();
   } catch (e) {
     console.warn('[StudioCloud] sign-out', e);
   }
+  _gateState = 'unknown'; _gateRole = '';
   session = null;
   _signingIn = false;
   tearDownChannels();
@@ -986,7 +1100,7 @@ function _enqueue(op) {
 }
 async function _flushQueue() {
   const q = _readQueue();
-  if (!q.length || !supabase || !session) return;
+  if (!q.length || !supabase || !session || !syncAllowed()) return;
   const remaining = [];
   for (const op of q) {
     try {
@@ -1315,13 +1429,16 @@ Store.subscribe('saved', ({ key }) => {
   // pull resolves every scope in the server's favour.
   if (isConfigured()) markLocalWrite(pid, scope);
   if (!session) return;  // not signed in → nothing to push to
+  // Gate closed or lock lost: the clock above is still recorded, so
+  // this write wins its argument at the next sync rather than losing it.
+  if (!syncAllowed()) return;
   _debouncedPush(pid, scope);
 });
 Store.subscribe('current:changed', () => {
-  if (session) attachToCurrentProject();
+  if (session && syncAllowed()) attachToCurrentProject();
 });
 Store.subscribe('projects:changed', (info) => {
-  if (!session) return;
+  if (!session || !syncAllowed()) return;
   if (!info) return;
   if (info.reason === 'create' || info.reason === 'update') {
     if (info.project) _pushProjectMeta(info.project);
@@ -1440,6 +1557,8 @@ const StudioCloud = {
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
   // account invites
   claimInvites,
+  // the studio gate (schema section 13): invite codes, device lock, admin
+  gate: Gate, getGateState, runGate, takeBack,
   // comments
   listComments, createComment, updateCommentStatus, deleteComment, getProjectRole,
   // misc
@@ -1506,9 +1625,15 @@ async function boot() {
        this document loaded in the wrong namespace (first sign-in, or a
        different account last time) and a reload is on its way. */
     if (Store.setAccount(session.user.id)) return;
-    await maybeMigrateLocalToCloud();
-    attachToCurrentProject();
-    setTimeout(_flushQueue, 1500);
+    // The gate, on the restored path too — the redirect back from
+    // Google is a page load that STARTS signed in, which is exactly
+    // where a pending invite ticket gets redeemed.
+    const open = await runGate();
+    if (open) {
+      await maybeMigrateLocalToCloud();
+      attachToCurrentProject();
+      setTimeout(_flushQueue, 1500);
+    }
     // Also on a restored session, not only on a fresh sign-in: the
     // invite may have been created while this browser already held a
     // session, and onAuthStateChange's first-sign-in branch never

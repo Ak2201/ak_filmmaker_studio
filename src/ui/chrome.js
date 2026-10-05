@@ -37,6 +37,15 @@ import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
 import glossaryData from '../data/glossary.json';
 import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palette.js';
+/* Side-effect import: fragments.js installs itself on load, which is
+   deliberate. Every nav-bearing page already imports this file — all
+   19 of them — so putting it here is what makes the phase menu work
+   everywhere without a line in each page entry, the same reasoning
+   that keeps store.js's ordering guarantee free. Pages with no nav
+   (legal, panel, screening) do not import chrome.js and carry no
+   fragment hrefs, so they need nothing. Do not prune this import
+   because nothing in this file references it. */
+import './fragments.js';
 /* Drive sync, wired once here so EVERY page has it — the same reason
    the palette is wired here rather than per page. A backup that only
    runs on the hub is a backup that misses the pages people write on.

@@ -40,6 +40,7 @@ import nav from '../data/navigation.json';
 import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
+import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
@@ -303,9 +304,40 @@ function buildRail() {
     a.append(iconSpan('sh-rail-icon', g),
              h('span.sh-rail-label', { text: g.label }));
     if (on) a.setAttribute('aria-current', 'page');
+    /* ADMIN-ONLY ENTRIES (the console). navigation.json is static and
+       the rail is drawn for everyone, so the entry is in the DOM for
+       all and HIDDEN until the gate reports this account an admin —
+       the same server-reported role admin.html itself checks, so the
+       rail can never show a door the page would not open. Hidden, not
+       absent: the shell is built once at load, and the role arrives a
+       round trip later. */
+    if (g.adminOnly) {
+      a.classList.add('is-admin-only');
+      a.hidden = !isAdminNow();
+    }
     rail.append(a);
   });
   return rail;
+}
+
+function isAdminNow() {
+  try { const c = window.StudioCloud; return !!(c && c.getGateState && c.getGateState().role === 'admin'); }
+  catch (e) { return false; }
+}
+function syncAdminOnly() {
+  const show = isAdminNow();
+  document.querySelectorAll('.sh-rail-item.is-admin-only').forEach((a) => { a.hidden = !show; });
+}
+if (typeof document !== 'undefined') {
+  Store.subscribe('gate:changed', syncAdminOnly);
+  const hook = setInterval(() => {
+    const c = window.StudioCloud;
+    if (!c) return;
+    clearInterval(hook);
+    if (c.onAuth) c.onAuth(() => setTimeout(syncAdminOnly, 0));
+    syncAdminOnly();
+  }, 50);
+  setTimeout(() => clearInterval(hook), 20000);
 }
 
 /* THE BRAND PLATE — one line of purple above the navigation.

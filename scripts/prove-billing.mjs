@@ -7,7 +7,9 @@
    Razorpay does (HMAC-SHA256 of order|payment with the key secret) —
    so rzp-verify's check is real even though no money moves.
 
-   Asserted:
+   Asserted (and, since section 18, (i): the Features matrix on the
+   console, the free tier seeing the Dragon sample alone, a module
+   unticked for a plan showing its lock panel and its PLAN flag):
      (a) a member sees the four tiers on settings.html with the prices
          the plans table holds; the period switch reprices them
      (b) BUY: rzp-order is asked for the plan and period, Checkout opens,
@@ -120,28 +122,27 @@ try {
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     const p = await prices(page);
     ok(p.length === 4 && p.map((x) => x[0]).join() === 'free,starter,indie,pro', 'four cards in order: ' + p.map((x) => x[0]).join(', '));
-    ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'yearly is the default period and shows the table’s yearly price (₹7,999)');
-    ok((await page.textContent('#plan')).includes('Saves'), 'a yearly saving is named');
-    await page.click('[data-plan-action="period"][data-period="month"]');
-    ok((await prices(page)).find((x) => x[0] === 'indie')[1] === '₹799', 'the period switch reprices: ₹799 a month');
+    ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
+    ok((await page.textContent('#plan')).includes('yours for good'), 'and says it is bought once, for good');
+    ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
     ok((await page.textContent('#plan .is-current .bd-eyebrow')) === 'Your plan' && (await page.getAttribute('#plan .is-current', 'data-plan')) === 'free', 'Free is marked as the current plan');
     ok((await page.textContent('#plan')).includes('Cloud projects: 0 of 1'), 'usage shows 0 of 1 projects on Free');
 
     console.log('(b) buy');
-    await page.click('[data-plan-action="period"][data-period="year"]');
     await page.evaluate(() => { window.__w = 0; window.__wk = []; const o = Storage.prototype.setItem; Storage.prototype.setItem = function (...a) { window.__w++; window.__wk.push(String(a[0])); return o.apply(this, a); }; });
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 }).then(() => ok(true, 'the Indie card becomes the current plan'), () => ok(false, 'the Indie card becomes the current plan'));
     const order = F.db.calls.find((c) => c.startsWith('fn:rzp-order'));
-    ok(order === 'fn:rzp-order indie year', 'rzp-order was asked for indie, yearly');
+    ok(order === 'fn:rzp-order indie lifetime', 'rzp-order was asked for indie, for good');
     const last = await page.evaluate(() => window.__rzpLast);
     ok(last && last.amount === 799900 && last.currency === 'INR' && last.key === 'rzp_test_fake', 'Checkout opened with the table’s amount in paise and the public key id');
     ok(F.db.calls.includes('fn:rzp-verify ok'), 'rzp-verify accepted a genuine signature');
     const pay = F.db.payments.find((x) => x.plan_id === 'indie');
     ok(pay && pay.status === 'paid' && pay.razorpay_payment_id, 'the ledger reads paid with the payment id');
     const acc = F.db.accounts.find((a) => a.owner_id === USERS['tok-amy'].id);
-    ok(acc && acc.plan === 'indie' && Date.parse(acc.plan_until) - Date.now() > 360 * 86400e3, 'Amy owns an organisation on Indie for a year');
-    ok((await page.textContent('#plan')).includes('Until'), 'the card prints the expiry');
+    ok(acc && acc.plan === 'indie' && acc.plan_until === null, 'Amy owns an organisation on Indie with no end date');
+    { const t = await page.textContent('#plan'); ok(!/Until|Lapsed|RENEW|EXTEND/.test(t) && /Nothing to renew/.test(t), 'the card says there is nothing to renew, and prints no expiry'); }
+    ok(!(await page.$('.pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'a lower tier offers no button once Indie is held');
     ok((await page.textContent('#plan .bd-h2')).includes('Indie'), 'the section title names the plan and the organisation');
     /* (h) Nothing about the purchase lands in localStorage. The plan is
        a fact about the account, read from the server every time. Other
@@ -217,24 +218,26 @@ try {
     await page.goto(BASE + 'admin.html');
     await page.waitForSelector('#billing .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#billing .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
-    await page.fill('#ba_indie_monthly', '599');
+    ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
+    await page.fill('#ba_indie_price', '599');
     await page.fill('#ba_indie_projects', '12');
     await page.click('form[data-plan="indie"] button[type="submit"]');
     await page.waitForSelector('.ba-saved', { timeout: 8000 });
     const indie = F.db.plans.find((p) => p.id === 'indie');
-    ok(indie.monthly_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as 59900 paise and projects 12');
+    ok(indie.price_paise === 59900 && indie.limits.projects === 12, 'admin_set_plan received ₹599 as price_paise 59900 and projects 12');
     ok(indie.limits.seats === 3, 'untouched limits survived the save');
     // "Saved." clears itself with a re-render 2.5s on; fill the grant form after that, not under it.
     await page.waitForSelector('.ba-saved', { state: 'detached', timeout: 8000 });
     await page.selectOption('#baGrantWho', USERS['tok-amy'].id);
     await page.selectOption('#baGrantPlan', 'pro');
-    await page.fill('#baGrantDays', '45');
+    ok(!(await page.$('#baGrantDays')), 'the grant form asks for no days');
     await page.fill('#baGrantNote', 'festival comp');
     await page.click('form[data-ba-form="grant"] button[type="submit"]');
-    await page.waitForFunction(() => /Granted until/.test(document.body.innerText), null, { timeout: 8000 }).then(() => ok(true, 'the grant is confirmed with its end date'), () => ok(false, 'the grant is confirmed with its end date'));
+    await page.waitForFunction(() => /Granted — full access, for good/.test(document.body.innerText), null, { timeout: 8000 }).then(() => ok(true, 'the grant is confirmed as full access, for good'), () => ok(false, 'the grant is confirmed as full access, for good'));
     const g = F.db.payments.find((x) => x.status === 'granted');
     ok(g && g.plan_id === 'pro' && g.amount_paise === 0 && g.note === 'festival comp', 'the ledger carries a ₹0 granted row with the note');
-    ok(F.db.accounts.some((a) => a.owner_id === USERS['tok-amy'].id && a.plan === 'pro'), 'Amy’s organisation is on Pro');
+    ok(F.db.accounts.some((a) => a.owner_id === USERS['tok-amy'].id && a.plan === 'pro' && a.plan_until === null), 'Amy’s organisation is on Pro, for good');
+    await page.waitForFunction(() => /for good/.test((document.querySelector('#billing .gt-table') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the ledger’s Access column reads "for good"'), () => ok(false, 'the ledger’s Access column reads "for good"'));
     await page.waitForFunction(() => /festival comp/.test((document.querySelector('#billing .gt-table') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the payments table shows it'), () => ok(false, 'the payments table shows it'));
     await page.setViewportSize({ width: 390, height: 844 });
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the billing console does not overflow at 390px');
@@ -243,9 +246,60 @@ try {
     const amy = await newContext(browser, { tok: 'tok-amy' });
     await amy.page.goto(BASE + 'settings.html');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
-    await amy.page.click('[data-plan-action="period"][data-period="month"]');
     ok((await prices(amy.page)).find((x) => x[0] === 'indie')[1] === '₹599', 'the cards show the edited price');
     ok((await amy.page.getAttribute('#plan .is-current', 'data-plan')) === 'pro', 'and Amy sees Pro as her plan after the grant');
+    allErrors.push(...amy.errors); await amy.ctx.close();
+  }
+  console.log('(i) features by plan: the matrix, the free tier, a locked module');
+  F.reset();
+  F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });   // Amy: a member on Free
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#features');
+    await A.page.waitForSelector('#features .pf-table', { timeout: 15000 });
+    ok((await A.page.$$eval('#features thead th', (e) => e.length)) === 5, 'the matrix has a column per plan');
+    ok(await A.page.isChecked('input[name="free:sample_only"]') && !(await A.page.isChecked('input[name="free:new_projects"]')) && await A.page.isChecked('input[name="pro:new_projects"]'), 'the free tier reads sample only, no new projects; pro reads everything');
+    ok(await A.page.isChecked('input[name="free:story-beats"]'), 'a module nobody has touched is ticked (missing = allowed)');
+    ok(/shares a page with Idea Vault/.test(await A.page.textContent('tr[data-feature="story-beats"]')), 'a module that shares a page says so, and with whom');
+    // story.html hosts three modules; a page locks only when all of its modules are unticked.
+    for (const id of ['story-beats', 'idea-vault', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
+    await A.page.click('#features button[type="submit"]');
+    await A.page.waitForSelector('#features .ba-saved', { timeout: 8000 });
+    const free = F.db.plans.find((p) => p.id === 'free');
+    ok(free.features['story-beats'] === false && free.features['idea-vault'] === false && free.features.sample_only === true && free.features['scene-list'] === true, 'admin_set_plan received the whole map: the three unticked false, sample_only kept, the rest true');
+    ok(!(await A.page.$('.pg-lock')), 'the console itself is never locked (it is not a module page)');
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    const amy = await newContext(browser, { tok: 'tok-amy' });
+    await amy.page.goto(BASE + 'index.html');
+    /* Filed in AMY'S namespace (`ns` carries her uid): a signed-in hub
+       lists the account's projects, and a device-namespace film would
+       simply not be hers to see — the storage model, not the plan. */
+    await amy.page.evaluate((uid) => {
+      const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
+      const now = new Date().toISOString();
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
+      localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
+    }, USERS['tok-amy'].id);
+    await amy.page.reload();
+    await amy.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().state === 'open', null, { timeout: 10000 });
+    await amy.page.waitForFunction(() => document.querySelectorAll('#projectsGrid .project-card:not(.new-card)').length === 1, null, { timeout: 10000 })
+      .then(() => ok(true, 'on Free the hub shows ONE project'), () => ok(false, 'on Free the hub shows ONE project'));
+    const titles = await amy.page.$$eval('#projectsGrid .project-card:not(.new-card)', (cards) => cards.map((c) => c.textContent));
+    ok(titles.length === 1 && /Dragon/.test(titles[0]) && !/My own film/.test(titles.join()), 'and it is the Dragon sample — her own film is hidden, not deleted');
+    ok(await amy.page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_projects_v1')).some((p) => p.title === 'My own film')), 'the hidden film is still on the device');
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered');
+    ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
+    await amy.page.goto(BASE + 'story.html');
+    await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (all three of its modules unticked for Free) shows the plan lock'), () => ok(false, 'story.html (all three of its modules unticked for Free) shows the plan lock'));
+    ok(/Not on the Free plan/.test(await amy.page.textContent('.pg-lock')), 'naming the plan');
+    ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not removed');
+    await amy.page.goto(BASE + 'breakdown.html');
+    await amy.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().state === 'open', null, { timeout: 10000 });
+    await amy.page.waitForTimeout(800);
+    ok(!(await amy.page.$('.pg-lock')), 'a module still ticked (scene list) opens normally');
+    ok(await amy.page.evaluate(() => !!document.querySelector('[data-module-id="story-beats"].is-locked .pg-flag')), 'the phase menu marks Story · Beats with a PLAN flag');
     allErrors.push(...amy.errors); await amy.ctx.close();
   }
 } catch (e) {

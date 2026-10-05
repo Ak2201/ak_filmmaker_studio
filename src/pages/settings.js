@@ -137,7 +137,9 @@ function renderPlan() {
   if (st) {
     const u = usageList(st);
     if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
-    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan lapsed on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })}. The caps below are the free tier\u2019s until you renew.` }));
+    /* A refund is the one way a bought plan ends (section 18): say so
+       rather than "lapsed", which implied a clock that no longer runs. */
+    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). The caps below are the free tier\u2019s.` }));
   }
   sec.append(planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus }).then(() => refreshBilling()),

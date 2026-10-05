@@ -72,6 +72,12 @@ import watchlist   from '../data/watchlist.json';
 import festivals   from '../data/festivals.json';
 import prodData    from '../data/steps.production.json';
 import sample      from '../data/sample.dragon.json';
+/* The plan's say over the hub (schema section 18 `features`, read by
+   src/lib/plan-gate.js): `sample_only` shows the Dragon sample and no
+   other project; `new_projects` off hides every way of making one.
+   Nothing is deleted or moved — a film the plan hides is still on the
+   device and reappears when the plan includes it. */
+import PlanGate    from '../lib/plan-gate.js';
 
 /* The sample project writes through the same models every page reads,
    so the ids and key shapes it produces cannot drift from the ones the
@@ -2063,15 +2069,17 @@ function renderProjects() {
      to know it exists. */
   renderAdoptNotice();
   if (!grid) return;
-  const projects  = Store.listProjects();
+  const sampleOnly = PlanGate.sampleOnly();
+  const projects  = sampleOnly ? Store.listProjects().filter((p) => p.title === SAMPLE_TITLE) : Store.listProjects();
   const currentId = Store.currentProjectId();
 
   if (toolbar) toolbar.hidden = projects.length < 2;
 
   grid.textContent = '';
+  applyPlanToControls();
 
   if (projects.length === 0) {
-    grid.append(renderFirstRun());
+    grid.append(sampleOnly ? renderSampleOnly() : renderFirstRun());
     return;
   }
 
@@ -2087,12 +2095,39 @@ function renderProjects() {
   }
 
   filtered.forEach(p => grid.append(projectCard(p, currentId)));
-  grid.append(h('div.project-card.new-card', {
-    tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
-  }, [
-    h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
-    h('div.pc-cta', { text: 'NEW PROJECT' })
-  ]));
+  if (PlanGate.allowed('new_projects')) {
+    grid.append(h('div.project-card.new-card', {
+      tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
+    }, [
+      h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
+      h('div.pc-cta', { text: 'NEW PROJECT' })
+    ]));
+  } else if (sampleOnly) {
+    grid.append(h('p.pc-plan-note', { text: 'Your plan opens the sample project. A paid plan adds films of your own.' }));
+  }
+}
+
+/* The free tier's hub: the sample, and the way up. */
+function renderSampleOnly() {
+  return h('div.empty-projects-state', {}, [
+    h('div.eps-title', { text: 'Open the ' + SAMPLE_TITLE + ' sample.' }),
+    h('div.eps-deck', { text: 'Your plan opens the sample project — ' + sample.scenes.length + ' scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
+    h('div.iv-actions', {}, [
+      h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE' }),
+      h('a.btn', { href: 'settings.html#plan', text: 'SEE PLANS' })
+    ])
+  ]);
+}
+
+/* Every way of making a project, hidden together or shown together:
+   the head button, the backups menu's import, the tool cards. Hidden,
+   not removed — the controls are markup the verify gate counts. */
+function applyPlanToControls() {
+  const can = PlanGate.allowed('new_projects');
+  document.querySelectorAll('[data-action="new-project"], [data-action="import-all"], [data-action="duplicate-project"]').forEach((el) => {
+    if (el.classList.contains('new-card')) return;   // drawn conditionally above
+    el.hidden = !can;
+  });
 }
 
 function resetProjectFilters() {
@@ -2127,7 +2162,7 @@ function duplicateProject(id) {
 }
 
 function renderProjectSwitcher() {
-  const projects = Store.listProjects();
+  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter((p) => p.title === SAMPLE_TITLE) : Store.listProjects();
   const current  = Store.currentProject();
   const btn   = $('#projectSwitcherBtn');
   const label = $('#projectSwitcherLabel');
@@ -2154,7 +2189,7 @@ function renderProjectSwitcher() {
         h('div.sd-meta', { text: (FORMAT_LABELS[p.format] || p.format) + ' · edited ' + fmtRelDate(p.updatedAt) })
       ]));
     });
-  dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ NEW PROJECT' }));
+  if (PlanGate.allowed('new_projects')) dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ NEW PROJECT' }));
 }
 
 function toggleProjectSwitcher() {
@@ -2173,6 +2208,10 @@ function closeProjectSwitcher() {
 }
 
 function openProjectModal(editId) {
+  if (!editId && !PlanGate.allowed('new_projects')) {
+    StudioUI.toastInfo('Your plan does not add new projects. See plans on Settings.');
+    return;
+  }
   closeProjectSwitcher();
   const overlay     = $('#projectModal');
   const titleInput  = $('#pmTitle');
@@ -2411,6 +2450,7 @@ function init() {
   // at a filled studio than an empty one.
 
   Store.subscribe('projects:changed', () => { renderProjects(); renderProjectSwitcher(); renderGreeting(); });
+Store.subscribe('plan:changed', () => { renderProjects(); renderProjectSwitcher(); });
   Store.subscribe('current:changed',  () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
 
   window.addEventListener('focus', () => { updateStatus(); detectActivity(); renderActivity(); });

@@ -14,24 +14,39 @@ them:
 
 ## 0. The tiers, as seeded
 
-The console edits all of this; these are the rows `supabase-schema.sql`
-§16.1 inserts so that the pages have something to show. **The prices are
-placeholders** — set the real ones on `admin.html` before the key goes
-live.
+**Full-time access (§18, 6 Oct 2026).** A plan is bought ONCE and kept for
+good — no monthly or yearly period, nothing to renew, nothing to lapse.
+`plans.price_paise` is the one price; the monthly/yearly columns are left
+in place and read by nothing. The console edits all of this; these are the
+rows §16.1 inserts and §18 adjusts so that the pages have something to show.
+**The prices are placeholders** (§18 copies the old yearly figure into the
+one-time price) — set the real ones on `admin.html` before the key goes live.
+
+**Features by plan (§18, same day).** `plans.features` is a map of feature
+key → boolean that the console's **Features** matrix edits: every built
+module from `navigation.json`, plus `sample_only`, `new_projects`,
+`script_import`, `ai_tools`, `exports`, `drive_backup`. A missing key is
+allowed; only `false` locks. `src/lib/plan-gate.js` reads it off
+`billing_status()` for a signed-in member: an unticked module's page shows
+an upgrade panel over the (still present) content, the shell and launcher
+flag it, and the hub honours `sample_only` (the Dragon sample and nothing
+else) and `new_projects`. Signed-out and code-only visitors are not gated
+here — the site gate already decided whether they see the app. This is the
+owner's product boundary; the data boundary stays RLS and the triggers.
 
 | | Free | Starter | Indie | Pro |
 | --- | --- | --- | --- | --- |
-| Monthly | — | ₹299 | ₹799 | ₹1,999 |
-| Yearly | — | ₹2,999 | ₹7,999 | ₹19,999 |
+| Price, once | — | ₹2,999 | ₹7,999 | ₹19,999 |
+| Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |
 | Live share links | 0 | 3 | 10 | unlimited |
 | Organisation seats | 1 | 1 | 3 | 10 |
 | Chrome extension | no | yes | yes | yes |
 
-A blank limit in the console is unlimited. A price of 0 means "not sold
-for that period" and the card hides that period. The free tier may not
-carry a price (the RPC refuses it).
+A blank limit in the console is unlimited. A price of 0 means "not for
+sale" and the card offers no button. The free tier may not carry a price
+(the RPC refuses it).
 
 ## 1. Order of operations
 

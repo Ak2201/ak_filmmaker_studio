@@ -340,6 +340,7 @@ function moduleTile(m, snap, at) {
   const el = h(planned ? `button${cls}` : `a${cls}`, planned
     ? { type: 'button', 'data-action': 'module-planned', 'data-module': m.id }
     : { href: m.href });
+  el.dataset.moduleId = m.id;   // plan-gate.js marks a locked tile by this
   if (isHere && !planned) el.setAttribute('aria-current', 'page');
 
   el.append(iconSpan('lx-mod-icon', m));

@@ -26,6 +26,9 @@ import Store from '../lib/store.js';
    itself on every page that carries the chrome, which is every page a
    visitor can reach. See the banner in src/lib/sitegate.js. */
 import '../lib/sitegate.js';
+/* And the plan gate (src/lib/plan-gate.js): what a member's plan may
+   SHOW, decided from billing_status() once the gate has answered. */
+import '../lib/plan-gate.js';
 import { registerSW } from '../lib/pwa.js';
 import { actionMenu } from './actionbar.js';
 import {

@@ -1,5 +1,5 @@
 /* ============================================================
-   PLAN CARDS — the three tiers, a period switch, and a BUY button
+   PLAN CARDS — the three tiers, one price each, and a BUY button
    ------------------------------------------------------------
    One component, drawn on settings.html (a member choosing or
    renewing) and on invite.html (a signed-in stranger buying their way
@@ -12,6 +12,12 @@
    row. A number that is null is "unlimited". The free row is shown
    too, as the baseline, with no button.
 
+   FULL-TIME ACCESS (schema section 18). A plan is bought once and kept
+   for good, so there is no period switch, no "until", no renew and no
+   extend: the current tier's card simply says so, and only HIGHER
+   tiers offer a button. The period the host receives is always
+   'lifetime'.
+
    No inline handlers (CSP). Everything is delegate() on
    [data-plan-action]; the host page passes `onBuy(planId, period)`.
    ============================================================ */
@@ -19,7 +25,7 @@ import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName } from '../lib/billing.js';
 import '../styles/plans.css';
 
-let period = 'year';           // in memory only; a page preference, not a fact
+const period = 'lifetime';     // the only period there is
 let busyPlan = '';
 let statusText = '';
 let hooks = { onBuy: null, rerender: null };
@@ -45,11 +51,6 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
 
-  const sw = h('div.pl-period', { role: 'group', 'aria-label': 'Billing period' });
-  [['month', 'MONTHLY'], ['year', 'YEARLY']].forEach(([p, label]) => sw.append(h('button.btn' + (period === p ? '.is-on' : ''), {
-    type: 'button', 'data-plan-action': 'period', 'data-period': p, 'aria-pressed': String(period === p), text: label })));
-  wrap.append(sw);
-
   const row = h('div.pl-row');
   for (const p of plans.filter((x) => x.active || x.id === current)) {
     const isCurrent = p.id === current;
@@ -60,23 +61,21 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     card.append(h('p.pl-blurb', { text: p.blurb || '' }));
     card.append(h('p.pl-price', {}, [
       h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(price) }),
-      h('span', { text: p.id === 'free' ? '' : price === null ? `not sold ${period}ly` : period === 'year' ? ' / year' : ' / month' })
+      h('span', { text: p.id === 'free' ? '' : price === null ? ' not for sale' : ' once · yours for good' })
     ]));
-    if (period === 'year' && p.monthly_paise > 0 && p.yearly_paise > 0 && p.yearly_paise < p.monthly_paise * 12) {
-      card.append(h('p.pl-save', { text: `Saves ${fmtPaise(p.monthly_paise * 12 - p.yearly_paise)} a year` }));
-    }
     card.append(limitList(p.limits));
-    if (p.id !== 'free' && price !== null) {
+    /* A button only where there is something to buy: a higher tier.
+       The current tier says so instead, and a lower one offers nothing
+       — paying to have less is not a thing this page will sell. */
+    const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
+    if (p.id !== 'free' && price !== null && higher) {
       const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
-      const label = busyPlan === p.id ? 'OPENING…'
-        : isCurrent ? (st && st.lapsed ? 'RENEW' : 'EXTEND')
-        : current && Billing.planRank(p.id) < Billing.planRank(current) ? 'SWITCH'
-        : current && current !== 'free' ? 'UPGRADE' : 'BUY';
-      card.append(h('button.btn' + (isCurrent || !current || current === 'free' ? '.primary' : ''), {
+      const label = busyPlan === p.id ? 'OPENING…' : current && current !== 'free' ? 'UPGRADE' : 'BUY';
+      card.append(h('button.btn' + (!current || current === 'free' ? '.primary' : ''), {
         type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, disabled, text: label }));
     }
-    if (isCurrent && st && st.plan_until) {
-      card.append(h('p.pl-until', { text: (st.lapsed ? 'Lapsed on ' : 'Until ') + new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' }) }));
+    if (isCurrent && p.id !== 'free') {
+      card.append(h('p.pl-until', { text: 'Yours, for good. Nothing to renew.' }));
     }
     row.append(card);
   }
@@ -84,7 +83,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not switched on for this studio yet (no Razorpay key in this build).' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
-  wrap.append(h('p.pl-note', { text: 'Prepaid, no auto-renewal. A month is 30 days and a year 365; renewing early adds to the days you have. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }));
+  wrap.append(h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }));
   return wrap;
 }
 
@@ -106,10 +105,6 @@ export function usageList(st) {
   return ul;
 }
 
-delegate(document, 'click', '[data-plan-action="period"]', (e, el) => {
-  period = el.dataset.period;
-  if (hooks.rerender) hooks.rerender();
-});
 delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   if (!hooks.onBuy || busyPlan) return;
   busyPlan = el.dataset.plan; statusText = '';

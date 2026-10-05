@@ -158,7 +158,9 @@ function entry(o) {
 
 function navItems() {
   const out = [];
+  const isAdmin = (() => { try { return window.StudioCloud.getGateState().role === 'admin'; } catch (e) { return false; } })();
   for (const g of nav.global) {
+    if (g.adminOnly && !isAdmin) continue;   // the console: shown by the server's role, as in the rail
     out.push(entry({
       id: 'nav:' + (g.id || g.href),
       label: g.label,

@@ -136,7 +136,7 @@ function render() {
        activates server-side and runGate() is asked again. */
     if (plans) {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan admits this account without an invite. Prepaid, no auto-renewal; the free tier is what an invited member gets.');
+        'A paid plan admits this account without an invite. One payment, full access for good; the free tier is what an invited member gets.');
       buy.append(planCards(plans, null, {
         onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { onStatus }),
         rerender: render

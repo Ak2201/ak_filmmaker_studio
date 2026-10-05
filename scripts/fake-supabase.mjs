@@ -20,7 +20,8 @@ export const F = { db: null, reset() { F.db = freshDb(); return F.db; } };
 export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay' };
 export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
 const PLAN_RANK = { free: 0, starter: 1, indie: 2, pro: 3 };
-const DAYS = { month: 30, year: 365 };
+/* Section 18: a plan is for good. applyPlan() writes plan_until null;
+   accountPlan() has always read null as "no end". */
 function accountPlan(a) { return !a || a.plan === 'free' ? 'free' : (!a.plan_until || Date.parse(a.plan_until) > Date.now()) ? a.plan : 'free'; }
 function userPlan(uid) {
   const owned = F.db.accounts.filter((a) => a.owner_id === uid);
@@ -37,21 +38,19 @@ function accountForBuyer(uid) {
   F.db.accountMembers.push({ account_id: a.id, invited_email: u ? u.email : '', user_id: uid, role: 'owner', status: 'active' });
   return a;
 }
-function applyPlan(a, plan, period, days) {
+function applyPlan(a, plan) {
   const lim = (F.db.plans.find((p) => p.id === plan) || {}).limits || {};
-  let start = Date.now();
-  if (a.plan === plan && a.plan_until && Date.parse(a.plan_until) > Date.now()) start = Date.parse(a.plan_until);
-  a.plan = plan; a.plan_period = period; a.plan_until = new Date(start + days * 86400e3).toISOString();
+  a.plan = plan; a.plan_period = 'lifetime'; a.plan_until = null;
   a.seat_limit = Math.max(1, cap(lim, 'seats') ?? 1000);
-  return a.plan_until;
+  return null;
 }
 function activate(orderId, paymentId, raw) {
   const pay = F.db.payments.find((x) => x.razorpay_order_id === orderId);
   if (!pay) throw Object.assign(new Error('No payment with that order id'), { code: '22023' });
   if (pay.status === 'paid') return { already: true, pay };
   const a = accountForBuyer(pay.user_id);
-  const until = applyPlan(a, pay.plan_id, pay.period, DAYS[pay.period]);
-  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: until, raw });
+  applyPlan(a, pay.plan_id);
+  Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: null, raw });
   if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
   return { already: false, pay };
 }
@@ -97,10 +96,10 @@ export function freshDb() {
     } },
     // section 16
     plans: [
-      { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', monthly_paise: 0, yearly_paise: 0, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
-      { id: 'starter', name: 'Starter', blurb: 'One writer, a few films, a couple of readers.', monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
-      { id: 'indie',   name: 'Indie',   blurb: 'A small team taking a film through production.', monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
-      { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
+      { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', features: { sample_only: true, new_projects: false }, price_paise: 0, monthly_paise: 0, yearly_paise: 0, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
+      { id: 'starter', name: 'Starter', blurb: 'One writer, a few films, a couple of readers.', features: {}, price_paise: 299900, monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
+      { id: 'indie',   name: 'Indie',   blurb: 'A small team taking a film through production.', features: {}, price_paise: 799900, monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
+      { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
     ],
     payments: [],
     calls: []
@@ -132,6 +131,7 @@ function rpc(name, args, user, route) {
       const lim = userLimits(user.id);
       return json(route, 200, {
         plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
+        features: (F.db.plans.find((p) => p.id === pl) || {}).features || {},
         account_id: acc ? acc.id : null, account_name: acc ? acc.name : null,
         plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
         lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),
@@ -147,12 +147,18 @@ function rpc(name, args, user, route) {
       if (!p) return pgErr(route, '22023', 'No such plan');
       const patch = args.p_patch || {};
       if (patch.limits) for (const k of Object.keys(patch.limits)) if (!['projects','collaborators','shares','seats','extension'].includes(k)) return pgErr(route, '22023', `Unknown limit "${k}"`);
-      if (p.id === 'free' && ((patch.monthly_paise || 0) > 0 || (patch.yearly_paise || 0) > 0)) return pgErr(route, '22023', 'The free plan cannot have a price');
+      if (p.id === 'free' && ((patch.price_paise || 0) > 0 || (patch.monthly_paise || 0) > 0 || (patch.yearly_paise || 0) > 0)) return pgErr(route, '22023', 'The free plan cannot have a price');
       if (patch.name) p.name = String(patch.name).trim().slice(0, 40) || p.name;
       if ('blurb' in patch) p.blurb = String(patch.blurb || '').slice(0, 200);
+      if (Number.isInteger(patch.price_paise)) p.price_paise = patch.price_paise;
       if (Number.isInteger(patch.monthly_paise)) p.monthly_paise = patch.monthly_paise;
       if (Number.isInteger(patch.yearly_paise)) p.yearly_paise = patch.yearly_paise;
       if (patch.limits) p.limits = { ...p.limits, ...patch.limits };
+      if (patch.features) {
+        if (typeof patch.features !== 'object') return pgErr(route, '22023', 'features must be an object');
+        for (const k of Object.keys(patch.features)) if (typeof patch.features[k] !== 'boolean') return pgErr(route, '22023', `feature "${k}" must be true or false`);
+        p.features = { ...patch.features };
+      }
       if (typeof patch.active === 'boolean') p.active = patch.active;
       return json(route, 200, p);
     }
@@ -164,11 +170,11 @@ function rpc(name, args, user, route) {
     case 'admin_grant_plan': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const a = accountForBuyer(args.p_user);
-      const until = applyPlan(a, args.p_plan, 'grant', args.p_days);
+      applyPlan(a, args.p_plan);   // p_days is ignored: for good
       F.db.payments.push({ id: 'pay' + F.db.payments.length, user_id: args.p_user, account_id: a.id, plan_id: args.p_plan, period: 'grant', amount_paise: 0,
-        status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: until });
+        status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: null });
       if (!F.db.members.has(args.p_user)) F.db.members.set(args.p_user, { role: 'user', disabled_at: null });
-      return json(route, 200, until);
+      return json(route, 200, null);
     }
     case 'admin_billing_overview': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
@@ -365,8 +371,9 @@ export async function handle(route) {
     F.db.calls.push(`fn:rzp-order ${body.plan} ${body.period}`);
     if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
     if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
-    const amount = body.period === 'year' ? plan.yearly_paise : plan.monthly_paise;
-    if (!amount) return json(route, 400, { error: `That plan is not sold ${body.period}ly` });
+    if (body.period === 'month' || body.period === 'year') return json(route, 400, { error: 'Plans are bought once, for good — not by the month or the year' });
+    const amount = plan.price_paise;
+    if (!amount) return json(route, 400, { error: 'That plan is not for sale' });
     const id = 'pay' + F.db.payments.length;
     const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
     F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency: 'INR',

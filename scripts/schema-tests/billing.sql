@@ -1,5 +1,6 @@
 -- ============================================================
--- SECTION 16 CHECKS — the list at 16.10, executed
+-- SECTION 16 + 18 CHECKS — the list at 16.10, executed, as section 18
+-- (full-time access: one price, no period, no lapse) left it
 -- ------------------------------------------------------------
 -- Each numbered block is one row of 16.10. Role switches use the shim's
 -- t.claims() / t.service() / t.reset(); an expected refusal is caught
@@ -25,10 +26,10 @@ insert into public.studio_members (user_id, role, disabled_at) values ('00000000
 begin;
 select t.claims('00000000-0000-4000-8000-0000000000b1');
 select t.ok((select count(*) from public.plans) = 4, '1. a signed-in user sees four plans');
-update public.plans set monthly_paise = 1 where id = 'starter';
-select t.ok((select monthly_paise from public.plans where id = 'starter') = 29900, '1. a client UPDATE of plans changes nothing (no policy)');
+update public.plans set price_paise = 1 where id = 'starter';
+select t.ok((select price_paise from public.plans where id = 'starter') = 299900, '1. a client UPDATE of plans changes nothing (no policy); the seeded one-time price stands');
 do $$ begin
-  perform public.admin_set_plan('starter', '{"monthly_paise": 1}');
+  perform public.admin_set_plan('starter', '{"price_paise": 1}');
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 1. admin_set_plan as a non-admin -> 42501'; end $$;
 rollback;
@@ -36,14 +37,14 @@ rollback;
 -- 2. the console edits a plan, within the rules
 begin;
 select t.claims('00000000-0000-4000-8000-00000000000a');
-select t.ok((public.admin_set_plan('indie', '{"monthly_paise": 59900, "name": "Indie "}')).monthly_paise = 59900, '2. admin_set_plan changes the monthly price');
+select t.ok((public.admin_set_plan('indie', '{"price_paise": 59900, "name": "Indie "}')).price_paise = 59900, '2. admin_set_plan changes the one price');
 select t.ok((select name from public.plans where id = 'indie') = 'Indie', '2. the name is trimmed');
 do $$ begin
   perform public.admin_set_plan('indie', '{"limits": {"bogus": 1}}');
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 2. an unknown limit key -> 22023'; end $$;
 do $$ begin
-  perform public.admin_set_plan('free', '{"monthly_paise": 100}');
+  perform public.admin_set_plan('free', '{"price_paise": 100}');
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 2. a price on free -> 22023'; end $$;
 select public.admin_set_plan('indie', '{"limits": {"projects": 12}}');
@@ -55,19 +56,26 @@ commit;
 begin;
 select t.claims('00000000-0000-4000-8000-0000000000b1');
 do $$ begin
-  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'month');
+  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'lifetime');
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 3. create_pending_payment as a user -> 42501'; end $$;
 rollback;
 begin;
 select t.service();
-select t.ok((select amount_paise from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'month')) = 59900,
+select t.ok((select amount_paise from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'lifetime')) = 59900,
   '3. the service role gets a pending row priced by the database (the edited 59900)');
 select t.ok((select count(*) from public.payments where user_id = '00000000-0000-4000-8000-0000000000b1' and status = 'created') = 1, '3. one created row');
 do $$ begin
-  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'free', 'month');
+  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'free', 'lifetime');
   raise exception 'should have refused';
 exception when sqlstate '22023' then raise notice 'ok - 3. free is not for sale -> 22023'; end $$;
+do $$ begin
+  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'month');
+  raise exception 'should have refused';
+exception when sqlstate '22023' then
+  if sqlerrm not like '%once, for good%' then raise exception 'wrong message: %', sqlerrm; end if;
+  raise notice 'ok - 3. a month -> 22023, "once, for good" (section 18)';
+end $$;
 commit;
 
 -- 4. activation: paid, an organisation on the plan, membership, idempotent
@@ -77,7 +85,9 @@ select public.attach_razorpay_order((select id from public.payments where user_i
 select t.ok((select already from public.activate_payment('order_1', 'pay_1', '{"t":1}')) = false, '4. first activation is new');
 select t.ok((select status from public.payments where razorpay_order_id = 'order_1') = 'paid', '4. payment is paid');
 select t.ok((select plan from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') = 'indie', '4. the buyer owns an organisation on indie');
-select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') between now() + interval '29 days' and now() + interval '31 days', '4. plan_until is 30 days out');
+select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') is null, '4. plan_until is NULL: for good (section 18)');
+select t.ok((select plan_period from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') = 'lifetime', '4. plan_period is lifetime');
+select t.ok((select ends_at from public.payments where razorpay_order_id = 'order_1') is null, '4. the payment has no end');
 select t.ok((select seat_limit from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') = 3, '4. seat_limit follows the plan (indie: 3)');
 select t.ok(exists (select 1 from public.studio_members where user_id = '00000000-0000-4000-8000-0000000000b1' and disabled_at is null), '4. PAYING GRANTS ENTRY: the buyer is a member');
 select t.ok((select already from public.activate_payment('order_1', 'pay_1')) = true, '4. the second activation says already');
@@ -90,16 +100,16 @@ select t.ok((select name from public.accounts where owner_id = '00000000-0000-40
 select t.ok(exists (select 1 from public.account_members where account_id = (select id from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1')
    and user_id = '00000000-0000-4000-8000-0000000000b1' and role = 'owner' and status = 'active'), '5. with an owner member row');
 
--- 6. renewing the same tier extends from the old expiry; a different tier starts now
+-- 6. buying again: the same tier changes nothing; a different tier replaces, still for good
 begin;
 select t.service();
-select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'month')), 'order_2');
+select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'indie', 'lifetime')), 'order_2');
 select public.activate_payment('order_2', 'pay_2');
-select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') between now() + interval '59 days' and now() + interval '61 days', '6. same tier again: 60 days out, not 30');
-select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'starter', 'year')), 'order_3');
+select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') is null, '6. same tier again: still no end');
+select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000b1', 'starter', 'lifetime')), 'order_3');
 select public.activate_payment('order_3', 'pay_3');
 select t.ok((select plan from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') = 'starter', '6. a different tier replaces');
-select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') between now() + interval '364 days' and now() + interval '366 days', '6. and starts from now');
+select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') is null, '6. and is for good too');
 commit;
 
 -- 7. the project cap, by plan
@@ -118,11 +128,8 @@ end $$;
 commit;
 begin;
 select t.claims('00000000-0000-4000-8000-00000000000a');
--- Captured once: BETWEEN expands to two comparisons and would call the
--- volatile grant twice, the second call renewing the plan to 60 days.
-select t.ok((select u between now() + interval '29 days' and now() + interval '31 days'
-             from (select public.admin_grant_plan('00000000-0000-4000-8000-0000000000c1', 'starter', 30, 'bank transfer') as u) x),
-            '7. admin_grant_plan sets a 30-day starter');
+select t.ok(public.admin_grant_plan('00000000-0000-4000-8000-0000000000c1', 'starter', 30, 'bank transfer') is null, '7. admin_grant_plan returns NULL: for good (p_days is ignored)');
+select t.ok((select plan_until from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000c1') is null, '7. and the organisation has no end date');
 commit;
 select t.reset();
 select t.ok((select status from public.payments where user_id = '00000000-0000-4000-8000-0000000000c1') = 'granted', '7. recorded as a granted payment');
@@ -173,7 +180,7 @@ commit;
 -- 9. a refund ends the plan today
 begin;
 select t.service();
-select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000f1', 'indie', 'month')), 'order_f');
+select public.attach_razorpay_order((select payment_id from public.create_pending_payment('00000000-0000-4000-8000-0000000000f1', 'indie', 'lifetime')), 'order_f');
 select public.activate_payment('order_f', 'pay_f');
 select t.ok(public.user_plan('00000000-0000-4000-8000-0000000000f1') = 'indie', '9. F is on indie after paying');
 select public.mark_payment_refunded('pay_f', '{"refund":1}');
@@ -185,7 +192,7 @@ commit;
 begin;
 select t.service();
 do $$ begin
-  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000d1', 'indie', 'month');
+  perform public.create_pending_payment('00000000-0000-4000-8000-0000000000d1', 'indie', 'lifetime');
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 10. a disabled member -> 42501 before any order exists'; end $$;
 rollback;
@@ -194,7 +201,7 @@ rollback;
 begin;
 select t.claims('00000000-0000-4000-8000-0000000000b1');
 do $$ begin
-  update public.accounts set plan = 'pro', plan_until = now() + interval '10 years' where owner_id = '00000000-0000-4000-8000-0000000000b1';
+  update public.accounts set plan = 'pro' where owner_id = '00000000-0000-4000-8000-0000000000b1';
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 11. the owner cannot set their own plan (accounts_guard)'; end $$;
 rollback;
@@ -217,4 +224,4 @@ select t.ok((select count(*) from public.admin_list_payments(100)) = 6, '12. adm
 rollback;
 
 \echo
-\echo SECTION 16 CHECKS PASSED
+\echo SECTION 16 + 18 CHECKS PASSED

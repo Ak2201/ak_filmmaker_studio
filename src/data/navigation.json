@@ -31,6 +31,15 @@
       "href": "settings.html",
       "purpose": "The API key on this device, and how the studio looks",
       "sym": "settings"
+    },
+    {
+      "id": "admin",
+      "label": "Console",
+      "icon": "⚙",
+      "href": "admin.html",
+      "purpose": "The application console: people, organisations, access, billing",
+      "sym": "admin_panel_settings",
+      "adminOnly": true
     }
   ],
   "phases": [

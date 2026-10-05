@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
-   DEPLOY BILLING — run schema §16–§17 and deploy the edge functions
+   DEPLOY BILLING — run schema §16–§18 and deploy the edge functions
    ------------------------------------------------------------
    Everything docs/BILLING.md §1 lists as "do this in the dashboard",
    as one command, against the project in .env (VITE_SUPABASE_URL).
@@ -57,7 +57,7 @@ function sliceSchema() {
   if (start < 0) { console.error('✗ section 16 not found in supabase-schema.sql'); process.exit(2); }
   // The separator line above the heading belongs to the section too.
   const from = sql.lastIndexOf('\n-- ====', start) + 1;
-  return sql.slice(from);   // 16 and 17 run to the end of the file
+  return sql.slice(from);   // 16, 17 and 18 run to the end of the file
 }
 
 if (want('--print')) { process.stdout.write(sliceSchema()); process.exit(0); }

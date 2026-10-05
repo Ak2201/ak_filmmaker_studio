@@ -1745,10 +1745,12 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `chromiumapp.org` redirect URL on the Supabase allow-list before
       Google sign-in works.
 
-    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 103
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 104
     ((a) asserts CLOSED when undeployed; (i)–(k) the landing,
-    request/approve and decline; (l) the site gate; (m) the console),
-    `prove:extension` 28, all against the real GATED build. What is
+    request/approve and decline; (l) the site gate; (m) the console;
+    (n) code-only entry and the invite link), `prove:billing` 62
+    ((i) the Features matrix, the free tier's sample-only hub, a locked
+    page), `prove:extension` 28, all against the real GATED build. What is
     NOT proved: the 13.8/14.5/15.1 live checks against the database
     (the sections are DEPLOYED, see above), Google's consent screen for
     the extension, and Chrome Web Store review.
@@ -1768,8 +1770,21 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     section 16, three edge functions, `src/lib/billing.js`, the cards on
     `settings.html#plan` and `invite.html`, the console on `admin.html`.
     Four decisions asked before the code and recorded in `docs/BILLING.md`:
-    PREPAID PERIODS (one Razorpay Order buys 30 or 365 days, nothing
-    recurs); the plan sits on the ORGANISATION (`accounts.plan`, which
+    ~~PREPAID PERIODS (one Razorpay Order buys 30 or 365 days, nothing
+    recurs)~~ — **WITHDRAWN 6 Oct 2026 by the owner: FULL-TIME ACCESS.**
+    Section 18: one price per tier (`plans.price_paise`), bought once and
+    kept for good; `apply_plan()` and `admin_grant_plan()` keep their
+    signatures and write `plan_until` NULL, which `account_plan()` always
+    read as "no end"; `create_pending_payment()` refuses 'month'/'year' by
+    name. The cards have no period switch and no renew/extend; the
+    console has one price field and a grant with no days. **And
+    FEATURES BY PLAN**, same section: `plans.features` (key → boolean),
+    the console's Features matrix (`src/ui/plan-features.js`), and
+    `src/lib/plan-gate.js`, which locks an unticked module's page behind
+    an upgrade panel, flags it in every menu, and gives the free tier the
+    Dragon sample alone (`sample_only`, `new_projects` off). Missing key
+    = allowed; signed-out and code-only visitors are not gated. The
+    plan sits on the ORGANISATION (`accounts.plan`, which
     section 6 reserved and `accounts_guard` has defended as "set by
     billing" since); PAYING GRANTS ENTRY (activation inserts the
     `studio_members` row, so a stranger who pays is through the gate with

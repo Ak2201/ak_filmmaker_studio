@@ -40,10 +40,55 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { billingAdminSection, wireBillingAdmin } from '../ui/billing-admin.js';
+import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
+
+/* THE CATEGORIES. One strip across the top of the console, one entry
+   per section below it, pinned under the shell so it is in reach from
+   anywhere down the page. They are LINKS to the sections, not tabs
+   that hide the rest: every section keeps its id and stays in the
+   document, so a deep link (#billing) lands, the gate's proofs find
+   their controls without first picking a tab, and the page can be
+   read top to bottom as well as jumped around. The one that is on
+   screen is marked by an IntersectionObserver, not by the hash. */
+const CATEGORIES = [
+  ['overview',      'Overview'],
+  ['organisations', 'Organisations'],
+  ['people',        'People'],
+  ['admin-console', 'Access'],
+  ['billing',       'Billing'],
+  ['features',      'Features']
+];
+let onScreen = 'overview';
+let spy = null;
+function categoryBar() {
+  const nav = h('nav.ad-tabs', { 'aria-label': 'Console sections' });
+  for (const [id, label] of CATEGORIES) {
+    nav.append(h('a.ad-tab' + (onScreen === id ? '.is-on' : ''), { href: '#' + id, 'data-ad-tab': id, text: label,
+      ...(onScreen === id ? { 'aria-current': 'location' } : {}) }));
+  }
+  return nav;
+}
+function watchSections() {
+  if (spy) spy.disconnect();
+  if (typeof IntersectionObserver !== 'function') return;
+  spy = new IntersectionObserver((entries) => {
+    const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (!hit) return;
+    const id = hit.target.id;
+    if (id === onScreen) return;
+    onScreen = id;
+    document.querySelectorAll('.ad-tab').forEach((t) => {
+      const on = t.dataset.adTab === id;
+      t.classList.toggle('is-on', on);
+      if (on) t.setAttribute('aria-current', 'location'); else t.removeAttribute('aria-current');
+    });
+  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+  CATEGORIES.forEach(([id]) => { const el = document.getElementById(id); if (el) spy.observe(el); });
+}
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.ad-sec.st-sec', { id });
@@ -215,11 +260,14 @@ function render() {
     body.append(sec);
   } else {
     if (ov.phase === 'idle') loadOverview();
+    body.append(categoryBar());
     body.append(overviewSection(), accountsSection(), usersSection());
     const console_ = adminSection(section, st);
     if (console_) body.append(console_);
+    const feats = planFeaturesSection(section, st);
     const bill = billingAdminSection(section, st);
     if (bill) body.append(bill);
+    if (feats) body.append(feats);
   }
 
   main.append(body);
@@ -230,6 +278,7 @@ function render() {
     StudioUI.wireGlossaryPopovers();
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[admin] chrome', e); }
+  if (isAdmin) watchSections();
 }
 
 document.addEventListener('click', (e) => {
@@ -239,6 +288,7 @@ document.addEventListener('click', (e) => {
 
 wireGateUI(render);
 wireBillingAdmin(render);
+wirePlanFeatures(render);
 Store.subscribe('gate:changed', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();

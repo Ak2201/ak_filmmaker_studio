@@ -3968,3 +3968,334 @@ notify pgrst, 'reload schema';
 --     appears on device B after its next pull, and the edit log on B
 --     renders the same owed count.
 -- ============================================================
+
+
+-- ============================================================
+-- 18. FULL-TIME ACCESS — the subscription model is withdrawn
+-- ------------------------------------------------------------
+-- RUN 6 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor (text verified byte-for-byte against this file first):
+-- "Success. No rows returned". Read back: price_paise 0 / 299900 /
+-- 499900 / 799900 — the live yearly figures, which someone had already
+-- edited on the console, not the seed — and features
+-- {"sample_only": true, "new_projects": false} on free, {} elsewhere;
+-- anon reads plans. The 18.1 live checks are still unrun. Owner's
+-- decision, 6 Oct 2026, one day after section 16 went live: "I don't want a subscription model, I
+-- want a full-time access model." So a plan is bought ONCE and kept
+-- FOR GOOD. No 30-day or 365-day period, nothing to renew, nothing to
+-- lapse. One price per tier.
+--
+-- WHAT CHANGES, AND WHAT DELIBERATELY DOES NOT.
+--   * plans gains `price_paise`, the one price. The monthly/yearly
+--     columns stay (dropping a column a live function reads is not a
+--     one-liner to undo) but nothing reads them after this; the seed
+--     copies the yearly figure into the new column as a PLACEHOLDER —
+--     the console sets the real prices.
+--   * `period` admits 'lifetime' on payments and accounts. The old
+--     values stay legal so history keeps loading.
+--   * apply_plan() KEEPS ITS SIGNATURE and ignores p_days: plan_until
+--     is written NULL, which account_plan() has always read as "no
+--     end". Every caller — activation, grant, refund — works unchanged,
+--     and section 16's functions below are replaced only where the
+--     period mattered: pricing, the stored period, the end date.
+--   * admin_grant_plan() keeps its signature too; p_days is ignored
+--     and it returns NULL ("for good") where it returned a date.
+--   * A refund still ends the plan today: mark_payment_refunded sets
+--     plan_until = least(plan_until, now()), and least() skips a NULL,
+--     so a lifetime plan refunded ends now. No change needed there.
+--
+-- FEATURES BY PLAN (same day, same ask): "a space in the admin console
+-- to choose what shows for what plan — features, sections, everything".
+-- `plans.features` is a jsonb map of feature key -> boolean. The KEYS
+-- are the app's: every module id in navigation.json, plus a handful of
+-- capabilities (sample_only, new_projects, script_import, ai_tools,
+-- exports, drive_backup). The database does not know the ids and does
+-- not need to: it keeps the shape honest (an object, boolean values,
+-- sane keys) and the client — src/lib/plan-gate.js — reads a missing
+-- key as ALLOWED, so an unedited plan hides nothing and a tick removed
+-- in the console is the only thing that ever locks a page. The free
+-- tier is seeded sample_only + no new projects: "free can see the
+-- Dragon sample alone". What a plan hides is UI; what it ENFORCES is
+-- still the triggers above — this is the owner's product boundary,
+-- not a security one, and the file says so where it matters.
+-- ============================================================
+
+alter table public.plans add column if not exists price_paise int not null default 0 check (price_paise >= 0);
+update public.plans set price_paise = yearly_paise where price_paise = 0 and yearly_paise > 0;
+alter table public.plans add column if not exists features jsonb not null default '{}'::jsonb;
+update public.plans set features = '{"sample_only": true, "new_projects": false}'::jsonb
+ where id = 'free' and features = '{}'::jsonb;
+
+-- The plan cards are drawn for a signed-out visitor on invite.html too,
+-- and prices and limits are the one thing about a plan that is public
+-- by nature. anon reads; nobody but admin_set_plan() writes.
+drop policy if exists plans_select on public.plans;
+create policy plans_select on public.plans for select to anon, authenticated using (true);
+
+do $$
+declare cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con join pg_class c on c.oid = con.conrelid join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relname = 'payments' and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%period%' limit 1;
+  if cname is not null then execute format('alter table public.payments drop constraint %I', cname); end if;
+  alter table public.payments add constraint payments_period_check check (period in ('month','year','grant','lifetime'));
+
+  select con.conname into cname
+    from pg_constraint con join pg_class c on c.oid = con.conrelid join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relname = 'accounts' and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%plan_period%' limit 1;
+  if cname is not null then execute format('alter table public.accounts drop constraint %I', cname); end if;
+  alter table public.accounts add constraint accounts_plan_period_check check (plan_period in ('month','year','grant','lifetime'));
+end $$;
+
+/** A plan, for good. Same signature as section 16's; p_days is ignored
+ *  and plan_until is NULL, which account_plan() reads as "no end". */
+create or replace function public.apply_plan(p_account uuid, p_plan text, p_period text, p_days int)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  a    public.accounts;
+  lim  jsonb;
+begin
+  select * into a from public.accounts x where x.id = p_account for update;
+  if a.id is null then raise exception 'No such account' using errcode = '22023'; end if;
+  select limits into lim from public.plans p where p.id = p_plan;
+  if lim is null then raise exception 'No such plan' using errcode = '22023'; end if;
+  perform set_config('fms.billing', 'on', true);
+  update public.accounts x
+     set plan = p_plan, plan_until = null, plan_period = 'lifetime',
+         seat_limit = greatest(1, coalesce(public.plan_cap(lim, 'seats'), 1000)),
+         updated_at = now()
+   where x.id = p_account;
+  return null;
+end;
+$fn$;
+revoke execute on function public.apply_plan(uuid, text, text, int) from public, anon, authenticated;
+
+/** rzp-order. The price is the ONE price; a month or a year is refused
+ *  by name, so an old client cannot buy a period that no longer exists. */
+create or replace function public.create_pending_payment(p_user uuid, p_plan text, p_period text, p_account uuid default null)
+returns table (payment_id uuid, amount_paise int, currency text, plan_name text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl  public.plans;
+  pid uuid;
+begin
+  perform public.billing_require_service();
+  if exists (select 1 from public.studio_members m where m.user_id = p_user and m.disabled_at is not null) then
+    raise exception 'This account has been disabled by an administrator' using errcode = '42501';
+  end if;
+  if p_period in ('month', 'year') then
+    raise exception 'Plans are bought once, for good — not by the month or the year' using errcode = '22023';
+  end if;
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  if coalesce(pl.price_paise, 0) <= 0 then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  if p_account is not null and not exists (select 1 from public.accounts a where a.id = p_account and a.owner_id = p_user) then
+    raise exception 'Not the owner of that organisation' using errcode = '42501';
+  end if;
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise)
+  values (p_user, p_account, p_plan, 'lifetime', pl.price_paise) returning id into pid;
+  return query select pid, pl.price_paise, 'INR'::text, pl.name;
+end;
+$fn$;
+revoke execute on function public.create_pending_payment(uuid, text, text, uuid) from public, anon, authenticated;
+
+create or replace function public.activate_payment(p_order_id text, p_payment_id text, p_raw jsonb default null)
+returns table (payment_id uuid, account_id uuid, plan_id text, ends_at timestamptz, already boolean)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pay   public.payments;
+  acc   uuid;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_order_id = p_order_id for update;
+  if pay.id is null then raise exception 'No payment with that order id' using errcode = '22023'; end if;
+  if pay.status = 'paid' then
+    return query select pay.id, pay.account_id, pay.plan_id, pay.ends_at, true;
+    return;
+  end if;
+  if pay.status <> 'created' and pay.status <> 'failed' then
+    raise exception 'Payment is %', pay.status using errcode = '22023';
+  end if;
+  acc := public.account_for_buyer(pay.user_id, pay.account_id);
+  perform public.apply_plan(acc, pay.plan_id, 'lifetime', 0);
+  update public.payments p
+     set status = 'paid', razorpay_payment_id = p_payment_id, paid_at = now(),
+         account_id = acc, starts_at = now(), ends_at = null,
+         raw = coalesce(p_raw, p.raw)
+   where p.id = pay.id;
+  insert into public.studio_members (user_id, role) values (pay.user_id, 'user') on conflict (user_id) do nothing;
+  return query select pay.id, acc, pay.plan_id, null::timestamptz, false;
+end;
+$fn$;
+revoke execute on function public.activate_payment(text, text, jsonb) from public, anon, authenticated;
+
+/** Same signature as section 16's. p_days is ignored; the grant is for
+ *  good and the function returns NULL where it returned an end date. */
+create or replace function public.admin_grant_plan(p_user uuid, p_plan text, p_days int, p_note text default null)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare acc uuid;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if not exists (select 1 from public.plans p where p.id = p_plan and p.id <> 'free') then
+    raise exception 'No such paid plan' using errcode = '22023';
+  end if;
+  acc := public.account_for_buyer(p_user, null);
+  perform public.apply_plan(acc, p_plan, 'lifetime', 0);
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise, status, note, paid_at, starts_at, ends_at)
+  values (p_user, acc, p_plan, 'grant', 0, 'granted', left(p_note, 300), now(), now(), null);
+  insert into public.studio_members (user_id, role) values (p_user, 'user') on conflict (user_id) do nothing;
+  return null;
+end;
+$fn$;
+revoke execute on function public.admin_grant_plan(uuid, text, int, text) from public, anon;
+grant  execute on function public.admin_grant_plan(uuid, text, int, text) to authenticated;
+
+/** admin_set_plan learns `price_paise` (the free tier may not carry it)
+ *  and `features` (an object of booleans; keys are the client's, and
+ *  the patch REPLACES the map rather than merging, so an untick lands). */
+create or replace function public.admin_set_plan(p_id text, p_patch jsonb)
+returns public.plans
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  row public.plans;
+  lim jsonb;
+  k   text;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  select * into row from public.plans p where p.id = p_id for update;
+  if row.id is null then raise exception 'No such plan' using errcode = '22023'; end if;
+  if p_patch ? 'limits' then
+    lim := p_patch -> 'limits';
+    if jsonb_typeof(lim) <> 'object' then raise exception 'limits must be an object' using errcode = '22023'; end if;
+    for k in select jsonb_object_keys(lim) loop
+      if k not in ('projects','collaborators','shares','seats','extension') then
+        raise exception 'Unknown limit "%"', k using errcode = '22023';
+      end if;
+      if k = 'extension' then
+        if jsonb_typeof(lim -> k) <> 'boolean' then raise exception 'extension must be true or false' using errcode = '22023'; end if;
+      elsif jsonb_typeof(lim -> k) not in ('number', 'null') or (jsonb_typeof(lim -> k) = 'number' and (lim ->> k)::numeric < 0) then
+        raise exception '% must be a whole number or null for unlimited', k using errcode = '22023';
+      end if;
+    end loop;
+  end if;
+  if p_patch ? 'features' then
+    if jsonb_typeof(p_patch -> 'features') <> 'object' then raise exception 'features must be an object' using errcode = '22023'; end if;
+    if (select count(*) from jsonb_object_keys(p_patch -> 'features')) > 200 then raise exception 'too many feature keys' using errcode = '22023'; end if;
+    for k in select jsonb_object_keys(p_patch -> 'features') loop
+      if k !~ '^[a-z0-9_-]{1,40}$' then raise exception 'Bad feature key "%"', k using errcode = '22023'; end if;
+      if jsonb_typeof(p_patch -> 'features' -> k) <> 'boolean' then raise exception 'feature "%" must be true or false', k using errcode = '22023'; end if;
+    end loop;
+  end if;
+  if p_id = 'free' and ((p_patch ? 'price_paise'   and (p_patch ->> 'price_paise')::int   > 0)
+                     or (p_patch ? 'monthly_paise' and (p_patch ->> 'monthly_paise')::int > 0)
+                     or (p_patch ? 'yearly_paise'  and (p_patch ->> 'yearly_paise')::int  > 0)) then
+    raise exception 'The free plan cannot have a price' using errcode = '22023';
+  end if;
+  update public.plans p
+     set name          = coalesce(nullif(left(trim(p_patch ->> 'name'), 40), ''), p.name),
+         blurb         = case when p_patch ? 'blurb' then left(coalesce(p_patch ->> 'blurb', ''), 200) else p.blurb end,
+         price_paise   = coalesce((p_patch ->> 'price_paise')::int,   p.price_paise),
+         monthly_paise = coalesce((p_patch ->> 'monthly_paise')::int, p.monthly_paise),
+         yearly_paise  = coalesce((p_patch ->> 'yearly_paise')::int,  p.yearly_paise),
+         limits        = case when p_patch ? 'limits' then p.limits || (p_patch -> 'limits') else p.limits end,
+         features      = case when p_patch ? 'features' then p_patch -> 'features' else p.features end,
+         active        = coalesce((p_patch ->> 'active')::boolean, p.active),
+         updated_at    = now(), updated_by = auth.uid()
+   where p.id = p_id
+   returning * into row;
+  return row;
+end;
+$fn$;
+revoke execute on function public.admin_set_plan(text, jsonb) from public, anon;
+grant  execute on function public.admin_set_plan(text, jsonb) to authenticated;
+
+/** billing_status() carries the plan's features, so one round trip
+ *  tells a page both what it may sync and what it may show. */
+create or replace function public.billing_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid  uuid := auth.uid();
+  pl   text;
+  acc  public.accounts;
+  lim  jsonb;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  pl := public.user_plan(uid);
+  select * into acc from public.accounts a where a.owner_id = uid
+   order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last limit 1;
+  lim := public.user_limits(uid);
+  return jsonb_build_object(
+    'plan',        pl,
+    'plan_name',   (select name from public.plans where id = pl),
+    'limits',      lim,
+    'features',    coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb),
+    'account_id',  acc.id,
+    'account_name', acc.name,
+    'plan_until',  case when pl <> 'free' then acc.plan_until end,
+    'bought_plan', acc.plan,
+    'lapsed',      acc.plan is not null and acc.plan <> 'free' and acc.plan_until is not null and acc.plan_until <= now(),
+    'disabled',    exists (select 1 from public.studio_members m where m.user_id = uid and m.disabled_at is not null),
+    'member',      exists (select 1 from public.studio_members m where m.user_id = uid and m.disabled_at is null),
+    'usage', jsonb_build_object(
+      'projects',      (select count(*) from public.projects p where p.owner_id = uid),
+      'shares',        (select count(*) from public.shares s join public.projects p on p.id = s.project_id
+                         where p.owner_id = uid and (s.expires_at is null or s.expires_at > now())),
+      'collaborators', (select coalesce(max(c), 0) from (select count(*) c from public.project_collaborators pc
+                         join public.projects p on p.id = pc.project_id where p.owner_id = uid group by pc.project_id) t),
+      'seats',         (select count(*) from public.account_members am where am.account_id = acc.id and am.status in ('pending','active'))
+    ),
+    'payments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'plan_id', x.plan_id, 'period', x.period,
+                   'amount_paise', x.amount_paise, 'status', x.status, 'created_at', x.created_at, 'ends_at', x.ends_at)
+                   order by x.created_at desc)
+                  from (select * from public.payments q where q.user_id = uid order by q.created_at desc limit 12) x), '[]'::jsonb)
+  );
+end;
+$fn$;
+revoke execute on function public.billing_status() from public, anon;
+grant  execute on function public.billing_status() to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 18.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  0. select id, features from plans: free carries sample_only and
+--     new_projects:false; the others '{}'. anon can select plans.
+--  0b. admin_set_plan('starter', '{"features": {"story-beats": false}}')
+--     -> features replaced; billing_status() for a starter owner carries
+--     it; a non-boolean value or a bad key -> 22023.
+--  1. select price_paise from plans: starter 299900, indie 799900,
+--     pro 1999900 (the yearly placeholders, until the console sets them).
+--  2. service: create_pending_payment(B, 'indie', 'lifetime') -> the
+--     plan's price_paise; with 'month' -> 22023 naming "once, for good".
+--  3. service: activate -> accounts.plan 'indie', plan_until NULL,
+--     plan_period 'lifetime', payments.ends_at NULL; account_plan()
+--     answers 'indie' and keeps answering it (nothing to lapse).
+--  4. admin_grant_plan(C, 'pro', 0) -> NULL; C's organisation is on
+--     pro with plan_until NULL; the ledger row reads period 'grant'.
+--  5. mark_payment_refunded on a lifetime payment -> plan_until = now(),
+--     account_plan() 'free' at once.
+-- ============================================================

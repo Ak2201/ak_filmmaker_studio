@@ -47,16 +47,15 @@ ok(R.timingSafeEqualHex('abcd', 'ABCD'), 'equal hex, either case');
 ok(!R.timingSafeEqualHex('abcd', 'abc'), 'different lengths are unequal');
 ok(!R.timingSafeEqualHex('', ''), 'two empty strings are NOT equal (an unset signature never passes)');
 
-/* ---- periods and prices ---- */
-eq(R.periodEnd('2026-01-01T00:00:00.000Z', 'month'), '2026-01-31T00:00:00.000Z', 'a month is 30 days');
-eq(R.periodEnd('2026-01-01T00:00:00.000Z', 'year'), '2027-01-01T00:00:00.000Z', 'a year is 365 days');
-let threw = false; try { R.periodEnd('2026-01-01T00:00:00.000Z', 'week'); } catch (e) { threw = true; }
-ok(threw, 'an unknown period throws rather than charging for nothing');
-const plan = { id: 'indie', monthly_paise: 49900, yearly_paise: 499000 };
-eq(R.priceFor(plan, 'month'), 49900, 'monthly price');
-eq(R.priceFor(plan, 'year'), 499000, 'yearly price');
-eq(R.priceFor({ id: 'starter', monthly_paise: 19900, yearly_paise: null }, 'year'), null, 'a period not sold is null, not 0');
-eq(R.priceFor({ id: 'free', monthly_paise: 0, yearly_paise: 0 }, 'month'), null, 'a zero price is not for sale');
+/* ---- one price, for good (section 18) ---- */
+eq(R.PERIODS, ['lifetime'], 'the only period is lifetime');
+ok(!('periodEnd' in R) && !('PERIOD_DAYS' in R), 'nothing can compute an expiry any more');
+const plan = { id: 'indie', price_paise: 799900, monthly_paise: 49900, yearly_paise: 499000 };
+eq(R.priceFor(plan), 799900, 'the price is price_paise, not a period column');
+eq(R.priceFor(plan, 'lifetime'), 799900, 'asked for explicitly');
+eq(R.priceFor(plan, 'month'), null, 'a month is not a thing that is sold');
+eq(R.priceFor({ id: 'starter', yearly_paise: 299900 }), 299900, 'a row read before §18 ran falls back to the yearly figure');
+eq(R.priceFor({ id: 'free', price_paise: 0 }), null, 'a zero price is not for sale');
 eq(R.fmtPaise(49900), '₹499', 'paise -> rupees');
 eq(R.fmtPaise(49950), '₹499.50', 'with paise');
 eq(R.fmtPaise(1234500), '₹12,345', 'Indian grouping');

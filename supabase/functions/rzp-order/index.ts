@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
   let body: { plan?: string; period?: string; account_id?: string } = {};
   try { body = await req.json(); } catch { /* empty body */ }
   const plan = String(body.plan ?? '');
-  const period = String(body.period ?? 'month');
-  if (!PERIODS.includes(period)) return json(400, { error: 'period must be month or year' });
+  const period = String(body.period ?? 'lifetime');
+  if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought once, for good; there is no monthly or yearly period.' });
 
   // 2. the intent, priced by the database
   const svc = createClient(url, serviceKey);

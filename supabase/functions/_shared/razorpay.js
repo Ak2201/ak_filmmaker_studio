@@ -61,23 +61,19 @@ export function basicAuth(keyId, keySecret) {
   return 'Basic ' + btoa(`${keyId}:${keySecret}`);
 }
 
-/** Period lengths in days. A "month" is 30 days and a "year" 365, stated
- *  rather than calendar-aligned so the expiry a buyer is told is the one
- *  the database computes — see apply_plan() in schema section 16. */
-export const PERIOD_DAYS = { month: 30, year: 365 };
-export const PERIODS = Object.keys(PERIOD_DAYS);
+/** FULL-TIME ACCESS (schema section 18): a plan is bought once and kept
+ *  for good. There is one period, and it never ends. The month/year
+ *  model this replaced lived in PERIOD_DAYS and periodEnd(); both are
+ *  gone, so nothing can compute an expiry by accident. */
+export const PERIODS = ['lifetime'];
 
-export function periodEnd(startIso, period) {
-  const days = PERIOD_DAYS[period];
-  if (!days) throw new Error('unknown period: ' + period);
-  return new Date(Date.parse(startIso) + days * 86400e3).toISOString();
-}
-
-/** Price for a plan and period, in paise, or null when that period is not
- *  sold. `plan` is a row of the plans table. */
-export function priceFor(plan, period) {
-  if (!plan) return null;
-  const v = period === 'year' ? plan.yearly_paise : period === 'month' ? plan.monthly_paise : null;
+/** The one price of a plan, in paise, or null when it is not for sale.
+ *  `plan` is a row of the plans table; `price_paise` is section 18's
+ *  column, with the yearly figure as the fallback for a row read before
+ *  that section ran. */
+export function priceFor(plan, period = 'lifetime') {
+  if (!plan || !PERIODS.includes(period)) return null;
+  const v = Number.isInteger(plan.price_paise) ? plan.price_paise : plan.yearly_paise;
   return Number.isInteger(v) && v > 0 ? v : null;
 }
 

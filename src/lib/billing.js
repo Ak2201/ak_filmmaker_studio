@@ -121,13 +121,14 @@ async function invoke(name, body) {
 }
 
 /**
- * Buy `planId` for `period`. Resolves to { plan, ends_at } once the
- * server has verified and activated; rejects with code 'dismissed' if
- * the buyer closed Checkout. `onStatus(text)` narrates for the UI.
+ * Buy `planId`, for good (schema section 18: one payment, no period).
+ * Resolves to { plan, account_id } once the server has verified and
+ * activated; rejects with code 'dismissed' if the buyer closed
+ * Checkout. `onStatus(text)` narrates for the UI.
  */
-export async function buy(planId, period = 'month', { accountId = null, onStatus = () => {} } = {}) {
+export async function buy(planId, period = 'lifetime', { accountId = null, onStatus = () => {} } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
-  if (!PERIODS.includes(period)) throw new BillingError('Choose monthly or yearly.', 'period');
+  if (!PERIODS.includes(period)) throw new BillingError('Plans are bought once, for good.', 'period');
   onStatus('Preparing your order…');
   const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId }), loadCheckout()]);
   if (!order || !order.order_id) throw new BillingError('No order came back.', 'edge');
@@ -141,7 +142,7 @@ export async function buy(planId, period = 'month', { accountId = null, onStatus
       currency: order.currency || 'INR',
       order_id: order.order_id,
       name: 'Filmmaker Studio',
-      description: `${order.plan_name || planName(planId)} · ${period === 'year' ? 'one year' : 'one month'}`,
+      description: `${order.plan_name || planName(planId)} · full access, one payment`,
       prefill: order.prefill || {},
       notes: { plan: planId, period },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),

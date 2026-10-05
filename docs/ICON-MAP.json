@@ -1,8 +1,31 @@
 {
-  "_about": "Material Symbols names for navigation.json, kept here because the phase list in that file is contested and gets superseded by merges while these do not. iconSpan() in src/ui/icon.js reads entry.sym; index.html's icon_names= subset must list every value used here or that tile renders nothing. Keys are entry ids.",
+  "_about": [
+    "Material Symbols names for navigation.json, kept here because the phase list in that file is contested and gets superseded by merges while these do not. iconSpan() in src/ui/icon.js reads entry.sym; index.html's icon_names= subset must list every value used here or that tile renders nothing. Keys are entry ids.",
+    "",
+    "REAPPLIED onto the five upstream stages at merge 2e9ec03. The map's",
+    "`preproduction` is upstream's `preprod`; the `screenplay` stage is new",
+    "and took edit_note. All 43 entries carry a sym.",
+    "",
+    "A MISSPELT SYMBOL NAME DOES NOT FAIL — it silently serves the WHOLE",
+    "1.2MB face instead of a ~14KB subset. Google's API answers 200 either",
+    "way, so neither the status code nor the page will tell you. Measured:",
+    "one real name returns about 2KB, a bogus one returns 1,216,724 bytes.",
+    "Verify any new name by requesting it alone and looking at the SIZE,",
+    "and remember index.html's icon_names= list must gain it too.",
+    "",
+    "A PHASE'S `hue` MUST EQUAL ITS `id`, and that is load-bearing rather",
+    "than tidiness. FIVE sites emit the .sh-ph-* class: shell.js twice,",
+    "launcher.js, panel.js — all four from `phase.hue` — and palette.js,",
+    "which builds it from `phase.id`. So if the two ever diverge, the",
+    "command palette renders grey while every other surface is correct and",
+    "nothing errors, because an undefined CSS variable fails silently by",
+    "design. Verified at 2e9ec03: all five stages satisfy it, and every",
+    "class the app can emit has a rule in tokens.css."
+  ],
   "phases": {
     "story": "auto_stories",
-    "preproduction": "checklist",
+    "screenplay": "edit_note",
+    "preprod": "checklist",
     "production": "videocam",
     "post": "tune"
   },
@@ -42,13 +65,13 @@
     "settings": "settings"
   },
   "upstreamStillNeeded": {
-    "auto-tag": null,
-    "cast-matrix": null,
-    "deliverables": null,
-    "edit-log": null,
-    "idea-vault": null,
-    "pitch-deck": null,
-    "screen-time": null,
-    "story-beats": null
+    "auto-tag": "label",
+    "cast-matrix": "groups",
+    "deliverables": "inventory_2",
+    "edit-log": "timeline",
+    "idea-vault": "lightbulb",
+    "pitch-deck": "slideshow",
+    "screen-time": "timer",
+    "story-beats": "format_list_numbered"
   }
 }

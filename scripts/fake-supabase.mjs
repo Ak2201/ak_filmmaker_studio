@@ -1,5 +1,5 @@
 /* ============================================================
-   A FAKE SUPABASE PROJECT implementing schema section 13
+   A FAKE SUPABASE PROJECT implementing schema sections 13 and 14
    ------------------------------------------------------------
    Shared by scripts/prove-gate.mjs and scripts/prove-extension.mjs.
    An in-memory database (codes, hashed tickets, members, the 90-second
@@ -16,8 +16,12 @@ export const F = { db: null, reset() { F.db = freshDb(); return F.db; } };
 export const USERS = {
   'tok-admin': { id: '00000000-0000-4000-8000-00000000000a', email: 'admin@example.com' },
   'tok-amy':   { id: '00000000-0000-4000-8000-0000000000a1', email: 'amy@example.com' },
-  'tok-ben':   { id: '00000000-0000-4000-8000-0000000000b1', email: 'ben@example.com' }
+  'tok-ben':   { id: '00000000-0000-4000-8000-0000000000b1', email: 'ben@example.com' },
+  // Section 14: Cal asks and is approved; Dan asks and is declined.
+  'tok-cal':   { id: '00000000-0000-4000-8000-0000000000c1', email: 'cal@example.com', name: 'Cal Fernandes' },
+  'tok-dan':   { id: '00000000-0000-4000-8000-0000000000d1', email: 'dan@example.com' }
 };
+const DAY = 86400e3;
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 export function freshDb() {
   const now = Date.now();
@@ -31,6 +35,7 @@ export function freshDb() {
     tickets: new Map(),
     members: new Map([[USERS['tok-admin'].id, { role: 'admin', disabled_at: null }]]),
     sessions: new Map(),
+    requests: new Map(),   // section 14: user_id -> invite_requests row
     redemptions: [],
     projects: [{ id: 'p1', title: 'Dragon', format: 'feature', owner_id: USERS['tok-admin'].id }],
     data: { p1: {
@@ -51,11 +56,59 @@ function rpc(name, args, user, route) {
   F.db.calls.push(name);
   if (!F.db.deployed) return pgErr(route, 'PGRST202', `Could not find the function public.${name} in the schema cache`, 404);
   const isMember = (u) => { const m = u && F.db.members.get(u.id); return !!(m && !m.disabled_at); };
+  const isAdmin = (u) => !!u && F.db.members.get(u.id)?.role === 'admin' && !F.db.members.get(u.id)?.disabled_at;
   const valid = (c) => c && !c.revoked_at && (!c.expires_at || Date.parse(c.expires_at) > Date.now()) && c.redemptions_count < c.max_redemptions;
+  // 14.4: membership arriving by any route closes a pending request.
+  const admit = (uid, role = 'user') => {
+    const cur = F.db.members.get(uid);
+    F.db.members.set(uid, { role: cur ? cur.role : role, disabled_at: null });
+    const r = F.db.requests.get(uid);
+    if (r && r.status === 'pending') { r.status = 'approved'; r.decided_at = r.decided_at || new Date().toISOString(); }
+  };
+  const fmtD = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   switch (name) {
     case 'studio_status': {
       const m = user && F.db.members.get(user.id);
-      return json(route, 200, [{ registered: !!m, role: m ? m.role : '', disabled: !!(m && m.disabled_at) }]);
+      const r = user && F.db.requests.get(user.id);
+      const pend = isAdmin(user) ? [...F.db.requests.values()].filter((x) => x.status === 'pending').length : 0;
+      return json(route, 200, [{ registered: !!m, role: m ? m.role : '', disabled: !!(m && m.disabled_at),
+        request_status: r ? r.status : '', requested_at: r ? r.requested_at : null, decided_at: r ? r.decided_at : null,
+        decision_note: r ? r.decision_note : null, pending_requests: pend }]);
+    }
+    case 'request_invite': {
+      if (!user) return pgErr(route, '42501', 'Sign in with Google to request an invite');
+      if (isMember(user)) return pgErr(route, '22023', 'This account is already a member');
+      const now = new Date().toISOString();
+      const note = String(args.p_note || '').trim().slice(0, 1000) || null;
+      let r = F.db.requests.get(user.id);
+      if (!r) {
+        r = { user_id: user.id, email: user.email, display_name: user.name || null, note, user_agent: args.p_user_agent || null,
+              status: 'pending', times_asked: 1, requested_at: now, decided_at: null, decided_by: null, decision_note: null };
+      } else if (r.status === 'pending') {
+        if (note) r.note = note;
+      } else if (r.status === 'declined' && Date.now() - Date.parse(r.decided_at) < 7 * DAY) {
+        return pgErr(route, '22023', `This request was declined on ${fmtD(r.decided_at)}. You can ask again from ${fmtD(Date.parse(r.decided_at) + 7 * DAY)}.`);
+      } else {
+        Object.assign(r, { status: 'pending', requested_at: now, times_asked: r.times_asked + 1, decided_at: null, decided_by: null, decision_note: null, note, user_agent: args.p_user_agent || null });
+      }
+      F.db.requests.set(user.id, r);
+      return json(route, 200, [{ status: r.status, requested_at: r.requested_at, decided_at: r.decided_at, decision_note: r.decision_note, times_asked: r.times_asked }]);
+    }
+    case 'admin_list_requests': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const rows = [...F.db.requests.values()].filter((r) => !args.p_status || r.status === args.p_status)
+        .sort((a, b) => (b.status === 'pending') - (a.status === 'pending') || Date.parse(b.requested_at) - Date.parse(a.requested_at))
+        .map((r) => ({ ...r, decided_by_email: r.decided_by ? (Object.values(USERS).find((x) => x.id === r.decided_by) || {}).email || null : null }));
+      return json(route, 200, rows);
+    }
+    case 'admin_decide_request': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const r = F.db.requests.get(args.p_user);
+      if (!r) return pgErr(route, '22023', 'No such request');
+      if (args.p_approve) admit(args.p_user);
+      Object.assign(r, { status: args.p_approve ? 'approved' : 'declined', decided_at: new Date().toISOString(), decided_by: user.id,
+                         decision_note: String(args.p_note || '').trim().slice(0, 500) || null });
+      return json(route, 200, null);
     }
     case 'verify_invite': {
       const c = F.db.codes.find((x) => x.code === args.p_code);
@@ -73,7 +126,7 @@ function rpc(name, args, user, route) {
       const c = F.db.codes.find((x) => x.id === t.code_id);
       if (!valid(c)) return pgErr(route, '22023', 'That code is not valid');
       c.redemptions_count++; t.used = true;
-      F.db.members.set(user.id, { role: 'user', disabled_at: null });
+      admit(user.id);
       F.db.redemptions.push({ id: 'r' + F.db.redemptions.length, code_id: c.id, user_id: user.id, redeemed_at: new Date().toISOString() });
       return json(route, 200, [{ role: 'user', invite_code_id: c.id }]);
     }
@@ -174,7 +227,7 @@ export function sessionFor(tok) {
   const exp = Math.floor(Date.now() / 1000) + 3600;
   return JSON.stringify({ access_token: tok, refresh_token: 'r-' + tok, token_type: 'bearer', expires_in: 3600, expires_at: exp,
     user: { id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email, email_confirmed_at: new Date().toISOString(),
-            app_metadata: { provider: 'google' }, user_metadata: {}, created_at: new Date().toISOString() } });
+            app_metadata: { provider: 'google' }, user_metadata: u.name ? { full_name: u.name } : {}, created_at: new Date().toISOString() } });
 }
 
 

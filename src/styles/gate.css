@@ -31,3 +31,7 @@
 .gt-table th { color: var(--ink-muted); font-weight: 600; }
 .gt-row-actions { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .gt-list { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }
+.gt-requests td:nth-child(3) { max-width: 22rem; overflow-wrap: anywhere; }
+.gt-decided { margin-top: var(--s2); }
+.gt-decided > summary { cursor: pointer; font-size: var(--t-small); color: var(--ink-muted); }
+.gt-decided > .gt-list { margin-top: var(--s2); }

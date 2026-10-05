@@ -23,7 +23,7 @@ To ship it to the Chrome Web Store, zip the *contents* of `dist-extension/` (wit
 
    The id is shown on `chrome://extensions`. An unpacked extension's id changes with its folder path unless the manifest has a `key`; a Web Store build has a fixed id. Without this entry, Google sign-in in the panel ends with "the extension redirect URL is not allowed".
 
-2. **Schema section 13** (`supabase-schema.sql`) has to run for invite codes, the device lock and screening passes to exist. Until it does, everything **fails open**: the panel offers Google sign-in directly, and sync behaves as it always has. That is deliberate, so the code can ship before the SQL. Then make the first admin by hand. Section 13.2 has the one-line insert, and no UI can do it, because anything that can grant the first admin can grant the second.
+2. **Schema sections 13 and 14** (`supabase-schema.sql`) have to run for invite codes, invite requests, the device lock and screening passes to exist. Until they do, everything **fails closed**: a signed-in account is told the gate is not switched on, sync stays paused, and the panel offers nothing it cannot honour. (It used to fail open so the code could ship before the SQL; that let every Google account through, and is gone — `docs/GATE.md`.) Then make the first admin by hand. Section 13.2 has the one-line insert, and no UI can do it, because anything that can grant the first admin can grant the second.
 
 ## What each PRD requirement is, here
 

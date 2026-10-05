@@ -17,9 +17,13 @@
    extension, opened in the same panel — so the Beat Matrix or a
    scene's elements stay docked while the writer types in Google Docs.
 
-   FAILS OPEN like the rest of the gate: with schema section 13 not yet
-   run there are no codes to check, so the panel offers Google straight
-   away and says why.
+   FAILS CLOSED like the rest of the gate now (it failed open, and
+   that let every Google account through — see src/lib/gate.js). With
+   schema section 13 not yet run the panel says so and offers nothing
+   it cannot honour. And there are two routes through, not one: a
+   code, or signing in with Google and REQUESTING an invite, which the
+   shared block in src/ui/invite-request.js draws here exactly as on
+   invite.html.
    ============================================================ */
 import '../lib/store.js';          /* FIRST — invariant 6. */
 import '../styles/base.css';
@@ -36,6 +40,7 @@ import Store from '../lib/store.js';
 import nav from '../data/navigation.json';
 import { formatCode, normaliseCode } from '../lib/gate.js';
 import { inExtension, onSessionLost, onClipQueued, CLIP_QUEUE_KEY } from '../lib/extension-bridge.js';
+import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud;
@@ -58,16 +63,18 @@ function renderNotExtension() {
 function renderGatekeeper() {
   const main = h('main#main.pn-main');
   main.append(head('Step 1 of 3', 'Enter Invite / Screening Pass Code',
-    'Filmmaker Studio is invite-only. A screening pass opens one film read-only, without an account.'));
+    'Filmmaker Studio is invite-only. A screening pass opens one film read-only, without an account. No code? Sign in with Google and ask for an invite.'));
   const form = h('form.gt-code', { 'data-pn-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'pnCode', text: 'Code' }));
   form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
   form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: ui.busy ? 'CHECKING…' : 'CONTINUE' }));
   main.append(form);
   if (ui.deployed === false) {
-    main.append(h('p.gt-meta', { text: 'Invite codes are not switched on for this studio yet, so you can sign in directly.' }));
-    main.append(h('button.btn', { type: 'button', 'data-pn': 'google', text: 'SIGN IN WITH GOOGLE' }));
+    main.append(h('p.gt-meta', { text: 'Invite codes are not switched on for this studio yet; an administrator has to enable them before anybody can be let in.' }));
   }
+  /* The second route. Signing in first is the point: the request an
+     administrator reads carries the account Google attested. */
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'google-request', disabled: ui.busy, text: 'NO CODE? SIGN IN TO REQUEST ONE' }));
   if (ui.error) main.append(h('p.gt-error', { role: 'alert', text: ui.error }));
   main.append(clipLine());
   return main;
@@ -84,13 +91,20 @@ function renderSignIn() {
 }
 
 function renderClosed() {
+  const c = cloud();
+  const g = c.getGateState();
+  const pending = g.status && g.status.requestStatus === 'pending';
   const main = h('main#main.pn-main');
-  main.append(head('Invite needed', 'Redeem your invite code.', `Signed in as ${cloud().getUserEmail() || 'your account'}, which has no invite yet.`));
-  const form = h('form.gt-code', { 'data-pn-form': 'redeem', autocomplete: 'off' });
-  form.append(h('label.gt-label', { for: 'pnCode', text: 'Invite code' }));
-  form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
-  form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: 'REDEEM' }));
-  main.append(form);
+  main.append(head('Invite needed', pending ? 'Your request is in.' : 'Ask for an invite, or redeem a code.',
+    `Signed in as ${c.getUserEmail() || 'your account'}, which is not a member yet.`));
+  main.append(requestBlock(g.status, g.reason));
+  if (g.status && g.status.deployed) {
+    const form = h('form.gt-code', { 'data-pn-form': 'redeem', autocomplete: 'off' });
+    form.append(h('label.gt-label', { for: 'pnCode', text: 'Or an invite code, if you were given one' }));
+    form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
+    form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: 'REDEEM' }));
+    main.append(form);
+  }
   if (ui.error) main.append(h('p.gt-error', { role: 'alert', text: ui.error }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
   return main;
@@ -216,7 +230,10 @@ delegate(document, 'submit', '[data-pn-form]', async (e, form) => {
 delegate(document, 'click', '[data-pn]', async (e, el) => {
   const c = cloud();
   const act = el.dataset.pn;
-  if (act === 'google') {
+  if (act === 'google' || act === 'google-request') {
+    // 'google-request' is the same sign-in from step 1 with no code:
+    // SIGNED_IN runs the gate, which closes, and renderClosed() offers
+    // the request. A separate name so "step 2 appeared" stays checkable.
     ui.busy = true; ui.error = ''; render();
     try { await c.signInWithGoogle(); }   // SIGNED_IN runs the gate; onAuth redraws
     catch (err) { ui.error = err.message || 'Google sign-in did not complete.'; }
@@ -234,6 +251,7 @@ delegate(document, 'click', '[data-pn]', async (e, el) => {
 
 if (window.StudioCloud) window.StudioCloud.onAuth(() => setTimeout(render, 0));
 Store.subscribe('gate:changed', () => render());
+wireRequestUI(render);
 onSessionLost((reason) => {
   ui.ticketReady = false;
   ui.error = reason === 'conflict' ? 'Your account was opened on another device, so this panel signed out.'

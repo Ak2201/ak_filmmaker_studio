@@ -1,6 +1,67 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
+
+/* ============================================================
+   THE ICON FONT, DERIVED — one <link> for every page, from the data
+   ------------------------------------------------------------
+   Every map in the app (the launcher, the shell's rail, phase menu
+   and breadcrumb, the command palette) draws its marks through
+   iconSpan() in src/ui/icon.js as Material Symbols LIGATURES: the
+   span's text is the symbol's name and the font turns it into a
+   glyph. So a page that does not load the font prints the names —
+   "home", "auto_stories", "format_list_numbered" — as words, over
+   the labels beside them. story.html and screening.html shipped
+   exactly that, because the <link> was hand-pasted into seventeen
+   HTML files and those two were written after the paste.
+
+   A hand-kept list in seventeen places is the bug CLAUDE.md names
+   about the steps living in three. So the tag is injected here, at
+   build and in dev, into every page that renders the app (#app) and
+   already uses Google Fonts, and the `icon_names=` subset is read off
+   navigation.json — the same file the marks come from. Add a module
+   with a new `sym` and the font gains it with no other edit.
+
+   Two things in the URL are load-bearing and both look like noise:
+
+   `icon_names=` makes Google return a font containing only those
+   symbols: ~14KB against 1.2MB for the full face, measured, on a file
+   that sits in first paint. AND A MISSPELT NAME DOES NOT FAIL — the
+   API answers 200 and serves the WHOLE face, so neither the status
+   nor the page tells you; the only tell is the size. The shape check
+   below catches a typo that is not a legal name at all; a legal name
+   that is not a real symbol still has to be verified against the API
+   before it ships.
+
+   `display=block` rather than `swap`: under swap a slow network
+   paints the words across the map before the font arrives. Block
+   renders nothing for up to three seconds instead, which is the
+   right trade for a mark that is decorative — every icon is
+   aria-hidden and sits beside its own text label.
+
+   Needs no CSP change: style-src already allows fonts.googleapis.com
+   and font-src already allows fonts.gstatic.com.
+   ============================================================ */
+function materialSymbols() {
+  const nav = JSON.parse(readFileSync(resolve(__dirname, 'src/data/navigation.json'), 'utf8'));
+  const names = new Set();
+  JSON.stringify(nav, (k, v) => { if (k === 'sym' && typeof v === 'string' && v) names.add(v); return v; });
+  const list = [...names].sort();
+  const bad = list.filter((n) => !/^[a-z0-9_]+$/.test(n));
+  if (bad.length) throw new Error('navigation.json: not a Material Symbols name: ' + bad.join(', '));
+  const href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0'
+             + '&icon_names=' + list.join(',') + '&display=block';
+  return {
+    name: 'fms-material-symbols',
+    transformIndexHtml(html) {
+      // The app pages only: the legal documents and the redirect stubs
+      // draw no marks, and the extension panel loads no remote font.
+      if (!html.includes('id="app"') || !html.includes('fonts.googleapis.com')) return;
+      return [{ tag: 'link', attrs: { rel: 'stylesheet', href }, injectTo: 'head' }];
+    }
+  };
+}
 
 /* ============================================================
    Multi-page build. Each page is a real HTML entry, so the
@@ -31,6 +92,7 @@ export default defineConfig({
      plugin to generate or inject.
      ------------------------------------------------------------ */
   plugins: [
+    materialSymbols(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -76,6 +138,8 @@ export default defineConfig({
         shoot:      resolve(__dirname, 'shoot.html'),
         story:      resolve(__dirname, 'story.html'),
         screening:  resolve(__dirname, 'screening.html'),
+        // The doorway to the cloud: where a closed gate sends a sign-in.
+        invite:     resolve(__dirname, 'invite.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),

@@ -206,7 +206,11 @@ const PAGES = [
   { page: 'story.html',      legacy: null, name: 'story' },
   // The screening room's entry form. The room itself needs a live pass
   // and is proved by scripts/prove-gate.mjs instead.
-  { page: 'screening.html',  legacy: null, name: 'screening' }
+  { page: 'screening.html',  legacy: null, name: 'screening' },
+  // The doorway: what a closed gate lands on. Signed out here (the run
+  // never signs in), so the capture is the sign-in-first state; the
+  // request and approval paths are proved by scripts/prove-gate.mjs.
+  { page: 'invite.html',     legacy: null, name: 'invite' }
 ];
 
 /* Every skin the source tree defines. Read from disk rather than
@@ -307,7 +311,8 @@ const EXPECTED = {
   settings: {},
   shoot: {},
   story: {},
-  screening: {}
+  screening: {},
+  invite: {}
 };
 
 const MIME = {

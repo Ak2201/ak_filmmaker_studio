@@ -2056,9 +2056,24 @@ end $$;
 -- ============================================================
 -- 13. THE INVITE GATE, SCREENING PASSES AND THE ONE-DEVICE LOCK
 -- ------------------------------------------------------------
--- NOT RUN AGAINST ANY DATABASE. Written for PRD 2.0.0 sections 4.1,
--- 4.2 and 5. Treat every claim below as reasoning until the checks at
--- the end of this section have been run against the live project.
+-- RUN 5 Oct 2026 against conhlrulxfwkhsnymakz, through the dashboard's
+-- SQL editor, with the full-line comments stripped and the executable
+-- text verified byte-for-byte against this file first: "Success. No
+-- rows returned". Verified through PostgREST afterwards: every function
+-- here answers 401/42501 to anon (exists, refuses) where it answered
+-- PGRST202 (missing) that morning. The 13.2 bootstrap ran the same day;
+-- auth.users held ONE account, which is now the admin. The 13.8 live
+-- checks are still unrun — deployed is not the same claim as behaving.
+-- Written for PRD 2.0.0 sections 4.1, 4.2 and 5.
+--
+-- THE CLIENT NO LONGER FAILS OPEN WHILE THIS IS MISSING. It did, so
+-- that the code could ship before the SQL — and the result was a
+-- studio where every Google account walked straight through, which
+-- is the opposite of a gate. cloud.js's runGate() now treats "the
+-- function does not exist" as CLOSED (reason `notdeployed`), pauses
+-- sync and says so on invite.html. So the order of operations is:
+-- run this section AND section 14, bootstrap the first admin (13.2),
+-- THEN deploy a build — see docs/GATE.md.
 --
 -- SCOPE, decided before a line was written: the gate guards the CLOUD
 -- and the EXTENSION, not the local app. Somebody who opens the site
@@ -2323,6 +2338,10 @@ revoke execute on function public.redeem_invite(text) from public, anon;
 grant  execute on function public.redeem_invite(text) to authenticated;
 
 -- What the client asks after sign-in: is this account through the gate?
+-- SUPERSEDED by the definition in section 14, which adds the invite
+-- request's status to the answer; kept so this section still runs on
+-- its own. Section 14 drops and recreates it (the return type grows,
+-- which CREATE OR REPLACE cannot do).
 create or replace function public.studio_status()
 returns table (registered boolean, role text, disabled boolean)
 language sql
@@ -2727,13 +2746,22 @@ drop trigger if exists project_data_require_member on public.project_data;
 create trigger project_data_require_member before insert or update on public.project_data
   for each row execute function public.require_studio_member_data();
 
--- GRANDFATHERING. Everybody who already owns a cloud project when this
--- section runs becomes a member, so turning the gate on locks out
--- strangers and nobody who was already here. Idempotent; run again
--- after a restore and it changes nothing that exists.
-insert into public.studio_members (user_id, role)
-select distinct p.owner_id, 'user' from public.projects p
-on conflict (user_id) do nothing;
+-- GRANDFATHERING — NOW A CHOICE, NOT A DEFAULT. This used to admit
+-- everybody who already owns a cloud project, so that turning the gate
+-- on locked out strangers and nobody who was already here. But the
+-- gate failed open for long enough that "already here" and "stranger"
+-- are the same set: anyone with a Google account could sign in and
+-- sync a project. Running this insert would wave all of them through.
+--
+-- Section 14 gives them the other route instead: they sign in, land
+-- on invite.html, ask for an invite with the e-mail Google attested,
+-- and an administrator approves the ones they know. Uncomment ONLY
+-- if you have looked at `select owner_id from projects` and want every
+-- one of them in. Idempotent either way.
+--
+-- insert into public.studio_members (user_id, role)
+-- select distinct p.owner_id, 'user' from public.projects p
+-- on conflict (user_id) do nothing;
 
 -- 13.7 TWO MORE SYNC SCOPES: story and idea_vault ------------------
 -- Same procedure as section 12, for the same reason: cloud.js derives
@@ -2788,6 +2816,264 @@ notify pgrst, 'reload schema';
 -- 11. signed in, no membership: insert into projects -> P0401; upsert
 --     project_data on a project you own -> P0401; on a project shared
 --     with you for edit -> allowed.
--- 12. after running this section, every owner_id in projects has a
---     studio_members row (grandfathering).
+-- 12. after running this section, NO owner_id in projects has gained a
+--     studio_members row unless the grandfathering insert was run on
+--     purpose (it is commented out above).
+-- ============================================================
+
+
+-- ============================================================
+-- 14. INVITE REQUESTS — the queue behind the gate
+-- ------------------------------------------------------------
+-- RUN 5 Oct 2026, immediately after section 13, the same way (see its
+-- header): "Success. No rows returned", and request_invite answers
+-- 401/42501 to anon through PostgREST. The 14.5 live checks are still
+-- unrun. docs/GATE.md is the runbook.
+--
+-- THE FLOW THIS COMPLETES. Section 13 lets somebody in who was HANDED
+-- a code. It had no answer for somebody who was not: they signed in,
+-- the gate closed, and the only move left was to e-mail the owner.
+-- Now: sign in with Google first, so the address is attested rather
+-- than typed; if the account is not a member, invite.html offers two
+-- routes — a code, or REQUEST AN INVITE, which queues the account's
+-- login details (the Google e-mail and name, when it was asked, what
+-- they wrote, which browser) for an administrator, who approves or
+-- declines from the console on settings.html. Approval IS membership:
+-- it writes the studio_members row directly, no code changes hands,
+-- and the requester is through the gate on their next load.
+--
+-- WHY THE ROW IS KEYED BY user_id AND NOT BY E-MAIL. The request is
+-- made by a signed-in account and can only be made for that account,
+-- so there is nothing to type and nothing to forge: `email` and
+-- `display_name` are copied out of auth.users by the function, never
+-- accepted from the client. One row per account; asking again after
+-- a decline updates the row rather than adding a second.
+--
+-- WHAT A NON-ADMIN CAN SEE. Their own row, and nothing else — the
+-- select policy below. Every write goes through a security definer
+-- RPC, so there are no insert/update/delete policies, as in 13.
+-- ============================================================
+
+create table if not exists public.invite_requests (
+  user_id        uuid        primary key references auth.users(id) on delete cascade,
+  email          text        not null,
+  display_name   text,
+  note           text,
+  user_agent     text,
+  status         varchar(16) not null default 'pending'
+                 check (status in ('pending','approved','declined')),
+  times_asked    int         not null default 1,
+  requested_at   timestamptz not null default now(),
+  decided_at     timestamptz,
+  decided_by     uuid        references auth.users(id) on delete set null,
+  decision_note  text
+);
+create index if not exists invite_requests_status_idx on public.invite_requests(status, requested_at desc);
+alter table public.invite_requests enable row level security;
+
+drop policy if exists ireq_select on public.invite_requests;
+create policy ireq_select on public.invite_requests for select
+  using (user_id = auth.uid() or public.is_studio_admin());
+
+-- 14.1 THE REQUEST ---------------------------------------------------
+-- Authenticated. Idempotent while pending. A DECLINED account may ask
+-- again after seven days — long enough that a decline is not undone by
+-- the next click, short enough that a mistaken one is not forever —
+-- and the row keeps count of how often it has asked. Nothing is ever
+-- deleted; the console reads the history off the same row.
+create or replace function public.request_invite(p_note text default null, p_user_agent text default null)
+returns table (status text, requested_at timestamptz, decided_at timestamptz, decision_note text, times_asked int)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid   uuid := auth.uid();
+  u     auth.users;
+  r     public.invite_requests;
+  nm    text;
+begin
+  if uid is null or coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'Sign in with Google to request an invite' using errcode = '42501';
+  end if;
+  if public.is_studio_member(uid) then
+    -- Nothing to ask for. Say so rather than queueing a request an
+    -- administrator would have to read and discard.
+    raise exception 'This account is already a member' using errcode = '22023';
+  end if;
+  select * into u from auth.users au where au.id = uid;
+  nm := nullif(trim(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', '')), '');
+
+  select * into r from public.invite_requests ir where ir.user_id = uid for update;
+  if r.user_id is null then
+    insert into public.invite_requests (user_id, email, display_name, note, user_agent)
+    values (uid, u.email, nm, nullif(left(trim(coalesce(p_note, '')), 1000), ''), left(p_user_agent, 300));
+  elsif r.status = 'pending' then
+    -- Asked already and still waiting: refresh what they wrote, keep the
+    -- place in the queue.
+    update public.invite_requests ir
+       set note = coalesce(nullif(left(trim(coalesce(p_note, '')), 1000), ''), ir.note),
+           user_agent = coalesce(left(p_user_agent, 300), ir.user_agent),
+           email = u.email, display_name = coalesce(nm, ir.display_name)
+     where ir.user_id = uid;
+  elsif r.status = 'declined' and r.decided_at > now() - interval '7 days' then
+    raise exception 'This request was declined on %. You can ask again from %.',
+      to_char(r.decided_at, 'DD Mon YYYY'), to_char(r.decided_at + interval '7 days', 'DD Mon YYYY')
+      using errcode = '22023';
+  else
+    -- Declined long enough ago, or approved and since disabled: a fresh ask.
+    update public.invite_requests ir
+       set status = 'pending', requested_at = now(), times_asked = ir.times_asked + 1,
+           decided_at = null, decided_by = null, decision_note = null,
+           note = nullif(left(trim(coalesce(p_note, '')), 1000), ''),
+           user_agent = left(p_user_agent, 300), email = u.email, display_name = coalesce(nm, ir.display_name)
+     where ir.user_id = uid;
+  end if;
+
+  return query
+    select ir.status::text, ir.requested_at, ir.decided_at, ir.decision_note, ir.times_asked
+      from public.invite_requests ir where ir.user_id = uid;
+end;
+$fn$;
+revoke execute on function public.request_invite(text, text) from public, anon;
+grant  execute on function public.request_invite(text, text) to authenticated;
+
+-- 14.2 THE STATUS, WIDENED -------------------------------------------
+-- One round trip after sign-in answers everything invite.html needs:
+-- membership, and if there is none, where the request stands. For an
+-- admin it also counts the queue, so the account menu can say "3
+-- requests waiting" without a second query; everybody else reads 0.
+drop function if exists public.studio_status();
+create or replace function public.studio_status()
+returns table (registered boolean, role text, disabled boolean,
+               request_status text, requested_at timestamptz, decided_at timestamptz,
+               decision_note text, pending_requests int)
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select m.user_id is not null,
+         coalesce(m.role, '')::text,
+         m.disabled_at is not null,
+         coalesce(r.status, '')::text,
+         r.requested_at,
+         r.decided_at,
+         r.decision_note,
+         case when m.role = 'admin' and m.disabled_at is null
+              then (select count(*)::int from public.invite_requests q where q.status = 'pending')
+              else 0 end
+    from (select 1) one
+    left join public.studio_members  m on m.user_id = auth.uid()
+    left join public.invite_requests r on r.user_id = auth.uid();
+$$;
+revoke execute on function public.studio_status() from public, anon;
+grant  execute on function public.studio_status() to authenticated;
+
+-- 14.3 THE CONSOLE -----------------------------------------------------
+create or replace function public.admin_list_requests(p_status text default null)
+returns table (user_id uuid, email text, display_name text, note text, user_agent text,
+               status text, times_asked int, requested_at timestamptz,
+               decided_at timestamptz, decided_by_email text, decision_note text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  return query
+    select r.user_id, r.email, r.display_name, r.note, r.user_agent,
+           r.status::text, r.times_asked, r.requested_at,
+           r.decided_at, d.email::text, r.decision_note
+      from public.invite_requests r
+      left join auth.users d on d.id = r.decided_by
+     where p_status is null or r.status = p_status
+     order by (r.status = 'pending') desc, r.requested_at desc
+     limit 500;
+end;
+$fn$;
+
+-- Approve = membership, directly. A member who was disabled and asks
+-- again is re-enabled by the same path (the ON CONFLICT branch), which
+-- is the one way back in after admin_terminate_session(…, true).
+create or replace function public.admin_decide_request(p_user uuid, p_approve boolean, p_note text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  r public.invite_requests;
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  select * into r from public.invite_requests ir where ir.user_id = p_user for update;
+  if r.user_id is null then
+    raise exception 'No such request' using errcode = '22023';
+  end if;
+  if p_approve then
+    insert into public.studio_members (user_id, role)
+    values (p_user, 'user')
+    on conflict (user_id) do update set disabled_at = null;
+  end if;
+  update public.invite_requests ir
+     set status = case when p_approve then 'approved' else 'declined' end,
+         decided_at = now(), decided_by = auth.uid(),
+         decision_note = nullif(left(trim(coalesce(p_note, '')), 500), '')
+   where ir.user_id = p_user;
+end;
+$fn$;
+
+revoke execute on function public.admin_list_requests(text)                from public, anon;
+revoke execute on function public.admin_decide_request(uuid, boolean, text) from public, anon;
+grant  execute on function public.admin_list_requests(text)                to authenticated;
+grant  execute on function public.admin_decide_request(uuid, boolean, text) to authenticated;
+
+-- 14.4 A CODE CLOSES THE REQUEST TOO --------------------------------
+-- Somebody who asked, and then got a code from a friend, must not sit
+-- in the queue as a pending stranger. Membership arriving by ANY route
+-- (redeem_invite, admin_decide_request, the 13.2 bootstrap) marks their
+-- request approved.
+create or replace function public.invite_requests_close_on_membership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  update public.invite_requests ir
+     set status = 'approved', decided_at = coalesce(ir.decided_at, now())
+   where ir.user_id = new.user_id and ir.status = 'pending';
+  return new;
+end;
+$fn$;
+drop trigger if exists studio_members_close_request on public.studio_members;
+create trigger studio_members_close_request after insert on public.studio_members
+  for each row execute function public.invite_requests_close_on_membership();
+
+notify pgrst, 'reload schema';
+
+-- 14.5 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon: rpc/request_invite -> 42501 (no grant).
+--  2. signed in, no membership: request_invite('hello') -> pending,
+--     times_asked 1; again -> still pending, note updated, times_asked
+--     unchanged; select from invite_requests -> exactly one row, own.
+--  3. a member calling request_invite -> 22023 'already a member'.
+--  4. non-admin: admin_list_requests -> 42501; admin: the row from 2,
+--     with the Google e-mail and name (not anything the client sent).
+--  5. admin_decide_request(B, true): B has a studio_members row, the
+--     request reads approved; B's studio_status -> registered.
+--  6. admin_decide_request(C, false, 'not now'): C's studio_status
+--     carries request_status 'declined' and the note; C calling
+--     request_invite within 7 days -> 22023 naming the date.
+--  7. D requests, then redeems a code: D's request reads approved
+--     without any admin action (the trigger).
+--  8. a disabled member (13.5) requests -> pending; approve -> their
+--     disabled_at is null again.
+--  9. admin's studio_status.pending_requests equals the pending count;
+--     a non-admin's is 0 whatever the queue holds.
 -- ============================================================

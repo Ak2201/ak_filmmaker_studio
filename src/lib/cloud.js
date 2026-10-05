@@ -151,10 +151,25 @@ function setSync(state, detail) {
   syncListeners.forEach((fn) => { try { fn(snap); } catch (e) {} });
   Store.notify('cloud:status', snap);
 }
+/* One sentence per closed reason. The pill, the account menu and
+   invite.html all print this rather than composing their own, so the
+   three cannot disagree about why sync is off. */
+export function gateDetail(reason) {
+  switch (reason) {
+    case 'pending':     return 'Invite requested — waiting for an administrator';
+    case 'declined':    return 'Invite request declined — sync is off';
+    case 'disabled':    return 'This account was disabled by an administrator';
+    case 'revoked':     return 'Your invite was revoked — sync is paused';
+    case 'notdeployed': return 'Signed in — the invite gate is not switched on in this studio’s database yet';
+    case 'unreachable': return 'Could not reach the studio to check your invite — sync paused';
+    default:            return 'Signed in — awaiting an invite';
+  }
+}
+
 function idleSync() {
   const q = _readQueue().length;
   if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
-  if (_gateState === 'closed') return setSync(SYNC_STATES.OFF, 'Signed in — redeem an invite code to sync');
+  if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
   if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
   if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
   setSync(SYNC_STATES.SYNCED, 'Everything is in your account');
@@ -325,26 +340,72 @@ export function ownsSync() { return !!(isConfigured() && session && syncAllowed(
 // only PAUSE sync. Nothing here touches a project on this device —
 // local-first is the contract, and a revoked code or a lost lock is a
 // reason to stop uploading, never a reason to take somebody's work
-// out of their hands. src/lib/gate.js has the full reasoning, including
-// why every check FAILS OPEN until section 13 has run.
+// out of their hands. src/lib/gate.js has the full reasoning.
 //
 //   'unknown'  not asked yet (a decision is in flight)
-//   'open'     through the gate, no gate deployed, or the question could
-//              not be answered (fail open) — sync as before
-//   'closed'   signed in, gate deployed, no redeemed code — no sync
+//   'open'     through the gate — sync as before
+//   'closed'   signed in and NOT through it — no sync. `reason` says why:
+//                'noinvite'     deployed, no membership, nothing asked
+//                'pending'      an invite request is waiting on an admin
+//                'declined'     the request was declined
+//                'disabled'     an administrator disabled this account
+//                'revoked'      the membership went away mid-session
+//                'notdeployed'  schema sections 13/14 have not run
+//                'unreachable'  the status call failed (network); retried
+//                               when the browser comes back online
 //   'lost'     another device took the session — no sync until taken back
+//
+// IT FAILS CLOSED. It failed open — "no functions, so no gate, so
+// sync as before" — and that was a studio every Google account could
+// sync to, because the functions were never deployed. A gate that
+// cannot be checked is shut; what the two unverifiable cases get is a
+// different SENTENCE, not a different answer.
+//
+// THE LANDING. The first load after a sign-in that ends up closed is
+// sent to invite.html, where the two routes through are offered (a
+// code, or a request for an invite). ONLY that first load: a marker
+// in sessionStorage is set when the sign-in begins and consumed by the
+// first runGate() that sees it, so a visitor who is waiting on an
+// administrator can still open the breakdown without being bounced
+// off every page. Local work was never behind the gate and is not now.
 // ============================================================
 const Gate = createGate(() => ensureClient());
+const GATE_LANDING_KEY = 'fms_gate_landing';
 let _gateState = 'unknown';
+let _gateReason = '';
+let _gateStatus = null;
 let _heartbeat = null;
 let _gateRole = '';
 function syncAllowed() { return _gateState !== 'closed' && _gateState !== 'lost'; }
-function setGate(state) {
+function setGate(state, reason) {
   _gateState = state;
+  _gateReason = state === 'closed' ? (reason || _gateReason || 'noinvite') : (reason || '');
   idleSync();
-  Store.notify('gate:changed', { state, role: _gateRole });
+  Store.notify('gate:changed', getGateState());
 }
-export function getGateState() { return { state: _gateState, role: _gateRole }; }
+/** { state, reason, role, status } — `status` is the last studio_status()
+ *  answer (see gate.js), so a page can read the request's standing
+ *  without a second round trip. */
+export function getGateState() { return { state: _gateState, reason: _gateReason, role: _gateRole, status: _gateStatus }; }
+
+/* The marker is sessionStorage, not localStorage: it is about THIS
+   tab's sign-in, it must survive the reload Store.setAccount()
+   schedules and the trip to Google, and it must not survive the tab.
+   Private mode may refuse it, in which case the landing is skipped and
+   the pill still says what is wrong. */
+function markGateLanding() { try { sessionStorage.setItem(GATE_LANDING_KEY, '1'); } catch (e) { /* no landing */ } }
+function takeGateLanding() {
+  try { const v = sessionStorage.getItem(GATE_LANDING_KEY); if (v) sessionStorage.removeItem(GATE_LANDING_KEY); return !!v; }
+  catch (e) { return false; }
+}
+function onInvitePage() { return /(^|\/)invite(\.html)?$/.test(location.pathname); }
+function landOnInvite() {
+  if (inExtension() || onInvitePage()) return;
+  /* The screening room is a guest's page; never pull a guest into the
+     members' doorway. */
+  if (/(^|\/)screening(\.html)?$/.test(location.pathname)) return;
+  location.assign('invite.html');
+}
 
 async function askTakeover(info) {
   try {
@@ -361,11 +422,11 @@ function onLockLost(reason) {
   tearDownChannels();
   if (reason === 'revoked') {
     _gateRole = '';
-    setGate('closed');
+    setGate('closed', 'revoked');
     toast('Your invite has been revoked, so sync is paused. Everything on this device is still here.', 'error', 8000);
     return;
   }
-  setGate('lost');
+  setGate('lost', 'lost');
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast('This account is now active on another device, so sync is paused here. Your work on this device is safe.', {
       type: 'error', action: 'Take over', onAction: () => { takeBack(); }
@@ -388,21 +449,40 @@ async function takeBack() {
 /** Resolves true when sync may run. Never throws. */
 async function runGate() {
   if (!session) return false;
+  const landing = takeGateLanding();
+  const closed = (reason) => {
+    setGate('closed', reason);
+    if (landing) landOnInvite();
+    return false;
+  };
   let st;
   try { st = await Gate.status(); }
-  catch (e) { setGate('open'); return true; }   // network: fail open, behave as before
-  if (!st.deployed) { setGate('open'); return true; }
+  catch (e) {
+    /* Could not ask. Closed, not open: the writes are still clocked
+       (see the `saved` subscriber) and win at the next sync, so the
+       cost of a wrong "closed" is a delay, while the cost of a wrong
+       "open" was the whole gate. Retried when the network returns. */
+    _gateStatus = null;
+    return closed('unreachable');
+  }
+  _gateStatus = st;
+  if (!st.deployed) {
+    _gateRole = '';
+    return closed('notdeployed');
+  }
   if ((!st.registered || st.disabled) && await Gate.hasPendingTicket()) {
     try {
       await Gate.redeemPending();
       st = await Gate.status();
+      _gateStatus = st;
       if (st.registered) toast('Invite code accepted — your studio will sync to this account.', 'success', 4000);
     } catch (e) {
       toast(e.message || 'That invite code could not be redeemed.', 'error', 6000);
     }
   }
   _gateRole = st.role || '';
-  if (!st.registered || st.disabled) { setGate('closed'); return false; }
+  if (st.disabled) return closed('disabled');
+  if (!st.registered) return closed(st.requestStatus === 'pending' ? 'pending' : st.requestStatus === 'declined' ? 'declined' : 'noinvite');
 
   let r = 'ok';
   try { r = await Gate.acquire(); } catch (e) { r = 'ok'; }   // lock RPC unavailable: do not block
@@ -417,6 +497,18 @@ async function runGate() {
   return true;
 }
 export { Gate };
+
+/* A gate closed only because the status call failed is re-asked when
+   the browser says it is back. Nothing else re-runs it on its own: a
+   gate closed because the answer was "no" stays closed until the
+   person acts (a code, a request, an administrator). */
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    if (session && _gateState === 'closed' && _gateReason === 'unreachable') {
+      runGate().then((ok) => { if (ok) attachToCurrentProject(); });
+    }
+  });
+}
 
 /* In the extension the service worker keeps the heartbeat even with no
    page open, and when it loses the session it has already cleared the
@@ -501,6 +593,7 @@ async function _createClient() {
            already scheduled. Uploading or pulling now would push those
            fields into the account that is about to open, which is the
            one way this design can lose somebody's writing. Stop. */
+        if (sess && wasNull && !inExtension()) markGateLanding();
         if (Store.setAccount(sess.user.id)) { idleSync(); return; }
       } else {
         /* Involuntary: a refresh token that expired while the tab sat
@@ -526,7 +619,7 @@ async function _createClient() {
         tearDownChannels();
         _invitesCheckedFor = null;
         if (_heartbeat) { _heartbeat.stop(); _heartbeat = null; }
-        _gateState = 'unknown'; _gateRole = '';
+        _gateState = 'unknown'; _gateRole = ''; _gateReason = ''; _gateStatus = null;
       }
       idleSync();
     });
@@ -1624,7 +1717,7 @@ const StudioCloud = {
   // account invites
   claimInvites,
   // the studio gate (schema section 13): invite codes, device lock, admin
-  gate: Gate, getGateState, runGate, takeBack,
+  gate: Gate, getGateState, gateDetail, runGate, takeBack,
   // comments
   listComments, createComment, updateCommentStatus, deleteComment, getProjectRole,
   // misc
@@ -1670,6 +1763,11 @@ async function boot() {
     _signingIn = false;
     cleanRedirectUrl();
     if (session) {
+      /* Back from Google. Store.setAccount() below may reload this
+         document into the account's namespace before the gate is
+         asked, so the landing is marked NOW and consumed by whichever
+         load runs runGate(). */
+      markGateLanding();
       notifyAuth('SIGNED_IN', session);
       toast('Signed in as ' + (getUserEmail() || 'your account') + '.', 'success', 2400);
     } else {

@@ -128,9 +128,21 @@ export function refreshSignInPill() {
   // --- signed in ---------------------------------------------------
   const email = (c.getUserEmail && c.getUserEmail()) || 'signed in';
   const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
+  const g     = (c.getGateState && c.getGateState()) || { state: 'open', reason: '' };
   pill.classList.add('signed-in');
   pill.dataset.sync = syncTone(st.state);
-  lab.textContent = fmtEmail(email);
+  /* A closed gate is the one thing the pill says INSTEAD of the
+     address: somebody waiting on an invite should see that they are
+     without opening the menu. (On the pages that have a pill — the
+     hub and the three original pages, where a `.toolbar` hosts it;
+     the module pages carry no account control, which predates the
+     gate.) The address is still in the title and the menu. */
+  if (g.state === 'closed') {
+    pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
+    lab.textContent = g.reason === 'pending' ? 'INVITE PENDING' : 'INVITE NEEDED';
+  } else {
+    lab.textContent = fmtEmail(email);
+  }
   pill.title = 'Signed in as ' + email + (st.detail ? ' · ' + st.detail : '');
   pill.setAttribute('aria-label', 'Account menu for ' + email + '. ' + (st.detail || ''));
 }
@@ -313,6 +325,20 @@ export function openAccountMenu(anchor) {
   const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
   const email = (c.getUserEmail && c.getUserEmail()) || '';
   const name  = displayName();
+  /* The gate's answer, from the one place that holds it. A closed
+     gate gets a row to the doorway; an administrator with people
+     waiting gets a row to the console. Both are LINKS to pages that
+     always render, not controls that depend on data existing. */
+  const g = (c.getGateState && c.getGateState()) || { state: 'open', reason: '', status: null };
+  const waiting = (g.status && g.status.pendingRequests) || 0;
+  const gateRows = [];
+  if (g.state === 'closed') {
+    gateRows.push(h('a.am-item', { href: 'invite.html', role: 'menuitem', text: g.reason === 'pending' ? '→ YOUR INVITE REQUEST' : '→ GET AN INVITE' }));
+  }
+  if (g.role === 'admin' && waiting) {
+    gateRows.push(h('a.am-item', { href: 'settings.html#admin-console', role: 'menuitem',
+      text: `→ ${waiting} INVITE REQUEST${waiting === 1 ? '' : 'S'} WAITING` }));
+  }
 
   const menu = h('div#accountMenu.account-menu', { role: 'menu' }, [
     h('div.am-you', {}, [
@@ -332,6 +358,7 @@ export function openAccountMenu(anchor) {
       h('span.am-sync-dot', { 'aria-hidden': 'true' }),
       h('span.am-sync-text', { text: st.detail || 'Local only' })
     ]),
+    ...gateRows,
     h('button.am-item', { type: 'button', role: 'menuitem', 'data-auth-action': 'sync',     text: '↻ SYNC NOW' }),
     h('button.am-item', { type: 'button', role: 'menuitem', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
     h('button.am-item.danger', { type: 'button', role: 'menuitem', 'data-auth-action': 'signout', text: 'SIGN OUT' }),

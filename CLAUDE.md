@@ -41,6 +41,8 @@ for hosted previews that shouldn't outlive themselves in a cache.
 
 ```
 index.html feature.html short.html library.html   page entries (Vite MPA)
+invite.html                                       the doorway: where a closed
+                                                  gate lands a sign-in
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
@@ -72,12 +74,16 @@ src/
                         and pacing flags are DERIVED, never stored
              screenplay-analysis.js ← screen time, cast matrix,
                         auto-tag suggestions; pure, stores nothing
-             gate.js ← invite codes, the device lock, screening passes
+             gate.js ← invite codes, invite requests, the device lock,
+                       screening passes
              extension-bridge.js ← the app's half of the extension
              docx-text.js pitch-deck.js watermark.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
+             gate-ui.js invite-request.js ← the gate's two faces: the
+                       code box + admin console, and the request block
+                       invite.html and the extension panel both draw
   styles/    tokens.css base.css chrome.css editorial.css widgets.css
              modules.css ← the design language, read by every page
              palette.css ← the command palette's own sheet
@@ -1656,13 +1662,46 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       vehicles and stunts yellow, sound green) are CATEGORY hues,
       `.hue-el-*`, in all four token blocks; yellow carries its own
       on-colour. Pitch deck: one click, landscape PDF, print pipeline.
-    - **The gate** (schema section 13, `src/lib/gate.js`, `cloud.js`'s
-      `runGate()`): it FAILS OPEN until section 13 runs. "Function
-      missing" is not "the function said no". A closed gate or a lost
-      lock pauses sync, and the local write clock is still recorded, so
-      paused writes win at the next sync. Section 13.6b makes it a
-      boundary with additive triggers and grandfathers existing owners.
-      NOT RUN against the database yet; its own checks are listed in 13.8.
+    - **The gate** (schema sections 13 and 14, `src/lib/gate.js`,
+      `cloud.js`'s `runGate()`): it FAILS CLOSED. It failed open until
+      section 13 ran — and section 13 NEVER RAN (probed 5 Oct 2026:
+      every function PGRST202), so for its whole life the "gate" let
+      every Google account sync. "Function missing" is still told apart
+      from "the function said no", but only for the SENTENCE: reason
+      `notdeployed` versus `noinvite` / `pending` / `declined` /
+      `disabled` / `revoked` / `unreachable`, all of them `state:
+      'closed'`. A closed gate or a lost lock pauses sync, and the local
+      write clock is still recorded, so paused writes win at the next
+      sync. Section 13.6b makes it a boundary with additive triggers;
+      its grandfathering insert is COMMENTED OUT now, because "already
+      owns a cloud project" stopped meaning "was let in".
+
+      **The flow is sign in → invite.html → through or ask.** The FIRST
+      load after a sign-in that ends closed is sent to `invite.html`
+      (a sessionStorage marker, `fms_gate_landing`, set when the sign-in
+      begins and consumed by the first `runGate()`), and ONLY that load:
+      local work was never behind the gate, so a visitor waiting on an
+      admin keeps every page. Two routes through: a code, or a REQUEST
+      (section 14, `request_invite`) — the row carries the e-mail and
+      name Google attested, copied server-side out of `auth.users`, plus
+      a note and the browser; the admin console on `settings.html`
+      lists the queue and APPROVE writes the `studio_members` row
+      directly (no code), DECLINE records a note the requester sees and
+      a seven-day cooling-off. Membership arriving by any route closes
+      a pending request (14.4 trigger). `studio_status()` was widened
+      to carry the request's standing and, for an admin, the pending
+      count, so the pill, the account menu and `invite.html` all read
+      ONE answer (`getGateState().status`) and `gateDetail(reason)` is
+      the one sentence they print.
+
+      BOTH SECTIONS RAN on 5 Oct 2026, plus the 13.2 bootstrap — through
+      the dashboard SQL editor, verified afterwards through PostgREST
+      (every function 401 to anon, where it was PGRST202 that morning).
+      `auth.users` held one account, now the admin; the second
+      `VITE_ADMIN_EMAILS` address has never signed in and gets its row
+      the first time it does (re-run the 13.2 line, or approve its
+      request). The 13.8 and 14.5 LIVE CHECKS are still unrun: deployed
+      is not the same claim as behaving. `docs/GATE.md`.
     - **Keys.** `fms_story_v1`, `fms_idea_vault_v1`: per project, in all
       five registries (13.7 adds the scopes). `fms_device_session_v1`:
       the website's lock handle, in `ALL_KEYS` and deliberately NOT in
@@ -1675,10 +1714,13 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `chromiumapp.org` redirect URL on the Supabase allow-list before
       Google sign-in works.
 
-    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 34,
-    `prove:extension` 28, all against the real build. What is NOT
-    proved: section 13 against a live database, Google's consent screen
-    for the extension, and Chrome Web Store review.
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 34
+    (before the request flow; (a) now asserts CLOSED and (i)–(k) cover
+    the landing, request/approve and decline — rerun and update this
+    number), `prove:extension` 28, all against the real build. What is
+    NOT proved: the 13.8/14.5 live checks against the database (the
+    sections are DEPLOYED, see above), Google's consent screen for the
+    extension, and Chrome Web Store review.
 
 ## Things that are deliberate, not oversights
 

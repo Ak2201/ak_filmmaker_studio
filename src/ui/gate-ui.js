@@ -90,9 +90,9 @@ export function inviteSection(section, st) {
   if (!c || !c.isConfigured()) return null;
   const signedIn = !!c.getSession();
   if (signedIn && st && (!st.deployed || (st.registered && !st.disabled))) return null;
-  const sec = section('invite', 'Invite', signedIn ? 'Redeem your invite code.' : 'Have an invite code?',
+  const sec = section('invite', 'Invite', 'Have an invite code?',
     signedIn
-      ? 'This studio’s cloud is invite-only. Enter the code you were given and your projects start syncing to this account. Everything on this device stays here either way.'
+      ? 'If somebody handed you a code, enter it and your projects start syncing to this account. No code? Request an invite instead — the administrator sees the account you signed in with. Everything on this device stays here either way.'
       : 'Cloud sync and the Chrome extension are invite-only. Enter your code, then sign in with Google — the code is spent only once Google has said who you are. Working on this device needs no code at all.');
   const form = h('form.gt-code', { 'data-gate-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'gtCode', text: 'Invite or screening pass code' }));
@@ -102,6 +102,12 @@ export function inviteSection(section, st) {
   form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'CONTINUE WITH GOOGLE') }));
   if (codeError) form.append(h('p.gt-error', { role: 'alert', text: codeError }));
   sec.append(form);
+  /* The other route, when this box is drawn somewhere other than the
+     doorway itself. invite.html renders the request block beside it,
+     so it does not need the pointer. */
+  if (signedIn && !/(^|\/)invite(\.html)?$/.test(location.pathname)) {
+    sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? Request an invite →' })]));
+  }
   return sec;
 }
 
@@ -135,7 +141,7 @@ async function submitCode(form) {
 
 /* ---- FR-102 / FR-103: the admin console ------------------------- */
 
-const admin = { codes: [], members: [], redemptions: [], projects: [], loaded: false, busy: false, error: '', made: null };
+const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null };
 
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 const DURATIONS = [
@@ -154,8 +160,8 @@ async function loadAdmin() {
   if (!g) return;
   admin.busy = true; admin.error = ''; rerender();
   try {
-    const [codes, members, redemptions] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions()]);
-    admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions;
+    const [codes, members, redemptions, requests] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions(), g.admin.listRequests()]);
+    admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions; admin.requests = requests || [];
     try { admin.projects = await g.admin.listProjects(); } catch (e) { admin.projects = []; }
     admin.loaded = true;
   } catch (e) {
@@ -167,11 +173,46 @@ async function loadAdmin() {
 
 export function adminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('admin-console', 'Administrator', 'Invite codes and sessions.',
-    'Issue codes, hand out time-limited screening passes, see who redeemed what, and end a session that should not be running. Every button here is re-checked by the database, not by this page.');
+  const sec = section('admin-console', 'Administrator', 'Invite requests, codes and sessions.',
+    'Approve or decline the people who asked, issue codes, hand out time-limited screening passes, see who redeemed what, and end a session that should not be running. Every button here is re-checked by the database, not by this page.');
   if (!admin.loaded && !admin.busy && !admin.error) { loadAdmin(); }
   if (admin.error) sec.append(h('p.gt-error', { role: 'alert', text: admin.error }));
   if (!admin.loaded) { sec.append(h('p.gt-meta', { text: admin.busy ? 'Loading…' : '' })); return sec; }
+
+  /* -- requests (section 14) -- The queue first, because it is the
+     part with people waiting on it. Pending rows get the two buttons;
+     decided rows are history, kept short. */
+  const pending = admin.requests.filter((r) => r.status === 'pending');
+  const decided = admin.requests.filter((r) => r.status !== 'pending');
+  sec.append(h('h3.gt-h3', { id: 'gtRequests', text: `Invite requests (${pending.length} waiting)` }));
+  if (!pending.length) sec.append(h('p.gt-meta', { text: 'Nobody is waiting. A request appears here when somebody signs in with Google and asks on invite.html.' }));
+  else {
+    const table = h('table.gt-table.gt-requests');
+    table.append(h('thead', {}, [h('tr', {}, ['Who', 'Asked', 'Their note', 'From', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+    const tb = h('tbody');
+    for (const r of pending) {
+      tb.append(h('tr', { 'data-request': r.user_id }, [
+        h('td', {}, [h('strong', { text: r.display_name || r.email }), r.display_name ? h('br') : null, r.display_name ? h('span.gt-meta', { text: r.email }) : null].filter(Boolean)),
+        h('td', { text: fmtDate(r.requested_at) + (r.times_asked > 1 ? ` · asked ${r.times_asked}×` : '') }),
+        h('td', { text: r.note || '—' }),
+        h('td', { text: browserOf(r.user_agent) || '—' }),
+        h('td.gt-row-actions', {}, [
+          h('button.btn.primary', { type: 'button', 'data-gate-action': 'approve', 'data-id': r.user_id, 'data-email': r.email, text: 'APPROVE' }),
+          h('button.btn.danger', { type: 'button', 'data-gate-action': 'decline', 'data-id': r.user_id, 'data-email': r.email, text: 'DECLINE' })
+        ])
+      ]));
+    }
+    table.append(tb);
+    sec.append(h('div.gt-scroll', {}, [table]));
+  }
+  if (decided.length) {
+    const det = h('details.gt-decided', {}, [h('summary', { text: `Decided (${decided.length})` })]);
+    const ul = h('ul.gt-list');
+    decided.slice(0, 30).forEach((r) => ul.append(h('li', { text: `${fmtDate(r.decided_at)} — ${r.email} — ${r.status}`
+      + (r.decided_by_email ? ` by ${r.decided_by_email}` : '') + (r.decision_note ? ` — “${r.decision_note}”` : '') })));
+    det.append(ul);
+    sec.append(det);
+  }
 
   /* -- create -- */
   const form = h('form.gt-create', { 'data-gate-form': 'create' });
@@ -313,6 +354,15 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
     } else if (act === 'disable') {
       if (!window.confirm(`Disable ${el.dataset.email}? Their session ends and their cloud sync stops. Nothing on their own device is touched.`)) return;
       await g.admin.terminate(el.dataset.id, true); await loadAdmin();
+    } else if (act === 'approve') {
+      await g.admin.decideRequest(el.dataset.id, true); await loadAdmin();
+      toast(`${el.dataset.email} is in. They are through the gate on their next visit.`, 'success');
+    } else if (act === 'decline') {
+      /* window.prompt, like the confirms beside it: null is Cancel, an
+         empty string is "decline, no note". The note is shown to them. */
+      const note = window.prompt(`Decline ${el.dataset.email}? They can ask again after seven days.\n\nA line for them (optional):`, '');
+      if (note === null) return;
+      await g.admin.decideRequest(el.dataset.id, false, note); await loadAdmin();
     } else if (act === 'reload') {
       await loadAdmin();
     } else if (act === 'copy') {

@@ -13,11 +13,25 @@
    lock PAUSES SYNC and says so. It never deletes, hides or overwrites
    anything typed here.
 
-   IT FAILS OPEN UNTIL THE SCHEMA RUNS. Every call distinguishes "the
-   function does not exist" (section 13 has not been applied to this
-   project) from "the function said no". The first is `deployed: false`
-   and changes nothing about how the app behaves today; only the second
-   closes anything. Shipping this file before the SQL breaks nobody.
+   IT USED TO FAIL OPEN UNTIL THE SCHEMA RAN, AND IT NO LONGER DOES.
+   Every call still distinguishes "the function does not exist"
+   (section 13 has not been applied to this project) from "the
+   function said no" — `deployed: false` against a refusal — but the
+   caller in cloud.js now treats BOTH as a closed gate. The fail-open
+   version shipped so the code could land before the SQL, and what it
+   produced was a studio any Google account could sync to, which is
+   the one thing a gate exists to prevent. The distinction survives
+   for the MESSAGE: "not switched on yet" is a sentence for the
+   administrator, "no invite" is a sentence for the visitor.
+
+   TWO ROUTES THROUGH IT NOW, not one. A code, as before. Or a REQUEST
+   (schema section 14): a signed-in account with no membership asks,
+   the row carries the e-mail Google attested rather than one typed
+   in, and an administrator approves it from the console on
+   settings.html. Approval writes the membership directly; no code is
+   involved. `status()` returns where that request stands so
+   invite.html can say "asked on Tuesday, waiting" instead of offering
+   the form again.
 
    WHERE THINGS LIVE.
      pre-auth ticket  10 minutes, survives the Google redirect. Website:
@@ -100,6 +114,7 @@ const one = (data) => (Array.isArray(data) ? data[0] : data) || null;
  *  has no Supabase project). Passed in, not imported, so this module
  *  never drags cloud.js onto a page that does not want it. */
 export function createGate(getClient) {
+  const ua = () => (typeof navigator !== 'undefined' ? navigator.userAgent : '').slice(0, 300);
   async function rpc(name, args) {
     const sb = await getClient();
     if (!sb) throw new GateError('This build has no cloud project configured.', 'nocloud');
@@ -108,13 +123,36 @@ export function createGate(getClient) {
     return data;
   }
 
-  /** { deployed, registered, role, disabled } */
+  /** { deployed, registered, role, disabled,
+   *    requestStatus: '' | 'pending' | 'approved' | 'declined',
+   *    requestedAt, decidedAt, decisionNote, pendingRequests }
+   *  `registered` is FALSE when the functions are missing: nobody has
+   *  been admitted by a gate that does not exist, and saying otherwise
+   *  is how the fail-open version let everybody through. */
   async function status() {
+    const blank = { deployed: false, registered: false, role: '', disabled: false,
+                    requestStatus: '', requestedAt: null, decidedAt: null, decisionNote: '', pendingRequests: 0 };
     try {
-      const r = one(await rpc('studio_status'));
-      return { deployed: true, registered: !!(r && r.registered), role: (r && r.role) || '', disabled: !!(r && r.disabled) };
+      const r = one(await rpc('studio_status')) || {};
+      return { deployed: true, registered: !!r.registered, role: r.role || '', disabled: !!r.disabled,
+               requestStatus: r.request_status || '', requestedAt: r.requested_at || null,
+               decidedAt: r.decided_at || null, decisionNote: r.decision_note || '',
+               pendingRequests: Number(r.pending_requests) || 0 };
     } catch (e) {
-      if (isMissing(e)) return { deployed: false, registered: true, role: '', disabled: false };
+      if (isMissing(e)) return blank;
+      throw e;
+    }
+  }
+
+  /** Section 14: queue this signed-in account for an administrator.
+   *  Resolves to { status, requestedAt, decidedAt, decisionNote, timesAsked }. */
+  async function requestInvite(note) {
+    try {
+      const r = one(await rpc('request_invite', { p_note: String(note || '').slice(0, 1000) || null, p_user_agent: ua() })) || {};
+      return { status: r.status || 'pending', requestedAt: r.requested_at || null, decidedAt: r.decided_at || null,
+               decisionNote: r.decision_note || '', timesAsked: Number(r.times_asked) || 1 };
+    } catch (e) {
+      if (isMissing(e)) throw new GateError('Invite requests are not switched on for this studio yet — an administrator has to run schema section 14.', 'notdeployed');
       throw e;
     }
   }
@@ -159,7 +197,6 @@ export function createGate(getClient) {
   }
 
   /* ---- the lock ---- */
-  const ua = () => (typeof navigator !== 'undefined' ? navigator.userAgent : '').slice(0, 300);
 
   /** 'ok' | { conflict: true, lastSeen, userAgent } */
   async function acquire() {
@@ -218,7 +255,14 @@ export function createGate(getClient) {
     },
     revokeCode: (id) => rpc('admin_revoke_invite', { p_id: id }),
     listMembers: () => rpc('admin_list_members'),
-    terminate: (userId, disable = false) => rpc('admin_terminate_session', { p_user: userId, p_disable: disable })
+    terminate: (userId, disable = false) => rpc('admin_terminate_session', { p_user: userId, p_disable: disable }),
+    /* Section 14. `status` filters ('pending' | 'approved' | 'declined');
+       null lists everything, pending first. */
+    listRequests: async (status = null) => {
+      try { return (await rpc('admin_list_requests', { p_status: status })) || []; }
+      catch (e) { if (isMissing(e)) return []; throw e; }
+    },
+    decideRequest: (userId, approve, note = '') => rpc('admin_decide_request', { p_user: userId, p_approve: !!approve, p_note: note || null })
   };
 
   /* ---- screening room (anonymous) ---- */
@@ -234,7 +278,7 @@ export function createGate(getClient) {
     }
   }
 
-  return { status, verifyCode, redeemPending, redeemCode, acquire, takeover, ping, release,
+  return { status, verifyCode, redeemPending, redeemCode, requestInvite, acquire, takeover, ping, release,
            admin, openScreening, sessionId: () => holder.getSessionId(),
            hasPendingTicket: async () => !!((await holder.getTicket()) || {}).ticket };
 }

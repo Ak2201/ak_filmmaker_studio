@@ -2136,6 +2136,12 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   line-height: 1;
   text-align: center;
   letter-spacing: 0;
+  /* The mark is a ligature on its own NAME, so with the icon font not
+     yet (or never) loaded this 1.2em box holds the word
+     "format_list_numbered" — which overflowed straight across the
+     label beside it on the two pages that forgot the font. Clipping
+     to the box turns that into a harmless fragment. */
+  overflow: hidden;
   /* --hue-DEEP, not --hue-lift. A lift is a hue mixed to sit on a
      ground that is dark IN EVERY THEME; this band is white in the
      light theme, so the lift put the phase glyphs at 1.45-2.32:1 on
@@ -2318,6 +2324,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   grid-area: 1 / 1 / 3 / 2;
   align-self: center;
   width: 1.4em;
+  overflow: hidden;   /* same reason as .sh-where-icon */
   font-family: var(--f-mono);
   font-size: var(--t-base);
   line-height: 1;

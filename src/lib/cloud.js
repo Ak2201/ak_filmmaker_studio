@@ -404,6 +404,13 @@ function landOnInvite() {
   /* The screening room is a guest's page; never pull a guest into the
      members' doorway. */
   if (/(^|\/)screening(\.html)?$/.test(location.pathname)) return;
+  /* When the site gate is installed on this page (src/lib/sitegate.js
+     stamps <html data-sitegate> at evaluation) it will send a closed
+     visitor to the doorway itself, on this same gate:changed. Two
+     navigations to one URL in one tick is a race the browser resolves
+     by aborting the first, which a harness sees as an interrupted
+     navigation and a person may see as a flash. One owner. */
+  if (document.documentElement.dataset.sitegate) return;
   location.assign('invite.html');
 }
 
@@ -1697,6 +1704,7 @@ const StudioCloud = {
   // config
   getCfg, setCfg, isCfgOverridden, builtInCfg,
   isConfigured: () => !!(getCfg() && getCfg().url && getCfg().key),
+  isBooted,
   isAdmin, providerToken,
   /* Read through this global by drive-sync.js, the way src/ui/auth.js
      reaches this module — importing it there would put cloud.js on
@@ -1818,5 +1826,15 @@ async function boot() {
   idleSync();
   // Always handle ?share= if present, even before sign-in
   handleSharedLink();
+  /* The site gate (src/lib/sitegate.js) cannot tell "signed out" from
+     "not asked yet" without this: `session` is null in both states. It
+     is announced LAST, after the restored session (if any) has been
+     through runGate(), so a subscriber that decides on it sees the
+     settled answer and not an in-flight one. */
+  _booted = true;
+  Store.notify('cloud:booted', { session: !!session });
 }
+let _booted = false;
+/** True once boot() has restored (or failed to restore) a session. */
+export function isBooted() { return _booted; }
 boot();

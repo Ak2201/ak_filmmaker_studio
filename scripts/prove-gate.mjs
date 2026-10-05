@@ -42,15 +42,35 @@
          makes a member and the next load is open
      (k) DECLINE: the requester sees the decision and the note, and is
          not offered the form again inside the cooling-off week
+     (l) THE SITE GATE: a signed-out visitor to any page is sent to
+         invite.html; so is a signed-in non-member; a member sees the
+         page with the gate attribute cleared; the screening room and
+         the legal pages are exempt
+     (m) THE CONSOLE: admin.html shows the studio's numbers and the
+         organisations for an admin, and "Administrators only" for a
+         member; the gate's controls are on it
 
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 import { F, USERS, SB, REF, handle, sessionFor, freshDb } from './fake-supabase.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+/* This proof is about the GATED build — the one the hosts deploy. The
+   open build (npm run build:open, for verify) would pass the sign-in
+   scenarios and silently skip the site gate, so it is refused here the
+   way verify refuses the gated one. */
+{
+  const idx = path.join(ROOT, 'dist', 'index.html');
+  const stamp = fs.existsSync(idx) ? (fs.readFileSync(idx, 'utf8').match(/<meta name="fms-site-gate" content="([a-z]+)"/) || [])[1] : null;
+  if (stamp !== 'invite') {
+    console.error(`✗ dist/ was built with the site gate ${stamp === 'off' ? 'OFF' : 'unstamped'}; this proof needs the production build: npm run build`);
+    process.exit(2);
+  }
+}
 const PORT = Number(process.env.PROVE_PORT) || 5357;
 const BASE = `http://localhost:${PORT}/`;
 
@@ -97,7 +117,11 @@ try {
   F.reset(); F.db.deployed = false;
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'story.html');
+    /* Seed local work on the doorway, which the site gate exempts: a
+       gated page redirects a closed visitor moments after load, and an
+       evaluate() racing that navigation is a flaky harness, not a
+       finding. */
+    await page.goto(BASE + 'invite.html');
     await page.evaluate(() => localStorage.setItem('fms_story_v1', JSON.stringify({ v: 1, source: 'WRITTEN WITH NO GATE', framework: 'three_act', marks: [], tension: {} })));
     await page.goto(BASE + 'settings.html');
     ok(await waitGate(page, 'closed'), 'a signed-in user is CLOSED when the functions do not exist');
@@ -105,12 +129,11 @@ try {
     ok(/not switched on/i.test(await syncDetail(page)), 'the sync status says the gate is not switched on');
     await page.waitForTimeout(1200);
     ok(writes() === 0, 'nothing was uploaded');
-    /* The pill lives on the hub and the three original pages (the
-       `.toolbar` hosts); module pages have none. Check it where it is. */
+    /* Under the site gate a closed visitor never sees the hub, so the
+       pill's INVITE NEEDED state is unreachable on the website; what
+       they get is the doorway, on every page they try. */
     await page.goto(BASE + 'index.html');
-    await page.waitForSelector('#signInPill', { timeout: 8000 });
-    await waitGate(page, 'closed');
-    ok(/INVITE NEEDED/.test(await page.textContent('#signInPill')), 'the hub’s pill says INVITE NEEDED instead of the address');
+    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'the hub sends a closed visitor to invite.html'), () => ok(false, 'the hub sends a closed visitor to invite.html'));
     await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#request');
     ok(/not switched on/i.test(await page.textContent('#request')), 'invite.html says the gate is not switched on');
@@ -123,7 +146,7 @@ try {
   F.reset();
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'story.html');
+    await page.goto(BASE + 'invite.html');   // exempt from the site gate; see (a)
     await page.evaluate(() => {
       const s = { v: 1, source: 'LOCAL WORK THAT MUST SURVIVE', framework: 'three_act', marks: [], tension: {} };
       localStorage.setItem('fms_story_v1', JSON.stringify(s));
@@ -134,8 +157,8 @@ try {
     const writesBefore = writes();
     ok(/awaiting an invite/i.test(await syncDetail(page)), 'the sync status says why it is paused');
     await page.waitForSelector('#invite #gtCode');
-    ok(true, 'the invite box appears on settings');
-    ok(!!(await page.$('#invite a[href="invite.html"]')), 'with a route to the request beside it');
+    ok(/invite\.html/.test(page.url()), 'settings.html became invite.html — the site gate — and the code box is there');
+    ok(!!(await page.$('#request [data-ir-form]')), 'with the request form beside it');
     ok(writes() === writesBefore, 'nothing was uploaded while closed');
     await page.fill('#gtCode', 'amy code 2345 6');
     await page.click('#invite button[type="submit"]');
@@ -157,9 +180,8 @@ try {
     ok(who.includes('cal@example.com') && who.includes('Cal Fernandes'), 'the form shows the attested Google account and name, read-only');
     ok(!(await page.evaluate(() => sessionStorage.getItem('fms_gate_landing'))), 'the landing marker was consumed');
     await page.goto(BASE + 'story.html');
-    await waitGate(page, 'closed');
-    await page.waitForTimeout(600);
-    ok(/story\.html/.test(page.url()), 'the NEXT page is not bounced — local work is not behind the gate');
+    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'the NEXT page is bounced too — the whole website is behind the gate now'), () => ok(false, 'the NEXT page is bounced too — the whole website is behind the gate now'));
+    ok((await page.evaluate(() => document.documentElement.dataset.sitegate || '')) === '', 'invite.html itself is exempt (no data-sitegate)');
 
     console.log('(j) the request, and the approval');
     await page.goto(BASE + 'invite.html');
@@ -175,14 +197,12 @@ try {
     ok(/Requested/.test(await page.textContent('#request')), 'the page now says Requested instead of offering the form');
     ok(!!(await page.$('#invite #gtCode')), 'the code box stays available — a code from a friend still works while the request waits');
     await page.goto(BASE + 'index.html');
-    await page.waitForSelector('#signInPill', { timeout: 8000 });
-    await page.waitForFunction(() => window.StudioCloud.getGateState().reason === 'pending', null, { timeout: 8000 }).catch(() => {});
-    ok(/INVITE PENDING/.test(await page.textContent('#signInPill')), 'the hub’s pill says INVITE PENDING');
+    await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'while pending, the hub still sends Cal to invite.html'), () => ok(false, 'while pending, the hub still sends Cal to invite.html'));
     ok(writes() === 0, 'still nothing uploaded');
     allErrors.push(...errors);
 
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'settings.html');
+    await A.page.goto(BASE + 'admin.html');
     await A.page.waitForSelector('#admin-console .gt-requests', { timeout: 10000 });
     const con = await A.page.textContent('#admin-console');
     ok(/Invite requests \(1 waiting\)/.test(con) && con.includes('cal@example.com') && con.includes('Amy sent me'), 'the console lists the request with who, the note and when');
@@ -196,6 +216,8 @@ try {
 
     await page.goto(BASE + 'story.html');
     ok(await waitGate(page, 'open'), "Cal's next load is through the gate");
+    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'and the site gate lets story.html render'), () => ok(false, 'and the site gate lets story.html render'));
+    ok(/story\.html/.test(page.url()) && (await page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass'))) === '1', 'the pass is remembered in sessionStorage for this tab');
     await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#through');
     ok(true, 'invite.html now says You’re in');
@@ -213,7 +235,7 @@ try {
     F.db.sessions.delete(USERS['tok-admin'].id);
     const A2 = await newContext(browser, { tok: 'tok-admin' });
     A2.page.on('dialog', (d) => d.accept('Not this season — ask Amy to vouch for you.'));
-    await A2.page.goto(BASE + 'settings.html');
+    await A2.page.goto(BASE + 'admin.html');
     await A2.page.waitForSelector('#admin-console [data-gate-action="decline"]', { timeout: 10000 });
     await A2.page.click('#admin-console [data-gate-action="decline"]');
     await A2.page.waitForFunction(() => /\(0 waiting\)/.test(document.querySelector('#admin-console').textContent), null, { timeout: 8000 });
@@ -229,6 +251,62 @@ try {
     ok(!(await D.page.$('#request [data-ir-form]')) && /ask again from/i.test(dtext), 'and is not offered the form again inside the week');
     ok((await gateReason(D.page)) === 'declined' && /declined/i.test(await syncDetail(D.page)), "the gate's reason and the sync status both say declined");
     allErrors.push(...D.errors); await D.ctx.close();
+  }
+
+  console.log('(l) the site gate');
+  F.db.sessions.clear();
+  {
+    const ctx = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx.route(SB + '/**', handle);
+    await ctx.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    const page = await ctx.newPage();
+    for (const p of ['index.html', 'breakdown.html', 'settings.html']) {
+      await page.goto(BASE + p);
+      await page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, `signed out: ${p} → invite.html`), () => ok(false, `signed out: ${p} → invite.html`));
+    }
+    const hidden = await page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility);
+    ok(hidden === 'visible', 'invite.html renders (it is the one page a stranger may see)');
+    await page.goto(BASE + 'screening.html');
+    await page.waitForTimeout(800);
+    ok(/screening\.html/.test(page.url()) && (await page.evaluate(() => getComputedStyle(document.body).visibility)) === 'visible', 'screening.html is exempt');
+    await page.goto(BASE + 'privacy.html');
+    await page.waitForTimeout(500);
+    ok(/privacy\.html/.test(page.url()), 'privacy.html is exempt');
+    await ctx.close();
+
+    const M = await newContext(browser, { tok: 'tok-cal' });   // a member since (j)
+    await M.page.goto(BASE + 'breakdown.html');
+    await M.page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'a member sees breakdown.html, gate attribute cleared'), () => ok(false, 'a member sees breakdown.html, gate attribute cleared'));
+    ok(/breakdown\.html/.test(M.page.url()), 'and stays on it');
+    ok((await M.page.evaluate(() => getComputedStyle(document.querySelector('#app')).visibility)) === 'visible', 'the page is visible');
+    allErrors.push(...M.errors); await M.ctx.close();
+  }
+
+  console.log('(m) the application console');
+  F.db.sessions.clear();
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html');
+    await A.page.waitForSelector('#overview .ad-stat', { timeout: 10000 }).catch(async () => {
+      const diag = await A.page.evaluate(() => ({ url: location.href, sitegate: document.documentElement.dataset.sitegate || '', gate: window.StudioCloud && window.StudioCloud.getGateState(), booted: window.StudioCloud && window.StudioCloud.isBooted(), errs: [...document.querySelectorAll('.gt-error')].map((e) => e.textContent), main: (document.querySelector('#main') || {}).textContent?.replace(/\s+/g, ' ').slice(0, 300) })).catch((e) => String(e));
+      console.log('  (m) diagnostics: ' + JSON.stringify(diag) + ' calls=' + F.db.calls.slice(-12).join(','));
+    });
+    const text = await A.page.textContent('#main');
+    const d = { users: Object.keys(USERS).length, members: [...F.db.members.values()].filter((m) => !m.disabled_at).length };
+    ok(new RegExp(`${d.users}\\s*Signed in, ever`).test(text.replace(/\s+/g, ' ')), `"Signed in, ever" counts ${d.users} (auth.users)`);
+    ok(new RegExp(`${d.members}\\s*Through the gate`).test(text.replace(/\s+/g, ' ')), `"Through the gate" counts ${d.members} members`);
+    ok(/1\s*Organisations/.test(text.replace(/\s+/g, ' ')) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is listed with its owner, seats and films');
+    ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
+    ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
+    await A.page.setViewportSize({ width: 390, height: 844 });
+    ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the console does not overflow at 390px');
+    allErrors.push(...A.errors); await A.ctx.close();
+    F.db.sessions.clear();
+    const N = await newContext(browser, { tok: 'tok-amy' });   // a member, not an admin
+    await N.page.goto(BASE + 'admin.html');
+    await N.page.waitForSelector('#denied', { timeout: 10000 }).then(() => ok(true, 'a member who is not an admin gets "Administrators only"'), () => ok(false, 'a member who is not an admin gets "Administrators only"'));
+    ok(!(await N.page.$('#overview')), 'and no numbers');
+    allErrors.push(...N.errors); await N.ctx.close();
   }
 
   console.log('(c) signed out: code, Google, redeemed on return');
@@ -286,14 +364,16 @@ try {
     F.db.members.get(USERS['tok-amy'].id).disabled_at = new Date().toISOString();
     F.db.sessions.delete(USERS['tok-amy'].id);
     await B.page.evaluate(() => {}); // B keeps beating on the real 30s timer; force one through the clock-less page
-    await B.page.waitForFunction(() => window.StudioCloud.getGateState().state === 'closed', null, { timeout: 40000 }).then(() => ok(true, "a revoked member's heartbeat closes the gate"), () => ok(false, "a revoked member's heartbeat closes the gate"));
+    await B.page.waitForFunction(() => /invite\.html/.test(location.pathname) || window.StudioCloud.getGateState().state === 'closed', null, { timeout: 40000 }).then(() => ok(true, "a revoked member's heartbeat closes the gate"), () => ok(false, "a revoked member's heartbeat closes the gate"));
+    await B.page.waitForURL(/invite\.html/, { timeout: 8000 }).then(() => ok(true, 'and the site gate walks them out to invite.html'), () => ok(false, 'and the site gate walks them out to invite.html'));
     await A.ctx.close(); await B.ctx.close();
   }
 
   console.log('(f) the admin console');
+  F.db.sessions.clear();
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'settings.html');
+    await page.goto(BASE + 'admin.html');
     await page.waitForSelector('#admin-console .gt-table', { timeout: 10000 });
     ok((await page.textContent('#admin-console')).includes('AMYC-ODE2-3456'), 'codes are listed in their spoken form');
     ok(/Invite requests \(0 waiting\)/.test(await page.textContent('#admin-console')), 'the request queue is drawn even when empty — an absent section reads the same as a passing one');

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:open": "VITE_SITE_GATE=off vite build",
     "build:extension": "node scripts/build-extension.mjs",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.mjs",
@@ -13,7 +14,7 @@
     "test:pdf": "node scripts/test-pdf-text.mjs",
     "test:story": "node scripts/test-story.mjs",
     "test:screenplay": "node scripts/test-screenplay.mjs",
-    "ship": "npm run build && npm run verify",
+    "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",
     "prove:storage": "node scripts/prove-storage.mjs",

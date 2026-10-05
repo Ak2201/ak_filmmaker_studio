@@ -8,6 +8,23 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* THE SITE GATE (src/lib/sitegate.js) sets data-sitegate="pending" on
+   <html> at module evaluation and removes it once the visitor is
+   through; "denied" is set in the same breath as the redirect. Hiding
+   the document under both means somebody about to be sent to
+   invite.html never sees a frame of the app. visibility, not display:
+   layout still happens, so the measurements the chrome publishes on
+   load are not taken on an empty page. */
+/* THE TAKEOVER PROMPT IS THE ONE EXCEPTION. runGate() asks "active in
+   another window — take over?" BEFORE it settles the gate state, so
+   while the question is open the state is still 'unknown' and the veil
+   is still down — and the dialog it covered is the only way to answer.
+   Only a registered member ever reaches that dialog (session_acquire
+   refuses anyone else), so letting it through shows a member a
+   question, never a stranger the app. */
+:root[data-sitegate="pending"] body > :not(.gt-overlay),
+:root[data-sitegate="denied"] body > :not(.gt-overlay) { visibility: hidden; }
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;

@@ -3077,3 +3077,138 @@ notify pgrst, 'reload schema';
 --  9. admin's studio_status.pending_requests equals the pending count;
 --     a non-admin's is 0 whatever the queue holds.
 -- ============================================================
+
+
+-- ============================================================
+-- 15. THE APPLICATION CONSOLE — what the whole studio looks like
+-- ------------------------------------------------------------
+-- RUN 5 Oct 2026 against conhlrulxfwkhsnymakz, the same way as 13 and
+-- 14 (see 13's header): "Success. No rows returned", and all three
+-- functions answer 401/42501 to anon through PostgREST. The 15.1 live
+-- checks are still unrun. Written for admin.html.
+--
+-- Three read-only RPCs for an administrator (is_studio_admin(), the
+-- same check every admin_* function makes): the counts that describe
+-- the application as a whole, the organisations (accounts) in it, and
+-- everybody who has ever signed in — members, requesters and strangers
+-- alike, which is the one list nothing else here can show, because a
+-- non-member has no row anywhere but auth.users.
+--
+-- All three are security definer so they can read auth.users, and all
+-- three refuse a non-admin with 42501 before touching anything. None
+-- writes. They are COUNTS and LISTS, not controls: every action an
+-- administrator can take still goes through sections 13 and 14.
+-- ============================================================
+
+create or replace function public.admin_overview()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  return jsonb_build_object(
+    'users_total',             (select count(*) from auth.users),
+    'users_active_7d',         (select count(*) from auth.users where last_sign_in_at > now() - interval '7 days'),
+    'users_new_30d',           (select count(*) from auth.users where created_at > now() - interval '30 days'),
+    'members_active',          (select count(*) from public.studio_members where disabled_at is null),
+    'members_admin',           (select count(*) from public.studio_members where role = 'admin' and disabled_at is null),
+    'members_disabled',        (select count(*) from public.studio_members where disabled_at is not null),
+    'requests_pending',        (select count(*) from public.invite_requests where status = 'pending'),
+    'requests_approved',       (select count(*) from public.invite_requests where status = 'approved'),
+    'requests_declined',       (select count(*) from public.invite_requests where status = 'declined'),
+    'accounts',                (select count(*) from public.accounts),
+    'account_members_active',  (select count(*) from public.account_members where status = 'active'),
+    'account_members_pending', (select count(*) from public.account_members where status = 'pending'),
+    'projects',                (select count(*) from public.projects),
+    'projects_new_30d',        (select count(*) from public.projects where created_at > now() - interval '30 days'),
+    'projects_updated_7d',     (select count(*) from public.projects where updated_at > now() - interval '7 days'),
+    'collaborators',           (select count(*) from public.project_collaborators),
+    'shares_live',             (select count(*) from public.shares where expires_at is null or expires_at > now()),
+    'sessions_live',           (select count(*) from public.user_active_sessions where last_heartbeat > now() - interval '90 seconds'),
+    'sessions_24h',            (select count(*) from public.user_active_sessions where last_heartbeat > now() - interval '24 hours'),
+    'codes_active',            (select count(*) from public.invite_codes
+                                 where revoked_at is null and (expires_at is null or expires_at > now())
+                                   and redemptions_count < max_redemptions),
+    'generated_at',            now()
+  );
+end;
+$fn$;
+
+create or replace function public.admin_list_accounts()
+returns table (id uuid, name text, owner_email text, plan text, seat_limit int,
+               seats_used int, members_pending int, projects int, created_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  return query
+    select a.id, a.name, u.email::text, a.plan, a.seat_limit,
+           (select count(*)::int from public.account_members m where m.account_id = a.id and m.status = 'active'),
+           (select count(*)::int from public.account_members m where m.account_id = a.id and m.status = 'pending'),
+           (select count(*) from public.projects p where p.account_id = a.id)::int,
+           a.created_at
+      from public.accounts a
+      left join auth.users u on u.id = a.owner_id
+     order by a.created_at desc
+     limit 500;
+end;
+$fn$;
+
+create or replace function public.admin_list_users()
+returns table (user_id uuid, email text, display_name text, created_at timestamptz, last_sign_in_at timestamptz,
+               studio_role text, disabled_at timestamptz, request_status text,
+               projects int, accounts int, last_heartbeat timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  return query
+    select u.id, u.email::text,
+           nullif(trim(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', '')), ''),
+           u.created_at, u.last_sign_in_at,
+           coalesce(m.role, '')::text, m.disabled_at,
+           coalesce(r.status, '')::text,
+           (select count(*)::int from public.projects p where p.owner_id = u.id),
+           (select count(*)::int from public.account_members am where am.user_id = u.id and am.status = 'active'),
+           s.last_heartbeat
+      from auth.users u
+      left join public.studio_members m on m.user_id = u.id
+      left join public.invite_requests r on r.user_id = u.id
+      left join public.user_active_sessions s on s.user_id = u.id
+     order by u.last_sign_in_at desc nulls last, u.created_at desc
+     limit 1000;
+end;
+$fn$;
+
+revoke execute on function public.admin_overview()      from public, anon;
+revoke execute on function public.admin_list_accounts() from public, anon;
+revoke execute on function public.admin_list_users()    from public, anon;
+grant  execute on function public.admin_overview()      to authenticated;
+grant  execute on function public.admin_list_accounts() to authenticated;
+grant  execute on function public.admin_list_users()    to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 15.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon: any of the three -> 42501 (no grant).
+--  2. a member who is not an admin: any of the three -> 42501.
+--  3. admin: admin_overview().users_total equals select count(*) from
+--     auth.users; members_active equals the console's member count.
+--  4. admin: admin_list_users() includes an account that has signed in
+--     but never asked or redeemed (studio_role '' and request_status '').
+-- ============================================================

@@ -37,7 +37,13 @@ export function freshDb() {
     sessions: new Map(),
     requests: new Map(),   // section 14: user_id -> invite_requests row
     redemptions: [],
-    projects: [{ id: 'p1', title: 'Dragon', format: 'feature', owner_id: USERS['tok-admin'].id }],
+    projects: [{ id: 'p1', title: 'Dragon', format: 'feature', owner_id: USERS['tok-admin'].id, account_id: 'acc1', created_at: new Date(now - 5 * DAY).toISOString(), updated_at: new Date(now - DAY).toISOString() }],
+    // section 15: one organisation, owned by the admin, with Amy invited
+    accounts: [{ id: 'acc1', name: 'Dragon Pictures', owner_id: USERS['tok-admin'].id, plan: 'indie', seat_limit: 5, created_at: new Date(now - 10 * DAY).toISOString() }],
+    accountMembers: [
+      { account_id: 'acc1', invited_email: 'admin@example.com', user_id: USERS['tok-admin'].id, role: 'owner', status: 'active' },
+      { account_id: 'acc1', invited_email: 'amy@example.com', user_id: null, role: 'member', status: 'pending' }
+    ],
     data: { p1: {
       story: { source: 'A student is turned down for a college seat. He becomes somebody else.', framework: 'three_act',
                marks: [{ id: 'm', start: 0, end: 43, text: 'A student is turned down for a college seat', tags: { three_act: 'inciting' } }], tension: {} },
@@ -100,6 +106,45 @@ function rpc(name, args, user, route) {
         .sort((a, b) => (b.status === 'pending') - (a.status === 'pending') || Date.parse(b.requested_at) - Date.parse(a.requested_at))
         .map((r) => ({ ...r, decided_by_email: r.decided_by ? (Object.values(USERS).find((x) => x.id === r.decided_by) || {}).email || null : null }));
       return json(route, 200, rows);
+    }
+    case 'admin_overview': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const reqs = [...F.db.requests.values()];
+      const mem = [...F.db.members.values()];
+      const live = [...F.db.sessions.values()].filter((s) => Date.now() - s.last < 90e3).length;
+      return json(route, 200, {
+        users_total: Object.keys(USERS).length, users_active_7d: Object.keys(USERS).length, users_new_30d: 2,
+        members_active: mem.filter((m) => !m.disabled_at).length, members_admin: mem.filter((m) => m.role === 'admin' && !m.disabled_at).length,
+        members_disabled: mem.filter((m) => m.disabled_at).length,
+        requests_pending: reqs.filter((r) => r.status === 'pending').length, requests_approved: reqs.filter((r) => r.status === 'approved').length,
+        requests_declined: reqs.filter((r) => r.status === 'declined').length,
+        accounts: F.db.accounts.length, account_members_active: F.db.accountMembers.filter((m) => m.status === 'active').length,
+        account_members_pending: F.db.accountMembers.filter((m) => m.status === 'pending').length,
+        projects: F.db.projects.length, projects_new_30d: F.db.projects.length, projects_updated_7d: F.db.projects.length,
+        collaborators: 0, shares_live: 0, sessions_live: live, sessions_24h: F.db.sessions.size,
+        codes_active: F.db.codes.filter(valid).length, generated_at: new Date().toISOString()
+      });
+    }
+    case 'admin_list_accounts': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, F.db.accounts.map((a) => ({
+        id: a.id, name: a.name, owner_email: (Object.values(USERS).find((x) => x.id === a.owner_id) || {}).email || null,
+        plan: a.plan, seat_limit: a.seat_limit,
+        seats_used: F.db.accountMembers.filter((m) => m.account_id === a.id && m.status === 'active').length,
+        members_pending: F.db.accountMembers.filter((m) => m.account_id === a.id && m.status === 'pending').length,
+        projects: F.db.projects.filter((p) => p.account_id === a.id).length, created_at: a.created_at
+      })));
+    }
+    case 'admin_list_users': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, Object.values(USERS).map((u) => {
+        const m = F.db.members.get(u.id), r = F.db.requests.get(u.id), s = F.db.sessions.get(u.id);
+        return { user_id: u.id, email: u.email, display_name: u.name || null, created_at: new Date(Date.now() - 3 * DAY).toISOString(),
+                 last_sign_in_at: new Date().toISOString(), studio_role: m ? m.role : '', disabled_at: m ? m.disabled_at : null,
+                 request_status: r ? r.status : '', projects: F.db.projects.filter((p) => p.owner_id === u.id).length,
+                 accounts: F.db.accountMembers.filter((am) => am.user_id === u.id && am.status === 'active').length,
+                 last_heartbeat: s ? new Date(s.last).toISOString() : null };
+      }));
     }
     case 'admin_decide_request': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');

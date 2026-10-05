@@ -262,7 +262,11 @@ export function createGate(getClient) {
       try { return (await rpc('admin_list_requests', { p_status: status })) || []; }
       catch (e) { if (isMissing(e)) return []; throw e; }
     },
-    decideRequest: (userId, approve, note = '') => rpc('admin_decide_request', { p_user: userId, p_approve: !!approve, p_note: note || null })
+    decideRequest: (userId, approve, note = '') => rpc('admin_decide_request', { p_user: userId, p_approve: !!approve, p_note: note || null }),
+    /* Section 15: the application as a whole. Read-only. */
+    overview: async () => (await rpc('admin_overview')) || {},
+    listAccounts: async () => (await rpc('admin_list_accounts')) || [],
+    listUsers: async () => (await rpc('admin_list_users')) || []
   };
 
   /* ---- screening room (anonymous) ---- */

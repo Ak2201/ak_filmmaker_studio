@@ -22,6 +22,10 @@
    the top even though only `Store` is referenced by name.
    ============================================================ */
 import Store from '../lib/store.js';
+/* Side-effect import, like fragments.js below: the site gate installs
+   itself on every page that carries the chrome, which is every page a
+   visitor can reach. See the banner in src/lib/sitegate.js. */
+import '../lib/sitegate.js';
 import { registerSW } from '../lib/pwa.js';
 import { actionMenu } from './actionbar.js';
 import {

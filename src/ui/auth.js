@@ -335,9 +335,9 @@ export function openAccountMenu(anchor) {
   if (g.state === 'closed') {
     gateRows.push(h('a.am-item', { href: 'invite.html', role: 'menuitem', text: g.reason === 'pending' ? '→ YOUR INVITE REQUEST' : '→ GET AN INVITE' }));
   }
-  if (g.role === 'admin' && waiting) {
-    gateRows.push(h('a.am-item', { href: 'settings.html#admin-console', role: 'menuitem',
-      text: `→ ${waiting} INVITE REQUEST${waiting === 1 ? '' : 'S'} WAITING` }));
+  if (g.role === 'admin') {
+    gateRows.push(h('a.am-item', { href: 'admin.html', role: 'menuitem',
+      text: waiting ? `→ CONSOLE · ${waiting} REQUEST${waiting === 1 ? '' : 'S'} WAITING` : '→ ADMIN CONSOLE' }));
   }
 
   const menu = h('div#accountMenu.account-menu', { role: 'menu' }, [

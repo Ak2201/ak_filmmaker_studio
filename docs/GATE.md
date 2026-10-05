@@ -16,6 +16,34 @@ used to fail open so the code could ship before the SQL, and the result was a
 studio any Google account could sync to. That is the bug this document
 exists to close. Section 1 is kept as the runbook for a fresh project.
 
+## 0. The website itself is invite-only (5 Oct 2026)
+
+Not only the cloud: `src/lib/sitegate.js`, imported by `chrome.js` and so on
+every page a visitor can reach, hides the document until the gate answers and
+sends anyone who is not through it to `invite.html`. Signed out → `invite.html`.
+Signed in and not a member (no invite, pending, declined, disabled) →
+`invite.html`. A member whose session is on another device is in (sync paused).
+Exempt: `invite.html`, `screening.html`, the two legal pages, and everything
+inside the Chrome extension, which has its own gatekeeper.
+
+This reverses the contract the codebase was written under — "the gate guards
+the cloud, never local work" — by the owner's decision. Local work is hidden
+from a visitor outside the gate; it is never deleted or touched, and it is all
+there the moment they are let in.
+
+**Two builds.** `npm run build` (what Vercel and Netlify run) has the gate ON.
+`npm run build:open` sets `VITE_SITE_GATE=off`, and `npm run verify` refuses
+any other build, because it measures every page signed out. `npm run
+prove:gate` refuses the open build. `npm run ship` does both in order. The
+build stamps which it is into `<meta name="fms-site-gate">` on every app page.
+
+**The application console** is `admin.html`: the studio in numbers (schema
+§15: everyone who has signed in, members, the queue, organisations, seats,
+films, live sessions), the organisations list, everyone who has ever signed
+in, and the gate's controls (requests, codes, members, sessions), which moved
+there from `settings.html`. Reached from the account menu, or from the
+pointer on Settings. Shown by the server-reported role; every RPC re-checks.
+
 ## 1. Order of operations
 
 Do these in this order. Each is idempotent.
@@ -108,7 +136,9 @@ visitor ── Google sign-in ──► studio_status()
 
 | Thing | Where |
 |---|---|
-| SQL | `supabase-schema.sql` §13, §14 |
+| SQL | `supabase-schema.sql` §13, §14, §15 (the console's counts) — all three deployed 5 Oct 2026 |
+| The site gate | `src/lib/sitegate.js` (imported by `src/ui/chrome.js`), the `data-sitegate` rule in `base.css` |
+| The console | `admin.html`, `src/pages/admin.js`, `src/styles/admin.css` |
 | Client calls | `src/lib/gate.js` (`status`, `requestInvite`, `admin.listRequests`, `admin.decideRequest`) |
 | The decision | `src/lib/cloud.js` `runGate()`, `getGateState()`, `gateDetail()` |
 | The doorway | `invite.html`, `src/pages/invite.js`, `src/styles/invite.css` |

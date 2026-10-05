@@ -14,14 +14,26 @@ browser's `localStorage`. Optional Supabase sync on top. Static build, no server
 It is a **writing tool people keep months of work in.** That single fact decides
 most arguments: correctness of stored data beats every other consideration.
 
+**And since 5 Oct 2026 the website is INVITE-ONLY, by the owner's decision.**
+`src/lib/sitegate.js` (imported by `chrome.js`, so on every reachable page)
+hides the document until the gate answers and sends anyone not through it —
+signed out, or signed in without membership — to `invite.html`. This reverses
+"the gate guards the cloud, never local work", which older notes below still
+say; read those as history. Local work is HIDDEN from a visitor outside the
+gate, never deleted or touched. Two builds follow from it: `npm run build` has
+the gate on (what the hosts run); `npm run build:open` turns it off and is the
+only build `npm run verify` accepts, because verify loads every page signed
+out. `prove:gate` refuses the open build. `docs/GATE.md` §0.
+
 ## Commands
 
 ```bash
 npm install
 npm run dev       # vite dev server, no service worker
-npm run build     # static output in dist/
+npm run build     # static output in dist/ — the site gate ON
+npm run build:open  # the same with VITE_SITE_GATE=off; what verify needs
 npm run preview   # serve the build (exercises the real service worker)
-npm run verify    # ← the important one, see below
+npm run verify    # ← the important one, see below; refuses a gated dist
 npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
 npm run test:story       # story model + .docx reader, in Node (open item 11)
 npm run test:screenplay  # screen time, cast matrix, auto-tag, 120pp < 1200ms
@@ -42,7 +54,10 @@ for hosted previews that shouldn't outlive themselves in a cache.
 ```
 index.html feature.html short.html library.html   page entries (Vite MPA)
 invite.html                                       the doorway: where a closed
-                                                  gate lands a sign-in
+                                                  gate lands a sign-in — and,
+                                                  now, every visitor who is not
+                                                  through it
+admin.html                                        the application console
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
@@ -75,7 +90,8 @@ src/
              screenplay-analysis.js ← screen time, cast matrix,
                         auto-tag suggestions; pure, stores nothing
              gate.js ← invite codes, invite requests, the device lock,
-                       screening passes
+                       screening passes, the console's counts
+             sitegate.js ← the website-wide gate; see §0 of docs/GATE.md
              extension-bridge.js ← the app's half of the extension
              docx-text.js pitch-deck.js watermark.js
              ← one model per thing. Everything else is a VIEW of these.
@@ -1714,13 +1730,24 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `chromiumapp.org` redirect URL on the Supabase allow-list before
       Google sign-in works.
 
-    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 34
-    (before the request flow; (a) now asserts CLOSED and (i)–(k) cover
-    the landing, request/approve and decline — rerun and update this
-    number), `prove:extension` 28, all against the real build. What is
-    NOT proved: the 13.8/14.5 live checks against the database (the
-    sections are DEPLOYED, see above), Google's consent screen for the
-    extension, and Chrome Web Store review.
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 87
+    ((a) asserts CLOSED when undeployed; (i)–(k) the landing,
+    request/approve and decline; (l) the site gate; (m) the console),
+    `prove:extension` 28, all against the real GATED build. What is
+    NOT proved: the 13.8/14.5/15.1 live checks against the database
+    (the sections are DEPLOYED, see above), Google's consent screen for
+    the extension, and Chrome Web Store review.
+
+    **Two traps the site gate paid for on its first day.** The veil
+    (`data-sitegate="pending"` → `body > * { visibility: hidden }`)
+    hid the TAKEOVER PROMPT, because `runGate()` asks that question
+    before it settles the state; `base.css` excepts `.gt-overlay`, and
+    `sitegate.js`'s give-up timer re-arms while one is open. And on
+    the first load after a closed sign-in, `landOnInvite()` and the
+    site gate both navigated to `invite.html` in the same tick — a
+    harness sees an interrupted navigation, a person a flash — so
+    `landOnInvite()` stands down whenever the site gate is installed.
+    One owner per redirect.
 
 ## Things that are deliberate, not oversights
 

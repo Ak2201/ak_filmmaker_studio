@@ -97,7 +97,7 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
    says where it goes. It returns null when signed out, like
    renderAdmin(), so append stays branchless. */
 import { accountSection } from '../ui/account-panel.js';
-import { inviteSection, adminSection, wireGateUI } from '../ui/gate-ui.js';
+import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 
 const app = document.getElementById('app');
 
@@ -682,6 +682,21 @@ function renderAdmin() {
   return sec;
 }
 
+/* The gate's console used to render here. It lives on admin.html now,
+   beside the application-wide numbers; this is the pointer, shown by
+   the same server-reported role the console itself checks. */
+function consolePointer() {
+  if (!gateStatus || !gateStatus.deployed || gateStatus.role !== 'admin') return null;
+  const sec = section('admin-console', 'Administrator', 'The application console.',
+    'Invite requests, codes, members and sessions, and the studio as a whole in numbers, are on their own page.');
+  const n = gateStatus.pendingRequests || 0;
+  sec.append(h('div.st-row', {}, [
+    h('a.btn.primary', { href: 'admin.html', text: 'OPEN THE CONSOLE' }),
+    n ? h('span.st-note', { text: `${n} invite request${n === 1 ? '' : 's'} waiting` }) : null
+  ].filter(Boolean)));
+  return sec;
+}
+
 function render() {
   const main = h('main#main');
 
@@ -711,7 +726,7 @@ function render() {
      exactly why it would not have caught it either.) */
   body.append(...[renderKey(), renderStorage(), renderDrive(), renderAppearance(),
               accountSection(section), inviteSection(section, gateStatus),
-              adminSection(section, gateStatus), renderAdmin(), renderElsewhere()].filter(Boolean));
+              consolePointer(), renderAdmin(), renderElsewhere()].filter(Boolean));
   main.append(body);
 
   app.replaceChildren(main);

@@ -210,8 +210,32 @@ const PAGES = [
   // The doorway: what a closed gate lands on. Signed out here (the run
   // never signs in), so the capture is the sign-in-first state; the
   // request and approval paths are proved by scripts/prove-gate.mjs.
-  { page: 'invite.html',     legacy: null, name: 'invite' }
+  { page: 'invite.html',     legacy: null, name: 'invite' },
+  // The application console. Signed out here, so the capture is the
+  // "sign in" state; the numbers and the queue are proved by
+  // scripts/prove-gate.mjs against a fake Supabase.
+  { page: 'admin.html',      legacy: null, name: 'admin' }
 ];
+
+/* THE BUILD HAS TO BE THE OPEN ONE. src/lib/sitegate.js makes the
+   website invite-only: every page a signed-out visitor loads becomes a
+   redirect to invite.html. This run loads every page signed out and
+   measures its words, keys, overflow and contrast, so under the gate
+   it would measure invite.html twenty times and report the rest as
+   lost. vite.config.js stamps which build this is into a <meta>; an
+   invite build is refused here with the command that makes the other
+   one, and prove-gate.mjs refuses the open build for the mirror-image
+   reason. Two builds, each checked by the tool that can see it. */
+{
+  const idx = path.join(DIST, 'index.html');
+  const stamp = fs.existsSync(idx) ? (fs.readFileSync(idx, 'utf8').match(/<meta name="fms-site-gate" content="([a-z]+)"/) || [])[1] : null;
+  if (stamp !== 'off') {
+    console.error(`✗ dist/ was built with the site gate ${stamp ? 'ON' : 'unstamped'}; this run loads pages signed out and needs the open build.`);
+    console.error('  Build it with:  npm run build:open     (VITE_SITE_GATE=off vite build)');
+    console.error('  The production build (npm run build) keeps the gate on; prove it with npm run prove:gate.');
+    process.exit(2);
+  }
+}
 
 /* Every skin the source tree defines. Read from disk rather than
    listed here, for the same reason the steps come from JSON: a
@@ -312,7 +336,8 @@ const EXPECTED = {
   shoot: {},
   story: {},
   screening: {},
-  invite: {}
+  invite: {},
+  admin: {}
 };
 
 const MIME = {

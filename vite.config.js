@@ -44,6 +44,11 @@ import { VitePWA } from 'vite-plugin-pwa';
    and font-src already allows fonts.gstatic.com.
    ============================================================ */
 function materialSymbols() {
+  /* The site gate's build flag, stamped into every app page so the two
+     harnesses can tell which build they were handed: `npm run verify`
+     refuses a gated dist (it loads pages signed out), prove-gate.mjs
+     refuses an open one. See src/lib/sitegate.js. */
+  const siteGate = String(process.env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
   const nav = JSON.parse(readFileSync(resolve(__dirname, 'src/data/navigation.json'), 'utf8'));
   const names = new Set();
   JSON.stringify(nav, (k, v) => { if (k === 'sym' && typeof v === 'string' && v) names.add(v); return v; });
@@ -58,7 +63,10 @@ function materialSymbols() {
       // The app pages only: the legal documents and the redirect stubs
       // draw no marks, and the extension panel loads no remote font.
       if (!html.includes('id="app"') || !html.includes('fonts.googleapis.com')) return;
-      return [{ tag: 'link', attrs: { rel: 'stylesheet', href }, injectTo: 'head' }];
+      return [
+        { tag: 'meta', attrs: { name: 'fms-site-gate', content: siteGate }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'stylesheet', href }, injectTo: 'head' }
+      ];
     }
   };
 }
@@ -140,6 +148,9 @@ export default defineConfig({
         screening:  resolve(__dirname, 'screening.html'),
         // The doorway to the cloud: where a closed gate sends a sign-in.
         invite:     resolve(__dirname, 'invite.html'),
+        // The application console: the whole studio in numbers, plus
+        // the gate's queue, codes and sessions. Administrators only.
+        admin:      resolve(__dirname, 'admin.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),

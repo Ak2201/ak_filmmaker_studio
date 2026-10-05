@@ -50,6 +50,7 @@
    ============================================================ */
 import nav from '../data/navigation.json';
 import { h } from '../lib/dom.js';
+import { iconSpan } from './icon.js';
 import { listScenes, elementIndex } from '../lib/scenes.js';
 import { listShots, listFrames, listBoards, countEntries } from '../lib/shots.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
@@ -310,7 +311,7 @@ function moduleTile(m, snap, at) {
     : { href: m.href });
   if (isHere && !planned) el.setAttribute('aria-current', 'page');
 
-  if (m.icon) el.append(h('span.lx-mod-icon', { text: m.icon, 'aria-hidden': 'true' }));
+  el.append(iconSpan('lx-mod-icon', m));
   el.append(
     h('span.lx-mod-label', { text: m.label }),
     h('span.lx-mod-purpose', { text: m.purpose })
@@ -339,7 +340,7 @@ function phaseRow(phase, snap, at) {
   }).length;
 
   const tile = h('div.lx-phase');
-  if (phase.icon) tile.append(h('span.lx-phase-icon', { text: phase.icon, 'aria-hidden': 'true' }));
+  tile.append(iconSpan('lx-phase-icon', phase));
   tile.append(
     h('span.lx-phase-label', { text: phase.label }),
     h('span.lx-phase-blurb', { text: phase.blurb }),

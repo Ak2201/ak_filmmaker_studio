@@ -1,0 +1,54 @@
+{
+  "_about": "Material Symbols names for navigation.json, kept here because the phase list in that file is contested and gets superseded by merges while these do not. iconSpan() in src/ui/icon.js reads entry.sym; index.html's icon_names= subset must list every value used here or that tile renders nothing. Keys are entry ids.",
+  "phases": {
+    "story": "auto_stories",
+    "preproduction": "checklist",
+    "production": "videocam",
+    "post": "tune"
+  },
+  "modules": {
+    "feature-blueprint": "menu_book",
+    "short-blueprint": "article",
+    "glossary": "local_library",
+    "case-studies": "movie",
+    "dissection": "content_cut",
+    "screenplay": "description",
+    "revisions": "history",
+    "docs": "folder",
+    "scene-list": "list",
+    "breakdowns": "grid_view",
+    "elements": "category",
+    "songs": "music_note",
+    "shot-list": "view_list",
+    "storyboard": "dashboard",
+    "lookbook": "palette",
+    "stripboard": "table_chart",
+    "sides": "content_copy",
+    "reports": "assessment",
+    "locations": "place",
+    "budget": "currency_rupee",
+    "contacts": "person",
+    "calendar": "calendar_month",
+    "media": "perm_media",
+    "shoot-day": "play_circle",
+    "call-sheets": "mail",
+    "dood": "event",
+    "post-plan": "tune"
+  },
+  "global": {
+    "home": "home",
+    "Dashboard": "speed",
+    "library": "local_library",
+    "settings": "settings"
+  },
+  "upstreamStillNeeded": {
+    "auto-tag": null,
+    "cast-matrix": null,
+    "deliverables": null,
+    "edit-log": null,
+    "idea-vault": null,
+    "pitch-deck": null,
+    "screen-time": null,
+    "story-beats": null
+  }
+}

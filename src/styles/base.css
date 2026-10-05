@@ -247,3 +247,44 @@ p, .deck, .step-deck, .hint, li { text-wrap: pretty; }
   border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: content-box; }
+
+
+/* ------------------------------------------------------------
+   MATERIAL SYMBOLS — the one rule, for every map in the app
+   ------------------------------------------------------------
+   The launcher's tiles, the shell's phase menu, its breadcrumb and
+   its rail, and the command palette's rows all render marks from
+   navigation.json through iconSpan() in src/ui/icon.js. This is the
+   face those marks are drawn in, declared once here because base.css
+   is on every page and the alternative is four copies drifting apart.
+
+   THE CLASS IS TRIPLED ON PURPOSE. `.lx-grid .lx-mod-icon` and
+   `.sh-mod-icon` both set font-family to --f-mono for the
+   typographic glyphs these replace, at specificity (0,2,0) and
+   (0,1,0). A single `.sym` loses to both and a doubled one TIES with
+   the first, which hands the decision to whichever sheet an entry
+   point happens to import last — the ordering trap in CLAUDE.md.
+   Tripling puts it beyond all of them, and the failure it prevents
+   is not subtle: a lost tie renders the literal word "description"
+   in a monospace face.
+
+   `text-transform` and `letter-spacing` are RESETS, not styling. The
+   glyph is a ligature on that literal text, so an inherited
+   uppercase sends "DESCRIPTION" to the font — which matches no
+   ligature and prints as nine letters — and tracking stops the
+   ligature forming at all.
+   ------------------------------------------------------------ */
+.sym.sym.sym {
+  font-family: 'Material Symbols Rounded';
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

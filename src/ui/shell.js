@@ -39,6 +39,7 @@
 import nav from '../data/navigation.json';
 import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
+import { iconSpan } from './icon.js';
 import { openPalette } from './palette.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
@@ -120,7 +121,7 @@ function moduleRow(m) {
     : { href: m.href });
   el.dataset.moduleId = m.id;
   el.append(
-    h('span.sh-mod-icon', { text: m.icon || '·', 'aria-hidden': 'true' }),
+    iconSpan('sh-mod-icon', m),
     h('span.sh-mod-label', { text: m.label }),
     h('span.sh-mod-purpose', { text: m.purpose })
   );
@@ -161,10 +162,12 @@ function phaseTab(phase, active) {
    menu. "Where am I" and "what else is next to me" are the same
    question asked half a second apart. */
 
-function crumbStep(tag, cls, icon, label, props = {}) {
+/* Takes the ENTRY now, not a glyph string: the mark may be a
+   ligature or a character and only iconSpan decides which. */
+function crumbStep(tag, cls, entry, label, props = {}) {
   const el = h(`${tag}.sh-where-step${cls}`, props);
   el.append(
-    h('span.sh-where-icon', { text: icon || '·', 'aria-hidden': 'true' }),
+    iconSpan('sh-where-icon', entry),
     h('span.sh-where-text', { text: label })
   );
   return el;
@@ -181,7 +184,7 @@ function renderCrumb(crumb, loc) {
   const atHome = here === home;
 
   crumb.append(crumbStep(atHome ? 'span' : 'a', '.sh-where-root' + (atHome ? '.sh-where-here' : ''),
-    home.icon, 'Studio',
+    home, 'Studio',
     atHome ? { 'aria-current': 'page', title: home.purpose } : { href: home.href, title: home.purpose }));
 
   if (atHome) {
@@ -189,7 +192,7 @@ function renderCrumb(crumb, loc) {
   } else {
     if (loc.phase) {
       crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
-      crumb.append(crumbStep('button', '.sh-where-phase', loc.phase.icon, loc.phase.label, {
+      crumb.append(crumbStep('button', '.sh-where-phase', loc.phase, loc.phase.label, {
         type: 'button',
         'data-action': 'crumb-phase',
         'data-phase': loc.phase.id,
@@ -200,7 +203,7 @@ function renderCrumb(crumb, loc) {
 
     if (here) {
       crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
-      crumb.append(crumbStep('span', '.sh-where-here', here.icon, here.label, {
+      crumb.append(crumbStep('span', '.sh-where-here', here, here.label, {
         'aria-current': 'page'
       }));
       if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
@@ -297,7 +300,7 @@ function buildRail() {
   nav.global.forEach((g) => {
     const on = g.href.toLowerCase() === CURRENT;
     const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
-    a.append(h('span.sh-rail-icon', { text: g.icon, 'aria-hidden': 'true' }),
+    a.append(iconSpan('sh-rail-icon', g),
              h('span.sh-rail-label', { text: g.label }));
     if (on) a.setAttribute('aria-current', 'page');
     rail.append(a);

@@ -153,6 +153,125 @@
 .auth-error[hidden] { display: none; }
 
 /* ------------------------------------------------------------
+   ACCOUNT MENU — who you are, which account, what role
+   ------------------------------------------------------------
+   The frame (position, surface, border, .am-item, .am-sync) lives
+   in chrome.css. This file adds only the identity header and the
+   account row, so there is one owner per concern rather than two
+   sheets racing to style the same control.
+
+   Every colour here was measured against --paper-raised in both
+   themes before it was written, since the AA walk in `npm run
+   verify` cannot reach this menu: it walks main, the shell and the
+   OPEN modals, and nothing in the run signs in and opens this.
+   That makes these numbers the only check there is —
+     avatar   --brand-on on --brand        5.56:1 ink / 7.10:1 paper
+     name     --ink on --paper-raised     14.63:1 ink
+     sub/note --ink-muted                  6.04:1 ink / 6.43:1 paper
+     mark     --brand-deep on --brand-wash  7.03:1 ink / 7.57:1 paper
+     failure  --danger                     6.33:1 ink / 5.62:1 paper
+   If you repaint any of them, measure again rather than assuming
+   a near neighbour is safe; a fill is not a text colour, and the
+   only reason --danger is one here is that it is tuned per theme.
+   ------------------------------------------------------------ */
+.account-menu .am-you {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s3);
+  border-bottom: 1px solid var(--rule-hair);
+  margin-bottom: var(--s1);
+}
+
+/* --brand, never --accent: [data-phase] and [data-volume] both
+   repoint --accent, and this menu opens on every page in the studio.
+   On accent the avatar would wear the colour of whatever phase you
+   opened it from, which is what --brand exists to prevent. */
+.account-menu .am-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--brand-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.account-menu .am-you-text { min-width: 0; display: grid; }
+.account-menu .am-you-name {
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu .am-you-mail {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu .am-account { margin-bottom: var(--s1); }
+
+.account-menu .am-acct {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--sk-radius, var(--radius));
+  text-decoration: none;
+  color: var(--ink);
+  transition: background var(--speed) var(--ease);
+}
+.account-menu .am-acct:hover { background: var(--paper-sunk); }
+
+.account-menu .am-acct-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+}
+
+.account-menu .am-acct-text { min-width: 0; display: grid; }
+.account-menu .am-acct-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu .am-acct-sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+
+/* The waiting and the no-account states are not failures and must
+   not read as them; only .is-bad takes the danger hue. */
+.account-menu .am-acct-note {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.account-menu .am-acct-note.is-bad { color: var(--danger); }
+
+/* ------------------------------------------------------------
    PHONE
    ------------------------------------------------------------
    390px is the width the verifier measures and the width most of
@@ -164,5 +283,7 @@
   .sign-in-pill { max-width: 46vw; }
   .sign-in-pill .sip-label { max-width: 36vw; }
   .account-menu { max-width: calc(100vw - 16px); }
-  .account-menu .am-email { overflow-wrap: anywhere; }
+  /* The address is the only thing here with no natural break.
+     It truncates in the header rather than widening the menu. */
+  .account-menu .am-you-mail { max-width: 56vw; }
 }

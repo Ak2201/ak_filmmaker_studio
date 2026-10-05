@@ -27,6 +27,10 @@
    ============================================================ */
 import Store from '../lib/store.js';
 import { delegate, h } from '../lib/dom.js';
+/* account.js imports nothing and reaches cloud.js through its global,
+   so this cannot cycle back into chrome.js the way an import of
+   cloud.js would. It is in the same `studio` chunk already. */
+import Account from '../lib/account.js';
 import '../styles/auth.css';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
@@ -83,7 +87,7 @@ export function attachSignInPill(host) {
   if (!_pillWired) {
     _pillWired = true;
     const c = cloud();
-    if (c && c.onAuth) c.onAuth(() => refreshSignInPill());
+    if (c && c.onAuth) c.onAuth(() => { resetAccountCache(); refreshSignInPill(); });
   }
 }
 
@@ -146,6 +150,157 @@ function syncTone(state) {
 // ============================================================
 // ACCOUNT MENU
 // ============================================================
+/* Three questions in the order people actually ask them: who am I
+   signed in as, which studio account am I in and what am I in it,
+   and is my work anywhere other than this laptop. Then the way out.
+
+   THE ACCOUNT ROW IS A SECOND ROUND TRIP AND IT MUST NOT BLOCK THE
+   MENU. loadAccount() is two selects against Supabase; a menu that
+   waited on them would hang for the length of a network on a control
+   whose commonest use is SIGN OUT. So the menu paints immediately
+   from what the session already holds, and the account row fills in
+   underneath when the query lands — or says it could not, because a
+   failed read is a state worth seeing rather than a blank space.
+
+   THE RESULT IS CACHED IN THIS MODULE AND NOWHERE ELSE. Reopening
+   the menu is then free, and an account changed elsewhere is picked
+   up on the next auth event, which clears it. It must NOT go to
+   localStorage: `verify` asserts zero writes across four idle seconds
+   and a menu that remembered itself would trip it, correctly — the
+   same reason the command palette keeps its recents in memory.
+
+   THE ROLE IS A LABEL, NOT A PERMISSION, and this is the first place
+   in the app that shows one. account_members.role is also what
+   has_project_access() reads, so it is tempting to treat what is
+   printed here as authority. Do not. Nothing in this menu refuses
+   anything; what refuses is RLS. That distinction is load-bearing
+   right now rather than theoretical: docs/SECURITY-RLS.md still has
+   ten live checks that have never been run against a database, and
+   acc_insert has no WITH CHECK — accounts_guard() is BEFORE UPDATE
+   only — so an INSERT may carry its own plan and seat_limit. A role
+   rendered here is a value this app has not yet proven unforgeable.
+   Display it; never gate on it. account-panel.js carries the same
+   caveat for the same reason.
+
+   WHAT IS DELIBERATELY NOT COPIED FROM THE REFERENCE. The design
+   this was built against puts a tick beside the current account and
+   a "My Profile" button in the header. Both are omitted. loadAccount()
+   returns one account — there is no switching — so a tick that can
+   never be absent is decoration dressed as state, and there is no
+   profile in this app for a profile button to open. A control that
+   cannot vary, or cannot lead anywhere, is worse than no control. */
+
+/* Identity is the PRODUCT's voice, so the avatar is --brand and not
+   --accent. [data-phase] and [data-volume] both repoint --accent, and
+   this menu is appended to document.body on every page in the studio:
+   on accent it would wear the colour of whatever phase you happened
+   to open it from, which is the one thing --brand exists to prevent. */
+
+let _acct = { phase: 'idle', data: null, error: '' };
+
+/* A different user must never see the previous one's account name for
+   even a frame, so any auth movement drops the cache rather than
+   refreshing it. Cheap: the next open re-reads. */
+export function resetAccountCache() {
+  _acct = { phase: 'idle', data: null, error: '' };
+}
+
+function displayName() {
+  const c = cloud();
+  const u = (c && c.getUser && c.getUser()) || null;
+  const m = (u && u.user_metadata) || {};
+  const n = String(m.full_name || m.name || '').trim();
+  if (n) return n;
+  /* Google supplies a name on every account this app can sign in
+     with, but it is metadata and metadata can be absent. The local
+     part of the address is a worse name and a correct fallback. */
+  const email = (c && c.getUserEmail && c.getUserEmail()) || '';
+  return email.split('@')[0] || 'Signed in';
+}
+
+function initials(name) {
+  const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean);
+  if (!parts.length) return '?';
+  const a = parts[0][0] || '';
+  const b = parts.length > 1 ? (parts[parts.length - 1][0] || '') : '';
+  return (a + b).toUpperCase();
+}
+
+function roleWord(r) {
+  return r === 'owner' ? 'Owner' : r === 'admin' ? 'Admin' : 'Member';
+}
+
+/* Counted the way enforce_seat_limit() counts — account.js already
+   did that arithmetic, so this reads its answer rather than redoing
+   it. Two opinions about one number disagree the first time one of
+   them is edited. */
+function seatWord(seats) {
+  if (!seats || !seats.limit) return '';
+  return seats.used + ' of ' + seats.limit + ' seat' + (seats.limit === 1 ? '' : 's');
+}
+
+function paintAccountBlock() {
+  const wrap = document.getElementById('amAccount');
+  if (!wrap) return;                       // menu closed while the query was in flight
+  wrap.textContent = '';
+
+  if (_acct.phase === 'idle' || _acct.phase === 'loading') {
+    wrap.append(h('p.am-acct-note', { text: 'Checking your account…' }));
+    return;
+  }
+
+  if (_acct.phase === 'error') {
+    wrap.append(h('p.am-acct-note.is-bad', { text: _acct.error || 'Could not read your account.' }));
+    return;
+  }
+
+  /* No account is not an error and must not read as one: most people
+     signed in to back their own work up have exactly this and need
+     nothing else. */
+  if (!_acct.data) {
+    wrap.append(
+      h('a.am-item', { href: 'settings.html#account', text: '+ CREATE A STUDIO ACCOUNT' }),
+      h('p.am-acct-note', { text: 'An account is how a film reaches somebody else.' })
+    );
+    return;
+  }
+
+  const d    = _acct.data;
+  const name = (d.account && d.account.name) || 'Your account';
+  const seat = seatWord(d.seats);
+  const sub  = roleWord(d.role) + (seat ? ' · ' + seat : '');
+
+  /* settings.html#account resolves because accountSection() is
+     rendered whenever there is a session, and this menu only exists
+     when there is one. Worth stating: a nav target that depends on
+     data existing is a trap this codebase has already paid for. */
+  wrap.append(h('a.am-acct', {
+    href: 'settings.html#account',
+    'aria-label': 'Account settings for ' + name + '. You are ' + roleWord(d.role) + '.'
+  }, [
+    h('span.am-acct-mark', { 'aria-hidden': 'true', text: initials(name) }),
+    h('span.am-acct-text', {}, [
+      h('span.am-acct-name', { text: name }),
+      h('span.am-acct-sub', { text: sub })
+    ])
+  ]));
+}
+
+async function fillAccountBlock() {
+  if (_acct.phase === 'ok' || _acct.phase === 'loading') { paintAccountBlock(); return; }
+  _acct = { phase: 'loading', data: null, error: '' };
+  paintAccountBlock();
+  try {
+    const data = await Account.loadAccount();
+    _acct = { phase: 'ok', data: data || null, error: '' };
+  } catch (err) {
+    /* account.js owns the translation from a Postgres code to a
+       sentence; this file does not get a second opinion about it. */
+    _acct = { phase: 'error', data: null, error: Account.explain(err) };
+  }
+  paintAccountBlock();
+}
+
 function closeAccountMenu() {
   const m = document.getElementById('accountMenu');
   if (m) m.remove();
@@ -155,10 +310,24 @@ export function openAccountMenu(anchor) {
   if (document.getElementById('accountMenu')) { closeAccountMenu(); return; }
   const c  = cloud();
   if (!c) return;
-  const st = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
+  const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
+  const email = (c.getUserEmail && c.getUserEmail()) || '';
+  const name  = displayName();
 
   const menu = h('div#accountMenu.account-menu', { role: 'menu' }, [
-    h('div.am-email', { text: (c.getUserEmail && c.getUserEmail()) || '' }),
+    h('div.am-you', {}, [
+      h('span.am-avatar', { 'aria-hidden': 'true', text: initials(name) }),
+      h('span.am-you-text', {}, [
+        h('span.am-you-name', { text: name }),
+        /* NOT .am-email: chrome.css styles that class as a bordered
+           standalone row, which is wrong inside this header. A new
+           name rather than an override, because beating a rule in
+           another sheet depends on import order — see the ordering
+           trap in CLAUDE.md. */
+        h('span.am-you-mail', { text: email })
+      ])
+    ]),
+    h('div#amAccount.am-account'),
     h('div.am-sync', { 'data-sync': syncTone(st.state) }, [
       h('span.am-sync-dot', { 'aria-hidden': 'true' }),
       h('span.am-sync-text', { text: st.detail || 'Local only' })
@@ -169,6 +338,7 @@ export function openAccountMenu(anchor) {
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);
   document.body.appendChild(menu);
+  fillAccountBlock();
 
   const r = anchor.getBoundingClientRect();
   menu.style.top = (r.bottom + 6) + 'px';
@@ -176,7 +346,7 @@ export function openAccountMenu(anchor) {
      right edge and a 220px menu pinned to it pushed the document
      sideways — which `verify` measures, and which is a real thumb
      problem before it is a test failure. */
-  const width = 240;
+  const width = 260;
   const right = Math.max(8, Math.min(window.innerWidth - r.right, window.innerWidth - width - 8));
   menu.style.right = right + 'px';
   menu.classList.add('show');
@@ -497,6 +667,7 @@ export default {
   attachSignInPill,
   refreshSignInPill,
   openAccountMenu,
+  resetAccountCache,
   openCloudAuthModal,
   closeCloudAuthModal,
   showConfigBlock,

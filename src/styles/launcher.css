@@ -65,6 +65,14 @@
   margin-bottom: var(--s1);
 }
 
+/* Only the SIZES live here. The face, the ligature settings and the
+   two resets that make a ligature form at all are one shared rule in
+   base.css, because the shell and the command palette draw the same
+   marks on every page in the studio and three copies of a font stack
+   is three things to keep in step. */
+.lx-grid .lx-phase-icon.sym { font-size: 28px; }
+.lx-grid .lx-mod-icon.sym   { font-size: 24px; }
+
 /* ------------------------------------------------------------
    2. THE TILES
    ------------------------------------------------------------

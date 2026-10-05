@@ -70,6 +70,7 @@
    ============================================================ */
 import nav from '../data/navigation.json';
 import { h } from '../lib/dom.js';
+import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId, setCurrentProject } from '../lib/store.js';
 import '../styles/palette.css';
 
@@ -164,6 +165,7 @@ function navItems() {
       sub: g.purpose,
       group: 'Studio',
       icon: g.icon,
+      sym: g.sym,
       href: g.href,
       keywords: ['go', 'open']
     }));
@@ -191,6 +193,7 @@ function navItems() {
            two commits. Phases take sh-ph-; categories take hue-. */
         hueClass: 'sh-ph-' + p.id,
         icon: m.icon,
+        sym: m.sym,
         href: m.href,
         status: m.status,
         keywords: [p.label, p.blurb || '', m.status]
@@ -340,7 +343,7 @@ function rowFor(it, i) {
     'aria-selected': String(i === active),
     'data-i': String(i)
   });
-  li.append(h('span.pal-row-icon', { text: it.icon || '•', 'aria-hidden': 'true' }));
+  li.append(iconSpan('pal-row-icon', it, '\u2022'));
   const body = h('span.pal-row-body');
   body.append(h('span.pal-row-label', { text: it.label }));
   if (it.sub) body.append(h('span.pal-row-sub', { text: it.sub }));

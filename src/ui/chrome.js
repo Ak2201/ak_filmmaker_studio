@@ -840,6 +840,12 @@ function buildBeatVisualizer() {
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   svg.setAttribute('preserveAspectRatio', 'none');
+  /* `role="img"` is what makes the aria-label above count. An
+     aria-label on an element whose role does not support naming is
+     DROPPED, and a bare <svg> has no such role — so this graphic
+     announced nothing. story.js, short.js and dashboard.js all set it
+     correctly; this was the one that did not. */
+  svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', '15-beat emotional curve');
 
   // Axes
@@ -937,11 +943,23 @@ function buildBeatVisualizer() {
 
   wrap.appendChild(svg);
 
-  // Insert before the b01 row's container
-  const insertBefore = firstBeat.closest('.beat-row, .ask, .field-row') ||
-                        firstBeat.parentElement;
-  if (insertBefore && insertBefore.parentElement) {
-    insertBefore.parentElement.insertBefore(wrap, insertBefore);
+  /* Insert before the b01 row's container — and NOT inside the table.
+
+     None of `.beat-row`, `.ask` or `.field-row` matches anything in the
+     beat table, so this fell through to `firstBeat.parentElement`,
+     which is the `<td>`, and inserted the wrapper into the `<tr>`.
+     A <div> as a child of <tr> is not something the parser would ever
+     produce — it foster-parents it out — but this goes in through the
+     DOM API, where nothing corrects it, and table navigation across
+     that row then has no defined behaviour for a screen reader.
+
+     So if the anchor turns out to be table internals, climb to the
+     table itself, which is where "above the beat table" meant. */
+  let anchor = firstBeat.closest('.beat-row, .ask, .field-row') ||
+               firstBeat.parentElement;
+  if (anchor && anchor.closest('table')) anchor = anchor.closest('table');
+  if (anchor && anchor.parentElement) {
+    anchor.parentElement.insertBefore(wrap, anchor);
   } else {
     step.appendChild(wrap);
   }
@@ -1267,7 +1285,111 @@ function wireFieldSavedFlash() {
 // ============================================================
 // ARIA LABELS — auto-fix common gaps
 // ============================================================
+/* ============================================================
+   LABELS THAT EXIST BUT NAME NOTHING
+   ------------------------------------------------------------
+   Measured: feature.html had 393 form controls and 268 of them had no
+   accessible name at all. The 24-step blueprint — the page people keep
+   months of work in — was unusable with a screen reader, while looking
+   perfectly labelled to anyone who can see it.
+
+   TWO SHAPES, and neither is a missing label. The label is there.
+
+   1. `<div><label>Name</label><input data-key="s4_name"></div>`. The
+      `<label>` is a SIBLING with no `for` and does not wrap, so it
+      names nothing. 68 of these.
+   2. `<tr><td class="beat-name"><strong>02 · Theme Stated</strong>…</td>
+      <td><textarea data-key="b02"></textarea></td></tr>`. A `<th>`
+      does not name a control inside a `<td>`, and here the row's
+      label is not even a `<th>`. 187 of these.
+
+   WHY THIS IS NOT FIXED IN THE DATA. Those blocks live in
+   `src/data/steps.feature.json`, which `npm run extract` REGENERATES
+   from `legacy/` — so 255 hand-added `for=` attributes would be erased
+   by the next extraction, silently. Deriving the association at render
+   time survives that, and covers any step added later for free, which
+   is the same argument that keeps the step list in JSON rather than in
+   markup.
+
+   WHY IT LIVES HERE rather than in steps.js, where the plan put it:
+   `autoAriaLabels()` is already called by every page after its own
+   render — twenty-odd call sites — and already knows how to skip a
+   control that has a name. One function, every page, no new call site.
+   steps.js would have reached the two blueprints only.
+   ============================================================ */
+
+let _fieldSeq = 0;
+function fieldId(el) {
+  const base = 'fld-' + ((el.dataset && el.dataset.key) || 'x' + (++_fieldSeq));
+  let id = base, n = 1;
+  while (document.getElementById(id)) id = base + '-' + (++n);
+  return id;
+}
+
+const NAMEABLE = /^(INPUT|TEXTAREA|SELECT)$/;
+const hasName = (el) =>
+  el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') ||
+  el.closest('label') ||
+  (el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]'));
+
+function associateLabels(root) {
+  root = root || document;
+  let wired = 0;
+
+  /* A visible <label> that names exactly one control gets wired to it.
+     Minting the id from `data-key` keeps it stable across renders and
+     readable in a devtools inspection; the collision loop is there
+     because an id is a document-wide name and data-key is not. */
+  for (const lab of root.querySelectorAll('label:not([for])')) {
+    if (lab.querySelector('input, textarea, select')) continue;  // wraps: already fine
+    if (!lab.textContent.trim()) continue;
+    let ctl = lab.nextElementSibling;
+    if (!(ctl && NAMEABLE.test(ctl.tagName))) {
+      const own = lab.parentElement
+        ? lab.parentElement.querySelectorAll(':scope > input, :scope > textarea, :scope > select')
+        : [];
+      ctl = own.length === 1 ? own[0] : null;
+    }
+    if (!ctl || ctl.type === 'hidden' || hasName(ctl)) continue;
+    if (!ctl.id) ctl.id = fieldId(ctl);
+    lab.setAttribute('for', ctl.id);
+    wired++;
+  }
+
+  /* A control in a table cell is named by its row and its column —
+     which is what a sighted reader is doing when they look left and
+     up. The row's label is its first cell (`<th>` or not: the beat
+     table uses a `<td class="beat-name">`), preferring its <strong>
+     where there is one, because the cell also carries a page hint and
+     a one-line note that would bloat the name. */
+  for (const ctl of root.querySelectorAll('td input, td textarea, td select')) {
+    if (ctl.type === 'hidden' || hasName(ctl)) continue;
+    if (ctl.placeholder || ctl.getAttribute('title')) continue;   // the branch below covers those
+    const cell = ctl.closest('td');
+    const row = ctl.closest('tr');
+    const table = ctl.closest('table');
+    const parts = [];
+    const first = row && row.querySelector('th, td');
+    if (first && first !== cell) {
+      const strong = first.querySelector('strong');
+      parts.push((strong || first).textContent);
+    }
+    const head = table && table.querySelector('thead tr');
+    const th = head && cell && cell.cellIndex >= 0 ? head.children[cell.cellIndex] : null;
+    if (th) parts.push(th.textContent);
+    const name = parts.map((t) => String(t || '').replace(/\s+/g, ' ').trim())
+                      .filter(Boolean).join(' — ').slice(0, 120);
+    if (name) { ctl.setAttribute('aria-label', name); wired++; }
+  }
+  return wired;
+}
+
 function autoAriaLabels() {
+  /* FIRST: a real `<label for>` is a better name than a placeholder,
+     and the placeholder branch below already skips a control that has
+     one — so associating has to happen before deriving. */
+  associateLabels(document);
+
   document.querySelectorAll('button:not([aria-label])').forEach(btn => {
     const txt = btn.textContent.trim();
     if (txt && txt.length <= 3) {

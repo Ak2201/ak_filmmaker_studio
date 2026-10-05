@@ -166,7 +166,7 @@ const VOL1_COVER_HTML   = `
   <div>
     <div class="master-mark">PHASE 01</div>
     <div class="vol-tag">STORY · 12 STEPS</div>
-    <h1>The <span class="light">Story</span><br>Blueprint.</h1>
+    <h2 class="vol-h">The <span class="light">Story</span><br>Blueprint.</h2>
     <p class="sub">From a vague idea to a structured screenplay in twelve guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Working title</label><input type="text" data-key="v1_title" placeholder="Untitled film"></div>
@@ -285,7 +285,7 @@ const PHASE3_COVER_HTML = `
   <div>
     <div class="master-mark">PHASE 03</div>
     <div class="vol-tag">PRODUCTION &middot; 4 STEPS</div>
-    <h1>The <span class="light">Production</span><br>Blueprint.</h1>
+    <h2 class="vol-h">The <span class="light">Production</span><br>Blueprint.</h2>
     <p class="sub">The shoot itself — call sheets, continuity, dailies and the wrap. Checklists rather than prompts, because a shoot day is a list you work through before the light goes, not a question you sit with.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>First day of shoot</label><input type="text" data-key="p3_start" placeholder="DD / MM / YYYY"></div>
@@ -301,7 +301,7 @@ const PHASE4_COVER_HTML = `
   <div>
     <div class="master-mark">PHASE 04</div>
     <div class="vol-tag">POST-PRODUCTION &middot; 4 STEPS</div>
-    <h1>The <span class="light">Post-Production</span><br>Blueprint.</h1>
+    <h2 class="vol-h">The <span class="light">Post-Production</span><br>Blueprint.</h2>
     <p class="sub">Assembly to delivery. Half the film is made here, and it is the half that gets budgeted last — so it is written down first.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Editor</label><input type="text" data-key="p4_editor"></div>
@@ -317,7 +317,7 @@ const VOL2_COVER_HTML   = `
   <div>
     <div class="master-mark">PHASE 02</div>
     <div class="vol-tag">PRE-PRODUCTION · 12 STEPS</div>
-    <h1>The <span class="light">Pre-Production</span><br>Blueprint.</h1>
+    <h2 class="vol-h">The <span class="light">Pre-Production</span><br>Blueprint.</h2>
     <p class="sub">From a locked script to "ROLL CAMERA" — twelve guided steps for direction, design, and the discipline of pre-production.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Director</label><input type="text" data-key="v2_director"></div>
@@ -3179,6 +3179,37 @@ function wirePitchRebuild() {
    #app is still empty — none of the page existed yet. Re-run the
    parts that need our markup, now that it is there.
    ============================================================ */
+/* The palette picker is the one widget on this page with no label of
+   any kind to associate — six reachable controls under a single group
+   heading, where the generic associator in chrome.js correctly finds
+   nothing to wire. So they are named here, where the rest of the
+   palette logic already lives (see updatePalette), rather than by
+   teaching the shared module about one page's markup.
+
+   Named here rather than in steps.feature.json for the usual reason:
+   `npm run extract` regenerates that file, so the attributes would go
+   with it. The swatch seeds themselves stay hex literals in the JSON
+   on purpose — invariant 4 names them as the one intended exception,
+   because <input type="color"> requires a literal and these are the
+   user's editable starting values.
+
+   The import picker next to them is `display: none` and reachable by
+   nobody: it is driven by the button beside it, so it needs no name
+   and gets none. */
+function nameThePalette() {
+  document.querySelectorAll('.palette-picker .palette-row').forEach((row, i) => {
+    const n = i + 1;
+    const sw = row.querySelector('input[type="color"]');
+    if (sw && !sw.getAttribute('aria-label')) {
+      sw.setAttribute('aria-label', 'Colour ' + n + ' of the visual palette');
+    }
+    const hex = row.querySelector('.palette-hex');
+    if (hex && !hex.getAttribute('aria-label')) {
+      hex.setAttribute('aria-label', 'Colour ' + n + ' hex value');
+    }
+  });
+}
+
 function reinitChrome() {
   try {
     mountShell();
@@ -3248,6 +3279,20 @@ function boot() {
      them, including the scene list, which is on the spine. */
   mountStepCritiques();
   bridgeTitleToProject();
+
+  /* AND NAME THE FIELDS AGAIN, for exactly the reason stated three
+     lines above about the critiques: reinitChrome() ran before
+     loadData(), and the scene, shot, cast and location steps have no
+     fields at all until loadData() builds their table rows. So the
+     first pass named the chrome and missed about a hundred of the
+     fields with the user's writing in them.
+
+     Measured: re-calling this after the page had settled dropped the
+     unnamed count from 324 to 220 — a hundred fields named for free by
+     one repeated call. Cheap and idempotent: every branch inside it
+     skips a control that already has a name. */
+  autoAriaLabels();
+  nameThePalette();
 
   /* AFTER assignStepIds(), which is what gives the step its #step-08,
      and after loadData() so the card is never inserted into a tree

@@ -169,7 +169,12 @@
    the feature's is red and the short's is blue without a rule each. */
 .master-title .light,
 .cover-title .light,
+/* `.vol-h` is the four stage titles. They were <h1> — five <h1>s on
+   one page, which is a heading list a screen-reader user cannot
+   navigate — and are <h2> now, so every rule that shaped them has to
+   name the new tag too or four cover titles silently shrink. */
 .vol-cover h1 .light,
+.vol-cover h2.vol-h .light,
 .hero h1 .light { font-weight: 800; font-style: normal; color: var(--accent-deep); }
 
 /* The hero's button pair. --s6 under it because the next thing down
@@ -1660,6 +1665,7 @@ body.reading-mode .how-to { padding-block: var(--s6); }
   .master-title,
   .cover-title,
   .vol-cover h1,
+  .vol-cover h2.vol-h,
   .hero h1 { font-size: clamp(var(--t-3xl), 14vw, var(--t-5xl)); }
   .step-num { font-size: var(--t-4xl); }
   .step-check li { padding: var(--s3) 0 var(--s3) var(--s6); }

@@ -121,6 +121,7 @@
 .master-title,
 .cover-title,
 .vol-cover h1,
+.vol-cover h2.vol-h,
 .hero h1 {
   margin: 0 0 var(--s3);
   font-family: var(--f-display);

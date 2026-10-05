@@ -58,12 +58,13 @@
    but a flash of "checking this device…" over the main thing the
    page is for.
    ============================================================ */
-import { storageUsage } from '../lib/store.js';
+import Store, { storageUsage } from '../lib/store.js';
                                    /* FIRST — it patches Storage.prototype,
-                                      and the order is load-bearing. The named
-                                      import changes nothing about that: the
-                                      module still evaluates before anything
-                                      below it, which is the whole guarantee. */
+                                      and the order is load-bearing. Adding a
+                                      named import alongside the default
+                                      changes nothing about that: the module
+                                      still evaluates before anything below
+                                      it, which is the whole guarantee. */
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -96,6 +97,7 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
    says where it goes. It returns null when signed out, like
    renderAdmin(), so append stays branchless. */
 import { accountSection } from '../ui/account-panel.js';
+import { inviteSection, adminSection, wireGateUI } from '../ui/gate-ui.js';
 
 const app = document.getElementById('app');
 
@@ -700,10 +702,16 @@ function render() {
   ]));
 
   const body = h('div.st-body');
-  /* renderAdmin() returns null for everybody else; append ignores a
-     null, so there is no branch here and no empty section either. */
-  body.append(renderKey(), renderStorage(), renderDrive(), renderAppearance(),
-              accountSection(section), renderAdmin(), renderElsewhere());
+  /* Several of these return null when they have nothing to show.
+     Element.append() does NOT ignore a null — it inserts the text
+     "null" — so they are filtered first. (This comment used to say
+     append ignores one; it held only because every section here
+     happened to render something on the pages anybody checked. The
+     storage section is one of the ones that always renders, which is
+     exactly why it would not have caught it either.) */
+  body.append(...[renderKey(), renderStorage(), renderDrive(), renderAppearance(),
+              accountSection(section), inviteSection(section, gateStatus),
+              adminSection(section, gateStatus), renderAdmin(), renderElsewhere()].filter(Boolean));
   main.append(body);
 
   app.replaceChildren(main);
@@ -868,7 +876,24 @@ DriveSync.onDriveStatus(() => { if (!busy) render(); });
    how these go. Anything whose VISIBILITY depends on who is signed
    in has to redraw when that answer arrives. */
 if (window.StudioCloud && window.StudioCloud.onAuth) {
-  window.StudioCloud.onAuth(() => { if (!busy) render(); });
+  window.StudioCloud.onAuth(() => { refreshGate(); if (!busy) render(); });
 }
+
+/* THE GATE'S ANSWER ARRIVES LATER STILL — a round trip after the
+   session — for the same reason as above, so it is asked for after
+   every auth change and on every gate change, and the page redraws
+   when it lands. Null until then: inviteSection() and adminSection()
+   both render nothing for a signed-in user whose status is unknown,
+   rather than flashing an invite box at a member. */
+let gateStatus = null;
+async function refreshGate() {
+  const c = window.StudioCloud;
+  if (!c || !c.gate || !c.getSession || !c.getSession()) { gateStatus = null; return; }
+  try { gateStatus = await c.gate.status(); } catch (e) { gateStatus = null; }
+  if (!busy) render();
+}
+wireGateUI(() => { if (!busy) render(); });
+Store.subscribe('gate:changed', () => refreshGate());
+refreshGate();
 
 render();

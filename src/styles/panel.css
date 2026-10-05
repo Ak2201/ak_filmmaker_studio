@@ -1,0 +1,39 @@
+/* ============================================================
+   THE SIDE PANEL — narrow by birth (Chrome's side panel is ~360px)
+   ------------------------------------------------------------
+   Designed at side-panel width and left to grow, like shoot.css.
+   Each stage carries its own .sh-ph-* class, so its dot is the phase
+   hue the rest of the studio uses; the label beside it says the same
+   thing in words. Tokens and --sk-* only.
+   ============================================================ */
+.pn-main { padding: var(--s4) var(--s4) var(--s7); display: grid; gap: var(--s3); align-content: start; max-width: 40rem; margin: 0 auto; }
+.pn-head { display: grid; gap: var(--s1); }
+.pn-title { font-family: var(--f-display); font-size: var(--t-xl); line-height: var(--lh-tight); margin: 0; color: var(--ink); }
+.pn-deck { margin: 0; color: var(--ink-body); font-size: var(--t-small); }
+.pn-main > .btn { justify-self: start; }
+
+.pn-stages { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.pn-stage { border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-raised); overflow: hidden; }
+.pn-stage.is-open { border-color: var(--hue); }
+.pn-stage-btn {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr; column-gap: var(--s2); row-gap: 2px; align-items: center;
+  padding: var(--s3);
+}
+.pn-stage-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.pn-stage-btn strong { color: var(--ink); }
+.pn-blurb { grid-column: 2; font-size: var(--t-small); color: var(--ink-muted); }
+.pn-dot { width: 10px; height: 10px; border-radius: var(--radius-pill); background: var(--hue); grid-row: span 2; }
+.pn-stage-body { padding: 0 var(--s3) var(--s3); display: grid; gap: var(--s3); }
+.pn-modes { display: grid; gap: var(--s2); }
+.pn-mode { display: grid; gap: 2px; padding: var(--s2) var(--s3); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); text-decoration: none; background: var(--paper); }
+.pn-mode strong { color: var(--ink); }
+.pn-mode span { font-size: var(--t-small); color: var(--ink-muted); }
+.pn-mode:hover { border-color: var(--hue); }
+.pn-mods { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.pn-mod { display: grid; gap: 2px; }
+.pn-mod a { color: var(--hue-deep); font-weight: 600; }
+.pn-purpose, .pn-soon { font-size: var(--t-small); color: var(--ink-muted); }
+.pn-mod.is-planned span:first-child { color: var(--ink-body); }
+.pn-clips { font-size: var(--t-small); color: var(--ink-muted); margin: var(--s2) 0 0; }
+.pn-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); font-size: var(--t-small); color: var(--ink-muted); margin: var(--s3) 0 0; }

@@ -72,7 +72,9 @@ create table if not exists public.project_data (
                 'dissect',
                 'festivals',
                 'scriptgen',
-                'songs'
+                'songs',
+                'story',
+                'idea_vault'
               )),
   data        jsonb       not null default '{}'::jsonb,
   updated_at  timestamptz not null default now(),
@@ -2049,4 +2051,743 @@ end $$;
 -- still cannot be joined. That section's own header says it has never
 -- been run; this is a second confirmation from the database rather
 -- than a new finding.
+-- ============================================================
+
+-- ============================================================
+-- 13. THE INVITE GATE, SCREENING PASSES AND THE ONE-DEVICE LOCK
+-- ------------------------------------------------------------
+-- NOT RUN AGAINST ANY DATABASE. Written for PRD 2.0.0 sections 4.1,
+-- 4.2 and 5. Treat every claim below as reasoning until the checks at
+-- the end of this section have been run against the live project.
+--
+-- SCOPE, decided before a line was written: the gate guards the CLOUD
+-- and the EXTENSION, not the local app. Somebody who opens the site
+-- and writes in their own browser needs no code, no account and no
+-- lock, exactly as before — locking months of local work behind an
+-- invite would be the worst trade available to a writing tool. What a
+-- code buys is: cloud sync, the Chrome extension, and (for an admin)
+-- the console. cloud.js asks studio_status() after sign-in and stops
+-- syncing for an account that has not redeemed one.
+--
+-- HOW THE PRD'S TABLES MAP ONTO THIS SCHEMA, and why four of its seven
+-- are not created as written:
+--   invite_codes          created, as specified, plus revocation,
+--                         a label and the creating admin.
+--   users                 NOT created. auth.users already holds the
+--                         Google identity (sub, email, name); a second
+--                         users table is a second copy of who somebody
+--                         is. `studio_members` holds only what the PRD
+--                         adds to it: role and the redeeming code.
+--   user_active_sessions  created, as specified.
+--   projects              NOT created. public.projects exists, owns
+--                         every collaborator, share and comment row,
+--                         and has live data. `stage` and `framework`
+--                         are properties of the story blob, which is
+--                         where the app reads them.
+--   idea_vault,           NOT created as tables. Every per-project
+--   story_beats           model in this app syncs as ONE jsonb blob
+--                         per scope in project_data; two normalised
+--                         tables beside the blob would be two
+--                         representations of one thing, which
+--                         CLAUDE.md names as the bug that stranded
+--                         scene rows. They are scopes instead —
+--                         'story' and 'idea_vault' below — with the
+--                         same RLS every other scope already has.
+--   script_scenes         NOT created, for the same reason: it is the
+--                         existing 'scenes' scope.
+--
+-- THE PRE-AUTH TICKET. The PRD's flow is: verify a code (anonymous),
+-- receive a ticket with a 10-minute TTL, sign in with Google, redeem
+-- the ticket. The ticket is 32 random bytes, returned once, and only
+-- its SHA-256 is stored — so a read of invite_tickets, by an admin or
+-- by a leak, yields nothing that can be redeemed. That is the
+-- "encrypted" in FR-101 delivered as something checkable.
+--
+-- A CODE IS NOT DECREMENTED BY VERIFYING IT. verify_invite() only
+-- checks and issues a ticket; redeem_invite() is the step that spends
+-- a use, under a row lock, after Google has said who is redeeming. A
+-- code verified and abandoned at the consent screen costs nothing.
+-- ============================================================
+
+create extension if not exists pgcrypto with schema extensions;
+
+-- 13.1 TABLES ---------------------------------------------------
+
+create table if not exists public.invite_codes (
+  id                 uuid        primary key default gen_random_uuid(),
+  code               varchar(32) unique not null,
+  pass_type          varchar(16) not null default 'standard'
+                     check (pass_type in ('standard','screening_pass')),
+  target_project_id  uuid        references public.projects(id) on delete cascade,
+  max_redemptions    int         not null default 1 check (max_redemptions >= 1),
+  redemptions_count  int         not null default 0 check (redemptions_count >= 0),
+  expires_at         timestamptz,
+  revoked_at         timestamptz,
+  label              text,
+  created_by         uuid        references auth.users(id) on delete set null,
+  created_at         timestamptz not null default now(),
+  -- A screening pass is FOR a project; a standard code is not.
+  constraint invite_codes_target_check check (
+    (pass_type = 'screening_pass') = (target_project_id is not null)
+  )
+);
+
+create table if not exists public.studio_members (
+  user_id         uuid        primary key references auth.users(id) on delete cascade,
+  role            varchar(32) not null default 'user' check (role in ('admin','user','guest')),
+  invite_code_id  uuid        references public.invite_codes(id) on delete set null,
+  disabled_at     timestamptz,
+  created_at      timestamptz not null default now()
+);
+
+create table if not exists public.invite_tickets (
+  ticket_hash  text        primary key,
+  code_id      uuid        not null references public.invite_codes(id) on delete cascade,
+  expires_at   timestamptz not null,
+  used_at      timestamptz,
+  used_by      uuid        references auth.users(id) on delete set null
+);
+
+create table if not exists public.invite_redemptions (
+  id           uuid        primary key default gen_random_uuid(),
+  code_id      uuid        not null references public.invite_codes(id) on delete cascade,
+  user_id      uuid        references auth.users(id) on delete set null,
+  viewer_email text,       -- screening passes only; typed, NOT attested
+  access_id    text,       -- the short id printed in the watermark
+  redeemed_at  timestamptz not null default now()
+);
+create index if not exists invite_redemptions_code_idx on public.invite_redemptions(code_id, redeemed_at desc);
+
+create table if not exists public.user_active_sessions (
+  user_id         uuid        primary key references auth.users(id) on delete cascade,
+  session_id      uuid        not null,
+  last_heartbeat  timestamptz not null default now(),
+  client_ip       varchar(45),
+  user_agent      text
+);
+
+alter table public.invite_codes         enable row level security;
+alter table public.studio_members       enable row level security;
+alter table public.invite_tickets       enable row level security;
+alter table public.invite_redemptions   enable row level security;
+alter table public.user_active_sessions enable row level security;
+
+-- 13.2 WHO IS AN ADMIN ------------------------------------------
+-- There is no UI that makes the first admin, deliberately: anything
+-- that can grant the first admin can grant the second. Run, once, as
+-- the project owner in the SQL editor:
+--   insert into public.studio_members (user_id, role)
+--   select id, 'admin' from auth.users where email = '<you>'
+--   on conflict (user_id) do update set role = 'admin';
+-- VITE_ADMIN_EMAILS in the client decides who is SHOWN the console;
+-- this function decides who can USE it. Visibility is not a boundary.
+create or replace function public.is_studio_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.studio_members m
+     where m.user_id = auth.uid() and m.role = 'admin' and m.disabled_at is null
+  );
+$$;
+-- Invoked by the policies below, so authenticated must be able to
+-- execute it (a policy calling a function the caller cannot execute
+-- ERRORS — section 10.4). anon never reaches those policies.
+revoke execute on function public.is_studio_admin() from public, anon;
+grant  execute on function public.is_studio_admin() to authenticated;
+
+-- Admins read everything here; nobody else reads anything directly.
+-- Every write goes through a security definer RPC, so there are no
+-- insert/update/delete policies at all — the absence IS the policy.
+drop policy if exists ic_admin_select on public.invite_codes;
+create policy ic_admin_select on public.invite_codes for select using (public.is_studio_admin());
+drop policy if exists sm_select on public.studio_members;
+create policy sm_select on public.studio_members for select
+  using (user_id = auth.uid() or public.is_studio_admin());
+drop policy if exists ir_admin_select on public.invite_redemptions;
+create policy ir_admin_select on public.invite_redemptions for select using (public.is_studio_admin());
+drop policy if exists uas_select on public.user_active_sessions;
+create policy uas_select on public.user_active_sessions for select
+  using (user_id = auth.uid() or public.is_studio_admin());
+-- invite_tickets: no policy. Only the RPCs ever touch it.
+
+-- 13.3 THE GATE ---------------------------------------------------
+
+-- Codes are stored as typed by the generator: upper case, no spaces.
+-- The client normalises too (FR-101), but the server is what decides.
+create or replace function public.normalise_code(p text)
+returns text language sql immutable as $$
+  select upper(regexp_replace(coalesce(p, ''), '[^A-Za-z0-9]', '', 'g'));
+$$;
+
+-- Anonymous. Checks a STANDARD code and issues a ticket; spends nothing.
+-- Every failure is the same sentence on purpose: "expired", "revoked"
+-- and "no such code" as three answers would be an oracle telling
+-- somebody guessing codes which guesses were once real.
+create or replace function public.verify_invite(p_code text)
+returns table (ticket text, pass_type text, expires_at timestamptz)
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $fn$
+declare
+  c   public.invite_codes;
+  raw text;
+begin
+  select * into c from public.invite_codes ic
+   where ic.code = public.normalise_code(p_code);
+  if c.id is null
+     or c.revoked_at is not null
+     or (c.expires_at is not null and c.expires_at <= now())
+     or c.redemptions_count >= c.max_redemptions then
+    raise exception 'That code is not valid' using errcode = '22023';
+  end if;
+  if c.pass_type <> 'standard' then
+    -- A screening pass opens the screening room; it does not make an
+    -- account. Say so, rather than the generic refusal, because the
+    -- holder of a real pass typed it into the wrong box.
+    raise exception 'That is a screening pass — open it in the screening room' using errcode = '22023';
+  end if;
+  raw := encode(gen_random_bytes(32), 'hex');
+  insert into public.invite_tickets (ticket_hash, code_id, expires_at)
+  values (encode(digest(raw, 'sha256'), 'hex'), c.id, now() + interval '10 minutes');
+  -- Expired tickets are garbage; sweep a few on the way past rather
+  -- than needing a scheduled job a static app has nowhere to run.
+  delete from public.invite_tickets t where t.expires_at < now() - interval '1 day';
+  return query select raw, c.pass_type::text, now() + interval '10 minutes';
+end;
+$fn$;
+revoke execute on function public.verify_invite(text) from public;
+grant  execute on function public.verify_invite(text) to anon, authenticated;
+
+-- Authenticated. Spends one use of the code behind a ticket and makes
+-- the caller a member. Idempotent for somebody who is already one: a
+-- returning member redeeming a second code keeps their role and does
+-- NOT spend the code, so an admin cannot be demoted by a stray ticket.
+create or replace function public.redeem_invite(p_ticket text)
+returns table (role text, invite_code_id uuid)
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $fn$
+declare
+  uid  uuid := auth.uid();
+  t    public.invite_tickets;
+  c    public.invite_codes;
+  mem  public.studio_members;
+begin
+  if uid is null or coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'Sign in with Google to redeem a code' using errcode = '42501';
+  end if;
+
+  select * into mem from public.studio_members m where m.user_id = uid;
+  if mem.user_id is not null and mem.disabled_at is null then
+    return query select mem.role::text, mem.invite_code_id;
+    return;
+  end if;
+  if mem.disabled_at is not null then
+    raise exception 'This account has been disabled by an administrator' using errcode = '42501';
+  end if;
+
+  select * into t from public.invite_tickets it
+   where it.ticket_hash = encode(digest(coalesce(p_ticket, ''), 'sha256'), 'hex')
+   for update;
+  if t.ticket_hash is null or t.used_at is not null or t.expires_at <= now() then
+    raise exception 'That sign-in took too long or the code was already used — enter the code again' using errcode = '22023';
+  end if;
+
+  -- The row lock is what makes max_redemptions a limit rather than a
+  -- suggestion: two people redeeming the last use at once serialise
+  -- here, and the second sees the incremented count.
+  select * into c from public.invite_codes ic where ic.id = t.code_id for update;
+  if c.revoked_at is not null
+     or (c.expires_at is not null and c.expires_at <= now())
+     or c.redemptions_count >= c.max_redemptions then
+    raise exception 'That code is not valid' using errcode = '22023';
+  end if;
+
+  update public.invite_codes ic set redemptions_count = ic.redemptions_count + 1 where ic.id = c.id;
+  update public.invite_tickets it set used_at = now(), used_by = uid where it.ticket_hash = t.ticket_hash;
+  insert into public.invite_redemptions (code_id, user_id) values (c.id, uid);
+  insert into public.studio_members (user_id, role, invite_code_id)
+  values (uid, 'user', c.id)
+  on conflict (user_id) do nothing;
+
+  return query select m.role::text, m.invite_code_id from public.studio_members m where m.user_id = uid;
+end;
+$fn$;
+revoke execute on function public.redeem_invite(text) from public, anon;
+grant  execute on function public.redeem_invite(text) to authenticated;
+
+-- What the client asks after sign-in: is this account through the gate?
+create or replace function public.studio_status()
+returns table (registered boolean, role text, disabled boolean)
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select m.user_id is not null, coalesce(m.role, '')::text, m.disabled_at is not null
+    from (select 1) one
+    left join public.studio_members m on m.user_id = auth.uid();
+$$;
+revoke execute on function public.studio_status() from public, anon;
+grant  execute on function public.studio_status() to authenticated;
+
+-- 13.4 THE ONE-DEVICE LOCK ---------------------------------------
+-- FR-203/204/205. One row per user; the row IS the lock. A lock whose
+-- heartbeat is older than 90 seconds is stale and anybody may take it
+-- (three missed 30-second pings: one dropped packet must not cost a
+-- writer their session). A fresh one held by another session_id is a
+-- CONFLICT, and the client asks before calling session_takeover().
+--
+-- WHAT THIS IS AND IS NOT. It stops one account being used on two
+-- machines at once through the extension and the cloud. It does not
+-- and cannot stop the LOCAL app being opened in two tabs: that writes
+-- to one browser's storage and was never the PRD's concern.
+--
+-- The client's IP is read from the forwarded header PostgREST exposes.
+-- It is advisory — shown to an admin and in the takeover prompt — and
+-- authorises nothing.
+
+create or replace function public.session_client_ip()
+returns text language sql stable as $$
+  select left(split_part(coalesce(
+    nullif(current_setting('request.headers', true), '')::json ->> 'x-forwarded-for', ''), ',', 1), 45);
+$$;
+
+create or replace function public.session_require_member()
+returns uuid
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'Not signed in' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.studio_members m
+                  where m.user_id = uid and m.disabled_at is null) then
+    -- 'P0401' maps to the PRD's 401: the client clears its session
+    -- storage and returns to the gatekeeper.
+    raise exception 'This account has no active invite' using errcode = 'P0401';
+  end if;
+  return uid;
+end;
+$fn$;
+revoke execute on function public.session_require_member() from public, anon, authenticated;
+
+-- Acquire. status = 'ok' | 'conflict'. On conflict nothing is written,
+-- and the caller learns how recently the other session was seen and
+-- on what, so the prompt can say more than "somewhere".
+create or replace function public.session_acquire(p_session uuid, p_user_agent text default null)
+returns table (status text, other_last_seen timestamptz, other_user_agent text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid uuid := public.session_require_member();
+  cur public.user_active_sessions;
+begin
+  select * into cur from public.user_active_sessions s where s.user_id = uid for update;
+  if cur.user_id is not null
+     and cur.session_id <> p_session
+     and cur.last_heartbeat > now() - interval '90 seconds' then
+    return query select 'conflict'::text, cur.last_heartbeat, cur.user_agent;
+    return;
+  end if;
+  insert into public.user_active_sessions as s (user_id, session_id, last_heartbeat, client_ip, user_agent)
+  values (uid, p_session, now(), public.session_client_ip(), left(p_user_agent, 400))
+  on conflict (user_id) do update
+     set session_id = excluded.session_id, last_heartbeat = now(),
+         client_ip = excluded.client_ip, user_agent = excluded.user_agent;
+  return query select 'ok'::text, null::timestamptz, null::text;
+end;
+$fn$;
+
+-- Takeover. One UPDATE under the primary key, so the swap is a single
+-- statement — well inside the PRD's 250ms. The old session learns on
+-- its next ping, which answers 'conflict'.
+create or replace function public.session_takeover(p_session uuid, p_user_agent text default null)
+returns table (status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare uid uuid := public.session_require_member();
+begin
+  insert into public.user_active_sessions as s (user_id, session_id, last_heartbeat, client_ip, user_agent)
+  values (uid, p_session, now(), public.session_client_ip(), left(p_user_agent, 400))
+  on conflict (user_id) do update
+     set session_id = excluded.session_id, last_heartbeat = now(),
+         client_ip = excluded.client_ip, user_agent = excluded.user_agent;
+  return query select 'ok'::text;
+end;
+$fn$;
+
+-- Ping. 'ok' refreshes the heartbeat; 'conflict' (the PRD's 409) means
+-- somebody took the lock; a revoked member raises P0401 (the 401).
+-- A ping for a session that holds NO lock — released, or swept —
+-- re-acquires it if nobody else has, because a laptop that slept for
+-- two minutes has not been replaced by anybody.
+create or replace function public.session_ping(p_session uuid)
+returns table (status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid uuid := public.session_require_member();
+  cur public.user_active_sessions;
+begin
+  select * into cur from public.user_active_sessions s where s.user_id = uid for update;
+  if cur.user_id is null
+     or (cur.session_id <> p_session and cur.last_heartbeat <= now() - interval '90 seconds') then
+    insert into public.user_active_sessions as s (user_id, session_id, last_heartbeat, client_ip)
+    values (uid, p_session, now(), public.session_client_ip())
+    on conflict (user_id) do update
+       set session_id = excluded.session_id, last_heartbeat = now(), client_ip = excluded.client_ip;
+    return query select 'ok'::text;
+  elsif cur.session_id <> p_session then
+    return query select 'conflict'::text;
+  else
+    update public.user_active_sessions s set last_heartbeat = now() where s.user_id = uid;
+    return query select 'ok'::text;
+  end if;
+end;
+$fn$;
+
+-- Release. Only the holder can release; anybody else's call is a no-op,
+-- so a stale tab closing cannot free a lock it lost an hour ago.
+create or replace function public.session_release(p_session uuid)
+returns table (status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  delete from public.user_active_sessions s
+   where s.user_id = auth.uid() and s.session_id = p_session;
+  return query select 'released'::text;
+end;
+$fn$;
+
+revoke execute on function public.session_acquire(uuid, text)  from public, anon;
+revoke execute on function public.session_takeover(uuid, text) from public, anon;
+revoke execute on function public.session_ping(uuid)           from public, anon;
+revoke execute on function public.session_release(uuid)        from public, anon;
+grant  execute on function public.session_acquire(uuid, text)  to authenticated;
+grant  execute on function public.session_takeover(uuid, text) to authenticated;
+grant  execute on function public.session_ping(uuid)           to authenticated;
+grant  execute on function public.session_release(uuid)        to authenticated;
+
+-- 13.5 THE ADMIN CONSOLE ------------------------------------------
+-- Codes are 12 characters from a 32-letter alphabet with no 0/O/1/I/L
+-- — 60 bits, read aloud over a phone without a spelling. Generated
+-- here rather than in the browser, so the randomness is the
+-- database's and the client cannot choose a code.
+
+create or replace function public.admin_create_invite(
+  p_pass_type text default 'standard',
+  p_max_redemptions int default 1,
+  p_expires_at timestamptz default null,
+  p_target_project uuid default null,
+  p_label text default null
+)
+returns public.invite_codes
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $fn$
+declare
+  alphabet constant text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  bytes bytea;
+  v text;
+  row public.invite_codes;
+  i int;
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  if p_pass_type = 'screening_pass' and p_expires_at is null then
+    -- FR-103: a screening pass is time-limited by definition.
+    raise exception 'A screening pass needs an expiry' using errcode = '22023';
+  end if;
+  loop
+    bytes := gen_random_bytes(12);
+    v := '';
+    for i in 0..11 loop
+      v := v || substr(alphabet, (get_byte(bytes, i) % length(alphabet)) + 1, 1);
+    end loop;
+    exit when not exists (select 1 from public.invite_codes ic where ic.code = v);
+  end loop;
+  insert into public.invite_codes (code, pass_type, target_project_id, max_redemptions, expires_at, label, created_by)
+  values (v, p_pass_type, p_target_project, greatest(1, p_max_redemptions), p_expires_at, left(p_label, 120), auth.uid())
+  returning * into row;
+  return row;
+end;
+$fn$;
+
+create or replace function public.admin_revoke_invite(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  update public.invite_codes ic set revoked_at = coalesce(ic.revoked_at, now()) where ic.id = p_id;
+end;
+$fn$;
+
+-- Force-terminate a device lock (FR-102). The holder's next ping finds
+-- no row and, since nobody else holds it, would simply re-acquire — so
+-- termination also DISABLES the member when p_disable is set, which is
+-- what turns "kick this session" into "and keep them out".
+create or replace function public.admin_terminate_session(p_user uuid, p_disable boolean default false)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  if p_user = auth.uid() and p_disable then
+    raise exception 'You cannot disable your own account' using errcode = '22023';
+  end if;
+  delete from public.user_active_sessions s where s.user_id = p_user;
+  if p_disable then
+    update public.studio_members m set disabled_at = now() where m.user_id = p_user;
+  end if;
+end;
+$fn$;
+
+-- The console's member list needs an email, which lives in auth.users
+-- and is not readable through PostgREST. Admin only.
+create or replace function public.admin_list_members()
+returns table (user_id uuid, email text, role text, disabled_at timestamptz,
+               created_at timestamptz, last_heartbeat timestamptz, client_ip text, user_agent text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  return query
+    select m.user_id, u.email::text, m.role::text, m.disabled_at, m.created_at,
+           s.last_heartbeat, s.client_ip::text, s.user_agent
+      from public.studio_members m
+      join auth.users u on u.id = m.user_id
+      left join public.user_active_sessions s on s.user_id = m.user_id
+     order by m.created_at desc;
+end;
+$fn$;
+
+revoke execute on function public.admin_create_invite(text, int, timestamptz, uuid, text) from public, anon;
+revoke execute on function public.admin_revoke_invite(uuid)                               from public, anon;
+revoke execute on function public.admin_terminate_session(uuid, boolean)                  from public, anon;
+revoke execute on function public.admin_list_members()                                    from public, anon;
+grant  execute on function public.admin_create_invite(text, int, timestamptz, uuid, text) to authenticated;
+grant  execute on function public.admin_revoke_invite(uuid)                               to authenticated;
+grant  execute on function public.admin_terminate_session(uuid, boolean)                  to authenticated;
+grant  execute on function public.admin_list_members()                                    to authenticated;
+
+-- 13.6 THE SCREENING ROOM -----------------------------------------
+-- FR-103. Anonymous: a pass is the whole credential, by design — the
+-- reviewer has no account. That makes the pass a BEARER token exactly
+-- like a share link, with the same accepted trade, narrowed three ways:
+-- it expires (required at creation), it is read-only (this function
+-- returns data and writes only a log row), and it returns a FIXED set
+-- of scopes — the story, the blueprint and the scenes — never
+-- contacts, budget or anything with a phone number in it.
+--
+-- Every open is logged with the typed viewer email and a short access
+-- id, and the page burns both into its watermark. The email is TYPED,
+-- not attested: it identifies an honest viewer and deters a casual
+-- leak, and it is labelled as such in the console.
+--
+-- max_redemptions on a screening pass counts OPENS. A pass for one
+-- investor meeting can be set to a handful; a reload is an open.
+create or replace function public.screening_open(p_code text, p_viewer_email text default null)
+returns table (project_id uuid, title text, format text, access_id text,
+               expires_at timestamptz, scopes jsonb)
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $fn$
+declare
+  c   public.invite_codes;
+  aid text;
+begin
+  select * into c from public.invite_codes ic where ic.code = public.normalise_code(p_code) for update;
+  if c.id is null or c.pass_type <> 'screening_pass'
+     or c.revoked_at is not null
+     or c.expires_at is null or c.expires_at <= now()
+     or c.redemptions_count >= c.max_redemptions then
+    raise exception 'That screening pass is not valid' using errcode = '22023';
+  end if;
+  aid := upper(encode(gen_random_bytes(4), 'hex'));
+  update public.invite_codes ic set redemptions_count = ic.redemptions_count + 1 where ic.id = c.id;
+  insert into public.invite_redemptions (code_id, viewer_email, access_id)
+  values (c.id, nullif(left(lower(trim(coalesce(p_viewer_email, ''))), 255), ''), aid);
+  return query
+    select p.id, p.title, p.format, aid, c.expires_at,
+           coalesce((select jsonb_object_agg(d.scope, d.data)
+                       from public.project_data d
+                      where d.project_id = p.id
+                        and d.scope in ('story','feature','short','scenes')), '{}'::jsonb)
+      from public.projects p
+     where p.id = c.target_project_id;
+end;
+$fn$;
+revoke execute on function public.screening_open(text, text) from public;
+grant  execute on function public.screening_open(text, text) to anon, authenticated;
+
+-- 13.6b THE GATE AS A BOUNDARY, NOT A SCREEN --------------------
+-- Everything above makes the gate CHECKABLE; nothing above makes it
+-- BINDING. cloud.js stops syncing for a non-member, but a client that
+-- skips that check could still insert projects with the publishable
+-- key — the lesson VITE_ADMIN_EMAILS already taught: visibility is not
+-- a boundary. So the two writes that put a studio in the cloud are
+-- refused here for a signed-in user who has not redeemed a code:
+--   * creating a project (projects INSERT), and
+--   * writing data to a project you OWN (project_data INSERT/UPDATE).
+-- A collaborator writing to SOMEBODY ELSE's project is not refused: a
+-- member invited them, through a share or an account, and that grant
+-- is the member's decision. Reads are not gated at all — revoking a
+-- code must never make somebody's own work unreadable to them.
+--
+-- Additive on purpose: TRIGGERS, not edits to the existing policies,
+-- so not one line of sections 1-12 changes and nothing that already
+-- passes their checks can start failing for another reason.
+
+create or replace function public.is_studio_member(p_user uuid default auth.uid())
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (select 1 from public.studio_members m
+                  where m.user_id = p_user and m.disabled_at is null);
+$$;
+revoke execute on function public.is_studio_member(uuid) from public, anon;
+grant  execute on function public.is_studio_member(uuid) to authenticated;
+
+create or replace function public.require_studio_member_projects()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  -- auth.uid() is null for the service role and the SQL editor, which
+  -- must keep working (migrations, the admin bootstrap above).
+  if auth.uid() is not null and not public.is_studio_member(auth.uid()) then
+    raise exception 'Redeem an invite code to sync projects to the cloud' using errcode = 'P0401';
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.require_studio_member_data()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid;
+begin
+  if auth.uid() is null then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  if owner = auth.uid() and not public.is_studio_member(auth.uid()) then
+    raise exception 'Redeem an invite code to sync projects to the cloud' using errcode = 'P0401';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists projects_require_member on public.projects;
+create trigger projects_require_member before insert on public.projects
+  for each row execute function public.require_studio_member_projects();
+drop trigger if exists project_data_require_member on public.project_data;
+create trigger project_data_require_member before insert or update on public.project_data
+  for each row execute function public.require_studio_member_data();
+
+-- GRANDFATHERING. Everybody who already owns a cloud project when this
+-- section runs becomes a member, so turning the gate on locks out
+-- strangers and nobody who was already here. Idempotent; run again
+-- after a restore and it changes nothing that exists.
+insert into public.studio_members (user_id, role)
+select distinct p.owner_id, 'user' from public.projects p
+on conflict (user_id) do nothing;
+
+-- 13.7 TWO MORE SYNC SCOPES: story and idea_vault ------------------
+-- Same procedure as section 12, for the same reason: cloud.js derives
+-- its scope list from Store.SCOPED_KEYS and warns at load about any
+-- key without one, and this is the half Postgres enforces.
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs',
+      'story','idea_vault'
+    ));
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- 13.8 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon: rpc/verify_invite with a real standard code -> a ticket;
+--     with a revoked, expired, exhausted or made-up code -> the SAME
+--     sentence each time.
+--  2. anon: rpc/redeem_invite -> 42501 (no grant).
+--  3. signed in, no membership: redeem a fresh ticket -> role 'user',
+--     redemptions_count + 1; redeem the same ticket again -> refused.
+--  4. two sessions redeeming the last use of a one-use code at once:
+--     exactly one succeeds.
+--  5. session_acquire from A -> ok; from B within 90s -> conflict;
+--     session_takeover from B -> ok; session_ping from A -> conflict.
+--  6. stop pinging from B for 91s; session_acquire from A -> ok.
+--  7. admin_terminate_session(B, true); session_ping from B -> P0401.
+--  8. a non-admin calling any admin_* -> 42501; selecting invite_codes
+--     -> zero rows, not an error.
+--  9. anon: screening_open with a valid pass -> the four scopes and
+--     nothing else; after expires_at -> refused.
+-- 10. anon: rpc/session_require_member -> refused (no grant to anyone).
+-- 11. signed in, no membership: insert into projects -> P0401; upsert
+--     project_data on a project you own -> P0401; on a project shared
+--     with you for edit -> allowed.
+-- 12. after running this section, every owner_id in projects has a
+--     studio_members row (grandfathering).
 -- ============================================================

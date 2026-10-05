@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Filmmaker Studio",
+  "short_name": "FilmMakerStudio",
+  "version": "__VERSION__",
+  "description": "Story, screenplay and production tools for filmmakers — in a side panel, with a web clipper for your Idea Vault.",
+  "action": {
+    "default_title": "Open Filmmaker Studio",
+    "default_icon": { "192": "icons/icon-192.png" }
+  },
+  "icons": { "192": "icons/icon-192.png", "512": "icons/icon-512.png" },
+  "side_panel": { "default_path": "extension/panel.html" },
+  "background": { "service_worker": "extension/background.js", "type": "module" },
+  "permissions": ["storage", "sidePanel", "contextMenus", "alarms", "identity"],
+  "host_permissions": ["https://*.supabase.co/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

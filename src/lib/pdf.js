@@ -88,7 +88,9 @@ export const DOCUMENTS = {
   sides:      { setup: 'a4',         label: 'Sides',    classes: ['rp-print-sides'] },
   reports:    { setup: 'a4',         label: 'Production reports', classes: ['rp-print-reports'] },
   board:      { setup: 'landscape',  label: 'Stripboard' },
-  dood:       { setup: 'landscape',  label: 'Day Out of Days' }
+  dood:       { setup: 'landscape',  label: 'Day Out of Days' },
+  // The deck is its own cover, so no masthead above it.
+  pitch:      { setup: 'landscape',  label: 'Pitch deck', masthead: false }
 };
 
 /** The open project's title, for the band and the filename. */

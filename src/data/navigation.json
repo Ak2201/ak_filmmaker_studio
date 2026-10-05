@@ -1,39 +1,32 @@
 {
-  "_about": [
-    "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
-    "PHASE `hue` MUST EQUAL PHASE `id`. Two emitters build the colour class from the hue — launcher.js `sh-ph-${phase.hue}` and shell.js, twice — while palette.js builds it from the id. They only ever agreed because the original six phases had hue === id. Setting hue to a colour name during the four-pillar restructure made the hub emit .sh-ph-feature and .sh-ph-shorts, which match no rule in tokens.css, so --hue was undefined and those phases rendered in currentColor — the silent failure CLAUDE.md records the breakdown shipping for two commits. tokens.css maps the ID to a colour; this field must not disagree with it."
-  ],
+  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
   "global": [
     {
       "id": "home",
       "label": "Home",
       "icon": "⌂",
       "href": "index.html",
-      "purpose": "Projects and recent activity",
-      "sym": "home"
+      "purpose": "Projects and recent activity"
     },
     {
       "icon": "◴",
       "label": "Dashboard",
       "href": "dashboard.html",
-      "purpose": "Where the open project stands",
-      "sym": "speed"
+      "purpose": "Where the open project stands"
     },
     {
       "id": "library",
       "label": "Library",
       "icon": "◈",
       "href": "library.html",
-      "purpose": "Films, directors, rules, festivals, rates",
-      "sym": "local_library"
+      "purpose": "Films, directors, rules, festivals, rates"
     },
     {
       "id": "settings",
       "label": "Settings",
       "icon": "◍",
       "href": "settings.html",
-      "purpose": "The API key on this device, and how the studio looks",
-      "sym": "settings"
+      "purpose": "The API key on this device, and how the studio looks"
     }
   ],
   "phases": [
@@ -41,16 +34,32 @@
       "id": "story",
       "label": "Story",
       "hue": "story",
-      "blurb": "The spine: theme, stakes, arcs, acts",
+      "blurb": "Idea, logline, beats",
+      "icon": "◆",
       "modules": [
+        {
+          "id": "story-beats",
+          "label": "Beats & Pacing",
+          "purpose": "Synopsis against a framework, with a tension curve",
+          "status": "built",
+          "href": "story.html",
+          "icon": "≈"
+        },
+        {
+          "id": "idea-vault",
+          "label": "Idea Vault",
+          "purpose": "Clippings from the web, kept with the film",
+          "status": "built",
+          "href": "story.html#vault",
+          "icon": "✦"
+        },
         {
           "id": "feature-blueprint",
           "label": "Feature Blueprint",
           "purpose": "24 guided steps, idea to camera",
           "status": "built",
           "href": "feature.html",
-          "icon": "▤",
-          "sym": "menu_book"
+          "icon": "▤"
         },
         {
           "id": "short-blueprint",
@@ -58,8 +67,7 @@
           "purpose": "11 steps for under 30 minutes",
           "status": "built",
           "href": "short.html",
-          "icon": "▥",
-          "sym": "article"
+          "icon": "▥"
         },
         {
           "id": "glossary",
@@ -67,8 +75,7 @@
           "purpose": "Terms, explained through four Tamil films",
           "status": "built",
           "href": "feature.html#glossary",
-          "icon": "¶",
-          "sym": "local_library"
+          "icon": "¶"
         },
         {
           "id": "case-studies",
@@ -76,8 +83,7 @@
           "purpose": "Four Tamil films, taken apart for craft",
           "status": "built",
           "href": "study.html",
-          "icon": "◐",
-          "sym": "movie"
+          "icon": "◐"
         },
         {
           "id": "dissection",
@@ -85,18 +91,16 @@
           "purpose": "Take a finished film apart, then your own",
           "status": "built",
           "href": "dissect.html",
-          "icon": "✂",
-          "sym": "content_cut"
+          "icon": "✂"
         }
-      ],
-      "icon": "◈",
-      "sym": "auto_stories"
+      ]
     },
     {
-      "id": "preproduction",
-      "label": "Pre-Production",
-      "hue": "preproduction",
-      "blurb": "Script, breakdown, shots, logistics",
+      "id": "screenplay",
+      "label": "Screenplay",
+      "hue": "screenplay",
+      "blurb": "Pages, scenes and their elements",
+      "icon": "✎",
       "modules": [
         {
           "id": "screenplay",
@@ -104,8 +108,7 @@
           "purpose": "Write and format the script",
           "status": "built",
           "href": "write.html#screenplay",
-          "icon": "☰",
-          "sym": "description"
+          "icon": "☰"
         },
         {
           "id": "revisions",
@@ -113,8 +116,7 @@
           "purpose": "Coloured revision history",
           "status": "built",
           "href": "write.html#revisions",
-          "icon": "↻",
-          "sym": "history"
+          "icon": "↻"
         },
         {
           "id": "docs",
@@ -122,8 +124,7 @@
           "purpose": "Treatments, notes, one-pagers",
           "status": "built",
           "href": "write.html#documents",
-          "icon": "⌸",
-          "sym": "folder"
+          "icon": "⌸"
         },
         {
           "id": "scene-list",
@@ -131,8 +132,7 @@
           "purpose": "Every scene, INT/EXT, D/N, location",
           "status": "built",
           "href": "breakdown.html#scenes",
-          "icon": "≡",
-          "sym": "list"
+          "icon": "≡"
         },
         {
           "id": "breakdowns",
@@ -140,8 +140,7 @@
           "purpose": "Tag cast, props, wardrobe, VFX",
           "status": "built",
           "href": "breakdown.html#scenes",
-          "icon": "⊞",
-          "sym": "grid_view"
+          "icon": "⊞"
         },
         {
           "id": "elements",
@@ -149,8 +148,15 @@
           "purpose": "The element library across scenes",
           "status": "built",
           "href": "breakdown.html#elements",
-          "icon": "✣",
-          "sym": "category"
+          "icon": "✣"
+        },
+        {
+          "id": "auto-tag",
+          "label": "Auto-Tagging",
+          "purpose": "Cast, props, vehicles, stunts and sound read from the script",
+          "status": "built",
+          "href": "breakdown.html#suggest",
+          "icon": "⌖"
         },
         {
           "id": "songs",
@@ -158,35 +164,7 @@
           "purpose": "Four to six per feature, each its own shoot block",
           "status": "built",
           "href": "breakdown.html#songs",
-          "icon": "♫",
-          "sym": "music_note"
-        },
-        {
-          "id": "shot-list",
-          "label": "Shot List",
-          "purpose": "Shots per scene, with size and move",
-          "status": "built",
-          "href": "visualize.html#shot-list",
-          "icon": "▶",
-          "sym": "view_list"
-        },
-        {
-          "id": "storyboard",
-          "label": "Storyboard",
-          "purpose": "Frames against the shot list",
-          "status": "built",
-          "href": "visualize.html#storyboard",
-          "icon": "⊟",
-          "sym": "dashboard"
-        },
-        {
-          "id": "lookbook",
-          "label": "Lookbook",
-          "purpose": "Reference images per department",
-          "status": "built",
-          "href": "visualize.html#lookbook",
-          "icon": "▩",
-          "sym": "palette"
+          "icon": "♫"
         },
         {
           "id": "stripboard",
@@ -194,35 +172,64 @@
           "purpose": "Order scenes into shoot days",
           "status": "built",
           "href": "stripboard.html#stripboard",
-          "icon": "☷",
-          "sym": "table_chart"
+          "icon": "☷"
         },
         {
-          "id": "sides",
-          "label": "Sides",
-          "purpose": "Per-day pages for cast and crew",
+          "id": "screen-time",
+          "label": "Screen Time",
+          "purpose": "Running time per scene, from dialogue and action rhythm",
           "status": "built",
-          "href": "reports.html#sides",
-          "icon": "▫",
-          "sym": "content_copy"
+          "href": "reports.html#screentime",
+          "icon": "◔"
         },
         {
-          "id": "reports",
-          "label": "Reports",
-          "purpose": "Element, scene and day reports",
+          "id": "cast-matrix",
+          "label": "Cast Matrix",
+          "purpose": "Characters against scenes; who shares the most",
           "status": "built",
-          "href": "reports.html#reports",
-          "icon": "⌗",
-          "sym": "assessment"
+          "href": "reports.html#cast-matrix",
+          "icon": "▦"
         },
         {
-          "id": "locations",
-          "label": "Locations",
-          "purpose": "Recce notes and logistics",
+          "id": "pitch-deck",
+          "label": "Pitch Deck",
+          "purpose": "One click to a landscape PDF for investors",
           "status": "built",
-          "href": "plan.html#locations",
-          "icon": "⌂",
-          "sym": "place"
+          "href": "story.html#pitch",
+          "icon": "▭"
+        }
+      ]
+    },
+    {
+      "id": "preprod",
+      "label": "Pre-Production",
+      "hue": "preprod",
+      "blurb": "See it, cost it, staff it, schedule it",
+      "icon": "◷",
+      "modules": [
+        {
+          "id": "shot-list",
+          "label": "Shot List",
+          "purpose": "Shots per scene, with size and move",
+          "status": "built",
+          "href": "visualize.html#shot-list",
+          "icon": "▶"
+        },
+        {
+          "id": "storyboard",
+          "label": "Storyboard",
+          "purpose": "Frames against the shot list",
+          "status": "built",
+          "href": "visualize.html#storyboard",
+          "icon": "⊟"
+        },
+        {
+          "id": "lookbook",
+          "label": "Lookbook",
+          "purpose": "Reference images per department",
+          "status": "built",
+          "href": "visualize.html#lookbook",
+          "icon": "▩"
         },
         {
           "id": "budget",
@@ -230,8 +237,7 @@
           "purpose": "Chennai rates, live totals",
           "status": "built",
           "href": "budget.html",
-          "icon": "₹",
-          "sym": "currency_rupee"
+          "icon": "₹"
         },
         {
           "id": "contacts",
@@ -239,8 +245,7 @@
           "purpose": "Cast and crew by department",
           "status": "built",
           "href": "contacts.html#contacts",
-          "icon": "☺",
-          "sym": "person"
+          "icon": "☺"
         },
         {
           "id": "calendar",
@@ -248,45 +253,15 @@
           "purpose": "Prep, shoot and post dates",
           "status": "built",
           "href": "plan.html#calendar",
-          "icon": "▦",
-          "sym": "calendar_month"
+          "icon": "▦"
         },
         {
-          "id": "media",
-          "label": "Media",
-          "purpose": "Your own reference files",
+          "id": "locations",
+          "label": "Locations",
+          "purpose": "Recce notes and logistics",
           "status": "built",
-          "href": "plan.html#media",
-          "icon": "◎",
-          "sym": "perm_media"
-        }
-      ],
-      "icon": "◐",
-      "sym": "checklist"
-    },
-    {
-      "id": "production",
-      "label": "Production",
-      "hue": "production",
-      "blurb": "The day itself",
-      "modules": [
-        {
-          "id": "shoot-day",
-          "label": "Shoot Day",
-          "purpose": "Today's scenes, and what you actually got",
-          "status": "built",
-          "href": "shoot.html",
-          "icon": "▶",
-          "sym": "play_circle"
-        },
-        {
-          "id": "call-sheets",
-          "label": "Call Sheets",
-          "purpose": "Who, where, what time",
-          "status": "built",
-          "href": "contacts.html#call-sheets",
-          "icon": "✉",
-          "sym": "mail"
+          "href": "plan.html#locations",
+          "icon": "⌂"
         },
         {
           "id": "dood",
@@ -294,31 +269,83 @@
           "purpose": "Cast availability across days",
           "status": "built",
           "href": "stripboard.html#dood",
-          "icon": "⁙",
-          "sym": "event"
+          "icon": "⁙"
+        },
+        {
+          "id": "sides",
+          "label": "Sides",
+          "purpose": "Per-day pages for cast and crew",
+          "status": "built",
+          "href": "reports.html#sides",
+          "icon": "▫"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "purpose": "Element, scene and day reports",
+          "status": "built",
+          "href": "reports.html#reports",
+          "icon": "⌗"
+        },
+        {
+          "id": "media",
+          "label": "Media",
+          "purpose": "Your own reference files",
+          "status": "built",
+          "href": "plan.html#media",
+          "icon": "◎"
         }
-      ],
+      ]
+    },
+    {
+      "id": "production",
+      "label": "Production",
+      "hue": "production",
+      "blurb": "The day itself",
       "icon": "◉",
-      "sym": "videocam"
+      "modules": [
+        {
+          "id": "shoot-day",
+          "label": "Shoot Day",
+          "purpose": "Today's scenes, and what you actually got",
+          "status": "built",
+          "href": "shoot.html",
+          "icon": "▶"
+        },
+        {
+          "id": "call-sheets",
+          "label": "Call Sheets",
+          "purpose": "Who, where, what time",
+          "status": "built",
+          "href": "contacts.html#call-sheets",
+          "icon": "✉"
+        }
+      ]
     },
     {
       "id": "post",
       "label": "Post-Production",
       "hue": "post",
-      "blurb": "Assembly, effects, sound, delivery",
+      "blurb": "In development",
+      "icon": "◈",
       "modules": [
         {
-          "id": "post-plan",
-          "label": "Post Plan",
-          "purpose": "Assembly, effects, sound and delivery steps",
-          "status": "built",
-          "href": "feature.html#step-29",
-          "icon": "◑",
-          "sym": "tune"
+          "id": "edit-log",
+          "label": "Edit Log",
+          "purpose": "Coming next: what was shot against what the cut needs, read from the shoot day's marks",
+          "status": "planned",
+          "href": "",
+          "icon": "✂"
+        },
+        {
+          "id": "deliverables",
+          "label": "Deliverables",
+          "purpose": "Coming next: censor certificate, subtitles, DCP and festival formats as one checklist",
+          "status": "planned",
+          "href": "",
+          "icon": "☑"
         }
-      ],
-      "icon": "◑",
-      "sym": "tune"
+      ]
     }
   ]
 }

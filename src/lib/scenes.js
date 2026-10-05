@@ -39,17 +39,22 @@ export const shotLabel = (id) =>
   (SHOT_STATES.find((s) => s.id === id) || { label: 'Not shot' }).label;
 
 /* The standard breakdown categories, in the order a 1st AD reads them.
-   Colour is a hue token name, not a value — tokens.css owns the value. */
+   Colour is a hue token name, not a value — tokens.css owns the value.
+   Cast, props, vehicles, stunts and sound take the PRD 2.0 FR-603
+   colour coding (red / blue / yellow / yellow / green) through the
+   `el-*` category hues; the rest keep the hues they always had. The
+   category ids are storage keys inside every scene's `elements` — the
+   hue may change, the id may not. */
 export const ELEMENT_CATEGORIES = [
-  { id: 'cast',      label: 'Cast',            hue: 'feature' },
+  { id: 'cast',      label: 'Cast',            hue: 'el-cast' },
   { id: 'extras',    label: 'Background',      hue: 'shorts' },
-  { id: 'props',     label: 'Props',           hue: 'library' },
+  { id: 'props',     label: 'Props',           hue: 'el-props' },
   { id: 'wardrobe',  label: 'Wardrobe',        hue: 'visualize' },
   { id: 'makeup',    label: 'Hair & Makeup',   hue: 'plan' },
-  { id: 'vehicles',  label: 'Vehicles',        hue: 'shoot' },
-  { id: 'stunts',    label: 'Stunts',          hue: 'feature' },
+  { id: 'vehicles',  label: 'Vehicles',        hue: 'el-vehicles' },
+  { id: 'stunts',    label: 'Stunts',          hue: 'el-vehicles' },
   { id: 'vfx',       label: 'VFX',             hue: 'visualize' },
-  { id: 'sound',     label: 'Sound',           hue: 'shorts' },
+  { id: 'sound',     label: 'Sound',           hue: 'el-sound' },
   { id: 'animals',   label: 'Animals',         hue: 'plan' },
   { id: 'special',   label: 'Special Equipment', hue: 'shoot' }
 ];

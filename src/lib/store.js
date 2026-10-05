@@ -78,7 +78,9 @@ const SCOPED_KEYS = [
   'fms_dissect_v1',
   'fms_festivals_v1',
   'fms_scriptgen_v1',
-  'fms_songs_v1'
+  'fms_songs_v1',
+  'fms_story_v1',
+  'fms_idea_vault_v1'
   // intentionally NOT scoped: fms_studio_prefs_v1 (dark mode = global),
   //                            fms_supabase_cfg_v1 (account-level),
   //                            fms_note_* (per-field notes, fine global for now)
@@ -145,7 +147,12 @@ function _writeTiered(k, value) {
     return false;
   }
 
-  if (v.length > Overflow.THRESHOLD && Overflow.available()) return _overflowWrite(k, v);
+  /* `cold` is not `unavailable`. Hydration is skipped when no stub
+     exists, so the very first large value a studio ever writes arrives
+     with the database unopened — and asking `available()` here would
+     send a screenplay to localStorage instead. _overflowWrite opens it
+     first; only a tier that genuinely failed to open falls through. */
+  if (v.length > Overflow.THRESHOLD && Overflow.state() !== 'unavailable') return _overflowWrite(k, v);
 
   try {
     _origSet(k, v);
@@ -156,7 +163,7 @@ function _writeTiered(k, value) {
        full anyway, so the big tier is the rescue rather than the
        plan. Better a 2 KB note in IndexedDB than a note that was
        never saved. */
-    if (Overflow.available()) return _overflowWrite(k, v);
+    if (Overflow.state() !== 'unavailable') return _overflowWrite(k, v);
     notify('storage:full', { key: k, bytes: v.length });
     return false;
   }
@@ -195,7 +202,11 @@ function _writeTiered(k, value) {
 const _pending = new Set();
 
 function _overflowWrite(k, v) {
-  const p = Overflow.put(k, v).then(async (ok) => {
+  /* hydrate() is idempotent and is what opens the database, so this
+     doubles as "ensure the tier exists" for the first large write of a
+     studio's life. Overflow.put() fills the cache synchronously either
+     way, so a read issued before any of this settles is still right. */
+  const p = Overflow.hydrate().then(() => Overflow.put(k, v)).then(async (ok) => {
     const back = ok ? await Overflow.readBack(k) : null;
     if (back !== v) { notify('storage:full', { key: k, bytes: v.length }); return; }
     try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* a handful of bytes */ }
@@ -218,6 +229,23 @@ function _removeTiered(k) {
   try { _origRemove(k); } catch (e) { return false; }
   Overflow.del(k);
   return true;
+}
+
+/** Is any value in this origin currently a stub?
+ *
+ *  A synchronous walk of a few dozen localStorage keys, which is what
+ *  makes the hydration above conditional. Deliberately NOT a stored
+ *  flag: a flag is a second representation of something localStorage
+ *  already knows, and it would be the one thing left stale by a
+ *  studio wiped from the browser's own settings. */
+function _anyStubsPresent() {
+  try {
+    for (let i = 0; i < global.localStorage.length; i++) {
+      const k = global.localStorage.key(i);
+      if (k && Overflow.isStub(_origGet(k))) return true;
+    }
+  } catch (e) { /* private mode: nothing is stored, so nothing is stubbed */ }
+  return false;
 }
 
 export function rawGet(k)    { return _readTiered(k); }
@@ -1190,7 +1218,31 @@ export function init() {
    timeout inside hydrate() so a wedged database cannot mean an app
    that never boots. (build.target is es2022 for this; top-level await
    is not expressible below it.) */
-await Overflow.hydrate();
+/* ONLY WHEN THERE IS SOMETHING TO WAIT FOR — and the first version of
+   this note claimed the await was free, which was wrong.
+
+   A top-level await delays THIS module's evaluation and therefore every
+   importer's module BODY, not just its reads. `prove:gate` found it:
+   screening.js strips the pass out of the address bar as a top-level
+   statement and imports store.js above it, so the strip stopped
+   happening before page load and the pass lingered in the URL. Two of
+   its assertions failed, and neither was about storage.
+
+   The fix is to pay the await only when a stub exists. Stubs live in
+   localStorage, which is synchronous, so "does this studio have any
+   overflowed values" is answerable in microseconds without opening
+   anything. A studio that has never written a large value — which is
+   every studio until somebody writes a screenplay — now boots exactly
+   as it did before the tier existed.
+
+   WHAT IS STILL TRUE FOR A STUDIO THAT DOES HAVE ONE: it waits for one
+   IndexedDB open before any page's module body runs. That is not free
+   either, and it is the price of synchronous reads over asynchronous
+   storage. It is the right trade — the alternative is a page rendering
+   an empty screenplay and autosaving over it — but anything
+   time-sensitive in a module body is delayed for those users, so put
+   it in a module imported ABOVE store.js if it cannot wait. */
+if (_anyStubsPresent()) await Overflow.hydrate();
 
 // Auto-init: run migration + install proxy as soon as we load.
 // (Blueprints relying on existing `localStorage.getItem(KEY)`

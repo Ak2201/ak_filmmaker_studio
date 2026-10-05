@@ -118,13 +118,19 @@ const DISSECT_KEY  = 'fms_dissect_v1';
 const FESTIVALS_KEY = 'fms_festivals_v1';
 const SCRIPTGEN_KEY = 'fms_scriptgen_v1';
 const SONGS_KEY     = 'fms_songs_v1';
+const STORY_KEY     = 'fms_story_v1';
+const VAULT_KEY     = 'fms_idea_vault_v1';
+/* The device-lock handle (src/lib/gate.js). In this reset list so a
+   wiped studio forgets which session it held; deliberately NOT in
+   GLOBAL_KEYS, for the reason the Drive pointer is not. */
+const DEVICE_SESSION_KEY = 'fms_device_session_v1';
 
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY, SONGS_KEY,
+  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, DEVICE_SESSION_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
      Without it a wiped studio stays connected to a file full of
      work, and the next keystroke pushes the empty studio over it.

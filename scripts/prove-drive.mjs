@@ -217,7 +217,7 @@ function check(label, got, want) {
   if (!ok) console.log(`        got  ${JSON.stringify(got)}\n        want ${JSON.stringify(want)}`);
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 
 async function openPage(opts) {
   opts = opts || {};

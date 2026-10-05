@@ -1,0 +1,33 @@
+/* ============================================================
+   GATE — the invite box, the takeover prompt, the admin console
+   ------------------------------------------------------------
+   The overlay and card are the shared .cm-overlay / .cm-card from
+   chrome.css; this sheet only arranges what is inside them and the
+   two settings sections. Tokens and --sk-* only.
+   ============================================================ */
+.gt-card { max-width: 32rem; display: grid; gap: var(--s3); }
+.gt-body { margin: 0; color: var(--ink-body); line-height: var(--lh-body); }
+.gt-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.gt-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.gt-error { margin: var(--s2) 0 0; color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+
+.gt-code { display: grid; gap: var(--s2); max-width: 28rem; margin-top: var(--s3); }
+.gt-code .btn { justify-self: start; }
+.gt-label { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.gt-input { font-family: var(--f-mono); font-size: var(--t-lg); letter-spacing: .08em; text-transform: uppercase; min-width: 0; }
+
+.gt-h3 { font-family: var(--f-display); font-size: var(--t-lg); margin: var(--s5) 0 var(--s2); color: var(--ink); }
+.gt-create { display: grid; gap: var(--s3); }
+.gt-create .btn.primary { justify-self: start; }
+.gt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--s3); }
+.gt-field { display: grid; gap: var(--s1); min-width: 0; }
+.gt-field label { font-size: var(--t-small); color: var(--ink-muted); }
+.gt-field select, .gt-field input { min-width: 0; max-width: 100%; }
+.gt-made { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); color: var(--ink-body); }
+.gt-codeval { font-family: var(--f-mono); font-weight: 700; letter-spacing: .06em; color: var(--ink); }
+.gt-scroll { max-width: 100%; overflow-x: auto; }
+.gt-table { border-collapse: collapse; width: 100%; font-size: var(--t-small); }
+.gt-table th, .gt-table td { text-align: left; padding: var(--s2); border-bottom: 1px solid var(--rule-hair); color: var(--ink-body); vertical-align: top; }
+.gt-table th { color: var(--ink-muted); font-weight: 600; }
+.gt-row-actions { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.gt-list { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }

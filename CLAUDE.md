@@ -23,7 +23,12 @@ npm run build     # static output in dist/
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below
 npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
+npm run test:story       # story model + .docx reader, in Node (open item 11)
+npm run test:screenplay  # screen time, cast matrix, auto-tag, 120pp < 1200ms
 npm run prove:drive # Drive backup, against a faked Drive — see open item 10
+npm run prove:gate  # invite gate, device lock, admin, screening room (item 11)
+npm run build:extension   # the Chrome extension, into dist-extension/
+npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
@@ -39,6 +44,10 @@ index.html feature.html short.html library.html   page entries (Vite MPA)
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
+story.html                                        the Story stage (PRD 2.0)
+screening.html                                    a screening pass's read-only room
+extension/                                        manifest template, background
+                                                  worker, side panel entry
 privacy.html terms.html                           the two legal documents
 arunak-*.html                                     redirect stubs for old URLs
 src/
@@ -59,6 +68,13 @@ src/
                           and the PROJECT_KEYS / GLOBAL_KEYS maps that
                           used to sit in hub.js
              drive.js drive-sync.js ← Drive, and when to talk to it
+             story.js ← synopsis, marks, tension; the mapping, heatmap
+                        and pacing flags are DERIVED, never stored
+             screenplay-analysis.js ← screen time, cast matrix,
+                        auto-tag suggestions; pure, stores nothing
+             gate.js ← invite codes, the device lock, screening passes
+             extension-bridge.js ← the app's half of the extension
+             docx-text.js pitch-deck.js watermark.js
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -834,6 +850,15 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   state. `verify` counts the themes rather than naming a number of them, so
   it asserts two distinct backgrounds now and would assert five without an
   edit.
+- **`Element.append(null)` inserts the text "null".** It does not skip
+  the argument. `settings.js` said it did, and that held only while every
+  section happened to render something. `h()` skips null children, but
+  the native method does not. Filter first.
+- **`ensureClient()` raced itself.** It checked `if (supabase)` and then
+  awaited the SDK import, so the boot and a page calling it in the same
+  tick each built a client: two GoTrue clients on one storage key, both
+  refreshing and both firing auth events. The in-flight promise is
+  shared now. Any lazy singleton behind an `await` needs the same.
 - **A service worker must never answer a navigation with a *redirected*
   response.** Chrome refuses it — "a redirected response was used for a request
   whose redirect mode is not 'follow'" — and shows **ERR_FAILED**. This one cost
@@ -1605,6 +1630,55 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     added. Publishing an External app needs a privacy policy and terms of
     service on the authorised domain, which is what `privacy.html` and
     `terms.html` are for (see the note on them below).
+
+11. **PRD 2.0 — five stages, the Story stage, the gate, the extension.**
+    The six phases are now the PRD's five stages (Story, Screenplay,
+    Pre-Production, Production, Post-Production). Every module object,
+    id and href survived the regroup; no phase id is stored anywhere, so
+    renaming them needed no migration. Post-Production carries two
+    `planned` modules. The scope decisions, asked of the user and
+    answered before any code: the extension WRAPS this app (one
+    codebase); the gate guards the CLOUD and the EXTENSION, never local
+    work; the backend is the existing Supabase project; built modules
+    stay live.
+
+    - **Story** (`story.html`, `src/lib/story.js`, `src/data/frameworks.json`):
+      highlight-to-tag, three frameworks, a tension heatmap with pacing
+      flags, AI beat mapping that returns QUOTES (offsets are found
+      here; a non-verbatim quote is dropped), `.docx` with no library.
+      A hand tag is stored per framework; switching framework is a view
+      change. Marks re-anchor by text after an edit, and a passage that
+      left the synopsis is reported detached, never re-pointed.
+    - **Screenplay** (`src/lib/screenplay-analysis.js`): screen time
+      (dialogue pace against action rhythm, with page-a-minute shown
+      beside it), the cast matrix, auto-tag suggestions that are
+      buttons, not tags. The PRD's colours (cast red, props blue,
+      vehicles and stunts yellow, sound green) are CATEGORY hues,
+      `.hue-el-*`, in all four token blocks; yellow carries its own
+      on-colour. Pitch deck: one click, landscape PDF, print pipeline.
+    - **The gate** (schema section 13, `src/lib/gate.js`, `cloud.js`'s
+      `runGate()`): it FAILS OPEN until section 13 runs. "Function
+      missing" is not "the function said no". A closed gate or a lost
+      lock pauses sync, and the local write clock is still recorded, so
+      paused writes win at the next sync. Section 13.6b makes it a
+      boundary with additive triggers and grandfathers existing owners.
+      NOT RUN against the database yet; its own checks are listed in 13.8.
+    - **Keys.** `fms_story_v1`, `fms_idea_vault_v1`: per project, in all
+      five registries (13.7 adds the scopes). `fms_device_session_v1`:
+      the website's lock handle, in `ALL_KEYS` and deliberately NOT in
+      `GLOBAL_KEYS`, for the Drive pointer's reason. The pre-auth ticket
+      is sessionStorage on the website. In the extension, the ticket,
+      the lock handle AND the Supabase session are `chrome.storage.session`
+      (supabase-js gets a storage adapter); `fms_clip_queue` is
+      `chrome.storage.local`, because a clipping is not a credential.
+    - **The extension** (`docs/EXTENSION.md`): needs its
+      `chromiumapp.org` redirect URL on the Supabase allow-list before
+      Google sign-in works.
+
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 34,
+    `prove:extension` 28, all against the real build. What is NOT
+    proved: section 13 against a live database, Google's consent screen
+    for the extension, and Chrome Web Store review.
 
 ## Things that are deliberate, not oversights
 

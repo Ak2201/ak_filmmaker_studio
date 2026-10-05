@@ -25,6 +25,8 @@ import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
 import * as Songs from '../lib/songs.js';
+import { loadScript } from '../lib/script.js';
+import { suggestAll } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -388,6 +390,66 @@ function renderElements() {
   return wrap;
 }
 
+/* ---- suggested from the script (PRD 2.0 FR-603) --------------
+   The script's action lines and cues read for cast, props, vehicles,
+   stunts and sound — see src/data/element-lexicon.json for what is
+   looked for and why. A SUGGESTION IS NOT A TAG: each one is a button
+   carrying the line it was read off, and nothing lands on a scene until
+   somebody presses it. A breakdown is a 1st AD's judgement; this saves
+   the typing, not the judgement. */
+const SUGGEST_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
+function renderSuggestions(scenes) {
+  const wrap = h('section.bd-suggest', { id: 'suggest' });
+  wrap.append(h('h2.bd-h2', { text: 'Suggested from the script' }),
+              h('p.bd-sub', { text: 'Read from each scene\u2019s cues and action lines, in the colour of its category. '
+                + 'Press one to tag it; nothing is added until you do. The Nth scene heading in the script is matched to the Nth scene here.' }));
+  const rows = scenes.length ? suggestAll(scenes, loadScript().elements) : [];
+  if (!rows.length) {
+    wrap.append(h('p.bd-none', { text: scenes.length
+      ? 'Nothing to suggest \u2014 either everything the script mentions is already tagged, or there is no script text yet. Write or import the script on the Write page.'
+      : 'Import or write a script and the elements it mentions are offered here, scene by scene.' }));
+    return wrap;
+  }
+  const total = rows.reduce((n, r) => n + SUGGEST_CATS.reduce((m, c) => m + r.suggestions[c].length, 0), 0);
+  wrap.append(h('div.bd-sug-tools', {}, [
+    h('span.bd-sug-count', { text: `${total} suggestion${total === 1 ? '' : 's'} across ${rows.length} scene${rows.length === 1 ? '' : 's'}` }),
+    h('button.btn', { type: 'button', 'data-action': 'sug-all', text: 'ADD ALL' })
+  ]));
+  const list = h('ol.bd-sug-list');
+  for (const r of rows) {
+    const li = h('li.bd-sug-scene', { 'data-scene': r.scene.id });
+    li.append(h('div.bd-sug-head', {}, [
+      h('strong', { text: `Scene ${r.scene.number || '\u2014'}` }),
+      h('span.bd-sug-slug', { text: r.heading }),
+      h('button.btn.bd-sug-scene-all', { type: 'button', 'data-action': 'sug-scene', text: 'ADD THESE' })
+    ]));
+    const tags = h('div.bd-tags');
+    for (const cat of SUGGEST_CATS) {
+      const c = catById[cat];
+      for (const sug of r.suggestions[cat]) {
+        tags.append(h(`button.bd-chip.bd-sug.hue-${c.hue}`, {
+          type: 'button', 'data-action': 'sug-add', 'data-cat': cat, 'data-name': sug.name,
+          title: 'From: ' + sug.from, 'aria-label': `Tag ${sug.name} as ${c.label} — from: ${sug.from}`
+        }, [h('span.bd-chip-cat', { text: c.label }), h('span.bd-chip-name', { text: '+ ' + sug.name })]));
+      }
+    }
+    li.append(tags);
+    list.append(li);
+  }
+  wrap.append(list);
+  return wrap;
+}
+
+function applySuggestions(sceneIds) {
+  const scenes = Scenes.listScenes();
+  const rows = suggestAll(scenes, loadScript().elements).filter((r) => !sceneIds || sceneIds.includes(r.scene.id));
+  let n = 0;
+  for (const r of rows) for (const cat of SUGGEST_CATS) for (const sug of r.suggestions[cat]) {
+    Scenes.tagElement(r.scene.id, cat, sug.name); n++;
+  }
+  return n;
+}
+
 /* ---- render ------------------------------------------------- */
 function render() {
   const scenes = Scenes.listScenes();
@@ -426,7 +488,7 @@ function render() {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(list, renderSongs(scenes), renderElements());
+  main.append(list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   mountShell();
@@ -455,6 +517,20 @@ delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
   if (!confirm(`Delete scene${label}? Its tagged elements go with it.`)) return;
   Scenes.removeScene(id);
   render();
+});
+delegate(document, 'click', '[data-action="sug-add"]', (e, el) => {
+  Scenes.tagElement(sceneIdOf(el), el.dataset.cat, el.dataset.name);
+  render();
+});
+delegate(document, 'click', '[data-action="sug-scene"]', (e, el) => {
+  const n = applySuggestions([sceneIdOf(el)]);
+  render();
+  StudioUI.toast(`Tagged ${n} element${n === 1 ? '' : 's'}.`);
+});
+delegate(document, 'click', '[data-action="sug-all"]', () => {
+  const n = applySuggestions(null);
+  render();
+  StudioUI.toast(`Tagged ${n} element${n === 1 ? '' : 's'} across the breakdown.`);
 });
 delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
   Scenes.untagElement(sceneIdOf(el), el.dataset.cat, el.dataset.name);

@@ -56,6 +56,7 @@ import { listShots, listFrames, listBoards, countEntries } from '../lib/shots.js
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
 import { listContacts, listCallSheets } from '../lib/contacts.js';
 import { locationIndex, listMedia, listDayDates, shootDayOf, castOf } from '../lib/locations.js';
+import { loadStory, listVault } from '../lib/story.js';
 import '../styles/launcher.css';
 
 /* TWO derived figures, and which one a sentence quotes is not a detail.
@@ -190,9 +191,13 @@ function snapshot() {
     costed: costedRows(blob(LIB_CALC_KEY)),
     sequences: Array.isArray(dissect.sequences) ? dissect.sequences.length : 0,
     dissectStarted: written(dissect.thesis) || written(dissect.title) || written(dissect.engine),
-    studied: Object.values(blob(WORKBENCH_KEY)).filter(written).length
+    studied: Object.values(blob(WORKBENCH_KEY)).filter(written).length,
+    story: safe(loadStory, { source: '', marks: [] }),
+    clips: safe(listVault, []).length
   };
 }
+
+const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -209,6 +214,9 @@ const ref = (text) => ({ kind: 'ref', text });
    renders without a state line — honest silence rather than a
    confident "0", which for half of these would be wrong. */
 const PROBES = {
+  'story-beats': (s) => (s.story.marks.length ? work(plural(s.story.marks.length, 'passage tagged', 'passages tagged'))
+                        : String(s.story.source || '').trim() ? empty('synopsis, nothing tagged') : empty('no synopsis yet')),
+  'idea-vault':  (s) => (s.clips ? work(plural(s.clips, 'clipping', 'clippings')) : empty('nothing clipped yet')),
   'feature-blueprint': (s) => (s.feature ? work(plural(s.feature, 'step started', 'steps started')) : empty('not started')),
   'short-blueprint':   (s) => (s.short ? work(plural(s.short, 'step started', 'steps started')) : empty('not started')),
   glossary:            () => ref('reference'),
@@ -223,6 +231,10 @@ const PROBES = {
   'scene-list': (s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene', 'scenes')) : empty('no scenes yet')),
   breakdowns:   (s) => (s.tagged ? work(`${s.tagged} of ${s.scenes.length} tagged`)
                        : s.scenes.length ? empty('nothing tagged yet') : empty('needs scenes first')),
+  'auto-tag':   (s) => (s.pages ? work('reads ' + formatPages(s.pages) + ' pages') : empty('needs a script')),
+  'screen-time':(s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene timed', 'scenes timed')) : empty('needs scenes first')),
+  'cast-matrix':(s) => (s.cast.size ? work(plural(s.cast.size, 'character', 'characters')) : empty('no cast yet')),
+  'pitch-deck': (s) => (String(s.story.source || '').trim() || s.feature ? work('ready to export') : empty('needs a synopsis')),
   elements:     (s) => (s.elements ? work(plural(s.elements, 'element', 'elements')) : empty('no elements yet')),
   stripboard:   (s) => (s.days.size ? work(plural(s.days.size, 'shoot day', 'shoot days'))
                        : s.scenes.length ? empty('not scheduled yet') : empty('needs scenes first')),
@@ -373,7 +385,10 @@ export function renderLauncher() {
     h('div.left', {}, [
       h('div.label', { text: 'THE MAP · EVERY MODULE BY PHASE' }),
       h('h2#lxHeading', {}, [
-        document.createTextNode('Six phases, '),
+        // Derived, like the module count beside it: this said "Six
+        // phases" in a hard-coded string, which was wrong the day the
+        // six became the PRD's five stages.
+        document.createTextNode(`${NUMBER_WORDS[nav.phases.length] || nav.phases.length} stages, `),
         h('em', { text: `${MODULE_COUNT} modules.` })
       ]),
       h('p.deck', {

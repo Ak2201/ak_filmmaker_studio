@@ -1,0 +1,214 @@
+/* ============================================================
+   STORY — synopsis, beat matrix, pacing heatmap, Idea Vault
+   ------------------------------------------------------------
+   Tokens for every colour, --sk-* for every shape, as everywhere.
+
+   The heatmap is ONE hue at varying opacity, because tension is a
+   magnitude, not a category; the convention is a dashed muted line
+   beside it, and a slack stretch is the warn wash behind both. Text
+   in and around it wears ink tokens, never the series colour.
+
+   Marks take the accent WASH as a fill with ink text — a fill is not
+   a text colour (CLAUDE.md, the AA rules). A mark placed by position
+   rather than by hand is dashed underneath, so the difference is not
+   carried by colour alone.
+   ============================================================ */
+.st-main {
+  max-width: var(--content-max, 1200px);
+  margin: 0 auto;
+  padding: var(--s5) var(--gutter) var(--s9);
+}
+
+/* ---- the three ways in ------------------------------------- */
+.st-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--s4);
+  margin-block: var(--s4) var(--s6);
+}
+.st-mode {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  padding: var(--sk-card-pad, var(--s5));
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-mode-title { font-family: var(--f-display); font-size: var(--t-lg); line-height: var(--lh-tight); color: var(--ink); margin: 0; }
+.st-mode-body { color: var(--ink-body); margin: 0 0 var(--s2); }
+.st-drop {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+  border: 2px dashed var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-align: center;
+}
+.st-drop.is-over { border-color: var(--accent); background: var(--accent-wash); color: var(--ink); }
+.st-drop input { max-width: 100%; }
+
+/* ---- the bar ------------------------------------------------ */
+.st-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  padding-block: var(--s3);
+  border-bottom: 1px solid var(--rule);
+}
+.st-bar label { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-bar select { min-width: 0; max-width: 100%; }
+.st-import { position: relative; overflow: hidden; }
+.st-import input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* ---- pacing ------------------------------------------------- */
+.st-pacing { padding-block: var(--s5); }
+.st-heat { margin: var(--s3) 0 0; }
+.st-heat-svg {
+  display: block;
+  width: 100%;
+  height: 140px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-heat-bar { fill: var(--accent); cursor: pointer; }
+.st-heat-bar.is-est { fill: var(--accent); }
+.st-heat-bar:hover { fill: var(--accent-deep); }
+.st-heat-line { fill: none; stroke: var(--accent-deep); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.st-heat-expected { fill: none; stroke: var(--ink-muted); stroke-width: 2px; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
+.st-heat-act { stroke: var(--rule); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.st-heat-slack { fill: var(--warn-wash); }
+.st-heat-acts { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: var(--s1); }
+.st-heat-acts span { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); text-align: center; }
+.st-heat-cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
+.st-key { display: inline-flex; align-items: center; gap: var(--s1); }
+.st-key::before { content: ''; display: inline-block; width: 20px; height: 0; }
+.st-key-line::before { border-top: 2px solid var(--accent-deep); }
+.st-key-exp::before { border-top: 2px dashed var(--ink-muted); }
+.st-key-slack::before { height: 10px; background: var(--warn-wash); border: 1px solid var(--warn); }
+.st-heat-note { flex: 1 1 20rem; color: var(--ink-muted); }
+.st-heat-table { margin-top: var(--s2); font-size: var(--t-small); }
+.st-heat-table summary { cursor: pointer; color: var(--accent-deep); }
+.st-table-wrap { overflow-x: auto; max-width: 100%; }
+.st-heat-table table { border-collapse: collapse; margin-top: var(--s2); }
+.st-heat-table th, .st-heat-table td { padding: var(--s1) var(--s3); border-bottom: 1px solid var(--rule-hair); text-align: left; color: var(--ink-body); }
+
+.st-flags { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.st-flag {
+  padding: var(--s2) var(--s3);
+  border-left: 3px solid var(--rule);
+  background: var(--paper-raised);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink-body);
+}
+.st-flag.is-warn { border-left-color: var(--warn); background: var(--warn-wash); color: var(--ink); }
+.st-flag-go { all: unset; cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.st-flag-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.st-flags-ok, .st-muted { color: var(--ink-muted); font-size: var(--t-small); }
+
+/* ---- the two panes ------------------------------------------ */
+.st-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--s5);
+  padding-block: var(--s5);
+  align-items: start;
+}
+@media (max-width: 900px) { .st-panes { grid-template-columns: minmax(0, 1fr); } }
+.st-pane { min-width: 0; }
+.st-pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.st-toggle { display: inline-flex; gap: var(--s1); }
+.st-toggle .btn.is-on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.st-label { display: block; margin: var(--s2) 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-text { width: 100%; min-width: 0; font: inherit; line-height: var(--lh-body); }
+
+.st-tagbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s3) 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-tagbar select { min-width: 0; max-width: 100%; }
+
+.st-src {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--sk-card-pad, var(--s5));
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink-body);
+  line-height: 1.8;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.st-src:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.st-mark {
+  background: var(--accent-wash);
+  color: var(--ink);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.st-mark.is-inferred { border-bottom-style: dashed; }
+.st-mark.is-lit { background: var(--warn-wash); border-bottom-color: var(--warn); }
+.st-mark.is-flash { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---- the beat matrix ---------------------------------------- */
+.st-beats { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s3); }
+.st-beat {
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-beat.is-empty { background: var(--paper); }
+.st-beat.is-lit { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.st-beat-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.st-beat-name {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+.st-beat-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.st-beat-at, .st-beat-tlabel { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); }
+.st-beat-t { width: 4.5rem; }
+.st-beat-prompt { margin: var(--s1) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-beat-marks { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.st-beat-mark { padding-top: var(--s2); border-top: 1px solid var(--rule-hair); }
+.st-quote { all: unset; cursor: pointer; display: block; color: var(--ink-body); font-style: var(--sk-deck-style, italic); overflow-wrap: anywhere; }
+.st-quote:hover { color: var(--ink); }
+.st-quote:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.st-beat-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+.st-retag { min-width: 0; max-width: 100%; font-size: var(--t-small); }
+.st-badge {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--s2);
+}
+.st-why { margin: var(--s1) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-x { font-size: var(--t-tiny); }
+
+/* ---- AI and the vault --------------------------------------- */
+.st-ai, .st-pitch, .st-vault { padding-block: var(--s5); border-top: 1px solid var(--rule); }
+.st-ai-row { display: flex; gap: var(--s2); margin-top: var(--s3); }
+.st-vault-add { display: grid; gap: var(--s2); max-width: var(--measure); margin-block: var(--s3); }
+.st-vault-add .btn { justify-self: start; }
+.st-clips { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.st-clip {
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-clip-text { margin: 0; color: var(--ink-body); overflow-wrap: anywhere; }
+.st-clip-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); font-size: var(--t-small); }
+.st-clip-meta select { min-width: 0; max-width: 100%; }
+.st-clip-src { color: var(--accent-deep); }

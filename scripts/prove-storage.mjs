@@ -329,7 +329,24 @@ console.log('\n--- the threshold decides, and nothing else ---');
 let bigKey = null;
 {
   const { ctx, page } = await openPage();
-  check('the overflow tier hydrated', await tierReady(page), 'ready');
+  /* A FRESH STUDIO MUST **NOT** HAVE HYDRATED, which is the opposite
+     of what this asserted first and is a stronger claim than it was.
+
+     Hydration is a top-level await in store.js, so it delays every
+     importing module's BODY and not merely its reads. `prove:gate`
+     caught the cost: screening.js strips the pass out of the address
+     bar as a top-level statement, above its store.js import, and the
+     strip stopped happening before page load. So the await is now
+     paid only when a stub actually exists, decided by a synchronous
+     walk of localStorage.
+
+     `cold` here therefore proves the cheap path is taken. That it
+     becomes `ready` the moment a large value is written is asserted
+     below, and that it is ready BEFORE the store publishes itself on
+     a reload carrying a stub is asserted in the reload block — which
+     is the one that protects the data. */
+  check('a studio with no stub has NOT hydrated — the await is not paid',
+        await tierReady(page), 'cold');
 
   const id = await newProject(page, 'Probe Alpha');
   const smallKey = 'fms_contacts_v1__' + id;
@@ -357,6 +374,13 @@ let bigKey = null;
   check('2  the stub is NOT written synchronously — the verify step is real',
     duringWrite.immediatelyAfter, duringWrite.before);
   await waitForStub(page, bigKey);
+  /* …and the other half of the conditional path: a tier that started
+     COLD must OPEN ITSELF for the first large write a studio ever
+     makes, rather than sending a screenplay to localStorage because
+     the database happened not to be open yet. `cold` is not
+     `unavailable`, and the write path has to know the difference. */
+  check('a cold tier opened itself for the first large write',
+        await tierReady(page), 'ready');
   // put the canonical value back for the assertions below
   await page.evaluate(() => localStorage.setItem('fms_scenes_v1', window.__big('ALPHA')));
   await page.waitForFunction((k) => {

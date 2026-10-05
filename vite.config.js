@@ -74,6 +74,8 @@ export default defineConfig({
         dissect:    resolve(__dirname, 'dissect.html'),
         settings:   resolve(__dirname, 'settings.html'),
         shoot:      resolve(__dirname, 'shoot.html'),
+        story:      resolve(__dirname, 'story.html'),
+        screening:  resolve(__dirname, 'screening.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),
@@ -83,7 +85,11 @@ export default defineConfig({
         // already shared keep resolving instead of 404ing.
         legacyFeature: resolve(__dirname, 'arunak-filmmaker-blueprint.html'),
         legacyShort:   resolve(__dirname, 'arunak-shortfilm-blueprint.html'),
-        legacyLibrary: resolve(__dirname, 'arunak-filmmaker-library.html')
+        legacyLibrary: resolve(__dirname, 'arunak-filmmaker-library.html'),
+        // The Chrome extension's side panel. Only in the extension build
+        // (scripts/build-extension.mjs sets FMS_EXTENSION): on the website
+        // it would be a page that can do nothing without chrome.* APIs.
+        ...(process.env.FMS_EXTENSION ? { panel: resolve(__dirname, 'extension/panel.html') } : {})
       },
       output: {
         /* A few modules under src/lib/ are reached only through

@@ -6,6 +6,7 @@ dev-dist/
 .vite/
 dist-drive/
 dist-storage/
+dist-extension/
 
 # real secrets, never committed
 .env.local

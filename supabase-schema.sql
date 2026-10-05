@@ -3897,12 +3897,16 @@ notify pgrst, 'reload schema';
 
 -- 17. TWO MORE SYNC SCOPES: edit and deliverables
 -- ------------------------------------------------------------
--- NOT YET RUN against the database. Until it is, a signed-in member's
--- edit log and deliverables checklist save locally and sync nowhere:
--- cloud.js names both scopes (SCOPE_BY_KEY), the upsert reaches
--- project_data, and the CHECK below refuses it. Nothing else is
--- affected — every other scope keeps syncing — but the two pages
--- will report the failure in the console, and that is the tell.
+-- RUN 6 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor ("Success. No rows returned"); re-read afterwards:
+-- project_data_scope_check now names 'edit' and 'deliverables' (the
+-- definition grew to 407 characters). It had been shipped with the two
+-- modules a day earlier and NOT run, so for that day a signed-in
+-- member's edit log and deliverables checklist saved locally and
+-- synced nowhere: cloud.js names both scopes (SCOPE_BY_KEY), the
+-- upsert reached project_data, and the CHECK refused it. Nothing else
+-- was affected, and the two pages reported the failure in the console
+-- — that is the tell, if it ever recurs for a new scope.
 --
 -- Same procedure as sections 12 and 13.7 (and 16 sits between for
 -- no reason but arrival order: billing landed on the branch while

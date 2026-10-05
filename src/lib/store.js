@@ -141,7 +141,16 @@ function _writeTiered(k, value) {
   let existing = null;
   try { existing = _origGet(k); } catch (e) {}
 
-  if (Overflow.isStub(existing) && !Overflow.available()) {
+  /* `state() === 'unavailable'`, NOT `!available()`. available() is
+     `state === 'ready'`, so a merely COLD tier read as broken — and a
+     second tab opened before the studio's first large write is exactly
+     that: it has no stub to hydrate, so it stays cold, and the moment
+     another tab creates one this branch refused every save that tab
+     made for the life of the document and its reads returned null. The
+     distinction is made correctly fifteen lines below for the size
+     branch; it was missing here. A cold tier falls through and the
+     overflow path hydrates it. */
+  if (Overflow.isStub(existing) && Overflow.state() === 'unavailable') {
     notify('storage:refused', { key: k, reason: 'overflow-unavailable',
                                 bytes: Overflow.stubLength(existing) });
     return false;
@@ -201,6 +210,42 @@ function _writeTiered(k, value) {
    navigates must await it first. */
 const _pending = new Set();
 
+/* THE BIG TIER FAILING MUST NOT MEAN THE VALUE GOES NOWHERE, and for a
+   few hours it did. This is the worst bug the tier introduced.
+
+   A fresh document's tier state is `cold`, never `unavailable`, because
+   nothing hydrated — so the FIRST over-threshold write always took the
+   overflow path. If IndexedDB then refused to open (Safari private
+   browsing, a blocked profile, or just hydrate()'s own 3-second
+   timeout), the put failed, `storage:full` fired... and nothing wrote
+   the value anywhere. `_overflowWrite` returned `true` regardless, so
+   the proxy skipped its `storage:error` branch, `saved` fired, the
+   indicator read SAVED, and `rawSet` told every caller it had worked.
+   The value read back correctly for the rest of the session, because
+   Overflow.put() fills the cache synchronously even when the database
+   is dead. It was gone after a reload.
+
+   Before the tier existed a 300KB script went straight to
+   localStorage and survived. So this was a REGRESSION, and on exactly
+   the value the tier was built for: the screenplay, which is 83% of a
+   project. It was worse through Import — the restored project kept its
+   scenes and lost its script, and the next export then wrote that loss
+   into the backup.
+
+   localStorage is the fallback, and it is a good one: the small tier
+   holds ~5MB and the value that could not reach the big tier is one
+   value. Only if BOTH refuse is anything actually lost, and that is
+   the one case that reports `storage:full` and `storage:error`. */
+function _fallBackToSmallTier(k, v) {
+  Overflow.cache().delete(k);          // no phantom read from a write that failed
+  try {
+    _origSet(k, v);
+  } catch (e) {
+    notify('storage:full',  { key: k, bytes: v.length });
+    notify('storage:error', { key: k, scoped: k, reason: 'both-tiers-refused' });
+  }
+}
+
 function _overflowWrite(k, v) {
   /* hydrate() is idempotent and is what opens the database, so this
      doubles as "ensure the tier exists" for the first large write of a
@@ -208,9 +253,12 @@ function _overflowWrite(k, v) {
      way, so a read issued before any of this settles is still right. */
   const p = Overflow.hydrate().then(() => Overflow.put(k, v)).then(async (ok) => {
     const back = ok ? await Overflow.readBack(k) : null;
-    if (back !== v) { notify('storage:full', { key: k, bytes: v.length }); return; }
-    try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* a handful of bytes */ }
-  }).catch(() => { notify('storage:full', { key: k, bytes: v.length }); });
+    if (back === v) {
+      try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* a handful of bytes */ }
+      return;
+    }
+    _fallBackToSmallTier(k, v);
+  }).catch(() => _fallBackToSmallTier(k, v));
   _pending.add(p);
   p.finally(() => _pending.delete(p));
   return true;
@@ -227,7 +275,19 @@ export function flushStorage() {
 
 function _removeTiered(k) {
   try { _origRemove(k); } catch (e) { return false; }
-  Overflow.del(k);
+  /* TRACKED, because a delete is as asynchronous as a write and
+     `flushStorage()` was only ever told about writes. resetAll() duly
+     awaited it, got back in about a millisecond, put up its "this
+     erases EVERYTHING" alert and reloaded — and the delete
+     transactions died with the connection. The screenplays stayed in
+     IndexedDB for good: their stubs were gone, so `_anyStubsPresent()`
+     is false for ever, hydrate() never runs, and `storageUsage()`
+     cheerfully reports `big: 0`. Unreclaimable, invisible, and it ends
+     at a full database. Same shape as the import bug, reached from the
+     removal side. */
+  const p = Overflow.del(k);
+  _pending.add(p);
+  p.finally(() => _pending.delete(p));
   return true;
 }
 

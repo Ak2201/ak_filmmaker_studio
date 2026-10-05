@@ -1160,6 +1160,11 @@ function measureMobileBar() {
 
 StudioUI.attachMobileActionBar = function (config) {
   if (document.getElementById('mobileActionbar')) return;
+  /* A page that is already a narrow tool — the extension's side panel —
+     opts out with <html data-no-actionbar>: a bottom bar of SEARCH /
+     STUDIO / TOP / END over a 360px panel covers the panel's own
+     controls and duplicates what it is. */
+  if (document.documentElement.hasAttribute('data-no-actionbar')) return;
   config = config || {};
   const items = config.items || mobileBarItems();
   const bar = document.createElement('div');

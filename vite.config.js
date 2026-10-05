@@ -82,7 +82,11 @@ export default defineConfig({
         // already shared keep resolving instead of 404ing.
         legacyFeature: resolve(__dirname, 'arunak-filmmaker-blueprint.html'),
         legacyShort:   resolve(__dirname, 'arunak-shortfilm-blueprint.html'),
-        legacyLibrary: resolve(__dirname, 'arunak-filmmaker-library.html')
+        legacyLibrary: resolve(__dirname, 'arunak-filmmaker-library.html'),
+        // The Chrome extension's side panel. Only in the extension build
+        // (scripts/build-extension.mjs sets FMS_EXTENSION): on the website
+        // it would be a page that can do nothing without chrome.* APIs.
+        ...(process.env.FMS_EXTENSION ? { panel: resolve(__dirname, 'extension/panel.html') } : {})
       },
       output: {
         /* A few modules under src/lib/ are reached only through

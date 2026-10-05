@@ -25,7 +25,13 @@ import Store from './store.js';
    nothing from here, so this is not a cycle, and vite.config folds
    every src/lib module into one chunk anyway. */
 import { DRIVE_SCOPE } from './drive.js';
-import { createGate, startHeartbeat } from './gate.js';
+import { createGate, startHeartbeat, useHolder } from './gate.js';
+import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
+
+/* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
+   things move from sessionStorage/localStorage to chrome.storage.session.
+   On the website both calls below are no-ops. */
+if (inExtension()) useHolder(gateHolder());
 
 // ============================================================
 // CONSTANTS
@@ -322,8 +328,9 @@ export function ownsSync() { return !!(isConfigured() && session && syncAllowed(
 // out of their hands. src/lib/gate.js has the full reasoning, including
 // why every check FAILS OPEN until section 13 has run.
 //
-//   'unknown'  not asked yet, or the question could not be answered
-//   'open'     through the gate (or no gate deployed) — sync as before
+//   'unknown'  not asked yet (a decision is in flight)
+//   'open'     through the gate, no gate deployed, or the question could
+//              not be answered (fail open) — sync as before
 //   'closed'   signed in, gate deployed, no redeemed code — no sync
 //   'lost'     another device took the session — no sync until taken back
 // ============================================================
@@ -383,9 +390,9 @@ async function runGate() {
   if (!session) return false;
   let st;
   try { st = await Gate.status(); }
-  catch (e) { _gateState = 'unknown'; return true; }   // network: behave as before
-  if (!st.deployed) { _gateState = 'open'; return true; }
-  if ((!st.registered || st.disabled) && Gate.hasPendingTicket()) {
+  catch (e) { setGate('open'); return true; }   // network: fail open, behave as before
+  if (!st.deployed) { setGate('open'); return true; }
+  if ((!st.registered || st.disabled) && await Gate.hasPendingTicket()) {
     try {
       await Gate.redeemPending();
       st = await Gate.status();
@@ -411,11 +418,47 @@ async function runGate() {
 }
 export { Gate };
 
+/* In the extension the service worker keeps the heartbeat even with no
+   page open, and when it loses the session it has already cleared the
+   credentials. A page that is open hears about it here and pauses the
+   same way its own heartbeat would have. */
+onSessionLost(async (reason) => {
+  /* The worker has ALREADY cleared the credentials, so there is nothing
+     to "take back" with: in the extension a lost session is a signed-out
+     session, and the PRD routes it to the gatekeeper. Drop the copy this
+     document still holds in memory (scope 'local': no network, the
+     server already knows) and say why. Local work is not touched. */
+  if (_heartbeat) { _heartbeat.stop(); _heartbeat = null; }
+  tearDownChannels();
+  session = null; _gateState = 'unknown'; _gateRole = '';
+  try { if (supabase) await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* already gone */ }
+  idleSync();
+  notifyAuth('SIGNED_OUT', null);
+  const why = reason === 'conflict' ? 'Your account was opened on another device, so this window signed out.'
+            : reason === 'revoked'  ? 'Your invite was revoked, so this window signed out.'
+            : 'Your session ended, so this window signed out.';
+  toast(why + ' Everything on this device is still here.', 'error', 8000);
+});
+
 // ============================================================
 // CLIENT INIT — loads SDK on demand
 // ============================================================
-export async function ensureClient() {
-  if (supabase) return supabase;
+/* ONE CLIENT PER DOCUMENT, even when two callers ask in the same tick.
+   This used to check `if (supabase)` and then await the SDK import, so
+   boot() and a page that asked for the client before boot finished
+   each built one — two GoTrue clients on one storage key, which
+   supabase-js warns "may produce undefined behavior" (both refresh the
+   token, both fire auth events). The in-flight promise is shared now,
+   and cleared on failure so a later call can try again. */
+let _clientPromise = null;
+export function ensureClient() {
+  if (supabase) return Promise.resolve(supabase);
+  if (_clientPromise) return _clientPromise;
+  _clientPromise = _createClient().then((c) => { if (!c) _clientPromise = null; return c; });
+  return _clientPromise;
+}
+
+async function _createClient() {
   cfg = getCfg();
   if (!cfg || !cfg.url || !cfg.key) return null;
   try {
@@ -426,7 +469,12 @@ export async function ensureClient() {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true
+        /* In the extension the Supabase session — the credentials —
+           lives in chrome.storage.session, never localStorage (PRD
+           FR-202); see extension-bridge.js. There is no redirect to read
+           a session out of there either: sign-in is launchWebAuthFlow. */
+        storage: inExtension() ? sessionStorageAdapter() : undefined,
+        detectSessionInUrl: !inExtension()
       },
       realtime: {
         params: { eventsPerSecond: 5 }
@@ -684,6 +732,24 @@ export async function signInWithGoogle() {
   if (!sb) throw new Error('Cloud is not set up in this browser yet. Add your Supabase URL and anon key first.');
   if (_signingIn) return;
   _signingIn = true;
+  if (inExtension()) {
+    // FR-201: chrome.identity opens Google's window and hands the
+    // tokens back; setSession() then fires SIGNED_IN, which runs the
+    // gate like any other sign-in. No page navigation happens.
+    setSync(SYNC_STATES.SYNCING, 'Waiting for Google…');
+    try {
+      const tokens = await extensionGoogleTokens(getCfg().url, DRIVE_SCOPE);
+      const { error } = await sb.auth.setSession(tokens);
+      if (error) throw error;
+    } catch (e) {
+      setSync(SYNC_STATES.ERROR, 'Google sign-in did not complete');
+      notifyAuth('SIGNED_OUT', null);
+      throw e;
+    } finally {
+      _signingIn = false;
+    }
+    return;
+  }
   stashPendingShare();
   setSync(SYNC_STATES.SYNCING, 'Opening Google…');
   notifyAuth('REDIRECTING', null);

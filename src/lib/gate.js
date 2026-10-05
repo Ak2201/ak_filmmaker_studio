@@ -74,7 +74,8 @@ const webHolder = {
 };
 let memId = null;
 let holder = webHolder;
-/** The extension swaps in a chrome.storage.session holder. */
+/** The extension swaps in a chrome.storage.session holder. Its methods
+ *  may return promises; every caller below awaits them. */
 export function useHolder(h) { holder = h || webHolder; }
 
 /* ---- errors -------------------------------------------------- */
@@ -124,7 +125,7 @@ export function createGate(getClient) {
     try {
       const r = one(await rpc('verify_invite', { p_code: c }));
       const t = { ticket: r.ticket, passType: r.pass_type, expiresAt: r.expires_at };
-      holder.setTicket(t);
+      await holder.setTicket(t);
       return t;
     } catch (e) {
       if (isMissing(e)) throw new GateError('Invite codes are not switched on for this studio yet.', 'notdeployed');
@@ -135,18 +136,18 @@ export function createGate(getClient) {
   /** Spend the pending ticket, if any. Resolves to the membership row,
    *  or null when there was nothing to redeem. */
   async function redeemPending() {
-    const t = holder.getTicket();
+    const t = await holder.getTicket();
     if (!t || !t.ticket) return null;
     if (t.expiresAt && Date.parse(t.expiresAt) < Date.now()) {
-      holder.setTicket(null);
+      await holder.setTicket(null);
       throw new GateError('The code was entered more than ten minutes ago — enter it again.', 'expired');
     }
     try {
       const r = one(await rpc('redeem_invite', { p_ticket: t.ticket }));
-      holder.setTicket(null);
+      await holder.setTicket(null);
       return r;
     } catch (e) {
-      holder.setTicket(null);
+      await holder.setTicket(null);
       throw e;
     }
   }
@@ -162,18 +163,18 @@ export function createGate(getClient) {
 
   /** 'ok' | { conflict: true, lastSeen, userAgent } */
   async function acquire() {
-    const r = one(await rpc('session_acquire', { p_session: holder.getSessionId(), p_user_agent: ua() }));
+    const r = one(await rpc('session_acquire', { p_session: await holder.getSessionId(), p_user_agent: ua() }));
     if (r && r.status === 'conflict') return { conflict: true, lastSeen: r.other_last_seen, userAgent: r.other_user_agent || '' };
     return 'ok';
   }
   async function takeover() {
-    await rpc('session_takeover', { p_session: holder.getSessionId(), p_user_agent: ua() });
+    await rpc('session_takeover', { p_session: await holder.getSessionId(), p_user_agent: ua() });
     return 'ok';
   }
   /** 'ok' | 'conflict' | 'revoked' */
   async function ping() {
     try {
-      const r = one(await rpc('session_ping', { p_session: holder.getSessionId() }));
+      const r = one(await rpc('session_ping', { p_session: await holder.getSessionId() }));
       return (r && r.status) || 'ok';
     } catch (e) {
       if (isRevoked(e)) return 'revoked';
@@ -181,7 +182,7 @@ export function createGate(getClient) {
     }
   }
   async function release() {
-    try { await rpc('session_release', { p_session: holder.getSessionId() }); } catch (e) { /* best effort */ }
+    try { await rpc('session_release', { p_session: await holder.getSessionId() }); } catch (e) { /* best effort */ }
   }
 
   /* ---- admin ---- */
@@ -234,7 +235,8 @@ export function createGate(getClient) {
   }
 
   return { status, verifyCode, redeemPending, redeemCode, acquire, takeover, ping, release,
-           admin, openScreening, sessionId: () => holder.getSessionId(), hasPendingTicket: () => !!(holder.getTicket() || {}).ticket };
+           admin, openScreening, sessionId: () => holder.getSessionId(),
+           hasPendingTicket: async () => !!((await holder.getTicket()) || {}).ticket };
 }
 
 /* ---- the heartbeat --------------------------------------------

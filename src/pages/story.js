@@ -655,5 +655,24 @@ const drain = () => drainClipQueue().then((n) => {
 drain();
 onClipQueued(drain);
 
+/* ?start= from the extension panel's three ways in (FR-402). Read once
+   and stripped, so a reload does not repeat it. A file picker cannot be
+   opened without a click, so "import" scrolls to the drop card instead. */
+const START = new URLSearchParams(location.search).get('start');
+if (START) {
+  history.replaceState(null, '', location.pathname + location.hash);
+  const s0 = story();
+  if (START === 'sample' && !s0.source.trim()) {
+    s0.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
+    s0.sourceName = sample.title + ' (sample)';
+    Story.saveStory(s0);
+    mode = 'tag';
+  } else if (START === 'new') {
+    mode = 'edit';
+  }
+}
+
 render();
 primeAI();
+if (START === 'new') { const ta = document.getElementById('stSource'); if (ta) ta.focus(); }
+if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }

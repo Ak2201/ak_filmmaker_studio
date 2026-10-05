@@ -61,3 +61,81 @@ export function onClipQueued(cb) {
   c.runtime.onMessage.addListener(fn);
   return () => c.runtime.onMessage.removeListener(fn);
 }
+
+/* ---- FR-202: credentials live in chrome.storage.session -------------
+   supabase-js accepts any storage with getItem/setItem/removeItem, sync
+   or async. Inside the extension cloud.js hands it THIS one, so the
+   Supabase session (access token, refresh token, user) is kept in
+   chrome.storage.session — in memory, shared by the extension's pages
+   and its service worker, gone when the browser is fully closed — and
+   never in localStorage or chrome.storage.local. That one substitution
+   is what PRD FR-202's "browser lifecycle binding" comes down to. */
+export function sessionStorageAdapter() {
+  const c = ext();
+  if (!c || !c.storage.session) return null;
+  return {
+    async getItem(key) { const r = await c.storage.session.get(key); return r[key] ?? null; },
+    async setItem(key, value) { await c.storage.session.set({ [key]: value }); },
+    async removeItem(key) { await c.storage.session.remove(key); }
+  };
+}
+
+/** gate.js's holder for the extension: the pre-auth ticket and the lock
+ *  handle, both in chrome.storage.session. */
+export function gateHolder() {
+  const c = ext();
+  if (!c || !c.storage.session) return null;
+  const S = c.storage.session;
+  return {
+    async getTicket() { return (await S.get('fms_preauth_ticket')).fms_preauth_ticket || null; },
+    async setTicket(t) { if (t) await S.set({ fms_preauth_ticket: t }); else await S.remove('fms_preauth_ticket'); },
+    async getSessionId() {
+      let id = (await S.get('fms_session_id')).fms_session_id;
+      if (!id) { id = crypto.randomUUID(); await S.set({ fms_session_id: id }); }
+      return id;
+    },
+    async rotateSessionId() { const id = crypto.randomUUID(); await S.set({ fms_session_id: id }); return id; }
+  };
+}
+
+/* ---- FR-201: Google sign-in through chrome.identity ----------------
+   An extension page cannot complete Supabase's redirect flow — Google
+   would send the browser to a chrome-extension:// URL. launchWebAuthFlow
+   opens the consent window itself and hands back the final redirect,
+   https://<extension-id>.chromiumapp.org/#access_token=…, which must be
+   on the Supabase project's Redirect URLs list (docs/EXTENSION.md). */
+export function extensionRedirectUrl() {
+  const c = ext();
+  return c && c.identity ? c.identity.getRedirectURL() : '';
+}
+
+export async function extensionGoogleTokens(supabaseUrl, scopes) {
+  const c = ext();
+  if (!c || !c.identity) throw new Error('chrome.identity is not available here.');
+  const redirect = c.identity.getRedirectURL();
+  const url = new URL(supabaseUrl.replace(/\/$/, '') + '/auth/v1/authorize');
+  url.searchParams.set('provider', 'google');
+  url.searchParams.set('redirect_to', redirect);
+  if (scopes) url.searchParams.set('scopes', scopes);
+  url.searchParams.set('prompt', 'select_account');
+  const back = await c.identity.launchWebAuthFlow({ url: url.toString(), interactive: true });
+  const hash = new URLSearchParams(String(back || '').split('#')[1] || '');
+  const query = new URL(back).searchParams;
+  const err = hash.get('error_description') || query.get('error_description') || hash.get('error') || query.get('error');
+  if (err) throw new Error('Google sign-in did not complete: ' + err);
+  const access_token = hash.get('access_token');
+  const refresh_token = hash.get('refresh_token');
+  if (!access_token || !refresh_token) throw new Error('Google sign-in returned no session. Check the extension redirect URL is allowed in Supabase.');
+  return { access_token, refresh_token };
+}
+
+/** Call `cb(reason)` when the service worker has cleared the session
+ *  (another device took it over, the invite was revoked, or the token
+ *  could not be refreshed). */
+export function onSessionLost(cb) {
+  const c = ext();
+  if (!c || !c.runtime.onMessage) return () => {};
+  const fn = (msg) => { if (msg && msg.type === 'fms-session-lost') cb(msg.reason || ''); };
+  c.runtime.onMessage.addListener(fn);
+  return () => c.runtime.onMessage.removeListener(fn);
+}

@@ -35,6 +35,17 @@ carry a price (the RPC refuses it).
 
 ## 1. Order of operations
 
+**One command does steps 1, 3, 4 and 5 below** from a machine that can
+reach Supabase and holds a personal access token in
+`SUPABASE_ACCESS_TOKEN` (and the three `RAZORPAY_*` secrets, if they
+are to be set in the same run): `node scripts/deploy-billing.mjs`. It
+slices §16–§17 out of `supabase-schema.sql`, runs them through the
+Management API, asks the database that they landed, and deploys the
+functions with the CLI via npx. `--print` writes the same SQL to stdout
+for the dashboard editor instead. The cloud session this was built in
+could do neither: its network policy denies every Supabase host and it
+holds no token, which is why the script exists.
+
 Nothing here has met the live database or a live Razorpay account.
 The schema section passes `npm run test:schema` on a real PostgreSQL;
 the whole purchase passes `npm run prove:billing` against a faked

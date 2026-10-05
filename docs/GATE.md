@@ -26,6 +26,16 @@ Signed in and not a member (no invite, pending, declined, disabled) →
 Exempt: `invite.html`, `screening.html`, the two legal pages, and everything
 inside the Chrome extension, which has its own gatekeeper.
 
+**A code is a key, not a form.** A visitor with a valid code enters with no
+sign-in: the code is remembered in that browser (`fms_invite_code_v1`, reset
+clears it, no backup carries it) and re-verified with `verify_invite()` once per
+browser session, so revoking the code shuts the door next session. Entering
+spends nothing; the first time that browser signs in, `runGate()` redeems the
+remembered code for the account and sync comes on. **Every standard code is
+also a link** — `invite.html#code=XXXX-XXXX-XXXX`, the code in the fragment so
+it never reaches a server log — shown beside the code in the console with COPY
+LINK; opening it enters without typing.
+
 This reverses the contract the codebase was written under — "the gate guards
 the cloud, never local work" — by the owner's decision. Local work is hidden
 from a visitor outside the gate; it is never deleted or touched, and it is all

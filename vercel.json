@@ -53,6 +53,8 @@
     { "source": "/dissect", "destination": "/dissect.html" },
     { "source": "/settings", "destination": "/settings.html" },
     { "source": "/shoot", "destination": "/shoot.html" },
+    { "source": "/edit", "destination": "/edit.html" },
+    { "source": "/deliverables", "destination": "/deliverables.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/shared/:token", "destination": "/?share=:token" }

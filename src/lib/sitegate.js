@@ -23,7 +23,12 @@
      2. The decision waits for cloud.js to BOOT (`cloud:booted`),
         because "no session" means nothing until the stored one has
         been restored or found missing.
-     3. Signed out            -> invite.html
+     3. A CODE PASS (gate.js) -> the code is re-verified once per
+                                 browser session and, valid, lets the
+                                 visitor in signed out or signed in
+                                 and closed alike; invalid, it is
+                                 forgotten and the rest applies
+        Signed out            -> invite.html
         no cloud in the build -> invite.html (nobody can be checked,
                                  so nobody is in — fail closed)
         gate 'open' or 'lost' -> show the page ('lost' is a member
@@ -58,6 +63,7 @@
    reason. Two builds, each checked by the tool that can see it.
    ============================================================ */
 import Store from './store.js';
+import { getCodePass, clearCodePass, isMissing } from './gate.js';
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
@@ -103,6 +109,15 @@ export function evaluate() {
   if (!c) return { verdict: 'wait', reason: 'nocloudjs' };
   if (!c.isConfigured()) return { verdict: 'deny', reason: 'nocloud' };
   if (!c.isBooted || !c.isBooted()) return { verdict: 'wait', reason: 'booting' };
+  /* The code pass, before the session: it admits a signed-out visitor
+     and a signed-in one the gate has closed on (their membership may
+     simply not have happened yet). Verified once per browser session;
+     `codeCheck` is that verification's outcome. */
+  if (getCodePass()) {
+    if (codeCheck === 'ok' || (codeCheck === 'pending' && passed())) return { verdict: 'allow', reason: 'code' };
+    if (codeCheck === 'pending') return { verdict: 'wait', reason: 'code-check' };
+    /* 'bad' falls through: the pass was cleared, the rest decides. */
+  }
   if (!c.getSession()) return { verdict: 'deny', reason: 'signedout' };
   const g = c.getGateState();
   if (g.state === 'open' || g.state === 'lost') return { verdict: 'allow', reason: g.state };
@@ -113,8 +128,33 @@ export function evaluate() {
   return { verdict: 'wait', reason: 'unknown' };
 }
 
+let codeCheck = 'pending';   // 'pending' | 'ok' | 'bad'
+let checking = false;
+async function verifyCodePass() {
+  const c = window.StudioCloud;
+  const pass = getCodePass();
+  if (!c || !pass || checking || codeCheck !== 'pending') return;
+  if (passed()) { codeCheck = 'ok'; return; }   // this tab already checked it this session
+  checking = true;
+  try {
+    const t = await c.gate.verifyCode(pass.code);
+    if (t.passType === 'standard') codeCheck = 'ok';
+    else { clearCodePass(); codeCheck = 'bad'; }   // a screening pass is not a way into the studio
+  } catch (e) {
+    /* A refusal (revoked, expired, used up, unknown) forgets the code.
+       A missing function or a network failure forgets nothing and
+       admits nobody: fail closed, try again next session. */
+    if (!isMissing(e) && e.code !== 'nocloud' && !/fetch|network/i.test(String(e.message || ''))) clearCodePass();
+    codeCheck = 'bad';
+  } finally {
+    checking = false;
+    decide();
+  }
+}
+
 function decide() {
   const v = evaluate();
+  if (v.verdict === 'wait' && v.reason === 'code-check') { verifyCodePass(); return; }
   if (v.verdict === 'allow') allow();
   else if (v.verdict === 'deny') deny(v.reason);
 }

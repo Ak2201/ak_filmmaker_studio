@@ -25,6 +25,7 @@
 .gt-field select, .gt-field input { min-width: 0; max-width: 100%; }
 .gt-made { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); color: var(--ink-body); }
 .gt-codeval { font-family: var(--f-mono); font-weight: 700; letter-spacing: .06em; color: var(--ink); }
+.gt-link { font-weight: 400; letter-spacing: 0; font-size: var(--t-small); overflow-wrap: anywhere; }
 .gt-scroll { max-width: 100%; overflow-x: auto; }
 .gt-table { border-collapse: collapse; width: 100%; font-size: var(--t-small); }
 .gt-table th, .gt-table td { text-align: left; padding: var(--s2); border-bottom: 1px solid var(--rule-hair); color: var(--ink-body); vertical-align: top; }

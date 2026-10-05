@@ -43,6 +43,7 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
+import { getCodePass, clearCodePass, codeFromLocation, formatCode } from '../lib/gate.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -58,7 +59,8 @@ function section(id, eyebrow, title, deck) {
    is, in one sentence, before the sections repeat it with controls. */
 function deckFor(c, g) {
   if (!c || !c.isConfigured()) return 'This build has no cloud project, so there is nothing here to be invited to. Everything you write is saved in this browser.';
-  if (!c.getSession()) return 'The studio’s cloud is invite-only. Sign in with Google first; then redeem a code, or ask for an invite with that account.';
+  if (!c.getSession() && getCodePass()) return 'This browser came in with an invite code. Sign in with Google whenever you want your work backed up to an account; nothing else is needed.';
+  if (!c.getSession()) return 'The studio is invite-only. Enter the code you were given to come straight in — or sign in with Google and ask for an invite.';
   if (g.state === 'unknown') return 'Checking whether this account is through the gate…';
   if (g.state === 'open') return 'This account is through the gate. Your projects sync to it.';
   if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
@@ -82,17 +84,26 @@ function render() {
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'Nothing to redeem.',
       'Cloud sync is a build setting that this copy of the studio does not carry. Your work lives in this browser; back it up from Settings.'));
+  } else if (!signedIn && getCodePass()) {
+    const sec = section('through', 'Through', 'You’re in, with a code.',
+      'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
+    sec.append(h('div.iv-actions', {}, [
+      h('a.btn.primary', { href: 'index.html', text: 'GO TO THE STUDIO' }),
+      h('button.btn', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN WITH GOOGLE' }),
+      h('button.btn', { type: 'button', 'data-iv-action': 'forget-code', text: 'FORGET THIS CODE' })
+    ]));
+    body.append(sec);
   } else if (!signedIn) {
-    const sec = section('signin', 'Step one', 'Sign in with Google.',
-      'The request is made BY an account, so the address an administrator sees is the one Google attested rather than one typed into a box. Signing in changes nothing on this device.');
+    /* The code first: it is the shorter road and the one a link
+       arrives by. Sign-in is the other road, for people with no code. */
+    const code = inviteSection(section, null);
+    if (code) body.append(code);
+    const sec = section('signin', 'No code?', 'Sign in with Google and ask.',
+      'A request is made BY an account, so the address an administrator sees is the one Google attested rather than one typed into a box. Signing in changes nothing on this device.');
     sec.append(h('div.iv-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })
     ]));
     body.append(sec);
-    /* Already holding a code: the box verifies it first and sends
-       them to Google with the ticket waiting, as on settings.html. */
-    const code = inviteSection(section, null);
-    if (code) body.append(code);
   } else if (g.state === 'unknown') {
     body.append(section('checking', 'One moment', 'Checking your invite…', 'Asking the studio whether ' + (email || 'this account') + ' is through the gate.'));
   } else if (g.state === 'open') {
@@ -138,9 +149,42 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-iv-action="takeover"]');
-  if (el && cloud() && cloud().takeBack) cloud().takeBack();
+  const el = e.target.closest('[data-iv-action]');
+  if (!el) return;
+  if (el.dataset.ivAction === 'takeover' && cloud() && cloud().takeBack) cloud().takeBack();
+  if (el.dataset.ivAction === 'forget-code') {
+    clearCodePass();
+    try { sessionStorage.removeItem('fms_sitegate_pass'); } catch (err) { /* ignore */ }
+    render();
+  }
 });
+
+/* AN INVITE LINK: invite.html#code=XXXX-XXXX-XXXX. The code is read
+   once, taken off the address bar (so a reload, a bookmark or a
+   screenshot does not carry it), typed into the box and submitted as
+   if by hand — one code path for the link and the keyboard. Only when
+   signed out: a signed-in member with a link has nothing to do with
+   it, and a signed-in non-member gets the same box, pre-filled. */
+function adoptLinkCode() {
+  const code = codeFromLocation();
+  if (!code) return;
+  try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+  const fill = () => {
+    const box = document.getElementById('gtCode');
+    if (!box) return false;
+    box.value = formatCode(code);
+    const c = cloud();
+    if (c && !c.getSession() && !getCodePass()) box.form.requestSubmit();
+    return true;
+  };
+  if (!fill()) {
+    /* The box renders once the cloud has booted; try again on each
+       redraw until it is there, then stop. */
+    const off = Store.subscribe('gate:changed', () => { if (fill()) off(); });
+    setTimeout(() => { fill(); }, 800);
+  }
+}
+adoptLinkCode();
 
 /* Everything this page shows arrives later than the first paint —
    the session, then the gate's answer a round trip after it — so it

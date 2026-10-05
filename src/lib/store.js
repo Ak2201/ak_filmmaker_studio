@@ -80,7 +80,9 @@ const SCOPED_KEYS = [
   'fms_scriptgen_v1',
   'fms_songs_v1',
   'fms_story_v1',
-  'fms_idea_vault_v1'
+  'fms_idea_vault_v1',
+  'fms_edit_v1',
+  'fms_deliverables_v1'
   // intentionally NOT scoped: fms_studio_prefs_v1 (dark mode = global),
   //                            fms_supabase_cfg_v1 (account-level),
   //                            fms_note_* (per-field notes, fine global for now)

@@ -18,7 +18,7 @@
    [data-gate-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { formatCode, normaliseCode } from '../lib/gate.js';
+import { formatCode, normaliseCode, setCodePass, inviteLink } from '../lib/gate.js';
 import '../styles/gate.css';
 
 const cloud = () => window.StudioCloud || null;
@@ -90,16 +90,21 @@ export function inviteSection(section, st) {
   if (!c || !c.isConfigured()) return null;
   const signedIn = !!c.getSession();
   if (signedIn && st && (!st.deployed || (st.registered && !st.disabled))) return null;
-  const sec = section('invite', 'Invite', 'Have an invite code?',
+  const sec = section('invite', signedIn ? 'Invite' : 'Or, with a code', 'Have an invite code?',
     signedIn
-      ? 'If somebody handed you a code, enter it and your projects start syncing to this account. No code? Request an invite instead — the administrator sees the account you signed in with. Everything on this device stays here either way.'
-      : 'Cloud sync and the Chrome extension are invite-only. Enter your code, then sign in with Google — the code is spent only once Google has said who you are. Working on this device needs no code at all.');
+      ? 'If somebody handed you a code, enter it and you are through. No code? Request an invite instead — the administrator sees the account you signed in with.'
+      : 'A code lets you straight in, with no sign-in. Enter it and you are through on this browser; sign in with Google whenever you want your work backed up to an account.');
   const form = h('form.gt-code', { 'data-gate-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'gtCode', text: 'Invite or screening pass code' }));
   form.append(h('input#gtCode.gt-input', { type: 'text', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
     placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code', 'aria-describedby': 'gtCodeHint' }));
   form.append(h('p#gtCodeHint.gt-meta', { text: 'Spaces and dashes are ignored. A screening pass opens the screening room instead.' }));
-  form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'CONTINUE WITH GOOGLE') }));
+  /* The signed-out label used to read CONTINUE WITH GOOGLE, which is
+     what happens AFTER a code checks out — and with the box empty the
+     submit did nothing at all, so the button that most looked like the
+     way in was a dead click. It names the code now, and an empty
+     submit says where the way in is. */
+  form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'ENTER WITH THIS CODE') }));
   if (codeError) form.append(h('p.gt-error', { role: 'alert', text: codeError }));
   sec.append(form);
   /* The other route, when this box is drawn somewhere other than the
@@ -114,7 +119,16 @@ export function inviteSection(section, st) {
 async function submitCode(form) {
   const g = gate(), c = cloud();
   const raw = form.querySelector('[data-gate-field="code"]').value;
-  if (!g || !normaliseCode(raw)) return;
+  if (!g) return;
+  if (!normaliseCode(raw)) {
+    codeError = c.getSession()
+      ? 'Enter the code you were given — or request an invite above.'
+      : 'Enter the code you were given. With no code, sign in with Google and ask for an invite.';
+    rerender();
+    form.querySelector('[data-gate-field="code"]').focus();
+    return;
+  }
+  codeError = '';
   codeBusy = true; codeError = ''; rerender();
   try {
     if (c.getSession()) {
@@ -128,7 +142,15 @@ async function submitCode(form) {
         location.href = 'screening.html?pass=' + encodeURIComponent(normaliseCode(raw));
         return;
       }
-      await c.signInWithGoogle();    // redirects; the ticket waits in sessionStorage
+      /* Code-only entry: remember the code in this browser and go in.
+         No sign-in is asked for. The ticket verifyCode() left in
+         sessionStorage is still redeemed if they do sign in within ten
+         minutes, and after that cloud.js redeems the remembered code
+         itself on the first sign-in. */
+      setCodePass(raw);
+      try { sessionStorage.setItem('fms_sitegate_pass', '1'); } catch (e) { /* re-verified on arrival */ }
+      location.assign('index.html');
+      return;
     }
   } catch (e) {
     codeError = /screening pass/i.test(e.message || '')
@@ -236,7 +258,14 @@ export function adminSection(section, st) {
   form.append(h('button.btn.primary', { type: 'submit', text: 'ISSUE CODE' }));
   if (admin.made) {
     form.append(h('p.gt-made', {}, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
-      h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY' })]));
+      h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));
+    if (admin.made.pass_type === 'standard') {
+      /* The same code as a link. Whoever opens it is in, no sign-in —
+         so this is the thing to send, and the code is the thing to read
+         aloud when a link cannot travel. */
+      form.append(h('p.gt-made', {}, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: inviteLink(admin.made.code) }),
+        h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': admin.made.code, text: 'COPY LINK' })]));
+    }
   }
   sec.append(form);
 
@@ -257,7 +286,10 @@ export function adminSection(section, st) {
         h('td', { text: `${c.redemptions_count} / ${c.max_redemptions}` }),
         h('td', { text: fmtDate(c.expires_at) }),
         h('td', { text: state }),
-        h('td', {}, [state === 'Active' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'revoke', 'data-id': c.id, text: 'REVOKE' }) : null].filter(Boolean))
+        h('td.gt-row-actions', {}, [
+          state === 'Active' && c.pass_type === 'standard' ? h('button.btn', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': c.code, text: 'COPY LINK' }) : null,
+          state === 'Active' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'revoke', 'data-id': c.id, text: 'REVOKE' }) : null
+        ].filter(Boolean))
       ]));
     }
     table.append(tb);
@@ -367,7 +399,10 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       await loadAdmin();
     } else if (act === 'copy') {
       await navigator.clipboard.writeText(formatCode(el.dataset.code));
-      toast('Copied.');
+      toast('Code copied.');
+    } else if (act === 'copy-link') {
+      await navigator.clipboard.writeText(inviteLink(el.dataset.code));
+      toast('Invite link copied — whoever opens it is in.');
     }
   } catch (err) { toast(err.message || 'That did not work.', 'error'); }
 });

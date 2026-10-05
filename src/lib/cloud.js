@@ -25,7 +25,7 @@ import Store from './store.js';
    nothing from here, so this is not a cycle, and vite.config folds
    every src/lib module into one chunk anyway. */
 import { DRIVE_SCOPE } from './drive.js';
-import { createGate, startHeartbeat, useHolder } from './gate.js';
+import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -83,7 +83,12 @@ const SCOPE_BY_KEY = {
   'fms_scriptgen_v1':           'scriptgen',
   'fms_songs_v1':               'songs',
   'fms_story_v1':               'story',
-  'fms_idea_vault_v1':          'idea_vault'
+  'fms_idea_vault_v1':          'idea_vault',
+  // Post-Production. The scope names are in schema section 16, which
+  // has NOT run against the database at the time of writing — until it
+  // does, Postgres refuses these two upserts and the rest still sync.
+  'fms_edit_v1':                'edit',
+  'fms_deliverables_v1':        'deliverables'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])
@@ -486,6 +491,21 @@ async function runGate() {
     } catch (e) {
       toast(e.message || 'That invite code could not be redeemed.', 'error', 6000);
     }
+  }
+  /* A browser that ENTERED WITH A CODE (gate.js's code pass) and has now
+     signed in: redeem that code for this account, so "come in with the
+     code, sign in later to sync" is one motion rather than a second
+     form. A failure here is not a closed door — the code pass still
+     admits them to the site — so it is quiet; the pill says sync is
+     awaiting an invite, and invite.html still offers the box. */
+  const pass = getCodePass();
+  if (!st.registered && !st.disabled && pass && pass.code) {
+    try {
+      await Gate.redeemCode(pass.code);
+      st = await Gate.status();
+      _gateStatus = st;
+      if (st.registered) toast('Your invite code is now on this account — sync is on.', 'success', 4000);
+    } catch (e) { /* see above */ }
   }
   _gateRole = st.role || '';
   if (st.disabled) return closed('disabled');

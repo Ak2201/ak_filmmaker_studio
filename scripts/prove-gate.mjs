@@ -49,6 +49,11 @@
      (m) THE CONSOLE: admin.html shows the studio's numbers and the
          organisations for an admin, and "Administrators only" for a
          member; the gate's controls are on it
+     (n) CODE-ONLY ENTRY AND THE LINK: a signed-out visitor with a valid
+         code is in with no sign-in, the code is remembered for the
+         browser and re-verified next session, the console offers the
+         code as a link, opening the link enters, and a revoked code
+         is forgotten and shuts the door
 
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
@@ -124,6 +129,7 @@ try {
     await page.goto(BASE + 'invite.html');
     await page.evaluate(() => localStorage.setItem('fms_story_v1', JSON.stringify({ v: 1, source: 'WRITTEN WITH NO GATE', framework: 'three_act', marks: [], tension: {} })));
     await page.goto(BASE + 'settings.html');
+    await page.waitForURL(/invite\.html/, { timeout: 8000 }).catch(() => {});   // let the site gate's redirect land before asserting
     ok(await waitGate(page, 'closed'), 'a signed-in user is CLOSED when the functions do not exist');
     ok((await gateReason(page)) === 'notdeployed', "and the reason is 'notdeployed', not 'no invite'");
     ok(/not switched on/i.test(await syncDetail(page)), 'the sync status says the gate is not switched on');
@@ -152,6 +158,7 @@ try {
       localStorage.setItem('fms_story_v1', JSON.stringify(s));
     });
     await page.goto(BASE + 'settings.html');
+    await page.waitForURL(/invite\.html/, { timeout: 8000 }).catch(() => {});   // same: assert on the page that stays
     ok(await waitGate(page, 'closed'), 'the gate CLOSES for a non-member');
     ok((await gateReason(page)) === 'noinvite', "reason 'noinvite'");
     const writesBefore = writes();
@@ -309,6 +316,64 @@ try {
     allErrors.push(...N.errors); await N.ctx.close();
   }
 
+  console.log('(n) code-only entry, the link, revocation');
+  F.db.sessions.clear();
+  {
+    // The link. A fresh browser, nothing seeded.
+    const ctx = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx.route(SB + '/**', handle);
+    await ctx.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(BASE + 'invite.html#code=LINK-CODE-2345');
+    await page.waitForURL(/index\.html|\/$/, { timeout: 10000 }).then(() => ok(true, 'opening an invite link enters the studio, no typing, no sign-in'), () => ok(false, 'opening an invite link enters the studio, no typing, no sign-in'));
+    ok(!/code=/.test(page.url()), 'the code is gone from the address bar');
+    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 });
+    await page.goto(BASE + 'breakdown.html');
+    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'other pages open for the code-only visitor'), () => ok(false, 'other pages open for the code-only visitor'));
+    ok(F.db.codes.find((c) => c.code === 'LINKCODE2345').redemptions_count === 0, 'nothing is spent by entering');
+    await page.goto(BASE + 'invite.html');
+    await page.waitForSelector('#through', { timeout: 8000 });
+    ok(/with a code/i.test(await page.textContent('#through')), 'invite.html says they are in with a code and offers sign-in');
+    // A NEW browser session with the same remembered code: re-verified, still valid.
+    const stored = await page.evaluate(() => localStorage.getItem('fms_invite_code_v1'));
+    await ctx.close();
+    const ctx2 = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx2.route(SB + '/**', handle);
+    await ctx2.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    await ctx2.addInitScript((v) => { if (!sessionStorage.getItem('__code')) { localStorage.setItem('fms_invite_code_v1', v); sessionStorage.setItem('__code', '1'); } }, stored);
+    const p2 = await ctx2.newPage();
+    const before = F.db.calls.length;
+    await p2.goto(BASE + 'story.html');
+    await p2.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'a new session with the remembered code is in'), () => ok(false, 'a new session with the remembered code is in'));
+    ok(F.db.calls.slice(before).includes('verify_invite'), 'after re-verifying the code with the server');
+    await ctx2.close();
+    // Revoked: forgotten, and the door shuts.
+    F.db.codes.find((c) => c.code === 'LINKCODE2345').revoked_at = new Date().toISOString();
+    const ctx3 = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx3.route(SB + '/**', handle);
+    await ctx3.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    /* Once per context — an init script re-running on every navigation
+       would put the code back after the app forgot it, and the
+       assertion below is exactly that the app forgot it. */
+    await ctx3.addInitScript((v) => { if (!sessionStorage.getItem('__code')) { localStorage.setItem('fms_invite_code_v1', v); sessionStorage.setItem('__code', '1'); } }, stored);
+    const p3 = await ctx3.newPage();
+    await p3.goto(BASE + 'story.html');
+    await p3.waitForURL(/invite\.html/, { timeout: 10000 }).then(() => ok(true, 'a revoked code no longer opens the door'), () => ok(false, 'a revoked code no longer opens the door'));
+    ok(!(await p3.evaluate(() => localStorage.getItem('fms_invite_code_v1'))), 'and the browser forgets it');
+    F.db.codes.find((c) => c.code === 'LINKCODE2345').revoked_at = null;
+    await ctx3.close();
+    // Signing in later redeems the remembered code by itself.
+    const ctx4 = await newContext(browser, { tok: 'tok-dan' });   // Dan: declined in (k), no membership
+    await ctx4.page.evaluate(() => {}).catch(() => {});
+    await ctx4.ctx.addInitScript((v) => { localStorage.setItem('fms_invite_code_v1', v); }, stored);
+    const p4 = await ctx4.ctx.newPage();
+    await p4.goto(BASE + 'story.html');
+    ok(await waitGate(p4, 'open'), 'a code-only browser that signs in has the code redeemed for the account');
+    ok(F.db.members.has(USERS['tok-dan'].id) && F.db.codes.find((c) => c.code === 'LINKCODE2345').redemptions_count === 1, 'Dan is a member and the code is spent once');
+    allErrors.push(...errs); await ctx4.ctx.close();
+  }
+
   console.log('(c) signed out: code, Google, redeemed on return');
   {
     const ctx = await browser.newContext({ serviceWorkers: 'block' });
@@ -317,15 +382,14 @@ try {
     const page = await ctx.newPage();
     await page.goto(BASE + 'settings.html');
     await page.waitForSelector('#invite #gtCode');
-    // Intercept the redirect to Google: record it, stay on the page.
-    await page.route(SB + '/auth/v1/authorize**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>google</p>' }));
     await page.fill('#gtCode', 'BENCODE23456');
     await page.click('#invite button[type="submit"]');
-    await page.waitForURL(/authorize/, { timeout: 8000 }).catch(() => {});
-    await page.goto(BASE + 'settings.html');
-    const t = await page.evaluate(() => [sessionStorage.getItem('fms_preauth_ticket'), localStorage.getItem('fms_preauth_ticket')]);
+    await page.waitForURL(/index\.html|\/$/, { timeout: 8000 }).then(() => ok(true, 'a valid code enters the studio with NO sign-in'), () => ok(false, 'a valid code enters the studio with NO sign-in'));
+    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'and the hub renders for the code-only visitor'), () => ok(false, 'and the hub renders for the code-only visitor'));
+    const t = await page.evaluate(() => [sessionStorage.getItem('fms_preauth_ticket'), localStorage.getItem('fms_preauth_ticket'), JSON.parse(localStorage.getItem('fms_invite_code_v1') || 'null')]);
     ok(!!t[0] && !t[1], 'the pre-auth ticket waits in sessionStorage, never localStorage');
-    ok(F.db.codes[1].redemptions_count === 0, 'verifying spent nothing');
+    ok(t[2] && t[2].code === 'BENCODE23456', 'the code is remembered for this browser');
+    ok(F.db.codes.find((c) => c.code === 'BENCODE23456').redemptions_count === 0, 'entering spent nothing');
     // "Back from Google": a stored session, then a load that starts signed in.
     await page.evaluate(([k, v, uid]) => { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); }, [`sb-${REF}-auth-token`, sessionFor('tok-ben'), USERS['tok-ben'].id]);
     // store.js may schedule its own reload into the account's namespace;
@@ -334,7 +398,7 @@ try {
     await page.waitForLoadState('load').catch(() => {});
     await page.waitForTimeout(500);
     ok(await waitGate(page, 'open'), 'the restored load redeemed the ticket and opened the gate');
-    ok(F.db.codes[1].redemptions_count === 1 && F.db.members.has(USERS['tok-ben'].id), 'Ben is a member and the code is spent');
+    ok(F.db.codes.find((c) => c.code === 'BENCODE23456').redemptions_count === 1 && F.db.members.has(USERS['tok-ben'].id), 'Ben is a member and the code is spent once');
     ok(!(await page.evaluate(() => sessionStorage.getItem('fms_preauth_ticket'))), 'the ticket is gone once spent');
     await ctx.close();
   }
@@ -377,11 +441,21 @@ try {
     await page.waitForSelector('#admin-console .gt-table', { timeout: 10000 });
     ok((await page.textContent('#admin-console')).includes('AMYC-ODE2-3456'), 'codes are listed in their spoken form');
     ok(/Invite requests \(0 waiting\)/.test(await page.textContent('#admin-console')), 'the request queue is drawn even when empty — an absent section reads the same as a passing one');
+    ok((await page.$$('#admin-console [data-gate-action="copy-link"]')).length >= 1, 'every active standard code offers COPY LINK');
+    await page.selectOption('#gtType', 'standard');
+    await page.fill('#gtLabel', 'Link test');
+    await page.click('#admin-console form[data-gate-form="create"] button[type="submit"]');
+    await page.waitForSelector('.gt-link', { timeout: 8000 });
+    const link = await page.textContent('.gt-link');
+    ok(new RegExp('^' + BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'invite\\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').test(link), 'a new code is shown as an invite link, code in the fragment: ' + link);
     await page.selectOption('#gtType', 'screening_pass');
     await page.selectOption('#gtDur', '2');
     await page.selectOption('#gtProj', 'p1');
     await page.fill('#gtLabel', 'Festival programmer');
     await page.click('#admin-console form[data-gate-form="create"] button[type="submit"]');
+    /* A .gt-made already exists from the link test above, so wait for
+       the state, not the element. */
+    for (let i = 0; i < 40 && F.db.codes[0].pass_type !== 'screening_pass'; i++) await page.waitForTimeout(200);
     await page.waitForSelector('.gt-made', { timeout: 8000 });
     const made = F.db.codes[0];
     ok(made.pass_type === 'screening_pass' && made.target_project_id === 'p1' && made.expires_at, 'a screening pass is issued for one project, with an expiry');

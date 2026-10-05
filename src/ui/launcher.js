@@ -57,6 +57,8 @@ import { loadScript, pageCount, formatPages } from '../lib/script.js';
 import { listContacts, listCallSheets } from '../lib/contacts.js';
 import { locationIndex, listMedia, listDayDates, shootDayOf, castOf } from '../lib/locations.js';
 import { loadStory, listVault } from '../lib/story.js';
+import { coverage } from '../lib/editlog.js';
+import { listItems as listDeliverables, progress as deliverablesProgress } from '../lib/deliverables.js';
 import '../styles/launcher.css';
 
 /* TWO derived figures, and which one a sentence quotes is not a detail.
@@ -193,7 +195,11 @@ function snapshot() {
     dissectStarted: written(dissect.thesis) || written(dissect.title) || written(dissect.engine),
     studied: Object.values(blob(WORKBENCH_KEY)).filter(written).length,
     story: safe(loadStory, { source: '', marks: [] }),
-    clips: safe(listVault, []).length
+    clips: safe(listVault, []).length,
+    /* Post. Both derived at read time from models already in this
+       snapshot plus their own small key; see editlog.js / deliverables.js. */
+    edit: safe(() => coverage(scenes), null),
+    deliverables: safe(() => deliverablesProgress(listDeliverables()), null)
   };
 }
 
@@ -257,7 +263,20 @@ const PROBES = {
 
   locations:     (s) => (s.locations ? work(plural(s.locations, 'location', 'locations')) : empty('no locations yet')),
   'call-sheets': (s) => (s.callSheets ? work(plural(s.callSheets, 'call sheet', 'call sheets')) : empty('none yet')),
-  dood:          (s) => (s.cast.size ? work(plural(s.cast.size, 'cast member', 'cast members')) : empty('no cast tagged'))
+  dood:          (s) => (s.cast.size ? work(plural(s.cast.size, 'cast member', 'cast members')) : empty('no cast tagged')),
+
+  'edit-log': (s) => {
+    if (!s.scenes.length) return empty('needs scenes first');
+    const c = s.edit && s.edit.counts;
+    if (!c) return empty('nothing marked yet');
+    if (!c.inCan && !c.owed && !c.inCut) return empty('nothing marked shot yet');
+    return work(c.owed ? plural(c.owed, 'scene still owed', 'scenes still owed') : 'everything the cut needs is in');
+  },
+  deliverables: (s) => {
+    const p = s.deliverables;
+    if (!p || (!p.done && !p.doing && !p.skipped)) return empty('nothing ticked yet');
+    return work(`${p.done} of ${p.total} delivered`);
+  }
 };
 
 function stateOf(m, snap) {

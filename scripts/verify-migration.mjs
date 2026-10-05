@@ -149,7 +149,14 @@ const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
    costs coverage only on the words that actually moved — zero of
    them immediately after a re-baseline — and it was simulated
    across 400 days without a leak. */
-const DIST = path.join(ROOT, 'dist');
+/* VERIFY_DIST, for the same reason VERIFY_PORT exists one paragraph
+   down: two sessions in one checkout fight over `dist/` as well as
+   over the port. One of them rebuilding with the gate ON in the
+   middle of the other's baseline capture turned nine pages of that
+   baseline into copies of invite.html — the capture never failed, it
+   just recorded the wrong site. Build into your own directory
+   (`vite build --outDir dist-verify`) and name it here. */
+const DIST = path.join(ROOT, process.env.VERIFY_DIST || 'dist');
 /* Overridable, because several worktrees of this repo can be live at
    once and they all used to bind 5321. The contention was not
    theoretical: sessions took to running `lsof -ti:5321 | xargs kill -9`
@@ -204,6 +211,11 @@ const PAGES = [
      re-baseline that regrouped six phases into the PRD's five stages. */
   { page: 'shoot.html',      legacy: null, name: 'shoot' },
   { page: 'story.html',      legacy: null, name: 'story' },
+  /* Post-Production. Both rows arrive in the same commit as the page
+     entries, as the settings note above demands, with the re-baseline
+     that took the two modules from `planned` to `built`. */
+  { page: 'edit.html',         legacy: null, name: 'edit' },
+  { page: 'deliverables.html', legacy: null, name: 'deliverables' },
   // The screening room's entry form. The room itself needs a live pass
   // and is proved by scripts/prove-gate.mjs instead.
   { page: 'screening.html',  legacy: null, name: 'screening' },
@@ -335,6 +347,8 @@ const EXPECTED = {
   settings: {},
   shoot: {},
   story: {},
+  edit: {},
+  deliverables: {},
   screening: {},
   invite: {},
   admin: {}
@@ -1144,6 +1158,24 @@ for (const spec of PAGES) {
       ] });
     set('fms_idea_vault_v1', [{ id: 'vv1', snippet: 'A headline about forged degrees.', url: 'https://example.com/a',
       title: '', at: 1759000000000, beat: '' }]);
+    /* Post-Production. One scene in the cut with a note and an open
+       pick-up, one cut out, so the edit log's owed / locked / out rows,
+       the verdict line and the pick-up list are all on the page; two
+       deliverables ticked and one marked not needed, so every state
+       of a checklist card is walked. The scenes above carry no
+       shotState, which is what puts a conflict-free 'owed' row on the
+       page too. */
+    set('fms_edit_v1', { scenes: {
+        'verify-1': { cut: 'in', note: 'Needs the insert of the medal.' },
+        'verify-2': { cut: 'locked', note: '' },
+        'verify-4': { cut: 'out', note: 'Lost in the assembly.' } },
+      pickups: [{ id: 'vpk1', sceneId: 'verify-1', what: 'Insert of the medal', done: false, at: '2025-01-10T00:00:00.000Z' },
+                { id: 'vpk2', sceneId: 'verify-2', what: 'A wide of the road', done: true, at: '2025-01-10T00:00:00.000Z' }] });
+    set('fms_deliverables_v1', { items: {
+        master_prores: { state: 'done', note: 'On the red drive.' },
+        subs_en: { state: 'doing', note: '' },
+        mix_51: { state: 'na', note: 'Stereo film.' } },
+      custom: [{ id: 'vdv1', label: 'A 4K HDR master for the streamer', group: 'custom', when: 'release' }] });
   });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(700);

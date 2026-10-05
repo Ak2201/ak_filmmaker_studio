@@ -366,24 +366,24 @@
       "id": "post",
       "label": "Post-Production",
       "hue": "post",
-      "blurb": "In development",
+      "blurb": "The cut, and what leaves the building",
       "icon": "◈",
       "modules": [
         {
           "id": "edit-log",
           "label": "Edit Log",
-          "purpose": "Coming next: what was shot against what the cut needs, read from the shoot day's marks",
-          "status": "planned",
-          "href": "",
+          "purpose": "What was shot against what the cut needs, read from the shoot day’s marks",
+          "status": "built",
+          "href": "edit.html#log",
           "icon": "✂",
           "sym": "timeline"
         },
         {
           "id": "deliverables",
           "label": "Deliverables",
-          "purpose": "Coming next: censor certificate, subtitles, DCP and festival formats as one checklist",
-          "status": "planned",
-          "href": "",
+          "purpose": "Censor certificate, subtitles, DCP and festival formats as one checklist",
+          "status": "built",
+          "href": "deliverables.html#checklist",
           "icon": "☑",
           "sym": "inventory_2"
         }

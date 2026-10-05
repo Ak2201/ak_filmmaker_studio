@@ -73,6 +73,7 @@ export function freshDb() {
     codes: [
       { id: 'c1', code: 'AMYCODE23456', pass_type: 'standard', target_project_id: null, max_redemptions: 1, redemptions_count: 0, expires_at: null, revoked_at: null, label: 'Amy', created_at: new Date(now).toISOString() },
       { id: 'c2', code: 'BENCODE23456', pass_type: 'standard', target_project_id: null, max_redemptions: 1, redemptions_count: 0, expires_at: null, revoked_at: null, label: 'Ben', created_at: new Date(now).toISOString() },
+      { id: 'c4', code: 'LINKCODE2345', pass_type: 'standard', target_project_id: null, max_redemptions: 50, redemptions_count: 0, expires_at: null, revoked_at: null, label: 'Crew link', created_at: new Date(now).toISOString() },
       { id: 'c3', code: 'PASSCODE2345', pass_type: 'screening_pass', target_project_id: 'p1', max_redemptions: 50, redemptions_count: 0, expires_at: new Date(now + 2 * 3600e3).toISOString(), revoked_at: null, label: 'Investor', created_at: new Date(now).toISOString() }
     ],
     tickets: new Map(),

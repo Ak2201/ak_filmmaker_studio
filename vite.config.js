@@ -144,6 +144,11 @@ export default defineConfig({
         dissect:    resolve(__dirname, 'dissect.html'),
         settings:   resolve(__dirname, 'settings.html'),
         shoot:      resolve(__dirname, 'shoot.html'),
+        // Post-Production: the suite's view of the shoot, and the checklist
+        // of what leaves the building. See src/lib/editlog.js and
+        // src/lib/deliverables.js.
+        edit:         resolve(__dirname, 'edit.html'),
+        deliverables: resolve(__dirname, 'deliverables.html'),
         story:      resolve(__dirname, 'story.html'),
         screening:  resolve(__dirname, 'screening.html'),
         // The doorway to the cloud: where a closed gate sends a sign-in.

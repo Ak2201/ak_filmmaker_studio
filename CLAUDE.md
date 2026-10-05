@@ -17,7 +17,11 @@ most arguments: correctness of stored data beats every other consideration.
 **And since 5 Oct 2026 the website is INVITE-ONLY, by the owner's decision.**
 `src/lib/sitegate.js` (imported by `chrome.js`, so on every reachable page)
 hides the document until the gate answers and sends anyone not through it —
-signed out, or signed in without membership — to `invite.html`. This reverses
+signed out, or signed in without membership — to `invite.html`. A valid
+invite CODE is a key on its own: it enters with no sign-in, is remembered in
+that browser (`fms_invite_code_v1`, in `ALL_KEYS`, in no backup) and
+re-verified each browser session; every code is also a link,
+`invite.html#code=…`, that the console copies. This reverses
 "the gate guards the cloud, never local work", which older notes below still
 say; read those as history. Local work is HIDDEN from a visitor outside the
 gate, never deleted or touched. Two builds follow from it: `npm run build` has
@@ -37,6 +41,7 @@ npm run verify    # ← the important one, see below; refuses a gated dist
 npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
 npm run test:story       # story model + .docx reader, in Node (open item 11)
 npm run test:screenplay  # screen time, cast matrix, auto-tag, 120pp < 1200ms
+npm run test:post        # the edit log and deliverables derivations (item 13)
 npm run prove:drive # Drive backup, against a faked Drive — see open item 10
 npm run prove:gate  # invite gate, device lock, admin, screening room (item 11)
 npm run build:extension   # the Chrome extension, into dist-extension/
@@ -64,6 +69,9 @@ admin.html                                        the application console
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
+edit.html deliverables.html                       Post-Production: the suite's
+                                                  view of the shoot, and the
+                                                  checklist of what leaves
 story.html                                        the Story stage (PRD 2.0)
 screening.html                                    a screening pass's read-only room
 extension/                                        manifest template, background
@@ -79,6 +87,10 @@ src/
   lib/       readiness.js  ← what is missing before this film can shoot,
                            derived at render time and stored nowhere
              shootday.js   ← the one view that WRITES BACK to a scene
+             editlog.js    ← the cut's word on each scene, and what is
+                             still owed; reads shotState, never writes it
+             deliverables.js ← state against src/data/deliverables.json,
+                             festival formats joined from festivals.js
              account.js    ← the account tier's sending end
              store.js cloud.js dom.js pwa.js skin.js lang.js money.js
              scenes.js contacts.js shots.js script.js locations.js
@@ -1660,8 +1672,8 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     The six phases are now the PRD's five stages (Story, Screenplay,
     Pre-Production, Production, Post-Production). Every module object,
     id and href survived the regroup; no phase id is stored anywhere, so
-    renaming them needed no migration. Post-Production carries two
-    `planned` modules. The scope decisions, asked of the user and
+    renaming them needed no migration. Post-Production carried two
+    `planned` modules; both are built now (open item 12). The scope decisions, asked of the user and
     answered before any code: the extension WRAPS this app (one
     codebase); the gate guards the CLOUD and the EXTENSION, never local
     work; the backend is the existing Supabase project; built modules
@@ -1733,7 +1745,7 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `chromiumapp.org` redirect URL on the Supabase allow-list before
       Google sign-in works.
 
-    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 87
+    Proved: `test:story` 49, `test:screenplay` 29, `prove:gate` 103
     ((a) asserts CLOSED when undeployed; (i)–(k) the landing,
     request/approve and decline; (l) the site gate; (m) the console),
     `prove:extension` 28, all against the real GATED build. What is
@@ -1800,6 +1812,56 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     the three functions (`rzp-webhook` with `--no-verify-jwt`), register
     the webhook, set `VITE_RAZORPAY_KEY_ID`, set the real prices — is in
     `docs/BILLING.md` §1, and the seeded prices are PLACEHOLDERS.
+13. **Post-Production is built: the Edit Log and the Deliverables list.**
+    The two modules that had said SOON since the five-stage regroup.
+    `edit.html` / `src/lib/editlog.js` and `deliverables.html` /
+    `src/lib/deliverables.js`, keys `fms_edit_v1` and
+    `fms_deliverables_v1`, in all five registries. `npm run test:post`
+    (57 assertions, Node, no browser) covers the derivations.
+
+    **The edit log reads the shoot day's marks and does not write
+    them.** `shoot.html` stays the only view that writes to a scene;
+    the suite's opinion — in the cut / locked / cut out, a note, the
+    pick-ups owed — is its own key, because the 1st AD's "dropped" and
+    the editor's "cut out" are two facts with two owners that disagree
+    all the time, and the disagreement is the report (a dropped scene
+    the cut still claims is a CONFLICT, shown first). Everything else
+    is derived in `coverage()`: pages in the can, pages owed, waste.
+    **The set's word is final** — a scene marked shot is in the can
+    even with shot-list setups unticked; the ticks are reported as a
+    note, never as a debt. The first version let a checkbox nobody
+    maintains on the floor overrule the mark, and the sample's 36
+    scenes all read "owed".
+
+    **The deliverables catalogue is content** (`src/data/deliverables.json`,
+    rule 2) and its `id`s are storage keys: the page stores only state
+    against them, and the default state is not stored at all. Festival
+    FORMATS are not in the catalogue — they are joined at render time
+    from the submission tracker and `festivals.json`'s `format`, so a
+    festival added on the short film's step 10 appears with what it
+    asks for and nothing is kept in step by hand. Only 5 of 18
+    catalogue festivals record a format; the rest say so rather than
+    guess. The CBFC copy is stated carefully (public exhibition in
+    India; festivals abroad do not ask; Indian festivals screen under
+    an I&B exemption) and the ratings are the 2024 set — change it in
+    the JSON if the rules change. The page also quotes the blueprint's
+    step-32 answers (`po_deliver_list`, `po_release_plan`) beside the
+    list rather than copying them.
+
+    **Schema section 17 has NOT run.** Until it does, Postgres refuses
+    the two new scopes and the pages save locally only; everything
+    else keeps syncing. Same shape as 13.7 was.
+
+    **Two gate things learned on the way in.** `verify` and `baseline`
+    now honour `VERIFY_DIST`, because a second session rebuilding
+    `dist/` with the gate ON in the middle of a baseline capture turned
+    nine pages of the capture into copies of `invite.html` — the
+    capture never failed, it recorded the wrong site. Build into
+    `dist-verify/` (gitignored) when another session may be live. And
+    the recapture for these two pages was checked the way section 04
+    asks: zero data-key movement on every page, and the only word
+    changes outside the two new pages were the nav copy that moved
+    from "Coming next / In development / SOON" to the built labels.
 
 ## Things that are deliberate, not oversights
 

@@ -1,0 +1,192 @@
+{
+  "_about": [
+    "The deliverables checklist's CATALOGUE: what a finished film has to hand over before anybody can play it. Content, so it lives here and not in deliverables.js — rule 2 in CLAUDE.md. The page renders every item and stores only the user's STATE against each `id` (fms_deliverables_v1), so an `id` is a storage key: edit a label freely, never an id.",
+    "",
+    "`when` says who asks for it: 'always' (any screening at all), 'festival' (a festival or market), 'release' (a theatrical release or a streamer). The page filters on it. `formats` limits an item to 'feature' or 'short' projects; absent means both.",
+    "",
+    "Indian specifics are stated carefully and should stay that way. The CBFC certificate is a legal requirement for public exhibition in India, not for a festival abroad; festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting that the festival itself usually arranges. The ratings named are the ones in force after the 2024 Cinematograph (Certification) Rules: U, UA 7+, UA 13+, UA 16+, A, S. If that changes, change it here.",
+    "",
+    "Festival-specific FORMATS are not listed here. They are derived at render time from the submission tracker (fms_festivals_v1) and festivals.json's `format` field, so a festival you add appears on the page with the format it asks for and nothing has to be kept in step by hand."
+  ],
+  "groups": [
+    {
+      "id": "picture",
+      "label": "Picture masters",
+      "blurb": "The versions of the film itself. Make the top one first; everything else is exported from it.",
+      "items": [
+        {
+          "id": "master_prores",
+          "label": "Graded master — ProRes 4444 or 422 HQ",
+          "why": "The one file every other deliverable is made from. Full resolution, final grade, final mix, with titles. Keep two copies on two drives.",
+          "when": "always"
+        },
+        {
+          "id": "master_textless",
+          "label": "Textless master",
+          "why": "The same master with every title, caption and subtitle removed, so a dub or a territory version can lay its own text over clean picture. Asked for by every distributor and most streamers; nearly impossible to make after the fact.",
+          "when": "release"
+        },
+        {
+          "id": "dcp",
+          "label": "DCP — Digital Cinema Package",
+          "why": "What a cinema projector plays. 2K or 4K, SMPTE standard, unencrypted for festivals unless the festival asks for a KDM. Test it in a real cinema before you send it; a DCP that plays on a laptop can still fail on a server.",
+          "when": "festival"
+        },
+        {
+          "id": "screener_h264",
+          "label": "Screener — H.264, 1080p",
+          "why": "What selectors watch. English subtitles burnt in, a private link rather than a file where you can, and a visible watermark if the film has not premiered.",
+          "when": "always"
+        },
+        {
+          "id": "trailer",
+          "label": "Trailer or clip",
+          "why": "Sixty to ninety seconds, from the graded master, with its own mix. Festivals ask for one for their programme and the press ask before anyone else does.",
+          "when": "festival"
+        }
+      ]
+    },
+    {
+      "id": "sound",
+      "label": "Sound",
+      "blurb": "Delivered separately from the picture, because the picture gets re-cut for territories and the sound has to follow.",
+      "items": [
+        {
+          "id": "mix_51",
+          "label": "5.1 printmaster",
+          "why": "The theatrical mix. Delivered as six discrete channels, not folded into a stereo file.",
+          "when": "always"
+        },
+        {
+          "id": "mix_stereo",
+          "label": "Stereo fold-down",
+          "why": "For the screener, the trailer, the web and any venue without surround. Made FROM the 5.1, never mixed separately, or the two will not match.",
+          "when": "always"
+        },
+        {
+          "id": "me_stems",
+          "label": "M&E — music and effects stems",
+          "why": "The mix with the dialogue removed, so a dub can be laid in. Any sale outside the original language depends on it; the blueprint's post step already asks for it.",
+          "when": "release"
+        },
+        {
+          "id": "cue_sheet",
+          "label": "Music cue sheet",
+          "why": "Every piece of music with its timecode, duration, composer, publisher and use (background, featured, title). Performing-rights bodies and streamers require it; without it the composer is not paid.",
+          "when": "release"
+        }
+      ]
+    },
+    {
+      "id": "text",
+      "label": "Subtitles and access",
+      "blurb": "The film's words, outside the picture.",
+      "items": [
+        {
+          "id": "subs_en",
+          "label": "English subtitles — SRT and a timed master list",
+          "why": "Timed to the graded master's frame rate. The single most common reason a Tamil film is passed over at an international festival is a subtitle file that drifts, is too long to read, or translates the lines but not the meaning. Have them read by someone who did not make the film.",
+          "when": "always"
+        },
+        {
+          "id": "subs_burnt",
+          "label": "Burnt-in subtitle version",
+          "why": "A copy of the screener and, if the festival asks, of the DCP with the subtitles rendered into the picture.",
+          "when": "festival"
+        },
+        {
+          "id": "captions_sdh",
+          "label": "Closed captions — SDH",
+          "why": "Subtitles for the deaf and hard of hearing: dialogue plus sound description and speaker identification. Streamers and broadcasters require them; festivals increasingly ask.",
+          "when": "release"
+        },
+        {
+          "id": "dialogue_list",
+          "label": "Dialogue list — combined continuity and spotting list",
+          "why": "Every spoken line with its timecode, in the original language and in English. The translator for every other territory works from this, not from the film.",
+          "when": "release"
+        }
+      ]
+    },
+    {
+      "id": "legal",
+      "label": "Certification and chain of title",
+      "blurb": "Nothing here is glamorous and every one of them can stop a screening.",
+      "items": [
+        {
+          "id": "cbfc",
+          "label": "CBFC certificate",
+          "why": "Required by law for public exhibition in India — a theatrical release, a satellite sale, most Indian streamers. Festivals abroad do not ask for it. Festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting, which the festival usually arranges. Ratings since 2024: U, UA 7+, UA 13+, UA 16+, A, S. Apply through the e-Cinepramaan portal with the final cut; a re-cut after certification needs a fresh certificate.",
+          "when": "release"
+        },
+        {
+          "id": "chain_of_title",
+          "label": "Chain of title",
+          "why": "The paper trail proving you own what you are selling: writer's agreement, any underlying rights (a book, a true story, a remake), the director's and producer's agreements, and the company's incorporation. A distributor's lawyer will ask for all of it before money moves.",
+          "when": "release"
+        },
+        {
+          "id": "releases",
+          "label": "Releases — cast, crew, locations, music, artwork",
+          "why": "Signed permission from every person on screen, every location, every piece of music and every artwork or brand visible in frame. Collected during the shoot, when the people are in front of you; near impossible to collect afterwards.",
+          "when": "always"
+        },
+        {
+          "id": "insurance_eo",
+          "label": "Errors and omissions insurance",
+          "why": "Streamers and most distributors will not take delivery without it. It is issued against the chain of title and a title report, so those come first.",
+          "when": "release"
+        },
+        {
+          "id": "qc_report",
+          "label": "QC report",
+          "why": "A technical check of the master against the buyer's specification: levels, dropouts, frame rate, loudness, subtitle timing. Streamers run their own and reject a file for a single fault, so have one run before you deliver.",
+          "when": "release"
+        }
+      ]
+    },
+    {
+      "id": "publicity",
+      "label": "Publicity and festival materials",
+      "blurb": "What a selector, a programmer or a journalist opens before they press play.",
+      "items": [
+        {
+          "id": "stills",
+          "label": "Production stills — at least ten, high resolution",
+          "why": "Festivals print them in programmes and the press use them whether or not you send any. Stills from the set, not frame grabs: a frame grab is 1080 lines and prints badly.",
+          "when": "always"
+        },
+        {
+          "id": "poster",
+          "label": "Poster — one-sheet, portrait",
+          "why": "Print resolution, with and without credits block. The short-film blueprint's festival check already asks for it.",
+          "when": "festival"
+        },
+        {
+          "id": "synopsis_set",
+          "label": "Logline and three synopses — one line, 100 words, 300 words",
+          "why": "Every submission form asks for a different length. Write all three once, in English and in Tamil, and paste rather than rewrite under a deadline.",
+          "when": "always"
+        },
+        {
+          "id": "director_bio",
+          "label": "Director's statement, biography and photograph",
+          "why": "A paragraph on why this film, a paragraph on who you are, a portrait that is not a selfie. The short-film blueprint's festival check asks for the bio; festivals ask for all three.",
+          "when": "festival"
+        },
+        {
+          "id": "credits_list",
+          "label": "Full credit list",
+          "why": "Every credit as it appears on screen, in a document. Programmes, databases and the CBFC form are all filled from it, and a misspelt name in a programme is forever.",
+          "when": "always"
+        },
+        {
+          "id": "press_kit",
+          "label": "Press kit — EPK",
+          "why": "The stills, the synopses, the statement, the credits and the technical specification (running time, aspect ratio, sound format, language, subtitles) in one PDF. Running time to the second: it decides which festival sections you qualify for.",
+          "when": "festival"
+        }
+      ]
+    }
+  ]
+}

@@ -205,6 +205,16 @@
   status = 200
 
 [[redirects]]
+  from = "/edit"
+  to = "/edit.html"
+  status = 200
+
+[[redirects]]
+  from = "/deliverables"
+  to = "/deliverables.html"
+  status = 200
+
+[[redirects]]
   from = "/privacy"
   to = "/privacy.html"
   status = 200

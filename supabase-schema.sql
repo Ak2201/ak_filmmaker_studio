@@ -3894,4 +3894,64 @@ notify pgrst, 'reload schema';
 --     succeeds (the fms.billing flag).
 -- 12. billing_status() for a Free owner shows usage.projects and the
 --     limits of the free row; for the admin after a grant, the plan.
+
+-- 17. TWO MORE SYNC SCOPES: edit and deliverables
+-- ------------------------------------------------------------
+-- NOT YET RUN against the database. Until it is, a signed-in member's
+-- edit log and deliverables checklist save locally and sync nowhere:
+-- cloud.js names both scopes (SCOPE_BY_KEY), the upsert reaches
+-- project_data, and the CHECK below refuses it. Nothing else is
+-- affected — every other scope keeps syncing — but the two pages
+-- will report the failure in the console, and that is the tell.
+--
+-- Same procedure as sections 12 and 13.7 (and 16 sits between for
+-- no reason but arrival order: billing landed on the branch while
+-- these two scopes landed on main), for the same reason: the
+-- constraint is rebuilt rather than altered, because Postgres has no
+-- ALTER CONSTRAINT for a CHECK, and the existing one is found by
+-- its definition rather than by name because an inline column CHECK
+-- is named by the server.
+--
+--   edit          `fms_edit_v1` — the cut's word on each scene, the
+--                 editor's notes and the pick-ups owed. The shoot
+--                 day's marks stay on the scene record.
+--   deliverables  `fms_deliverables_v1` — the state of each
+--                 catalogue item and the user's own additions.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs',
+      'story','idea_vault',
+      'edit','deliverables'
+    ));
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- 17.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. a member upserting project_data with scope 'edit' on a project
+--     they own -> allowed; with scope 'deliverables' -> allowed; with
+--     scope 'anything_else' -> 23514 (check violation).
+--  2. the two scopes round-trip: a cut state written on device A
+--     appears on device B after its next pull, and the edit log on B
+--     renders the same owed count.
 -- ============================================================

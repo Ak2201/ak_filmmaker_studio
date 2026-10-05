@@ -74,7 +74,9 @@ export const PROJECT_KEYS = {
   scriptgen:         'fms_scriptgen_v1',
   songs:             'fms_songs_v1',
   story:             'fms_story_v1',
-  idea_vault:        'fms_idea_vault_v1'
+  idea_vault:        'fms_idea_vault_v1',
+  edit:              'fms_edit_v1',
+  deliverables:      'fms_deliverables_v1'
 };
 
 /* Deliberately NOT per project: the theme is a device preference

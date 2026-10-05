@@ -1,0 +1,166 @@
+/* ============================================================
+   EDIT LOG — a list with three facts a row
+   ------------------------------------------------------------
+   The set's mark, the shot list's ticks, the cut's state. Each row
+   carries all three without a table, because the gate measures
+   horizontal overflow at 390px and a producer reads this in a car.
+
+   Shapes come from --sk-* and colours from tokens, as everywhere.
+   Owed / locked / out are STATUS, so they take the semantic
+   families — ok, warn, danger, the muted ink — never a volume hue:
+   a hue means a phase. Text on a light card is the -deep variant,
+   never the fill (CLAUDE.md, "a fill is not a text colour").
+   ============================================================ */
+.el-main {
+  max-width: var(--measure-wide);
+  margin: 0 auto;
+  padding: var(--s5) var(--gutter) var(--s9);
+}
+.el-main .bd-head { padding-inline: 0; }
+
+.el-stats { margin: var(--s4) 0 var(--s5); }
+
+/* ---- conflicts ---------------------------------------------- */
+.el-conflicts {
+  margin: 0 0 var(--s5);
+  padding: var(--s4);
+  background: var(--danger-wash);
+  border: 1px solid var(--danger);
+  border-left-width: 4px;
+  border-radius: var(--sk-radius, var(--radius));
+}
+.el-conflicts ul { margin: var(--s2) 0; padding-left: 1.2em; color: var(--ink-body); }
+.el-conflicts p { margin: var(--s2) 0 0; color: var(--ink-body); font-size: var(--t-small); }
+
+.el-h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+/* ---- toolbar --------------------------------------------------- */
+.el-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+.el-filters { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.el-filter.is-on { outline: 2px solid var(--accent); outline-offset: var(--focus-offset); }
+
+/* ---- a row ----------------------------------------------------- */
+.el-list { display: grid; gap: var(--s3); }
+
+.el-row {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.el-row.is-owed     { border-left-color: var(--warn); }
+.el-row.is-locked   { border-left-color: var(--ok); }
+.el-row.is-conflict { border-left-color: var(--danger); }
+.el-row.is-out      { border-left-color: var(--ink-faint); opacity: 0.78; }
+
+.el-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+}
+.el-num, .el-pages {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  flex: 0 0 auto;
+}
+.el-pages { margin-left: auto; }
+.el-slug {
+  margin: 0;
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* The three facts, one line when it fits and three when it does not. */
+.el-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.el-got, .el-setups {
+  display: inline-block;
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+  text-decoration: none;
+  background: var(--paper-sunk);
+}
+.el-got:hover, .el-setups:hover { border-color: var(--accent); }
+/* The set's word. Filled when the news is good, so the eye finds the
+   gaps by looking for the hollow ones. */
+.el-got.is-shot    { background: var(--ok-wash);   border-color: var(--ok);   color: var(--ok-deep); }
+.el-got.is-part    { background: var(--warn-wash); border-color: var(--warn); color: var(--warn-deep); }
+.el-got.is-dropped { color: var(--ink-muted); text-decoration: line-through; }
+.el-setups.is-open { border-color: var(--warn); color: var(--warn-deep); }
+.el-setups.is-none { color: var(--ink-muted); border-style: dashed; }
+.el-cut { margin-left: auto; }
+
+.el-verdict {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+/* --ink, not --danger: a fill is not a text colour, and the row's rule
+   and the sentence itself already carry the warning. */
+.el-verdict.is-conflict { color: var(--ink); font-weight: 600; }
+
+.el-note {
+  width: 100%;
+  min-height: 2.5rem;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--t-small);
+}
+
+/* ---- pick-ups --------------------------------------------------- */
+.el-pickups { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.el-pickup {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.el-pickup-lab { display: flex; align-items: center; gap: var(--s2); flex: 1 1 auto; min-width: 0; }
+.el-pickup-lab span { overflow-wrap: anywhere; }
+.el-pickup.is-done span { text-decoration: line-through; color: var(--ink-muted); }
+
+.el-pickup-add {
+  display: flex;
+  gap: var(--s2);
+  align-items: stretch;
+}
+.el-pickup-add input { flex: 1 1 auto; min-width: 0; font-size: var(--t-small); }
+
+@media (min-width: 720px) {
+  .el-row { grid-template-columns: 1fr; }
+}

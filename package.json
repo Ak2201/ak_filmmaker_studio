@@ -17,6 +17,7 @@
     "test:billing": "node scripts/test-billing.mjs",
     "test:schema": "node scripts/test-schema.mjs",
     "test:post": "node scripts/test-post.mjs",
+    "test:keys": "node scripts/test-keys.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

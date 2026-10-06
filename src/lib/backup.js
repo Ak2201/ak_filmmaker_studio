@@ -96,7 +96,11 @@ export const PROJECT_KEYS = {
                             the header of drive-sync.js. */
 export const GLOBAL_KEYS = {
   studio_prefs: 'fms_studio_prefs_v1',
-  sync_config:  'fms_supabase_cfg_v1'
+  sync_config:  'fms_supabase_cfg_v1',
+  /* The Write page's per-device preferences: the keyboard preset and
+     any changed Return flow (src/lib/write-keys.js), shared with the
+     format guide. It travels with a backup the way the theme does. */
+  write_prefs:  'fms_write_prefs_v1'
 };
 
 export const NOTE_PREFIX = 'fms_note_';

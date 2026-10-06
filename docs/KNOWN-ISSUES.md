@@ -74,3 +74,24 @@ Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
   one-line textareas are about 30px tall under `pointer: coarse`.
   Raising them would stretch a 2,361-line script badly. Decide whether a
   taller line on phones only is wanted.
+
+## 7. Leftovers from the story-first realignment (6 Oct 2026)
+
+- **Feature HOD checkboxes do not come back ticked.** `feature.js`
+  saves the `hod_*_check` boxes as `el.value` ("on"), so a ticked box
+  reads back unticked after a reload. The guide drawer copies that on
+  purpose rather than storing a second shape. Fix the page's save and
+  load together, with the stored value kept readable.
+- **Two scene removals still skip the bin.** The hand-off banner's
+  Undo (and "Break into shots"' Undo of the scenes it added) drop rows
+  directly. They only remove rows created moments earlier, but a shot
+  added in between would be orphaned. Route them through `binScene()`.
+- **Deleting the ONLY heading in a script bins nothing**, by design:
+  zero headings is treated as "no script" so a failed load cannot empty
+  the Breakdown. Say so in the UI if users trip on it.
+- **The guide pill on story.html lists five steps** (02, 03, 08, 09,
+  10) with no hash. It works; a narrower rule (by open path step)
+  would read better.
+- **verify's AA walk only sees the Story page's empty state** (path
+  step 1) and Write's default Margin mode. Steps 3, 4 and 6 and the
+  Panel card were checked by hand (≥ 5.9:1), not by the gate.

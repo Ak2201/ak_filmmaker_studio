@@ -1,6 +1,6 @@
 # Blueprint and stages realignment — plan
 
-Status: APPROVED, building. Revision 3, 6 Oct 2026 (see the end).
+Status: BUILT, 6 Oct 2026. Revision 3 (see the end) is what shipped; CLAUDE.md open item 16 has the notes.
 
 **Owner's asks:**
 - Round 1: "Story › Blueprint › Story also has Pre-Production,

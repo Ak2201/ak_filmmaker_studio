@@ -96,7 +96,16 @@ const KEY_BY_SCOPE = Object.fromEntries(
 
 // Derived, not hand-checked: the list of scoped keys lives in store.js
 // and this asks that file rather than repeating it.
-const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k]);
+/* LOCAL ONLY, ON PURPOSE — the one sanctioned exception to the rule
+   above. `fms_write_goals_v1` (focus mode's goal and daily history,
+   src/lib/write-goals.js) is per project and travels in backups, but it
+   has NO scope name here because `project_data.scope`'s CHECK
+   constraint does not list one yet: an entry without the schema change
+   would be an upsert Postgres refuses on every save. When a schema
+   section adds the scope, move the key into SCOPE_BY_KEY and out of
+   this set in the same commit. */
+const LOCAL_ONLY = new Set(['fms_write_goals_v1']);
+const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {
   console.warn(
     '[StudioCloud] these project-scoped keys have no cloud scope and will ' +

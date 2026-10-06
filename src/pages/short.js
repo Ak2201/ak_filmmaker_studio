@@ -64,6 +64,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
 /* The Story page's beat panel on step 04 (plan rev. 3 §3). */
 import { mountStoryKit } from '../ui/story-kit.js';
+import { mountWraps } from '../ui/blueprint-wrap.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
@@ -1015,7 +1016,9 @@ function saveData() {
     const k = li.getAttribute('data-key');
     if (k) data[k] = li.classList.contains('done');
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  lastBlob = JSON.stringify(data);
+  localStorage.setItem(STORAGE_KEY, lastBlob);
+  savePending = false;
   flashStatus('●  saved');
   updateProgress();
   updateAllBadges();
@@ -1053,7 +1056,7 @@ function migrateFlatSceneKeys(data) {
 
 function loadData() {
   let data = {};
-  try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) {}
+  try { lastBlob = localStorage.getItem(STORAGE_KEY) || ''; data = JSON.parse(lastBlob || '{}'); } catch (e) {}
 
   const migrated = migrateFlatSceneKeys(data);
 
@@ -1111,6 +1114,29 @@ function loadData() {
   refreshBeatDots();
 }
 
+/* The blob as this page last read or wrote it, and whether an edit
+   here is waiting on the debounce. The guide drawer on a module page
+   (src/ui/blueprint-drawer.js) read-merge-writes this key too; coming
+   back to this tab, re-read it when it changed elsewhere and nothing
+   here is waiting to save, or the next save here would write stale
+   fields over the drawer's edit. Same sequence as an import. */
+let lastBlob = '';
+let savePending = false;
+function watchBlobElsewhere() {
+  const check = () => {
+    if (savePending) return;
+    let now = '';
+    try { now = localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return; }
+    if (!now || now === lastBlob) return;
+    document.getElementById('sceneMapBody').innerHTML = '';
+    document.getElementById('scriptScenes').innerHTML = '';
+    scriptSceneUid = 0;
+    loadData();
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+  addEventListener('storage', (e) => { if (e.key && e.key.indexOf(STORAGE_KEY) === 0) check(); });
+}
+
 function flashStatus(msg) {
   if (!statusEl) return;
   statusEl.textContent = msg;
@@ -1118,6 +1144,7 @@ function flashStatus(msg) {
   flashStatus._t = setTimeout(() => { statusEl.textContent = '●  ready'; }, 1500);
 }
 function debouncedSave() {
+  savePending = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveData, 600);
 }
@@ -1924,3 +1951,9 @@ function reinitChrome() {
   }
 }
 reinitChrome();
+
+/* Plan rev. 3 §5: a wrap card after each part whose checks are all
+   ticked (derived from the ticks, stored nowhere), and the re-read
+   when the guide drawer wrote this blueprint from another tab. */
+mountWraps('short');
+watchBlobElsewhere();

@@ -218,6 +218,8 @@ function ensurePanel() {
   const old = document.getElementById('bg-panel');
   if (mode !== 'panel' || !page) {
     if (old) old.remove();
+    setShift(false);
+    decidedFor = '';
     lastSig = '';
     return;
   }
@@ -250,7 +252,7 @@ function ensurePanel() {
    width changes (page view) and after a render; it writes custom
    properties on the card, which is outside the observed element, so
    there is no observer loop. */
-const GUTTER_MIN = 272;     // the narrowest card worth pinning, px
+const GUTTER_MIN = 248;     // the narrowest card worth pinning, px
 const GUTTER_MAX = 368;
 const GAP = 16;
 let watched = null;
@@ -258,22 +260,54 @@ let pageObs = null;
 let lastW = -1;
 let placeQueued = false;
 
+let decidedFor = '';        // the layout the shift decision was made for
+let shifted = false;
+
+/** Room to the right of the page as laid out now, in px. */
+function roomNow(page) {
+  return document.documentElement.clientWidth - page.getBoundingClientRect().right - 2 * GAP;
+}
+
 function place() {
   const card = document.getElementById('bg-panel');
   const page = document.getElementById('wr-page');
-  if (!card || !page) return;
-  const r = page.getBoundingClientRect();
-  const vw = document.documentElement.clientWidth;
-  const room = vw - r.right - 2 * GAP;
+  if (!card || !page) { setShift(false); decidedFor = ''; return; }
+  /* Decide centred / left-aligned / in flow ONCE per layout — the
+     viewport width, the page's width and page view — by trying centred
+     and, only if that is too narrow, left-aligned. Both are measured,
+     never predicted, so the section's padding and the page's own
+     width are whatever the stylesheets say. Toggling the attribute
+     restyles the document, so it happens only when that layout key
+     changes; a caret move reuses the decision and reads one rect. */
+  const key = document.documentElement.clientWidth + '|' + page.offsetWidth
+    + '|' + page.classList.contains('is-pageview');
+  if (key !== decidedFor) {
+    setShift(false);
+    if (roomNow(page) < GUTTER_MIN) {
+      setShift(true);
+      if (roomNow(page) < GUTTER_MIN) setShift(false);
+    }
+    decidedFor = key;
+  }
+  const room = roomNow(page);
   const gutter = room >= GUTTER_MIN;
   card.classList.toggle('is-gutter', gutter);
   if (gutter) {
-    card.style.setProperty('--bg-left', Math.round(r.right + GAP) + 'px');
+    card.style.setProperty('--bg-left', Math.round(page.getBoundingClientRect().right + GAP) + 'px');
     card.style.setProperty('--bg-w', Math.round(Math.min(GUTTER_MAX, room)) + 'px');
   } else {
     card.style.removeProperty('--bg-left');
     card.style.removeProperty('--bg-w');
   }
+}
+/* PANEL MODE ONLY: the screenplay section gives up its centring when
+   that is what makes room for the gutter card. Off and Margin never
+   set it, and leaving Panel removes it. */
+function setShift(on) {
+  if (on === shifted && on === root.hasAttribute('data-bg-shift')) return;
+  shifted = on;
+  if (on) root.setAttribute('data-bg-shift', '');
+  else root.removeAttribute('data-bg-shift');
 }
 function queuePlace() {
   if (placeQueued) return;

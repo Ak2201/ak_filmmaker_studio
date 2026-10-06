@@ -37,7 +37,7 @@ import '../lib/cloud.js';          /* sets window.StudioCloud; the gate lives th
 import StudioUI from '../ui/chrome.js';
 import { h, delegate } from '../lib/dom.js';
 import Store from '../lib/store.js';
-import nav from '../data/navigation.json';
+import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
 import { formatCode, normaliseCode } from '../lib/gate.js';
 import { inExtension, onSessionLost, onClipQueued, CLIP_QUEUE_KEY } from '../lib/extension-bridge.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
@@ -168,9 +168,14 @@ function renderPipeline() {
   const p = Store.currentProject ? Store.currentProject() : null;
   main.append(head('Pipeline', p ? p.title : 'Filmmaker Studio', p ? null : 'No project open — pick one on the hub, or start in Story.'));
   const list = h('ol.pn-stages');
-  for (const phase of nav.phases) {
+  /* moduleGroups(), not nav.phases: the five stages AND the shelves
+     (the Library's three tabs, the two Blueprints). Reading only the
+     stages dropped whatever moved out of them (KNOWN-ISSUES #2).
+     hueClassOf() picks the class family: .sh-ph-* for a stage, .hue-*
+     for a shelf. */
+  for (const phase of moduleGroups()) {
     const open = ui.stage === phase.id;
-    const li = h('li.pn-stage.sh-ph-' + phase.hue + (open ? '.is-open' : ''));
+    const li = h('li.pn-stage.' + hueClassOf(phase) + (open ? '.is-open' : ''));
     li.append(h('button.pn-stage-btn', { type: 'button', 'data-pn': 'stage', 'data-stage': phase.id, 'aria-expanded': String(open) }, [
       h('span.pn-dot', { 'aria-hidden': 'true' }), h('strong', { text: phase.label }), h('span.pn-blurb', { text: phase.blurb })
     ]));

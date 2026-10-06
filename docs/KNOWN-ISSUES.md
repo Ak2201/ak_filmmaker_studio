@@ -22,18 +22,6 @@ Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
   does, delete the function instead.
 - **Do not** invent a new key name. CLAUDE.md invariant 1 applies.
 
-## 2. The extension's side panel lost three modules
-
-- **Where:** `src/pages/panel.js`, the Pipeline view, which loops over
-  `nav.phases` only.
-- **What goes wrong:** Case Studies, Dissection and Craft Glossary moved
-  out of the Story stage. They now hang off the global `library` entry
-  in `navigation.json` as `modules`. The panel never reads that entry,
-  so the three no longer appear in the extension at all.
-- **Likely fix:** iterate `moduleGroups()` from `src/lib/navmodel.js`,
-  which joins the stages and the Library's shelves. Do not add a
-  second loop over `nav.global`. Then re-run `npm run prove:extension`.
-
 ## 3. Case Studies' empty state names an internal file
 
 - **Where:** `src/ui/case-studies.js`, about line 751.

@@ -2366,6 +2366,48 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 }
 .sh-mod.planned { opacity: .72; }
 
+/* A stage's sub-headings (Pre-Production: Break down · See it · Cost &
+   staff it · Schedule it). Quieter than the menu's head, and ruled off
+   from the row above so four groups read as four. */
+.sh-phase-menu-group {
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s3) var(--s1);
+  border-top: 1px solid var(--panel-hair);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.sh-phase-menu-head + .sh-phase-menu-group { margin-top: 0; border-top: 0; }
+/* "Guide for this stage": a cross-reference into the blueprints, in a
+   row of its own under a rule — not a module row. */
+.sh-phase-menu-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s3) var(--s1);
+  border-top: 1px solid var(--panel-hair);
+  font-size: var(--t-tiny);
+}
+.sh-guide-head {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.sh-guide-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); }
+.sh-guide-sep { color: var(--panel-muted); }
+.sh-guide-link {
+  color: var(--panel-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sh-guide-link:hover, .sh-guide-link:focus-visible { background: var(--panel-raised); }
+
 /* ---- wide: the rail is furniture and the page is inset by it ---- */
 @media (min-width: 1100px) {
   body.has-sh-shell.rail-shown { padding-left: var(--sh-rail-w); }
@@ -3203,6 +3245,14 @@ html {
 @media (min-width: 1100px) and (max-width: 1279px) {
   .sh-where-phase,
   .sh-where-phase + .sh-where-sep { display: none; }
+}
+/* The blueprint's part segment ("Part II · Screenplay") is the crumb's
+   last word on a bar that already carries the page's own controls, so
+   it shows only where there is room: the step rail and the cover
+   stamps say the same below that. */
+@media (max-width: 1279px) {
+  .sh-where-part,
+  .sh-where-part-sep { display: none; }
 }
 
 /* Signed in, the account pill is the address's first letter in a

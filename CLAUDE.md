@@ -76,7 +76,7 @@ story.html                                        the Story stage (PRD 2.0)
 screening.html                                    a screening pass's read-only room
 extension/                                        manifest template, background
                                                   worker, side panel entry
-privacy.html terms.html                           the two legal documents
+privacy.html terms.html refund.html               the legal documents
 arunak-*.html                                     redirect stubs for old URLs
 src/
   data/      ALL content, as JSON. The asset. navigation.json is the IA.
@@ -1898,6 +1898,48 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     asks: zero data-key movement on every page, and the only word
     changes outside the two new pages were the nav copy that moved
     from "Coming next / In development / SOON" to the built labels.
+
+14. **The consumer pass (6 Oct 2026): legal pages, the Library's three
+    shelves, a clearer band, and a plan gate that actually gates.**
+    - **Legal.** `privacy.html`, `terms.html` and a new `refund.html` (the
+      same markup-only, `legal.js`-only pattern; in the vite inputs, the
+      sitegate `EXEMPT` list and the rewrites in both host configs). The
+      refund window, governing law (India, Chennai courts) and the
+      contact are a DRAFT for the owner to confirm; there is no business
+      name or postal address yet. `src/ui/footer.js` puts Privacy ·
+      Terms · Refunds on every page, from `chrome.js`, after `#app` so a
+      re-render cannot remove it.
+    - **Case Studies, Dissection and the Craft Glossary are Library
+      tabs.** navigation.json hangs them off the global `library` entry
+      as `modules`; `src/lib/navmodel.js` is the one place stages and
+      shelves are joined. Module ids are unchanged, so plan features
+      keyed by them still hold. `study.html` / `dissect.html` are stubs
+      that load `src/pages/moved.js` (a meta refresh drops the fragment;
+      the CSP forbids an inline script). Their renderers moved to
+      `src/ui/case-studies.js` and `src/ui/dissection.js` — one copy each.
+    - **Tabs.** The strip takes the content column on module pages, sits
+      one below the band so phase menus paint over it, and a tab switch
+      lands the new panel under the strip. `measureChrome()` leaves
+      anything stuck at exactly `--sh-chrome-h` out of that number and
+      publishes it as `--sh-cover-h` — the strip used to feed its own
+      height back into its `top` and drift down the page. Phase menus are
+      capped to the viewport when opened and scroll inside themselves.
+    - **The breadcrumb follows the open tab** on pages that host two
+      stages (`resolveLocation()` in shell.js): hash, then a fragment
+      inside a section, then the first VISIBLE section, then nav order.
+      The scroll spy skips hidden sections, which is what made
+      contacts.html read "Production › Call Sheets".
+    - **THE PLAN GATE NEVER GATED.** `refresh()` in `plan-gate.js`
+      cleared its in-flight marker in a `finally` inside the async body;
+      signed out that body never awaits, so it finished before the
+      promise was assigned and the marker stayed set for ever — every
+      later refresh, the gate opening included, got the stale
+      signed-out answer. `prove:billing` failed 6 of 59 on it and the
+      failures were read as pre-existing. Any lazy guard of the form
+      `x = (async () => { … finally { x = null } })()` has this bug.
+    - `prove:drive` builds with the site gate off (it drives settings
+      signed out) and stubs Google Fonts and `/favicon.ico`; it had been
+      broken since the site gate landed.
 
 ## Things that are deliberate, not oversights
 

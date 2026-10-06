@@ -59,6 +59,12 @@ const build = spawnSync(process.execPath, [
 ], {
   cwd: ROOT,
   env: Object.assign({}, process.env, {
+    /* The site gate (5 Oct 2026) sends a signed-out visitor to
+       invite.html, and this proof drives settings.html signed out — so
+       with the gate on, every page it opens navigates away under it.
+       Drive is what is on trial here, not the gate (prove:gate owns
+       that), so this fixture is the open build, as verify's is. */
+    VITE_SITE_GATE: 'off',
     VITE_GOOGLE_CLIENT_ID: 'probe-client-id.apps.googleusercontent.com',
     VITE_DISABLE_SW: '1'
   }),
@@ -79,6 +85,8 @@ const MIME = {
 const server = http.createServer((req, res) => {
   let p = path.join(OUT, decodeURIComponent(req.url.split('?')[0]));
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
+  // The browser asks for /favicon.ico on its own; the pages declare their icons, so answer empty rather than log a 404.
+  if (req.url === '/favicon.ico') { res.writeHead(204); return res.end(); }
   if (!fs.existsSync(p)) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' });
   fs.createReadStream(p).pipe(res);
@@ -222,6 +230,10 @@ const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath
 async function openPage(opts) {
   opts = opts || {};
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  /* Stubbed as prove-billing does: a sandbox that cannot reach Google
+     Fonts reports each refused stylesheet as a console error, which is
+     the network, not the page. */
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   await ctx.addInitScript(FAKE_DRIVE);
   if (opts.seed) await ctx.addInitScript(opts.seed);
   const page = await ctx.newPage();
@@ -527,6 +539,7 @@ for (const theme of ['paper', 'ink']) {
       }));
     };
     const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
     await ctx.addInitScript(FAKE_DRIVE);
     await ctx.addInitScript(seed);
     /* fms_studio_theme_v1 — the key chrome.js's loadTheme() actually

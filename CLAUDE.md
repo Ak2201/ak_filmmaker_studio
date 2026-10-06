@@ -127,6 +127,7 @@ src/
              stripboard.js reports.js contacts.js visualize.js
              write.js plan.js
   sw.js      service worker (vite-plugin-pwa injectManifest)
+docs/KNOWN-ISSUES.md  bugs found and not yet fixed — check it first
 scripts/
   extract/   the parsers that produced src/data — re-runnable, self-checking
   verify-migration.mjs   the gate
@@ -1940,6 +1941,12 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - `prove:drive` builds with the site gate off (it drives settings
       signed out) and stubs Google Fonts and `/favicon.ico`; it had been
       broken since the site gate landed.
+    - **Left open, on purpose and on record:** `docs/KNOWN-ISSUES.md` —
+      the Library's dark-pref carry-over reads an undefined `PREF_KEY`,
+      the extension panel lost the three Library modules, a Case Studies
+      empty state names a data file, an unconfirmed band height on the
+      Library at 390px, and Case Studies being one long tab. Read it
+      before touching any of those files; prune it when you fix one.
 
 ## Things that are deliberate, not oversights
 

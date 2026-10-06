@@ -43,6 +43,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import BeatBoard from '../ui/beat-board.js';
 /* The provider TABLE only — not src/lib/ai.js, which this page
    still reaches with import() at a click. The disclosure below has
    to name the host the key will actually go to, and a restated
@@ -1630,8 +1631,8 @@ function renderDocuments() {
    ============================================================ */
 function render(focus) {
   const main = h('main', { id: 'main' });
-  main.append(renderHeader(), renderScreenplay(), renderGenerate(),
-    renderRevisions(), renderDocuments());
+  main.append(renderHeader(), renderScreenplay(), BeatBoard.renderOutline(),
+    renderGenerate(), renderRevisions(), renderDocuments());
   app.replaceChildren(main);
   countNodes = null;
   autosizeAll();
@@ -1645,6 +1646,7 @@ function render(focus) {
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[write] chrome', e); }
 
+  BeatBoard.decorateEditor();   // the Outline tab's beat markers; DOM only
   if (focus) applyFocus(focus);
 }
 
@@ -2755,5 +2757,14 @@ delegate(document, 'click', '[data-action="gen-reset"]', () => {
    reopen a panel somebody may have just closed. */
 const wantsImporter = typeof location !== 'undefined' && location.hash === '#wr-import';
 if (wantsImporter) importOpen = true;
+
+/* The Outline tab (src/ui/beat-board.js) edits the script through
+   the page's own model and save path, never around it. */
+BeatBoard.wireBeatBoard({
+  getDoc: () => doc,
+  saveDoc: () => persistNow(),
+  rerender: () => render(),
+  blankElement
+});
 
 render(wantsImporter ? '#wr-import-paste' : null);

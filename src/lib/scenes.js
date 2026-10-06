@@ -89,6 +89,15 @@ export function blankScene(patch = {}) {
        'part' = pick-ups owed, 'dropped' = cut from the film. */
     shotState: '',
     shotAt: '',          // ISO, when it was last marked
+    /* WHICH STORY BEAT THIS SCENE SERVES, for the write page's Outline
+       tab (src/lib/beat-outline.js). Framework-qualified —
+       'save_the_cat:midpoint', never a bare 'midpoint' — so switching
+       framework on the Story page cannot re-point it at another
+       framework's beat of the same name. Same arrival as songId and
+       shotState: a field spread under every stored row, so older rows
+       read back '' and no migration exists. Written only when a person
+       links, drags or drafts a scene; never on load. */
+    beatId: '',
     ...patch
   };
 }

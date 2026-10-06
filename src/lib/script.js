@@ -228,7 +228,15 @@ export function contdOffer(elements, i) {
       for (let c = k - 1; c >= 0; c--) {
         const cue = els[c];
         if (!cue) return false;
-        if (cue.type === 'character') return cueSpeaker(cue.text) === who;
+        if (cue.type === 'character') {
+          if (cueSpeaker(cue.text) === who) return true;
+          /* The right half of a dual pair: the left speaker spoke too,
+             at the same moment, so either one returning continues. */
+          if (cue.dual !== true || !canPairDual(els, c)) return false;
+          let l = c - 1;
+          while (l >= 0 && SPEECH_BODY.has(els[l].type)) l--;
+          return cueSpeaker(els[l].text) === who;
+        }
         if (!SPEECH_BODY.has(cue.type)) return false;
       }
       return false;

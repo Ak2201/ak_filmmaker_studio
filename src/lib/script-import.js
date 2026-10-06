@@ -889,6 +889,8 @@ export function parseScript(raw, filename) {
        second time, is a list that is wrong by the next format. */
     formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
     meta: result.meta || {},
+    // The file's title page as the script model's fields, or null.
+    titlePage: titlePageFromMeta(result.meta),
     elements,
     scenes: rows,
     numbering,

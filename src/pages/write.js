@@ -55,7 +55,9 @@ import Script, {
   ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
   revisionColour, typeLabel,
   blankElement, blankDocument,
-  pageCount, formatPages, formatRuntime, wordCount, totalLines
+  pageCount, formatPages, formatRuntime, wordCount, totalLines,
+  dualPairs, canPairDual, contdOffer, withContd,
+  TITLE_FIELDS, hasTitlePage, normaliseTitlePage
 } from '../lib/script.js';
 
 /* The typesetter and the parser are both lazy chunks. Neither is
@@ -175,6 +177,16 @@ const app = document.getElementById('app');
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
 let openDocId = null;
+
+/* Page view (see "PAGE VIEW" below). In memory: a way of looking at
+   the script, not part of it, so it is neither stored nor synced. */
+let pageView = false;
+let Typeset = null;            // screenplay-export.js, once page view has asked for it
+/* Which dual-dialogue pairs the page was last BUILT with. A patch that
+   changes the pairing (a line inserted inside a pair, a flag whose
+   speech above it was just deleted) cannot be patched row by row; it
+   falls back to a render, and this is how it knows. */
+let dualRendered = '';
 
 /* Import view state. `importPlan` is what a file parsed to and what
    the preview is showing; it is NOT stored, because it is a
@@ -409,22 +421,50 @@ function renderElement(el, i, total) {
     ]));
   }
 
-  row.append(
-    sel,
-    ta,
-    h('div.wr-el-acts', {}, [
-      /* Only dialogue. An action line is description and a slug is an
-         address; neither is the thing "a dialogue pass" means, and a ◇
-         on all six types is a ◇ nobody reads. */
-      el.type === 'dialogue'
-        ? iconBtn('◇', 'pass-open', 'Ask for a pass on this speech', false)
-        : null,
-      iconBtn('↑', 'el-up', 'Move up', i === 0),
-      iconBtn('↓', 'el-down', 'Move down', i === total - 1),
-      iconBtn('✕', 'el-del', 'Delete element', false, true)
-    ].filter(Boolean))
-  );
+  row.append(sel, ta, rowActs(el, i, total));
   return row;
+}
+
+/** A row's buttons. Built per type, so a type change rebuilds them. */
+function rowActs(el, i, total) {
+  return h('div.wr-el-acts', {}, [
+    /* Only dialogue. An action line is description and a slug is an
+       address; neither is the thing "a dialogue pass" means, and a ◇
+       on all six types is a ◇ nobody reads. */
+    el.type === 'dialogue'
+      ? iconBtn('◇', 'pass-open', 'Ask for a pass on this speech', false)
+      : null,
+    ...(el.type === 'character' ? cueButtons(el, i) : []),
+    iconBtn('↑', 'el-up', 'Move up', i === 0),
+    iconBtn('↓', 'el-down', 'Move down', i === total - 1),
+    iconBtn('✕', 'el-del', 'Delete element', false, true)
+  ].filter(Boolean));
+}
+
+/* ---- a cue's two extra controls --------------------------------
+   Dual dialogue is a toggle on the SECOND cue (src/lib/script.js has
+   the model): pressed, this speech sits beside the one above it. And
+   (CONT'D) is OFFERED, never typed for the writer — the button only
+   shows when the same character speaks again after action in the same
+   scene, and one click appends the words to the cue. Both are DOM
+   built from the model at render; refreshCueOffers() keeps the offer
+   in step as the writer types, at idle, without a re-render. */
+function cueButtons(el, i) {
+  const on = el.dual === true;
+  const dual = h('button.bd-icon.wr-dual-btn' + (on ? '.is-on' : ''), {
+    type: 'button', 'data-action': 'el-dual',
+    title: on ? 'Dual dialogue: on — this speech sits beside the one above'
+      : 'Dual dialogue: set this speech beside the one above',
+    'aria-label': 'Dual dialogue', 'aria-pressed': on ? 'true' : 'false',
+    text: '⇄'
+  });
+  const contd = h('button.wr-contd', {
+    type: 'button', 'data-action': 'el-contd',
+    title: "Same speaker after action in this scene — add (CONT'D)",
+    text: "+ CONT'D"
+  });
+  contd.hidden = !contdOffer(doc.elements, i);
+  return [contd, dual];
 }
 
 /** Rows per run on the screenplay page; see renderScreenplay(). */
@@ -436,7 +476,8 @@ const PLACEHOLDER = {
   character: 'CHARACTER',
   paren: 'quietly',
   dialogue: 'What they say.',
-  transition: 'CUT TO:'
+  transition: 'CUT TO:',
+  shot: 'CLOSE ON —'
 };
 
 function renderScreenplay() {
@@ -445,7 +486,7 @@ function renderScreenplay() {
     h('h2.bd-h2', { text: 'Screenplay' }),
     h('p.bd-sub', {
       text: 'Every line is typed — scene heading, action, character, parenthetical, '
-          + 'dialogue or transition. Return starts the next element in the type that '
+          + 'dialogue, transition or shot. Return starts the next element in the type that '
           + 'usually follows; Shift and Return break a line inside one.'
     })
   );
@@ -471,6 +512,16 @@ function renderScreenplay() {
        destructive-capable action hiding under a verb that means the
        opposite is how somebody replaces a draft by accident. */
     h('div.wr-export', {}, [
+      /* PAGE VIEW. The same rows, drawn as white pages with the page
+         breaks the PDF will have — computed by the PDF's own paginator
+         (screenplay-export.js), at idle, so the two cannot disagree and
+         typing never waits for it. In memory only: a view, not a
+         setting anybody's work depends on. */
+      doc.elements.length ? h('button.btn' + (pageView ? '.is-on' : ''), {
+        type: 'button', 'data-action': 'pageview-toggle',
+        'aria-pressed': pageView ? 'true' : 'false',
+        text: 'Page view'
+      }) : null,
       h('button.btn' + (importOpen ? '.is-on' : ''), {
         type: 'button', 'data-action': 'import-toggle',
         'aria-expanded': importOpen ? 'true' : 'false',
@@ -479,11 +530,20 @@ function renderScreenplay() {
       }),
       actionMenu('Export', [
         { label: 'Save as PDF',        action: 'export-pdf',      hint: 'US Letter' },
+        { label: 'PDF, scene numbers', action: 'export-pdf-numbered', hint: 'shooting script' },
         { label: 'Screenplay text',    action: 'export-text',     hint: '.txt' },
-        { label: 'Export .fountain',   action: 'export-fountain', hint: 'plain text' }
+        { label: 'Export .fountain',   action: 'export-fountain', hint: 'plain text' },
+        { label: 'Export .fdx',        action: 'export-fdx',      hint: 'Final Draft' }
       ], { align: 'right' })
-    ])
+    ].filter(Boolean))
   ]));
+  if (pageView && doc.elements.length) {
+    section.append(h('p.wr-pv-status', { role: 'status', 'aria-live': 'polite' }, [
+      h('span', { 'data-pv': 'where', text: pvWhereText() }),
+      h('span.wr-gauge-sep', { text: ' · ', 'aria-hidden': 'true' }),
+      h('span', { text: 'breaks as the PDF prints them' })
+    ]));
+  }
 
   if (importOpen) section.append(renderImport());
 
@@ -495,15 +555,33 @@ function renderScreenplay() {
   /* The rows go into runs of CHUNK. A run is the unit the browser may
      skip while it is off screen (`content-visibility` in write.css), so
      a keystroke lays out the few runs in view instead of a feature's
-     two thousand rows. The runs are invisible: same column, same gap. */
-  const page = h('div.wr-page', { id: 'wr-page' });
+     two thousand rows. The runs are invisible: same column, same gap.
+
+     A dual-dialogue pair is the one place rows are nested: both
+     speeches go in a `.wr-dual` holding two columns, so they sit side
+     by side. A run never breaks inside one. */
+  const page = h('div.wr-page' + (pageView ? '.is-pageview' : ''), { id: 'wr-page' });
+  const pairs = new Map(dualPairs(doc.elements).map((p) => [p.left[0], p]));
+  dualRendered = dualSignature();
   let run = null;
+  let inRun = 0;
+  let pair = null;
   doc.elements.forEach((el, i) => {
-    if (i % CHUNK === 0) { run = h('div.wr-chunk'); page.append(run); }
-    run.append(renderElement(el, i, doc.elements.length));
+    if (!pair && (!run || inRun >= CHUNK)) { run = h('div.wr-chunk'); page.append(run); inRun = 0; }
+    if (!pair && pairs.has(i)) {
+      pair = pairs.get(i);
+      const left = h('div.wr-dual-col');
+      const right = h('div.wr-dual-col');
+      run.append(h('div.wr-dual', { 'data-dual': doc.elements[pair.right[0]].id }, [left, right]));
+      pair.cols = [left, right];
+    }
+    const box = pair ? pair.cols[i >= pair.right[0] ? 1 : 0] : run;
+    box.append(renderElement(el, i, doc.elements.length));
+    inRun++;
     // The panel is a sibling of the row it belongs to, so it opens
     // where the speech is rather than somewhere else on the page.
-    if (passFor === el.id) run.append(renderPass(el, i));
+    if (passFor === el.id) box.append(renderPass(el, i));
+    if (pair && i === pair.right[1]) pair = null;
   });
   section.append(page, h('button.btn.primary.wr-add', {
     type: 'button', 'data-action': 'el-add', text: '+  Add element'
@@ -720,7 +798,7 @@ function renderPassResult(el, res) {
    import is undone by the Restore button that already exists
    rather than by a route invented for this feature.
    ============================================================ */
-const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
+const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'];
 
 function importChooser() {
   const wrap = h('div.wr-imp-choose');
@@ -1595,6 +1673,62 @@ function renderDocEditor(d) {
   ]);
 }
 
+/* ---- the title page -----------------------------------------
+   The script's own page 1, kept inside the script blob as `titlePage`
+   (src/lib/script.js says why there and not under a key of its own).
+   Filled in, it is the PDF's first sheet in the standard layout, the
+   Fountain title page and the .fdx one. Left empty it is not stored
+   at all, and the PDF keeps the plain title page it always had. */
+const TITLE_LABELS = {
+  title: 'Title', credit: 'Credit', author: 'Written by', source: 'Based on',
+  draft: 'Draft', date: 'Date', contact: 'Contact'
+};
+function titlePlaceholder(f) {
+  return {
+    title: Script.projectTitle(),
+    credit: 'Written by',
+    author: 'Your name — and a co-writer, with &',
+    source: 'Based on the novel by …',
+    draft: 'First draft',
+    date: prettyStamp(new Date().toISOString()).split(',')[0],
+    contact: 'Name\nPhone · e-mail\nAgent or production company'
+  }[f];
+}
+
+function renderTitlePage() {
+  const tp = normaliseTitlePage(doc.titlePage);
+  const fieldOf = (f) => (f === 'contact'
+    ? field('textarea.wr-tp-contact', {
+      rows: '3', 'data-tp-field': f, placeholder: titlePlaceholder(f), 'aria-label': 'Title page ' + TITLE_LABELS[f]
+    }, tp[f])
+    : field('input', {
+      type: 'text', maxlength: '160', 'data-tp-field': f,
+      placeholder: titlePlaceholder(f), 'aria-label': 'Title page ' + TITLE_LABELS[f]
+    }, tp[f]));
+  const on = hasTitlePage(doc.titlePage);
+  return h('div.wr-tp', { id: 'wr-title-page' }, [
+    h('div.wr-tp-head', {}, [
+      h('h3.wr-tp-h', { text: 'Title page' }),
+      h('span.wr-tp-state', {
+        'data-tp-state': '',
+        text: on ? 'Page 1 of the PDF' : 'Empty — the PDF opens on a plain title'
+      })
+    ]),
+    h('div.wr-tp-grid', {}, TITLE_FIELDS.map((f) => labelled(TITLE_LABELS[f], fieldOf(f))))
+  ]);
+}
+
+delegate(document, 'input', '[data-tp-field]', (e, input) => {
+  const f = input.dataset.tpField;
+  if (!TITLE_FIELDS.includes(f)) return;
+  doc.titlePage = normaliseTitlePage(doc.titlePage);
+  doc.titlePage[f] = input.value;
+  const state = document.querySelector('[data-tp-state]');
+  const text = hasTitlePage(doc.titlePage) ? 'Page 1 of the PDF' : 'Empty — the PDF opens on a plain title';
+  if (state && state.textContent !== text) state.textContent = text;
+  persist();
+});
+
 function renderDocuments() {
   const section = h('section.wr-section', { id: 'documents' });
   section.append(
@@ -1605,6 +1739,8 @@ function renderDocuments() {
           + 'somebody expects.'
     })
   );
+
+  section.append(renderTitlePage());
 
   if (!doc.documents.length) {
     section.append(renderDocumentsEmpty());
@@ -1646,6 +1782,7 @@ function render(focus) {
   } catch (e) { console.warn('[write] chrome', e); }
 
   if (focus) applyFocus(focus);
+  if (pageView) scheduleDerived(0);
 }
 
 function applyFocus(sel) {
@@ -1757,6 +1894,199 @@ function refreshCounters() {
 }
 
 /* ============================================================
+   DERIVED, AT IDLE — the (CONT'D) offers and the page view
+   ------------------------------------------------------------
+   Two things on this page are readings of the WHOLE script rather
+   than of one row: whether a cue should be offered (CONT'D), which
+   depends on the speech before it, and where the pages break, which
+   depends on everything above. Neither may cost a keystroke anything,
+   so neither runs inside one. An edit schedules them; they run once
+   the writer has paused and the browser is idle, and they touch only
+   the DOM nodes whose answer changed — a mutation is not free here,
+   the tab strip's observer re-runs on every one.
+
+   DOM only. Nothing in this block writes to storage, for the same
+   reason refreshCounters() does not.
+   ============================================================ */
+const DERIVED_DELAY = 300;
+let derivedTimer = 0;
+let derivedIdle = 0;
+function scheduleDerived(delay = DERIVED_DELAY) {
+  clearTimeout(derivedTimer);
+  derivedTimer = setTimeout(() => {
+    derivedTimer = 0;
+    if (derivedIdle) return;
+    const run = () => { derivedIdle = 0; refreshCueOffers(); applyPageView(); };
+    derivedIdle = typeof requestIdleCallback === 'function'
+      ? requestIdleCallback(run, { timeout: 1000 })
+      : setTimeout(run, 0);
+  }, delay);
+}
+
+/** Show or hide each cue's "+ CONT'D" as the script now reads. */
+function refreshCueOffers() {
+  const rows = allRows();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row.classList.contains('t-character')) continue;
+    const btn = row.querySelector('.wr-contd');
+    if (!btn) continue;
+    const el = doc.elements[i];
+    const want = !!el && el.id === row.dataset.el && contdOffer(doc.elements, i);
+    if (btn.hidden === want) btn.hidden = !want;
+  }
+}
+
+/* ---- PAGE VIEW ----------------------------------------------
+   The rows stay the writing surface — same textareas, same keys, same
+   patching — and the page view adds three things to them:
+
+     · a break marker where each new page starts, numbered as the PDF
+       numbers it, and where a speech or an action block breaks INSIDE
+       itself, a marker after it that says so with the (MORE) and
+       (CONT'D) the PDF will print there;
+     · the scene number in both margins of every heading (data-scene-no,
+       painted by write.css), never on a shot;
+     · "page N of M" for the line the caret is in.
+
+   Every one of those comes from Typeset.paginate() — the function the
+   PDF is built from — so the page count on screen and the sheets in
+   the PDF are the same number by construction. The script pages are
+   counted; the title page, which carries no number, is not. */
+let pvPageOf = new Map();       // element id -> page index it starts on
+let pvTotal = 0;
+let pvFocusId = null;
+
+function pvWhereText() {
+  if (!pvTotal) return 'Paginating…';
+  let p = pvFocusId ? pvPageOf.get(pvFocusId) : undefined;
+  if (p === undefined && pvFocusId) {
+    // A blank element prints nothing; it is on the page of the line before it.
+    for (let k = indexOfEl(pvFocusId); k >= 0 && p === undefined; k--) p = pvPageOf.get(doc.elements[k].id);
+  }
+  return p === undefined
+    ? pvTotal + (pvTotal === 1 ? ' page' : ' pages')
+    : 'Page ' + (p + 1) + ' of ' + pvTotal;
+}
+
+function refreshPvStatus() {
+  const node = document.querySelector('[data-pv="where"]');
+  const text = pvWhereText();
+  if (node && node.textContent !== text) node.textContent = text;
+}
+
+function clearPageView() {
+  const page = pageNode();
+  if (!page) return;
+  page.querySelectorAll('.wr-pbreak').forEach((n) => n.remove());
+  page.querySelectorAll('[data-scene-no]').forEach((n) => n.removeAttribute('data-scene-no'));
+  pvPageOf = new Map();
+  pvTotal = 0;
+}
+
+function applyPageView() {
+  const page = pageNode();
+  if (!pageView || !page || !Typeset) return;
+  const pages = Typeset.paginate(doc.elements);
+
+  const pageOf = new Map();
+  const sceneNo = new Map();
+  const anchors = [];
+  pages.forEach((rows, p) => {
+    for (const r of rows) {
+      for (const id of (r.ids || (r.id ? [r.id] : []))) if (!pageOf.has(id)) pageOf.set(id, p);
+      if (r.sceneNo && r.id && !r.cont) sceneNo.set(r.id, r.sceneNo);
+    }
+    if (p > 0) {
+      const first = rows.find((r) => r.id);
+      anchors[p] = first ? { id: first.id, split: !!first.cont } : null;
+    }
+  });
+
+  const existing = new Map();
+  page.querySelectorAll('.wr-pbreak').forEach((n) => existing.set(n.dataset.page, n));
+  for (let p = 1; p < pages.length; p++) {
+    const a = anchors[p];
+    let node = existing.get(String(p)) || null;
+    existing.delete(String(p));
+    const row = a ? rowOf(a.id) : null;
+    if (!row) { if (node) node.remove(); continue; }
+    const target = row.closest('.wr-dual') || row;
+    const key = a.id + (a.split ? '|split' : '');
+    const placed = node && node.dataset.anchor === key
+      && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
+    if (placed) continue;
+    if (!node) {
+      node = h('div.wr-pbreak', { role: 'separator', 'data-page': String(p) });
+    }
+    node.dataset.anchor = key;
+    node.classList.toggle('is-split', a.split);
+    const label = a.split
+      ? "(MORE)  ·  page " + (p + 1) + ' starts inside the line above  ·  (CONT’D)'
+      : 'Page ' + (p + 1);
+    if (node.textContent !== label) node.textContent = label;
+    node.setAttribute('aria-label', 'Page ' + (p + 1) + ' of ' + pages.length);
+    if (a.split) target.after(node); else target.before(node);
+  }
+  existing.forEach((n) => n.remove());
+
+  for (const row of allRows()) {
+    if (!row.classList.contains('t-scene')) {
+      if (row.hasAttribute('data-scene-no')) row.removeAttribute('data-scene-no');
+      continue;
+    }
+    const n = sceneNo.get(row.dataset.el) || '';
+    if (n) setAttr(row, 'data-scene-no', n);
+    else if (row.hasAttribute('data-scene-no')) row.removeAttribute('data-scene-no');
+  }
+
+  pvPageOf = pageOf;
+  pvTotal = pages.length;
+  page.dataset.pages = String(pages.length);
+  refreshPvStatus();
+}
+
+async function setPageView(on) {
+  if (on && !Typeset) {
+    try { Typeset = await typesetter(); }
+    catch (e) { say('The page view could not be loaded. Check the connection and try again.'); return; }
+  }
+  pageView = on;
+  const page = pageNode();
+  const btn = document.querySelector('[data-action="pageview-toggle"]');
+  if (btn) { btn.classList.toggle('is-on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  if (!page) return;
+  page.classList.toggle('is-pageview', on);
+  let status = document.querySelector('.wr-pv-status');
+  if (on && !status) {
+    status = h('p.wr-pv-status', { role: 'status', 'aria-live': 'polite' }, [
+      h('span', { 'data-pv': 'where', text: pvWhereText() }),
+      h('span.wr-gauge-sep', { text: ' · ', 'aria-hidden': 'true' }),
+      h('span', { text: 'breaks as the PDF prints them' })
+    ]);
+    page.before(status);
+  }
+  if (!on) {
+    if (status) status.remove();
+    clearPageView();
+    return;
+  }
+  applyPageView();               // once now, so the toggle answers at once
+}
+
+delegate(document, 'click', '[data-action="pageview-toggle"]', () => { setPageView(!pageView); });
+
+/* The counter follows the caret. focusin is the one event that sees
+   every way into a row — click, Tab, the patch's own focus(). */
+document.addEventListener('focusin', (e) => {
+  if (!pageView) return;
+  const row = e.target && e.target.closest && e.target.closest('[data-el]');
+  if (!row) return;
+  pvFocusId = row.dataset.el;
+  refreshPvStatus();
+});
+
+/* ============================================================
    EVENTS — delegated, no inline handlers. A strict CSP ships.
    ============================================================ */
 const idOf = (el, attr) => el.closest(`[data-${attr}]`)?.dataset[attr];
@@ -1796,9 +2126,32 @@ function allRows() {
   const rows = [];
   if (!page) return rows;
   for (const run of page.children) {
-    for (const n of run.children) if (n.tagName === 'ARTICLE') rows.push(n);
+    for (const n of run.children) {
+      if (n.tagName === 'ARTICLE') rows.push(n);
+      // A dual-dialogue pair: its two columns, left then right, which
+      // is the order the elements are in.
+      else if (n.classList.contains('wr-dual')) {
+        for (const col of n.children) for (const r of col.children) if (r.tagName === 'ARTICLE') rows.push(r);
+      }
+    }
   }
   return rows;
+}
+
+/** The pairing the page was built with, as ids. Cheap: one scan of the
+    element list, and on a script with no dual flag at all, nothing. */
+function dualSignature() {
+  if (!doc.elements.some((e) => e.dual === true)) return '';
+  return dualPairs(doc.elements)
+    .map((p) => [p.left[0], p.left[1], p.right[0], p.right[1]].map((k) => doc.elements[k].id).join(','))
+    .join(';');
+}
+
+/** A structural patch is only safe outside a dual pair. Inside one, or
+    when the edit changed which speeches pair, the page is rebuilt. */
+function dualNeedsRender(...nodes) {
+  if (dualSignature() !== dualRendered) return true;
+  return nodes.some((n) => n && n.closest && n.closest('.wr-dual'));
 }
 
 /** Keep the runs a sensible size after a patch. Never touches a row's
@@ -1883,6 +2236,7 @@ function addElement(after, type) {
   const prev = at > 0 ? rowOf(doc.elements[at - 1].id) : null;
   const next = doc.elements[at + 1] ? rowOf(doc.elements[at + 1].id) : null;
   if (!prev && !next) { render(elFocus(el.id)); return; }
+  if (dualNeedsRender(prev, next)) { render(elFocus(el.id)); return; }
   // Into the run of the row above, straight after it — or, for a new
   // first element, in front of the old one.
   if (prev) prev.after(row);
@@ -1893,6 +2247,7 @@ function addElement(after, type) {
   reindexLater(at + 1);
   refreshCounters();
   applyFocus(row.querySelector('.wr-text'));
+  scheduleDerived();
 }
 
 /** Take element `i` out, and put the caret in `neighbourOf(i)`. */
@@ -1906,6 +2261,10 @@ function removeElement(i, neighbourOf) {
     return;
   }
   const row = rowOf(gone.id);
+  if (dualNeedsRender(row)) {
+    render(neighbour ? elFocus(neighbour.id) : null);
+    return;
+  }
   if (row) {
     const run = row.parentElement;
     row.remove();
@@ -1915,6 +2274,7 @@ function removeElement(i, neighbourOf) {
   reindexLater(i + 1);
   refreshCounters();
   if (neighbour) applyFocus(elFocus(neighbour.id));
+  scheduleDerived();
 }
 
 delegate(document, 'click', '[data-action="el-first"]', () => addElement(null, 'scene'));
@@ -1934,7 +2294,7 @@ function moveElement(id, delta) {
   const len = doc.elements.length;
   const mine = rowOf(id);
   const theirs = rowOf(doc.elements[i].id);   // the one it swapped with
-  if (!patchable(len, len) || !mine || !theirs) { render(elFocus(id)); return; }
+  if (!patchable(len, len) || !mine || !theirs || dualNeedsRender(mine, theirs)) { render(elFocus(id)); return; }
   // Whichever row now comes first goes in front of the other.
   // Across a run boundary this moves a row from one run to the next,
   // which can leave a run of one empty.
@@ -1944,6 +2304,7 @@ function moveElement(id, delta) {
   runs.forEach(tidyRun);
   reindexRows(Math.min(i, j), Math.max(i, j));
   applyFocus(elFocus(id));
+  scheduleDerived();
 }
 
 delegate(document, 'click', '[data-action="el-del"]', (e, btn) => {
@@ -1968,6 +2329,7 @@ delegate(document, 'input', '.wr-text[data-el-field="text"]', (e, ta) => {
   autosize(ta);
   refreshCounters();
   persist();
+  scheduleDerived();
 });
 
 /* A type change moves the element across the page, so the row's class
@@ -1977,7 +2339,15 @@ delegate(document, 'change', 'select[data-el-field="type"]', (e, sel) => {
   const row = sel.closest('[data-el]');
   const i = indexOfEl(row?.dataset.el);
   if (i < 0) return;
-  doc.elements[i].type = sel.value;
+  const el = doc.elements[i];
+  el.type = sel.value;
+  // Only a cue can be the second half of a dual pair.
+  if (el.type !== 'character') delete el.dual;
+  if (dualNeedsRender(row)) {
+    persistNow();
+    render(`[data-el="${el.id}"] select[data-el-field="type"]`);
+    return;
+  }
   row.className = 'wr-el t-' + sel.value;
   const ta = row.querySelector('.wr-text');
   if (ta) {
@@ -1985,8 +2355,50 @@ delegate(document, 'change', 'select[data-el-field="type"]', (e, sel) => {
     ta.setAttribute('aria-label', typeLabel(sel.value) + ', element ' + (i + 1));
     autosize(ta);
   }
+  // The buttons depend on the type: ◇ on a speech, ⇄ and CONT'D on a cue.
+  const acts = row.querySelector('.wr-el-acts');
+  if (acts) acts.replaceWith(rowActs(el, i, doc.elements.length));
   refreshCounters();
   persistNow();
+  scheduleDerived();
+});
+
+/* ---- dual dialogue and (CONT'D) -----------------------------
+   Both are clicks on a cue's own row. The toggle rebuilds the page —
+   a pair is two speeches moving into two columns, which is more than
+   one row's patch — and is rare enough that it may. The (CONT'D) is
+   four words added to one textarea and patches that one row. */
+delegate(document, 'click', '[data-action="el-dual"]', (e, btn) => {
+  const id = idOf(btn, 'el');
+  const i = indexOfEl(id);
+  if (i < 0) return;
+  const el = doc.elements[i];
+  if (el.dual === true) delete el.dual;
+  else {
+    if (!canPairDual(doc.elements, i)) {
+      say('Dual dialogue sets this speech beside the one directly above it, and there is no speech directly above this cue.');
+      return;
+    }
+    el.dual = true;
+  }
+  persistNow();
+  render(`[data-el="${id}"] [data-action="el-dual"]`);
+  say(el.dual ? 'Dual dialogue: the two speeches now sit side by side.' : 'Dual dialogue off.');
+});
+
+delegate(document, 'click', '[data-action="el-contd"]', (e, btn) => {
+  const id = idOf(btn, 'el');
+  const i = indexOfEl(id);
+  if (i < 0) return;
+  const el = doc.elements[i];
+  el.text = withContd(el.text);
+  const ta = rowOf(id)?.querySelector('.wr-text');
+  if (ta) { ta.value = el.text; autosize(ta); }
+  btn.hidden = true;
+  persistNow();
+  refreshCounters();
+  scheduleDerived();
+  if (ta) applyFocus(ta);
 });
 
 /* Return makes the next element, in the type that usually follows —
@@ -2065,7 +2477,16 @@ const exportMeta = () => ({
   date: new Date().toISOString().slice(0, 10)
 });
 
-delegate(document, 'click', '[data-action="export-pdf"]', async () => {
+delegate(document, 'click', '[data-action="export-pdf"]', () => exportPDF(false));
+delegate(document, 'click', '[data-action="export-pdf-numbered"]', () => exportPDF(true));
+
+delegate(document, 'click', '[data-action="export-fdx"]', () => {
+  if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
+  const title = Script.projectTitle();
+  download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
+});
+
+async function exportPDF(sceneNumbers) {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
@@ -2079,10 +2500,10 @@ delegate(document, 'click', '[data-action="export-pdf"]', async () => {
     title: Script.projectTitle() + ' — Screenplay',
     subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
       .filter(Boolean).join(' · '),
-    before: () => { node = Typeset.buildDocument(doc, exportMeta()); main.append(node); },
+    before: () => { node = Typeset.buildDocument(doc, { ...exportMeta(), sceneNumbers }); main.append(node); },
     after: () => { if (node) { node.remove(); node = null; } }
   });
-});
+}
 
 delegate(document, 'click', '[data-action="export-text"]', async () => {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
@@ -2357,8 +2778,20 @@ delegate(document, 'click', '[data-action="import-commit"]', () => {
   if (replaceScript && doc.elements.length) {
     doc.revisions.push(Script.makeRevision(doc.elements, 'Before importing ' + (importName || 'a script')));
   }
-  const incoming = plan.elements.map((el) => blankElement({ type: el.type, text: el.text }));
+  /* Type, text and the dual-dialogue flag — the three things an
+     element is. Anything else a parser hung on it (a scene number)
+     belongs to the scene model, below. */
+  const incoming = plan.elements.map((el) => blankElement(el.dual === true
+    ? { type: el.type, text: el.text, dual: true }
+    : { type: el.type, text: el.text }));
   doc.elements = replaceScript ? incoming : doc.elements.concat(incoming);
+  /* The file's title page is taken when it had one and this script
+     does not — or when the script is being replaced. A title page the
+     writer already filled in is theirs and an import does not
+     overwrite it. */
+  if (plan.titlePage && (replaceScript || !hasTitlePage(doc.titlePage))) {
+    doc.titlePage = normaliseTitlePage(plan.titlePage);
+  }
   persistNow();
 
   // 2. the scene list

@@ -106,6 +106,9 @@ import { readBlueprintFile } from '../lib/blueprint-file.js';
 import { blueprintEntry, dismissEntry } from '../ui/blueprint-entry.js';
 /* The Story page's panels in Part I (plan rev. 3 §3). */
 import { mountStoryKit } from '../ui/story-kit.js';
+import { buildSceneRow, buildShotRow, buildCastRow, buildLocRow } from '../ui/blueprint-rows.js';
+import { mountHandoffs } from '../ui/blueprint-handoffs.js';
+import { mountWraps } from '../ui/blueprint-wrap.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -944,15 +947,8 @@ function tagVol1Bridge() {
   }
 }
 
-/* ============================================================
-   ROW CONTROL HELPERS
-   ============================================================ */
-function rowCtrls() {
-  return `<td class="row-ctrl">
-      <button type="button" class="row-ctrl-btn" data-action="duplicateRow" title="Duplicate row">⎘</button>
-      <button type="button" class="row-ctrl-btn del" data-action="deleteRow" title="Delete row">✕</button>
-    </td>`;
-}
+/* Row markup (rowCtrls and the four row builders) lives in
+ * src/ui/blueprint-rows.js, shared with the guide drawer. */
 
 function deleteRow(btn) {
   const tr = btn.closest('tr');
@@ -987,131 +983,6 @@ function duplicateRow(btn) {
     }
   });
   debouncedSave();
-}
-
-/* ============================================================
-   ROW BUILDERS
-   ============================================================ */
-
-// VOL I — Scene list (Step 11)
-function buildSceneRow(idx) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-      <td class="num">${String(idx).padStart(2, '0')}</td>
-      <td><input type="text" data-key="sl_${idx}_slug" placeholder="INT. LOCATION – DAY"></td>
-      <td><input type="text" data-key="sl_${idx}_pov" placeholder="POV"></td>
-      <td><textarea data-key="sl_${idx}_want" placeholder="Wants..."></textarea></td>
-      <td><textarea data-key="sl_${idx}_conf" placeholder="What blocks it..."></textarea></td>
-      <td>
-        <select data-key="sl_${idx}_charge">
-          <option value="">—</option>
-          <option value="pos">+ → −</option>
-          <option value="neg">− → +</option>
-          <option value="dbl-pos">+ → ++</option>
-          <option value="dbl-neg">− → −−</option>
-        </select>
-      </td>
-      ${rowCtrls()}
-    `;
-  return tr;
-}
-
-// VOL II — Shot list (Step 16)
-function buildShotRow(idx) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-      <td class="num">${String(idx).padStart(2, '0')}</td>
-      <td><input type="text" data-key="shot_${idx}_scene" placeholder="Sc#"></td>
-      <td><textarea data-key="shot_${idx}_desc" placeholder="Action / blocking"></textarea></td>
-      <td>
-        <select data-key="shot_${idx}_lens">
-          <option value="">Lens...</option>
-          <optgroup label="Wide"><option>12mm</option><option>14mm</option><option>16mm</option><option>18mm</option><option>21mm</option><option>24mm</option></optgroup>
-          <optgroup label="Normal"><option>28mm</option><option>32mm</option><option>35mm</option><option>40mm</option><option>50mm</option></optgroup>
-          <optgroup label="Tele"><option>65mm</option><option>75mm</option><option>85mm</option><option>100mm</option><option>135mm</option><option>200mm</option></optgroup>
-          <optgroup label="Anamorphic"><option>32mm Ana</option><option>40mm Ana</option><option>50mm Ana</option><option>75mm Ana</option></optgroup>
-          <optgroup label="Other"><option>Zoom 24-70</option><option>Zoom 70-200</option><option>Macro</option><option>Probe lens</option></optgroup>
-        </select>
-      </td>
-      <td>
-        <select data-key="shot_${idx}_move">
-          <option value="">Move...</option>
-          <option>Static</option><option>Pan</option><option>Tilt</option>
-          <option>Dolly in</option><option>Dolly out</option><option>Dolly with</option>
-          <option>Push in</option><option>Pull out</option>
-          <option>Handheld</option><option>Steadicam</option><option>Gimbal</option>
-          <option>Slider</option><option>Crane / Jib</option><option>Drone / Aerial</option>
-          <option>Whip pan</option><option>Tracking</option><option>Snap zoom</option>
-        </select>
-      </td>
-      <td>
-        <select data-key="shot_${idx}_coverage">
-          <option value="">Coverage...</option>
-          <option>Master</option><option>Establishing</option>
-          <option>EWS — Extreme Wide</option><option>WS — Wide Shot</option>
-          <option>MS — Medium</option><option>MCU — Medium CU</option>
-          <option>CU — Close Up</option><option>ECU — Extreme CU</option>
-          <option>OS — Over Shoulder</option><option>2-Shot</option>
-          <option>POV</option><option>Insert</option><option>Cutaway</option>
-        </select>
-      </td>
-      <td><textarea data-key="shot_${idx}_notes" placeholder="Lighting / notes"></textarea></td>
-      ${rowCtrls()}
-    `;
-  return tr;
-}
-
-// VOL II — Cast list (Step 20)
-function buildCastRow(idx) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-      <td class="num">${String(idx).padStart(2, '0')}</td>
-      <td><input type="text" data-key="cast_${idx}_role" placeholder="Character name"></td>
-      <td><input type="text" data-key="cast_${idx}_actor" placeholder="Actor"></td>
-      <td>
-        <select data-key="cast_${idx}_status">
-          <option value="">Status...</option>
-          <option>Not contacted</option><option>Audition scheduled</option>
-          <option>Auditioned</option><option>Callback</option>
-          <option>Look test</option><option>Chemistry read done</option>
-          <option>Verbally confirmed</option><option>Contract signed</option>
-          <option>Fully locked</option><option>Declined / withdrawn</option>
-        </select>
-      </td>
-      <td><textarea data-key="cast_${idx}_notes" placeholder="Notes, dates, conflicts"></textarea></td>
-      ${rowCtrls()}
-    `;
-  return tr;
-}
-
-// VOL II — Location list (Step 21)
-function buildLocRow(idx) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-      <td class="num">${String(idx).padStart(2, '0')}</td>
-      <td><input type="text" data-key="loc_${idx}_scene" placeholder="Sc#"></td>
-      <td><textarea data-key="loc_${idx}_name" placeholder="Location name + address"></textarea></td>
-      <td>
-        <select data-key="loc_${idx}_type">
-          <option value="">Type...</option>
-          <option>Real (as-is)</option><option>Real (dressed)</option>
-          <option>Built set</option><option>Partial build</option>
-          <option>Hybrid (real + build)</option><option>Studio</option>
-          <option>Green screen</option>
-        </select>
-      </td>
-      <td>
-        <select data-key="loc_${idx}_permit">
-          <option value="">Permit...</option>
-          <option>Not required</option><option>Researching</option>
-          <option>Application pending</option><option>Application filed</option>
-          <option>Approved</option><option>Denied — need backup</option>
-        </select>
-      </td>
-      <td><input type="text" data-key="loc_${idx}_recce" placeholder="DD / MM"></td>
-      ${rowCtrls()}
-    `;
-  return tr;
 }
 
 function wireRow(row) {
@@ -1557,7 +1428,8 @@ function jumpToStep(target) {
    ============================================================ */
 function loadData() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    lastBlob = localStorage.getItem(STORAGE_KEY) || '';
+    const saved = JSON.parse(lastBlob || '{}');
 
     sceneCount = 0; shotCount = 0; castCount = 0; locCount = 0;
     Object.keys(saved).forEach(k => {
@@ -1638,7 +1510,9 @@ function saveData() {
     else data[k] = el.value;
   });
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    lastBlob = JSON.stringify(data);
+    localStorage.setItem(STORAGE_KEY, lastBlob);
+    savePending = false;
     savedAt = Date.now();
     flashStatus('●  saved · just now');
     refreshAll();
@@ -1666,12 +1540,28 @@ function refreshAll() {
    1.77:1 on the light theme. The state is state; the colour for it
    belongs to the sheet that owns the surface. */
 function debouncedSave() {
+  savePending = true;
   clearTimeout(saveTimer);
   if (statusEl) {
     statusEl.textContent = '●  saving...';
     statusEl.classList.add('is-busy');
   }
   saveTimer = setTimeout(saveData, 400);
+}
+
+/* The blob as this page last read or wrote it, and whether an edit
+   here is waiting on the debounce. See watchBlobElsewhere(). */
+let lastBlob = '';
+let savePending = false;
+function watchBlobElsewhere() {
+  const check = () => {
+    if (savePending) return;
+    let now = '';
+    try { now = localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return; }
+    if (now && now !== lastBlob) loadData();
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+  addEventListener('storage', (e) => { if (e.key && e.key.indexOf(STORAGE_KEY) === 0) check(); });
 }
 
 function flashStatus(msg) {
@@ -3436,6 +3326,20 @@ function boot() {
      after step 10. After assignStepIds() for the step ids. They read
      fms_story_v1 and write it only on a click. */
   mountStoryKit('feature');
+
+  /* Plan rev. 3 §5: the three hand-offs (02 → Story logline, 11 →
+     Breakdown, 15 → Lookbook) and a wrap card after each part whose
+     checks are all ticked. Both read; the hand-offs write a model
+     only on a click, with Undo. */
+  mountHandoffs();
+  mountWraps('feature');
+
+  /* The guide drawer on a module page writes this blob too (read-merge-
+     write of the same key). Coming back to this tab, re-read the blob
+     if it changed elsewhere and nothing here is waiting to save — or
+     this page's next save would write its stale fields over the
+     drawer's edit. */
+  watchBlobElsewhere();
 
   setInterval(updateSavedAtTimer, 5000);
 

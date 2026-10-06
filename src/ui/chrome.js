@@ -70,6 +70,10 @@ import '../lib/drive-sync.js';
 /* The no-project banner on every page a stage module lives on. Side
    effect only; see the header of no-project.js for which pages. */
 import './no-project.js';
+/* The guide drawer: a "Blueprint step N" pill on every module page a
+   blueprint step names in its tools (steps.stages.json, reversed at
+   runtime). Side effect only; pages with no mapping get nothing. */
+import './blueprint-drawer.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 

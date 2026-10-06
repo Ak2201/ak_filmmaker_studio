@@ -1,0 +1,70 @@
+/* ============================================================
+   HAND-OFFS AND WRAP CARDS — src/ui/blueprint-handoffs.js and
+   src/ui/blueprint-wrap.js, on the blueprints
+   ------------------------------------------------------------
+   The same card language as the Story kit (story-kit.css): the
+   --sk-card-* surface, tokens for colour, --sk-* for shape.
+   ============================================================ */
+
+.bph-card,
+.bpw-card {
+  max-width: var(--measure-wide);
+  margin: var(--s4) 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+  color: var(--ink-body);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bph-eyebrow,
+.bpw-eyebrow {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+.bph-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.bph-note {
+  flex: 1 1 16rem;
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  min-width: 0;
+}
+
+.bpw-card { margin: var(--s5) 0 var(--s6); }
+.bpw-title {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-lg);
+  color: var(--ink);
+}
+.bpw-lead { margin: 0 0 var(--s3); color: var(--ink-muted); font-size: var(--t-small); }
+.bpw-facts {
+  margin: 0 0 var(--s3);
+  padding-left: var(--s5);
+  color: var(--ink-body);
+}
+.bpw-facts li { margin: var(--s1) 0; }
+.bpw-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+}
+
+@media print {
+  .bph-card, .bpw-card { display: none; }
+}

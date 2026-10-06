@@ -1,0 +1,191 @@
+/* ============================================================
+   THE GUIDE DRAWER — src/ui/blueprint-drawer.js
+   ------------------------------------------------------------
+   A pill in a module page's header and the side drawer it opens
+   (a bottom sheet below 720px). Colours are tokens, shapes are
+   --sk-* (invariants 4 and 7); every travel is multiplied by
+   --motion. The step inside is drawn by src/ui/steps.js and so
+   wears editorial.css / widgets.css like the blueprint does —
+   only the frame around it is styled here.
+   ============================================================ */
+
+.bpd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  max-width: 100%;
+  margin: 0 0 var(--s3);
+  padding: var(--s1) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  text-align: left;
+  line-height: var(--lh-snug);
+  color: var(--brand-deep);
+  background: var(--brand-wash);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-btn-radius, var(--radius-pill));
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.bpd-pill:hover { border-color: var(--brand-deep); }
+.bpd-pill:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--brand-deep); outline-offset: 2px; }
+.bpd-pill-mark { font-size: var(--t-small); line-height: 1; }
+.bpd-pill-text { min-width: 0; }
+/* The header's own flow puts the eyebrow on its line; the pill is a
+   line of its own under it. */
+header.bd-head > .bpd-pill { display: flex; width: fit-content; }
+
+/* ---- the overlay ------------------------------------------ */
+.bpd-is-open { overflow: hidden; }
+
+.bpd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+}
+.bpd-overlay[hidden] { display: none; }
+.bpd-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  animation: bpd-fade var(--speed-slow) var(--ease-out);
+}
+@keyframes bpd-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.bpd {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-raised);
+  color: var(--ink-body);
+  border-left: var(--sk-card-line-w, 1px) solid var(--rule);
+  box-shadow: var(--shadow-modal);
+  animation: bpd-slide var(--speed-slow) var(--ease-out);
+  outline: none;
+}
+@keyframes bpd-slide {
+  from { transform: translateX(calc(24px * var(--motion))); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.bpd-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s4) var(--s4) var(--s3);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.bpd-head-text { flex: 1 1 auto; min-width: 0; }
+.bpd-eyebrow {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--brand-deep);
+}
+.bpd-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.bpd-close { flex: 0 0 auto; }
+
+.bpd-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rule-hair);
+}
+.bpd-tabs[hidden] { display: none; }
+.bpd-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  line-height: var(--lh-snug);
+  padding: var(--s1) var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  background: none;
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-btn-radius, var(--radius-pill));
+  cursor: pointer;
+}
+.bpd-tab[aria-selected="true"] {
+  color: var(--brand-deep);
+  border-color: var(--brand-deep);
+  background: var(--brand-wash);
+  font-weight: 700;
+}
+
+.bpd-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--s4);
+  min-height: 0;
+}
+/* The step drawn by steps.js: its page margins and its header are the
+   blueprint's; inside the drawer the title is already above. */
+/* Doubled for weight: the blueprint's own `.step` rules pad a step
+   for a page, and they are declared in sheets that load later. */
+.bpd .bpd-body .bpd-step.bpd-step { margin: 0; padding: 0; border: 0; max-width: none; }
+.bpd .bpd-step > .step-header { display: none; }
+.bpd-table { overflow-x: auto; max-width: 100%; }
+.bpd-table > table { min-width: 640px; }
+.bpd-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin: var(--s2) 0 var(--s4);
+}
+.bpd-note {
+  margin: var(--s2) 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+
+.bpd-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--rule-hair);
+  padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+}
+.bpd-saved { font-size: var(--t-small); color: var(--ink-muted); }
+
+/* ---- a phone: a bottom sheet ------------------------------ */
+@media (max-width: 720px) {
+  .bpd {
+    top: auto;
+    left: 0;
+    width: 100%;
+    max-height: 88vh;
+    border-left: 0;
+    border-top: var(--sk-card-line-w, 1px) solid var(--rule);
+    border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+    animation-name: bpd-rise;
+  }
+  @keyframes bpd-rise {
+    from { transform: translateY(calc(32px * var(--motion))); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+  }
+}

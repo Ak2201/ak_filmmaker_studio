@@ -874,6 +874,59 @@ console.log('\n--- overlapping saves of one large value: the newest wins ---');
   await ctx.close();
 }
 
+console.log('\n--- leaving the page straight after a large save keeps it ---');
+{
+  /* The editor saves on a delay and flushes on pagehide; an overflowed
+     write is async, and an unloading page does not finish it. */
+  const { ctx, page } = await openPage();
+  await newProject(page, 'Probe Leave');
+  await page.evaluate(async () => {
+    localStorage.setItem('fms_scenes_v1', window.__big('FIRST'));
+    await window.StudioStore.flushStorage();
+  });
+  await page.evaluate(() => { localStorage.setItem('fms_scenes_v1', window.__big('LAST')); location.reload(); });
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  check('14 a large save made in the same moment as a reload survives it',
+    await page.evaluate(() => localStorage.getItem('fms_scenes_v1') === window.__big('LAST')), true);
+  await page.evaluate(async () => { localStorage.setItem('fms_scenes_v1', window.__big('AFTER')); await window.StudioStore.flushStorage(); });
+  await page.reload();
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  check('14 …and the next ordinary save is the one that reads back after it',
+    await page.evaluate(() => localStorage.getItem('fms_scenes_v1') === window.__big('AFTER')), true);
+  check('no page errors', page.__errors, []);
+  await ctx.close();
+}
+
+console.log('\n--- the screenplay editor: text typed just before leaving the page ---');
+{
+  /* Measured before the fix: 4 of 4 losses on the Dragon sample (a
+     2,361-element script, so an overflowed value) when the page was
+     left or reloaded inside the editor's save delay. */
+  const { ctx, page } = await openPage();
+  await page.click('[data-action="sample-project"]');
+  await page.waitForTimeout(2500);
+  let kept = 0;
+  for (let i = 0; i < 2; i++) {
+    await page.goto(`http://localhost:${PORT}/write.html`);
+    await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const ta = page.locator('.wr-text[data-el-field="text"]').nth(5);
+    await ta.click(); await page.keyboard.press('End');
+    const mark = ' LEAVE' + i;
+    await page.keyboard.type(mark, { delay: 10 });
+    await (i ? page.reload() : page.goto(`http://localhost:${PORT}/index.html`));
+    await page.waitForTimeout(1200);
+    await page.goto(`http://localhost:${PORT}/write.html`);
+    await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    if (await page.evaluate((m) => [...document.querySelectorAll('.wr-text[data-el-field="text"]')].some((t) => t.value.includes(m)), mark)) kept++;
+  }
+  check('15 text typed in the editor just before navigating away, and just before a reload, is kept', kept, 2);
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 try { if (backupFile) fs.unlinkSync(backupFile); } catch (e) {}

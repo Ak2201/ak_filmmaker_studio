@@ -128,7 +128,21 @@ function _readTiered(k) {
      Reading it first would serve a stale screenplay to the page that
      just saved one. */
   const big = Overflow.cache().get(k);
-  if (big != null) return big;
+  if (big != null) {
+    /* …unless localStorage holds the FULL value while nothing in this
+       document has written the key. Steady state for a large value is
+       a stub in localStorage; a full value there is newer than the
+       database by construction — the leaving-page copy below, or the
+       small-tier fallback — and the cache was filled from the older
+       database copy at hydration. Serving the cache would hand back
+       the screenplay as it was before the last half-second of typing. */
+    if (!_gen.has(k)) {
+      let ls = null;
+      try { ls = _origGet(k); } catch (e) { /* fall through to the cache */ }
+      if (ls != null && !Overflow.isStub(ls)) return ls;
+    }
+    return big;
+  }
   let v = null;
   try { v = _origGet(k); } catch (e) { return null; }
   if (!Overflow.isStub(v)) return v;
@@ -156,9 +170,31 @@ const _gen = new Map();
 function _bump(k) { const g = (_gen.get(k) || 0) + 1; _gen.set(k, g); return g; }
 const _current = (k, g) => _gen.get(k) === g;
 
+/* LEAVING THE PAGE. An overflowed write is three async hops into
+   IndexedDB, and a document that is unloading does not get them: text
+   typed within the editor's save delay before a reload or a tab close
+   was saved "successfully" and was gone on the next load. While the
+   page is being hidden, every overflowed write still in flight — and
+   any large write made after that moment — ALSO goes to localStorage
+   synchronously as the full value. The read path above prefers that
+   copy on the next load; the next ordinary write re-tiers it. If the
+   small tier is full the copy is skipped, which is no worse than the
+   loss it guards against. */
+const _inflight = new Map();          // key -> latest value an overflowed write still owes
+let _leaving = false;
+function _copyNow(k, v) { try { _origSet(k, v); return true; } catch (e) { return false; } }
+if (typeof window !== 'undefined') {
+  const leave = () => { _leaving = true; for (const [k, v] of _inflight) _copyNow(k, v); };
+  const back = () => { _leaving = false; };
+  window.addEventListener('pagehide', leave);
+  window.addEventListener('pageshow', back);
+  document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? leave() : back()));
+}
+
 function _writeTiered(k, value) {
   const v = String(value);
   _bump(k);
+  _inflight.delete(k);                 // a newer write supersedes whatever was owed
   let existing = null;
   try { existing = _origGet(k); } catch (e) {}
 
@@ -272,6 +308,8 @@ function _fallBackToSmallTier(k, v) {
 
 function _overflowWrite(k, v) {
   const g = _gen.get(k) || _bump(k);
+  _inflight.set(k, v);
+  if (_leaving) _copyNow(k, v);
   /* hydrate() is idempotent and is what opens the database, so this
      doubles as "ensure the tier exists" for the first large write of a
      studio's life. Overflow.put() fills the cache synchronously either
@@ -287,7 +325,7 @@ function _overflowWrite(k, v) {
     _fallBackToSmallTier(k, v);
   }).catch(() => { if (_current(k, g)) _fallBackToSmallTier(k, v); });
   _pending.add(p);
-  p.finally(() => _pending.delete(p));
+  p.finally(() => { _pending.delete(p); if (_current(k, g) && _inflight.get(k) === v) _inflight.delete(k); });
   return true;
 }
 
@@ -302,6 +340,7 @@ export function flushStorage() {
 
 function _removeTiered(k) {
   _bump(k);                                           // an in-flight overflowed write must not resurrect it
+  _inflight.delete(k);
   try { _origRemove(k); } catch (e) { return false; }
   /* TRACKED, because a delete is as asynchronous as a write and
      `flushStorage()` was only ever told about writes. resetAll() duly

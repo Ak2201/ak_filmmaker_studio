@@ -35,6 +35,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { saveOnInput } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import sample from '../data/sample.dragon.json';
@@ -46,7 +47,6 @@ let mode = null;          // 'edit' | 'tag' — null means "decide from the data
 let litBeat = '';         // the beat card whose passages are illuminated
 let flashMark = '';       // a mark to scroll to after the next render
 let AI = null, Panelm = null, aiJob = null, aiStatus = '', aiError = '';
-let saveTimer = 0;
 
 const story = () => Story.loadStory();
 const pct = (x) => Math.round(x * 100) + '%';
@@ -616,7 +616,6 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
     el.value = '';
     importFile(file);
   } else if (f === 'source') {
-    clearTimeout(saveTimer);
     s.source = el.value;
     commit(s);
   } else if (f === 'tension') {
@@ -631,10 +630,12 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
 });
 
 // Typing saves without redrawing — a redraw would steal the caret.
-delegate(document, 'input', 'textarea[data-st-field="source"]', (e, el) => {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { const s = story(); s.source = el.value; Story.saveStory(s); }, 600);
-});
+// saveOnInput() debounces it AND flushes it on pagehide / hidden: the
+// bare 600ms timer this replaced lost the last keystrokes to a reload
+// or a closed tab (UX audit H10).
+saveOnInput('textarea[data-st-field="source"]', (el) => {
+  const s = story(); s.source = el.value; Story.saveStory(s);
+}, 600);
 
 // Drag and drop onto the import card.
 document.addEventListener('dragover', (e) => { if (e.target.closest && e.target.closest('.st-drop')) { e.preventDefault(); e.target.closest('.st-drop').classList.add('is-over'); } });

@@ -30,6 +30,7 @@ import '../styles/edit.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
@@ -319,6 +320,13 @@ delegate(document, 'change', '[data-edit-field]', (e, el) => {
   /* The cut state changes the verdict, the counts and the filter
      membership; a note changes nothing the page derives. */
   if (key === 'cut') render();
+});
+
+/* A note saves as it is typed — on `change` alone, a reload or a
+   closed tab took everything since the field was entered (UX audit
+   H10). The store write only; the re-render stays on `change`. */
+saveOnInput('[data-edit-field]', (el) => {
+  Edit.setSceneEdit(el.getAttribute('data-scene'), { [el.getAttribute('data-edit-field')]: el.value });
 });
 
 delegate(document, 'change', '[data-pickup-done]', (e, el) => {

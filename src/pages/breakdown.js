@@ -537,13 +537,20 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
   render();
 });
 
-// Field edits save on change rather than per keystroke; the scene model
-// is small but re-rendering the page on every character would be silly.
+// Field edits RE-RENDER on change rather than per keystroke — a render
+// on every character would steal the caret. But they SAVE as they are
+// typed: on `change` alone, a reload or a closed tab took everything
+// since the field was entered (UX audit H10). saveOnInput() debounces
+// the store write and flushes it on pagehide / hidden.
+import { saveOnInput } from '../lib/autosave.js';
+const sceneValue = (el) => el.dataset.sceneField === 'eighths'
+  ? Math.max(0, parseInt(el.value, 10) || 0) : el.value;
+saveOnInput('[data-scene-field]', (el) => {
+  Scenes.updateScene(sceneIdOf(el), { [el.dataset.sceneField]: sceneValue(el) });
+});
 delegate(document, 'change', '[data-scene-field]', (e, el) => {
-  const id = sceneIdOf(el);
   const key = el.dataset.sceneField;
-  const value = key === 'eighths' ? Math.max(0, parseInt(el.value, 10) || 0) : el.value;
-  Scenes.updateScene(id, { [key]: value });
+  Scenes.updateScene(sceneIdOf(el), { [key]: sceneValue(el) });
   if (key === 'eighths') render();
 });
 delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
@@ -586,13 +593,20 @@ delegate(document, 'click', '[data-action="song-del"]', (e, el) => {
   render();
 });
 
+const songValue = (el) => {
+  const key = el.dataset.songField;
+  if (key === 'days') return Math.max(0, parseFloat(el.value) || 0);
+  if (key === 'dancers') return Math.max(0, parseInt(el.value, 10) || 0);
+  return el.value;
+};
+// Saved as typed, re-rendered on change — as the scene fields above.
+saveOnInput('[data-song-field]', (el) => {
+  Songs.updateSong(songIdOf(el), { [el.dataset.songField]: songValue(el) });
+});
 delegate(document, 'change', '[data-song-field]', (e, el) => {
   const id = songIdOf(el);
   const key = el.dataset.songField;
-  let value = el.value;
-  if (key === 'days') value = Math.max(0, parseFloat(el.value) || 0);
-  if (key === 'dancers') value = Math.max(0, parseInt(el.value, 10) || 0);
-  Songs.updateSong(id, { [key]: value });
+  Songs.updateSong(id, { [key]: songValue(el) });
   // These three change what the card reports about itself — the day
   // disagreement, the playback block, the header totals.
   if (key === 'days' || key === 'dancers' || key === 'playback') render();

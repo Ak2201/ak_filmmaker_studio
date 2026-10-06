@@ -39,6 +39,7 @@ import '../styles/plan.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
 
@@ -620,10 +621,16 @@ function render() {
 /* Repaint one section. A full render on every keystroke-committing
    change would be correct and unpleasant: it throws away the caret
    and, on a date field, the open picker. */
+let refreshing = false;
 function refreshCalendar(focusDay) {
   const old = document.getElementById('calendar');
-  if (!old) return;
-  old.replaceWith(renderCalendar(Scenes.listScenes()));
+  // Replacing the section blurs whatever was focused inside it, and a
+  // blur can land back here. A node that has already left the tree
+  // cannot be replaced, so the nested call stands down (UX audit H6).
+  if (!old || !old.isConnected || !old.parentNode || refreshing) return;
+  refreshing = true;
+  try { old.replaceWith(renderCalendar(Scenes.listScenes())); }
+  finally { refreshing = false; }
   if (focusDay) {
     const next = document.querySelector('.pl-day[data-day="' + focusDay + '"] .pl-date');
     if (next) next.focus();
@@ -641,13 +648,56 @@ const locNameOf = (el) => el.closest('[data-locname]')?.dataset.locname || '';
 const locKeyOf = (el) => el.closest('[data-loc]')?.dataset.loc || '';
 const mediaIdOf = (el) => el.closest('[data-media]')?.dataset.media || '';
 
-delegate(document, 'change', '[data-day-field="date"]', (e, el) => {
+/* The date field (UX audit H6). A typed date is three segments, and
+   Chromium fires `change` after EVERY segment once the field holds a
+   value — so the old handler, which saved and rebuilt the calendar on
+   each one, replaced the input under the caret, put the caret back on
+   the month and read the next digits as a new month: typing 03152026
+   stored 2024-06-12, and the blur from the replaced node re-entered
+   the rebuild and threw.
+
+   So the input is never rebuilt while it is being typed in. A value is
+   saved only when it is a complete date (a year still being typed
+   reads as 0002, 0020, 0202 on the way to 2026 and is not one), an
+   empty value only once the field is left, and what depends on the
+   dates — each card's weekday and clash note, the "dates set" count —
+   is patched in place around it. */
+const isWholeDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && parseInt(v, 10) >= 1000;
+
+function commitDate(el, leaving) {
   const day = dayOf(el);
   if (!day) return;
-  Locations.setDayDate(day, el.value);
-  // The clash warning and the weekday are both derived from the whole
-  // set of dates, so the section is the smallest honest unit to repaint.
-  refreshCalendar(day);
+  const value = el.value || '';
+  if (value ? !isWholeDate(value) : !leaving) return;
+  const current = Locations.calendarDays(Scenes.listScenes()).find((d) => d.day === day);
+  if (current && (current.date || '') === value) return;
+  Locations.setDayDate(day, value);
+  patchCalendarDates();
+}
+
+function patchCalendarDates() {
+  const days = Locations.calendarDays(Scenes.listScenes());
+  const clashes = new Map();
+  days.filter((d) => d.date).forEach((d) => clashes.set(d.date, (clashes.get(d.date) || 0) + 1));
+  days.forEach((d) => {
+    const when = document.querySelector('.pl-day[data-day="' + d.day + '"] .pl-day-when');
+    if (when) when.textContent = dayWhen(d, clashes);
+  });
+  const dated = days.filter((d) => d.date).length;
+  document.querySelectorAll('.bd-head .bd-stat').forEach((st) => {
+    const label = st.querySelector('span');
+    if (!label || !/^dates? set$/.test(label.textContent)) return;
+    st.querySelector('strong').textContent = String(dated);
+    label.textContent = dated === 1 ? 'date set' : 'dates set';
+  });
+}
+
+delegate(document, 'change', '[data-day-field="date"]', (e, el) => {
+  commitDate(el, document.activeElement !== el);
+});
+delegate(document, 'focusout', '[data-day-field="date"]', (e, el) => commitDate(el, true));
+delegate(document, 'keydown', '[data-day-field="date"]', (e, el) => {
+  if (e.key === 'Enter') commitDate(el, true);
 });
 
 delegate(document, 'click', '[data-action="day-clear"]', (e, el) => {
@@ -673,6 +723,18 @@ delegate(document, 'change', '[data-recce-field]', (e, el) => {
   card.classList.add('perm-' + perm.tone);
   const chip = card.querySelector('.pl-perm-chip');
   if (chip) chip.textContent = perm.label;
+});
+
+/* Typed text saves as it is typed, not only when the field is left —
+   a reload or a closed tab used to take it (UX audit H10). The store
+   write only; the in-place patches stay on `change`. */
+saveOnInput('[data-recce-field]', (el) => {
+  const name = locNameOf(el);
+  if (name) Locations.setRecce(name, { [el.dataset.recceField]: el.value });
+});
+saveOnInput('[data-media-field]', (el) => {
+  const id = mediaIdOf(el);
+  if (id) Locations.updateMedia(id, { [el.dataset.mediaField]: el.value });
 });
 
 delegate(document, 'click', '[data-action="recce-del"]', (e, el) => {

@@ -56,6 +56,7 @@ import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
 import * as Scriptgen from '../lib/scriptgen.js';
+import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 import Script, {
   ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
   revisionColour, typeLabel,
@@ -179,6 +180,7 @@ const app = document.getElementById('app');
    stored: it is not the user's work, and a second copy of "where I
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
+mountWriteExtrasB({ getDoc: () => doc });   // hand-off banner, alternates, Tanglish
 let openDocId = null;
 
 /* Import view state. `importPlan` is what a file parsed to and what

@@ -1,0 +1,179 @@
+/* ============================================================
+   WRITE EXTRAS (B) — the hand-off banner and the dialogue strip
+   ------------------------------------------------------------
+   Tokens only, both themes. Every shape reads a skin variable with
+   the fixed token as its fallback (CLAUDE.md, the --sk-radius trap).
+   Text is --ink / --ink-body / --ink-muted on the card ground, which
+   is the pairing the AA walk already clears in both themes.
+   ============================================================ */
+
+/* ---- the hand-off banner ----------------------------------- */
+.wx-handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s4);
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--sk-card-bg, var(--paper-raised));
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule-hair));
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--brand);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.wx-handoff-copy { flex: 1 1 18rem; min-width: 0; }
+.wx-handoff-msg {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+.wx-handoff-list {
+  margin: var(--s1) 0 0;
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  overflow-wrap: anywhere;
+}
+.wx-handoff-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  min-width: 0;
+}
+#main .wx-handoff-acts .btn { white-space: nowrap; }
+
+/* A quiet button: no border until it is hovered. */
+#main .btn.wx-quiet { border-color: transparent; color: var(--ink-muted); }
+#main .btn.wx-quiet:hover:not(:disabled) { color: var(--paper-raised); }
+
+/* ---- the dialogue strip ------------------------------------
+   Appended LAST in the row (after the row's buttons), with only a
+   column given: grid auto-placement then puts it on its own line
+   under the text, with or without an AI-pass tag above the row. */
+.wr-el > .wx-strip {
+  grid-column: 2;
+  margin-left: var(--wr-indent, 0%);
+  width: var(--wr-measure, 100%);
+  min-width: 0;
+  display: grid;
+  gap: var(--s2);
+}
+.wx-strip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  min-width: 0;
+}
+#main .btn.wx-mini {
+  padding: var(--s1) var(--s2);
+  font-size: var(--t-tiny, var(--t-micro));
+}
+#main .btn.wx-mini[aria-pressed="true"],
+#main .btn.wx-mini[aria-expanded="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.wx-suggest-slot { display: contents; }
+#main .btn.wx-chip {
+  gap: var(--s2);
+  border-style: dashed;
+  border-color: var(--accent-deep);
+  color: var(--accent-deep);
+  text-transform: none;
+  font-family: var(--f-script);
+  letter-spacing: 0;
+}
+#main .btn.wx-chip:hover:not(:disabled) { background: var(--accent-deep); color: var(--paper-raised); }
+.wx-kbd {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: inherit;
+}
+
+/* The Tamil-script preview. Its own face stack: a Tamil line set in
+   the screenplay's Courier stack would fall through to whatever
+   proportional face has the glyphs anyway, and say so less honestly. */
+.wx-tamil {
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.wx-tamil-line {
+  margin: 0;
+  color: var(--ink);
+  font-family: 'Noto Sans Tamil', 'Latha', 'Nirmala UI', var(--f-body);
+  font-size: var(--t-small);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.wx-note {
+  margin: var(--s1) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+}
+
+/* The takes panel. */
+.wx-takes {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.wx-take-now { margin: 0; display: grid; gap: var(--s1); }
+.wx-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wx-take-text {
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.wx-take-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
+.wx-take {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule-hair);
+  min-width: 0;
+}
+.wx-take > .wx-take-text { flex: 1 1 12rem; min-width: 0; }
+.wx-take-acts, .wx-take-foot { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+.wx-take-new {
+  width: 100%;
+  min-height: 0;
+  padding: var(--s1) var(--s2);
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  resize: vertical;
+}
+
+/* A line that carries takes says so, quietly, without its strip open. */
+.wr-el.t-dialogue[data-alts] .wr-text {
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+
+@media (max-width: 719px) {
+  .wr-el > .wx-strip { grid-column: 1 / -1; }
+  .wx-handoff { padding: var(--s3); }
+}
+
+@media print {
+  .wx-handoff, .wx-strip { display: none !important; }
+}

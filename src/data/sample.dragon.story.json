@@ -1,0 +1,715 @@
+{
+  "_about": "THE DRAGON SAMPLE’S STORY, for the Story page (story.html) and the hub’s sample project. A RECONSTRUCTION, like every other piece of the sample’s paperwork: the idea and the logline are the sample blueprint’s own answers, and the step outline is written from the sample’s 36 scene synopses in src/data/sample.dragon.json (plus three steps for beats the scene list skips), one step per scene, each filed under a Save the Cat! beat. None of it is the film’s writing. The synopsis and its marks are GENERATED from the outline by buildSynopsisFromOutline() in src/lib/story.js, so every mark’s offsets are what the app itself produces; edit the steps and regenerate rather than editing `source` by hand. `sceneId` on a step names the hub’s sample scene id (dragon-sc-<number>). A DYNAMIC IMPORT: vite.config.js keeps it out of the shared `data` chunk, the same exception as sample.dragon.script.json.",
+  "story": {
+    "v": 1,
+    "source": "2014, prize day in a school hall of plastic chairs. Young Ragavan collects a medal he genuinely earned while his parents watch from the back. At the school gate the plan is said out loud: engineering, a masters abroad, then marriage. Nobody imagines it needs a shortcut. Ragavan has top marks, a family that has planned his life around them, and has never once had to pretend. He is turned down for a college seat, not on his marks but on the kind of person he appears to be, and the insult is precise. There is almost no debate. He turns the humiliation straight into a new identity instead of an argument. Three years later Ragavan arrives on campus as someone else and treats the front block as his own. In front of an audience he counts his own list of arrears on the board, and makes it a performance.\n\nIn the canteen Ragavan runs the room while his friend Anbu quietly keeps the score Ragavan refuses to keep. On the quad his notoriety is complete: known by everybody, known for nothing. He is summoned for the first time, and the college’s rule is stated to him and not negotiated. In the hostel at night Anbu reads out everything Ragavan still has left to clear. Keerthi asks him the question the whole film will keep asking. At dusk on the quad Keerthi leaves the conversation open, and he lets her. In the exam hall he attempts one paper, badly. Back at the board, the number of arrears has gone up. One night in the hostel he adopts the name for good, and the haircut and the clothes change with it. He orders the certificate he never earned. With the forged degree in hand he talks his way past the HR desk of a corporate firm. On his first day on the floor he is good at the work immediately, which is the problem. Six months on there is a promotion and a better desk. At home one night his father is told a version of events. He carries the big client pitch alone and wins it: a false victory, because the credential is fake and the competence is real. On the beach road at dusk he proposes to Pallavi, and the life he invented is almost complete. On a campus visit he did not plan, his former dean recognises him. The dean gives him an ultimatum instead of an exposure: one term to clear every arrear, or lose it all. He is re-admitted in public, among students who know exactly who he is. Running the office and the college at once, he makes his first slip. The board a third time, and now it carries his own current name. He sits the papers properly for the first time. He asks Anbu for help, and Anbu sets a price. An answer sheet is swapped, and the shortcut comes back in a new form. At the office the engagement date is fixed, in front of everybody. A classmate loses the job offer she had earned, and the reason is Ragavan. The results come out, and they cost somebody who never took a shortcut. Ragavan stops arguing with anybody, himself included.\n\nAt home, without a speech, he decides, and turns down the clean way out he is offered. He confesses in front of three hundred people. He surrenders and is sentenced, and the procedure is shown rather than skipped. On a delivery route in plain daylight he is earning something much smaller, and keeping it.",
+    "sourceName": "Dragon (sample)",
+    "framework": "save_the_cat",
+    "marks": [
+      {
+        "id": "dragon-mk-01",
+        "start": 0,
+        "end": 141,
+        "text": "2014, prize day in a school hall of plastic chairs. Young Ragavan collects a medal he genuinely earned while his parents watch from the back.",
+        "tags": {
+          "save_the_cat": "opening_image"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-01"
+      },
+      {
+        "id": "dragon-mk-02",
+        "start": 142,
+        "end": 270,
+        "text": "At the school gate the plan is said out loud: engineering, a masters abroad, then marriage. Nobody imagines it needs a shortcut.",
+        "tags": {
+          "save_the_cat": "theme_stated"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-02"
+      },
+      {
+        "id": "dragon-mk-03",
+        "start": 271,
+        "end": 376,
+        "text": "Ragavan has top marks, a family that has planned his life around them, and has never once had to pretend.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-03"
+      },
+      {
+        "id": "dragon-mk-04",
+        "start": 377,
+        "end": 502,
+        "text": "He is turned down for a college seat, not on his marks but on the kind of person he appears to be, and the insult is precise.",
+        "tags": {
+          "save_the_cat": "catalyst"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-04"
+      },
+      {
+        "id": "dragon-mk-05",
+        "start": 503,
+        "end": 607,
+        "text": "There is almost no debate. He turns the humiliation straight into a new identity instead of an argument.",
+        "tags": {
+          "save_the_cat": "debate"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-05"
+      },
+      {
+        "id": "dragon-mk-06",
+        "start": 608,
+        "end": 706,
+        "text": "Three years later Ragavan arrives on campus as someone else and treats the front block as his own.",
+        "tags": {
+          "save_the_cat": "break_into_two"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-06"
+      },
+      {
+        "id": "dragon-mk-07",
+        "start": 707,
+        "end": 806,
+        "text": "In front of an audience he counts his own list of arrears on the board, and makes it a performance.",
+        "tags": {
+          "save_the_cat": "break_into_two"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-07"
+      },
+      {
+        "id": "dragon-mk-08",
+        "start": 808,
+        "end": 915,
+        "text": "In the canteen Ragavan runs the room while his friend Anbu quietly keeps the score Ragavan refuses to keep.",
+        "tags": {
+          "save_the_cat": "b_story"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-08"
+      },
+      {
+        "id": "dragon-mk-09",
+        "start": 916,
+        "end": 993,
+        "text": "On the quad his notoriety is complete: known by everybody, known for nothing.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-09"
+      },
+      {
+        "id": "dragon-mk-10",
+        "start": 994,
+        "end": 1088,
+        "text": "He is summoned for the first time, and the college’s rule is stated to him and not negotiated.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-10"
+      },
+      {
+        "id": "dragon-mk-11",
+        "start": 1089,
+        "end": 1170,
+        "text": "In the hostel at night Anbu reads out everything Ragavan still has left to clear.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-11"
+      },
+      {
+        "id": "dragon-mk-12",
+        "start": 1171,
+        "end": 1233,
+        "text": "Keerthi asks him the question the whole film will keep asking.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-12"
+      },
+      {
+        "id": "dragon-mk-13",
+        "start": 1234,
+        "end": 1308,
+        "text": "At dusk on the quad Keerthi leaves the conversation open, and he lets her.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-13"
+      },
+      {
+        "id": "dragon-mk-14",
+        "start": 1309,
+        "end": 1355,
+        "text": "In the exam hall he attempts one paper, badly.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-14"
+      },
+      {
+        "id": "dragon-mk-15",
+        "start": 1356,
+        "end": 1409,
+        "text": "Back at the board, the number of arrears has gone up.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-15"
+      },
+      {
+        "id": "dragon-mk-16",
+        "start": 1410,
+        "end": 1510,
+        "text": "One night in the hostel he adopts the name for good, and the haircut and the clothes change with it.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-16"
+      },
+      {
+        "id": "dragon-mk-17",
+        "start": 1511,
+        "end": 1553,
+        "text": "He orders the certificate he never earned.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-17"
+      },
+      {
+        "id": "dragon-mk-18",
+        "start": 1554,
+        "end": 1639,
+        "text": "With the forged degree in hand he talks his way past the HR desk of a corporate firm.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-18"
+      },
+      {
+        "id": "dragon-mk-19",
+        "start": 1640,
+        "end": 1727,
+        "text": "On his first day on the floor he is good at the work immediately, which is the problem.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-19"
+      },
+      {
+        "id": "dragon-mk-20",
+        "start": 1728,
+        "end": 1781,
+        "text": "Six months on there is a promotion and a better desk.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-20"
+      },
+      {
+        "id": "dragon-mk-21",
+        "start": 1782,
+        "end": 1839,
+        "text": "At home one night his father is told a version of events.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-21"
+      },
+      {
+        "id": "dragon-mk-22",
+        "start": 1840,
+        "end": 1966,
+        "text": "He carries the big client pitch alone and wins it: a false victory, because the credential is fake and the competence is real.",
+        "tags": {
+          "save_the_cat": "midpoint"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-22"
+      },
+      {
+        "id": "dragon-mk-23",
+        "start": 1967,
+        "end": 2061,
+        "text": "On the beach road at dusk he proposes to Pallavi, and the life he invented is almost complete.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-23"
+      },
+      {
+        "id": "dragon-mk-24",
+        "start": 2062,
+        "end": 2128,
+        "text": "On a campus visit he did not plan, his former dean recognises him.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-24"
+      },
+      {
+        "id": "dragon-mk-25",
+        "start": 2129,
+        "end": 2232,
+        "text": "The dean gives him an ultimatum instead of an exposure: one term to clear every arrear, or lose it all.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-25"
+      },
+      {
+        "id": "dragon-mk-26",
+        "start": 2233,
+        "end": 2304,
+        "text": "He is re-admitted in public, among students who know exactly who he is.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-26"
+      },
+      {
+        "id": "dragon-mk-27",
+        "start": 2305,
+        "end": 2373,
+        "text": "Running the office and the college at once, he makes his first slip.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-27"
+      },
+      {
+        "id": "dragon-mk-28",
+        "start": 2374,
+        "end": 2438,
+        "text": "The board a third time, and now it carries his own current name.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-28"
+      },
+      {
+        "id": "dragon-mk-29",
+        "start": 2439,
+        "end": 2486,
+        "text": "He sits the papers properly for the first time.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-29"
+      },
+      {
+        "id": "dragon-mk-30",
+        "start": 2487,
+        "end": 2532,
+        "text": "He asks Anbu for help, and Anbu sets a price.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-30"
+      },
+      {
+        "id": "dragon-mk-31",
+        "start": 2533,
+        "end": 2603,
+        "text": "An answer sheet is swapped, and the shortcut comes back in a new form.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-31"
+      },
+      {
+        "id": "dragon-mk-32",
+        "start": 2604,
+        "end": 2670,
+        "text": "At the office the engagement date is fixed, in front of everybody.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-32"
+      },
+      {
+        "id": "dragon-mk-33",
+        "start": 2671,
+        "end": 2745,
+        "text": "A classmate loses the job offer she had earned, and the reason is Ragavan.",
+        "tags": {
+          "save_the_cat": "all_is_lost"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-33"
+      },
+      {
+        "id": "dragon-mk-34",
+        "start": 2746,
+        "end": 2817,
+        "text": "The results come out, and they cost somebody who never took a shortcut.",
+        "tags": {
+          "save_the_cat": "all_is_lost"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-34"
+      },
+      {
+        "id": "dragon-mk-35",
+        "start": 2818,
+        "end": 2871,
+        "text": "Ragavan stops arguing with anybody, himself included.",
+        "tags": {
+          "save_the_cat": "dark_night"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-35"
+      },
+      {
+        "id": "dragon-mk-36",
+        "start": 2873,
+        "end": 2959,
+        "text": "At home, without a speech, he decides, and turns down the clean way out he is offered.",
+        "tags": {
+          "save_the_cat": "break_into_three"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-36"
+      },
+      {
+        "id": "dragon-mk-37",
+        "start": 2960,
+        "end": 3006,
+        "text": "He confesses in front of three hundred people.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-37"
+      },
+      {
+        "id": "dragon-mk-38",
+        "start": 3007,
+        "end": 3086,
+        "text": "He surrenders and is sentenced, and the procedure is shown rather than skipped.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-38"
+      },
+      {
+        "id": "dragon-mk-39",
+        "start": 3087,
+        "end": 3178,
+        "text": "On a delivery route in plain daylight he is earning something much smaller, and keeping it.",
+        "tags": {
+          "save_the_cat": "final_image"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "dragon-st-39"
+      }
+    ],
+    "tension": {},
+    "logline": "A young man living on a forged degree is recognised by his former dean and given one term to clear the papers he never passed, or lose the job, the engagement and the last person still willing to believe him.",
+    "idea": "What if the life you talked your way into could only be kept by going back and actually earning it?",
+    "outline": [
+      {
+        "id": "dragon-st-01",
+        "beat": "save_the_cat:opening_image",
+        "text": "2014, prize day in a school hall of plastic chairs. Young Ragavan collects a medal he genuinely earned while his parents watch from the back.",
+        "sceneId": "dragon-sc-1"
+      },
+      {
+        "id": "dragon-st-02",
+        "beat": "save_the_cat:theme_stated",
+        "text": "At the school gate the plan is said out loud: engineering, a masters abroad, then marriage. Nobody imagines it needs a shortcut.",
+        "sceneId": "dragon-sc-2"
+      },
+      {
+        "id": "dragon-st-03",
+        "beat": "save_the_cat:setup",
+        "text": "Ragavan has top marks, a family that has planned his life around them, and has never once had to pretend."
+      },
+      {
+        "id": "dragon-st-04",
+        "beat": "save_the_cat:catalyst",
+        "text": "He is turned down for a college seat, not on his marks but on the kind of person he appears to be, and the insult is precise."
+      },
+      {
+        "id": "dragon-st-05",
+        "beat": "save_the_cat:debate",
+        "text": "There is almost no debate. He turns the humiliation straight into a new identity instead of an argument."
+      },
+      {
+        "id": "dragon-st-06",
+        "beat": "save_the_cat:break_into_two",
+        "text": "Three years later Ragavan arrives on campus as someone else and treats the front block as his own.",
+        "sceneId": "dragon-sc-3"
+      },
+      {
+        "id": "dragon-st-07",
+        "beat": "save_the_cat:break_into_two",
+        "text": "In front of an audience he counts his own list of arrears on the board, and makes it a performance.",
+        "sceneId": "dragon-sc-4"
+      },
+      {
+        "id": "dragon-st-08",
+        "beat": "save_the_cat:b_story",
+        "text": "In the canteen Ragavan runs the room while his friend Anbu quietly keeps the score Ragavan refuses to keep.",
+        "sceneId": "dragon-sc-5"
+      },
+      {
+        "id": "dragon-st-09",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "On the quad his notoriety is complete: known by everybody, known for nothing.",
+        "sceneId": "dragon-sc-6"
+      },
+      {
+        "id": "dragon-st-10",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "He is summoned for the first time, and the college’s rule is stated to him and not negotiated.",
+        "sceneId": "dragon-sc-7"
+      },
+      {
+        "id": "dragon-st-11",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "In the hostel at night Anbu reads out everything Ragavan still has left to clear.",
+        "sceneId": "dragon-sc-8"
+      },
+      {
+        "id": "dragon-st-12",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "Keerthi asks him the question the whole film will keep asking.",
+        "sceneId": "dragon-sc-9"
+      },
+      {
+        "id": "dragon-st-13",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "At dusk on the quad Keerthi leaves the conversation open, and he lets her.",
+        "sceneId": "dragon-sc-10"
+      },
+      {
+        "id": "dragon-st-14",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "In the exam hall he attempts one paper, badly.",
+        "sceneId": "dragon-sc-11"
+      },
+      {
+        "id": "dragon-st-15",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "Back at the board, the number of arrears has gone up.",
+        "sceneId": "dragon-sc-12"
+      },
+      {
+        "id": "dragon-st-16",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "One night in the hostel he adopts the name for good, and the haircut and the clothes change with it.",
+        "sceneId": "dragon-sc-13"
+      },
+      {
+        "id": "dragon-st-17",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "He orders the certificate he never earned.",
+        "sceneId": "dragon-sc-14"
+      },
+      {
+        "id": "dragon-st-18",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "With the forged degree in hand he talks his way past the HR desk of a corporate firm.",
+        "sceneId": "dragon-sc-15"
+      },
+      {
+        "id": "dragon-st-19",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "On his first day on the floor he is good at the work immediately, which is the problem.",
+        "sceneId": "dragon-sc-16"
+      },
+      {
+        "id": "dragon-st-20",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "Six months on there is a promotion and a better desk.",
+        "sceneId": "dragon-sc-17"
+      },
+      {
+        "id": "dragon-st-21",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "At home one night his father is told a version of events.",
+        "sceneId": "dragon-sc-18"
+      },
+      {
+        "id": "dragon-st-22",
+        "beat": "save_the_cat:midpoint",
+        "text": "He carries the big client pitch alone and wins it: a false victory, because the credential is fake and the competence is real.",
+        "sceneId": "dragon-sc-19"
+      },
+      {
+        "id": "dragon-st-23",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "On the beach road at dusk he proposes to Pallavi, and the life he invented is almost complete.",
+        "sceneId": "dragon-sc-20"
+      },
+      {
+        "id": "dragon-st-24",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "On a campus visit he did not plan, his former dean recognises him.",
+        "sceneId": "dragon-sc-21"
+      },
+      {
+        "id": "dragon-st-25",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "The dean gives him an ultimatum instead of an exposure: one term to clear every arrear, or lose it all.",
+        "sceneId": "dragon-sc-22"
+      },
+      {
+        "id": "dragon-st-26",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "He is re-admitted in public, among students who know exactly who he is.",
+        "sceneId": "dragon-sc-23"
+      },
+      {
+        "id": "dragon-st-27",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "Running the office and the college at once, he makes his first slip.",
+        "sceneId": "dragon-sc-24"
+      },
+      {
+        "id": "dragon-st-28",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "The board a third time, and now it carries his own current name.",
+        "sceneId": "dragon-sc-25"
+      },
+      {
+        "id": "dragon-st-29",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "He sits the papers properly for the first time.",
+        "sceneId": "dragon-sc-26"
+      },
+      {
+        "id": "dragon-st-30",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "He asks Anbu for help, and Anbu sets a price.",
+        "sceneId": "dragon-sc-27"
+      },
+      {
+        "id": "dragon-st-31",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "An answer sheet is swapped, and the shortcut comes back in a new form.",
+        "sceneId": "dragon-sc-28"
+      },
+      {
+        "id": "dragon-st-32",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "At the office the engagement date is fixed, in front of everybody.",
+        "sceneId": "dragon-sc-29"
+      },
+      {
+        "id": "dragon-st-33",
+        "beat": "save_the_cat:all_is_lost",
+        "text": "A classmate loses the job offer she had earned, and the reason is Ragavan.",
+        "sceneId": "dragon-sc-30"
+      },
+      {
+        "id": "dragon-st-34",
+        "beat": "save_the_cat:all_is_lost",
+        "text": "The results come out, and they cost somebody who never took a shortcut.",
+        "sceneId": "dragon-sc-31"
+      },
+      {
+        "id": "dragon-st-35",
+        "beat": "save_the_cat:dark_night",
+        "text": "Ragavan stops arguing with anybody, himself included.",
+        "sceneId": "dragon-sc-32"
+      },
+      {
+        "id": "dragon-st-36",
+        "beat": "save_the_cat:break_into_three",
+        "text": "At home, without a speech, he decides, and turns down the clean way out he is offered.",
+        "sceneId": "dragon-sc-33"
+      },
+      {
+        "id": "dragon-st-37",
+        "beat": "save_the_cat:finale",
+        "text": "He confesses in front of three hundred people.",
+        "sceneId": "dragon-sc-34"
+      },
+      {
+        "id": "dragon-st-38",
+        "beat": "save_the_cat:finale",
+        "text": "He surrenders and is sentenced, and the procedure is shown rather than skipped.",
+        "sceneId": "dragon-sc-35"
+      },
+      {
+        "id": "dragon-st-39",
+        "beat": "save_the_cat:final_image",
+        "text": "On a delivery route in plain daylight he is earning something much smaller, and keeping it.",
+        "sceneId": "dragon-sc-36"
+      }
+    ]
+  }
+}

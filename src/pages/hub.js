@@ -1989,11 +1989,17 @@ async function openSampleProject() {
   try {
     pages = (await import('../data/sample.dragon.script.json')).default.elements || [];
   } catch (e) { /* no pages; every other model below still seeds */ }
+  // The sample's story (idea, logline, step outline, synopsis): the same
+  // lazy shape, and its steps name the sample's scene ids.
+  let story = null;
+  try { story = (await import('../data/sample.dragon.story.json')).default.story; } catch (e) { /* no story */ }
 
   const project = Store.createProject({ title: SAMPLE_TITLE, format: 'feature' });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
   const scenes   = sampleScenes();
+  // Each scene takes the beat of the outline step written for it.
+  if (story) for (const st of story.outline) { const sc = scenes.find((x) => x.id === st.sceneId); if (sc && !sc.beatId) sc.beatId = st.beat; }
   const contacts = sampleContacts();
   try {
     localStorage.setItem(FEATURE_KEY,  JSON.stringify(sampleBlueprint(scenes)));
@@ -2005,6 +2011,7 @@ async function openSampleProject() {
     localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots()));
     localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript(pages)));
     localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc()));
+    if (story) localStorage.setItem('fms_story_v1', JSON.stringify(story));
   } catch (e) { /* private mode — the project itself still exists */ }
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {

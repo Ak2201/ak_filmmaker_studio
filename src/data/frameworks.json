@@ -1,5 +1,5 @@
 {
-  "_about": "STRUCTURAL BEAT FRAMEWORKS for the Story stage (story.html). Data, not code, for invariant 2: the beat matrix, the framework switcher, the pacing heatmap's expected curve and the AI beat-extraction prompt all read this one file, so a beat renamed here is renamed everywhere at once.\n\nEach beat carries `at` - where it conventionally falls, as a fraction of the story (0 = first page, 1 = last) - and `tension`, the conventional dramatic pressure there on a 1-10 scale. `at` is what lets a highlight survive a framework switch: a passage tagged as the Midpoint in Save the Cat! has a position in the synopsis, and the nearest beat in the Story Circle is found by that position rather than by name. `tension` is the dashed reference line the heatmap draws the story's own curve against. Both are conventions, not rules; the heatmap flags a departure, it does not forbid one.\n\nBEAT IDS ARE STORAGE KEYS. A tagged highlight stores `<framework id>:<beat id>`. Renaming an id orphans every highlight tagged with it - change the label, never the id.",
+  "_about": "STRUCTURAL BEAT FRAMEWORKS for the Story stage (story.html). Data, not code, for invariant 2: the beat matrix, the framework switcher, the pacing heatmap's expected curve and the AI beat-extraction prompt all read this one file, so a beat renamed here is renamed everywhere at once.\n\nEach beat carries `at` - where it conventionally falls, as a fraction of the story (0 = first page, 1 = last) - and `tension`, the conventional dramatic pressure there on a 1-10 scale. `at` is what lets a highlight survive a framework switch: a passage tagged as the Midpoint in Save the Cat! has a position in the synopsis, and the nearest beat in the Story Circle is found by that position rather than by name. `tension` is the dashed reference line the heatmap draws the story's own curve against. Both are conventions, not rules; the heatmap flags a departure, it does not forbid one.\n\nBEAT IDS ARE STORAGE KEYS. A tagged highlight stores `<framework id>:<beat id>`. Renaming an id orphans every highlight tagged with it - change the label, never the id.\n\nEVERY FORMAT IS OFFERED (plan revision 3, §1a). `suits` is the one line the Story page’s format picker prints under each name. `pacing.regions` is the framework’s own act split, in the shape of the top-level `pacing.regions` (which stays the fallback): the heatmap’s act strip and the pacing flags’ region names read it, and beat-outline.js reads the act digit in each label for an act’s conventional share of the pages. So a region label must carry its act number.",
   "default": "three_act",
   "frameworks": [
     {
@@ -7,6 +7,7 @@
       "label": "Three-Act Structure",
       "short": "3-Act",
       "blurb": "Setup, confrontation, resolution - the frame most Indian features are cut to.",
+      "suits": "Any feature. The frame most Indian features are cut to, and the easiest to argue about in a room.",
       "beats": [
         { "id": "setup", "label": "Setup", "at": 0.05, "tension": 2, "act": 1, "prompt": "The ordinary world, the protagonist and what they want before anything happens to them." },
         { "id": "inciting", "label": "Inciting Incident", "at": 0.12, "tension": 5, "act": 1, "prompt": "The event that knocks the ordinary world off balance." },
@@ -15,15 +16,22 @@
         { "id": "plot_point_2", "label": "Plot Point 2", "at": 0.75, "tension": 8, "act": 2, "prompt": "The lowest point, or the discovery that sends the story into its final act." },
         { "id": "climax", "label": "Climax", "at": 0.9, "tension": 10, "act": 3, "prompt": "The central conflict is confronted and decided." },
         { "id": "resolution", "label": "Resolution", "at": 0.98, "tension": 3, "act": 3, "prompt": "The new normal, and what the journey cost." }
-      ]
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
     },
     {
       "id": "save_the_cat",
       "label": "Save the Cat!",
       "short": "Save the Cat!",
       "blurb": "Blake Snyder's fifteen beats - precise about where each turn lands.",
+      "suits": "A feature you want pinned beat by beat. Matches the blueprint’s step 08, so your fifteen answers appear beside each beat.",
       "beats": [
-        { "id": "opening_image", "label": "Opening Image", "at": 0.0, "tension": 2, "act": 1, "prompt": "A snapshot of the protagonist's world before the story changes it." },
+        { "id": "opening_image", "label": "Opening Image", "at": 0, "tension": 2, "act": 1, "prompt": "A snapshot of the protagonist's world before the story changes it." },
         { "id": "theme_stated", "label": "Theme Stated", "at": 0.05, "tension": 2, "act": 1, "prompt": "Someone states, usually to the protagonist, what the story is really about." },
         { "id": "setup", "label": "Set-Up", "at": 0.06, "tension": 3, "act": 1, "prompt": "The world, the cast and the flaws that need fixing." },
         { "id": "catalyst", "label": "Catalyst", "at": 0.1, "tension": 5, "act": 1, "prompt": "The life-changing event - the telegram, the knock at the door." },
@@ -37,14 +45,21 @@
         { "id": "dark_night", "label": "Dark Night of the Soul", "at": 0.78, "tension": 6, "act": 2, "prompt": "The protagonist sits with the loss before finding the way through." },
         { "id": "break_into_three", "label": "Break into Three", "at": 0.8, "tension": 8, "act": 3, "prompt": "The A and B stories meet and the solution appears." },
         { "id": "finale", "label": "Finale", "at": 0.9, "tension": 10, "act": 3, "prompt": "The protagonist applies the lesson and defeats the problem." },
-        { "id": "final_image", "label": "Final Image", "at": 1.0, "tension": 2, "act": 3, "prompt": "The mirror of the Opening Image - proof that change has happened." }
-      ]
+        { "id": "final_image", "label": "Final Image", "at": 1, "tension": 2, "act": 3, "prompt": "The mirror of the Opening Image - proof that change has happened." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
     },
     {
       "id": "story_circle",
-      "label": "Hero's Journey / Story Circle",
+      "label": "Story Circle (Dan Harmon)",
       "short": "Story Circle",
       "blurb": "Dan Harmon's eight-step distillation of the Hero's Journey.",
+      "suits": "A character who must change. Eight steps, compact enough for a short, an episode or a feature.",
       "beats": [
         { "id": "you", "label": "1. You", "at": 0.02, "tension": 2, "act": 1, "prompt": "A character in a zone of comfort." },
         { "id": "need", "label": "2. Need", "at": 0.12, "tension": 4, "act": 1, "prompt": "But they want something." },
@@ -54,7 +69,186 @@
         { "id": "take", "label": "6. Take", "at": 0.65, "tension": 9, "act": 2, "prompt": "They pay a heavy price for it." },
         { "id": "return", "label": "7. Return", "at": 0.85, "tension": 8, "act": 3, "prompt": "They return to their familiar situation." },
         { "id": "change", "label": "8. Change", "at": 0.98, "tension": 3, "act": 3, "prompt": "Having changed." }
-      ]
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
+    },
+    {
+      "id": "heros_journey",
+      "label": "Hero’s Journey (Vogler)",
+      "short": "Hero’s Journey",
+      "blurb": "Christopher Vogler’s twelve stages of the hero’s journey, after Joseph Campbell.",
+      "suits": "Quests, journeys and mythic adventure: a hero who leaves home, is tested, and comes back changed.",
+      "beats": [
+        { "id": "ordinary_world", "label": "Ordinary World", "at": 0.02, "tension": 2, "act": 1, "prompt": "The hero at home, before the adventure: what is normal, and what is missing." },
+        { "id": "call", "label": "Call to Adventure", "at": 0.1, "tension": 4, "act": 1, "prompt": "A problem, a challenge or a message that cannot be ignored." },
+        { "id": "refusal", "label": "Refusal of the Call", "at": 0.14, "tension": 4, "act": 1, "prompt": "The hero hesitates or says no; fear shows what is at stake." },
+        { "id": "mentor", "label": "Meeting the Mentor", "at": 0.18, "tension": 3, "act": 1, "prompt": "Someone gives advice, training, a gift or the confidence to go." },
+        { "id": "threshold", "label": "Crossing the First Threshold", "at": 0.25, "tension": 6, "act": 1, "prompt": "The hero commits and enters the special world; there is no easy way back." },
+        { "id": "tests", "label": "Tests, Allies and Enemies", "at": 0.35, "tension": 5, "act": 2, "prompt": "The rules of the new world are learned; friends and enemies are made." },
+        { "id": "approach", "label": "Approach to the Inmost Cave", "at": 0.45, "tension": 6, "act": 2, "prompt": "The hero prepares for the central danger and moves toward it." },
+        { "id": "ordeal", "label": "The Ordeal", "at": 0.5, "tension": 9, "act": 2, "prompt": "The biggest test so far: a brush with death, literal or emotional." },
+        { "id": "reward", "label": "Reward (Seizing the Sword)", "at": 0.6, "tension": 6, "act": 2, "prompt": "Having survived, the hero takes the prize: an object, knowledge or reconciliation." },
+        { "id": "road_back", "label": "The Road Back", "at": 0.75, "tension": 7, "act": 3, "prompt": "The hero turns for home, and the consequences of the Ordeal give chase." },
+        { "id": "resurrection", "label": "The Resurrection", "at": 0.9, "tension": 10, "act": 3, "prompt": "A final, most dangerous test, where the hero must use everything learned." },
+        { "id": "elixir", "label": "Return with the Elixir", "at": 0.98, "tension": 3, "act": 3, "prompt": "Home again, carrying something that changes the ordinary world." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
+    },
+    {
+      "id": "seven_point",
+      "label": "Seven-Point Structure",
+      "short": "Seven-Point",
+      "blurb": "Dan Wells’s seven points: design the ending first, then the turns that get you there.",
+      "suits": "Plot-driven thrillers and mysteries, and anyone who knows the ending and needs the road to it.",
+      "beats": [
+        { "id": "hook", "label": "Hook", "at": 0.02, "tension": 2, "act": 1, "prompt": "Where the character starts: the opposite state of the Resolution." },
+        { "id": "plot_turn_1", "label": "Plot Turn 1", "at": 0.2, "tension": 5, "act": 1, "prompt": "The event that sets the story in motion and moves the character toward the conflict." },
+        { "id": "pinch_1", "label": "Pinch Point 1", "at": 0.37, "tension": 6, "act": 2, "prompt": "Pressure is applied: the antagonist shows strength and forces the character to act." },
+        { "id": "midpoint", "label": "Midpoint", "at": 0.5, "tension": 7, "act": 2, "prompt": "The character moves from reacting to acting; they decide to take the fight on." },
+        { "id": "pinch_2", "label": "Pinch Point 2", "at": 0.62, "tension": 8, "act": 2, "prompt": "More pressure: the plan fails, something is lost, and it looks hopeless." },
+        { "id": "plot_turn_2", "label": "Plot Turn 2", "at": 0.75, "tension": 8, "act": 3, "prompt": "The character finds the last piece they need to win." },
+        { "id": "resolution", "label": "Resolution", "at": 0.95, "tension": 9, "act": 3, "prompt": "The climax is won or lost, and the character ends in the opposite state from the Hook." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
+    },
+    {
+      "id": "freytag",
+      "label": "Freytag’s Pyramid / Five-Act",
+      "short": "Freytag",
+      "blurb": "Gustav Freytag’s five-part arc of classical drama, peaking at the centre.",
+      "suits": "Tragedy and classical drama, and stories that rise to a turning point and then fall away from it.",
+      "beats": [
+        { "id": "exposition", "label": "Exposition", "at": 0.05, "tension": 2, "act": 1, "prompt": "Who, where and when: the situation before the conflict starts." },
+        { "id": "rising_action", "label": "Rising Action", "at": 0.3, "tension": 5, "act": 2, "prompt": "Complications build, one on another, toward the turning point." },
+        { "id": "climax", "label": "Climax", "at": 0.5, "tension": 9, "act": 3, "prompt": "The turning point: the hero’s fortunes change for better or worse." },
+        { "id": "falling_action", "label": "Falling Action", "at": 0.75, "tension": 6, "act": 4, "prompt": "The consequences of the turn play out; the end is in sight." },
+        { "id": "denouement", "label": "Dénouement", "at": 0.95, "tension": 3, "act": 5, "prompt": "The catastrophe or the resolution, and the loose ends tied up." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.2, "label": "Act 1" },
+        { "from": 0.2, "to": 0.4, "label": "Act 2" },
+        { "from": 0.4, "to": 0.6, "label": "Act 3" },
+        { "from": 0.6, "to": 0.8, "label": "Act 4" },
+        { "from": 0.8, "to": 1, "label": "Act 5" }
+      ] }
+    },
+    {
+      "id": "fichtean",
+      "label": "Fichtean Curve",
+      "short": "Fichtean",
+      "blurb": "Crisis after crisis: the story starts in trouble and every scene raises it, with only a short fall after the climax.",
+      "suits": "Fast thrillers and survival stories that drop straight into trouble and never let up.",
+      "beats": [
+        { "id": "inciting", "label": "Inciting Incident", "at": 0.03, "tension": 5, "act": 1, "prompt": "Start in trouble: the problem arrives in the first pages, with little set-up." },
+        { "id": "crisis_1", "label": "First Crisis", "at": 0.2, "tension": 6, "act": 1, "prompt": "The first obstacle; the hero copes, and backstory is slipped in along the way." },
+        { "id": "crisis_2", "label": "Second Crisis", "at": 0.4, "tension": 7, "act": 1, "prompt": "A bigger problem, and the cost of failing goes up." },
+        { "id": "crisis_3", "label": "Third Crisis", "at": 0.6, "tension": 8, "act": 1, "prompt": "The worst yet; the old ways of coping stop working." },
+        { "id": "climax", "label": "Climax", "at": 0.85, "tension": 10, "act": 2, "prompt": "The peak: the final crisis is faced head on." },
+        { "id": "falling_action", "label": "Falling Action", "at": 0.96, "tension": 4, "act": 3, "prompt": "A short release after the climax, and what is left." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.75, "label": "Act 1 · Rising" },
+        { "from": 0.75, "to": 0.92, "label": "Act 2 · Climax" },
+        { "from": 0.92, "to": 1, "label": "Act 3 · Fall" }
+      ] }
+    },
+    {
+      "id": "kishotenketsu",
+      "label": "Kishōtenketsu",
+      "short": "Kishōtenketsu",
+      "blurb": "Four parts from Chinese and Japanese storytelling: introduction, development, twist, reconciliation. No central conflict needed.",
+      "suits": "Quiet, observational stories and shorts, where meaning comes from a change in view rather than a fight.",
+      "beats": [
+        { "id": "ki", "label": "Ki · Introduction", "at": 0.1, "tension": 2, "act": 1, "prompt": "The characters and their world, plainly introduced." },
+        { "id": "sho", "label": "Shō · Development", "at": 0.35, "tension": 4, "act": 2, "prompt": "The world is developed further; nothing major changes yet." },
+        { "id": "ten", "label": "Ten · Twist", "at": 0.65, "tension": 7, "act": 3, "prompt": "An unexpected turn, often something seemingly unrelated, that changes how we see the first half." },
+        { "id": "ketsu", "label": "Ketsu · Reconciliation", "at": 0.9, "tension": 4, "act": 4, "prompt": "The parts are brought together, and the twist and the world make a new sense." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1 · Ki" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2 · Shō" },
+        { "from": 0.5, "to": 0.75, "label": "Act 3 · Ten" },
+        { "from": 0.75, "to": 1, "label": "Act 4 · Ketsu" }
+      ] }
+    },
+    {
+      "id": "sequence",
+      "label": "Eight-Sequence",
+      "short": "Eight-Sequence",
+      "blurb": "The film-school sequence approach (Frank Daniel, Paul Gulino): eight sequences of ten to fifteen pages, each with its own tension.",
+      "suits": "Long features that sag in the middle. Each sequence gets its own goal, so Act Two becomes four smaller films.",
+      "beats": [
+        { "id": "seq_a", "label": "A · Status Quo and Inciting Incident", "at": 0.06, "tension": 3, "act": 1, "prompt": "The world and the character, until the event that upsets it." },
+        { "id": "seq_b", "label": "B · Predicament and Lock-in", "at": 0.19, "tension": 5, "act": 1, "prompt": "The character tries to deal with the problem and is locked into the story." },
+        { "id": "seq_c", "label": "C · First Obstacle", "at": 0.31, "tension": 5, "act": 2, "prompt": "The first real attempt at the goal, and the first proper obstacle." },
+        { "id": "seq_d", "label": "D · First Culmination", "at": 0.44, "tension": 7, "act": 2, "prompt": "The midpoint: a high or low that raises the stakes." },
+        { "id": "seq_e", "label": "E · Subplot and Rising Action", "at": 0.56, "tension": 6, "act": 2, "prompt": "The subplot comes forward while the main tension keeps rising." },
+        { "id": "seq_f", "label": "F · Main Culmination", "at": 0.69, "tension": 8, "act": 2, "prompt": "The end of Act Two: the main tension is resolved, often badly." },
+        { "id": "seq_g", "label": "G · New Tension and Twist", "at": 0.81, "tension": 8, "act": 3, "prompt": "A new tension, and a twist that sends the story into its last movement." },
+        { "id": "seq_h", "label": "H · Climax and Resolution", "at": 0.94, "tension": 9, "act": 3, "prompt": "The final confrontation, and what is left afterwards." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.5, "label": "Act 2A" },
+        { "from": 0.5, "to": 0.75, "label": "Act 2B" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
+    },
+    {
+      "id": "interval",
+      "label": "Two-Half / Interval Structure",
+      "short": "Interval",
+      "blurb": "The shape an Indian feature is built in: a first half that builds to the interval block, and a second half that turns it.",
+      "suits": "Tamil and Indian features with an interval. The interval bang is a beat of its own, and the second half opens with a turn.",
+      "beats": [
+        { "id": "opening", "label": "Opening / The World", "at": 0.02, "tension": 2, "act": 1, "prompt": "Where and when we are, and the mood of the film, before the hero arrives." },
+        { "id": "hero_intro", "label": "Hero Introduction", "at": 0.08, "tension": 4, "act": 1, "prompt": "The hero’s entry: who they are, what they want, and why we will follow them." },
+        { "id": "conflict", "label": "Conflict Sets In", "at": 0.2, "tension": 5, "act": 1, "prompt": "The problem, the antagonist or the wound that the film will be about." },
+        { "id": "first_half_build", "label": "First-Half Build", "at": 0.35, "tension": 6, "act": 1, "prompt": "Stakes rise, relationships form, the songs and set pieces build toward the interval." },
+        { "id": "interval_block", "label": "Interval Block / Bang", "at": 0.49, "tension": 9, "act": 1, "prompt": "The twist or confrontation that sends the audience out wanting more." },
+        { "id": "second_half_turn", "label": "Second-Half Turn", "at": 0.58, "tension": 6, "act": 2, "prompt": "The second half opens on the new situation the interval created." },
+        { "id": "revelation", "label": "Flashback / Revelation (optional)", "at": 0.68, "tension": 5, "act": 2, "prompt": "The past that explains the present: a flashback or a revelation that reframes the hero." },
+        { "id": "pre_climax", "label": "Pre-Climax", "at": 0.82, "tension": 8, "act": 2, "prompt": "Everything is set against the hero; the lowest point before the final push." },
+        { "id": "climax", "label": "Climax / Resolution", "at": 0.95, "tension": 10, "act": 2, "prompt": "The final confrontation, and the world the hero leaves behind." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.5, "label": "Act 1 · First half" },
+        { "from": 0.5, "to": 1, "label": "Act 2 · Second half" }
+      ] }
+    },
+    {
+      "id": "short_five",
+      "label": "Short Film Five-Beat",
+      "short": "Short Five-Beat",
+      "blurb": "The short-film blueprint’s five beats (step 04): Setup, Disturbance, Escalation, Turn, Image.",
+      "suits": "Short films. Five beats, each earning its place, ending on an image that holds the meaning.",
+      "beats": [
+        { "id": "setup", "label": "Setup", "at": 0.06, "tension": 2, "act": 1, "prompt": "Establish the protagonist, the world, the normal — in no more than 15% of the runtime." },
+        { "id": "disturbance", "label": "Disturbance", "at": 0.18, "tension": 5, "act": 1, "prompt": "The single event that breaks the normal and forces action: the “now what?” moment." },
+        { "id": "escalation", "label": "Escalation", "at": 0.45, "tension": 7, "act": 2, "prompt": "The pursuit of the want. Obstacles compound, the protagonist tries and fails, tension rises — about half the film." },
+        { "id": "turn", "label": "Turn", "at": 0.8, "tension": 9, "act": 3, "prompt": "The moment everything flips: they get the want, or realise they wanted something else." },
+        { "id": "image", "label": "Image", "at": 0.96, "tension": 3, "act": 3, "prompt": "The final frame: not a wrap-up but a single image that holds everything the short was about." }
+      ],
+      "pacing": { "regions": [
+        { "from": 0, "to": 0.25, "label": "Act 1" },
+        { "from": 0.25, "to": 0.75, "label": "Act 2" },
+        { "from": 0.75, "to": 1, "label": "Act 3" }
+      ] }
     }
   ],
   "pacing": {
@@ -65,10 +259,10 @@
     "actShareTolerance": 0.08,
     "_actShareTolerance": "The write page's Outline tab: how far an act's share of the pages linked to a beat may sit from its conventional share (the regions below, summed per act number) before the coverage meter calls it over or under. 0.08 = eight percentage points.",
     "regions": [
-      { "from": 0.0, "to": 0.25, "label": "Act 1" },
+      { "from": 0, "to": 0.25, "label": "Act 1" },
       { "from": 0.25, "to": 0.5, "label": "Act 2A" },
       { "from": 0.5, "to": 0.75, "label": "Act 2B" },
-      { "from": 0.75, "to": 1.0, "label": "Act 3" }
+      { "from": 0.75, "to": 1, "label": "Act 3" }
     ]
   }
 }

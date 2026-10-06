@@ -45,7 +45,13 @@ eq(B.resolveBeat('midpoint', 'three_act'), null, 'a bare beat id is not a link')
 eq(B.actShares(), { 1: 0.25, 2: 0.5, 3: 0.25 }, 'act shares summed from pacing.regions');
 for (const fw of S.frameworks()) {
   const acts = B.actsOf(fw.id);
-  eq(acts.map((a) => a.act), [1, 2, 3], `${fw.id}: three acts`);
+  // Most formats are three acts; Freytag is five, Kishōtenketsu four,
+  // the Interval structure two. The acts must be exactly the ones the
+  // framework's own pacing regions name, and their shares must sum to 1.
+  const regionActs = [...new Set(S.regionsOf(fw.id).map((r) => Number(/(\d+)/.exec(r.label)[1])))];
+  eq(acts.map((a) => a.act), regionActs, `${fw.id}: acts match its pacing regions`);
+  const shareSum = Object.values(B.actShares(fw.id)).reduce((t, x) => t + x, 0);
+  ok(Math.abs(shareSum - 1) < 1e-9, `${fw.id}: act shares sum to 1`);
   eq(acts.reduce((n, a) => n + a.beats.length, 0), fw.beats.length, `${fw.id}: every beat in exactly one act`);
   eq(acts.flatMap((a) => a.beats.map((b) => b.id)), fw.beats.map((b) => b.id), `${fw.id}: beats keep framework order`);
 }

@@ -1,18 +1,26 @@
 /* ============================================================
-   STORY — the Story stage's workspace (PRD 2.0 §4.5)
+   STORY — the Story stage's workspace (PRD 2.0 §4.5, plan rev. 3 §1)
    ------------------------------------------------------------
-   A synopsis on the left, the beats of a structural framework on the
-   right, and a tension curve over both. The model is src/lib/story.js;
-   this file only draws it and turns gestures into calls on it.
+   A story begins on a PATH: 1 Idea → 2 Logline → 3 Structure →
+   4 Step outline → 5 Synopsis → 6 To the Screenplay. The step outline
+   is the centre of it — a numbered list of story events under each
+   beat of the chosen format — and the synopsis can be assembled from
+   it, tagged as it is built. The synopsis editor, the beat matrix and
+   the tension curve then work exactly as they did. The model is
+   src/lib/story.js; this file only draws it and turns gestures into
+   calls on it.
 
-   THREE WAYS IN (FR-402): the sample, a blank page, or a file. The
-   sample synopsis is read from src/data/sample.dragon.json — the same
-   project the hub seeds — rather than written a second time here.
+   GUIDED, NOT GATED. Every stepper tab is clickable at any time, and
+   the old ways in stay: the sample, a synopsis you already have, or a
+   file. Which step is on screen is in memory (and in the address bar
+   as #path-N); what is DONE is derived from the story, never stored.
 
-   WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: whether the synopsis
-   is being edited or tagged, which beat card is lit, and the AI job in
-   flight. None of that is a fact about the film, and `verify` asserts
-   zero idle localStorage writes.
+   WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: the path step, the
+   tab under the editor, whether the synopsis is being edited or
+   tagged, which beat card is lit, the one-level Undo of a synopsis
+   build, the last send to the Screenplay, AI suggestions not yet
+   added, and the AI job in flight. None of that is a fact about the
+   film, and `verify` asserts zero idle localStorage writes.
 
    OFFSETS. The tagging pane renders the synopsis as text nodes and
    <mark> elements and nothing else, under `white-space: pre-wrap`, so
@@ -32,24 +40,63 @@ import '../styles/ai.css';
 import '../styles/story.css';
 import '../styles/pdf.css';
 
+import Store from '../lib/store.js';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { saveOnInput } from '../lib/autosave.js';
+import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
+import Scenes from '../lib/scenes.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import sample from '../data/sample.dragon.json';
 import Pitch from '../lib/pitch-deck.js';
 
 const app = document.getElementById('app');
 
+/* The feature blueprint's storage key, READ ONLY here: the path offers
+   its step 01/02 answers for the idea and the logline, and shows its
+   step 08 answers beside the Save the Cat! beats. pitch-deck.js reads
+   the same key the same way. */
+const FEATURE_KEY = 'fms_filmmaker_combined_v1';
+/* Step 08's fifteen fields, b01..b15, are the fifteen Save the Cat!
+   beats in order — the table's rows say so. */
+const STC_BP = ['opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', 'break_into_two', 'b_story',
+  'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night', 'break_into_three', 'finale', 'final_image'];
+
 let mode = null;          // 'edit' | 'tag' — null means "decide from the data"
 let litBeat = '';         // the beat card whose passages are illuminated
 let flashMark = '';       // a mark to scroll to after the next render
+let pathStep = null;      // 1..6, or null = derive from the story
+let started = false;      // the start cards were answered this visit
+let tab = 'pacing';       // the panel under the editor
+let undoBuild = null;     // one level: the synopsis before the last build
+let lastSend = null;      // the scene ids the last send created
+let focusStep = '';       // an outline step whose field takes focus next
 let AI = null, Panelm = null, aiJob = null, aiStatus = '', aiError = '';
+let sugg = {};            // beat key → [suggested text]
+let suggJob = null;       // { key, ctrl, status } — one at a time
+let suggFail = null;      // { key, error } — shown on that beat until the next try
+
+const TABS = [
+  { id: 'pacing', label: 'Pacing' },
+  { id: 'ai-map', label: 'Map with AI' },
+  { id: 'pitch', label: 'Pitch deck' },
+  { id: 'vault', label: 'Idea Vault' }
+];
 
 const story = () => Story.loadStory();
 const pct = (x) => Math.round(x * 100) + '%';
+const scenes = () => { try { return Scenes.listScenes(); } catch (e) { return []; } };
+const isEmpty = (s) => !s.source.trim() && !s.marks.length && !s.outline.length && !s.idea.trim() && !s.logline.trim();
+const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
+const suggestedFw = () => (projectFormat() === 'short' ? 'short_five' : 'save_the_cat');
+function blueprint() {
+  try { const v = JSON.parse(localStorage.getItem(FEATURE_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; }
+  catch (e) { return {}; }
+}
+const bpText = (v) => (typeof v === 'string' ? v.trim() : '');
+const bpIdea = () => bpText(blueprint().s1_whatif);
+const bpLogline = () => { const b = blueprint(); return bpText(b.s2_log_final) || bpText(b.s2_log2) || bpText(b.s2_log1); };
 
 /* ---- persistence ---------------------------------------------- */
 
@@ -58,7 +105,24 @@ function commit(s, { rerender = true } = {}) {
   if (rerender) render();
 }
 
-/* ---- the three ways in (FR-402) -------------------------------- */
+/* A text field's `change` fires on blur, and blur fires on the
+   POINTERDOWN of whatever was clicked next. Redrawing there replaces
+   that button before its click arrives, so typing an idea and pressing
+   NEXT took two presses. So a field's change saves at once and, while a
+   pointer is down, holds the redraw until the click has landed. A Tab
+   away redraws at once; preservingFocus() puts the focus back. */
+let pointerDown = false, held = false;
+document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+document.addEventListener('pointerup', () => {
+  pointerDown = false;
+  if (held) setTimeout(() => { if (held) { held = false; render(); } }, 0);
+}, true);
+function commitField(s) {
+  Story.saveStory(s);
+  if (pointerDown) held = true; else render();
+}
+
+/* ---- the ways in (FR-402) ------------------------------------ */
 
 function renderModes() {
   const sec = h('section.st-modes', { 'aria-label': 'Start the story' });
@@ -66,11 +130,14 @@ function renderModes() {
     h('div.st-mode', {}, [h('p.bd-eyebrow', { text: eyebrow }), h('h2.st-mode-title', { text: title }),
       h('p.st-mode-body', { text: body }), control]);
   sec.append(card('Sample', 'Start from Dragon.',
-    'The sample project’s synopsis, ready to tag. A quick way to see what the matrix and the curve do before you bring your own.',
+    'The sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
     h('button.btn', { type: 'button', 'data-st': 'sample', text: 'USE THE SAMPLE' })));
-  sec.append(card('New', 'A blank page.',
-    'Write or paste a synopsis. A paragraph is enough to start; the structure is easier to see once there are five or six.',
-    h('button.btn.primary', { type: 'button', 'data-st': 'new', text: 'START WRITING' })));
+  sec.append(card('New', 'Start with the idea.',
+    'A guided path: the idea, a logline, a beat sheet format, then a step outline under each beat. The synopsis can be built from the outline when you get there.',
+    h('button.btn.primary', { type: 'button', 'data-st': 'new', text: 'START THE PATH' })));
+  sec.append(card('Skip ahead', 'I already have a synopsis.',
+    'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away above.',
+    h('button.btn', { type: 'button', 'data-st': 'have-synopsis', text: 'PASTE A SYNOPSIS' })));
   const drop = h('label.st-drop', {}, [
     h('span', { text: 'Drop a .docx, .pdf or .txt here, or choose a file' }),
     h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'data-st-field': 'file' })
@@ -80,12 +147,301 @@ function renderModes() {
   return sec;
 }
 
+/* ---- the path stepper ---------------------------------------- */
+
+function currentStep(s) {
+  return pathStep || Story.defaultPathStep(s, { scenes: scenes() });
+}
+
+function renderStepper(s, cur) {
+  const nav = h('nav.st-path', { 'aria-label': 'Story path' });
+  const ol = h('ol.st-path-list');
+  for (const p of Story.pathProgress(s, { scenes: scenes() })) {
+    const on = p.n === cur;
+    const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
+      type: 'button', 'data-st': 'path', 'data-step': p.n, 'aria-current': on ? 'step' : null
+    }, [
+      h('span.st-path-n', { text: String(p.n) }),
+      h('span.st-path-label', { text: p.label }),
+      h('span.st-path-state', { text: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do' })
+    ]);
+    ol.append(h('li', {}, [b]));
+  }
+  nav.append(ol);
+  return nav;
+}
+
+const stepHead = (n, title, lead) => [
+  h('p.bd-eyebrow', { text: 'Step ' + n + ' of 6' }),
+  h('h2.bd-h2', { text: title }),
+  lead ? h('p.bd-sub', { text: lead }) : null
+];
+const nextBtn = (n, label) => h('div.st-step-nav', {}, [
+  h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-step': n, text: 'NEXT: ' + label.toUpperCase() })
+]);
+
+function renderIdea(s) {
+  const sec = h('section#path-1.st-step', { 'aria-label': 'The idea' }, stepHead(1, 'The idea',
+    'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
+  sec.append(h('label.st-label', { for: 'stIdea', text: 'Your idea' }));
+  const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
+  ta.value = s.idea;
+  sec.append(ta);
+  const bp = bpIdea();
+  if (!s.idea.trim() && bp) sec.append(offerBlueprint('idea', 'Feature blueprint, step 01', bp));
+  sec.append(h('p.st-example', {}, [h('span.st-example-k', { text: 'Dragon: ' }), '“' + sample.blueprint.s1_whatif + '”']));
+  sec.append(nextBtn(2, 'Logline'));
+  return sec;
+}
+
+function renderLogline(s) {
+  const sec = h('section#path-2.st-step', { 'aria-label': 'The logline' }, stepHead(2, 'The logline',
+    'One sentence: who the story is about, what they want, what stands in the way, and what it costs if they fail.'));
+  sec.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
+  const ta = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
+  ta.value = s.logline;
+  sec.append(ta);
+  const bp = bpLogline();
+  if (!s.logline.trim() && bp) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bp));
+  sec.append(h('p.st-example', {}, [h('span.st-example-k', { text: 'Dragon: ' }), '“' + sample.blueprint.s2_log_final + '”']));
+  sec.append(nextBtn(3, 'Structure'));
+  return sec;
+}
+
+function offerBlueprint(field, where, text) {
+  return h('div.st-offer', {}, [
+    h('p.st-offer-text', {}, [h('span.st-example-k', { text: where + ': ' }), '“' + (text.length > 240 ? text.slice(0, 237) + '…' : text) + '”']),
+    h('button.btn', { type: 'button', 'data-st': 'use-bp', 'data-field': field, text: 'USE MY BLUEPRINT ANSWER' })
+  ]);
+}
+
+/* A format's tension convention as a small curve: one line, the
+   accent's deep tone, no fill colour carrying meaning. */
+function miniCurve(fw) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const W = 120, H = 36, pad = 3;
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('class', 'st-mini');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const beats = [...fw.beats].sort((a, b) => a.at - b.at);
+  const pts = beats.map((b) => [pad + b.at * (W - pad * 2), H - pad - ((b.tension - 1) / 9) * (H - pad * 2)]);
+  const area = document.createElementNS(ns, 'polygon');
+  area.setAttribute('points', [[pts[0][0], H - pad], ...pts, [pts[pts.length - 1][0], H - pad]].map((p) => p.join(',')).join(' '));
+  area.setAttribute('class', 'st-mini-area');
+  const line = document.createElementNS(ns, 'polyline');
+  line.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+  line.setAttribute('class', 'st-mini-line');
+  svg.append(area, line);
+  for (const p of pts) {
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', 1.8);
+    c.setAttribute('class', 'st-mini-dot');
+    svg.append(c);
+  }
+  return svg;
+}
+
+function renderStructure(s) {
+  const sec = h('section#path-3.st-step', { 'aria-label': 'Structure' }, stepHead(3, 'Pick a beat sheet format',
+    'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'));
+  const grid = h('div.st-fw-grid');
+  const sug = suggestedFw();
+  for (const f of Story.frameworks()) {
+    const on = f.id === s.framework;
+    const peak = [...f.beats].sort((a, b) => b.tension - a.tension)[0];
+    grid.append(h('button.st-fw' + (on ? '.is-on' : ''), {
+      type: 'button', 'data-st': 'pick-fw', 'data-fw': f.id, 'aria-pressed': String(on)
+    }, [
+      h('span.st-fw-top', {}, [
+        h('span.st-fw-name', { text: f.label }),
+        f.id === sug ? h('span.st-badge', { text: 'Suggested' }) : null,
+        on ? h('span.st-badge.is-on', { text: 'In use' }) : null
+      ]),
+      h('span.st-fw-count', { text: f.beats.length + ' beats · peaks at ' + peak.label }),
+      miniCurve(f),
+      h('span.st-fw-suits', { text: f.suits || f.blurb || '' })
+    ]));
+  }
+  sec.append(grid);
+  sec.append(nextBtn(4, 'Step outline'));
+  return sec;
+}
+
+/* ---- 4 · the step outline ------------------------------------ */
+
+function renderOutline(s) {
+  const o = Story.outlineByBeat(s, s.framework);
+  const fw = o.fw;
+  const sec = h('section#path-4.st-step', { 'aria-label': 'Step outline' }, stepHead(4, 'Step outline · ' + fw.label,
+    'A numbered list of what happens, beat by beat. One or two lines a step. Add, reorder and move steps between beats as the story finds its shape.'));
+  sec.append(h('p.st-coverage', { role: 'status' }, [
+    h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
+    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} not placed in this format` : '')
+  ]));
+  sec.append(renderSuggestGate(s));
+  const bp = fw.id === 'save_the_cat' ? blueprint() : null;
+  const canSuggest = !!(Panelm && Panelm.hasKey());
+  const beatOpts = (sel) => {
+    const opts = [h('option', { value: '', text: 'Move to beat…' })];
+    fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
+    return opts;
+  };
+  const list = h('ol.st-ol-beats');
+  let act = null;
+  for (const r of o.beats) {
+    const li = h('li.st-ol-beat' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key });
+    const head = h('div.st-ol-head', {}, [
+      h('h3.st-ol-name', { text: r.beat.label }),
+      h('span.st-beat-at', { text: (r.act !== act ? 'Act ' + r.act + ' · ' : '') + '~' + pct(r.beat.at) })
+    ]);
+    act = r.act;
+    li.append(head);
+    li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
+    if (bp) {
+      const v = bpText(bp['b' + String(STC_BP.indexOf(r.beat.id) + 1).padStart(2, '0')]);
+      if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your blueprint, step 08: ' }), '“' + v + '”']));
+    }
+    if (r.steps.length) {
+      const ol = h('ol.st-ol-steps', { start: String(r.steps[0].n) });
+      r.steps.forEach((st, i) => ol.append(renderStepRow(st, beatOpts(st.beat), i === 0, i === r.steps.length - 1)));
+      li.append(ol);
+    }
+    const acts = h('div.st-ol-actions');
+    acts.append(h('button.btn', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'ADD A STEP' }));
+    if (canSuggest) {
+      const busy = suggJob && suggJob.key === r.key;
+      acts.append(busy
+        ? h('button.btn', { type: 'button', 'data-st': 'sugg-stop', text: 'STOP' })
+        : h('button.btn', { type: 'button', 'data-st': 'sugg-run', 'data-beat': r.key, disabled: !!suggJob, text: 'SUGGEST STEPS FOR THIS BEAT' }));
+    }
+    li.append(acts);
+    if (suggJob && suggJob.key === r.key && Panelm) li.append(Panelm.statusLine(suggJob.status || 'Starting…'));
+    if (suggFail && suggFail.key === r.key && Panelm) li.append(Panelm.errorLine(suggFail.error));
+    const got = sugg[r.key];
+    if (got && got.length) {
+      const ul = h('ul.st-sugg', { 'aria-label': 'Suggested steps for ' + r.beat.label });
+      got.forEach((t, i) => ul.append(h('li.st-sugg-item', {}, [
+        h('span.st-sugg-text', { text: t }),
+        h('button.btn', { type: 'button', 'data-st': 'sugg-add', 'data-beat': r.key, 'data-i': i, text: 'ADD' })
+      ])));
+      ul.append(h('li.st-sugg-item', {}, [h('button.btn.st-x', { type: 'button', 'data-st': 'sugg-clear', 'data-beat': r.key, text: 'DISMISS SUGGESTIONS' })]));
+      li.append(ul);
+    }
+    list.append(li);
+  }
+  sec.append(list);
+
+  if (o.unplaced.length) {
+    const un = h('section.st-unplaced', { 'aria-label': 'Not placed in this format' });
+    un.append(h('h3.st-ol-name', { text: 'Not placed in ' + fw.short }));
+    un.append(h('p.st-muted', { text: 'These steps were written under another format. They are kept as they are; file them under a beat here, or switch the format back to see them where they were.' }));
+    if (o.unplaced.some((u) => u.suggest)) {
+      un.append(h('button.btn', { type: 'button', 'data-st': 'file-all', text: 'FILE ALL BY POSITION' }));
+    }
+    const ol = h('ol.st-ol-steps', { start: String(o.unplaced[0].n) });
+    o.unplaced.forEach((st) => {
+      const row = renderStepRow(st, beatOpts(''), true, true, true);
+      const meta = h('p.st-ol-from', { text: st.from ? 'Written under ' + st.from.fw.short + ': ' + st.from.beat.label : 'Written under a beat that no longer exists' });
+      row.insertBefore(meta, row.children[1] || null);
+      if (st.suggest) {
+        row.querySelector('.st-ol-ctl').prepend(h('button.btn', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'FILE UNDER ' + st.suggest.label.toUpperCase() }));
+      }
+      ol.append(row);
+    });
+    un.append(ol);
+    sec.append(un);
+  }
+  sec.append(nextBtn(5, 'Synopsis'));
+  return sec;
+}
+
+function renderStepRow(st, opts, first, last, unplaced = false) {
+  const li = h('li.st-ol-step', { 'data-step-row': st.id });
+  const fid = 'stStep_' + st.id;
+  li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
+  const ta = h('textarea#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?' });
+  ta.value = st.text;
+  li.append(ta);
+  const ctl = h('div.st-ol-ctl');
+  if (!unplaced) {
+    ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'UP' }));
+    ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-down', 'data-step': st.id, disabled: last, 'aria-label': 'Move step ' + st.n + ' down', text: 'DOWN' }));
+  }
+  ctl.append(h('select.st-retag', { 'data-st-field': 'step-beat', 'data-step': st.id, 'aria-label': 'Move step ' + st.n + ' to another beat' }, opts));
+  ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-del', 'data-step': st.id, 'aria-label': 'Remove step ' + st.n, text: 'REMOVE' }));
+  li.append(ctl);
+  return li;
+}
+
+/* The AI half of the outline, optional and last. With a key: the key
+   bar and what is sent, once, and a button on every beat. Without:
+   the key form inside a closed disclosure, so the outline is not
+   pushed down the page by an obstacle nobody asked to clear. */
+function renderSuggestGate(s) {
+  if (!Panelm) return null;
+  if (Panelm.hasKey()) {
+    const kg = Panelm.keyGate('Suggesting steps');
+    return h('div.st-sugg-gate', {}, [kg, Panelm.keyBar(),
+      Panelm.disclose('Your idea, logline, synopsis, the steps written so far and the names of the ' + Story.frameworkById(s.framework).short + ' beats. Nothing else.')]);
+  }
+  const det = h('details.st-sugg-gate');
+  det.append(h('summary', { text: 'Suggest steps with AI (optional)' }));
+  const kg = Panelm.keyGate('Suggesting steps');
+  if (kg) det.append(kg);
+  return det;
+}
+
+/* ---- 5 · the synopsis ---------------------------------------- */
+
+function renderSynopsisStep(s) {
+  const sec = h('section#path-5.st-step', { 'aria-label': 'Synopsis' }, stepHead(5, 'Synopsis',
+    'The story as prose. Build it from the outline — one paragraph per act, every step tagged with its beat — or write and tag your own.'));
+  const o = Story.outlineByBeat(s, s.framework);
+  const row = h('div.st-build');
+  if (o.withText) {
+    row.append(h('button.btn' + (s.source.trim() ? '' : '.primary'), { type: 'button', 'data-st': 'build',
+      text: s.source.trim() ? 'REBUILD FROM THE OUTLINE' : 'BUILD MY SYNOPSIS FROM THE OUTLINE' }));
+  }
+  if (undoBuild) row.append(h('button.btn', { type: 'button', 'data-st': 'build-undo', text: 'UNDO THE BUILD' }));
+  if (row.children.length) sec.append(row);
+  sec.append(h('p#stWhere.st-where', { 'aria-live': 'polite', text: s.source.trim()
+    ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
+    : '' }));
+  sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
+  return sec;
+}
+
+/* ---- 6 · to the Screenplay ----------------------------------- */
+
+function renderScreenplay(s) {
+  const sec = h('section#path-6.st-step', { 'aria-label': 'To the Screenplay' }, stepHead(6, 'To the Screenplay',
+    'One placeholder scene per step, each linked to its beat, so Write’s Outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
+  const live = new Set(scenes().map((x) => x.id));
+  const written = s.outline.filter((x) => x.text.trim());
+  const sent = written.filter((x) => x.sceneId && live.has(x.sceneId)).length;
+  const todo = written.length - sent;
+  sec.append(h('p.st-coverage', { role: 'status' }, [
+    h('strong', { text: `${todo} step${todo === 1 ? '' : 's'} to send` }),
+    ` · ${sent} already ha${sent === 1 ? 's' : 've'} a scene · ${written.length} written`
+  ]));
+  const row = h('div.st-build');
+  row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO SCREENPLAY' }));
+  if (lastSend && lastSend.length) row.append(h('button.btn', { type: 'button', 'data-st': 'send-undo', text: 'UNDO THE SEND' }));
+  row.append(h('a.btn', { href: 'write.html#outline', text: 'OPEN THE OUTLINE IN WRITE' }));
+  sec.append(row);
+  if (!written.length) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
+  return sec;
+}
+
 /* ---- the heatmap (FR-505) ------------------------------------- */
 
 function renderHeat(s) {
   const heat = Story.heatmap(s);
   const fig = h('figure.st-heat');
   if (!heat.length) return null;
+  const regions = Story.regionsOf(s.framework);
   const W = 1000, H = 140, pad = 6, n = heat.length, bw = W / n;
   const y = (t) => H - pad - ((t - 1) / 9) * (H - pad * 2);
   const ns = 'http://www.w3.org/2000/svg';
@@ -101,7 +457,7 @@ function renderHeat(s) {
     (flags.length ? `${flags.length} slack stretch${flags.length === 1 ? '' : 'es'} flagged.` : 'No slack stretch flagged.'));
   const el = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
   // Act dividers, recessive.
-  for (const r of Story.PACING.regions.slice(1)) {
+  for (const r of regions.slice(1)) {
     svg.append(el('line', { x1: r.from * W, x2: r.from * W, y1: 0, y2: H, class: 'st-heat-act' }));
   }
   // Slack stretches, behind the bars.
@@ -129,7 +485,10 @@ function renderHeat(s) {
   line(heat.map((w) => [(w.i + 0.5) * bw, w.tension]), 'st-heat-line');
   fig.append(svg);
   const acts = h('div.st-heat-acts', { 'aria-hidden': 'true' });
-  Story.PACING.regions.forEach((r) => acts.append(h('span', { text: r.label })));
+  // The act strip takes the framework's own split, so a two-half or a
+  // five-act format labels its own acts under the curve.
+  acts.style.gridTemplateColumns = regions.map((r) => Math.max(0.01, r.to - r.from) + 'fr').join(' ');
+  regions.forEach((r) => acts.append(h('span', { text: r.label })));
   fig.append(acts);
   fig.append(h('figcaption.st-heat-cap', {}, [
     h('span.st-key.st-key-line', { text: 'This story' }),
@@ -175,7 +534,7 @@ function renderFlags(s) {
 function renderSource(s) {
   const pane = h('section.st-pane.st-src-pane', { 'aria-label': 'Source synopsis' });
   const head = h('div.st-pane-head');
-  head.append(h('h2.bd-h2', { text: 'Synopsis' }));
+  head.append(h('h3.bd-h2', { text: 'Synopsis' }));
   const toggle = h('div.st-toggle', { role: 'group', 'aria-label': 'Synopsis mode' });
   [['tag', 'TAG'], ['edit', 'EDIT']].forEach(([id, label]) => toggle.append(h('button.btn' + (mode === id ? '.is-on' : ''), {
     type: 'button', 'data-st': 'mode', 'data-mode': id, 'aria-pressed': String(mode === id), text: label })));
@@ -223,7 +582,7 @@ function renderSource(s) {
 function renderMatrix(s) {
   const pane = h('section.st-pane.st-matrix', { 'aria-label': 'Beat matrix' });
   const fw = Story.frameworkById(s.framework);
-  pane.append(h('div.st-pane-head', {}, [h('h2.bd-h2', { text: fw.label })]));
+  pane.append(h('div.st-pane-head', {}, [h('h3.bd-h2', { text: fw.label })]));
   pane.append(h('p.bd-sub', { text: fw.blurb }));
   const list = h('ol.st-beats');
   for (const row of Story.matrix(s)) {
@@ -249,6 +608,7 @@ function renderMatrix(s) {
         const meta = h('div.st-beat-meta');
         if (m.inferred) meta.append(h('span.st-badge', { text: 'placed by position' }));
         if (m.origin === 'ai') meta.append(h('span.st-badge', { text: 'drafted by AI' }));
+        if (m.origin === 'outline') meta.append(h('span.st-badge', { text: 'from the outline' }));
         const rs = h('select.st-retag', { 'data-st-field': 'retag', 'data-mark': m.id, 'aria-label': 'Move this passage to another beat' });
         rs.append(h('option', { value: '', text: m.inferred ? 'Tag as…' : 'Untag (place by position)' }));
         fw.beats.forEach((x) => rs.append(h('option', { value: x.id, text: x.label, selected: !m.inferred && x.id === b.id })));
@@ -270,7 +630,7 @@ function renderMatrix(s) {
 /* ---- AI (FR-504) ---------------------------------------------- */
 
 function renderAI(s) {
-  const sec = h('section.st-ai', { 'aria-label': 'Map beats with AI' });
+  const sec = h('div.st-ai');
   sec.append(h('h2.bd-h2', { text: 'Map the beats with AI' }));
   sec.append(h('p.bd-sub', { text: 'The model quotes the passage it thinks performs each beat. A quote that is not word for word in your synopsis is dropped and counted, and a passage you already tagged in this framework is never moved.' }));
   if (!Panelm) { sec.append(h('p.st-muted', { text: 'Checking for a key…' })); return sec; }
@@ -325,12 +685,39 @@ async function runAI() {
   }
 }
 
+/* Suggestions are SHOWN, never written: each is added by its own click,
+   so a model can offer a step but only the writer puts one in. */
+async function runSuggest(key) {
+  if (!AI || suggJob) return;
+  const s = story();
+  const p = Story.resolveBeatKey(key);
+  if (!p) return;
+  suggFail = null;
+  suggJob = { key, ctrl: new AbortController(), status: 'Starting…' };
+  render();
+  try {
+    const res = await AI.draftOutlineSteps({
+      idea: s.idea, logline: s.logline, synopsis: s.source, format: projectFormat(),
+      framework: p.fw, beat: p.beat, steps: Story.stepsInOrder(s).map((x) => ({ beat: x.beat, text: x.text }))
+    }, { signal: suggJob.ctrl.signal, onStatus: (t) => {
+      if (suggJob) suggJob.status = t;
+      const el = document.querySelector(`[data-beat-card="${CSS.escape(key)}"] .ai-status`); if (el) el.textContent = t;
+    } });
+    sugg[key] = res.steps;
+  } catch (e) {
+    suggFail = { key, error: e && e.code === 'aborted' ? 'Stopped. Nothing was suggested.' : (e && e.message) || 'The request failed.' };
+  } finally {
+    suggJob = null;
+    render();
+  }
+}
+
 /* ---- the pitch deck (FR-605) --------------------------------
    One button. What goes in is listed beside it, read from the same
    models the deck reads, so nobody prints a deck to find out what is
    in it. */
 function renderPitch() {
-  const sec = h('section#pitch.st-pitch', { 'aria-label': 'Pitch deck' });
+  const sec = h('div.st-pitch');
   sec.append(h('h2.bd-h2', { text: 'Pitch deck' }));
   sec.append(h('p.bd-sub', { text: 'A landscape PDF compiled from this project: the logline, this synopsis, the tagged beats, the characters, key scenes and the numbers. A slide with nothing to say is left out.' }));
   let d = null;
@@ -340,7 +727,7 @@ function renderPitch() {
     d.characters.length && `${d.characters.length} characters`, d.keyScenes.length && `${d.keyScenes.length} key scenes`,
     d.numbers.length && 'production numbers'
   ].filter(Boolean) : [];
-  sec.append(h('p.st-muted', { text: have.length ? 'In the deck: ' + have.join(' \u00b7 ') + '.' : 'Nothing to pitch yet \u2014 add a synopsis or a logline first.' }));
+  sec.append(h('p.st-muted', { text: have.length ? 'In the deck: ' + have.join(' · ') + '.' : 'Nothing to pitch yet — add a synopsis or a logline first.' }));
   sec.append(h('button.btn.primary', { type: 'button', 'data-st': 'pitch', disabled: !have.length, text: 'EXPORT PITCH DECK (PDF)' }));
   return sec;
 }
@@ -348,7 +735,7 @@ function renderPitch() {
 /* ---- the Idea Vault (FR-302) ---------------------------------- */
 
 function renderVault(s) {
-  const sec = h('section#vault.st-vault', { 'aria-label': 'Idea Vault' });
+  const sec = h('div.st-vault');
   sec.append(h('h2.bd-h2', { text: 'Idea Vault' }));
   sec.append(h('p.bd-sub', { text: 'Clippings for this film — a headline, a line from an article, a reference. The Chrome extension’s “Send to Filmmaker Studio” lands here with the page it came from; you can also add one by hand.' }));
   const add = h('div.st-vault-add');
@@ -382,6 +769,35 @@ function renderVault(s) {
   return sec;
 }
 
+/* ---- the tabs under the editor --------------------------------
+   Page-local, not src/ui/tabs.js: story.html is deliberately off that
+   list, because the path and the editor above are one flow. Every
+   panel is in the DOM; the hidden ones carry `hidden`. Each panel's
+   section keeps its old id, so story.html#pitch and #vault (the
+   navigation's own links) still land, and pick their tab. */
+function renderTabs(s) {
+  const wrap = h('div.st-tabs-wrap');
+  const strip = h('div.st-tabs', { role: 'tablist', 'aria-label': 'More for this story' });
+  TABS.forEach((t) => strip.append(h('button.st-tab' + (tab === t.id ? '.is-on' : ''), {
+    type: 'button', role: 'tab', id: 'stTab-' + t.id, 'aria-controls': t.id,
+    'aria-selected': String(tab === t.id), tabindex: tab === t.id ? '0' : '-1', 'data-st': 'tab', 'data-tab': t.id, text: t.label
+  })));
+  wrap.append(strip);
+  const panel = (id, cls, content) => {
+    const sec = h('section#' + id + '.st-panel.' + cls, { role: 'tabpanel', 'aria-labelledby': 'stTab-' + id, hidden: tab !== id });
+    sec.append(...[].concat(content).filter(Boolean));
+    return sec;
+  };
+  const pacing = [h('h2.bd-h2', { text: 'Pacing' })];
+  if (s.source.trim()) { const heat = renderHeat(s); if (heat) pacing.push(heat); pacing.push(renderFlags(s)); }
+  else pacing.push(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  wrap.append(panel('pacing', 'st-pacing', pacing));
+  wrap.append(panel('ai-map', 'st-ai-panel', renderAI(s)));
+  wrap.append(panel('pitch', 'st-pitch-panel', renderPitch()));
+  wrap.append(panel('vault', 'st-vault-panel', renderVault(s)));
+  return wrap;
+}
+
 /* ---- the page ------------------------------------------------- */
 
 /* Re-entrancy guard. Removing a focused textarea fires `change` on
@@ -390,9 +806,10 @@ function renderVault(s) {
    So a render requested during a render is queued, not run. */
 let rendering = false, again = false;
 function render() {
+  held = false;
   if (rendering) { again = true; return; }
   rendering = true;
-  try { draw(); } finally {
+  try { preservingFocus(draw); } finally {
     rendering = false;
     if (again) { again = false; render(); }
   }
@@ -401,40 +818,41 @@ function render() {
 function draw() {
   const s = story();
   if (mode === null) mode = s.source.trim() ? 'tag' : 'edit';
+  const cur = currentStep(s);
+  const cards = isEmpty(s) && !started;
   const main = h('main#main.st-main');
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Story · beats & pacing' }),
     h('h1.bd-title', { text: 'Story.' }),
-    h('p.bd-deck', { text: 'Your synopsis against a structure. Tag the passages that turn the story, switch frameworks to see the same story another way, and watch where the tension sags.' })
+    h('p.bd-deck', { text: 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Tag the passages that turn the story, switch formats to see the same story another way, and watch where the tension sags.' })
   ]));
 
-  // FR-402: the three ways in, for as long as there is nothing here.
-  // The blank page is already open under them, so "New" is just focus.
-  if (!s.source.trim() && !s.marks.length) main.append(renderModes());
+  if (cards) main.append(renderModes());
 
   const bar = h('div.st-bar');
-  bar.append(h('label', { for: 'stFw', text: 'Framework' }));
+  bar.append(h('label', { for: 'stFw', text: 'Format' }));
   const fsel = h('select#stFw', { 'data-st-field': 'framework' });
   Story.frameworks().forEach((f) => fsel.append(h('option', { value: f.id, text: f.label })));
   fsel.value = s.framework;
   bar.append(fsel);
-  bar.append(h('label.btn.st-import', {}, [
-    h('span', { text: 'IMPORT' }),
-    h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
-  ]));
+  // One import control on screen at a time: the card's, while it shows.
+  if (!cards) {
+    bar.append(h('label.btn.st-import', {}, [
+      h('span', { text: 'IMPORT' }),
+      h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
+    ]));
+  }
+  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-txt', disabled: !s.source.trim(), text: 'SYNOPSIS .TXT' }));
+  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-md', disabled: !s.outline.length && !s.marks.length && !s.logline.trim(), text: 'OUTLINE .MD' }));
   if (s.source.trim() || s.marks.length) {
     bar.append(h('button.btn.danger', { type: 'button', 'data-st': 'clear', text: 'START OVER' }));
   }
   main.append(bar);
 
-  if (s.source.trim()) {
-    const heat = renderHeat(s);
-    if (heat) main.append(h('section.st-pacing', { 'aria-label': 'Pacing' }, [h('h2.bd-h2', { text: 'Pacing' }), heat, renderFlags(s)]));
-  }
-  main.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
-  main.append(renderAI(s));
-  main.append(renderPitch());
-  main.append(renderVault(s));
+  main.append(renderStepper(s, cur));
+  const panels = { 1: renderIdea, 2: renderLogline, 3: renderStructure, 4: renderOutline, 5: renderSynopsisStep, 6: renderScreenplay };
+  main.append(panels[cur](s));
+  main.append(renderTabs(s));
   app.replaceChildren(main);
   after();
 }
@@ -451,6 +869,63 @@ function after() {
     flashMark = '';
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('is-flash'); }
   }
+  if (focusStep) {
+    const el = document.getElementById('stStep_' + focusStep);
+    focusStep = '';
+    if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
+  }
+}
+
+function goStep(n, { scroll = true } = {}) {
+  pathStep = Math.min(6, Math.max(1, Number(n) || 1));
+  started = true;
+  history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
+  render();
+  if (scroll) {
+    const nav = document.querySelector('.st-path');
+    if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start' });
+  }
+}
+
+/* ---- where you are (rev. 3 §1b) ------------------------------- */
+
+function whereText(fwId, pos) {
+  const w = Story.whereAt(fwId, pos);
+  let t = `You are at ${pct(w.pos)} of the synopsis — nearest beat ${w.nearest.label}, conventionally around ${pct(w.nearest.at)}`;
+  if (w.next && w.next.id !== w.nearest.id) t += `; ${w.next.label} is expected around ${pct(w.next.at)}`;
+  return t + '.';
+}
+function updateWhere() {
+  const out = document.getElementById('stWhere');
+  if (!out) return;
+  const s = story();
+  const ta = document.getElementById('stSource');
+  if (ta && document.activeElement === ta) {
+    const len = ta.value.length;
+    if (len) out.textContent = whereText(s.framework, ta.selectionStart / len);
+    return;
+  }
+  const o = selectionOffsets(true);
+  if (o && s.source.length) out.textContent = whereText(s.framework, ((o.start + o.end) / 2) / s.source.length);
+}
+['keyup', 'click', 'select'].forEach((t) => document.addEventListener(t, (e) => {
+  if (e.target && e.target.id === 'stSource') updateWhere();
+}));
+
+/* ---- export --------------------------------------------------- */
+
+function slug() {
+  let t = '';
+  try { const p = Store.currentProject && Store.currentProject(); t = (p && p.title) || ''; } catch (e) { t = ''; }
+  return (t || 'story').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'story';
+}
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = h('a', { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 /* ---- import --------------------------------------------------- */
@@ -490,20 +965,52 @@ async function importFile(file) {
   s.source = text;
   s.sourceName = name;
   mode = 'tag';
+  started = true;
+  pathStep = 5;
   commit(s);
   StudioUI.toast(`Imported ${name} — ${text.split(/\s+/).length.toLocaleString()} words.`);
 }
 
+/* ---- the sample ----------------------------------------------- */
+
+/* The sample's story is a lazy chunk (vite.config.js), read on the
+   click. If it cannot load — offline before it was ever cached — the
+   sample blueprint's synopsis is the fallback, as it always was. */
+async function sampleStory() {
+  try {
+    const st = (await import('../data/sample.dragon.story.json')).default.story;
+    return { ...Story.blankStory(), ...JSON.parse(JSON.stringify(st)) };
+  } catch (e) {
+    const s = Story.blankStory();
+    s.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
+    s.sourceName = sample.title + ' (sample)';
+    return s;
+  }
+}
+
+async function useSample() {
+  const cur = story();
+  if (!isEmpty(cur) && !window.confirm('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
+  const s = await sampleStory();
+  mode = 'tag'; started = true; litBeat = '';
+  pathStep = s.outline.length ? 4 : 5;
+  undoBuild = null; lastSend = null; sugg = {};
+  history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
+  commit(s);
+}
+
 /* ---- events — delegated, no inline handlers ------------------- */
 
-function selectionOffsets() {
+function selectionOffsets(quiet) {
   const root = document.getElementById('stSrc');
   const sel = window.getSelection();
-  if (!root || !sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  if (!root || !sel || sel.rangeCount === 0) return null;
   const r = sel.getRangeAt(0);
   if (!root.contains(r.startContainer) || !root.contains(r.endContainer)) return null;
   const off = (node, o) => { const x = document.createRange(); x.selectNodeContents(root); x.setEnd(node, o); return x.toString().length; };
   let start = off(r.startContainer, r.startOffset), end = off(r.endContainer, r.endOffset);
+  if (quiet) return { start, end };
+  if (sel.isCollapsed) return null;
   const src = story().source;
   // Trim whitespace at the edges so a sloppy drag still tags the words.
   while (start < end && /\s/.test(src[start])) start++;
@@ -514,19 +1021,115 @@ function selectionOffsets() {
 document.addEventListener('selectionchange', () => {
   const btn = document.getElementById('stTagBtn');
   if (btn) btn.disabled = !selectionOffsets();
+  updateWhere();
 });
+
+function sendToScreenplay() {
+  const s = story();
+  const ids = Story.sendOutlineToScenes(s, Scenes, { fwId: s.framework });
+  if (!ids.length) { StudioUI.toast('Every written step already has a scene.'); return; }
+  lastSend = ids;
+  commit(s);
+  StudioUI.toast(`${ids.length} placeholder scene${ids.length === 1 ? '' : 's'} added to the scene list.`, {
+    action: 'UNDO', onAction: undoSend
+  });
+}
+function undoSend() {
+  if (!lastSend || !lastSend.length) return;
+  const s = story();
+  const n = Story.undoSendOutline(s, lastSend, Scenes);
+  lastSend = null;
+  commit(s);
+  StudioUI.toast(`${n} placeholder scene${n === 1 ? '' : 's'} removed. Nothing else in the scene list was touched.`);
+}
 
 delegate(document, 'click', '[data-st]', (e, el) => {
   const act = el.getAttribute('data-st');
   const s = story();
   if (act === 'sample') {
-    s.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
-    s.sourceName = sample.title + ' (sample)';
+    useSample();
+  } else if (act === 'new') {
+    started = true;
+    if (isEmpty(s) && s.framework !== suggestedFw()) { s.framework = suggestedFw(); Story.saveStory(s); }
+    goStep(1);
+    const ta = document.getElementById('stIdea'); if (ta) ta.focus();
+  } else if (act === 'have-synopsis') {
+    started = true; mode = 'edit';
+    goStep(5);
+    const ta = document.getElementById('stSource'); if (ta) ta.focus();
+  } else if (act === 'path') {
+    goStep(el.getAttribute('data-step'));
+  } else if (act === 'tab') {
+    tab = el.getAttribute('data-tab');
+    render();
+    const b = document.getElementById('stTab-' + tab); if (b) b.focus();
+  } else if (act === 'use-bp') {
+    const f = el.getAttribute('data-field');
+    if (f === 'idea') s.idea = bpIdea(); else if (f === 'logline') s.logline = bpLogline();
+    commit(s);
+  } else if (act === 'pick-fw') {
+    s.framework = el.getAttribute('data-fw'); litBeat = '';
+    commit(s);
+    StudioUI.toast(`Format: ${Story.frameworkById(s.framework).label}.`);
+  } else if (act === 'step-add') {
+    const st = Story.addOutlineStep(s, { beat: el.getAttribute('data-beat') });
+    if (st) { focusStep = st.id; commit(s); }
+  } else if (act === 'step-up' || act === 'step-down') {
+    if (Story.moveOutlineStep(s, el.getAttribute('data-step'), { delta: act === 'step-up' ? -1 : 1 })) commit(s);
+  } else if (act === 'step-del') {
+    const id = el.getAttribute('data-step');
+    const i = s.outline.findIndex((x) => x.id === id);
+    const gone = s.outline[i];
+    if (!gone) return;
+    Story.removeOutlineStep(s, id);
+    commit(s);
+    StudioUI.toast('Step removed.', { action: 'UNDO', onAction: () => {
+      const back = story(); back.outline.splice(Math.min(i, back.outline.length), 0, gone); commit(back);
+    } });
+  } else if (act === 'step-file') {
+    if (Story.fileUnplaced(s, s.framework, [el.getAttribute('data-step')])) commit(s);
+  } else if (act === 'file-all') {
+    const n = Story.fileUnplaced(s, s.framework);
+    if (n) { commit(s); StudioUI.toast(`${n} step${n === 1 ? '' : 's'} filed under the nearest ${Story.frameworkById(s.framework).short} beat.`); }
+  } else if (act === 'sugg-run') {
+    runSuggest(el.getAttribute('data-beat'));
+  } else if (act === 'sugg-stop') {
+    if (suggJob && suggJob.ctrl) suggJob.ctrl.abort();
+  } else if (act === 'sugg-add') {
+    const key = el.getAttribute('data-beat');
+    const i = Number(el.getAttribute('data-i'));
+    const text = (sugg[key] || [])[i];
+    if (!text) return;
+    Story.addOutlineStep(s, { beat: key, text });
+    sugg[key] = sugg[key].filter((_, k) => k !== i);
+    commit(s);
+  } else if (act === 'sugg-clear') {
+    delete sugg[el.getAttribute('data-beat')];
+    render();
+  } else if (act === 'build') {
+    if (s.source.trim() && !window.confirm('Rebuild the synopsis from the outline? The synopsis on this page is replaced; highlights you made by hand are kept where their words still appear. You can undo this once.')) return;
+    undoBuild = Story.buildSynopsisFromOutline(s, s.framework);
     mode = 'tag';
     commit(s);
-  } else if (act === 'new') {
-    if (mode !== 'edit') { mode = 'edit'; render(); }
-    const ta = document.getElementById('stSource'); if (ta) ta.focus();
+    StudioUI.toast('Synopsis built from the outline — every step tagged with its beat.', { action: 'UNDO', onAction: () => {
+      if (!undoBuild) return; const back = story(); Story.restoreSynopsis(back, undoBuild); undoBuild = null; commit(back);
+    } });
+  } else if (act === 'build-undo') {
+    if (!undoBuild) return;
+    Story.restoreSynopsis(s, undoBuild);
+    undoBuild = null;
+    if (!s.source.trim()) mode = 'edit';
+    commit(s);
+  } else if (act === 'send') {
+    sendToScreenplay();
+  } else if (act === 'send-undo') {
+    undoSend();
+  } else if (act === 'export-txt') {
+    if (s.source.trim()) download(slug() + '-synopsis.txt', Story.synopsisText(s), 'text/plain;charset=utf-8');
+  } else if (act === 'export-md') {
+    let title = '';
+    try { const p = Store.currentProject && Store.currentProject(); title = (p && p.title) || ''; } catch (err) { title = ''; }
+    download(slug() + '-outline.md', Story.outlineMarkdown(s, s.framework, { title }), 'text/markdown;charset=utf-8');
   } else if (act === 'mode') {
     mode = el.getAttribute('data-mode'); render();
   } else if (act === 'tag') {
@@ -554,17 +1157,18 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     render();
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
-    if (mode !== 'tag') { mode = 'tag'; render(); }
+    if (mode !== 'tag') mode = 'tag';
+    if (currentStep(s) !== 5) { pathStep = 5; started = true; }
+    render();
     scrollToOffset(from);
   } else if (act === 'unmark') {
     Story.removeMark(s, el.getAttribute('data-mark'));
     commit(s);
   } else if (act === 'clear') {
-    if (!window.confirm('Clear the synopsis, every highlight and every tension score on this page? The Idea Vault is kept.')) return;
-    const blank = Story.blankStory();
-    blank.framework = s.framework;
-    mode = null; litBeat = '';
-    commit(blank);
+    if (!window.confirm('Clear the synopsis, every highlight and every tension score on this page? The idea, the logline, the step outline and the Idea Vault are kept.')) return;
+    s.source = ''; s.sourceName = ''; s.marks = []; s.tension = {};
+    mode = null; litBeat = ''; undoBuild = null;
+    commit(s);
   } else if (act === 'pitch') {
     if (!Pitch.exportPitchPDF()) StudioUI.toast('Nothing to put in a deck yet.', { type: 'error' });
   } else if (act === 'ai-run') {
@@ -584,6 +1188,17 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     Story.removeFromVault(el.getAttribute('data-clip'));
     render();
   }
+});
+
+// Arrow keys move between the tabs under the editor (the tab pattern).
+delegate(document, 'keydown', '.st-tab', (e, el) => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+  e.preventDefault();
+  const i = TABS.findIndex((t) => t.id === el.getAttribute('data-tab'));
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
+  tab = TABS[j].id;
+  render();
+  const b = document.getElementById('stTab-' + tab); if (b) b.focus();
 });
 
 function scrollToOffset(from) {
@@ -617,7 +1232,15 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
     importFile(file);
   } else if (f === 'source') {
     s.source = el.value;
-    commit(s);
+    commitField(s);
+  } else if (f === 'idea' || f === 'logline') {
+    s[f] = el.value;
+    commitField(s);
+  } else if (f === 'step-text') {
+    Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value });
+    commitField(s);
+  } else if (f === 'step-beat') {
+    if (el.value && Story.moveOutlineStep(s, el.getAttribute('data-step'), { beat: el.value })) commit(s);
   } else if (f === 'tension') {
     Story.setTension(s, s.framework, el.getAttribute('data-beat'), el.value);
     commit(s);
@@ -635,6 +1258,12 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
 // or a closed tab (UX audit H10).
 saveOnInput('textarea[data-st-field="source"]', (el) => {
   const s = story(); s.source = el.value; Story.saveStory(s);
+}, 600);
+saveOnInput('textarea[data-st-field="idea"], textarea[data-st-field="logline"]', (el) => {
+  const s = story(); s[el.getAttribute('data-st-field')] = el.value; Story.saveStory(s);
+}, 600);
+saveOnInput('textarea[data-st-field="step-text"]', (el) => {
+  const s = story(); Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value }); Story.saveStory(s);
 }, 600);
 
 // Drag and drop onto the import card.
@@ -656,24 +1285,31 @@ const drain = () => drainClipQueue().then((n) => {
 drain();
 onClipQueued(drain);
 
-/* ?start= from the extension panel's three ways in (FR-402). Read once
-   and stripped, so a reload does not repeat it. A file picker cannot be
+/* The address bar: #path-N opens a path step; #pacing, #ai-map,
+   #pitch and #vault open their tab under the editor and land on it. */
+function readHash({ land = false } = {}) {
+  const hash = (location.hash || '').replace(/^#/, '');
+  const m = /^path-([1-6])$/.exec(hash);
+  if (m) { pathStep = Number(m[1]); started = true; return false; }
+  if (TABS.some((t) => t.id === hash)) { tab = hash; return land; }
+  return false;
+}
+function landOnTab() {
+  const el = document.getElementById(tab);
+  if (el) el.scrollIntoView({ block: 'start' });
+}
+addEventListener('hashchange', () => { const land = readHash({ land: true }); render(); if (land) landOnTab(); });
+
+/* ?start= from the extension panel's ways in (FR-402). Read once and
+   stripped, so a reload does not repeat it. A file picker cannot be
    opened without a click, so "import" scrolls to the drop card instead. */
 const START = new URLSearchParams(location.search).get('start');
-if (START) {
-  history.replaceState(null, '', location.pathname + location.hash);
-  const s0 = story();
-  if (START === 'sample' && !s0.source.trim()) {
-    s0.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
-    s0.sourceName = sample.title + ' (sample)';
-    Story.saveStory(s0);
-    mode = 'tag';
-  } else if (START === 'new') {
-    mode = 'edit';
-  }
-}
+if (START) history.replaceState(null, '', location.pathname + location.hash);
+const LAND = readHash({ land: true });
 
 render();
 primeAI();
-if (START === 'new') { const ta = document.getElementById('stSource'); if (ta) ta.focus(); }
+if (START === 'sample' && !story().source.trim() && !story().outline.length) useSample();
+else if (START === 'new') { started = true; goStep(1); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
 if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }
+if (LAND) landOnTab();

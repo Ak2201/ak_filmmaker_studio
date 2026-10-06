@@ -1280,7 +1280,16 @@ document.addEventListener('drop', (e) => {
 // Clips sent from the extension — those queued while this page was
 // closed, and any that arrive while it is open (the side panel).
 const drain = () => drainClipQueue().then((n) => {
-  if (n) { render(); StudioUI.toast(`${n} clipping${n === 1 ? '' : 's'} arrived in the Idea Vault.`); }
+  /* The vault is a tab under the editor now, so a clipping that
+     arrives must say where it went AND take the writer there; a toast
+     that only reported it left the clipping in a hidden panel. */
+  if (n) {
+    render();
+    StudioUI.toast(`${n} clipping${n === 1 ? '' : 's'} arrived in the Idea Vault.`, {
+      type: 'success', action: 'Open the Idea Vault',
+      onAction: () => { location.hash = '#vault'; }
+    });
+  }
 });
 drain();
 onClipQueued(drain);

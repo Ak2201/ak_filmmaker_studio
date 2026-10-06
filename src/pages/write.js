@@ -56,6 +56,7 @@ import BeatBoard from '../ui/beat-board.js';
 import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
+import { binScene } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
@@ -2963,7 +2964,9 @@ delegate(document, 'click', '[data-action="import-commit"]', () => {
     + (replaceScript && doc.elements.length
       ? 'A revision of the current screenplay is taken first, so it can be restored.\n\n'
       : '')
-    + 'The scene list is not versioned — replacing it cannot be undone.'
+    + (replaceScenes && existingScenes.length
+      ? 'The old scenes go to the Breakdown’s bin with their shots, and can be restored from there.'
+      : '')
   )) return;
 
   importBusy = true;
@@ -2998,7 +3001,17 @@ delegate(document, 'click', '[data-action="import-commit"]', () => {
     taken.add(number);
     return { ...s, number };
   });
-  Scenes.saveScenes(replaceScenes ? rows : existingScenes.concat(rows));
+  /* Replacing the scene list sends the old rows to the bin WITH their
+     shots, frames, call-sheet rows and edit-log state, rather than
+     dropping the rows and stranding everything that pointed at them
+     (BLUEPRINT-REALIGN-PLAN §1d). They come back from the Breakdown's
+     "Removed from script" list. */
+  if (replaceScenes) {
+    for (const s of Scenes.listScenes()) {
+      binScene(s.id, { reason: 'hand', heading: [s.intExt, s.location, s.dayNight].filter(Boolean).join(' ') });
+    }
+  }
+  Scenes.saveScenes(replaceScenes ? rows : Scenes.listScenes().concat(rows));
 
   importOpen = false;
   resetImport();

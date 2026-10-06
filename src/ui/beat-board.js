@@ -142,7 +142,7 @@ function meter(o, cov) {
   return h('div.bb-meter', { 'aria-label': 'Coverage' }, [
     h('div.bd-stats', {}, [
       h('div.bd-stat', {}, [h('strong', { text: cov.beatsCovered + '/' + cov.beatsTotal }), h('span', { text: 'beats with a scene' })]),
-      h('div.bd-stat', {}, [h('strong', { text: pages(cov.linkedPages) }), h('span', { text: 'of ' + pages(cov.totalPages) + ' pages linked' })]),
+      h('div.bd-stat', {}, [h('strong', { text: pages(cov.linkedPages) }), h('span', { text: 'of ' + pages(cov.totalPages) + ' scene pages linked' })]),
       h('div.bd-stat', {}, [h('strong', { text: String(cov.unassigned) }), h('span', { text: cov.unassigned === 1 ? 'scene with no beat' : 'scenes with no beat' })])
     ]),
     h('div.bb-bar', {
@@ -312,8 +312,10 @@ function draft(key) {
   ctx.rerender();
 
   const ids = new Set(added.map((e) => e.id));
+  const prev = next[next.indexOf(row) - 1];
   say('Drafted scene ' + row.number + ' for ' + plan.beat.label
-    + ': a heading to fill in and an action line, at element ' + (at + 1) + ' of the script.', {
+    + (prev ? ', after scene ' + (prev.number || '?') : ', at the top')
+    + ': a heading to fill in and one action line.', {
     action: 'Undo',
     onAction: () => {
       const d = ctx.getDoc();

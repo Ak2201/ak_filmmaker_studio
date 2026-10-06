@@ -178,6 +178,7 @@
 .bb-scene-syn { font-size: var(--t-small); color: var(--ink-body); }
 .bb-scene-meta { font-size: var(--t-micro); color: var(--ink-muted); }
 .bb-pick-wrap { display: flex; gap: var(--s2); align-items: center; font-size: var(--t-micro); color: var(--ink-muted); }
+.bb-pick-wrap > span { flex: none; }
 .bb-pick { flex: 1 1 auto; }
 .bb-draft { justify-self: start; }
 

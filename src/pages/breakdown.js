@@ -26,7 +26,7 @@ import Scenes, {
 } from '../lib/scenes.js';
 import * as Songs from '../lib/songs.js';
 import { loadScript } from '../lib/script.js';
-import { suggestAll } from '../lib/screenplay-analysis.js';
+import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -402,18 +402,29 @@ function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Suggested from the script' }),
               h('p.bd-sub', { text: 'Read from each scene\u2019s cues and action lines, in the colour of its category. '
-                + 'Press one to tag it; nothing is added until you do. The Nth scene heading in the script is matched to the Nth scene here.' }));
-  const rows = scenes.length ? suggestAll(scenes, loadScript().elements) : [];
+                + 'Press one to tag it; nothing is added until you do. Each scene is matched to the script heading that names the same place, so moving or deleting a scene here keeps its own text.' }));
+  const report = scenes.length ? suggestReport(scenes, loadScript().elements) : { rows: [], match: null };
+  const rows = report.rows;
+  /* What the join could not pair is said, not guessed at: a scene with
+     no heading gets no suggestions, and a heading with no scene is
+     named so the writer can see which side is out of step. */
+  const notes = describeMatch(report.match);
+  if (notes.length) wrap.append(h('p.bd-match-note', { text: notes.join(' ') }));
   if (!rows.length) {
     wrap.append(h('p.bd-none', { text: scenes.length
       ? 'Nothing to suggest \u2014 either everything the script mentions is already tagged, or there is no script text yet. Write or import the script on the Write page.'
       : 'Import or write a script and the elements it mentions are offered here, scene by scene.' }));
     return wrap;
   }
-  const total = rows.reduce((n, r) => n + SUGGEST_CATS.reduce((m, c) => m + r.suggestions[c].length, 0), 0);
+  const count = (r) => SUGGEST_CATS.reduce((m, c) => m + r.suggestions[c].length, 0);
+  const total = rows.reduce((n, r) => n + count(r), 0);
+  const guessed = rows.filter((r) => !isConfident(r.how));
   wrap.append(h('div.bd-sug-tools', {}, [
-    h('span.bd-sug-count', { text: `${total} suggestion${total === 1 ? '' : 's'} across ${rows.length} scene${rows.length === 1 ? '' : 's'}` }),
-    h('button.btn', { type: 'button', 'data-action': 'sug-all', text: 'ADD ALL' })
+    h('span.bd-sug-count', { text: `${total} suggestion${total === 1 ? '' : 's'} across ${rows.length} scene${rows.length === 1 ? '' : 's'}`
+      + (guessed.length ? ` \u00b7 ADD ALL leaves out the ${guessed.length} paired by position only` : '') }),
+    rows.length > guessed.length
+      ? h('button.btn', { type: 'button', 'data-action': 'sug-all', text: 'ADD ALL' })
+      : null
   ]));
   const list = h('ol.bd-sug-list');
   for (const r of rows) {
@@ -421,6 +432,7 @@ function renderSuggestions(scenes) {
     li.append(h('div.bd-sug-head', {}, [
       h('strong', { text: `Scene ${r.scene.number || '\u2014'}` }),
       h('span.bd-sug-slug', { text: r.heading }),
+      isConfident(r.how) ? null : h('span.bd-sug-guess', { text: 'paired by position, check the heading' }),
       h('button.btn.bd-sug-scene-all', { type: 'button', 'data-action': 'sug-scene', text: 'ADD THESE' })
     ]));
     const tags = h('div.bd-tags');
@@ -440,14 +452,35 @@ function renderSuggestions(scenes) {
   return wrap;
 }
 
+/* sceneIds null means ADD ALL, which acts ONLY on scenes matched to a
+   heading by content: a position-only pair is shown, and can be added
+   one scene at a time by somebody who has looked at it, but a bulk
+   write onto a guess is how 221 tags once landed on the wrong scenes.
+   Returns exactly the tags written, so the toast's Undo removes those
+   and nothing else. */
 function applySuggestions(sceneIds) {
   const scenes = Scenes.listScenes();
-  const rows = suggestAll(scenes, loadScript().elements).filter((r) => !sceneIds || sceneIds.includes(r.scene.id));
-  let n = 0;
+  const rows = suggestAll(scenes, loadScript().elements)
+    .filter((r) => (sceneIds ? sceneIds.includes(r.scene.id) : isConfident(r.how)));
+  const tags = [];
   for (const r of rows) for (const cat of SUGGEST_CATS) for (const sug of r.suggestions[cat]) {
-    Scenes.tagElement(r.scene.id, cat, sug.name); n++;
+    tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
   }
-  return n;
+  return Scenes.tagMany(tags);
+}
+
+function toastTagged(added, where) {
+  const n = added.length;
+  if (!n) { StudioUI.toast('Nothing new to tag.'); return; }
+  const scenesTouched = new Set(added.map((t) => t.sceneId)).size;
+  StudioUI.toast(`Tagged ${n} element${n === 1 ? '' : 's'}${where ? ` across ${scenesTouched} scene${scenesTouched === 1 ? '' : 's'}` : ''}.`, {
+    action: 'Undo',
+    onAction: () => {
+      const back = Scenes.untagMany(added);
+      render();
+      StudioUI.toast(`Removed the ${back} tag${back === 1 ? '' : 's'} just added.`);
+    }
+  });
 }
 
 /* ---- render ------------------------------------------------- */
@@ -523,14 +556,14 @@ delegate(document, 'click', '[data-action="sug-add"]', (e, el) => {
   render();
 });
 delegate(document, 'click', '[data-action="sug-scene"]', (e, el) => {
-  const n = applySuggestions([sceneIdOf(el)]);
+  const added = applySuggestions([sceneIdOf(el)]);
   render();
-  StudioUI.toast(`Tagged ${n} element${n === 1 ? '' : 's'}.`);
+  toastTagged(added, false);
 });
 delegate(document, 'click', '[data-action="sug-all"]', () => {
-  const n = applySuggestions(null);
+  const added = applySuggestions(null);
   render();
-  StudioUI.toast(`Tagged ${n} element${n === 1 ? '' : 's'} across the breakdown.`);
+  toastTagged(added, true);
 });
 delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
   Scenes.untagElement(sceneIdOf(el), el.dataset.cat, el.dataset.name);

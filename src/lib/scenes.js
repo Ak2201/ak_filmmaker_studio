@@ -185,6 +185,50 @@ export function untagElement(sceneId, category, name) {
   return scene;
 }
 
+/* ---- tagging in bulk, and taking exactly that back ---------
+   One read and one write for the whole batch, rather than one per
+   tag. `tags` is [{ sceneId, category, name }]. Returns the tags that
+   were actually ADDED, in the spelling that was stored; a name the
+   scene already carried (in any case) is not in it. That list is what
+   untagMany() takes, which is what makes an undo exact: it removes the
+   strings this call wrote and nothing a person tagged themselves. */
+export function tagMany(tags) {
+  const scenes = listScenes();
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  const added = [];
+  for (const t of tags || []) {
+    const scene = byId.get(t.sceneId);
+    const clean = String(t.name || '').trim();
+    if (!scene || !clean || !t.category) continue;
+    const list = Array.isArray(scene.elements[t.category]) ? scene.elements[t.category] : [];
+    if (list.some((n) => String(n).toLowerCase() === clean.toLowerCase())) continue;
+    list.push(clean);
+    scene.elements[t.category] = list;
+    added.push({ sceneId: scene.id, category: t.category, name: clean });
+  }
+  if (added.length) saveScenes(scenes);
+  return added;
+}
+
+/** Remove exactly these tags (exact spelling); returns how many went. */
+export function untagMany(tags) {
+  const scenes = listScenes();
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  let removed = 0;
+  for (const t of tags || []) {
+    const scene = byId.get(t.sceneId);
+    if (!scene) continue;
+    const list = scene.elements[t.category] || [];
+    const i = list.indexOf(t.name);
+    if (i < 0) continue;
+    list.splice(i, 1);
+    scene.elements[t.category] = list;
+    removed++;
+  }
+  if (removed) saveScenes(scenes);
+  return removed;
+}
+
 /** The Elements module: every tagged name, with the scenes it appears in.
     Derived, never stored — two copies of this would drift within a day. */
 export function elementIndex() {
@@ -220,5 +264,5 @@ export function totalEighths(scenes) {
 export default {
   SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, SHOT_STATES, shotLabel,
   blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene,
-  tagElement, untagElement, elementIndex, formatEighths, totalEighths
+  tagElement, untagElement, tagMany, untagMany, elementIndex, formatEighths, totalEighths
 };

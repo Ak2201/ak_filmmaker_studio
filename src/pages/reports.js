@@ -480,6 +480,10 @@ function renderScreenTime(scenes, numbers) {
     stat(formatDuration(st.byPage), 'by page count'),
     stat(st.fromScript + ' / ' + scenes.length, 'scenes read from the script')
   ]));
+  /* The pairing is by heading, not by position (matchScenes()), and
+     whatever it could not pair is said here rather than guessed at. */
+  const notes = Analysis.describeMatch(st.match);
+  if (notes.length) sec.append(h('p.bd-match-note', { text: notes.join(' ') }));
   const table = h('table.scene-table.rp-table');
   table.append(h('caption.rp-caption', { text: 'Estimated screen time per scene, against the page-a-minute rule.' }));
   table.append(h('thead', {}, [h('tr', {}, [th('Scene'), th('Slug line'), th('Estimate', 'numeric'), th('By pages', 'numeric'), th('Dialogue words', 'numeric'), th('Read from')])]));
@@ -491,7 +495,7 @@ function renderScreenTime(scenes, numbers) {
       td(formatDuration(r.seconds), 'numeric'),
       td(formatDuration(r.byPage), 'numeric'),
       td(r.method === 'script' ? String(r.dialogueWords) : '\u2014', 'numeric'),
-      td(r.method === 'script' ? 'script' : 'page count', 'mono')
+      td(r.method !== 'script' ? 'page count' : r.how === 'position' ? 'script, by position' : 'script', 'mono')
     ]));
   }
   table.append(body);
@@ -518,6 +522,8 @@ function renderCastMatrix(scenes, numbers) {
     sec.append(h('p.bd-none', { text: 'No cast yet. Tag cast on the breakdown or write character cues in the script, and the grid fills in.' }));
     return sec;
   }
+  const notes = Analysis.describeMatch(cm.match);
+  if (notes.length) sec.append(h('p.bd-match-note', { text: 'Cues are read only from scenes matched to a heading. ' + notes.join(' ') }));
   const table = h('table.scene-table.rp-table.rp-matrix');
   table.append(h('caption.rp-caption', { text: `${plural(cm.characters.length, 'character', 'characters')} across ${plural(scenes.length, 'scene', 'scenes')}. \u25CF in the scene; the last row counts the cast each scene calls.` }));
   const head = h('tr', {}, [th('Character'), th('Scenes', 'numeric')]);

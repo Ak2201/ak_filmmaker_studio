@@ -50,6 +50,7 @@ import { apiHost } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Script from '../lib/script.js';
+import { matchScenes, describeMatch } from '../lib/screenplay-analysis.js';
 import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, isLinkable
 } from '../lib/shots.js';
@@ -432,28 +433,29 @@ async function primeAI() {
   return true;
 }
 
+/* Which script text goes with which scene is matchScenes()'s answer,
+   the same one the breakdown and the reports print: by heading, not by
+   position, with the text above the first heading belonging to no
+   scene. This page used to cut the script itself and keep that
+   preamble as slice 0, so every scene was sent the previous scene's
+   pages. The run handler reads `bySceneId` from here rather than
+   slicing a second time. */
 function aiScenePlan(scenes, shots) {
   const script = Script.loadScript();
-  const slices = [];
-  let current = null;
-  for (const el of script.elements) {
-    const text = String(el.text ?? '').trim();
-    if (!text) continue;
-    if (el.type === 'scene') { current = { heading: text, elements: [] }; slices.push(current); continue; }
-    if (!current) { current = { heading: '', elements: [] }; slices.push(current); }
-    current.elements.push(el);
-  }
+  const match = matchScenes(scenes, script.elements);
   const counted = new Map();
   for (const s of shots) counted.set(s.sceneId, (counted.get(s.sceneId) || 0) + 1);
 
+  const rows = match.pairs.map(({ scene, slice, how }) => ({
+    scene, slice, how,
+    existing: counted.get(scene.id) || 0
+  }));
   return {
     hasScript: script.elements.length > 0,
     pages: Script.pageCount(script.elements),
-    rows: scenes.map((scene, i) => ({
-      scene,
-      slice: slices[i] || null,
-      existing: counted.get(scene.id) || 0
-    }))
+    rows,
+    bySceneId: new Map(rows.map((r) => [r.scene.id, r])),
+    notes: describeMatch(match)
   };
 }
 
@@ -471,7 +473,8 @@ function aiScenePicker(plan) {
       h('span.vz-scene-no', { text: row.scene.number || '—' }),
       h('span.vz-ai-pickslug', { text: slugOf(row.scene) }),
       h('span.vz-ai-pickmeta', {
-        text: (row.slice ? 'script matched' : 'synopsis only')
+        text: (!row.slice ? 'synopsis only'
+              : row.how === 'position' ? 'script matched by position, check it' : 'script matched')
             + (row.existing ? ' · ' + plural(row.existing, 'shot', 'shots') + ' already' : '')
       })
     ]);
@@ -554,6 +557,7 @@ function renderAI(scenes, shots) {
             .reduce((a, s) => a + (Number(s.eighths) || 0), 0)) + ' pages'
     })
   ]));
+  if (plan.notes.length) wrap.append(h('p.bd-match-note', { text: plan.notes.join(' ') }));
   wrap.append(aiScenePicker(plan));
 
   wrap.append(h('div.vz-ai-acts', {}, [
@@ -1005,12 +1009,10 @@ delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
   const chosen = scenes.filter((s) => aiPicked && aiPicked.has(s.id));
   if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
 
-  const script = Script.loadScript();
-  const slices = AI.sliceScriptByScene(script.elements);
-  const index = new Map(scenes.map((s, i) => [s.id, i]));
+  const plan = aiScenePlan(scenes, []);
 
   const jobs = chosen.map((scene) => {
-    const slice = slices[index.get(scene.id)] || null;
+    const slice = (plan.bySceneId.get(scene.id) || {}).slice || null;
     return {
       sceneId: scene.id,
       number: scene.number,

@@ -9,12 +9,17 @@
    those two, and a stored copy of a reading is wrong the first time
    either is edited. readiness.js is the precedent.
 
-   THE JOIN. The Nth scene heading in the script is the Nth scene row.
-   That is the rule src/lib/ai.js already states and the visualize
-   page already shows the user, and two opinions about which script
-   text belongs to which scene would disagree the first time either
-   side was reordered. A scene row with no script text falls back to
-   its eighths, and says so.
+   THE JOIN is by CONTENT, not by position. The scene rows and the
+   script are two lists that nothing keeps in step: deleting or moving
+   a row on the breakdown never touches the script, so "the Nth heading
+   is the Nth row" mispaired every scene after the first edit, and the
+   auto-tagger then wrote hundreds of elements onto the wrong scenes.
+   matchScenes() below pairs each row with the heading that SAYS the
+   same place, and reports what it could not pair instead of guessing.
+   Every caller (the breakdown's suggestions, the reports' screen time
+   and cast matrix, the AI shot division) reads that one function, so
+   they cannot disagree about which text belongs to which scene. A
+   scene row with no script text falls back to its eighths, and says so.
 
    SCREEN TIME IS AN ESTIMATE, labelled as one everywhere it is shown.
    The industry rule is a page a minute; this refines it the way the
@@ -43,23 +48,216 @@ export const SECONDS_PER_EIGHTH = 7.5;   // a page a minute
 const words = (t) => (String(t || '').match(/[\p{L}\p{N}'’-]+/gu) || []).length;
 
 /** Cut the script at each scene heading. Text before the first heading
- *  is a preamble (title, FADE IN) and belongs to no scene. */
+ *  is a preamble (title, FADE IN, a note) and belongs to NO scene.
+ *
+ *  THE ONE SLICER. src/lib/ai.js re-exports this as sliceScriptByScene
+ *  and the visualize page reads it through matchScenes(). Both used to
+ *  carry their own copy that kept the preamble as slice 0, so on any
+ *  script with text above its first heading every scene was sent the
+ *  previous scene's pages. `number` is a scene number the file carried
+ *  on the heading element (.fdx), else ''; `index` is the heading's
+ *  position among the headings. */
 export function sliceScript(elements) {
   const out = [];
   let cur = null;
   for (const el of elements || []) {
     const text = String((el && el.text) ?? '').trim();
     if (!text) continue;
-    if (el.type === 'scene') { cur = { heading: text, elements: [] }; out.push(cur); continue; }
+    if (el.type === 'scene') {
+      cur = { heading: text, number: String(el.sceneNumber || '').trim(), index: out.length, elements: [] };
+      out.push(cur);
+      continue;
+    }
     if (cur) cur.elements.push(el);
   }
   return out;
 }
 
-/** Scene rows paired with their script slice, by position. */
-export function pairScenes(scenes, elements) {
+/* ---- the join: scene rows and script headings ----------------
+
+   A heading and a scene row are compared as three normalised parts,
+   INT/EXT, the place and the time of day, because that is all a scene
+   row stores about where it is. Punctuation, dashes, case, a trailing
+   "(2014)" and a scene number on either end are noise, and the common
+   time synonyms fold the way the importer folds them (MORNING to DAY).
+
+   Matching runs in tiers, each only over what the tier above left:
+     1. 'heading'   INT/EXT, place and time all agree;
+     2. 'location'  the place agrees (the row's time or INT/EXT was
+                    edited, or never set);
+     3. 'position'  neither, but the row sits between two matched
+                    neighbours with exactly as many unmatched headings
+                    between the same neighbours: a renamed row in an
+                    otherwise intact run. Shown as a guess, never used
+                    to write anything in bulk.
+   Inside a tier, a place that occurs more than once (the canteen in
+   scenes 5, 9 and 27) is settled by scene number first (the row's
+   number against the heading's own number, else its position in the
+   script), then by order, but ONLY when the two sides have the same
+   count left. Unequal counts are ambiguous and stay unmatched. */
+const TIME_WORDS = {
+  DAY: 'DAY', NIGHT: 'NIGHT', DAWN: 'DAWN', DUSK: 'DUSK', CONTINUOUS: 'CONTINUOUS',
+  MORNING: 'DAY', AFTERNOON: 'DAY', NOON: 'DAY', EVENING: 'NIGHT', MIDNIGHT: 'NIGHT',
+  SUNRISE: 'DAWN', SUNSET: 'DUSK', LATER: '', 'MOMENTS LATER': '', 'SAME TIME': ''
+};
+const tokensOf = (t) => String(t || '')
+  .toUpperCase()
+  .replace(/\([^)]*\)/g, ' ')
+  .replace(/['’`]/g, '')
+  .replace(/\b(INT|EXT)\.?\s*\/\s*(INT|EXT)\b\.?/g, 'I/E ')
+  .replace(/\bI\s*\/\s*E\b/g, 'I/E')
+  .replace(/[^\p{L}\p{N}/]+/gu, ' ')
+  .replace(/(^|\s)\/|\/(\s|$)/g, ' ')
+  .trim().split(/\s+/).filter(Boolean);
+const IE = { INT: 'INT', EST: 'INT', EXT: 'EXT', 'I/E': 'INT/EXT', 'INT/EXT': 'INT/EXT', 'EXT/INT': 'INT/EXT' };
+const SCENE_NO = /^[A-Z]?\d+[A-Z]?$/;
+
+/** A heading (or a typed location) as { ie, place, time, number }. */
+export function headingParts(heading) {
+  let toks = tokensOf(heading);
+  let number = '';
+  if (toks.length > 1 && SCENE_NO.test(toks[0]) && IE[toks[1]]) { number = toks[0]; toks = toks.slice(1); }
+  let ie = '';
+  if (toks.length && IE[toks[0]]) { ie = IE[toks[0]]; toks = toks.slice(1); }
+  if (toks.length > 1 && /^\d+[A-Z]?$/.test(toks[toks.length - 1])) {
+    number = number || toks[toks.length - 1];
+    toks = toks.slice(0, -1);
+  }
+  let time = '';
+  for (const n of [2, 1]) {
+    if (toks.length > n) {
+      const tail = toks.slice(-n).join(' ');
+      if (tail in TIME_WORDS) { time = TIME_WORDS[tail]; toks = toks.slice(0, -n); break; }
+    }
+  }
+  return { ie, place: toks.join(' ').replace(/\//g, ' ').replace(/\s+/g, ' ').trim(), time, number };
+}
+
+/** A scene row as the same parts. */
+export function sceneParts(scene) {
+  const s = scene || {};
+  const loc = headingParts(String(s.location || ''));
+  const dn = String(s.dayNight || '').toUpperCase();
+  return {
+    ie: IE[String(s.intExt || '').toUpperCase()] || loc.ie,
+    place: loc.place,
+    time: dn in TIME_WORDS ? TIME_WORDS[dn] : loc.time,
+    number: String(s.number || '').trim().toUpperCase()
+  };
+}
+
+/** Pair every scene row with its script slice, by content.
+ *  Returns { pairs: [{ scene, slice, how }] in row order, slices,
+ *  unmatchedScenes, unmatchedHeadings, guessed }. `how` is 'heading',
+ *  'location', 'position' or null; isConfident(how) is true for the
+ *  first two only. */
+export function matchScenes(scenes, elements) {
+  const rows = scenes || [];
   const slices = sliceScript(elements);
-  return (scenes || []).map((scene, i) => ({ scene, slice: slices[i] || null }));
+  const sp = rows.map(sceneParts);
+  const hp = slices.map((sl) => headingParts(sl.heading));
+  const sceneTo = new Array(rows.length).fill(-1);
+  const headTo = new Array(slices.length).fill(-1);
+  const how = new Array(rows.length).fill(null);
+  const link = (i, j, label) => { sceneTo[i] = j; headTo[j] = i; how[i] = label; };
+  const headNo = (j) => (hp[j].number || slices[j].number || String(j + 1)).toUpperCase();
+
+  const tier = (label, keyOf) => {
+    const groups = new Map();
+    const put = (k, side, i) => {
+      if (!k) return;
+      if (!groups.has(k)) groups.set(k, { s: [], h: [] });
+      groups.get(k)[side].push(i);
+    };
+    rows.forEach((_, i) => { if (sceneTo[i] < 0) put(keyOf(sp[i]), 's', i); });
+    slices.forEach((_, j) => { if (headTo[j] < 0) put(keyOf(hp[j]), 'h', j); });
+    for (const { s, h } of groups.values()) {
+      if (!s.length || !h.length) continue;
+      if (s.length === 1 && h.length === 1) { link(s[0], h[0], label); continue; }
+      // A repeated place: the scene number settles what it can.
+      for (const i of s) {
+        if (!sp[i].number) continue;
+        const j = h.find((jj) => headTo[jj] < 0 && headNo(jj) === sp[i].number);
+        if (j !== undefined) link(i, j, label);
+      }
+      const ls = s.filter((i) => sceneTo[i] < 0);
+      const lh = h.filter((j) => headTo[j] < 0);
+      if (ls.length && ls.length === lh.length) ls.forEach((i, k) => link(i, lh[k], label));
+    }
+  };
+  tier('heading', (p) => (p.place ? [p.ie, p.place, p.time].join('|') : ''));
+  tier('location', (p) => p.place);
+
+  /* Tier 3: the gaps between matched anchors. The anchors are the
+     longest run of matched rows whose headings also ascend, so one
+     moved scene does not open a gap across half the film. */
+  const matched = rows.map((_, i) => i).filter((i) => sceneTo[i] >= 0);
+  const anchors = ascendingRun(matched, (i) => sceneTo[i]);
+  const bounds = [{ i: -1, j: -1 }, ...anchors.map((i) => ({ i, j: sceneTo[i] })), { i: rows.length, j: slices.length }];
+  for (let b = 0; b + 1 < bounds.length; b++) {
+    const lo = bounds[b], hi = bounds[b + 1];
+    const gs = [], gh = [];
+    for (let i = lo.i + 1; i < hi.i; i++) if (sceneTo[i] < 0) gs.push(i);
+    for (let j = lo.j + 1; j < hi.j; j++) if (headTo[j] < 0) gh.push(j);
+    // A gap pair whose places DO agree was only ambiguous (a repeated
+    // place with no number to settle it); the anchors settle it.
+    if (gs.length && gs.length === gh.length) {
+      gs.forEach((i, k) => link(i, gh[k], sp[i].place && sp[i].place === hp[gh[k]].place ? 'location' : 'position'));
+    }
+  }
+
+  const pairs = rows.map((scene, i) => ({ scene, slice: sceneTo[i] >= 0 ? slices[sceneTo[i]] : null, how: how[i] }));
+  return {
+    pairs,
+    slices,
+    unmatchedScenes: pairs.filter((p) => !p.slice).map((p) => p.scene),
+    unmatchedHeadings: slices.filter((_, j) => headTo[j] < 0),
+    guessed: pairs.filter((p) => p.how === 'position').length
+  };
+}
+
+/** True for a pair the bulk actions may act on. */
+export const isConfident = (how) => how === 'heading' || how === 'location';
+
+/** The longest subsequence of `items` whose `val` strictly ascends. */
+function ascendingRun(items, val) {
+  const tails = [];
+  const prev = new Array(items.length).fill(-1);
+  items.forEach((it, k) => {
+    const v = val(it);
+    let lo = 0, hi = tails.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (val(items[tails[m]]) < v) lo = m + 1; else hi = m; }
+    if (lo > 0) prev[k] = tails[lo - 1];
+    tails[lo] = k;
+  });
+  const out = [];
+  for (let k = tails.length ? tails[tails.length - 1] : -1; k >= 0; k = prev[k]) out.push(items[k]);
+  return out.reverse();
+}
+
+/** What the join could not do, as sentences the pages print. Empty
+ *  when there is no script, or when every row and heading paired. */
+export function describeMatch(m) {
+  if (!m || !m.slices.length) return [];
+  const out = [];
+  const ns = m.unmatchedScenes.length, nh = m.unmatchedHeadings.length;
+  if (ns) {
+    const nums = m.unmatchedScenes.slice(0, 8).map((s) => s.number || '—').join(', ') + (ns > 8 ? ', …' : '');
+    out.push(`${ns} scene${ns === 1 ? ' has' : 's have'} no matching heading in the script (scene${ns === 1 ? '' : 's'} ${nums}).`);
+  }
+  if (nh) {
+    const heads = m.unmatchedHeadings.slice(0, 3).map((s) => s.heading).join('; ') + (nh > 3 ? '; …' : '');
+    out.push(`${nh} heading${nh === 1 ? '' : 's'} in the script ${nh === 1 ? 'has' : 'have'} no scene row: ${heads}.`);
+  }
+  if (m.guessed) {
+    out.push(`${m.guessed} scene${m.guessed === 1 ? ' is' : 's are'} paired by position only, because the slug line and the heading disagree.`);
+  }
+  return out;
+}
+
+/** Scene rows paired with their script slice, by content; see matchScenes(). */
+export function pairScenes(scenes, elements) {
+  return matchScenes(scenes, elements).pairs;
 }
 
 /* ---- FR-602: screen time ------------------------------------ */
@@ -86,17 +284,18 @@ export function estimateSlice(slice) {
 
 /** Every scene's estimate. `method` says which rule produced it. */
 export function screenTime(scenes, elements) {
-  const rows = pairScenes(scenes, elements).map(({ scene, slice }) => {
+  const match = matchScenes(scenes, elements);
+  const rows = match.pairs.map(({ scene, slice, how }) => {
     const byPage = Math.round((Number(scene.eighths) || 0) * SECONDS_PER_EIGHTH);
     if (slice && slice.elements.length) {
       const e = estimateSlice(slice);
-      return { scene, heading: slice.heading, method: 'script', byPage, ...e };
+      return { scene, heading: slice.heading, how, method: 'script', byPage, ...e };
     }
-    return { scene, heading: '', method: 'eighths', byPage, seconds: byPage, dialogueWords: 0, actionWords: 0, speeches: 0 };
+    return { scene, heading: '', how, method: 'eighths', byPage, seconds: byPage, dialogueWords: 0, actionWords: 0, speeches: 0 };
   });
   const total = rows.reduce((n, r) => n + r.seconds, 0);
   const byPage = rows.reduce((n, r) => n + r.byPage, 0);
-  return { rows, total, byPage, fromScript: rows.filter((r) => r.method === 'script').length };
+  return { rows, total, byPage, fromScript: rows.filter((r) => r.method === 'script').length, match };
 }
 
 export function formatDuration(sec) {
@@ -142,7 +341,8 @@ function capsIntros(text) {
  *  because a breakdown that has not been finished and a script that
  *  has not been written are both ordinary states. */
 export function castMatrix(scenes, elements) {
-  const pairs = pairScenes(scenes, elements);
+  const match = matchScenes(scenes, elements);
+  const pairs = match.pairs;
   const people = new Map();   // KEY -> { name, scenes: Set(sceneId), lines }
   const inScene = pairs.map(({ scene, slice }) => {
     const here = new Map();
@@ -192,7 +392,7 @@ export function castMatrix(scenes, elements) {
   // Dense = at least three people and half again the film's median.
   const threshold = Math.max(3, Math.ceil(median * 1.5));
   const density = inScene.map((r) => ({ scene: r.scene, count: r.keys.length, keys: r.keys, high: r.keys.length >= threshold }));
-  return { characters, interactions, density, threshold };
+  return { characters, interactions, density, threshold, match };
 }
 
 /* ---- FR-603: suggested elements ------------------------------ */
@@ -249,11 +449,20 @@ export function suggestElements(scene, slice) {
   return out;
 }
 
-/** Suggestions for every scene that has any. */
+/** Suggestions for every scene that has any. Each row carries `how`
+ *  from matchScenes(), so a caller that tags in bulk can leave out the
+ *  pairs that are only a guess. */
 export function suggestAll(scenes, elements) {
-  return pairScenes(scenes, elements)
-    .map(({ scene, slice }) => ({ scene, heading: slice ? slice.heading : '', suggestions: suggestElements(scene, slice) }))
-    .filter((r) => Object.values(r.suggestions).some((l) => l.length));
+  return suggestReport(scenes, elements).rows;
 }
 
-export default { sliceScript, pairScenes, estimateSlice, screenTime, formatDuration, cueName, castMatrix, suggestElements, suggestAll };
+/** The same rows, with the join's own report beside them. */
+export function suggestReport(scenes, elements) {
+  const match = matchScenes(scenes, elements);
+  const rows = match.pairs
+    .map(({ scene, slice, how }) => ({ scene, heading: slice ? slice.heading : '', how, suggestions: suggestElements(scene, slice) }))
+    .filter((r) => Object.values(r.suggestions).some((l) => l.length));
+  return { rows, match };
+}
+
+export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, formatDuration, cueName, castMatrix, suggestElements, suggestAll };

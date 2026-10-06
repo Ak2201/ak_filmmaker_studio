@@ -57,6 +57,7 @@
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
+import { sliceScript } from './screenplay-analysis.js';
 import Providers, {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
@@ -88,29 +89,19 @@ const API_VERSION = '2023-06-01';
    different scene, and a stored join would break the first time
    either side was reordered.
 
-   So the join is derived, here, at the moment it is needed: the
-   script is cut at every scene heading, and the Nth script scene
-   is offered as the text of the Nth scene row. The UI SHOWS that
+   So the join is derived at the moment it is needed, and it is
+   derived in ONE place: matchScenes() in screenplay-analysis.js,
+   which cuts the script at every heading and pairs each scene row
+   with the heading that names the same place. This module used to
+   carry its own slicer, which kept the text above the first
+   heading as slice 0 while the analysis dropped it, so every scene
+   was sent the previous scene's pages. The name survives as an
+   alias so existing callers keep reading. The UI SHOWS the
    pairing rather than assuming it is right, and a scene row with
-   no matching script text is still sent — with its synopsis,
+   no matching script text is still sent, with its synopsis,
    which is often all there is.
    ------------------------------------------------------------ */
-export function sliceScriptByScene(elements) {
-  const out = [];
-  let current = null;
-  for (const el of (elements || [])) {
-    const text = String(el.text ?? '').trim();
-    if (!text) continue;
-    if (el.type === 'scene') {
-      current = { heading: text, elements: [] };
-      out.push(current);
-      continue;
-    }
-    if (!current) { current = { heading: '', elements: [] }; out.push(current); }
-    current.elements.push(el);
-  }
-  return out;
-}
+export const sliceScriptByScene = sliceScript;
 
 /** One script scene as the plain screenplay text a reader sees.
     Indented the way the format indents it, because the shape of a

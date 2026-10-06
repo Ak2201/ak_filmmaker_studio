@@ -41,16 +41,107 @@ const script = [
   el('dialogue', 'And me.')
 ];
 const scenes = [
-  { id: 's1', number: '1', eighths: 4, elements: { cast: ['Ravi'], props: ['Kettle'] } },
-  { id: 's2', number: '2', eighths: 8, elements: {} },
-  { id: 's3', number: '3', eighths: 2, elements: { cast: ['Meena'] } },
-  { id: 's4', number: '4', eighths: 8, elements: { cast: ['Lakshmi'] } }
+  { id: 's1', number: '1', intExt: 'INT', location: 'Tea stall', dayNight: 'DAY', eighths: 4, elements: { cast: ['Ravi'], props: ['Kettle'] } },
+  { id: 's2', number: '2', intExt: 'EXT', location: 'Highway', dayNight: 'NIGHT', eighths: 8, elements: {} },
+  { id: 's3', number: '3', intExt: 'INT', location: 'Ravi house', dayNight: 'NIGHT', eighths: 2, elements: { cast: ['Meena'] } },
+  { id: 's4', number: '4', intExt: 'INT', location: "Lakshmi's flat", dayNight: 'DAY', eighths: 8, elements: { cast: ['Lakshmi'] } }
 ];
 
 /* ---- slicing and pairing ---- */
 eq(A.sliceScript(script).map((s) => s.heading), ['INT. TEA STALL - DAY', 'EXT. HIGHWAY - NIGHT', 'INT. RAVI HOUSE - NIGHT'], 'script cut at headings; preamble dropped');
 const paired = A.pairScenes(scenes, script);
-eq(paired.map((p) => p.slice && p.slice.heading), ['INT. TEA STALL - DAY', 'EXT. HIGHWAY - NIGHT', 'INT. RAVI HOUSE - NIGHT', null], 'Nth heading pairs with Nth scene row; extra rows get none');
+eq(paired.map((p) => p.slice && p.slice.heading), ['INT. TEA STALL - DAY', 'EXT. HIGHWAY - NIGHT', 'INT. RAVI HOUSE - NIGHT', null], 'each row pairs with the heading naming its place; a row with none gets none');
+eq(paired.map((p) => p.how), ['heading', 'heading', 'heading', null], 'pairs say how they were made');
+
+/* H3: ONE slicer. ai.js's name for it must be the same function, so the
+   AI shot division can never again send scene N the preamble or scene
+   N-1's pages. */
+/* ai.js cannot be imported here (store.js is stubbed and it needs
+   rawGet), so the guarantee is checked in the source: ai.js aliases the
+   one slicer, and visualize.js asks matchScenes() instead of cutting the
+   script itself. A third copy that keeps the preamble is the bug. */
+{
+  const { readFileSync } = await import('node:fs');
+  const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+  const ai = src('src/lib/ai.js'), vz = src('src/pages/visualize.js');
+  ok(/import \{ sliceScript \} from '\.\/screenplay-analysis\.js'/.test(ai) && /export const sliceScriptByScene = sliceScript;/.test(ai), 'ai.js sliceScriptByScene is an alias of the one slicer');
+  ok(!/type === 'scene'/.test(ai.slice(ai.indexOf('MATCHING THE SCRIPT'), ai.indexOf('export function sceneScriptText'))), 'ai.js carries no slicer of its own');
+  ok(/matchScenes\(scenes, script\.elements\)/.test(vz) && !/el\.type === 'scene'/.test(vz), 'visualize.js pairs through matchScenes() and slices nothing itself');
+}
+eq(A.sliceScript(script)[0].elements.map((e) => e.text).slice(0, 1), ['Steam off a kettle. RAVI, 30s, counts coins on the counter. His phone RINGS.'], 'scene 1 text starts after its own heading, not with the preamble');
+ok(!A.sliceScript(script).some((s) => s.elements.some((e) => e.text === 'FADE IN:')), 'the preamble belongs to no slice');
+
+/* H4: pairing is by content, so a delete or a move keeps each row's text. */
+{
+  const deleted = scenes.filter((s) => s.id !== 's2');
+  eq(A.pairScenes(deleted, script).map((p) => p.slice && p.slice.heading), ['INT. TEA STALL - DAY', 'INT. RAVI HOUSE - NIGHT', null], 'deleting scene 2 does not shift scene 3 onto the highway');
+  const moved = [scenes[1], scenes[0], scenes[2], scenes[3]];
+  eq(A.pairScenes(moved, script).map((p) => [p.scene.id, p.slice && p.slice.heading]),
+    [['s2', 'EXT. HIGHWAY - NIGHT'], ['s1', 'INT. TEA STALL - DAY'], ['s3', 'INT. RAVI HOUSE - NIGHT'], ['s4', null]], 'moving scene 1 down keeps its own heading');
+  const m = A.matchScenes(deleted, script);
+  eq(m.unmatchedScenes.map((s) => s.id), ['s4'], 'unmatched scene rows are reported');
+  eq(m.unmatchedHeadings.map((s) => s.heading), ['EXT. HIGHWAY - NIGHT'], 'unmatched headings are reported');
+  const said = A.describeMatch(m).join(' ');
+  ok(/1 scene has no matching heading in the script \(scene 4\)/.test(said), 'the report says which scene: ' + said);
+  ok(/1 heading in the script has no scene row: EXT\. HIGHWAY - NIGHT/.test(said), 'the report names the orphan heading');
+  eq(A.describeMatch(A.matchScenes(scenes.slice(0, 3), script)), [], 'nothing to report when every row and heading paired');
+  eq(A.describeMatch(A.matchScenes(scenes, [])), [], 'no script, no report');
+  // Screen time and the cast matrix read the same join.
+  const st2 = A.screenTime(moved, script);
+  eq(st2.rows.map((r) => r.heading), ['EXT. HIGHWAY - NIGHT', 'INT. TEA STALL - DAY', 'INT. RAVI HOUSE - NIGHT', ''], 'screen time follows the moved rows');
+  const cm2 = A.castMatrix(deleted, script);
+  eq(cm2.density.map((d) => d.count), [2, 3, 1], 'cast matrix follows the deleted row');
+  // ADD ALL's input: suggestions follow the join too.
+  eq(A.suggestAll(moved, script).map((r) => [r.scene.id, r.how]), [['s2', 'heading'], ['s1', 'heading'], ['s3', 'heading']], 'suggestions follow the moved rows');
+}
+
+/* Normalisation: case, punctuation, a year, a scene number, synonyms. */
+eq(A.headingParts("12 INT. RAGAVAN'S HOUSE, VILLIVAKKAM - MORNING (2014) 12"), { ie: 'INT', place: 'RAGAVANS HOUSE VILLIVAKKAM', time: 'DAY', number: '12' }, 'heading parts');
+eq(A.headingParts('INT./EXT. CAR - NIGHT').ie, 'INT/EXT', 'INT./EXT. folds');
+eq(A.sceneParts({ intExt: 'EXT', location: 'Engineering college — front block', dayNight: 'DAY' }).place,
+  A.headingParts('EXT. ENGINEERING COLLEGE - FRONT BLOCK - DAY').place, 'an em dash in the row and a hyphen in the heading are the same place');
+
+/* A place that occurs twice is settled by number, and a guess is labelled. */
+{
+  const rep = [
+    el('scene', 'INT. CANTEEN - DAY'), el('action', 'First.'),
+    el('scene', 'EXT. QUAD - DAY'), el('action', 'Between.'),
+    el('scene', 'INT. CANTEEN - DAY'), el('action', 'Second.')
+  ];
+  const rows = [
+    { id: 'c2', number: '3', intExt: 'INT', location: 'Canteen', dayNight: 'DAY' },
+    { id: 'c1', number: '1', intExt: 'INT', location: 'Canteen', dayNight: 'DAY' }
+  ];
+  eq(A.pairScenes(rows, rep).map((p) => p.slice.elements[0].text), ['Second.', 'First.'], 'a repeated place is settled by scene number, not order');
+  // Unnumbered and unequal: ambiguous, so nothing is guessed.
+  const amb = A.matchScenes([{ id: 'x', number: '', intExt: 'INT', location: 'Canteen', dayNight: 'DAY' }], rep);
+  eq(amb.pairs[0].slice, null, 'one unnumbered canteen against two canteen headings is left unmatched');
+  // A renamed row between two matched neighbours is paired by position, and says so.
+  const ren = [
+    { id: 'a', number: '1', intExt: 'INT', location: 'Canteen', dayNight: 'DAY' },
+    { id: 'b', number: '2', intExt: 'EXT', location: 'The big lawn', dayNight: 'DAY' },
+    { id: 'c', number: '3', intExt: 'INT', location: 'Canteen', dayNight: 'DAY' }
+  ];
+  const rm2 = A.matchScenes(ren, rep);
+  eq(rm2.pairs.map((p) => p.how), ['heading', 'position', 'heading'], 'a renamed row in an intact run is a position guess');
+  ok(!A.isConfident('position') && A.isConfident('heading') && A.isConfident('location'), 'only heading and location pairs are confident');
+  ok(/paired by position only/.test(A.describeMatch(rm2).join(' ')), 'a position guess is reported');
+}
+
+/* ADD ALL's undo removes exactly what it added. */
+{
+  const S = await import('../src/lib/scenes.js');
+  S.saveScenes([{ ...S.blankScene({ id: 'u1' }), elements: { props: ['Kettle'] } }]);
+  const added = S.tagMany([
+    { sceneId: 'u1', category: 'props', name: 'kettle' },
+    { sceneId: 'u1', category: 'props', name: 'Phone' },
+    { sceneId: 'u1', category: 'cast', name: 'Ravi' }
+  ]);
+  eq(added.map((t) => t.name), ['Phone', 'Ravi'], 'tagMany reports only what it added (kettle was already there)');
+  S.tagElement('u1', 'props', 'Coins');
+  eq(S.untagMany(added), 2, 'untagMany removes the two it added');
+  eq(S.listScenes()[0].elements, { props: ['Kettle', 'Coins'], cast: [] }, 'and leaves the tags a person made');
+}
 
 /* ---- screen time ---- */
 const st = A.screenTime(scenes, script);

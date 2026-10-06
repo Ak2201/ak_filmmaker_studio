@@ -42,7 +42,8 @@
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
 import Store, { rawGet } from '../lib/store.js';
-import { harvestKeys } from '../lib/blueprint-fields.js';
+import { BLUEPRINT, guideProgress, stageHueClass, journey } from '../lib/journey.js';
+import { renderJourneyStrip } from '../ui/journey-strip.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -64,89 +65,46 @@ import { loadScript, pageCount, formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness } from '../lib/readiness.js';
 
-import featureData from '../data/steps.feature.json';
-import prodData from '../data/steps.production.json';
-import shortData from '../data/steps.short.json';
 
 const app = document.getElementById('app');
 
 /* Storage keys, spelled exactly as store.js's SCOPED_KEYS spells them.
    These are read-only here; not one line of this file writes to them. */
-const FEATURE_KEY = 'fms_filmmaker_combined_v1';
-const SHORT_KEY = 'fms_shortfilm_blueprint_v1';
 const LIB_CALC_KEY = 'fms_library_calc_v1';
 const ACTIVITY_KEY = 'fms_studio_activity_v1';
 
 /* ============================================================
-   THE BLUEPRINTS, AS A FIELD LIST
+   THE BLUEPRINTS, AS A FIELD LIST — grouped by STAGE now
    ------------------------------------------------------------
-   Derived from src/data, never hand-listed — the same rule that put
-   the steps in JSON in the first place. Two sources of field names:
+   The field list (both sources: `key` props and data-key attributes
+   inside `raw` blocks), the step-to-stage mapping and the "filled"
+   rule all live in src/lib/journey.js, which reads
+   blueprint-fields.js — so the journey strip, the hub's cards and
+   this page count one way. This used to be a local copy grouped by
+   the four 2023 phases, which filed the scene list and the script
+   lock under Story and disagreed with the five stages the rest of
+   the studio is built on. The two blueprint keys are spelled once,
+   in journey.js's BLUEPRINT table, and read-only here.
 
-     `key` properties, on the asks and checklist items the renderer
-     builds from structured blocks, and
-
-     data-key attributes inside `raw` blocks — the elements the
-     extractors could not model, re-inserted verbatim. There are 145
-     of those on the feature blueprint alone, and a count that
-     ignored them would report a filled project as a third done.
+   The adapter keeps the shape every renderer below already reads:
+   phases → steps, each with done/total by FIELD.
    ============================================================ */
-/* harvestKeys moved to src/lib/blueprint-fields.js — hub.js needed
-   the same derivation to stop reporting 11 saved fields as 100%
-   complete, and two copies of a denominator is how the two pages
-   disagreed in the first place. */
+const BLUEPRINTS = { feature: BLUEPRINT.feature, short: BLUEPRINT.short };
 
-/* The short film's five beats live in their own array and are rendered
-   by the `beatviz` block inside step 4. Attributing them to that step
-   is what makes "what's next" point at the step the user would open. */
-const hasBlock = (step, type) => (step.blocks || []).some((b) => b.type === type);
-
-function stepFields(step, blueprintId) {
-  const keys = harvestKeys(step, new Set());
-  if (blueprintId === 'short' && hasBlock(step, 'beatviz')) {
-    harvestKeys(shortData.beats, keys);
-  }
-  return keys;
+function blueprintProgress(blueprint, data) {
+  const g = guideProgress(blueprint.id, data);
+  const phases = g.stages.filter((st) => st.steps.length).map((st) => ({
+    id: st.id,
+    label: 'Part ' + st.part + ' · ' + st.label,
+    hue: st.hue,
+    href: blueprint.href,
+    steps: st.steps.map((step) => ({ ...step, total: step.fieldsTotal, done: step.fieldsDone })),
+    total: st.fields.total,
+    done: st.fields.done,
+    pct: st.pct
+  }));
+  return { blueprint, phases, total: g.fields.total, done: g.fields.done, pct: g.pct };
 }
-
-function buildPhase(label, hue, steps, blueprintId, href) {
-  return {
-    label,
-    hue,
-    href,
-    steps: steps.map((s) => ({
-      id: s.id,
-      num: s.num,
-      title: String(s.titlePlain || s.title || '').replace(/<[^>]*>/g, '').replace(/\.$/, ''),
-      deck: String(s.deck || '').replace(/<[^>]*>/g, ''),
-      keys: stepFields(s, blueprintId)
-    }))
-  };
-}
-
-/* Production and Post are rendered on feature.html too — feature.js
-   imports steps.production.json — so every href here is that page. */
-const BLUEPRINTS = {
-  feature: {
-    id: 'feature',
-    label: 'Feature Blueprint',
-    href: 'feature.html',
-    storeKey: FEATURE_KEY,
-    phases: [
-      buildPhase('Story', 'feature', featureData.vol1, 'feature', 'feature.html'),
-      buildPhase('Pre-production', 'visualize', featureData.vol2, 'feature', 'feature.html'),
-      buildPhase('Production', 'shoot', prodData.production, 'feature', 'feature.html'),
-      buildPhase('Post-production', 'plan', prodData.post, 'feature', 'feature.html')
-    ]
-  },
-  short: {
-    id: 'short',
-    label: 'Short Blueprint',
-    href: 'short.html',
-    storeKey: SHORT_KEY,
-    phases: [buildPhase('Eleven steps', 'shorts', shortData.steps, 'short', 'short.html')]
-  }
-};
 
 /* ============================================================
    READING WHAT IS STORED
@@ -173,37 +131,6 @@ function readBlobFor(key, projectId) {
   } catch (e) { return {}; }
 }
 
-/** feature.js's definition, and it has to stay feature.js's definition. */
-function isFilled(value) {
-  if (value === true) return true;
-  if (typeof value === 'string') return value.trim().length > 0;
-  return false;
-}
-
-function countFields(keys, data) {
-  let done = 0;
-  for (const k of keys) if (isFilled(data[k])) done++;
-  return done;
-}
-
-function blueprintProgress(blueprint, data) {
-  const phases = blueprint.phases.map((phase) => {
-    const steps = phase.steps.map((step) => {
-      const total = step.keys.size;
-      const done = countFields(step.keys, data);
-      return { ...step, total, done };
-    });
-    const total = steps.reduce((n, s) => n + s.total, 0);
-    const done = steps.reduce((n, s) => n + s.done, 0);
-    return { ...phase, steps, total, done, pct: total ? Math.round((done / total) * 100) : 0 };
-  });
-  const total = phases.reduce((n, p) => n + p.total, 0);
-  const done = phases.reduce((n, p) => n + p.done, 0);
-  return {
-    blueprint, phases, total, done,
-    pct: total ? Math.round((done / total) * 100) : 0
-  };
-}
 
 /** The first step that is not finished. Null when every field is in. */
 function firstUnfinished(progress) {
@@ -312,7 +239,9 @@ function snapshot(project) {
     elements: Scenes.elementIndex().length,
     docs: (script.documents || []).length,
     revisions: (script.revisions || []).length,
-    boards: Shots.listBoards().length
+    boards: Shots.listBoards().length,
+    /* Derived like everything else here — journey.js stores nothing. */
+    journey: journey(project)
   };
 
   /* "Nothing here yet" has to mean nothing ANYWHERE, or a project with
@@ -462,6 +391,23 @@ function renderNext(snap) {
         text: 'Open step ' + step.num + '  →'
       })
     ]));
+  } else if (snap.journey && !snap.journey.complete) {
+    /* The blueprint is written; the journey still has a move. Its
+       next is the stage's first missing tool check — the work the
+       blueprint cannot do for you. */
+    const j = snap.journey;
+    sec.append(h('div.db-next', {}, [
+      h('span.db-next-num', { text: '✓' }),
+      h('div.db-next-body', {}, [
+        h('p.db-next-where', { text: 'Every blueprint field is filled · ' + j.currentLabel }),
+        h('strong.db-next-title', { text: j.next.label }),
+        h('p.db-next-deck', {
+          text: 'All ' + snap.main.total + ' fields of the blueprint have something in '
+              + 'them. What is left is the work the blueprint cannot do for you.'
+        })
+      ]),
+      h('a.btn.primary.db-next-go', { href: j.next.href, text: 'Go  →' })
+    ]));
   } else {
     sec.append(h('div.db-next', {}, [
       h('span.db-next-num', { text: '✓' }),
@@ -509,6 +455,14 @@ function renderNext(snap) {
     ]);
   }
 
+  /* Nothing on the list above is missing, but the journey may still
+     know the stage's next move (a logline, a title page, the cut). It
+     is the fallback, never an addition to a real list of gaps. */
+  if (!gaps.length && snap.journey && !snap.journey.complete && next) {
+    const j = snap.journey;
+    gaps.push([j.next.label, 'The next move in ' + j.currentLabel + ', from the journey above.', j.next.href]);
+  }
+
   if (gaps.length) {
     const list = h('ul.db-gaps');
     for (const [title, why, href] of gaps) {
@@ -527,9 +481,21 @@ function renderNext(snap) {
   return sec;
 }
 
+/* ---- the journey -------------------------------------------------
+   Five stages, the guide beside the tools, one next move. The strip
+   is src/ui/journey-strip.js, shared with the hub. */
+function renderJourney(project, j) {
+  const sec = section('journey', 'The journey', 'Where the film is.',
+    'Each stage shows two things: how much of its blueprint part is written '
+    + '(Guide) and how much of the real work is in place (Tools).');
+  const strip = renderJourneyStrip(project, { heading: false, journey: j });
+  if (strip) sec.append(strip);
+  return sec;
+}
+
 /* ---- blueprint progress ------------------------------------------ */
 function phaseRow(phase) {
-  const row = h('div.db-phase.hue-' + phase.hue);
+  const row = h('div.db-phase.' + stageHueClass(phase.id));
   const remaining = phase.steps.filter((s) => s.total && s.done < s.total).length;
   row.append(
     h('div.db-phase-head', {}, [
@@ -759,6 +725,10 @@ function render() {
   } else {
     const snap = snapshot(project);
     main.append(renderHead(snap));
+    /* After the stat tiles and before everything else, empty project
+       included: "you are in Story, write the logline" is the most
+       useful thing this page can say to a film with nothing in it. */
+    main.append(renderJourney(project, snap.journey));
     if (snap.isEmpty) {
       main.append(renderFirstRun(project));
     } else {

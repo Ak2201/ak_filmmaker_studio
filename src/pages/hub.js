@@ -48,6 +48,10 @@ import { DRIVE_STATE_KEY } from '../lib/drive-sync.js';
 import { mountShell } from '../ui/shell.js';
 import { wireActionBar } from '../ui/actionbar.js';
 import { renderLauncher, BUILT_MODULE_COUNT } from '../ui/launcher.js';
+/* The five stages and where the open film is in them — derived, stored
+   nowhere. See src/lib/journey.js. */
+import { STAGES, stageOfStep, journey, guideJourney } from '../lib/journey.js';
+import { renderJourneyStrip } from '../ui/journey-strip.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -219,7 +223,12 @@ const FEATURE_STEPS = [
   ...featureData.vol1, ...featureData.vol2,
   ...prodData.production, ...prodData.post
 ];
-const PHASE_NAME = { 1: 'Story', 2: 'Pre-production', 3: 'Production', 4: 'Post-production' };
+/* The five stages, not the four 2023 phases. A step's stage comes from
+   journey.js (the steps.stages.json sidecar when present), so the search
+   snippet, the master index and the journey strip all file step 11 under
+   Screenplay rather than three of them under Story. */
+const PHASE_NAME = Object.fromEntries(STAGES.map((s) => [s.id, s.label]));
+const stageName = (ns, step) => PHASE_NAME[stageOfStep(ns, step.id)] || 'Story';
 const SHORT_STEPS   = shortData.steps;
 
 /** Strip authored markup so data HTML can be used as plain text. */
@@ -277,7 +286,7 @@ const SEARCH_INDEX = [
   ...FEATURE_STEPS.map(s => ({
     kind: 'feature',
     label: `${s.num} · ${title(s.titlePlain || s.title)}`,
-    snippet: `${PHASE_NAME[s.vol] || 'Story'} · ${clip(s.deck)}`,
+    snippet: `${stageName('feature', s)} · ${clip(s.deck)}`,
     url: `${FEATURE_URL}#${s.id}`
   })),
   ...ANCHORS.feature.map(a => ({
@@ -286,7 +295,7 @@ const SEARCH_INDEX = [
   ...SHORT_STEPS.map(s => ({
     kind: 'shorts',
     label: `${s.num} · ${title(s.titlePlain || s.title)}`,
-    snippet: clip(s.deck),
+    snippet: `${stageName('short', s)} · ${clip(s.deck)}`,
     url: `${SHORT_URL}#${s.id}`
   })),
   ...(shortData.beats || []).map(b => ({
@@ -335,15 +344,21 @@ const SEARCH_INDEX = [
 
 // ------------------------------------------------------------
 // MASTER INDEX — same source, grouped for the page.
-// The short blueprint's JSON carries no phase grouping, so the
-// three phases are expressed as step ranges here (the one place
-// that knowledge lives).
+// Both blueprints are grouped by the five STAGES, one part each,
+// with the step → stage mapping read from journey.js (which reads
+// the steps.stages.json sidecar) — not from step ranges typed here.
+// A stage a blueprint has no step in (the short has no Production
+// step) simply has no group.
 // ------------------------------------------------------------
-const SHORT_PHASES = [
-  { label: 'PRE-SCRIPT', from: 1,  to: 5  },
-  { label: 'SCRIPT',     from: 6,  to: 8  },
-  { label: 'PRODUCTION', from: 9,  to: 11 }
-];
+function stageParts(ns, steps) {
+  return STAGES.map((st) => ({
+    stage: st,
+    label: 'PART ' + st.part + ' · ' + st.label.toUpperCase(),
+    steps: steps.filter((s) => stageOfStep(ns, s.id) === st.id)
+  })).filter((p) => p.steps.length);
+}
+const FEATURE_PARTS = stageParts('feature', FEATURE_STEPS);
+const SHORT_PARTS = stageParts('short', SHORT_STEPS);
 
 function chunk(arr, n) {
   const out = [];
@@ -544,6 +559,52 @@ function projectsMarkup() {
   });
 }
 
+/* ------------------------------------------------------------
+   THE JOURNEY — five stages for the open project, from journey.js.
+   The section always renders (so #journey resolves and nothing below
+   it moves when a project opens) and is hidden until one is open;
+   renderJourney() fills it. It READS and never writes: the hub runs it
+   on load and on focus, and verify watches four idle seconds.
+   ------------------------------------------------------------ */
+function journeyMarkup() {
+  const sec = h('section#journey.section.journey-section', { hidden: true, 'aria-labelledby': 'journeyHeading' });
+  const inner = h('div.section-inner');
+  inner.append(
+    h('div.section-head', {}, [
+      h('div.left', {}, [
+        h('div.label', { text: 'THE JOURNEY · ' + STAGES.length + ' STAGES' }),
+        h('h2#journeyHeading', {}, [document.createTextNode('Where this film '), h('em.f', { text: 'is.' })]),
+        h('p.deck', {
+          text: 'Each stage has a part of the blueprint (Guide) and the modules that do the work '
+              + '(Tools). Both are read from what you have already written — nothing here is stored.'
+        })
+      ]),
+      h('div#journeyHere.right', { text: '' })
+    ]),
+    h('div#journeyStrip')
+  );
+  sec.append(inner);
+  return sec;
+}
+
+let lastJourney = null;
+function renderJourney() {
+  const sec = $('#journey');
+  const host = $('#journeyStrip');
+  if (!sec || !host) return null;
+  const project = Store.currentProject();
+  const j = project ? journey(project) : null;
+  lastJourney = j;
+  host.textContent = '';
+  sec.hidden = !j;
+  if (!j) return null;
+  const strip = renderJourneyStrip(project, { heading: false, journey: j });
+  if (strip) host.append(strip);
+  const here = $('#journeyHere');
+  if (here) here.textContent = j.complete ? 'ALL STAGES DONE' : 'NOW · ' + j.currentLabel.toUpperCase();
+  return j;
+}
+
 function doorsMarkup() {
   const featQl = [
     ['SPARK', '#step-01'], ['TREATMENT', '#treatment-ladder'],
@@ -571,12 +632,11 @@ function doorsMarkup() {
 
         <div class="doors">
           <div class="door">
-            <div class="door-tag"><span class="door-num-circle">I</span> 4 PHASES · ${FEATURE_STEPS.length} STEPS</div>
+            <div class="door-tag"><span class="door-num-circle">I</span> ${FEATURE_PARTS.length} PARTS · ${FEATURE_STEPS.length} STEPS</div>
             <h3>Feature Film<br><span class="light">Blueprint.</span></h3>
-            <p class="door-sub">From the first "what if?" to "ROLL CAMERA." Story (Vol I) and Pre-Production (Vol II) joined into one continuous tool.</p>
+            <p class="door-sub">From the first "what if?" to the last deliverable. ${esc(FEATURE_PARTS.map((p) => 'Part ' + p.stage.part + ' ' + p.stage.label).join(', '))} — one part per stage, in one continuous tool.</p>
             <ul class="door-contents">
-              <li>Story: ${featureData.vol1.length} steps from spark to scene list</li>
-              <li>Pre-prod: ${featureData.vol2.length} steps to tech recce</li>
+              ${FEATURE_PARTS.map((p) => `<li>${esc(p.stage.label)}: ${p.steps.length} step${p.steps.length === 1 ? '' : 's'}, ${esc(p.steps[0].num)}–${esc(p.steps[p.steps.length - 1].num)}</li>`).join('')}
               <li>Treatment Ladder, Pitch Deck, Sync</li>
               <li>HOD sign-off, Tanglish glosses</li>
             </ul>
@@ -647,13 +707,13 @@ function startMarkup() {
         </div>
 
         <div class="start-grid">
-          <a class="start-card f" href="${FEATURE_URL}">
+          <a class="start-card f" href="${FEATURE_URL}#vol-1">
             <div class="question">PATH A · I want to make a feature</div>
             <h4>Feature Blueprint</h4>
-            <p>Begin at Step 01: The Spark. Work through Vol I (Story) until you have a locked scene list, then continue into Vol II (Pre-Production).</p>
+            <p>Begin at Step 01: The Spark. Work through Part I (Story) to a step outline and Part II (Screenplay) to a locked script, then on through ${esc(FEATURE_PARTS.slice(2).map((p) => 'Part ' + p.stage.part + ' (' + p.stage.label + ')').join(', ').replace(/, ([^,]*)$/, ' and $1'))} — ${FEATURE_STEPS.length} steps in ${FEATURE_PARTS.length} parts, one per stage.</p>
             <span class="arrow">OPEN  →</span>
           </a>
-          <a class="start-card s" href="${SHORT_URL}">
+          <a class="start-card s" href="${SHORT_URL}#step-01">
             <div class="question">PATH B · I want to make a short</div>
             <h4>Short Film Blueprint</h4>
             <p>${SHORT_STEPS.length} steps for films under 30 minutes. Includes structured script editor and Fountain export. 4–8 weeks from idea to lock.</p>
@@ -757,18 +817,15 @@ function tocGroup(label, items) {
 }
 
 function indexMarkup() {
-  const featVol1 = tocGroup('VOL I · STORY', featureData.vol1.map(s =>
-    tocItem(FEATURE_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'feat-' + s.num)));
-  const featVol2 = tocGroup('VOL II · PRE-PRODUCTION', featureData.vol2.map(s =>
-    tocItem(FEATURE_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'feat-' + s.num)));
+  /* All five parts. This listed Vol I and Vol II only, so steps 25–32
+     (Production and Post) had no entry in the "full" index. */
+  const featParts = FEATURE_PARTS.map(p => tocGroup(p.label, p.steps.map(s =>
+    tocItem(FEATURE_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'feat-' + s.num)))).join('');
   const featExtras = tocGroup('EXTRAS', ANCHORS.feature.map(a =>
     tocItem(FEATURE_URL, a.hash, '··', a.label)));
 
-  const shortGroups = SHORT_PHASES.map(ph => tocGroup(ph.label,
-    SHORT_STEPS
-      .filter(s => { const n = parseInt(s.num, 10); return n >= ph.from && n <= ph.to; })
-      .map(s => tocItem(SHORT_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'short-' + s.num))
-  )).join('');
+  const shortGroups = SHORT_PARTS.map(p => tocGroup(p.label, p.steps.map(s =>
+    tocItem(SHORT_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'short-' + s.num)))).join('');
   const shortExtras = tocGroup('EXTRAS', ANCHORS.shorts.map(a =>
     tocItem(SHORT_URL, a.hash, '··', a.label)));
 
@@ -796,8 +853,8 @@ function indexMarkup() {
         <div class="index-grid">
           <div class="index-col">
             <h4>Feature Blueprint</h4>
-            <p class="sub">Vols I &amp; II · ${FEATURE_STEPS.length} steps</p>
-            ${featVol1}${featVol2}${featExtras}
+            <p class="sub">${FEATURE_PARTS.length} parts · ${FEATURE_STEPS.length} steps</p>
+            ${featParts}${featExtras}
           </div>
           <div class="index-col shorts">
             <h4>Short Blueprint</h4>
@@ -884,6 +941,10 @@ function render() {
   const main = h('main#main');
   main.append(
     heroMarkup(), projectsMarkup(),
+    // The journey sits right under the projects: once a film is open,
+    // "where is it, and what next" is the question the rest of the
+    // page answers in detail. Hidden with no project open.
+    journeyMarkup(),
     // The map before the detail: the launcher answers "what is in here
     // and where do I go", the doors that follow answer "how far am I in
     // the three I actually use". Different questions, and the map is
@@ -932,10 +993,26 @@ function renderGreeting() {
 // ============================================================
 // PROGRESS — read straight out of each blueprint's local data
 // ============================================================
+/** "Part II · Screenplay", from the journey. */
+function stageLabelOf(id, complete) {
+  if (complete) return 'All ' + STAGES.length + ' stages';
+  const st = STAGES.find((s) => s.id === id) || STAGES[0];
+  return 'Part ' + st.part + ' · ' + st.label;
+}
+
+function featureStageLabel(data) {
+  const cur = Store.currentProject();
+  if (cur && cur.format !== 'short' && lastJourney) {
+    return stageLabelOf(lastJourney.current, lastJourney.complete);
+  }
+  const g = guideJourney('feature', data);
+  return g.started ? stageLabelOf(g.current, false) : 'not started';
+}
+
 function computeFeatureStatus() {
   const data = parseStorage(FEATURE_KEY);
   const keys = Object.keys(data);
-  if (keys.length === 0) return { pct: 0, title: '', stage: 'not started', stepsDone: {}, lastEditedStep: null };
+  if (keys.length === 0) return { pct: 0, title: '', stage: featureStageLabel(data), stepsDone: {}, lastEditedStep: null };
   let total = 0, filled = 0;
   const stepsDone = {};
   keys.forEach(k => {
@@ -966,12 +1043,13 @@ function computeFeatureStatus() {
   const prog = progressAgainst(featureKeys(), data);
   total = prog.total; filled = prog.done;
   const pct = prog.pct;
-  let stage = 'not started';
-  if (pct > 0 && pct < 25) stage = 'Vol I early';
-  else if (pct < 50) stage = 'Vol I · Story';
-  else if (pct < 80) stage = 'Vol II · Pre-prod';
-  else if (pct < 100) stage = 'Final lock';
-  else stage = 'ready to shoot';
+  /* The stage is journey.js's answer, not a band of the percentage.
+     The bands said "Vol II · Pre-prod" for any blueprint 50–79% full,
+     whatever the film actually had in it, and "ready to shoot" for a
+     blueprint with no scenes. For the open feature project the stage is
+     the journey's current one (guide AND tools); otherwise the guide's
+     own reading of this blob. */
+  const stage = featureStageLabel(data);
   let lastStepNum = null;
   Object.keys(stepsDone).forEach(k => {
     const match = k.match(/feat-(\d+)/);
@@ -1091,6 +1169,8 @@ function computeLibraryStatus() {
 let lastFeatStatus, lastShortStatus, lastLibStatus;
 
 function updateStatus() {
+  // First: the door's "Stage" and the resume card read lastJourney.
+  renderJourney();
   const f = computeFeatureStatus(); lastFeatStatus = f;
   $('#feat-title').textContent    = f.title || '—';
   $('#feat-stage').textContent    = f.stage || '—';
@@ -1549,36 +1629,40 @@ function applyProjectFilters(projects) {
   return arr;
 }
 
-function projectProgress(p) {
+/* A project's blueprint blob, by its format, bypassing the proxy —
+   the cards speak about projects that are not open. */
+function projectBlob(p) {
   try {
-    const featRaw  = Store.rawGet(FEATURE_KEY + '__' + p.id);
-    const shortRaw = Store.rawGet(SHORT_KEY + '__' + p.id);
-    const data = JSON.parse(featRaw || shortRaw || '{}');
-    const keys = Object.keys(data);
-    if (!keys.length) return 0;
-    let total = 0, filled = 0;
-    keys.forEach(k => {
-      const v = data[k];
-      if (typeof v === 'string') { total++; if (v.trim()) filled++; }
-      else if (v === true) { total++; filled++; }
-      else if (v === false) total++;
-    });
-    return total > 0 ? Math.round((filled / total) * 100) : 0;
-  } catch (e) { return 0; }
+    const key = (p.format === 'short' ? SHORT_KEY : FEATURE_KEY) + '__' + p.id;
+    const data = JSON.parse(Store.rawGet(key) || '{}');
+    return data && typeof data === 'object' ? data : {};
+  } catch (e) { return {}; }
 }
 
-function progressLabel(pct) {
-  if (pct === 0)   return 'EMPTY';
-  if (pct < 25)    return 'EARLY DRAFT';
-  if (pct < 50)    return 'DRAFTING';
-  if (pct < 80)    return 'PRE-PROD';
-  if (pct < 100)   return 'NEAR LOCK';
-  return 'READY';
+/* Progress and stage for a card, from journey.js. The percentage used
+   to be filled keys over SAVED keys — the trap blueprint-fields.js is
+   named for, where eleven saved fields read 100% — and the label a
+   band of that percentage ("PRE-PROD" at 50–79%) that knew nothing
+   about the film. Now: the declared-field percentage, and the stage.
+   The OPEN project gets the full journey (guide and tools, read through
+   the proxy); any other project gets the guide's reading of its blob,
+   because its tools live under another id. */
+function projectStatus(p, active, openJourney) {
+  const g = guideJourney(p.format, projectBlob(p));
+  if (active && openJourney) {
+    return {
+      pct: g.pct,
+      label: openJourney.complete ? 'ALL ' + STAGES.length + ' STAGES'
+                                  : openJourney.currentLabel.toUpperCase()
+    };
+  }
+  return { pct: g.pct, label: g.started ? g.currentLabel.toUpperCase() : 'EMPTY' };
 }
 
-function projectCard(p, currentId) {
+function projectCard(p, currentId, openJourney) {
   const active = p.id === currentId;
-  const pct = projectProgress(p);
+  const status = projectStatus(p, active, openJourney);
+  const pct = status.pct;
   const card = h('div', {
     class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
     tabindex: '0', role: 'button',
@@ -1593,7 +1677,7 @@ function projectCard(p, currentId) {
     h('button.pc-share', { 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
     h('div.pc-format', {
       text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
-            (active ? ' · ACTIVE' : '') + ' · ' + progressLabel(pct)
+            (active ? ' · ACTIVE' : '') + ' · ' + status.label
     }),
     h('div.pc-title', { title: 'Double-click to rename', 'data-dblaction': 'rename-project', 'data-id': p.id, text: p.title }),
     h('div.pc-meta', {}, [
@@ -2088,7 +2172,10 @@ function renderProjects() {
     return;
   }
 
-  filtered.forEach(p => grid.append(projectCard(p, currentId)));
+  // The open project's journey, once per render, for its card's stage.
+  const cur = currentId ? Store.currentProject() : null;
+  const openJourney = cur ? journey(cur) : null;
+  filtered.forEach(p => grid.append(projectCard(p, currentId, openJourney)));
   if (PlanGate.allowed('new_projects')) {
     grid.append(h('div.project-card.new-card', {
       tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'

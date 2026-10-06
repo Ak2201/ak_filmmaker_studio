@@ -38,6 +38,9 @@ import '../styles/print.css';
 import '../styles/write.css';
 import '../styles/pdf.css';
 import '../styles/ai.css';
+/* The format guide (Phase 3): ghost hints, live notes, Check format,
+   the first-scene tour. Self-contained; it reads this page's DOM. */
+import '../ui/format-guide.js';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';

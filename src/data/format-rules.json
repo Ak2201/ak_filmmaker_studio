@@ -1,0 +1,136 @@
+{
+  "_about": "The Write page's format guide (docs/SCREENPLAY-WRITER-PLAN.md, Phase 3). Content, not code: src/lib/format-rules.js reads the lists and the copy from here, so a sentence can be reworded without touching a check. A rule's `id` is what a dismissed note is remembered by for the session; renaming one only un-dismisses it. `severity` is `warn` (a reader will trip on it) or `hint` (a convention worth knowing). `why` is written for somebody writing their first screenplay.",
+
+  "prefixes": ["INT./EXT.", "EXT./INT.", "INT/EXT", "I/E", "INT.", "EXT.", "EST."],
+  "times": [
+    "DAY", "NIGHT", "MORNING", "AFTERNOON", "EVENING", "DUSK", "DAWN",
+    "SUNRISE", "SUNSET", "NOON", "MIDNIGHT", "MAGIC HOUR", "LATE NIGHT",
+    "EARLY MORNING", "CONTINUOUS", "LATER", "MOMENTS LATER", "SAME",
+    "SAME TIME", "SIMULTANEOUS", "NEXT DAY", "THE NEXT DAY"
+  ],
+  "transitionsWithoutTo": [
+    "FADE IN:", "FADE OUT.", "FADE OUT", "FADE TO BLACK.", "CUT TO BLACK.",
+    "SMASH CUT TO BLACK.", "THE END", "THE END."
+  ],
+  "limits": { "actionLines": 4, "parenLines": 1, "scenePages": 4 },
+
+  "rules": [
+    {
+      "id": "heading-prefix",
+      "severity": "warn",
+      "message": "Start the scene heading with INT. or EXT.",
+      "why": "INT. (inside) or EXT. (outside) is the first thing a heading tells the crew: whether this scene needs a roof, a permit or the weather. Use INT./EXT. for a car or a doorway, and EST. for an establishing shot."
+    },
+    {
+      "id": "heading-time",
+      "severity": "warn",
+      "message": "End the heading with the time of day — DAY, NIGHT, CONTINUOUS…",
+      "why": "The time closes the heading after a dash: INT. KITCHEN – NIGHT. The assistant director schedules the shoot from it, and a reader uses it to feel the clock of the story."
+    },
+    {
+      "id": "cue-caps",
+      "severity": "hint",
+      "message": "Type the character's name in capitals.",
+      "why": "A cue is always in capitals. The page shows it that way, but the file keeps what you typed, and the cast list and the breakdown match speakers by name — RAVI and Ravi should be one person, not two."
+    },
+    {
+      "id": "action-long",
+      "severity": "hint",
+      "message": "This action runs past four lines — try breaking it up.",
+      "why": "Readers skim long blocks of description. Three or four lines at most, then a new paragraph, keeps the page moving and lets each paragraph read like one shot."
+    },
+    {
+      "id": "paren-long",
+      "severity": "hint",
+      "message": "Keep a parenthetical to one short line.",
+      "why": "A parenthetical is a small note on how a line is said — (quietly), (to Meena). Anything longer is action, and belongs in an action line above the cue."
+    },
+    {
+      "id": "paren-capital",
+      "severity": "hint",
+      "message": "Start a parenthetical in lower case.",
+      "why": "By convention a parenthetical is lower case — (beat), (into the phone) — unless it begins with a name. It is a whisper in the margin, not a sentence."
+    },
+    {
+      "id": "paren-closed",
+      "severity": "hint",
+      "message": "Wrap the parenthetical in brackets: (like this).",
+      "why": "The brackets are what make it read as a direction rather than part of the speech. The export adds any that are missing; adding them here keeps the page you see and the page you print the same."
+    },
+    {
+      "id": "dialogue-speaker",
+      "severity": "warn",
+      "message": "Who says this? Dialogue needs a character cue above it.",
+      "why": "Every speech sits under the name of the person speaking. Without a cue the actor cannot find their lines and the reader cannot tell who is talking. Add a Character element just above."
+    },
+    {
+      "id": "transition-caps",
+      "severity": "hint",
+      "message": "Type the transition in capitals.",
+      "why": "Transitions are written in capitals, like CUT TO:. The page shows it that way, but the file keeps what you typed."
+    },
+    {
+      "id": "transition-to",
+      "severity": "warn",
+      "message": "A transition ends in “TO:” — CUT TO:, DISSOLVE TO:.",
+      "why": "A transition says how we leave one scene for the next, and it ends with TO: and a colon. FADE IN:, FADE OUT. and CUT TO BLACK. are the usual exceptions. If this line describes something we see, it is action."
+    },
+    {
+      "id": "contd",
+      "severity": "hint",
+      "message": "Same speaker after action — add (CONT'D) to the cue.",
+      "why": "When a character keeps talking after a line of action, the cue gets (CONT'D) so the actor knows it is still one speech: RAVI (CONT'D)."
+    },
+    {
+      "id": "scene-long",
+      "severity": "hint",
+      "message": "This scene runs past four pages.",
+      "why": "A page is about a minute on screen. A scene longer than four minutes is not wrong, but it is worth asking whether it is one scene or two, and whether every page earns its place."
+    }
+  ],
+
+  "ghosts": {
+    "scene": "INT. LOCATION – DAY",
+    "action": "What we see, in the present tense.",
+    "character": "CHARACTER NAME",
+    "paren": "(beat)",
+    "dialogue": "What they say, the way they would say it.",
+    "transition": "CUT TO:"
+  },
+
+  "levels": [
+    { "id": "off",   "label": "Off",   "hint": "No guide." },
+    { "id": "hints", "label": "Hints", "hint": "Example text in empty lines." },
+    { "id": "coach", "label": "Coach", "hint": "Hints, quiet format notes as you write, and the first-scene tour." }
+  ],
+
+  "tour": {
+    "eyebrow": "Guide",
+    "title": "Write your first scene",
+    "doneTitle": "Your first scene",
+    "intro": "Six short steps, one for each kind of line in a screenplay. You write every word; the guide only says what goes where.",
+    "start": "Start the tour",
+    "skip": "Skip",
+    "done": "That is a scene. Heading, action, a speaker, how they say it, what they say, and the way out — everything else in a screenplay is more of the same six. Keep going.",
+    "finish": "Finish",
+    "steps": [
+      { "type": "scene",      "title": "1 · Scene heading", "ask": "Where are we, and when? Type INT. or EXT., the place, a dash, and DAY or NIGHT. Press Return when it is done." },
+      { "type": "action",     "title": "2 · Action",        "ask": "What do we see? Describe it in the present tense, the way a camera would find it. Press Return when it is done." },
+      { "type": "character",  "title": "3 · Character",     "ask": "Who speaks first? Make this line a Character and type their name in capitals.", "convert": "Make this line a Character" },
+      { "type": "paren",      "title": "4 · Parenthetical", "ask": "How do they say it? A word or two in brackets — (quietly). Return after the name gives you dialogue, so switch it first.", "convert": "Make this line a Parenthetical" },
+      { "type": "dialogue",   "title": "5 · Dialogue",      "ask": "What do they say? Write it the way they would say it — Tanglish is welcome here.", "convert": "Make this line Dialogue" },
+      { "type": "transition", "title": "6 · Transition",    "ask": "How do we leave? Make the next line a Transition and type CUT TO:.", "convert": "Make this line a Transition" }
+    ]
+  },
+
+  "panel": {
+    "button": "Check format",
+    "levelLabel": "Format guide",
+    "title": "Format check",
+    "clean": "Nothing to flag. Every line reads the way a screenplay reads.",
+    "empty": "There is nothing to check yet.",
+    "close": "Close",
+    "gotIt": "Got it",
+    "whyLabel": "Why?"
+  }
+}

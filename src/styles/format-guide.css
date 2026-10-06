@@ -1,0 +1,221 @@
+/* ============================================================
+   THE FORMAT GUIDE — src/ui/format-guide.js
+   ------------------------------------------------------------
+   Tokens for every colour, `--sk-*` for every shape, and every
+   movement multiplied by `--motion`. Text takes --ink / --ink-body /
+   --ink-muted or a `-deep` hue — never a fill, never a hairline —
+   so it holds 4.5:1 in both themes. Nothing here is wider than its
+   column, so 390px does not scroll sideways.
+   ============================================================ */
+
+/* ---- the dock: level, Check format ---------------------------- */
+.fg-dock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  min-width: 0;
+}
+.fg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  min-width: 0;
+}
+.fg-level-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.fg-level {
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.fg-level-hint {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.fg-check { margin-left: auto; }
+
+/* ---- the inline note, under a row ----------------------------- */
+.fg-note {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  margin-left: var(--wr-indent, 0%);
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--s1) var(--s3);
+  background: var(--paper-sunk);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+  animation: fg-in var(--speed, 200ms) var(--ease-out, ease-out) both;
+}
+.fg-note.is-warn { border-left-color: var(--warn); }
+.fg-note.is-hint { border-left-color: var(--brand); }
+@keyframes fg-in {
+  from { opacity: 0; transform: translateY(calc(-4px * var(--motion, 1))); }
+  to   { opacity: 1; transform: none; }
+}
+.fg-note-msg { margin: 0; flex: 1 1 14rem; min-width: 0; color: var(--ink); }
+.fg-why { flex: 1 1 100%; min-width: 0; order: 3; }
+.fg-why > summary {
+  cursor: pointer;
+  width: fit-content;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.fg-why > p { margin: var(--s1) 0 0; color: var(--ink-body); max-width: var(--sk-deck-measure, 60ch); }
+.fg-got {
+  padding: 0 var(--s2);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-btn-radius, var(--radius-pill));
+  font: inherit;
+  font-size: var(--t-micro);
+  color: var(--ink-body);
+  cursor: pointer;
+}
+.fg-got:hover { border-color: var(--ink-muted); color: var(--ink); }
+
+/* ---- the panel ------------------------------------------------- */
+.fg-panel {
+  padding: var(--sk-card-pad, var(--s4));
+  background: var(--sk-card-bg, var(--paper-raised));
+  color: var(--sk-card-ink, var(--ink-body));
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule-hair));
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, none);
+  min-width: 0;
+}
+.fg-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  margin-bottom: var(--s3);
+}
+.fg-panel-title { margin: 0; font-size: var(--t-lg); color: var(--ink); }
+.fg-panel-title:focus { outline: none; }
+.fg-panel-title:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.fg-panel-count { flex: 1 1 auto; font-size: var(--t-small); color: var(--ink-muted); }
+.fg-panel-empty { margin: 0; color: var(--ink-body); }
+.fg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(60vh, 32rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.fg-jump {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--sk-radius, var(--radius));
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink-body);
+  cursor: pointer;
+  transition: background var(--speed-tap, 120ms) var(--ease, ease);
+}
+.fg-jump:hover { background: var(--paper-sunk); border-color: var(--rule-hair); }
+.fg-where {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.fg-sev {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 0 var(--s1);
+  border-radius: var(--radius-pill);
+}
+.fg-item.is-warn .fg-sev { color: var(--warn-deep); background: var(--warn-wash); }
+.fg-item.is-hint .fg-sev { color: var(--accent-deep); background: var(--brand-wash); }
+.fg-msg { min-width: 0; color: var(--ink); }
+@media (max-width: 520px) {
+  .fg-jump { grid-template-columns: auto minmax(0, 1fr); }
+  .fg-msg { grid-column: 1 / -1; }
+}
+
+/* ---- the tour --------------------------------------------------- */
+.fg-tour {
+  padding: var(--sk-card-pad, var(--s4));
+  background: var(--sk-slab-bg, var(--brand-wash));
+  color: var(--ink);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule-hair));
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.fg-tour.is-inline {
+  grid-column: 1 / -1;
+  margin-top: var(--s2);
+  animation: fg-in var(--speed, 200ms) var(--ease-out, ease-out) both;
+}
+.fg-tour-eyebrow {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.fg-tour-title { margin: 0 0 var(--s2); font-size: var(--t-lg); color: var(--ink); }
+.fg-tour-ask { margin: 0 0 var(--s3); max-width: var(--sk-deck-measure, 60ch); color: var(--ink-body); }
+.fg-tour-dots {
+  display: flex;
+  gap: var(--s1);
+  list-style: none;
+  margin: 0 0 var(--s3);
+  padding: 0;
+}
+.fg-tour-dots > li {
+  width: var(--s5);
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--rule);
+}
+.fg-tour-dots > li.is-done { background: var(--accent-deep); }
+.fg-tour-dots > li.is-now  { background: var(--brand); }
+.fg-tour-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+@media (pointer: coarse) {
+  .fg-got, .fg-jump { min-height: 44px; }
+}
+@media print { .fg-dock, .fg-note, .fg-tour { display: none !important; } }

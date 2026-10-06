@@ -24,10 +24,11 @@
 
    Typing does not re-render. A full re-render on every keystroke
    would take the caret with it, so the input handler updates the
-   in-memory element and the derived counters and stops there; only
-   structural change (add, delete, reorder, restore) rebuilds.
+   in-memory element and the derived counters and stops there. Add,
+   delete and reorder patch the rows they touch (see "screenplay:
+   structure"); only a restore, an import and the panels rebuild.
    ============================================================ */
-import '../lib/store.js';
+import { flushStorage } from '../lib/store.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -222,20 +223,51 @@ let genReplaceScenes = false;
 const SAVE_DELAY = 500;
 let saveTimer = null;
 
+/* ONE SAVE IN FLIGHT AT A TIME. A screenplay is far over the overflow
+   threshold, so `saveScript()` is an IndexedDB put, a read-back and a
+   stub that settle asynchronously (src/lib/store.js). Two of those for
+   the same key in flight at once can each read back the OTHER's bytes,
+   and the loser then writes its own — older — copy into localStorage:
+   measured, holding Backspace on the Dragon sample left a stale script
+   behind that a reload served. That was unreachable while every Return
+   took minutes; now that it takes milliseconds it is not. So a save that
+   arrives while one is settling is coalesced: it is marked owed, and
+   the latest `doc` is written the moment the first one lands. `doc` is
+   the model, so the owed write always carries every change. */
+let saving = false;
+let saveOwed = false;
+
 function persist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { saveTimer = null; Script.saveScript(doc); }, SAVE_DELAY);
+  saveTimer = setTimeout(() => { saveTimer = null; persistNow(); }, SAVE_DELAY);
 }
 function persistNow() {
   clearTimeout(saveTimer);
   saveTimer = null;
+  if (saving) { saveOwed = true; return; }
+  saving = true;
+  Script.saveScript(doc);
+  const settle = () => {
+    saving = false;
+    if (saveOwed) { saveOwed = false; persistNow(); }
+  };
+  flushStorage().then(settle, settle);
+}
+/* A save that has not landed yet — a debounced keystroke, or one owed
+   behind a save still settling — must not be lost to a tab close.
+   `pagehide` fires where `unload` is unreliable on mobile. This is the
+   one place that writes without waiting its turn: the page is going,
+   and a write that might race is better than one that never happens. */
+function persistBeforeLeaving() {
+  if (!saveTimer && !saveOwed) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  saveOwed = false;
   Script.saveScript(doc);
 }
-// A debounced keystroke that has not landed yet must not be lost to a
-// tab close. `pagehide` fires where `unload` is unreliable on mobile.
-addEventListener('pagehide', () => { if (saveTimer) persistNow(); });
+addEventListener('pagehide', persistBeforeLeaving);
 addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && saveTimer) persistNow();
+  if (document.visibilityState === 'hidden') persistBeforeLeaving();
 });
 
 /* ---- small builders ---------------------------------------- */
@@ -395,6 +427,9 @@ function renderElement(el, i, total) {
   return row;
 }
 
+/** Rows per run on the screenplay page; see renderScreenplay(). */
+const CHUNK = 64;
+
 const PLACEHOLDER = {
   scene: 'INT. LOCATION — DAY',
   action: 'What we see.',
@@ -457,12 +492,18 @@ function renderScreenplay() {
     return section;
   }
 
+  /* The rows go into runs of CHUNK. A run is the unit the browser may
+     skip while it is off screen (`content-visibility` in write.css), so
+     a keystroke lays out the few runs in view instead of a feature's
+     two thousand rows. The runs are invisible: same column, same gap. */
   const page = h('div.wr-page', { id: 'wr-page' });
+  let run = null;
   doc.elements.forEach((el, i) => {
-    page.append(renderElement(el, i, doc.elements.length));
+    if (i % CHUNK === 0) { run = h('div.wr-chunk'); page.append(run); }
+    run.append(renderElement(el, i, doc.elements.length));
     // The panel is a sibling of the row it belongs to, so it opens
     // where the speech is rather than somewhere else on the page.
-    if (passFor === el.id) page.append(renderPass(el, i));
+    if (passFor === el.id) run.append(renderPass(el, i));
   });
   section.append(page, h('button.btn.primary.wr-add', {
     type: 'button', 'data-action': 'el-add', text: '+  Add element'
@@ -1592,6 +1633,7 @@ function render(focus) {
   main.append(renderHeader(), renderScreenplay(), renderGenerate(),
     renderRevisions(), renderDocuments());
   app.replaceChildren(main);
+  countNodes = null;
   autosizeAll();
   requestAnimationFrame(autosizeAll);   // again once layout has settled
 
@@ -1607,8 +1649,18 @@ function render(focus) {
 }
 
 function applyFocus(sel) {
-  const node = document.querySelector(sel);
+  const node = typeof sel === 'string' ? document.querySelector(sel) : sel;
   if (!node) return;
+  /* A row in a run the browser is skipping (off screen, see write.css)
+     has a placeholder height, and the page scrolls smoothly — so a
+     focus() aimed at it plans its scroll against the placeholders and
+     stops thousands of pixels short. Bring that row into view first,
+     instantly, which lays its run out for real; then focus as before. */
+  if (typeof node.checkVisibility === 'function'
+      && !node.checkVisibility({ contentVisibilityAuto: true })
+      && node.closest('.wr-chunk')) {
+    node.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
   node.focus();
   if (typeof node.setSelectionRange === 'function' && typeof node.value === 'string') {
     try { node.setSelectionRange(node.value.length, node.value.length); } catch (e) { /* select */ }
@@ -1616,15 +1668,32 @@ function applyFocus(sel) {
 }
 const elFocus = (id) => `[data-el="${id}"] .wr-text`;
 
-/** Grow a textarea to its content. DOM only — never touches storage. */
-function autosize(ta) {
-  ta.style.height = 'auto';
+/* ---- sizing the elements to their text ---------------------
+   C2 in docs/UX-AUDIT-2026-10-06.md: on a feature-length script this
+   page froze for minutes. The old autosize wrote `height: auto`, read
+   scrollHeight and wrote the height back, once per textarea — a forced
+   synchronous layout of the whole page per row, 2,361 times per render,
+   twice per render, and every Return re-rendered every row.
+
+   Where the browser can do it, it does: `field-sizing: content` in
+   write.css grows each textarea to its text with no script at all, and
+   it stays right across a font swap and a resize for free. Everywhere
+   else the JS below is the fallback, and it is BATCHED — every write,
+   then every read, then every write — so a whole page costs one layout
+   rather than one per row. DOM only; never touches storage. */
+const NATIVE_SIZING = typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
+  && CSS.supports('field-sizing', 'content');
+
+function autosizeMany(list) {
+  if (NATIVE_SIZING || !list.length) return;
+  list.forEach((ta) => { ta.style.height = 'auto'; });
   // `scrollHeight` is the CONTENT box; the element is border-box, so
   // assigning it directly loses the two border pixels and every block
   // renders two pixels short of its own text. Add the frame back.
-  const frame = ta.offsetHeight - ta.clientHeight;
-  ta.style.height = (ta.scrollHeight + frame) + 'px';
+  const heights = list.map((ta) => ta.scrollHeight + (ta.offsetHeight - ta.clientHeight));
+  list.forEach((ta, i) => { ta.style.height = heights[i] + 'px'; });
 }
+function autosize(ta) { if (ta) autosizeMany([ta]); }
 
 /* The elements are `overflow: hidden`, so a height measured against the
    wrong font clips the text and there is no scrollbar to say so. The
@@ -1632,18 +1701,34 @@ function autosize(ta) {
    arrives, every line then gets wider, and a four-line action block
    renders as three. So measure again once the fonts are in, and again
    whenever the column changes width — the indents are percentages, so a
-   resize genuinely does change how many lines a block takes. */
+   resize genuinely does change how many lines a block takes. (Only the
+   fallback path needs any of this; field-sizing re-flows by itself.) */
 function autosizeAll() {
-  document.querySelectorAll('.wr-text').forEach(autosize);
+  if (NATIVE_SIZING) return;
+  autosizeMany(Array.from(document.querySelectorAll('.wr-text')));
 }
-if (document.fonts && document.fonts.ready) {
+if (!NATIVE_SIZING && document.fonts && document.fonts.ready) {
   document.fonts.ready.then(autosizeAll).catch(() => {});
 }
 let resizeFrame = 0;
-addEventListener('resize', () => {
-  cancelAnimationFrame(resizeFrame);
-  resizeFrame = requestAnimationFrame(autosizeAll);
-});
+if (!NATIVE_SIZING) {
+  addEventListener('resize', () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(autosizeAll);
+  });
+}
+
+/* The counter nodes, found once per render rather than once per
+   keystroke: four attribute queries over a 30,000-node page were most
+   of what a keystroke cost on a feature-length script. render() drops
+   the cache, because it replaces every one of them. */
+let countNodes = null;
+function counterNodes() {
+  if (!countNodes || countNodes.some((n) => !n.isConnected)) {
+    countNodes = Array.from(app.querySelectorAll('[data-count]'));
+  }
+  return countNodes;
+}
 
 /** Re-derive every number on the page. DOM only, and deliberately so:
     if this wrote, typing would save, saving would refresh, and we would
@@ -1651,8 +1736,11 @@ addEventListener('resize', () => {
 function refreshCounters() {
   const pages = pageCount(doc.elements);
   const set = (name, value) => {
-    document.querySelectorAll(`[data-count="${name}"]`)
-      .forEach((n) => { n.textContent = value; });
+    counterNodes().forEach((n) => {
+      // Unchanged text is left alone: a write is a DOM mutation, and
+      // the tab strip's observer re-runs on every one.
+      if (n.dataset.count === name && n.textContent !== value) n.textContent = value;
+    });
   };
   set('pages', formatPages(pages));
   set('lines', String(totalLines(doc.elements)));
@@ -1674,13 +1762,159 @@ function refreshCounters() {
 const idOf = (el, attr) => el.closest(`[data-${attr}]`)?.dataset[attr];
 const indexOfEl = (id) => doc.elements.findIndex((e) => e.id === id);
 
-/* ---- screenplay: structure --------------------------------- */
+/* ---- screenplay: structure ---------------------------------
+   A structural edit PATCHES the page rather than rebuilding it. On a
+   feature-length script a full render is thousands of rows of DOM, and
+   Return is a key people press every few seconds; rebuilding the lot
+   for one new row is what made this page freeze (C2 in the UX audit).
+
+   So add, delete and move touch the affected row(s) and nothing else,
+   then bring the cheap derived state into step: each row's ordinal in
+   its aria-labels, the first row's dead ↑ and the last row's dead ↓,
+   and the counters. The model and the save path are exactly as before —
+   the splice and `persistNow()` happen first, and the DOM follows.
+
+   It falls back to a full render whenever a patch would have to know
+   more than one row: the empty state (no page to patch), the header's
+   "element"/"elements" switching at one, an open import preview (it
+   quotes the element count) and an open pass panel (a sibling that
+   sits between rows). All rare; none of them is Return.
+
+   The rows live in runs (`.wr-chunk`, see renderScreenplay). A patch
+   puts a new row in the run of the row above it, splits a run that has
+   grown to twice its size, and drops a run left empty; a full render
+   re-deals them evenly. */
+const pageNode = () => document.getElementById('wr-page');
+const rowOf = (id) => {
+  const page = pageNode();
+  return page ? page.querySelector(`[data-el="${CSS.escape(String(id))}"]`) : null;
+};
+
+/** Every row on the page, in order, across the runs. */
+function allRows() {
+  const page = pageNode();
+  const rows = [];
+  if (!page) return rows;
+  for (const run of page.children) {
+    for (const n of run.children) if (n.tagName === 'ARTICLE') rows.push(n);
+  }
+  return rows;
+}
+
+/** Keep the runs a sensible size after a patch. Never touches a row's
+    contents, only which run holds it. */
+function tidyRun(run) {
+  if (!run || !run.classList.contains('wr-chunk')) return;
+  if (!run.children.length) { run.remove(); return; }
+  if (run.children.length < CHUNK * 2) return;
+  const tail = h('div.wr-chunk');
+  const kids = Array.from(run.children).slice(CHUNK);
+  // A pass panel belongs with the row before it; never split them.
+  while (kids.length && kids[0].tagName !== 'ARTICLE') kids.shift();
+  tail.append(...kids);
+  run.after(tail);
+}
+
+function patchable(lenBefore, lenAfter) {
+  return lenBefore >= 2 && lenAfter >= 2 && !importOpen && passFor === null && !!pageNode();
+}
+
+function setAttr(node, name, value) {
+  if (node && node.getAttribute(name) !== value) node.setAttribute(name, value);
+}
+
+/** Bring rows [from, to] back in step with their position: the ordinal
+    in both labels, and which arrows are dead. Attribute writes only —
+    no layout is read, so this is cheap even across the whole script. */
+function reindexRows(from, to) {
+  const page = pageNode();
+  if (!page) return;
+  // Rows only (an open pass panel is a sibling between them), and the
+  // row's own children walked rather than queried.
+  const rows = allRows();
+  const total = doc.elements.length;
+  const last = Math.min(rows.length - 1, to === undefined ? rows.length - 1 : to);
+  for (let i = Math.max(0, from); i <= last; i++) {
+    const el = doc.elements[i];
+    if (!el) continue;
+    for (const part of rows[i].children) {
+      if (part.tagName === 'SELECT') setAttr(part, 'aria-label', 'Element type for element ' + (i + 1));
+      else if (part.tagName === 'TEXTAREA') setAttr(part, 'aria-label', typeLabel(el.type) + ', element ' + (i + 1));
+      else if (part.tagName === 'DIV' && part.classList.contains('wr-el-acts')) {
+        for (const btn of part.children) {
+          const act = btn.getAttribute('data-action');
+          if (act === 'el-up') { if (btn.disabled !== (i === 0)) btn.disabled = i === 0; }
+          else if (act === 'el-down') { if (btn.disabled !== (i === total - 1)) btn.disabled = i === total - 1; }
+        }
+      }
+    }
+  }
+}
+
+/* The ordinals of every row BELOW an insertion or a deletion are one
+   out until this runs. They are only words in an aria-label — the
+   arrows at either end are fixed synchronously — so they are brought
+   back in step once the browser is idle, not inside the keystroke. */
+let reindexFrom = Infinity;
+let reindexTask = 0;
+function reindexLater(from) {
+  reindexFrom = Math.min(reindexFrom, Math.max(0, from));
+  if (reindexTask) return;
+  const run = () => {
+    reindexTask = 0;
+    const start = reindexFrom;
+    reindexFrom = Infinity;
+    if (start !== Infinity) reindexRows(start);
+  };
+  reindexTask = typeof requestIdleCallback === 'function'
+    ? requestIdleCallback(run, { timeout: 1000 })
+    : setTimeout(run, 200);
+}
+
 function addElement(after, type) {
   const el = blankElement({ type });
-  const at = after === null ? doc.elements.length : after + 1;
+  const lenBefore = doc.elements.length;
+  const at = after === null ? lenBefore : after + 1;
   doc.elements.splice(at, 0, el);
   persistNow();
-  render(elFocus(el.id));
+  if (!patchable(lenBefore, doc.elements.length)) { render(elFocus(el.id)); return; }
+
+  const row = renderElement(el, at, doc.elements.length);
+  const prev = at > 0 ? rowOf(doc.elements[at - 1].id) : null;
+  const next = doc.elements[at + 1] ? rowOf(doc.elements[at + 1].id) : null;
+  if (!prev && !next) { render(elFocus(el.id)); return; }
+  // Into the run of the row above, straight after it — or, for a new
+  // first element, in front of the old one.
+  if (prev) prev.after(row);
+  else next.before(row);
+  tidyRun(row.parentElement);
+  autosize(row.querySelector('.wr-text'));
+  reindexRows(at - 1, at);
+  reindexLater(at + 1);
+  refreshCounters();
+  applyFocus(row.querySelector('.wr-text'));
+}
+
+/** Take element `i` out, and put the caret in `neighbourOf(i)`. */
+function removeElement(i, neighbourOf) {
+  const lenBefore = doc.elements.length;
+  const [gone] = doc.elements.splice(i, 1);
+  persistNow();
+  const neighbour = neighbourOf(i);
+  if (!patchable(lenBefore, doc.elements.length)) {
+    render(neighbour ? elFocus(neighbour.id) : null);
+    return;
+  }
+  const row = rowOf(gone.id);
+  if (row) {
+    const run = row.parentElement;
+    row.remove();
+    tidyRun(run);
+  }
+  reindexRows(i - 1, i);
+  reindexLater(i + 1);
+  refreshCounters();
+  if (neighbour) applyFocus(elFocus(neighbour.id));
 }
 
 delegate(document, 'click', '[data-action="el-first"]', () => addElement(null, 'scene'));
@@ -1697,7 +1931,19 @@ function moveElement(id, delta) {
   if (i < 0 || j < 0 || j >= doc.elements.length) return;
   [doc.elements[i], doc.elements[j]] = [doc.elements[j], doc.elements[i]];
   persistNow();
-  render(elFocus(id));
+  const len = doc.elements.length;
+  const mine = rowOf(id);
+  const theirs = rowOf(doc.elements[i].id);   // the one it swapped with
+  if (!patchable(len, len) || !mine || !theirs) { render(elFocus(id)); return; }
+  // Whichever row now comes first goes in front of the other.
+  // Across a run boundary this moves a row from one run to the next,
+  // which can leave a run of one empty.
+  const runs = [mine.parentElement, theirs.parentElement];
+  if (delta < 0) theirs.before(mine);
+  else mine.before(theirs);
+  runs.forEach(tidyRun);
+  reindexRows(Math.min(i, j), Math.max(i, j));
+  applyFocus(elFocus(id));
 }
 
 delegate(document, 'click', '[data-action="el-del"]', (e, btn) => {
@@ -1709,10 +1955,7 @@ delegate(document, 'click', '[data-action="el-del"]', (e, btn) => {
   // element is the dialog people learn to click through.
   if (el.text.trim()
       && !confirm(`Delete this ${typeLabel(el.type).toLowerCase()}?\n\n“${el.text.trim().slice(0, 80)}”`)) return;
-  doc.elements.splice(i, 1);
-  persistNow();
-  const neighbour = doc.elements[i] || doc.elements[i - 1];
-  render(neighbour ? elFocus(neighbour.id) : null);
+  removeElement(i, (k) => doc.elements[k] || doc.elements[k - 1]);
 });
 
 /* ---- screenplay: editing -----------------------------------
@@ -1766,10 +2009,7 @@ delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
   const i = indexOfEl(idOf(ta, 'el'));
   if (i < 0) return;
   e.preventDefault();
-  doc.elements.splice(i, 1);
-  persistNow();
-  const neighbour = doc.elements[i - 1] || doc.elements[i];
-  render(neighbour ? elFocus(neighbour.id) : null);
+  removeElement(i, (k) => doc.elements[k - 1] || doc.elements[k]);
 });
 
 /* ---- Fountain export ---------------------------------------- */

@@ -18,6 +18,7 @@
     "test:schema": "node scripts/test-schema.mjs",
     "test:post": "node scripts/test-post.mjs",
     "test:format": "node scripts/test-format.mjs",
+    "test:beats": "node scripts/test-beats.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

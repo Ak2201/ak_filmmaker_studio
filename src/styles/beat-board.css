@@ -1,0 +1,217 @@
+/* ============================================================
+   BEAT BOARD — the write page's Outline tab, and the editor's
+   margin markers (src/ui/beat-board.js)
+   ------------------------------------------------------------
+   Tokens only, shapes from the skin. An act's colour is the
+   CATEGORY hue its column carries (.hue-plan / .hue-feature /
+   .hue-shoot set --hue and --hue-deep); it is a structure line and
+   a label colour, never a fill behind body text.
+   ============================================================ */
+
+.bb-src {
+  margin: 0 0 var(--s4);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+}
+.bb-src a { color: var(--accent-deep); }
+
+/* ---- the meter ---------------------------------------------- */
+.bb-meter {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  padding: var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.bb-meter .bd-stats { margin: 0; }
+.bb-bar {
+  position: relative;
+  height: 8px;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.bb-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--bb-fill, 0) * 100%);
+  background: var(--ok);
+  border-radius: inherit;
+}
+.bb-acts-pace { display: grid; gap: var(--s2); }
+.bb-pace {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: var(--s2);
+  align-items: center;
+  font-size: var(--t-small);
+}
+.bb-pace-label { color: var(--hue-deep, var(--ink)); font-weight: 700; }
+.bb-pace-num { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.bb-pace-track {
+  position: relative;
+  height: 10px;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-pill);
+}
+.bb-pace-actual {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--bb-fill, 0) * 100%);
+  background: var(--hue, var(--accent));
+  border-radius: inherit;
+}
+/* The conventional share, as a tick the bar is read against. */
+.bb-pace-expected {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--bb-at, 0) * 100%);
+  width: 2px;
+  background: var(--ink);
+}
+.bb-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.bb-check { display: flex; gap: var(--s2); align-items: baseline; }
+.bb-check-mark { flex: none; width: 1.1em; text-align: center; font-weight: 700; }
+.bb-check.is-ok .bb-check-mark { color: var(--ok-deep); }
+.bb-check.is-todo .bb-check-mark { color: var(--warn-deep); }
+
+/* ---- the navigator ------------------------------------------- */
+.bb-nav { display: grid; gap: var(--s1); margin-bottom: var(--s5); }
+.bb-nav-label { font-size: var(--t-small); color: var(--ink-muted); }
+.bb-nav-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.bb-nav-pick,
+.bb-pick {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s1) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.bb-nav-pick { flex: 1 1 14rem; }
+
+/* ---- the board ----------------------------------------------- */
+.bb-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: var(--s4);
+  align-items: start;
+}
+.bb-act {
+  display: grid;
+  gap: var(--s3);
+  min-width: 0;
+  padding-top: var(--s2);
+  border-top: 4px solid var(--hue, var(--accent));
+}
+.bb-act-name {
+  margin: 0;
+  font-size: var(--t-base);
+  color: var(--hue-deep, var(--ink));
+}
+.bb-act-share { font-weight: 400; color: var(--ink-muted); font-size: var(--t-small); }
+
+.bb-beat {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--s3);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--hue, var(--accent));
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, none);
+}
+.bb-beat-head { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; justify-content: space-between; }
+.bb-beat-name { margin: 0; font-size: var(--t-base); color: var(--ink); }
+.bb-tension { font-size: var(--t-micro); color: var(--ink-muted); letter-spacing: var(--track-label); }
+.bb-marks { display: grid; gap: var(--s1); }
+.bb-mark {
+  margin: 0;
+  padding-left: var(--s2);
+  border-left: 2px solid var(--rule);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.bb-more, .bb-prompt { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+
+.bb-scenes {
+  list-style: none;
+  margin: 0;
+  padding: var(--s1);
+  display: grid;
+  gap: var(--s2);
+  min-height: 2.5rem;
+  border: 1px dashed transparent;
+  border-radius: var(--sk-radius, var(--radius));
+}
+.bb-drop.is-over { border-color: var(--hue, var(--accent)); background: var(--paper-sunk); }
+.bb-empty { font-size: var(--t-small); color: var(--ink-muted); padding: var(--s1); }
+
+.bb-scene {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+  padding: var(--s2);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: grab;
+  overflow-wrap: anywhere;
+}
+.bb-scene.is-dragging { opacity: 0.55; }
+.bb-scene-head { font-weight: 700; font-size: var(--t-small); color: var(--ink); }
+.bb-scene-syn { font-size: var(--t-small); color: var(--ink-body); }
+.bb-scene-meta { font-size: var(--t-micro); color: var(--ink-muted); }
+.bb-pick-wrap { display: flex; gap: var(--s2); align-items: center; font-size: var(--t-micro); color: var(--ink-muted); }
+.bb-pick-wrap > span { flex: none; }
+.bb-pick { flex: 1 1 auto; }
+.bb-draft { justify-self: start; }
+
+.bb-tray {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s5);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule);
+}
+
+/* ---- the margin marker in the editor ---------------------------
+   Sits in the space a scene heading already leaves above itself, so
+   it moves nothing on the page and needs no grid column. */
+.wr-el.bb-has-marker { position: relative; }
+.bb-marker {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  max-width: 100%;
+  padding: 0 var(--s2);
+  border-left: 3px solid var(--hue, var(--accent));
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-deep, var(--ink));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+@media print {
+  .bb-marker { display: none; }
+}

@@ -62,6 +62,8 @@
     "windows": 24,
     "lowTension": 3.5,
     "minRun": 0.12,
+    "actShareTolerance": 0.08,
+    "_actShareTolerance": "The write page's Outline tab: how far an act's share of the pages linked to a beat may sit from its conventional share (the regions below, summed per act number) before the coverage meter calls it over or under. 0.08 = eight percentage points.",
     "regions": [
       { "from": 0.0, "to": 0.25, "label": "Act 1" },
       { "from": 0.25, "to": 0.5, "label": "Act 2A" },

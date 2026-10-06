@@ -108,7 +108,8 @@ const build = PREBUILT ? { status: 0 } : (console.log('building dist-storage/ �
   '--outDir', OUT, '--emptyOutDir'
 ], {
   cwd: ROOT,
-  env: Object.assign({}, process.env, { VITE_DISABLE_SW: '1' }),
+  // The site gate would send every signed-out page to invite.html; storage is on trial here, not the gate.
+  env: Object.assign({}, process.env, { VITE_DISABLE_SW: '1', VITE_SITE_GATE: 'off' }),
   encoding: 'utf8'
 }));
 if (build.status !== 0) {
@@ -259,12 +260,14 @@ function check(label, got, want) {
   if (!ok) console.log(`        got  ${JSON.stringify(got)}\n        want ${JSON.stringify(want)}`);
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 
 async function openPage(opts) {
   opts = opts || {};
   const ctx = opts.ctx || await browser.newContext({ viewport: { width: 1280, height: 900 } });
   if (!opts.ctx) {
+    // A sandbox that cannot reach Google Fonts reports each refused stylesheet as a console error.
+    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
     await ctx.addInitScript(PROBE);
     if (opts.seed) await ctx.addInitScript(opts.seed);
   }
@@ -830,6 +833,43 @@ console.log('\n--- the idle-write rule, with a large value loaded ---');
   check('12 the large value is still readable after the idle window',
     await page.evaluate(() => localStorage.getItem('fms_scenes_v1') === window.__big('ALPHA')), true);
 
+  check('no page errors', page.__errors, []);
+  await ctx.close();
+}
+
+console.log('\n--- overlapping saves of one large value: the newest wins ---');
+{
+  /* Holding Backspace in write.html issues saves faster than an
+     overflowed write settles. The older write's read-back used to see
+     the NEWER bytes, call itself failed, and write its own stale copy
+     into localStorage — which the next load then served. */
+  const { ctx, page } = await openPage();
+  await newProject(page, 'Probe Race');
+  await page.evaluate(async () => {
+    for (let i = 0; i < 6; i++) localStorage.setItem('fms_scenes_v1', window.__big('RACE' + i));
+    await window.StudioStore.flushStorage();
+  });
+  check('13 after the burst the newest value reads back',
+    await page.evaluate(() => localStorage.getItem('fms_scenes_v1') === window.__big('RACE5')), true);
+  await page.reload();
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  check('13 …and after a reload too — no stale copy was written over it',
+    await page.evaluate(() => localStorage.getItem('fms_scenes_v1') === window.__big('RACE5')), true);
+
+  /* The mirror case: a large write still in flight when the value
+     shrinks must not land its stub over the small value afterwards. */
+  await page.evaluate(async () => {
+    localStorage.setItem('fms_scenes_v1', window.__big('SHRINK'));
+    localStorage.setItem('fms_scenes_v1', '[]');
+    await window.StudioStore.flushStorage();
+  });
+  check('13 a shrink right after a large write keeps the small value',
+    await page.evaluate(() => localStorage.getItem('fms_scenes_v1')), '[]');
+  await page.reload();
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  check('13 …and after a reload', await page.evaluate(() => localStorage.getItem('fms_scenes_v1')), '[]');
   check('no page errors', page.__errors, []);
   await ctx.close();
 }

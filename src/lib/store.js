@@ -138,8 +138,24 @@ function _readTiered(k) {
   return null;
 }
 
+/* ONE GENERATION PER KEY, because an overflowed write finishes later
+   than the writes that follow it. Two overlapping saves of the same
+   screenplay (holding Backspace in write.html does it) used to race:
+   the OLDER write's read-back returned the NEWER bytes, compared
+   unequal, and _fallBackToSmallTier then wrote the older value into
+   localStorage — and that stale copy is what the next load served. The
+   mirror case was as bad: a large write still in flight when the value
+   shrank would land its stub AFTER the small write, pointing at bytes
+   the shrink had just deleted. Every write and remove bumps the key's
+   generation; an overflowed write that finds it has been superseded
+   does nothing at all — the newer write owns the key. */
+const _gen = new Map();
+function _bump(k) { const g = (_gen.get(k) || 0) + 1; _gen.set(k, g); return g; }
+const _current = (k, g) => _gen.get(k) === g;
+
 function _writeTiered(k, value) {
   const v = String(value);
+  _bump(k);
   let existing = null;
   try { existing = _origGet(k); } catch (e) {}
 
@@ -167,7 +183,10 @@ function _writeTiered(k, value) {
 
   try {
     _origSet(k, v);
-    if (Overflow.isStub(existing)) Overflow.del(k);   // it shrank; reclaim the big tier
+    /* It shrank; reclaim the big tier. Also when no stub was written
+       yet: an earlier large write may have reached the cache and the
+       database before its stub, and reads consult the cache first. */
+    if (Overflow.isStub(existing) || Overflow.cache().has(k)) Overflow.del(k);
     return true;
   } catch (e) {
     /* Quota. The value is under the threshold but the small tier is
@@ -249,18 +268,21 @@ function _fallBackToSmallTier(k, v) {
 }
 
 function _overflowWrite(k, v) {
+  const g = _gen.get(k) || _bump(k);
   /* hydrate() is idempotent and is what opens the database, so this
      doubles as "ensure the tier exists" for the first large write of a
      studio's life. Overflow.put() fills the cache synchronously either
      way, so a read issued before any of this settles is still right. */
-  const p = Overflow.hydrate().then(() => Overflow.put(k, v)).then(async (ok) => {
+  const p = Overflow.hydrate().then(() => (_current(k, g) ? Overflow.put(k, v) : false)).then(async (ok) => {
+    if (!_current(k, g)) return;                      // superseded: the newer write owns the key
     const back = ok ? await Overflow.readBack(k) : null;
+    if (!_current(k, g)) return;
     if (back === v) {
       try { _origSet(k, Overflow.makeStub(v)); } catch (e) { /* a handful of bytes */ }
       return;
     }
     _fallBackToSmallTier(k, v);
-  }).catch(() => _fallBackToSmallTier(k, v));
+  }).catch(() => { if (_current(k, g)) _fallBackToSmallTier(k, v); });
   _pending.add(p);
   p.finally(() => _pending.delete(p));
   return true;
@@ -276,6 +298,7 @@ export function flushStorage() {
 }
 
 function _removeTiered(k) {
+  _bump(k);                                           // an in-flight overflowed write must not resurrect it
   try { _origRemove(k); } catch (e) { return false; }
   /* TRACKED, because a delete is as asynchronous as a write and
      `flushStorage()` was only ever told about writes. resetAll() duly

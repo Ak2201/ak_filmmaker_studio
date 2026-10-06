@@ -128,6 +128,7 @@ src/
              write.js plan.js
   sw.js      service worker (vite-plugin-pwa injectManifest)
 docs/KNOWN-ISSUES.md  bugs found and not yet fixed — check it first
+docs/UX-AUDIT-2026-10-06.md  the full UI/UX audit, ranked by severity
 scripts/
   extract/   the parsers that produced src/data — re-runnable, self-checking
   verify-migration.mjs   the gate

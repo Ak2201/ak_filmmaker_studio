@@ -2374,6 +2374,21 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
      ends. */
   body.rail-shown .step-rail,
   body.rail-shown .step-rail-toggle { left: var(--sh-rail-w); }
+  /* AND IT STARTS UNDER THE BAND, which is pinned from this width up.
+     It sat at `top: var(--s8)` — 64px — under a band measured at
+     128-162px on the blueprints, so the rail's head and its first
+     steps were always behind the band (UX audit H11). The offset is
+     the MEASURED one, --sh-chrome-h, published by measureChrome() and
+     re-measured when the band's contents change; a second guess at
+     the band's height is how that number has gone wrong before. The
+     height follows it, so the rail ends at the viewport's foot and
+     scrolls inside itself (it is overflow:auto) instead of running
+     its last steps off the screen. Declared here rather than at
+     .step-rail itself: this block is later in the sheet, and the
+     1100px boundary is the shell's, not the rail's 1101. */
+  .step-rail,
+  .step-rail-toggle { top: var(--sh-chrome-h, var(--s8)); }
+  .step-rail { max-height: calc(100vh - var(--sh-chrome-h, var(--s8)) - var(--s4)); }
 }
 
 /* ---- narrow: off-canvas behind the burger ---- */
@@ -2901,7 +2916,11 @@ html {
    area is grown without growing the plate. */
 @media (pointer: coarse) {
   .sh-plate-dot { position: relative; }
-  .sh-plate-dot::after { content: ""; position: absolute; inset: -9px; }
+  /* Full finger height; the width stops near the neighbouring dot,
+     since overlapping hit areas only move the miss. The dot is exempt
+     from base.css's 44px box floor: its box IS its look, and floored
+     it painted four 44px discs across the plate. */
+  .sh-plate-dot::after { content: ""; position: absolute; inset: -18px -9px; }
 }
 /* THE PLATE SCROLLS AWAY ON A PHONE, and this rule has to sit here
    rather than with the other narrow-width shell overrides.
@@ -2957,6 +2976,12 @@ html {
    band.
    ============================================================ */
 :root { --sh-ctl-h: 32px; --sh-plate-min: 30px; --sh-plate-h: 30px; }
+/* A finger's height on a touch screen (UX audit H8). The band's
+   controls read this one variable for height — and several for
+   width — so raising it here is the whole fix, and base.css's coarse
+   floor does not have to out-rank `.sh-bar:has(> .toolbar) …`. The
+   band is measured, never assumed, so --sh-chrome-h follows. */
+@media (pointer: coarse) { :root { --sh-ctl-h: 44px; } }
 
 /* ---- the plate: news, not navigation ----
    A brand TINT that follows the theme (lavender on paper, deep violet

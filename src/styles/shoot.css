@@ -162,10 +162,14 @@
   gap: var(--s2);
   margin-top: var(--s4);
 }
-.sd-btn {
-  flex: 1 1 0;
-  min-height: 48px;      /* before pointer:coarse has an opinion */
-}
+/* 48px, before pointer:coarse has an opinion — and the selector is
+   weighted (0,4,0) so that it keeps it. At (0,1,0) it tied with
+   chrome.css's `(max-width:560px) .btn { min-height: 36px }`, which is
+   later in the bundle, and on the phone this page was designed for
+   the three buttons measured 36px (UX audit H8). base.css's coarse
+   floor is (0,3,0) at 44px; this sits above both. */
+.sd-btn { flex: 1 1 0; }
+:root .sd-actions .sd-btn.sd-btn { min-height: 48px; }
 /* The live state is filled rather than outlined, so which one is
    true is readable at arm's length on a bright location. */
 .sd-btn.is-on.sd-shot    { background: var(--ok);   color: var(--on-fill); border-color: var(--ok); }

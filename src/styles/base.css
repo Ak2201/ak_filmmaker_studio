@@ -198,17 +198,47 @@ label, summary, input, select, textarea {
    pointer rather than a breakpoint.
 
    `min-height` plus centring rather than padding: padding would
-   change the box and reflow the row it sits in. */
+   change the box and reflow the row it sits in.
+
+   THE FLOORS ARE RAISED BY `:root`, AND THAT IS THE FIX, NOT A HACK
+   (UX audit H8). Written at (0,1,0) this rule lost every tie it
+   entered: `(max-width:560px) .btn { min-height: 36px }` in
+   chrome.css, `.sb-btn { min-height: 28px }`, `.bd-icon`,
+   `.tb-choice` and the shell's own controls all come later in the
+   bundle, so on a phone shoot.html's 48px Shot / Part / Dropped
+   rendered at 36 and the band's pills at 32. Order in a Vite bundle
+   is not where you wrote it (CLAUDE.md, "when two rules tie"), so the
+   floor lives where order cannot reach it: `:root :is(...):not(...)`
+   is (0,3,0), above every one- and two-class component rule (the
+   plate's dots are exempt: their box IS their look, see chrome.css).
+   Only the FLOORS
+   take the raise -- min-height / min-width, which nothing should be
+   undercutting on a touch screen. The layout half (display, centring)
+   stays at the old weight or below, so a component that lays out its
+   own button still wins. */
 @media (pointer: coarse) {
-  button, [role="button"], a.btn, .btn,
-  input[type="checkbox"], input[type="radio"],
-  [role="menuitem"], [role="menuitemradio"], [role="option"], [role="tab"] {
+  :root :is(button, [role="button"], a.btn, .btn,
+            input[type="checkbox"], input[type="radio"],
+            [role="menuitem"], [role="menuitemradio"], [role="option"], [role="tab"],
+            summary, select,
+            input:not([type="hidden"], [type="checkbox"], [type="radio"], [type="range"])):not(.sh-plate-dot) {
     min-height: 44px;
+  }
+  /* WIDTH too, for the icon-sized controls -- a 14px x on a breakdown
+     chip, a +/- in a row -- which no min-height reaches. Buttons only:
+     a field is as wide as its column says. */
+  :root :is(button, [role="button"], a.btn, .btn):not(.sh-plate-dot) {
+    min-width: 44px;
   }
   button, [role="button"], a.btn, .btn {
     display: inline-flex;
     align-items: center;
   }
+  /* Centred, at zero specificity: a native button centres its label,
+     and inline-flex alone puts it at the start of a box the min-width
+     above may just have made wider than the glyph. Any component that
+     says otherwise wins. */
+  :where(button, a.btn, .btn) { justify-content: center; }
   /* The hit area reaching past the glyph, for the icon-sized
      controls that genuinely cannot be 44px wide without redrawing
      the chrome. The ::after is the target; the button keeps its

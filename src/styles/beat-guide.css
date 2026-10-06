@@ -3,12 +3,12 @@
    ------------------------------------------------------------
    Tokens for every colour, `--sk-*` for every shape, distance times
    `--motion`. Text takes --ink / --ink-body / --ink-muted or
-   --accent-deep, never a fill or a hairline. The card is a sibling
-   AFTER #wr-page, so `position: sticky; bottom` docks it to the foot
-   of the viewport while the script is on screen and lets it settle
-   at the end of the script when it is not — a bottom sheet at 390px
-   and a right-hand card on a desk, with no fixed positioning and
-   nothing wider than its column.
+   --accent-deep, never a fill or a hairline. The card is the sibling
+   BEFORE #wr-page and never floats over the script: in flow above
+   the page by default, and pinned in the right gutter (.is-gutter,
+   placed by beat-guide.js from a measurement) only where the viewport
+   leaves room beside the page's fixed-width column. Nothing is wider
+   than its column, so 390px does not scroll sideways.
    ============================================================ */
 
 /* Off: the margin labels beat-board.js draws, hidden. One rule. */
@@ -43,14 +43,11 @@ html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
 
 /* ---- the card -------------------------------------------------- */
 .bg-panel {
-  position: sticky;
-  bottom: calc(var(--mab-h, 0px) + var(--s3));
-  z-index: var(--z-float);
   box-sizing: border-box;
-  width: min(100%, 26rem);
+  width: 100%;
   max-width: 100%;
   min-width: 0;
-  margin: var(--s4) 0 var(--s4) auto;
+  margin: 0 0 var(--s4);
   background: var(--paper-raised);
   color: var(--ink-body);
   border: 1px solid var(--rule);
@@ -60,6 +57,21 @@ html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
   font-size: var(--t-small);
   animation: bg-in var(--speed, 200ms) var(--ease-out, ease-out) both;
 }
+/* In the gutter: fixed beside the page, under the band and whatever
+   is parked under it (the tab strip), and short enough to clear the
+   bottom action bar and the floats lifted above it. */
+.bg-panel.is-gutter {
+  position: fixed;
+  top: calc(var(--sh-cover-h, var(--sh-chrome-h, 0px)) + var(--s3));
+  left: var(--bg-left, auto);
+  width: var(--bg-w, 22rem);
+  margin: 0;
+  z-index: var(--z-float);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100vh - var(--sh-cover-h, var(--sh-chrome-h, 0px)) - var(--mab-h, 0px) - 2 * var(--s3) - 3rem);
+}
+.bg-panel.is-gutter > .bg-body { max-height: none; overflow: visible; }
 .bg-panel[data-how="estimated"] { border-left-color: var(--rule); }
 @keyframes bg-in {
   from { opacity: 0; transform: translateY(calc(6px * var(--motion, 1))); }
@@ -147,7 +159,6 @@ html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
 }
 
 @media (max-width: 719px) {
-  .bg-panel { width: 100%; margin-left: 0; }
   .bg-body { max-height: 38vh; }
 }
 

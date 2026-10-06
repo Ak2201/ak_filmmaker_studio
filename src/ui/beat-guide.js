@@ -221,7 +221,7 @@ function ensurePanel() {
     lastSig = '';
     return;
   }
-  if (old && old.previousElementSibling === page) return;
+  if (old && old.nextElementSibling === page) { place(); return; }
   if (old) old.remove();
   const card = h('details#bg-panel.bg-panel', { 'aria-label': 'Beat guide' }, [
     h('summary.bg-summary', {}, [
@@ -232,9 +232,66 @@ function ensurePanel() {
     h('div.bg-body', { 'data-bg': 'body' })
   ]);
   if (openCard) card.open = true;
-  page.after(card);
+  page.before(card);
   lastSig = '';
+  watchPage(page);
+  place();
   schedule();
+}
+
+/* ---- where the card goes ----------------------------------------
+   NEVER OVER THE TEXT. The script is a fixed-width column; when the
+   viewport leaves a gutter to its right wide enough for the card, the
+   card is pinned there (fixed, under the band and anything parked
+   under it), sized to the gutter. When it does not — a narrow desk, a
+   tablet, a phone — the card stays where it sits in the flow, above
+   the page, and scrolls with it. One measurement, of the page's right
+   edge against the viewport's, re-taken on a resize, when the page's
+   width changes (page view) and after a render; it writes custom
+   properties on the card, which is outside the observed element, so
+   there is no observer loop. */
+const GUTTER_MIN = 272;     // the narrowest card worth pinning, px
+const GUTTER_MAX = 368;
+const GAP = 16;
+let watched = null;
+let pageObs = null;
+let lastW = -1;
+let placeQueued = false;
+
+function place() {
+  const card = document.getElementById('bg-panel');
+  const page = document.getElementById('wr-page');
+  if (!card || !page) return;
+  const r = page.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  const room = vw - r.right - 2 * GAP;
+  const gutter = room >= GUTTER_MIN;
+  card.classList.toggle('is-gutter', gutter);
+  if (gutter) {
+    card.style.setProperty('--bg-left', Math.round(r.right + GAP) + 'px');
+    card.style.setProperty('--bg-w', Math.round(Math.min(GUTTER_MAX, room)) + 'px');
+  } else {
+    card.style.removeProperty('--bg-left');
+    card.style.removeProperty('--bg-w');
+  }
+}
+function queuePlace() {
+  if (placeQueued) return;
+  placeQueued = true;
+  requestAnimationFrame(() => { placeQueued = false; place(); });
+}
+function watchPage(page) {
+  if (watched === page || typeof ResizeObserver !== 'function') return;
+  if (pageObs) pageObs.disconnect();
+  watched = page;
+  lastW = -1;
+  pageObs = new ResizeObserver((entries) => {
+    const w = Math.round(entries[0].contentRect.width);
+    if (w === lastW) return;            // a row added changes the height only
+    lastW = w;
+    queuePlace();
+  });
+  pageObs.observe(page);
 }
 
 function draw() {
@@ -305,6 +362,8 @@ export function mountBeatGuide(ctx) {
     clearTimeout(typeTimer);
     typeTimer = setTimeout(schedule, 1200);
   });
+
+  window.addEventListener('resize', queuePlace, { passive: true });
 
   const app = document.getElementById('app');
   ensureControl();

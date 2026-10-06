@@ -191,6 +191,10 @@ try {
   F.reset();
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   F.db.projects.push({ id: 'existing', title: 'Already in the cloud', format: 'feature', owner_id: USERS['tok-amy'].id });
+  /* This section proves the SERVER's cap (the P0402 trigger), so the free
+     tier here may make projects; the feature lock that hides New project
+     on the default free tier is section (i)'s to prove. */
+  { const fp = F.db.plans.find((p) => p.id === 'free'); fp.features = { ...(fp.features || {}), new_projects: true, sample_only: false }; }
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'index.html');
@@ -253,6 +257,10 @@ try {
   console.log('(i) features by plan: the matrix, the free tier, a locked module');
   F.reset();
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });   // Amy: a member on Free
+  /* The console section above GRANTED Amy Pro; this section is about the
+     free tier, so her organisations go back to Free first — otherwise
+     every check below measures Pro and fails for the wrong reason. */
+  for (const a of F.db.accounts) if (a.owner_id === USERS['tok-amy'].id) { a.plan = 'free'; a.plan_until = null; }
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
     await A.page.goto(BASE + 'admin.html#features');

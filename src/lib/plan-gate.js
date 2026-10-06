@@ -95,27 +95,44 @@ export function moduleCatalogue() {
 /* ---- learning the plan ------------------------------------------ */
 
 let _refreshing = null;
+let _again = false;
+async function _refreshOnce() {
+  const c = window.StudioCloud;
+  const prev = JSON.stringify(features);
+  try {
+    if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; }
+    else {
+      const st = await Billing.status();
+      features = (st && st.features && typeof st.features === 'object') ? st.features : {};
+      plan = (st && st.plan) || 'free';
+      planName = (st && st.plan_name) || Billing.planName(plan);
+    }
+  } catch (e) {
+    /* The table or the RPC missing (section 16/18 not run), or a
+       network failure: nothing is known, so nothing is locked. */
+    features = null; plan = ''; planName = '';
+  }
+  if (JSON.stringify(features) !== prev) Store.notify('plan:changed', currentPlan());
+  apply();
+}
 export function refresh() {
-  if (_refreshing) return _refreshing;
+  /* TWO TRAPS, both of which left a free member ungated for good:
+
+     - The in-flight marker used to be cleared in a `finally` INSIDE the
+       async body. Signed out, that body never awaits, so it ran to the
+       end — finally included — before `_refreshing = (async …)()` was
+       even assigned, and the assignment then stored a settled promise
+       that nothing ever cleared. Every later refresh, the gate opening
+       included, returned that stale "signed out" answer. The marker is
+       cleared on the promise now, after the assignment by construction.
+     - A request that lands while one is in flight is not the same
+       request: the first may have read the state before the session
+       was restored. It is run once more afterwards instead of being
+       answered with the first one's result. */
+  if (_refreshing) { _again = true; return _refreshing; }
   _refreshing = (async () => {
-    const c = window.StudioCloud;
-    const prev = JSON.stringify(features);
-    try {
-      if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; }
-      else {
-        const st = await Billing.status();
-        features = (st && st.features && typeof st.features === 'object') ? st.features : {};
-        plan = (st && st.plan) || 'free';
-        planName = (st && st.plan_name) || Billing.planName(plan);
-      }
-    } catch (e) {
-      /* The table or the RPC missing (section 16/18 not run), or a
-         network failure: nothing is known, so nothing is locked. */
-      features = null; plan = ''; planName = '';
-    } finally { _refreshing = null; }
-    if (JSON.stringify(features) !== prev) Store.notify('plan:changed', currentPlan());
-    apply();
-  })();
+    do { _again = false; await _refreshOnce(); } while (_again);
+  })().finally(() => { _refreshing = null; });
   return _refreshing;
 }
 

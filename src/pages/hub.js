@@ -1615,8 +1615,8 @@ function projectCard(p, currentId) {
 
 const TOUR = [
   { href: 'library.html', label: 'Craft library',  note: 'Rules, directors, rates — no project needed' },
-  { href: 'study.html',   label: 'Case studies',   note: 'Four films, beat by beat' },
-  { href: 'dissect.html', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
+  { href: 'library.html#case-studies', label: 'Case studies',   note: 'Four films, beat by beat' },
+  { href: 'library.html#dissection', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
 ];
 
 function renderFirstRun() {

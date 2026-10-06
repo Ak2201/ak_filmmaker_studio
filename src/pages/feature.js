@@ -497,12 +497,12 @@ function renderToolbar() {
   const jumper = h('select#stepJumper.step-jumper', {
     'data-action-change': 'jumpToStep', title: 'Jump to any step'
   });
-  jumper.append(h('option', { value: '', text: 'JUMP TO…' }));
+  jumper.append(h('option', { value: '', text: 'Jump to…' }));
   jumper.append(fromHTML(jumpOptionsHTML()));
 
   const search = h('span.toolbar-search');
   search.append(
-    h('input#searchInput', { type: 'text', placeholder: 'SEARCH ANY FIELD…', autocomplete: 'off' }),
+    h('input#searchInput', { type: 'text', placeholder: 'Search any field…', autocomplete: 'off' }),
     h('span#searchCount.search-result-count')
   );
 

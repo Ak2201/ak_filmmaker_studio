@@ -2798,7 +2798,9 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
    The gutter is deliberate. Flush against the chrome, a heading reads
    as clipped by it rather than as the top of a section. */
 html {
-  scroll-padding-top: calc(var(--sh-chrome-h) + var(--s3));
+  /* --sh-cover-h is the band PLUS anything parked under it (the tab
+     strip); shell.js publishes both. The fallback is the band. */
+  scroll-padding-top: calc(var(--sh-cover-h, var(--sh-chrome-h)) + var(--s3));
 }
 /* ============================================================
    THE BRAND PLATE
@@ -2915,4 +2917,353 @@ html {
 @media (max-width: 559px) {
   .sh-plate { gap: var(--s2); padding-inline: var(--s3); }
   .sh-plate-flag { display: none; }
+}
+
+/* ============================================================
+   THE BAND, FOR CLARITY — one hierarchy, one control language
+   ------------------------------------------------------------
+   Owner's report, 6 Oct 2026: the top section "needs more clarity".
+   Measured on the hub at 1280: two rows, three type systems (tracked
+   mono capitals for STUDIO / SECTIONS / INSTALL, title-case sans for
+   the stages and Backup), controls of four heights from 30 to 40px,
+   the purpose sentence wedged between the crumb and the stages, and
+   the utility controls wrapped onto a second row of their own.
+
+   The hierarchy this section enforces, left to right:
+     WHERE YOU ARE  the breadcrumb, sentence-case sans, the current
+                    segment in ink with its stage's colour under it;
+     THE STAGES     the five pills, centred; the one filled pill is
+                    the stage you are in;
+     UTILITIES      one cluster, one row, every control the same
+                    height (--sh-ctl-h), the same sans, the same
+                    radius (--sk-btn-radius), the same hairline —
+                    the account pill is the one filled control.
+   The announcement plate above it is quieter (a tint, not a slab) and
+   can be put away.
+
+   It lives at the END of the file on purpose: these rules restate
+   properties declared earlier in this sheet, and the trap recorded in
+   CLAUDE.md is that a tie is decided by order, not by where a rule
+   reads best. Every value is a token or a --sk-* variable. Nothing
+   here changes an id, a data-action or the `.toolbar` element; it is
+   presentation only, so measureChrome() simply measures a shorter
+   band.
+   ============================================================ */
+:root { --sh-ctl-h: 32px; --sh-plate-min: 30px; --sh-plate-h: 30px; }
+
+/* ---- the plate: news, not navigation ----
+   A brand TINT that follows the theme (lavender on paper, deep violet
+   on ink) instead of a saturated slab in both: it is the least
+   important thing in the band and it was the loudest. */
+.sh-plate {
+  min-height: var(--sh-plate-min);
+  padding: var(--s1) var(--s7) var(--s1) var(--s4);
+  background: var(--brand-wash);
+  color: var(--ink);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+.sh-plate-item { font-size: var(--t-tiny); font-weight: 500; }
+.sh-plate-flag {
+  padding: 0 var(--s1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  color: var(--brand-deep);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.sh-plate-arrow { color: var(--brand-deep); }
+.sh-plate-dot { background: color-mix(in srgb, var(--brand-deep) 35%, transparent); }
+.sh-plate-dot:hover { background: color-mix(in srgb, var(--brand-deep) 65%, transparent); }
+.sh-plate-dot.is-on { background: var(--brand-deep); }
+/* The plate is `sticky` above 720px and `relative` below, so it is
+   the containing block for the close control at every width. */
+.sh-plate-close {
+  position: absolute;
+  top: 50%;
+  right: var(--s2);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink-body);
+  font-size: var(--t-base);
+  line-height: 1;
+  cursor: pointer;
+}
+.sh-plate-close:hover,
+.sh-plate-close:focus-visible { background: var(--chrome-fill-strong); color: var(--ink); }
+
+/* ---- the band ---- */
+.sh-bar {
+  column-gap: var(--s3);
+  row-gap: var(--s2);
+  min-height: 52px;
+  padding: var(--s2) var(--s4);
+}
+
+/* WHERE YOU ARE. Sentence-case sans, the same face as the stages, so
+   the band has one voice. The tracked mono capitals were a label
+   style; the crumb is a sentence: Studio › Pre-Production › Contacts. */
+.sh-where,
+.sh-bar:has(> .toolbar) .sh-where {
+  flex: 0 1 auto;
+  gap: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.sh-where-step {
+  min-height: var(--sh-ctl-h);
+  padding: 0 var(--s2);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  font-weight: 500;
+}
+/* The destination: ink and weight, with its stage's colour as an
+   underline rather than a boxed cell — one more outlined pill in a
+   band full of them was the complaint. */
+.sh-where-here {
+  background: none;
+  border-color: transparent;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: inset 0 calc(-1 * var(--sk-hue-rule-w, 3px)) 0 var(--hue, var(--accent));
+  color: var(--chrome-ink);
+  font-weight: 700;
+}
+.sh-where-sep { padding-inline: 2px; }
+/* The purpose sentence answers "what is this for", which the crumb's
+   title also says on hover. In the band it competed with the crumb
+   for the same glance, so it shows only where there is room to spare
+   and never on a bar that also carries a page's controls. */
+.sh-where-purpose { font-size: var(--t-tiny); padding-left: var(--s3); }
+@media (max-width: 1679px) { .sh-where-purpose { display: none; } }
+.sh-bar:has(> .toolbar) .sh-where-purpose { display: none; }
+
+/* THE STAGES, at the band's one control height. */
+.sh-phases { gap: 2px; }
+.sh-phase-btn,
+.sh-bar:has(> .toolbar) .sh-phase-btn {
+  min-height: var(--sh-ctl-h);
+  padding: 0 var(--s3);
+  gap: 6px;
+  white-space: nowrap;
+}
+@media (min-width: 1100px) { .sh-phases { flex-wrap: nowrap; } }
+
+/* ---- UTILITIES: one control language ----
+   Every control in the band, whoever built it: the palette handle,
+   the hub's project switcher and the blueprints' back link, the
+   page's .btn and menu buttons, the step jumper, the field search,
+   the SECTIONS disclosure on the crumb. */
+.sh-bar .sh-find,
+.sh-bar .project-switcher,
+.sh-bar .studio-proj-link,
+.sh-bar .btn,
+.sh-bar .tb-menu-btn,
+.sh-bar .step-jumper,
+.sh-bar .toolbar-search input,
+.sh-bar .sh-pagenav-btn {
+  box-sizing: border-box;
+  min-height: var(--sh-ctl-h);
+  height: var(--sh-ctl-h);
+  padding: 0 var(--s3);
+  background: transparent;
+  border: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--chrome-ink);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+.sh-bar .sh-find:hover,
+.sh-bar .project-switcher:hover,
+.sh-bar .studio-proj-link:hover,
+.sh-bar .btn:hover,
+.sh-bar .tb-menu-btn:hover,
+.sh-bar .tb-menu-btn[aria-expanded="true"],
+.sh-bar .sh-pagenav-btn:hover,
+.sh-bar .sh-pagenav-btn[aria-expanded="true"] {
+  background: var(--chrome-fill);
+  border-color: var(--chrome-hair-strong);
+  color: var(--chrome-ink);
+}
+.sh-bar .studio-proj-link,
+.sh-bar .step-jumper { background: var(--chrome-fill); }
+.sh-bar .step-jumper { max-width: 160px; }
+.sh-bar .toolbar-search input { padding-right: var(--s6); }
+/* Square icon buttons at the same height as the rest. */
+.sh-bar .icon-btn,
+.sh-bar .tb-menu-btn.is-compact,
+.sh-bar:has(> .toolbar) .sh-find {
+  width: var(--sh-ctl-h);
+  min-width: var(--sh-ctl-h);
+  padding: 0;
+  justify-content: center;
+}
+.sh-bar .sh-find-icon { font-size: var(--t-small); }
+.sh-bar .sh-find-key { padding: 2px var(--s1); line-height: 1; }
+.sh-bar .project-switcher .ps-label { max-width: 14ch; }
+.sh-bar .project-switcher.empty { color: var(--danger); border-color: var(--danger); }
+.sh-bar .save-status,
+.sh-bar .progress-text { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: normal; }
+.sh-bar .progress-meter { border-inline: 0; padding-inline: var(--s1); }
+
+/* The account pill is the cluster's one FILLED control — the way in,
+   or who you are — at the same height as everything beside it. */
+.sh-bar .sign-in-pill {
+  box-sizing: border-box;
+  height: var(--sh-ctl-h);
+  padding: 0 var(--s3);
+  font-size: var(--t-tiny);
+}
+.sh-bar .sign-in-pill .sip-label { max-width: 18ch; }
+
+.sh-bar > .toolbar { column-gap: 6px; row-gap: var(--s2); align-items: center; }
+
+/* 1100–1439: the commonest laptop widths, and the range where the
+   crumb, five stages and the cluster are within ~60px of sharing one
+   row. The stages give up 4px a side, the palette handle its words
+   (the key is in its title and aria-keyshortcuts), Backup its word
+   — and the hub, the module pages
+   and settings stay on one row at 1280 with the rail open. */
+@media (min-width: 1100px) and (max-width: 1439px) {
+  .sh-phase-btn,
+  .sh-bar:has(> .toolbar) .sh-phase-btn { padding: 0 var(--s2); }
+  .sh-bar .sh-find-label,
+  .sh-bar .sh-find-key { display: none; }
+  .sh-bar .sh-find {
+    width: var(--sh-ctl-h);
+    min-width: var(--sh-ctl-h);
+    padding: 0;
+    justify-content: center;
+  }
+  .sh-bar .project-switcher .ps-label { max-width: 10ch; }
+  /* Backup becomes its glyph. The word stays in the button as
+     visually-hidden text, so its accessible name is unchanged. */
+  .sh-bar [data-tb-backup] > .tb-menu-btn > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .sh-bar [data-tb-backup] > .tb-menu-btn::before {
+    content: "⇅";
+    font-size: var(--t-small);
+  }
+}
+
+/* Below 1280 the crumb's stage segment is the one that goes: the
+   filled stage pill a few centimetres to its right says the same
+   thing, and its width is what put the stages on a second row. */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  .sh-where-phase,
+  .sh-where-phase + .sh-where-sep { display: none; }
+}
+
+/* Signed in, the account pill is the address's first letter in a
+   circle — the full address is the pill's title, its aria-label and
+   the first line of the menu it opens. ::first-letter is what lets
+   the label stay the one text node auth.js writes. A pill that has
+   something to SAY — an invite still needed, a sync error, offline —
+   keeps its words. */
+.sh-bar .sign-in-pill.signed-in:not([data-sync="waiting"]):not([data-sync="error"]) {
+  width: var(--sh-ctl-h);
+  padding: 0;
+  justify-content: center;
+  position: relative;
+}
+.sh-bar .sign-in-pill.signed-in:not([data-sync="waiting"]):not([data-sync="error"]) .sip-label {
+  display: block;
+  max-width: none;
+  font-size: 0;
+  text-transform: uppercase;
+}
+.sh-bar .sign-in-pill.signed-in:not([data-sync="waiting"]):not([data-sync="error"]) .sip-label::first-letter { font-size: var(--t-small); }
+.sh-bar .sign-in-pill.signed-in:not([data-sync="waiting"]):not([data-sync="error"]) .sip-dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--brand-on);
+}
+
+/* THE HUB'S STRIPE stays — it is the three volumes' colour code — as
+   a 2px edge on the band rather than a 3px rule that read as a second
+   nav. */
+.sh-bar .toolbar-stripe { height: 2px; bottom: -1px; }
+
+/* THREE ZONES, THE STAGES TRULY CENTRED. With flex and auto margins
+   the stages sat wherever the leftover space put them — left of
+   centre on the hub at 1920, because the cluster grew into the slack.
+   A grid of max-content | auto | max-content, each side also free to
+   take an equal share of what is left (1fr), centres them whenever
+   there is room and degrades to "packed, in order" when there is not.
+   The cluster does not wrap inside its zone: if it cannot fit,
+   layoutBand() in shell.js sees the overflow and stacks it below. */
+@media (min-width: 1100px) {
+  .sh-bar:not([data-stacked]) {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+    align-items: center;
+  }
+  .sh-bar:not([data-stacked]) > .sh-where { justify-self: start; }
+  .sh-bar:not([data-stacked]) > .sh-phases { margin-inline: 0; }
+  .sh-bar:not([data-stacked]) > .sh-find,
+  .sh-bar:not([data-stacked]) > .toolbar { justify-self: end; }
+  .sh-bar:not([data-stacked]) > .toolbar { flex-wrap: nowrap; }
+}
+
+/* WHEN THE CLUSTER CANNOT SHARE A ROW. The blueprints carry a whole
+   working toolbar (progress, jump, field search, save state, export)
+   and at 1280 it cannot sit beside five stages. shell.js measures the
+   band and marks it `data-stacked`; the cluster then becomes a
+   deliberate second row — full width, a hairline above it, the page's
+   tools reading left to right and the account pill at the right edge
+   — instead of whatever happened to wrap. */
+.sh-bar[data-stacked] > .toolbar {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--chrome-hair);
+}
+.sh-bar[data-stacked] > .toolbar > .sign-in-pill,
+.sh-bar[data-stacked] > .sh-find { margin-left: auto; }
+
+/* ON A PHONE the stages scroll sideways in one line under the crumb
+   rather than wrapping to three rows — which is where the hub's 261px
+   of chrome at 390px came from — and the cluster is one row under
+   them. */
+@media (max-width: 719px) {
+  .sh-bar { column-gap: var(--s2); }
+  .sh-phases {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: calc(-1 * var(--s4));
+    padding-inline: var(--s4);
+    scrollbar-width: none;
+  }
+  .sh-phases::-webkit-scrollbar { display: none; }
+  .sh-bar > .toolbar,
+  .sh-bar[data-stacked] > .toolbar {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .sh-bar > .toolbar > .sign-in-pill { margin-left: auto; }
 }

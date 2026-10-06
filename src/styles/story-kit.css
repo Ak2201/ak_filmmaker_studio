@@ -1,0 +1,194 @@
+/* ============================================================
+   STORY KIT — the Story page's panels in the blueprints' Part I
+   ------------------------------------------------------------
+   src/ui/story-kit.js. A card on the Part I cover (the path), one in
+   step 02 (the Idea Vault), one above each blueprint's beat fields
+   plus a quiet line under each field (the Story page's steps for that
+   beat), and a band after step 10 (the curve and the exports).
+
+   SHAPES ARE --sk-*, COLOURS ARE TOKENS (invariants 4 and 7). Text is
+   --ink / --ink-body / --ink-muted / --accent-deep, never a fill.
+   ============================================================ */
+
+.sk-card {
+  max-width: var(--measure-wide);
+  margin: var(--s4) 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+  color: var(--ink-body);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sk-card:empty { display: none; }
+.sk-start { margin-top: var(--s5); }
+
+.sk-eyebrow {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.sk-title {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-lg);
+  font-style: var(--sk-card-h-style);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+.sk-sub {
+  margin: var(--s5) 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sk-lead {
+  margin: 0 0 var(--s3);
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.sk-lead strong { color: var(--ink); }
+.sk-note {
+  margin: var(--s2) 0 0;
+  max-width: var(--measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.sk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  min-width: 0;
+}
+.sk-actions .btn { white-space: normal; text-align: start; }
+
+/* A file input inside a button-shaped label, as the Story page does. */
+.sk-file { position: relative; overflow: hidden; }
+.sk-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sk-file:focus-within { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+
+/* ---- the path --------------------------------------------- */
+.sk-path {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--s2);
+}
+.sk-path-link {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 var(--s2);
+  align-items: baseline;
+  padding: var(--s2) var(--s3);
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink-body);
+  text-decoration: none;
+  min-width: 0;
+}
+.sk-path-link:hover { border-color: var(--accent); }
+.sk-path-link:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.sk-path-n {
+  grid-row: span 2;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.sk-path-label { font-size: var(--t-small); font-weight: 700; color: var(--ink); }
+.sk-path-state { font-size: var(--t-tiny); color: var(--ink-muted); }
+.sk-path-step.is-done .sk-path-link { border-color: var(--ok); }
+.sk-path-step.is-done .sk-path-n { color: var(--ink); }
+.sk-path-step.is-done .sk-path-n::after { content: " ✓"; }
+
+/* ---- the Idea Vault --------------------------------------- */
+.sk-clips { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.sk-clip {
+  padding: var(--s2) var(--s3);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--rule);
+  background: var(--paper-raised);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sk-clip-text { margin: 0; font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); }
+.sk-clip-meta { margin: var(--s1) 0 0; font-size: var(--t-tiny); color: var(--ink-muted); }
+.sk-clip-meta a { color: var(--accent-deep); }
+.sk-vault-add { margin-top: var(--s3); display: grid; gap: var(--s1); }
+.sk-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sk-text {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: var(--s2) var(--s3);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--sk-card-line-w) solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  resize: vertical;
+}
+.sk-text:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 1px; }
+
+/* ---- beside each beat field ------------------------------- */
+.sk-ref {
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--accent);
+  background: var(--paper-raised);
+  border-radius: var(--sk-radius, var(--radius));
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sk-ref:empty { display: none; }
+.sk-ref-k {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sk-ref-steps,
+.sk-ref-marks { margin: 0; padding-left: var(--s5); }
+.sk-ref-marks { list-style: none; padding-left: 0; margin-top: var(--s1); }
+.sk-ref-marks li { color: var(--ink-body); font-style: italic; }
+.sk-ref-by { font-style: normal; color: var(--ink-muted); font-size: var(--t-tiny); }
+
+/* ---- the end of Part I ------------------------------------ */
+.sk-band {
+  padding: var(--sk-band-pad) var(--gutter);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+.sk-band .sk-card { margin: 0; max-width: var(--content-max); }
+.sk-end .st-heat { max-width: 100%; }
+
+@media print {
+  .sk-actions, .sk-note, .sk-vault-add { display: none; }
+}
+.sk-ref p.sk-ref-by { margin: var(--s1) 0 0; }

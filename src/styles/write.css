@@ -552,7 +552,13 @@ body.wr-dropping .bd-empty {
     pointer-events: none;
   }
   .wr-page.is-pageview .wr-type { right: calc(100% + 0.15in); width: 1.25in; }
-  .wr-page.is-pageview .wr-el-acts { left: calc(100% + 0.15in); }
+  /* Two buttons to a row, so the stack stays inside the 1in margin
+     and on the paper rather than spilling onto the page behind it. */
+  .wr-page.is-pageview .wr-el-acts {
+    left: calc(100% + 0.08in);
+    width: 0.86in;
+    flex-wrap: wrap;
+  }
   .wr-page.is-pageview .wr-ai-tag { right: calc(100% + 0.15in); top: 1.6em; }
   .wr-page.is-pageview .wr-el:hover > :is(.wr-type, .wr-el-acts, .wr-ai-tag),
   .wr-page.is-pageview .wr-el:focus-within > :is(.wr-type, .wr-el-acts, .wr-ai-tag) {
@@ -596,7 +602,14 @@ body.wr-dropping .bd-empty {
   .wr-page.is-pageview .wr-dual .wr-el.t-character { --wr-indent: 6ch; --wr-measure: 22ch; }
   .wr-page.is-pageview .wr-dual .wr-el.t-paren     { --wr-indent: 2ch; --wr-measure: 24ch; }
   .wr-page.is-pageview .wr-dual .wr-el.t-dialogue  { --wr-indent: 0ch; --wr-measure: 27ch; }
-  .wr-page.is-pageview .wr-dual .wr-el-acts { left: auto; right: 0; top: -2.2em; }
+  /* The right column's buttons are already in the right margin; the
+     left column's go in the gutter, under its type select. */
+  .wr-page.is-pageview .wr-dual-col:first-child .wr-el-acts {
+    left: auto;
+    right: calc(100% + 0.15in);
+    top: 2.4em;
+    justify-content: flex-end;
+  }
 }
 
 /* ------------------------------------------------------------

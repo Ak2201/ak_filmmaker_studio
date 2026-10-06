@@ -30,6 +30,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
@@ -494,11 +495,23 @@ function refreshSheets() {
 const contactIdOf = (el) => el.closest('[data-contact]')?.dataset.contact;
 const sheetIdOf   = (el) => el.closest('[data-sheet]')?.dataset.sheet;
 
+/* The new person joins Cast (DEPARTMENTS[0], the model's default and
+   the department most rows on a unit list belong to), which on a full
+   list is thousands of pixels above the button. So focus the card the
+   model just created — by its id, never by position — and bring it
+   into view. "The last card on the page" was somebody else: typing
+   renamed the last person in Post. scrollIntoView respects the
+   `scroll-padding-top` on <html>, so the card lands below the band. */
 delegate(document, 'click', '[data-action="contact-add"]', () => {
-  Contacts.addContact();
+  const added = Contacts.addContact();
   render();
-  const last = document.querySelector('.ct-dept-block:last-of-type .ct-person:last-of-type .ct-name');
-  if (last) last.focus();
+  const card = added && document.querySelector('[data-contact="' + added.id + '"]');
+  const name = card && card.querySelector('.ct-name');
+  if (!name) return;
+  name.focus({ preventScroll: true });
+  // `instant`: html scrolls smoothly, and a smooth trip of a few
+  // thousand pixels left the field off-screen for a second of typing.
+  card.scrollIntoView({ block: 'center', behavior: 'instant' });
 });
 
 delegate(document, 'click', '[data-action="contact-del"]', (e, el) => {
@@ -534,6 +547,16 @@ delegate(document, 'click', '[data-action="sheet-del"]', (e, el) => {
   if (!confirm('Delete call sheet' + label + '? The people and the scenes stay.')) return;
   Contacts.removeCallSheet(id);
   render();
+});
+
+/* Typing saves as it goes — a reload or a closed tab must not take
+   what was typed since the field was entered (UX audit H10). The
+   store write only: the repaint stays on `change`, as above. */
+saveOnInput('[data-contact-field]', (el) => {
+  Contacts.updateContact(contactIdOf(el), { [el.dataset.contactField]: el.value });
+});
+saveOnInput('[data-sheet-field]', (el) => {
+  Contacts.updateCallSheet(sheetIdOf(el), { [el.dataset.sheetField]: el.value });
 });
 
 delegate(document, 'change', '[data-sheet-field]', (e, el) => {

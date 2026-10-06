@@ -28,6 +28,7 @@ import '../styles/deliverables.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 
 const app = document.getElementById('app');
@@ -266,6 +267,13 @@ delegate(document, 'change', '[data-dv-field]', (e, el) => {
   const key = el.getAttribute('data-dv-field');
   Deliverables.setItemState(id, { [key]: el.value });
   if (key === 'state') render();
+});
+
+/* A note saves as it is typed (UX audit H10): `change` alone lost
+   everything since the field was entered to a reload or a closed tab.
+   The store write only; the re-render stays on `change`. */
+saveOnInput('[data-dv-field]', (el) => {
+  Deliverables.setItemState(el.getAttribute('data-item'), { [el.getAttribute('data-dv-field')]: el.value });
 });
 
 delegate(document, 'submit', '[data-dv-form="custom"]', (e, form) => {

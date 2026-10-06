@@ -428,8 +428,10 @@ async function primeAI() {
   // thing that redraws the panel when a key is saved, replaced or
   // forgotten, or the model changes. Without it the buttons still
   // work and the page still says the old thing.
-  Panelm.onAIChange(() => render());
-  render();
+  // Both redraws can land while somebody is typing in a shot — this
+  // one a second after first paint — so they keep that field focused.
+  Panelm.onAIChange(() => preservingFocus(render));
+  preservingFocus(render);
   return true;
 }
 
@@ -1226,6 +1228,18 @@ delegate(document, 'change', '[data-entry-field]', (e, el) => {
     link.remove();
   }
 });
+
+/* Typed text SAVES as it is typed, though everything above still
+   repaints on `change`: on `change` alone, a reload or a closed tab
+   took everything since the field was entered (UX audit H10).
+   saveOnInput() debounces the store write — nothing else — and
+   flushes it on pagehide / hidden. Selects and checkboxes are skipped;
+   their `change` already saved them. */
+import { saveOnInput, preservingFocus } from '../lib/autosave.js';
+saveOnInput('[data-shot-field]', (el) => Shots.updateShot(shotIdOf(el), { [el.dataset.shotField]: el.value }));
+saveOnInput('[data-frame-field]', (el) => Shots.updateFrame(frameIdOf(el), { [el.dataset.frameField]: el.value }));
+saveOnInput('[data-board-field]', (el) => Shots.updateBoard(boardIdOf(el), { [el.dataset.boardField]: el.value }));
+saveOnInput('[data-entry-field]', (el) => Shots.updateEntry(boardIdOf(el), entryIdOf(el), { [el.dataset.entryField]: el.value }));
 
 render();
 /* The AI module is loaded after the first paint, not during it, and

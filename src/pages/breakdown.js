@@ -25,6 +25,8 @@ import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
 } from '../lib/scenes.js';
 import * as Songs from '../lib/songs.js';
+import * as Bin from '../lib/scene-bin.js';
+import '../styles/scene-bin.css';
 import { loadScript } from '../lib/script.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
@@ -483,6 +485,50 @@ function toastTagged(added, where) {
   });
 }
 
+/* ---- removed from the script: the bin -----------------------
+   docs/BLUEPRINT-REALIGN-PLAN.md rev 3 §1d. A heading deleted from the
+   script, or a scene deleted here, sends the scene and everything hung
+   on it to the bin (src/lib/scene-bin.js). This lists the entries with
+   what each holds; Restore puts it all back where it was, Delete for
+   good and Empty bin ask first and name the counts. Nothing is purged
+   on a timer. Rendered only when the bin holds something. */
+function renderBin() {
+  const entries = Bin.listBin();
+  if (!entries.length) return null;
+  const wrap = h('aside.bd-bin', { 'aria-label': 'Removed scenes' });
+  wrap.append(
+    h('h2.bd-h2', { text: `Removed from script (${entries.length})` }),
+    h('p.bd-sub', { text: 'Scenes whose heading left the script, or that were deleted here, with their shots, frames, '
+      + 'shoot day and call-sheet places. They are hidden from every page until you restore them or delete them for good.' })
+  );
+  const list = h('ul.bd-bin-list');
+  for (const e of entries.slice().reverse()) {
+    const row = e.scene.row;
+    const c = Bin.entryCounts(e);
+    const bits = [];
+    if (c.shots) bits.push(`${c.shots} shot${c.shots === 1 ? '' : 's'}`);
+    if (c.frames) bits.push(`${c.frames} frame${c.frames === 1 ? '' : 's'}`);
+    if (c.day) bits.push(`Day ${c.day}`);
+    if (c.sheets) bits.push(`${c.sheets} call sheet${c.sheets === 1 ? '' : 's'}`);
+    if (!bits.length) bits.push('nothing attached');
+    const where = [row.intExt, row.location, row.dayNight].filter(Boolean).join(' · ');
+    list.append(h('li.bd-bin-item', { 'data-bin': e.id }, [
+      h('div.bd-bin-copy', {}, [
+        h('strong', { text: `Scene ${row.number || '—'}` }),
+        h('span.bd-bin-slug', { text: e.heading || where || 'No heading' }),
+        h('span.bd-bin-meta', { text: bits.join(' · ') + (e.reason === 'hand' ? ' · deleted here' : ' · heading removed from the script') })
+      ]),
+      h('div.bd-bin-acts', {}, [
+        h('button.btn', { type: 'button', 'data-action': 'bin-restore', text: 'Restore' }),
+        h('button.btn.danger.bd-bin-del', { type: 'button', 'data-action': 'bin-delete', text: 'Delete for good' })
+      ])
+    ]));
+  }
+  wrap.append(list);
+  wrap.append(h('button.btn.bd-bin-empty', { type: 'button', 'data-action': 'bin-empty', text: 'Empty bin' }));
+  return wrap;
+}
+
 /* ---- render ------------------------------------------------- */
 function render() {
   const scenes = Scenes.listScenes();
@@ -514,6 +560,9 @@ function render() {
     scenes.forEach((s, i) => list.append(renderScene(s, i, scenes.length)));
     list.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
   }
+  // The bin, inside the Scenes tab, only when it holds something.
+  const bin = renderBin();
+  if (bin) list.append(bin);
   /* renderSongs() is OUTSIDE the branch for the same reason the #scenes
      id moved onto an always-rendering wrapper: navigation.json sends
      the Breakdown phase to breakdown.html#songs, so that id has to
@@ -547,8 +596,50 @@ delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
   const id = sceneIdOf(el);
   const scene = Scenes.listScenes().find((s) => s.id === id);
   const label = scene && (scene.location || scene.synopsis) ? ` "${(scene.location || scene.synopsis).slice(0, 40)}"` : '';
-  if (!confirm(`Delete scene${label}? Its tagged elements go with it.`)) return;
+  // removeScene() goes through the bin (src/lib/scene-bin.js), so the
+  // scene's shots, frames, call-sheet places and edit notes go with it
+  // and come back with it.
+  if (!confirm(`Move scene${label} to the bin? Its tagged elements, shots, frames and call-sheet places go with it, and Restore brings them all back.`)) return;
   Scenes.removeScene(id);
+  render();
+});
+
+/* ---- the bin ------------------------------------------------- */
+const binIdOf = (el) => el.closest('[data-bin]')?.dataset.bin;
+/** Is this heading id in the script right now? A row restored while
+    its heading is gone comes back unlinked, or the next sync on the
+    Write page would bin it again. */
+function headingInScript(id) {
+  if (!id) return false;
+  try { return loadScript().elements.some((el) => el && el.id === id && el.type === 'scene' && String(el.text || '').trim()); }
+  catch (e) { return false; }
+}
+delegate(document, 'click', '[data-action="bin-restore"]', (e, el) => {
+  const id = binIdOf(el);
+  const entry = Bin.listBin().find((x) => x.id === id);
+  if (!entry) return;
+  const linked = entry.scene.row.scriptElId;
+  const row = Bin.restoreFromBin(id, linked && !headingInScript(linked) ? { patch: { scriptElId: '' } } : {});
+  render();
+  if (row) StudioUI.toast(`Scene ${row.number || ''} is back, with everything that was attached to it.`, { type: 'success' });
+});
+delegate(document, 'click', '[data-action="bin-delete"]', (e, el) => {
+  const id = binIdOf(el);
+  const entry = Bin.listBin().find((x) => x.id === id);
+  if (!entry) return;
+  if (!confirm(`Delete for good — ${Bin.describeEntry(entry)}?\n\nThis cannot be undone.`)) return;
+  Bin.deleteBinEntry(id);
+  render();
+});
+delegate(document, 'click', '[data-action="bin-empty"]', () => {
+  const t = Bin.binTotals();
+  if (!t.scenes) return;
+  const bits = [`${t.scenes} scene${t.scenes === 1 ? '' : 's'}`];
+  if (t.shots) bits.push(`${t.shots} shot${t.shots === 1 ? '' : 's'}`);
+  if (t.frames) bits.push(`${t.frames} frame${t.frames === 1 ? '' : 's'}`);
+  if (t.sheets) bits.push(`${t.sheets} call-sheet place${t.sheets === 1 ? '' : 's'}`);
+  if (!confirm(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
+  Bin.emptyBin();
   render();
 });
 delegate(document, 'click', '[data-action="sug-add"]', (e, el) => {

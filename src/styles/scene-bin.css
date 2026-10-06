@@ -1,0 +1,33 @@
+/* ============================================================
+   THE SCENE BIN on breakdown.html (src/pages/breakdown.js renderBin)
+   ------------------------------------------------------------
+   Inside the Scenes tab, under the rows. Every shape is a skin
+   variable and every colour a token — see invariants 4 and 7.
+   ============================================================ */
+.bd-bin {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding: var(--s5);
+  border: var(--sk-card-line-w, 1px) dashed var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-sunk, var(--paper));
+}
+.bd-bin .bd-h2 { margin: 0; font-size: var(--t-xl); }
+.bd-bin .bd-sub { margin: 0; }
+.bd-bin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.bd-bin-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-raised);
+}
+.bd-bin-copy { display: grid; gap: var(--s1); flex: 1 1 16rem; min-width: 0; }
+.bd-bin-slug { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); overflow-wrap: anywhere; }
+.bd-bin-meta { font-size: var(--t-small); color: var(--ink-muted); }
+.bd-bin-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.bd-bin-empty { justify-self: start; }

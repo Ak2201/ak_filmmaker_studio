@@ -220,8 +220,46 @@ export function setSheetCall(sheetId, contactId, on, time) {
   return updateCallSheet(sheetId, { calls });
 }
 
+/* ---- a scene leaving for the bin, and coming back --------------
+   A call sheet holds scene ids; a scene going to the bin
+   (src/lib/scene-bin.js) leaves every sheet it was on, and its place
+   in each sheet's order is remembered so Restore puts it back where
+   it was. Raw sheets, so nothing is added to a sheet in passing. */
+export function takeSceneOut(sceneId) {
+  const all = readAll();
+  const sheets = [];
+  const callSheets = all.callSheets.map((sheet) => {
+    const ids = sheet && Array.isArray(sheet.sceneIds) ? sheet.sceneIds : null;
+    const index = ids ? ids.indexOf(sceneId) : -1;
+    if (index < 0) return sheet;
+    sheets.push({ sheetId: sheet.id, index });
+    return { ...sheet, sceneIds: ids.filter((id) => id !== sceneId) };
+  });
+  if (sheets.length) writeAll({ ...all, callSheets });
+  return sheets;
+}
+
+/** Put the scene back on the sheets it was taken off. A sheet deleted
+    since is skipped; one that already lists the scene is left alone. */
+export function putSceneBack(sceneId, sheets) {
+  if (!sheets || !sheets.length) return 0;
+  const all = readAll();
+  const at = new Map(sheets.map((s) => [s.sheetId, s.index]));
+  let n = 0;
+  const callSheets = all.callSheets.map((sheet) => {
+    if (!sheet || !at.has(sheet.id)) return sheet;
+    const ids = Array.isArray(sheet.sceneIds) ? sheet.sceneIds.slice() : [];
+    if (ids.includes(sceneId)) return sheet;
+    ids.splice(Math.min(at.get(sheet.id), ids.length), 0, sceneId);
+    n++;
+    return { ...sheet, sceneIds: ids };
+  });
+  if (n) writeAll({ ...all, callSheets });
+  return n;
+}
+
 export default {
-  CONTACTS_KEY, DEPARTMENTS,
+  CONTACTS_KEY, DEPARTMENTS, takeSceneOut, putSceneBack,
   blankContact, listContacts, saveContacts, addContact, updateContact, removeContact,
   byDepartment,
   blankCallSheet, listCallSheets, saveCallSheets, addCallSheet, updateCallSheet,

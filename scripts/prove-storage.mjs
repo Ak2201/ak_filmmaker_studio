@@ -927,6 +927,116 @@ console.log('\n--- the screenplay editor: text typed just before leaving the pag
   await ctx.close();
 }
 
+console.log('\n--- two projects: a script drives its own scenes, and only its own ---');
+{
+  /* docs/BLUEPRINT-REALIGN-PLAN.md rev 3 §1d. Project A's script makes
+     a scene (src/lib/scene-sync.js, run by the Write page after a
+     save); shots are hung on it; clearing the heading sends the scene
+     AND its shots to A's bin (src/lib/scene-bin.js); Ctrl+Z in the
+     field brings both back. Project B — a scene and a shot of its own
+     — is never touched by any of it, and deleting A leaves no
+     `__<A>` key behind and B byte-identical. Everything is read from
+     the RAW slots, under the proxy. */
+  const { ctx, page } = await openPage();
+  const A = await newProject(page, 'Sync Alpha');
+  // createProject() opens the new project, so A is reopened after it.
+  const B = await page.evaluate((a) => { const S = window.StudioStore; const id = S.createProject({ title: 'Sync Beta', format: 'feature' }).id; S.setCurrentProject(a); return id; }, A);
+  await page.evaluate((b) => {
+    const S = window.StudioStore;
+    S.rawSet('fms_scenes_v1__' + b, JSON.stringify({ scenes: [{ id: 'beta-1', number: '1', location: 'BETA ROOM', scriptElId: 'beta-h1' }] }));
+    S.rawSet('fms_shots_v1__' + b, JSON.stringify({ shots: [{ id: 'beta-sh1', sceneId: 'beta-1', number: '1' }], frames: [], boards: [] }));
+    S.rawSet('fms_script_v1__' + b, JSON.stringify({ elements: [{ id: 'beta-h1', type: 'scene', text: 'INT. BETA ROOM - DAY' }], revisions: [], documents: [] }));
+  }, B);
+  const bKeys = () => page.evaluate((b) => {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.endsWith('__' + b)) out[k] = window.__raw(k);
+    }
+    return Object.fromEntries(Object.entries(out).sort());
+  }, B);
+  const bBefore = await bKeys();
+  const rawJSON = (k) => page.evaluate((key) => { try { return JSON.parse(window.__raw(key) || 'null'); } catch (e) { return null; } }, k);
+
+  await page.goto(`http://localhost:${PORT}/write.html`);
+  await page.waitForSelector('[data-action="el-first"]', { timeout: 15000 });
+  await page.click('[data-action="el-first"]');
+  await page.waitForSelector('.t-scene .wr-text', { timeout: 5000 });
+  await page.locator('.t-scene .wr-text').first().click();
+  await page.keyboard.type('INT. HALL - DAY', { delay: 15 });
+  const scenesAre = (n) => page.waitForFunction(([k, want]) => {
+    try { return JSON.parse(window.__raw(k) || '{}').scenes.length === want; } catch (e) { return false; }
+  }, ['fms_scenes_v1__' + A, n], { timeout: 8000 }).catch(() => {});
+  await scenesAre(1);
+  // A second scene: Return to an action line, then Alt+1 makes the next one a heading.
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('A long hall.', { delay: 10 });
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Alt+1');
+  await page.keyboard.type('INT. KITCHEN - NIGHT', { delay: 15 });
+  await scenesAre(2);
+  const made = await rawJSON('fms_scenes_v1__' + A);
+  const sc = made && made.scenes && made.scenes.find((s) => s.location === 'KITCHEN');
+  check('S1 headings typed in A\'s script add linked scenes to A, in order',
+    made && made.scenes ? made.scenes.map((s) => [s.location, s.dayNight, !!s.scriptElId]) : null,
+    [['HALL', 'DAY', true], ['KITCHEN', 'NIGHT', true]]);
+
+  // Shots on that scene, written the way the shot list writes them.
+  await page.evaluate((id) => localStorage.setItem('fms_shots_v1', JSON.stringify({
+    shots: [{ id: 'a-sh1', sceneId: id, number: '1' }, { id: 'a-sh2', sceneId: id, number: '2' }],
+    frames: [{ id: 'a-fr1', shotId: 'a-sh1', caption: 'x', ref: '' }], boards: []
+  })), sc && sc.id);
+  const shotsBefore = await page.evaluate((k) => window.__raw(k), 'fms_shots_v1__' + A);
+
+  // Delete the heading's text: the scene and its shots go to A's bin.
+  const ta = page.locator('.t-scene .wr-text').nth(1);
+  await ta.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction((k) => {
+    try { return JSON.parse(window.__raw(k) || '{"entries":[]}').entries.length === 1; } catch (e) { return false; }
+  }, 'fms_scene_bin_v1__' + A, { timeout: 8000 }).catch(() => {});
+  const bin = await rawJSON('fms_scene_bin_v1__' + A);
+  const after = await rawJSON('fms_scenes_v1__' + A);
+  const shotsAfter = await rawJSON('fms_shots_v1__' + A);
+  check('S2 clearing the heading bins A\'s scene with its 2 shots and 1 frame',
+    bin && bin.entries && bin.entries.length === 1
+      ? [bin.entries[0].scene.row.id === sc.id, bin.entries[0].shots.length, bin.entries[0].frames.length]
+      : null, [true, 2, 1]);
+  check('S2 …and A\'s scene list and shot list no longer hold them',
+    [after && after.scenes.map((s) => s.location), shotsAfter && shotsAfter.shots.length, shotsAfter && shotsAfter.frames.length], [['HALL'], 0, 0]);
+  check('S2 B\'s keys are byte-identical', await bKeys(), bBefore);
+
+  // Ctrl+Z in the field: the heading comes back, and so does everything.
+  await ta.click();
+  await page.keyboard.press('Control+Z');
+  await page.waitForFunction((k) => {
+    try { return JSON.parse(window.__raw(k) || '{}').scenes.length === 2; } catch (e) { return false; }
+  }, 'fms_scenes_v1__' + A, { timeout: 8000 }).catch(() => {});
+  const back = await rawJSON('fms_scenes_v1__' + A);
+  check('S3 Ctrl+Z brings the scene back, same id, same place', back && back.scenes.map((s) => s.id), made && made.scenes.map((s) => s.id));
+  check('S3 …and its shots and frame, byte-identical',
+    await page.evaluate((k) => window.__raw(k), 'fms_shots_v1__' + A), shotsBefore);
+  check('S3 …and A\'s bin is empty again', await page.evaluate((k) => window.__raw(k), 'fms_scene_bin_v1__' + A), null);
+
+  // The bin holds something again, then project A is deleted.
+  await ta.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction((k) => !!window.__raw(k), 'fms_scene_bin_v1__' + A, { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  await page.evaluate((a) => window.StudioStore.deleteProject(a), A);
+  const leftovers = await page.evaluate((a) => {
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.endsWith('__' + a)) out.push(k); }
+    return out;
+  }, A);
+  check('S4 deleting project A leaves no __<A> key behind, the bin included', leftovers, []);
+  check('S4 …and B is byte-identical', await bKeys(), bBefore);
+  check('no page errors', page.__errors, []);
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 try { if (backupFile) fs.unlinkSync(backupFile); } catch (e) {}

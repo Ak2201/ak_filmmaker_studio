@@ -77,7 +77,8 @@ export const PROJECT_KEYS = {
   idea_vault:        'fms_idea_vault_v1',
   edit:              'fms_edit_v1',
   deliverables:      'fms_deliverables_v1',
-  write_goals:       'fms_write_goals_v1'
+  write_goals:       'fms_write_goals_v1',
+  scene_bin:         'fms_scene_bin_v1'
 };
 
 /* Deliberately NOT per project: the theme is a device preference

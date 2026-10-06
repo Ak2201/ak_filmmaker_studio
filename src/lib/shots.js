@@ -247,6 +247,52 @@ export function shotsByScene(scenes) {
   return groups;
 }
 
+/* ---- a scene leaving for the bin, and coming back --------------
+   src/lib/scene-bin.js takes a scene and everything hung on it into
+   one bin entry. These two are this module's half: every shot of the
+   scene and every frame of those shots, taken out as the RAW stored
+   objects with their positions, and put back at those positions.
+   Raw, not through listShots(): blankShot() spread over a stored row
+   would add fields it never had, and a restore has to be the same
+   bytes it was. Lookbook boards belong to no scene and stay. */
+export function takeSceneOut(sceneId) {
+  const all = readAll();
+  const shots = [], frames = [];
+  const keepShots = [], keepFrames = [];
+  all.shots.forEach((s, index) => {
+    if (s && s.sceneId === sceneId) shots.push({ index, row: s });
+    else keepShots.push(s);
+  });
+  const gone = new Set(shots.map((x) => x.row.id));
+  all.frames.forEach((f, index) => {
+    if (f && gone.has(f.shotId)) frames.push({ index, row: f });
+    else keepFrames.push(f);
+  });
+  if (shots.length || frames.length) writeAll({ ...all, shots: keepShots, frames: keepFrames });
+  return { shots, frames };
+}
+
+/** Put back what takeSceneOut() took, at its old positions (clamped
+    when the list has shrunk since). A row whose id is already present
+    is not put back twice. */
+export function putSceneBack(snap) {
+  const all = readAll();
+  const shots = all.shots.slice(), frames = all.frames.slice();
+  const haveS = new Set(shots.map((s) => s && s.id));
+  const haveF = new Set(frames.map((f) => f && f.id));
+  let n = 0;
+  for (const { index, row } of (snap && snap.shots) || []) {
+    if (!row || haveS.has(row.id)) continue;
+    shots.splice(Math.min(index, shots.length), 0, row); n++;
+  }
+  for (const { index, row } of (snap && snap.frames) || []) {
+    if (!row || haveF.has(row.id)) continue;
+    frames.splice(Math.min(index, frames.length), 0, row); n++;
+  }
+  if (n) writeAll({ ...all, shots, frames });
+  return n;
+}
+
 /* ---- storyboard frames ---------------------------------------- */
 
 export function listFrames() {
@@ -404,7 +450,7 @@ export function isLinkable(ref) {
 export default {
   SHOTS_KEY, SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, BOARD_SUGGESTIONS,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
-  shotsByScene,
+  shotsByScene, takeSceneOut, putSceneBack,
   blankFrame, listFrames, saveFrames, addFrame, updateFrame, removeFrame,
   moveFrame, framesByShot,
   blankBoard, blankEntry, listBoards, saveBoards, nextBoardName, addBoard,

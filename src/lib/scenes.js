@@ -21,6 +21,7 @@
    equal 2/8, which it does not in floating point.
    ============================================================ */
 import Store from './store.js';
+import { binScene } from './scene-bin.js';
 
 export const SCENES_KEY = 'fms_scenes_v1';
 
@@ -98,6 +99,16 @@ export function blankScene(patch = {}) {
        read back '' and no migration exists. Written only when a person
        links, drags or drafts a scene; never on load. */
     beatId: '',
+    /* THE SCRIPT HEADING THIS ROW IS, by the element's stable id
+       (src/lib/script.js). Set by src/lib/scene-sync.js when the
+       script drives the scene list: a new heading adds its row, an
+       edited heading updates the heading-derived fields, a deleted one
+       sends the row and everything hung on it to the bin
+       (src/lib/scene-bin.js). '' is a row typed by hand on the
+       Breakdown, which the script never touches. Same arrival as
+       songId and beatId: spread under every stored row, so older rows
+       read back '' and no migration exists. */
+    scriptElId: '',
     ...patch
   };
 }
@@ -151,10 +162,28 @@ export function updateScene(id, patch) {
   return scenes[i];
 }
 
+/* REMOVING A SCENE GOES THROUGH THE BIN. It used to filter the row
+   out and nothing else, which left its shots, frames, call-sheet
+   places and edit-log notes pointing at an id that no longer existed —
+   orphans every other page then had to explain. Now the one cascade
+   the script's deletions use takes the row and every dependent into
+   one bin entry (src/lib/scene-bin.js), restorable from the
+   Breakdown, deleted for good only when somebody says so. */
 export function removeScene(id) {
-  const scenes = listScenes().filter((s) => s.id !== id);
-  saveScenes(scenes);
-  return scenes;
+  binScene(id, { reason: 'hand' });
+  return listScenes();
+}
+
+/* ---- the raw rows, for the bin ------------------------------
+   The stored objects exactly as they are, with no blankScene()
+   spread over them, so a row taken into the bin and put back is the
+   same bytes it was. Nothing but src/lib/scene-bin.js should need
+   these. */
+export function rawScenes() {
+  return readAll().scenes.slice();
+}
+export function writeRawScenes(rows) {
+  return writeAll({ scenes: rows });
 }
 
 export function moveScene(id, delta) {
@@ -273,5 +302,6 @@ export function totalEighths(scenes) {
 export default {
   SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, SHOT_STATES, shotLabel,
   blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene,
+  rawScenes, writeRawScenes,
   tagElement, untagElement, tagMany, untagMany, elementIndex, formatEighths, totalEighths
 };

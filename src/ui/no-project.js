@@ -8,7 +8,8 @@
    film. The banner says where it actually is.
 
    WHICH PAGES: the ones a STAGE module lives on, read from
-   navigation.json — `phases[].modules[].href`, fragment dropped. That
+   navigation.json — `phases[].modules[].href`, fragment dropped, plus
+   the pages of a shelf marked `projectPages` (the Blueprints). That
    is story, both blueprints, write, breakdown, stripboard, reports,
    visualize, budget, contacts, plan, shoot, edit and deliverables
    today, and a module added to a stage tomorrow gets the banner with
@@ -21,12 +22,12 @@
    on the two blueprints, so there is one sentence and one element id.
    ============================================================ */
 import Store from '../lib/store.js';
-import nav from '../data/navigation.json';
+import { projectPageFiles } from '../lib/navmodel.js';
 
-const PROJECT_PAGES = new Set(
-  (nav.phases || []).flatMap((p) => (p.modules || []).map((m) => String(m.href || '').split('#')[0]))
-    .filter(Boolean)
-);
+/* The two blueprints moved out of the Story stage into the Blueprints
+   shelf (6 Oct 2026); the shelf says `projectPages: true`, so they keep
+   the banner they had. */
+const PROJECT_PAGES = projectPageFiles();
 
 function pageName() {
   try {

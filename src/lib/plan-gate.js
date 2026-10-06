@@ -148,6 +148,16 @@ export function modulesHere() {
     const f = m.href.split('#')[0].toLowerCase().replace(/\.html$/, '');
     if (f === here) out.push(m);
   }
+  /* A shelf module that IS a whole page (the Blueprints: feature.html,
+     short.html — no fragment) locks the page the way a stage's module
+     does. A shelf module with a fragment is a tab, and locks as one
+     (lockTabs below). They locked as Story modules until the
+     Blueprints shelf existed; moving them must not ungate them. */
+  for (const s of shelves()) for (const m of s.modules) {
+    const [f0, frag] = (m.href || '').split('#');
+    if (frag) continue;
+    if (f0.toLowerCase().replace(/\.html$/, '') === here) out.push(m);
+  }
   return out;
 }
 /** Locked when the page has modules and none of them is allowed. */

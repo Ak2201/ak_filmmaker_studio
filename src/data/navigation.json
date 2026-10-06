@@ -1,5 +1,5 @@
 {
-  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists.",
+  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists. The Blueprints are a second such shelf (feature.html, short.html): a guide that walks all five stages cannot be filed inside one of them, so each stage carries a `guide` list instead, linking to the blueprint part that covers it (`part` is the feature blueprint's Part number, one part per stage). `group` on a module is a sub-heading in its stage's menu (Pre-Production's four). `projectPages: true` on a shelf says its pages write a film, so src/ui/no-project.js gives them the no-project banner as it does a stage's pages.",
   "global": [
     {
       "id": "home",
@@ -56,6 +56,37 @@
       ]
     },
     {
+      "id": "blueprints",
+      "label": "Blueprints",
+      "icon": "▤",
+      "href": "index.html#doors",
+      "purpose": "The feature and short blueprints: every question, in order, idea to delivery",
+      "sym": "map",
+      "hue": "feature",
+      "projectPages": true,
+      "blurb": "Two guided paths, one part per stage",
+      "modules": [
+        {
+          "id": "feature-blueprint",
+          "label": "Feature Blueprint",
+          "purpose": "32 guided steps, idea to delivery",
+          "status": "built",
+          "href": "feature.html",
+          "icon": "▤",
+          "sym": "menu_book"
+        },
+        {
+          "id": "short-blueprint",
+          "label": "Short Blueprint",
+          "purpose": "11 steps for under 30 minutes",
+          "status": "built",
+          "href": "short.html",
+          "icon": "▥",
+          "sym": "article"
+        }
+      ]
+    },
+    {
       "id": "settings",
       "label": "Settings",
       "icon": "◍",
@@ -100,25 +131,27 @@
           "sym": "lightbulb"
         },
         {
-          "id": "feature-blueprint",
-          "label": "Feature Blueprint",
-          "purpose": "24 guided steps, idea to camera",
+          "id": "pitch-deck",
+          "label": "Pitch Deck",
+          "purpose": "One click to a landscape PDF for investors",
           "status": "built",
-          "href": "feature.html",
-          "icon": "▤",
-          "sym": "menu_book"
-        },
-        {
-          "id": "short-blueprint",
-          "label": "Short Blueprint",
-          "purpose": "11 steps for under 30 minutes",
-          "status": "built",
-          "href": "short.html",
-          "icon": "▥",
-          "sym": "article"
+          "href": "story.html#pitch",
+          "icon": "▭",
+          "sym": "slideshow"
         }
       ],
-      "sym": "auto_stories"
+      "sym": "auto_stories",
+      "guide": [
+        {
+          "label": "Feature steps 01–10",
+          "href": "feature.html#vol-1",
+          "part": "I"
+        },
+        {
+          "label": "Short steps 1–5",
+          "href": "short.html#step-01"
+        }
+      ]
     },
     {
       "id": "screenplay",
@@ -164,51 +197,6 @@
           "sym": "list"
         },
         {
-          "id": "breakdowns",
-          "label": "Script Breakdowns",
-          "purpose": "Tag cast, props, wardrobe, VFX",
-          "status": "built",
-          "href": "breakdown.html#scenes",
-          "icon": "⊞",
-          "sym": "grid_view"
-        },
-        {
-          "id": "elements",
-          "label": "Elements",
-          "purpose": "The element library across scenes",
-          "status": "built",
-          "href": "breakdown.html#elements",
-          "icon": "✣",
-          "sym": "category"
-        },
-        {
-          "id": "auto-tag",
-          "label": "Auto-Tagging",
-          "purpose": "Cast, props, vehicles, stunts and sound read from the script",
-          "status": "built",
-          "href": "breakdown.html#suggest",
-          "icon": "⌖",
-          "sym": "label"
-        },
-        {
-          "id": "songs",
-          "label": "Songs",
-          "purpose": "Four to six per feature, each its own shoot block",
-          "status": "built",
-          "href": "breakdown.html#songs",
-          "icon": "♫",
-          "sym": "music_note"
-        },
-        {
-          "id": "stripboard",
-          "label": "Stripboard",
-          "purpose": "Order scenes into shoot days",
-          "status": "built",
-          "href": "stripboard.html#stripboard",
-          "icon": "☷",
-          "sym": "table_chart"
-        },
-        {
           "id": "screen-time",
           "label": "Screen Time",
           "purpose": "Running time per scene, from dialogue and action rhythm",
@@ -216,27 +204,20 @@
           "href": "reports.html#screentime",
           "icon": "◔",
           "sym": "timer"
-        },
-        {
-          "id": "cast-matrix",
-          "label": "Cast Matrix",
-          "purpose": "Characters against scenes; who shares the most",
-          "status": "built",
-          "href": "reports.html#cast-matrix",
-          "icon": "▦",
-          "sym": "groups"
-        },
-        {
-          "id": "pitch-deck",
-          "label": "Pitch Deck",
-          "purpose": "One click to a landscape PDF for investors",
-          "status": "built",
-          "href": "story.html#pitch",
-          "icon": "▭",
-          "sym": "slideshow"
         }
       ],
-      "sym": "edit_note"
+      "sym": "edit_note",
+      "guide": [
+        {
+          "label": "Feature steps 11–13",
+          "href": "feature.html#part-2",
+          "part": "II"
+        },
+        {
+          "label": "Short steps 6–8",
+          "href": "short.html#step-06"
+        }
+      ]
     },
     {
       "id": "preprod",
@@ -246,13 +227,54 @@
       "icon": "◷",
       "modules": [
         {
+          "id": "breakdowns",
+          "label": "Script Breakdowns",
+          "purpose": "Tag cast, props, wardrobe, VFX",
+          "status": "built",
+          "href": "breakdown.html#breakdown",
+          "icon": "⊞",
+          "sym": "grid_view",
+          "group": "Break down"
+        },
+        {
+          "id": "elements",
+          "label": "Elements",
+          "purpose": "The element library across scenes",
+          "status": "built",
+          "href": "breakdown.html#elements",
+          "icon": "✣",
+          "sym": "category",
+          "group": "Break down"
+        },
+        {
+          "id": "auto-tag",
+          "label": "Auto-Tagging",
+          "purpose": "Cast, props, vehicles, stunts and sound read from the script",
+          "status": "built",
+          "href": "breakdown.html#suggest",
+          "icon": "⌖",
+          "sym": "label",
+          "group": "Break down"
+        },
+        {
+          "id": "cast-matrix",
+          "label": "Cast Matrix",
+          "purpose": "Characters against scenes; who shares the most",
+          "status": "built",
+          "href": "reports.html#cast-matrix",
+          "icon": "▦",
+          "sym": "groups",
+          "group": "Break down"
+        },
+        {
           "id": "shot-list",
           "label": "Shot List",
           "purpose": "Shots per scene, with size and move",
           "status": "built",
           "href": "visualize.html#shot-list",
           "icon": "▶",
-          "sym": "view_list"
+          "sym": "view_list",
+          "group": "See it"
         },
         {
           "id": "storyboard",
@@ -261,7 +283,8 @@
           "status": "built",
           "href": "visualize.html#storyboard",
           "icon": "⊟",
-          "sym": "dashboard"
+          "sym": "dashboard",
+          "group": "See it"
         },
         {
           "id": "lookbook",
@@ -270,70 +293,8 @@
           "status": "built",
           "href": "visualize.html#lookbook",
           "icon": "▩",
-          "sym": "palette"
-        },
-        {
-          "id": "budget",
-          "label": "Budget",
-          "purpose": "Chennai rates, live totals",
-          "status": "built",
-          "href": "budget.html",
-          "icon": "₹",
-          "sym": "currency_rupee"
-        },
-        {
-          "id": "contacts",
-          "label": "Contacts",
-          "purpose": "Cast and crew by department",
-          "status": "built",
-          "href": "contacts.html#contacts",
-          "icon": "☺",
-          "sym": "person"
-        },
-        {
-          "id": "calendar",
-          "label": "Calendar",
-          "purpose": "Prep, shoot and post dates",
-          "status": "built",
-          "href": "plan.html#calendar",
-          "icon": "▦",
-          "sym": "calendar_month"
-        },
-        {
-          "id": "locations",
-          "label": "Locations",
-          "purpose": "Recce notes and logistics",
-          "status": "built",
-          "href": "plan.html#locations",
-          "icon": "⌂",
-          "sym": "place"
-        },
-        {
-          "id": "dood",
-          "label": "Day Out of Days",
-          "purpose": "Cast availability across days",
-          "status": "built",
-          "href": "stripboard.html#dood",
-          "icon": "⁙",
-          "sym": "event"
-        },
-        {
-          "id": "sides",
-          "label": "Sides",
-          "purpose": "Per-day pages for cast and crew",
-          "status": "built",
-          "href": "reports.html#sides",
-          "icon": "▫",
-          "sym": "content_copy"
-        },
-        {
-          "id": "reports",
-          "label": "Reports",
-          "purpose": "Element, scene and day reports",
-          "status": "built",
-          "href": "reports.html#reports",
-          "icon": "⌗",
-          "sym": "assessment"
+          "sym": "palette",
+          "group": "See it"
         },
         {
           "id": "media",
@@ -342,10 +303,112 @@
           "status": "built",
           "href": "plan.html#media",
           "icon": "◎",
-          "sym": "perm_media"
+          "sym": "perm_media",
+          "group": "See it"
+        },
+        {
+          "id": "budget",
+          "label": "Budget",
+          "purpose": "Chennai rates, live totals",
+          "status": "built",
+          "href": "budget.html",
+          "icon": "₹",
+          "sym": "currency_rupee",
+          "group": "Cost & staff it"
+        },
+        {
+          "id": "contacts",
+          "label": "Contacts",
+          "purpose": "Cast and crew by department",
+          "status": "built",
+          "href": "contacts.html#contacts",
+          "icon": "☺",
+          "sym": "person",
+          "group": "Cost & staff it"
+        },
+        {
+          "id": "stripboard",
+          "label": "Stripboard",
+          "purpose": "Order scenes into shoot days",
+          "status": "built",
+          "href": "stripboard.html#stripboard",
+          "icon": "☷",
+          "sym": "table_chart",
+          "group": "Schedule it"
+        },
+        {
+          "id": "songs",
+          "label": "Songs",
+          "purpose": "Four to six per feature, each its own shoot block",
+          "status": "built",
+          "href": "breakdown.html#songs",
+          "icon": "♫",
+          "sym": "music_note",
+          "group": "Schedule it"
+        },
+        {
+          "id": "calendar",
+          "label": "Calendar",
+          "purpose": "Prep, shoot and post dates",
+          "status": "built",
+          "href": "plan.html#calendar",
+          "icon": "▦",
+          "sym": "calendar_month",
+          "group": "Schedule it"
+        },
+        {
+          "id": "locations",
+          "label": "Locations",
+          "purpose": "Recce notes and logistics",
+          "status": "built",
+          "href": "plan.html#locations",
+          "icon": "⌂",
+          "sym": "place",
+          "group": "Schedule it"
+        },
+        {
+          "id": "dood",
+          "label": "Day Out of Days",
+          "purpose": "Cast availability across days",
+          "status": "built",
+          "href": "stripboard.html#dood",
+          "icon": "⁙",
+          "sym": "event",
+          "group": "Schedule it"
+        },
+        {
+          "id": "sides",
+          "label": "Sides",
+          "purpose": "Per-day pages for cast and crew",
+          "status": "built",
+          "href": "reports.html#sides",
+          "icon": "▫",
+          "sym": "content_copy",
+          "group": "Schedule it"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "purpose": "Element, scene and day reports",
+          "status": "built",
+          "href": "reports.html#reports",
+          "icon": "⌗",
+          "sym": "assessment",
+          "group": "Schedule it"
         }
       ],
-      "sym": "checklist"
+      "sym": "checklist",
+      "guide": [
+        {
+          "label": "Feature steps 14–24",
+          "href": "feature.html#vol-2",
+          "part": "III"
+        },
+        {
+          "label": "Short step 9",
+          "href": "short.html#step-09"
+        }
+      ]
     },
     {
       "id": "production",
@@ -373,7 +436,18 @@
           "sym": "mail"
         }
       ],
-      "sym": "videocam"
+      "sym": "videocam",
+      "guide": [
+        {
+          "label": "Feature steps 25–28",
+          "href": "feature.html#phase-3",
+          "part": "IV"
+        },
+        {
+          "label": "Short step 9",
+          "href": "short.html#step-09"
+        }
+      ]
     },
     {
       "id": "post",
@@ -401,7 +475,18 @@
           "sym": "inventory_2"
         }
       ],
-      "sym": "tune"
+      "sym": "tune",
+      "guide": [
+        {
+          "label": "Feature steps 29–32",
+          "href": "feature.html#phase-4",
+          "part": "V"
+        },
+        {
+          "label": "Short step 10",
+          "href": "short.html#step-10"
+        }
+      ]
     }
   ]
 }

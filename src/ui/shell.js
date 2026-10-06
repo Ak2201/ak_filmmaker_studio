@@ -43,6 +43,7 @@ import { iconSpan } from './icon.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
+import { moduleGroups, guideStops } from '../lib/navmodel.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -136,6 +137,39 @@ function isShown(el) {
  * navigation.json and the DOM, so a sixth two-phase page needs no edit.
  */
 function resolveLocation(hash = location.hash) {
+  const loc = resolveModule(hash);
+  const part = blueprintPart();
+  if (part) loc.part = part;
+  return loc;
+}
+
+/* The blueprint part on screen: of the page's guide stops (each
+   stage's `guide` entries that point at this file), the last whose
+   anchor has crossed the reading line — or, with the hash naming
+   something inside the document and nothing scrolled yet, the stop
+   before it in document order. Null above the first part (the cover)
+   and on every page that is not a blueprint. */
+function blueprintPart() {
+  const stops = guideStops(CURRENT);
+  if (!stops.length) return null;
+  const seen = new Set();
+  const live = [];
+  for (const st of stops) {
+    if (seen.has(st.frag)) continue;   // short step 9 covers two stages: the first names it
+    seen.add(st.frag);
+    const el = document.getElementById(st.frag);
+    if (isShown(el)) live.push({ ...st, el });
+  }
+  if (!live.length) return null;
+  live.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  const line = window.innerHeight * 0.3;
+  let best = null;
+  for (const st of live) if (st.el.getBoundingClientRect().top <= line) best = st;
+  if (!best) return null;
+  return { phase: best.phase, guide: best.guide, frag: best.frag };
+}
+
+function resolveModule(hash) {
   const mods = hereModules();
   const want = (hash || '').replace(/^#/, '');
   if (want) {
@@ -213,7 +247,34 @@ function phaseTab(phase, active) {
              h('span.sh-phase-label', { text: phase.label }));
   const menu = h('div.sh-phase-menu', { hidden: true, role: 'menu', 'aria-label': phase.label });
   menu.append(h('div.sh-phase-menu-head', { text: phase.blurb }));
-  phase.modules.forEach((m) => menu.append(moduleRow(m)));
+  /* `group` on a module is a sub-heading (Pre-Production's Break down ·
+     See it · Cost & staff it · Schedule it). A heading is printed when
+     the group changes, so the JSON's order is the menu's order and a
+     stage with no groups renders exactly as before. */
+  let group = null;
+  phase.modules.forEach((m) => {
+    if (m.group && m.group !== group) {
+      menu.append(h('div.sh-phase-menu-group', { role: 'presentation', text: m.group }));
+    }
+    group = m.group || null;
+    menu.append(moduleRow(m));
+  });
+  /* "Guide for this stage": the blueprint parts that cover it. A
+     cross-reference, not a module — its own row under a rule, with no
+     data-module-id, so the plan flags and the "you are here" paint
+     never treat it as one. */
+  const guide = (phase.guide || []).filter((g) => g && g.href);
+  if (guide.length) {
+    const foot = h('div.sh-phase-menu-guide');
+    foot.append(h('span.sh-guide-head', { text: 'Guide for this stage' }));
+    const links = h('span.sh-guide-links');
+    guide.forEach((g, i) => {
+      if (i) links.append(h('span.sh-guide-sep', { text: '·', 'aria-hidden': 'true' }));
+      links.append(h('a.sh-guide-link', { href: g.href, role: 'menuitem', text: g.label }));
+    });
+    foot.append(links);
+    menu.append(foot);
+  }
   wrap.append(btn, menu);
   return wrap;
 }
@@ -280,7 +341,19 @@ function renderCrumb(crumb, loc) {
       crumb.append(crumbStep('span', '.sh-where-here', here, here.label, {
         'aria-current': 'page'
       }));
-      if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
+      /* On a blueprint, the part you are reading — "Part II ·
+         Screenplay" on the feature, the stage alone on the short,
+         whose steps are not grouped into parts. Derived from the
+         stages' `guide` lists and the page's geometry (blueprintPart
+         below), in the stage's own hue. */
+      if (loc.part) {
+        const pt = loc.part;
+        crumb.append(h('span.sh-where-sep.sh-where-part-sep', { text: '›', 'aria-hidden': 'true' }));
+        const seg = crumbStep('a', `.sh-where-part.sh-ph-${pt.phase.hue}`, pt.phase,
+          (pt.guide.part ? 'Part ' + pt.guide.part + ' · ' : '') + pt.phase.label,
+          { href: '#' + pt.frag, title: pt.guide.label });
+        crumb.append(seg);
+      } else if (here.purpose) crumb.append(h('span.sh-where-purpose', { text: here.purpose }));
     }
   }
 
@@ -372,7 +445,12 @@ function buildPageNav(toolbar) {
 function buildRail() {
   const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
   nav.global.forEach((g) => {
-    const on = g.href.toLowerCase() === CURRENT;
+    /* A shelf is "here" on its own page and on the pages of its
+       modules: the Blueprints entry lands on the hub's blueprint
+       section, and is lit on feature.html and short.html. */
+    const on = g.href.toLowerCase() === CURRENT
+      || (Array.isArray(g.modules) && g.id !== 'home' && g.modules.some((m) =>
+        !String(m.href || '').includes('#') && String(m.href || '').toLowerCase() === CURRENT));
     const a = h('a.sh-rail-item' + (on ? '.is-active' : ''), { href: g.href, title: g.purpose });
     a.append(iconSpan('sh-rail-icon', g),
              h('span.sh-rail-label', { text: g.label }));
@@ -673,7 +751,9 @@ function paintLocation(loc) {
 
 function goTo(loc) {
   if (!loc) return;
-  if (current && current.module === loc.module && current.global === loc.global) {
+  const partOf = (l) => (l && l.part ? l.part.frag : '');
+  if (current && current.module === loc.module && current.global === loc.global
+      && partOf(current) === partOf(loc)) {
     current = loc;   // the same place; only how sure we are of it changed
     return;
   }
@@ -685,7 +765,15 @@ function goTo(loc) {
    strip opens its first tab without touching the hash. An exact answer
    (from the hash or the spy) is never replaced by one. */
 function refreshGuess() {
-  if (current && current.exact) return;
+  if (current && current.exact) {
+    /* An exact answer keeps its module, but the blueprint part under
+       it is geometry and moves with the scroll. */
+    const part = blueprintPart();
+    if ((part ? part.frag : '') !== (current.part ? current.part.frag : '')) {
+      paintLocation(Object.assign({}, current, { part: part || undefined }));
+    }
+    return;
+  }
   goTo(resolveLocation());
 }
 
@@ -707,6 +795,22 @@ function fragmentTargets() {
        tab was the one on screen. */
     const el = document.getElementById(frag);
     if (isShown(el)) seen.set(frag, el);
+  }
+  /* TWO NAMES FOR ONE AREA. A module fragment nested inside another's
+     (breakdown.html#breakdown, Script Breakdowns, is the tagging area
+     INSIDE #scenes, the Scene List) is not a second section to scroll
+     to: both tops cross the line together, so the inner one would win
+     every scroll tick and the outer would never be reported. Keep the
+     one the address bar names; otherwise the outer one. */
+  const want = (location.hash || '').replace(/^#/, '');
+  for (const [frag, el] of [...seen.entries()]) {
+    for (const [other, oel] of [...seen.entries()]) {
+      if (other === frag || !seen.has(frag) || !seen.has(other)) continue;
+      if (oel !== el && oel.contains(el)) {
+        // `el` is inside `oel`: drop one of the pair
+        seen.delete(want === frag ? other : frag);
+      }
+    }
   }
   return [...seen.entries()].sort(
     (a, b) => a[1].getBoundingClientRect().top - b[1].getBoundingClientRect().top
@@ -1186,7 +1290,7 @@ function wire() {
   delegate(document, 'click', '[data-action="module-planned"]', (e, btn) => {
     const id = btn.dataset.module;
     let found = null;
-    for (const p of nav.phases) for (const m of p.modules) if (m.id === id) found = { p, m };
+    for (const p of moduleGroups()) for (const m of p.modules) if (m.id === id) found = { p, m };
     if (!found) return;
     const { p, m } = found;
     if (window.StudioUI && StudioUI.toast) {

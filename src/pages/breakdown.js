@@ -508,12 +508,19 @@ function render() {
      renderElements() needed nothing — it already keeps its id and
      carries its own teaching copy when the index is empty. */
   const list = h('section.bd-list', { id: 'scenes' });
+  /* #breakdown is Script Breakdowns' own target (Pre-Production), and
+     #scenes the Scene List's (Screenplay): the same cards, read two
+     ways — the list of scenes, and the tagging inside each one. A div,
+     not a section, so tabs.js still sees one Scene List tab; and it
+     ALWAYS renders, empty state included, for the reason above. */
+  const tagging = h('div.bd-breakdown', { id: 'breakdown' });
   if (!scenes.length) {
-    list.append(renderEmpty());
+    tagging.append(renderEmpty());
   } else {
-    scenes.forEach((s, i) => list.append(renderScene(s, i, scenes.length)));
-    list.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
+    scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
+    tagging.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
   }
+  list.append(tagging);
   /* renderSongs() is OUTSIDE the branch for the same reason the #scenes
      id moved onto an always-rendering wrapper: navigation.json sends
      the Breakdown phase to breakdown.html#songs, so that id has to

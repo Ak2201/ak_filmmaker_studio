@@ -611,6 +611,10 @@
 .bd-head { padding-block: var(--s7) var(--s5); }
 
 .bd-list { display: grid; gap: var(--s4); padding-block: var(--s6); }
+/* #breakdown, the tagging area inside the Scene List: a wrapper, so it
+   carries the list's own grid down to the cards. minmax(0, 1fr) for the
+   390px reason in the .bd-scene note below. */
+.bd-breakdown { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); min-width: 0; }
 
 /* ---- suggested from the script (FR-603) ---------------------
    A suggestion is a chip that is also a button: the same shape and

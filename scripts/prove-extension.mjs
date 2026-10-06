@@ -86,6 +86,13 @@ try {
 
   console.log('(d) code, Google, redeem, lock, pipeline');
   F.reset();
+  /* The extension is a paid-tier limit (schema section 16,
+     limits.extension: false on Free), and the panel says so instead of
+     drawing the pipeline. This run proves the pipeline, so Amy owns a
+     Starter organisation; the no-plan panel is the plan's own proof.
+     Without this the run had been failing here since the plan gate
+     reached the panel. */
+  F.db.accounts.push({ id: 'acc-amy', name: 'Amy Films', owner_id: USERS['tok-amy'].id, plan: 'starter', seat_limit: 1, created_at: new Date().toISOString() });
   await panel.fill('#pnCode', 'AMYCODE23456');
   await panel.click('button[type="submit"]');
   await panel.waitForSelector('[data-pn="google"]', { timeout: 8000 });
@@ -103,11 +110,16 @@ try {
   await panel.waitForSelector('.pn-stages', { timeout: 15000 }).catch(() => {});
   if (process.env.DEBUG_EXT) console.log('DEBUG panel:', await panel.textContent('#main'), await panel.evaluate(() => chrome.storage.session.get(null)), F.db.calls);
   const stages = await panel.$$eval('.pn-stage-btn strong', (e) => e.map((x) => x.textContent));
-  ok(stages.join('|') === 'Story|Screenplay|Pre-Production|Production|Post-Production', 'the pipeline shows the five stages: ' + stages.join(', '));
+  ok(stages.join('|') === 'Story|Screenplay|Pre-Production|Production|Post-Production|Library|Blueprints', 'the pipeline shows the five stages, then the Library and Blueprints shelves: ' + stages.join(', '));
   ok(F.db.members.has(USERS['tok-amy'].id) && F.db.codes[0].redemptions_count === 1, 'the code was redeemed exactly once');
   ok(F.db.sessions.has(USERS['tok-amy'].id), 'the device lock was acquired');
   await panel.click('[data-stage="story"]');
   ok((await panel.$$eval('.pn-mode strong', (e) => e.map((x) => x.textContent))).join() === 'Sample,New,Import', 'Story offers Sample, New, Import');
+  /* KNOWN-ISSUES #2 (fixed): the shelves' modules are in the panel too. */
+  await panel.click('[data-stage="library"]');
+  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Case Studies,Dissection,Craft Glossary', 'the Library shelf lists Case Studies, Dissection, Craft Glossary');
+  await panel.click('[data-stage="blueprints"]');
+  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Feature Blueprint,Short Blueprint', 'the Blueprints shelf lists both blueprints');
   await panel.setViewportSize({ width: 360, height: 800 });
   ok(await panel.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the panel fits a 360px side panel');
   if (process.env.SHOT_DIR) await panel.screenshot({ path: path.join(process.env.SHOT_DIR, 'panel.png'), fullPage: true });

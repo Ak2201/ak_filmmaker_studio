@@ -121,6 +121,18 @@ const _origRemove = global.localStorage.removeItem.bind(global.localStorage);
    ------------------------------------------------------------ */
 
 function _readTiered(k) {
+  /* AN OVERFLOWED WRITE STILL IN FLIGHT LEADS EVERYTHING. Overflow.put()
+     — the call that fills the cache — runs only after hydrate()
+     resolves, a microtask at the earliest, so a read in the SAME task
+     as the write found no cache entry and served localStorage's
+     previous value. A loop of read-modify-writes (Shots.addShot() for
+     each of 250 drafted shots) therefore re-read the list from before
+     the threshold was crossed on every turn, and the last write won:
+     40-odd shots reported as added and never kept. `_inflight` is the
+     newest value this document owes the key, set synchronously by
+     _overflowWrite() and cleared by a newer write, a remove, or the
+     write settling. */
+  if (_inflight.has(k)) return _inflight.get(k);
   /* The cache leads, not localStorage. An overflowed write lands in
      the cache synchronously and only stamps its stub once the
      database has confirmed the bytes (see _writeTiered), so for the

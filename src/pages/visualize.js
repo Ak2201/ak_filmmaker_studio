@@ -54,6 +54,7 @@ import { matchScenes, describeMatch } from '../lib/screenplay-analysis.js';
 import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, isLinkable
 } from '../lib/shots.js';
+import { basicShotDivision, jobFor } from '../lib/shot-rules.js';
 
 /* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
    pptxgenjs: it is not needed to look at a shot list. The
@@ -296,7 +297,7 @@ function renderShotTable(shots) {
 }
 
 function renderShotRow(shot, i, total) {
-  const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai ? '.is-ai' : ''), {
+  const row = h('tr.vz-row' + (shot.done ? '.is-done' : '') + (shot.ai || shot.rules ? '.is-ai' : ''), {
     'data-shot': shot.id
   });
 
@@ -314,6 +315,13 @@ function renderShotRow(shot, i, total) {
     no.append(h('span.vz-ai-tag', {
       title: 'Drafted by AI — edit or delete it like any other shot',
       text: 'AI draft'
+    }));
+  } else if (shot.rules) {
+    // The basic breakdown (src/lib/shot-rules.js) — rules, not a model,
+    // and marked just as plainly.
+    no.append(h('span.vz-ai-tag.vz-rules-tag', {
+      title: 'Drafted by the basic breakdown from the script — edit or delete it like any other shot',
+      text: 'Basic'
     }));
   }
   row.append(no);
@@ -485,6 +493,19 @@ function aiScenePicker(plan) {
   return list;
 }
 
+/* The panel's pieces that do not need the AI module. The basic
+   breakdown must not be hidden behind a lazy import that is only
+   there for the key: with the panel module still loading, or failed,
+   the rules still run. */
+const localGate = (lead, body, cta) =>
+  (Panelm ? Panelm.gate(lead, body, cta)
+    : h('div.ai-gate', {}, [h('p', {}, [h('strong', { text: lead + ' ' }), h('span', { text: body })]), cta]));
+const localStatus = (text) =>
+  (Panelm ? Panelm.statusLine(text) : (text ? h('p.ai-status', { role: 'status', text }) : null));
+const localError = (text) =>
+  (Panelm ? Panelm.errorLine(text)
+    : (text ? h('p.ai-error', { role: 'alert' }, [h('strong', { text: 'It did not run. ' }), h('span', { text })]) : null));
+
 function renderAI(scenes, shots) {
   const wrap = h('section.vz-ai', { id: 'draft' });
   wrap.append(
@@ -496,28 +517,27 @@ function renderAI(scenes, shots) {
     })
   );
 
-  if (!Panelm) {
-    wrap.append(h('p.bd-none', { text: 'Checking this device for a key…' }));
-    return wrap;
+  /* GATE 1 — the key. It gates the AI path ONLY. Without a key the
+     basic breakdown (src/lib/shot-rules.js) is the main button and
+     the key form waits under it, so the panel always has something
+     to offer. `keyGate()` is still the panel module's decision —
+     whether a form is owed, and the "replacing a key that already
+     works" case — this page only decides where it goes. */
+  const hasKey = !!(Panelm && Panelm.hasKey());
+  const kg = Panelm ? Panelm.keyGate('Drafting') : null;
+  if (!Panelm) wrap.append(h('p.bd-none', { text: 'Checking this device for a key…' }));
+  if (hasKey) {
+    if (kg) wrap.append(kg);
+    wrap.append(Panelm.keyBar());
   }
-
-  /* GATE 1 — the key. Independent of everything below it, which is
-     what `keyGate()`'s null-when-satisfied return buys: it is the
-     panel module that decides whether a form is owed and whether
-     the rest of the panel is allowed past it, so this page cannot
-     get the "replacing a key that already works" case wrong. */
-  const kg = Panelm.keyGate('Drafting');
-  if (kg) {
-    wrap.append(kg);
-    if (kg.dataset.blocking === 'true') return wrap;
-  }
-  wrap.append(Panelm.keyBar());
 
   /* GATE 2 — the script. Also independent: a key with no script
-     is a different problem with a different answer. */
+     is a different problem with a different answer, and the rules
+     have nothing to read without one either. */
   const plan = aiScenePlan(scenes, shots);
   if (!plan.hasScript) {
-    wrap.append(Panelm.gate(
+    if (!hasKey && kg) wrap.append(kg);
+    wrap.append(localGate(
       'There is no script yet.',
       'A shot division is a reading of the scene as written — without the '
         + 'pages there is nothing to read, and a division invented from a slug '
@@ -529,6 +549,7 @@ function renderAI(scenes, shots) {
 
   /* The scene list is the shot list's own empty state above. */
   if (!scenes.length) {
+    if (!hasKey && kg) wrap.append(kg);
     wrap.append(h('p.bd-none', {
       text: 'Break the script into scenes first — a shot belongs to a scene, and the '
           + 'breakdown is where scenes are made.'
@@ -542,13 +563,26 @@ function renderAI(scenes, shots) {
     aiPicked = new Set(plan.rows.filter((r) => !r.existing).map((r) => r.scene.id));
   }
 
-  wrap.append(Panelm.disclose(
-    'Clicking the button below sends the slug line, the one-line synopsis and '
-    + 'the script text of the ticked scenes to ' + apiHost() + ', using the key '
-    + 'on this device. Nothing else leaves this browser, and nothing is sent '
-    + 'until you click. Your screenplay is your unpublished work — this is the '
-    + 'only place in the studio that puts any of it on the network.'
-  ));
+  if (hasKey) {
+    wrap.append(Panelm.disclose(
+      'Clicking the button below sends the slug line, the one-line synopsis and '
+      + 'the script text of the ticked scenes to ' + apiHost() + ', using the key '
+      + 'on this device. Nothing else leaves this browser, and nothing is sent '
+      + 'until you click. Your screenplay is your unpublished work — this is the '
+      + 'only place in the studio that puts any of it on the network. '
+      + 'The basic breakdown sends nothing: it reads the pages here, by rule.'
+    ));
+  } else {
+    wrap.append(h('p.vz-note.vz-basic-note', {}, [
+      h('strong', { text: 'No key needed. ' }),
+      h('span', {
+        text: 'The basic breakdown reads the ticked scenes on this device, by rule: a master, '
+            + 'an over-the-shoulder pair for a two-hander, a single for each speaker, the '
+            + 'shot lines you wrote, a move where somebody runs, a POV where somebody looks, '
+            + 'and inserts for the props. Nothing leaves this browser.'
+      })
+    ]));
+  }
 
   wrap.append(h('div.vz-ai-picks', {}, [
     h('button.btn', { type: 'button', 'data-action': 'vz-ai-all', text: 'Tick all' }),
@@ -562,13 +596,21 @@ function renderAI(scenes, shots) {
   if (plan.notes.length) wrap.append(h('p.bd-match-note', { text: plan.notes.join(' ') }));
   wrap.append(aiScenePicker(plan));
 
+  const none = aiPicked.size === 0;
+  const basicBtn = h('button.btn' + (hasKey ? '' : '.primary'), {
+    type: 'button', 'data-action': 'vz-basic-run', disabled: none || aiRunning,
+    text: hasKey ? 'Basic breakdown' : 'Basic breakdown (no AI key needed)'
+  });
   wrap.append(h('div.vz-ai-acts', {}, [
     aiRunning
       ? h('button.btn.danger', { type: 'button', 'data-action': 'vz-ai-stop', text: 'Stop' })
-      : h('button.btn.primary', {
-        type: 'button', 'data-action': 'vz-ai-run', disabled: aiPicked.size === 0,
-        text: 'Send ' + plural(aiPicked.size, 'scene', 'scenes') + ' and draft the shots'
-      }),
+      : (hasKey
+        ? h('button.btn.primary', {
+          type: 'button', 'data-action': 'vz-ai-run', disabled: none,
+          text: 'Send ' + plural(aiPicked.size, 'scene', 'scenes') + ' and draft the shots'
+        })
+        : basicBtn),
+    hasKey ? basicBtn : null,
     aiLastRun.length && !aiRunning
       ? h('button.btn', {
         type: 'button', 'data-action': 'vz-ai-undo',
@@ -577,10 +619,13 @@ function renderAI(scenes, shots) {
       : null
   ]));
 
-  const status = Panelm.statusLine(aiStatus);
+  const status = localStatus(aiStatus);
   if (status) wrap.append(status);
-  const error = Panelm.errorLine(aiError);
+  const error = localError(aiError);
   if (error) wrap.append(error);
+
+  /* No key: the form stays, under the button that needs none. */
+  if (!hasKey && kg) wrap.append(kg);
   return wrap;
 }
 
@@ -1076,6 +1121,48 @@ delegate(document, 'click', '[data-action="vz-ai-run"]', async () => {
     + ' across ' + plural(result.byScene.size, 'scene', 'scenes')
     + (result.truncated ? ' — the reply was cut short, so some scenes may be missing.' : '')
     + ' Every one of them is marked and editable.';
+  aiError = '';
+  render();
+  say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
+});
+
+/* The basic breakdown: the same picker, the same append-only write
+   and the same Undo as the AI draft, with the rules in
+   src/lib/shot-rules.js in place of the model. No key, no network,
+   no module to wait for — it is in this page's own bundle. */
+delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
+  if (aiRunning) return;
+  const scenes = Scenes.listScenes();
+  const chosen = scenes.filter((s) => aiPicked && aiPicked.has(s.id));
+  if (!chosen.length) { aiError = 'Tick at least one scene.'; render(); return; }
+
+  const plan = aiScenePlan(scenes, []);
+  const jobs = chosen
+    .map((scene) => ({ scene, slice: (plan.bySceneId.get(scene.id) || {}).slice || null }))
+    .filter((r) => r.slice)
+    .map((r) => jobFor(r.scene, r.slice));
+  const noScript = chosen.length - jobs.length;
+
+  const result = await basicShotDivision(jobs);
+  const made = [];
+  for (const [sceneId, list] of result.byScene) {
+    for (const draft of list) {
+      made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id);
+    }
+  }
+  aiLastRun = made;
+
+  if (!made.length) {
+    aiStatus = '';
+    aiError = 'The basic breakdown needs script pages to read, and the ticked '
+      + (chosen.length === 1 ? 'scene has' : 'scenes have') + ' none matched. Nothing was added.';
+    render();
+    return;
+  }
+  aiStatus = plural(made.length, 'shot', 'shots') + ' drafted by the basic breakdown'
+    + ' across ' + plural(result.byScene.size, 'scene', 'scenes')
+    + (noScript ? ' — ' + plural(noScript, 'ticked scene', 'ticked scenes') + ' had no script to read' : '')
+    + '. Every one of them is marked Basic and editable.';
   aiError = '';
   render();
   say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');

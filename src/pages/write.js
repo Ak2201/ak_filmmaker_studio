@@ -58,6 +58,13 @@ import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
+/* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
+   shot count and "Break into shots". */
+import Shots, { SHOTS_KEY } from '../lib/shots.js';
+import { basicJobs, basicShotDivision } from '../lib/shot-rules.js';
+import { matchScenes } from '../lib/screenplay-analysis.js';
+import { addThem as handoffAddScenes, newHeadings } from '../ui/handoff.js';
+import '../styles/write-shots.css';
 /* Phase 2 of docs/SCREENPLAY-WRITER-PLAN.md: the keyboard (presets,
    Return/Tab flow), SmartType, the navigator and the shortcut sheets.
    The decisions are in write-keys.js; this page only carries them out. */
@@ -551,6 +558,13 @@ function renderScreenplay() {
         type: 'button', 'data-action': 'pageview-toggle',
         'aria-pressed': pageView ? 'true' : 'false',
         text: 'Page view'
+      }) : null,
+      /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c). Adds what is
+         missing and touches nothing that exists: see breakIntoShots(). */
+      doc.elements.length ? h('button.btn', {
+        type: 'button', 'data-action': 'break-into-shots',
+        title: 'Add any new scenes to the Breakdown, then draft shots for every scene that has none',
+        text: 'Break into shots'
       }) : null,
       h('button.btn' + (importOpen ? '.is-on' : ''), {
         type: 'button', 'data-action': 'import-toggle',
@@ -1814,6 +1828,7 @@ function render(focus) {
   } catch (e) { console.warn('[write] chrome', e); }
 
   BeatBoard.decorateEditor();   // the Outline tab's beat markers; DOM only
+  decorateShotCounts();         // "Sc 12 · 6 shots" at each heading; DOM only
   if (focus) applyFocus(focus);
   if (pageView) scheduleDerived(0);
 }
@@ -3360,6 +3375,174 @@ delegate(document, 'click', '[data-action="gen-reset"]', () => {
    reopen a panel somebody may have just closed. */
 const wantsImporter = typeof location !== 'undefined' && location.hash === '#wr-import';
 if (wantsImporter) importOpen = true;
+
+/* ============================================================
+   SCRIPT → SHOT LIST (docs/BLUEPRINT-REALIGN-PLAN.md, Rev 3 §1c)
+   ------------------------------------------------------------
+   Two things, and neither runs on its own:
+
+   · THE COUNT. Each scene heading carries "Sc 12 · 6 shots" or
+     "Sc 12 · no shots yet" in the space above it. Derived on a full
+     render (and after a break-down, and when the tab comes back into
+     view) from Shots.listShots() and matchScenes() — the join the
+     hand-off banner and the shot division already read — so it is
+     one pass over the script per render, never per keystroke, and it
+     writes nothing.
+
+   · BREAK INTO SHOTS. A click: first the hand-off banner's own
+     "Add them" path for headings the Breakdown does not have, then a
+     shot division for every confidently matched scene with NO shots
+     — the AI one when there is a key and the writer says send, the
+     basic rules (src/lib/shot-rules.js) otherwise. Append-only
+     through Shots.addShot(); a scene somebody has already covered is
+     never touched, and Undo removes exactly what this click added.
+   ============================================================ */
+let shotsBusy = false;
+
+function decorateShotCounts() {
+  const page = document.getElementById('wr-page');
+  if (!page) return;
+  page.querySelectorAll('.wr-shotcount').forEach((n) => n.remove());
+  // The slicer drops empty headings, so slice k is the k-th heading
+  // with text — the same walk sliceScript() makes.
+  const headIds = [];
+  for (const el of doc.elements) if (el.type === 'scene' && String(el.text ?? '').trim()) headIds.push(el.id);
+  if (!headIds.length) return;
+  let m, shots;
+  try { m = matchScenes(Scenes.listScenes(), doc.elements); shots = Shots.listShots(); }
+  catch (e) { console.warn('[write] shot counts', e); return; }
+  const counted = new Map();
+  for (const s of shots) counted.set(s.sceneId, (counted.get(s.sceneId) || 0) + 1);
+  const sceneAt = new Map();
+  for (const p of m.pairs) if (p.slice) sceneAt.set(p.slice.index, p.scene);
+  const rows = new Map();
+  page.querySelectorAll('.wr-el.t-scene').forEach((r) => rows.set(r.dataset.el, r));
+  for (const sl of m.slices) {
+    const row = rows.get(headIds[sl.index]);
+    if (!row) continue;
+    const scene = sceneAt.get(sl.index);
+    const n = scene ? counted.get(scene.id) || 0 : 0;
+    const text = !scene ? 'Not in the Breakdown yet'
+      : 'Sc ' + (scene.number || '—') + ' · ' + (n ? n + (n === 1 ? ' shot' : ' shots') : 'no shots yet');
+    row.classList.add('wr-has-shotcount');
+    row.append(h('span.wr-shotcount' + (scene && !n ? '.is-none' : ''), { text }));
+  }
+}
+
+/** The toast, plus a link to the shot list beside its Undo. The
+    toast takes one action; the link is a second way out, appended to
+    the toast this call just made. */
+function shotsToast(message, onUndo) {
+  StudioUI.toast(message, { type: 'success', action: 'Undo', onAction: onUndo });
+  const host = document.getElementById('toastHost');
+  const t = host && host.lastElementChild;
+  if (t && t.classList.contains('toast')) {
+    const close = t.querySelector('.toast-close');
+    const link = h('a.toast-action', { href: 'visualize.html#shot-list', text: 'Open Shot List' });
+    if (close) close.before(link); else t.append(link);
+  }
+}
+
+async function breakIntoShots() {
+  if (shotsBusy || !doc.elements.length) return;
+  shotsBusy = true;
+  const btn = document.querySelector('[data-action="break-into-shots"]');
+  if (btn) btn.disabled = true;
+  let addedScenes = [];
+  try {
+    // 1. Headings the Breakdown does not have yet: the banner's path.
+    if (newHeadings(doc.elements).length) {
+      addedScenes = await handoffAddScenes({ quiet: true }) || [];
+    }
+
+    // 2. Every scene with a confident match and no shots.
+    const scenes = Scenes.listScenes();
+    const covered = new Set(Shots.listShots().map((s) => s.sceneId));
+    const open = new Set(scenes.filter((s) => !covered.has(s.id)).map((s) => s.id));
+    const jobs = basicJobs(scenes, doc.elements, { only: open, confidentOnly: true });
+    if (!jobs.length) {
+      decorateShotCounts();
+      if (addedScenes.length) {
+        const ids = new Set(addedScenes);
+        shotsToast(addedScenes.length + (addedScenes.length === 1 ? ' scene' : ' scenes')
+          + ' added to the Breakdown · every scene already has shots', () => {
+          Scenes.saveScenes(Scenes.listScenes().filter((s) => !ids.has(s.id)));
+          decorateShotCounts();
+        });
+      } else {
+        say('Every scene in the script already has shots. Nothing was changed.');
+      }
+      return;
+    }
+
+    // 3. AI if there is a key AND the writer says send; rules otherwise.
+    let result = null;
+    let byAI = false;
+    if (await primeAI() && AIm.hasKey()) {
+      const go = confirm('Draft the shots for ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
+        + ' with AI?\n\nOK sends the slug line, synopsis and script text of those scenes to '
+        + apiHost() + ', using the key on this device.\n'
+        + 'Cancel uses the basic breakdown instead, which reads the pages here and sends nothing.');
+      if (go) {
+        const bySlice = new Map(matchScenes(scenes, doc.elements).pairs
+          .filter((p) => p.slice).map((p) => [p.scene.id, p.slice]));
+        say('Drafting ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes') + ' with ' + providerLabel() + '…');
+        try {
+          result = await AIm.draftShotDivision(jobs.map((j) => ({
+            sceneId: j.sceneId, number: j.number, slug: j.slug, eighths: j.eighths,
+            synopsis: j.synopsis, script: AIm.sceneScriptText(bySlice.get(j.sceneId))
+          })));
+          byAI = true;
+        } catch (err) {
+          StudioUI.toast((err && err.message) || 'The AI draft did not run.', { type: 'error' });
+          result = null;
+        }
+      }
+    }
+    if (!result) result = await basicShotDivision(jobs);
+
+    // 4. Append. Nothing a person wrote is touched or renumbered.
+    const made = [];
+    for (const [sceneId, list] of result.byScene) {
+      for (const draft of list) {
+        made.push(Shots.addShot(sceneId, byAI ? { ...draft, ai: true } : { ...draft, rules: true }).id);
+      }
+    }
+    decorateShotCounts();
+    if (!made.length) {
+      say('No shots came back. Nothing was added.');
+      return;
+    }
+    const shotIds = new Set(made);
+    const sceneIds = new Set(addedScenes);
+    shotsToast(made.length + (made.length === 1 ? ' shot' : ' shots') + ' added'
+      + (byAI ? ' by ' + result.model : '')
+      + (sceneIds.size ? ' · ' + sceneIds.size + (sceneIds.size === 1 ? ' scene' : ' scenes') + ' added to the Breakdown' : ''),
+    () => {
+      Shots.saveShots(Shots.listShots().filter((s) => !shotIds.has(s.id)));
+      if (sceneIds.size) Scenes.saveScenes(Scenes.listScenes().filter((s) => !sceneIds.has(s.id)));
+      decorateShotCounts();
+      say('Removed the ' + shotIds.size + (shotIds.size === 1 ? ' shot' : ' shots') + ' just added.');
+    });
+  } catch (e) {
+    console.warn('[write] break into shots', e);
+    StudioUI.toast('The shots could not be drafted. Nothing more was changed.', { type: 'error' });
+  } finally {
+    shotsBusy = false;
+    const b = document.querySelector('[data-action="break-into-shots"]');
+    if (b) b.disabled = false;
+  }
+}
+
+delegate(document, 'click', '[data-action="break-into-shots"]', () => { breakIntoShots(); });
+// Shots added in another tab (the Shot List): repaint the counts when
+// this tab is looked at again. Reads only.
+addEventListener('storage', (e) => {
+  if (e.key && e.key.startsWith(SHOTS_KEY) && document.visibilityState === 'visible') decorateShotCounts();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') decorateShotCounts();
+});
 
 /* The Outline tab (src/ui/beat-board.js) edits the script through
    the page's own model and save path, never around it. */

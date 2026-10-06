@@ -96,6 +96,12 @@ export function blankShot(patch = {}) {
     // object over this one, which works until someone rebuilds a shot
     // from blankShot() and silently drops the provenance.
     ai: false,
+    // Drafted by the BASIC breakdown (src/lib/shot-rules.js), the
+    // rule-based pass that needs no key. Declared here for the same
+    // reason as `ai`: provenance is part of the record, and a shot
+    // rebuilt from blankShot() must not quietly lose it. Never both:
+    // a shot is typed, AI-drafted or rules-drafted.
+    rules: false,
     ...patch
   };
 }

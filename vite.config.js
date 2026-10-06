@@ -140,6 +140,9 @@ export default defineConfig({
         visualize:  resolve(__dirname, 'visualize.html'),
         write:      resolve(__dirname, 'write.html'),
         plan:       resolve(__dirname, 'plan.html'),
+        // Redirect stubs since 6 Oct 2026: the case studies and the
+        // dissection are tabs of library.html. src/pages/moved.js keeps
+        // their old #fragments working.
         study:      resolve(__dirname, 'study.html'),
         dissect:    resolve(__dirname, 'dissect.html'),
         settings:   resolve(__dirname, 'settings.html'),

@@ -1,5 +1,5 @@
 {
-  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is.",
+  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists.",
   "global": [
     {
       "id": "home",
@@ -21,8 +21,39 @@
       "label": "Library",
       "icon": "◈",
       "href": "library.html",
-      "purpose": "Films, directors, rules, festivals, rates",
-      "sym": "local_library"
+      "purpose": "Films, directors, rules, rates, case studies, dissection, glossary",
+      "sym": "local_library",
+      "hue": "library",
+      "blurb": "The reference shelf: read a film, then take one apart",
+      "modules": [
+        {
+          "id": "case-studies",
+          "label": "Case Studies",
+          "purpose": "Four Tamil films, taken apart for craft",
+          "status": "built",
+          "href": "library.html#case-studies",
+          "icon": "◐",
+          "sym": "movie"
+        },
+        {
+          "id": "dissection",
+          "label": "Dissection",
+          "purpose": "Take a finished film apart, then your own",
+          "status": "built",
+          "href": "library.html#dissection",
+          "icon": "✂",
+          "sym": "content_cut"
+        },
+        {
+          "id": "glossary",
+          "label": "Craft Glossary",
+          "purpose": "Terms, explained through four Tamil films",
+          "status": "built",
+          "href": "library.html#glossary",
+          "icon": "¶",
+          "sym": "local_library"
+        }
+      ]
     },
     {
       "id": "settings",
@@ -85,33 +116,6 @@
           "href": "short.html",
           "icon": "▥",
           "sym": "article"
-        },
-        {
-          "id": "glossary",
-          "label": "Craft Glossary",
-          "purpose": "Terms, explained through four Tamil films",
-          "status": "built",
-          "href": "feature.html#glossary",
-          "icon": "¶",
-          "sym": "local_library"
-        },
-        {
-          "id": "case-studies",
-          "label": "Case Studies",
-          "purpose": "Four Tamil films, taken apart for craft",
-          "status": "built",
-          "href": "study.html",
-          "icon": "◐",
-          "sym": "movie"
-        },
-        {
-          "id": "dissection",
-          "label": "Dissection",
-          "purpose": "Take a finished film apart, then your own",
-          "status": "built",
-          "href": "dissect.html",
-          "icon": "✂",
-          "sym": "content_cut"
         }
       ],
       "sym": "auto_stories"

@@ -69,6 +69,7 @@
    that silently became empty is a list that did not answer.
    ============================================================ */
 import nav from '../data/navigation.json';
+import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId, setCurrentProject } from '../lib/store.js';
@@ -172,7 +173,9 @@ function navItems() {
       keywords: ['go', 'open']
     }));
   }
-  for (const p of nav.phases) {
+  /* Stages AND shelves: the Library's case studies, dissection and
+     glossary are modules too, grouped under the Library. */
+  for (const p of moduleGroups()) {
     for (const m of p.modules) {
       /* `status` is carried through rather than filtered on. A
          planned module that vanished from search would be a map
@@ -193,7 +196,7 @@ function navItems() {
            silently, because an undefined custom property is not an
            error. That is the exact bug the breakdown shipped for
            two commits. Phases take sh-ph-; categories take hue-. */
-        hueClass: 'sh-ph-' + p.id,
+        hueClass: hueClassOf(p),
         icon: m.icon,
         sym: m.sym,
         href: m.href,

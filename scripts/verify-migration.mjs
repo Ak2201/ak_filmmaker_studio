@@ -184,8 +184,11 @@ const PAGES = [
   { page: 'visualize.html',  legacy: null, name: 'visualize' },
   { page: 'write.html',      legacy: null, name: 'write' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
-  { page: 'study.html',      legacy: null, name: 'study' },
-  { page: 'dissect.html',    legacy: null, name: 'dissect' },
+  /* study.html and dissect.html left this list on 6 Oct 2026: they are
+     redirect stubs now, and their content is the Library's Case Studies
+     and Dissection tabs — so library.html's row carries their words and
+     keys. A stub has nothing to measure, and measuring one would only
+     have measured library.html twice under another name. */
   // New. Needs a `dashboard` entry in scripts/baseline.json before this
   // row can pass — baselineFacts() exits 2 without one. Re-baselining is
   // deliberate, so that is a separate, stated act.
@@ -336,8 +339,6 @@ const EXPECTED = {
   visualize: {},
   write: {},
   plan: {},
-  study: {},
-  dissect: {},
   breakdown: {},
   feature: {},
   short: {},

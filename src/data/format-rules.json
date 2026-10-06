@@ -105,7 +105,9 @@
   ],
 
   "tour": {
+    "eyebrow": "Guide",
     "title": "Write your first scene",
+    "doneTitle": "Your first scene",
     "intro": "Six short steps, one for each kind of line in a screenplay. You write every word; the guide only says what goes where.",
     "start": "Start the tour",
     "skip": "Skip",
@@ -123,6 +125,7 @@
 
   "panel": {
     "button": "Check format",
+    "levelLabel": "Format guide",
     "title": "Format check",
     "clean": "Nothing to flag. Every line reads the way a screenplay reads.",
     "empty": "There is nothing to check yet.",

@@ -874,6 +874,29 @@ function closeAllMenus(except) {
   });
 }
 
+/* A phase menu is taller than the window on most screens — Screenplay
+   carries twelve modules, Pre-Production eleven — and it hangs off a
+   pinned band, so the rows past the bottom edge were unreachable: the
+   page scrolled under a menu that did not. The menu scrolls itself
+   now (overflow-y in chrome.css), bounded by the room actually left
+   below its top edge, which is measured rather than assumed because
+   the band's height and pinning differ by width, and it stops above
+   the phone's bottom action bar. Re-fitted on resize;
+   nothing closes a menu on scroll, so a wheel inside it scrolls it. */
+function fitMenu(menu) {
+  if (!menu || menu.hidden) return;
+  const top = menu.getBoundingClientRect().top;
+  /* The bottom action bar (actionbar.js, below 720px) is fixed over
+     the last 70px of the window and publishes its height as --mab-h;
+     a menu that ran under it would hide its last rows behind it. */
+  const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mab-h')) || 0;
+  const room = Math.max(160, Math.floor(window.innerHeight - bar - Math.max(0, top) - 16));
+  menu.style.setProperty('--sh-menu-max', room + 'px');
+}
+function fitOpenMenus() {
+  document.querySelectorAll('.sh-phase-menu:not([hidden])').forEach(fitMenu);
+}
+
 let wired = false;
 function wire() {
   if (wired) return;
@@ -889,6 +912,7 @@ function wire() {
     const open = menu.hidden;
     closeAllMenus(menu);
     menu.hidden = !open;
+    fitMenu(menu);
     btn.setAttribute('aria-expanded', String(open));
   });
 
@@ -900,6 +924,7 @@ function wire() {
     const open = menu.hidden;
     closeAllMenus(menu);
     menu.hidden = !open;
+    fitMenu(menu);
     btn.setAttribute('aria-expanded', String(open));
   });
 
@@ -929,6 +954,7 @@ function wire() {
     const open = menu.hidden;
     closeAllMenus(menu);
     menu.hidden = !open;
+    fitMenu(menu);
     const tabBtn = tab.querySelector('.sh-phase-btn');
     if (tabBtn) tabBtn.setAttribute('aria-expanded', String(open));
   });
@@ -989,7 +1015,7 @@ function wire() {
   let raf = 0;
   window.addEventListener('resize', () => {
     if (raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); });
+    raf = requestAnimationFrame(() => { raf = 0; measureBar(); runSpy(); fitOpenMenus(); });
   });
 
   /* Scrolling is the other thing that moves you without a page load,

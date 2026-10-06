@@ -2283,6 +2283,13 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
   z-index: var(--z-overlay);
+  /* Scrolls itself when it is taller than the room below it — see
+     fitMenu() in shell.js, which publishes --sh-menu-max on open.
+     `contain` so the wheel at either end does not carry on into the
+     page underneath. */
+  max-height: var(--sh-menu-max, calc(100vh - var(--s7)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .sh-phase-menu-head {
   padding: var(--s2) var(--s3) var(--s1);

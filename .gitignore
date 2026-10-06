@@ -13,3 +13,7 @@ dist-extension/
 # real secrets, never committed
 .env.local
 .env.*.local
+
+# worktree symlink and scratch builds
+node_modules
+dist-*/

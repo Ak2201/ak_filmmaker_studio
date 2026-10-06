@@ -5,16 +5,35 @@
    of whatever is sticky above, published by shell.js. Tokens and
    --sk-* only; the active tab is marked by fill AND aria-selected,
    never by colour alone (the fill carries --accent-on text).
+
+   THE COLUMN. On settings.html the strip sits inside .st-body, which
+   is already the page's measure, so it lines up for free. On the
+   module pages it is a direct child of <main>, beside sections that
+   each carry `max-width: var(--measure-wide); margin-inline: auto;
+   padding-inline: var(--s5)` (the .bd-head family in modules.css).
+   The strip takes the same column by MARGIN rather than by padding,
+   so its hairline and its ground stop where the content does instead
+   of running from the rail to the window edge. Inside a container
+   that is already the column the margin goes back to zero.
+
+   THE STACK. One below the shell's band, never level with it: the
+   band (z-toolbar) is the stacking context the phase menus live in,
+   so a strip at the SAME z-index that comes later in the document
+   paints over every open phase menu — the black band across the
+   Production menu. The rail and its scrim sit above the band, so
+   they clear this too.
    ============================================================ */
 .tabs {
   position: sticky;
   top: var(--sh-chrome-h, 0px);
-  z-index: var(--z-toolbar);
+  z-index: calc(var(--z-toolbar) - 1);
+  --tabs-gutter: var(--s5);
+  margin-inline: max(var(--tabs-gutter), calc((100% - var(--measure-wide)) / 2 + var(--tabs-gutter)));
   display: flex;
   flex-wrap: wrap;
   gap: var(--s1);
   padding: var(--s2) 0;
-  margin: 0 0 var(--s4);
+  margin-block: 0 var(--s4);
   background: var(--paper);
   border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
 }
@@ -35,5 +54,7 @@
 .tabs-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
 .tabs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
 .tabs-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.st-body > .tabs { margin-inline: 0; }
+@media (max-width: 719px) { .tabs { --tabs-gutter: var(--s4); } }
 [role="tabpanel"][hidden] { display: none; }
 @media print { .tabs { display: none; } [role="tabpanel"][hidden] { display: block; } }

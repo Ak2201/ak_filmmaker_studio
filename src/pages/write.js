@@ -2497,6 +2497,9 @@ async function exportPDF(sceneNumbers) {
   let node = null;
   PDF.exportPDF({
     scope: 'screenplay',
+    // Scene numbers live in the margins, which a PDF page clips; see
+    // SETUPS['screenplay-wide'] in src/lib/pdf.js.
+    ...(sceneNumbers ? { setup: 'screenplay-wide', classes: ['pdf-sn'] } : {}),
     title: Script.projectTitle() + ' — Screenplay',
     subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
       .filter(Boolean).join(' · '),

@@ -66,6 +66,14 @@ function announce() {
 
 export function hasKey() { return AI.hasKey(); }
 
+/* ---- the key test --------------------------------------------
+   In memory only: a test result is about this sitting, and a new
+   storage key for it would be a contract bought for a status line. */
+let testing = false;
+let lastTest = null;   // { sig, ok, kind, text }
+const testSig = () => AI.provider().id + '|' + AI.getModel() + '|' + AI.maskKey();
+function testShown() { return lastTest && lastTest.sig === testSig() ? lastTest : null; }
+
 /* ---- the provider picker ------------------------------------
    THERE IS EXACTLY ONE OF THESE ON SCREEN AT A TIME, and which
    one depends on the thing it is attached to rather than on the
@@ -148,8 +156,21 @@ export function keyBar() {
   bar.append(h('label.ai-modelwrap', {}, [h('span.ai-flabel', { text: 'Model' }), sel]));
 
   bar.append(h('span.ai-gap'));
+  bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-test-key', text: 'Test the key',
+    disabled: testing ? true : null }));
   bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-edit-key', text: 'Replace key' }));
   bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'ai-forget-key', text: 'Forget key' }));
+  /* The answer to "does this key work?" sits under the key it is
+     about. It is kept for the key, provider and model it was asked
+     of, so a page redraw keeps it and changing any of the three
+     drops it instead of vouching for something it never tested. */
+  const t = testShown();
+  bar.append(h('p.ai-test' + (t ? (t.ok ? (t.kind === 'rate' ? '.is-warn' : '.is-ok') : '.is-bad') : ''), {
+    role: 'status',
+    text: testing ? 'Testing — one short request to ' + AI.provider().apiName + '…'
+      : t ? t.text
+      : 'Not tested yet. "Test the key" sends one short request to ' + AI.provider().apiName + ' and says whether it worked.'
+  }));
   return bar;
 }
 
@@ -282,6 +303,18 @@ export function wireAIPanel() {
       return;
     }
     editingKey = false;
+    announce();
+  });
+
+  delegate(document, 'click', '[data-action="ai-test-key"]', async () => {
+    if (testing) return;
+    testing = true;
+    lastTest = null;
+    announce();
+    const sig = testSig();
+    let r;
+    try { r = await AI.testKey(); } finally { testing = false; }
+    lastTest = { sig, ...r };
     announce();
   });
 

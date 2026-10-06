@@ -931,11 +931,50 @@ export async function beatCritique(job, { onStatus, signal } = {}) {
   return { verdict: str(parsed.verdict, 400), notes, unverified, truncated, model };
 }
 
+/**
+ * Does the saved key work? One tiny request to the active provider
+ * with the chosen model, so the writer finds out at the key bar rather
+ * than at the end of a forty-scene run.
+ *
+ * Resolves, never throws, to { ok, kind, text, model }. "ok" means the
+ * provider accepted the KEY: an answer that came back the wrong shape,
+ * cut short or declined still proves the key, so those count as ok —
+ * only a rejected key, an unreachable host or a refused request do not.
+ * A rate limit is a working key with no quota left, and says so.
+ */
+export async function testKey({ signal } = {}) {
+  const prov = provider();
+  const model = getModel();
+  if (!getKey()) return { ok: false, kind: 'nokey', model, text: 'No ' + prov.label + ' key is saved on this device.' };
+  try {
+    await callModel({
+      system: 'You are checking that an API connection works.',
+      user: 'Reply with {"ok": true}.',
+      schema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'], additionalProperties: false },
+      maxTokens: 1024,
+      effort: 'low',
+      signal
+    });
+    return { ok: true, kind: 'ok', model, text: 'The key works. ' + prov.label + ' answered with ' + model + '.' };
+  } catch (e) {
+    const kind = (e && e.kind) || 'unknown';
+    if (kind === 'truncated' || kind === 'malformed' || kind === 'refusal' || kind === 'empty') {
+      return { ok: true, kind: 'ok', model, text: 'The key works. ' + prov.label + ' answered with ' + model + '.' };
+    }
+    if (kind === 'rate') {
+      return { ok: true, kind: 'rate', model, text: 'The key works, but ' + prov.label
+        + ' says it is rate-limited or out of quota right now. Wait a minute, or check the plan in '
+        + prov.consoleName + '.' };
+    }
+    return { ok: false, kind, model, text: (e && e.message) || 'The test did not finish.' };
+  }
+}
+
 export default {
   ...Providers,
   sliceScriptByScene, sceneScriptText, buildPrompt,
   buildDialoguePrompt, buildCritiquePrompt,
-  draftShotDivision, dialoguePass, beatCritique, AIError
+  draftShotDivision, dialoguePass, beatCritique, testKey, AIError
 };
 
 /* ============================================================

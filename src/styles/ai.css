@@ -158,6 +158,18 @@
   padding-bottom: var(--s3);
   border-bottom: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
 }
+/* The key test's answer: a full-width line under the bar, coloured by
+   outcome with the TEXT variants (a fill is not a text colour). */
+.ai-test {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  max-width: var(--sk-deck-measure);
+}
+.ai-test.is-ok   { color: var(--ok-deep); }
+.ai-test.is-warn { color: var(--warn-deep); }
+.ai-test.is-bad  { color: var(--danger); }   /* what the rest of the app uses for error text */
 .ai-keystate {
   font-family: var(--f-mono);
   font-size: var(--t-micro);

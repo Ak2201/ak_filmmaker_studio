@@ -37,13 +37,16 @@
   text-transform: uppercase;
   color: var(--ink-muted);
 }
+.wr-xa-lab { display: inline; margin: 0; }
 .wr-xa-check {
   display: inline-flex;
+  margin: 0;
   align-items: center;
   gap: var(--s1);
   cursor: pointer;
 }
 .wr-xa-select {
+  width: auto;
   max-width: 100%;
   min-width: 0;
   padding: var(--s1) var(--s2);
@@ -77,6 +80,8 @@
 /* The pressed microphone. `#main` for the reason write.css gives at
    `.wr-export .btn.is-on`: the generic `#main .btn` colour wins
    otherwise and the label vanishes. */
+/* `#main` again: base.css sizes a <select> to its column. */
+#main .wr-xa .wr-xa-select { width: auto; }
 #main .wr-xa .btn.is-on {
   background: var(--ink);
   color: var(--paper);
@@ -106,5 +111,5 @@
 @media (max-width: 720px) {
   .wr-xa { gap: var(--s2); }
   .wr-xa-group { width: 100%; }
-  .wr-xa-select { flex: 1 1 10rem; }
+  #main .wr-xa .wr-xa-select { flex: 1 1 10rem; }
 }

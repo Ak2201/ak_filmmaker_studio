@@ -1,6 +1,6 @@
 # Blueprint and stages realignment — plan
 
-Status: PLAN, not built. Revision 2, 6 Oct 2026.
+Status: APPROVED, building. Revision 3, 6 Oct 2026 (see the end).
 
 **Owner's asks:**
 - Round 1: "Story › Blueprint › Story also has Pre-Production,
@@ -416,3 +416,526 @@ meant the **Dashboard page** (`dashboard.html`: the stat tiles, "the next
 thing to do", blueprint progress, the chain and readiness), the journey
 strip (§5.4) and the wrap cards (§5.6) carry those into the blueprint.
 Either way both are in the plan.
+
+
+---
+
+# Revision 3 — the approved build plan (6 Oct 2026)
+
+Supersedes the decisions in §8 above (all taken as recommended), and adds the story-first path, every beat format, beat guidance in Write, script → shot list (AI or basic), and script-driven scenes with a bin.
+
+
+## Context
+
+The owner found the Story and Blueprint spaces confusing.
+
+- **A stage inside a stage.** Story › Feature Blueprint opens a page
+  with its own "Phase 02 Pre-Production … Phase 04 Post-Production".
+- **Screenplay holds shoot-planning tools.**
+- **Four separate beat systems that never meet:**
+  - the Story page frameworks;
+  - Feature step 08 "15 Beats";
+  - Short step 04 "5-Beat";
+  - Write › Outline.
+- **The Story page opens on a blank synopsis.**
+
+The owner's latest ask: writing a story should START WITH A STEP OUTLINE
+and then proceed, not jump straight into writing. The decisions so far:
+
+- **A step outline means both:** a guided path, and at its centre a
+  numbered list of story events under each beat.
+- **Guided but skippable.** Import and "I already have a synopsis" stay.
+- **Nothing is removed.** Every module, step, field and `data-key`
+  survives. Things are moved, renamed or linked.
+
+Later asks from the owner, all folded into this plan:
+- **The writer picks the beat sheet format, and every format is
+  offered** (§1a).
+- **The beats guide the writing when wanted** (§1b).
+- **A script breaks down into a shot list:** with AI when there is a
+  key, and a basic rule-based breakdown when there is not (§1c).
+- **Everything is attached to the project and derived from story →
+  script → scenes.** A new scene heading adds its scene automatically.
+  A removed one takes its breakdown, shots, schedule and call-sheet rows
+  with it, into a bin first and then deleted for good (§1d).
+
+The full rationale is in `docs/BLUEPRINT-REALIGN-PLAN.md`, revision 2,
+already pushed. Revision 3 adds this story path and is the first commit
+of the build.
+
+The defaults below are the recommendations from that doc. The owner
+hasn't overridden any of them:
+
+- Story and Screenplay stay SEPARATE stages, bound by a hand-off.
+- Six modules move from Screenplay to Pre-Production.
+- Pitch Deck moves to Story.
+- A Blueprints shelf in the rail.
+- Five blueprint parts, one per stage.
+- The guide drawer edits in place.
+
+## 1. The story path (new, the core of this ask)
+
+**`story.html` gets a path stepper**, which is how a new story begins:
+
+**1 Idea → 2 Logline → 3 Structure → 4 Step outline → 5 Synopsis →
+6 To the Screenplay**
+
+- **1 Idea / 2 Logline.**
+  - Two short fields with a prompt and a Dragon example.
+  - Stored in the story model: `logline` already exists in
+    `blankStory()` in `src/lib/story.js`, and `idea` is added there.
+  - If the blueprint's step 01 or 02 answer exists, "Use my blueprint
+    answer" copies it. This is explicit and offered only when the field
+    is empty.
+- **3 Structure: the writer picks the beat sheet format.**
+  - A card grid replaces the bare select. The select stays as the
+    compact control in the bar. Each card shows the format's name, its
+    beat count, one line on what it suits, and a mini tension curve
+    drawn from its beats' `tension`.
+  - Every format is offered. The pre-selection is only a suggestion:
+    Save the Cat for a feature, Short five-beat for a short. The choice
+    is already stored as `story.framework`.
+  - Switching format later is a view change, as it is today. Outline
+    steps keep their beat ids qualified by framework, and a step whose
+    beat does not exist in the new format is listed under "Not placed
+    in this format" rather than lost (§1a).
+- **4 Step outline (the main screen).**
+  - For each beat of the framework there is a card with:
+    - the beat's `prompt` from `frameworks.json`;
+    - for `save_the_cat`, the blueprint step-08 answer for that beat,
+      worked out at render time and read only;
+    - a numbered list of steps, one or two lines each. Numbering runs
+      1..N across the whole outline.
+  - You can add, edit, reorder and move steps between beats.
+  - A coverage line reads, for example, "12 of 15 beats have a step".
+  - Optional, last: "Suggest steps for this beat" through the existing
+    BYOK path (`callModel()` in `src/lib/ai.js`, gated by
+    `src/ui/ai-panel.js`). It is a new `draftOutlineSteps()` beside
+    `draftBeatSheet()`.
+- **5 Synopsis.**
+  - "Build my synopsis from the outline" assembles the steps into
+    `source`, one paragraph per act, using `actsOf()` from
+    `src/lib/beat-outline.js`.
+  - It creates a mark for each step's exact text span, with
+    `origin: 'outline'`, through `addMark()`, so the beat matrix and the
+    tension curve light up at once.
+  - It is offered directly when the synopsis is empty. When it isn't,
+    it reads "Rebuild": a confirm plus a one-level Undo snapshot, never
+    silent.
+  - After that, the existing editor, tagging, pacing and AI mapping work
+    unchanged.
+- **6 To the Screenplay.**
+  - "Send the outline to Screenplay" makes one placeholder scene per
+    step, with `beatId` set (the field `src/lib/scenes.js` already has).
+  - It reuses `draftPlan()` / `insertionPoint()` from
+    `src/lib/beat-outline.js`.
+  - It is add-only, with Undo, and then opens `write.html#outline`.
+- **The stepper's state is derived** from what is filled (logline set,
+  steps per beat, source present, scenes with a beatId). Nothing new is
+  stored for it.
+- **Skippable.** The existing Sample, New and Import cards stay:
+  - "New" now starts the path.
+  - The blank-page card becomes "I already have a synopsis", with paste
+    and Import.
+  - Every stepper tab can be clicked at any time.
+- **Storage.**
+  - `outline: []` (`{id, beat, text}`) and `idea: ''` go into
+    `blankStory()`.
+  - `loadStory()` already spreads the blank under the stored row, so old
+    stories need no migration.
+  - It stays in the same key, `fms_story_v1`, already in all five
+    registries and the cloud scope. No new key.
+
+## 1a. Every beat sheet format (`src/data/frameworks.json`)
+
+The file has three today: `three_act` (7), `save_the_cat` (15) and
+`story_circle` (8, labelled "Hero's Journey / Story Circle"). The
+change is additive. Existing ids are kept, so marks and `beatId`s
+already tagged still resolve.
+
+| id | Format | Beats | Note |
+|---|---|---|---|
+| `three_act` | Three-Act Structure | 7 | existing |
+| `save_the_cat` | Save the Cat! | 15 | existing; matches Feature step 08 |
+| `story_circle` | Story Circle (Dan Harmon) | 8 | existing; relabelled, because it is not the 12-stage Hero's Journey |
+| `heros_journey` | Hero's Journey (Vogler) | 12 | new |
+| `seven_point` | Seven-Point Structure | 7 | new |
+| `freytag` | Freytag's Pyramid / Five-Act | 5 | new |
+| `fichtean` | Fichtean Curve | 6 | new; crisis after crisis |
+| `kishotenketsu` | Kishōtenketsu | 4 | new; no central conflict |
+| `sequence` | Eight-Sequence | 8 | new; the film-school sequence approach |
+| `interval` | Two-Half / Interval Structure | 9 | new; Indian features: the first-half build, the interval block, the second-half turn and the climax. This is the shape a Tamil feature is actually built in |
+| `short_five` | Short Film Five-Beat | 5 | new; matches Short step 04 |
+
+- **What each beat carries:** `id`, `label`, `at`, `tension`, `act` and
+  `prompt`, the existing shape, so `heatmap()`, `pacingFlags()`,
+  `nearestBeat()` and `actsOf()` work with no code change. The
+  per-framework `pacing` regions are added the same way.
+- **What the agent checks:** whether `test:story` or `test:beats`
+  assert the framework count, and if so updates them.
+- **How formats reach other pages:** Write › Outline and the beat board
+  read `story.framework`, so every format appears there automatically.
+
+## 1b. The beats guide the writing, when wanted
+
+- **In the Story path and the synopsis editor:**
+  - the beat card's `prompt`;
+  - "you are at 38%; Midpoint is expected around 50%", from
+    `nearestBeat()` / `expectedAt()` in `src/lib/story.js`.
+- **In Write: a "Beat guide" toggle.**
+  - **Settings:** Off · Margin · Panel, default Margin. Stored in the
+    existing `fms_write_prefs_v1` by read-merge-write, like the
+    guide/keys/focus prefs. No new key.
+  - **Margin:** the beat labels Phase 5 already draws.
+  - **Panel:** a side card for the scene under the cursor, showing its
+    beat (from the scene's `beatId`, else estimated from the page
+    position), that beat's prompt, the outline steps written for it,
+    "expected around p. 52, you are on p. 47", and the next beat to
+    reach.
+  - **How:** built on `src/lib/beat-outline.js` (`outline()`,
+    `resolveBeat()`, `sceneSpans()`). It writes nothing.
+  - **Focus mode** hides it, like the other chrome.
+
+## 1c. Screenplay → shot list: AI when there is a key, a basic breakdown when not
+
+**What exists:**
+- Visualize's "Draft a shot division": `aiScenePlan()` and
+  `AI.draftShotDivision()` in `src/pages/visualize.js` and
+  `src/lib/ai.js`.
+- It is append-only through `Shots.addShot()` and undoable via
+  `aiLastRun`.
+- It does nothing without a key.
+
+**New: a rule-based breakdown** in `src/lib/shot-rules.js`.
+- **What it is:** pure, stores nothing, and returns the SAME draft shape
+  `draftShotDivision()` returns.
+- **Rules, per scene slice of the script** (the slicing is
+  `matchScenes()` / `sliceScript()`):
+  - **Opening shot:** a master WS, labelled "Establishing" for EXT.
+  - **Explicit `shot` elements:** one shot each. The size comes from the
+    text: CLOSE ON → CU, INSERT, POV, ANGLE ON, AERIAL / DRONE.
+  - **Dialogue:**
+    - a two-person exchange → an OTS on each speaker;
+    - a single speaker → MCU;
+    - three or more speakers → a group MS plus a single per speaking
+      character.
+  - **Action lines:**
+    - movement verbs (runs, chases, fights) → a tracking or handheld move;
+    - "sees" / "looks at" → POV;
+    - props from the existing auto-tag suggestions
+      (`src/lib/screenplay-analysis.js`) → an Insert.
+  - **The count per scene** is clamped by its `eighths`, at least 2 and
+    at most 12.
+- **Provenance:** a new `rules: false` field declared in `blankShot()`
+  (`src/lib/shots.js`), beside the existing `ai` field. The shot list
+  marks it "Basic" the way it marks "AI".
+- **Visualize's draft panel offers both paths:**
+  - With a key: "Draft with AI" stays the main button, and "Basic
+    breakdown" is secondary.
+  - Without a key: "Basic breakdown (no AI key needed)" is the main
+    button, and the key form stays.
+  - Both use the same scene picker, append-only write and Undo.
+  - Scenes that already have shots are unticked by default, as today.
+- **From Write, it feels automatic without overwriting anything:**
+  - Each scene heading's margin shows a derived "Sc 12 · no shots yet"
+    or "Sc 12 · 6 shots".
+  - The toolbar's "Break into shots" sends the script's scenes into the
+    Scene List first, through the existing hand-off banner's "Add them"
+    path.
+  - Then it runs the AI or basic breakdown for the scenes with no shots,
+    and toasts "18 shots added · Undo · Open Shot List".
+  - Nothing runs on a timer, and nothing ever changes a shot a person
+    edited.
+
+## 1d. Everything belongs to the project and follows story → script → scenes
+
+**What already holds.** Every model is per project:
+- `fms_story_v1`, the script, scenes, shots, frames, boards, the
+  schedule, call sheets, the edit log and deliverables are all
+  `SCOPED_KEYS`, suffixed `__<projectId>` by the `src/lib/store.js`
+  proxy.
+- A second project never sees the first's breakdown.
+- `deleteProject()` removes all of it.
+
+The new pieces (`outline`, `rules` shots, the beat-guide prefs) live in
+those same keys, so they inherit this. A proof asserts it (see
+Verification).
+
+**What is missing, and the decisions taken:** the script does not drive
+the scenes.
+- A new heading needs the hand-off banner's "Add them".
+- A deleted heading leaves its scene, shots, frames, schedule slot and
+  call-sheet rows behind.
+- `removeScene()` (`src/lib/scenes.js:154`) deletes only the row, so its
+  dependents are orphaned even today.
+
+The owner chose AUTOMATIC adds, and a BIN before final deletion.
+
+- **A stable link.** Script elements already have stable `id`s
+  (`src/lib/script.js:131`). Each scene row gains an additive
+  `scriptElId`, the id of its heading element.
+  - Existing projects are linked once by `matchScenes()`
+    (`src/lib/screenplay-analysis.js:154`), which writes the link only
+    where the match is unambiguous.
+  - `listScenes()` already spreads `blankScene()`, so this needs no
+    migration.
+- **A new `src/lib/scene-sync.js`: `reconcile(script, scenes)`,** which
+  is pure and returns a plan of what to add, update and bin.
+  - **It is applied by Write's existing `scheduleDerived()` after a
+    script save.** It runs only on a save, never on a timer, so verify's
+    idle-write check holds.
+  - **New heading → a new scene row,** auto-linked, with the
+    INT/EXT, location and time parsed from the heading and `beatId`
+    taken from the outline step it came from. A quiet note reads
+    "Scene 37 added to the Breakdown · Undo".
+  - **Edited heading → the linked scene's heading-derived fields
+    update** (INT/EXT, location, time, number). Everything typed by
+    hand stays: synopsis, cast, elements, notes.
+  - **Deleted heading → the scene and EVERY dependent go to the bin:**
+    - its shots and their frames (`src/lib/shots.js`);
+    - its storyboard entries;
+    - its stripboard and day placement;
+    - its call-sheet rows (`src/lib/contacts.js`);
+    - its edit-log state (`src/lib/editlog.js`);
+    - its shoot-day marks;
+    - its song links.
+
+    It vanishes from every page at once. The dependent list comes from a
+    grep of `sceneId` across `src/lib` and `src/pages`: `ai`, `contacts`,
+    `editlog`, `readiness`, `scenes`, `screenplay-analysis`, `scriptgen`,
+    `shootday`, `shotlist-export`, `shots`, `breakdown`, `stripboard`,
+    `edit`, `hub` and `short`. The agent confirms each.
+  - **A move is not a delete.** A heading whose id vanished while an
+    identical heading text appeared in the same save is treated as a
+    move. So is a cut-and-paste.
+- **The bin** is a new per-project key, `fms_scene_bin_v1`:
+  - It is added to `SCOPED_KEYS`, `PROJECT_KEYS` and `ALL_KEYS` and the
+    test:keys registry. It is in no cloud scope until a schema section
+    widens the CHECK, the same as `fms_write_goals_v1`.
+  - Each entry holds the scene row plus a snapshot of all its
+    dependents.
+  - **Restore** puts the scene and every dependent back exactly. It
+    happens automatically when Undo in Write brings the heading's id
+    back, or when the same heading is typed again; by hand from the bin
+    otherwise.
+  - **"Delete for good"** (one entry) and **"Empty bin"** delete for
+    good, after a confirm that names the counts, for example "Scene 12:
+    6 shots, 4 frames, Day 3".
+  - Nothing is purged on a timer.
+  - The bin is shown on the Breakdown, as "Removed from script (2)",
+    and its count is in the Write hand-off banner.
+- **One cascade for every path.** `removeScene()` gains the same cascade
+  through the bin, so deleting a scene by hand on the Breakdown no
+  longer orphans its shots either.
+- **Story → script.**
+  - An outline step sent to the Screenplay records the `sceneId` it
+    made.
+  - Deleting that step offers to bin its placeholder scene, but only
+    while that scene has no script heading and no shots. Otherwise the
+    step goes and the scene stays, because the script now owns it.
+- **No script yet:** scenes typed by hand on the Breakdown, with no
+  `scriptElId`, are never touched by `reconcile`. The script drives
+  only the scenes it is linked to.
+
+### Also on the Story page (from revision 2)
+
+- **A tab strip below the editor:** Pacing · Map with AI · Pitch deck ·
+  Idea Vault. The `#pitch` and `#vault` hashes still land. It is
+  page-local, not `src/ui/tabs.js`, since story.html is deliberately off
+  that list.
+- **The Dragon sample gets a story:** an idea, a logline, a Save the Cat
+  step outline built from its 36 scene synopses, and an assembled
+  synopsis.
+  - It lives in a new dynamic import, `src/data/sample.dragon.story.json`,
+    with a matching lazy exception in `vite.config.js`, like
+    `sample.dragon.script.json`.
+  - It is marked as a reconstruction.
+- **One import control on screen at a time,** so the bar's IMPORT hides
+  while the card shows.
+- **Exports:** synopsis `.txt`, and beat sheet / step outline `.md`.
+  - `.docx` only if the writer stays small.
+  - Reachable from the Story bar and the blueprint's Part I panel.
+
+## 2. Navigation (`src/data/navigation.json`, `src/lib/navmodel.js`, `src/ui/shell.js`)
+
+**Moves:**
+- **To Pre-Production:** Script Breakdowns, Elements, Auto-Tagging,
+  Songs, Stripboard, Cast Matrix.
+- **To Story:** Pitch Deck.
+- **Into a new global `blueprints` shelf:** Feature Blueprint and Short
+  Blueprint. This uses the existing `shelves()` mechanism the Library
+  uses.
+
+**What stays the same:** every module id and href, so plan features,
+the launcher counts and the palette all keep working.
+
+**New:**
+- **Pre-Production sub-headings:** Break down · See it · Cost & staff
+  it · Schedule it. A `group` field on each module, rendered by the
+  phase menu.
+- **A "Guide for this stage" row** in each stage menu, linking to the
+  matching blueprint part.
+- **A breadcrumb** that reads `Blueprints › Feature › Part N · <Stage>`
+  on the blueprints.
+- **Script Breakdowns gets its own target, `breakdown.html#breakdown`,**
+  on an always-rendered wrapper. `#scenes` keeps working.
+
+**Fixes and copy:**
+- The extension panel (`src/pages/panel.js`) iterates `moduleGroups()`,
+  which fixes KNOWN-ISSUES #2.
+- The stale blurb "24 guided steps" becomes 32.
+
+## 3. The blueprint: five parts, one per stage (`src/pages/feature.js`, `src/pages/short.js`, `src/ui/steps.js`)
+
+**The five parts:**
+
+| Part | Stage | Feature steps |
+|---|---|---|
+| I | Story | 01–10 |
+| II | Screenplay | 11, 12, a new "Write the draft" interlude, 13 |
+| III | Pre-Production | 14–24 |
+| IV | Production | 25–28 |
+| V | Post-Production | 29–32 |
+
+- **The step order and numbers are unchanged.**
+- **Part II gets a new cover with no fields,** id `#part-2`.
+- **The existing ids stay:** `#vol-1`, `#vol-2`, `#phase-3` and
+  `#phase-4`, with the `v1_*` / `v2_*` / `p3_*` / `p4_*` covers.
+- **Wording:** "Phase" and "Vol" become "Part" in the covers, the stamps,
+  the rail and the Jump menu.
+
+**The sidecar.** `src/data/steps.stages.json` maps each step to its
+stage and to its "Do this in…" module ids. It follows the
+`steps.priority.json` pattern, because the step files are regenerated by
+`npm run extract`.
+
+**On every step, in both blueprints:**
+- A stage chip.
+- "Do this in…" buttons. For example, 08 → Story step outline · Write ›
+  Outline; 11 → Scene List; 16 → Shot List · Storyboard;
+  23 → Stripboard · Budget · Contacts; 32 → Deliverables.
+
+**Story toolkit panels in Part I.** A new `src/ui/story-kit.js`. It only
+calls the `src/lib/story.js` API and stores no second copy.
+- **Part I cover:** start the story path, or Import.
+- **Step 02:** the Idea Vault.
+- **Step 08:** this beat's outline steps and tagged passages beside the
+  step-08 fields, with "Open the step outline".
+- **End of Part I:** the pacing curve (read only), the exports and the
+  Pitch Deck.
+- **Short step 04:** the same panel, on `short_five`.
+
+**Live readouts,** derived from `src/lib/readiness.js` and the scene
+model, and stored nowhere. For example, step 11 "36 scenes · 105 pages",
+the draft interlude's page count, and step 25 "Day 3 of 18".
+
+## 4. Home and Dashboard (`src/pages/hub.js`, `src/pages/dashboard.js`)
+
+- **A journey strip,** a new derivation `src/lib/journey.js`. It shows
+  the five stages, guide steps against tool readiness, "you are here",
+  and one Next button.
+- **On the hub,** the strip sits after Your projects. The other sections
+  are reordered but all stay.
+- **The project stage label** comes from `journey.js`, not from the
+  percentage at `hub.js:970`.
+- **Stale copy:**
+  - `hub.js:576` and `hub.js:653` lose the "Vol I / Vol II" wording.
+  - `PHASE_NAME` at `hub.js:222` moves to the five stages.
+  - The sample's `meta_stage` in `src/data/sample.dragon.json` changes
+    from "Both volumes" to "All five stages".
+
+## 5. Later, after the above lands
+
+- **A guide drawer** (`src/ui/blueprint-drawer.js`): the "Blueprint step
+  N" pill on module pages, editing through the same `data-key` and the
+  existing save path.
+- **More hand-offs** (step 11 → Breakdown, step 15 → Lookbook) and a
+  wrap card at the end of each part. All add-only, with Undo.
+
+## Build order, in parallel worktree agents like the screenplay build
+
+1. **Nav** (§2).
+2. **Story path and Story page** (§1). Owns `story.js`, `story.html`,
+   `frameworks.json`, the sample story and `ai.js`. It publishes the API
+   first: `addOutlineStep`, `moveOutlineStep`, `outlineByBeat`,
+   `buildSynopsisFromOutline`, `sendOutlineToScenes`.
+3. **Blueprint parts and sidecar** (§3 minus the story kit), in parallel
+   with 1 and 2.
+4. **Home and journey** (§4), in parallel.
+5. **All the beat formats** (§1a). This is a data agent, and runs in
+   parallel.
+6. **The basic shot breakdown and Write's "Break into shots"** (§1c),
+   in parallel. It owns `shot-rules.js`, `shots.js` and `visualize.js`.
+7. **The beat guide in Write** (§1b), after 2 and 5 merge.
+7b. **Scene sync and the bin** (§1d), in parallel with 1–6. It owns
+    `scene-sync.js`, the cascade in `scenes.js` and the bin UI on
+    `breakdown.js`. It hooks into `write.js` only through
+    `scheduleDerived()`, and merges before 6's "Break into shots", which
+    relies on auto-added scenes.
+8. **The story kit in the blueprint** (§3 panels), after 2 merges.
+9. **The §5 items.**
+
+## Verification
+
+- **Each agent:** `VITE_SITE_GATE=off npx vite build --outDir dist-verify`,
+  then `VERIFY_DIST=dist-verify VERIFY_PORT=<free> npm run verify`.
+- **Re-baselining** (`npm run baseline`) is deliberate and done once, at
+  the end. Diff it to confirm ZERO data-key movement and word changes
+  only on the touched pages.
+- **`npm run test:story` gains:**
+  - an old blob with no `outline` loads blank;
+  - every outline step's mark text is verbatim at its offsets after
+    assembly;
+  - Rebuild's Undo restores `source` and `marks` exactly;
+  - `sendOutlineToScenes` is add-only and its Undo removes only what it
+    added;
+  - `short_five` beats.
+- **New `npm run test:shots`** (Node, no browser) checks `shot-rules.js`
+  on the Dragon script:
+  - every scene gets 2–12 shots;
+  - a two-hander gets OTS pairs;
+  - an explicit CLOSE ON becomes a CU;
+  - the output has the same shape as the AI draft;
+  - nothing is produced for an empty scene.
+- **New `npm run test:sync`** (Node):
+  - adding, editing and deleting headings produces the right
+    add / update / bin plan;
+  - a cut-and-paste of a scene is a move, not a delete;
+  - restoring brings back the scene, its shots, frames, strip slot and
+    call-sheet rows byte-identical;
+  - "Empty bin" leaves no `sceneId` orphan in any model;
+  - hand-made, unlinked scenes are never touched.
+- **`prove:storage` gains a two-project block.** Project A's script
+  makes scenes and shots. Project B stays empty. Deleting a heading in
+  A bins only A's. Deleting project A leaves B intact and no
+  `__<A id>` key behind.
+- **Every framework** passes a shape check: its `at` values climb from
+  0 to 1, its ids are unique, and its `pacing` regions are present.
+- **The other suites and proofs:** `test:keys`, `test:beats`,
+  `test:screenplay`, `prove:storage`, `prove:gate`, `prove:billing`
+  (plan features keyed by module id), `prove:extension` (the panel now
+  lists the moved modules) and `prove:drive`.
+- **Playwright smoke** at 1280 and 390, both themes:
+  1. new project → Story → path step 1 → logline → Save the Cat → add a
+     step to 3 beats;
+  2. build the synopsis, and the matrix shows 3 tagged beats;
+  3. send to Screenplay, and `write.html#outline` shows 3 placeholder
+     scenes; Undo;
+  4. the Dragon sample shows a full outline;
+  5. switching the format to Hero's Journey and then Interval re-files
+     the steps, with nothing lost;
+  6. Write's Beat guide panel names the current beat;
+  7. with no AI key, "Break into shots" adds basic shots to the scenes
+     that have none, and Undo removes exactly those;
+  8. typing a new heading in Write adds the scene to the Breakdown;
+  9. deleting it bins the scene and its shots everywhere;
+  10. Ctrl+Z in Write brings both back.
+- **Fragment loads land in the empty and seeded states:** `#vol-1`,
+  `#vol-2`, `#part-2`, `#phase-3`, `#phase-4`, `#scenes`, `#breakdown`,
+  `#pitch` and `#vault`.
+- **Docs:**
+  - `docs/BLUEPRINT-REALIGN-PLAN.md` revision 3, marked BUILT at the
+    end.
+  - A CLAUDE.md open item 16.
+  - KNOWN-ISSUES #2 pruned.
+- **Commit and push** to `claude/improvement-ideas-0gwjyx` and to main.

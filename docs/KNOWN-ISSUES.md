@@ -69,3 +69,20 @@ Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
   inside. A second level, or a per-film picker that shows one study at
   a time, would follow the owner's "tabbed, not scrollable" ask. That
   is a UI decision to make on purpose, not a patch.
+
+## 6. Leftovers from the Critical/High fix pass (6 Oct 2026)
+
+- **A second script slicer.** `src/lib/script-import.js` still has its
+  own `sliceScenes()`. It already drops the preamble, so it is not wrong
+  today. It is a second copy of what `sliceScript()` in
+  `src/lib/screenplay-analysis.js` now owns, and the next change to one
+  will miss the other.
+- **The tab strip's observer is costly.** `src/ui/tabs.js` reruns
+  `apply()`, which queries every `section[id]` on the page, on every DOM
+  mutation. On write.html that is about 11ms a frame while typing.
+  Filter the mutations, or limit the observer to `main`'s direct
+  children.
+- **Screenplay lines are under 44px on touch, on purpose.** write.html's
+  one-line textareas are about 30px tall under `pointer: coarse`.
+  Raising them would stretch a 2,361-line script badly. Decide whether a
+  taller line on phones only is wanted.

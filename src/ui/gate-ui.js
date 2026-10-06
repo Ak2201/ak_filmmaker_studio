@@ -163,7 +163,12 @@ async function submitCode(form) {
 
 /* ---- FR-102 / FR-103: the admin console ------------------------- */
 
-const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null };
+const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null,
+  /* What the admin has typed into "Issue a code" but not submitted. The
+     console redraws on every load — twice after each code it issues —
+     and a redraw rebuilt the form from defaults, so a second code begun
+     during the reload came out as a STANDARD invite with no project. */
+  draft: {} };
 
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 const DURATIONS = [
@@ -177,10 +182,11 @@ function codeState(c) {
   return 'Active';
 }
 
-async function loadAdmin() {
+async function loadAdmin({ quiet = false } = {}) {
   const g = gate();
   if (!g) return;
-  admin.busy = true; admin.error = ''; rerender();
+  admin.busy = true; admin.error = '';
+  if (!quiet) rerender();   // a reload of a console already on screen keeps it on screen
   try {
     const [codes, members, redemptions, requests] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions(), g.admin.listRequests()]);
     admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions; admin.requests = requests || [];
@@ -249,6 +255,9 @@ export function adminSection(section, st) {
   const projSel = h('select#gtProj', { 'data-gate-field': 'project' }, [h('option', { value: '', text: 'Choose a project…' }),
     ...admin.projects.map((p) => h('option', { value: p.id, text: p.title || 'Untitled' }))]);
   const labelIn = h('input#gtLabel', { type: 'text', maxlength: 120, placeholder: 'Who is it for?', 'data-gate-field': 'label' });
+  for (const [f, el] of [['type', typeSel], ['max', maxIn], ['dur', durSel], ['project', projSel], ['label', labelIn]]) {
+    if (admin.draft[f] != null) el.value = admin.draft[f];
+  }
   const field = (id, text, control) => h('div.gt-field', {}, [h('label', { for: id, text }), control]);
   form.append(h('div.gt-grid', {}, [
     field('gtType', 'Kind', typeSel), field('gtMax', 'Uses (opens, for a pass)', maxIn),
@@ -351,7 +360,9 @@ async function createCode(form) {
       expiresAt: hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null,
       projectId: passType === 'screening_pass' ? v('project') : null, label: v('label')
     });
-    await loadAdmin();
+    admin.draft = {};
+    await loadAdmin({ quiet: true });
+    rerender();
   } catch (e) { toast(e.message || 'The code was not created.', 'error'); }
 }
 
@@ -368,6 +379,9 @@ delegate(document, 'submit', '[data-gate-form]', (e, form) => {
   if (form.dataset.gateForm === 'code') submitCode(form);
   else if (form.dataset.gateForm === 'create') createCode(form);
 });
+const keepDraft = (e, el) => { if (el.closest('form.gt-create')) admin.draft[el.dataset.gateField] = el.value; };
+delegate(document, 'input', 'form.gt-create [data-gate-field]', keepDraft);
+delegate(document, 'change', 'form.gt-create [data-gate-field]', keepDraft);
 delegate(document, 'input', '[data-gate-field="code"]', (e, el) => {
   // Show the normalised form as it is typed (FR-101), keeping the caret at the end.
   const f = formatCode(el.value);

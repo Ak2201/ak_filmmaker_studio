@@ -563,16 +563,19 @@ const DEFAULT_SHORTCUTS = [
 ];
 /* A page may add its own section to the sheet — write.html prints its
    keyboard preset there (src/ui/write-shortcuts.js). One group per
-   page; setting it again replaces it and the sheet is rebuilt on its
-   next opening. Labels are escaped: they are built from data. */
+   page; setting it again replaces it and rebuilds the sheet. Labels are escaped: they are built from data. */
 let PAGE_SHORTCUTS = null;
 const escSheet = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 StudioUI.setPageShortcuts = function (group) {
   PAGE_SHORTCUTS = group && Array.isArray(group.rows) ? group : null;
   const old = document.getElementById('shortcutSheet');
   if (old) {
+    // Rebuilt at once rather than on next opening: the sheet is part
+    // of the page's markup from load, and a page that dropped it until
+    // somebody pressed ? would read as having lost its words.
     const wasOpen = old.classList.contains('show');
     old.remove();
+    ensureShortcutSheet();
     if (wasOpen) openShortcutSheet();
   }
 };

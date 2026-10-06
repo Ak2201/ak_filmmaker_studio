@@ -1993,7 +1993,7 @@ delegate(document, 'input', '.wr-text[data-el-field="text"]', (e, ta) => {
   refreshCounters();
   persist();
   smart.noteEdit(doc.elements[i]);
-  smart.update(ta);
+  smart.update(ta, doc.elements[i]);
 });
 delegate(document, 'focusout', '.wr-text[data-el-field="text"]', () => smart.close());
 

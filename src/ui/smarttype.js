@@ -193,7 +193,7 @@ export function suggest(type, before, index, ownId) {
    createSmartType({ getElements, elementOf })
      getElements()      the live element array
      elementOf(ta)      the model element a textarea edits, or null
-   The page calls update(ta) from its input handler, handleKey(e, ta)
+   The page calls update(ta, el) from its input handler, handleKey(e, ta)
    first thing in its keydown handler, noteEdit(el) after a model
    change and invalidate() after anything structural. */
 export function createSmartType({ getElements, elementOf }) {
@@ -270,8 +270,10 @@ export function createSmartType({ getElements, elementOf }) {
     }
   }
 
-  function update(ta) {
-    const el = elementOf(ta);
+  function update(ta, known) {
+    // The page usually has the element already; finding it again is a
+    // scan of the whole script per keystroke on a feature.
+    const el = known || elementOf(ta);
     const chain = chainNext;
     chainNext = null;
     if (!el || !['scene', 'character', 'transition'].includes(el.type)

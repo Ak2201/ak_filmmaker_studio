@@ -139,5 +139,59 @@ ok(rows.rows[3].label === 'Dialogue', 'Celtx sheet row 4 is Dialogue');
 ok(rows.rows[6].off === true, 'shot row is marked off without shot');
 ok(/as Action/.test(rows.rows[7].label), 'General row says it writes Action');
 
+/* ---- SmartType's pure half (src/ui/smarttype.js) ----------- */
+const ST = await import('../src/ui/smarttype.js');
+const els = [
+  { id: 'a', type: 'scene', text: 'INT. POLICE STATION - NIGHT' },
+  { id: 'b', type: 'character', text: 'MARAN' },
+  { id: 'c', type: 'character', text: 'ANBU (V.O.)' },
+  { id: 'd', type: 'character', text: "MARAN (CONT'D)" },
+  { id: 'e', type: 'scene', text: 'EXT. ENGINEERING COLLEGE - QUAD - DUSK' },
+  { id: 'f', type: 'scene', text: 'INT. POLICE STATION - DAY' },
+  { id: 'g', type: 'character', text: 'MA' }
+];
+const ix = ST.createIndex();
+ix.ensure(els);
+const labels = (r) => r.items.map((i) => i.label);
+eq(ST.parseHeading('EXT. ENGINEERING COLLEGE - QUAD - DUSK'), { intro: 'EXT.', location: 'ENGINEERING COLLEGE - QUAD', time: 'DUSK' }, 'heading: last separator starts the time');
+eq(ST.parseHeading('INT. HALL - DAY (2014)').time, 'DAY', 'heading: a year after the time is not part of it');
+eq(ST.cueName("MARAN (CONT'D)"), 'MARAN', 'cue name drops the extension');
+eq(labels(ST.suggest('scene', 'i', ix)), ['INT.', 'INT./EXT.'], 'scene: intros');
+eq(labels(ST.suggest('scene', '', ix)), [], 'scene: nothing on an empty line (Return keeps cycling)');
+eq(labels(ST.suggest('scene', 'INT. ', ix)), ['POLICE STATION', 'ENGINEERING COLLEGE - QUAD'], 'scene: learned locations, most used first');
+eq(ST.suggest('scene', 'int. po', ix).items[0].value, 'INT. POLICE STATION - ', 'scene: a location accepts with the separator');
+eq(ST.suggest('scene', 'int. po', ix).items[0].chain, true, 'scene: and chains to the time');
+eq(labels(ST.suggest('scene', 'INT. POLICE STATION - ', ix)).slice(0, 3), ['DAY', 'NIGHT', 'CONTINUOUS'], 'scene: times after " - "');
+eq(ST.suggest('scene', 'INT. POLICE STATION - ni', ix).items[0].value, 'INT. POLICE STATION - NIGHT', 'scene: time by prefix');
+eq(labels(ST.suggest('scene', 'EXT. ENGINEERING COLLEGE - Q', ix)), ['ENGINEERING COLLEGE - QUAD'], 'scene: a location with a dash in it still matches');
+ok(ST.suggest('scene', 'INT. POLICE STATION - DAY', ix).exact, 'scene: a complete time is exact (no pre-selection)');
+eq(labels(ST.suggest('character', 'ma', ix, 'g')), ['MARAN'], 'cue: names by prefix, own cue excluded');
+eq(labels(ST.suggest('character', 'ma', ix, 'zz')), ['MARAN'], 'cue: "MA" itself never offered (it is not longer than typed)');
+eq(labels(ST.suggest('character', '', ix)), [], 'cue: nothing on empty');
+const names = ix.ranked('name');
+eq(names[0], 'MARAN', 'cue: most frequent first');
+ok(ST.suggest('character', 'MARAN', ix).exact, 'cue: a known name typed in full is exact, so Return goes to dialogue');
+eq(labels(ST.suggest('character', 'MARAN ', ix)).slice(-4), ['(V.O.)', '(O.S.)', '(O.C.)', "(CONT'D)"], 'cue: extensions after a known name');
+eq(ST.suggest('character', 'MARAN (o', ix).items.map((i) => i.value), ['MARAN (O.S.)', 'MARAN (O.C.)'], 'cue: extension by prefix');
+eq(labels(ST.suggest('transition', 'c', ix)), ['CUT TO:'], 'transition: CUT TO:');
+eq(labels(ST.suggest('transition', 'f', ix)), ['FADE OUT.', 'FADE IN:'], 'transition: FADE');
+eq(labels(ST.suggest('action', 'MA', ix)), [], 'action: no suggestions');
+// incremental: an edit moves one contribution, a deletion needs invalidate()
+els[1].text = 'MARANAN'; ix.noteEdit(els[1]);
+eq(ix.ranked('name').includes('MARANAN'), true, 'noteEdit adds the new name');
+eq(ix.ranked('name').filter((n) => n === 'MARAN').length, 1, 'and keeps MARAN while another cue has it');
+// cost on the 2,361-element sample
+const sample = (await import('../src/data/sample.dragon.script.json')).default.elements.map((e, i) => ({ id: 's' + i, ...e }));
+const big = ST.createIndex();
+let t0 = performance.now();
+big.ensure(sample);
+const build = performance.now() - t0;
+t0 = performance.now();
+for (let i = 0; i < 200; i++) ST.suggest('character', 'ra', big, 's1');
+const per = (performance.now() - t0) / 200;
+ok(build < 50, 'index build on the sample ' + build.toFixed(1) + 'ms');
+ok(per < 5, 'one suggestion on the sample ' + per.toFixed(2) + 'ms');
+console.log(`  smarttype on the sample: build ${build.toFixed(1)}ms, a suggestion ${per.toFixed(2)}ms`);
+
 console.log(`test:keys — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

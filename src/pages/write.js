@@ -51,8 +51,15 @@ import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
 import * as Scriptgen from '../lib/scriptgen.js';
+/* Phase 2 of docs/SCREENPLAY-WRITER-PLAN.md: the keyboard (presets,
+   Return/Tab flow), SmartType, the navigator and the shortcut sheets.
+   The decisions are in write-keys.js; this page only carries them out. */
+import Keys from '../lib/write-keys.js';
+import { createSmartType } from '../ui/smarttype.js';
+import WriteKeys from '../ui/write-shortcuts.js';
+import '../styles/smarttype.css';
 import Script, {
-  ELEMENT_TYPES, DOC_KINDS, NEXT_TYPE,
+  ELEMENT_TYPES, ELEMENT_TYPE_IDS, DOC_KINDS,
   revisionColour, typeLabel,
   blankElement, blankDocument,
   pageCount, formatPages, formatRuntime, wordCount, totalLines
@@ -174,6 +181,21 @@ const app = document.getElementById('app');
    stored: it is not the user's work, and a second copy of "where I
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
+
+/* ---- the keyboard (Phase 2) ---------------------------------
+   Prefs are READ once here and written only when the writer changes
+   one in the keyboard panel — never on render, never on idle. */
+let keyPrefs = Keys.loadWritePrefs();
+const knownTypes = () => ELEMENT_TYPE_IDS;
+WriteKeys.configure({
+  get known() { return knownTypes(); },
+  getPrefs: () => keyPrefs,
+  setPrefs: (patch) => { keyPrefs = Keys.saveWritePrefs(patch); return keyPrefs; }
+});
+const smart = createSmartType({
+  getElements: () => doc.elements,
+  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null
+});
 let openDocId = null;
 
 /* Import view state. `importPlan` is what a file parsed to and what
@@ -485,6 +507,7 @@ function renderScreenplay() {
     ])
   ]));
 
+  section.append(WriteKeys.keysPanel());
   if (importOpen) section.append(renderImport());
 
   if (!doc.elements.length) {
@@ -1634,6 +1657,7 @@ function render(focus) {
     renderRevisions(), renderDocuments());
   app.replaceChildren(main);
   countNodes = null;
+  smart.invalidate();
   autosizeAll();
   requestAnimationFrame(autosizeAll);   // again once layout has settled
 
@@ -1920,7 +1944,7 @@ function removeElement(i, neighbourOf) {
 delegate(document, 'click', '[data-action="el-first"]', () => addElement(null, 'scene'));
 delegate(document, 'click', '[data-action="el-add"]', () => {
   const last = doc.elements[doc.elements.length - 1];
-  addElement(null, last ? (NEXT_TYPE[last.type] || 'action') : 'scene');
+  addElement(null, last ? Keys.returnNext(last.type, keyPrefs, knownTypes()) : 'scene');
 });
 
 delegate(document, 'click', '[data-action="el-up"]', (e, btn) => moveElement(idOf(btn, 'el'), -1));
@@ -1968,38 +1992,167 @@ delegate(document, 'input', '.wr-text[data-el-field="text"]', (e, ta) => {
   autosize(ta);
   refreshCounters();
   persist();
+  smart.noteEdit(doc.elements[i]);
+  smart.update(ta);
 });
+delegate(document, 'focusout', '.wr-text[data-el-field="text"]', () => smart.close());
 
 /* A type change moves the element across the page, so the row's class
    changes — but re-rendering the whole section would cost the focus the
    user still has on the select. Swap the class in place instead. */
 delegate(document, 'change', 'select[data-el-field="type"]', (e, sel) => {
   const row = sel.closest('[data-el]');
-  const i = indexOfEl(row?.dataset.el);
-  if (i < 0) return;
-  doc.elements[i].type = sel.value;
-  row.className = 'wr-el t-' + sel.value;
-  const ta = row.querySelector('.wr-text');
-  if (ta) {
-    ta.placeholder = PLACEHOLDER[sel.value] || '';
-    ta.setAttribute('aria-label', typeLabel(sel.value) + ', element ' + (i + 1));
-    autosize(ta);
-  }
-  refreshCounters();
-  persistNow();
+  setElementType(indexOfEl(row?.dataset.el), sel.value);
 });
 
-/* Return makes the next element, in the type that usually follows —
-   the mapping a screenwriter's hands already know. Shift+Return is a
-   line break inside the element, which action blocks need. */
+/** Change element i's type in place: the model, the row's class, the
+    select, the placeholder and the label. One path for the select,
+    Alt/Ctrl+number, Tab, Shift+Tab and Return on an empty line. */
+function setElementType(i, type) {
+  if (i < 0 || !doc.elements[i]) return;
+  const row = rowOf(doc.elements[i].id);
+  doc.elements[i].type = type;
+  if (row) {
+    // Swap only the t-* class, so a class another feature put on the
+    // row (has-ai, a dual mark) survives a type change.
+    row.classList.forEach((c) => { if (c.startsWith('t-')) row.classList.remove(c); });
+    row.classList.add('t-' + type);
+    const sel = row.querySelector('select[data-el-field="type"]');
+    if (sel && sel.value !== type) sel.value = type;
+    const ta = row.querySelector('.wr-text');
+    if (ta) {
+      ta.placeholder = PLACEHOLDER[type] || '';
+      ta.setAttribute('aria-label', typeLabel(type) + ', element ' + (i + 1));
+      autosize(ta);
+    }
+  }
+  smart.invalidate();
+  refreshCounters();
+  persistNow();
+}
+
+/* THE KEYBOARD. One handler, in this order:
+     1. SmartType's list, when it is open, owns ↑ ↓ Return Tab Esc —
+        and a Return that accepts a suggestion stops here, so it never
+        also makes a new element.
+     2. write-keys.js says what the key means for this element:
+        Return makes the next element in the type that usually follows
+        (or, on an EMPTY line, cycles its type in place); Tab and
+        Shift+Tab walk Character → Parenthetical → Dialogue;
+        Alt/Option+number (and Ctrl/Cmd+number where it is free) sets
+        the type; Alt+D, Ctrl/Cmd+Shift+K and Ctrl/Cmd+Shift+S are
+        dual dialogue, a note and the navigator.
+   Shift+Return stays a line break inside the element. Return still
+   goes through addElement(), which PATCHES the rows it touches (C2) —
+   nothing here renders.
+
+   Esc then Tab leaves the screenplay: Tab is taken only where the flow
+   table has something to say, and Esc frees the next Tab, so the page
+   never becomes a keyboard trap. */
+const tabFree = new WeakSet();
 delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
-  if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.isComposing) return;
+  if (smart.handleKey(e, ta)) return;
+  if (e.key === 'Escape') { tabFree.add(ta); return; }
+  if (e.key === 'Tab' && tabFree.has(ta)) { tabFree.delete(ta); return; }
+  tabFree.delete(ta);
   const i = indexOfEl(idOf(ta, 'el'));
   if (i < 0) return;
+  const el = doc.elements[i];
+  const act = Keys.resolveKey(e, {
+    type: el.type,
+    empty: ta.value === '',
+    prefs: keyPrefs,
+    known: knownTypes(),
+    ctrlDigits: keyPrefs.ctrlDigits || WriteKeys.ctrlDigitsFree()
+  });
+  if (!act) return;
   e.preventDefault();
-  doc.elements[i].text = ta.value;         // the debounce may not have fired
-  addElement(i, NEXT_TYPE[doc.elements[i].type] || 'action');
+  el.text = ta.value;                      // the debounce may not have fired
+  smart.close();
+  switch (act.kind) {
+    case 'type':
+      if (act.type !== el.type) setElementType(i, act.type);
+      break;
+    case 'return':
+    case 'tab':
+      if (act.op === 'change') setElementType(i, act.type);
+      else addElement(i, act.type);
+      break;
+    case 'dual': toggleDual(i); break;
+    case 'note': openNote(i, ta); break;
+    case 'navigator': openNavigator(); break;
+    default: break;
+  }
 });
+
+/* Ctrl/Cmd+Shift+S from anywhere else on the page (a button, the
+   type select). Inside a line the handler above has it already. */
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return;
+  if (e.code !== 'KeyS' && String(e.key).toLowerCase() !== 's') return;
+  if (e.target && e.target.closest && e.target.closest('.wr-text, .wk-nav')) return;
+  if (!document.getElementById('wr-page')) return;
+  e.preventDefault();
+  openNavigator();
+});
+
+function openNavigator() {
+  WriteKeys.openNavigator({
+    elements: doc.elements,
+    onJump: (id) => applyFocus(elFocus(id))
+  });
+}
+
+/* DUAL DIALOGUE (Alt+D). Phase 1 adds the `dual` flag to a character
+   element and draws it in the page view. This toggles the flag on the
+   cue this speech belongs to — but only once the model carries it
+   (`dual` present in blankElement()), so until Phase 1 lands the key
+   is wired and says so instead of writing a field nothing reads. If
+   Phase 1 exports its own toggle, call it here instead. */
+function toggleDual(i) {
+  let c = i;
+  while (c >= 0 && doc.elements[c].type !== 'character') {
+    const t = doc.elements[c].type;
+    if (t !== 'dialogue' && t !== 'paren') { c = -1; break; }
+    c--;
+  }
+  if (c < 0) { say('Dual dialogue goes on a character cue — put the caret in one first.'); return; }
+  if (!('dual' in blankElement())) {
+    say('Dual dialogue arrives with the page view. The shortcut is ready for it.');
+    return;
+  }
+  const cue = doc.elements[c];
+  cue.dual = !cue.dual;
+  const row = rowOf(cue.id);
+  if (row) row.classList.toggle('is-dual', cue.dual);
+  persistNow();
+  say(cue.dual ? 'Dual dialogue on: this speech sits beside the one before it.' : 'Dual dialogue off.');
+}
+
+/* A NOTE ON THIS LINE (Ctrl/Cmd+Shift+K) — src/ui/comments.js's panel,
+   hung off the element by its id. The private note half is local and
+   always works (fms_note_script_<id>, the note family backup.js and
+   reset already sweep); the shared thread needs the cloud, and says
+   so. Loaded on first use: nothing on this page needed it before. */
+let commentsMod = null;
+async function openNote(i, ta) {
+  const el = doc.elements[i];
+  const row = ta.closest('[data-el]');
+  if (!el || !row) return;
+  try {
+    if (!commentsMod) {
+      commentsMod = await import('../ui/comments.js');
+      commentsMod.mountComments({ scope: 'script' });
+    }
+    commentsMod.togglePanel('script_' + el.id, row);
+  } catch (e) {
+    say('Notes could not be opened here. Try again in a moment.');
+  }
+}
+
+/* The `?` sheet's Write section, for the active preset. DOM only. */
+WriteKeys.publishSheet(keyPrefs);
 
 /* Backspace in an empty element deletes it and steps back, which is
    how every screenwriting app behaves and what makes the Return

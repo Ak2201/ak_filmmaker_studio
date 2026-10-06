@@ -561,6 +561,28 @@ const DEFAULT_SHORTCUTS = [
   { keys: ['/'],          label: 'Focus the search input on this page' },
   { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, settings' }
 ];
+/* A page may add its own section to the sheet — write.html prints its
+   keyboard preset there (src/ui/write-shortcuts.js). One group per
+   page; setting it again replaces it and the sheet is rebuilt on its
+   next opening. Labels are escaped: they are built from data. */
+let PAGE_SHORTCUTS = null;
+const escSheet = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+StudioUI.setPageShortcuts = function (group) {
+  PAGE_SHORTCUTS = group && Array.isArray(group.rows) ? group : null;
+  const old = document.getElementById('shortcutSheet');
+  if (old) {
+    const wasOpen = old.classList.contains('show');
+    old.remove();
+    if (wasOpen) openShortcutSheet();
+  }
+};
+function pageShortcutsHTML() {
+  if (!PAGE_SHORTCUTS) return '';
+  return '<h4 class="shortcut-sheet-page">' + escSheet(PAGE_SHORTCUTS.title || 'This page') + '</h4>' +
+    '<table>' + PAGE_SHORTCUTS.rows.map((s) =>
+      '<tr><td>' + s.keys.map((k) => '<kbd>' + escSheet(k) + '</kbd>').join(' ') + '</td><td>' + escSheet(s.label) + '</td></tr>'
+    ).join('') + '</table>';
+}
 function ensureShortcutSheet() {
   if (document.getElementById('shortcutSheet')) return;
   const overlay = document.createElement('div');
@@ -580,7 +602,7 @@ function ensureShortcutSheet() {
         const keys = s.keys.map(k => '<kbd>' + k + '</kbd>').join(' ');
         return '<tr><td>' + keys + '</td><td>' + s.label + '</td></tr>';
       }).join('') +
-    '</table>';
+    '</table>' + pageShortcutsHTML();
   overlay.appendChild(sheet);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeShortcutSheet();
@@ -617,7 +639,9 @@ document.addEventListener('keydown', (e) => {
      you are typing in a scene synopsis. e.key is lower-cased by the
      browser under Meta on some layouts and not others, hence the
      toLowerCase rather than a comparison to 'k'. */
-  if ((e.metaKey || e.ctrlKey) && !e.altKey && String(e.key).toLowerCase() === 'k') {
+  /* Not with Shift: Ctrl/Cmd+Shift+K is write.html's "note on this
+     line", and the palette never claimed it. */
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && String(e.key).toLowerCase() === 'k') {
     e.preventDefault();
     togglePalette();
     return;

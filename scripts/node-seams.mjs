@@ -6,7 +6,9 @@
      - src/lib/store.js, which patches Storage.prototype for the
        browser, becomes an empty module;
      - a `.json` import is served as an ES module, the way Vite
-       serves it.
+       serves it;
+     - a `.css` import is an empty module (test:keys loads
+       src/ui/smarttype.js, whose pure half needs no stylesheet).
    localStorage becomes an in-memory Map, exported as `mem` so a test
    can inspect or corrupt what was written.
    ============================================================ */
@@ -15,6 +17,9 @@ import { register } from 'node:module';
 register('data:text/javascript,' + encodeURIComponent(`
   export async function resolve(spec, ctx, next) {
     if (spec.endsWith('/store.js') || spec === './store.js')
+      return { url: 'data:text/javascript,export default {}', shortCircuit: true };
+    // A stylesheet import (a UI module's own sheet) is Vite's business.
+    if (spec.endsWith('.css'))
       return { url: 'data:text/javascript,export default {}', shortCircuit: true };
     return next(spec, ctx);
   }

@@ -474,14 +474,11 @@ function iconBtn(glyph, action, label, disabled, danger) {
 function renderHeader(films) {
   const seqCount = films.reduce((n, f) => n + (f.sequences || []).length, 0);
   const mineCount = (mine.sequences || []).length;
-  return h('header.bd-head', {}, [
+  /* No title and no deck: the Library's own section head above this
+     tab carries both ("Film Dissection.", and the deck that used to sit
+     here), and saying them twice in one screen read as a stutter. */
+  return h('header.bd-head.dx-head', {}, [
     h('p.bd-eyebrow', { text: 'Dissection · working backwards from a finished film' }),
-    h('h2.bd-title', { text: 'Film Dissection.' }),
-    h('p.bd-deck', {
-      text: 'The blueprints build a script forwards. This runs the other way: '
-          + 'start with a film that works, and name the job every sequence is doing. '
-          + 'Read the worked example, then fill the same fields in about yours.'
-    }),
     h('div.bd-stats', {}, [
       stat(String(films.length), films.length === 1 ? 'worked example' : 'worked examples'),
       stat(String(seqCount), 'sequences analysed'),

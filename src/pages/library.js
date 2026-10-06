@@ -290,9 +290,9 @@ const SECTIONS = [
     tocTitle: 'Film Dissection',
     tocDesc: 'A finished film taken apart, then yours',
     count: `${N_DISSECTED} WORKED ${N_DISSECTED === 1 ? 'EXAMPLE' : 'EXAMPLES'}`,
-    deck: `Working backwards from a film that works: the job every sequence is ` +
-          `doing, the motifs planted and paid, what transfers. Then the same ` +
-          `fields, for a film of your own.`,
+    deck: 'The blueprints build a script forwards. This runs the other way: ' +
+          'start with a film that works, and name the job every sequence is doing. ' +
+          'Read the worked example, then fill the same fields in about yours.',
     body: renderDissectionHost
   },
   {

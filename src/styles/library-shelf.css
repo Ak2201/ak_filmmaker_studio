@@ -8,7 +8,7 @@
 
 /* An embedded page brings its own bands and gutters, so the host
    band does not add a second set around them. */
-.lib-embed { padding-inline: 0; padding-top: 0; }
+.lib-sec > .lib-embed { padding-inline: 0; padding-top: 0; }
 
 /* The demo-film selector was sticky under the shell on study.html.
    In a tab the tab strip is what is pinned there, and two bars

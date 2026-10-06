@@ -76,7 +76,7 @@ export function attachSignInPill(host) {
     'data-auth-action': 'pill'
   }, [
     h('span.sip-dot', { 'aria-hidden': 'true' }),
-    h('span.sip-label', { text: 'SIGN IN' })
+    h('span.sip-label', { text: 'Sign in' })
   ]);
   host.appendChild(pill);
   refreshSignInPill();
@@ -107,7 +107,7 @@ export function refreshSignInPill() {
   if (c && c.isSigningIn && c.isSigningIn()) {
     pill.classList.remove('signed-in');
     pill.dataset.sync = 'busy';
-    lab.textContent = 'OPENING GOOGLE…';
+    lab.textContent = 'Opening Google…';
     pill.title = 'Waiting for Google. Your work is saved on this device.';
     pill.setAttribute('aria-label', 'Signing in with Google');
     pill.disabled = true;
@@ -119,7 +119,7 @@ export function refreshSignInPill() {
   if (!sess || !sess.user) {
     pill.classList.remove('signed-in');
     pill.dataset.sync = 'off';
-    lab.textContent = 'SIGN IN';
+    lab.textContent = 'Sign in';
     pill.title = 'Sign in to back up your projects to your account and pick them up on another device. Local-only keeps working either way.';
     pill.setAttribute('aria-label', 'Sign in to your account');
     return;
@@ -139,7 +139,7 @@ export function refreshSignInPill() {
      gate.) The address is still in the title and the menu. */
   if (g.state === 'closed') {
     pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
-    lab.textContent = g.reason === 'pending' ? 'INVITE PENDING' : 'INVITE NEEDED';
+    lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Invite needed';
   } else {
     lab.textContent = fmtEmail(email);
   }

@@ -143,7 +143,7 @@ function renderToolbar() {
     title: 'Jump to any step',
     'aria-label': 'Jump to a step'
   }, [
-    h('option', { value: '', text: 'JUMP TO…' }),
+    h('option', { value: '', text: 'Jump to…' }),
     h('option', { value: 'top', text: '↑ Cover' }),
     ...jumpOptions().map((o) => h('option', { value: o.value, text: o.label })),
     h('option', { value: 'glossary', text: '→ Glossary' })

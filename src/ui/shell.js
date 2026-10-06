@@ -74,6 +74,34 @@ function globalHere() {
   return nav.global.find((g) => g.href.toLowerCase().split('#')[0] === CURRENT) || null;
 }
 
+/** The modules this page hosts, in navigation order, with their fragment. */
+/* Two kinds of group own modules: the five stages, and an app-scope
+   entry in nav.global that carries a `modules` array of its own (the
+   Library holding Case Studies, Dissection and the Glossary). A module
+   of the second kind resolves with phase:null and global:<that entry>,
+   and the crumb reads "Studio › Library › Dissection". Tolerant of the
+   array being absent, so the file works with either navigation.json. */
+function hereModules() {
+  const out = [];
+  const add = (phase, global, list) => {
+    for (const m of list || []) {
+      if (!m || !m.href) continue;
+      const [file, frag] = m.href.split('#');
+      if (file.toLowerCase() === CURRENT) out.push({ phase, global, module: m, frag: frag || '' });
+    }
+  };
+  for (const phase of nav.phases) add(phase, null, phase.modules);
+  for (const g of nav.global) if (Array.isArray(g.modules)) add(null, g, g.modules);
+  return out;
+}
+
+/** Laid out and not inside anything hidden — a tab that is not the
+    open one, a section not rendered yet. getClientRects() is empty for
+    every display:none ancestor, which is what `hidden` resolves to. */
+function isShown(el) {
+  return !!el && el.isConnected && el.getClientRects().length > 0;
+}
+
 /**
  * Resolve the current location.
  *
@@ -81,19 +109,50 @@ function globalHere() {
  * this question about a section you have scrolled to, not about the
  * address bar.
  *
- * Order matters. An exact fragment match is the only ANSWER; the
- * other two branches are fallbacks, and they are returned with
- * exact:false so the hash/scroll tracking below knows not to
- * overwrite a real answer with a guess.
+ * SEVERAL PAGES HOST MODULES FROM TWO PHASES — contacts.html is
+ * Contacts (Pre-Production) and Call Sheets (Production); story.html,
+ * stripboard.html and reports.html each straddle two stages as well.
+ * Which of those you are in is answered in this order, and only the
+ * first two are an ANSWER (exact:true):
+ *
+ *   1. the hash names a module's fragment;
+ *   2. the hash names something INSIDE a module's section (a scene
+ *      row, a sub-heading) — that module owns it;
+ *   — an app-scope page (the hub, the library) says so before it
+ *     borrows a phase;
+ *   3. a module with no fragment is the page itself (story.html's
+ *      beats editor, feature.html's blueprint);
+ *   4. the module whose section is the first one VISIBLE on the page.
+ *      With tabs (src/ui/tabs.js) that is the open tab, which with no
+ *      hash is the first one; without tabs, the first in document
+ *      order. This is the branch that was missing: contacts.html with
+ *      no hash used to come out as "Production › Call Sheets", because
+ *      the scroll spy measured the hidden Call Sheets tab at top 0 and
+ *      took it for the section you had scrolled to;
+ *   5. the first of the page's modules in navigation order — the
+ *      answer before the page has rendered anything at all.
+ *
+ * Nothing here names a page or a module; it is all derived from
+ * navigation.json and the DOM, so a sixth two-phase page needs no edit.
  */
 function resolveLocation(hash = location.hash) {
-  for (const phase of nav.phases) {
-    for (const m of phase.modules) {
-      if (!m.href) continue;
-      const [file, frag] = m.href.split('#');
-      if (file.toLowerCase() !== CURRENT) continue;
-      if (frag && '#' + frag !== hash) continue;
-      return { phase, module: m, global: null, exact: true };
+  const mods = hereModules();
+  const want = (hash || '').replace(/^#/, '');
+  if (want) {
+    const hit = mods.find((x) => x.frag && x.frag === want);
+    if (hit) return { phase: hit.phase, module: hit.module, global: hit.global, exact: true };
+    let el = null;
+    try { el = document.getElementById(decodeURIComponent(want)); } catch (e) { el = null; }
+    if (el) {
+      /* The innermost owning section wins, so a fragment nested in two
+         module sections resolves to the closer one. */
+      let best = null;
+      for (const x of mods) {
+        if (!x.frag) continue;
+        const sec = document.getElementById(x.frag);
+        if (sec && sec !== el && sec.contains(el) && (!best || best.sec.contains(sec))) best = { x, sec };
+      }
+      if (best) return { phase: best.x.phase, module: best.x.module, global: best.x.global, exact: true };
     }
   }
   /* A page that is an app-scope destination in its own right says so
@@ -104,13 +163,19 @@ function resolveLocation(hash = location.hash) {
   const g = globalHere();
   if (g) return { phase: null, module: null, global: g, exact: false };
 
-  for (const phase of nav.phases) {
-    for (const m of phase.modules) {
-      if (m.href && m.href.split('#')[0].toLowerCase() === CURRENT) {
-        return { phase, module: m, global: null, exact: false };
-      }
-    }
+  const whole = mods.find((x) => !x.frag);
+  if (whole) return { phase: whole.phase, module: whole.module, global: whole.global, exact: false };
+
+  const shown = mods
+    .map((x) => ({ x, el: document.getElementById(x.frag) }))
+    .filter((y) => isShown(y.el))
+    .sort((a, b) => (a.el === b.el ? 0
+      : (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)));
+  if (shown.length) {
+    const { x } = shown[0];
+    return { phase: x.phase, module: x.module, global: x.global, exact: false };
   }
+  if (mods.length) return { phase: mods[0].phase, module: mods[0].module, global: mods[0].global, exact: false };
   return { phase: null, module: null, global: null, exact: false };
 }
 
@@ -200,6 +265,13 @@ function renderCrumb(crumb, loc) {
         'data-phase': loc.phase.id,
         'aria-haspopup': 'true',
         title: loc.phase.blurb
+      }));
+    } else if (loc.global && loc.module && loc.global !== home) {
+      /* A module owned by an app-scope entry (Library › Dissection):
+         the entry is the middle segment, as a link back to it. */
+      crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
+      crumb.append(crumbStep('a', '.sh-where-group', loc.global, loc.global.label, {
+        href: loc.global.href, title: loc.global.purpose || ''
       }));
     }
 
@@ -387,8 +459,26 @@ function buildPlate() {
     }));
   });
   plate.append(dots);
+
+  /* DISMISSABLE, for this browser session. The plate is news, not
+     navigation, and a strip you cannot put away is a strip that
+     competes with the band under it on every page forever. Hidden,
+     not removed: its words stay in the document (the gate reads
+     innerHTML), and the next session shows it again so a new item is
+     not missed for good. sessionStorage rather than localStorage —
+     a per-viewer convenience, not part of the storage contract, and
+     never written unless somebody clicks. */
+  plate.append(h('button.sh-plate-close', {
+    type: 'button',
+    'data-action': 'plate-dismiss',
+    'aria-label': 'Hide announcements',
+    title: 'Hide announcements for this session',
+    text: '×'
+  }));
+  try { if (sessionStorage.getItem(PLATE_KEY) === '1') plate.hidden = true; } catch (e) { /* storage blocked: show it */ }
   return plate;
 }
+const PLATE_KEY = 'fms_plate_hidden';
 
 /** Show one announcement. Index is clamped, so a stale dot cannot blank the plate. */
 function showPlate(i) {
@@ -569,12 +659,34 @@ function paintLocation(loc) {
     if (on) row.setAttribute('aria-current', 'true');
     else row.removeAttribute('aria-current');
   });
+  /* On a phone the stages are one sideways-scrolling line (chrome.css),
+     so the one you are in may start off-screen. Bring it in. Only the
+     strip's own scroll position moves — never the page's. */
+  const strip = document.querySelector('.sh-phases');
+  const on = strip && strip.querySelector('.sh-phase.is-active');
+  if (on && strip.scrollWidth > strip.clientWidth + 1) {
+    const dx = on.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollLeft += dx - 16;
+  }
   measureBar();
 }
 
 function goTo(loc) {
-  if (!loc || (current && current.module === loc.module && current.global === loc.global)) return;
+  if (!loc) return;
+  if (current && current.module === loc.module && current.global === loc.global) {
+    current = loc;   // the same place; only how sure we are of it changed
+    return;
+  }
   paintLocation(loc);
+}
+
+/* A guess is re-made whenever the page may have changed under it — on
+   some pages the sections render after the shell mounts, and the tab
+   strip opens its first tab without touching the hash. An exact answer
+   (from the hash or the spy) is never replaced by one. */
+function refreshGuess() {
+  if (current && current.exact) return;
+  goTo(resolveLocation());
 }
 
 /**
@@ -587,14 +699,14 @@ function goTo(loc) {
  */
 function fragmentTargets() {
   const seen = new Map();
-  for (const phase of nav.phases) {
-    for (const m of phase.modules) {
-      if (!m.href) continue;
-      const [file, frag] = m.href.split('#');
-      if (!frag || file.toLowerCase() !== CURRENT || seen.has(frag)) continue;
-      const el = document.getElementById(frag);
-      if (el) seen.set(frag, el);
-    }
+  for (const { frag } of hereModules()) {
+    if (!frag || seen.has(frag)) continue;
+    /* Shown ones only. A tab that is not open measures top 0, which is
+       above every line the spy draws, so it used to win every time —
+       that is how contacts.html said "Call Sheets" while the Contacts
+       tab was the one on screen. */
+    const el = document.getElementById(frag);
+    if (isShown(el)) seen.set(frag, el);
   }
   return [...seen.entries()].sort(
     (a, b) => a[1].getBoundingClientRect().top - b[1].getBoundingClientRect().top
@@ -622,7 +734,7 @@ function fragmentTargets() {
  */
 function spyFragment() {
   const targets = fragmentTargets();
-  if (targets.length < 2) return null;
+  if (targets.length < 2) return undefined;
   const vh = window.innerHeight;
   const de = document.documentElement;
   let best = null;
@@ -631,21 +743,43 @@ function spyFragment() {
       const r = el.getBoundingClientRect();
       if (r.top < vh && r.bottom > 0) best = frag;
     }
+    /* Several sections on screen at the foot of the page and the
+       address bar names one of them: that one. story.html#pitch
+       scrolls to the bottom, where the Idea Vault is also visible,
+       and used to be announced as the vault. */
+    const want = (location.hash || '').replace(/^#/, '');
+    const named = want && targets.find(([frag, el]) => {
+      const r = el.getBoundingClientRect();
+      return frag === want && r.top < vh && r.bottom > 0;
+    });
+    if (named) best = want;
   } else {
     const line = vh * 0.3;
     for (const [frag, el] of targets) {
       if (el.getBoundingClientRect().top <= line) best = frag;
     }
-    if (!best) best = targets[0][0];
+    /* Nothing has crossed the line yet: you are above every module
+       section, which on story.html is the beats editor itself (a
+       module with no fragment). The first version answered the first
+       section here, exactly, and story.html opened as "Screenplay ›
+       Pitch Deck" with the pitch deck 2,400px below the fold. Null
+       hands the question back to resolveLocation(). */
   }
   return best;
 }
 
 function runSpy() {
   const frag = spyFragment();
-  if (!frag) return;
+  if (frag === undefined) { refreshGuess(); return; }
+  if (frag === null) {
+    /* Above every section: the page's own answer, unless the address
+       bar names a module, which stays the answer. */
+    const loc = resolveLocation();
+    if (loc.exact || !current || current.exact !== true || current.spied) goTo(loc);
+    return;
+  }
   const loc = resolveLocation('#' + frag);
-  if (loc.exact) goTo(loc);
+  if (loc.exact) goTo(Object.assign(loc, { spied: true }));
 }
 
 /* The bar's height is measured, not assumed.
@@ -688,6 +822,7 @@ function measureBar() {
   }
   const bar = document.querySelector('.sh-bar');
   if (!bar) return;
+  layoutBand(bar);
   /* The plate is pinned ABOVE the bar, so what the page toolbar has to
      clear is the two of them together. plateH is 0 below the narrow
      breakpoint, where neither is pinned. measureChrome() needs no
@@ -703,6 +838,64 @@ function measureBar() {
      one bar, and feeds a single scroll-padding-top — see the note on
      the function itself. */
   measureChrome();
+}
+
+/* ONE ROW OR A DELIBERATE TWO. The page's control cluster either
+   shares the band's row with the crumb and the stages, or it gets a
+   full-width row of its own (`data-stacked`, styled in chrome.css) —
+   never the in-between where a few controls wrap and float. Decided
+   by MEASURING the unstacked layout, not by a breakpoint, because
+   the answer depends on which page's controls are in the band and
+   on whether the rail is open: the hub fits at 1280, a blueprint's
+   whole working toolbar does not.
+
+   It runs inside measureBar(), before the height is read, so the
+   published heights are always those of the layout that is on
+   screen. The attribute is not in the bar's MutationObserver's
+   options (childList + subtree only), so toggling it cannot feed
+   that observer. Below 1100px the band wraps by design and the
+   attribute is left off. */
+function layoutBand(bar) {
+  /* The cluster is the page's .toolbar, or on the module pages the
+     palette handle alone. */
+  const tools = bar.querySelector(':scope > .toolbar, :scope > .sh-find');
+  if (!tools) return;
+  if (isNarrow()) { bar.removeAttribute('data-stacked'); return; }
+  const was = bar.hasAttribute('data-stacked');
+  if (was) bar.removeAttribute('data-stacked');
+  const anchor = bar.querySelector('.sh-phases') || bar.querySelector('.sh-where');
+  /* The CONTENT's extent, not the zone's box: the zone is
+     `justify-content: flex-end` and `min-width: 0`, so a cluster too
+     wide for it keeps a polite box and spills its controls out of the
+     start edge, over the stages. */
+  const box = tools.getBoundingClientRect();
+  let t = box;
+  if (tools.classList.contains('toolbar')) {
+    const kids = [...tools.children].filter((k) => k.getClientRects().length
+      && getComputedStyle(k).position !== 'absolute');
+    if (kids.length) {
+      const rs = kids.map((k) => k.getBoundingClientRect());
+      t = { top: box.top, height: box.height,
+            left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)) };
+    }
+  }
+  const a = anchor ? anchor.getBoundingClientRect() : t;
+  /* Fits = the cluster starts on the stages' row AND has not wrapped
+     inside itself (one control height, with room for focus rings). */
+  const ctl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sh-ctl-h')) || 32;
+  const b = bar.getBoundingClientRect();
+  /* And it does not OVERLAP: in the grid layout an over-wide cluster
+     overflows leftwards, over the stages, which neither the scroll
+     width nor the right edge can see. */
+  const crumb = bar.querySelector('.sh-where');
+  const c = crumb ? crumb.getBoundingClientRect() : { right: a.left };
+  const fits = t.top < a.bottom && t.height <= ctl * 1.5
+    && t.right <= b.right + 1 && t.left >= a.right - 1 && c.right <= a.left + 1
+    && bar.scrollWidth <= bar.clientWidth + 1
+    /* the grid squeezes the stages' column before anything else, and
+       the pills then spill out of it rather than shrink */
+    && (!anchor || anchor.scrollWidth <= anchor.clientWidth + 1);
+  if (!fits) bar.setAttribute('data-stacked', '');
 }
 
 /* THE WHOLE PINNED BAND, for the same reason and one layer out.
@@ -763,6 +956,7 @@ function measureChrome() {
   const vh = window.innerHeight;
   const de = document.documentElement;
   let band = 0;
+  let parked = 0;
   /* A small, structural candidate set rather than a walk of the
      document: this runs on resize frames, and the hub is several
      thousand nodes. */
@@ -789,12 +983,28 @@ function measureChrome() {
        middle of the viewport, and nothing anchored to one edge
        does. */
     if (r.left > vw * 0.5 || r.right < vw * 0.5) continue;
+    /* PARKED ON THIS VERY NUMBER. The tab strip (tabs.css) is pinned
+       at `top: var(--sh-chrome-h)` — under the band — so counting it
+       as `top + height` fed its own height back into the value it
+       parks on, and every re-measure (and the bar's MutationObserver
+       makes plenty) pushed it down by another strip: measured 266px,
+       then 309, 404, 496 on pages whose band is 82px. An element whose
+       top IS the published value is under the band, not part of it;
+       it is collected separately and added to what a fragment jump has
+       to clear (--sh-cover-h), never to where things park. */
+    if (lastBand > 0 && Math.abs(top - lastBand) <= 1) { parked += Math.round(r.height); continue; }
     band = Math.max(band, Math.round(top + r.height));
+  }
+  const cover = band + parked;
+  if (cover !== lastCover) {
+    lastCover = cover;
+    de.style.setProperty('--sh-cover-h', cover + 'px');
   }
   if (band === lastBand) return;
   lastBand = band;
   de.style.setProperty('--sh-chrome-h', band + 'px');
 }
+let lastCover = -1;
 
 /* ---- open / closed ----------------------------------------- */
 
@@ -937,6 +1147,13 @@ function wire() {
   delegate(document, 'click', '[data-action="plate-go"]', (e, btn) => {
     showPlate(Number(btn.dataset.index));
   });
+  delegate(document, 'click', '[data-action="plate-dismiss"]', (e, btn) => {
+    const plate = btn.closest('.sh-plate');
+    if (!plate) return;
+    plate.hidden = true;
+    try { sessionStorage.setItem(PLATE_KEY, '1'); } catch (err) { /* ignore */ }
+    measureBar();
+  });
 
   // A planned module explains itself rather than 404ing or, worse,
   // looking clickable and doing nothing.
@@ -981,6 +1198,9 @@ function wire() {
   /* The address bar is one of the two things that move the location
      without a page load. An inexact resolution never overwrites an
      exact one: see the note above resolveLocation(). */
+  /* tabs.js dispatches one by hand when a tab is picked, so choosing
+     Call Sheets on contacts.html moves the crumb and the active pill to
+     Production, and choosing Contacts moves them back. */
   window.addEventListener('hashchange', () => {
     const loc = resolveLocation();
     if (loc.exact || !current || !current.exact) goTo(loc);
@@ -1059,6 +1279,14 @@ export function mountShell() {
      publishes --sh-chrome-h through measureChrome(). A page restored
      into a background tab would otherwise have no scroll padding
      beyond the declared default until it was looked at. */
+  /* The page's sections as tabs, where the page is one of the tabbed
+     ones (src/ui/tabs.js decides) — BEFORE the first spy pass, because
+     until the strip has hidden the other tabs every section is on
+     screen and the spy would pick one by geometry and call it exact.
+     --sh-chrome-h is published by the measureBar() just below; the
+     strip reads it as a live custom property, so the order costs it
+     nothing. */
+  installTabs();
   measureBar();
   runSpy();
   requestAnimationFrame(() => {
@@ -1095,10 +1323,19 @@ export function mountShell() {
       mraf = requestAnimationFrame(() => { mraf = 0; measureBar(); });
     }).observe(bar, { childList: true, subtree: true });
   }
-  /* The page's sections as tabs, where the page is one of the tabbed
-     ones (src/ui/tabs.js decides). After the bar, so --sh-chrome-h is
-     already published for the strip to sit under. */
-  installTabs();
+  /* A guess about which module you are in (no hash, no spy) is only as
+     good as the DOM it looked at, and the page's sections render — and
+     its tabs open and close — after this. Re-guess when #app changes.
+     Cheap, rAF-throttled, a no-op once the answer is exact, and it
+     repaints nothing unless the answer actually changed, so it cannot
+     feed itself. */
+  if (typeof MutationObserver === 'function') {
+    let graf = 0;
+    new MutationObserver(() => {
+      if (graf || (current && current.exact)) return;
+      graf = requestAnimationFrame(() => { graf = 0; refreshGuess(); });
+    }).observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  }
   return bar;
 }
 

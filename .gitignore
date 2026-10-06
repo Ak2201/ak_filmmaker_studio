@@ -13,3 +13,5 @@ dist-extension/
 # real secrets, never committed
 .env.local
 .env.*.local
+dist-b/
+dist-verify-b/

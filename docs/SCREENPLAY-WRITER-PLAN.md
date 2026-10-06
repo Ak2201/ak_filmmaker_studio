@@ -134,6 +134,15 @@ unchanged, and no key is renamed.
   allows it: the installed app window and the extension's side panel.
   This is confirmed in a real Chromium before anything else is built.
   If Ctrl/Cmd+number is catchable there, the preset uses it there.
+  **Measured (6 Oct 2026), and the premise was wrong for Chromium on
+  Linux:** with real X11 key events into a headful Chromium with two
+  tabs, Ctrl+1–8 and Alt+1–8 both reach the page first, and
+  `preventDefault` keeps the tab (Ctrl+T, a reserved key, never
+  arrives). So Alt/Option+number is the binding everywhere, by
+  `e.code`, and Ctrl/Cmd+number is on by default in the app window and
+  the side panel and an opt-in in a browser tab, where it would take
+  tab switching away while the caret is in a line. macOS Cmd+number,
+  Safari and Firefox were not measured. See `src/lib/write-keys.js`.
 - **The two presets:**
 
   | | Final Draft preset | Celtx preset |

@@ -20,6 +20,7 @@
     "test:format": "node scripts/test-format.mjs",
     "test:beats": "node scripts/test-beats.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",
+    "test:keys": "node scripts/test-keys.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

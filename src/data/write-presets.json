@@ -1,0 +1,62 @@
+{
+  "_about": "The Write page's keyboard: the two presets' number orders, the Return and Tab flow (Final Draft's defaults), and the SmartType word lists. Content, not code (CLAUDE.md rule 2) — src/lib/write-keys.js reads it, src/ui/smarttype.js and src/ui/write-shortcuts.js present it. Element type ids are the ones src/lib/script.js defines; an id this build does not know (\"shot\" before the page view landed, \"general\") is skipped or aliased, never invented.",
+  "defaultPreset": "finaldraft",
+  "presets": [
+    {
+      "id": "finaldraft",
+      "label": "Final Draft",
+      "digits": ["scene", "action", "character", "paren", "dialogue", "transition", "shot"]
+    },
+    {
+      "id": "celtx",
+      "label": "Celtx",
+      "digits": ["scene", "action", "character", "dialogue", "paren", "transition", "shot", "general"]
+    }
+  ],
+  "aliases": {
+    "general": "action"
+  },
+  "typeNames": {
+    "scene": "Scene Heading",
+    "action": "Action",
+    "character": "Character",
+    "paren": "Parenthetical",
+    "dialogue": "Dialogue",
+    "transition": "Transition",
+    "shot": "Shot",
+    "general": "General text"
+  },
+  "returnNext": {
+    "scene": "action",
+    "action": "action",
+    "character": "dialogue",
+    "paren": "dialogue",
+    "dialogue": "action",
+    "transition": "scene",
+    "shot": "action"
+  },
+  "tab": {
+    "empty": {
+      "action": "character",
+      "character": "transition"
+    },
+    "filled": {
+      "character": "paren",
+      "paren": "dialogue",
+      "dialogue": "paren"
+    }
+  },
+  "shiftTab": {
+    "character": "action",
+    "transition": "character",
+    "paren": "character",
+    "dialogue": "paren"
+  },
+  "smarttype": {
+    "intros": ["INT. ", "EXT. ", "INT./EXT. ", "EST. "],
+    "separator": " - ",
+    "times": ["DAY", "NIGHT", "CONTINUOUS", "LATER", "MORNING", "EVENING", "MOMENTS LATER"],
+    "extensions": ["(V.O.)", "(O.S.)", "(O.C.)", "(CONT'D)"],
+    "transitions": ["CUT TO:", "DISSOLVE TO:", "SMASH CUT TO:", "MATCH CUT TO:", "FADE OUT.", "FADE IN:"]
+  }
+}

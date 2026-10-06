@@ -36,16 +36,26 @@ import Store from './store.js';
 export const SCRIPT_KEY = 'fms_script_v1';
 
 /* ---- screenplay elements -----------------------------------
-   The six element types every screenwriting application has, in the
+   The element types every screenwriting application has, in the
    order the Tab key walks them. `short` is what the editor prints in
-   its narrow type column; `label` is what a screen reader says. */
+   its narrow type column; `label` is what a screen reader says.
+
+   `shot` is the seventh and it was ADDED, not slotted in: it goes
+   last so the six ids keep their positions, and a script written
+   before it existed has no shot in it and reads back exactly as it
+   was stored. A shot (CLOSE ON, ANGLE ON, POV, INSERT) is flush left
+   in capitals like a slug line, and it is NOT a scene — it opens no
+   scene, takes no scene number and cuts no slice. Every consumer that
+   asks "is this a new scene" asks `type === 'scene'`, which a shot is
+   not, so that half needed no change anywhere. */
 export const ELEMENT_TYPES = [
   { id: 'scene',      label: 'Scene Heading',  short: 'SCENE' },
   { id: 'action',     label: 'Action',         short: 'ACTION' },
   { id: 'character',  label: 'Character',      short: 'CHAR' },
   { id: 'paren',      label: 'Parenthetical',  short: 'PAREN' },
   { id: 'dialogue',   label: 'Dialogue',       short: 'DIALOG' },
-  { id: 'transition', label: 'Transition',     short: 'TRANS' }
+  { id: 'transition', label: 'Transition',     short: 'TRANS' },
+  { id: 'shot',       label: 'Shot',           short: 'SHOT' }
 ];
 export const ELEMENT_TYPE_IDS = ELEMENT_TYPES.map((t) => t.id);
 const typeById = Object.fromEntries(ELEMENT_TYPES.map((t) => [t.id, t]));
@@ -59,7 +69,8 @@ export const NEXT_TYPE = {
   character: 'dialogue',
   paren: 'dialogue',
   dialogue: 'action',
-  transition: 'scene'
+  transition: 'scene',
+  shot: 'action'
 };
 
 /* ---- the industry revision order ---------------------------
@@ -120,7 +131,139 @@ export function blankElement(patch = {}) {
   const el = { id: uid(), type: 'action', text: '', ...patch };
   if (!ELEMENT_TYPE_IDS.includes(el.type)) el.type = 'action';
   el.text = String(el.text ?? '');
+  /* `dual` means one thing — "this cue is the RIGHT-hand speech of a
+     dual-dialogue pair" — and only a character cue can carry it. Any
+     other value is dropped rather than kept as a second meaning. An
+     element that never had the field gets none, so an old script is
+     byte-identical after a load and a save. */
+  if ('dual' in el && !(el.dual === true && el.type === 'character')) delete el.dual;
   return el;
+}
+
+/* ---- dual dialogue -------------------------------------------
+   A FLAG ON THE SECOND CUE, not a new element type and not a group
+   object. Fountain marks the second speaker with a trailing `^` and
+   that is the same decision: the pair is the speech the flagged cue
+   opens (it and the parentheticals and dialogue under it) plus the
+   speech immediately above it. Nothing else is stored. Which elements
+   form the pair is DERIVED here, every time, because a stored pairing
+   would be wrong the first time a line was inserted between them.
+
+   A flag with no speech directly above it pairs with nothing and the
+   cue simply prints as an ordinary one — it is never an error, and a
+   later edit that puts a speech above it makes the pair appear. */
+const SPEECH_BODY = new Set(['paren', 'dialogue']);
+
+/** [{ left: [i0, i1], right: [j0, j1] }] — inclusive index ranges into
+    `elements`. A cue is in at most one pair; a third flagged cue in a
+    row starts no triple. */
+export function dualPairs(elements) {
+  const els = elements || [];
+  const out = [];
+  let usedTo = -1;                       // last index claimed by a pair
+  for (let j = 1; j < els.length; j++) {
+    const r = els[j];
+    if (!r || r.type !== 'character' || r.dual !== true) continue;
+    let k = j - 1;
+    while (k >= 0 && els[k] && SPEECH_BODY.has(els[k].type)) k--;
+    if (k < 0 || k <= usedTo || !els[k] || els[k].type !== 'character') continue;
+    let m = j;
+    while (m + 1 < els.length && els[m + 1] && SPEECH_BODY.has(els[m + 1].type)) m++;
+    out.push({ left: [k, j - 1], right: [j, m] });
+    usedTo = m;
+  }
+  return out;
+}
+
+/** Can the cue at `i` be made the right-hand side of a pair? Only when
+    a speech sits directly above it. The page asks before it flags. */
+export function canPairDual(elements, i) {
+  const els = elements || [];
+  if (!els[i] || els[i].type !== 'character') return false;
+  let k = i - 1;
+  while (k >= 0 && els[k] && SPEECH_BODY.has(els[k].type)) k--;
+  return k >= 0 && !!els[k] && els[k].type === 'character';
+}
+
+/* ---- character extensions and (CONT'D) ----------------------
+   (V.O.), (O.S.), (O.C.) and (CONT'D) are TEXT on the cue, as they
+   are in every screenplay file format — nothing about them is stored
+   apart from the words. What this adds is the one the writer usually
+   forgets: the same character speaking again after a stretch of
+   action inside the same scene takes (CONT'D). It is OFFERED, never
+   written: `contdOffer()` says whether a cue qualifies and the page
+   shows a one-click button. */
+export const CONTD_RE = /\(\s*CONT['’]?D\s*\)/i;
+export const EXTENSIONS = ['V.O.', 'O.S.', 'O.C.', "CONT'D"];
+
+/** A cue's speaker, without its extensions: "RAVI (V.O.) (CONT'D)" -> "RAVI". */
+export function cueSpeaker(text) {
+  return String(text ?? '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\^/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+/** True when the cue at `i` should be offered (CONT'D): the previous
+    speech in the same scene is the same speaker, and only action (or a
+    shot) stands between them. A cue that already says CONT'D, a blank
+    cue, and a speaker separated by a slug line are all false. */
+export function contdOffer(elements, i) {
+  const els = elements || [];
+  const me = els[i];
+  if (!me || me.type !== 'character' || CONTD_RE.test(me.text)) return false;
+  const who = cueSpeaker(me.text);
+  if (!who) return false;
+  let sawAction = false;
+  for (let k = i - 1; k >= 0; k--) {
+    const el = els[k];
+    if (!el) return false;
+    const t = String(el.text ?? '').trim();
+    if (el.type === 'action' || el.type === 'shot') { if (t) sawAction = true; continue; }
+    if (!t) continue;                                // a blank line is no line
+    if (el.type === 'dialogue' || el.type === 'paren') {
+      if (!sawAction) return false;                  // the same speech, not a return to it
+      for (let c = k - 1; c >= 0; c--) {
+        const cue = els[c];
+        if (!cue) return false;
+        if (cue.type === 'character') return cueSpeaker(cue.text) === who;
+        if (!SPEECH_BODY.has(cue.type)) return false;
+      }
+      return false;
+    }
+    return false;                                    // scene, transition, another cue
+  }
+  return false;
+}
+
+/** The cue with (CONT'D) added in the conventional place: after any
+    other extension, separated by one space. */
+export function withContd(text) {
+  const t = String(text ?? '').trim();
+  if (!t || CONTD_RE.test(t)) return t;
+  return t + " (CONT'D)";
+}
+
+/* ---- the title page --------------------------------------------
+   Stored INSIDE the script blob as `titlePage`, and only when there
+   is something in it. A new key would need registering in five
+   places and a schema change before it could sync; a field inside a
+   blob that already syncs needs neither. A script that has never had
+   a title page has no `titlePage` field at all, which is what keeps
+   an old blob byte-identical across a load and a save. */
+export const TITLE_FIELDS = ['title', 'credit', 'author', 'source', 'draft', 'date', 'contact'];
+
+export function normaliseTitlePage(tp) {
+  const src = tp && typeof tp === 'object' ? tp : {};
+  const out = {};
+  for (const f of TITLE_FIELDS) out[f] = String(src[f] ?? '');
+  return out;
+}
+
+export function hasTitlePage(tp) {
+  return !!tp && typeof tp === 'object' && TITLE_FIELDS.some((f) => String(tp[f] ?? '').trim());
 }
 
 export function blankDocument(patch = {}) {
@@ -149,11 +292,15 @@ export function loadScript() {
   let parsed = null;
   try { parsed = JSON.parse(raw); } catch (e) { return blankScript(); }
   if (!parsed || typeof parsed !== 'object') return blankScript();
-  return {
+  const out = {
     elements: Array.isArray(parsed.elements) ? parsed.elements.map((e) => blankElement(e)) : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions.map(normaliseRevision) : [],
     documents: Array.isArray(parsed.documents) ? parsed.documents.map((d) => blankDocument(d)) : []
   };
+  if (parsed.titlePage && typeof parsed.titlePage === 'object') {
+    out.titlePage = normaliseTitlePage(parsed.titlePage);
+  }
+  return out;
 }
 
 function normaliseRevision(rev) {
@@ -168,11 +315,14 @@ function normaliseRevision(rev) {
 
 export function saveScript(doc) {
   try {
-    localStorage.setItem(SCRIPT_KEY, JSON.stringify({
+    const blob = {
       elements: doc.elements || [],
       revisions: doc.revisions || [],
       documents: doc.documents || []
-    }));
+    };
+    // Additive, and absent unless filled in; see TITLE_FIELDS above.
+    if (hasTitlePage(doc.titlePage)) blob.titlePage = normaliseTitlePage(doc.titlePage);
+    localStorage.setItem(SCRIPT_KEY, JSON.stringify(blob));
     return true;
   } catch (e) {
     return false;
@@ -188,7 +338,11 @@ export function makeRevision(elements, name) {
     id: uid(),
     name: String(name ?? '').trim() || 'Draft',
     date: nowISO(),
-    elements: (elements || []).map((e) => ({ id: uid(), type: e.type, text: String(e.text ?? '') }))
+    elements: (elements || []).map((e) => {
+      const copy = { id: uid(), type: e.type, text: String(e.text ?? '') };
+      if (e.dual === true && e.type === 'character') copy.dual = true;
+      return copy;
+    })
   };
 }
 
@@ -197,7 +351,9 @@ export function makeRevision(elements, name) {
     a later edit look like it belonged to both. */
 export function restoreElements(rev) {
   return (rev && Array.isArray(rev.elements) ? rev.elements : [])
-    .map((e) => blankElement({ type: e.type, text: e.text }));
+    .map((e) => blankElement(e.dual === true
+      ? { type: e.type, text: e.text, dual: true }
+      : { type: e.type, text: e.text }));
 }
 
 /* ---- the page count ----------------------------------------
@@ -219,19 +375,53 @@ const LAYOUT = {
   character:  { width: 38, before: 1 },
   paren:      { width: 25, before: 0 },
   dialogue:   { width: 35, before: 0 },
-  transition: { width: 61, before: 1 }
+  transition: { width: 61, before: 1 },
+  shot:       { width: 61, before: 1 }
 };
+
+/* The two half-measure columns of a dual-dialogue block. Same
+   proportions as screenplay-export.js's DUAL table. */
+const DUAL_LAYOUT = {
+  character: { width: 22 },
+  paren:     { width: 24 },
+  dialogue:  { width: 27 }
+};
+
+const bodyLines = (text, width) => String(text ?? '').split('\n').reduce(
+  (n, line) => n + Math.max(1, Math.ceil(line.length / width)), 0);
 
 export function elementLines(el) {
   const spec = LAYOUT[el && el.type] || LAYOUT.action;
-  const text = String((el && el.text) ?? '');
-  const body = text.split('\n').reduce(
-    (n, line) => n + Math.max(1, Math.ceil(line.length / spec.width)), 0);
-  return spec.before + body;
+  return spec.before + bodyLines(el && el.text, spec.width);
+}
+
+/** A dual-dialogue block costs its blank line and its TALLER column:
+    the two speeches sit side by side, so they share their lines. */
+function dualLines(elements, pair) {
+  const col = (a, b) => {
+    let n = 0;
+    for (let i = a; i <= b; i++) {
+      const el = elements[i];
+      n += bodyLines(el.text, (DUAL_LAYOUT[el.type] || DUAL_LAYOUT.dialogue).width);
+    }
+    return n;
+  };
+  return 1 + Math.max(col(pair.left[0], pair.left[1]), col(pair.right[0], pair.right[1]));
 }
 
 export function totalLines(elements) {
-  return (elements || []).reduce((n, el) => n + elementLines(el), 0);
+  const els = elements || [];
+  // The common case — no dual dialogue anywhere — pays for one scan.
+  const pairs = els.some((e) => e && e.dual === true) ? dualPairs(els) : [];
+  if (!pairs.length) return els.reduce((n, el) => n + elementLines(el), 0);
+  const at = new Map(pairs.map((p) => [p.left[0], p]));
+  let n = 0;
+  for (let i = 0; i < els.length; i++) {
+    const p = at.get(i);
+    if (p) { n += dualLines(els, p); i = p.right[1]; continue; }
+    n += elementLines(els[i]);
+  }
+  return n;
 }
 
 /** Pages as a fractional number. 0 elements is 0 pages, not 0.1. */
@@ -298,6 +488,14 @@ function fountainBlock(type, text) {
       const up = t.toUpperCase();
       return [ENDS_IN_TO.test(up) ? up : '> ' + up];
     }
+    case 'shot':
+      /* Fountain has no shot element and no forcing character for one.
+         A shot goes out as what it looks like on the page — one line,
+         flush left, in capitals, with NO `!` — because that is the
+         shape script-import.js reads back as a shot when it opens with
+         a shot word (CLOSE ON, ANGLE ON, POV, INSERT…). A shot that
+         does not comes back as action, and keeps every word. */
+      return [t.toUpperCase().replace(/\n+/g, ' ')];
     default:
       // Action that happens to be all caps would import as a character
       // cue. `!` is the forcing character for action; it costs nothing
@@ -312,20 +510,36 @@ function fountainBlock(type, text) {
 const GLUED = new Set(['paren', 'dialogue']);
 const CUE_ISH = new Set(['character', 'paren', 'dialogue']);
 
+/** A title-page value as Fountain wants a multi-line one: the first
+    line after the key, every further line indented three spaces. */
+const fountainValue = (v) => String(v).trim().split('\n').map((l) => l.trim()).filter(Boolean).join('\n   ');
+
 export function toFountain(doc, meta = {}) {
   const head = [];
-  head.push('Title: ' + (String(meta.title || '').trim() || 'Untitled'));
-  if (meta.author) head.push('Author: ' + meta.author);
-  head.push('Draft date: ' + (meta.date || new Date().toISOString().slice(0, 10)));
+  const tp = doc && hasTitlePage(doc.titlePage) ? doc.titlePage : null;
+  head.push('Title: ' + fountainValue(String((tp && tp.title) || meta.title || '').trim() || 'Untitled'));
+  if (tp && tp.credit.trim()) head.push('Credit: ' + fountainValue(tp.credit));
+  const author = (tp && tp.author.trim()) || meta.author;
+  if (author) head.push('Author: ' + fountainValue(author));
+  if (tp && tp.source.trim()) head.push('Source: ' + fountainValue(tp.source));
+  if (tp && tp.draft.trim()) head.push('Draft: ' + fountainValue(tp.draft));
+  head.push('Draft date: ' + ((tp && tp.date.trim()) || meta.date || new Date().toISOString().slice(0, 10)));
+  if (tp && tp.contact.trim()) head.push('Contact: ' + fountainValue(tp.contact));
   if (meta.revision) head.push('Revision: ' + meta.revision);
+
+  const els = (doc && doc.elements) || [];
+  // `^` only on a cue that really is the right half of a pair.
+  const caret = new Set(dualPairs(els).map((p) => p.right[0]));
 
   const body = [];
   let prev = null;
-  for (const el of (doc && doc.elements) || []) {
+  for (let i = 0; i < els.length; i++) {
+    const el = els[i];
     const text = String(el.text ?? '').trim();
     if (!text) continue;
     const lines = fountainBlock(el.type, text);
     if (!lines.length) continue;
+    if (caret.has(i)) lines[0] += ' ^';
     const glue = GLUED.has(el.type) && CUE_ISH.has(prev);
     if (body.length && !glue) body.push('');
     body.push(...lines);
@@ -352,6 +566,78 @@ export function toFountain(doc, meta = {}) {
   return out.join('\n') + '\n';
 }
 
+/* ---- Final Draft (.fdx) export ------------------------------
+   The inverse of PARSER 3 in script-import.js, and the reason it
+   lives beside toFountain rather than in the typesetter: it is a
+   description of the elements, not of a page. Element types map one
+   to one onto Final Draft's paragraph types — that is the point of a
+   typed element list — and a dual-dialogue pair goes out the way
+   Final Draft writes one, as a single <Paragraph> holding a
+   <DualDialogue> with both speeches inside it.
+
+   A parenthetical is stored without its brackets and Final Draft
+   stores it with them, so they go on here and come off on import. */
+const FDX_TYPE_OUT = {
+  scene: 'Scene Heading', action: 'Action', character: 'Character',
+  paren: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition', shot: 'Shot'
+};
+const xmlEsc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
+}[m]));
+
+function fdxParagraph(el, pad) {
+  let text = String(el.text ?? '').trim();
+  if (el.type === 'paren' && !/^\(.*\)$/.test(text)) text = '(' + text + ')';
+  return pad + '<Paragraph Type="' + (FDX_TYPE_OUT[el.type] || 'Action') + '">'
+    + '<Text>' + xmlEsc(text) + '</Text></Paragraph>';
+}
+
+export function toFDX(doc, meta = {}) {
+  const els = (doc && doc.elements) || [];
+  const pairs = new Map(dualPairs(els).map((p) => [p.left[0], p]));
+  const out = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
+    '<FinalDraft DocumentType="Script" Template="No" Version="5">',
+    '  <Content>'
+  ];
+  for (let i = 0; i < els.length; i++) {
+    const pair = pairs.get(i);
+    if (pair) {
+      out.push('    <Paragraph>', '      <DualDialogue>');
+      for (let k = pair.left[0]; k <= pair.right[1]; k++) {
+        if (String(els[k].text ?? '').trim()) out.push(fdxParagraph(els[k], '        '));
+      }
+      out.push('      </DualDialogue>', '    </Paragraph>');
+      i = pair.right[1];
+      continue;
+    }
+    if (!String(els[i].text ?? '').trim()) continue;
+    out.push(fdxParagraph(els[i], '    '));
+  }
+  out.push('  </Content>');
+
+  /* The title page: Final Draft keeps it as its own <Content>, centred
+     lines then the contact block bottom left. Read back by the
+     importer, which takes the first line as the title. */
+  const tp = doc && hasTitlePage(doc.titlePage) ? doc.titlePage : null;
+  const title = String((tp && tp.title) || meta.title || '').trim() || 'Untitled';
+  const centred = [title.toUpperCase()];
+  if (tp) {
+    if (tp.credit.trim() || tp.author.trim()) centred.push('', tp.credit.trim() || 'Written by', '', tp.author.trim());
+    if (tp.source.trim()) centred.push('', tp.source.trim());
+  } else if (meta.author) centred.push('', 'Written by', '', String(meta.author));
+  const para = (t, align) => '      <Paragraph Alignment="' + align + '" Type="Action">'
+    + '<Text>' + xmlEsc(t) + '</Text></Paragraph>';
+  out.push('  <TitlePage>', '    <Content>');
+  centred.forEach((t) => out.push(para(t, 'Center')));
+  if (tp) {
+    for (const line of [tp.draft, tp.date].map((s) => s.trim()).filter(Boolean)) out.push(para(line, 'Right'));
+    for (const line of tp.contact.split('\n').map((s) => s.trim()).filter(Boolean)) out.push(para(line, 'Left'));
+  }
+  out.push('    </Content>', '  </TitlePage>', '</FinalDraft>');
+  return out.join('\n') + '\n';
+}
+
 /** A filename stem. Same shape as the short blueprint's `slugTitle()`. */
 export function slugify(s, fallback) {
   return String(s || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase()
@@ -373,5 +659,7 @@ export default {
   blankElement, blankDocument, blankScript, loadScript, saveScript,
   makeRevision, restoreElements,
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
-  toFountain, slugify, projectTitle
+  dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,
+  TITLE_FIELDS, normaliseTitlePage, hasTitlePage,
+  toFountain, toFDX, slugify, projectTitle
 };

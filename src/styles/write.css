@@ -664,6 +664,69 @@ body.wr-dropping .bd-empty {
     margin-left: 16ch;
     width: 28ch;
   }
+
+  /* A shot: where a slug line sits, in capitals, not bold. */
+  body.pdf-screenplay .wr-pr-shot {
+    width: 60ch;
+    text-transform: uppercase;
+    break-after: avoid;
+  }
+
+  /* Dual dialogue: the two speeches side by side in two half-measure
+     columns, the same widths src/lib/screenplay-export.js wraps them
+     at (DUAL there). The paginator has already given the block the
+     height of its taller column. */
+  body.pdf-screenplay .wr-pr-dual {
+    display: grid;
+    grid-template-columns: 31ch 29ch;
+    width: 60ch;
+    break-inside: avoid;
+  }
+  body.pdf-screenplay .wr-pr-dcol { min-width: 0; }
+  body.pdf-screenplay .wr-pr-d-character { margin-left: 6ch; width: 22ch; text-transform: uppercase; }
+  body.pdf-screenplay .wr-pr-d-paren     { margin-left: 2ch; width: 24ch; }
+  body.pdf-screenplay .wr-pr-d-dialogue  { margin-left: 0;   width: 27ch; }
+
+  /* Scene numbers in both margins (the shooting-script PDF only). The
+     sheet's gutter is 1.5in, so the left number sits in it. */
+  body.pdf-screenplay .wr-pr-numbered { position: relative; }
+  body.pdf-screenplay .wr-pr-sn { position: absolute; top: 0; font-weight: 700; }
+  body.pdf-screenplay .wr-pr-sn-l { right: calc(100% + 0.6in); }
+  body.pdf-screenplay .wr-pr-sn-r { left: calc(100% + 0.4in); }
+
+  /* The structured title page: title a third of the way down, credit
+     and writer under it, contact bottom left, draft and date bottom
+     right. One sheet, unnumbered. */
+  body.pdf-screenplay .wr-pr-tp {
+    margin-left: -0.25in;
+    width: calc(60ch + 0.5in);
+    height: 8.9in;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+    font-family: var(--f-script);
+    font-size: 12pt;
+    line-height: 1;
+    color: var(--print-ink);
+  }
+  body.pdf-screenplay .wr-pr-tp-main {
+    padding-top: 2.6in;
+    text-align: center;
+  }
+  body.pdf-screenplay .wr-pr-tp-title { display: block; font-weight: 700; }
+  body.pdf-screenplay .wr-pr-tp-main p { margin: 0; white-space: pre-wrap; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-credit { margin-top: 48pt; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-author { margin-top: 12pt; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-source { margin-top: 36pt; }
+  body.pdf-screenplay .wr-pr-tp-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1in;
+  }
+  body.pdf-screenplay .wr-pr-tp-foot p { margin: 0; white-space: pre-wrap; }
+  body.pdf-screenplay .wr-pr-tp-draft { text-align: right; }
 }
 
 /* ============================================================

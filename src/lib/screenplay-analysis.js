@@ -268,7 +268,12 @@ export function estimateSlice(slice) {
     const t = String(el.text || '');
     if (el.type === 'dialogue') dialogueWords += words(t);
     else if (el.type === 'character') speeches++;
-    else if (el.type === 'action') {
+    /* A shot is an image on screen like an action line, so it takes the
+       same rhythm. It is NOT a heading: sliceScript() above cuts only at
+       `scene`, so a shot stays inside the scene it belongs to. It is kept
+       out of the auto-tagger below, which reads capitals as cast
+       introductions and a shot is all capitals. */
+    else if (el.type === 'action' || el.type === 'shot') {
       const sentences = t.split(/(?<=[.!?…])\s+|\n+/).filter((x) => x.trim());
       for (const sn of sentences) {
         const w = words(sn);

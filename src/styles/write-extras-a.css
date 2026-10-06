@@ -1,0 +1,110 @@
+/* ============================================================
+   WRITE EXTRAS A — read as a character, and dictation
+   ------------------------------------------------------------
+   src/ui/read-as.js and src/ui/dictation.js. Tokens and --sk-*
+   variables only; nothing here names a colour.
+
+   DIMMING IS A TEXT COLOUR, NOT AN OPACITY. The AA walk measures
+   every text node, and a row at 40% opacity is a row under 4.5:1 in
+   both themes. --ink-muted is the hierarchy's floor and clears it, so
+   the page still reads as "everyone else, quieter" without becoming
+   text nobody can read — which matters for an actor following the
+   other side of a scene.
+   ============================================================ */
+
+/* ---- the bar under the gauge -------------------------------- */
+.wr-xa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  margin-block: calc(-1 * var(--s3)) var(--s5);
+  min-width: 0;
+}
+.wr-xa:empty { display: none; }
+.wr-xa-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.wr-xa-lab,
+.wr-xa-check {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-xa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  cursor: pointer;
+}
+.wr-xa-select {
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: var(--sk-border-w, 1px) solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+}
+.wr-xa-select:disabled { color: var(--ink-muted); }
+.wr-xa-count,
+.wr-xa-status {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.wr-xa-count { font-variant-numeric: tabular-nums; color: var(--ink-body); }
+.wr-xa-status[data-kind="warn"] { color: var(--ink); font-weight: 600; }
+.wr-xa-preview {
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  font-style: italic;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.wr-xa-preview[hidden] { display: none; }
+
+/* The pressed microphone. `#main` for the reason write.css gives at
+   `.wr-export .btn.is-on`: the generic `#main .btn` colour wins
+   otherwise and the label vanishes. */
+#main .wr-xa .btn.is-on {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ---- the page, read as one character ------------------------ */
+.wr-page.is-read-as .wr-el:not([data-ra]) .wr-text {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+.wr-page.is-read-as .wr-el:not([data-ra]) .wr-type {
+  color: var(--ink-muted);
+}
+.wr-page.is-read-as.ra-hl .wr-el[data-ra] .wr-text {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+.wr-page.is-read-as.ra-hl .wr-el[data-ra="cue"] .wr-text {
+  box-shadow: inset 0 calc(-1 * var(--sk-border-w, 1px)) 0 var(--accent);
+}
+.wr-page.is-read-as .wr-el[data-ra-current] .wr-text {
+  outline: var(--sk-focus-w, 2px) solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 720px) {
+  .wr-xa { gap: var(--s2); }
+  .wr-xa-group { width: 100%; }
+  .wr-xa-select { flex: 1 1 10rem; }
+}

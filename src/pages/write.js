@@ -43,6 +43,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
+import '../ui/read-as.js';   // read as a character + dictation (Phase 6), a view only
 /* The provider TABLE only — not src/lib/ai.js, which this page
    still reaches with import() at a click. The disclosure below has
    to name the host the key will actually go to, and a restated

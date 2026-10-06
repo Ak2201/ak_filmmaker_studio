@@ -357,8 +357,8 @@ function renderScreenplayEmpty() {
     h('div.bd-empty-mark', { text: '❖', 'aria-hidden': 'true' }),
     h('h2', { text: 'Start with one slug line' }),
     h('p', {
-      text: 'A screenplay is not free text — it is six kinds of line, each with its '
-          + 'own place on the page. Say which kind each line is and the format, the '
+      text: 'A screenplay is not free text — it is six kinds of line, and a shot for '
+          + 'the camera, each with its own place on the page. Say which kind each line is and the format, the '
           + 'page count and the export all take care of themselves.'
     }),
     h('div.bd-how', {}, [

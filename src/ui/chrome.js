@@ -728,15 +728,21 @@ function buildStepRail() {
                   : 'step-auto-' + Math.random().toString(36).slice(2, 7);
     }
 
-    /* Four phases now, not two volumes. Derived from the step number
-       because that is what the rail has to hand — the step data knows
-       its own phase, but buildStepRail reads the rendered DOM. */
+    /* Five PARTS, one per stage (docs/BLUEPRINT-REALIGN-PLAN.md rev 3
+       §3). The label is read off the section — src/ui/steps.js stamps
+       `data-part-label` from src/data/steps.stages.json, the same
+       lookup the step's own chip is drawn from, so the rail and the
+       chip cannot disagree. The number ranges below are only the
+       fallback for a section nobody labelled, and they were wrong for
+       the short film for as long as they were the only answer. */
     const n = parseInt(num, 10);
-    const group = isLadder ? 'INTERLUDE'
-                : n <= 12 ? 'STORY'
+    const group = step.dataset.partLabel
+                || (isLadder ? 'INTERLUDE'
+                : n <= 10 ? 'STORY'
+                : n <= 13 ? 'SCREENPLAY'
                 : n <= 24 ? 'PRE-PRODUCTION'
                 : n <= 28 ? 'PRODUCTION'
-                : 'POST-PRODUCTION';
+                : 'POST-PRODUCTION');
     if (group !== currentGroup) {
       currentGroup = group;
       groupEl = document.createElement('div');

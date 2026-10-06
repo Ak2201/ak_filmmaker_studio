@@ -54,6 +54,7 @@ import '../styles/print.css';
 import '../styles/pdf.css';
 import '../styles/steps-path.css';
 import '../styles/ai.css';
+import '../styles/steps-stages.css';
 
 /* ---- store FIRST ------------------------------------------
    store.js monkey-patches Storage.prototype at module
@@ -76,7 +77,9 @@ import { esc, h, fromHTML, delegate } from '../lib/dom.js';
    hostname is a privacy claim that goes stale. */
 import { apiHost } from '../lib/ai-providers.js';
 import {
-  renderSteps, mountStepsLang, mountStepsPath, stepIndex, stepFieldKeys
+  renderSteps, mountStepsLang, mountStepsPath, stepIndex, stepFieldKeys,
+  stageInfo, partsOf, partLabel, partHeading, stageRow, watchReadouts,
+  roman, numberWord, capitalise
 } from '../ui/steps.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
@@ -131,6 +134,48 @@ let sceneCount = 0, shotCount = 0, castCount = 0, locCount = 0;
 const ALL_STEPS = [...STEPS.vol1, ...STEPS.vol2, ...PROD.production, ...PROD.post];
 
 /* ============================================================
+   FIVE PARTS, ONE PER STAGE
+   ------------------------------------------------------------
+   docs/BLUEPRINT-REALIGN-PLAN.md, revision 3, §3. The blueprint
+   used to be four "phases" that were not the app's five stages —
+   Story › Feature Blueprint opened on "Phase 02 Pre-Production", a
+   stage inside a stage. It is five PARTS now, with every step in
+   the order and under the number it always had; only the
+   boundaries moved (11, 12 and 13 are Part II, Screenplay).
+
+   Which step is in which part is src/data/steps.stages.json, and
+   everything below — the cover stamps, the counts and their words,
+   the page order, the jump menu, the Markdown export's headings —
+   is derived from it crossed with the steps that exist. A part
+   count typed into a cover is the "24 guided steps" bug again.
+
+   The namespace is the one each step renders under: 01–24 are
+   `feature`, 25–32 `production` (their own data file). */
+const NS_OF = new Map([
+  ...[...STEPS.vol1, ...STEPS.vol2].map((s) => [s.id, 'feature']),
+  ...[...PROD.production, ...PROD.post].map((s) => [s.id, 'production'])
+]);
+const PARTS = partsOf('feature').map((p) => ({
+  ...p,
+  steps: ALL_STEPS.filter((s) => {
+    const info = stageInfo(NS_OF.get(s.id), s.id);
+    return info && info.parts.includes(p.part);
+  })
+}));
+const partOf = (n) => PARTS.find((p) => p.part === n) || { steps: [], phase: { label: '' } };
+const partWord = (n) => numberWord(partOf(n).steps.length);
+const partTag = (n) => {
+  const p = partOf(n);
+  return esc(p.phase.label.toUpperCase()) + ' · ' + p.steps.length + ' STEP' + (p.steps.length === 1 ? '' : 'S');
+};
+const MASTER_COUNTS = capitalise(numberWord(PARTS.length)) + ' parts. '
+  + capitalise(numberWord(ALL_STEPS.length)) + ' guided steps';
+/* One stamp per part, each in its own stage's hue. */
+const MASTER_STAMPS = PARTS.map((p) =>
+  `<span class="vol-stamp st-part-stamp sh-ph-${esc(p.phase.hue)}">PART ${roman(p.part)} · ${partTag(p.part)}</span>`
+).join('');
+
+/* ============================================================
    MARKUP
    ------------------------------------------------------------
    Authored content only — no user text reaches these strings,
@@ -143,18 +188,13 @@ const MASTER_COVER_HTML = `
   <div>
     <div class="master-mark">A complete guide to building a film, from idea to camera</div>
     <h1 class="master-title">The <span class="light">Filmmaker's</span><br>Blueprint.</h1>
-    <p class="master-sub">Four phases. Thirty-two guided steps. From the first "what if?" through "ROLL CAMERA" to delivery. Examples from <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
-    <div class="vol-stamps">
-      <span class="vol-stamp gold">VOL I · STORY · 12 STEPS</span>
-      <span class="vol-stamp green">PHASE 02 · PRE-PRODUCTION · 12 STEPS</span>
-      <span class="vol-stamp">PHASE 03 · PRODUCTION · 4 STEPS</span>
-      <span class="vol-stamp">PHASE 04 · POST-PRODUCTION · 4 STEPS</span>
-    </div>
+    <p class="master-sub">${MASTER_COUNTS}. From the first "what if?" through "ROLL CAMERA" to delivery. Examples from <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em>, with every concept explained in English &amp; Tanglish.</p>
+    <div class="vol-stamps">${MASTER_STAMPS}</div>
     <div class="meta-grid">
       <div class="meta-field"><label>Project title</label><input type="text" data-key="meta_title" placeholder="Untitled film"></div>
       <div class="meta-field"><label>Writer / Director</label><input type="text" data-key="meta_writer" placeholder="Your name"></div>
       <div class="meta-field"><label>Started on</label><input type="text" data-key="meta_started" placeholder="DD / MM / YYYY"></div>
-      <div class="meta-field"><label>Stage</label><input type="text" data-key="meta_stage" placeholder="Story / Pre-prod / Both"></div>
+      <div class="meta-field"><label>Stage</label><input type="text" data-key="meta_stage" placeholder="Story / Screenplay / Pre-prod…"></div>
     </div>
   </div>
   <div>
@@ -165,10 +205,10 @@ const MASTER_COVER_HTML = `
 const VOL1_COVER_HTML   = `
 <section class="vol-cover" id="vol-1">
   <div>
-    <div class="master-mark">PHASE 01</div>
-    <div class="vol-tag">STORY · 12 STEPS</div>
+    <div class="master-mark">PART I</div>
+    <div class="vol-tag">${partTag(1)}</div>
     <h2 class="vol-h">The <span class="light">Story</span><br>Blueprint.</h2>
-    <p class="sub">From a vague idea to a structured screenplay in twelve guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
+    <p class="sub">From a vague idea to a story with a spine, in ${partWord(1)} guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Working title</label><input type="text" data-key="v1_title" placeholder="Untitled film"></div>
       <div class="meta-field"><label>Genre</label>
@@ -200,10 +240,10 @@ const VOL1_COVER_HTML   = `
 `;
 const HOWTO1_HTML       = `
 <section class="how-to">
-  <h2>How to use <em>the Story phase.</em></h2>
-  <p class="deck">Twelve steps, in order. Each step builds on the one before it. Don't skip ahead — the sequence is the method.</p>
+  <h2>How to use <em>Part I.</em></h2>
+  <p class="deck">${capitalise(partWord(1))} steps, in order. Each step builds on the one before it. Don't skip ahead — the sequence is the method.</p>
   <ol>
-    <li><strong>Work in order.</strong> Step 1 is always the spark. By Step 12 you have a scene-by-scene outline ready to draft.</li>
+    <li><strong>Work in order.</strong> Step 1 is always the spark. By Step 10 every setup has its payoff, and Part II turns the story into scenes.</li>
     <li><strong>Read the example before you write.</strong> Every step shows how <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em>, and <em>Por Thozhil</em> answered the same question — first in English, then explained in Tanglish for clearer feel.</li>
     <li><strong>Answer in your own words first.</strong> Write the messy version. Polish later.</li>
     <li><strong>Tick the checks at the bottom of each step</strong> only when you genuinely believe you've nailed it.</li>
@@ -216,7 +256,7 @@ const HOWTO1_HTML       = `
   </div>
   <div class="tip-box" style="margin-top:14px; border-left-color: var(--accent);">
     <div class="label">SHORTCUTS &amp; FEATURES</div>
-    <p>Progress bar (top toolbar) tracks completion across all 24 steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> dark mode · <kbd>Ctrl+K</kbd> step jumper · <kbd>Ctrl+F</kbd> search · <kbd>Ctrl+Shift+R</kbd> reading mode. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
+    <p>Progress bar (top toolbar) tracks completion across all ${ALL_STEPS.length} steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> dark mode · <kbd>Ctrl+K</kbd> step jumper · <kbd>Ctrl+F</kbd> search · <kbd>Ctrl+Shift+R</kbd> reading mode. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
   </div>
 </section>
 `;
@@ -278,14 +318,46 @@ const INTERLUDE_HTML    = `
   <p>Your script is locked. The story has a backbone. Now: every decision — visual, sonic, logistic — must serve it. Pre-production is where the film is secretly directed.</p>
 </section>
 `;
+/* PART II — the Screenplay. New, and deliberately WITHOUT fields: every
+   cover field elsewhere is somebody's saved work under a v1_/v2_/p3_/p4_
+   key, and a new cover with new keys would be a second place to type a
+   title. Its steps (11, 12, 13) were the end of "Story" and the start
+   of "Pre-Production" before the parts matched the stages. */
+const PART2_COVER_HTML = `
+<section class="vol-cover" id="part-2">
+  <div>
+    <div class="master-mark">PART II</div>
+    <div class="vol-tag">${partTag(2)}</div>
+    <h2 class="vol-h">The <span class="light">Screenplay</span><br>Blueprint.</h2>
+    <p class="sub">From a story with a spine to a locked script, in ${partWord(2)} guided steps — the scene list, the final check before FADE IN, the draft itself, and the lock.</p>
+  </div>
+</section>
+`;
+/* THE DRAFT. The blueprint went from "Final Check, before you write
+   FADE IN" straight to "Script Lock" with no step for the writing
+   itself — because the writing does not happen here, it happens in
+   Write. This interlude says so, opens it, and reads back how far the
+   script has got. No fields; the readout is derived and stored nowhere
+   (src/ui/step-stages.js). Modelled on the Treatment Ladder above it:
+   a .ladder-step, so the step rail lists it and print keeps it. */
+const DRAFT_HTML = `
+<section class="ladder-step draft-step" id="write-the-draft">
+  <div class="ladder-intro">
+    <div class="draft-eyebrow">INTERLUDE · BETWEEN STEPS 12 AND 13</div>
+    <h2 class="draft-title">Write <em>the draft.</em></h2>
+    <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in Write — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
+    <div class="draft-acts" data-draft-slot></div>
+  </div>
+</section>
+`;
 /* Phases 03 and 04 did not exist while this was a two-volume book: the
    2023 pages stopped at the tech recce. A blueprint that ends the day
    before the shoot is a writing tool, not a filmmaking one. */
 const PHASE3_COVER_HTML = `
 <section class="vol-cover" id="phase-3">
   <div>
-    <div class="master-mark">PHASE 03</div>
-    <div class="vol-tag">PRODUCTION &middot; 4 STEPS</div>
+    <div class="master-mark">PART IV</div>
+    <div class="vol-tag">${partTag(4)}</div>
     <h2 class="vol-h">The <span class="light">Production</span><br>Blueprint.</h2>
     <p class="sub">The shoot itself — call sheets, continuity, dailies and the wrap. Checklists rather than prompts, because a shoot day is a list you work through before the light goes, not a question you sit with.</p>
     <div class="meta-grid">
@@ -300,8 +372,8 @@ const PHASE3_COVER_HTML = `
 const PHASE4_COVER_HTML = `
 <section class="vol-cover" id="phase-4">
   <div>
-    <div class="master-mark">PHASE 04</div>
-    <div class="vol-tag">POST-PRODUCTION &middot; 4 STEPS</div>
+    <div class="master-mark">PART V</div>
+    <div class="vol-tag">${partTag(5)}</div>
     <h2 class="vol-h">The <span class="light">Post-Production</span><br>Blueprint.</h2>
     <p class="sub">Assembly to delivery. Half the film is made here, and it is the half that gets budgeted last — so it is written down first.</p>
     <div class="meta-grid">
@@ -316,10 +388,10 @@ const PHASE4_COVER_HTML = `
 const VOL2_COVER_HTML   = `
 <section class="vol-cover vol-2" id="vol-2">
   <div>
-    <div class="master-mark">PHASE 02</div>
-    <div class="vol-tag">PRE-PRODUCTION · 12 STEPS</div>
+    <div class="master-mark">PART III</div>
+    <div class="vol-tag">${partTag(3)}</div>
     <h2 class="vol-h">The <span class="light">Pre-Production</span><br>Blueprint.</h2>
-    <p class="sub">From a locked script to "ROLL CAMERA" — twelve guided steps for direction, design, and the discipline of pre-production.</p>
+    <p class="sub">From a locked script to "ROLL CAMERA" — ${partWord(3)} guided steps for direction, design, and the discipline of pre-production.</p>
     <div class="meta-grid">
       <div class="meta-field"><label>Director</label><input type="text" data-key="v2_director"></div>
       <div class="meta-field"><label>Producer</label><input type="text" data-key="v2_producer"></div>
@@ -351,21 +423,21 @@ const HOWTO2_HTML       = `
 `;
 const PHASE1_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PHASE I</div>
+  <div class="label">PART III · 1</div>
   <h2>From Script to <em>Vision.</em></h2>
-  <p>Steps 13–16 — locking the script, defining directorial intent, building the visual reference library, planning shot grammar.</p>
+  <p>Steps 14–16 — defining directorial intent, building the visual reference library, planning shot grammar.</p>
 </section>
 `;
 const PHASE2_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PHASE II</div>
+  <div class="label">PART III · 2</div>
   <h2>Building the <em>World.</em></h2>
   <p>Steps 17–20 — cinematography, production design, costume, casting. The departments that build the visible film.</p>
 </section>
 `;
 const PHASE3_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PHASE III</div>
+  <div class="label">PART III · 3</div>
   <h2>The <em>Logistics &amp; Lock.</em></h2>
   <p>Steps 21–24 — locations, sound, schedule &amp; budget, and the final tech recce that closes pre-production.</p>
 </section>
@@ -439,7 +511,7 @@ const FINAL_PAGE_HTML   = `
 <section class="final-page">
   <p class="quote">"Pre-production is where you direct the film. The shoot is where you protect it."</p>
   <div class="signature">THE FILMMAKER'S BLUEPRINT · CURATED BY <span>ARUNAK</span></div>
-  <div class="vol">VOL I &amp; II · COMPLETE · END OF DOCUMENT</div>
+  <div class="vol">PARTS I–V · COMPLETE · END OF DOCUMENT</div>
 </section>
 `;
 
@@ -448,29 +520,28 @@ const FINAL_PAGE_HTML   = `
    listed all 24 steps here a second time; when a step title
    changed, the dropdown lied. */
 function jumpOptionsHTML() {
-  const group = (label, steps) =>
-    `<optgroup label="${esc(label)}">` +
-    stepIndex(steps).map((s) =>
-      `<option value="${esc(s.id)}">${esc(s.num)} · ${esc(String(s.title).replace(/\.$/, ''))}</option>`
-    ).join('') +
-    `</optgroup>`;
+  const opt = (id, text) => `<option value="${esc(id)}">${esc(text)}</option>`;
+  const stepOpt = (s) => opt(s.id, `${s.num} · ${String(s.title).replace(/\.$/, '')}`);
+  /* The two interludes are listed inside the part they sit in, after
+     the step they follow — the same place renderPage() puts them. */
+  const AFTER = { 'step-02': ['treatment-ladder', '→ Treatment Ladder'],
+                  'step-12': ['write-the-draft', '→ Write the draft'] };
+
+  const parts = PARTS.map((p) =>
+    `<optgroup label="${esc(partHeading(p.part))}">` +
+    opt(p.cover, `→ Part ${roman(p.part)} cover`) +
+    stepIndex(p.steps).map((s) => stepOpt(s) + (AFTER[s.id] ? opt(...AFTER[s.id]) : '')).join('') +
+    `</optgroup>`
+  ).join('');
 
   return `
     <optgroup label="OVERVIEW">
       <option value="top">↑ Master cover</option>
-      <option value="vol-1">→ Story cover</option>
-      <option value="treatment-ladder">→ Treatment Ladder</option>
-      <option value="vol-2">→ Pre-production cover</option>
-      <option value="phase-3">→ Production cover</option>
-      <option value="phase-4">→ Post-production cover</option>
       <option value="pitch-deck">→ Pitch Deck</option>
       <option value="sync-section">→ Sync &amp; backup</option>
       <option value="glossary">→ Glossary</option>
     </optgroup>
-    ${group('PHASE 01 · STORY', STEPS.vol1)}
-    ${group('PHASE 02 · PRE-PRODUCTION', STEPS.vol2)}
-    ${group('PHASE 03 · PRODUCTION', PROD.production)}
-    ${group('PHASE 04 · POST-PRODUCTION', PROD.post)}`;
+    ${parts}`;
 }
 
 /* The toolbar, regrouped. Twenty flat controls became five visible
@@ -490,7 +561,7 @@ function renderToolbar() {
   proj.append(h('span.spl-arrow', { text: '←' }),
               h('span#studioProjLabel.spl-label', { text: 'STUDIO' }));
 
-  const meter = h('div.progress-meter', { title: 'Overall completion across all 24 steps' });
+  const meter = h('div.progress-meter', { title: 'Overall completion across all ' + ALL_STEPS.length + ' steps' });
   const track = h('div.progress-bar');
   track.append(h('div#progressFill.progress-fill', { style: 'width:0%;' }));
   meter.append(track, h('span#progressText.progress-text', { text: '0%' }));
@@ -619,43 +690,69 @@ function renderPage(app) {
      an answer a reader meets on step 07 is an answer they meet after
      they have already given up. Everything in it derives from
      src/data/steps.priority.json crossed with the steps below. */
-  main.append(fromHTML(VOL1_COVER_HTML));
-  const vol1Cover = main.lastElementChild;
-  main.append(fromHTML(HOWTO1_HTML));
+  /* THE FIVE PARTS, in order, each opening with its cover. Every step
+     is rendered under its own namespace first and then placed by id,
+     so the order on the page is the sidecar's part order crossed with
+     the step order — and a step renumbered in the data moves with it.
 
-  // Story steps 01–02, the treatment ladder interlude, then 03–12.
-  // The ladder sits between steps 02 and 03 in the original.
-  const vol1Host = document.createElement('div');
-  renderSteps(vol1Host, STEPS.vol1, null, 'feature');
-  const vol1Sections = [...vol1Host.children];
-  main.append(vol1Sections[0], vol1Sections[1]);
-  mountStepsLang(vol1Sections[0], 'feature');
-  main.append(fromHTML(LADDER_HTML));
-  main.append(...vol1Sections.slice(2));
+     What sits between steps is placed here, by the step it follows or
+     precedes, because none of it is a step:
+       - Part I's how-to after its cover; Part III's after its cover,
+         because "the script must be locked first" is Pre-Production's
+         advice, not the Screenplay's;
+       - the Treatment Ladder between 02 and 03, where it always was;
+       - "Write the draft" between 12 and 13 (new);
+       - "The story is locked. Now the film gets made." after 13 — the
+         Script Lock is the moment it describes;
+       - Part III's three sub-dividers before 14, 17 and 21. */
+  const hosts = [
+    [STEPS.vol1, 'feature'], [STEPS.vol2, 'feature'],
+    [PROD.production, 'production'], [PROD.post, 'production']
+  ];
+  const byId = new Map();
+  for (const [steps, ns] of hosts) {
+    const host = document.createElement('div');
+    renderSteps(host, steps, null, ns);
+    for (const sec of [...host.children]) byId.set(sec.id, sec);
+  }
 
-  main.append(fromHTML(INTERLUDE_HTML));
-  main.append(fromHTML(VOL2_COVER_HTML));
-  main.append(fromHTML(HOWTO2_HTML));
+  const COVERS = {
+    'vol-1': VOL1_COVER_HTML, 'part-2': PART2_COVER_HTML, 'vol-2': VOL2_COVER_HTML,
+    'phase-3': PHASE3_COVER_HTML, 'phase-4': PHASE4_COVER_HTML
+  };
+  const AFTER_COVER = { 'vol-1': HOWTO1_HTML, 'vol-2': HOWTO2_HTML };
+  const BEFORE = { 'step-14': PHASE1_HTML, 'step-17': PHASE2_HTML, 'step-21': PHASE3_HTML };
+  const AFTER = { 'step-02': LADDER_HTML, 'step-12': DRAFT_HTML, 'step-13': INTERLUDE_HTML };
 
-  // Pre-production steps, with the three dividers at 13 / 17 / 21.
-  const vol2Host = document.createElement('div');
-  renderSteps(vol2Host, STEPS.vol2, null, 'feature');
-  const vol2Sections = [...vol2Host.children];
-  const PHASES = { 0: PHASE1_HTML, 4: PHASE2_HTML, 8: PHASE3_HTML };
-  vol2Sections.forEach((sec, i) => {
-    if (PHASES[i]) main.append(fromHTML(PHASES[i]));
-    main.append(sec);
-  });
+  let vol1Cover = null;
+  for (const part of PARTS) {
+    main.append(fromHTML(COVERS[part.cover] || ''));
+    const cover = main.lastElementChild;
+    if (part.cover === 'vol-1') vol1Cover = cover;
+    if (AFTER_COVER[part.cover]) main.append(fromHTML(AFTER_COVER[part.cover]));
+    for (const step of part.steps) {
+      const sec = byId.get(step.id);
+      if (!sec) continue;
+      if (BEFORE[step.id]) main.append(fromHTML(BEFORE[step.id]));
+      main.append(sec);
+      if (step.id === 'step-01') mountStepsLang(sec, 'feature');
+      if (AFTER[step.id]) main.append(fromHTML(AFTER[step.id]));
+    }
+  }
 
-  main.append(fromHTML(PHASE3_COVER_HTML));
-  const prodHost = document.createElement('div');
-  renderSteps(prodHost, PROD.production, null, 'production');
-  main.append(...prodHost.children);
+  /* The two interludes are part of a part: the rail groups them with
+     their neighbours rather than under a heading of their own, and the
+     draft gets the same chip, button and readout a step does. */
+  for (const id of ['treatment-ladder', 'write-the-draft']) {
+    const sec = main.querySelector('#' + id);
+    const info = sec && stageInfo('feature', id);
+    if (info) sec.setAttribute('data-part-label', partLabel(info));
+  }
+  const draftSlot = main.querySelector('[data-draft-slot]');
+  const draftRow = draftSlot && stageRow('feature', 'write-the-draft');
+  if (draftRow) draftSlot.append(draftRow);
 
-  main.append(fromHTML(PHASE4_COVER_HTML));
-  const postHost = document.createElement('div');
-  renderSteps(postHost, PROD.post, null, 'production');
-  main.append(...postHost.children);
+  relabelPartRefs(main);
 
   main.append(fromHTML(pitchSectionHTML()));
   main.append(fromHTML(syncSectionHTML()));
@@ -806,6 +903,20 @@ function dehydrateInlineHandlers(root) {
   });
 }
 
+/* "VOL II · Step 15 Lookbook". The related-step chips inside the raw
+   blocks still name the two volumes of the 2023 book, and that text is
+   in steps.feature.json, which `npm run extract` regenerates — so it is
+   corrected on the way in, from the sidecar, the way normaliseInlineHue
+   corrects inline colours. The chip's href names the step; the part
+   is looked up, never guessed from the number. */
+function relabelPartRefs(root) {
+  root.querySelectorAll('a.related-chip[href^="#step-"] .src').forEach((src) => {
+    const id = src.closest('a').getAttribute('href').slice(1);
+    const info = stageInfo(NS_OF.get(id), id);
+    if (info && info.parts.length) src.textContent = 'PART ' + roman(info.parts[0]);
+  });
+}
+
 /**
  * Step 13 opens with a "FROM VOL I" panel that updateVol1Bridge()
  * fills in. The extractor modelled it as an ordinary `why` block
@@ -817,6 +928,10 @@ function tagVol1Bridge() {
   const box = step13.querySelector('.why-this');
   if (!box) return;
   box.id = 'vol1Bridge';
+  /* The label is extracted text ("FROM VOL I — …"); the volumes are
+     parts now. Same correction-on-the-way-in as relabelPartRefs(). */
+  const lab = box.querySelector('.label');
+  if (lab) lab.textContent = lab.textContent.replace(/\bVOL I\b/, 'PART I');
   box.style.borderLeftColor = 'var(--panel-gilt)';
   box.style.display = 'none';
   const p = box.querySelector('p');
@@ -2042,11 +2157,13 @@ async function exportMarkdown() {
     return out;
   };
 
-  md += `# VOLUME I · STORY\n\n`;
-  for (const s of STEPS.vol1) md += renderStepBlock(s);
-
-  md += `\n---\n\n# VOLUME II · PRE-PRODUCTION\n\n`;
-  for (const s of STEPS.vol2) md += renderStepBlock(s);
+  /* One heading per part, in part order. This used to stop at the
+     end of Volume II, so a Markdown export silently left out steps
+     25–32 — the whole shoot and post. */
+  PARTS.forEach((p, i) => {
+    md += (i ? `\n---\n\n` : '') + `# ${partHeading(p.part)}\n\n`;
+    for (const s of p.steps) md += renderStepBlock(s);
+  });
 
   md += `\n---\n*Generated from The Filmmaker's Blueprint · Curated by Arunak*\n`;
 
@@ -3249,6 +3366,9 @@ function boot() {
   if (!app) { console.error('[feature] no #app to render into'); return; }
 
   renderPage(app);
+  /* The live lines on steps 11, 23, 25 and the draft interlude. Read
+     now and again whenever the tab is looked at; never written. */
+  watchReadouts();
 
   statusEl = document.getElementById('saveStatus');
 

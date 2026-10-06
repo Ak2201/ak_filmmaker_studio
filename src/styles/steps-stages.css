@@ -1,0 +1,131 @@
+/* ============================================================
+   STEP STAGES — the chip, "Do this in…", the live readout
+   ------------------------------------------------------------
+   src/ui/step-stages.js. One row under every step's header in both
+   blueprints, plus the feature's part stamps and the "Write the
+   draft" interlude.
+
+   THE HUE COMES FROM A CLASS. The row's chip carries
+   `.sh-ph-<phase.hue>`, which sets --hue / --hue-deep in tokens.css.
+   Text takes --hue-DEEP (theme-correct in both themes), the border
+   takes --hue: a fill is never a text colour. The fallbacks are the
+   accent pair, so a chip whose class matched nothing is still
+   legible — and still visibly the wrong colour, which is the point.
+
+   SHAPES ARE --sk-*, COLOURS ARE TOKENS (invariants 4 and 7).
+   ============================================================ */
+
+.st-stage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  margin: calc(var(--s2) * -1) 0 var(--s4);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+  min-width: 0;
+}
+
+.st-stage-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.st-stage-chip {
+  display: inline-block;
+  padding: var(--s1) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--hue-deep, var(--accent-deep));
+  border: var(--sk-card-line-w) solid var(--hue, var(--accent));
+  border-left-width: var(--sk-hue-rule-w);
+  border-radius: var(--sk-btn-radius);
+  overflow-wrap: anywhere;
+}
+/* The second stage of a step that spans two: a swatch, not a second
+   label, so the words are said once and the colours say both. */
+.st-stage-swatch {
+  display: inline-block;
+  inline-size: var(--s3);
+  block-size: var(--s3);
+  border-radius: var(--radius-pill);
+  background: var(--hue, var(--accent));
+}
+
+.st-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.st-tools-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.st-tool { white-space: normal; text-align: start; }
+
+.st-readout {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.st-readout:empty { display: none; }
+.st-readout-text {
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink-body);
+  overflow-wrap: anywhere;
+}
+.st-readout.is-empty .st-readout-text { font-weight: 400; color: var(--ink-muted); }
+
+/* ---- the feature cover's part stamps ----------------------- */
+.vol-stamp.st-part-stamp {
+  border-color: var(--hue, var(--accent));
+  color: var(--hue-deep, var(--accent-deep));
+}
+
+/* ---- the "Write the draft" interlude -----------------------
+   Shaped like the Treatment Ladder it is modelled on, but from the
+   type scale and the tokens rather than inline styles: an inline
+   colour is the one thing a stylesheet cannot correct later. */
+.draft-eyebrow {
+  margin-bottom: var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--accent-deep);
+}
+.draft-title {
+  margin-bottom: var(--s4);
+  font-family: var(--f-display);
+  font-size: var(--t-4xl);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+.draft-title em { color: var(--accent-deep); }
+.draft-deck {
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.draft-acts { margin-top: var(--s5); }
+.draft-acts .st-stage-row { margin: 0; }
+
+@media print {
+  /* Buttons to other pages mean nothing on paper; the chip and the
+     numbers do. */
+  .st-tools,
+  .st-readout .st-tool { display: none; }
+}

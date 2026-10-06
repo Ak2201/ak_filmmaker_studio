@@ -21,6 +21,10 @@ import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
 import COPY from '../data/steps.copy.json';
 import { currentLang, onLangChange, langToggle, setLang } from '../lib/lang.js';
+/* Which of the five stages a step is in, and where in the app it is
+   done. Its own module because it reads the scene, script and
+   contact models for the live readouts, and this one should not. */
+import { stageInfo, stageRow, partLabel } from './step-stages.js';
 
 /* ---- gloss ------------------------------------------------
    Tanglish was extracted out of its parent prose. Put it back
@@ -471,6 +475,16 @@ export function renderStep(step, extra, ns) {
     step.time ? h('div.step-time', { text: step.time }) : null
   ]));
 
+  /* THE STAGE ROW — the chip, "Do this in…" and a live readout, from
+     src/data/steps.stages.json (docs/BLUEPRINT-REALIGN-PLAN.md rev 3
+     §3). Directly under the header, before anything a reader skims
+     past. `data-part-label` is what the step rail groups by, so the
+     rail and the chip read one lookup and cannot disagree. */
+  const stage = stageInfo(ns, step.id);
+  if (stage) section.setAttribute('data-part-label', partLabel(stage));
+  const stageEl = stageRow(ns, step.id);
+  if (stageEl) section.append(stageEl);
+
   /* What reads this step's answers. Shown for every step that feeds
      something, spine or not — "you can do this later" and "nothing
      downstream is waiting on this" are different facts and a reader
@@ -561,7 +575,7 @@ export function stepIndex(steps) {
     num: s.num,
     vol: s.vol,
     title: s.titlePlain || s.title.replace(/<[^>]+>/g, ''),
-    label: `${s.vol ? `VOL ${s.vol === 2 ? 'II' : 'I'} · ` : ''}STEP ${s.num} — ${s.titlePlain || ''}`.trim()
+    label: `STEP ${s.num} — ${s.titlePlain || ''}`.trim()
   }));
 }
 
@@ -572,3 +586,10 @@ export function stepIndex(steps) {
    gratuitous import change is a diff nobody can read. One
    implementation, two importable homes — not two implementations. */
 export { stepKeys, stepFieldKeys } from '../lib/step-keys.js';
+
+/* The stage helpers, re-exported for the two pages so they import the
+   step machinery from one place. */
+export {
+  stageInfo, stageRow, partLabel, partsOf, partHeading, idsInPart,
+  refreshReadouts, watchReadouts, roman, numberWord, capitalise
+} from './step-stages.js';

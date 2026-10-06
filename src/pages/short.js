@@ -47,6 +47,7 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
 import '../styles/festivals.css';
+import '../styles/steps-stages.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
@@ -55,7 +56,9 @@ import { h, delegate } from '../lib/dom.js';
 import { readBlueprintFile } from '../lib/blueprint-file.js';
 import { parseNum, INR, USD } from '../lib/money.js';
 import * as Fest from '../lib/festivals.js';
-import { renderSteps, mountStepsLang } from '../ui/steps.js';
+import {
+  renderSteps, mountStepsLang, stageInfo, partLabel, watchReadouts
+} from '../ui/steps.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
@@ -133,8 +136,23 @@ function jumpOptions() {
   // that drifted from it. It derives now, so it cannot.
   return STEPS.map((s) => ({
     value: s.id,
+    group: partLabel(stageInfo('short', s.id)) || 'STEPS',
     label: `${s.num} · ${(s.titlePlain || s.title.replace(/<[^>]+>/g, '')).replace(/\.$/, '')}`
   }));
+}
+
+/* The steps grouped by the part of the film they belong to — the same
+   label the step's chip and the rail print, from steps.stages.json.
+   Consecutive steps with one label share one optgroup. */
+function jumpGroups() {
+  const groups = [];
+  for (const o of jumpOptions()) {
+    const last = groups[groups.length - 1];
+    if (last && last.label === o.group) last.items.push(o);
+    else groups.push({ label: o.group, items: [o] });
+  }
+  return groups.map((g) => h('optgroup', { label: g.label },
+    g.items.map((o) => h('option', { value: o.value, text: o.label }))));
 }
 
 function renderToolbar() {
@@ -146,7 +164,7 @@ function renderToolbar() {
   }, [
     h('option', { value: '', text: 'Jump to…' }),
     h('option', { value: 'top', text: '↑ Cover' }),
-    ...jumpOptions().map((o) => h('option', { value: o.value, text: o.label })),
+    ...jumpGroups(),
     h('option', { value: 'glossary', text: '→ Glossary' })
   ]);
 
@@ -212,8 +230,11 @@ function renderCover() {
       }),
       h('div.vol-stamps', {}, [
         h('span.vol-stamp.blue', { text: 'SHORT FILM · 11 STEPS' }),
-        h('span.vol-stamp.faded', { text: 'VOL I FEATURE · STORY' }),
-        h('span.vol-stamp.faded', { text: 'VOL II FEATURE · PRE-PROD' })
+        /* The feature's parts, faded: this blueprint walks the same five
+           stages in eleven steps. Was "VOL I FEATURE · STORY" — the
+           feature has had parts, not volumes, since the realignment. */
+        h('span.vol-stamp.faded', { text: 'FEATURE · PART I · STORY' }),
+        h('span.vol-stamp.faded', { text: 'FEATURE · PART III · PRE-PROD' })
       ]),
       h('div.meta-grid', {}, COVER_FIELDS.map((f) => h('div.meta-field', {}, [
         // The legacy <label> was not associated with its input, so every
@@ -1856,6 +1877,8 @@ function wireEvents() {
 // INIT — render, then the legacy boot order.
 // ============================================================
 render();
+// Step 09's live line — derived from the scene and contact models, never stored.
+watchReadouts();
 wireEvents();
 wireTracker();
 loadPrefs();

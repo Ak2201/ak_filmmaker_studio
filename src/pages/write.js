@@ -45,6 +45,7 @@ import '../ui/format-guide.js';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import { mountFocusMode } from '../ui/focus-mode.js';
 import { h, delegate } from '../lib/dom.js';
 import '../ui/read-as.js';   // read as a character + dictation (Phase 6), a view only
 import BeatBoard from '../ui/beat-board.js';
@@ -2774,3 +2775,4 @@ BeatBoard.wireBeatBoard({
 });
 
 render(wantsImporter ? '#wr-import-paste' : null);
+mountFocusMode(() => doc);   // Phase 4: src/ui/focus-mode.js

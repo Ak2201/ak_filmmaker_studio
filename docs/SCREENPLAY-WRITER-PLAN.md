@@ -9,8 +9,9 @@ Written 6 Oct 2026 for the owner's ask, which had six parts:
 - Final Draft and Celtx shortcut presets;
 - story beats into the screenplay.
 
-**Status: PLAN ONLY. Nothing is built.** The four decisions at the end
-come first.
+**Status: BUILT, 6 Oct 2026** — all six phases, with the recommended
+answer taken for each of the four decisions below. CLAUDE.md open item
+15 records what landed and where.
 
 ## 0. What Final Draft (13), Celtx and StudioBinder actually do
 

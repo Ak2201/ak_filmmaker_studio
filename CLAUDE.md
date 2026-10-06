@@ -1982,6 +1982,41 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       Library at 390px, and Case Studies being one long tab. Read it
       before touching any of those files; prune it when you fix one.
 
+15. **The screenplay writer (6 Oct 2026): `docs/SCREENPLAY-WRITER-PLAN.md`,
+    all six phases built.** Seven parallel agents, merged in `write.js`.
+    - **Format (Phase 1):** a `shot` element type (additive; never a
+      scene); dual dialogue as `dual: true` on the SECOND cue, pairs
+      derived by `dualPairs()`; (CONT'D) offers; `titlePage` inside the
+      script blob (no new key); a page view drawn from the PDF's own
+      `paginate()`, so screen and PDF agree by construction.
+    - **Keys (Phase 2):** `src/lib/write-keys.js` + `src/data/write-presets.json`
+      (Final Draft / Celtx), SmartType autocomplete (`src/ui/smarttype.js`),
+      the navigator, shortcut sheets. Measured on Chromium/Linux with real
+      X11 events: Ctrl+1..8 IS catchable by a page (it steals tab
+      switching), so Alt/Option+digit is the default and Ctrl/Cmd+digit is
+      opt-in in a tab, on in the installed app. Dual is Alt+D only —
+      Ctrl/Cmd+D cycles the theme on every page.
+    - **ONE type-change path:** `setElementType()` in write.js carries the
+      dual rules too; the select, every shortcut and Alt+D go through it.
+    - **Guide (Phase 3):** `src/lib/format-rules.js` + `src/data/format-rules.json`,
+      `src/ui/format-guide.js`; unknown types are neutral by design.
+    - **Focus (Phase 4):** `src/ui/focus-mode.js`; goals in a new per-project
+      key `fms_write_goals_v1` (SCOPED_KEYS, PROJECT_KEYS, ALL_KEYS; LOCAL
+      only — no cloud scope until a schema section widens the CHECK).
+    - **Beats (Phase 5):** `beatId` on scene rows (additive, framework-
+      qualified), `src/lib/beat-outline.js`, the Outline tab.
+    - **Extras (Phase 6):** read-as, dictation, the Breakdown hand-off,
+      alternate takes (`alts` on the element, active take is the text),
+      a Tanglish preview that is NEVER written into the script.
+    - **Prefs:** `fms_write_prefs_v1`, per device, in `ALL_KEYS` and
+      `GLOBAL_KEYS`, shared by guide/keys/focus with read-merge-write.
+    - **Storage fix found on the way:** a large save made while the page
+      was leaving was lost (4/4 on the sample). `store.js` copies in-flight
+      overflowed writes to localStorage on pagehide; `prove:storage` 14-15.
+    - **Enter paints in ~80-160ms on the 2,361-element sample** in this
+      container, the same before these phases; the handler is ~30ms. The
+      remaining cost is the browser laying out the inserted row.
+
 ## Things that are deliberate, not oversights
 
 - ~~`radius: 2px`. The studio is printed matter, not iOS.~~ **Corrected, not

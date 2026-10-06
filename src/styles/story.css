@@ -66,49 +66,9 @@
 
 /* ---- pacing ------------------------------------------------- */
 .st-pacing { padding-block: var(--s5); }
-.st-heat { margin: var(--s3) 0 0; }
-.st-heat-svg {
-  display: block;
-  width: 100%;
-  height: 140px;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--sk-radius, var(--radius));
-}
-.st-heat-bar { fill: var(--accent); cursor: pointer; }
-.st-heat-bar.is-est { fill: var(--accent); }
-.st-heat-bar:hover { fill: var(--accent-deep); }
-.st-heat-line { fill: none; stroke: var(--accent-deep); stroke-width: 2px; vector-effect: non-scaling-stroke; }
-.st-heat-expected { fill: none; stroke: var(--ink-muted); stroke-width: 2px; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
-.st-heat-act { stroke: var(--rule); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.st-heat-slack { fill: var(--warn-wash); }
-.st-heat-acts { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: var(--s1); }
-.st-heat-acts span { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); text-align: center; }
-.st-heat-cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
-.st-key { display: inline-flex; align-items: center; gap: var(--s1); }
-.st-key::before { content: ''; display: inline-block; width: 20px; height: 0; }
-.st-key-line::before { border-top: 2px solid var(--accent-deep); }
-.st-key-exp::before { border-top: 2px dashed var(--ink-muted); }
-.st-key-slack::before { height: 10px; background: var(--warn-wash); border: 1px solid var(--warn); }
-.st-heat-note { flex: 1 1 20rem; color: var(--ink-muted); }
-.st-heat-table { margin-top: var(--s2); font-size: var(--t-small); }
-.st-heat-table summary { cursor: pointer; color: var(--accent-deep); }
-.st-table-wrap { overflow-x: auto; max-width: 100%; }
-.st-heat-table table { border-collapse: collapse; margin-top: var(--s2); }
-.st-heat-table th, .st-heat-table td { padding: var(--s1) var(--s3); border-bottom: 1px solid var(--rule-hair); text-align: left; color: var(--ink-body); }
-
-.st-flags { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; gap: var(--s2); }
-.st-flag {
-  padding: var(--s2) var(--s3);
-  border-left: 3px solid var(--rule);
-  background: var(--paper-raised);
-  border-radius: var(--sk-radius, var(--radius));
-  color: var(--ink-body);
-}
-.st-flag.is-warn { border-left-color: var(--warn); background: var(--warn-wash); color: var(--ink); }
-.st-flag-go { all: unset; cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
-.st-flag-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.st-flags-ok, .st-muted { color: var(--ink-muted); font-size: var(--t-small); }
+/* The curve and its flags: src/styles/story-heat.css, shared with the
+   blueprints' Part I panel (src/ui/story-kit.js). */
+.st-muted { color: var(--ink-muted); font-size: var(--t-small); }
 
 /* ---- the two panes ------------------------------------------ */
 .st-panes {

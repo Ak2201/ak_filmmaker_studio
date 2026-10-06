@@ -50,18 +50,19 @@ import Scenes from '../lib/scenes.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import sample from '../data/sample.dragon.json';
 import Pitch from '../lib/pitch-deck.js';
+/* The import, the sample, the exports, the blueprint's beat fields and
+   the curve are shared with the blueprints' Part I panels, so they live
+   in src/lib/story-io.js and src/ui/story-kit.js and this page uses
+   them from there — one copy each. */
+import IO from '../lib/story-io.js';
+import { renderHeat as kitHeat, renderFlags as kitFlags, importSynopsis } from '../ui/story-kit.js';
 
 const app = document.getElementById('app');
 
-/* The feature blueprint's storage key, READ ONLY here: the path offers
-   its step 01/02 answers for the idea and the logline, and shows its
-   step 08 answers beside the Save the Cat! beats. pitch-deck.js reads
-   the same key the same way. */
-const FEATURE_KEY = 'fms_filmmaker_combined_v1';
-/* Step 08's fifteen fields, b01..b15, are the fifteen Save the Cat!
-   beats in order — the table's rows say so. */
-const STC_BP = ['opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', 'break_into_two', 'b_story',
-  'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night', 'break_into_three', 'finale', 'final_image'];
+/* The feature blueprint, READ ONLY here (src/lib/story-io.js): the path
+   offers its step 01/02 answers for the idea and the logline, and shows
+   its step 08 answers beside the Save the Cat! beats — through
+   IO.blueprintBeatText(), the one table of which field holds which beat. */
 
 let mode = null;          // 'edit' | 'tag' — null means "decide from the data"
 let litBeat = '';         // the beat card whose passages are illuminated
@@ -87,13 +88,10 @@ const TABS = [
 const story = () => Story.loadStory();
 const pct = (x) => Math.round(x * 100) + '%';
 const scenes = () => { try { return Scenes.listScenes(); } catch (e) { return []; } };
-const isEmpty = (s) => !s.source.trim() && !s.marks.length && !s.outline.length && !s.idea.trim() && !s.logline.trim();
+const isEmpty = IO.isEmptyStory;
 const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
 const suggestedFw = () => (projectFormat() === 'short' ? 'short_five' : 'save_the_cat');
-function blueprint() {
-  try { const v = JSON.parse(localStorage.getItem(FEATURE_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; }
-  catch (e) { return {}; }
-}
+const blueprint = () => IO.readBlueprint('feature');
 const bpText = (v) => (typeof v === 'string' ? v.trim() : '');
 const bpIdea = () => bpText(blueprint().s1_whatif);
 const bpLogline = () => { const b = blueprint(); return bpText(b.s2_log_final) || bpText(b.s2_log2) || bpText(b.s2_log1); };
@@ -300,7 +298,7 @@ function renderOutline(s) {
     li.append(head);
     li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
     if (bp) {
-      const v = bpText(bp['b' + String(STC_BP.indexOf(r.beat.id) + 1).padStart(2, '0')]);
+      const v = IO.blueprintBeatText('feature', r.beat.id, bp);
       if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your blueprint, step 08: ' }), '“' + v + '”']));
     }
     if (r.steps.length) {
@@ -435,99 +433,12 @@ function renderScreenplay(s) {
   return sec;
 }
 
-/* ---- the heatmap (FR-505) ------------------------------------- */
+/* ---- the heatmap (FR-505) -------------------------------------
+   Drawn by src/ui/story-kit.js, which the blueprints' Part I shares;
+   here it is interactive — a bar or a flag jumps into the synopsis. */
 
-function renderHeat(s) {
-  const heat = Story.heatmap(s);
-  const fig = h('figure.st-heat');
-  if (!heat.length) return null;
-  const regions = Story.regionsOf(s.framework);
-  const W = 1000, H = 140, pad = 6, n = heat.length, bw = W / n;
-  const y = (t) => H - pad - ((t - 1) / 9) * (H - pad * 2);
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.setAttribute('class', 'st-heat-svg');
-  svg.setAttribute('role', 'img');
-  const flags = Story.pacingFlags(s).filter((f) => f.kind === 'slack');
-  svg.setAttribute('aria-label',
-    `Tension across the story in ${n} slices, from ${Math.round(Math.min(...heat.map((w) => w.tension)))} to ` +
-    `${Math.round(Math.max(...heat.map((w) => w.tension)))} out of 10. ` +
-    (flags.length ? `${flags.length} slack stretch${flags.length === 1 ? '' : 'es'} flagged.` : 'No slack stretch flagged.'));
-  const el = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
-  // Act dividers, recessive.
-  for (const r of regions.slice(1)) {
-    svg.append(el('line', { x1: r.from * W, x2: r.from * W, y1: 0, y2: H, class: 'st-heat-act' }));
-  }
-  // Slack stretches, behind the bars.
-  for (const f of flags) {
-    const a = heat.find((w) => w.from >= f.from) || heat[0];
-    const b = [...heat].reverse().find((w) => w.to <= f.to) || heat[n - 1];
-    svg.append(el('rect', { x: a.i * bw, y: 0, width: (b.i - a.i + 1) * bw, height: H, class: 'st-heat-slack' }));
-  }
-  // One bar per slice: one hue, magnitude as opacity. A 2px gap
-  // between bars, and a hover title on each.
-  heat.forEach((w) => {
-    const r = el('rect', {
-      x: w.i * bw + 1, width: Math.max(1, bw - 2), y: y(w.tension), height: H - pad - y(w.tension),
-      rx: 2, class: 'st-heat-bar' + (w.estimated ? ' is-est' : ''),
-      'fill-opacity': (0.25 + (w.tension / 10) * 0.75).toFixed(2), 'data-st': 'heat', 'data-from': w.from
-    });
-    const t = el('title', {});
-    t.textContent = `${pct(w.pos)} — tension ${w.tension.toFixed(1)}` +
-      (w.beat ? ` (${w.beat.label})` : ' (estimated from the text)') + `, convention ${w.expected.toFixed(1)}`;
-    r.append(t);
-    svg.append(r);
-  });
-  const line = (pts, cls) => svg.append(el('polyline', { points: pts.map(([x, v]) => `${x},${y(v)}`).join(' '), class: cls }));
-  line(heat.map((w) => [(w.i + 0.5) * bw, w.expected]), 'st-heat-expected');
-  line(heat.map((w) => [(w.i + 0.5) * bw, w.tension]), 'st-heat-line');
-  fig.append(svg);
-  const acts = h('div.st-heat-acts', { 'aria-hidden': 'true' });
-  // The act strip takes the framework's own split, so a two-half or a
-  // five-act format labels its own acts under the curve.
-  acts.style.gridTemplateColumns = regions.map((r) => Math.max(0.01, r.to - r.from) + 'fr').join(' ');
-  regions.forEach((r) => acts.append(h('span', { text: r.label })));
-  fig.append(acts);
-  fig.append(h('figcaption.st-heat-cap', {}, [
-    h('span.st-key.st-key-line', { text: 'This story' }),
-    h('span.st-key.st-key-exp', { text: `${Story.frameworkById(s.framework).short} convention` }),
-    h('span.st-key.st-key-slack', { text: 'Slack stretch' }),
-    h('span.st-heat-note', { text: 'Tagged passages take their beat’s tension; the rest is estimated from the words and is only a prompt to look.' })
-  ]));
-  // The table view, for anybody the chart does not serve.
-  const det = h('details.st-heat-table');
-  det.append(h('summary', { text: 'Show as a table' }));
-  const tbl = h('table');
-  tbl.append(h('thead', {}, [h('tr', {}, ['Where', 'Tension', 'Convention', 'Source'].map((c) => h('th', { scope: 'col', text: c })))]));
-  const tb = h('tbody');
-  heat.forEach((w) => tb.append(h('tr', {}, [
-    h('td', { text: pct(w.pos) }), h('td', { text: w.tension.toFixed(1) }), h('td', { text: w.expected.toFixed(1) }),
-    h('td', { text: w.beat ? w.beat.label : 'estimated' })])));
-  tbl.append(tb);
-  det.append(h('div.st-table-wrap', {}, [tbl]));
-  fig.append(det);
-  return fig;
-}
-
-function renderFlags(s) {
-  const flags = Story.pacingFlags(s);
-  if (!flags.length) {
-    return h('p.st-flags-ok', { text: s.marks.length
-      ? 'No pacing flags for this framework.'
-      : 'Tag a few passages and the pacing notes appear here.' });
-  }
-  const ul = h('ul.st-flags', { 'aria-label': 'Pacing notes' });
-  flags.forEach((f) => {
-    const li = h('li.st-flag.is-' + f.level);
-    if (Number.isFinite(f.from)) {
-      li.append(h('button.st-flag-go', { type: 'button', 'data-st': 'goto', 'data-from': f.from, 'data-to': f.to, text: f.text }));
-    } else li.append(h('span', { text: f.text }));
-    ul.append(li);
-  });
-  return ul;
-}
+const renderHeat = (s) => kitHeat(s, { interactive: true });
+const renderFlags = (s) => kitFlags(s, { interactive: true });
 
 /* ---- the two panes (FR-502) ----------------------------------- */
 
@@ -842,8 +753,8 @@ function draw() {
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis file' })
     ]));
   }
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-txt', disabled: !s.source.trim(), text: 'SYNOPSIS .TXT' }));
-  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-md', disabled: !s.outline.length && !s.marks.length && !s.logline.trim(), text: 'OUTLINE .MD' }));
+  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-txt', disabled: !IO.canExportSynopsis(s), text: 'SYNOPSIS .TXT' }));
+  bar.append(h('button.btn', { type: 'button', 'data-st': 'export-md', disabled: !IO.canExportOutline(s), text: 'OUTLINE .MD' }));
   if (s.source.trim() || s.marks.length) {
     bar.append(h('button.btn.danger', { type: 'button', 'data-st': 'clear', text: 'START OVER' }));
   }
@@ -914,79 +825,27 @@ function updateWhere() {
 
 /* ---- export --------------------------------------------------- */
 
-function slug() {
-  let t = '';
-  try { const p = Store.currentProject && Store.currentProject(); t = (p && p.title) || ''; } catch (e) { t = ''; }
-  return (t || 'story').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'story';
-}
-function download(name, text, type) {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = h('a', { href: url, download: name });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+/* src/lib/story-io.js: the same downloads the blueprints offer. */
 
 /* ---- import --------------------------------------------------- */
 
-/* A PDF comes back laid out as on the page: hard line breaks at the
-   margin and indentation. A synopsis is prose, so rejoin wrapped lines
-   into paragraphs and keep blank lines as paragraph breaks. */
-const reflow = (t) => t.split(/\n\s*\n/).map((p) => p.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')).filter(Boolean).join('\n\n');
-
+/* Reading the file, the replace confirm and the write are
+   importSynopsis() in src/ui/story-kit.js — the blueprints' Part I
+   cover imports through the same function. */
 async function importFile(file) {
-  if (!file) return;
-  const name = file.name || 'file';
-  const lower = name.toLowerCase();
-  let text = '';
-  try {
-    if (lower.endsWith('.docx')) {
-      const { extractDocxText } = await import('../lib/docx-text.js');
-      const res = await extractDocxText(await file.arrayBuffer());
-      if (res.fatal) throw new Error(res.fatal);
-      text = res.text;
-    } else if (lower.endsWith('.pdf') || file.type === 'application/pdf') {
-      const { extractLayoutText } = await import('../lib/pdf-text.js');
-      const res = await extractLayoutText(await file.arrayBuffer());
-      if (res.fatal) throw new Error(res.fatal);
-      text = reflow(res.text || '');
-    } else {
-      text = await file.text();
-    }
-  } catch (e) {
-    StudioUI.toast((e && e.message) || 'That file could not be read.', { type: 'error' });
-    return;
-  }
-  text = String(text || '').replace(/\r\n?/g, '\n').trim();
-  if (!text) { StudioUI.toast('That file has no text in it.', { type: 'error' }); return; }
-  const s = story();
-  if (s.source.trim() && !window.confirm(`Replace the synopsis on this page with ${name}? Highlights whose passages are not in the new text will show as detached.`)) return;
-  s.source = text;
-  s.sourceName = name;
+  const r = await importSynopsis(file);
+  if (!r) return;
   mode = 'tag';
   started = true;
   pathStep = 5;
-  commit(s);
-  StudioUI.toast(`Imported ${name} — ${text.split(/\s+/).length.toLocaleString()} words.`);
+  render();
+  StudioUI.toast(IO.importedSentence(r));
 }
 
 /* ---- the sample ----------------------------------------------- */
 
-/* The sample's story is a lazy chunk (vite.config.js), read on the
-   click. If it cannot load — offline before it was ever cached — the
-   sample blueprint's synopsis is the fallback, as it always was. */
-async function sampleStory() {
-  try {
-    const st = (await import('../data/sample.dragon.story.json')).default.story;
-    return { ...Story.blankStory(), ...JSON.parse(JSON.stringify(st)) };
-  } catch (e) {
-    const s = Story.blankStory();
-    s.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
-    s.sourceName = sample.title + ' (sample)';
-    return s;
-  }
-}
+/* The sample's story: IO.sampleStory() (src/lib/story-io.js). */
+const sampleStory = IO.sampleStory;
 
 async function useSample() {
   const cur = story();
@@ -1125,11 +984,9 @@ delegate(document, 'click', '[data-st]', (e, el) => {
   } else if (act === 'send-undo') {
     undoSend();
   } else if (act === 'export-txt') {
-    if (s.source.trim()) download(slug() + '-synopsis.txt', Story.synopsisText(s), 'text/plain;charset=utf-8');
+    IO.exportSynopsis(s);
   } else if (act === 'export-md') {
-    let title = '';
-    try { const p = Store.currentProject && Store.currentProject(); title = (p && p.title) || ''; } catch (err) { title = ''; }
-    download(slug() + '-outline.md', Story.outlineMarkdown(s, s.framework, { title }), 'text/markdown;charset=utf-8');
+    IO.exportOutline(s);
   } else if (act === 'mode') {
     mode = el.getAttribute('data-mode'); render();
   } else if (act === 'tag') {

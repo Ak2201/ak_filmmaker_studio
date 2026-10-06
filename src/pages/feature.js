@@ -104,6 +104,8 @@ import { readBlueprintFile } from '../lib/blueprint-file.js';
    (script-import.js, scriptgen.js) are reached with import() from
    inside it, after the panel is on the page. */
 import { blueprintEntry, dismissEntry } from '../ui/blueprint-entry.js';
+/* The Story page's panels in Part I (plan rev. 3 §3). */
+import { mountStoryKit } from '../ui/story-kit.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -3427,6 +3429,13 @@ function boot() {
      awaited: the page is already usable and the example is an aside. */
   mountBeatExample();
   syncBeatTableLabels();
+
+  /* The Story page's tools in Part I, in working order (plan rev. 3 §3):
+     the path on the cover, the Idea Vault in step 02, each beat's
+     outline steps beside step 08's fields, the curve and the exports
+     after step 10. After assignStepIds() for the step ids. They read
+     fms_story_v1 and write it only on a click. */
+  mountStoryKit('feature');
 
   setInterval(updateSavedAtTimer, 5000);
 

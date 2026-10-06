@@ -369,63 +369,6 @@ const PHASE3_HTML       = `
   <p>Steps 21–24 — locations, sound, schedule &amp; budget, and the final tech recce that closes pre-production.</p>
 </section>
 `;
-const SYNC_FIELDS_HTML  = `
-  <div class="sync-warning">
-    <div class="lab">⚠ READ FIRST</div>
-    <p>This is a basic implementation: last-write-wins, no real-time conflict resolution, no auth beyond Supabase's anon key. Keep your project private. Don't share the URL+key with anyone you don't fully trust. If two devices edit at the same time, the last save wins. For sensitive projects, prefer JSON export.</p>
-  </div>
-
-  <div class="sync-fields">
-    <div>
-      <label>SUPABASE PROJECT URL</label>
-      <input type="text" id="sync_url" placeholder="https://yourproject.supabase.co" autocomplete="off">
-    </div>
-    <div>
-      <label>SUPABASE ANON KEY</label>
-      <input type="password" id="sync_key" placeholder="eyJhbGc... (your anon public key)" autocomplete="off">
-    </div>
-    <div>
-      <label>PROJECT ID (your row name)</label>
-      <input type="text" id="sync_project_id" placeholder="my-tamil-thriller-2025" autocomplete="off">
-    </div>
-    <div>
-      <label>AUTO-PUSH</label>
-      <select id="sync_auto" style="width:100%;background:var(--paper-raised);border:1px solid var(--ink-muted);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);">
-        <option value="off">OFF — push manually</option>
-        <option value="on">ON — push every save</option>
-      </select>
-    </div>
-  </div>
-`;
-const SYNC_INSTR_HTML   = `
-  <div class="sync-instructions">
-    <h5>Setup steps</h5>
-    <ol>
-      <li>Go to <a href="https://supabase.com" target="_blank" style="color:var(--accent-deep);">supabase.com</a> and create a free account &amp; new project.</li>
-      <li>In the Supabase dashboard, open <em>SQL Editor</em> and run this query to create the table:
-        <pre>create table projects (
-  id text primary key,
-  data jsonb,
-  updated_at timestamptz default now()
-);
--- For an MVP setup, allow anon read/write on this table:
-alter table projects enable row level security;
-create policy "anon all" on projects for all using (true) with check (true);</pre>
-      </li>
-      <li>Open <em>Settings → API</em>. Copy your <code>Project URL</code> and <code>anon public</code> key.</li>
-      <li>Paste them above. Pick a unique <strong>project ID</strong> (e.g. <code>por-thozhil-draft-3</code>).</li>
-      <li>Click <strong>SAVE CONFIG</strong>, then <strong>TEST CONNECTION</strong>.</li>
-      <li>Use <strong>↑ PUSH NOW</strong> on your first device, then <strong>↓ PULL LATEST</strong> on your second to bring everything across.</li>
-    </ol>
-    <h5 style="margin-top: 16px;">Notes</h5>
-    <ul style="margin-left: 20px;">
-      <li>Anyone with your URL + anon key can read &amp; write. Treat them like a password.</li>
-      <li>For real production use, set up Supabase auth + tighter RLS policies.</li>
-      <li>If you make a mistake, your local browser data is preserved — you can always re-push from a known-good device.</li>
-      <li>Free tier is fine; the row is well under any usage limit.</li>
-    </ul>
-  </div>
-`;
 const GLOSSARY_HTML     = `
 <section class="glossary" id="glossary">
   <h2>The <em>Glossary.</em></h2>
@@ -520,7 +463,7 @@ function jumpOptionsHTML() {
       <option value="phase-3">→ Production cover</option>
       <option value="phase-4">→ Post-production cover</option>
       <option value="pitch-deck">→ Pitch Deck</option>
-      <option value="sync-section">→ Real-time Sync</option>
+      <option value="sync-section">→ Sync &amp; backup</option>
       <option value="glossary">→ Glossary</option>
     </optgroup>
     ${group('PHASE 01 · STORY', STEPS.vol1)}
@@ -576,7 +519,7 @@ function renderToolbar() {
   const moreMenu = actionMenu('More', [
     { label: 'Reading mode',     action: 'toggleReadingMode', hint: '⌃⇧R', title: 'Hide inputs for distraction-free reading', id: 'readBtn' },
     { label: 'Pitch deck',       href: '#pitch-deck' },
-    { label: 'Sync settings',    href: '#sync-section' },
+    { label: 'Sync & backup',    href: '#sync-section' },
     '---',
     { label: 'Import JSON',      action: 'importData' },
     { label: 'Load sample',      action: 'loadSamplePack',    title: 'Load the ' + SAMPLE.title + ' pre-filled sample blueprint' },
@@ -615,24 +558,20 @@ function pitchSectionHTML() {
 </section>`;
 }
 
+/* The do-it-yourself Supabase panel that used to sit here (a URL, an
+   anon key, a SQL snippet to paste) is gone: sync is the sign-in pill
+   in the bar now, and a consumer should never be asked for a database
+   key. The section keeps its id because the hub's search links to it.
+   The old functions below still serve anybody whose saved config has
+   auto-push on; with no fields on the page they only ever read it. */
 function syncSectionHTML() {
   return `
 <section class="sync-section" id="sync-section">
-  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">OPTIONAL · ADVANCED</div>
-  <h3>Real-time <em>Sync.</em></h3>
-  <p class="deck">Sync your blueprint across devices using your own Supabase project (free tier works). Your data stays in <em>your</em> Supabase, not anywhere else. Setup takes ~10 minutes; once configured, every save pushes; every reload pulls.</p>
-
-${SYNC_FIELDS_HTML}
-
+  <h3>Sync &amp; <em>backup.</em></h3>
+  <p class="deck">Sign in from the bar at the top of the page to keep this blueprint in step across your devices. You can also download a backup file from Home, or back up to Google Drive from Settings.</p>
   <div class="sync-actions">
-    <button class="btn primary" data-action="syncSave">↑ PUSH NOW</button>
-    <button class="btn" data-action="syncLoad">↓ PULL LATEST</button>
-    <button class="btn" data-action="syncTest">TEST CONNECTION</button>
-    <button class="btn" data-action="saveSyncConfig">SAVE CONFIG</button>
+    <a class="btn" href="settings.html#drive">BACKUP SETTINGS</a>
   </div>
-  <div class="sync-status" id="syncStatus">●  not configured</div>
-
-${SYNC_INSTR_HTML}
 </section>`;
 }
 

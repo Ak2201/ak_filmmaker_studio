@@ -56,3 +56,8 @@
   color: var(--ink-body);
   font-style: italic;
 }
+
+/* The sign-in section's legal line: secondary text at the AA floor,
+   links in the brand-as-text colour. */
+.iv-legal { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+.iv-legal a { color: var(--accent-deep); text-underline-offset: 2px; }

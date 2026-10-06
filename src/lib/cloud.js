@@ -165,7 +165,7 @@ export function gateDetail(reason) {
     case 'declined':    return 'Invite request declined — sync is off';
     case 'disabled':    return 'This account was disabled by an administrator';
     case 'revoked':     return 'Your invite was revoked — sync is paused';
-    case 'notdeployed': return 'Signed in — the invite gate is not switched on in this studio’s database yet';
+    case 'notdeployed': return 'Signed in — invites are not open yet';
     case 'unreachable': return 'Could not reach the studio to check your invite — sync paused';
     default:            return 'Signed in — awaiting an invite';
   }
@@ -1826,7 +1826,7 @@ async function boot() {
       // Site URL / redirect-URL mismatch. Say so; the runbook covers it.
       setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
       notifyAuth('OAUTH_ERROR', null);
-      toast('Signed in with Google, but the session did not stick. Check the Supabase Site URL and Redirect URLs.', 'error', 6000);
+      toast('Signed in with Google, but the sign-in did not complete. Please try again.', 'error', 6000);
     }
   }
 

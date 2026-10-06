@@ -432,7 +432,7 @@ function ensureCloudAuthModal() {
         h('span.g-mark', { html: GOOGLE_MARK, 'aria-hidden': 'true' }),
         h('span.cm-btn-label', { text: 'CONTINUE WITH GOOGLE' })
       ]),
-      h('p.cm-hint', { text: 'Google is the only way in. There is no password for this app to remember or lose, and no email address stored here until you sign in.' }),
+      h('p.cm-hint', { text: 'Sign in with your Google account — there is no separate password to remember.' }),
       /* Hidden unless mayConfigure() says otherwise — see it for why
          an ordinary visitor should never meet this. Rendered rather
          than omitted so that showConfigBlock() has something to

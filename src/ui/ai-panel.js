@@ -174,9 +174,8 @@ export function keyGate(what) {
   if (!AI.hasKey()) {
     wrap.append(gate(
       'No API key on this device.',
-      what + ' runs against ' + AI.provider().apiName + ' and there is no server '
-        + 'here to run it for you, so it needs a key of your own. Paste one below '
-        + 'and it stays on this device.'
+      what + ' runs on ' + AI.provider().apiName + ' with a key of your own. '
+        + 'Paste one below — it stays on this device.'
     ));
     /* The only route back to the other provider when this one has
        no key saved. See providerPicker(). */

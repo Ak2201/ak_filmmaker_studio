@@ -1,7 +1,7 @@
 /* ============================================================
    THE LEGAL PAGES' ONLY SCRIPT — and it is two imports
    ------------------------------------------------------------
-   privacy.html and terms.html keep their text in the MARKUP, not
+   privacy.html, terms.html and refund.html keep their text in the MARKUP, not
    in a renderer, which is the opposite of every other page here
    and is deliberate:
 

@@ -112,10 +112,19 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     row.append(card);
   }
   wrap.append(row);
-  if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not switched on for this studio yet (no Razorpay key in this build).' }));
+  if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   wrap.append(h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }));
+  wrap.append(h('p.pl-note.pl-legal', {}, [
+    'By paying you agree to the ',
+    h('a', { href: 'terms.html', text: 'Terms of Service' }),
+    ' and the ',
+    h('a', { href: 'refund.html', text: 'Refund & Cancellation Policy' }),
+    '. See also our ',
+    h('a', { href: 'privacy.html', text: 'Privacy Policy' }),
+    '.'
+  ]));
   return wrap;
 }
 

@@ -120,7 +120,7 @@ function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   const night = totalEighths(scenes.filter((s) => s.dayNight === 'NIGHT'));
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Reports · derived, never stored' }),
+    h('p.bd-eyebrow', { text: 'Reports · from your scenes' }),
     h('h1.bd-title', { text: 'Reports & Sides.' }),
     h('p.bd-deck', {
       text: 'Every number on this page is counted from the scene breakdown the '

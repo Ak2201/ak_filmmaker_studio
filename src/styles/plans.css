@@ -60,3 +60,6 @@
 .ba-saved { font-size: var(--t-small); color: var(--ok-deep); }
 .ba-grant { display: grid; gap: var(--s2); max-width: 36rem; margin-top: var(--s3); }
 .ba-grant .btn { justify-self: start; }
+
+/* The legal line under the cards: links in the brand-as-text colour. */
+.pl-legal a { color: var(--accent-deep); text-underline-offset: 2px; }

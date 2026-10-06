@@ -99,7 +99,7 @@ function renderHeader(scenes) {
   const unscheduled = scenes.filter((s) => !shootDayOf(s)).length;
   const eighths = totalEighths(scenes);
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Stripboard · the schedule, derived' }),
+    h('p.bd-eyebrow', { text: 'Stripboard · the schedule' }),
     h('h1.bd-title', { text: 'The Board.' }),
     h('p.bd-deck', {
       text: 'One strip per scene, straight from the breakdown. Group them the way '

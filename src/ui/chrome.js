@@ -53,6 +53,9 @@ import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palet
    fragment hrefs, so they need nothing. Do not prune this import
    because nothing in this file references it. */
 import './fragments.js';
+/* The site footer (Privacy, Terms, Refunds). Here because this is the
+   one module every reachable app page imports. */
+import { injectFooter } from './footer.js';
 /* Drive sync, wired once here so EVERY page has it — the same reason
    the palette is wired here rather than per page. A backup that only
    runs on the hub is a backup that misses the pages people write on.
@@ -1652,6 +1655,7 @@ function autoInit() {
     wireFieldSavedFlash();
     autoAriaLabels();
     StudioUI.polishEmptyStates();
+    injectFooter();
     // Auto-attach sign-in pill to the toolbar on every page
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) attachSignInPill(toolbar);

@@ -565,7 +565,7 @@ function adoptSignInToken(sess) {
 }
 
 (function boot() {
-  if (!Drive.isConfigured()) { setStatus(DRIVE_STATES.OFF, 'Drive backup is not set up in this build'); return; }
+  if (!Drive.isConfigured()) { setStatus(DRIVE_STATES.OFF, 'Drive backup is not available right now'); return; }
 
   /* WIRED ON A TIMER, AND BOTH HALVES ARE LOAD-BEARING.
      ------------------------------------------------------------

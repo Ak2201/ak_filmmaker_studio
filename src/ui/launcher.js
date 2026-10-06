@@ -413,8 +413,7 @@ export function renderLauncher() {
       ]),
       h('p.deck', {
         text: 'A film moves through these in order, and so does the studio. '
-            + 'Open any module directly; the ones still to come say so rather '
-            + 'than pretending.'
+            + 'Open any module directly.'
       })
     ]),
     h('div.right', {}, [

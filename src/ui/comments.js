@@ -227,8 +227,8 @@ function when(iso) {
    does not. */
 function cloudStateHTML() {
   if (!isConfigured()) {
-    return '<p class="cmt-state">Shared comments live in a Supabase account. This browser '
-      + 'is not connected to one, so nothing here leaves the device.'
+    return '<p class="cmt-state">Shared comments need cloud sync, which is not available on '
+      + 'this browser. Your private note above stays on this device.'
       + '<button type="button" class="cmt-btn" data-cmt-action="connect">CONNECT AN ACCOUNT</button></p>';
   }
   if (!signedIn()) {

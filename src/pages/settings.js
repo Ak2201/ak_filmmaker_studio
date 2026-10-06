@@ -132,14 +132,14 @@ function renderPlan() {
   if (!c || !c.isConfigured() || !c.getSession() || !billing.plans) return null;
   const st = billing.st;
   const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' \u00b7 ' + st.account_name : ''}` : 'Choose a plan.',
-    'What a plan caps is the cloud \u2014 projects synced, share links, collaborators, organisation seats \u2014 and the Chrome extension. Work on this device is never limited.');
+    'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. Work on this device is never limited.');
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
   if (st) {
     const u = usageList(st);
     if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
     /* A refund is the one way a bought plan ends (section 18): say so
        rather than "lapsed", which implied a clock that no longer runs. */
-    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). The caps below are the free tier\u2019s.` }));
+    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan\u2019s limits now.` }));
   }
   sec.append(planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus }).then(() => refreshBilling()),
@@ -196,26 +196,21 @@ function renderKey() {
      A page headed "The Anthropic API key" above a Gemini key bar is
      a page that is wrong about the only thing it is for. */
   const sec = section('ai', 'This device · never synced',
-    'The ' + providerLabel() + ' API key.',
-    'The model-backed tools in this studio run against ' + apiName() + '. There is '
-      + 'no server here to run them for you, so they use a key of your own — one '
-      + 'key, every tool, this browser. Each of them says what it will send and '
-      + 'waits for a click before it sends it. Provider, below, switches which API '
-      + 'they run against; each one keeps its own key, so switching loses neither.');
+    'Your ' + providerLabel() + ' API key.',
+    'The AI tools in the studio run on ' + apiName() + ' with your own key — one key for '
+      + 'every tool, on this browser. Each tool shows what it will send and waits '
+      + 'for your click. You can switch provider below; each one keeps its own key.');
 
   /* The module's own arrangement of the bar, the gate, the form and
      the disclosure. The disclosure body is this page's, because what
      a tool sends depends on the tool — on a settings page the honest
      answer is the key itself and nothing else. */
   sec.append(Panel.keySection(
-    'Every model-backed tool in the studio',
-    'The key is kept in this browser’s storage, on this device, and nowhere '
-    + 'else. It is not written into a backup file, not synced to the cloud, not '
-    + 'attached to a project, and nothing on this page sends it anywhere. The '
-    + 'only thing that ever sends it is a tool you have clicked, and the only '
-    + 'place it is ever sent is ' + apiHost() + '. Every call is billed to your '
-    + 'own account. Forget key removes it from this device; nothing you have '
-    + 'written is touched.'
+    'Every AI tool in the studio',
+    'Your key stays on this device. It is never put in a backup, never synced '
+    + 'and never sent to us. It goes only to ' + apiHost() + ', and only when you '
+    + 'run a tool. Usage is billed to your own account. Forget key removes it '
+    + 'from this device without touching your work.'
   ));
 
   return sec;
@@ -225,9 +220,8 @@ function renderKey() {
 function renderAppearance() {
   const sec = section('appearance', 'This device · not part of the film',
     'Appearance.',
-    'Theme picks the palette, design picks the shapes, and the two are '
-      + 'independent. Both are remembered for this browser, and neither travels '
-      + 'with a project or with a backup.');
+    'Choose how the studio looks on this browser. Your choice is not part of '
+      + 'any project or backup.');
 
   sec.append(choices('Theme', 'data-theme-choice', StudioUI.currentTheme(),
     StudioUI.themeOrder().map((t) => ({ value: t, label: titleCase(t) }))));
@@ -244,9 +238,7 @@ function renderAppearance() {
   } else {
     const only = skins[0] || { label: 'Studio' };
     sec.append(h('p.st-note', {
-      text: 'One design ships today — ' + only.label + '. The shapes are a '
-          + 'swappable layer rather than a fixed one, so a second design would '
-          + 'appear here on its own.'
+      text: 'Design: ' + only.label + '.'
     }));
   }
 
@@ -302,31 +294,23 @@ const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
    figure: a tier that did not open is not a tier that is empty. */
 function tierDownCard() {
   const card = h('div.st-alarm', { role: 'group', 'aria-label': 'Storage warning' });
-  card.append(h('p.st-alarm-h', { text: 'The second tier did not open.' }));
+  card.append(h('p.st-alarm-h', { text: 'Part of your storage did not open.' }));
   card.append(h('p.st-alarm-p', {
-    text: 'This browser did not open the database that holds anything over 64 KB, '
-        + 'and two things follow while that is true. A value that large cannot be '
-        + 'stored. One that is already out there cannot be read, so a script may '
-        + 'be showing as empty when it is not. Nothing has been lost: writing to '
-        + 'exactly those values is blocked rather than allowed to save an empty '
-        + 'page over them. Reload before you type anything. If it keeps '
-        + 'happening, the usual cause is a private window, where this database '
-        + 'does not exist at all — and the figure below counts only what is in '
-        + 'the key store, because what is on the other tier could not be counted.'
+    text: 'This browser could not open the storage used for large items such as '
+        + 'screenplays, so a script may look empty when it is not. Nothing has been '
+        + 'lost, and saving over it is blocked. Reload the page before you type '
+        + 'anything. If this keeps happening, you may be in a private window, '
+        + 'which does not keep this storage.'
   }));
   return card;
 }
 
 function nearlyFullCard() {
   const card = h('div.st-alarm', { role: 'group', 'aria-label': 'Storage warning' });
-  card.append(h('p.st-alarm-h', { text: 'The key store is nearly full.' }));
+  card.append(h('p.st-alarm-h', { text: 'Storage is nearly full.' }));
   card.append(h('p.st-alarm-p', {
-    text: 'From here a save can start failing, and it fails quietly: the field '
-        + 'takes what you typed and the value never comes back. Download the '
-        + 'backup below, then delete a film you have finished with from Home. '
-        + 'Anything over 64 KB has already moved to the database beside this, so '
-        + 'what is left in here is the blueprint answers, the scenes, the '
-        + 'contacts and the schedule.'
+    text: 'Saves may soon start to fail. Download a backup below, then delete a '
+        + 'project you have finished with from Home to make room.'
   }));
   return card;
 }
@@ -346,20 +330,15 @@ function renderStorage() {
 
   const sec = section('storage', 'This device \u00b7 where the work actually sits',
     'Storage.',
-    'Everything written in this studio is kept by this browser, in two places at '
-      + 'once. The small things \u2014 the blueprint answers, the scenes, the '
-      + 'contacts, the schedule \u2014 stay in the browser\u2019s own key store, '
-      + 'which is the one with a hard wall at the end of it. Anything over 64 KB, '
-      + 'which in practice means a screenplay, is moved to a database beside it '
-      + 'that is measured in hundreds of megabytes. Nobody chooses between them: '
-      + 'the size of the value decides, every time.');
+    'Everything you write is saved in this browser. Everyday work \u2014 '
+      + 'blueprint answers, scenes, contacts, the schedule \u2014 uses the '
+      + 'browser\u2019s main storage, which has limited room. Large items such '
+      + 'as screenplays are kept in a second, much larger store.');
 
   if (u.tier === 'unavailable') sec.append(tierDownCard());
   else if (u.tier !== 'ready') {
     sec.append(h('p.st-note', {
-      text: 'The database beside the key store has not been opened yet, so what is '
-          + 'on it has not been counted and the second figure below is missing '
-          + 'rather than zero.'
+      text: 'Large-item storage has not been checked yet, so its figure below is not shown.'
     }));
   }
 
@@ -368,7 +347,7 @@ function renderStorage() {
   /* --- the small tier: the only one with a proportion --- */
   const smallM = h('div.st-meter');
   smallM.append(h('p.st-meter-head', {}, [
-    h('span.st-meter-label', { text: 'The browser\u2019s key store' }),
+    h('span.st-meter-label', { text: 'Main storage' }),
     h('span.st-meter-figure', { text: fmtQuota(u.small) + ' of about ' + fmtQuota(limit) })
   ]));
   smallM.append(h('div.st-bar', {
@@ -377,7 +356,7 @@ function renderStorage() {
     'aria-valuemax': '100',
     'aria-valuenow': String(pct),
     'aria-valuetext': shown + ' of the room this browser is likely to allow',
-    'aria-label': 'The browser\u2019s key store'
+    'aria-label': 'Main storage'
   }, [
     /* A custom property rather than `style="width:…"`, so the one
        inline style on this page carries a MEASUREMENT and never a
@@ -387,11 +366,9 @@ function renderStorage() {
       { style: '--st-fill: ' + pct + '%' })
   ]));
   smallM.append(h('p.st-meter-note' + (band === 'warn' ? '.is-warn' : ''), {
-    text: shown + ' full, across ' + plural(u.keys, 'key', 'keys')
-        + ' \u2014 every project this browser holds, not only the open one.'
+    text: shown + ' full, across every project on this browser.'
         + (band === 'warn'
-            ? ' There is room yet, but this is the point to take a backup rather '
-              + 'than the point after it.'
+            ? ' There is still room, but now is a good time to take a backup.'
             : '')
   }));
   tiers.append(smallM);
@@ -399,24 +376,19 @@ function renderStorage() {
   /* --- the big tier: counted, never proportioned --- */
   const bigM = h('div.st-meter');
   bigM.append(h('p.st-meter-head', {}, [
-    h('span.st-meter-label', { text: 'The database beside it' }),
+    h('span.st-meter-label', { text: 'Large-item storage' }),
     h('span.st-meter-figure', {
       text: u.tier === 'unavailable' ? 'could not be counted'
-          : u.overflowed ? fmtQuota(u.big) + ' across ' + plural(u.overflowed, 'value', 'values')
-          : 'nothing out here yet'
+          : u.overflowed ? fmtQuota(u.big) + ' across ' + plural(u.overflowed, 'item', 'items')
+          : 'nothing here yet'
     })
   ]));
   bigM.append(h('p.st-meter-note', {
     text: u.tier === 'unavailable'
-      ? 'The database did not open, so this figure is unknown rather than zero. '
-        + 'Whatever is out there is still out there.'
+      ? 'This storage did not open, so its size is unknown. Your work in it is still there.'
       : u.overflowed
-        ? 'No bar for this one, because there is no honest proportion to draw: '
-          + 'browsers allow this tier hundreds of megabytes and nothing here has '
-          + 'measured yours. The screenplay is almost certainly the largest thing '
-          + 'in it.'
-        : 'Nothing has outgrown the key store yet. The first thing that does will '
-          + 'almost certainly be a screenplay.'
+        ? 'Browsers allow hundreds of megabytes here, so there is plenty of room.'
+        : 'Nothing large enough to need it yet. A screenplay is usually the first.'
   }));
   tiers.append(bigM);
 
@@ -427,14 +399,8 @@ function renderStorage() {
   /* The ceiling is the one figure above that is not a measurement,
      so it is the one that has to admit it. */
   sec.append(h('p.st-note', {
-    text: 'About, rather than exactly. Browsers bill the key store two bytes for '
-        + 'every character stored and most of them stop somewhere near 5 MB, but '
-        + 'that is a convention rather than a rule and no browser publishes its '
-        + 'own figure. The ceiling above is a deliberately low estimate, so read '
-        + 'the bar as the shape of the wall rather than its exact position. Both '
-        + 'figures count your work and nothing else: the copy of the app itself '
-        + 'that lets this studio open without a network is held somewhere else '
-        + 'again, and it is in no number on this page.'
+    text: 'The limit is an estimate: most browsers allow about 5 MB of main '
+        + 'storage. These figures count only your work, not the app itself.'
   }));
 
   sec.append(h('div.st-drive-actions', {}, [
@@ -442,10 +408,8 @@ function renderStorage() {
       [h('span', { text: 'Download a backup' })])
   ]));
   sec.append(h('p.st-note', {
-    text: 'One file holding every project this browser has \u2014 the same file the '
-        + 'hub\u2019s Export writes and the same one Drive uploads above. It is '
-        + 'the only copy that survives a browser clearing its own storage, which '
-        + 'browsers do without asking.'
+    text: 'One file with every project on this browser. Keep a copy somewhere '
+        + 'safe \u2014 browsers can clear their storage without asking.'
   }));
 
   return sec;
@@ -472,7 +436,7 @@ function renderStorage() {
    dead end, and chrome.js's quota toast already puts the same
    button in front of them at the worse moment. Reading the file
    back — the picker, the merge, the collisions — stays on the hub.
-   See renderElsewhere(). */
+   */
 
 let versions = null;     // null until EARLIER VERSIONS is opened
 let busy = '';           // which control is mid-flight, for the label
@@ -506,10 +470,9 @@ function conflictCard(st) {
   const card = h('div.st-conflict', { role: 'group', 'aria-label': 'Backup conflict' });
   card.append(h('p.st-conflict-h', { text: 'Both copies changed.' }));
   card.append(h('p.st-conflict-p', {
-    text: 'The file in Drive has moved on since this browser last saw it, and this '
-        + 'browser has unsaved-to-Drive changes of its own. Nothing was uploaded and '
-        + 'nothing was overwritten. Drive keeps the earlier version either way, so '
-        + 'neither answer below destroys anything — but only you know which is which.'
+    text: 'The backup in Drive was changed somewhere else, and this browser has '
+        + 'changes too. Nothing has been overwritten. Choose which copy to keep — '
+        + 'Drive keeps the earlier version either way.'
   }));
   const rows = h('ul.st-conflict-rows');
   rows.append(h('li', {}, [
@@ -555,17 +518,14 @@ function renderDrive() {
   const st = DriveSync.getDriveStatus();
   const sec = section('drive', 'This device · your own Drive',
     'Back up to Google Drive.',
-    'One file in your Drive, written to the same place every time, so Drive’s own '
-      + 'version history is the history of your studio. It holds every project this '
-      + 'browser has — the same file the hub’s Export button writes — and it never '
-      + 'holds the API key above.');
+    'Keep a backup of every project on this browser in your own Google Drive. '
+      + 'Drive keeps earlier versions, so you can go back. Your API key is never '
+      + 'included.');
 
   if (!st.configured) {
     sec.append(h('p.st-note', {
-      text: 'This build was made without a Google client id, so there is nothing to '
-          + 'connect to. A build that sets VITE_GOOGLE_CLIENT_ID offers the button '
-          + 'here. The hub’s Export still writes the same backup to a file you keep '
-          + 'yourself, and that needs no account at all.'
+      text: 'Google Drive backup is not available right now. You can still '
+          + 'download a backup file from the Storage section or from Home.'
     }));
     return sec;
   }
@@ -581,11 +541,9 @@ function renderDrive() {
 
   if (!st.connected) {
     sec.append(h('p.st-note', {
-      text: 'Connecting asks Google for permission to one file — the one this app '
-          + 'creates. It cannot see anything else in your Drive. The permission is '
-          + 'held in memory for this tab only and is never written to disk, so '
-          + 'closing the browser ends it and opening it again renews it without '
-          + 'asking you anything.'
+      text: 'Connecting gives the studio access to the one backup file it creates '
+          + 'in your Drive — nothing else. You may need to connect again after '
+          + 'closing the browser.'
     }));
     sec.append(h('div.st-drive-actions', {}, [
       driveButton('drive-connect', 'Connect Google Drive', { primary: true, busyLabel: 'Asking Google…' })
@@ -604,11 +562,9 @@ function renderDrive() {
     /* Supabase is signed in. Said plainly rather than left as a
        switch that quietly does nothing. */
     sec.append(h('p.st-note', {
-      text: 'Cloud sync is signed in on this browser, and two live syncs writing the '
-          + 'same storage would keep waking each other up. So Drive stays a manual '
-          + 'backup while you are signed in: the buttons below still work, and '
-          + 'nothing uploads on its own. Cloud sync also carries comments, share '
-          + 'links and roles, which a Drive file cannot.'
+      text: 'You are signed in, so cloud sync keeps your work up to date. Drive '
+          + 'backup is manual while you are signed in: use the buttons below '
+          + 'whenever you want a copy in Drive.'
     }));
   }
 
@@ -631,26 +587,6 @@ function renderDrive() {
     ]));
   }
 
-  return sec;
-}
-
-/* ---- the settings that are NOT here -------------------------
-   Said out loud, with a route, rather than left as a hole: a page
-   called Settings that silently omits backups is a page that makes
-   somebody hunt. No fragment on the link — the hub's sections carry
-   no ids, and a fragment that resolves to nothing looks like a
-   broken page to exactly the person who followed it. */
-function renderElsewhere() {
-  const sec = h('section.st-sec.st-elsewhere');
-  sec.append(h('h2.bd-h2', { text: 'What is not on this page' }));
-  sec.append(h('p', {}, [
-    'Projects, the backup file you keep yourself and Reset everything are on ',
-    h('a', { href: 'index.html', text: 'Home' }),
-    ', because all three are about the work rather than about this device — and '
-    + 'the Drive section above uploads the very same file rather than a second '
-    + 'kind of one. Signing in for cloud sync is the pill in the bar at the top '
-    + 'of every page, this one included.'
-  ]));
   return sec;
 }
 
@@ -753,11 +689,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Four things belong to this browser rather than to any film: the API '
-          + 'key the model-backed tools use, where your work is physically kept '
-          + 'and how much room is left, where this browser copies itself for safe '
-          + 'keeping, and how the studio looks. None of the four is part of a '
-          + 'project, and the first and the last are in no backup and no cloud.'
+      text: 'Your plan, your AI key, storage and backups, and how the studio looks.'
     })
   ]));
 
@@ -771,7 +703,7 @@ function render() {
      exactly why it would not have caught it either.) */
   body.append(...[renderKey(), renderPlan(), renderStorage(), renderDrive(), renderAppearance(),
               accountSection(section), inviteSection(section, gateStatus),
-              consolePointer(), renderAdmin(), renderElsewhere()].filter(Boolean));
+              consolePointer(), renderAdmin()].filter(Boolean));
   main.append(body);
 
   app.replaceChildren(main);

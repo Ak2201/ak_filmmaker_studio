@@ -702,10 +702,8 @@ function renderNoProject() {
     h('div.bd-empty-mark', { text: '◴', 'aria-hidden': 'true' }),
     h('h2', { text: 'No project is open' }),
     h('p', {
-      text: 'This page reports on one film at a time, and there is not one to '
-          + 'report on yet. Everything you write is stored in this browser under '
-          + 'the project it belongs to, so a project has to exist before there is '
-          + 'anywhere to put it.'
+      text: 'The dashboard reports on one film at a time. Start a project, or '
+          + 'open one, and its progress appears here.'
     }),
     h('div.bd-how', {}, [
       how('1', 'Start a film', 'Name it and pick a format. It takes one line, and you can rename it later.', 'index.html', 'Studio home'),

@@ -47,8 +47,8 @@
    which the verify gate asserts.
 
    EXEMPT: invite.html (the doorway), screening.html (a guest's pass is
-   its own credential), privacy.html and terms.html (the OAuth consent
-   screen's readers, which import nothing anyway), and everything under
+   its own credential), privacy.html, terms.html and refund.html (the OAuth consent
+   screen's and the payment gateway's readers, which import nothing anyway), and everything under
    chrome-extension:// — the side panel has its own gatekeeper and
    opens the app's pages inside it.
 
@@ -69,7 +69,7 @@ const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
 export const PASS_KEY = 'fms_sitegate_pass';   // sessionStorage, never localStorage
 const GIVE_UP_MS = 20000;
-const EXEMPT = /(^|\/)(invite|screening|privacy|terms)(\.html)?$/;
+const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund)(\.html)?$/;
 
 export function isExempt() {
   if (typeof location === 'undefined') return true;

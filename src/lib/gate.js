@@ -187,7 +187,7 @@ export function createGate(getClient) {
       return { status: r.status || 'pending', requestedAt: r.requested_at || null, decidedAt: r.decided_at || null,
                decisionNote: r.decision_note || '', timesAsked: Number(r.times_asked) || 1 };
     } catch (e) {
-      if (isMissing(e)) throw new GateError('Invite requests are not switched on for this studio yet — an administrator has to run schema section 14.', 'notdeployed');
+      if (isMissing(e)) throw new GateError('Invite requests are not open yet.', 'notdeployed');
       throw e;
     }
   }
@@ -201,7 +201,7 @@ export function createGate(getClient) {
       await holder.setTicket(t);
       return t;
     } catch (e) {
-      if (isMissing(e)) throw new GateError('Invite codes are not switched on for this studio yet.', 'notdeployed');
+      if (isMissing(e)) throw new GateError('Invite codes are not available yet.', 'notdeployed');
       throw e;
     }
   }
@@ -312,7 +312,7 @@ export function createGate(getClient) {
       return { projectId: r.project_id, title: r.title, format: r.format, accessId: r.access_id,
                expiresAt: r.expires_at, scopes: r.scopes || {} };
     } catch (e) {
-      if (isMissing(e)) throw new GateError('Screening passes are not switched on for this studio yet.', 'notdeployed');
+      if (isMissing(e)) throw new GateError('Screening passes are not available yet.', 'notdeployed');
       throw e;
     }
   }

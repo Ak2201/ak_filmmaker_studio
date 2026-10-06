@@ -162,7 +162,7 @@ try {
     const closed = await snapA();
     ok(!!closed, 'a signed-in user is CLOSED when the functions do not exist');
     ok(closed && closed.reason === 'notdeployed', "and the reason is 'notdeployed', not 'no invite'");
-    ok(closed && /not switched on/i.test(closed.detail || ''), 'the sync status says the gate is not switched on');
+    ok(closed && /not open yet/i.test(closed.detail || ''), 'the sync status says invites are not open yet');
     await page.waitForTimeout(1200);
     ok(writes() === 0, 'nothing was uploaded');
     /* Under the site gate a closed visitor never sees the hub, so the
@@ -172,7 +172,7 @@ try {
     ok(await urlBecomes(page, /invite\.html/), 'the hub sends a closed visitor to invite.html');
     await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#request');
-    ok(/not switched on/i.test(await page.textContent('#request')), 'invite.html says the gate is not switched on');
+    ok(/not open yet/i.test(await page.textContent('#request')), 'invite.html says invites are not open yet');
     ok(!(await page.$('[data-ir-form]')), 'and offers no request form, because there is nobody to ask');
     ok((await page.evaluate(() => localStorage.getItem('fms_story_v1') || '')).includes('WRITTEN WITH NO GATE'), 'local work is untouched');
     allErrors.push(...errors); await ctx.close();

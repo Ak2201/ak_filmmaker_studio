@@ -55,7 +55,7 @@ export function requestBlock(st, reason) {
     return wrap;
   }
   if (!st || !st.deployed || reason === 'notdeployed') {
-    wrap.append(h('p.ir-p', { text: 'The invite gate is not switched on in this studio’s database yet, so there is nobody to ask and no code to redeem. Sync stays paused until an administrator runs it.' }));
+    wrap.append(h('p.ir-p', { text: 'Invites are not open yet, so there is nothing to request right now. Please check back soon — your work on this device is safe meanwhile.' }));
     if (c && c.isAdmin && c.isAdmin()) {
       wrap.append(h('p.ir-meta', { text: 'You are listed as an administrator of this build: run supabase-schema.sql sections 13 and 14 in the Supabase SQL editor, then the one-line admin bootstrap in 13.2. docs/GATE.md walks through it.' }));
     }
@@ -96,7 +96,7 @@ export function requestBlock(st, reason) {
   dl.append(h('dt', { text: 'Google account' }), h('dd', { text: email || '—' }));
   dl.append(h('dt', { text: 'Asked from' }), h('dd', { text: browserWord() }));
   form.append(dl);
-  form.append(h('p.ir-meta', { text: 'These come from your Google sign-in, not from this form, which is why nothing above can be edited here.' }));
+  form.append(h('p.ir-meta', { text: 'These details come from your Google sign-in.' }));
   form.append(h('label.ir-label', { for: 'irNote', text: 'A line for them (optional)' }));
   form.append(h('textarea#irNote.ir-textarea', { rows: 3, maxlength: 1000, placeholder: 'Who you are, which film this is for, who told you about the studio.', 'data-ir-field': 'note' }));
   form.append(h('button.btn.primary', { type: 'submit', disabled: busy, text: busy ? 'SENDING…' : (status === 'declined' ? 'ASK AGAIN' : 'REQUEST AN INVITE') }));

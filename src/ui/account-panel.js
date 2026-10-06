@@ -85,9 +85,8 @@ function seatLine(seats) {
        billing, not by the client" — so there is nothing this page
        could honestly put a button on. */
     p.append(h('span', {
-      text: ' Inviting anybody else needs another seat, and seats are set by '
-          + 'billing rather than from this page — raise seat_limit on the '
-          + 'account in your Supabase project.'
+      text: ' To invite anyone else you need another seat — upgrade your plan '
+          + 'to add seats.'
     }));
   }
   return p;

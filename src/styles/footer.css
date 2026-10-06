@@ -1,0 +1,55 @@
+/* ============================================================
+   THE SITE FOOTER (src/ui/footer.js)
+   ------------------------------------------------------------
+   A quiet line at the very end of every app page. Tokens only.
+   Text is --ink-muted (the AA floor for secondary text, 4.5:1 on
+   the page ground in both themes) and links are --brand-deep, the
+   brand as text. It sits in the body's own flow, so the body's
+   padding-bottom (which reserves --mab-h for the mobile action bar)
+   is what keeps it clear of the bar; nothing here restates that.
+   ============================================================ */
+.site-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+  max-width: var(--measure-wide);
+  margin: var(--s7) auto 0;
+  padding: var(--s4) var(--gutter) var(--s5);
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  min-width: 0;
+}
+
+.site-foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  min-width: 0;
+}
+
+.site-foot a {
+  color: var(--brand-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: var(--s1) 0;
+}
+.site-foot a:hover { color: var(--ink); }
+.site-foot a:focus-visible {
+  outline: 2px solid var(--brand-deep);
+  outline-offset: 2px;
+  border-radius: var(--sk-radius, var(--radius));
+}
+
+.site-foot-copy {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+@media print {
+  .site-foot { display: none; }
+}

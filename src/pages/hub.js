@@ -249,7 +249,7 @@ const ANCHORS = {
   feature: [
     { label: 'Treatment Ladder', hash: '#treatment-ladder', snippet: 'Logline → synopsis → one-pager → treatment → step outline' },
     { label: 'Auto Pitch Deck',  hash: '#pitch-deck',       snippet: '10 slides built from your blueprint data — exports as .pptx' },
-    { label: 'Real-time Sync',   hash: '#sync-section',     snippet: 'Optional Supabase backend — sync across devices' },
+    { label: 'Sync & backup',    hash: '#sync-section',     snippet: 'Keep your blueprint in step across devices' },
     { label: 'Full Glossary',    hash: '#glossary',         snippet: 'Camera, lens, lighting, sound and post-production terms' }
   ],
   shorts: [
@@ -688,7 +688,7 @@ function toolsMarkup() {
         <div class="tools-grid">
           <button class="tool-card" data-action="export-all">
             <div class="tool-icon">↓</div><h5>Export everything</h5>
-            <p>Combined JSON of all blueprints, prefs, comments. One file, full backup.</p>
+            <p>Every project, preference and comment in one backup file.</p>
           </button>
           <button class="tool-card" data-action="import-all">
             <div class="tool-icon">↑</div><h5>Import everything</h5>
@@ -715,8 +715,8 @@ function toolsMarkup() {
             <p>Export your short as Fountain — opens in Final Draft, Highland.</p>
           </a>
           <a class="tool-card f" href="${FEATURE_URL}#sync-section">
-            <div class="tool-icon">↻</div><h5>Real-time Sync</h5>
-            <p>Optional Supabase backend for syncing across devices.</p>
+            <div class="tool-icon">↻</div><h5>Sync &amp; backup</h5>
+            <p>Sign in to keep your projects in step across devices.</p>
           </a>
           <a class="tool-card s" href="${SHORT_URL}#step-08">
             <div class="tool-icon">AI</div><h5>AI Prompt Generator</h5>
@@ -841,16 +841,6 @@ function finalMarkup() {
       <div class="final-inner">
         <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
         <div class="signature">THE FILMMAKER'S STUDIO · CURATED BY <span>ARUNAK</span></div>
-        <div class="file-list">
-          <p>PAGES IN THIS STUDIO:</p>
-          <p>
-            <code>index.html</code> this hub<br>
-            <code>${FEATURE_URL}</code> feature, Vol I &amp; II<br>
-            <code>${SHORT_URL}</code> short film blueprint<br>
-            <code>${LIBRARY_URL}</code> reference companion
-          </p>
-          <p class="note">Installable, and it keeps working with no network once loaded.</p>
-        </div>
       </div>`
   });
 }
@@ -1385,7 +1375,7 @@ async function resetAll() {
                  ? '\n\nYou will be signed out. Projects already in your account stay there — ' +
                    'this clears the device, not the account. Sign in again to bring them back.'
                  : '') +
-               '\n\nThe Supabase project URL and key stay, so you do not have to find them again.')) return;
+               '')) return;
 
   // deleteProject already wipes that project's namespaced keys, using
   // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
@@ -2307,7 +2297,7 @@ const CLICK_ACTIONS = {
   'pdf-overview':          () => exportOverviewPDF(),
   'reset-all':             () => resetAll(),
   'privacy-note':          () => alert(
-    'All data is local-only — saved to this browser\'s localStorage on this domain.\n\n' +
+    'Your work is saved in this browser, on this device.\n\n' +
     'To move to a new browser: EXPORT here, then IMPORT in the new browser.\n\n' +
     'Incognito mode does NOT save data between sessions.'),
   'refresh-activity':      () => refreshActivity(),

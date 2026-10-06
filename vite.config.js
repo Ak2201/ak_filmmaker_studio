@@ -160,6 +160,7 @@ export default defineConfig({
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),
         terms:      resolve(__dirname, 'terms.html'),
+        refund:     resolve(__dirname, 'refund.html'),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

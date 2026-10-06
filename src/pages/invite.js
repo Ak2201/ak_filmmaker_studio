@@ -60,13 +60,25 @@ function section(id, eyebrow, title, deck) {
 /* The deck under the title says which of the four situations this
    is, in one sentence, before the sections repeat it with controls. */
 function deckFor(c, g) {
-  if (!c || !c.isConfigured()) return 'This build has no cloud project, so there is nothing here to be invited to. Everything you write is saved in this browser.';
+  if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!c.getSession() && getCodePass()) return 'This browser came in with an invite code. Sign in with Google whenever you want your work backed up to an account; nothing else is needed.';
   if (!c.getSession()) return 'The studio is invite-only. Enter the code you were given to come straight in — or sign in with Google and ask for an invite.';
-  if (g.state === 'unknown') return 'Checking whether this account is through the gate…';
-  if (g.state === 'open') return 'This account is through the gate. Your projects sync to it.';
+  if (g.state === 'unknown') return 'Checking your invite…';
+  if (g.state === 'open') return 'You are in. Your projects sync to this account.';
   if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
   return c.gateDetail ? c.gateDetail(g.reason) + '. Everything on this device is still here.' : 'Sync is paused.';
+}
+
+/* The one sentence that points a newcomer at the legal pages before
+   they sign in. Links, not a checkbox: continuing is the agreement. */
+function legalLine(lead) {
+  return h('p.iv-legal', {}, [
+    lead,
+    h('a', { href: 'terms.html', text: 'Terms of Service' }),
+    ' and the ',
+    h('a', { href: 'privacy.html', text: 'Privacy Policy' }),
+    '.'
+  ]);
 }
 
 function render() {
@@ -85,7 +97,7 @@ function render() {
 
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'Nothing to redeem.',
-      'Cloud sync is a build setting that this copy of the studio does not carry. Your work lives in this browser; back it up from Settings.'));
+      'Cloud sync is not available right now. Your work lives in this browser; you can back it up from Settings.'));
   } else if (!signedIn && getCodePass()) {
     const sec = section('through', 'Through', 'You’re in, with a code.',
       'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
@@ -101,13 +113,14 @@ function render() {
     const code = inviteSection(section, null);
     if (code) body.append(code);
     const sec = section('signin', 'No code?', 'Sign in with Google and ask.',
-      'A request is made BY an account, so the address an administrator sees is the one Google attested rather than one typed into a box. Signing in changes nothing on this device.');
+      'Sign in with your Google account and send a short request. Once it is approved you are in on your next visit. Signing in does not change anything on this device.');
     sec.append(h('div.iv-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })
     ]));
+    sec.append(legalLine('By continuing you agree to the '));
     body.append(sec);
   } else if (g.state === 'unknown') {
-    body.append(section('checking', 'One moment', 'Checking your invite…', 'Asking the studio whether ' + (email || 'this account') + ' is through the gate.'));
+    body.append(section('checking', 'One moment', 'Checking your invite…', 'Checking the invite for ' + (email || 'this account') + '.'));
   } else if (g.state === 'open') {
     const sec = section('through', 'Through', 'You’re in.',
       'Signed in as ' + email + '. Projects you open sync to this account, and the Chrome extension signs in with it too.');
@@ -136,15 +149,15 @@ function render() {
        activates server-side and runGate() is asked again. */
     if (plans) {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan admits this account without an invite. One payment, full access for good; the free tier is what an invited member gets.');
+        'A paid plan lets this account in without an invite. One payment, access for good. Invited members start on the free plan.');
       buy.append(planCards(plans, null, {
         onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { onStatus }),
         rerender: render
       }));
       body.append(buy);
     }
-    const out = section('meanwhile', 'Meanwhile', 'Nothing here is locked.',
-      'The gate guards the cloud, not your work. Every page in the studio opens and saves on this device while you wait; sync starts by itself once you are through.');
+    const out = section('meanwhile', 'Meanwhile', 'Your work is safe.',
+      'Anything already saved on this device stays exactly as it is. Once you are in, everything opens again and sync starts by itself.');
     out.append(h('div.iv-actions', {}, [
       h('a.btn', { href: 'index.html', text: 'KEEP WORKING' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })

@@ -62,6 +62,8 @@ import {
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
+/* The Story page's beat panel on step 04 (plan rev. 3 §3). */
+import { mountStoryKit } from '../ui/story-kit.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
@@ -1877,6 +1879,10 @@ function wireEvents() {
 // INIT — render, then the legacy boot order.
 // ============================================================
 render();
+/* The Story page's step outline beside step 04's five beats, on the
+   short five-beat (src/ui/story-kit.js). Reads the story; writes it
+   only on a click. */
+mountStoryKit('short');
 // Step 09's live line — derived from the scene and contact models, never stored.
 watchReadouts();
 wireEvents();

@@ -1,0 +1,32 @@
+/* ============================================================
+   WRITE — the shot count at each scene heading
+   ------------------------------------------------------------
+   "Sc 12 · 6 shots" / "Sc 12 · no shots yet", drawn by
+   decorateShotCounts() in src/pages/write.js. It sits in the space a
+   scene heading already leaves above itself — the right-hand twin of
+   the beat marker (beat-board.css), which takes the left — so it
+   moves nothing on the page and needs no grid column.
+   ============================================================ */
+.wr-el.wr-has-shotcount { position: relative; }
+.wr-shotcount {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  max-width: 60%;
+  padding: 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* The first heading on the page has no space above it to sit in. */
+.wr-chunk:first-child > .wr-el.t-scene.wr-has-shotcount:first-child { margin-top: var(--s4); }
+
+@media print {
+  .wr-shotcount { display: none; }
+}

@@ -105,16 +105,20 @@ function safeRender() {
  *  preceding heading is paired with, so the Breakdown keeps script
  *  order. Numbers: the heading's own if it has one nobody holds, else
  *  the next number after the highest in use — never a guess at "12A". */
-async function addThem() {
-  if (busy) return;
+export async function addThem(opts) {
+  // Write's "Break into shots" runs this same path first and says the
+  // result in its own toast, so it asks for no toast here. A click on
+  // the banner passes an Event, which carries no `quiet`.
+  const quiet = !!(opts && opts.quiet === true);
+  if (busy) return [];
   const doc = getDoc();
-  if (!doc) return;
+  if (!doc) return [];
   busy = true;
   try {
     const { parseSlug } = await import('../lib/script-import.js');
     const scenes = Scenes.listScenes();
     const m = matchScenes(scenes, doc.elements);
-    if (!m.unmatchedHeadings.length) { safeRender(); return; }
+    if (!m.unmatchedHeadings.length) { safeRender(); return []; }
     const sceneOf = new Map(m.pairs.filter((p) => p.slice).map((p) => [p.slice, p.scene.id]));
     const fresh = new Set(m.unmatchedHeadings);
     const taken = new Set(scenes.map((s) => String(s.number || '').trim().toUpperCase()).filter(Boolean));
@@ -152,6 +156,7 @@ async function addThem() {
     safeRender();
     const n = added.length;
     const ids = new Set(added);
+    if (quiet) return added;
     StudioUI.toast(`Added ${n} scene${n === 1 ? '' : 's'} to the Breakdown.`, {
       type: 'success',
       action: 'Undo',
@@ -161,9 +166,12 @@ async function addThem() {
         StudioUI.toast(`Removed the ${n} scene${n === 1 ? '' : 's'} just added.`, { type: 'info' });
       }
     });
+    return added;
   } catch (e) {
     console.warn('[handoff] add', e);
     StudioUI.toast('The scenes could not be added. Nothing was changed.', { type: 'error' });
+    if (quiet) throw e;
+    return [];
   } finally {
     busy = false;
   }
@@ -200,4 +208,4 @@ export function mountHandoff(opts = {}) {
   safeRender();
 }
 
-export default { mountHandoff, newHeadings };
+export default { mountHandoff, newHeadings, addThem };

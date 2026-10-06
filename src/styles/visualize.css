@@ -487,6 +487,15 @@
 
 .vz-ai-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 
+/* No key: the basic breakdown leads, and the key form follows the
+   buttons rather than standing in front of them. */
+.vz-ai > .vz-basic-note { margin-bottom: var(--s4); }
+.vz-ai-acts ~ .ai-keygate { margin-top: var(--s5); }
+
+/* A shot the basic breakdown drafted: the AI tag's shape, with a
+   dashed line so the two provenances read apart at a glance. */
+.vz-rules-tag { border-style: dashed; }
+
 .vz-ai-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .vz-ai-count {
   font-family: var(--f-mono);

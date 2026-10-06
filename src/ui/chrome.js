@@ -67,6 +67,9 @@ import { injectFooter } from './footer.js';
    module and nothing else, and vite.config.js already folds every
    src/lib and src/ui module into the one `studio` chunk anyway. */
 import '../lib/drive-sync.js';
+/* The no-project banner on every page a stage module lives on. Side
+   effect only; see the header of no-project.js for which pages. */
+import './no-project.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 

@@ -1942,6 +1942,39 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - `prove:drive` builds with the site gate off (it drives settings
       signed out) and stubs Google Fonts and `/favicon.ico`; it had been
       broken since the site gate landed.
+    - **Work done with no project open is ADOPTED, not lost (audit C1).**
+      With no project the proxy writes the HOLDING SLOT — the bare key on
+      the device, `key@<uid>` in an account — and creating a project used
+      to hide it for good (`migrateLegacy()` only runs on the first load).
+      Now the hub's New Project form calls `createProject({ adopt: true })`
+      and `adoptUnfiled()` in `store.js` moves the slot into it: raw,
+      set-verify-then-remove (big values verified after `flushStorage()`),
+      never over a different value already in the target (the slot is kept
+      and offered to the next project), and idempotent with no marker — a
+      slot whose exact value already sits in a project of this namespace is
+      an interrupted adoption and is just removed. **Which project:** the
+      next one CREATED EMPTY from the form, in the namespace the work was
+      written in. The sample, duplicate, backup import, cloud pull and
+      `migrateLegacy()` do NOT adopt — each fills the new project with its
+      own content and adoption would mix two films. `buildBackup()` now
+      reads every holding slot whatever the project count (`_unfiled`,
+      `_unfiled_<n>` for accounts — numbered so no account id is in the
+      file); a merge import lands each as a project, a Drive restore puts
+      it back into the holding slot without clobbering. The banner
+      (`ensureNoProjectBanner()`, wired by `src/ui/no-project.js` from
+      `chrome.js` on every page a STAGE module lives on, derived from
+      navigation.json) says the work is kept on this device and moves into
+      the next project created — the old "your edits won't save" was false.
+      It is no longer sticky.
+    - **Blueprint reset and import REPLACE (audit H1).** Both `loadData()`s
+      set a field the blob does not carry back to its markup default and
+      untick absent checklist items (by class — never `li.value`), so
+      Reset clears the screen and an import no longer interleaves two
+      films. Imports go through `src/lib/blueprint-file.js` first (refuses
+      non-JSON, studio backups, the other blueprint's file and anything
+      whose fields are mostly not this page's) and then confirm. The short
+      film's Erase ALL also removes `fms_festivals_v1` (scoped, so this
+      project's tracker only).
     - **Left open, on purpose and on record:** `docs/KNOWN-ISSUES.md` —
       the Library's dark-pref carry-over reads an undefined `PREF_KEY`,
       the extension panel lost the three Library modules, a Case Studies

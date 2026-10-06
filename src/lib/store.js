@@ -555,9 +555,118 @@ export function createProject(meta) {
   arr0.push(project);
   saveAllProjects(arr0);
   _invalidateCurrent();
+  /* Adoption BEFORE the pointer moves and before the event: a
+     subscriber that reads the new project must see the work that
+     moved into it, and the open-project pointer is what makes the
+     proxy stop addressing the holding slot. Opt-in only — see
+     adoptUnfiled() for which project gets the work and why. */
+  if (meta.adopt === true && ns.indexOf(_ns) >= 0) {
+    project.adopted = adoptUnfiled(project.id);
+  }
   if (ns.indexOf(_ns) >= 0) setCurrentProject(project.id);
   notify('projects:changed', { reason: 'create', project });
   return project;
+}
+
+/* ============================================================
+   UNFILED WORK — what a module page wrote with no project open
+   ------------------------------------------------------------
+   With no project open the storage proxy has nowhere to suffix a
+   scoped key, so it writes the HOLDING SLOT: the bare key on the
+   device (`fms_contacts_v1`), `fms_contacts_v1@<uid>` inside an
+   account. Every page says SAVED, the data survives a reload — and
+   until this existed, creating a project hid it for good, because
+   the proxy then read `__<id>` and nothing ever looked at the slot
+   again. migrateLegacy() adopts the bare keys exactly ONCE, on the
+   very first load, which is before anybody could have written any.
+
+   WHICH PROJECT GETS IT: the next project the person creates with
+   the hub's New Project form, in the namespace the work was written
+   in. That is the one creation that starts EMPTY and is the person
+   saying "this is my film". Every other creation path fills the new
+   project with content of its own, and adoption would mix two films
+   (or, with never-clobber, half-mix them): the Dragon sample, a
+   duplicate, a backup import, a cloud pull, and migrateLegacy, which
+   moves the bare keys itself. Those callers do not pass
+   `adopt: true`, and that is the whole of the opt-in.
+
+   The same five properties as migratePrefix():
+     RAW            rawGet/rawSet/rawRemove by full key name, never
+                    through the proxy (which would answer for the
+                    open project and nothing else).
+     SET, VERIFY, THEN REMOVE
+                    the slot is removed only after the project's key
+                    reads back equal. An overflowed value is verified
+                    after flushStorage(), once the big tier has said
+                    where its bytes actually landed.
+     NEVER CLOBBER  a project key that already holds something
+                    different is left alone and the slot is KEPT —
+                    still unfiled, still in the backup, offered to
+                    the next project created.
+     IDEMPOTENT     a slot whose exact value already sits under any
+                    project in this namespace is an adoption that
+                    was interrupted between the set and the remove;
+                    it is finished (slot removed), not copied again.
+     NO MARKER      nothing records that adoption happened. The slot
+                    being empty IS the record, so "written since the
+                    last adoption" is simply "in the slot now".
+   ============================================================ */
+const holdingKeyFor = (k, ns) => (ns === DEVICE_NS ? k : k + '@' + ns);
+
+/** Scoped keys that hold unfiled work in namespace `ns` (default:
+ *  this page's). Reads only. */
+export function unfiledKeys(ns) {
+  const n = ns == null ? _ns : ns;
+  return SCOPED_KEYS.filter((k) => rawGet(holdingKeyFor(k, n)) != null);
+}
+
+/** Namespaces on this device with unfiled work — for the backup,
+ *  which is device-wide. '' is the device itself. */
+export function unfiledNamespaces() {
+  const out = new Set();
+  try {
+    for (let i = 0; i < global.localStorage.length; i++) {
+      const k = global.localStorage.key(i);
+      if (!k) continue;
+      if (SCOPED_KEYS.indexOf(k) >= 0) { out.add(DEVICE_NS); continue; }
+      const at = k.indexOf('@');
+      if (at > 0 && SCOPED_KEYS.indexOf(k.slice(0, at)) >= 0) out.add(k.slice(at + 1));
+    }
+  } catch (e) { /* private mode: nothing stored */ }
+  return Array.from(out);
+}
+
+/** The storage key of `k`'s holding slot in namespace `ns`. */
+export function holdingKey(k, ns) { return holdingKeyFor(k, ns == null ? _ns : ns); }
+
+function adoptUnfiled(projectId) {
+  const moved = [], kept = [], deferred = [];
+  const others = listProjects().filter((p) => p.id !== projectId);
+  SCOPED_KEYS.forEach((k) => {
+    const src = holdingKeyFor(k, _ns);
+    const v = rawGet(src);
+    if (v == null) return;
+    // Idempotence: an earlier adoption set this and died before the remove.
+    if (others.some((p) => rawGet(k + '__' + p.id) === v)) { rawRemove(src); moved.push(k); return; }
+    const dst = k + '__' + projectId;
+    const have = rawGet(dst);
+    if (have != null && have !== v) { kept.push(k); return; }      // never clobber
+    if (have == null && !rawSet(dst, v)) { kept.push(k); return; }
+    if (v.length > Overflow.THRESHOLD) { deferred.push([k, src, dst, v]); return; }
+    if (rawGet(dst) === v) { rawRemove(src); moved.push(k); }      // verify, then remove
+    else kept.push(k);
+  });
+  if (deferred.length) {
+    /* A big value's put is still owed the event loop; the cache would
+       answer "equal" before the database had the bytes. Remove the
+       slot only once the tier has settled where they went. */
+    flushStorage().then(() => {
+      deferred.forEach(([, src, dst, v]) => { if (rawGet(dst) === v) rawRemove(src); });
+    });
+    deferred.forEach(([k]) => moved.push(k));
+  }
+  if (moved.length || kept.length) notify('unfiled:adopted', { projectId, moved, kept });
+  return { moved, kept };
 }
 
 export function updateProject(id, patch) {
@@ -976,7 +1085,7 @@ export function migrateLegacy() {
        Filing it inside whichever account was open would put work that
        was never behind an account behind one, and it would vanish at
        sign-out. On the device it is reachable forever. */
-    const project = createProject({ title, format: 'feature', ns: [DEVICE_NS] });
+    const project = createProject({ title, format: 'feature', ns: [DEVICE_NS], adopt: false });
 
     // Move legacy keys to namespaced keys
     SCOPED_KEYS.forEach(k => {
@@ -1135,35 +1244,51 @@ export function wireBlueprintHeader(opts) {
   subscribe('project:meta', update);
 
   // Also show a banner if no project — makes it impossible to miss
-  function ensureBanner() {
-    if (currentProject()) {
-      const existing = document.getElementById('studioNoProjectBanner');
-      if (existing) existing.remove();
-      return;
-    }
-    if (document.getElementById('studioNoProjectBanner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'studioNoProjectBanner';
-    // Styling lives in chrome-injected.css (imported here) so it can use
-    // tokens. It was an inline cssText blob with two raw colours, the
-    // text one being the pre-token paper value, so the banner did not
-    // move with the theme.
-    banner.className = 'studio-no-project-banner';
-    banner.append(
-      '⚠ NO PROJECT SELECTED — your edits won\'t save until you pick a project. '
-    );
-    const link = document.createElement('a');
-    link.href = 'index.html';
-    link.textContent = 'GO TO STUDIO →';
-    banner.append(link);
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
+  watchNoProjectBanner();
+}
+
+/* THE NO-PROJECT BANNER — one builder, for every page that writes
+   scoped keys. The blueprints reach it through wireBlueprintHeader();
+   the module pages through src/ui/no-project.js, which decides from
+   navigation.json which pages those are.
+
+   Its old sentence was "your edits won't save until you pick a
+   project", which was false in the dangerous direction: the edits DID
+   save, into the holding slot, and were then hidden by the first
+   project created. Since adoptUnfiled() the true sentence is the one
+   below — kept here, moved into the next new project. */
+export function ensureNoProjectBanner() {
+  if (typeof document === 'undefined' || !document.body) return;
+  const existing = document.getElementById('studioNoProjectBanner');
+  if (currentProject()) { if (existing) existing.remove(); return; }
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'studioNoProjectBanner';
+  banner.setAttribute('role', 'status');
+  // Styling lives in chrome-injected.css (imported here), tokens only.
+  banner.className = 'studio-no-project-banner';
+  banner.append(
+    'NO PROJECT OPEN — what you do here is kept on this device, and moves ' +
+    'into the next project you create. '
+  );
+  const link = document.createElement('a');
+  link.href = 'index.html';
+  link.textContent = 'CREATE OR OPEN A PROJECT →';
+  banner.append(link);
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
+let _bannerWatched = false;
+export function watchNoProjectBanner() {
+  if (typeof document === 'undefined') return;
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureBanner);
+    document.addEventListener('DOMContentLoaded', ensureNoProjectBanner);
   } else {
-    ensureBanner();
+    ensureNoProjectBanner();
   }
-  subscribe('current:changed', ensureBanner);
+  if (_bannerWatched) return;
+  _bannerWatched = true;
+  subscribe('current:changed', ensureNoProjectBanner);
 }
 
 // Re-render bound displays whenever the active project changes
@@ -1210,6 +1335,8 @@ const StudioStore = {
   bindElements,
   refreshAllBoundDisplays,
   wireBlueprintHeader,
+  ensureNoProjectBanner, watchNoProjectBanner,
+  unfiledKeys, unfiledNamespaces, holdingKey,
 
   // storage
   installStorageProxy,

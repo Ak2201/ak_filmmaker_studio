@@ -2245,7 +2245,7 @@ function submitProjectModal(e) {
     logActivity('studio', 'Project renamed: "' + titleValue + '"', '#projects');
     StudioUI.toastSuccess('Renamed to "' + titleValue + '"');
   } else {
-    Store.createProject({ title: titleValue, format });
+    Store.createProject({ title: titleValue, format, adopt: true });  // unfiled work moves in: store.js adoptUnfiled()
     logActivity('studio', 'Project created: "' + titleValue + '" (' + format + ')', '#projects');
     StudioUI.toastSuccess('Project "' + titleValue + '" created.');
   }

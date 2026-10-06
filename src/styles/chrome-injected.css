@@ -89,14 +89,15 @@
    the invariant-4 check in CLAUDE.md greps for them.
    ------------------------------------------------------------ */
 .studio-no-project-banner {
-  position: sticky;
-  top: 0;
-  /* Above the brand plate, which is +2: both are sticky at top 0, so
-     one of them covers the other once the page scrolls, and "you have
-     no project, nothing you type is being saved" outranks an
-     announcement. +3 rather than a shuffle of the other two, because
-     this banner exists only in the state where it is the only thing
-     worth reading. (Was a literal 101: one above the toolbar.) */
+  /* IN FLOW, not sticky. It was pinned at top 0 while its sentence
+     was "nothing you type is being saved"; that sentence was false
+     (the work was saved, into the holding slot) and since adoption
+     the work moves into the next project created, so this is a
+     notice rather than an alarm. Pinned, it also sat on top of the
+     shell band, which is sticky at top 0 from 1100px and is what
+     --sh-chrome-h measures. It now appears on every project page,
+     not just the two blueprints, so it scrolls away with the page. */
+  position: relative;
   z-index: calc(var(--z-toolbar) + 3);
   padding: var(--s2) var(--s4);
   text-align: center;

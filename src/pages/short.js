@@ -37,7 +37,7 @@
 /* Store FIRST and on purpose: it patches Storage.prototype so every
    localStorage read below is scoped to the current project. Read the
    load-order banner in src/lib/store.js before moving this line. */
-import '../lib/store.js';
+import Store from '../lib/store.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -52,6 +52,7 @@ import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 
 import { h, delegate } from '../lib/dom.js';
+import { readBlueprintFile } from '../lib/blueprint-file.js';
 import { parseNum, INR, USD } from '../lib/money.js';
 import * as Fest from '../lib/festivals.js';
 import { renderSteps, mountStepsLang } from '../ui/steps.js';
@@ -1033,16 +1034,26 @@ function loadData() {
 
   const migrated = migrateFlatSceneKeys(data);
 
+  /* REPLACE, NOT MERGE: a key the blob does not carry is an EMPTY
+     field, so it goes back to its markup default. The old loop skipped
+     it, which made an import interleave two films field by field. */
   document.querySelectorAll(FIELD_SELECTOR).forEach((el) => {
     const k = el.getAttribute('data-key');
-    if (data[k] === undefined) return;
+    if (data[k] === undefined) {
+      if (el.tagName === 'SELECT') {
+        const d = Array.from(el.options).findIndex((o) => o.defaultSelected);
+        el.selectedIndex = d >= 0 ? d : (el.options.length ? 0 : -1);
+      } else if (el.type === 'checkbox') el.checked = el.defaultChecked;
+      else el.value = el.defaultValue;
+      return;
+    }
     if (el.type === 'checkbox') el.checked = !!data[k];
     else el.value = data[k];
   });
-  // checklist
+  // checklist — set BOTH ways, by class (never li.value: see FIELD_SELECTOR)
   document.querySelectorAll('.step-check li').forEach((li) => {
     const k = li.getAttribute('data-key');
-    if (k && data[k]) setChecked(li, true);
+    if (k) setChecked(li, !!data[k]);
   });
 
   // scene map — `[]` used to be truthy here, which left a returning user
@@ -1618,14 +1629,36 @@ function exportPDF() {
 
 function importData() { document.getElementById('importFile').click(); }
 
+/* Checked before it is asked, asked before it is written, and written
+   as a REPLACEMENT: loadData() clears every field the file does not
+   carry. A whole-studio backup or a Feature file is refused with a
+   sentence saying where it does belong (src/lib/blueprint-file.js). */
 function handleImport(e) {
   const file = e.target.files[0];
   if (!file) return;
   const r = new FileReader();
   r.onload = (ev) => {
+    const keys = new Set(Array.from(document.querySelectorAll('[data-key]'), (el) => el.getAttribute('data-key')));
+    const res = readBlueprintFile(String(ev.target.result || ''), {
+      keys,
+      extraKey: (k) => k === '_sceneMap' || k === '_script' || /^sm_\d+_/.test(k),
+      allowNonScalar: (k, v) => (k === '_sceneMap' || k === '_script') && Array.isArray(v),
+      label: 'Short Film Blueprint',
+      otherLabel: 'Feature Blueprint',
+      looksOther: (d) => Object.keys(d).some((k) => /^(sl|shot|cast|loc)_\d+_/.test(k))
+    });
+    if (!res.ok) {
+      flashStatus('●  import refused');
+      if (StudioUI && StudioUI.toast) StudioUI.toast(res.error, { type: 'error', duration: 8000 });
+      else alert(res.error);
+      return;
+    }
     try {
-      if (!confirm('Import will REPLACE your current data. Continue?')) return;
-      localStorage.setItem(STORAGE_KEY, ev.target.result);
+      if (!confirm('Replace everything in this Short Film Blueprint with "' + file.name + '"?\n\n' +
+                   'Fields the file does not contain will be emptied. Your festival tracker is not touched. ' +
+                   'Export first if you want to keep what is here now.')) return;
+      clearTimeout(saveTimer);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data));
       // Clear DOM and reload
       document.getElementById('sceneMapBody').innerHTML = '';
       document.getElementById('scriptScenes').innerHTML = '';
@@ -1638,11 +1671,21 @@ function handleImport(e) {
   e.target.value = '';
 }
 
+/* "ALL" includes the festival tracker. It lives under its own key
+   (fms_festivals_v1, scoped per project like the blob — the proxy
+   suffixes both with the open project's id, so this erases THIS
+   film's campaign and no other) and the old reset left it behind:
+   a fresh start that still listed last draft's submissions, deadlines
+   and fees. The pending autosave is cancelled first, or it could land
+   between the remove and the reload and write the old blueprint
+   straight back. */
 function resetData() {
-  if (!confirm('Erase ALL your data and start fresh? This cannot be undone unless you exported JSON first.')) return;
+  if (!confirm('Erase ALL your data for this short — every field, the scene map, the script and the festival tracker — and start fresh? This cannot be undone unless you exported JSON first.')) return;
   if (!confirm('Are you SURE? Last chance.')) return;
+  clearTimeout(saveTimer);
   localStorage.removeItem(STORAGE_KEY);
-  location.reload();
+  localStorage.removeItem(Fest.FESTIVALS_KEY);
+  Store.flushStorage().then(() => location.reload());
 }
 
 function printScriptOnly() {

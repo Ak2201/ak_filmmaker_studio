@@ -1,6 +1,13 @@
 /* ============================================================
    DISSECTION — the worked example, and yours beside it
    ------------------------------------------------------------
+   WHERE IT LIVES. This was dissect.html's page module. Since 6 Oct
+   2026 it is a tab of the Library (library.html#dissection), so it is
+   a renderer: mountDissection(container) draws into the library's tab
+   and every rebuild (add, remove, reorder) re-draws there. dissect.html
+   is a redirect stub. The storage key, fms_dissect_v1, is owned by
+   src/lib/dissect.js and did not move.
+
    Two halves of ONE shape. The shipped dissection and the one the
    reader writes use exactly the same fields (src/lib/dissect.js), so
    the page is a form with the answer key printed above it. That is
@@ -24,23 +31,18 @@
    An idle page writes nothing at all, which is what verify asserts.
    ============================================================ */
 import '../lib/store.js';
-import '../styles/base.css';
-import '../styles/chrome.css';
-import '../styles/editorial.css';
-import '../styles/widgets.css';
-import '../styles/modules.css';
-import '../styles/print.css';
 import '../styles/dissect.css';
 
-import StudioUI from '../ui/chrome.js';
-import { mountShell } from '../ui/shell.js';
+import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
 import {
   AREAS, ACTS, listShipped, loadMine, saveMine,
   blankSequence, blankMotif, coverage, danglingMotifs
 } from '../lib/dissect.js';
 
-const app = document.getElementById('app');
+/* The element the dissection renders into, handed over by
+   mountDissection(). */
+let app = null;
 
 const ACT_NAME = { 1: 'Act One', 2: 'Act Two', 3: 'Act Three' };
 const AREA_LABEL = {
@@ -474,7 +476,7 @@ function renderHeader(films) {
   const mineCount = (mine.sequences || []).length;
   return h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Dissection · working backwards from a finished film' }),
-    h('h1.bd-title', { text: 'Film Dissection.' }),
+    h('h2.bd-title', { text: 'Film Dissection.' }),
     h('p.bd-deck', {
       text: 'The blueprints build a script forwards. This runs the other way: '
           + 'start with a film that works, and name the job every sequence is doing. '
@@ -489,14 +491,14 @@ function renderHeader(films) {
 }
 
 function render() {
+  if (!app) return;
   const films = listShipped();
-  const main = h('main', { id: 'main' });
+  const main = h('div.dx-root');
   main.append(renderHeader(films));
   films.forEach((f) => main.append(renderExample(f)));
   main.append(renderMine());
 
   app.replaceChildren(main);
-  mountShell();
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -622,4 +624,11 @@ delegate(document, 'click', '[data-action="q-del"]', (e, el) => {
   mutate(() => { mine.questions.splice(i, 1); });
 });
 
-render();
+/** Render the dissection into `container`. The library calls this
+ *  once for its Dissection tab; the shell is the caller's business. */
+export function mountDissection(container) {
+  app = container;
+  render();
+}
+
+export default { mountDissection };

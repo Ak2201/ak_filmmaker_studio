@@ -1,0 +1,42 @@
+/* ============================================================
+   THE LIBRARY'S REFERENCE SHELF — case studies, dissection, glossary
+   ------------------------------------------------------------
+   The three tabs that used to be pages of their own. Their own
+   sheets (study.css, dissect.css) still do the work; this file only
+   settles them into a tab. Tokens and --sk-* only.
+   ============================================================ */
+
+/* An embedded page brings its own bands and gutters, so the host
+   band does not add a second set around them. */
+.lib-embed { padding-inline: 0; padding-top: 0; }
+
+/* The demo-film selector was sticky under the shell on study.html.
+   In a tab the tab strip is what is pinned there, and two bars
+   stacked at one offset cover each other — so it scrolls with its
+   tab, as it already did below 720px. */
+.lib-embed .ds-bar { position: static; }
+
+/* ---- the craft glossary: every film's example, under the term ---- */
+.lib-gloss-ex {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lib-gloss-ex li {
+  padding-left: var(--s3);
+  border-left: var(--sk-hue-rule-w, 2px) solid var(--rule-hair);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.lib-gloss-film {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.lib-gloss-more { margin-top: var(--s5); }

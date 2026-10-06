@@ -15,6 +15,23 @@
    cannot disagree with the cards, because they are the same
    number.
 
+   THE REFERENCE SHELF (6 Oct 2026, owner's ask). Case Studies,
+   Dissection and the Craft Glossary used to be Story-stage modules
+   on pages of their own. They are tabs here now, beside the films and
+   the rules they draw on: navigation.json hangs them off the Library's
+   global entry (src/lib/navmodel.js), study.html and dissect.html are
+   redirect stubs, and the two renderers moved — ONE copy each — to
+   src/ui/case-studies.js and src/ui/dissection.js. Every storage key
+   they touch (fms_studio_demo_v1, fms_workbench_v1, fms_dissect_v1)
+   is owned by its lib module and did not move.
+
+   TABS. tabs.js turns the `section[id]` children of <main> into tabs,
+   so each head and its body are ONE section with the id on it. They
+   used to be two siblings — a `section.section-head#films` and an
+   anonymous `section.section-body` after it — which tabbed the
+   headings and left all eight bodies on screen at once. The cover and
+   the closing page carry no id on purpose: they stay outside the tabs.
+
    ⚠️  LOAD ORDER — store.js FIRST.
    It patches Storage.prototype so `fms_library_calc_v1` is
    scoped to the current project. The calculator's load/save must
@@ -31,10 +48,17 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/rates.css';
 import '../styles/print.css';
+import '../styles/library-shelf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { shelves } from '../lib/navmodel.js';
+import PlanGate from '../lib/plan-gate.js';
+import { mountCaseStudies } from '../ui/case-studies.js';
+import { mountDissection } from '../ui/dissection.js';
+import { listStudies } from '../lib/studies.js';
+import { listShipped } from '../lib/dissect.js';
 
 import films from '../data/films.json';
 import directors from '../data/directors.json';
@@ -49,6 +73,7 @@ import rates from '../data/rates.chennai.2024.json';
    The base file's name is still true — it is the 2024-25 card. What
    is 2026 is in the overlay and is labelled as such, per figure. */
 import rateChecks from '../data/rates.chennai.checks.json';
+import glossary from '../data/glossary.json';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -71,6 +96,10 @@ const N_RULES      = rules.length;
 const N_STEPS      = watchlist.length;
 const N_WATCHFILMS = watchlist.reduce((n, s) => n + s.films.length, 0);
 const N_TABLES     = rates.sections.length;
+const N_STUDIES    = listStudies().length;
+const N_DISSECTED  = listShipped().length;
+const N_TERMS      = (glossary.terms || []).length;
+const N_GLOSS_FILMS = Object.keys(glossary.films || {}).length;
 /* Films-per-step is a fact about the data, not a constant: if a
    step ever carried four, the deck would say four. */
 const FILMS_PER_STEP = Math.round(N_WATCHFILMS / Math.max(1, N_STEPS));
@@ -174,6 +203,7 @@ const SECTIONS = [
   {
     id: 'films',
     nav: 'FILMS',
+    tab: 'Films',
     title: 'The Tamil Cinema <em>Craft Library.</em>',
     tocTitle: 'Tamil Cinema Craft Library',
     tocDesc: `${N_FILMS} films, what to learn from each`,
@@ -186,6 +216,7 @@ const SECTIONS = [
   {
     id: 'directors',
     nav: 'DIRECTORS',
+    tab: 'Directors',
     title: 'Director <em>Archetypes.</em>',
     tocTitle: 'Director Archetypes',
     tocDesc: `${N_DIRECTORS} voices to study`,
@@ -199,6 +230,7 @@ const SECTIONS = [
   {
     id: 'rules',
     nav: 'RULES',
+    tab: 'Rules',
     title: `${cap(numWord(N_RULES))} <em>Rules of Thumb.</em>`,
     tocTitle: `${N_RULES} Rules of Thumb`,
     tocDesc: 'Craft maxims, attributed',
@@ -210,6 +242,7 @@ const SECTIONS = [
   {
     id: 'equipment',
     nav: 'EQUIPMENT',
+    tab: 'Equipment',
     title: 'Equipment &amp; <em>Cost Estimator.</em>',
     tocTitle: 'Equipment & Cost Estimator',
     tocDesc: `Chennai ${rates.asOf} indicative ranges`,
@@ -223,6 +256,7 @@ const SECTIONS = [
   {
     id: 'watch',
     nav: 'WATCH LIST',
+    tab: 'Watch list',
     title: 'Watch List <em>per Step.</em>',
     tocTitle: 'Watch List per Step',
     tocDesc: `${FILMS_PER_STEP} films for each of ${N_STEPS} blueprint steps`,
@@ -232,8 +266,56 @@ const SECTIONS = [
           `Watch them with the step's question in mind — the films will teach you ` +
           `more than the blueprint can.`,
     body: renderWatchlist
+  },
+  /* The reference shelf. The tab label is the navigation.json module's
+     label (shelfLabel), so the rail, the palette, the hub's map and
+     this strip cannot name one tool three ways. */
+  {
+    id: 'case-studies',
+    nav: 'CASE STUDIES',
+    title: 'Case <em>Studies.</em>',
+    tocTitle: 'Case Studies',
+    tocDesc: `${N_STUDIES} films, read beat by beat`,
+    count: `${N_STUDIES} FILMS`,
+    deck: `Pick one of ${numWord(N_STUDIES)} films and every card below speaks in its ` +
+          `terms: the concept, the logline, the characters, the beats, the scene ` +
+          `craft. Each card is the same three steps — what the thing is, how this ` +
+          `film did it, how to write yours.`,
+    body: renderCaseStudiesHost
+  },
+  {
+    id: 'dissection',
+    nav: 'DISSECTION',
+    title: 'Film <em>Dissection.</em>',
+    tocTitle: 'Film Dissection',
+    tocDesc: 'A finished film taken apart, then yours',
+    count: `${N_DISSECTED} WORKED ${N_DISSECTED === 1 ? 'EXAMPLE' : 'EXAMPLES'}`,
+    deck: `Working backwards from a film that works: the job every sequence is ` +
+          `doing, the motifs planted and paid, what transfers. Then the same ` +
+          `fields, for a film of your own.`,
+    body: renderDissectionHost
+  },
+  {
+    id: 'glossary',
+    nav: 'GLOSSARY',
+    title: 'Craft <em>Glossary.</em>',
+    tocTitle: 'Craft Glossary',
+    tocDesc: `${N_TERMS} terms, each in ${numWord(N_GLOSS_FILMS)} films`,
+    count: `${N_TERMS} TERMS · ${N_GLOSS_FILMS} FILMS`,
+    deck: `${cap(numWord(N_TERMS))} craft terms the studio uses, each defined once ` +
+          `and then shown at work in ${numWord(N_GLOSS_FILMS)} Tamil films. The same ` +
+          `definitions open as popovers wherever a term appears in the blueprints.`,
+    body: renderCraftGlossary
   }
 ];
+
+/** A shelf module's label from navigation.json, for the tab strip. */
+function shelfLabel(id) {
+  for (const sh of shelves()) for (const m of sh.modules) {
+    if ((m.href || '').split('#')[1] === id) return m.label;
+  }
+  return '';
+}
 
 /* ============================================================
    CHROME
@@ -302,8 +384,18 @@ function renderCover() {
   ]);
 }
 
+/* One section per tab: the id, the head and the body together. */
+function renderSection(section, i) {
+  const sec = h('section.lib-sec', {
+    id: section.id,
+    'data-tab-label': shelfLabel(section.id) || section.tab || section.nav
+  });
+  sec.append(renderSectionHead(section, i), section.body());
+  return sec;
+}
+
 function renderSectionHead(section, i) {
-  return h('section.section-head', { id: section.id }, [
+  return h('div.section-head', {}, [
     h('div.left', {}, [
       h('div.label', { text: `SECTION ${ROMAN[i + 1] || i + 1}` }),
       h('h2', { html: section.title }),
@@ -507,6 +599,100 @@ function renderWatchlist() {
 }
 
 /* ============================================================
+   SECTIONS VI & VII — CASE STUDIES, DISSECTION
+   ------------------------------------------------------------
+   Hosts only. The renderers live in src/ui/ and draw into these
+   after the page is in the document (mountShelf below). A div, not
+   `section.section-body`: the glossary tagger walks every
+   section.section-body, and these two never had popovers on their
+   own pages.
+   ============================================================ */
+function renderCaseStudiesHost() {
+  return h('div.section-body.lib-embed', {}, [h('div#caseStudiesHost.lib-host')]);
+}
+function renderDissectionHost() {
+  return h('div.section-body.lib-embed', {}, [h('div#dissectionHost.lib-host')]);
+}
+function mountShelf() {
+  const cs = document.getElementById('caseStudiesHost');
+  if (cs) mountCaseStudies(cs);
+  const dx = document.getElementById('dissectionHost');
+  if (dx) mountDissection(dx);
+}
+
+/* ============================================================
+   SECTION VIII — CRAFT GLOSSARY
+   ------------------------------------------------------------
+   src/data/glossary.json, the file the popovers already read, shown
+   whole: every term with every film's example. The case studies show
+   one film's example per term; this is the reference shape, all four
+   at once. The feature blueprint keeps its own department glossary
+   (camera, coverage, production, budget, sound) at
+   feature.html#glossary and this links to it rather than copying it.
+   ============================================================ */
+function renderCraftGlossary() {
+  const films = glossary.films || {};
+  const body = h('div.section-body.lib-gloss');
+
+  body.append(h('div.st-gloss-filter', {}, [
+    h('label.st-gloss-label', { for: 'libGlossFilter', text: 'Filter terms' }),
+    h('input#libGlossFilter.st-gloss-input', {
+      type: 'search', autocomplete: 'off', spellcheck: 'false',
+      placeholder: 'subtext, setup, payoff…',
+      'data-action': 'lib-gloss-filter', 'aria-controls': 'libGlossList'
+    }),
+    h('span#libGlossCount.st-gloss-count', {
+      role: 'status', 'aria-live': 'polite', text: `${N_TERMS} terms`
+    })
+  ]));
+
+  const list = h('div#libGlossList.gloss-list.st-gloss.lib-gloss-list');
+  for (const t of (glossary.terms || [])) {
+    const dt = h('dt', { text: t.term });
+    if ((t.aliases || []).length) dt.append(h('span.st-alias', { text: ' · ' + t.aliases.join(', ') }));
+    const item = h('article.gloss-item', {}, [h('dl', {}, [dt, h('dd', { text: t.def || '' })])]);
+    if (t.tanglish) item.append(h('span.tn', { text: t.tanglish }));
+    const ex = (t.examples || []).filter((e) => e && e.note);
+    if (ex.length) {
+      item.append(h('ul.lib-gloss-ex', {}, ex.map((e) => h('li', {}, [
+        h('span.lib-gloss-film', { text: films[e.film] || e.film }),
+        ' ' + e.note
+      ]))));
+    }
+    item.setAttribute('data-search', [
+      t.term, (t.aliases || []).join(' '), t.def, t.tanglish, ...ex.map((e) => e.note)
+    ].filter(Boolean).join(' ').toLowerCase());
+    list.append(item);
+  }
+  body.append(list);
+  body.append(h('p#libGlossNone.st-gloss-none', {
+    hidden: true,
+    text: 'No term matches that. Try a shorter word — the definitions are searched too.'
+  }));
+  body.append(h('p.hint.lib-gloss-more', {}, [
+    'Camera, coverage, production, budget and sound terms are in the ',
+    h('a', { href: 'feature.html#glossary', text: 'feature blueprint’s glossary' }),
+    '.'
+  ]));
+  return body;
+}
+
+function filterGlossary(input) {
+  const q = String(input.value || '').trim().toLowerCase();
+  const items = document.querySelectorAll('#libGlossList .gloss-item');
+  let shown = 0;
+  items.forEach((el) => {
+    const hit = !q || (el.getAttribute('data-search') || '').includes(q);
+    el.hidden = !hit;
+    if (hit) shown++;
+  });
+  const count = document.getElementById('libGlossCount');
+  if (count) count.textContent = q ? `${shown} of ${items.length} terms` : `${items.length} terms`;
+  const none = document.getElementById('libGlossNone');
+  if (none) none.hidden = shown !== 0;
+}
+
+/* ============================================================
    FINAL PAGE
    ============================================================ */
 function renderFinal() {
@@ -548,7 +734,9 @@ function wireActions(root) {
     fn(el, e);
   });
 
-  // Typing in a row, or picking a preset, recalculates and saves.
+  // The glossary filter: DOM-only, so typing never re-renders and
+  // never writes.
+  delegate(root, 'input', '[data-action="lib-gloss-filter"]', (e, el) => filterGlossary(el));
 }
 
 /* ============================================================
@@ -583,15 +771,13 @@ function render() {
   // true after the adoption.
   const main = h('main#main', { role: 'main' });
   main.append(renderCover());
-  SECTIONS.forEach((s, i) => {
-    main.append(renderSectionHead(s, i));
-    main.append(s.body());
-  });
+  SECTIONS.forEach((s, i) => main.append(renderSection(s, i)));
   main.append(renderFinal());
 
   app.replaceChildren(toolbar, main);
 
   wireActions(app);
+  mountShelf();
   adoptLegacyDarkPref();
   syncThemeButton();
 
@@ -606,6 +792,9 @@ function render() {
     // explaining; .section-body is in the tagger's scope.
     StudioUI.wireGlossaryPopovers();
   } catch (e) { /* cloud/chrome extras are optional */ }
+  // A shelf tab the plan does not include shows its lock card; the
+  // rest of the Library stays open. See plan-gate.js, "the tab lock".
+  try { PlanGate.lockTabs(); } catch (e) { /* not gated */ }
 }
 
 if (document.readyState === 'loading') {

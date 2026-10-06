@@ -1,6 +1,14 @@
 /* ============================================================
    CASE STUDIES — the demo film, read as craft
    ------------------------------------------------------------
+   WHERE IT LIVES. This was study.html's page module. Since 6 Oct
+   2026 the studies are a tab of the Library (library.html#case-studies,
+   owner's ask: reference tools belong with the reference library), so
+   this is a renderer: mountCaseStudies(container) draws into the
+   library's tab and re-draws there when the film changes. study.html
+   is a redirect stub now. ONE copy of every renderer, here. "This
+   page" below means this tab.
+
    The library already teaches through four Tamil films, but it
    shows all four at once: four examples under every idea. That is
    a reference book, and a reference book is what you consult, not
@@ -42,26 +50,21 @@
    render.
    ============================================================ */
 import '../lib/store.js';
-import '../styles/base.css';
-import '../styles/chrome.css';
-import '../styles/editorial.css';
-import '../styles/widgets.css';
-import '../styles/modules.css';
-import '../styles/print.css';
 import '../styles/study.css';
 
-import StudioUI from '../ui/chrome.js';
-import { mountShell } from '../ui/shell.js';
+import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
 import {
   BEATS, listStudies, getStudy, currentStudy, currentSlug,
   loadDemo, onDemoChange, validate, getBeatSheetMethod
 } from '../lib/studies.js';
-import { renderDemoSelector } from '../ui/demo-selector.js';
+import { renderDemoSelector } from './demo-selector.js';
 import { t, langToggle, currentLang, setLang, onLangChange, initLang } from '../lib/lang.js';
 import glossary from '../data/glossary.json';
 
-const app = document.getElementById('app');
+/* The element the studies render into. library.html hands it over
+   through mountCaseStudies(); nothing here looks it up by itself. */
+let app = null;
 
 /* The workbench is a sibling module built alongside this one. It is
    loaded through import.meta.glob rather than a literal dynamic
@@ -69,7 +72,7 @@ const app = document.getElementById('app');
    a bare import() of a missing path is a rollup resolution error, and
    a page that cannot build is worse than a page without a workbench.
    Once the file lands it is bundled and chunked normally. */
-const WORKBENCH = import.meta.glob('../ui/workbench*.js');
+const WORKBENCH = import.meta.glob('./workbench*.js');
 
 /* ------------------------------------------------------------
    Small helpers. `filled` is the one that matters: every section
@@ -180,7 +183,7 @@ function renderHeader(study, gaps) {
   const meta = study.meta || {};
   const head = h('header.bd-head');
   head.append(h('p.bd-eyebrow', { text: 'Case study · ' + (meta.genre || 'craft analysis') }));
-  head.append(h('h1.bd-title', { text: meta.title || 'Untitled study' }));
+  head.append(h('h2.bd-title', { text: meta.title || 'Untitled study' }));
   head.append(h('p.st-byline', {
     text: [meta.year, meta.director ? 'dir. ' + meta.director : ''].filter(Boolean).join(' · ')
   }));
@@ -225,10 +228,17 @@ const stat = (value, label) =>
 /* ------------------------------------------------------------
    SECTION SHELL
    ------------------------------------------------------------ */
+/* Every id is prefixed `cs-`. The studies used to be a page of their
+   own; inside the library they share a document with the library's
+   own tabs, and the craft glossary tab is `#glossary` — so the study's
+   glossary section would have been a second element with that id.
+   The old study.html#<id> links are mapped to #cs-<id> by the
+   redirect stub (src/pages/moved.js). */
+const sid = (id) => 'cs-' + id;
 function section(id, eyebrow, title, deck) {
-  const sec = h('section#' + id + '.st-sec', { 'aria-labelledby': id + '-h' });
+  const sec = h('section#' + sid(id) + '.st-sec', { 'aria-labelledby': sid(id) + '-h' });
   sec.append(h('p.bd-eyebrow', { text: eyebrow }));
-  sec.append(h('h2.bd-h2', { id: id + '-h', text: title }));
+  sec.append(h('h3.bd-h2', { id: sid(id) + '-h', text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
 }
@@ -549,7 +559,7 @@ function renderBeatSheets(study) {
    Tanglish set to different heights, so restoring window.scrollY
    leaves the reader a hundred pixels adrift. */
 function swapBeatSheetLanguage() {
-  const old = document.getElementById('beatsheet');
+  const old = document.getElementById(sid('beatsheet'));
   const study = currentStudy();
   if (!old || !study) return;
   const wasAt = old.getBoundingClientRect().top;
@@ -557,19 +567,10 @@ function swapBeatSheetLanguage() {
   if (!fresh) return;
   old.replaceWith(fresh);
   window.scrollBy(0, fresh.getBoundingClientRect().top - wasAt);
-  const again = document.querySelector('#beatsheet .lang-btn.is-on');
+  const again = document.querySelector('#' + sid('beatsheet') + ' .lang-btn.is-on');
   if (again) again.focus({ preventScroll: true });
   try { StudioUI.autoAriaLabels(); } catch (err) { /* chrome not up yet */ }
 }
-
-delegate(document, 'click', '[data-action="set-lang"]', (e, btn) => {
-  setLang(btn.dataset.lang);
-});
-
-// setLang() broadcasts; this page answers by rebuilding the one
-// section that has translated content. Other pages subscribe the same
-// way, which is why the toggle lives in lib and not here.
-onLangChange(swapBeatSheetLanguage);
 
 /* ------------------------------------------------------------
    4. SCENES — technique, how, why, and the Tamil gloss
@@ -711,7 +712,7 @@ function renderGlossary(study) {
    6. WORKBENCH — mounted last, and optional by design
    ------------------------------------------------------------ */
 function workbenchHost() {
-  const sec = h('section#workbench.st-sec', { 'aria-label': 'Workbench' });
+  const sec = h('section#' + sid('workbench') + '.st-sec', { 'aria-label': 'Workbench' });
   sec.append(h('div.st-wb-host'));
   return sec;
 }
@@ -739,8 +740,9 @@ async function mountWorkbenchInto(sec, study) {
    worth carrying across is focus, so the tab you clicked keeps it.
    ------------------------------------------------------------ */
 function render() {
+  if (!app) return;
   const study = currentStudy();
-  const main = h('main#main');
+  const main = h('div.cs-root');
 
   if (!study) {
     main.append(h('div.bd-empty', {}, [
@@ -750,12 +752,14 @@ function render() {
         + 'The schema and validate() live in src/lib/studies.js.' })
     ]));
     app.replaceChildren(main);
-    mountShell();
     return;
   }
 
   const gaps = validate(study);
-  main.className = 'hue-' + (study.meta.hue || 'feature');
+  /* The hue and the film used to sit on <main>, when this was a page.
+     They sit on the studies' own root now, so the library around it
+     keeps its own volume colour. */
+  main.className = 'cs-root hue-' + (study.meta.hue || 'feature');
   main.setAttribute('data-demo', study.meta.slug);
 
   main.append(renderDemoSelector());
@@ -773,7 +777,6 @@ function render() {
   main.append(wb);
 
   app.replaceChildren(main);
-  mountShell();
 
   try {
     StudioUI.autoAriaLabels();
@@ -784,56 +787,80 @@ function render() {
   mountWorkbenchInto(wb, study);
 }
 
-/* loadDemo() stamps data-demo on <html> and normalises a stale or
-   missing preference back to a film that exists. It runs BEFORE the
-   subscription below, because it broadcasts: subscribing first would
-   render the page once for the load and once for the first paint. */
-// Stamp data-lang before the first render so the CSS below is right
-// on the first paint rather than after it.
-initLang();
-
-loadDemo();
-
 /* A film change costs the clicked button its node, so hand focus to
    its replacement. preventScroll, because yanking the reader to the
    top of the page is not what pressing a tab asked for. */
 let refocus = false;
-delegate(document, 'click', '[data-action="demo-pick"]', () => { refocus = true; });
+let wired = false;
 
-/* Bound once at module scope, not per render: a filter that re-binds on
-   every demo change stacks listeners, and the page re-renders whenever
-   the film changes. */
-delegate(document, 'input', '[data-action="gloss-filter"]', (e, input) => {
-  const q = String(input.value || '').trim().toLowerCase();
-  const items = document.querySelectorAll('#glossList .gloss-item');
-  let shown = 0;
-  items.forEach((el) => {
-    const hit = !q || (el.getAttribute('data-search') || '').includes(q);
-    el.hidden = !hit;
-    if (hit) shown++;
+/* Bound ONCE, whatever calls mountCaseStudies: a filter that re-binds
+   on every demo change stacks listeners, and the studies re-render
+   whenever the film changes. */
+function wireOnce() {
+  if (wired) return;
+  wired = true;
+
+  delegate(document, 'click', '[data-action="set-lang"]', (e, btn) => {
+    setLang(btn.dataset.lang);
   });
-  const count = document.getElementById('glossCount');
-  if (count) {
-    count.textContent = q
-      ? shown + ' of ' + items.length + ' terms'
-      : items.length + ' terms';
-  }
-  const none = document.getElementById('glossNone');
-  if (none) none.hidden = shown !== 0;
-});
+  // setLang() broadcasts; this answers by rebuilding the one section
+  // that has translated content. Other pages subscribe the same way,
+  // which is why the toggle lives in lib and not here.
+  onLangChange(swapBeatSheetLanguage);
 
-onDemoChange(() => {
-  render();
-  if (!refocus) return;
-  refocus = false;
-  const tab = document.querySelector('.ds-tab.is-on');
-  if (tab) { try { tab.focus({ preventScroll: true }); } catch (e) { tab.focus(); } }
-});
+  delegate(document, 'click', '[data-action="demo-pick"]', () => { refocus = true; });
 
-render();
+  delegate(document, 'input', '[data-action="gloss-filter"]', (e, input) => {
+    const q = String(input.value || '').trim().toLowerCase();
+    const items = document.querySelectorAll('#glossList .gloss-item');
+    let shown = 0;
+    items.forEach((el) => {
+      const hit = !q || (el.getAttribute('data-search') || '').includes(q);
+      el.hidden = !hit;
+      if (hit) shown++;
+    });
+    const count = document.getElementById('glossCount');
+    if (count) {
+      count.textContent = q
+        ? shown + ' of ' + items.length + ' terms'
+        : items.length + ' terms';
+    }
+    const none = document.getElementById('glossNone');
+    if (none) none.hidden = shown !== 0;
+  });
 
-/* Exposed for the console and for the verifier, the way the other
-   pages expose their models. Read-only: nothing here mutates. */
-if (typeof window !== 'undefined') {
-  window.StudioStudyPage = { render, listStudies, getStudy, currentSlug, validate };
+  onDemoChange(() => {
+    render();
+    if (!refocus) return;
+    refocus = false;
+    const tab = document.querySelector('.ds-tab.is-on');
+    if (tab) { try { tab.focus({ preventScroll: true }); } catch (e) { tab.focus(); } }
+  });
 }
+
+/**
+ * Render the case studies into `container`, and keep them there: a
+ * film change re-renders into the same element. The library calls this
+ * once for its Case Studies tab. The shell is the caller's business —
+ * this was a page once and mounted the shell itself; it does not now.
+ */
+export function mountCaseStudies(container) {
+  app = container;
+  /* loadDemo() stamps data-demo on <html> and normalises a stale or
+     missing preference back to a film that exists. It runs BEFORE the
+     subscription in wireOnce(), because it broadcasts: subscribing
+     first would render once for the load and once for the first paint.
+     initLang() stamps data-lang before the first render so the CSS is
+     right on the first paint rather than after it. */
+  if (!wired) { initLang(); loadDemo(); }
+  wireOnce();
+  render();
+
+  /* Exposed for the console and for the verifier, the way the other
+     pages expose their models. Read-only: nothing here mutates. */
+  if (typeof window !== 'undefined') {
+    window.StudioStudyPage = { render, listStudies, getStudy, currentSlug, validate };
+  }
+}
+
+export default { mountCaseStudies };

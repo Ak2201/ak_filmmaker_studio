@@ -302,7 +302,11 @@ try {
     ok(await amy.page.evaluate(() => !!document.querySelector('[data-module-id="story-beats"].is-locked .pg-flag')), 'the phase menu marks Story · Beats with a PLAN flag');
     /* The cards count what the matrix left ticked: every built module
        plus five capabilities (sample_only is said in words, not counted). */
-    const built = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8')).phases.flatMap((p) => p.modules).filter((m) => m.status !== 'planned').length;
+    /* Every module on the map: the five stages' and the Library's own
+       (case studies, dissection, glossary hang off the Library since
+       6 Oct 2026 — src/lib/navmodel.js joins the two lists the same way). */
+    const NAV = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8'));
+    const built = [...NAV.phases, ...NAV.global].flatMap((p) => p.modules || []).filter((m) => m.status !== 'planned').length;
     const total = built + 5;
     await amy.page.goto(BASE + 'settings.html#plan');
     await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });

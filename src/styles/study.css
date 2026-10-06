@@ -564,14 +564,14 @@
    carry more consonant clusters, so the prose gets a little more
    leading. The small mono labels are untouched: they stay in
    English in both modes, so their Latin typography is still right. */
-/* Scoped to #beatsheet, and that scope is load-bearing. Unscoped,
+/* Scoped to #cs-beatsheet, and that scope is load-bearing. Unscoped,
    these rules also re-set the seven-beat section and the concept
    cards above — which are still English in both modes. Switching
    language then re-flowed a thousand pixels of text that had not
    changed, and the reader lost their place by 141px. */
-[data-lang="tl"] #beatsheet .st-line-body,
-[data-lang="tl"] #beatsheet .st-craft,
-[data-lang="tl"] #beatsheet .st-sheet-note {
+[data-lang="tl"] #cs-beatsheet .st-line-body,
+[data-lang="tl"] #cs-beatsheet .st-craft,
+[data-lang="tl"] #cs-beatsheet .st-sheet-note {
   line-height: 1.7;
 }
 

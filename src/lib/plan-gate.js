@@ -23,6 +23,12 @@
                        a panel over it (.pg-lock) with the plan named
                        and the way up; `main` is hidden underneath.
                        Nothing is removed from the document.
+     the tab lock      a module that is a TAB of a bigger page (the
+                       Library's case studies, dissection, glossary)
+                       locks that tab only: its section gets the same
+                       card inline and its content hidden. Locking the
+                       whole Library because one shelf is off the plan
+                       would hide twenty-two films nobody unticked.
      the marks         [data-module-id] elements in the shell's menus,
                        the launcher and the palette get .is-locked and
                        a PLAN flag, so a locked door looks locked
@@ -40,6 +46,7 @@
    ============================================================ */
 import Store from './store.js';
 import nav from '../data/navigation.json';
+import { moduleGroups, shelves } from './navmodel.js';
 import { h } from './dom.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import '../styles/plan-gate.css';
@@ -72,12 +79,15 @@ export function currentPlan() { return { plan, planName, features: features ? { 
  *  unticked (pageLocked() below), and the matrix says so per row. */
 export function moduleCatalogue() {
   const pageOf = (m) => (m.href || '').split('#')[0].toLowerCase();
-  const all = nav.phases.flatMap((p) => p.modules.filter((m) => m.status !== 'planned' && m.href));
-  return nav.phases.map((p) => ({
+  /* Siblings are only ever PAGE siblings, which a shelf's tabs are not:
+     each tab locks on its own (the tab lock below), so "the page locks
+     when all are unticked" would be untrue of them. */
+  const pageMods = nav.phases.flatMap((p) => p.modules.filter((m) => m.status !== 'planned' && m.href));
+  return moduleGroups().map((p) => ({
     id: p.id, label: p.label,
     modules: p.modules.filter((m) => m.status !== 'planned').map((m) => ({
       id: m.id, label: m.label, page: pageOf(m),
-      siblings: all.filter((o) => o.id !== m.id && pageOf(o) === pageOf(m)).map((o) => o.label)
+      siblings: p.shelf ? [] : pageMods.filter((o) => o.id !== m.id && pageOf(o) === pageOf(m)).map((o) => o.label)
     }))
   }));
 }
@@ -129,20 +139,54 @@ export function pageLocked() {
   return ms.length > 0 && ms.every((m) => !allowed(m.id));
 }
 
-function lockPanel() {
-  const ms = modulesHere();
-  const names = ms.map((m) => m.label).join(' · ');
-  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [
-    h('div.pg-lock-card', {}, [
-      h('p.bd-eyebrow', { text: 'Your plan' }),
-      h('h2.pg-lock-h', { text: 'Not on the ' + (planName || 'current') + ' plan.' }),
-      h('p.pg-lock-p', { text: (names ? names + ' is' : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
-      h('div.pg-lock-actions', {}, [
-        h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
-        h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })
-      ])
+/** The card that says why — shared by the page lock and the tab lock. */
+function lockCard(names) {
+  return h('div.pg-lock-card', {}, [
+    h('p.bd-eyebrow', { text: 'Your plan' }),
+    h('h2.pg-lock-h', { text: 'Not on the ' + (planName || 'current') + ' plan.' }),
+    h('p.pg-lock-p', { text: (names ? names + ' is' : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
+    h('div.pg-lock-actions', {}, [
+      h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
+      h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })
     ])
   ]);
+}
+
+function lockPanel() {
+  const names = modulesHere().map((m) => m.label).join(' · ');
+  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(names)]);
+}
+
+/** Shelf modules whose tab is on THIS page and in the document. */
+function tabsHere() {
+  const here = file().replace(/\.html$/, '');
+  const out = [];
+  for (const s of shelves()) for (const m of s.modules) {
+    const [f, frag] = (m.href || '').split('#');
+    if (!frag || f.toLowerCase().replace(/\.html$/, '') !== here) continue;
+    const sec = document.getElementById(frag);
+    if (sec) out.push({ m, sec });
+  }
+  return out;
+}
+
+/* THE TAB LOCK. The section keeps its id and its place in
+   the tab strip; everything in it is hidden under the card
+   (plan-gate.css) and comes back untouched when the plan changes.
+   Exported because the library renders its tabs after this module has
+   run, and calls it once they exist. */
+export function lockTabs() {
+  if (typeof document === 'undefined') return;
+  for (const { m, sec } of tabsHere()) {
+    const locked = !allowed(m.id);
+    let card = sec.querySelector(':scope > .pg-lock-inline');
+    sec.toggleAttribute('data-tab-lock', locked);
+    if (locked && !card) {
+      card = h('div.pg-lock-inline', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(m.label)]);
+      sec.prepend(card);
+    }
+    if (!locked && card) card.remove();
+  }
 }
 
 function apply() {
@@ -156,6 +200,7 @@ function apply() {
     delete root.dataset.planLock;
     if (existing) existing.remove();
   }
+  lockTabs();
   markLocked();
 }
 
@@ -185,4 +230,4 @@ if (typeof window !== 'undefined') {
   setTimeout(() => clearInterval(hook), 20000);
 }
 
-export default { allowed, sampleOnly, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, markLocked, CAPABILITIES };
+export default { allowed, sampleOnly, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

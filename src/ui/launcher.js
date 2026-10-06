@@ -49,6 +49,7 @@
    knows what a toast is.
    ============================================================ */
 import nav from '../data/navigation.json';
+import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listScenes, elementIndex } from '../lib/scenes.js';
@@ -84,8 +85,11 @@ import '../styles/launcher.css';
    status: 'planned' module landed, and then a stranger would be told
    the studio has a tool that navigates nowhere. Derive the right
    number, not merely a derived one. */
-const MODULE_COUNT = nav.phases.reduce((n, p) => n + p.modules.length, 0);
-export const BUILT_MODULE_COUNT = nav.phases.reduce(
+/* Counted over moduleGroups(), not nav.phases: the Library's three
+   reference tools moved off the Story stage on 6 Oct 2026 and are
+   still modules — on the map below as the Library's own row. */
+const MODULE_COUNT = moduleGroups().reduce((n, p) => n + p.modules.length, 0);
+export const BUILT_MODULE_COUNT = moduleGroups().reduce(
   (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
 
 /* The three blueprint-era blobs have no model module of their own —
@@ -303,8 +307,10 @@ function whereAmI() {
   const here = base(location.pathname);
   const hash = location.hash;
 
-  // A module whose fragment matches too — the exact answer.
-  for (const phase of nav.phases) {
+  // A module whose fragment matches too — the exact answer. Shelves
+  // count here (library.html#dissection is the Library's Dissection),
+  // and only here: library.html with no fragment is the Library.
+  for (const phase of moduleGroups()) {
     for (const m of phase.modules) {
       if (!m.href) continue;
       const [file, frag] = m.href.split('#');
@@ -364,7 +370,7 @@ function moduleTile(m, snap, at) {
 
 function phaseRow(phase, snap, at) {
   const isHere = !!(at.phase && at.phase.id === phase.id);
-  const row = h(`div.lx-row.sh-ph-${phase.hue}` + (isHere ? '.is-here' : ''));
+  const row = h(`div.lx-row.${hueClassOf(phase)}` + (isHere ? '.is-here' : ''));
   const built = phase.modules.filter((m) => m.status === 'built').length;
   const withWork = phase.modules.filter((m) => {
     const s = stateOf(m, snap);
@@ -395,7 +401,7 @@ export function renderLauncher() {
   const sec = h('section#modules.section', { 'aria-labelledby': 'lxHeading' });
   const inner = h('div.section-inner');
 
-  const worked = nav.phases.reduce((n, p) => n + p.modules.filter((m) => {
+  const worked = moduleGroups().reduce((n, p) => n + p.modules.filter((m) => {
     const s = stateOf(m, snap);
     return s && s.kind === 'work';
   }).length, 0);
@@ -425,7 +431,7 @@ export function renderLauncher() {
   );
 
   const grid = h('nav.lx-grid', { 'aria-label': 'Every module, by phase' });
-  nav.phases.forEach((p) => grid.append(phaseRow(p, snap, at)));
+  moduleGroups().forEach((p) => grid.append(phaseRow(p, snap, at)));
 
   inner.append(head, grid);
   sec.append(inner);

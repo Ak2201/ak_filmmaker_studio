@@ -101,9 +101,14 @@ export const PROVIDERS = [
     origin: 'https://generativelanguage.googleapis.com',
     keyKey: GEMINI_KEY,
     modelKey: GEMINI_MODEL_KEY,
-    keyPlaceholder: 'AIza…',
-    keyShape: /^AIza[A-Za-z0-9_-]{16,}$/,
-    keyShapeSays: 'That does not look like a Gemini key. They start with "AIza".',
+    keyPlaceholder: 'AIza… or AQ.…',
+    /* Two forms are live: the classic API key ("AIza…") and the newer
+       one Google AI Studio issues ("AQ.…", with dots in the body). The
+       shape check only exists to catch a key pasted into the wrong
+       provider's field; whether Google accepts a key is Google's call,
+       and a bad one answers 400 + API_KEY_INVALID, handled in ai.js. */
+    keyShape: /^(?:AIza[A-Za-z0-9_-]{16,}|AQ\.[A-Za-z0-9._-]{16,})$/,
+    keyShapeSays: 'That does not look like a Gemini key. They start with "AIza" or "AQ.".',
     consoleName: 'Google AI Studio',
     consoleUrl: 'https://aistudio.google.com/apikey',
     models: [

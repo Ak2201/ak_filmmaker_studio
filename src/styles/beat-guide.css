@@ -1,0 +1,162 @@
+/* ============================================================
+   THE BEAT GUIDE — src/ui/beat-guide.js
+   ------------------------------------------------------------
+   Tokens for every colour, `--sk-*` for every shape, distance times
+   `--motion`. Text takes --ink / --ink-body / --ink-muted or
+   --accent-deep, never a fill or a hairline. The card is a sibling
+   AFTER #wr-page, so `position: sticky; bottom` docks it to the foot
+   of the viewport while the script is on screen and lets it settle
+   at the end of the script when it is not — a bottom sheet at 390px
+   and a right-hand card on a desk, with no fixed positioning and
+   nothing wider than its column.
+   ============================================================ */
+
+/* Off: the margin labels beat-board.js draws, hidden. One rule. */
+html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
+
+/* ---- the control, in the screenplay bar ----------------------- */
+.bg-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.bg-ctl-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.bg-mode {
+  width: auto;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font: inherit;
+  font-size: var(--t-small);
+}
+
+/* ---- the card -------------------------------------------------- */
+.bg-panel {
+  position: sticky;
+  bottom: calc(var(--mab-h, 0px) + var(--s3));
+  z-index: var(--z-float);
+  box-sizing: border-box;
+  width: min(100%, 26rem);
+  max-width: 100%;
+  min-width: 0;
+  margin: var(--s4) 0 var(--s4) auto;
+  background: var(--paper-raised);
+  color: var(--ink-body);
+  border: 1px solid var(--rule);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--brand);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, var(--shadow-md));
+  font-size: var(--t-small);
+  animation: bg-in var(--speed, 200ms) var(--ease-out, ease-out) both;
+}
+.bg-panel[data-how="estimated"] { border-left-color: var(--rule); }
+@keyframes bg-in {
+  from { opacity: 0; transform: translateY(calc(6px * var(--motion, 1))); }
+  to   { opacity: 1; transform: none; }
+}
+
+.bg-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s2);
+  padding: var(--s2) var(--s3);
+  cursor: pointer;
+  min-width: 0;
+  list-style: none;
+}
+.bg-summary::-webkit-details-marker { display: none; }
+.bg-summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--ink-muted);
+}
+.bg-panel:not([open]) > .bg-summary::after { content: '▸'; }
+.bg-eyebrow {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.bg-beat {
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bg-at {
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+}
+
+.bg-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  max-height: min(40vh, 20rem);
+  overflow-y: auto;
+  padding: 0 var(--s3) var(--s3);
+  min-width: 0;
+}
+.bg-body p { margin: 0; overflow-wrap: anywhere; }
+.bg-prompt { color: var(--ink); font-style: var(--sk-title-style, italic); }
+.bg-where, .bg-note { color: var(--ink-muted); }
+.bg-pages strong { color: var(--ink); }
+.bg-sub {
+  margin: var(--s1) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bg-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  color: var(--ink-body);
+}
+.bg-steps li { overflow-wrap: anywhere; }
+.bg-link a { color: var(--accent-deep); font-weight: 600; }
+.bg-next {
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule-hair);
+  color: var(--ink-body);
+}
+.bg-next-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 719px) {
+  .bg-panel { width: 100%; margin-left: 0; }
+  .bg-body { max-height: 38vh; }
+}
+
+/* Focus mode hides it, like the rest of the chrome. focus-mode.css
+   already hides every child of #screenplay but the page; this says
+   so here as well, so the card does not depend on where it sits. */
+html.fm-on .bg-panel,
+html.fm-on .bg-ctl { display: none; }
+
+@media print {
+  .bg-panel, .bg-ctl { display: none; }
+}

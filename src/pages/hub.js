@@ -100,6 +100,9 @@ function themeTitle() {
 // STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
 // ============================================================
 const PREF_KEY     = 'fms_studio_prefs_v1';
+/* Writer prefs (src/ui/format-guide.js): per device, in GLOBAL_KEYS
+   too, so a backup carries them like the theme. */
+const WRITE_PREFS  = 'fms_write_prefs_v1';
 const FEATURE_KEY  = 'fms_filmmaker_combined_v1';
 const SHORT_KEY    = 'fms_shortfilm_blueprint_v1';
 const LIB_CALC_KEY = 'fms_library_calc_v1';
@@ -140,7 +143,7 @@ const CODE_PASS_KEY = 'fms_invite_code_v1';
 const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
-  PREF_KEY, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
+  PREF_KEY, WRITE_PREFS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
   SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.

@@ -96,7 +96,13 @@ export const PROJECT_KEYS = {
                             the header of drive-sync.js. */
 export const GLOBAL_KEYS = {
   studio_prefs: 'fms_studio_prefs_v1',
-  sync_config:  'fms_supabase_cfg_v1'
+  sync_config:  'fms_supabase_cfg_v1',
+  /* The Write page's per-device writer prefs (guide level, tour done,
+     and the keyboard preset a later phase adds to the same object).
+     Travels with a backup like the theme does: a writer restoring a
+     studio on a new machine wants the editor to behave as they left
+     it. Not project-scoped; src/ui/format-guide.js owns the shape. */
+  write_prefs:  'fms_write_prefs_v1'
 };
 
 export const NOTE_PREFIX = 'fms_note_';

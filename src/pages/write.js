@@ -63,7 +63,7 @@ import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
 import { basicJobs, basicShotDivision } from '../lib/shot-rules.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
-import { addThem as handoffAddScenes, newHeadings } from '../ui/handoff.js';
+import { addThem as handoffAddScenes, newHeadings, sceneSyncLater } from '../ui/handoff.js';
 import '../styles/write-shots.css';
 /* Phase 2 of docs/SCREENPLAY-WRITER-PLAN.md: the keyboard (presets,
    Return/Tab flow), SmartType, the navigator and the shortcut sheets.
@@ -1831,6 +1831,7 @@ function render(focus) {
   decorateShotCounts();         // "Sc 12 · 6 shots" at each heading; DOM only
   if (focus) applyFocus(focus);
   if (pageView) scheduleDerived(0);
+  else sceneSyncLater();   // a re-render follows an import or a restore
 }
 
 function applyFocus(sel) {
@@ -1960,6 +1961,12 @@ const DERIVED_DELAY = 300;
 let derivedTimer = 0;
 let derivedIdle = 0;
 function scheduleDerived(delay = DERIVED_DELAY) {
+  /* THE SCRIPT DRIVES THE SCENES (src/ui/handoff.js → scene-sync.js):
+     once the writer pauses, a heading added, edited or deleted since
+     the last sync adds, updates or bins its scene. It compares the
+     headings with the last sync's and writes nothing when they match,
+     so this call costs an idle page nothing. */
+  sceneSyncLater();
   clearTimeout(derivedTimer);
   derivedTimer = setTimeout(() => {
     derivedTimer = 0;

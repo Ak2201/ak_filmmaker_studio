@@ -22,6 +22,7 @@
     "test:tanglish": "node scripts/test-tanglish.mjs",
     "test:keys": "node scripts/test-keys.mjs",
     "test:shots": "node scripts/test-shots.mjs",
+    "test:sync": "node scripts/test-sync.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

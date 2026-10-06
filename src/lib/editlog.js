@@ -293,8 +293,56 @@ export function pickupText(cov, pickups) {
   return lines.join('\n');
 }
 
+/* ---- a scene leaving for the bin, and coming back --------------
+   The cut's word on a scene and the pick-ups owed on it go with the
+   scene into the bin (src/lib/scene-bin.js) and come back with it.
+   Raw values and positions, including the key's place in the
+   `scenes` map, so a restore writes the bytes that were there. */
+export function takeSceneOut(sceneId) {
+  const d = readAll();
+  const keys = Object.keys(d.scenes);
+  const at = keys.indexOf(sceneId);
+  const scene = at >= 0 ? { index: at, value: d.scenes[sceneId] } : null;
+  const pickups = [];
+  const keep = [];
+  d.pickups.forEach((p, index) => {
+    if (p && p.sceneId === sceneId) pickups.push({ index, row: p });
+    else keep.push(p);
+  });
+  if (scene || pickups.length) {
+    const scenes = {};
+    keys.forEach((k) => { if (k !== sceneId) scenes[k] = d.scenes[k]; });
+    writeAll({ scenes, pickups: keep });
+  }
+  return { scene, pickups };
+}
+
+/** Put back what takeSceneOut() took. A note written for the scene in
+    the meantime is kept rather than overwritten. */
+export function putSceneBack(sceneId, snap) {
+  if (!snap || (!snap.scene && !(snap.pickups || []).length)) return 0;
+  const d = readAll();
+  let n = 0;
+  let scenes = d.scenes;
+  if (snap.scene && !(sceneId in d.scenes)) {
+    const entries = Object.entries(d.scenes);
+    entries.splice(Math.min(snap.scene.index, entries.length), 0, [sceneId, snap.scene.value]);
+    scenes = Object.fromEntries(entries);
+    n++;
+  }
+  const pickups = d.pickups.slice();
+  const have = new Set(pickups.map((p) => p && p.id));
+  for (const { index, row } of snap.pickups || []) {
+    if (!row || have.has(row.id)) continue;
+    pickups.splice(Math.min(index, pickups.length), 0, row);
+    n++;
+  }
+  if (n) writeAll({ scenes, pickups });
+  return n;
+}
+
 export default {
-  EDIT_KEY, CUT_STATES, cutLabel,
+  EDIT_KEY, CUT_STATES, cutLabel, takeSceneOut, putSceneBack,
   blankSceneEdit, blankPickup, loadEdit, sceneEdit, setSceneEdit,
   listPickups, addPickup, updatePickup, removePickup,
   verdict, coverage, pickupText

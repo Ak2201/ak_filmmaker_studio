@@ -65,6 +65,13 @@ export const SETUPS = {
   /* US Letter, 1in top/right/bottom and a 1.5in left gutter — the
      geometry a script is read and punched in, everywhere. */
   screenplay: { size: 'Letter',       margin: '25.4mm 25.4mm 22mm 38.1mm' },
+  /* The same sheet for a shooting script, whose scene numbers sit IN
+     the margins — and Chrome clips whatever a PDF page paints there.
+     So the page margins shrink to 0.75in and 0.4in and write.css pads
+     the document back out by the difference (`pdf-sn`): the text block
+     lands on exactly the same 1.5in gutter, and the numbers are
+     inside the printable area instead of cut off. */
+  'screenplay-wide': { size: 'Letter', margin: '25.4mm 10.16mm 22mm 19.05mm' },
   sheet:      { size: 'A4',           margin: '15mm 13mm' }
 };
 

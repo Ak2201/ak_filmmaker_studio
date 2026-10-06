@@ -218,5 +218,147 @@ ok(tagged.length === rows.length && time.rows.length === rows.length && matrix.c
 const ms = Math.round(t2 - t0);
 ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse ${Math.round(t1 - t0)}ms)`);
 
+/* ============================================================
+   THE FORMAT ENGINE (docs/SCREENPLAY-WRITER-PLAN.md, phase 1):
+   the shot element, dual dialogue, (CONT'D), the title page, and the
+   page view and the PDF agreeing because they are one paginator.
+   ============================================================ */
+{
+  const S = await import('../src/lib/script.js');
+  const X = await import('../src/lib/screenplay-export.js');
+  const { readFileSync } = await import('node:fs');
+  const { DOMParser } = await import('linkedom');
+  globalThis.DOMParser = DOMParser;
+  const sample = JSON.parse(readFileSync(new URL('../src/data/sample.dragon.script.json', import.meta.url), 'utf8')).elements;
+  const id = (() => { let k = 0; return () => 'e' + (++k); })();
+  const E = (type, text, extra) => ({ id: id(), type, text, ...(extra || {}) });
+
+  /* ---- an old script is unchanged ---- */
+  const oldBlob = JSON.stringify({
+    elements: sample.map((e, i) => ({ id: 'old' + i, type: e.type, text: e.text })),
+    revisions: [{ id: 'r1', name: 'Draft', date: '2026-01-01T00:00:00.000Z', elements: [{ id: 'x', type: 'action', text: 'A' }] }],
+    documents: [{ id: 'd1', title: 'T', kind: 'Notes', body: 'B', updated: '2026-01-01T00:00:00.000Z' }]
+  });
+  mem.set(S.SCRIPT_KEY, oldBlob);
+  S.saveScript(S.loadScript());
+  ok(mem.get(S.SCRIPT_KEY) === oldBlob, 'a script with no shot, no dual and no title page is byte-identical after load + save');
+  eq(sample.length, 2361, 'the sample still has 2,361 elements');
+  eq(S.pageCount(sample), 106.5, 'the sample still counts 106.5 pages');
+  eq(X.sheetCount(sample), 115, 'the sample still prints on 115 sheets');
+
+  /* ---- the shot ---- */
+  eq(S.ELEMENT_TYPE_IDS, ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'], 'shot is the seventh type, added last');
+  eq(S.NEXT_TYPE.shot, 'action', 'Return after a shot gives action');
+  const shotScript = [E('scene', 'INT. A - DAY'), E('action', 'He waits.'), E('shot', 'close on the knife'), E('action', 'It shines.'), E('scene', 'EXT. B - NIGHT'), E('action', 'Rain.')];
+  const sl = A.sliceScript(shotScript);
+  eq(sl.map((s) => s.heading), ['INT. A - DAY', 'EXT. B - NIGHT'], 'a shot does not open a scene');
+  eq(sl[0].elements.map((e) => e.type), ['action', 'shot', 'action'], 'a shot stays inside its scene');
+  ok(A.estimateSlice(sl[0]).seconds > A.estimateSlice({ elements: [sl[0].elements[0], sl[0].elements[2]] }).seconds, 'a shot takes screen time like an action beat');
+  const shotPages = X.paginate(shotScript);
+  const shotRow = shotPages[0].find((r) => r.type === 'shot');
+  eq(shotRow && shotRow.lines, ['CLOSE ON THE KNIFE'], 'a shot prints in capitals');
+  ok(shotRow && !shotRow.sceneNo, 'a shot takes no scene number');
+  eq(shotPages[0].filter((r) => r.sceneNo).map((r) => r.sceneNo), ['1', '2'], 'headings are numbered 1, 2 around it');
+  eq(S.elementLines(E('shot', 'X')), 2, 'a shot counts its blank line and its text');
+  const shotFountain = S.toFountain({ elements: shotScript }, { title: 'T', date: '2026-10-06' });
+  ok(/\nCLOSE ON THE KNIFE\n/.test(shotFountain), 'Fountain writes a shot plain, with no forcing !');
+  eq(parseScript(shotFountain, 'x.fountain').elements.map((e) => e.type), shotScript.map((e) => e.type), 'Fountain round trip keeps the shot');
+  eq(parseScript(X.toText({ elements: shotScript }, { title: 'T' }), 'x.txt').elements.map((e) => e.type), shotScript.map((e) => e.type), 'screenplay text round trip keeps the shot');
+  eq(parseScript('INT. A - DAY\n\nTHE DOOR OPENS.\n', 'x.fountain').elements.map((e) => e.type), ['scene', 'action'], 'capitals without a shot word stay action');
+  // The sample has no shot, and must not grow one on a text round trip.
+  const rt = parseScript(X.toText({ elements: sample }, { title: 'T' }), 'x.txt').elements;
+  ok(!rt.some((e) => e.type === 'shot'), 'the sample read back from its own text export has no invented shot');
+
+  /* ---- dual dialogue ---- */
+  const dual = [
+    E('scene', 'INT. TEA STALL - NIGHT'),
+    E('character', 'RAVI'), E('dialogue', 'We are not doing this tonight. Not here, not in front of everyone.'),
+    E('character', 'MEENA', { dual: true }), E('paren', 'over him'), E('dialogue', 'Then when?'),
+    E('action', 'The kettle screams.'),
+    E('character', 'RAVI'), E('dialogue', 'Turn it off.')
+  ];
+  eq(S.dualPairs(dual), [{ left: [1, 2], right: [3, 5] }], 'the flagged cue pairs with the speech directly above');
+  eq(S.dualPairs([E('action', 'x'), E('character', 'A', { dual: true }), E('dialogue', 'y')]), [], 'a flag with no speech above pairs with nothing');
+  ok(!('dual' in S.blankElement({ type: 'action', text: 'x', dual: true })), 'only a cue may carry the flag');
+  ok(S.canPairDual(dual, 3) && !S.canPairDual(dual, 7), 'canPairDual: yes under a speech, no under action');
+  const flat = dual.map((e) => ({ ...e, dual: undefined }));
+  ok(S.totalLines(dual) < S.totalLines(flat), 'a dual block counts its taller column, not both');
+  const dPages = X.paginate(dual);
+  const dRow = dPages[0].find((r) => r.type === 'dual');
+  ok(dRow && dRow.cols.length === 2 && dRow.cols[0][0].type === 'character' && dRow.cols[1].length === 3, 'paginate makes one two-column row');
+  eq(dRow.lines.length, Math.max(dRow.cols[0].reduce((n, r) => n + r.lines.length, 0), dRow.cols[1].reduce((n, r) => n + r.lines.length, 0)), "the block's height is its taller column");
+  ok(dRow.lines.every((l) => l.length <= 60), 'both columns fit the 60-character block');
+  // a pair that would straddle a page moves whole
+  const filler = Array.from({ length: 24 }, (_, k) => E('action', 'Line ' + k + '.'));
+  const tall = [E('scene', 'INT. X - DAY'), ...filler, ...dual.slice(1, 6)];
+  const tp2 = X.paginate(tall);
+  ok(tp2.length === 2 && tp2[1][0].type === 'dual' && !tp2[0].some((r) => r.type === 'dual'), 'a pair that does not fit moves to the next page whole');
+  const df = S.toFountain({ elements: dual }, { title: 'T', date: '2026-10-06' });
+  ok(/\nMEENA \^\n/.test(df), 'Fountain marks the second cue with ^');
+  const dfBack = parseScript(df, 'x.fountain').elements;
+  eq(dfBack.map((e) => [e.type, e.text, !!e.dual]), dual.map((e) => [e.type, e.text, !!e.dual]), 'Fountain round trip keeps the pair');
+  const fdx = S.toFDX({ elements: [...shotScript.slice(0, 3), ...dual.slice(1)] }, { title: 'Kettle' });
+  ok(/<Paragraph>\s*<DualDialogue>[\s\S]*<\/DualDialogue>\s*<\/Paragraph>/.test(fdx) && /Type="Shot"/.test(fdx), '.fdx export writes a DualDialogue and a Shot');
+  const fdxBack = parseScript(fdx, 'x.fdx');
+  eq(fdxBack.elements.map((e) => [e.type, e.text, !!e.dual]), [...shotScript.slice(0, 3), ...dual.slice(1)].map((e) => [e.type, e.text, !!e.dual]), '.fdx export -> import round-trips shots and the pair');
+  ok(!fdxBack.elements.some((e) => e.text === 'KETTLE'), "the .fdx title page does not leak into the script");
+
+  /* ---- (CONT'D) ---- */
+  ok(S.contdOffer(dual, 7), "offered: RAVI again after action, in the same scene (he spoke in the pair)");
+  const cs = [E('scene', 'INT. A - DAY'), E('character', 'RAVI'), E('dialogue', 'One.'), E('action', 'He sits.'), E('character', 'RAVI (V.O.)'), E('dialogue', 'Two.')];
+  ok(S.contdOffer(cs, 4), 'offered through an extension: RAVI (V.O.) is RAVI');
+  ok(!S.contdOffer([...cs.slice(0, 4), E('character', "RAVI (CONT'D)")], 4), 'not offered when it is already typed');
+  ok(!S.contdOffer([cs[0], cs[1], cs[2], E('character', 'RAVI')], 3), 'not offered with no action between (that is one speech)');
+  ok(!S.contdOffer([cs[0], cs[1], cs[2], E('scene', 'EXT. B - DAY'), E('action', 'x'), E('character', 'RAVI')], 5), 'not offered across a scene heading');
+  ok(!S.contdOffer([cs[0], cs[1], cs[2], cs[3], E('character', 'MEENA')], 4), 'not offered for a different speaker');
+  eq(S.withContd('RAVI (V.O.)'), "RAVI (V.O.) (CONT'D)", "(CONT'D) goes after any other extension");
+  eq(S.withContd("RAVI (CONT'D)"), "RAVI (CONT'D)", 'never twice');
+  // the page break's own (CONT'D) does not double a typed one
+  const longSpeech = Array.from({ length: 30 }, () => 'This is a long speech that goes on.').join(' ');
+  const brk = [E('scene', 'INT. A - DAY'), ...Array.from({ length: 20 }, (_, k) => E('action', 'Beat ' + k + '.')), E('character', "RAVI (CONT'D)"), E('dialogue', longSpeech)];
+  const bp = X.paginate(brk);
+  const carried = bp.find((p, i) => i > 0 && p[0].contd);
+  ok(!!carried, 'a long speech breaks across the page with a carried cue');
+  eq(carried && carried[0].lines, ["RAVI (CONT'D)"], "a typed (CONT'D) is not doubled at the break");
+  ok(bp.some((p) => p.some((r) => r.type === 'more')), '(MORE) is left at the foot');
+
+  /* ---- the title page ---- */
+  ok(!S.hasTitlePage(undefined) && !S.hasTitlePage(S.normaliseTitlePage({})), 'an empty title page is no title page');
+  mem.set(S.SCRIPT_KEY, oldBlob);
+  const withTp = S.loadScript();
+  withTp.titlePage = S.normaliseTitlePage({});
+  S.saveScript(withTp);
+  ok(!JSON.parse(mem.get(S.SCRIPT_KEY)).titlePage, 'an empty title page is not stored');
+  withTp.titlePage.title = 'Dragon';
+  withTp.titlePage.author = 'A. Writer';
+  withTp.titlePage.contact = 'a@example.com\n+91 98400 00000';
+  S.saveScript(withTp);
+  eq(S.loadScript().titlePage.contact, 'a@example.com\n+91 98400 00000', 'a filled title page round-trips through the blob');
+  const tpTxt = X.toText({ elements: shotScript, titlePage: withTp.titlePage }, { title: 'P' });
+  const front = tpTxt.split('\f')[0];
+  ok(/DRAGON/.test(front) && /Written by/.test(front) && /A\. Writer/.test(front) && /a@example\.com/.test(front), 'the text export opens on the structured title page');
+  ok(front.split('\n').length <= X.PAGE_LINES, 'the title page fits one page');
+  const tpF = S.toFountain({ elements: shotScript, titlePage: withTp.titlePage }, { title: 'P', date: '2026-10-06' });
+  ok(/^Title: Dragon\nCredit: Written by|^Title: Dragon\nAuthor: A\. Writer/.test(tpF) && /Contact: a@example\.com\n   \+91 98400 00000/.test(tpF), 'Fountain writes the title page, a multi-line value indented');
+  const tpBack = parseScript(tpF, 'x.fountain');
+  eq(tpBack.titlePage && tpBack.titlePage.contact, 'a@example.com\n+91 98400 00000', 'Fountain import reads a run-on title-page value');
+  eq(tpBack.elements.map((e) => e.type), shotScript.map((e) => e.type), 'and the run-on line does not fall into the script');
+  const tpFdx = parseScript(S.toFDX({ elements: shotScript, titlePage: { ...withTp.titlePage, draft: 'Second Draft' } }), 'x.fdx').titlePage;
+  ok(tpFdx && tpFdx.title === 'DRAGON' && tpFdx.author === 'A. Writer' && tpFdx.draft === 'Second Draft' && tpFdx.contact === 'a@example.com\n+91 98400 00000', '.fdx title page round-trips: ' + JSON.stringify(tpFdx));
+
+  /* ---- page view and PDF: one paginator ---- */
+  const pages = X.paginate(sample.map((e, i) => ({ id: 's' + i, ...e })));
+  eq(pages.length, X.sheetCount(sample), 'sheetCount is paginate().length');
+  eq(X.toText({ elements: sample }, { title: 'T' }).split('\f').length - 1, pages.length, 'the text export has one form feed per paginated page');
+  ok(pages.slice(1).every((p) => p.some((r) => r.id)), 'every page after the first starts at a known element, so the page view can mark it');
+  const wsrc = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
+  ok(/Typeset\.paginate\(doc\.elements\)/.test(wsrc), "write.js's page view reads the PDF's own paginate()");
+  ok(!/function paginate|BODY_LINES|PAGE_LINES/.test(wsrc), 'write.js carries no paginator of its own');
+  const t3 = performance.now();
+  for (let k = 0; k < 5; k++) X.paginate(sample);
+  const pms = (performance.now() - t3) / 5;
+  ok(pms < 50, `paginate() on the 2,361-element sample in ${pms.toFixed(1)}ms (budget 50ms, run at idle)`);
+}
+
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);
 process.exit(fail ? 1 : 0);

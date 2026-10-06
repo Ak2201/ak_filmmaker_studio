@@ -38,7 +38,7 @@
    counts, which are the format itself.
    ============================================================ */
 import { h } from './dom.js';
-import { ELEMENT_TYPE_IDS } from './script.js';
+import { ELEMENT_TYPE_IDS, dualPairs, hasTitlePage, CONTD_RE } from './script.js';
 
 /* ------------------------------------------------------------
    THE GEOMETRY
@@ -74,9 +74,29 @@ export const GEOMETRY = {
   character:  { indent: 22, width: 38, upper: true,  blankBefore: 1, align: 'left' },
   paren:      { indent: 16, width: 28, upper: false, blankBefore: 0, align: 'left' },
   dialogue:   { indent: 10, width: 35, upper: false, blankBefore: 0, align: 'left' },
-  transition: { indent: 0,  width: 60, upper: true,  blankBefore: 1, align: 'right' }
+  transition: { indent: 0,  width: 60, upper: true,  blankBefore: 1, align: 'right' },
+  /* A shot sits where a slug line sits, in capitals, but it is not a
+     heading: not bold, one blank line above it rather than two, and no
+     scene number in either margin. */
+  shot:       { indent: 0,  width: 60, upper: true,  blankBefore: 1, align: 'left' }
 };
 export const geometryOf = (type) => GEOMETRY[type] || GEOMETRY.action;
+
+/* ------------------------------------------------------------
+   DUAL DIALOGUE — two half-measure columns
+   ------------------------------------------------------------
+   Inside the 60ch block: the left column starts at 0, the right at
+   31ch, each 29ch wide at most. Within a column the speech keeps its
+   shape — the cue indented, the parenthetical less so, the dialogue
+   flush — at roughly half the full measure, which is how Final Draft
+   sets a dual block. src/lib/script.js's DUAL_LAYOUT counts lines at
+   the same widths. */
+export const DUAL = {
+  offset: 31,
+  character: { indent: 6, width: 22 },
+  paren:     { indent: 2, width: 24 },
+  dialogue:  { indent: 0, width: 27 }
+};
 
 /* Every element type the model knows has to have a geometry, or an
    element silently prints as action. Checked here rather than
@@ -160,33 +180,106 @@ export function printedText(el) {
    of rows; a row is one already-wrapped block ready to be painted
    or printed:
 
-     { type, lines: [...], blankBefore, contd, more }
+     { type, lines: [...], blankBefore, contd, more, id, cont, sceneNo }
 
    `contd` marks a cue this module wrote because a speech carried
    over; `more` marks the (MORE) that was left at the foot of the
    page it carried over from. Neither exists in the model — they
    are properties of where the break landed, and storing them
    would be a second representation that the next edit invalidates.
+
+   `id` is the element the row was cut from and `cont` says the row
+   is the second (or later) piece of a block that broke across a
+   page. They exist for the editor's page view, which draws its page
+   breaks from THIS function rather than from a second estimate — so
+   the page count on screen and the sheets in the PDF agree because
+   they are one computation, not because two were tuned to match.
+   `sceneNo` is the heading's ordinal, for the margin numbers.
+
+   A dual-dialogue pair is ONE row, `type: 'dual'`, with `cols` (the
+   two speeches, each a list of { type, lines }) and `lines` (the
+   two columns set side by side as text). Its height is the taller
+   column, and it is never split: a pair that does not fit moves to
+   the next page whole. One taller than a whole page is set as two
+   ordinary speeches instead, because the alternative is a block
+   that runs off the sheet.
    ------------------------------------------------------------ */
+
+/** The two sides of a dual pair, wrapped at the half measure, or null
+    when either side has no cue to print (it then prints as ordinary
+    speeches). */
+function dualBlock(els, pair) {
+  const side = (a, b) => {
+    const rows = [];
+    for (let k = a; k <= b; k++) {
+      const el = els[k];
+      const text = printedText(el);
+      if (!text) continue;
+      const geom = DUAL[el.type] || DUAL.dialogue;
+      rows.push({ type: DUAL[el.type] ? el.type : 'dialogue', id: el.id, lines: wrapText(text, geom.width) });
+    }
+    return rows;
+  };
+  const left = side(pair.left[0], pair.left[1]);
+  const right = side(pair.right[0], pair.right[1]);
+  if (!left.length || !right.length || left[0].type !== 'character' || right[0].type !== 'character') return null;
+  const flat = (rows) => rows.flatMap((r) => r.lines.map((l) => pad(DUAL[r.type].indent) + l));
+  const L = flat(left);
+  const R = flat(right);
+  const height = Math.max(L.length, R.length);
+  const lines = [];
+  for (let r = 0; r < height; r++) {
+    lines.push(((L[r] || '').padEnd(DUAL.offset) + (R[r] || '')).replace(/\s+$/, ''));
+  }
+  return { cols: [left, right], lines, height, ids: [...left, ...right].map((r) => r.id) };
+}
+
+/** A typed (CONT'D) on the cue is not repeated by the one a page
+    break adds. "RAVI (CONT'D)" breaking over a page carries over as
+    "RAVI (CONT'D)", not "RAVI (CONT'D) (CONT'D)". */
+const contdCue = (speaker) => String(speaker).replace(CONTD_RE, ' ').replace(/\s+/g, ' ').trim() + " (CONT'D)";
+
 export function paginate(elements) {
+  const els = elements || [];
+  const pairs = els.some((e) => e && e.dual === true)
+    ? new Map(dualPairs(els).map((p) => [p.left[0], p]))
+    : null;
   const pages = [];
   let page = [];
   let used = 0;
   let speaker = '';          // whose speech we are inside, for (CONT'D)
+  let sceneNo = 0;
 
   const flush = () => { if (page.length) { pages.push(page); } page = []; used = 0; };
 
   const place = (row, cost) => { page.push(row); used += cost; };
 
-  for (const el of (elements || [])) {
+  for (let idx = 0; idx < els.length; idx++) {
+    const el = els[idx];
+    const pair = pairs && pairs.get(idx);
+    if (pair) {
+      const block = dualBlock(els, pair);
+      if (block && block.height <= BODY_LINES) {
+        speaker = '';
+        if (page.length && used + 1 + block.height > BODY_LINES) flush();
+        const gap = page.length ? 1 : 0;
+        place({ type: 'dual', id: els[pair.left[0]].id, ids: block.ids, cols: block.cols,
+          lines: block.lines, blankBefore: gap }, gap + block.height);
+        idx = pair.right[1];
+        continue;
+      }
+    }
+
     const type = GEOMETRY[el && el.type] ? el.type : 'action';
     const text = printedText(el);
     if (!text) continue;                 // a blank element is a gap, not a beat
     const geom = GEOMETRY[type];
     const lines = wrapText(text, geom.width);
+    const id = el && el.id;
+    const extra = type === 'scene' ? { sceneNo: String(++sceneNo) } : null;
 
     if (type === 'character') speaker = text;
-    if (type === 'scene' || type === 'transition' || type === 'action') speaker = '';
+    if (type === 'scene' || type === 'transition' || type === 'action' || type === 'shot') speaker = '';
 
     const gap = page.length ? geom.blankBefore : 0;
     const need = gap + lines.length;
@@ -198,9 +291,9 @@ export function paginate(elements) {
        its last line, overflowing it and producing a blank sheet.
        Reserving one line here means the stylesheet never has to
        act, and nothing can overflow. */
-    const reserve = (type === 'scene' || type === 'character') ? 1 : 0;
+    const reserve = (type === 'scene' || type === 'character' || type === 'shot') ? 1 : 0;
 
-    if (used + need + reserve <= BODY_LINES) { place({ type, lines, blankBefore: gap }, need); continue; }
+    if (used + need + reserve <= BODY_LINES) { place({ type, lines, blankBefore: gap, id, ...extra }, need); continue; }
 
     /* A speech and an action block are the two worth breaking; a
        speech gets the two words the format has for it. Everything
@@ -216,6 +309,7 @@ export function paginate(elements) {
       const speech = type === 'dialogue';
       let rest = lines;
       let lead = gap;
+      let piece = 0;
       /* Terminates: every turn either places the whole remainder
          and breaks, or places at least MIN_SPLIT lines of it, or
          flushes a page that had something on it. A flushed empty
@@ -223,7 +317,7 @@ export function paginate(elements) {
          and the next turn places. */
       for (;;) {
         if (used + lead + rest.length <= BODY_LINES) {
-          place({ type, lines: rest, blankBefore: lead }, lead + rest.length);
+          place({ type, lines: rest, blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + rest.length);
           break;
         }
         // One line held back for the (MORE) that goes under a
@@ -232,7 +326,8 @@ export function paginate(elements) {
         const room = BODY_LINES - used - lead - (speech ? 1 : 0);
         if (room < MIN_SPLIT || rest.length - room < MIN_SPLIT) { flush(); lead = 0; continue; }
 
-        place({ type, lines: rest.slice(0, room), blankBefore: lead }, lead + room);
+        place({ type, lines: rest.slice(0, room), blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + room);
+        piece++;
         if (speech) page.push({ type: 'more', lines: ['(MORE)'], blankBefore: 0 });
         flush();
         lead = 0;
@@ -240,7 +335,7 @@ export function paginate(elements) {
         if (speech && speaker) {
           page.push({
             type: 'character', blankBefore: 0, contd: true,
-            lines: wrapText(speaker + " (CONT'D)", GEOMETRY.character.width)
+            lines: wrapText(contdCue(speaker), GEOMETRY.character.width)
           });
           used += 1;
         }
@@ -253,7 +348,7 @@ export function paginate(elements) {
        speech behind it — that is fine, the speech follows on the
        same page. What must not happen is the cue carrying a
        (CONT'D) it did not earn. */
-    place({ type, lines, blankBefore: 0 }, lines.length);
+    place({ type, lines, blankBefore: 0, id, ...extra }, lines.length);
   }
   flush();
   return pages;
@@ -279,12 +374,96 @@ const PRINT_CLASS = {
   paren: 'wr-pr-paren',
   dialogue: 'wr-pr-dialogue',
   transition: 'wr-pr-transition',
+  shot: 'wr-pr-shot',
   more: 'wr-pr-more'
 };
 
+/* ------------------------------------------------------------
+   THE TITLE PAGE
+   ------------------------------------------------------------
+   When the script carries a `titlePage` (src/lib/script.js), page 1
+   is the industry layout: the title in capitals a third of the way
+   down, the credit and the writer under it, the source material
+   under that, the contact block bottom left and the draft and date
+   bottom right. Unnumbered, like every title page. A script with no
+   title page keeps the plain one this module always printed — the
+   project's title, the word Screenplay and the revision — so an
+   export nobody configured looks exactly as it did.
+   ------------------------------------------------------------ */
+export function titlePageOf(doc, meta = {}) {
+  const tp = doc && hasTitlePage(doc.titlePage) ? doc.titlePage : null;
+  if (!tp) return null;
+  const v = (k) => String(tp[k] ?? '').trim();
+  return {
+    title: v('title') || String(meta.title || '').trim() || 'Untitled',
+    credit: v('credit') || (v('author') ? 'Written by' : ''),
+    author: v('author'),
+    source: v('source'),
+    draft: v('draft'),
+    date: v('date'),
+    contact: v('contact')
+  };
+}
+
+function titleSheet(doc, meta) {
+  const tp = titlePageOf(doc, meta);
+  if (!tp) {
+    return h('div.wr-pr.wr-pr-title', {}, [
+      h('b', { text: String(meta.title || 'Untitled') }),
+      h('span', { text: 'Screenplay' }),
+      h('span', { text: String(meta.revision || meta.subtitle || '') })
+    ]);
+  }
+  const main = h('div.wr-pr-tp-main', {}, [h('b.wr-pr-tp-title', { text: tp.title.toUpperCase() })]);
+  if (tp.credit) main.append(h('p.wr-pr-tp-credit', { text: tp.credit }));
+  if (tp.author) main.append(h('p.wr-pr-tp-author', { text: tp.author }));
+  if (tp.source) main.append(h('p.wr-pr-tp-source', { text: tp.source }));
+  return h('div.wr-pr.wr-pr-tp', {}, [
+    main,
+    h('div.wr-pr-tp-foot', {}, [
+      h('p.wr-pr-tp-contact', { text: tp.contact }),
+      h('p.wr-pr-tp-draft', { text: [tp.draft, tp.date].filter(Boolean).join('\n') })
+    ])
+  ]);
+}
+
+/** One row of a page, as DOM, for the print document. */
+function rowNode(row, opts) {
+  if (row.type === 'dual') {
+    const node = h('div.wr-pr.wr-pr-dual');
+    for (const col of row.cols) {
+      const c = h('div.wr-pr-dcol');
+      for (const r of col) {
+        c.append(h('p.wr-pr.wr-pr-tight.wr-pr-d-' + r.type, { text: r.lines.join('\n') }));
+      }
+      node.append(c);
+    }
+    if (row.blankBefore === 0) node.classList.add('wr-pr-tight');
+    return node;
+  }
+  const cls = PRINT_CLASS[row.type] || PRINT_CLASS.action;
+  const p = h('p.wr-pr.' + cls + (row.blankBefore === 2 ? '.wr-pr-gap2' : ''), {
+    text: row.lines.join('\n')
+  });
+  if (row.contd) p.classList.add('wr-pr-contd');
+  if (row.blankBefore === 0 && row.type !== 'more') p.classList.add('wr-pr-tight');
+  /* Scene numbers in both margins, for a shooting script. Off unless
+     asked for: a spec script carries none, and our own PDF read back
+     through the importer would otherwise grow a number on every
+     heading. A shot never has one — it is not a scene. */
+  if (opts.sceneNumbers && row.sceneNo) {
+    p.classList.add('wr-pr-numbered');
+    p.append(
+      h('span.wr-pr-sn.wr-pr-sn-l', { text: row.sceneNo }),
+      h('span.wr-pr-sn.wr-pr-sn-r', { text: row.sceneNo })
+    );
+  }
+  return p;
+}
+
 /**
  * The screenplay as a document.
- *   meta: { title, revision, subtitle }
+ *   meta: { title, revision, subtitle, sceneNumbers }
  * Returns a detached `div.wr-print`. write.js appends it for the
  * duration of one print job and throws it away on afterprint — a
  * second copy of the script living in the DOM is the "one
@@ -293,26 +472,14 @@ const PRINT_CLASS = {
  */
 export function buildDocument(doc, meta = {}) {
   const root = h('div.wr-print');
+  root.append(titleSheet(doc, meta));
 
-  root.append(h('div.wr-pr.wr-pr-title', {}, [
-    h('b', { text: String(meta.title || 'Untitled') }),
-    h('span', { text: 'Screenplay' }),
-    h('span', { text: String(meta.revision || meta.subtitle || '') })
-  ]));
-
+  const opts = { sceneNumbers: !!meta.sceneNumbers };
   const pages = paginate((doc && doc.elements) || []);
   pages.forEach((rows, i) => {
     const sheet = h('section.wr-pg');
     sheet.append(h('div.wr-pg-num', { text: pageNumber(i) }));
-    for (const row of rows) {
-      const cls = PRINT_CLASS[row.type] || PRINT_CLASS.action;
-      const p = h('p.wr-pr.' + cls + (row.blankBefore === 2 ? '.wr-pr-gap2' : ''), {
-        text: row.lines.join('\n')
-      });
-      if (row.contd) p.classList.add('wr-pr-contd');
-      if (row.blankBefore === 0 && row.type !== 'more') p.classList.add('wr-pr-tight');
-      sheet.append(p);
-    }
+    for (const row of rows) sheet.append(rowNode(row, opts));
     root.append(sheet);
   });
 
@@ -339,6 +506,7 @@ const pad = (n) => ' '.repeat(Math.max(0, n));
 const TEXT_WIDTH = 60;
 
 function textRow(row) {
+  if (row.type === 'dual') return row.lines.slice();
   const geom = row.type === 'more' ? GEOMETRY.paren : geometryOf(row.type);
   return row.lines.map((line) => {
     if (geom.align === 'right') return pad(Math.max(0, TEXT_WIDTH - line.length)) + line;
@@ -352,13 +520,35 @@ export function toText(doc, meta = {}) {
 
   // The title page, centred on the 60-character measure.
   const centre = (s) => pad(Math.max(0, Math.round((TEXT_WIDTH - s.length) / 2))) + s;
-  out.push('', '', '', '', '', '', '', '', '', '');
-  out.push(centre(title.toUpperCase()));
-  out.push('', '');
-  out.push(centre('Screenplay'));
-  if (meta.author) { out.push(''); out.push(centre('by')); out.push(''); out.push(centre(String(meta.author))); }
-  if (meta.revision) { out.push('', ''); out.push(centre(String(meta.revision))); }
-  if (meta.date) { out.push(''); out.push(centre(String(meta.date))); }
+  const tp = titlePageOf(doc, meta);
+  if (tp) {
+    /* The same layout as the PDF's, in lines: the title about a third
+       of the way down a 54-line page, the contact block at its foot. */
+    out.push(...Array(16).fill(''));
+    out.push(centre(tp.title.toUpperCase()));
+    if (tp.credit) out.push('', '', centre(tp.credit));
+    if (tp.author) out.push('', centre(tp.author));
+    if (tp.source) out.push('', '', centre(tp.source));
+    const foot = [];
+    const contact = tp.contact ? tp.contact.split('\n') : [];
+    const right = [tp.draft, tp.date].filter(Boolean);
+    const n = Math.max(contact.length, right.length);
+    for (let k = 0; k < n; k++) {
+      const l = (contact[k] || '').trim();
+      const r = right[k] || '';
+      foot.push((l.padEnd(Math.max(l.length + 1, TEXT_WIDTH - r.length)) + r).replace(/\s+$/, ''));
+    }
+    while (out.length + foot.length < PAGE_LINES - 2) out.push('');
+    out.push(...foot);
+  } else {
+    out.push('', '', '', '', '', '', '', '', '', '');
+    out.push(centre(title.toUpperCase()));
+    out.push('', '');
+    out.push(centre('Screenplay'));
+    if (meta.author) { out.push(''); out.push(centre('by')); out.push(''); out.push(centre(String(meta.author))); }
+    if (meta.revision) { out.push('', ''); out.push(centre(String(meta.revision))); }
+    if (meta.date) { out.push(''); out.push(centre(String(meta.date))); }
+  }
 
   const pages = paginate((doc && doc.elements) || []);
   pages.forEach((rows, i) => {
@@ -380,7 +570,7 @@ export function toText(doc, meta = {}) {
 }
 
 export default {
-  GEOMETRY, geometryOf, PAGE_LINES, BODY_LINES,
-  wrapText, printedText, paginate, pageNumber,
+  GEOMETRY, geometryOf, DUAL, PAGE_LINES, BODY_LINES,
+  wrapText, printedText, paginate, pageNumber, titlePageOf,
   buildDocument, sheetCount, toText
 };

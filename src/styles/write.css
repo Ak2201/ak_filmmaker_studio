@@ -373,6 +373,282 @@ body.wr-dropping .bd-empty {
 .wr-el-acts { display: flex; gap: var(--s1); }
 .wr-add { display: inline-block; margin-top: var(--s5); }
 
+/* A shot sits where a slug line sits, in capitals — but it is not a
+   heading, so it is not bold and it gets no scene's air above it. */
+.wr-el.t-shot { --wr-indent: 0%; --wr-measure: 100%; }
+.wr-el.t-shot .wr-text { text-transform: uppercase; }
+
+/* ---- a cue's controls: (CONT'D) offered, dual dialogue ---------- */
+.wr-contd {
+  align-self: center;
+  padding: 2px var(--s2);
+  background: var(--accent-wash);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  color: var(--accent-deep);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wr-contd[hidden] { display: none; }
+.wr-contd:hover { background: var(--accent); color: var(--accent-on); }
+.bd-icon.wr-dual-btn.is-on {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+/* ---- dual dialogue: two speeches, side by side --------------------
+   write.js puts both speeches of a pair in one `.wr-dual` with two
+   columns. Inside a column the row is the narrow layout (type and
+   buttons above, the text under them), because half a page cannot
+   hold the three-column row, and the indents are fractions of the
+   COLUMN — so every pair still sums to 100% or less. */
+.wr-dual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s3);
+  margin-top: var(--s2);
+  padding: var(--s2);
+  border: 1px dashed var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.wr-dual-col { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.wr-dual .wr-el { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s2); }
+.wr-dual .wr-type { grid-column: 1; grid-row: 1; width: auto; max-width: 100%; justify-self: start; }
+.wr-dual .wr-el-acts { grid-column: 2; grid-row: 1; flex-wrap: wrap; justify-content: flex-end; }
+.wr-dual .wr-text { grid-column: 1 / -1; grid-row: 2; }
+.wr-dual .wr-el.t-character { --wr-indent: 20%; --wr-measure: 80%; }
+.wr-dual .wr-el.t-paren     { --wr-indent: 8%;  --wr-measure: 92%; }
+.wr-dual .wr-el.t-dialogue  { --wr-indent: 0%;  --wr-measure: 100%; }
+@media (max-width: 719px) {
+  .wr-dual { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- the page view's own furniture -------------------------------- */
+.wr-pv-status {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-pv-status [data-pv="where"] { color: var(--ink); font-weight: 700; }
+
+/* ------------------------------------------------------------
+   PAGE VIEW — the rows, on paper
+   ------------------------------------------------------------
+   The same rows and the same textareas; what changes is the ground
+   and the geometry. The paper takes the PRINT constants, and they are
+   re-pointed here as the ordinary ink and rule tokens, so every rule
+   below and every shared control inside the sheet (the row buttons,
+   the type select, the focus ground) reads print ink on white in both
+   themes without a single colour of its own.
+
+   At a desk width the sheet is a US Letter page at full size — 8.5in,
+   a 1.5in gutter and a 1in right margin, 12pt Courier at 10 to the
+   inch — so a line wraps where the PDF wraps it. The type select and
+   the row buttons move into the margins and show on the row being
+   worked on. Below that width the sheet keeps the editor's layout and
+   only its colours and page breaks; a 390px screen cannot hold a
+   6-inch line and should not pretend to. The breaks themselves come
+   from the PDF's paginator (write.js), never from this stylesheet.
+   ------------------------------------------------------------ */
+.wr-page.is-pageview {
+  --ink: var(--print-ink);
+  --ink-body: var(--print-ink);
+  --ink-muted: var(--print-muted);
+  --paper: var(--print-paper);
+  --paper-raised: var(--print-paper);
+  --rule: var(--print-rule);
+  --rule-hair: var(--print-rule);
+  --accent: var(--print-ink);
+  --accent-deep: var(--print-ink);
+  --accent-wash: var(--print-wash);
+  --accent-on: var(--print-paper);
+  --danger: var(--print-ink);
+  --danger-on: var(--print-paper);
+  background: var(--print-paper);
+  color: var(--print-ink);
+}
+.wr-page.is-pageview .wr-text { color: var(--print-ink); }
+
+.wr-pbreak {
+  margin-block: var(--s2);
+  padding-top: var(--s1);
+  border-top: 1px dashed var(--print-rule);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-align: right;
+  color: var(--print-muted);
+}
+.wr-pbreak.is-split { text-align: center; }
+.wr-page:not(.is-pageview) .wr-pbreak { display: none; }
+
+@media (min-width: 1100px) {
+  .wr-page.is-pageview {
+    /* Full size, centred on the column even where the column is
+       narrower than a sheet. */
+    box-sizing: border-box;
+    width: 8.5in;
+    max-width: none;
+    margin-left: calc(50% - 4.25in);
+    padding: 1in 1in 1in 1.5in;
+    gap: 0;
+    /* The sheet's own face and size, so a `ch` anywhere on it — the
+       dual columns, the measures — is a Courier character at 12pt. */
+    font-family: var(--f-script);
+    font-size: 12pt;
+  }
+  .wr-page.is-pageview .wr-chunk,
+  .wr-page.is-pageview .wr-dual-col { gap: 0; }
+  /* A run is paint-contained (content-visibility), so anything it
+     draws in the margins — the scene numbers, the controls, the break
+     rule — is clipped at the text block unless it may paint out to
+     the sheet's edge and a little past it. */
+  .wr-page.is-pageview .wr-chunk { overflow-clip-margin: 2.5in; }
+
+  .wr-page.is-pageview .wr-el {
+    display: block;
+    position: relative;
+    margin-top: 1em;
+  }
+  .wr-page.is-pageview .wr-el.t-scene { margin-top: 2em; }
+  .wr-page.is-pageview .wr-el.t-paren,
+  .wr-page.is-pageview .wr-el.t-dialogue { margin-top: 0; }
+  .wr-page.is-pageview .wr-chunk:first-child > .wr-el:first-child { margin-top: 0; }
+
+  .wr-page.is-pageview .wr-text {
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font-size: 12pt;
+    line-height: 1;
+    background: transparent;
+  }
+  .wr-page.is-pageview .wr-text:focus { outline: none; background: var(--print-wash); }
+
+  /* The format's own measures, in characters — the PDF's numbers. */
+  .wr-page.is-pageview .wr-el.t-scene,
+  .wr-page.is-pageview .wr-el.t-action,
+  .wr-page.is-pageview .wr-el.t-shot,
+  .wr-page.is-pageview .wr-el.t-transition { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .wr-page.is-pageview .wr-el.t-character  { --wr-indent: 22ch; --wr-measure: 38ch; }
+  .wr-page.is-pageview .wr-el.t-paren      { --wr-indent: 16ch; --wr-measure: 28ch; }
+  .wr-page.is-pageview .wr-el.t-dialogue   { --wr-indent: 10ch; --wr-measure: 35ch; }
+
+  /* The controls, in the margins, on the row being worked on. */
+  .wr-page.is-pageview .wr-type,
+  .wr-page.is-pageview .wr-el-acts,
+  .wr-page.is-pageview .wr-ai-tag {
+    position: absolute;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .wr-page.is-pageview .wr-type { right: calc(100% + 0.15in); width: 1.25in; }
+  /* Two buttons to a row, so the stack stays inside the 1in margin
+     and on the paper rather than spilling onto the page behind it. */
+  .wr-page.is-pageview .wr-el-acts {
+    left: calc(100% + 0.08in);
+    width: 0.86in;
+    flex-wrap: wrap;
+  }
+  .wr-page.is-pageview .wr-ai-tag { right: calc(100% + 0.15in); top: 1.6em; }
+  .wr-page.is-pageview .wr-el:hover > :is(.wr-type, .wr-el-acts, .wr-ai-tag),
+  .wr-page.is-pageview .wr-el:focus-within > :is(.wr-type, .wr-el-acts, .wr-ai-tag) {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+  }
+
+  /* Scene numbers in both margins; never on a shot. */
+  .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::before,
+  .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::after {
+    content: attr(data-scene-no);
+    position: absolute;
+    top: 0;
+    font-family: var(--f-script);
+    font-size: 12pt;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--print-ink);
+  }
+  .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::before { right: calc(100% + 0.6in); }
+  .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::after { left: calc(100% + 0.35in); }
+  .wr-page.is-pageview .wr-el.t-scene:is(:hover, :focus-within)::before,
+  .wr-page.is-pageview .wr-el.t-scene:is(:hover, :focus-within)::after { visibility: hidden; }
+
+  /* A break runs the width of the sheet. */
+  .wr-page.is-pageview .wr-pbreak {
+    margin: 1em -1in 1em -1.5in;
+    padding: var(--s1) 1in 0 1.5in;
+  }
+
+  /* Dual dialogue on the sheet: the PDF's two columns, 31ch and 29ch. */
+  .wr-page.is-pageview .wr-dual {
+    grid-template-columns: 31ch 29ch;
+    gap: 0;
+    margin-top: 1em;
+    padding: 0;
+    border: 0;
+  }
+  .wr-page.is-pageview .wr-dual .wr-el { margin-top: 0; }
+  .wr-page.is-pageview .wr-dual .wr-el.t-character { --wr-indent: 6ch; --wr-measure: 22ch; }
+  .wr-page.is-pageview .wr-dual .wr-el.t-paren     { --wr-indent: 2ch; --wr-measure: 24ch; }
+  .wr-page.is-pageview .wr-dual .wr-el.t-dialogue  { --wr-indent: 0ch; --wr-measure: 27ch; }
+  /* The right column's buttons are already in the right margin; the
+     left column's go in the gutter, under its type select. */
+  .wr-page.is-pageview .wr-dual-col:first-child .wr-el-acts {
+    left: auto;
+    right: calc(100% + 0.15in);
+    top: 2.4em;
+    justify-content: flex-end;
+  }
+}
+
+/* ------------------------------------------------------------
+   THE TITLE PAGE — a card at the head of the Documents section
+   ------------------------------------------------------------ */
+.wr-tp {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.wr-tp-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.wr-tp-h {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size);
+  font-style: var(--sk-card-h-style);
+  color: var(--ink);
+}
+.wr-tp-state {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-tp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--s3);
+}
+.wr-tp-grid > :last-child { grid-column: 1 / -1; }
+.wr-tp-contact { width: 100%; min-width: 0; min-height: 0; resize: vertical; font-family: var(--f-script); }
+
 /* ------------------------------------------------------------
    REVISIONS
    ------------------------------------------------------------
@@ -664,6 +940,75 @@ body.wr-dropping .bd-empty {
     margin-left: 16ch;
     width: 28ch;
   }
+
+  /* A shot: where a slug line sits, in capitals, not bold. */
+  body.pdf-screenplay .wr-pr-shot {
+    width: 60ch;
+    text-transform: uppercase;
+    break-after: avoid;
+  }
+
+  /* Dual dialogue: the two speeches side by side in two half-measure
+     columns, the same widths src/lib/screenplay-export.js wraps them
+     at (DUAL there). The paginator has already given the block the
+     height of its taller column. */
+  body.pdf-screenplay .wr-pr-dual {
+    display: grid;
+    grid-template-columns: 31ch 29ch;
+    width: 60ch;
+    break-inside: avoid;
+  }
+  body.pdf-screenplay .wr-pr-dcol { min-width: 0; }
+  body.pdf-screenplay .wr-pr-d-character { margin-left: 6ch; width: 22ch; text-transform: uppercase; }
+  body.pdf-screenplay .wr-pr-d-paren     { margin-left: 2ch; width: 24ch; }
+  body.pdf-screenplay .wr-pr-d-dialogue  { margin-left: 0;   width: 27ch; }
+
+  /* Scene numbers in both margins (the shooting-script PDF only). The
+     sheet's gutter is 1.5in, so the left number sits in it. */
+  body.pdf-screenplay.pdf-sn .wr-print { padding-left: 0.75in; }
+  body.pdf-screenplay .wr-pr-numbered { position: relative; }
+  body.pdf-screenplay .wr-pr-sn { position: absolute; top: 0; font-weight: 700; }
+  body.pdf-screenplay .wr-pr-sn-l { right: calc(100% + 0.35in); }
+  body.pdf-screenplay .wr-pr-sn-r { left: calc(100% + 0.2in); }
+
+  /* The structured title page: title a third of the way down, credit
+     and writer under it, contact bottom left, draft and date bottom
+     right. One sheet, unnumbered. */
+  body.pdf-screenplay .wr-pr-tp {
+    /* Inside the text block, not across the gutter: Chrome clips what a
+       PDF page paints into its margins, and a contact block starting
+       0.25in into the gutter lost its first two letters. */
+    width: 60ch;
+    height: 8.9in;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+    font-family: var(--f-script);
+    font-size: 12pt;
+    line-height: 1;
+    color: var(--print-ink);
+  }
+  body.pdf-screenplay .wr-pr-tp-main {
+    padding-top: 2.6in;
+    /* Centred on the SHEET: the 1.5in gutter puts the block's middle
+       a quarter-inch right of the page's. */
+    padding-right: 0.5in;
+    text-align: center;
+  }
+  body.pdf-screenplay .wr-pr-tp-title { display: block; font-weight: 700; }
+  body.pdf-screenplay .wr-pr-tp-main p { margin: 0; white-space: pre-wrap; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-credit { margin-top: 48pt; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-author { margin-top: 12pt; }
+  body.pdf-screenplay .wr-pr-tp-main .wr-pr-tp-source { margin-top: 36pt; }
+  body.pdf-screenplay .wr-pr-tp-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1in;
+  }
+  body.pdf-screenplay .wr-pr-tp-foot p { margin: 0; white-space: pre-wrap; }
+  body.pdf-screenplay .wr-pr-tp-draft { text-align: right; }
 }
 
 /* ============================================================

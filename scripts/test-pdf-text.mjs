@@ -106,6 +106,32 @@ if (!multi.fatal) {
   ok('form feed between pages', (multi.text.match(/\f/g) || []).length === 2, '');
 }
 
+/* A shot in a PDF is a capitals line at the action column, and the
+   PDF has nothing else to say about it. PARSER 2 reads it as a shot
+   when it opens with a shot word, and leaves other capitals as action. */
+console.log('\n9. a shot, through the PDF reader and PARSER 2');
+{
+  await import('./node-seams.mjs');
+  const { parseScript } = await import('../src/lib/script-import.js');
+  const b = buildPDF([screenplayOps([
+    ['action', 'INT. TEA STALL - DAY'], ['blank'],
+    ['action', 'Steam off a kettle.'], ['blank'],
+    ['action', 'CLOSE ON THE KETTLE'], ['blank'],
+    ['action', 'ANGLE ON RAVI\'S HANDS'], ['blank'],
+    ['action', 'THE DOOR OPENS.'], ['blank'],
+    ['character', 'RAVI'],
+    ['dialogue', 'One more and I close.']
+  ])], { compress: true });
+  const r = await extractLayoutText(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  ok('no fatal', !r.fatal, r.fatal || '');
+  const text = new String(r.text);
+  const plan = parseScript(text, 'script.pdf');
+  const types = plan.elements.map((e) => e.type).join(' ');
+  ok('shot words read as shots, other capitals as action',
+    types === 'scene action shot shot action character dialogue', 'got ' + types);
+  ok('a shot opens no scene', plan.scenes.length === 1, 'got ' + plan.scenes.length);
+}
+
 await run('6. encrypted', buildPDF(ops, { encrypt: true }), true);
 await run('7. a scan — no text at all', buildPDF(ops, { noText: true }), true);
 await run('8. not a PDF', Buffer.from('this is a text file, not a pdf'), true);

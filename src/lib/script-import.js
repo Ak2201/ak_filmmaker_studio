@@ -41,7 +41,7 @@
    ============================================================ */
 import { blankElement } from './script.js';
 import { INT_EXT, DAY_NIGHT, blankScene } from './scenes.js';
-import { elementLines, LINES_PER_PAGE } from './script.js';
+import { elementLines, totalLines, LINES_PER_PAGE } from './script.js';
 
 export const FORMATS = [
   { id: 'fountain', label: 'Fountain', ext: ['.fountain', '.spmd'] },
@@ -108,6 +108,14 @@ const SCENE_NO  = String.raw`[A-Za-z]?\d+[A-Za-z]?`;
 const SLUG_RE   = new RegExp(
   '^(?:' + SCENE_NO + '[.)]?\\s+)?(INT|EXT|EST|I\\/E|INT\\.?\\s*\\/\\s*EXT|EXT\\.?\\s*\\/\\s*INT)[.\\s]', 'i');
 const TRANS_RE  = /^(FADE (IN|OUT|TO)|CUT TO|SMASH CUT|MATCH CUT|DISSOLVE TO|WIPE TO|IRIS (IN|OUT)|TIME CUT|INTERCUT|BACK TO|JUMP CUT|FADE TO BLACK)\b/i;
+/* A shot, recognised by the words it opens with. Neither Fountain nor
+   a plain text file has a shot element, so a one-line, flush-left,
+   all-capitals line that STARTS with one of these is read as a shot
+   and anything else in capitals stays action. The list is the camera
+   vocabulary a writer actually types, not every term of art — a line
+   that is not on it loses nothing, it just comes back as action. */
+const SHOT_RE   = /^(CLOSE ON|CLOSE UP|CLOSE-UP|CLOSER ON|EXTREME CLOSE|ECU\b|ANGLE ON|ANOTHER ANGLE|NEW ANGLE|REVERSE ANGLE|REVERSE ON|WIDE ON|WIDE SHOT|WIDER|MEDIUM SHOT|TWO SHOT|TWO-SHOT|OVER THE SHOULDER|OTS\b|POV\b|.{1,40}'S POV\b|INSERT\b|BACK ON|ON THE\b|AERIAL|TRACKING|MOVING SHOT|ESTABLISHING|UNDERWATER|HIGH ANGLE|LOW ANGLE|FAVOU?RING|PUSH IN|PULL BACK|SERIES OF SHOTS|MONTAGE)/;
+const isShotLine = (t) => SHOT_RE.test(t) && isUpperish(t) && !ENDS_TO.test(t) && !/^\(/.test(t);
 const ENDS_TO   = /\bTO:\s*$/;
 const CUE_OK    = /^[^a-z]*$/;                       // no lowercase letters at all
 const CUE_TAIL  = /\s*\((V\.?O\.?|O\.?S\.?|O\.?C\.?|CONT'?D|CONTINUED|SUBTITLED|FILTERED|PRE-?LAP)\)\s*$/i;
@@ -155,21 +163,32 @@ function parseFountain(raw) {
   const meta = {};
   let i = 0;
   if (lines.length && /^[A-Za-z][A-Za-z ]*:/.test(lines[0])) {
+    let last = null;
     for (; i < lines.length; i++) {
       const line = lines[i];
       if (!line.trim()) { i++; break; }
+      /* A value may run on: Fountain indents every further line of a
+         multi-line value (a contact block, two authors). Without this
+         the second line stopped the title page and fell into the
+         script as its first action line. */
+      if (last && /^(\s{2,}|\t)\S/.test(line)) {
+        meta[last] = (meta[last] ? meta[last] + '\n' : '') + line.trim();
+        skipped.titlePage++;
+        continue;
+      }
       const m = line.match(/^([A-Za-z][A-Za-z ]*):\s*(.*)$/);
       if (!m) break;
-      meta[m[1].trim().toLowerCase()] = m[2].trim();
+      last = m[1].trim().toLowerCase();
+      meta[last] = m[2].trim();
       skipped.titlePage++;
     }
   }
 
   const elements = [];
-  const push = (type, t) => {
+  const push = (type, t, extra) => {
     const clean = String(t).trim();
     if (!clean) return;
-    elements.push(blankElement({ type, text: clean }));
+    elements.push(blankElement({ type, text: clean, ...(extra || {}) }));
   };
 
   // Blocks are separated by blank lines; a block may hold a whole
@@ -219,6 +238,7 @@ function parseFountain(raw) {
       speech(b, first, push);
       continue;
     }
+    if (b.length === 1 && isShotLine(first)) { push('shot', first); continue; }
     if (b.length === 1 && isUpperish(first) && !ENDS_TO.test(first)) {
       /* An all-caps single line with nothing under it is action
          that shouts — a title card, a sign. Fountain says a cue
@@ -245,7 +265,11 @@ function restAsAction(rest, push, warnings) {
 
 /** A speech block: the cue, then parentheticals and dialogue. */
 function speech(b, cueLine, push) {
-  push('character', cueLine.replace(/\s*\^\s*$/, ''));   // ^ is dual dialogue
+  /* A trailing ^ is Fountain's dual-dialogue mark: this speech sits
+     beside the one before it. It becomes the `dual` flag on the cue
+     (src/lib/script.js) and comes off the text. */
+  const dual = /\^\s*$/.test(cueLine);
+  push('character', cueLine.replace(/\s*\^\s*$/, ''), dual ? { dual: true } : null);
   let buffer = [];
   const flush = () => { if (buffer.length) { push('dialogue', buffer.join('\n')); buffer = []; } };
   for (const line of b.slice(1)) {
@@ -348,6 +372,7 @@ function parseText(raw) {
     if (SLUG_RE.test(text)) return 'scene';
     if (TRANS_RE.test(text) && indent < 6) return 'transition';
     if (isUpperish(text) && (ENDS_TO.test(text) || indent >= 40)) return 'transition';
+    if (indent < 6 && isShotLine(text)) return 'shot';
     if (/^\(.*\)$/.test(text) && indent >= 8) return 'paren';
     if (indent >= 18 && isUpperish(text)) return 'character';
     if (indent >= 6) {
@@ -382,7 +407,7 @@ function parseText(raw) {
     open.lines.push(row.text.replace(CUE_TAIL_ONLY_CONTD, ''));
     prevType = type;
     /* A cue is always one line. Anything after it is the speech. */
-    if (type === 'scene' || type === 'character' || type === 'transition' || type === 'paren') close();
+    if (type === 'scene' || type === 'character' || type === 'transition' || type === 'paren' || type === 'shot') close();
   }
   close();
 
@@ -463,7 +488,7 @@ const FDX_TYPE = {
   'parenthetical': 'paren',
   'dialogue': 'dialogue',
   'transition': 'transition',
-  'shot': 'action',
+  'shot': 'shot',
   'general': 'action'
 };
 
@@ -500,15 +525,40 @@ function parseFDX(raw) {
     return { elements: [], meta, warnings: ['That file is not valid Final Draft XML.'], skipped, fatal: true };
   }
 
-  const title = xml.querySelector('TitlePage Text');
-  if (title && title.textContent.trim()) meta.title = title.textContent.trim();
+  Object.assign(meta, fdxTitlePage(xml));
 
-  const paras = xml.querySelectorAll('Content > Paragraph');
+  /* The SCRIPT's Content is the one directly under <FinalDraft>. The
+     title page has a <Content> of its own, and `Content > Paragraph`
+     across the whole document read its lines in as the first elements
+     of the script. */
+  const root = xml.documentElement;
+  const body = root && Array.from(root.children || []).find((n) => n.tagName === 'Content');
+  const paras = body ? Array.from(body.children).filter((n) => n.tagName === 'Paragraph') : [];
   if (!paras.length) {
     return { elements: [], meta, warnings: ['No screenplay content found in that Final Draft file.'], skipped, fatal: true };
   }
 
+  let duals = 0;
   for (const p of paras) {
+    /* DUAL DIALOGUE. Final Draft writes a pair as ONE paragraph that
+       holds a <DualDialogue>, with both speeches inside it as ordinary
+       paragraphs. They come in as the two speeches they are, and the
+       second cue carries the `dual` flag. */
+    const dd = Array.from(p.children || []).find((n) => n.tagName === 'DualDialogue');
+    if (dd) {
+      let cues = 0;
+      for (const q of Array.from(dd.children).filter((n) => n.tagName === 'Paragraph')) {
+        const k = String(q.getAttribute('Type') || '').trim().toLowerCase();
+        const t = Array.from(q.querySelectorAll('Text')).map((x) => x.textContent).join('').trim();
+        if (!t) continue;
+        const ty = FDX_TYPE[k] || 'action';
+        if (!FDX_TYPE[k]) skipped.unknown++;
+        if (ty === 'character') cues++;
+        elements.push(blankElement(ty === 'character' && cues === 2 ? { type: ty, text: t, dual: true } : { type: ty, text: t }));
+      }
+      if (cues >= 2) duals++;
+      continue;
+    }
     const kind = String(p.getAttribute('Type') || '').trim().toLowerCase();
     const text = Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim();
     if (!text) continue;
@@ -538,7 +588,62 @@ function parseFDX(raw) {
   if (skipped.unknown) {
     warnings.push(skipped.unknown + ' paragraph(s) of a kind this studio has no element for were kept as action.');
   }
+  skipped.dual = duals;
   return { elements, meta, warnings, skipped };
+}
+
+/** Final Draft's title page, as the same fields the Fountain title
+    page gives: the first centred line is the title, "Written by" (or
+    "by") is the credit and the line after it the writer, "Based on…"
+    the source; a right-aligned line is the draft or the date, and the
+    left-aligned lines are the contact block. Read, never guessed past:
+    a line none of these describe is left out of the fields. */
+function fdxTitlePage(xml) {
+  const meta = {};
+  const tp = xml.querySelector('TitlePage');
+  if (!tp) return meta;
+  const lines = Array.from(tp.querySelectorAll('Paragraph')).map((p) => ({
+    align: String(p.getAttribute('Alignment') || '').toLowerCase(),
+    text: Array.from(p.querySelectorAll('Text')).map((t) => t.textContent).join('').trim()
+  })).filter((l) => l.text);
+  if (!lines.length) return meta;
+  const contact = [];
+  const right = [];
+  let expectAuthor = false;
+  for (const l of lines) {
+    if (l.align === 'left') { contact.push(l.text); continue; }
+    if (l.align === 'right') { right.push(l.text); continue; }
+    if (!meta.title) { meta.title = l.text; continue; }
+    if (/^(written\s+)?by$|^(screenplay|story|teleplay)\s+by$/i.test(l.text)) { meta.credit = l.text; expectAuthor = true; continue; }
+    if (expectAuthor && !meta.author) { meta.author = l.text; expectAuthor = false; continue; }
+    if (/^based on/i.test(l.text)) { meta.source = l.text; continue; }
+  }
+  if (contact.length) meta.contact = contact.join('\n');
+  const isDate = (t) => /\d{4}|\d{1,2}[/.-]\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(t);
+  for (const r of right) {
+    if (!meta['draft date'] && isDate(r) && !/draft/i.test(r)) meta['draft date'] = r;
+    else if (!meta.draft) meta.draft = r;
+  }
+  return meta;
+}
+
+/** The title page a file carried, as the script model's `titlePage`
+    fields, or null when it carried nothing but a title. Fountain's
+    keys and the .fdx reader above meet here, so write.js reads one
+    shape whichever format it was. */
+export function titlePageFromMeta(meta) {
+  const m = meta || {};
+  const tp = {
+    title: String(m.title || '').trim(),
+    credit: String(m.credit || '').trim(),
+    author: String(m.author || m.authors || m['written by'] || '').trim(),
+    source: String(m.source || '').trim(),
+    draft: String(m.draft || m.revision || '').trim(),
+    date: String(m['draft date'] || m.date || '').trim(),
+    contact: String(m.contact || '').trim()
+  };
+  const more = ['credit', 'author', 'source', 'draft', 'contact'].some((k) => tp[k]);
+  return more ? tp : null;
 }
 
 /* ------------------------------------------------------------
@@ -695,7 +800,7 @@ export function scenesFrom(elements) {
       numbering.ordinal++;
     }
     const { slice, parsed } = row;
-    const lines = slice.elements.reduce((n, el) => n + elementLines(el), 0)
+    const lines = totalLines(slice.elements)
       + elementLines({ type: 'scene', text: slice.heading });
     const eighths = Math.max(1, Math.round((lines / LINES_PER_PAGE) * 8));
     const firstAction = slice.elements.find((el) => el.type === 'action');
@@ -739,7 +844,7 @@ export function parseScript(raw, filename) {
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;
 
   const { rows, guessed, numbering } = scenesFrom(elements);
-  const lines = elements.reduce((n, el) => n + elementLines(el), 0);
+  const lines = totalLines(elements);
   const warnings = (result.warnings || []).slice();
   /* Anything the PDF extractor had to say comes first: it is about
      the FILE, and the parser's warnings are about the script. A
@@ -784,6 +889,8 @@ export function parseScript(raw, filename) {
        second time, is a list that is wrong by the next format. */
     formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
     meta: result.meta || {},
+    // The file's title page as the script model's fields, or null.
+    titlePage: titlePageFromMeta(result.meta),
     elements,
     scenes: rows,
     numbering,
@@ -846,5 +953,6 @@ async function readPDF(file) {
 }
 
 export default {
-  FORMATS, ACCEPT, detectFormat, parseScript, parseSlug, scenesFrom, sliceScenes, readFile
+  FORMATS, ACCEPT, detectFormat, parseScript, parseSlug, scenesFrom, sliceScenes, readFile,
+  titlePageFromMeta
 };

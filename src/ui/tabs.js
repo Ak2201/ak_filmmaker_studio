@@ -141,9 +141,48 @@ function onTabClick(e) {
   const t = e.target.closest('.tabs [role="tab"]');
   if (!t) return;
   const { sections } = findTabs();
+  const strip = t.closest('.tabs');
+  const y0 = window.scrollY;
+  const stuckAt = strip ? strip.getBoundingClientRect().top : 0;
   show(sections, t.dataset.tab);
-  t.focus();
+  t.focus({ preventScroll: true });
+  revealPanel(strip, document.getElementById(t.dataset.tab), y0, stuckAt);
 }
+
+/* Switching tabs from deep inside a long one used to leave the window
+   where it was: the strip is sticky, so it stayed on screen, but the
+   new panel began a screen or more ABOVE it and you landed in the
+   middle of it (or past its end), then slid somewhere else as the
+   fragment resolver's smooth scroll caught up.
+
+   Decided from where the reader WAS, not from wherever the hash
+   resolver has started to scroll to: if the new panel's top would be
+   on screen below the strip from the old position, stay put; if it
+   would be above it, bring it to just under the strip — exactly
+   where the strip's own flow position puts it. `instant`, because
+   html has `scroll-behavior: smooth` and a smooth scroll here races
+   the resolver's and lands wherever the two cancel out. */
+function revealPanel(strip, panel, y0, stuckAt) {
+  if (!strip || !panel) return;
+  const gap = parseFloat(getComputedStyle(strip).marginBottom) || 0;
+  const h = strip.getBoundingClientRect().height;
+  /* Document positions, so the resolver's half-finished scroll does
+     not matter. */
+  const panelDocTop = panel.getBoundingClientRect().top + window.scrollY;
+  const stripDocBottom = y0 + stuckAt + h;
+  const target = panelDocTop < stripDocBottom + gap - 1
+    ? Math.max(0, panelDocTop - stuckAt - h - gap)
+    : y0;
+  window.scrollTo({ top: target, behavior: 'instant' });
+  /* And once more after the next frame: Chromium re-positions the
+     window during the render that follows a sticky element's content
+     changing height under it, which undid the first scroll by a few
+     hundred pixels on contacts and reports. */
+  requestAnimationFrame(() => {
+    if (Math.abs(window.scrollY - target) > 1) window.scrollTo({ top: target, behavior: 'instant' });
+  });
+}
+
 function onTabKey(e) {
   const t = e.target.closest('.tabs [role="tab"]');
   if (!t) return;

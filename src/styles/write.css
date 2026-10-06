@@ -263,8 +263,14 @@ body.wr-dropping .bd-empty {
    where it can be changed without hunting for a menu, the text in
    the middle at its own measure, the three row actions on the right.
    ------------------------------------------------------------ */
+/* A flex column, not a grid, and on purpose: it looks the same (one
+   stretched column, the same gap, margins that do not collapse), but a
+   grid re-runs its track sizing over every item whenever any one of
+   them changes — measured at ~80ms a layout on a 2,361-element script
+   with ten dirty boxes. A column only re-lays the items that moved. */
 .wr-page {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--s1);
   padding: var(--s5);
   background: var(--sk-card-bg);
@@ -284,9 +290,30 @@ body.wr-dropping .bd-empty {
   gap: var(--s2);
   align-items: start;
 }
+/* A feature is two thousand rows and more, so the rows sit in runs of
+   64 (`.wr-chunk`, built by write.js) and a run off screen is skipped:
+   laid out as a placeholder of its last measured size (`auto`), or of
+   an average run before it has ever been seen. A keystroke then re-lays
+   the runs in view, not the whole script. Find-in-page, focus and the
+   tab order all still reach a skipped row, and print lays out every
+   run (below).
+
+   A run is otherwise invisible — the same column and the same gap as
+   the page — and the containment it brings would clip a focus ring on
+   its first or last row, so it is allowed to paint that far out. */
+.wr-chunk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3000px;   /* a run of 64 on the sample, at 1280 */
+  overflow-clip-margin: var(--s2);
+}
+@media print { .wr-chunk { content-visibility: visible; } }
+
 /* A new scene gets air above it, the way a printed page does. */
 .wr-el.t-scene { margin-top: var(--s4); }
-.wr-el.t-scene:first-child { margin-top: 0; }
+.wr-chunk:first-child > .wr-el.t-scene:first-child { margin-top: 0; }
 
 .wr-type {
   width: 100%;
@@ -317,6 +344,14 @@ body.wr-dropping .bd-empty {
   line-height: 1.45;
   resize: none;           /* the page autosizes it to its content */
   overflow: hidden;
+}
+/* The browser sizes each element to its text where it can. This is the
+   fix for a script that froze the page for minutes (C2, UX audit): the
+   JS fallback in write.js forced a layout per row, and it now stands
+   down whenever this rule applies. Same box, same look — the height is
+   still content + padding + border, it is just no longer measured. */
+@supports (field-sizing: content) {
+  .wr-text { field-sizing: content; }
 }
 .wr-text:hover { border-color: var(--rule-hair); }
 .wr-text:focus { background: var(--paper); }

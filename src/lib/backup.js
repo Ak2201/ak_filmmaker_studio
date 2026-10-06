@@ -176,11 +176,33 @@ export function buildBackup() {
   };
   projects.forEach((p) => { all.data[p.id] = readBucket('__' + p.id); });
 
-  // A studio that never created a project still has unsuffixed data.
-  if (!projects.length) {
-    const legacy = readBucket('');
-    if (Object.keys(legacy).length) all.data._unfiled = legacy;
-  }
+  /* UNFILED WORK — what a page wrote with no project open (store.js,
+     "UNFILED WORK"). This used to be read only when the studio had NO
+     projects, which was exactly backwards for the case that mattered:
+     work written with no project open while projects existed, or in an
+     account with none of its own, was in no backup at all.
+
+     Now every holding slot on the device is read, whatever the project
+     count, because a backup that calls itself the whole studio must
+     not drop work that is on disk. Read only — taking a backup never
+     adopts anything; adoption is the person creating a project. The
+     device's slot is `_unfiled` (the name older files already use);
+     an account's is `_unfiled_<n>`, numbered rather than named so no
+     account id rides inside the file. */
+  /* WORK ONLY. The activity log and the three legacy prefs blobs are
+     scoped too, and the hub writes the log whenever it acts with no
+     project open — "Project deleted" after you delete your last film.
+     Carrying those would make every such backup import an empty
+     "Unfiled work" project. They still adopt (harmless); they just do
+     not make a bucket worth restoring. */
+  const HOUSEKEEPING = ['activity_log', 'feature_prefs', 'short_prefs', 'library_prefs'];
+  let n = 1;
+  Store.unfiledNamespaces().sort().forEach((ns) => {
+    const bucket = readBucket(ns ? '@' + ns : '');
+    HOUSEKEEPING.forEach((f) => { delete bucket[f]; });
+    if (!Object.keys(bucket).length) return;
+    all.data[ns ? '_unfiled_' + (++n) : '_unfiled'] = bucket;
+  });
 
   Object.keys(GLOBAL_KEYS).forEach((n) => { all.global[n] = parseStorage(GLOBAL_KEYS[n]); });
 
@@ -215,17 +237,22 @@ export function downloadBackup() {
   return (all.projects || []).length;
 }
 
+const UNFILED_RE = /^_unfiled(_\d+)?$/;
+
 export function backupShape(all) {
   const v2 = !!(all && all._version >= 2 && all.data);
   const projects = (v2 && Array.isArray(all.projects)) ? all.projects : [];
-  const unfiled  = v2 && !!all.data._unfiled;
+  const unfiledBuckets = v2
+    ? Object.keys(all.data).filter((k) => UNFILED_RE.test(k) && all.data[k] && typeof all.data[k] === 'object')
+    : [];
   return {
     version:   v2 ? 2 : 1,
     looksOurs: !!(all && all._from && String(all._from).includes('Studio')),
     exported:  (all && all._exported) || null,
     projects,
-    unfiled,
-    count: v2 ? projects.length + (unfiled ? 1 : 0) : 1
+    unfiled: unfiledBuckets.length > 0,
+    unfiledBuckets,
+    count: v2 ? projects.length + unfiledBuckets.length : 1
   };
 }
 
@@ -320,7 +347,28 @@ function applyV2(all, shape, opts) {
   };
 
   shape.projects.forEach((p) => land(p, all.data[p.id] || {}));
-  if (shape.unfiled) land({ title: 'Imported Project', format: 'feature' }, all.data._unfiled);
+
+  /* Unfiled buckets. MERGE (a file somebody chose to import) lands
+     each as a project of its own, as it always did — visible at once,
+     beside everything else. RESTORE (a Drive pull: this device
+     catching up with itself) puts it back where it came from, this
+     namespace's holding slot, key by key and never over a value that
+     is already there, so the next project created adopts it as it
+     would have on the device that wrote it. Landing it as a project
+     on every pull would mint a new "Imported Project" per sync. */
+  shape.unfiledBuckets.forEach((name) => {
+    const bucket = all.data[name] || {};
+    if (!restore) { land({ title: 'Unfiled work (imported)', format: 'feature' }, bucket); return; }
+    let wrote = 0;
+    Object.keys(PROJECT_KEYS).forEach((field) => {
+      if (bucket[field] === undefined) return;
+      const slot = Store.holdingKey(PROJECT_KEYS[field]);
+      if (Store.rawGet(slot) != null) return;          // never clobber
+      Store.rawSet(slot, JSON.stringify(bucket[field]));
+      wrote++;
+    });
+    if (wrote) replaced++;
+  });
 
   applyGlobalsAndNotes(all);
 

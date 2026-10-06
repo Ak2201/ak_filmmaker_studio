@@ -94,6 +94,7 @@ import { parseNum, fmtINR } from '../lib/money.js';
 import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
   from '../ui/comments.js';
 import Blueprint, { BLUEPRINT_KEY } from '../lib/blueprint-context.js';
+import { readBlueprintFile } from '../lib/blueprint-file.js';
 /* The choice a blank blueprint opens with — import, draft, or step
    01. Static because it reads nothing heavier than the step data
    this file already has; the two chunks behind its cards
@@ -1466,19 +1467,50 @@ function loadData() {
     const t4 = Math.max(locCount, 8); locCount = 0;
     for (let i = 0; i < t4; i++) { locCount++; const r = buildLocRow(locCount); locBody.appendChild(r); wireRow(r); }
 
+    /* REPLACE, NOT MERGE. A key absent from the blob means the field
+       is EMPTY, so it is set back to its markup default — the old
+       loop skipped it, which is why "Reset this blueprint" (remove the
+       key, call this) erased nothing on screen and the next keystroke
+       saved every field straight back, and why an import interleaved
+       two films. A checklist <li> is told apart by tag and toggled by
+       class only: `li.value` is an ordinal (the trap in CLAUDE.md),
+       so nothing here ever assigns one. No save is triggered — this
+       runs inside nothing that saves, and refreshAll() below does not
+       either (the save-loop trap). */
     document.querySelectorAll('[data-key]').forEach(el => {
       const k = el.getAttribute('data-key');
-      if (saved[k] !== undefined) {
-        if (el.tagName === 'LI') {
-          if (saved[k]) { el.classList.add('checked'); el.setAttribute('aria-checked', 'true'); }
-        } else el.value = saved[k];
-        if (el.tagName === 'SELECT' && k.startsWith('sl_') && k.endsWith('_charge')) recolorChargeCell(el);
+      const has = saved[k] !== undefined;
+      if (el.tagName === 'LI') {
+        const on = has && !!saved[k];
+        el.classList.toggle('checked', on);
+        el.setAttribute('aria-checked', on ? 'true' : 'false');
+        return;
       }
+      if (has) el.value = saved[k];
+      else resetFieldToDefault(el);
+      if (el.tagName === 'SELECT' && k.startsWith('sl_') && k.endsWith('_charge')) recolorChargeCell(el);
     });
 
     flashStatus('●  loaded');
     refreshAll();
   } catch (e) { console.error(e); flashStatus('●  load failed'); }
+}
+
+/* The value a field had in the markup, which for nearly every field is
+   empty — the palette seeds (palette_c1..c3) are the exception, and
+   their `defaultValue` IS the seed hex, so a reset lands on the same
+   starting colours a new blueprint has. Only form controls: a stray
+   data-key on any other element has no value to reset. */
+function resetFieldToDefault(el) {
+  if (el.tagName === 'SELECT') {
+    const opts = Array.from(el.options);
+    const d = opts.findIndex((o) => o.defaultSelected);
+    el.selectedIndex = d >= 0 ? d : (opts.length ? 0 : -1);
+  } else if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
+    el.checked = el.defaultChecked;
+  } else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+    el.value = el.defaultValue;
+  }
 }
 
 function saveData() {
@@ -1580,21 +1612,57 @@ function exportBlueprintPDF() {
 
 function importData() { document.getElementById('importFile').click(); }
 
+/* IMPORT REPLACES, AFTER A CHECK AND A QUESTION.
+
+   It used to write any JSON it was handed over the blob with no
+   question, and loadData() merged — so a studio backup, a Short file
+   or a half-filled draft imported "successfully" as two films mixed
+   field by field. Now: the file is checked against this page's own
+   data-keys (readBlueprintFile), the person is asked, and loadData()
+   replaces, so a field the file does not carry is cleared. */
+const FEATURE_ROW_KEY = /^(sl|shot|cast|loc)_\d+_/;
+
+function importNotice(msg, type) {
+  if (StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: type || 'error', duration: 8000 });
+  else alert(msg);
+}
+
 function handleImport(e) {
-  const file = e.target.files[0]; if (!file) return;
+  const input = e.target;
+  const file = input.files[0]; if (!file) return;
   const r = new FileReader();
   r.onload = (ev) => {
+    input.value = '';      // the same file can be chosen again
+    const keys = new Set(Array.from(document.querySelectorAll('[data-key]'), (el) => el.getAttribute('data-key')));
+    const res = readBlueprintFile(String(ev.target.result || ''), {
+      keys,
+      extraKey: (k) => FEATURE_ROW_KEY.test(k),
+      label: 'Feature Blueprint',
+      otherLabel: 'Short Film Blueprint',
+      looksOther: (d) => Array.isArray(d._sceneMap) || Array.isArray(d._script)
+    });
+    if (!res.ok) { flashStatus('●  import refused'); importNotice(res.error, 'error'); return; }
+    if (!confirm('Replace everything in this Feature Blueprint with "' + file.name + '"?\n\n' +
+                 'Fields the file does not contain will be emptied. Export first if you want to keep what is here now.')) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(JSON.parse(ev.target.result)));
+      const clean = {};
+      Object.keys(res.data).forEach((k) => { if (res.data[k] != null) clean[k] = res.data[k]; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
       loadData();
       flashStatus('●  imported');
-    } catch (err) { flashStatus('●  import failed'); }
+      importNotice('Imported "' + file.name + '" — ' + res.fields + ' fields.', 'success');
+    } catch (err) { flashStatus('●  import failed'); importNotice('Import failed: ' + err.message, 'error'); }
   };
   r.readAsText(file);
 }
 
+/* Reset clears the blob AND the page. loadData() now empties every
+   field the (absent) blob does not mention, so the screen matches
+   storage and the next keystroke saves an empty blueprint rather than
+   the old one. */
 function resetData() {
   if (!confirm('Clear all your work in BOTH volumes? Export first if you want a backup.')) return;
+  clearTimeout(saveTimer);   // a pending autosave must not write the old fields back
   localStorage.removeItem(STORAGE_KEY);
   loadData();
   flashStatus('●  reset');

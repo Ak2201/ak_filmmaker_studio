@@ -62,7 +62,19 @@ html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
    freed width on the right holds the card. The page (and page view,
    which centres on the section) moves with it. beat-guide.js sets the
    attribute only in Panel mode and only when that makes the room. */
-html[data-beat-guide="panel"][data-bg-shift] #screenplay { margin-left: 0; }
+/* The whole column moves, not just the page: the header and its stat
+   tiles above the strip, and every tab's section, or the fixed card
+   sits over the fourth tile and over whichever tab is open. */
+html[data-beat-guide="panel"][data-bg-shift] main > .bd-head,
+html[data-beat-guide="panel"][data-bg-shift] .wr-section { margin-left: 0; }
+/* The tab strip follows the page it heads. It centres itself on the
+   same measure the sections use, so once the page drops its auto left
+   margin the strip has to drop it too, or it sits over the old column
+   while the script sits 130px to its left. Same width, same gutter. */
+html[data-beat-guide="panel"][data-bg-shift] .tabs {
+  margin-inline: var(--tabs-gutter) auto;
+  max-width: calc(var(--measure-wide) - 2 * var(--tabs-gutter));
+}
 
 /* In the gutter: fixed beside the page, under the band and whatever
    is parked under it (the tab strip), and short enough to clear the

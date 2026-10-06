@@ -54,6 +54,7 @@
    ============================================================ */
 
 import { delegate } from '../lib/dom.js';
+import { revealTarget } from './tabs.js';
 
 /* An ABSOLUTE cap, not the thing that normally ends the wait — the
    settle condition below does that, the instant the target holds
@@ -90,6 +91,9 @@ function tryLand(id) {
   if (!id) return true;
   const el = document.getElementById(id);
   if (!el) return false;
+  /* A target inside a hidden tab has no box to scroll to — switch to
+     its tab first (tabs.js; a no-op on untabbed pages). */
+  revealTarget(id);
   /* `block: 'start'` plus the page's own scroll-padding-top. `auto`
      rather than `smooth`: this runs on load, and a smooth scroll that
      begins while the rest of the page is still rendering gets
@@ -131,6 +135,11 @@ export function resolveFragment(hash = location.hash) {
   const settle = () => {
     const el = document.getElementById(id);
     if (!el) { lastTop = null; stableTicks = 0; return false; }
+    /* Every tick, not once: a page that re-renders `main` (settings,
+       admin) rebuilds its tabs with the first one showing, and a
+       hidden target's offsetTop is a steady 0 that would otherwise
+       read as "settled". */
+    if (revealTarget(id)) { lastTop = null; stableTicks = 0; }
     const top = el.offsetTop;
     if (top !== lastTop) {
       lastTop = top;
@@ -194,7 +203,15 @@ export function installFragmentNav() {
        pushes a history entry per click, so Back walks the sections
        the reader skimmed instead of leaving the page. */
     history.replaceState(null, '', href.slice(href.indexOf('#')));
+    /* The tab first, then the scroll — and then the `hashchange` that
+       replaceState does not fire, because the shell's breadcrumb and
+       the tab strip both follow the hash through it (UX audit H2: the
+       address changed, the tab did not). The listener below re-runs
+       the resolver, which keeps landing while the newly shown panel
+       lays itself out. */
+    revealTarget(id);
     tryLand(id);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
 
   window.addEventListener('hashchange', () => resolveFragment());

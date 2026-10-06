@@ -90,16 +90,32 @@
    is my keyboard" answer visible without the double edge. */
 .pal-box:focus-within .pal-field { border-bottom-color: var(--accent); }
 
-.pal-esc {
+.pal-close {
+  /* The dialog's own exit (palette.js build()). 44px each way at
+     every width, not only under pointer:coarse: it is the one control
+     on a full-screen phone sheet that gets you out, and the field row
+     is taller than that already, so the desktop pays nothing. */
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  margin: 0;
+  padding: 0 var(--s3);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
+  text-transform: uppercase;
   color: var(--ink-muted);
+  background: none;
   border: 1px solid var(--rule);
   border-radius: var(--sk-btn-radius);
-  padding: 2px var(--s2);
-  flex: 0 0 auto;
+  cursor: pointer;
+  transition: background-color var(--speed-tap), color var(--speed-tap), border-color var(--speed-tap);
 }
+.pal-close:hover { background: var(--paper-sunk); color: var(--ink); border-color: var(--ink-muted); }
+.pal-close:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 
 /* ---- the rows -------------------------------------------- */
 .pal-list {

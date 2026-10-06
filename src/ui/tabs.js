@@ -113,6 +113,29 @@ function show(sections, id, { setHash = true } = {}) {
   }
 }
 
+/** Make the element with this id visible, if a hidden tab is all that
+ *  stands between it and the reader: switch to the tab whose section
+ *  holds it. Returns true when a tab was switched.
+ *
+ *  THE ONE WAY IN FOR A FRAGMENT. fragments.js intercepts same-page
+ *  `#` clicks (cover cards, the SECTIONS disclosure, the breadcrumb,
+ *  links in copy) with preventDefault + replaceState, which never fires
+ *  `hashchange` — so the listener below never heard about them and the
+ *  address changed while the tab did not (UX audit H2). The resolver
+ *  now asks here BEFORE it scrolls, on a click and on every settle
+ *  tick of a load, rather than this module guessing at which links
+ *  exist. No hash is written: the caller owns the address. */
+export function revealTarget(id) {
+  if (typeof document === 'undefined' || !id || !TABBED.has(page())) return false;
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const { sections } = findTabs();
+  const owner = sections.find((s) => s === el || s.contains(el));
+  if (!owner || (!owner.hidden && owner.id === active)) return false;
+  show(sections, owner.id, { setHash: false });
+  return true;
+}
+
 function buildStrip(sections) {
   const strip = h('nav.tabs', { role: 'tablist', 'aria-label': 'Sections' });
   for (const s of sections) {
@@ -218,4 +241,4 @@ export function installTabs() {
     .observe(app, { childList: true, subtree: true });
 }
 
-export default { installTabs, apply, TABBED };
+export default { installTabs, apply, revealTarget, TABBED };

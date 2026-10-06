@@ -86,6 +86,7 @@ let emptyEl = null;
 let items = [];         // the full index
 let shown = [];         // what is on screen, scored and sorted
 let active = 0;         // index into `shown`
+let closeBtn = null;    // the dialog's one other focus stop
 let opener = null;      // what to give focus back to
 let loaded = false;     // have the late models been pulled in
 let open = false;
@@ -452,7 +453,21 @@ function build() {
     'aria-label': 'Search the studio'
   });
   field.append(input);
-  field.append(h('kbd.pal-esc', { text: 'esc', 'aria-hidden': 'true' }));
+  /* A REAL CLOSE, not a picture of a key. This used to be a
+     `<kbd aria-hidden>esc</kbd>`, and on a phone that was the whole
+     story: under 560px the box is a full-height sheet covering the
+     scrim whose mousedown closes it, and a touch keyboard has no
+     Escape — so the palette opened from the action bar's SEARCH could
+     not be left except by reloading (UX audit H9). A labelled button,
+     everywhere, with the key it shares named for assistive tech; the
+     visible word is "Close" because "esc" means nothing to a thumb. */
+  closeBtn = h('button.pal-close', {
+    type: 'button',
+    'aria-label': 'Close search',
+    'aria-keyshortcuts': 'Escape',
+    text: 'Close'
+  });
+  field.append(closeBtn);
   box.append(field);
 
   listEl = h('ul#palList.pal-list', { role: 'listbox', 'aria-label': 'Results' });
@@ -488,6 +503,14 @@ function build() {
     choose(Number(row.dataset.i));
   });
   root.addEventListener('mousedown', (e) => { if (e.target === root) closePalette(); });
+  closeBtn.addEventListener('click', () => closePalette());
+  /* Escape and Tab for the button's half of the dialog. The input
+     handles its own keys (onKey) and stops Escape there; this catches
+     the same keys while the Close button holds focus. */
+  closeBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePalette(); }
+    else if (e.key === 'Tab') { e.preventDefault(); input.focus(); }
+  });
   input.addEventListener('input', () => { active = 0; render(input.value); });
   input.addEventListener('keydown', onKey);
 }
@@ -505,8 +528,9 @@ function onKey(e) {
     /* Tab is trapped rather than allowed to leave: this is
        aria-modal, and a Tab that walked into the page behind would
        leave a sighted keyboard user focused on something they
-       cannot see under a scrim. There is exactly one stop. */
-    case 'Tab':         e.preventDefault(); break;
+       cannot see under a scrim. There are exactly two stops, the
+       field and its Close button, and Tab either way swaps them. */
+    case 'Tab':         e.preventDefault(); if (closeBtn) closeBtn.focus(); break;
     default: break;
   }
 }

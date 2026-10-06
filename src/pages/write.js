@@ -42,6 +42,7 @@ import '../styles/ai.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import { mountFocusMode } from '../ui/focus-mode.js';
 import { h, delegate } from '../lib/dom.js';
 /* The provider TABLE only — not src/lib/ai.js, which this page
    still reaches with import() at a click. The disclosure below has
@@ -2757,3 +2758,4 @@ const wantsImporter = typeof location !== 'undefined' && location.hash === '#wr-
 if (wantsImporter) importOpen = true;
 
 render(wantsImporter ? '#wr-import-paste' : null);
+mountFocusMode(() => doc);   // Phase 4: src/ui/focus-mode.js

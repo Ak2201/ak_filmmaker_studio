@@ -1,0 +1,194 @@
+/* ============================================================
+   FOCUS MODE — write.html (src/ui/focus-mode.js)
+   ------------------------------------------------------------
+   Everything keys off ONE class on <html>, `fm-on`. With it absent
+   every rule below is inert except the HUD's own (which is `hidden`),
+   so the page with focus off is byte-for-byte the page it was — that
+   is what the verify gate's AA walk, overflow check and word capture
+   all measure.
+
+   Tokens and --sk-* only. NIGHT is not a palette here: focus-mode.js
+   sets the existing `data-theme="dark"` for the length of a session,
+   so --paper / --ink below already ARE the ink theme's.
+
+   DIM THE REST takes --ink-muted, the hierarchy's third ink, which
+   clears 4.5:1 on every ground in both themes (CLAUDE.md, open item
+   6) — reduced emphasis that is still body-legible, not a fourth grey
+   below the floor. The current scene keeps --ink.
+
+   --motion multiplies every distance; the typewriter's own scroll is
+   instant when --motion is 0 (the JS reads it).
+   ============================================================ */
+
+/* ---- the chrome goes away ------------------------------------- */
+html.fm-on #app > :not(main),
+html.fm-on main > :not(#screenplay),
+html.fm-on #screenplay > :not(#wr-page):not(.bd-empty),
+html.fm-on .site-foot,
+html.fm-on .mobile-actionbar,
+html.fm-on #stepRail,
+html.fm-on .step-rail-toggle,
+html.fm-on .reading-progress,
+html.fm-on #studioNoProjectBanner {
+  display: none !important;
+}
+/* What the hidden chrome reserved: the rail's gutter, the action bar's
+   floor, and the measured band every fragment jump clears. With the
+   band gone the offset is zero, and it is stated rather than left to a
+   measurement taken while the band was display:none. */
+html.fm-on { scroll-padding-top: 0; }
+html.fm-on body,
+html.fm-on body.has-sh-shell.rail-shown,
+html.fm-on body.has-mobile-actionbar {
+  padding-left: 0;
+  padding-bottom: 0;
+}
+html.fm-on body { background: var(--paper); }
+
+/* ---- the page, centred ---------------------------------------- */
+html.fm-on #screenplay {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  /* Room above and below so the first and last lines can both be held
+     at a third of the way down. */
+  padding: 30vh var(--s4) 62vh;
+}
+html.fm-on #wr-page {
+  background: var(--paper-raised);
+}
+/* The type select and the row actions stay in the grid — so no text
+   reflows — but only the row being written shows them. */
+html.fm-on #wr-page [data-el]:not(:focus-within):not(:hover) .wr-type,
+html.fm-on #wr-page [data-el]:not(:focus-within):not(:hover) .wr-el-acts {
+  visibility: hidden;
+}
+
+/* ---- dim the rest --------------------------------------------- */
+html.fm-on.fm-dim #wr-page [data-el]:not([data-fm-cur]) .wr-text {
+  color: var(--ink-muted);
+}
+html.fm-on.fm-dim #wr-page [data-el][data-fm-cur] .wr-text { color: var(--ink); }
+html.fm-on.fm-dim #wr-page [data-el][data-fm-cur].t-paren .wr-text { color: var(--ink-body); }
+
+/* ---- typewriter markers --------------------------------------- */
+html.fm-on.fm-mk-frame #wr-page .wr-text:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 var(--sk-focus-w, 2px) var(--accent-wash);
+}
+/* A fixed band where the caret's line is held. A pseudo-element, so no
+   measurer that walks `body > *` for sticky chrome can count it. */
+html.fm-on.fm-mk-line body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--fm-type-y, 33vh) - var(--fm-line-h, 24px) / 2);
+  height: var(--fm-line-h, 24px);
+  background: var(--accent-wash);
+  border-block: 1px solid var(--rule-hair);
+  pointer-events: none;
+  z-index: 0;
+}
+html.fm-on.fm-mk-line #wr-page { position: relative; z-index: 1; background: transparent; }
+html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
+
+/* ---- the goal bar: thin, fixed, never focusable --------------- */
+.fm-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--rule-hair);
+  z-index: var(--z-float);
+  pointer-events: none;
+}
+.fm-bar[hidden] { display: none; }
+.fm-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+  transition: width var(--speed-slow) var(--ease-out);
+}
+.fm-bar.is-done .fm-bar-fill { background: var(--ok); }
+
+/* ---- the HUD -------------------------------------------------- */
+.fm-hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-float);
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--s4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--shadow-md);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+}
+.fm-hud[hidden] { display: none; }
+.fm-hud-row,
+.fm-opt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.fm-hud .fm-btn { padding: var(--s1) var(--s3); }
+.fm-goal,
+.fm-sprint {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+}
+.fm-sprint { color: var(--ink-muted); }
+.fm-opts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-bottom: var(--s2);
+  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+}
+.fm-opts[hidden] { display: none; }
+.fm-field span { color: var(--ink-muted); text-transform: uppercase; }
+.fm-hud select,
+.fm-hud input[type="number"] {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s1) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font: inherit;
+}
+.fm-hud input.fm-goal-target { width: 6rem; }
+.fm-check { display: inline-flex; align-items: center; gap: var(--s1); color: var(--ink); }
+.fm-today { margin: 0; color: var(--ink); }
+.fm-hist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fm-hist li { display: inline-flex; gap: var(--s1); }
+.fm-hist-day { color: var(--ink-muted); }
+.fm-hist-num { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  html.fm-on #screenplay { padding-inline: var(--s2); padding-bottom: 70vh; }
+  .fm-hud { left: var(--s4); right: var(--s4); width: auto; }
+}

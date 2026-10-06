@@ -1510,3 +1510,85 @@ export async function draftBeatMap(job, { onStatus, signal } = {}) {
                    rationale: str(b.rationale, 400), tension: Number(b.tension) }));
   return { rows, truncated, model };
 }
+
+/* ---- the step outline: suggest steps for one beat -----------
+   Plan revision 3, §1. The Story page's step outline is the writer's
+   own list of events under each beat; this offers two to four more
+   for ONE beat, which the page shows as suggestions the writer adds
+   one at a time. Like draftBeatSheet it may invent — that is what a
+   suggestion is — but it is told what the story already holds (the
+   idea, the logline, the synopsis and every step written so far) and
+   never to contradict it. It writes nothing. The page gates it the
+   way it gates draftBeatMap: ai-panel.js's keyGate, then a
+   disclosure of exactly what is sent.
+
+     job  { idea, logline, synopsis, format, framework: { label, beats },
+            beat: { id, label, prompt }, steps: [{ beat, text }] }
+   Resolves to { steps: [string], truncated, model }. */
+function outlineStepsSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['steps'],
+    properties: {
+      steps: {
+        type: 'array',
+        items: { type: 'string', description: 'one story event, one or two sentences, present tense' }
+      }
+    }
+  };
+}
+
+export async function draftOutlineSteps(job, { onStatus, signal } = {}) {
+  const fw = (job && job.framework) || {};
+  const beat = (job && job.beat) || {};
+  if (!beat.id || !Array.isArray(fw.beats) || !fw.beats.length) {
+    throw new AIError('The beat framework did not load.', 'nobeats');
+  }
+  const idea = str(job.idea, 1200), logline = str(job.logline, 800), synopsis = str(job.synopsis, 12000);
+  const steps = (Array.isArray(job.steps) ? job.steps : []).filter((s) => s && str(s.text, 600));
+  if (!idea && !logline && !synopsis && !steps.length) {
+    throw new AIError('Write the idea or the logline first — the model needs something of yours to work from.', 'nostory');
+  }
+  const labelOf = new Map(fw.beats.map((b) => [String(b.id), b.label]));
+  const lines = [
+    'This is the step outline of a ' + (job.format === 'short' ? 'short film' : 'feature') + ', built on the '
+      + (fw.label || 'beat') + ' structure. Suggest two to four story events (steps) for ONE beat:',
+    '',
+    'THE BEAT: ' + (beat.label || beat.id) + ' — ' + (beat.prompt || ''),
+    '',
+    'RULES:',
+    '· Each step is one event that happens on screen, in one or two plain sentences, present tense.',
+    '· Serve the story below. Never contradict what it already says, and do not repeat a step already written.',
+    '· Write in English, even where the film is in Tamil.',
+    ''
+  ];
+  if (idea) lines.push('IDEA: ' + idea);
+  if (logline) lines.push('LOGLINE: ' + logline);
+  if (synopsis) lines.push('', 'SYNOPSIS:', synopsis);
+  if (steps.length) {
+    lines.push('', 'THE OUTLINE SO FAR:');
+    for (const s of steps.slice(0, 120)) {
+      const b = String(s.beat || '').split(':').pop();
+      lines.push('· [' + (labelOf.get(b) || b || 'unplaced') + '] ' + str(s.text, 600));
+    }
+  }
+
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a story editor helping a writer build a step outline. You suggest; the writer decides.',
+    user: lines.join('\n'),
+    schema: outlineStepsSchema(),
+    maxTokens: 2000,
+    effort: 'medium',
+    onStatus,
+    signal,
+    progress: () => 'Thinking about ' + (beat.label || 'this beat') + '…'
+  });
+  if (!Array.isArray(parsed.steps)) {
+    throw new AIError('The reply was not a list of steps, so nothing was suggested.', 'malformed');
+  }
+  const have = new Set(steps.map((s) => str(s.text, 600).toLowerCase()));
+  const out = parsed.steps.map((t) => str(t, 600)).filter((t) => t && !have.has(t.toLowerCase())).slice(0, 4);
+  if (!out.length) throw new AIError('The reply held no new steps.', 'empty-result');
+  return { steps: out, truncated, model };
+}

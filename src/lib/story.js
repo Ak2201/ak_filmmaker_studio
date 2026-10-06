@@ -52,8 +52,15 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 
 export function blankStory() {
   return { v: 1, source: '', sourceName: '', framework: FRAMEWORKS.default,
-           marks: [], tension: {}, logline: '', updatedAt: 0 };
+           marks: [], tension: {}, logline: '', idea: '', outline: [], updatedAt: 0 };
 }
+
+/** A framework's own act split (frameworks.json `pacing.regions`), else
+ *  the file-wide one. Each label carries its act number. */
+export const regionsOf = (fwId) => {
+  const r = frameworkById(fwId).pacing && frameworkById(fwId).pacing.regions;
+  return Array.isArray(r) && r.length ? r : PACING.regions;
+};
 
 /* ---- storage ------------------------------------------------ */
 
@@ -77,6 +84,11 @@ export function loadStory() {
   const out = { ...blankStory(), ...s };
   out.marks = Array.isArray(s.marks) ? s.marks.filter((m) => m && typeof m.text === 'string') : [];
   out.tension = s.tension && typeof s.tension === 'object' ? s.tension : {};
+  out.outline = Array.isArray(s.outline)
+    ? s.outline.filter((x) => x && typeof x.id === 'string' && typeof x.beat === 'string')
+        .map((x) => ({ ...x, text: typeof x.text === 'string' ? x.text : '' }))
+    : [];
+  out.idea = typeof s.idea === 'string' ? s.idea : '';
   return out;
 }
 
@@ -260,8 +272,10 @@ export function heatmap(story, fwId = story.framework) {
   return out;
 }
 
-const regionAt = (pos) =>
-  (PACING.regions.find((r) => pos >= r.from && pos < r.to) || PACING.regions[PACING.regions.length - 1]).label;
+const regionAt = (pos, fwId) => {
+  const rs = regionsOf(fwId);
+  return (rs.find((r) => pos >= r.from && pos < r.to) || rs[rs.length - 1]).label;
+};
 const pct = (x) => `${Math.round(x * 100)}%`;
 
 /** Pacing flags, derived from the heatmap and the matrix. Each is
@@ -280,7 +294,7 @@ export function pacingFlags(story, fwId = story.framework) {
   const close = () => {
     if (run.length >= minWin) {
       const a = run[0], b = run[run.length - 1];
-      const r1 = regionAt(a.pos), r2 = regionAt(b.pos);
+      const r1 = regionAt(a.pos, fwId), r2 = regionAt(b.pos, fwId);
       const est = run.filter((w) => w.estimated).length;
       flags.push({
         kind: 'slack', level: 'warn',
@@ -364,6 +378,442 @@ export function applyBeatMap(story, fwId, rows) {
     added++;
   }
   return { added, dropped };
+}
+
+/* ---- the step outline (plan revision 3, §1) -------------------
+   A numbered list of story events under each beat. STORED: the steps
+   themselves, `{ id, beat, text, sceneId? }`, in `story.outline`, in
+   the same key as everything else here. The beat is FRAMEWORK-
+   QUALIFIED ('save_the_cat:midpoint'), the shape beat-outline.js and
+   scene.beatId already use, so switching the format on the page is a
+   view change: a step whose beat is not in the format on screen is
+   listed as NOT PLACED IN THIS FORMAT, with the nearest beat by
+   position offered, and is never dropped. Switching back finds it
+   where it was.
+
+   DERIVED: the numbering (1..N across the outline, in beat order),
+   the coverage, the grouping by beat and by act, and which path step
+   the page is on. None of it is stored.
+
+   This half is pure apart from the story object it is handed. The
+   scene list is reached only through the `api` argument (listScenes /
+   addScene / removeScene / saveScenes from scenes.js), so it runs in
+   Node against a fake and never reaches for another module's key. */
+
+export const qualifyBeat = (fwId, beatId) => (fwId && beatId ? fwId + ':' + beatId : '');
+
+/** 'save_the_cat:midpoint' → { fw, beat }; anything else → null. The
+ *  same rule as parseBeatId() in beat-outline.js. */
+export function parseBeat(key) {
+  const s = String(key || '');
+  const i = s.indexOf(':');
+  if (i <= 0 || i === s.length - 1) return null;
+  return { fw: s.slice(0, i), beat: s.slice(i + 1) };
+}
+
+/** A qualified key resolved EXACTLY — no fallback to the default
+ *  framework, unlike frameworkById(). { fw, beat } or null. */
+export function resolveBeatKey(key) {
+  const p = parseBeat(key);
+  if (!p) return null;
+  const fw = FRAMEWORKS.frameworks.find((f) => f.id === p.fw);
+  const beat = fw && fw.beats.find((b) => b.id === p.beat);
+  return beat ? { fw, beat } : null;
+}
+
+const actOfBeat = (fwId, b) => {
+  if (Number.isFinite(b.act)) return b.act;
+  const rs = regionsOf(fwId);
+  const r = rs.find((x) => b.at >= x.from && b.at < x.to) || rs[rs.length - 1];
+  const m = /(\d+)/.exec(String(r.label || ''));
+  return m ? Number(m[1]) : 1;
+};
+
+function ensureOutline(story) {
+  if (!Array.isArray(story.outline)) story.outline = [];
+  return story.outline;
+}
+
+/* Insert `step` among the steps of its beat: before the `at`-th one
+   when given, else after the last. A beat with no steps yet takes the
+   end of the array — the array order matters only WITHIN a beat,
+   because the display groups by beat. */
+function placeStep(list, step, at) {
+  const same = [];
+  list.forEach((x, i) => { if (x.beat === step.beat) same.push(i); });
+  if (Number.isInteger(at) && at >= 0 && at < same.length) list.splice(same[at], 0, step);
+  else if (same.length) list.splice(same[same.length - 1] + 1, 0, step);
+  else list.push(step);
+}
+
+/** Add a step under a beat. Returns the step, or null for no beat. */
+export function addOutlineStep(story, { beat, text = '', at } = {}) {
+  if (!parseBeat(beat)) return null;
+  const list = ensureOutline(story);
+  const step = { id: uid(), beat: String(beat), text: String(text || '') };
+  placeStep(list, step, at);
+  return step;
+}
+
+/** Patch a step's text (or beat — prefer moveOutlineStep for that).
+ *  The id is not patchable. Returns the step or null. */
+export function updateOutlineStep(story, id, patch = {}) {
+  const st = ensureOutline(story).find((x) => x.id === id);
+  if (!st) return null;
+  if (typeof patch.text === 'string') st.text = patch.text;
+  if (patch.beat && parseBeat(patch.beat)) st.beat = String(patch.beat);
+  if ('sceneId' in patch) { if (patch.sceneId) st.sceneId = String(patch.sceneId); else delete st.sceneId; }
+  return st;
+}
+
+export function removeOutlineStep(story, id) {
+  const list = ensureOutline(story);
+  const i = list.findIndex((x) => x.id === id);
+  if (i < 0) return false;
+  list.splice(i, 1);
+  return true;
+}
+
+/** Reorder or re-file a step.
+ *    { delta: -1 | 1 }  swap with the neighbouring step of the same beat
+ *    { beat, at? }      move under another beat (to its end, or before
+ *                       its `at`-th step)
+ *    { at }             move to position `at` within its own beat
+ *  Returns true when anything moved. */
+export function moveOutlineStep(story, id, { delta, beat, at } = {}) {
+  const list = ensureOutline(story);
+  const i = list.findIndex((x) => x.id === id);
+  if (i < 0) return false;
+  const st = list[i];
+  if (beat && beat !== st.beat) {
+    if (!parseBeat(beat)) return false;
+    list.splice(i, 1);
+    st.beat = String(beat);
+    placeStep(list, st, at);
+    return true;
+  }
+  const same = [];
+  list.forEach((x, k) => { if (x.beat === st.beat) same.push(k); });
+  const me = same.indexOf(i);
+  if (Number.isInteger(delta) && delta) {
+    const j = me + delta;
+    if (j < 0 || j >= same.length) return false;
+    const k = same[j];
+    [list[i], list[k]] = [list[k], list[i]];
+    return true;
+  }
+  if (Number.isInteger(at) && at !== me) {
+    list.splice(i, 1);
+    placeStep(list, st, at);
+    return true;
+  }
+  return false;
+}
+
+/** The outline as the page draws it, in a framework.
+ *    beats[]   = { beat, key, act, steps: [step + n] }
+ *    unplaced  = steps whose beat is not in this framework, each with
+ *                `from` ({ fw, beat } it was written under, or null)
+ *                and `suggest` (the nearest beat here by position)
+ *    total, withText, covered (beats with a written step), beatsTotal
+ *  Numbering runs 1..N across the beats in order, then the unplaced. */
+export function outlineByBeat(story, fwId = story && story.framework) {
+  const fw = frameworkById(fwId);
+  const beats = fw.beats.map((b) => ({ beat: b, key: qualifyBeat(fw.id, b.id), act: actOfBeat(fw.id, b), steps: [] }));
+  const byKey = new Map(beats.map((r) => [r.key, r]));
+  const unplaced = [];
+  for (const st of (story && story.outline) || []) {
+    const row = byKey.get(st.beat);
+    if (row) { row.steps.push({ ...st }); continue; }
+    const from = resolveBeatKey(st.beat);
+    unplaced.push({ ...st, from, suggest: from ? nearestBeat(fw.id, from.beat.at) : null });
+  }
+  let n = 0;
+  beats.forEach((r) => r.steps.forEach((s) => { s.n = ++n; }));
+  unplaced.forEach((s) => { s.n = ++n; });
+  const written = (s) => String(s.text || '').trim();
+  return {
+    fw, beats, unplaced,
+    total: n,
+    withText: beats.reduce((t, r) => t + r.steps.filter(written).length, 0) + unplaced.filter(written).length,
+    covered: beats.filter((r) => r.steps.some(written)).length,
+    beatsTotal: beats.length
+  };
+}
+
+/** Every step in reading order for a framework: beat by beat, each
+ *  unplaced step after the steps of the beat it is nearest to, and a
+ *  step that resolves nowhere at the end. Each carries `act`. */
+export function stepsInOrder(story, fwId = story && story.framework) {
+  const o = outlineByBeat(story, fwId);
+  const lost = [];
+  const near = new Map();
+  for (const u of o.unplaced) {
+    if (u.suggest) { if (!near.has(u.suggest.id)) near.set(u.suggest.id, []); near.get(u.suggest.id).push(u); }
+    else lost.push(u);
+  }
+  const out = [];
+  for (const r of o.beats) {
+    for (const s of r.steps) out.push({ ...s, act: r.act, placed: true });
+    for (const s of near.get(r.beat.id) || []) out.push({ ...s, act: r.act, placed: false });
+  }
+  const lastAct = o.beats.length ? o.beats[o.beats.length - 1].act : 1;
+  for (const s of lost) out.push({ ...s, act: lastAct, placed: false });
+  return out;
+}
+
+/** File every unplaced step under its nearest beat in `fwId`. A user
+ *  action — never called on render. Returns how many moved. */
+export function fileUnplaced(story, fwId = story.framework, ids = null) {
+  let moved = 0;
+  for (const u of outlineByBeat(story, fwId).unplaced) {
+    if (!u.suggest || (ids && !ids.includes(u.id))) continue;
+    if (moveOutlineStep(story, u.id, { beat: qualifyBeat(frameworkById(fwId).id, u.suggest.id) })) moved++;
+  }
+  return moved;
+}
+
+const clone = (x) => JSON.parse(JSON.stringify(x));
+
+/** Assemble the synopsis from the outline: one paragraph per act,
+ *  each step's text verbatim, and a mark on each step's exact span
+ *  (origin 'outline', tagged with the step's own beat in its own
+ *  framework) so the matrix and the curve light up at once.
+ *
+ *  Marks a previous build made are replaced; marks a person made are
+ *  kept (and re-anchor or detach as after any edit). Returns the undo
+ *  snapshot { source, sourceName, marks } — hand it to
+ *  restoreSynopsis() to put everything back exactly. */
+export function buildSynopsisFromOutline(story, fwId = story.framework) {
+  const snapshot = { source: story.source || '', sourceName: story.sourceName || '', marks: clone(story.marks || []) };
+  const steps = stepsInOrder(story, fwId).filter((s) => String(s.text || '').trim());
+  const paras = [];
+  for (const s of steps) {
+    const last = paras[paras.length - 1];
+    if (last && last.act === s.act) last.steps.push(s); else paras.push({ act: s.act, steps: [s] });
+  }
+  let source = '';
+  const spans = [];
+  paras.forEach((p, pi) => {
+    if (pi) source += '\n\n';
+    p.steps.forEach((s, si) => {
+      if (si) source += ' ';
+      const text = String(s.text).trim().replace(/\s*\n\s*/g, ' ');
+      spans.push({ start: source.length, end: source.length + text.length, step: s });
+      source += text;
+    });
+  });
+  story.source = source;
+  story.sourceName = 'Built from the step outline';
+  story.marks = (story.marks || []).filter((m) => m.origin !== 'outline');
+  for (const sp of spans) {
+    const r = resolveBeatKey(sp.step.beat);
+    const m = addMark(story, { start: sp.start, end: sp.end, fw: r ? r.fw.id : '', beat: r ? r.beat.id : '', origin: 'outline' });
+    if (m) m.step = sp.step.id;
+  }
+  return snapshot;
+}
+
+/** Put back what buildSynopsisFromOutline() replaced. */
+export function restoreSynopsis(story, snapshot) {
+  if (!snapshot) return false;
+  story.source = String(snapshot.source || '');
+  story.sourceName = String(snapshot.sourceName || '');
+  story.marks = clone(snapshot.marks || []);
+  return true;
+}
+
+/* ---- the hand-off to the Screenplay -------------------------- */
+
+const beatPos = (key) => { const r = resolveBeatKey(key); return r ? r.beat.at : null; };
+
+/** One placeholder scene per written step that has no live scene yet,
+ *  `beatId` set to the step's beat, the step's text as the synopsis.
+ *  ADD-ONLY: an existing scene is never edited, and the order of the
+ *  existing rows among themselves never changes. Each new row goes
+ *  after the last scene whose beat sits at or before its own, else
+ *  before the first one after it, else at the end — the rule
+ *  insertionPoint() in beat-outline.js keeps for "Draft scenes for this
+ *  beat". Records `sceneId` on each step and returns the new ids,
+ *  which is what undoSendOutline() takes.
+ *
+ *  `api` is scenes.js's default export (or anything shaped like it):
+ *  listScenes, addScene, and saveScenes for the placement. */
+export function sendOutlineToScenes(story, api, { fwId = story.framework } = {}) {
+  const existing = api.listScenes ? api.listScenes() : [];
+  const live = new Set(existing.map((s) => s.id));
+  const todo = stepsInOrder(story, fwId)
+    .filter((s) => String(s.text || '').trim() && !(s.sceneId && live.has(s.sceneId)));
+  if (!todo.length) return [];
+  const nums = existing.map((s) => parseInt(s.number, 10)).filter(Number.isFinite);
+  let num = nums.length ? Math.max(...nums) : 0;
+  const created = [];
+  for (const s of todo) {
+    const text = String(s.text).trim().replace(/\s+/g, ' ');
+    const sc = api.addScene({
+      number: String(++num), intExt: 'INT', dayNight: 'DAY', location: '',
+      synopsis: text.length > 280 ? text.slice(0, 277).trimEnd() + '…' : text,
+      beatId: s.beat, eighths: 8
+    });
+    if (!sc || !sc.id) continue;
+    created.push(sc.id);
+    const real = story.outline.find((x) => x.id === s.id);
+    if (real) real.sceneId = sc.id;
+  }
+  if (created.length && api.listScenes && api.saveScenes) {
+    const fresh = new Set(created);
+    const all = api.listScenes();
+    const base = all.filter((s) => !fresh.has(s.id));
+    for (const id of created) {
+      const sc = all.find((s) => s.id === id);
+      if (!sc) continue;
+      const p = beatPos(sc.beatId);
+      let at = base.length;
+      if (p != null) {
+        let lastLe = -1, firstGt = -1;
+        base.forEach((x, i) => {
+          const q = beatPos(x.beatId);
+          if (q == null) return;
+          if (q <= p) lastLe = i; else if (firstGt < 0) firstGt = i;
+        });
+        if (lastLe >= 0) at = lastLe + 1; else if (firstGt >= 0) at = firstGt;
+      }
+      base.splice(at, 0, sc);
+    }
+    api.saveScenes(base);
+  }
+  return created;
+}
+
+/** Undo a send: removes exactly the scenes it created, and clears the
+ *  link on the steps that pointed at them. Returns how many went. */
+export function undoSendOutline(story, ids, api) {
+  const gone = new Set(ids || []);
+  if (!gone.size) return 0;
+  const live = new Set((api.listScenes ? api.listScenes() : []).map((s) => s.id));
+  let n = 0;
+  for (const id of gone) {
+    if (api.listScenes && !live.has(id)) continue;
+    api.removeScene(id);
+    n++;
+  }
+  for (const st of story.outline || []) if (st.sceneId && gone.has(st.sceneId)) delete st.sceneId;
+  return n;
+}
+
+/* ---- the path (derived, never stored) ------------------------ */
+
+export const PATH = [
+  { n: 1, id: 'idea', label: 'Idea' },
+  { n: 2, id: 'logline', label: 'Logline' },
+  { n: 3, id: 'structure', label: 'Structure' },
+  { n: 4, id: 'outline', label: 'Step outline' },
+  { n: 5, id: 'synopsis', label: 'Synopsis' },
+  { n: 6, id: 'screenplay', label: 'To the Screenplay' }
+];
+
+/** Which path steps are filled, from the story and the scene rows. */
+export function pathProgress(story, { scenes = [] } = {}) {
+  const s = story || blankStory();
+  const o = outlineByBeat(s, s.framework);
+  const live = new Set((scenes || []).map((x) => x.id));
+  const sent = (s.outline || []).filter((x) => x.sceneId && live.has(x.sceneId)).length;
+  const beatScenes = (scenes || []).filter((x) => x.beatId).length;
+  const done = {
+    idea: !!String(s.idea || '').trim(),
+    logline: !!String(s.logline || '').trim(),
+    structure: (s.outline || []).length > 0 || (s.marks || []).length > 0,
+    outline: o.withText > 0,
+    synopsis: !!String(s.source || '').trim(),
+    screenplay: sent > 0 || beatScenes > 0
+  };
+  const detail = {
+    idea: '', logline: '',
+    structure: frameworkById(s.framework).short,
+    outline: o.withText ? `${o.withText} step${o.withText === 1 ? '' : 's'} · ${o.covered} of ${o.beatsTotal} beats` : '',
+    synopsis: s.source ? `${(String(s.source).match(/\S+/g) || []).length} words` : '',
+    screenplay: sent ? `${sent} sent` : beatScenes ? `${beatScenes} scenes on beats` : ''
+  };
+  return PATH.map((p) => ({ ...p, done: done[p.id], detail: detail[p.id] }));
+}
+
+/** The step a story should open on when nothing asked for one: the
+ *  synopsis once there is one, so a returning writer lands on their
+ *  editor; else the first step not yet filled. */
+export function defaultPathStep(story, opts) {
+  const s = story || blankStory();
+  if (String(s.source || '').trim()) return 5;
+  const p = pathProgress(s, opts);
+  if (p[3].done) return 4;
+  const first = p.slice(0, 3).find((x) => !x.done);
+  return first ? first.n : 4;
+}
+
+/** "Where am I" for a position in the synopsis (0..1): the nearest
+ *  beat, the next beat still ahead, and the convention's tension. */
+export function whereAt(fwId, pos) {
+  const p = Math.min(1, Math.max(0, Number(pos) || 0));
+  const beats = [...frameworkById(fwId).beats].sort((a, b) => a.at - b.at);
+  return { pos: p, nearest: nearestBeat(fwId, p), next: beats.find((b) => b.at > p + 0.005) || null, expected: expectedAt(fwId, p) };
+}
+
+/* ---- exports -------------------------------------------------- */
+
+const pc = (x) => Math.round(x * 100) + '%';
+
+export function synopsisText(story) {
+  return String((story && story.source) || '').trim() + '\n';
+}
+
+/** The beat sheet and step outline as Markdown: the format, every
+ *  beat with its prompt and its numbered steps, the steps not placed
+ *  in this format, and the passages tagged in the synopsis. */
+export function outlineMarkdown(story, fwId = story && story.framework, { title = '' } = {}) {
+  const s = story || blankStory();
+  const o = outlineByBeat(s, fwId);
+  const L = [];
+  L.push('# ' + (title ? title + ' — ' : '') + 'Beat sheet and step outline', '');
+  L.push('**Format:** ' + o.fw.label + ' (' + o.fw.beats.length + ' beats)', '');
+  if (String(s.idea || '').trim()) L.push('**Idea:** ' + s.idea.trim(), '');
+  if (String(s.logline || '').trim()) L.push('**Logline:** ' + s.logline.trim(), '');
+  L.push('**Coverage:** ' + o.covered + ' of ' + o.beatsTotal + ' beats have a step.', '');
+  let act = null;
+  for (const r of o.beats) {
+    if (r.act !== act) { act = r.act; L.push('## Act ' + act, ''); }
+    L.push('### ' + r.beat.label + ' (around ' + pc(r.beat.at) + ')', '', '_' + r.beat.prompt + '_', '');
+    const st = r.steps.filter((x) => String(x.text || '').trim());
+    if (st.length) { st.forEach((x) => L.push(x.n + '. ' + x.text.trim().replace(/\s*\n\s*/g, ' '))); L.push(''); }
+    else L.push('(no step yet)', '');
+  }
+  const un = o.unplaced.filter((x) => String(x.text || '').trim());
+  if (un.length) {
+    L.push('## Not placed in this format', '');
+    un.forEach((x) => L.push(x.n + '. ' + x.text.trim().replace(/\s*\n\s*/g, ' ') +
+      (x.from ? ' — written under ' + x.from.fw.short + ': ' + x.from.beat.label : '')));
+    L.push('');
+  }
+  const mx = matrix(s, o.fw.id).filter((r) => r.marks.length);
+  if (mx.length) {
+    L.push('## Tagged passages in the synopsis', '');
+    for (const r of mx) for (const m of r.marks) {
+      L.push('- **' + r.beat.label + '**' + (m.inferred ? ' (placed by position)' : '') + ': “' + m.text.replace(/\s*\n\s*/g, ' ') + '”');
+    }
+    L.push('');
+  }
+  return L.join('\n');
+}
+
+/** Link a sample story's steps to the sample's scene rows: each step
+ *  naming a scene id that exists gives that scene its beat, when the
+ *  scene has none. Mutates `scenes`; used once, when the hub seeds the
+ *  Dragon sample. */
+export function beatScenesFromOutline(story, scenes) {
+  let n = 0;
+  for (const st of (story && story.outline) || []) {
+    const sc = st.sceneId && (scenes || []).find((x) => x.id === st.sceneId);
+    if (sc && !sc.beatId && resolveBeatKey(st.beat)) { sc.beatId = st.beat; n++; }
+  }
+  return n;
 }
 
 /* ---- Idea Vault --------------------------------------------- */

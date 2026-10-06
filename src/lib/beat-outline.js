@@ -26,7 +26,7 @@
    its heading row in the editor and where a new beat's scenes go into
    the script all agree with what reports and visualize already think.
    ============================================================ */
-import { frameworkById, matrix, PACING } from './story.js';
+import { frameworkById, matrix, PACING, regionsOf } from './story.js';
 import { matchScenes } from './screenplay-analysis.js';
 import { elementLines, LINES_PER_PAGE } from './script.js';
 
@@ -86,9 +86,13 @@ function regionAct(label) {
   const m = /(\d+)/.exec(String(label || ''));
   return m ? Number(m[1]) : 0;
 }
-export function actShares() {
+/* With a framework id, that framework's own regions (frameworks.json
+   `pacing.regions`, a five-act Freytag or a two-half Interval), else
+   the file-wide split. */
+export function actShares(fwId) {
   const out = {};
-  for (const r of (PACING && PACING.regions) || []) {
+  const regions = fwId ? regionsOf(fwId) : ((PACING && PACING.regions) || []);
+  for (const r of regions || []) {
     const a = regionAct(r.label);
     if (!a) continue;
     out[a] = (out[a] || 0) + (Number(r.to) - Number(r.from));
@@ -107,7 +111,7 @@ export const actLabel = (n) => 'Act ' + (ACT_WORD[n] || n);
 /** The active framework's acts, each with its beats in order. */
 export function actsOf(fwId) {
   const fw = frameworkById(fwId);
-  const shares = actShares();
+  const shares = actShares(fw.id);
   const acts = new Map();
   for (const b of fw.beats) {
     const a = Number.isFinite(b.act) ? b.act : actAt(b.at);

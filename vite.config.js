@@ -204,6 +204,10 @@ export default defineConfig({
              `import()`; returning undefined is what lets that mean
              something. */
           if (/\/src\/data\/sample\.dragon\.script\.json$/.test(id)) return;
+          /* Its story (idea, logline, step outline, synopsis) is the
+             same shape: read on the sample click on the hub and on
+             story.html's USE THE SAMPLE, never on a first paint. */
+          if (/\/src\/data\/sample\.dragon\.story\.json$/.test(id)) return;
           if (id.includes('/src/data/')) return 'data';
           if (id.includes('/src/lib/') || id.includes('/src/ui/')) return 'studio';
         }

@@ -212,3 +212,168 @@
 .st-clip-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); font-size: var(--t-small); }
 .st-clip-meta select { min-width: 0; max-width: 100%; }
 .st-clip-src { color: var(--accent-deep); }
+
+/* ---- the path (plan rev. 3 §1) -------------------------------
+   Six tabs, every one clickable. The current one is filled with the
+   accent's wash and outlined, a done one carries a solid rule on its
+   number, so state is never carried by colour alone: each tab also
+   SAYS "Done" or "To do". */
+.st-path { margin-block: var(--s4) var(--s2); }
+.st-path-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--s2);
+}
+.st-path-tab {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--s2);
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s2) var(--s3);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+}
+.st-path-tab:hover { border-color: var(--accent); }
+.st-path-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.st-path-tab.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.st-path-n {
+  grid-row: 1 / span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px dashed var(--ink-muted);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink);
+}
+.st-path-tab.is-done .st-path-n { border-style: solid; border-width: 2px; border-color: var(--accent); }
+.st-path-label { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.st-path-state { font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; overflow-wrap: anywhere; }
+
+.st-step { padding-block: var(--s5); border-bottom: 1px solid var(--rule); }
+.st-step .st-text { max-width: var(--measure, 70ch); }
+.st-step-nav { margin-top: var(--s4); }
+.st-example { margin: var(--s3) 0 0; max-width: var(--measure, 70ch); color: var(--ink-body); font-style: var(--sk-deck-style, italic); }
+.st-example-k { font-style: normal; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin-top: var(--s3);
+  padding: var(--s3) var(--s4);
+  max-width: var(--measure, 70ch);
+  background: var(--paper-raised);
+  border: 1px dashed var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-offer-text { flex: 1 1 18rem; min-width: 0; margin: 0; color: var(--ink-body); }
+
+/* ---- 3 · the format picker ---------------------------------- */
+.st-fw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+.st-fw {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  padding: var(--sk-card-pad, var(--s4));
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+  min-width: 0;
+}
+.st-fw:hover { border-color: var(--accent); }
+.st-fw:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.st-fw.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.st-fw-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.st-fw-name { font-weight: 700; flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.st-fw-count { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); }
+.st-fw-suits { font-size: var(--t-small); color: var(--ink-body); }
+.st-badge.is-on { border-color: var(--accent); color: var(--ink); }
+.st-mini { display: block; width: 100%; height: 36px; }
+.st-mini-area { fill: var(--accent-wash); }
+.st-fw.is-on .st-mini-area { fill: var(--paper-raised); }
+.st-mini-line { fill: none; stroke: var(--accent-deep); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.st-mini-dot { fill: var(--accent-deep); }
+
+/* ---- 4 · the step outline ----------------------------------- */
+.st-coverage { margin: var(--s3) 0; color: var(--ink-body); }
+.st-ol-beats { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s3); }
+.st-ol-beat, .st-unplaced {
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.st-ol-beat.is-empty { background: var(--paper); border-style: dashed; }
+.st-unplaced { margin-top: var(--s4); border-color: var(--warn); }
+.st-ol-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.st-ol-name { margin: 0; font-size: var(--t-base, 1rem); font-weight: 700; color: var(--ink); }
+.st-ol-bp { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-body); }
+.st-ol-steps { margin: var(--s3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s3); }
+.st-ol-step { display: grid; gap: var(--s1); padding-top: var(--s2); border-top: 1px solid var(--rule-hair); min-width: 0; }
+.st-ol-n { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-ol-text { resize: vertical; }
+.st-ol-ctl, .st-ol-actions, .st-build { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.st-ol-actions { margin-top: var(--s3); }
+.st-ol-ctl .st-retag { width: auto; flex: 0 1 16rem; min-width: 0; }
+.st-ol-step .st-text { max-width: none; }
+.st-ol-from { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-sugg { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.st-sugg-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.st-sugg-text { flex: 1 1 16rem; min-width: 0; color: var(--ink-body); padding: var(--s2) var(--s3); border: 1px dashed var(--rule); border-radius: var(--sk-radius, var(--radius)); }
+.st-sugg-gate { margin-block: var(--s3); }
+.st-sugg-gate summary { cursor: pointer; color: var(--accent-deep); }
+
+/* ---- 5 · building the synopsis, and where you are ------------ */
+.st-build { margin-top: var(--s3); }
+.st-where { margin: var(--s3) 0 0; min-height: 1.5em; font-size: var(--t-small); color: var(--ink-body); }
+
+/* ---- the tabs under the editor ------------------------------ */
+.st-tabs-wrap { margin-top: var(--s5); }
+.st-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+.st-tab {
+  all: unset;
+  cursor: pointer;
+  padding: var(--s2) 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.st-tab:hover { color: var(--ink); }
+.st-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.st-tab.is-on { color: var(--ink); border-bottom-color: var(--accent); }
+.st-panel { padding-block: var(--s4); }
+.st-panel .st-ai, .st-panel .st-pitch, .st-panel .st-vault { padding-block: 0; border-top: 0; }

@@ -709,25 +709,60 @@ function buildBar(active) {
    note in chrome.css. */
 function adoptPageTools(bar) {
   const tools = document.querySelector('.toolbar');
-  const find = bar.querySelector('.sh-find');
-  if (!tools || !find || tools.closest('.sh-bar')) return;
+  if (!tools || tools.closest('.sh-bar')) return null;
   // The section links come out first: they belong on the crumb, not
   // in the right-hand zone with the save state and the backups.
   pageNavEl = buildPageNav(tools);
   bar.append(tools);
-  /* The palette handle joins the group rather than sitting beside it,
-     and that is a layout fix rather than a tidy-up. Flex breaks lines
-     using each item's hypothetical size BEFORE anything shrinks, so a
-     139px handle next to a 1006px strip could not share a line at
-     1100px even though the line had 1068px and the strip was
-     perfectly willing to shrink — the handle took a third row of its
-     own, 34px of chrome for one button. Inside the group it is one
-     more thing that wraps with everything else.
+  /* The palette handle used to be moved INTO the group here, first
+     child, so that it wrapped with the rest of the controls instead
+     of taking a third row of its own at 1100px (flex breaks lines on
+     hypothetical sizes, before anything shrinks). That fixed 1100 and
+     broke 720–1099: inside a group that wraps, the handle landed
+     wherever the group's own line breaks put it — x=16 at 800, x=94
+     at 850, x=59 at 899 on the feature blueprint — while on the
+     module pages it held the end of the first row (UX audit L23).
 
-     First in the group, so the right-hand zone reads search → project
-     → appearance → backups → account, and so the `order: -1` rule
-     that pulls it to the front below 900px has nothing left to do. */
-  tools.insertBefore(find, tools.firstChild);
+     It stays a direct child of the bar now, between the stages and
+     the zone, on every page. At 1100px and up the band is a GRID
+     with a column of its own for it (chrome.css), so the flex
+     line-breaking argument no longer applies; from 720 to 1099 the
+     one rule that pins it to the end of the first row applies to
+     every bar rather than to bars without a toolbar; below 720 it is
+     hidden and the bottom action bar carries search. */
+  return tools;
+}
+
+/* ---- THE SAME ZONE ON THE PAGES THAT HAVE NO TOOLBAR -----------
+   Eighteen of the twenty-two pages built no `.toolbar`, and the
+   sign-in pill and the Appearance menu hang off that element — so
+   eighteen pages had no way to sign in, see the sync state, or change
+   the theme without going back to the hub (UX audit M21). This is the
+   host they were missing: one right-hand zone, same place in the band
+   as the four pages' adopted toolbar, carrying the two controls that
+   are the studio's rather than the page's.
+
+   Built here rather than in chrome.js because chrome.js's autoInit
+   runs at import, before any page has rendered and before this bar
+   exists; the shell is the one thing that knows when the band is
+   there. Both mounts are idempotent (attachSignInPill checks for
+   #signInPill, mountAppearanceMenu for its own menu), so a page that
+   calls mountShell() twice gets one of each. Reached through the
+   StudioUI global rather than an import: chrome.js is not imported
+   here and both files are in the same `studio` chunk, so by the time
+   a page calls mountShell() the global exists. */
+function buildStudioTools(bar) {
+  let tools = bar.querySelector(':scope > .sh-tools');
+  if (!tools) {
+    tools = h('div.sh-tools', { role: 'group', 'aria-label': 'Account and appearance' });
+    bar.append(tools);
+  }
+  const ui = (typeof window !== 'undefined' && window.StudioUI) || null;
+  if (ui) {
+    try { if (ui.mountAppearanceMenu) ui.mountAppearanceMenu(tools); } catch (e) { /* a menu is not a reason to lose the band */ }
+    try { if (ui.attachSignInPill) ui.attachSignInPill(tools); } catch (e) { /* ditto */ }
+  }
+  return tools;
 }
 
 /* ---- keeping the statement true ----------------------------
@@ -1006,8 +1041,11 @@ function measureBar() {
    attribute is left off. */
 function layoutBand(bar) {
   /* The cluster is the page's .toolbar, or on the module pages the
-     palette handle alone. */
-  const tools = bar.querySelector(':scope > .toolbar, :scope > .sh-find');
+     studio's own .sh-tools zone — and in both cases the palette
+     handle beside it, which is a direct child of the bar and has to
+     fit on the same row for the row to count as fitting. */
+  const tools = bar.querySelector(':scope > .toolbar, :scope > .sh-tools')
+    || bar.querySelector(':scope > .sh-find');
   if (!tools) return;
   if (isNarrow()) { bar.removeAttribute('data-stacked'); return; }
   const was = bar.hasAttribute('data-stacked');
@@ -1019,14 +1057,14 @@ function layoutBand(bar) {
      start edge, over the stages. */
   const box = tools.getBoundingClientRect();
   let t = box;
-  if (tools.classList.contains('toolbar')) {
-    const kids = [...tools.children].filter((k) => k.getClientRects().length
-      && getComputedStyle(k).position !== 'absolute');
-    if (kids.length) {
-      const rs = kids.map((k) => k.getBoundingClientRect());
-      t = { top: box.top, height: box.height,
-            left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)) };
-    }
+  const shown = (k) => k.getClientRects().length && getComputedStyle(k).position !== 'absolute';
+  const parts = tools.classList.contains('sh-find') ? [tools] : [...tools.children].filter(shown);
+  const find = bar.querySelector(':scope > .sh-find');
+  if (find && find !== tools && shown(find)) parts.push(find);
+  if (parts.length) {
+    const rs = parts.map((k) => k.getBoundingClientRect());
+    t = { top: Math.min(...rs.map((r) => r.top)), height: Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top)),
+          left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)) };
   }
   const a = anchor ? anchor.getBoundingClientRect() : t;
   /* Fits = the cluster starts on the stages' row AND has not wrapped
@@ -1441,8 +1479,15 @@ export function mountShell() {
      mountShell(), which is what makes a single adopt-after-render
      pass enough; a page that ever renders its toolbar later would
      need to call mountShell() after it, and mountShell() is
-     idempotent so that is safe. */
-  adoptPageTools(bar);
+     idempotent so that is safe.
+
+     A page with no toolbar gets the studio's own zone instead — the
+     account pill and the Appearance menu, nothing of the page's. One
+     or the other, never both: the four toolbar pages mount those two
+     controls into their toolbar themselves (chrome.js autoInit and
+     each page's re-init), and a second pill would be a second
+     #signInPill. */
+  if (!adoptPageTools(bar) && !bar.querySelector(':scope > .toolbar')) buildStudioTools(bar);
 
   crumbEl = bar.querySelector('#studioWhere');
   document.body.classList.add('has-sh-shell');

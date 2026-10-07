@@ -67,6 +67,11 @@ function fmtEmail(e) {
 // Three things in one control, because the toolbar has room for one:
 // who you are, whether the account has your latest words, and the way
 // in if you are not signed in yet.
+//
+// The host is whatever the caller passes: a page's `.toolbar` on the
+// four pages that build one, the shell band's `.sh-tools` zone on the
+// rest. One pill per document — the #signInPill test below is what
+// lets both callers run on the same page without a second one.
 // ============================================================
 let _pillWired = false;
 
@@ -134,10 +139,11 @@ export function refreshSignInPill() {
   pill.dataset.sync = syncTone(st.state);
   /* A closed gate is the one thing the pill says INSTEAD of the
      address: somebody waiting on an invite should see that they are
-     without opening the menu. (On the pages that have a pill — the
-     hub and the three original pages, where a `.toolbar` hosts it;
-     the module pages carry no account control, which predates the
-     gate.) The address is still in the title and the menu. */
+     without opening the menu. (Every page with the shell has a pill
+     now: the four toolbar pages host it in their `.toolbar`, the
+     other eighteen in the shell band's `.sh-tools` zone, which
+     shell.js builds and fills through StudioUI.attachSignInPill.)
+     The address is still in the title and the menu. */
   if (g.state === 'closed') {
     pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
     lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Invite needed';

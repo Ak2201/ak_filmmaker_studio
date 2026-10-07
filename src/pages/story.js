@@ -178,9 +178,35 @@ const nextBtn = (n, label) => h('div.st-step-nav', {}, [
   h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-step': n, text: 'NEXT: ' + label.toUpperCase() })
 ]);
 
+/* A blank project's first step, once the start cards have been
+   answered or skipped (a #path-1 link, ?start=new, the stepper): the
+   same three ways in, in one line above the empty field, so nobody
+   meets a bare textarea and wonders. Derived from the story on every
+   render, hidden the moment any field has text, stored nowhere. The
+   import is the same control the bar carries; the sample is the one
+   the start cards offer. */
+function renderWaysIn() {
+  return h('div.st-offer.st-ways', { role: 'group', 'aria-label': 'Three ways in' }, [
+    h('p.st-offer-text', {}, [
+      h('span.st-example-k', { text: 'Three ways in: ' }),
+      'start from an idea below, paste a synopsis you already have, or import one from a .docx or .txt file. '
+      + 'Or open the sample film to see a finished one.'
+    ]),
+    h('button.btn.primary', { type: 'button', 'data-st': 'ways-idea', text: 'START FROM AN IDEA' }),
+    h('button.btn', { type: 'button', 'data-st': 'have-synopsis', text: 'PASTE A SYNOPSIS' }),
+    h('label.btn.st-import', {}, [
+      h('span', { text: 'IMPORT A .DOCX OR .TXT' }),
+      h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
+    ]),
+    h('button.btn', { type: 'button', 'data-st': 'sample', text: 'OPEN THE SAMPLE FILM' })
+  ]);
+}
+
 function renderIdea(s) {
   const sec = h('section#path-1.st-step', { 'aria-label': 'The idea' }, stepHead(1, 'The idea',
     'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
+  // Only when the start cards are NOT on the page: two copies of the same offer is noise.
+  if (isEmpty(s) && started) sec.append(renderWaysIn());
   sec.append(h('label.st-label', { for: 'stIdea', text: 'Your idea' }));
   const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
   ta.value = s.idea;
@@ -927,6 +953,8 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     if (isEmpty(s) && s.framework !== suggestedFw()) { s.framework = suggestedFw(); Story.saveStory(s); }
     goStep(1);
     const ta = document.getElementById('stIdea'); if (ta) ta.focus();
+  } else if (act === 'ways-idea') {
+    const ta = document.getElementById('stIdea'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); }
   } else if (act === 'have-synopsis') {
     started = true; mode = 'edit';
     goStep(5);

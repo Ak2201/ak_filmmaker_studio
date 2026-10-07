@@ -9,6 +9,7 @@
     "build:extension": "node scripts/build-extension.mjs",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.mjs",
+    "og": "node scripts/make-og.mjs",
     "extract": "node scripts/extract/feature-steps.mjs && node scripts/extract/short-steps.mjs && node scripts/extract/library.mjs && node scripts/extract/relink.mjs",
     "verify": "node scripts/verify-migration.mjs",
     "test:pdf": "node scripts/test-pdf-text.mjs",
@@ -23,6 +24,7 @@
     "test:keys": "node scripts/test-keys.mjs",
     "test:shots": "node scripts/test-shots.mjs",
     "test:sync": "node scripts/test-sync.mjs",
+    "test:stripboard": "node scripts/test-stripboard.mjs",
     "test:import": "node scripts/test-import.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
@@ -31,6 +33,7 @@
     "prove:gate": "node scripts/prove-gate.mjs",
     "prove:extension": "node scripts/prove-extension.mjs",
     "prove:billing": "node scripts/prove-billing.mjs",
+    "prove:sw": "node scripts/prove-sw.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },

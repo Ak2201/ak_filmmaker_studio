@@ -19,7 +19,12 @@
    is allowed for it. The session token is the one thing PRD FR-202
    forbids there, and nothing in this file touches it.
    ============================================================ */
-import { addToVault } from './story.js';
+/* story.js is reached through `import()` below, not imported here.
+   cloud.js imports this module on every page, and story.js carries
+   frameworks.json with it — so a static import put the eleven
+   frameworks on the first paint of every page to serve a clip queue
+   that only the extension ever fills. The import happens once a
+   non-empty queue is in hand. */
 
 export const CLIP_QUEUE_KEY = 'fms_clip_queue';
 
@@ -40,6 +45,7 @@ export async function drainClipQueue() {
     const got = await c.storage.local.get(CLIP_QUEUE_KEY);
     const queue = Array.isArray(got[CLIP_QUEUE_KEY]) ? got[CLIP_QUEUE_KEY] : [];
     if (!queue.length) return 0;
+    const { addToVault } = await import('./story.js');
     let n = 0;
     for (const clip of queue) if (addToVault(clip)) n++;
     const after = await c.storage.local.get(CLIP_QUEUE_KEY);

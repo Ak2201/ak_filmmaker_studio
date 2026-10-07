@@ -161,7 +161,7 @@ function renderPlan() {
     if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan\u2019s limits now.` }));
   }
   sec.append(planCards(billing.plans, st, {
-    onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus }).then(() => refreshBilling()),
+    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => refreshBilling()),
     rerender: () => { if (!busy) render(); }
   }));
   return sec;
@@ -558,11 +558,17 @@ function renderDrive() {
   ]);
   sec.append(pill);
 
+  /* Said up front, in every state, because it is the one thing about
+     Drive that looks like a fault and is not: the Google token from a
+     sign-in lives about an hour and this static build has nowhere to
+     keep a refresh token (drive.js, CLAUDE.md item 10). The same
+     sentence is what the expired-token error says in drive-sync.js. */
+  sec.append(h('p.st-note', { text: DriveSync.HOUR_NOTE }));
+
   if (!st.connected) {
     sec.append(h('p.st-note', {
       text: 'Connecting gives the studio access to the one backup file it creates '
-          + 'in your Drive — nothing else. You may need to connect again after '
-          + 'closing the browser.'
+          + 'in your Drive — nothing else.'
     }));
     sec.append(h('div.st-drive-actions', {}, [
       driveButton('drive-connect', 'Connect Google Drive', { primary: true, busyLabel: 'Asking Google…' })

@@ -58,6 +58,7 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/refund", "destination": "/refund.html" },
+    { "source": "/start", "destination": "/start.html" },
     { "source": "/shared/:token", "destination": "/?share=:token" }
   ],
   "redirects": [

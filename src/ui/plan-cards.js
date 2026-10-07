@@ -18,11 +18,20 @@
    tiers offer a button. The period the host receives is always
    'lifetime'.
 
+   PROMO CODES (schema section 20). "Have a code?" under the row: APPLY
+   asks quote_order() for every plan the row can sell, and a card whose
+   quote came back ok reprices itself — the discounted figure large,
+   the list price struck beside it. A refused code prints the server's
+   sentence. The code then rides on BUY; the server re-quotes it when
+   it makes the order, and the client sends no price, ever. The code
+   lives in this module's memory for the page and in no storage.
+
    No inline handlers (CSP). Everything is delegate() on
-   [data-plan-action]; the host page passes `onBuy(planId, period)`.
+   [data-plan-action]; the host page passes `onBuy(planId, period,
+   onStatus, code)`.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import Billing, { fmtPaise, priceFor, cap, planName } from '../lib/billing.js';
+import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
 import '../styles/plans.css';
 
@@ -30,6 +39,10 @@ const period = 'lifetime';     // the only period there is
 let busyPlan = '';
 let statusText = '';
 let hooks = { onBuy: null, rerender: null };
+/* The code as typed, the quotes it earned (plan id -> quote_order()
+   answer), a sentence when it was refused, and whether the box is open. */
+const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false };
+const appliedQuote = (planId) => { const q = promo.quotes[planId]; return q && q.ok && q.code ? q : null; };
 
 const LIMIT_LINES = [
   ['projects',      (n) => n === null ? 'Unlimited cloud projects' : `${n} cloud project${n === 1 ? '' : 's'}`],
@@ -83,17 +96,21 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
   const current = st ? st.plan : null;
 
   const row = h('div.pl-row');
+  const buyable = [];
   for (const p of plans.filter((x) => x.active || x.id === current)) {
     const isCurrent = p.id === current;
     const price = priceFor(p, period);
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : ''), { 'data-plan': p.id });
-    card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : p.id === 'free' ? 'Baseline' : ' ' }));
+    const q = appliedQuote(p.id);
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : '') + (q ? '.has-promo' : ''), { 'data-plan': p.id });
+    card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : p.id === 'free' ? 'Baseline' : ' ' }));
     card.append(h('h3.pl-name', { text: p.name || planName(p.id) }));
     card.append(h('p.pl-blurb', { text: p.blurb || '' }));
     card.append(h('p.pl-price', {}, [
-      h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(price) }),
+      h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : fmtPaise(q ? q.amount_paise : price) }),
+      q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null,
       h('span', { text: p.id === 'free' ? '' : price === null ? ' not for sale' : ' once · yours for good' })
-    ]));
+    ].filter(Boolean)));
+    if (q) card.append(h('p.pl-save', { text: `${fmtPaise(q.discount_paise)} off with ${q.code}` }));
     card.append(limitList(p.limits));
     card.append(featureBlock(p));
     /* A button only where there is something to buy: a higher tier.
@@ -101,6 +118,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
        — paying to have less is not a thing this page will sell. */
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
     if (p.id !== 'free' && price !== null && higher) {
+      buyable.push(p.id);
       const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
       const label = busyPlan === p.id ? 'OPENING…' : current && current !== 'free' ? 'UPGRADE' : 'BUY';
       card.append(h('button.btn' + (!current || current === 'free' ? '.primary' : ''), {
@@ -112,6 +130,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     row.append(card);
   }
   wrap.append(row);
+  if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
@@ -126,6 +145,29 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     '.'
   ]));
   return wrap;
+}
+
+/* "Have a code?" — a disclosure so the row reads as prices first and an
+   offer second. `buyable` is the plan ids the row has a button for; the
+   quote is asked for each, because a code may apply to some and not
+   others, and the box says which. */
+function promoBox(buyable) {
+  const det = h('details.pl-promo', { 'data-plan-promo': '', ...(promo.open ? { open: true } : {}) });
+  det.append(h('summary', { text: 'Have a code?' }));
+  const form = h('form.pl-promo-form', { 'data-plan-form': 'promo', autocomplete: 'off' });
+  form.append(h('label.pl-promo-label', { for: 'plPromoCode', text: 'Promo code' }));
+  const input = h('input#plPromoCode.pl-promo-input', { type: 'text', name: 'code', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
+    maxlength: 40, placeholder: 'e.g. LAUNCH10', 'aria-describedby': 'plPromoHint', value: promo.typed, disabled: promo.busy || busyPlan !== '' });
+  form.append(input);
+  form.append(h('button.btn', { type: 'submit', disabled: promo.busy || busyPlan !== '', text: promo.busy ? 'CHECKING…' : promo.code ? 'RE-CHECK' : 'APPLY' }));
+  if (promo.code) form.append(h('button.btn', { type: 'button', 'data-plan-action': 'promo-clear', disabled: promo.busy || busyPlan !== '', text: 'REMOVE' }));
+  det.append(form);
+  const applied = buyable.filter((id) => appliedQuote(id));
+  if (promo.error) det.append(h('p#plPromoHint.pl-promo-msg.is-error', { role: 'alert', text: promo.error }));
+  else if (promo.code && applied.length) det.append(h('p#plPromoHint.pl-promo-msg', { role: 'status',
+    text: `${promo.code} applied to ${applied.map((id) => planName(id)).join(', ')}. The price above is what you will pay.` }));
+  else det.append(h('p#plPromoHint.pl-promo-msg', { text: 'Spaces and case do not matter. The discount shows on the card before you pay.' }));
+  return det;
 }
 
 /** Usage against the current plan, for the settings page. */
@@ -151,7 +193,8 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
   busyPlan = el.dataset.plan; statusText = '';
   if (hooks.rerender) hooks.rerender();
   try {
-    await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); });
+    const q = appliedQuote(el.dataset.plan);
+    await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null);
     statusText = '';
   } catch (err) {
     statusText = err && err.message ? err.message : 'The payment did not complete.';
@@ -159,6 +202,43 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     busyPlan = '';
     if (hooks.rerender) hooks.rerender();
   }
+});
+
+/* The box's own state: a details element is rebuilt on every rerender,
+   so whether it is open is remembered here rather than read back. */
+delegate(document, 'toggle', '[data-plan-promo]', (e, el) => { promo.open = el.open; }, true);
+
+delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
+  e.preventDefault();
+  if (promo.busy || busyPlan) return;
+  const typed = String(new FormData(form).get('code') || '');
+  const code = normalisePromo(typed);
+  promo.typed = typed; promo.error = ''; promo.quotes = {}; promo.code = ''; promo.open = true;
+  if (!code) { if (hooks.rerender) hooks.rerender(); return; }
+  promo.busy = true;
+  if (hooks.rerender) hooks.rerender();
+  try {
+    const ids = [...document.querySelectorAll('.pl-card [data-plan-action="buy"]')].map((b) => b.dataset.plan);
+    const answers = await Promise.all(ids.map((id) => Billing.quote(id, code).then((q) => [id, q], (err) => [id, { ok: false, reason: 'error', sentence: err.message || 'The code could not be checked.' }])));
+    const quotes = Object.fromEntries(answers);
+    const okIds = ids.filter((id) => quotes[id] && quotes[id].ok && quotes[id].code);
+    if (okIds.length) { promo.quotes = quotes; promo.code = code; }
+    else {
+      /* Every plan refused it. Prefer the reason that is about the CODE
+         over "not for this plan", which only says which card. */
+      const refusals = ids.map((id) => quotes[id]).filter(Boolean);
+      const pick = refusals.find((q) => q.reason !== 'not_for_plan') || refusals[0];
+      promo.error = pick && pick.sentence ? pick.sentence : 'That code cannot be used.';
+    }
+  } finally {
+    promo.busy = false;
+    if (hooks.rerender) hooks.rerender();
+  }
+});
+
+delegate(document, 'click', '[data-plan-action="promo-clear"]', () => {
+  promo.typed = ''; promo.code = ''; promo.quotes = {}; promo.error = ''; promo.open = true;
+  if (hooks.rerender) hooks.rerender();
 });
 
 export default { planCards, usageList };

@@ -59,3 +59,13 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
   place-items: start center;
   padding: var(--s6) var(--s4);
 }
+
+/* ---- what is behind the door ----
+   The locked modules, each with its plain-English purpose, and the
+   lowest plan that includes them (plan-gate.js reads it from the plans
+   table; no price is typed here or there). */
+.pg-lock-mods { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.pg-lock-mod { display: grid; gap: 2px; padding: var(--s2) var(--s3); border-left: var(--sk-hue-rule-w) solid var(--accent); background: var(--paper-sunk); border-radius: var(--sk-radius, var(--radius)); }
+.pg-lock-mod-label { font-family: var(--f-display); font-weight: 700; color: var(--ink); }
+.pg-lock-mod-purpose { font-size: var(--t-small); line-height: var(--lh-snug); color: var(--ink-muted); }
+.pg-lock-plan { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }

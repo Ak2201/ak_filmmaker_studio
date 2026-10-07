@@ -60,16 +60,23 @@
 
    DIALOG SEMANTICS: role="dialog" + aria-modal, focus moved in and
    trapped, Esc closes, focus returns to the pill that opened it.
+
+   TWO HALVES, ONE MODULE PAGE AT A TIME. This file is the LIGHT half:
+   the pill, the dialog, the save path. It labels the pill from
+   `virtual:fms-step-index` — each step's number and title, derived
+   at build time from the step JSON by vite.config.js — and reaches
+   the full records, renderStep() and the row builders through
+   `import()` of src/ui/blueprint-drawer-body.js the first time a pill
+   is clicked. Before that split every module page downloaded both
+   blueprints (~50 KB gzipped) to print the pill's dozen words. And
+   src/ui/blueprint-drawer-mount.js, which chrome.js imports, fetches
+   THIS module only on a page the sidecar says a step lands on.
    ============================================================ */
 import Store from '../lib/store.js';
 import { h, delegate } from '../lib/dom.js';
-import STEPS from '../data/steps.feature.json';
-import PROD from '../data/steps.production.json';
-import SHORT from '../data/steps.short.json';
+import INDEX from 'virtual:fms-step-index';
 import STAGES from '../data/steps.stages.json';
-import { renderStep } from './steps.js';
 import { stageInfo, resolveTool } from './step-stages.js';
-import { ROW_BUILDERS, ROW_PREFIX } from './blueprint-rows.js';
 import '../styles/blueprint-drawer.css';
 
 const BLUEPRINTS = {
@@ -78,12 +85,10 @@ const BLUEPRINTS = {
     page: 'feature.html',
     name: 'Feature Blueprint',
     checkedClass: 'checked',
-    steps: () => [
-      ...STEPS.vol1.map((step) => ({ ns: 'feature', step })),
-      ...STEPS.vol2.map((step) => ({ ns: 'feature', step })),
-      ...PROD.production.map((step) => ({ ns: 'production', step })),
-      ...PROD.post.map((step) => ({ ns: 'production', step }))
-    ],
+    /* `{ ns, step }` rows from the index: step 01–24 `feature`, 25–32
+       `production`. `step` here is { id, num, title } — enough for the
+       pill, the tabs and the href; the body looks the record up. */
+    steps: () => INDEX.feature,
     /* feature.js saveData(): `el.value`, except a checkbox (the HOD
        sign-offs), which is a boolean — its .value is "on" either way.
        Loading reads `true`/"true" as ticked and a legacy "on" as not;
@@ -105,9 +110,6 @@ const BLUEPRINTS = {
 
 /* Blocks the drawer draws. The rest stay on the blueprint (see the
    header). `raw` is filtered further below. */
-const KEEP = new Set(['formula', 'hint', 'asks', 'check', 'raw']);
-const TABLE_IDS = Object.keys(ROW_BUILDERS);
-const MIN_ROWS = 3;
 const SAVE_MS = 400;
 
 /* ---- where am I ----------------------------------------------- */
@@ -293,88 +295,20 @@ function queue(key, value) {
   saveTimer = setTimeout(flush, SAVE_MS);
 }
 
-/** Which raw blocks the drawer can draw: ones holding fields, or one
- *  of the four tables. `left` collects what stays on the blueprint. */
-function filterBlocks(step) {
-  let left = false;
-  const blocks = (step.blocks || []).filter((b) => {
-    if (!KEEP.has(b.type)) return false;
-    if (b.type !== 'raw') return true;
-    const html = String(b.html || '');
-    if (/data-key=/.test(html)) return true;
-    if (TABLE_IDS.some((id) => html.includes('id="' + id + '"'))) return true;
-    if (/<tbody|<textarea|id="script/i.test(html)) left = true;
-    return false;
-  });
-  return { blocks, left };
-}
+/* ---- the heavy half, on demand -------------------------------- */
 
-function renderBody(entry, fmt) {
-  const bp = BLUEPRINTS[fmt];
-  const { blocks, left } = filterBlocks(entry.step);
-  const section = renderStep({ ...entry.step, blocks, badge: null }, null, entry.ns);
-  section.classList.add('bpd-step');
-  section.querySelectorAll('.st-stage-row, .st-why, .row-actions, .step-badge').forEach((el) => el.remove());
-
-  /* No inline handlers on a module page (the CSP would refuse them
-     and verify counts them), and no id that could collide with the
-     page's own. */
-  section.querySelectorAll('*').forEach((el) => {
-    for (const a of [...el.attributes]) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
-  });
-
-  /* The tables: rows from the shared builders, as many as are saved. */
-  const blob = readBlob(bp.key);
-  for (const id of TABLE_IDS) {
-    const body = section.querySelector('#' + id);
-    if (!body) continue;
-    const prefix = ROW_PREFIX[id];
-    const re = new RegExp('^' + prefix + '_(\\d+)_');
-    let count = 0;
-    Object.keys(blob).forEach((k) => { const m = k.match(re); if (m) count = Math.max(count, +m[1]); });
-    const n = Math.max(count, MIN_ROWS);
-    for (let i = 1; i <= n; i++) body.append(ROW_BUILDERS[id](i));
-    body.querySelectorAll('td.row-ctrl').forEach((td) => td.remove());
-    const table = body.closest('table');
-    if (table) {
-      const wrap = h('div.bpd-table');
-      table.replaceWith(wrap);
-      wrap.append(table);
-      wrap.after(h('div.bpd-table-actions', {}, [
-        h('button.btn.bpd-add-row', { type: 'button', 'data-bpd': 'add-row', 'data-bpd-table': id, text: '+ Add a row' }),
-        h('span.bpd-note', { text: 'Reorder, duplicate or delete rows in the blueprint.' })
-      ]));
-    }
+/* src/ui/blueprint-drawer-body.js: the full step records, renderStep()
+   and the row builders. Fetched the first time a pill is clicked and
+   kept; every later open and every tab is synchronous against it. */
+let body = null;
+let bodyLoading = null;
+function loadBody() {
+  if (body) return Promise.resolve(body);
+  if (!bodyLoading) {
+    bodyLoading = import('./blueprint-drawer-body.js').then((m) => { body = m; return m; })
+      .catch((e) => { bodyLoading = null; console.warn('[blueprint-drawer] could not load the step', e); return null; });
   }
-
-  section.querySelectorAll('[id]').forEach((el) => {
-    el.setAttribute('data-bpd-id', el.id);
-    el.id = 'bpd-' + el.id;
-  });
-  section.querySelectorAll('label[for]').forEach((l) => l.setAttribute('for', 'bpd-' + l.getAttribute('for')));
-
-  fillValues(section, bp, blob);
-
-  if (left) {
-    section.append(h('p.bpd-note', { text: 'Part of this step is a table or editor the blueprint page draws itself; it is edited there.' }));
-  }
-  return section;
-}
-
-function fillValues(root, bp, blob) {
-  root.querySelectorAll('[data-key]').forEach((el) => {
-    const k = el.getAttribute('data-key');
-    const has = blob[k] !== undefined;
-    if (el.tagName === 'LI') {
-      const on = has && !!blob[k];
-      el.classList.toggle(bp.checkedClass, on);
-      el.setAttribute('aria-checked', on ? 'true' : 'false');
-      return;
-    }
-    if (!has) return;
-    if (el.type === 'checkbox') el.checked = bp.tick(blob[k]);
-    else el.value = blob[k];
-  });
+  return bodyLoading;
 }
 
 function buildDrawer() {
@@ -415,25 +349,32 @@ function show(index) {
     'aria-selected': String(i === index), tabindex: i === index ? '0' : '-1',
     text: 'Step ' + r.step.num + ' · ' + plainTitle(r.step)
   })));
-  const body = drawer.querySelector('.bpd-body');
-  body.replaceChildren(renderBody(entry, current.fmt));
-  body.scrollTop = 0;
+  const panel = drawer.querySelector('.bpd-body');
+  if (body) panel.replaceChildren(body.renderBody(entry, bp, readBlob(bp.key)));
+  panel.scrollTop = 0;
   drawer.querySelector('.bpd-open').setAttribute('href', bp.page + '#' + entry.step.id);
   drawer.querySelector('.bpd-saved').textContent = '';
 }
 
 export function openDrawer(from) {
   const here = stepsHere();
-  if (!here.length) return;
-  if (!drawer) drawer = buildDrawer();
-  opener = from || document.querySelector('.bpd-pill');
-  current = { fmt: blueprintFor(), here, index: 0 };
-  pending = {};
-  show(0);
-  drawer.hidden = false;
-  document.documentElement.classList.add('bpd-is-open');
-  const first = drawer.querySelector('.bpd-body input, .bpd-body textarea, .bpd-body select, .bpd-body li[data-key]');
-  (first || drawer.querySelector('.bpd')).focus({ preventScroll: true });
+  if (!here.length) return Promise.resolve(false);
+  const pill = from || document.querySelector('.bpd-pill');
+  if (pill) pill.setAttribute('aria-busy', 'true');
+  return loadBody().then((m) => {
+    if (pill) pill.removeAttribute('aria-busy');
+    if (!m) return false;
+    if (!drawer) drawer = buildDrawer();
+    opener = pill;
+    current = { fmt: blueprintFor(), here, index: 0 };
+    pending = {};
+    show(0);
+    drawer.hidden = false;
+    document.documentElement.classList.add('bpd-is-open');
+    const first = drawer.querySelector('.bpd-body input, .bpd-body textarea, .bpd-body select, .bpd-body li[data-key]');
+    (first || drawer.querySelector('.bpd')).focus({ preventScroll: true });
+    return true;
+  });
 }
 
 export function closeDrawer() {
@@ -520,12 +461,11 @@ function wire() {
     else if (act === 'close') closeDrawer();
     else if (act === 'tab') show(+el.getAttribute('data-bpd-i'));
     else if (act === 'add-row' && current) {
-      const body = drawer.querySelector('[data-bpd-id="' + el.getAttribute('data-bpd-table') + '"]');
-      if (!body) return;
+      const tbody = drawer.querySelector('[data-bpd-id="' + el.getAttribute('data-bpd-table') + '"]');
+      if (!tbody || !body) return;
       const id = el.getAttribute('data-bpd-table');
-      const row = ROW_BUILDERS[id](body.querySelectorAll('tr').length + 1);
-      row.querySelectorAll('td.row-ctrl').forEach((td) => td.remove());
-      body.append(row);
+      const row = body.buildRow(id, tbody.querySelectorAll('tr').length + 1);
+      tbody.append(row);
       const f = row.querySelector('input, textarea, select');
       if (f) f.focus();
     }

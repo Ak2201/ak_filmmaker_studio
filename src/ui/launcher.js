@@ -386,10 +386,36 @@ function phaseRow(phase, snap, at) {
     h('span.lx-phase-work', { text: withWork ? `${withWork} with work` : 'nothing here yet' })
   );
 
-  const mods = h('ul.lx-mods', { 'aria-label': phase.label + ' modules' });
-  phase.modules.forEach((m) => mods.append(moduleTile(m, snap, at)));
-
-  row.append(tile, mods);
+  /* `group` on a module is a sub-heading (Pre-Production's Break down ·
+     See it · Cost & staff it · Schedule it). The order is the order of
+     first appearance in navigation.json, the same rule the band's
+     menu follows, so the two never disagree about it. A stage with no
+     groups renders one flat list, exactly as before; the headings are
+     only drawn when a module asks for one. */
+  const grouped = phase.modules.some((m) => m.group);
+  if (!grouped) {
+    const mods = h('ul.lx-mods', { 'aria-label': phase.label + ' modules' });
+    phase.modules.forEach((m) => mods.append(moduleTile(m, snap, at)));
+    row.append(tile, mods);
+    return row;
+  }
+  const order = [];
+  const byGroup = new Map();
+  phase.modules.forEach((m) => {
+    const g = m.group || '';
+    if (!byGroup.has(g)) { byGroup.set(g, []); order.push(g); }
+    byGroup.get(g).push(m);
+  });
+  const wrap = h('div.lx-groups');
+  order.forEach((g) => {
+    const block = h('div.lx-group');
+    if (g) block.append(h('h3.lx-group-head', { text: g }));
+    const mods = h('ul.lx-mods', { 'aria-label': (g ? phase.label + ' · ' + g : phase.label) + ' modules' });
+    byGroup.get(g).forEach((m) => mods.append(moduleTile(m, snap, at)));
+    block.append(mods);
+    wrap.append(block);
+  });
+  row.append(tile, wrap);
   return row;
 }
 

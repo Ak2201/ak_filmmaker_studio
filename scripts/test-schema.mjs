@@ -16,6 +16,11 @@
    socket, via runuser when run as root. Not part of `npm run verify`,
    which is a browser gate.
 
+   The check files run IN ORDER in one database: billing.sql (§16 +
+   §18) seeds the people and edits a price, accounts.sql (§19) and
+   promo.sql (§20) build on what it left. A check that needs a clean
+   state opens its own transaction and rolls it back.
+
    What it does NOT prove: Supabase's own objects beyond the shim
    (auth triggers, realtime filtering, the dashboard's role grants) and
    anything about the edge functions. It proves the SQL is the SQL.
@@ -59,7 +64,8 @@ const warnings = (r.stderr || '').split('\n').filter((l) => /WARNING/.test(l));
 console.log(`✓ the whole schema loads (${Math.round((Date.now() - t0) / 100) / 10}s${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
 
 let total = 0, failed = 0;
-for (const file of ['billing.sql']) {
+// In order: later files use the people and prices the earlier ones left.
+for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) {
   console.log(`checks: ${file} …`);
   r = psql(['-f', 'scripts/schema-tests/' + file]);
   const notices = (r.stderr || '').split('\n').filter((l) => /^(psql:.*)?NOTICE:\s+ok - /.test(l) || /NOTICE:\s+ok - /.test(l));

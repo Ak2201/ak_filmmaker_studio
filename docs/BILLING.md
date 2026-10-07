@@ -374,3 +374,44 @@ them sign in with Google as well, and the gate then reads their (free)
 plan — or approve their request from the queue, which admits them with
 an account from the start. A screening pass is unaffected: it opens
 one project read-only and nothing else.
+
+## 9. Growth — schema §21 onward (7 Oct 2026). NOT RUN LIVE.
+
+Eight additions asked for at launch, each its own schema section, each
+with checks in `scripts/schema-tests/<name>.sql` (run by
+`npm run test:schema` AFTER §1–§20 and their own three files, because
+§21 deliberately changes what §20 charged a returning buyer) and live
+checks in `docs/SECURITY-RLS.md` §6c. The rule of §7 holds throughout:
+**the client never sends an amount** — it sends a plan id, a code, and
+now optional buyer details; every price is computed in the database.
+
+### 9.1 Upgrade by paying the difference (§21)
+
+`quote_for(user, plan, code)` is now THE price, and both callers use it:
+`quote_order()` asks it for `auth.uid()` (the cards), and
+`create_pending_payment()` for the buyer `rzp-order` verified. For a
+signed-in buyer:
+
+```
+credit = sum(amount_paise) of their payments with status 'paid' and period 'lifetime'
+due    = list − credit, floored at ₹1 (100 paise)  → never below 0
+amount = promo_price(due, code)                    → a code discounts the DIFFERENCE
+```
+
+A grant (₹0) credits nothing, a refunded payment credits nothing, and a
+month/year payment from before §18 credits nothing — it bought a period,
+not the plan. The plan already held, or a lower one, is refused with
+`22023` (hint `same_plan` / `downgrade`) at quote and at order.
+`payments.credit_paise` records the credit, so every row reads
+`amount = list − credit − discount`. `activate_payment()` now applies a
+plan only when it is HIGHER than the organisation's current one: two
+orders paid out of order no longer leave a Pro buyer on Indie.
+
+The cards (`plan-cards.js`) ask `quote_order(plan, null)` for each higher
+tier once per (plan held, payments) state, and a card with a credit
+reads **"Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)"**, the
+list price struck beside the difference. A signed-out quote has no user
+and is unchanged. `rzp-order` returns `credit_paise` and must be
+redeployed after §21 runs. Proved: `upgrade.sql` (28 checks) and
+`prove-billing.mjs` (k).
+

@@ -410,6 +410,42 @@ try {
     ok((await prices(B.page)).find((x) => x[0] === 'pro')[1] === '₹19,499', 'Pro reads ₹19,499 (₹500 off)');
     allErrors.push(...B.errors); await B.ctx.close();
   }
+
+  console.log('(k) upgrade by paying the difference (schema section 21)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    const amy = USERS['tok-amy'].id;
+    F.db.members.set(amy, { role: 'user', disabled_at: null });
+    const at = new Date(Date.now() - 3 * 86400e3).toISOString();
+    F.db.accounts.push({ id: 'acc_amy', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: null, plan_period: 'lifetime', seat_limit: 1, created_at: at });
+    F.db.payments.push({ id: 'payS', user_id: amy, account_id: 'acc_amy', plan_id: 'starter', period: 'lifetime', amount_paise: 299900, list_paise: 299900, discount_paise: 0, credit_paise: 0,
+      currency: 'INR', razorpay_order_id: 'order_s', razorpay_payment_id: 'pay_s', status: 'paid', created_at: at, paid_at: at });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan');
+    await page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-upgrade', { timeout: 10000 })
+      .then(() => ok(true, 'a Starter holder sees an upgrade line on the Indie card'), () => ok(false, 'a Starter holder sees an upgrade line on the Indie card'));
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)', 'it reads "Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)"');
+    const p = await prices(page);
+    ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
+    ok(!(await page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'the plan already held offers no button');
+    await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
+      .then(() => ok(true, 'the upgrade goes through and Indie is the current plan'), () => ok(false, 'the upgrade goes through and Indie is the current plan'));
+    const last = await page.evaluate(() => window.__rzpLast);
+    ok(last && last.amount === 500000, 'Checkout opened at the difference (500000 paise), not the list');
+    const row = F.db.payments.find((x) => x.plan_id === 'indie' && x.status === 'paid');
+    ok(row && row.credit_paise === 299900 && row.list_paise === 799900 && row.amount_paise === 500000, 'the ledger row carries list, credit and the amount paid');
+    await page.waitForFunction(() => /you paid ₹7,999 for Indie/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'), () => ok(false, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'));
+    ok((await prices(page)).find((x) => x[0] === 'pro')[1] === '₹12,000', 'Pro now costs ₹12,000 (1999900 − 799900)');
+    const refused = await page.evaluate(async ([sb]) => {
+      const r = await fetch(sb + '/functions/v1/rzp-order', { method: 'POST', headers: { Authorization: 'Bearer tok-amy', 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: 'starter', period: 'lifetime' }) });
+      return { status: r.status, body: await r.json() };
+    }, [SB]);
+    ok(refused.status === 400 && /lower plan/.test(refused.body.error || ''), 'an order for a lower plan, sent by hand, is refused by the server: ' + (refused.body.error || refused.status));
+    allErrors.push(...errors); await ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

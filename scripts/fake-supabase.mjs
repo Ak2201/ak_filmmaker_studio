@@ -50,7 +50,8 @@ function activate(orderId, paymentId, raw) {
   if (!pay) throw Object.assign(new Error('No payment with that order id'), { code: '22023' });
   if (pay.status === 'paid') return { already: true, pay };
   const a = accountForBuyer(pay.user_id);
-  applyPlan(a, pay.plan_id);
+  // section 21: a plan is applied only when it is HIGHER than the organisation's
+  if ((PLAN_RANK[pay.plan_id] ?? 0) > (PLAN_RANK[accountPlan(a)] ?? 0)) applyPlan(a, pay.plan_id);
   Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: null, raw });
   // section 20: a code is spent at activation, once
   if (pay.promo_code) { const c = F.db.promos.find((x) => x.code === pay.promo_code); if (c) c.uses++; }
@@ -61,11 +62,29 @@ function activate(orderId, paymentId, raw) {
 /* section 20: public.quote_order(), as the database answers it */
 const SENTENCE = { unknown: 'That code is not one we know. Check the spelling.', expired: 'That code has expired.', exhausted: 'That code has been used as many times as it allows.',
   not_for_plan: 'That code does not apply to this plan.', inactive: 'That code is not active right now.' };
-export function quoteOrder(planId, rawCode) {
+/* section 21: what a user has already paid for full-time access */
+export function paidCredit(uid) {
+  return F.db.payments.filter((x) => x.user_id === uid && x.status === 'paid' && x.period === 'lifetime').reduce((n, x) => n + x.amount_paise, 0);
+}
+/* section 21: public.quote_for(user, plan, code). `user` null = signed out. */
+export function quoteOrder(planId, rawCode, user = null) {
   const pl = F.db.plans.find((p) => p.id === planId && p.active);
   if (!pl || !(pl.price_paise > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
+  let credit = 0, cur = 'free';
+  if (user) {
+    cur = userPlan(user.id);
+    if (cur !== 'free' && (PLAN_RANK[pl.id] ?? 0) <= (PLAN_RANK[cur] ?? 0)) {
+      const curName = (F.db.plans.find((p) => p.id === cur) || {}).name || cur;
+      throw Object.assign(new Error(cur === pl.id ? `You already have ${pl.name} — for good. There is nothing to pay.`
+        : `You are on ${curName} already; ${pl.name} is a lower plan, and paying to have less is not something we sell.`), { code: '22023', hint: cur === pl.id ? 'same_plan' : 'downgrade' });
+    }
+    credit = paidCredit(user.id);
+  }
+  let due = pl.price_paise - credit;
+  if (due < 100) due = Math.min(pl.price_paise, 100);
   const code = normalisePromo(rawCode) || null;
-  const base = { plan_id: pl.id, list_paise: pl.price_paise, amount_paise: pl.price_paise, discount_paise: 0, code, ok: true, reason: null, sentence: null };
+  const base = { plan_id: pl.id, list_paise: pl.price_paise, credit_paise: pl.price_paise - due, due_paise: due, amount_paise: due, discount_paise: 0, code, ok: true, reason: null, sentence: null,
+    upgrade_from: credit > 0 ? cur : null, upgrade_from_name: credit > 0 ? (F.db.plans.find((p) => p.id === cur) || {}).name : null, paid_paise: credit };
   if (!code) return base;
   const c = F.db.promos.find((x) => x.code === code);
   const now = Date.now();
@@ -73,8 +92,8 @@ export function quoteOrder(planId, rawCode) {
     : c.valid_until && Date.parse(c.valid_until) <= now ? 'expired' : Number.isInteger(c.max_uses) && c.uses >= c.max_uses ? 'exhausted'
     : c.plan_ids && !c.plan_ids.includes(pl.id) ? 'not_for_plan' : null;
   if (reason) return { ...base, ok: false, reason, sentence: SENTENCE[reason] };
-  const amt = promoPrice(pl.price_paise, c.percent_off ?? null, c.amount_off_paise ?? null);
-  return { ...base, amount_paise: amt, discount_paise: pl.price_paise - amt, percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
+  const amt = promoPrice(due, c.percent_off ?? null, c.amount_off_paise ?? null);
+  return { ...base, amount_paise: amt, discount_paise: due - amt, percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
 }
 
 export const USERS = {
@@ -201,8 +220,8 @@ function rpc(name, args, user, route) {
       return json(route, 200, null);
     }
     case 'quote_order': {
-      try { return json(route, 200, quoteOrder(args.p_plan, args.p_code)); }
-      catch (e) { return pgErr(route, e.code || '22023', e.message); }
+      try { return json(route, 200, quoteOrder(args.p_plan, args.p_code, user)); }
+      catch (e) { return json(route, 400, { code: e.code || '22023', message: e.message, details: null, hint: e.hint || null }); }
     }
     case 'admin_list_promo_codes': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
@@ -422,17 +441,19 @@ export async function handle(route) {
     if (body.period === 'month' || body.period === 'year') return json(route, 400, { error: 'Plans are bought once, for good — not by the month or the year' });
     if (!plan.price_paise) return json(route, 400, { error: 'That plan is not for sale' });
     // section 20: the code is re-quoted here, never priced by the client
-    const q = quoteOrder(plan.id, body.code);
+    // section 21: priced for THIS buyer — the difference, and a downgrade refused
+    let q;
+    try { q = quoteOrder(plan.id, body.code, user); } catch (e) { F.db.calls.push(`fn:rzp-order refused ${e.hint || ''}`); return json(route, 400, { error: e.message }); }
     F.db.calls.push(`fn:rzp-order code ${q.code || '-'} ${q.ok ? 'ok' : q.reason}`);
     if (!q.ok) return json(route, 400, { error: q.sentence });
     const amount = q.amount_paise;
     const id = 'pay' + F.db.payments.length;
     const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
     F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency: 'INR',
-      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code,
+      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, credit_paise: q.credit_paise,
       razorpay_order_id: order_id, razorpay_payment_id: null, status: 'created', created_at: new Date().toISOString() });
     return json(route, 200, { order_id, amount, currency: 'INR', key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id,
-      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, prefill: { email: user.email } });
+      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, credit_paise: q.credit_paise, prefill: { email: user.email } });
   }
   if (url.pathname === '/functions/v1/rzp-verify' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });

@@ -4780,3 +4780,263 @@ notify pgrst, 'reload schema';
 --     opens with the discounted amount, the ledger row carries the
 --     code (scripts/prove-billing.mjs (j)).
 -- ============================================================
+
+
+-- ============================================================
+-- 21. UPGRADE BY PAYING THE DIFFERENCE
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026:
+-- somebody on Starter who wants Indie pays Indie's price LESS what they
+-- have already paid, not Indie's price again. Kept inside §16/§18/§20:
+--
+--   * THE SERVER STILL PRICES. quote_for(user, plan, code) is the one
+--     computation; quote_order() (the cards) asks it for auth.uid() and
+--     create_pending_payment() (rzp-order) asks it for the buyer the
+--     JWT named. A signed-out quote has no user and is the list price,
+--     exactly as before.
+--   * THE CREDIT is the sum of the buyer's ACTIVATED full-time payments
+--     — status 'paid', period 'lifetime' — at the amount actually paid
+--     (after any code). A grant paid ₹0 and credits ₹0; a refunded
+--     payment is 'refunded' and credits nothing; a month/year payment
+--     from before §18 bought a period, not the plan, and credits
+--     nothing. Summed per USER, as user_plan() is decided per user.
+--   * due = list − credit, floored at ₹1 (100 paise, Razorpay's
+--     minimum) and therefore never below 0; a promo code then applies
+--     to the DIFFERENCE, not to the list. The row records list_paise,
+--     credit_paise and discount_paise, so amount = list − credit −
+--     discount reads off the ledger.
+--   * A DOWNGRADE OR THE SAME PLAN IS REFUSED (22023, hint 'same_plan'
+--     or 'downgrade'): there is nothing to sell somebody who holds the
+--     plan for good, and paying to have less is not a purchase.
+--   * activate_payment() no longer LOWERS a plan. Two orders opened at
+--     once (Indie, then Pro) and paid in the wrong order used to leave
+--     the buyer on whichever activated last; now a plan is applied only
+--     when it is higher than the organisation's current one. The money
+--     is recorded either way, and the console sees both rows.
+-- ============================================================
+alter table public.payments add column if not exists credit_paise int not null default 0 check (credit_paise >= 0);
+
+/** What a user has already paid for full-time access. */
+create or replace function public.paid_credit_paise(p_user uuid)
+returns int
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(sum(p.amount_paise), 0)::int
+    from public.payments p
+   where p.user_id = p_user and p.status = 'paid' and p.period = 'lifetime';
+$$;
+revoke execute on function public.paid_credit_paise(uuid) from public, anon, authenticated;
+
+/** THE price. p_user null = a signed-out quote (no credit, no plan to
+ *  compare). Never raises for a bad CODE (ok:false + reason, as §20);
+ *  raises 22023 for a plan not for sale and for a downgrade/same plan. */
+create or replace function public.quote_for(p_user uuid, p_plan text, p_code text default null)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl     public.plans;
+  pc     public.promo_codes;
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  cur    text := 'free';
+  credit int  := 0;
+  due    int;
+  amt    int;
+  reason text;
+  base   jsonb;
+begin
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null or coalesce(pl.price_paise, 0) <= 0 then
+    raise exception 'That plan is not for sale' using errcode = '22023';
+  end if;
+  if p_user is not null then
+    cur := public.user_plan(p_user);
+    if cur <> 'free' and public.plan_rank(pl.id) <= public.plan_rank(cur) then
+      if cur = pl.id then
+        raise exception 'You already have % — for good. There is nothing to pay.', pl.name using errcode = '22023', hint = 'same_plan';
+      end if;
+      raise exception 'You are on % already; % is a lower plan, and paying to have less is not something we sell.',
+        coalesce((select x.name from public.plans x where x.id = cur), initcap(cur)), pl.name using errcode = '22023', hint = 'downgrade';
+    end if;
+    credit := public.paid_credit_paise(p_user);
+  end if;
+  due := pl.price_paise - credit;
+  if due < 100 then due := least(pl.price_paise, 100); end if;   -- never below ₹1, so never below 0
+  base := jsonb_build_object('plan_id', pl.id, 'list_paise', pl.price_paise, 'credit_paise', pl.price_paise - due,
+                             'due_paise', due, 'amount_paise', due, 'discount_paise', 0, 'code', v_code,
+                             'ok', true, 'reason', null, 'sentence', null,
+                             'upgrade_from', case when credit > 0 then cur end,
+                             'upgrade_from_name', case when credit > 0 then (select x.name from public.plans x where x.id = cur) end,
+                             'paid_paise', credit);
+  if v_code is null then return base; end if;
+  select * into pc from public.promo_codes c where c.code = v_code;
+  reason := case
+    when pc.code is null                                                   then 'unknown'
+    when not pc.active                                                     then 'inactive'
+    when pc.valid_from is not null and pc.valid_from > now()               then 'inactive'
+    when pc.valid_until is not null and pc.valid_until <= now()            then 'expired'
+    when pc.max_uses is not null and pc.uses >= pc.max_uses                then 'exhausted'
+    when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
+  end;
+  if reason is not null then
+    return base || jsonb_build_object('ok', false, 'reason', reason, 'sentence', public.promo_reason_sentence(reason));
+  end if;
+  amt := public.promo_price(due, pc.percent_off, pc.amount_off_paise);
+  return base || jsonb_build_object('amount_paise', amt, 'discount_paise', due - amt,
+                                    'percent_off', pc.percent_off, 'amount_off_paise', pc.amount_off_paise);
+end;
+$fn$;
+revoke execute on function public.quote_for(uuid, text, text) from public, anon, authenticated;
+
+/** The cards' quote: the same function, for whoever is asking. */
+create or replace function public.quote_order(p_plan text, p_code text default null)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select public.quote_for(auth.uid(), p_plan, p_code);
+$$;
+revoke execute on function public.quote_order(text, text) from public;
+grant  execute on function public.quote_order(text, text) to anon, authenticated;
+
+/** rzp-order. Same five arguments as §20; the answer gains credit_paise
+ *  (a return type cannot be replaced in place, so drop and make). */
+drop function if exists public.create_pending_payment(uuid, text, text, uuid, text);
+create or replace function public.create_pending_payment(p_user uuid, p_plan text, p_period text, p_account uuid default null, p_code text default null)
+returns table (payment_id uuid, amount_paise int, currency text, plan_name text, list_paise int, discount_paise int, promo_code text, credit_paise int)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl  public.plans;
+  q   jsonb;
+  pid uuid;
+begin
+  perform public.billing_require_service();
+  if exists (select 1 from public.studio_members m where m.user_id = p_user and m.disabled_at is not null) then
+    raise exception 'This account has been disabled by an administrator' using errcode = '42501';
+  end if;
+  if p_period in ('month', 'year') then
+    raise exception 'Plans are bought once, for good — not by the month or the year' using errcode = '22023';
+  end if;
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null or coalesce(pl.price_paise, 0) <= 0 then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  if p_account is not null and not exists (select 1 from public.accounts a where a.id = p_account and a.owner_id = p_user) then
+    raise exception 'Not the owner of that organisation' using errcode = '42501';
+  end if;
+  q := public.quote_for(p_user, p_plan, p_code);
+  if not (q ->> 'ok')::boolean then
+    raise exception '%', q ->> 'sentence' using errcode = '22023', hint = q ->> 'reason';
+  end if;
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise, list_paise, discount_paise, promo_code, credit_paise)
+  values (p_user, p_account, p_plan, 'lifetime', (q ->> 'amount_paise')::int, (q ->> 'list_paise')::int,
+          (q ->> 'discount_paise')::int, q ->> 'code', (q ->> 'credit_paise')::int)
+  returning id into pid;
+  return query select pid, (q ->> 'amount_paise')::int, 'INR'::text, pl.name, (q ->> 'list_paise')::int,
+                      (q ->> 'discount_paise')::int, q ->> 'code', (q ->> 'credit_paise')::int;
+end;
+$fn$;
+revoke execute on function public.create_pending_payment(uuid, text, text, uuid, text) from public, anon, authenticated;
+
+/** Activation as §20 left it, except that a plan is applied only when it
+ *  is HIGHER than the organisation's current one. */
+create or replace function public.activate_payment(p_order_id text, p_payment_id text, p_raw jsonb default null)
+returns table (payment_id uuid, account_id uuid, plan_id text, ends_at timestamptz, already boolean)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pay   public.payments;
+  acc   uuid;
+  rep   bigint := nullif(p_raw -> 'payment' ->> 'amount', '')::bigint;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_order_id = p_order_id for update;
+  if pay.id is null then raise exception 'No payment with that order id' using errcode = '22023'; end if;
+  if pay.status = 'paid' then
+    return query select pay.id, pay.account_id, pay.plan_id, pay.ends_at, true;
+    return;
+  end if;
+  if pay.status <> 'created' and pay.status <> 'failed' then
+    raise exception 'Payment is %', pay.status using errcode = '22023';
+  end if;
+  if rep is not null and rep <> pay.amount_paise then
+    raise exception 'Razorpay reports % paise for an order recorded at %', rep, pay.amount_paise using errcode = '22023';
+  end if;
+  acc := public.account_for_buyer(pay.user_id, pay.account_id);
+  if public.plan_rank(pay.plan_id) > public.plan_rank(public.account_plan(acc)) then
+    perform public.apply_plan(acc, pay.plan_id, 'lifetime', 0);
+  end if;
+  update public.payments p
+     set status = 'paid', razorpay_payment_id = p_payment_id, paid_at = now(),
+         account_id = acc, starts_at = now(), ends_at = null,
+         raw = coalesce(p_raw, p.raw)
+   where p.id = pay.id;
+  if pay.promo_code is not null then
+    update public.promo_codes c set uses = c.uses + 1, updated_at = now() where c.code = pay.promo_code;
+  end if;
+  insert into public.studio_members (user_id, role) values (pay.user_id, 'user') on conflict (user_id) do nothing;
+  return query select pay.id, acc, pay.plan_id, null::timestamptz, false;
+end;
+$fn$;
+revoke execute on function public.activate_payment(text, text, jsonb) from public, anon, authenticated;
+
+/** The ledger learns the credit. Same as §20's, one column wider. */
+drop function if exists public.admin_list_payments(int);
+create or replace function public.admin_list_payments(p_limit int default 200)
+returns table (id uuid, email text, account_name text, plan_id text, period text, amount_paise int,
+               status text, razorpay_order_id text, razorpay_payment_id text, note text,
+               created_at timestamptz, paid_at timestamptz, ends_at timestamptz,
+               promo_code text, discount_paise int, list_paise int, credit_paise int)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select p.id, u.email::text, a.name, p.plan_id, p.period, p.amount_paise, p.status,
+           p.razorpay_order_id, p.razorpay_payment_id, p.note, p.created_at, p.paid_at, p.ends_at,
+           p.promo_code, p.discount_paise, p.list_paise, p.credit_paise
+      from public.payments p
+      join auth.users u on u.id = p.user_id
+      left join public.accounts a on a.id = p.account_id
+     order by p.created_at desc
+     limit greatest(1, least(p_limit, 1000));
+end;
+$fn$;
+revoke execute on function public.admin_list_payments(int) from public, anon;
+grant  execute on function public.admin_list_payments(int) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 21.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon: quote_order('indie', null) -> the list price, credit 0
+--     (unchanged from §20). quote_for / paid_credit_paise as anon or
+--     authenticated -> 42501 (internal).
+--  2. authenticated B who paid ₹2,999 for Starter: quote_order('indie')
+--     -> amount = indie − 299900, credit_paise 299900, upgrade_from
+--     'starter'. quote_order('starter') -> 22023 hint same_plan;
+--     a Pro holder quoting indie -> 22023 hint downgrade.
+--  3. with LAUNCH10: the 10% comes off the DIFFERENCE, not the list.
+--  4. a credit at or above the target price -> amount 100 (₹1), never 0.
+--  5. service: create_pending_payment(B, 'indie', …) -> the row has
+--     list_paise, credit_paise and amount = list − credit − discount;
+--     activate -> B's organisation on Indie.
+--  6. two orders (Indie, Pro) opened together, Pro activated first,
+--     then Indie -> the organisation stays on Pro; both rows 'paid'.
+--  7. a refunded payment credits nothing; a grant credits ₹0.
+--  8. after deploying rzp-order (it returns credit_paise now): an
+--     upgrade from settings.html#plan opens Checkout at the difference.
+-- ============================================================

@@ -512,6 +512,40 @@ deactivates, it does not delete. Live checks:
 
 ---
 
+## 6c. The growth sections (schema §21 onward, 7 Oct 2026). **UNRUN.**
+
+Each section below passes `npm run test:schema` on PostgreSQL 16 (its own
+file in `scripts/schema-tests/`); none has met the live database. The
+checks are written to be run in order, after §21 onward has been pasted
+into the SQL editor and `rzp-order` redeployed.
+
+### §21 — upgrade by paying the difference
+
+| Object | Grant | Notes |
+|---|---|---|
+| `quote_for(uuid, text, text)` | nobody (internal) | the one price; reached through `quote_order` and `create_pending_payment` |
+| `paid_credit_paise(uuid)` | nobody (internal) | sums `paid` + `lifetime` rows |
+| `quote_order(text, text)` | `anon`, `authenticated` | now `quote_for(auth.uid(), …)` — a signed-in caller learns only their OWN credit |
+| `payments.credit_paise` | — | written by `create_pending_payment` (service role) only |
+
+The risk this section adds is a caller pricing somebody else's upgrade;
+`quote_order` takes no user argument, so it cannot. Live checks:
+
+1. As anon: `select quote_for('<any uuid>', 'indie', null)` → `42501`;
+   `select paid_credit_paise('<any uuid>')` → `42501`. As anon,
+   `quote_order('indie', null)` → the list price, `credit_paise: 0`.
+2. As a signed-in buyer who paid for Starter in test mode:
+   `quote_order('indie', null)` → `amount_paise` = Indie − what they paid,
+   `upgrade_from: 'starter'`; `quote_order('starter', null)` → `22023`
+   *"You already have Starter"*.
+3. The test-mode upgrade from `settings.html#plan`: Razorpay's order
+   shows the difference; the ledger row's `credit_paise` is the Starter
+   amount; the organisation is on Indie.
+4. With the service key, open an Indie and a Pro order for one test
+   user, activate Pro then Indie → `accounts.plan` stays `pro`.
+
+---
+
 ## Enumeration: can `anon` or a signed-in stranger list rows they were not given?
 
 Walked table by table, with `auth.uid()` null (anon) and with a valid-but-unrelated

@@ -193,7 +193,7 @@ export function billingAdminSection(section, st) {
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
         h('td', { text: p.period === 'lifetime' || p.period === 'grant' ? 'for good' : p.period + (p.ends_at ? ' · ends ' + fmtDate(p.ends_at) : '') }),
-        h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) }),
+        h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) + (p.credit_paise > 0 ? ` (upgrade; ${fmtPaise(p.credit_paise)} already paid)` : '') }),
         h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
         h('td', { text: p.status + (p.note ? ' — ' + p.note : '') }),
         h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })])

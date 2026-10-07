@@ -33,6 +33,7 @@
     "prove:gate": "node scripts/prove-gate.mjs",
     "prove:extension": "node scripts/prove-extension.mjs",
     "prove:billing": "node scripts/prove-billing.mjs",
+    "prove:sw": "node scripts/prove-sw.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },

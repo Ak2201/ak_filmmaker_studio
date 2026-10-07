@@ -1184,14 +1184,71 @@ function measureChrome() {
   }
   const cover = band + parked;
   if (cover !== lastCover) {
+    const grew = lastCover >= 0 ? cover - lastCover : 0;
     lastCover = cover;
     de.style.setProperty('--sh-cover-h', cover + 'px');
+    if (grew > 0) relandFragment(grew);
   }
   if (band === lastBand) return;
   lastBand = band;
   de.style.setProperty('--sh-chrome-h', band + 'px');
 }
 let lastCover = -1;
+
+/* THE BAND CAN GROW UNDER A TARGET THAT HAS JUST LANDED.
+
+   verify's fragment sweep found it on the feature blueprint at 1280:
+   a jump to #phase-4 travels ~72,000px of smooth scroll and lands the
+   heading at 140px — correct for the 128px band it set out under. Then
+   the scroll spy names Part V, the breadcrumb widens from 549 to 584px,
+   the phase tabs no longer fit beside it and wrap to a second row, and
+   the band is 168px. measureChrome() republishes the right number, but
+   the browser's scroll-padding is read when a scroll STARTS, so the
+   heading stays 28px behind the chrome. Same symptom as every other
+   "landed in the wrong place" bug here, and invisible to a scroll
+   check that measures before the band has finished moving.
+
+   AND THE GROWTH HAPPENS MID-SCROLL. The spy names Part V while the
+   page is still travelling, so at the moment the band grows the target
+   is thousands of pixels away and nothing can be said about it yet.
+   So when the cover grows within a few seconds of a landing, wait for
+   the scroll to STOP (two ticks at the same scrollY), and if the hash's
+   target then sits exactly where the OLD band plus the scroll padding
+   would have put it, scroll by the growth, once. A target anywhere
+   else is left alone: the reader has moved on, or the growth had
+   nothing to do with their jump. `instant`, because html has
+   scroll-behavior: smooth and a smooth correction here would race the
+   one that just finished. */
+let lastLanding = typeof performance !== 'undefined' ? performance.now() : 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', () => { lastLanding = performance.now(); });
+}
+let reland = null;   // { grew, deadline, lastY }
+function relandFragment(grew) {
+  if (performance.now() - lastLanding > 4000) return;
+  const id = decodeURIComponent((location.hash || '').slice(1));
+  if (!id) return;
+  if (reland) { reland.grew += grew; return; }   // grew twice before the scroll stopped
+  reland = { grew, deadline: performance.now() + 4000, lastY: null };
+  const tick = () => {
+    if (!reland) return;
+    if (performance.now() > reland.deadline) { reland = null; return; }
+    const y = window.scrollY;
+    if (reland.lastY !== y) { reland.lastY = y; setTimeout(tick, 120); return; }
+    // The scroll has stopped. Where did the target land?
+    const el = document.getElementById(id);
+    const pending = reland;
+    reland = null;
+    if (!el) return;
+    const de = document.documentElement;
+    const gap = (parseFloat(getComputedStyle(de).scrollPaddingTop) || 0) - lastCover;
+    const top = el.getBoundingClientRect().top;
+    const landedAgainstOld = lastCover + gap - pending.grew;
+    if (Math.abs(top - landedAgainstOld) > 2) return;
+    window.scrollBy({ top: -pending.grew, behavior: 'instant' });
+  };
+  setTimeout(tick, 120);
+}
 
 /* ---- open / closed ----------------------------------------- */
 

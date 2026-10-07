@@ -42,6 +42,7 @@
 import { blankElement } from './script.js';
 import { INT_EXT, DAY_NIGHT, blankScene } from './scenes.js';
 import { elementLines, totalLines, LINES_PER_PAGE } from './script.js';
+import { sliceScript } from './screenplay-analysis.js';
 
 export const FORMATS = [
   { id: 'fountain', label: 'Fountain', ext: ['.fountain', '.spmd'] },
@@ -720,25 +721,23 @@ export function parseSlug(slug) {
   return out;
 }
 
-/** Cut the element list at every scene heading, the same way
-    src/lib/ai.js does. One derivation, two callers.
-    `number` is the scene number the FILE carried on the heading —
-    only .fdx has somewhere to put one that is not the text — and
-    is '' for the other two parsers. */
-export function sliceScenes(elements) {
-  const out = [];
-  let current = null;
-  for (const el of elements) {
-    if (el.type === 'scene') {
-      current = { heading: el.text, number: String(el.sceneNumber || '').trim(), elements: [] };
-      out.push(current);
-      continue;
-    }
-    if (!current) continue;                        // anything before the first slug is a preamble
-    current.elements.push(el);
-  }
-  return out;
-}
+/** Cut the element list at every scene heading. THE ONE SLICER lives
+    in src/lib/screenplay-analysis.js (sliceScript); this name is kept
+    for the importer's callers and is the same function, not a copy.
+    `number` is the scene number the FILE carried on the heading — only
+    .fdx has somewhere to put one that is not the text — and is '' for
+    the other two parsers.
+
+    The importer used to carry its own loop here, which differed from
+    the shared one on RAW arrays only: it kept an empty element and let
+    a blank heading open a scene, and left the heading untrimmed. No
+    parser in this file emits either — every element is trimmed and
+    non-empty before it gets here, which scripts/test-import.mjs pins
+    on fixtures built for exactly those inputs — so folding it changed
+    nothing an import produces (docs/KNOWN-ISSUES.md §6). On a raw
+    array handed straight to scenesFrom(), a blank heading is now no
+    heading, which is also how src/lib/scene-sync.js counts them. */
+export const sliceScenes = sliceScript;
 
 /* THE SCENE NUMBER HAS THREE SOURCES AND THEY ARE RANKED.
 

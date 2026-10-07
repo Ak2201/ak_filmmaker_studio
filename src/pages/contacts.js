@@ -273,7 +273,7 @@ function renderSheets(sheets, contacts, scenes) {
     h('p.bd-sub', {
       text: 'One per shoot day. Tick the scenes you are shooting and the people '
           + 'you are calling; anyone without their own time is called at the '
-          + 'general call. Print gives you the sheet alone, on one page.'
+          + 'general call. Print gives you the sheet on its own, on as few pages as it needs.'
     })
   );
 

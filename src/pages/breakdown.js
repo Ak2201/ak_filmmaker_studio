@@ -92,6 +92,56 @@ const how = (n, title, body) =>
   ]);
 
 /* ---- one scene ---------------------------------------------- */
+
+/* THE SCENE NUMBER HAS TWO OWNERS, and the card shows which one.
+   A scene the script's heading made (`scriptElId` set) is numbered by
+   src/lib/scene-sync.js from that heading, and anything typed here
+   would be overwritten by the next heading edit — so it is read-only,
+   and says so. A scene typed by hand on this page belongs to this
+   page, and its number is a text field: "12A" is a scene number, so
+   it is a string, trimmed, never empty. Two scenes with one number are
+   ALLOWED and FLAGGED, not blocked: the person renumbering a run of
+   scenes passes through a duplicate on the way to the right answer,
+   and a field that refuses the step blocks the fix (UX audit M26,
+   docs/KNOWN-ISSUES.md §8). Nothing in the app sorts by number — the
+   list order IS the scene order — so "12A" needs no comparator. */
+const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in Write to renumber it.';
+const numberKey = (n) => String(n || '').trim().toUpperCase();
+/** The numbers more than one scene carries, upper-cased. */
+function dupNumbers(scenes) {
+  const seen = new Set(), dup = new Set();
+  for (const s of scenes) {
+    const k = numberKey(s.number);
+    if (!k) continue;
+    if (seen.has(k)) dup.add(k); else seen.add(k);
+  }
+  return dup;
+}
+/** Mark one number cell: the duplicate flag, and the title that says
+ *  either "another scene has this number" or, on a bound scene, that
+ *  the heading sets it. */
+function markNumber(el, scene, dups) {
+  const isDup = dups.has(numberKey(scene.number));
+  el.classList.toggle('is-dup', isDup);
+  if (isDup) {
+    el.setAttribute('title', 'Another scene is also numbered ' + String(scene.number).trim()
+      + ' — allowed, but the schedule and the sides will show two of them');
+  } else if (scene.scriptElId) el.setAttribute('title', BOUND_TITLE);
+  else el.removeAttribute('title');
+}
+/** Re-mark every number on the page after one changed, in place — a
+ *  render here would take the focus off the field being tabbed to. */
+function refreshNumberMarks() {
+  const scenes = Scenes.listScenes();
+  const dups = dupNumbers(scenes);
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  document.querySelectorAll('.bd-scene[data-scene] .bd-scene-no').forEach((el) => {
+    const s = byId.get(el.closest('[data-scene]').dataset.scene);
+    if (s) markNumber(el, s, dups);
+  });
+}
+let DUPS = new Set();
+
 function renderScene(scene, i, total) {
   /* The id is the command palette's target (breakdown.html#scene-…):
      tabs.js picks the tab that holds it and the fragment resolver
@@ -99,8 +149,17 @@ function renderScene(scene, i, total) {
      the page (UX audit M17). */
   const card = h('article.bd-scene', { 'data-scene': scene.id, id: 'scene-' + scene.id });
 
+  const numberCell = scene.scriptElId
+    ? h('span.bd-scene-no', { text: scene.number || String(i + 1) })
+    : field('input.bd-scene-no.bd-scene-no-edit', {
+      type: 'text', value: scene.number, placeholder: String(i + 1), size: '3',
+      autocomplete: 'off', spellcheck: 'false',
+      'data-scene-field': 'number', 'aria-label': 'Scene number'
+    });
+  markNumber(numberCell, scene, DUPS);
+
   card.append(h('div.bd-scene-bar', {}, [
-    h('span.bd-scene-no', { text: scene.number || String(i + 1) }),
+    numberCell,
     field('input.bd-slug', {
       type: 'text', value: scene.location, placeholder: 'Location — where are we?',
       'data-scene-field': 'location', 'aria-label': 'Scene location'
@@ -570,6 +629,7 @@ function render(focus) {
   if (!scenes.length) {
     tagging.append(renderEmpty());
   } else {
+    DUPS = dupNumbers(scenes);
     scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
     tagging.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
   }
@@ -697,13 +757,34 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // the store write and flushes it on pagehide / hidden.
 import { saveOnInput } from '../lib/autosave.js';
 const sceneValue = (el) => el.dataset.sceneField === 'eighths'
-  ? Math.max(0, parseInt(el.value, 10) || 0) : el.value;
+  ? Math.max(0, parseInt(el.value, 10) || 0)
+  : el.dataset.sceneField === 'number' ? el.value.trim() : el.value;
+/* A number is a string that is not empty: an empty one is never saved
+   (a field mid-edit), and on `change` the field is put back to what is
+   stored. A duplicate IS saved, and flagged. */
 saveOnInput('[data-scene-field]', (el) => {
-  Scenes.updateScene(sceneIdOf(el), { [el.dataset.sceneField]: sceneValue(el) });
+  const key = el.dataset.sceneField;
+  const value = sceneValue(el);
+  if (key === 'number' && !value) return;
+  Scenes.updateScene(sceneIdOf(el), { [key]: value });
+  if (key === 'number') refreshNumberMarks();
 });
 delegate(document, 'change', '[data-scene-field]', (e, el) => {
   const key = el.dataset.sceneField;
   const id = sceneIdOf(el);
+  if (key === 'number') {
+    const value = sceneValue(el);
+    if (!value) {
+      const stored = Scenes.listScenes().find((s) => s.id === id);
+      el.value = stored ? stored.number : '';
+      StudioUI.toast('A scene needs a number — the one it had is back.');
+      return;
+    }
+    el.value = value;
+    Scenes.updateScene(id, { number: value });
+    refreshNumberMarks();
+    return;
+  }
   Scenes.updateScene(id, { [key]: sceneValue(el) });
   /* Eighths change the card's page figure and the header's totals,
      and nothing else on the page. `change` fires as focus LEAVES the

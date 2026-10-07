@@ -1264,7 +1264,11 @@ for (const spec of PAGES) {
      reaches less chrome on the module pages than on the blueprints.
      The source checks near the top of this file cover part of what a
      rendered walk cannot reach. */
-  const contrast = await page.evaluate(() => {
+  /* The probe is a FUNCTION rather than an inline closure because it
+     runs more than once on two pages — see EXTRA_STATES below. It
+     reads nothing from this file's scope: everything it needs is on
+     the window. */
+  const contrastProbe = () => {
     const api = window.StudioUI, skinApi = window.StudioSkin;
     if (!api || !skinApi) return { unavailable: true };
 
@@ -1436,6 +1440,7 @@ for (const spec of PAGES) {
     const beforeTheme = api.currentTheme();
     const beforeSkin = skinApi.currentSkin();
     const worst = [];
+    let measured = 0;
 
     for (const t of api.themeOrder()) {
       for (const sk of skinApi.listSkins()) {
@@ -1468,6 +1473,7 @@ for (const spec of PAGES) {
             if (!fg) continue;
             const g = groundOf(el);
             const r = ratio(fg, g);
+            measured++;
             if (r < AA) {
               /* fg and bg are in the finding on purpose. Without them
                  every investigation starts by guessing which of nine
@@ -1540,6 +1546,7 @@ for (const spec of PAGES) {
               if (!fg) continue;
               const g = groundOf(host, parse(ps.backgroundColor));
               const r = ratio(fg, g);
+              measured++;
               if (r < AA) {
                 worst.push({
                   where: pathOf(host) + pseudo,
@@ -1566,10 +1573,18 @@ for (const spec of PAGES) {
        173 is a run that understates the size of the job in front of
        you — which is the one number you need before deciding whether
        to fix or to escalate. */
-    return { fails: all.slice(0, 10), total: all.length };
-  });
-  const lowContrast = contrast.unavailable ? [] : contrast.fails;
-  const lowContrastTotal = contrast.unavailable ? 0 : contrast.total;
+    /* Every distinct place, not the worst ten: the cap is applied
+       where the findings are PRINTED, after the per-state results
+       below are merged — a cap taken here would hide a finding from
+       one state behind ten from another. `measured` is how many
+       text runs and glyphs were actually tested, so the size of the
+       walk is a number in the report rather than a claim. */
+    return { fails: all, total: all.length, measured };
+  };
+  const contrast = await page.evaluate(contrastProbe);
+  let lowContrast = contrast.unavailable ? [] : contrast.fails;
+  let lowContrastTotal = contrast.unavailable ? 0 : contrast.total;
+  const contrastStates = contrast.unavailable ? [] : [{ state: 'as loaded', measured: contrast.measured, below: contrast.total }];
 
   /* --- colour that means something must still mean it ---
 
@@ -1655,6 +1670,68 @@ for (const spec of PAGES) {
     return { checked: true, overflow, escaped };
   });
 
+  /* --- the states a page is NOT in when it loads ------------------
+
+     docs/KNOWN-ISSUES.md §7: the walk above sees the Story page at the
+     one path step it opens on and the Write page in its default Margin
+     beat guide, so the structure picker (3), the step outline (4), the
+     hand-off to the screenplay (6) and the Panel card were checked by
+     hand and never by the gate. Each state is put on the page the way
+     a person puts it there — the hash the stepper writes, the pref the
+     Beat guide select writes — and the same probe runs again. Findings
+     merge by place, keeping the worst ratio; `measured` is summed so
+     the report says how much wider the walk is.
+
+     LAST, deliberately: the text and key capture, the hue check and
+     the overflow measurements above all describe the page AS LOADED,
+     and the baseline must not move because the walk got wider. */
+  const EXTRA_STATES = {
+    story: [3, 4, 6].map((n) => ({ state: 'path step ' + n, hash: 'path-' + n })),
+    write: [{ state: 'Panel beat guide', prefs: { key: 'fms_write_prefs_v1', set: { beatGuide: 'panel' } } }]
+  };
+  for (const st of EXTRA_STATES[spec.name] || []) {
+    if (st.hash) {
+      await page.evaluate((hash) => { location.hash = '#' + hash; }, st.hash);
+      await page.waitForTimeout(400);
+    } else if (st.prefs) {
+      /* A device pref, outside the storage proxy's scoping, written the
+         way beat-guide.js writes it: read, merge, write. */
+      await page.evaluate(({ key, set }) => {
+        let cur = {};
+        try { cur = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { cur = {}; }
+        localStorage.setItem(key, JSON.stringify({ ...cur, ...set }));
+      }, st.prefs);
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(700);
+      /* The Panel card follows the caret: put it in the first row, so
+         the card carries a placed beat rather than its empty line. */
+      await page.evaluate(() => {
+        const f = document.querySelector('#wr-page [data-el] textarea, #wr-page [data-el] input');
+        if (f) f.focus();
+      });
+      await page.waitForSelector('#bg-panel', { timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(600);
+    }
+    const again = await page.evaluate(contrastProbe);
+    if (again.unavailable) continue;
+    const present = await page.evaluate((sel) => !!document.querySelector(sel),
+      st.hash ? '#' + st.hash : '#bg-panel');
+    contrastStates.push({ state: st.state + (present ? '' : ' (NOT REACHED)'), measured: again.measured, below: again.total });
+    const byWhere = new Map(lowContrast.map((c) => [c.where, c]));
+    for (const c of again.fails) {
+      c.where = c.where + ' @ ' + st.state;
+      if (!byWhere.has(c.where) || byWhere.get(c.where).ratio > c.ratio) byWhere.set(c.where, c);
+    }
+    lowContrast = [...byWhere.values()].sort((a, b) => a.ratio - b.ratio);
+    lowContrastTotal = lowContrast.length;
+  }
+  /* A state that was asked for and not reached is a check that did not
+     run, and a check that did not run must not look like one that
+     passed. */
+  const statesMissed = contrastStates.filter((c) => / NOT REACHED/.test(c.state)).map((c) => c.state);
+  const contrastMeasured = contrastStates.reduce((a, c) => a + c.measured, 0);
+  lowContrast = lowContrast.slice(0, 10);
+
   const liveKeys = new Set(live.keys);
   const liveWords = new Set(words(live.text));
 
@@ -1732,6 +1809,8 @@ for (const spec of PAGES) {
     modalInlineHandlers: modals.unavailable ? null : modals.inline,
     lowContrast,
     lowContrastTotal,
+    contrastMeasured,
+    contrastStates,
     errors
   };
   report.push(row);
@@ -1792,6 +1871,7 @@ for (const spec of PAGES) {
   if (lowContrastTotal > lowContrast.length) {
     bad.push(`...and ${lowContrastTotal - lowContrast.length} more place(s) below 4.5:1 (worst 10 shown)`);
   }
+  for (const m of statesMissed) bad.push(`contrast walk: state "${m.replace(' (NOT REACHED)', '')}" was asked for and not reached`);
   for (const g of hueBroken) {
     bad.push(
       `${g.what}: colour no longer distinguishes them ` +

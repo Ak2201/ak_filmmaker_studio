@@ -104,6 +104,32 @@
   .sync-section,
   .theme-picker { display: none !important; }
 
+  /* ----------------------------------------------------------
+     MODULE PAGES: PAPER HAS NO CLICKS (UX audit M14's tail).
+     The list above names the four original pages' controls one
+     class at a time, because on a blueprint a field is a rule to
+     write on and a button may carry a chosen state. The eighteen
+     module pages are different: their buttons add, delete, sort,
+     print and open menus, none of which a sheet of paper can do —
+     and from the dark theme the `--danger` delete icons and the
+     "Clear days" button printed at 2.77:1, because --danger is a
+     FILL and no print rule re-points it. Hidden outright rather than
+     recoloured: a ✕ nobody can press is noise either way.
+
+     THE SCOPE is derived, not listed: a shell page WITHOUT `.toolbar`
+     is a module page — only the hub, the two blueprints and the
+     library build one (KNOWN-ISSUES §8 says so for the sign-in pill,
+     which hangs off it). Selects are NOT in this list: breakdown's
+     I/E and D/N and plan's day pickers print their chosen value,
+     which is data. The stripboard's per-strip day picker is the one
+     select that duplicates the day heading above it, so it goes.
+     ---------------------------------------------------------- */
+  body.has-sh-shell:not(:has(.toolbar)) main :is(
+    button, [role="button"], a.btn,
+    .tb-menu, .bd-icon, .bd-chip-x, .row-ctrl, .sb-day-sel
+  ),
+  body.has-sh-shell:not(:has(.toolbar)) .mobile-actionbar { display: none !important; }
+
   /* Decorative grounds cost toner and give nothing back. */
   .door::before,
   .hero::before,
@@ -301,6 +327,29 @@
   .scene-table tr,
   .beat-table tr,
   .equip-table tr { break-inside: avoid; }
+
+  /* ----------------------------------------------------------
+     THE CALL SHEET, TIGHTER ON PAPER (UX audit L12). The sample's
+     Day 1 measured 1,037px against 1,002px of printable A4 — one
+     row over, printed as a second page holding three lines. The
+     screen's row padding (8px) and the s5 gaps between masthead,
+     tables and notes were built for reading on a screen; a 1st AD
+     reads this sheet folded in a pocket, and a denser row is the
+     form they already know. The type size is untouched — 12.25px
+     on paper is the floor of legible, and this does not go under
+     it. `.ct-doc .ct-doc-table` outranks contacts.css's own rule,
+     which is imported after this sheet.
+     ---------------------------------------------------------- */
+  .ct-doc .ct-doc-facts { margin-bottom: var(--s4); }
+  .ct-doc .ct-doc-title { margin-bottom: var(--s3); }
+  .ct-doc .ct-doc-table { margin-bottom: var(--s4); }
+  .ct-doc .ct-doc-table caption { padding-bottom: var(--s1); }
+  .ct-doc .ct-doc-table th,
+  .ct-doc .ct-doc-table td {
+    padding: 3px var(--s3) 3px 0;
+    line-height: var(--lh-snug);
+  }
+  .ct-doc .ct-doc-notes { margin-top: var(--s3); }
 
   /* Charts print at their drawn size. */
   .pacing-svg,

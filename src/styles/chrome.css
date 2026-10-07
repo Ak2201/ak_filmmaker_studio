@@ -1792,7 +1792,10 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
     box-shadow: var(--shadow-lg);
   }
   .step-rail.show { transform: translateX(0); }
-  .step-rail-toggle { display: block; }
+  /* Mid-height, not at 64px: below 1100 the band is in flow, so 64px
+     sat under the announcement plate (sticky, a z above the rail) and
+     the tab could not be pressed at 390. */
+  .step-rail-toggle { display: block; top: 50%; transform: translateY(-50%); }
 }
 @media (min-width: 1101px) {
   /* `main` only. The steps are inside it, so insetting `.step` and
@@ -2498,6 +2501,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
      1100px boundary is the shell's, not the rail's 1101. */
   .step-rail,
   .step-rail-toggle { top: var(--sh-chrome-h, var(--s8)); }
+  .step-rail-toggle { transform: none; }
   .step-rail { max-height: calc(100vh - var(--sh-chrome-h, var(--s8)) - var(--s4)); }
 }
 

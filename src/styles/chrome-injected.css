@@ -98,7 +98,9 @@
      --sh-chrome-h measures. It now appears on every project page,
      not just the two blueprints, so it scrolls away with the page. */
   position: relative;
-  z-index: calc(var(--z-toolbar) + 3);
+  /* No raised z-index: in flow it overlaps nothing, and the +3 it kept
+     from its sticky days painted it over the open drawer rail (+2) at
+     390, hiding the drawer's first entry. */
   padding: var(--s2) var(--s4);
   text-align: center;
   background: var(--danger);

@@ -46,8 +46,10 @@
 
    Nothing on this page writes. It is a reading surface: the only
    localStorage touch in the whole flow is the demo-film preference,
-   written by selectDemo() when a tab is clicked, and never from a
-   render.
+   written by selectDemo() when a film is picked — by its button or by
+   a `#study-<slug>` link — and never from a render. Which PART of the
+   study is open is not stored at all: it lives in the hash (PARTS,
+   below), so a copied address restores it and a reload does too.
    ============================================================ */
 import '../lib/store.js';
 import '../styles/study.css';
@@ -56,7 +58,7 @@ import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
 import {
   BEATS, listStudies, getStudy, currentStudy, currentSlug,
-  loadDemo, onDemoChange, validate, getBeatSheetMethod
+  loadDemo, selectDemo, onDemoChange, validate, getBeatSheetMethod
 } from '../lib/studies.js';
 import { renderDemoSelector } from './demo-selector.js';
 import { t, langToggle, currentLang, setLang, onLangChange, initLang } from '../lib/lang.js';
@@ -181,7 +183,13 @@ function guideCard(eyebrow, title, parts) {
    ------------------------------------------------------------ */
 function renderHeader(study, gaps) {
   const meta = study.meta || {};
-  const head = h('header.bd-head');
+  /* The header is the first PART — the film's identity, its stats,
+     what is unwritten and what the director keeps doing — so the strip
+     has a short first page and the reader is not dropped into the
+     concept card before knowing which film they are reading. */
+  const head = h('header#' + sid('overview') + '.bd-head');
+  head.setAttribute(PART_ATTR, '');
+  head.setAttribute(PART_LABEL, 'Overview');
   head.append(h('p.bd-eyebrow', { text: 'Case study · ' + (meta.genre || 'craft analysis') }));
   head.append(h('h2.bd-title', { text: meta.title || 'Untitled study' }));
   head.append(h('p.st-byline', {
@@ -235,8 +243,13 @@ const stat = (value, label) =>
    The old study.html#<id> links are mapped to #cs-<id> by the
    redirect stub (src/pages/moved.js). */
 const sid = (id) => 'cs-' + id;
-function section(id, eyebrow, title, deck) {
+/* `label` is the word the part strip shows for this section (see
+   PARTS below). Every section is a part; a section built without a
+   label falls back to its title. */
+function section(id, eyebrow, title, deck, label) {
   const sec = h('section#' + sid(id) + '.st-sec', { 'aria-labelledby': sid(id) + '-h' });
+  sec.setAttribute(PART_ATTR, '');
+  sec.setAttribute(PART_LABEL, label || title);
   sec.append(h('p.bd-eyebrow', { text: eyebrow }));
   sec.append(h('h3.bd-h2', { id: sid(id) + '-h', text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
@@ -251,7 +264,7 @@ function renderConcept(study, gaps) {
   const sec = section('concept', 'The idea',
     'Concept and logline',
     'What the story is, before a single scene exists. Two cards, each in the same three '
-    + 'steps: what it is, how ' + title + ' did it, how to write yours.');
+    + 'steps: what it is, how ' + title + ' did it, how to write yours.', 'Concept');
 
   const conceptGaps = gapsFor(gaps, 'concept');
   const c = study.concept || {};
@@ -350,7 +363,7 @@ function renderCharacters(study) {
   const sec = section('characters', 'Who it happens to',
     'Character arcs',
     'A want is what they say. A need is what the story is actually about. The gap between '
-    + 'the two is the arc, and the stakes are what each side of it costs.');
+    + 'the two is the arc, and the stakes are what each side of it costs.', 'Characters');
 
   const chars = study.characters || [];
   if (!chars.length) {
@@ -413,7 +426,7 @@ function renderBeats(study) {
   const sec = section('beats', 'How it is built',
     'The seven beats',
     'Each beat is a structural job first and a moment second. The job is the same in every '
-    + 'film; what changes is how it is discharged — and that is the part worth stealing.');
+    + 'film; what changes is how it is discharged — and that is the part worth stealing.', 'Beats');
 
   const byId = Object.fromEntries((study.beats || []).map((b) => [b.id, b]));
   const acts = h('div.st-acts');
@@ -484,7 +497,7 @@ function renderBeatSheets(study) {
       ? 'The ' + getBeatSheetMethod(sheets[0].method).name + ' sheet'
       : 'Named beat sheets',
     'The same spine, subdivided by a published method \u2014 and marked where '
-    + title + ' departs from it.');
+    + title + ' departs from it.', 'Beat sheet');
 
   // The switch governs the whole section, so it sits above the
   // heading rather than after it.
@@ -566,6 +579,10 @@ function swapBeatSheetLanguage() {
   const fresh = renderBeatSheets(study);
   if (!fresh) return;
   old.replaceWith(fresh);
+  /* The fresh section arrives without the panel attributes showPart()
+     stamped on the old one; re-stamp them all, or the swapped panel is
+     the one part with no `hidden` state of its own. */
+  showPart(activePart, { setHash: false });
   window.scrollBy(0, fresh.getBoundingClientRect().top - wasAt);
   const again = document.querySelector('#' + sid('beatsheet') + ' .lang-btn.is-on');
   if (again) again.focus({ preventScroll: true });
@@ -585,7 +602,7 @@ function renderScenes(study) {
   const sec = section('scenes', 'How it is written',
     'Scene craft',
     'One technique per study: what it is, how the scene executes it, and why it works. '
-    + 'No plot — a study you could follow instead of watching the film is a worse lesson.');
+    + 'No plot — a study you could follow instead of watching the film is a worse lesson.', 'Scenes');
 
   const scenes = study.scenes || [];
   if (!scenes.length) {
@@ -634,7 +651,7 @@ function renderGlossary(study) {
     core.size
       ? 'Every term the studio uses, each with this film’s own example. The '
         + core.size + ' terms ' + title + ' demonstrates best come first.'
-      : 'Every term the studio uses, each with this film’s own example where one exists.');
+      : 'Every term the studio uses, each with this film’s own example where one exists.', 'Glossary');
 
   if (!terms.length) {
     sec.append(gapPanel('the glossary', 'No glossary terms have been written yet.', []));
@@ -713,23 +730,198 @@ function renderGlossary(study) {
    ------------------------------------------------------------ */
 function workbenchHost() {
   const sec = h('section#' + sid('workbench') + '.st-sec', { 'aria-label': 'Workbench' });
+  sec.setAttribute(PART_ATTR, '');
+  sec.setAttribute(PART_LABEL, 'Workbench');
   sec.append(h('div.st-wb-host'));
   return sec;
 }
 
+/* The workbench is optional, so its part can LEAVE after the strip
+   was drawn: every exit below re-reads the strip from the parts that
+   are still there, or the strip would offer a tab whose panel is gone. */
 async function mountWorkbenchInto(sec, study) {
   const host = sec.querySelector('.st-wb-host');
   const key = Object.keys(WORKBENCH).find((k) => /\/workbench\.js$/.test(k));
-  if (!key) { sec.remove(); return; }
+  if (!key) { sec.remove(); refreshStrip(); return; }
   try {
     const mod = await WORKBENCH[key]();
     const mount = mod && (mod.mountWorkbench || (mod.default && mod.default.mountWorkbench));
-    if (typeof mount !== 'function') { sec.remove(); return; }
+    if (typeof mount !== 'function') { sec.remove(); refreshStrip(); return; }
     mount(host, study);
   } catch (e) {
     console.warn('[study] workbench unavailable', e && e.message);
-    sec.remove();
+    sec.remove(); refreshStrip();
   }
+}
+
+/* ------------------------------------------------------------
+   PARTS — one part of the study on screen at a time
+   ------------------------------------------------------------
+   One film's study is about 21,000px: a header and seven sections,
+   the beat sheet alone 5,800 of them. The library's tab strip
+   (src/ui/tabs.js) made Case Studies ONE tab, and the owner's rule is
+   tabbed, not scrollable — so the study has a second level. The strip
+   is drawn right under the film picker; the header and the sections
+   are its PANELS, one shown and the rest `hidden`. Nothing is removed
+   from the document: every id and every word stays (the verify gate
+   reads innerHTML), the glossary filter keeps working inside its
+   hidden panel, and print shows every part (tabs.css un-hides any
+   [role="tabpanel"] on paper).
+
+   THE HASH CARRIES THE CHOICE, two ways, the same way tabs.js does:
+
+     library.html#cs-<part>     this part of the remembered film —
+                                the ids the sections always had, so
+                                study.html#beats via moved.js and every
+                                in-page link to a section still land;
+     library.html#study-<slug>  this FILM (the film picker's buttons
+                                carry these ids, so tabs.js opens the
+                                Case Studies tab for the link) — the
+                                part is whichever was open.
+
+   Both are written with replaceState (no history entry per click, so
+   Back leaves the page rather than walking the parts) and announced
+   with a hand-dispatched hashchange, which the shell's breadcrumb,
+   tabs.js and the fragment resolver all listen for. The listener here
+   is on the CAPTURE phase, so a panel is un-hidden BEFORE the resolver
+   measures where to scroll — a hidden target has no position.
+
+   A part switch keeps the film; a film switch keeps the part.
+   ------------------------------------------------------------ */
+const PART_ATTR = 'data-cs-part';
+const PART_LABEL = 'data-cs-label';
+const tabId = (id) => 'cstab-' + id;
+let activePart = '';
+
+const partsOf = () => (app ? [...app.querySelectorAll('.cs-root > [' + PART_ATTR + ']')] : []);
+
+/** The part an id names, or the part holding the element it names. */
+function partForId(id) {
+  if (!id || !app) return null;
+  const parts = partsOf();
+  const direct = parts.find((p) => p.id === id);
+  if (direct) return direct;
+  const el = document.getElementById(id);
+  return (el && parts.find((p) => p.contains(el))) || null;
+}
+
+const hashId = () => {
+  const raw = (location.hash || '').replace(/^#/, '');
+  try { return decodeURIComponent(raw); } catch (e) { return raw; }
+};
+const filmFromHash = () => {
+  const m = /^study-([\w-]+)$/.exec(hashId());
+  return m && getStudy(m[1]) ? m[1] : '';
+};
+
+function writeHash(id) {
+  if (hashId() === id) return;
+  try { history.replaceState(history.state, '', location.pathname + location.search + '#' + id); } catch (e) { /* ignore */ }
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+}
+
+/* The strip is one sideways-scrolling row (study.css, the look tabs.css
+   gives the library's own strip), so the active tab can start
+   off-screen at 390px. Move the STRIP's scroll only, never the window's. */
+function intoStrip(tab) {
+  const strip = tab.parentElement;
+  if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
+  const s = strip.getBoundingClientRect();
+  const t = tab.getBoundingClientRect();
+  if (t.left < s.left) strip.scrollLeft -= s.left - t.left + 16;
+  else if (t.right > s.right) strip.scrollLeft += t.right - s.right + 16;
+}
+
+function showPart(id, { setHash = true } = {}) {
+  const parts = partsOf();
+  if (!parts.length) return;
+  if (!parts.some((p) => p.id === id)) id = parts[0].id;
+  activePart = id;
+  for (const p of parts) {
+    const on = p.id === id;
+    p.hidden = !on;
+    p.setAttribute('role', 'tabpanel');
+    p.setAttribute('aria-labelledby', tabId(p.id));
+    if (!p.hasAttribute('tabindex')) p.setAttribute('tabindex', '0');
+  }
+  app.querySelectorAll('.cs-tabs [role="tab"]').forEach((t) => {
+    const on = t.dataset.csTab === id;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    t.classList.toggle('is-on', on);
+    if (on) intoStrip(t);
+  });
+  if (setHash) writeHash(id);
+}
+
+function buildStrip() {
+  return h('nav.cs-tabs', { role: 'tablist', 'aria-label': 'Parts of this study' });
+}
+
+/** (Re)draw the strip's buttons from the parts that exist right now,
+ *  and keep the open part open — or fall back to the first one when
+ *  the open part has left (the workbench failing to load). */
+function refreshStrip() {
+  if (!app) return;
+  const strip = app.querySelector('.cs-tabs');
+  if (!strip) return;
+  const parts = partsOf();
+  strip.replaceChildren(...parts.map((p) => h('button.cs-tab', {
+    type: 'button', role: 'tab', id: tabId(p.id), 'data-cs-tab': p.id,
+    'aria-controls': p.id, 'aria-selected': 'false',
+    text: p.getAttribute(PART_LABEL) || p.id
+  })));
+  showPart(activePart, { setHash: false });
+  publishStripHeight();
+}
+
+/* The strip is sticky under the library's strip, and the fragment
+   resolver lands a part at scroll-padding-top — which clears the band
+   and the library's strip (--sh-cover-h) but knows nothing about this
+   one. The panels take the strip's measured height as scroll-margin,
+   so `#cs-glossary` lands under the strip rather than behind it.
+   Measured twice, as shell.js measures its band: once now, once after
+   the fonts, because a strip measured in the fallback face is a strip
+   measured at the wrong height. */
+function publishStripHeight() {
+  const root = app && app.querySelector('.cs-root');
+  const strip = root && root.querySelector('.cs-tabs');
+  if (!root || !strip) return;
+  const set = () => root.style.setProperty('--cs-tabs-h', Math.round(strip.getBoundingClientRect().height) + 'px');
+  set();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(set);
+}
+
+/* The hash, read on every change. A film first: `#study-<slug>` for a
+   film that is not open selects it, and the render that follows reads
+   the part from memory. Otherwise a part, or an element inside one. */
+function onHash() {
+  const slug = filmFromHash();
+  if (slug) { if (slug !== currentSlug()) selectDemo(slug); return; }
+  const part = partForId(hashId());
+  if (part && part.id !== activePart) showPart(part.id, { setHash: false });
+}
+
+function onPartClick(e) {
+  const t = e.target.closest('.cs-tabs [role="tab"]');
+  if (!t || !app || !app.contains(t)) return;
+  showPart(t.dataset.csTab);
+  t.focus({ preventScroll: true });
+}
+
+function onPartKey(e) {
+  const t = e.target.closest('.cs-tabs [role="tab"]');
+  if (!t || !app || !app.contains(t)) return;
+  const tabs = [...t.parentElement.querySelectorAll('[role="tab"]')];
+  const i = tabs.indexOf(t);
+  let j = -1;
+  if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft') j = (i + tabs.length - 1) % tabs.length;
+  else if (e.key === 'Home') j = 0;
+  else if (e.key === 'End') j = tabs.length - 1;
+  if (j < 0) return;
+  e.preventDefault();
+  tabs[j].click();
 }
 
 /* ------------------------------------------------------------
@@ -766,7 +958,15 @@ function render() {
   main.className = 'cs-root hue-' + (study.meta.hue || 'feature');
   main.setAttribute('data-demo', study.meta.slug);
 
-  main.append(renderDemoSelector());
+  const picker = renderDemoSelector();
+  /* Each film's button is the anchor `#study-<slug>` names, so a link
+     to a film opens the Case Studies tab (tabs.js finds the id inside
+     it) and onHash() selects the film. The ids are stamped here rather
+     than in demo-selector.js because they are this page's address
+     scheme, not the selector's. */
+  picker.querySelectorAll('.ds-tab[data-slug]').forEach((b) => { b.id = 'study-' + b.dataset.slug; });
+  main.append(picker);
+  main.append(buildStrip());
   main.append(renderHeader(study, gaps));
   main.append(renderConcept(study, gaps));
   main.append(renderCharacters(study));
@@ -781,6 +981,14 @@ function render() {
   main.append(wb);
 
   app.replaceChildren(main);
+
+  /* Which part: the hash if it names one (a deep link, or the part
+     a reader was on before Back), else the part that was open before
+     this redraw (a film switch keeps the reader's place), else the
+     first. refreshStrip() draws the buttons and applies it. */
+  const wanted = partForId(hashId());
+  if (wanted) activePart = wanted.id;
+  refreshStrip();
 
   try {
     StudioUI.autoAriaLabels();
@@ -812,7 +1020,20 @@ function wireOnce() {
   // which is why the toggle lives in lib and not here.
   onLangChange(swapBeatSheetLanguage);
 
-  delegate(document, 'click', '[data-action="demo-pick"]', () => { refocus = true; });
+  /* demo-selector.js's own listener does the selecting; this one puts
+     the film in the address, so the link a reader copies after picking
+     a film is a link to that film. The hashchange it dispatches reaches
+     onHash() with the film already current, which is a no-op there. */
+  delegate(document, 'click', '[data-action="demo-pick"]', (e, btn) => {
+    refocus = true;
+    const slug = btn.getAttribute('data-slug');
+    if (slug && getStudy(slug)) writeHash('study-' + slug);
+  });
+
+  document.addEventListener('click', onPartClick);
+  document.addEventListener('keydown', onPartKey);
+  // Capture phase: before fragments.js's resolver measures the target.
+  window.addEventListener('hashchange', onHash, true);
 
   delegate(document, 'input', '[data-action="gloss-filter"]', (e, input) => {
     const q = String(input.value || '').trim().toLowerCase();
@@ -856,14 +1077,22 @@ export function mountCaseStudies(container) {
      first would render once for the load and once for the first paint.
      initLang() stamps data-lang before the first render so the CSS is
      right on the first paint rather than after it. */
-  if (!wired) { initLang(); loadDemo(); }
+  if (!wired) {
+    initLang(); loadDemo();
+    /* A link to a film (`#study-<slug>`) wins over the remembered
+       preference, before the first paint: selecting here, with no
+       subscriber yet, costs one render rather than two. */
+    const slug = filmFromHash();
+    if (slug && slug !== currentSlug()) selectDemo(slug);
+  }
   wireOnce();
   render();
 
   /* Exposed for the console and for the verifier, the way the other
-     pages expose their models. Read-only: nothing here mutates. */
+     pages expose their models. Read-only: nothing here mutates the
+     model — showPart() changes which part is on screen, and the hash. */
   if (typeof window !== 'undefined') {
-    window.StudioStudyPage = { render, listStudies, getStudy, currentSlug, validate };
+    window.StudioStudyPage = { render, listStudies, getStudy, currentSlug, validate, showPart, activePart: () => activePart };
   }
 }
 

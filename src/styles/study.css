@@ -133,6 +133,73 @@
 }
 
 /* ------------------------------------------------------------
+   THE PART STRIP — one part of the study on screen at a time
+   ------------------------------------------------------------
+   The second level under the library's tab strip (case-studies.js,
+   PARTS). It wears tabs.css's look to the letter — one row that
+   scrolls sideways, mono uppercase, the active tab a filled pill —
+   because a reader who has just learned what the library's strip
+   does must not have to learn a second thing; the classes differ
+   only so tabs.js's own queries (`.tabs [role="tab"]`) never reach
+   in here and switch these off.
+
+   PINNED UNDER THE LIBRARY'S STRIP: --sh-cover-h is the band plus
+   whatever is parked under it, published by shell.js, so this parks
+   below both and never on top of either. The panels take the strip's
+   measured height (--cs-tabs-h, set by case-studies.js) as
+   scroll-margin, so a fragment jump to a part lands under the strip
+   rather than behind it. The column is the same formula tabs.css
+   uses: margin, not padding, so the hairline stops where the content
+   does.
+   ------------------------------------------------------------ */
+.cs-tabs {
+  position: sticky;
+  top: var(--sh-cover-h, var(--sh-chrome-h, 0px));
+  z-index: calc(var(--z-toolbar) - 1);
+  --cs-tabs-gutter: var(--s5);
+  margin-inline: max(var(--cs-tabs-gutter), calc((100% - var(--measure-wide)) / 2 + var(--cs-tabs-gutter)));
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  gap: var(--s1);
+  padding: var(--s2) 0;
+  margin-block: 0 var(--s4);
+  background: var(--paper);
+  border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
+}
+.cs-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  appearance: none;
+  font: inherit;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: transparent;
+  padding: var(--s1) var(--s3);
+  border: var(--sk-card-line-w) solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.cs-tab:hover { color: var(--ink); border-color: var(--sk-card-line); }
+.cs-tab[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
+.cs-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+/* The part, AND every anchor inside it: `#cs-beats-h` (a heading the
+   old study.html links name) is a target too, and without this it
+   landed 34px behind the strip while its section landed under it. */
+.cs-root > [data-cs-part],
+.cs-root > [data-cs-part] [id] { scroll-margin-top: var(--cs-tabs-h, 0px); }
+.cs-root > [data-cs-part][hidden] { display: none; }
+/* A hidden part has no border to show; the first VISIBLE section
+   would otherwise draw a hairline right under the strip's own. */
+.cs-root > .st-sec:not([hidden]) { border-top: 0; }
+@media (max-width: 719px) { .cs-tabs { --cs-tabs-gutter: var(--s4); } }
+
+/* ------------------------------------------------------------
    PAGE RHYTHM — one measure, shared with .bd-head and friends
    ------------------------------------------------------------ */
 .st-sec {
@@ -751,6 +818,9 @@
 @media print {
   .ds-bar { position: static; border-bottom: 1px solid var(--rule); }
   .ds-tab:not(.is-on) { display: none; }
+  /* The strip is chrome; every part prints (tabs.css un-hides the
+     [role="tabpanel"]s), so the paper copy is the whole study. */
+  .cs-tabs { display: none; }
   .st-guide, .st-char, .st-scene, .st-beat, .st-gap { break-inside: avoid; }
   .st-sec { padding-block: var(--s5); }
 }

@@ -269,6 +269,13 @@ function rpc(name, args, user, route) {
         F.db.promos.push(c);
       }
       for (const k of ['percent_off', 'amount_off_paise', 'max_uses', 'valid_from', 'valid_until', 'note']) if (k in patch) c[k] = patch[k];
+      // section 23: a commission makes it an affiliate code
+      if ('commission_pct' in patch) {
+        if (patch.commission_pct != null && !(patch.commission_pct > 0 && patch.commission_pct <= 100)) return pgErr(route, '22023', 'a commission is above 0 and at most 100%');
+        c.commission_pct = patch.commission_pct;
+        if (c.kind !== 'referral' && c.kind !== 'gift') c.kind = patch.commission_pct != null ? 'affiliate' : 'promo';
+      }
+      if (!c.kind) c.kind = 'promo';
       if ('plan_ids' in patch) c.plan_ids = Array.isArray(patch.plan_ids) && patch.plan_ids.length ? patch.plan_ids : null;
       if (typeof patch.active === 'boolean') c.active = patch.active;
       return json(route, 200, c);
@@ -312,6 +319,26 @@ function rpc(name, args, user, route) {
       let n = 0;
       for (const r of F.db.credits) if ((args.p_ids || []).includes(r.id) && r.status === 'owed') { r.status = 'paid'; r.paid_at = new Date().toISOString(); r.paid_note = args.p_note || null; n++; }
       return json(route, 200, n);
+    }
+    /* ---- section 23: affiliates, derived from the ledger ---- */
+    case 'admin_affiliate_report': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, F.db.promos.filter((c) => c.commission_pct != null).map((c) => {
+        const ps = F.db.payments.filter((x) => x.promo_code === c.code);
+        const paid = ps.filter((x) => x.status === 'paid');
+        const revenue = paid.reduce((n, x) => n + x.amount_paise, 0);
+        return { code: c.code, note: c.note, commission_pct: c.commission_pct, active: c.active, percent_off: c.percent_off, amount_off_paise: c.amount_off_paise,
+          orders: paid.length, revenue_paise: revenue, discount_paise: paid.reduce((n, x) => n + (x.discount_paise || 0), 0),
+          commission_due_paise: Math.floor(revenue * c.commission_pct / 100), refunded: ps.filter((x) => x.status === 'refunded').length,
+          last_order_at: paid.map((x) => x.paid_at).sort().pop() || null };
+      }));
+    }
+    case 'admin_affiliate_orders': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const code = normalisePromo(args.p_code);
+      return json(route, 200, F.db.payments.filter((x) => x.promo_code === code && (x.status === 'paid' || x.status === 'refunded')).reverse()
+        .map((x) => ({ paid_at: x.paid_at, email: (Object.values(USERS).find((u) => u.id === x.user_id) || {}).email || null, plan_id: x.plan_id,
+          list_paise: x.list_paise, discount_paise: x.discount_paise, amount_paise: x.amount_paise, status: x.status })));
     }
     case 'admin_billing_overview': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');

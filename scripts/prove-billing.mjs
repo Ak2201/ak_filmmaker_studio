@@ -506,6 +506,46 @@ try {
     ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the Growth tab does not overflow at 390px');
     allErrors.push(...A.errors); await A.ctx.close();
   }
+
+  console.log('(m) affiliate codes (schema section 23)');
+  F.db.sessions.clear();
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
+    await A.page.fill('#baPromoCode', 'festdesk');
+    await A.page.fill('#baPromoValue', '5');
+    await A.page.fill('#baPromoComm', '20');
+    await A.page.fill('#baPromoNote', 'Chennai festival desk');
+    await A.page.click('form[data-ba-form="promo"] button[type="submit"]');
+    await A.page.waitForSelector('#billing tr[data-promo="FESTDESK"]', { timeout: 8000 }).catch(() => {});
+    const fd = F.db.promos.find((c) => c.code === 'FESTDESK');
+    ok(fd && fd.kind === 'affiliate' && fd.commission_pct === 20 && fd.percent_off === 5, 'ADD CODE with a commission makes an affiliate code (5% off, 20% commission)');
+    ok(/20% commission/.test(await A.page.textContent('#billing tr[data-promo="FESTDESK"]')), 'the promo list says so');
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    const C = await newContext(browser, { tok: 'tok-cal' });
+    await C.page.goto(BASE + 'invite.html');
+    await C.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
+    await C.page.click('#buy .pl-promo summary');
+    await C.page.fill('#plPromoCode', 'FESTDESK');
+    await C.page.click('#buy .pl-promo-form button[type="submit"]');
+    await C.page.waitForSelector('#buy .pl-card[data-plan="indie"].has-promo', { timeout: 8000 });
+    await C.page.click('#buy .pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    ok(await waitGate(C.page, 'open'), 'Cal buys Indie through the affiliate code');
+    allErrors.push(...C.errors); await C.ctx.close();
+
+    F.db.sessions.clear();
+    const A2 = await newContext(browser, { tok: 'tok-admin' });
+    await A2.page.goto(BASE + 'admin.html#growth');
+    await A2.page.waitForSelector('#growth tr[data-affiliate="FESTDESK"]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists FESTDESK under Affiliates'), () => ok(false, 'the Growth tab lists FESTDESK under Affiliates'));
+    const cells = await A2.page.$$eval('#growth tr[data-affiliate="FESTDESK"] td', (tds) => tds.map((t) => t.textContent));
+    ok(cells[3] === '1' && cells[4] === '₹7,599.05' && cells[6] === '₹1,519.81', `one order, revenue net of the 5% (₹7,599.05), commission due ₹1,519.81: ${cells.slice(3, 7).join(' / ')}`);
+    await A2.page.click('#growth [data-gra-action="aff-orders"][data-code="FESTDESK"]');
+    await A2.page.waitForFunction(() => /cal@example\.com/.test(document.querySelector('#growth')?.textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'ORDERS lists who bought through it'), () => ok(false, 'ORDERS lists who bought through it'));
+    allErrors.push(...A2.errors); await A2.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

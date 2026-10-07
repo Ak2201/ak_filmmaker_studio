@@ -41,7 +41,10 @@ export const admin = {
   settings: () => rpc('admin_get_billing_settings'),
   setSettings: (patch) => rpc('admin_set_billing_settings', { p_patch: patch }),
   listReferralCredits: (status = null) => rpc('admin_list_referral_credits', { p_status: status }).then((d) => d || []),
-  markReferralPaid: (ids, note) => rpc('admin_mark_referral_paid', { p_ids: ids, p_note: note || null })
+  markReferralPaid: (ids, note) => rpc('admin_mark_referral_paid', { p_ids: ids, p_note: note || null }),
+  /* §23: derived per affiliate code — orders, revenue net of discount, commission due */
+  affiliateReport: () => rpc('admin_affiliate_report').then((d) => d || []),
+  affiliateOrders: (code) => rpc('admin_affiliate_orders', { p_code: normalisePromo(code) }).then((d) => d || [])
 };
 
 export { normalisePromo };

@@ -39,6 +39,7 @@ async function load() {
     S.missing = {};
     S.settings = await settle('settings', Growth.admin.settings);
     S.credits = await settle('credits', () => Growth.admin.listReferralCredits());
+    S.affiliates = await settle('affiliates', Growth.admin.affiliateReport);
     S.state = 'ready';
   } catch (e) {
     S.error = e.message || 'The growth console could not load.'; S.state = 'error';
@@ -95,6 +96,41 @@ function referralBlock(sec) {
   sec.append(pay);
 }
 
+function affiliateBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Affiliates' }));
+  if (S.missing.affiliates) { sec.append(h('p.gt-meta', { text: 'Affiliate reports are not available on this database yet (schema section 23 has not run).' })); return; }
+  const rows = S.affiliates || [];
+  sec.append(h('p.gt-meta', { text: 'An affiliate code is a promo code with a commission — add one under Billing → Promo codes with “Commission %” filled in. Revenue is what buyers actually paid through the code (after its discount and any upgrade credit); commission is that times the rate, rounded down. Refunded orders drop out on their own. Pay affiliates by hand.' }));
+  if (!rows.length) { sec.append(h('p.gt-meta', { text: 'No affiliate codes yet.' })); return; }
+  const table = h('table.gt-table');
+  table.append(h('thead', {}, [h('tr', {}, ['Code', 'Gives', 'Rate', 'Orders', 'Revenue (net)', 'Discount given', 'Commission due', 'Refunded', 'Last order', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+  const tb = h('tbody');
+  for (const a of rows) {
+    tb.append(h('tr' + (a.active ? '' : '.is-off'), { 'data-affiliate': a.code }, [
+      h('td', {}, [h('code.gt-codeval', { text: a.code }), a.note ? h('span.gt-meta', { text: ' ' + a.note }) : null].filter(Boolean)),
+      h('td', { text: Number.isInteger(a.percent_off) ? `${a.percent_off}% off` : Number.isInteger(a.amount_off_paise) ? `${fmtPaise(a.amount_off_paise)} off` : '—' }),
+      h('td', { text: `${Number(a.commission_pct)}%` }),
+      h('td', { text: String(a.orders) }),
+      h('td', { text: fmtPaise(Number(a.revenue_paise)) }),
+      h('td', { text: fmtPaise(Number(a.discount_paise)) }),
+      h('td', {}, [h('strong', { text: fmtPaise(Number(a.commission_due_paise)) })]),
+      h('td', { text: String(a.refunded) }),
+      h('td', { text: fmtDate(a.last_order_at) }),
+      h('td', {}, [h('button.btn', { type: 'button', 'data-gra-action': 'aff-orders', 'data-code': a.code, text: S.openAff === a.code ? 'HIDE ORDERS' : 'ORDERS' })])
+    ]));
+    if (S.openAff === a.code) {
+      const orders = S.affOrders || [];
+      tb.append(h('tr', {}, [h('td', { colspan: 10 }, [orders.length
+        ? h('ul.gr-list', {}, orders.map((o) => h('li' + (o.status === 'refunded' ? '.is-off' : ''), { text: `${fmtDate(o.paid_at)} — ${o.email || '—'} · ${planName(o.plan_id)} · paid ${fmtPaise(o.amount_paise)}${o.discount_paise ? ` (${fmtPaise(o.discount_paise)} off)` : ''}${o.status === 'refunded' ? ' · refunded' : ''}` })))
+        : h('p.gt-meta', { text: S.affOrders ? 'No orders yet.' : 'Loading…' })])]));
+    }
+  }
+  table.append(tb);
+  sec.append(h('div.gt-scroll', {}, [table]));
+  const due = rows.reduce((n, a) => n + Number(a.commission_due_paise || 0), 0);
+  sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${fmtPaise(due)}.` }));
+}
+
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
   const sec = section('growth', 'Growth', 'Referrals, affiliates, invoices and the funnel.',
@@ -103,6 +139,7 @@ export function growthAdminSection(section, st) {
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
   referralBlock(sec);
+  affiliateBlock(sec);
   sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
@@ -141,6 +178,15 @@ delegate(document, 'submit', '[data-gra-form="payout"]', async (e, form) => {
     toast(`Marked ${n} credit${n === 1 ? '' : 's'} paid.`);
     await load();
   } catch (err) { toast(err.message || 'The credits were not marked.', 'error'); }
+});
+
+delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
+  const code = el.dataset.code;
+  if (S.openAff === code) { S.openAff = ''; S.affOrders = null; rerender(); return; }
+  S.openAff = code; S.affOrders = null; rerender();
+  try { S.affOrders = await Growth.admin.affiliateOrders(code); }
+  catch (err) { S.affOrders = []; toast(err.message || 'The orders could not load.', 'error'); }
+  rerender();
 });
 
 delegate(document, 'click', '[data-gra-action="reload"]', () => load());

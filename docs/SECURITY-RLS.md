@@ -572,6 +572,23 @@ checks:
    MARK SELECTED PAID → paid, and the first member's panel reads it.
 5. As a non-admin: `select admin_list_referral_credits()` → `42501`.
 
+### §23 — affiliate codes
+
+No new table: `promo_codes.commission_pct` sits in the table §20 already
+closed to the client. `admin_affiliate_report()` and
+`admin_affiliate_orders(text)` are granted to `authenticated` and
+re-check `is_studio_admin()`; the second returns buyers' e-mail
+addresses, so the check is the whole boundary. Live checks:
+
+1. As a non-admin: `select admin_affiliate_report()` and
+   `select admin_affiliate_orders('X')` → `42501`.
+2. As the admin: a code with "Commission %" 20 → the promo list says
+   "20% commission"; `admin_set_promo_code('<a REF- code>',
+   '{"commission_pct": 10}')` → `22023`.
+3. One test-mode purchase through it, one refunded: the Growth tab shows
+   orders 1, revenue = the paid amount, commission = floor(20%),
+   refunded 1.
+
 ---
 
 ## Enumeration: can `anon` or a signed-in stranger list rows they were not given?

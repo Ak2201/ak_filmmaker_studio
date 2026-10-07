@@ -5438,3 +5438,188 @@ notify pgrst, 'reload schema';
 --  7. admin_mark_referral_paid([id]) -> 'paid', paid_at set; marking a
 --     void or paid row again changes nothing (count 0).
 -- ============================================================
+
+
+-- ============================================================
+-- 23. AFFILIATE CODES — a promo code that earns its owner a commission
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026:
+-- codes for film schools, YouTubers and festival desks that pay their
+-- holder a share of what comes in through them.
+--
+--   * AN AFFILIATE CODE IS A PROMO CODE WITH commission_pct. Made on
+--     the console like any other (admin_set_promo_code learns one key);
+--     kind becomes 'affiliate'. The buyer's discount is the code's
+--     percent_off / amount_off_paise, exactly as §20 — an affiliate
+--     code may also give nothing off (a 1% code is the smallest offer
+--     the table allows, so "no discount" is a separate decision the
+--     owner makes by choosing a small one).
+--   * NOTHING IS STORED PER ORDER. Revenue and commission are DERIVED
+--     from the ledger at read time: the sum of amount_paise over the
+--     code's 'paid' payments — which is already net of the discount and
+--     of any §21 credit — and floor(revenue × pct / 100). A refunded
+--     payment is 'refunded' and drops out of both by itself. A stored
+--     running total would be a second representation of the ledger,
+--     and the first refund would make the two disagree.
+--   * Commission is a number for the owner to pay by hand; the report
+--     says what is due, not what was paid. (Referral credits, §22, are a
+--     ledger because they belong to members who read them; an affiliate
+--     is somebody the owner settles with directly.)
+-- ============================================================
+alter table public.promo_codes add column if not exists commission_pct numeric(5,2);
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'promo_codes_commission_check') then
+    alter table public.promo_codes add constraint promo_codes_commission_check check (commission_pct is null or (commission_pct > 0 and commission_pct <= 100));
+  end if;
+end $$;
+
+/** §20's console write, learning `commission_pct` (a number, or null to
+ *  clear it). A code with a commission is kind 'affiliate'; clearing it
+ *  makes it a plain 'promo' again. Referral and gift codes take none. */
+create or replace function public.admin_set_promo_code(p_code text, p_patch jsonb)
+returns public.promo_codes
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  row  public.promo_codes;
+  ids  text[];
+  bad  text;
+  comm numeric;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if v_code is null or v_code !~ '^[A-Z0-9][A-Z0-9-]{2,31}$' then
+    raise exception 'A code is 3 to 32 letters, digits or dashes' using errcode = '22023';
+  end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  if p_patch ? 'plan_ids' then
+    if jsonb_typeof(p_patch -> 'plan_ids') = 'array' then
+      select array_agg(x) into ids from jsonb_array_elements_text(p_patch -> 'plan_ids') x;
+      if ids is not null and cardinality(ids) = 0 then ids := null; end if;
+      select x into bad from unnest(ids) x where x not in (select id from public.plans where id <> 'free') limit 1;
+      if bad is not null then raise exception 'No such paid plan "%"', bad using errcode = '22023'; end if;
+    elsif jsonb_typeof(p_patch -> 'plan_ids') <> 'null' then
+      raise exception 'plan_ids must be a list of plan ids or null' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'commission_pct' then
+    if jsonb_typeof(p_patch -> 'commission_pct') not in ('number', 'null') then
+      raise exception 'commission_pct must be a number or null' using errcode = '22023';
+    end if;
+    comm := (p_patch ->> 'commission_pct')::numeric;
+  end if;
+  select * into row from public.promo_codes c where c.code = v_code for update;
+  if row.code is not null and row.kind in ('referral', 'gift') and p_patch ? 'commission_pct' and comm is not null then
+    raise exception 'A % code carries no commission', row.kind using errcode = '22023';
+  end if;
+  if row.code is null then
+    insert into public.promo_codes (code, percent_off, amount_off_paise, plan_ids, max_uses, valid_from, valid_until, active, note, created_by, commission_pct, kind)
+    values (v_code,
+            (p_patch ->> 'percent_off')::int,
+            (p_patch ->> 'amount_off_paise')::int,
+            case when p_patch ? 'plan_ids' then ids end,
+            (p_patch ->> 'max_uses')::int,
+            (p_patch ->> 'valid_from')::timestamptz,
+            (p_patch ->> 'valid_until')::timestamptz,
+            coalesce((p_patch ->> 'active')::boolean, true),
+            left(p_patch ->> 'note', 300),
+            auth.uid(),
+            comm,
+            case when comm is not null then 'affiliate' else 'promo' end)
+    returning * into row;
+  else
+    update public.promo_codes c
+       set percent_off      = case when p_patch ? 'percent_off'      then (p_patch ->> 'percent_off')::int        else c.percent_off end,
+           amount_off_paise = case when p_patch ? 'amount_off_paise' then (p_patch ->> 'amount_off_paise')::int   else c.amount_off_paise end,
+           plan_ids         = case when p_patch ? 'plan_ids'         then ids                                      else c.plan_ids end,
+           max_uses         = case when p_patch ? 'max_uses'         then (p_patch ->> 'max_uses')::int           else c.max_uses end,
+           valid_from       = case when p_patch ? 'valid_from'       then (p_patch ->> 'valid_from')::timestamptz  else c.valid_from end,
+           valid_until      = case when p_patch ? 'valid_until'      then (p_patch ->> 'valid_until')::timestamptz else c.valid_until end,
+           active           = coalesce((p_patch ->> 'active')::boolean, c.active),
+           note             = case when p_patch ? 'note' then left(p_patch ->> 'note', 300) else c.note end,
+           commission_pct   = case when p_patch ? 'commission_pct' then comm else c.commission_pct end,
+           kind             = case when c.kind in ('referral', 'gift') or not (p_patch ? 'commission_pct') then c.kind
+                                   when comm is not null then 'affiliate' else 'promo' end,
+           updated_at       = now()
+     where c.code = v_code
+     returning * into row;
+  end if;
+  return row;
+exception
+  when check_violation then
+    raise exception 'A code takes either a percentage (1–100) or an amount off in paise, not both; uses must be positive, the window must end after it starts, and a commission is above 0 and at most 100%%' using errcode = '22023';
+end;
+$fn$;
+revoke execute on function public.admin_set_promo_code(text, jsonb) from public, anon;
+grant  execute on function public.admin_set_promo_code(text, jsonb) to authenticated;
+
+/** Per affiliate code: orders, revenue net of discount, commission due.
+ *  Derived from the ledger every time — nothing here is stored. */
+create or replace function public.admin_affiliate_report()
+returns table (code text, note text, commission_pct numeric, active boolean, percent_off int, amount_off_paise int,
+               orders int, revenue_paise bigint, discount_paise bigint, commission_due_paise bigint,
+               refunded int, last_order_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select c.code, c.note, c.commission_pct, c.active, c.percent_off, c.amount_off_paise,
+           count(p.id) filter (where p.status = 'paid')::int,
+           coalesce(sum(p.amount_paise) filter (where p.status = 'paid'), 0)::bigint,
+           coalesce(sum(p.discount_paise) filter (where p.status = 'paid'), 0)::bigint,
+           floor(coalesce(sum(p.amount_paise) filter (where p.status = 'paid'), 0) * c.commission_pct / 100)::bigint,
+           count(p.id) filter (where p.status = 'refunded')::int,
+           max(p.paid_at) filter (where p.status = 'paid')
+      from public.promo_codes c
+      left join public.payments p on p.promo_code = c.code
+     where c.commission_pct is not null
+     group by c.code
+     order by c.active desc, 8 desc, c.code;
+end;
+$fn$;
+
+/** One affiliate code's paid and refunded orders, newest first. */
+create or replace function public.admin_affiliate_orders(p_code text)
+returns table (paid_at timestamptz, email text, plan_id text, list_paise int, discount_paise int, amount_paise int, status text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select p.paid_at, u.email::text, p.plan_id, p.list_paise, p.discount_paise, p.amount_paise, p.status
+      from public.payments p
+      left join auth.users u on u.id = p.user_id
+     where p.promo_code = upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g'))
+       and p.status in ('paid', 'refunded')
+     order by p.paid_at desc nulls last
+     limit 500;
+end;
+$fn$;
+revoke execute on function public.admin_affiliate_report()      from public, anon;
+revoke execute on function public.admin_affiliate_orders(text)  from public, anon;
+grant  execute on function public.admin_affiliate_report()      to authenticated;
+grant  execute on function public.admin_affiliate_orders(text)  to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 23.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. a non-admin calling admin_affiliate_report / admin_affiliate_orders
+--     -> 42501.
+--  2. admin: admin_set_promo_code('FESTDESK', '{"percent_off": 5,
+--     "commission_pct": 20}') -> kind 'affiliate'; commission 0 or 101
+--     -> 22023; a commission on a REF- code -> 22023.
+--  3. two test purchases with FESTDESK, one refunded: the report shows
+--     orders 1, revenue = that payment's amount (net of the 5%),
+--     commission = floor(revenue × 20%), refunded 1.
+--  4. '{"commission_pct": null}' -> kind back to 'promo', gone from the
+--     report.
+-- ============================================================

@@ -136,7 +136,7 @@ export function billingAdminSection(section, st) {
         const live = c.active && !(c.valid_until && Date.parse(c.valid_until) <= Date.now()) && !(Number.isInteger(c.max_uses) && c.uses >= c.max_uses);
         tb.append(h('tr' + (live ? '' : '.is-off'), { 'data-promo': c.code }, [
           h('td', {}, [h('code.gt-codeval', { text: c.code })]),
-          h('td', { text: promoLabel(c) }),
+          h('td', { text: promoLabel(c) + (c.commission_pct != null ? ` · ${Number(c.commission_pct)}% commission` : '') }),
           h('td', { text: c.plan_ids && c.plan_ids.length ? c.plan_ids.map(planName).join(', ') : 'every plan' }),
           h('td', { text: `${c.uses}${Number.isInteger(c.max_uses) ? ' of ' + c.max_uses : ''}` }),
           h('td', { text: (c.valid_from ? 'from ' + fmtDate(c.valid_from) + ' ' : '') + (c.valid_until ? 'until ' + fmtDate(c.valid_until) : c.valid_from ? '' : 'no end') }),
@@ -157,6 +157,7 @@ export function billingAdminSection(section, st) {
       h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', { id: 'baPromoValue', name: 'value', type: 'text', inputmode: 'decimal', placeholder: '10', required: true })]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', { id: 'baPromoMax', name: 'max_uses', type: 'number', min: 1, step: 1, placeholder: 'unlimited' })]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoUntil', text: 'Valid until' }), h('input', { id: 'baPromoUntil', name: 'valid_until', type: 'date' })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoComm', text: 'Commission % (affiliate)' }), h('input', { id: 'baPromoComm', name: 'commission', type: 'text', inputmode: 'decimal', placeholder: 'none' })]),
       h('div.ba-field.is-wide', {}, [h('label', { for: 'baPromoNote', text: 'Note (who it is for, where it was printed)' }), h('input', { id: 'baPromoNote', name: 'note', type: 'text', maxlength: 300 })])
     ]));
     const paid = S.plans.filter((p) => p.id !== 'free');
@@ -275,6 +276,14 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
   const plans = f.getAll('plan').map(String);
   const all = [...form.querySelectorAll('input[name="plan"]')].length;
   patch.plan_ids = plans.length && plans.length < all ? plans : null;
+  /* An affiliate code (schema section 23) is a promo code with a
+     commission; revenue and commission due are derived on the Growth tab. */
+  const comm = String(f.get('commission') || '').trim();
+  if (comm) {
+    const n = Number(comm);
+    if (!(n > 0 && n <= 100) || !/^\d+(\.\d{1,2})?$/.test(comm)) { toast(`"${comm}" is not a commission from 0.01 to 100%.`, 'error'); return; }
+    patch.commission_pct = n;
+  }
   if (!plans.length) { toast('Tick at least one plan the code applies to.', 'error'); return; }
   try {
     const row = await Billing.admin.setPromoCode(code, patch);

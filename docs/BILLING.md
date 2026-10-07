@@ -446,3 +446,20 @@ before §22 ran. One per member (partial unique index).
 on, no policy, API roles revoked). Proved: `referral.sql` (37 checks),
 `prove-billing.mjs` (l). Nothing to redeploy.
 
+### 9.3 Affiliate codes (§23)
+
+An affiliate code is a promo code with `commission_pct` (0 < pct ≤ 100);
+`admin_set_promo_code()` learns that one key and sets `kind =
+'affiliate'` (clearing it makes the code a plain `promo` again; referral
+and gift codes refuse one). Make it on Billing → Promo codes with
+"Commission %" filled in. The buyer's discount is the code's, as §20.
+
+**Nothing is stored per order.** `admin_affiliate_report()` derives, per
+code, from the ledger at read time: paid orders, revenue (the sum of
+`amount_paise` — already net of the discount AND any §21 upgrade
+credit), the discount given, `commission_due = floor(revenue × pct /
+100)`, refunds (which drop out of revenue by status), and the last order.
+`admin_affiliate_orders(code)` lists who bought. The Growth tab shows
+both; the commission is paid by hand. Proved: `affiliate.sql` (19
+checks), `prove-billing.mjs` (m). Nothing to redeploy.
+

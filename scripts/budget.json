@@ -1,111 +1,112 @@
 {
-  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says. `knownLazyFetches` names a lazy chunk that IS fetched on load today, with the reason and where the fix belongs; the run fails if the entry stops firing, so fix the leak and delete the row in one commit.",
-  "capturedAt": "2026-10-07T15:36:44.045Z",
+  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
+  "capturedAt": "2026-10-07T17:58:40.689Z",
+  "capturedFrom": "371db4c (plus this recapture)",
   "knownLazyFetches": {},
   "pages": {
     "hub": {
-      "bytes": 1761280,
-      "measured": 1601059,
-      "files": 13
+      "bytes": 988160,
+      "measured": 897422,
+      "files": 29
     },
     "feature": {
-      "bytes": 1794048,
-      "measured": 1630664,
-      "files": 20
+      "bytes": 1035264,
+      "measured": 940859,
+      "files": 39
     },
     "short": {
-      "bytes": 1754112,
-      "measured": 1594379,
-      "files": 15
+      "bytes": 975872,
+      "measured": 886765,
+      "files": 34
     },
     "library": {
-      "bytes": 1690624,
-      "measured": 1536338,
-      "files": 14
+      "bytes": 936960,
+      "measured": 851209,
+      "files": 20
     },
     "breakdown": {
-      "bytes": 1694720,
-      "measured": 1540358,
-      "files": 13
+      "bytes": 576512,
+      "measured": 523197,
+      "files": 21
     },
     "stripboard": {
-      "bytes": 1716224,
-      "measured": 1559868,
-      "files": 14
+      "bytes": 596992,
+      "measured": 542251,
+      "files": 21
     },
     "reports": {
-      "bytes": 1732608,
-      "measured": 1574987,
-      "files": 14
+      "bytes": 612352,
+      "measured": 556326,
+      "files": 21
     },
     "contacts": {
-      "bytes": 1721344,
-      "measured": 1564354,
-      "files": 14
+      "bytes": 588800,
+      "measured": 535213,
+      "files": 21
     },
     "visualize": {
-      "bytes": 1748992,
-      "measured": 1589695,
-      "files": 17
+      "bytes": 691200,
+      "measured": 627845,
+      "files": 30
     },
     "write": {
-      "bytes": 1800192,
-      "measured": 1636246,
-      "files": 15
+      "bytes": 901120,
+      "measured": 818412,
+      "files": 28
     },
     "plan": {
-      "bytes": 1699840,
-      "measured": 1545070,
-      "files": 13
+      "bytes": 564224,
+      "measured": 512852,
+      "files": 19
     },
     "dashboard": {
-      "bytes": 1696768,
-      "measured": 1542266,
-      "files": 13
+      "bytes": 815104,
+      "measured": 740451,
+      "files": 28
     },
     "budget": {
-      "bytes": 1674240,
-      "measured": 1521279,
-      "files": 12
+      "bytes": 571392,
+      "measured": 519335,
+      "files": 20
     },
     "settings": {
-      "bytes": 1703936,
-      "measured": 1548770,
-      "files": 14
+      "bytes": 640000,
+      "measured": 581427,
+      "files": 23
     },
     "shoot": {
-      "bytes": 1680384,
-      "measured": 1526724,
-      "files": 13
+      "bytes": 542720,
+      "measured": 493213,
+      "files": 18
     },
     "story": {
-      "bytes": 1756160,
-      "measured": 1595817,
-      "files": 17
+      "bytes": 830464,
+      "measured": 754702,
+      "files": 34
     },
     "edit": {
-      "bytes": 1685504,
-      "measured": 1531647,
-      "files": 13
+      "bytes": 549888,
+      "measured": 499392,
+      "files": 19
     },
     "deliverables": {
-      "bytes": 1683456,
-      "measured": 1530158,
-      "files": 13
+      "bytes": 586752,
+      "measured": 532738,
+      "files": 22
     },
     "screening": {
-      "bytes": 1608704,
-      "measured": 1461683,
-      "files": 11
+      "bytes": 501760,
+      "measured": 455367,
+      "files": 15
     },
     "invite": {
-      "bytes": 1658880,
-      "measured": 1508045,
-      "files": 12
+      "bytes": 495616,
+      "measured": 449691,
+      "files": 13
     },
     "admin": {
-      "bytes": 1660928,
-      "measured": 1509889,
+      "bytes": 500736,
+      "measured": 454715,
       "files": 12
     }
   }

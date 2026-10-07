@@ -738,6 +738,32 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   font-size: var(--t-micro);
   font-weight: 700;
 }
+/* A hand-made scene's number is TYPED (breakdown.js); a scene the
+   script's heading owns shows it read-only. Same badge either way, so
+   the column reads as one thing. Doubled class, because `.bd-scene
+   input` below sets the field look and would win on order alone. */
+.bd-scene input.bd-scene-no-edit {
+  display: inline-block;
+  width: 3.5rem;
+  height: 30px;
+  padding: 0 var(--s2);
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: transparent;
+  text-align: center;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+}
+.bd-scene input.bd-scene-no-edit::placeholder { color: var(--accent-on); opacity: 0.6; }
+.bd-scene input.bd-scene-no-edit:focus-visible {
+  border-color: transparent;
+  outline: var(--sk-focus-w, 2px) solid var(--brand-deep);
+  outline-offset: 2px;
+}
+/* Two scenes with one number: allowed, flagged. --warn is a fill and
+   stays on the ring; the words are in the title. */
+.bd-scene-no.is-dup { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--warn); }
 .bd-slug { flex: 1 1 14rem; min-width: 0; }
 .bd-scene input,
 .bd-scene select,

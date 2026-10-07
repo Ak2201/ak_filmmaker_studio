@@ -21,6 +21,15 @@
    every other format reads the feature's (01–24 `feature`, 25–32
    `production`), which is the blueprint the hub opens for them.
 
+   A PAGE WITH A PATH ON IT narrows further. story.html is a six-step
+   path, and every Story step's tools land on the one page, so the
+   pill used to list five steps whichever one was open. The sidecar's
+   `paths` block maps a path step to the blueprint step(s) that answer
+   it; the open step is read from the hash the page writes (`#path-N`)
+   or, failing that, from the stepper's aria-current tab. A path step
+   with no mapping for the open blueprint falls back to the tools list,
+   so the pill never disappears for want of a row in the sidecar.
+
    ONE RENDERER, ONE BLOB, ONE SAVE PATH. The fields come out of
    renderStep() in src/ui/steps.js — the same function the blueprint
    page draws them with — so every control carries the data-key the
@@ -57,6 +66,7 @@ import { h, delegate } from '../lib/dom.js';
 import STEPS from '../data/steps.feature.json';
 import PROD from '../data/steps.production.json';
 import SHORT from '../data/steps.short.json';
+import STAGES from '../data/steps.stages.json';
 import { renderStep } from './steps.js';
 import { stageInfo, resolveTool } from './step-stages.js';
 import { ROW_BUILDERS, ROW_PREFIX } from './blueprint-rows.js';
@@ -151,9 +161,42 @@ function rowsFor(fmt, page) {
   return rows;
 }
 
+/* ---- a page with a path ---------------------------------------- */
+
+const PATHS = (STAGES && STAGES.paths) || {};
+
+/** The path step that is open on this page: the hash the page writes
+ *  (`#path-N`), else the stepper's `aria-current="step"` tab. 0 when
+ *  neither says. */
+function openPathStep(spec) {
+  const hash = (location.hash || '').replace(/^#/, '');
+  if (spec.hash && hash.startsWith(spec.hash)) {
+    const n = parseInt(hash.slice(spec.hash.length), 10);
+    if (n > 0) return n;
+  }
+  const cur = document.querySelector('[aria-current="step"][data-step]');
+  const n = cur ? parseInt(cur.getAttribute('data-step'), 10) : 0;
+  return n > 0 ? n : 0;
+}
+
+/** On a page with a path, the blueprint steps the open path step
+ *  answers, in blueprint order — or [] when the page has no path, no
+ *  step is open, or the mapping names nothing this blueprint has. */
+function pathRows(fmt, page) {
+  const spec = PATHS[page];
+  if (!spec || !spec.steps) return [];
+  const n = openPathStep(spec);
+  const ids = n && spec.steps[String(n)] ? spec.steps[String(n)][fmt] : null;
+  if (!Array.isArray(ids) || !ids.length) return [];
+  const want = new Set(ids);
+  return BLUEPRINTS[fmt].steps().filter((e) => want.has(e.step.id));
+}
+
 export function stepsHere(fmt = blueprintFor(), page = pageName()) {
   const rows = rowsFor(fmt, page);
   if (!rows.length) return [];
+  const byPath = pathRows(fmt, page);
+  if (byPath.length) return byPath;
   const tab = visibleTab();
   if (tab) {
     /* A tabbed page: the steps whose tool is THIS tab, or an element

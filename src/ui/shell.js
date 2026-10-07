@@ -487,12 +487,31 @@ function buildRailStages() {
   nav.phases.forEach((p) => {
     const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href);
     if (!first) return;
-    const a = h(`a.sh-rail-item.sh-rail-stage.sh-ph-${p.hue}`, { href: first.href, title: p.blurb || p.label });
+    /* The drawer is 72px wide, so a stage's blurb and its modules'
+       plain-English purposes (navigation.json) cannot be printed beside
+       the label. They ride on the link instead: `title` for a pointer,
+       and a description for a screen reader, read from a `hidden` span
+       (aria-describedby may name a hidden element; being hidden keeps
+       it out of the text, AA and overflow checks). Derived, never typed. */
+    const desc = stageDescription(p);
+    const descId = 'shRailStageDesc-' + p.id;
+    const a = h(`a.sh-rail-item.sh-rail-stage.sh-ph-${p.hue}`, { href: first.href, title: desc, 'aria-describedby': descId });
     a.dataset.phase = p.id;
     a.append(iconSpan('sh-rail-icon', p), h('span.sh-rail-label', { text: p.label }));
-    wrap.append(a);
+    const d = h('span', { id: descId, text: desc });
+    d.hidden = true;
+    wrap.append(a, d);
   });
   return wrap;
+}
+
+/* "Idea, logline, beats. Beats & Pacing: write the story and…; …" —
+   the stage's blurb, then each BUILT module's label and purpose. */
+function stageDescription(p) {
+  const mods = (p.modules || [])
+    .filter((m) => m.status !== 'planned' && m.purpose)
+    .map((m) => m.label + ': ' + m.purpose);
+  return [p.blurb || p.label, ...mods].join('. ') + '.';
 }
 
 /* The stage strip scrolls sideways below 720px with its scrollbar

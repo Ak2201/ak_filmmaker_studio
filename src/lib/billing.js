@@ -25,6 +25,7 @@
    account and is read from the server every time.
    ============================================================ */
 import Store from './store.js';
+import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
 export { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
@@ -34,7 +35,9 @@ const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const RAZORPAY_KEY_ID = String(env.VITE_RAZORPAY_KEY_ID || '').trim();
 export const paymentsConfigured = () => !!RAZORPAY_KEY_ID;
 
-export const PLAN_ORDER = ['free', 'starter', 'indie', 'pro'];
+/* The tier ids and names are pure (src/lib/plans.js) so the build can
+   stamp them into start.html; re-exported here for every caller. */
+export { PLAN_ORDER, planName };
 export const planRank = (id) => Math.max(0, PLAN_ORDER.indexOf(id));
 
 const cloud = () => window.StudioCloud || null;
@@ -96,7 +99,6 @@ export function limitSentence(plan, limits, key) {
   if (c === null) return '';
   return `Your ${name} plan allows ${c} ${noun}${c === 1 ? '' : 's'}.`;
 }
-export const planName = (id) => ({ free: 'Free', starter: 'Starter', indie: 'Indie', pro: 'Pro' })[id] || id;
 
 /** A P0402 from the database: the plan said no. */
 export const isPlanLimit = (err) => !!err && (err.code === 'P0402' || /plan (syncs|allows)|which allows/i.test(String(err.message || '')));

@@ -68,6 +68,7 @@
    ============================================================ */
 import Store from './store.js';
 import { listScenes, updateScene, totalEighths } from './scenes.js';
+import { locationKey } from './sample-figures.js';
 
 export const LOCATIONS_KEY = 'fms_locations_v1';
 
@@ -92,12 +93,9 @@ const uid = () =>
     ? crypto.randomUUID()
     : 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 
-/** The key a recce record is filed under. Case and stray spaces must
-    not make two records for one place, so the key is normalised and
-    the DISPLAY name always comes back off the scene. */
-export function locationKey(name) {
-  return String(name || '').trim().toLowerCase();
-}
+/* locationKey is pure and lives in sample-figures.js (the build counts
+   the sample's locations with it); re-exported here for every caller. */
+export { locationKey };
 
 /** A recce record with every field present, so callers never guard. */
 export function blankRecce(patch = {}) {

@@ -155,6 +155,34 @@
   <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#buy">See plans and prices</a></p>
 </section>
 
+<!-- ============================================================
+     VOICES — testimonials and films made with the studio. Rendered BY
+     HAND from src/data/testimonials.json (the words stay in the markup,
+     like the rest of this page) and checked against it by
+     `npm run test:testimonials` (scripts/check-testimonials.mjs), which
+     fails if the two disagree. The JSON is EMPTY, so this section is
+     `hidden` and nothing in it renders. NEVER invent a testimonial, a
+     person or a film: every entry needs the person's written consent,
+     on file — see the _comment in the JSON for the steps.
+
+     One testimonial, when there is one (copy, fill, and un-hide both the
+     section and the list):
+       <li class="st-voice" data-testimonial="ID-FROM-THE-JSON">
+         <blockquote><p>Their words, verbatim.</p></blockquote>
+         <p class="st-voice-who"><strong>Name</strong>, role<span> · Film title</span></p>
+       </li>
+     One film:
+       <li class="st-film" data-film="ID-FROM-THE-JSON">
+         <strong>Film title</strong> <span>(year) · director · format</span>
+       </li>
+     ============================================================ -->
+<section class="st-sec st-voices" id="voices" aria-labelledby="voices-h" hidden data-testimonials="0" data-films="0">
+  <p class="st-eyebrow">Made with it</p>
+  <h2 class="st-h2" id="voices-h">Films and filmmakers</h2>
+  <ul class="st-voice-list" id="voiceList" hidden></ul>
+  <ul class="st-film-list" id="filmList" hidden></ul>
+</section>
+
 <section class="st-sec" id="faq" aria-labelledby="faq-h">
   <p class="st-eyebrow">Questions</p>
   <h2 class="st-h2" id="faq-h">Before you ask</h2>

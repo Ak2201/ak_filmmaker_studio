@@ -55,3 +55,21 @@
   body.sc-in-room #app { display: none !important; }
   body.sc-in-room::after { content: 'Printing is turned off for screening passes.'; display: block; padding: 2cm; }
 }
+
+/* ---- "Made with FilmMakerStudio", closing the room (footer.js) ---- */
+.sc-room > .made-with { text-align: center; margin-top: var(--s6); }
+
+/* ---- a public view (src/lib/public-view.js; build flag OFF) -------- */
+.pv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--s3); margin: 0 0 var(--s4); }
+.pv-facts div { min-width: 0; }
+.pv-facts dt { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.pv-facts dd { margin: var(--s1) 0 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.pv-scenes { margin: var(--s2) 0 var(--s4); padding-left: var(--s5); display: grid; gap: var(--s2); }
+.pv-scenes strong { color: var(--ink); }
+.pv-scenes p { margin: var(--s1) 0 0; color: var(--ink-body); font-size: var(--t-small); }
+.pv-pages { margin-left: var(--s2); font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink-muted); }
+.pv-table-wrap { overflow-x: auto; max-width: 100%; }
+.pv-calls { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.pv-calls th, .pv-calls td { text-align: left; padding: var(--s2); border-bottom: 1px solid var(--rule); color: var(--ink-body); }
+.pv-calls th { color: var(--ink-muted); font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; }
+.pv-notes { white-space: pre-wrap; color: var(--ink-body); }

@@ -1,0 +1,144 @@
+/* ============================================================
+   THE TOUR AND THE FIRST-WEEK CHECKLIST (src/ui/tour.js)
+   ------------------------------------------------------------
+   Tokens only; shapes from --sk-*; every transform multiplied by
+   --motion. The step card is an IN-PAGE surface (paper-raised under
+   page ink), not the floating --panel family: it sits beside the
+   content it explains and has to be read at length, at AA, in both
+   themes. Text is --ink / --ink-body / --ink-muted; the brand is used
+   as a FILL (the ring, the meter) and as text only through --brand-deep.
+   ============================================================ */
+
+/* ---- the anchor's ring ------------------------------------------- */
+[data-tour-on] {
+  outline: 3px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: var(--sk-radius, var(--radius));
+  scroll-margin-top: var(--scroll-offset, 0px);
+}
+
+/* ---- the step card ------------------------------------------------ */
+.tour-pop,
+.tour-chip {
+  position: fixed;
+  z-index: 900;
+  right: var(--s4);
+  bottom: calc(var(--s4) + var(--mab-h, 0px));
+  box-sizing: border-box;
+  max-width: min(26rem, calc(100vw - 2 * var(--s4)));
+  background: var(--paper-raised);
+  color: var(--ink-body);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--brand);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow-hover, 0 0 0 1px var(--rule));
+  animation: tour-in 180ms ease-out both;
+}
+.tour-pop {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4) var(--s5);
+}
+.tour-pop:focus { outline: none; }
+.tour-pop:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--brand-deep); outline-offset: 2px; }
+@keyframes tour-in {
+  from { opacity: 0; transform: translateY(calc(12px * var(--motion, 1))); }
+  to   { opacity: 1; transform: none; }
+}
+.tour-count {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.tour-title {
+  margin: 0;
+  font-size: var(--t-lg);
+  line-height: 1.25;
+  color: var(--ink);
+}
+.tour-body { margin: 0; line-height: var(--lh-body); color: var(--ink-body); }
+.tour-hint { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.tour-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.tour-actions .btn { min-height: 44px; }
+
+/* ---- the chip (a running tour, off its step's page) --------------- */
+.tour-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+}
+.tour-chip-text { flex: 1 1 12rem; min-width: 0; font-size: var(--t-small); color: var(--ink); font-weight: 600; }
+
+@media (max-width: 720px) {
+  .tour-pop,
+  .tour-chip {
+    left: var(--s3);
+    right: var(--s3);
+    max-width: none;
+    bottom: calc(var(--s3) + var(--mab-h, 0px));
+  }
+  .tour-pop { padding: var(--s4); max-height: 60vh; overflow-y: auto; }
+}
+
+/* ---- the hub's first-week checklist -------------------------------- */
+.tw-meter {
+  height: 6px;
+  margin: 0 0 var(--s4);
+  background: var(--paper-sunk);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.tw-fill { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
+.tw-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--s2) var(--s4);
+}
+.tw-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.tw-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 2px solid var(--ink-muted);
+  border-radius: var(--radius-pill);
+  font-size: var(--t-small);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--paper);
+}
+.tw-item.is-done .tw-mark { background: var(--ok-wash); border-color: var(--ok-deep); color: var(--ok-deep); }
+.tw-link {
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.tw-link:hover { text-decoration-color: currentColor; }
+.tw-item.is-done .tw-link { color: var(--ink-muted); }
+.tw-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
+
+@media print {
+  .tour-pop, .tour-chip, .tw-section { display: none !important; }
+  [data-tour-on] { outline: none !important; }
+}

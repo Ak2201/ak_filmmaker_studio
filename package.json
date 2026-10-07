@@ -26,6 +26,7 @@
     "test:sync": "node scripts/test-sync.mjs",
     "test:stripboard": "node scripts/test-stripboard.mjs",
     "test:import": "node scripts/test-import.mjs",
+    "test:testimonials": "node scripts/check-testimonials.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",
@@ -34,6 +35,7 @@
     "prove:extension": "node scripts/prove-extension.mjs",
     "prove:billing": "node scripts/prove-billing.mjs",
     "prove:sw": "node scripts/prove-sw.mjs",
+    "prove:growth": "node scripts/prove-growth.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },

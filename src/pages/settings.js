@@ -100,6 +100,9 @@ import { accountSection } from '../ui/account-panel.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
+/* The branding switch and the WhatsApp help line under the plan cards
+   (footer.js owns both; null when neither applies to this build/plan). */
+import { planExtras } from '../ui/footer.js';
 
 const app = document.getElementById('app');
 
@@ -146,6 +149,8 @@ function renderPlan() {
     } else {
       sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
     }
+    const extras = planExtras(null);
+    if (extras) sec.append(extras);
     return sec;
   }
   if (!c.isConfigured() || !billing.plans) return null;
@@ -164,6 +169,8 @@ function renderPlan() {
     onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => refreshBilling()),
     rerender: () => { if (!busy) render(); }
   }));
+  const extras = planExtras(st);
+  if (extras) sec.append(extras);
   return sec;
 }
 

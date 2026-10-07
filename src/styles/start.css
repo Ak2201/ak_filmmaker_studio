@@ -325,3 +325,15 @@
   .st-sample, .st-close { padding: var(--s5); }
   .st-btn { width: 100%; }
 }
+
+/* ---- #voices: testimonials and films (src/data/testimonials.json) --
+   Hidden while the JSON is empty; these rules wait for the first entry
+   given with consent. Fixed tokens only, like the rest of this sheet. */
+.st-voice-list,
+.st-film-list { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; gap: var(--s4); }
+.st-voice-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.st-voice blockquote { margin: 0; }
+.st-voice blockquote p { margin: 0; font-size: var(--t-lg); line-height: var(--lh-body); color: var(--ink); }
+.st-voice-who { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-film { color: var(--ink-body); }
+.st-film span { color: var(--ink-muted); }

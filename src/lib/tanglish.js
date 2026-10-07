@@ -30,8 +30,8 @@
    `--f-script` and open item 8), so nothing here ever turns a line the
    writer typed in Roman letters into Tamil script behind their back.
 
-   One thing the WRITER may choose, a keystroke at a time and limited
-   to the speech:
+   Two things the WRITER may choose, each a keystroke or a click and
+   each limited to the speech:
      - Tamil typing (src/ui/tamil-type.js): an opt-in mode in which a
        romanised word typed into a dialogue or parenthetical line is
        offered in Tamil script and committed with Space or Return. That
@@ -39,6 +39,9 @@
        dialogue under English slugs and action — which is the register
        whose page count stays exact, because the structural elements
        (headings, action, cues) stay on the Latin grid.
+     - "Keep as Tamil take" (src/ui/alt-lines.js): the Tamil rendering
+       stored as an ALTERNATE take of a dialogue line. The line in use
+       stays exactly what the writer typed.
    Action, headings, cues and transitions are never offered Tamil.
    ============================================================ */
 
@@ -231,4 +234,7 @@ export function toTamil(text) {
   return String(text ?? '').replace(WORD, (w) => wordToTamil(w));
 }
 
-export default { wordIndex, suggest, wordBefore, wordToTamil, toTamil, tamilCandidates };
+/** True when `text` has a Latin letter a Tamil rendering would change. */
+export const hasLatin = (text) => /[A-Za-z]/.test(String(text ?? ''));
+
+export default { wordIndex, suggest, wordBefore, wordToTamil, toTamil, tamilCandidates, hasLatin };

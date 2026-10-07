@@ -62,10 +62,13 @@ eq(T.tamilCandidates('nee')[0], 'நீ', 'an initial n stays ந and is not fli
 eq(T.tamilCandidates('').length, 0, 'no word, no candidates');
 eq(T.tamilCandidates('naan2').length, 0, 'only letters are a word');
 ok(T.tamilCandidates('kalyanam', 2).length <= 2, 'max is honoured');
+ok(T.hasLatin('Naan varen') && !T.hasLatin('நான் வரேன்') && !T.hasLatin(''), 'hasLatin');
 {
   const src = fs.readFileSync(new URL('../src/ui/tamil-type.js', import.meta.url), 'utf8');
   ok(/ROW_TYPES = \['t-dialogue', 't-paren'\]/.test(src), 'Tamil typing applies to dialogue and parentheticals only');
   ok(!/localStorage\.setItem/.test(src), 'tamil-type.js writes its pref only through format-guide writePrefs');
+  const alt = fs.readFileSync(new URL('../src/ui/alt-lines.js', import.meta.url), 'utf8');
+  ok(/takes\.push\(tamil\)/.test(alt) && !/el\.text = toTamil/.test(alt), 'Keep as Tamil take adds a take and never replaces the line in use');
 }
 
 /* ---- the word index ---- */

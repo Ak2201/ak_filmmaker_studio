@@ -1247,3 +1247,15 @@ body.wr-dropping .bd-empty {
   .tt-opt { min-height: 44px; align-items: center; }
 }
 
+/* ---- "Keep as Tamil take", under the preview ---------------- */
+.wx-tamil-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+  min-width: 0;
+}
+.wx-tamil-foot > .wx-note { flex: 1 1 14rem; min-width: 0; }
+.wx-keep-ta[hidden] { display: none; }
+

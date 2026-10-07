@@ -36,14 +36,18 @@
    written into the line by itself: the page count is arithmetic on a
    fixed-width grid, and the line in use is the writer's to choose.
 
-   THE ONE WAY THE WRITER MAY TAKE THE TAMIL, and it is their own act:
+   TWO WAYS THE WRITER MAY TAKE THE TAMIL, both their own act:
+     - "Keep as Tamil take" stores the preview's rendering as one more
+       ALTERNATE take of this line (`alts`, above). The line in use is
+       untouched, and the Tamil take is chosen the way any take is,
+       with "Use this take". Dialogue only, because this strip is.
      - "Type Tamil" (Alt/⌥ T) is src/ui/tamil-type.js: an opt-in mode
        where each Roman word typed in a dialogue or parenthetical line
        is offered in Tamil script and committed with Space or Return.
    ============================================================ */
 import { h } from '../lib/dom.js';
 import StudioUI from './chrome.js';
-import { wordIndex, suggest, wordBefore, toTamil } from '../lib/tanglish.js';
+import { wordIndex, suggest, wordBefore, toTamil, hasLatin } from '../lib/tanglish.js';
 import { mountTamilType, isTamilTyping, setTamilTyping, TAMIL_EVENT } from './tamil-type.js';
 
 let getDoc = () => null;
@@ -125,9 +129,18 @@ function buildStrip(row, el) {
 
 function tamilPreview(text) {
   const t = String(text || '').trim();
+  const keep = h('button.btn.wx-mini.wx-keep-ta', {
+    type: 'button', 'data-action': 'tamil-keep',
+    title: 'Store this Tamil rendering as another take of the line. The line in use does not change.',
+    text: 'Keep as Tamil take'
+  });
+  keep.hidden = !hasLatin(t);
   return h('div.wx-tamil', {}, [
     h('p.wx-tamil-line', { lang: 'ta', text: t ? toTamil(t) : '—' }),
-    h('p.wx-note', { text: 'Approximate preview from the romanised line. It is not saved; the line in use stays as you typed it.' })
+    h('div.wx-tamil-foot', {}, [
+      h('p.wx-note', { text: 'Approximate preview from the romanised line. It is not saved unless you keep it as a take; the line in use stays as you typed it.' }),
+      keep
+    ])
   ]);
 }
 
@@ -294,6 +307,23 @@ function onClick(e) {
     if (ta) ta.focus();
     return;
   }
+  if (act === 'tamil-keep') {
+    let kept = false;
+    withRow(btn, (el) => {
+      const tamil = toTamil(String(el.text || '').trim());
+      if (!tamil || !hasLatin(el.text)) return;
+      const takes = takesOf(el);
+      if (takes.includes(tamil) || tamil === el.text) return;
+      takes.push(tamil);
+      setTakes(el, takes);
+      kept = true;
+    });
+    refocus(row, { dataset: { action: 'tamil-keep' } });
+    StudioUI.toast(kept
+      ? 'Kept as a Tamil take. The line in use is unchanged — open Alternates to use it.'
+      : 'That Tamil take is already kept.', { type: 'info' });
+    return;
+  }
   if (act === 'alts-toggle') {
     openFor = openFor === row.dataset.el ? null : row.dataset.el;
     showStrip(row);
@@ -412,6 +442,8 @@ export function mountAltLines(opts = {}) {
     if (!strip) return;
     const prev = strip.querySelector('.wx-tamil-line');
     if (prev) prev.textContent = ta.value.trim() ? toTamil(ta.value.trim()) : '—';
+    const keep = strip.querySelector('.wx-keep-ta');
+    if (keep) keep.hidden = !hasLatin(ta.value);
     updateSuggestion(ta);
   });
   document.addEventListener('keydown', (e) => {

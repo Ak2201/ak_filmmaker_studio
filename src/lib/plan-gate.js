@@ -166,22 +166,64 @@ export function pageLocked() {
   return ms.length > 0 && ms.every((m) => !allowed(m.id));
 }
 
-/** The card that says why — shared by the page lock and the tab lock. */
-function lockCard(names) {
-  return h('div.pg-lock-card', {}, [
+/* ---- which plan has it ------------------------------------------
+   "Included in the Indie plan": the LOWEST plan whose `features` map
+   allows every module on the card, read from the plans table through
+   Billing.listPlans() — the same rows the cards on settings.html#plan
+   draw, so a console edit is live here on the next load. No price is
+   typed anywhere in this file; the plans page quotes those. Until the
+   table has answered, or if it cannot (signed out, section 18 not run,
+   offline), the sentence is the honest general one. */
+const PAID_FALLBACK = 'Included in the paid plans.';
+async function lowestPlanWith(ids) {
+  const plans = await Billing.listPlans();
+  const open = plans
+    .filter((p) => p && p.active !== false && p.id !== 'free' && p.id !== plan)
+    .sort((a, b) => (a.sort ?? Billing.planRank(a.id)) - (b.sort ?? Billing.planRank(b.id)));
+  return open.find((p) => ids.every((id) => !p.features || p.features[id] !== false)) || null;
+}
+function includedLine(ids) {
+  const line = h('p.pg-lock-plan', { text: PAID_FALLBACK });
+  lowestPlanWith(ids).then((p) => {
+    if (p) line.textContent = 'Included in the ' + (p.name || Billing.planName(p.id)) + ' plan.';
+  }).catch(() => { /* the fallback stands */ });
+  return line;
+}
+
+/** The card that says why — shared by the page lock and the tab lock.
+ *  `mods` are the locked modules: each is named with its purpose, so
+ *  the panel sells what is behind the door rather than only naming
+ *  the lock. */
+function lockCard(mods) {
+  const list = (mods || []).filter(Boolean);
+  const names = list.map((m) => m.label).join(' · ');
+  const card = h('div.pg-lock-card', {}, [
     h('p.bd-eyebrow', { text: 'Your plan' }),
-    h('h2.pg-lock-h', { text: 'Not on the ' + (planName || 'current') + ' plan.' }),
+    h('h2.pg-lock-h', { text: 'Not on the ' + (planName || 'current') + ' plan.' })
+  ]);
+  if (list.length) {
+    const ul = h('ul.pg-lock-mods', { 'aria-label': 'What this part of the studio does' });
+    list.forEach((m) => {
+      const li = h('li.pg-lock-mod');
+      li.append(h('span.pg-lock-mod-label', { text: m.label }));
+      if (m.purpose) li.append(h('span.pg-lock-mod-purpose', { text: m.purpose }));
+      ul.append(li);
+    });
+    card.append(ul);
+  }
+  card.append(
     h('p.pg-lock-p', { text: (names ? names + ' is' : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
+    includedLine(list.map((m) => m.id)),
     h('div.pg-lock-actions', {}, [
       h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
       h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })
     ])
-  ]);
+  );
+  return card;
 }
 
 function lockPanel() {
-  const names = modulesHere().map((m) => m.label).join(' · ');
-  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(names)]);
+  return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(modulesHere())]);
 }
 
 /** Shelf modules whose tab is on THIS page and in the document. */
@@ -209,7 +251,7 @@ export function lockTabs() {
     let card = sec.querySelector(':scope > .pg-lock-inline');
     sec.toggleAttribute('data-tab-lock', locked);
     if (locked && !card) {
-      card = h('div.pg-lock-inline', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(m.label)]);
+      card = h('div.pg-lock-inline', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard([m])]);
       sec.prepend(card);
     }
     if (!locked && card) card.remove();

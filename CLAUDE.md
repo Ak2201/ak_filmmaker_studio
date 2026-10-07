@@ -38,6 +38,8 @@ npm run build     # static output in dist/ — the site gate ON
 npm run build:open  # the same with VITE_SITE_GATE=off; what verify needs
 npm run preview   # serve the build (exercises the real service worker)
 npm run verify    # ← the important one, see below; refuses a gated dist
+npm run verify -- --budget  # recapture scripts/budget.json (first-paint bytes, 110%) — deliberate, like baseline
+npm run prove:sw  # the service worker against a cleanUrls host (the redirected-response trap)
 npm run test:pdf  # PDF text extraction, in Node, no browser (~1s)
 npm run test:story       # story model + .docx reader, in Node (open item 11)
 npm run test:screenplay  # screen time, cast matrix, auto-tag, 120pp < 1200ms
@@ -1194,5 +1196,14 @@ has been executed. Ask the database, not the file.
 
 - Semantic colours (ok / warn / danger) are never one of the three volume hues.
 - Supabase and `pptxgenjs` are lazy chunks; they must stay out of first paint.
+  This is TRUE and enforced: `cloud.js` `boot()` calls `ensureClient()` only
+  when there is a session to restore — an `sb-*-auth-token` key in
+  localStorage (matched by shape, read without the SDK), an OAuth redirect
+  in the URL, or the extension — and otherwise only records the config. A
+  signed-out first load fetches no `supabase-*` chunk; every later need (the
+  sign-in click, the invite-code check, a share link, billing, Drive) calls
+  `ensureClient()` itself, so a new caller must too, never assume `supabase`
+  is non-null. `scripts/budget.json` fails a first paint that fetches one of
+  the lazy chunks by name; `knownLazyFetches` is empty now.
 - `legacy/` is committed on purpose — now as the historical record and as the
   input `npm run extract` parses, not as the verification oracle.

@@ -1150,3 +1150,33 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     replace the placeholder host, then think about ads. Suites at this
     point: `test:schema` 133, `test:billing` 50, `prove:billing` 93,
     `test:stripboard` 66.
+
+    **After the merge (integration pass, 7 Oct 2026).** The six branches
+    were verified TOGETHER for the first time: every `test:*`, `prove:storage`,
+    `prove:drive` green on the combined tree, then the gated proofs
+    (`prove:gate` 108, `prove:billing` 93, `prove:extension` 30,
+    `prove:sw` 24). What the combination turned up:
+    - *Supabase was in first paint after all.* The new byte budget found
+      that `boot()` called `ensureClient()` unconditionally, so the ~98KB
+      SDK was fetched on 19 of 21 pages for every signed-out visitor.
+      `boot()` now loads it only for a stored `sb-*-auth-token`, an OAuth
+      redirect or the extension; the `knownLazyFetches` row is deleted. A
+      Playwright response recorder shows no `supabase-*` chunk on a
+      signed-out index, shoot or breakdown, and the chunk still fetched
+      with a stored session present. The stale-account clear (`setAccount(null)`
+      for an account id with no session) still runs when a config exists.
+    - *The budget was recaptured.* It had been set at 110% of the
+      PRE-split sizes, which would not have caught a regression; it is now
+      110% of the split build and records its date and commit.
+    - *The fragment sweep earned its keep*: it found `dashboard#readiness`
+      (the id existed only on a populated branch) and `feature#phase-4`
+      (the band grew after the jump and left the heading behind the chrome;
+      `relandFragment()` in `shell.js` re-scrolls once, instantly, so
+      reduced motion is respected; reviewed here, and a malformed `%`
+      escape in the hash can no longer throw out of `measureChrome()`).
+    - *`prove:sw` was proven to bite* by disabling `clean()` in `sw.js`:
+      the proof failed on the redirected precache entries, and passes with
+      it restored.
+    - *Re-baselined.* Only the navigation pass's purpose-line words and
+      settings' `closing`/`may` moved; zero `data-key` movement on all 21
+      pages (720 keys).

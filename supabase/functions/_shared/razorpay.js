@@ -94,3 +94,38 @@ export function parseRupees(s) {
 
 /** A Razorpay receipt id: <= 40 chars, their limit. */
 export const receiptFor = (paymentRowId) => ('fms_' + String(paymentRowId).replace(/-/g, '')).slice(0, 40);
+
+/* ---- promo codes (schema section 20) --------------------------------
+   The DATABASE decides what a code is worth — quote_order() — and these
+   two helpers exist so the client and the test fixtures spell things
+   the same way it does. promoPrice() is a copy of public.promo_price()
+   for the fake Supabase and the Node tests; nothing in the browser
+   computes a price from it. */
+
+/** What the buyer typed, as the database stores a code: upper-case, no
+ *  whitespace. '' when nothing is left. */
+export const normalisePromo = (s) => String(s ?? '').replace(/\s+/g, '').toUpperCase();
+
+/** Looks like a code at all? Same pattern as the table's CHECK. */
+export const isPromoShaped = (s) => /^[A-Z0-9][A-Z0-9-]{2,31}$/.test(normalisePromo(s));
+
+/** Razorpay's minimum order, in paise. */
+export const MIN_ORDER_PAISE = 100;
+
+/** The list price less a percentage (floored) or a flat amount; never
+ *  below MIN_ORDER_PAISE and never above the list. Mirrors
+ *  public.promo_price() exactly, including integer division. */
+export function promoPrice(listPaise, percentOff, amountOffPaise) {
+  if (!Number.isInteger(listPaise)) return null;
+  const off = Number.isInteger(percentOff) ? Math.floor((listPaise * percentOff) / 100)
+            : Number.isInteger(amountOffPaise) ? amountOffPaise : 0;
+  return Math.min(listPaise, Math.max(MIN_ORDER_PAISE, listPaise - off));
+}
+
+/** The console's one-line description of a code's discount. */
+export function promoLabel(code) {
+  if (!code) return '';
+  if (Number.isInteger(code.percent_off)) return `${code.percent_off}% off`;
+  if (Number.isInteger(code.amount_off_paise)) return `${fmtPaise(code.amount_off_paise)} off`;
+  return '';
+}

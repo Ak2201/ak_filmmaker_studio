@@ -25,9 +25,9 @@
    account and is read from the server every time.
    ============================================================ */
 import Store from './store.js';
-import { fmtPaise, priceFor, parseRupees, PERIODS } from '../../supabase/functions/_shared/razorpay.js';
+import { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
-export { fmtPaise, priceFor, parseRupees, PERIODS };
+export { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 /** Public. The secret never leaves the edge functions. */
@@ -63,6 +63,21 @@ export const refreshPlans = () => listPlans({ fresh: true });
 export async function status() {
   const sb = await client();
   const { data, error } = await sb.rpc('billing_status');
+  if (error) throw error;
+  return data || null;
+}
+
+/**
+ * quote_order() (schema section 20): what `planId` costs with `code`.
+ * Resolves to { ok, amount_paise, list_paise, discount_paise, code,
+ * reason, sentence }. A refused code is NOT an error — ok is false and
+ * `sentence` says why — so the card can print it. The number here is
+ * for display; the order re-quotes server-side and the client never
+ * sends a price.
+ */
+export async function quote(planId, code) {
+  const sb = await client();
+  const { data, error } = await sb.rpc('quote_order', { p_plan: planId, p_code: normalisePromo(code) || null });
   if (error) throw error;
   return data || null;
 }
@@ -124,13 +139,15 @@ async function invoke(name, body) {
  * Buy `planId`, for good (schema section 18: one payment, no period).
  * Resolves to { plan, account_id } once the server has verified and
  * activated; rejects with code 'dismissed' if the buyer closed
- * Checkout. `onStatus(text)` narrates for the UI.
+ * Checkout. `onStatus(text)` narrates for the UI. `code` is a promo
+ * code (section 20): the server re-quotes it and a refused one comes
+ * back as an edge error with the sentence to show.
  */
-export async function buy(planId, period = 'lifetime', { accountId = null, onStatus = () => {} } = {}) {
+export async function buy(planId, period = 'lifetime', { accountId = null, onStatus = () => {}, code = null } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
   if (!PERIODS.includes(period)) throw new BillingError('Plans are bought once, for good.', 'period');
   onStatus('Preparing your order…');
-  const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId }), loadCheckout()]);
+  const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null }), loadCheckout()]);
   if (!order || !order.order_id) throw new BillingError('No order came back.', 'edge');
 
   onStatus('Opening the payment form…');
@@ -142,9 +159,9 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
       currency: order.currency || 'INR',
       order_id: order.order_id,
       name: 'Filmmaker Studio',
-      description: `${order.plan_name || planName(planId)} · full access, one payment`,
+      description: `${order.plan_name || planName(planId)} · full access, one payment${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
-      notes: { plan: planId, period },
+      notes: { plan: planId, period, promo_code: order.promo_code || '' },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),
       handler: (resp) => { settled = true; resolve(resp); },
       modal: { ondismiss: () => { if (!settled) reject(new BillingError('Payment cancelled. Nothing was charged.', 'dismissed')); } }
@@ -204,7 +221,23 @@ export const admin = {
     const { data, error } = await sb.rpc('admin_billing_overview');
     if (error) throw error;
     return data || {};
+  },
+  /* Promo codes (section 20). The table is closed to the client; these
+     two RPCs are the only way to it, and both re-check the admin role. */
+  async listPromoCodes() {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_list_promo_codes');
+    if (error) throw error;
+    return data || [];
+  },
+  /** Create or patch one code. `patch` keys: percent_off, amount_off_paise,
+   *  plan_ids (array or null), max_uses, valid_from, valid_until, active, note. */
+  async setPromoCode(code, patch) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_promo_code', { p_code: normalisePromo(code), p_patch: patch });
+    if (error) throw error;
+    return data;
   }
 };
 
-export default { listPlans, refreshPlans, status, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS };
+export default { listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };

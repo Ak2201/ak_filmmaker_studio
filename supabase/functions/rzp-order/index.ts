@@ -6,11 +6,14 @@
 
      1. who is asking — the caller's Supabase JWT, verified by asking
         Auth for the user; the body is trusted for nothing but the plan
-        id, the period and (optionally) which organisation they own;
+        id, the period, a promo CODE (schema section 20) and
+        (optionally) which organisation they own;
      2. create_pending_payment() — the PRICE COMES FROM THE DATABASE,
-        never from the request, and the row exists before Razorpay is
-        called, so a crash between the two leaves a 'created' row and
-        never a charge without a record;
+        never from the request: the code is re-quoted there, the
+        discounted amount is what the row records and what Razorpay is
+        asked for, and the row exists before Razorpay is called, so a
+        crash between the two leaves a 'created' row and never a
+        charge without a record;
      3. POST /v1/orders at Razorpay with the key secret, then
         attach_razorpay_order(). The browser gets back only what
         Checkout needs: order id, amount, currency, the PUBLIC key id.
@@ -21,7 +24,7 @@
    platform. docs/BILLING.md is the runbook.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { basicAuth, PERIODS, receiptFor } from '../_shared/razorpay.js';
+import { basicAuth, PERIODS, receiptFor, normalisePromo } from '../_shared/razorpay.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -49,16 +52,18 @@ Deno.serve(async (req) => {
   if (whoErr || !who?.user) return json(401, { error: 'Sign in first.' });
   const user = who.user;
 
-  let body: { plan?: string; period?: string; account_id?: string } = {};
+  let body: { plan?: string; period?: string; account_id?: string; code?: string } = {};
   try { body = await req.json(); } catch { /* empty body */ }
   const plan = String(body.plan ?? '');
   const period = String(body.period ?? 'lifetime');
+  const code = normalisePromo(body.code) || null;
   if (!PERIODS.includes(period)) return json(400, { error: 'Plans are bought once, for good; there is no monthly or yearly period.' });
 
-  // 2. the intent, priced by the database
+  // 2. the intent, priced by the database (the code re-quoted there; a
+  //    refused code is a 22023 whose message is the sentence to show)
   const svc = createClient(url, serviceKey);
   const { data: pend, error: pendErr } = await svc.rpc('create_pending_payment', {
-    p_user: user.id, p_plan: plan, p_period: period, p_account: body.account_id ?? null
+    p_user: user.id, p_plan: plan, p_period: period, p_account: body.account_id ?? null, p_code: code
   });
   if (pendErr) return json(pendErr.code === '42501' ? 403 : 400, { error: pendErr.message });
   const row = Array.isArray(pend) ? pend[0] : pend;
@@ -70,7 +75,7 @@ Deno.serve(async (req) => {
     headers: { Authorization: basicAuth(keyId, keySecret), 'Content-Type': 'application/json' },
     body: JSON.stringify({
       amount: row.amount_paise, currency: row.currency, receipt: receiptFor(row.payment_id),
-      notes: { payment_id: row.payment_id, user_id: user.id, plan, period }
+      notes: { payment_id: row.payment_id, user_id: user.id, plan, period, promo_code: row.promo_code ?? '' }
     })
   });
   const order = await r.json().catch(() => null);
@@ -83,6 +88,7 @@ Deno.serve(async (req) => {
   return json(200, {
     order_id: order.id, amount: order.amount, currency: order.currency, key_id: keyId,
     plan, period, plan_name: row.plan_name, payment_id: row.payment_id,
+    list_paise: row.list_paise ?? row.amount_paise, discount_paise: row.discount_paise ?? 0, promo_code: row.promo_code ?? null,
     prefill: { email: user.email ?? '', name: user.user_metadata?.full_name ?? '' }
   });
 });

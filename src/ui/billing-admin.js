@@ -19,13 +19,20 @@
    once and kept for good. There are no days to type, no "until", no
    lapsing column; the ledger's Access column says "for good".
 
+   PROMO CODES (schema section 20): a fourth block between the tiers
+   and the grant — every code with its discount, its plans, uses
+   against max, its window and its state, a DEACTIVATE / REACTIVATE per
+   row, and a form to add one. Writes go through admin_set_promo_code()
+   which re-checks the admin role; the table itself is closed to the
+   browser, so the list comes from admin_list_promo_codes().
+
    No inline handlers; delegate() on [data-ba-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
+import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
 import '../styles/plans.css';
 
-const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '' };
+const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '' };
 let rerender = () => {};
 
 const LIMIT_FIELDS = [
@@ -38,6 +45,8 @@ async function load() {
   try {
     const [plans, payments, overview] = await Promise.all([Billing.refreshPlans(), Billing.admin.listPayments(200), Billing.admin.overview()]);
     S.plans = plans; S.payments = payments; S.overview = overview || {};
+    // Section 20 may not have run yet; the rest of the console must not wait on it.
+    try { S.promos = await Billing.admin.listPromoCodes(); } catch (e) { S.promos = null; }
     // The grant form needs people to pick from; the gate's console already
     // lists members, so borrow that list rather than add a fourth RPC.
     try {
@@ -112,6 +121,50 @@ export function billingAdminSection(section, st) {
   sec.append(list);
   sec.append(h('p.gt-meta', { text: 'A blank limit means unlimited. The price is paid once and buys the tier for good; it is in rupees, stored to the paisa, and the free tier has none by rule.' }));
 
+  // Promo codes (section 20)
+  sec.append(h('h3.gt-h3', { text: `Promo codes${S.promos ? ` (${S.promos.length})` : ''}` }));
+  if (S.promos === null) sec.append(h('p.gt-meta', { text: 'Promo codes are not available on this database yet (schema section 20 has not run).' }));
+  else {
+    if (!S.promos.length) sec.append(h('p.gt-meta', { text: 'No codes yet.' }));
+    else {
+      const table = h('table.gt-table');
+      table.append(h('thead', {}, [h('tr', {}, ['Code', 'Discount', 'Plans', 'Used', 'Valid', 'State', 'Note', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+      const tb = h('tbody');
+      for (const c of S.promos) {
+        const live = c.active && !(c.valid_until && Date.parse(c.valid_until) <= Date.now()) && !(Number.isInteger(c.max_uses) && c.uses >= c.max_uses);
+        tb.append(h('tr' + (live ? '' : '.is-off'), { 'data-promo': c.code }, [
+          h('td', {}, [h('code.gt-codeval', { text: c.code })]),
+          h('td', { text: promoLabel(c) }),
+          h('td', { text: c.plan_ids && c.plan_ids.length ? c.plan_ids.map(planName).join(', ') : 'every plan' }),
+          h('td', { text: `${c.uses}${Number.isInteger(c.max_uses) ? ' of ' + c.max_uses : ''}` }),
+          h('td', { text: (c.valid_from ? 'from ' + fmtDate(c.valid_from) + ' ' : '') + (c.valid_until ? 'until ' + fmtDate(c.valid_until) : c.valid_from ? '' : 'no end') }),
+          h('td', { text: !c.active ? 'inactive' : c.valid_until && Date.parse(c.valid_until) <= Date.now() ? 'expired' : Number.isInteger(c.max_uses) && c.uses >= c.max_uses ? 'used up' : 'live' }),
+          h('td', { text: c.note || '' }),
+          h('td', {}, [h('button.btn', { type: 'button', 'data-ba-action': 'promo-toggle', 'data-code': c.code, 'data-active': c.active ? 'true' : 'false', text: c.active ? 'DEACTIVATE' : 'REACTIVATE' })])
+        ]));
+      }
+      table.append(tb);
+      sec.append(h('div.gt-scroll', {}, [table]));
+    }
+    const pf = h('form.ba-promo', { 'data-ba-form': 'promo', autocomplete: 'off' });
+    pf.append(h('strong', { text: 'Add a code' }));
+    const kind = h('select', { id: 'baPromoKind', name: 'kind' }, [h('option', { value: 'percent', text: '% off' }), h('option', { value: 'amount', text: '₹ off' })]);
+    pf.append(h('div.ba-fields', {}, [
+      h('div.ba-field', {}, [h('label', { for: 'baPromoCode', text: 'Code' }), h('input', { id: 'baPromoCode', name: 'code', type: 'text', maxlength: 32, autocapitalize: 'characters', spellcheck: 'false', placeholder: 'LAUNCH10', required: true })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoKind', text: 'Discount' }), kind]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', { id: 'baPromoValue', name: 'value', type: 'text', inputmode: 'decimal', placeholder: '10', required: true })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', { id: 'baPromoMax', name: 'max_uses', type: 'number', min: 1, step: 1, placeholder: 'unlimited' })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoUntil', text: 'Valid until' }), h('input', { id: 'baPromoUntil', name: 'valid_until', type: 'date' })]),
+      h('div.ba-field.is-wide', {}, [h('label', { for: 'baPromoNote', text: 'Note (who it is for, where it was printed)' }), h('input', { id: 'baPromoNote', name: 'note', type: 'text', maxlength: 300 })])
+    ]));
+    const paid = S.plans.filter((p) => p.id !== 'free');
+    pf.append(h('div.ba-promo-plans', {}, [h('span.gt-meta', { text: 'Applies to:' }), ...paid.map((p) => h('label', {}, [
+      h('input', { type: 'checkbox', name: 'plan', value: p.id, checked: true }), h('span', { text: p.name || planName(p.id) })]))]));
+    pf.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'ADD CODE' }), S.promoMade ? h('span.ba-saved', { role: 'status', text: S.promoMade }) : null].filter(Boolean)));
+    pf.append(h('p.gt-meta', { text: 'A code is counted as used when a payment with it is confirmed, not when a checkout is opened. The discounted price never drops below ₹1, which is Razorpay’s minimum — a 100% code costs the buyer ₹1; to give a plan away, use a grant below. Codes are checked by the server on every quote and every order.' }));
+    sec.append(pf);
+  }
+
   // Grant
   sec.append(h('h3.gt-h3', { text: 'Grant a plan' }));
   const g = h('form.ba-grant', { 'data-ba-form': 'grant' });
@@ -131,8 +184,8 @@ export function billingAdminSection(section, st) {
   sec.append(h('h3.gt-h3', { text: `Payments (${S.payments.length})` }));
   if (!S.payments.length) sec.append(h('p.gt-meta', { text: 'No payments yet.' }));
   else {
-    const table = h('table.gt-table');
-    table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Status', 'Razorpay'].map((t) => h('th', { scope: 'col', text: t })))]));
+    const table = h('table.gt-table.ba-ledger');
+    table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Code', 'Status', 'Razorpay'].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const p of S.payments) {
       tb.append(h('tr', {}, [
@@ -141,6 +194,7 @@ export function billingAdminSection(section, st) {
         h('td', { text: planName(p.plan_id) }),
         h('td', { text: p.period === 'lifetime' || p.period === 'grant' ? 'for good' : p.period + (p.ends_at ? ' · ends ' + fmtDate(p.ends_at) : '') }),
         h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) }),
+        h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
         h('td', { text: p.status + (p.note ? ' — ' + p.note : '') }),
         h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })])
       ]));
@@ -193,6 +247,46 @@ delegate(document, 'submit', '[data-ba-form="grant"]', async (e, form) => {
     S.granted = 'Granted — full access, for good.';
     await load();
   } catch (err) { toast(err.message || 'The grant did not go through.', 'error'); }
+});
+
+delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
+  e.preventDefault();
+  const f = new FormData(form);
+  const code = normalisePromo(f.get('code'));
+  if (!isPromoShaped(code)) { toast('A code is 3 to 32 letters, digits or dashes.', 'error'); return; }
+  const patch = { note: String(f.get('note') || '').trim() || null };
+  const raw = String(f.get('value') || '').trim();
+  if (f.get('kind') === 'percent') {
+    const pct = parseInt(raw, 10);
+    if (!(pct >= 1 && pct <= 100) || String(pct) !== raw) { toast(`"${raw}" is not a whole percentage from 1 to 100.`, 'error'); return; }
+    patch.percent_off = pct;
+  } else {
+    const paise = parseRupees(raw);
+    if (!paise) { toast(`"${raw}" is not a rupee amount.`, 'error'); return; }
+    patch.amount_off_paise = paise;
+  }
+  const max = String(f.get('max_uses') || '').trim();
+  patch.max_uses = max === '' ? null : Math.max(1, parseInt(max, 10) || 1);
+  const until = String(f.get('valid_until') || '').trim();
+  // The date input gives a calendar day; the code is good through the END of it.
+  patch.valid_until = until ? new Date(until + 'T23:59:59').toISOString() : null;
+  const plans = f.getAll('plan').map(String);
+  const all = [...form.querySelectorAll('input[name="plan"]')].length;
+  patch.plan_ids = plans.length && plans.length < all ? plans : null;
+  if (!plans.length) { toast('Tick at least one plan the code applies to.', 'error'); return; }
+  try {
+    const row = await Billing.admin.setPromoCode(code, patch);
+    S.promoMade = `Added ${row && row.code ? row.code : code}.`;
+    await load();
+    setTimeout(() => { S.promoMade = ''; rerender(); }, 2500);
+  } catch (err) { toast(err.message || 'The code was not saved.', 'error'); }
+});
+
+delegate(document, 'click', '[data-ba-action="promo-toggle"]', async (e, el) => {
+  try {
+    await Billing.admin.setPromoCode(el.dataset.code, { active: el.dataset.active !== 'true' });
+    await load();
+  } catch (err) { toast(err.message || 'The code was not changed.', 'error'); }
 });
 
 delegate(document, 'click', '[data-ba-action="reload"]', () => load());

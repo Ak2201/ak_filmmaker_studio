@@ -12,6 +12,11 @@
      payment.failed    -> mark_payment_failed()
      refund.processed  -> mark_payment_refunded()  (ends the plan today)
 
+   The payment entity is passed whole as p_raw.payment, and since
+   schema section 20 activate_payment() compares its `amount` with the
+   row's — which, with a promo code, is the DISCOUNTED amount. A
+   mismatch is refused (22023) and logged; the row stays 'created'.
+
    Anything else is acknowledged and ignored. The body is read as TEXT
    first and verified as those exact bytes; parsing before verifying
    would change nothing here, but re-serialising would, and the order

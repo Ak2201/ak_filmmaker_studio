@@ -269,6 +269,10 @@ export function adminSection(section, st) {
     field('gtLabel', 'Label', labelIn)
   ]));
   form.append(h('button.btn.primary', { type: 'submit', text: 'ISSUE CODE' }));
+  /* docs/BILLING.md §8: a visitor who enters on a code alone is not
+     signed in, has no organisation and so no plan — the plan gate does
+     not apply to them. Say so where the code is made. */
+  form.append(h('p.gt-meta', { text: 'A standard code grants full access to every module: a code-only visitor has no account to carry a plan, so the plan tiers and their feature locks do not apply until they sign in.' }));
   if (admin.made) {
     form.append(h('p.gt-made', {}, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
       h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));

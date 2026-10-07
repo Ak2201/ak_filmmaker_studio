@@ -151,7 +151,7 @@ function render() {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
         'A paid plan lets this account in without an invite. One payment, access for good. Invited members start on the free plan.');
       buy.append(planCards(plans, null, {
-        onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { onStatus }),
+        onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { onStatus, code }),
         rerender: render
       }));
       body.append(buy);

@@ -4299,3 +4299,484 @@ notify pgrst, 'reload schema';
 --  5. mark_payment_refunded on a lifetime payment -> plan_until = now(),
 --     account_plan() 'free' at once.
 -- ============================================================
+
+
+-- ============================================================
+-- 19. THE ACCOUNTS INSERT HOLE — a self-minted Pro organisation
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Found while the account
+-- panel was being built and left on record in CLAUDE.md (open item 5)
+-- and docs/SECURITY-RLS.md (A1b): acc_insert checks only
+-- `owner_id = auth.uid()`, and accounts_guard — the trigger carrying
+-- "Plan and limits are set by billing, not by the client" since 7.6 —
+-- is BEFORE UPDATE. So
+--
+--   insert into accounts (name, owner_id, plan, seat_limit)
+--   values ('Mint', auth.uid(), 'pro', 999)
+--
+-- through PostgREST was refused by nothing. Any signed-in user could
+-- mint themselves an unlimited organisation, and user_plan() — which
+-- every limit trigger in 16.8 and billing_status() read — answered
+-- 'pro' for them from then on. The guard was enforced on update and
+-- open on insert.
+--
+-- THE FIX IS THE GUARD, NOT THE POLICY. Two mechanisms could carry this
+-- rule and the trigger is the one every existing caller already knows
+-- how to pass: the service role is privileged, apply_plan() raises the
+-- fms.billing flag, and account_for_buyer() inserts with the table's
+-- defaults. A WITH CHECK on acc_insert would be a second statement of
+-- the same rule in a place none of those reach, and the policy would
+-- not fire for the definer functions at all (the table owner bypasses
+-- RLS), which is exactly the inconsistency that let this through. The
+-- trigger now fires on INSERT too and, for a caller that is neither
+-- privileged nor billing, refuses a row whose plan or limits are not
+-- the table's own defaults (§6: plan 'free', seat_limit 1,
+-- storage_limit_mb 500; §16.2: plan_until and plan_period null). The
+-- sentence and the SQLSTATE are the UPDATE branch's, so nothing in the
+-- client changes.
+--
+-- Worth knowing: account_for_buyer() runs INSIDE admin_grant_plan(),
+-- which an administrator calls through PostgREST, so auth.jwt() says
+-- 'authenticated' and is_privileged_caller() is FALSE there even
+-- though the function is security definer. That path still works
+-- because it inserts (name, owner_id) and nothing else — which is why
+-- the check is "equals the defaults" and not "is privileged".
+--
+-- acc_insert itself is unchanged: `owner_id = auth.uid()` is still the
+-- right answer to who may create an organisation.
+-- ============================================================
+create or replace function public.accounts_guard()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if public.is_privileged_caller() then return new; end if;
+  if current_setting('fms.billing', true) = 'on' then return new; end if;
+  if tg_op = 'INSERT' then
+    -- A client may create an organisation; billing decides what it is on.
+    if new.plan             is distinct from 'free'
+    or new.seat_limit       is distinct from 1
+    or new.storage_limit_mb is distinct from 500
+    or new.plan_until       is not null
+    or new.plan_period      is not null then
+      raise exception 'Plan and limits are set by billing, not by the client' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+  if new.owner_id is distinct from old.owner_id and old.owner_id <> auth.uid() then
+    raise exception 'Only the account owner can transfer the account' using errcode = '42501';
+  end if;
+  if new.plan             is distinct from old.plan
+  or new.plan_until       is distinct from old.plan_until
+  or new.plan_period      is distinct from old.plan_period
+  or new.seat_limit       is distinct from old.seat_limit
+  or new.storage_limit_mb is distinct from old.storage_limit_mb then
+    raise exception 'Plan and limits are set by billing, not by the client' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists accounts_guard on public.accounts;
+create trigger accounts_guard
+  before insert or update on public.accounts
+  for each row execute function public.accounts_guard();
+
+-- 19.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. authenticated B: insert into accounts (name, owner_id, plan,
+--     seat_limit) values ('Mint', B, 'pro', 999) -> 42501 "Plan and
+--     limits are set by billing". The same with only plan = 'pro', only
+--     seat_limit = 2, only storage_limit_mb = 1, or plan_until = now()
+--     -> 42501 each.
+--  2. authenticated B: insert into accounts (name, owner_id) values
+--     ('Plain', B) -> a row on free / 1 / 500 with plan_until null.
+--     This is what src/lib/account.js createAccount() sends.
+--  3. authenticated B: insert ... owner_id = <somebody else> -> 42501
+--     (acc_insert, unchanged).
+--  4. service role: insert with plan 'pro' -> allowed (privileged).
+--  5. admin: admin_grant_plan(<user with no organisation>, 'pro', 0)
+--     -> an organisation is created on free by account_for_buyer()
+--     and moved to pro by apply_plan(); user_plan() answers 'pro'.
+--  6. §16.10 check 11 still holds: B updating their own plan -> 42501.
+-- ============================================================
+
+
+-- ============================================================
+-- 20. PROMO CODES — a discount on the one price, decided by the server
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask for the launch,
+-- 7 Oct 2026: offers and promo codes. Kept inside the decisions §16
+-- and §18 already made (docs/BILLING.md §7 has the long form):
+--
+--   * THE PRICE IS STILL READ BY THE SERVER. The client sends a plan id
+--     and a CODE and never an amount. quote_order() answers what the
+--     code does to the table's price; create_pending_payment() calls
+--     the same function when the order is made, so the number the card
+--     shows and the number Razorpay charges come out of ONE
+--     computation, and a console edit to a code is live on the next
+--     quote with nothing to redeploy.
+--   * ONE TABLE, READABLE BY NOBODY FROM THE CLIENT. RLS is on and no
+--     policy exists; the API roles are revoked outright (10.4). A code
+--     is validated through quote_order() (security definer) and
+--     administered through admin_* RPCs behind is_studio_admin(), the
+--     same check the plan console uses.
+--   * A USE IS COUNTED AT ACTIVATION, not at order. An abandoned
+--     Checkout must not spend somebody's code, so `uses` moves inside
+--     activate_payment(), once per payment, and max_uses is checked at
+--     quote time. Two buyers racing for the last use can both pay: the
+--     count overshoots by one and the ledger shows both, which is
+--     cheaper than refusing a customer whose money has left.
+--   * NEVER BELOW ₹1. Razorpay refuses an order under 100 paise, so
+--     the discounted amount floors there: a 100% code costs ₹1, and
+--     the console says so. A ₹0 plan is a GRANT, which already exists.
+--   * The webhook's payment entity carries `amount`; activate_payment()
+--     now refuses one that is not the row's, so a discounted order
+--     cannot be settled by a payment for a different sum. Checkout's
+--     handler carries no amount, so the verify path is unchanged.
+--
+-- The code is stored UPPER-CASE with no whitespace and compared that
+-- way; a buyer may type it however they like.
+-- ============================================================
+create table if not exists public.promo_codes (
+  code              text        primary key check (code ~ '^[A-Z0-9][A-Z0-9-]{2,31}$'),
+  percent_off       int         check (percent_off between 1 and 100),
+  amount_off_paise  int         check (amount_off_paise > 0),
+  plan_ids          text[],                             -- null = every paid plan
+  max_uses          int         check (max_uses > 0),   -- null = unlimited
+  uses              int         not null default 0 check (uses >= 0),
+  valid_from        timestamptz,
+  valid_until       timestamptz,
+  active            boolean     not null default true,
+  note              text,
+  created_at        timestamptz not null default now(),
+  created_by        uuid        references auth.users(id) on delete set null,
+  updated_at        timestamptz not null default now(),
+  constraint promo_codes_one_discount check ((percent_off is null) <> (amount_off_paise is null)),
+  constraint promo_codes_window       check (valid_from is null or valid_until is null or valid_until > valid_from)
+);
+alter table public.promo_codes enable row level security;
+-- No policies, on purpose. And no privileges either: the browser never
+-- reads this table, the RPCs below are the only way in.
+revoke all on public.promo_codes from public, anon, authenticated;
+
+alter table public.payments add column if not exists promo_code     text references public.promo_codes(code) on delete set null;
+alter table public.payments add column if not exists list_paise     int check (list_paise >= 0);
+alter table public.payments add column if not exists discount_paise int not null default 0 check (discount_paise >= 0);
+
+/** The one piece of arithmetic, kept pure so a test can hit it: the
+ *  list price less a percentage (floored) or a flat amount, never below
+ *  100 paise and never above the list price. */
+create or replace function public.promo_price(p_list int, p_percent int, p_amount_off int)
+returns int language sql immutable as $$
+  select case when p_list is null then null
+              else least(p_list, greatest(100,
+                     p_list - coalesce(case when p_percent is not null then (p_list * p_percent) / 100 end,
+                                       p_amount_off, 0)))
+         end;
+$$;
+
+/** Why a code was refused, as the sentence the buyer reads. */
+create or replace function public.promo_reason_sentence(p_reason text)
+returns text language sql immutable as $$
+  select case p_reason
+    when 'unknown'      then 'That code is not one we know. Check the spelling.'
+    when 'expired'      then 'That code has expired.'
+    when 'exhausted'    then 'That code has been used as many times as it allows.'
+    when 'not_for_plan' then 'That code does not apply to this plan.'
+    when 'inactive'     then 'That code is not active right now.'
+    else 'That code cannot be used.' end;
+$$;
+
+/** What a plan costs with (or without) a code. Never raises for a bad
+ *  code — it answers ok:false and a reason in ('unknown','expired',
+ *  'exhausted','not_for_plan','inactive') with the list price — so the
+ *  card can print the refusal as a sentence. A plan not for sale is
+ *  the caller's mistake and does raise. */
+create or replace function public.quote_order(p_plan text, p_code text default null)
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl     public.plans;
+  pc     public.promo_codes;
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  amt    int;
+  reason text;
+begin
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null or coalesce(pl.price_paise, 0) <= 0 then
+    raise exception 'That plan is not for sale' using errcode = '22023';
+  end if;
+  if v_code is null then
+    return jsonb_build_object('plan_id', pl.id, 'list_paise', pl.price_paise, 'amount_paise', pl.price_paise,
+                              'discount_paise', 0, 'code', null, 'ok', true, 'reason', null, 'sentence', null);
+  end if;
+  select * into pc from public.promo_codes c where c.code = v_code;
+  reason := case
+    when pc.code is null                                                   then 'unknown'
+    when not pc.active                                                     then 'inactive'
+    when pc.valid_from is not null and pc.valid_from > now()               then 'inactive'
+    when pc.valid_until is not null and pc.valid_until <= now()            then 'expired'
+    when pc.max_uses is not null and pc.uses >= pc.max_uses                then 'exhausted'
+    when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
+  end;
+  if reason is not null then
+    return jsonb_build_object('plan_id', pl.id, 'list_paise', pl.price_paise, 'amount_paise', pl.price_paise,
+                              'discount_paise', 0, 'code', v_code, 'ok', false, 'reason', reason,
+                              'sentence', public.promo_reason_sentence(reason));
+  end if;
+  amt := public.promo_price(pl.price_paise, pc.percent_off, pc.amount_off_paise);
+  return jsonb_build_object('plan_id', pl.id, 'list_paise', pl.price_paise, 'amount_paise', amt,
+                            'discount_paise', pl.price_paise - amt, 'code', v_code, 'ok', true, 'reason', null, 'sentence', null,
+                            'percent_off', pc.percent_off, 'amount_off_paise', pc.amount_off_paise);
+end;
+$fn$;
+-- The cards are drawn for anon on invite.html (§18 let anon read
+-- plans), so anon may ask for a quote too. A code is an offer, not a
+-- credential: knowing one buys a discount, never entry.
+revoke execute on function public.quote_order(text, text) from public;
+grant  execute on function public.quote_order(text, text) to anon, authenticated;
+
+/** rzp-order, with a code. The old four-argument signature is DROPPED
+ *  rather than overloaded: PostgREST cannot tell two overloads apart
+ *  when the extra argument has a default, and answers 300. Every
+ *  caller passes named arguments, so the default covers them. The row
+ *  records the list price, the discount and the code; the code's
+ *  `uses` is untouched until activation. */
+drop function if exists public.create_pending_payment(uuid, text, text, uuid);
+create or replace function public.create_pending_payment(p_user uuid, p_plan text, p_period text, p_account uuid default null, p_code text default null)
+returns table (payment_id uuid, amount_paise int, currency text, plan_name text, list_paise int, discount_paise int, promo_code text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl  public.plans;
+  q   jsonb;
+  pid uuid;
+begin
+  perform public.billing_require_service();
+  if exists (select 1 from public.studio_members m where m.user_id = p_user and m.disabled_at is not null) then
+    raise exception 'This account has been disabled by an administrator' using errcode = '42501';
+  end if;
+  if p_period in ('month', 'year') then
+    raise exception 'Plans are bought once, for good — not by the month or the year' using errcode = '22023';
+  end if;
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  if coalesce(pl.price_paise, 0) <= 0 then raise exception 'That plan is not for sale' using errcode = '22023'; end if;
+  if p_account is not null and not exists (select 1 from public.accounts a where a.id = p_account and a.owner_id = p_user) then
+    raise exception 'Not the owner of that organisation' using errcode = '42501';
+  end if;
+  q := public.quote_order(p_plan, p_code);
+  if not (q ->> 'ok')::boolean then
+    raise exception '%', q ->> 'sentence' using errcode = '22023', hint = q ->> 'reason';
+  end if;
+  insert into public.payments (user_id, account_id, plan_id, period, amount_paise, list_paise, discount_paise, promo_code)
+  values (p_user, p_account, p_plan, 'lifetime', (q ->> 'amount_paise')::int, (q ->> 'list_paise')::int, (q ->> 'discount_paise')::int, q ->> 'code')
+  returning id into pid;
+  return query select pid, (q ->> 'amount_paise')::int, 'INR'::text, pl.name, (q ->> 'list_paise')::int, (q ->> 'discount_paise')::int, q ->> 'code';
+end;
+$fn$;
+revoke execute on function public.create_pending_payment(uuid, text, text, uuid, text) from public, anon, authenticated;
+
+/** Activation, as §18 left it, plus two things: the amount Razorpay
+ *  reports (webhook only) must be the row's, and a code is spent here. */
+create or replace function public.activate_payment(p_order_id text, p_payment_id text, p_raw jsonb default null)
+returns table (payment_id uuid, account_id uuid, plan_id text, ends_at timestamptz, already boolean)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pay   public.payments;
+  acc   uuid;
+  rep   bigint := nullif(p_raw -> 'payment' ->> 'amount', '')::bigint;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_order_id = p_order_id for update;
+  if pay.id is null then raise exception 'No payment with that order id' using errcode = '22023'; end if;
+  if pay.status = 'paid' then
+    return query select pay.id, pay.account_id, pay.plan_id, pay.ends_at, true;
+    return;
+  end if;
+  if pay.status <> 'created' and pay.status <> 'failed' then
+    raise exception 'Payment is %', pay.status using errcode = '22023';
+  end if;
+  if rep is not null and rep <> pay.amount_paise then
+    raise exception 'Razorpay reports % paise for an order recorded at %', rep, pay.amount_paise using errcode = '22023';
+  end if;
+  acc := public.account_for_buyer(pay.user_id, pay.account_id);
+  perform public.apply_plan(acc, pay.plan_id, 'lifetime', 0);
+  update public.payments p
+     set status = 'paid', razorpay_payment_id = p_payment_id, paid_at = now(),
+         account_id = acc, starts_at = now(), ends_at = null,
+         raw = coalesce(p_raw, p.raw)
+   where p.id = pay.id;
+  if pay.promo_code is not null then
+    update public.promo_codes c set uses = c.uses + 1, updated_at = now() where c.code = pay.promo_code;
+  end if;
+  insert into public.studio_members (user_id, role) values (pay.user_id, 'user') on conflict (user_id) do nothing;
+  return query select pay.id, acc, pay.plan_id, null::timestamptz, false;
+end;
+$fn$;
+revoke execute on function public.activate_payment(text, text, jsonb) from public, anon, authenticated;
+
+-- 20.1 THE CONSOLE ------------------------------------------------------
+create or replace function public.admin_list_promo_codes()
+returns setof public.promo_codes
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query select * from public.promo_codes c order by c.active desc, c.created_at desc;
+end;
+$fn$;
+
+/** Create or edit a code. A key present in the patch is written (JSON
+ *  null clears it); a key absent is left alone. A new code needs
+ *  exactly one of percent_off / amount_off_paise. plan_ids must name
+ *  paid plans; an empty list means every plan. Deactivating is
+ *  {"active": false}. The code is never renamed — it is the key the
+ *  ledger refers to. */
+create or replace function public.admin_set_promo_code(p_code text, p_patch jsonb)
+returns public.promo_codes
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  row  public.promo_codes;
+  ids  text[];
+  bad  text;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if v_code is null or v_code !~ '^[A-Z0-9][A-Z0-9-]{2,31}$' then
+    raise exception 'A code is 3 to 32 letters, digits or dashes' using errcode = '22023';
+  end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  if p_patch ? 'plan_ids' then
+    if jsonb_typeof(p_patch -> 'plan_ids') = 'array' then
+      select array_agg(x) into ids from jsonb_array_elements_text(p_patch -> 'plan_ids') x;
+      if ids is not null and cardinality(ids) = 0 then ids := null; end if;
+      select x into bad from unnest(ids) x where x not in (select id from public.plans where id <> 'free') limit 1;
+      if bad is not null then raise exception 'No such paid plan "%"', bad using errcode = '22023'; end if;
+    elsif jsonb_typeof(p_patch -> 'plan_ids') <> 'null' then
+      raise exception 'plan_ids must be a list of plan ids or null' using errcode = '22023';
+    end if;
+  end if;
+  select * into row from public.promo_codes c where c.code = v_code for update;
+  if row.code is null then
+    insert into public.promo_codes (code, percent_off, amount_off_paise, plan_ids, max_uses, valid_from, valid_until, active, note, created_by)
+    values (v_code,
+            (p_patch ->> 'percent_off')::int,
+            (p_patch ->> 'amount_off_paise')::int,
+            case when p_patch ? 'plan_ids' then ids end,
+            (p_patch ->> 'max_uses')::int,
+            (p_patch ->> 'valid_from')::timestamptz,
+            (p_patch ->> 'valid_until')::timestamptz,
+            coalesce((p_patch ->> 'active')::boolean, true),
+            left(p_patch ->> 'note', 300),
+            auth.uid())
+    returning * into row;
+  else
+    update public.promo_codes c
+       set percent_off      = case when p_patch ? 'percent_off'      then (p_patch ->> 'percent_off')::int        else c.percent_off end,
+           amount_off_paise = case when p_patch ? 'amount_off_paise' then (p_patch ->> 'amount_off_paise')::int   else c.amount_off_paise end,
+           plan_ids         = case when p_patch ? 'plan_ids'         then ids                                      else c.plan_ids end,
+           max_uses         = case when p_patch ? 'max_uses'         then (p_patch ->> 'max_uses')::int           else c.max_uses end,
+           valid_from       = case when p_patch ? 'valid_from'       then (p_patch ->> 'valid_from')::timestamptz  else c.valid_from end,
+           valid_until      = case when p_patch ? 'valid_until'      then (p_patch ->> 'valid_until')::timestamptz else c.valid_until end,
+           active           = coalesce((p_patch ->> 'active')::boolean, c.active),
+           note             = case when p_patch ? 'note' then left(p_patch ->> 'note', 300) else c.note end,
+           updated_at       = now()
+     where c.code = v_code
+     returning * into row;
+  end if;
+  return row;
+exception
+  when check_violation then
+    raise exception 'A code takes either a percentage (1–100) or an amount off in paise, not both; uses must be positive and the window must end after it starts' using errcode = '22023';
+end;
+$fn$;
+
+/** The ledger learns the code and the discount. Same rows as §16.9's,
+ *  three columns wider; a return type cannot be replaced in place, so
+ *  the function is dropped and made again. */
+drop function if exists public.admin_list_payments(int);
+create or replace function public.admin_list_payments(p_limit int default 200)
+returns table (id uuid, email text, account_name text, plan_id text, period text, amount_paise int,
+               status text, razorpay_order_id text, razorpay_payment_id text, note text,
+               created_at timestamptz, paid_at timestamptz, ends_at timestamptz,
+               promo_code text, discount_paise int, list_paise int)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select p.id, u.email::text, a.name, p.plan_id, p.period, p.amount_paise, p.status,
+           p.razorpay_order_id, p.razorpay_payment_id, p.note, p.created_at, p.paid_at, p.ends_at,
+           p.promo_code, p.discount_paise, p.list_paise
+      from public.payments p
+      join auth.users u on u.id = p.user_id
+      left join public.accounts a on a.id = p.account_id
+     order by p.created_at desc
+     limit greatest(1, least(p_limit, 1000));
+end;
+$fn$;
+
+revoke execute on function public.admin_list_promo_codes()               from public, anon;
+revoke execute on function public.admin_set_promo_code(text, jsonb)      from public, anon;
+revoke execute on function public.admin_list_payments(int)               from public, anon;
+grant  execute on function public.admin_list_promo_codes()               to authenticated;
+grant  execute on function public.admin_set_promo_code(text, jsonb)      to authenticated;
+grant  execute on function public.admin_list_payments(int)               to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 20.2 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon and authenticated: select from promo_codes -> 42501
+--     (permission denied; no policy and no privilege). A non-admin
+--     calling admin_list_promo_codes / admin_set_promo_code -> 42501.
+--  2. admin: admin_set_promo_code('launch 10', '{"percent_off":10}')
+--     -> a row coded LAUNCH10, active, uses 0, plan_ids null. A code
+--     with both discounts, with neither, with a bad name, or naming a
+--     plan that is not a paid one -> 22023.
+--  3. quote_order('indie', null) -> ok, amount = the list price.
+--     quote_order('indie', 'launch10') -> ok, amount = list less 10%
+--     floored, discount = the difference. A ₹500-off code on a plan
+--     priced below ₹501 -> amount 100 (the ₹1 floor). A 100% code ->
+--     amount 100.
+--  4. reasons: an unknown code -> 'unknown'; valid_until in the past
+--     -> 'expired'; active false, or valid_from in the future ->
+--     'inactive'; plan_ids {indie} quoted for starter -> 'not_for_plan';
+--     uses = max_uses -> 'exhausted'. Each with ok false, the list
+--     price, and a sentence.
+--  5. service: create_pending_payment(B, 'indie', 'lifetime', null,
+--     'LAUNCH10') -> amount_paise discounted, list_paise, discount_paise
+--     and promo_code on the row; uses STILL 0. With a refused code ->
+--     22023 whose message is the sentence.
+--  6. activate_payment on that order -> paid, uses 1; the second call
+--     (already) leaves uses at 1. A code with max_uses 1 then quotes
+--     'exhausted' and create_pending_payment refuses it.
+--  7. activate_payment with p_raw {"payment":{"amount": <wrong>}} ->
+--     22023 and the row still 'created'; with the right amount -> paid.
+--  8. admin_list_payments shows promo_code, discount_paise and
+--     list_paise on the discounted row and nulls/0 on the others.
+--  9. admin_set_promo_code('LAUNCH10', '{"active": false}') -> quotes
+--     'inactive'; '{"active": true}' -> ok again.
+-- 10. the browser: the "Have a code?" box on settings.html#plan and
+--     invite.html reprices the cards, BUY sends the code, Checkout
+--     opens with the discounted amount, the ledger row carries the
+--     code (scripts/prove-billing.mjs (j)).
+-- ============================================================

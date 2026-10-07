@@ -40,15 +40,10 @@ once and not yet looked at.
 
 ## Left over from the launch-readiness pass (7 Oct 2026)
 
-- **`start.html`'s tier prose is hand-written** beside the plan names in
-  `src/lib/billing.js` (a comment says they mirror `PLAN_ORDER`). Rename a
-  tier or move a feature and the page drifts with nothing to notice.
-- **`start.html`'s Dragon figures are hand-written** in the markup, so a
-  change to the sample does not reach them.
-- **The step rail's stage drawer is 72px wide**, so the new plain-English
-  `purpose` lines are not shown there; they appear in the launcher, hub
-  and palette only.
 - **The hub fetches 58% of its old JS, not the 50% or less aimed for.** The
   rest is the first-run, project and resume views it needs on first paint.
-- **`invite.html` is `noindex` but listed in `sitemap.xml`.** Remove the
-  entry (LAUNCH.md section 7).
+  Re-checked 7 Oct 2026: the two big data chunks it fetches
+  (`data-steps`, ~140KB, and `data-sample`, ~60KB) are read at MODULE scope
+  and in synchronous render paths (the master index, the step counts, the
+  sample's blueprint), so neither is a lazy win without making those paths
+  async — not an obvious change, so left.

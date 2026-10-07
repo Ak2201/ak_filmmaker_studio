@@ -86,14 +86,16 @@ the plan lapse.
   `start.html` (canonical, og:url, og:image, twitter:image), `index.html`,
   `invite.html`, `privacy.html`, `terms.html`, `refund.html` (og:url,
   og:image, twitter:image), `public/robots.txt` (Sitemap line) and
-  `public/sitemap.xml` (five `<loc>`). `grep -rn thefilmmakerstudio.vercel.app
+  `public/sitemap.xml` (four `<loc>`). `grep -rn thefilmmakerstudio.vercel.app
   *.html public` lists them; `src/lib/gate.js` has one harmless fallback.
-- `invite.html` is `noindex, nofollow` yet listed in `sitemap.xml`: the two
-  disagree. Decision: drop the `/invite` entry from the sitemap (the landing
-  page is the crawlable door). Not yet done.
+- `/invite` is no longer in `sitemap.xml` (done): it is the gate's doorway
+  and `noindex, nofollow`, and the landing page is the crawlable door.
 - After any palette change run `npm run og` and commit `public/og.png`.
-- The Dragon figures on `start.html` are written in the markup, not
-  derived; if the sample changes, edit them by hand.
+- The Dragon figures and the tier names on `start.html` are stamped into
+  the markup AT BUILD TIME (`fms-start-figures` in `vite.config.js`, from
+  `sampleFigures()` and `src/lib/plans.js`), so a change to the sample or a
+  renamed tier reaches the page with no edit; a mismatched tier list fails
+  the build.
 - Paste the landing URL into WhatsApp and Instagram DM: a card with the
   image and the one-line hook should appear. If not, Meta's debugger
   (developers.facebook.com/tools/debug) says which tag it missed.

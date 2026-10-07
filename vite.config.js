@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
+import { sampleFigures } from './src/lib/sample-figures.js';
+import { PLAN_ORDER, planName } from './src/lib/plans.js';
 
 /* ============================================================
    THE ICON FONT, DERIVED — one <link> for every page, from the data
@@ -123,6 +125,69 @@ function stepIndex() {
 }
 
 /* ============================================================
+   START.HTML'S FIGURES AND TIER NAMES, STAMPED AT BUILD TIME
+   ------------------------------------------------------------
+   start.html keeps its words in the MARKUP (a crawler, a link preview
+   and a reader with scripts off get the whole page), which used to
+   mean the Dragon figures and the tier names were typed there by hand
+   beside the data they describe. Now the markup carries placeholders,
+   `{{fms:dragon.scenes}}` and `{{fms:plan.starter}}`, and this plugin
+   fills them from the SAME functions the app uses:
+
+   - dragon.*  sampleFigures() in src/lib/sample-figures.js over
+               src/data/sample.dragon.json — the derivation the hub's
+               first-run panel quotes. `:word` spells a small number.
+   - plan.*    planName() over PLAN_ORDER in src/lib/plans.js, which
+               billing.js re-exports. Prices are never stamped: they
+               live in the server's plans table only.
+
+   It FAILS THE BUILD, and the dev server's response, when a
+   placeholder names nothing, when one is left unreplaced, or when the
+   `li[data-tier]` list in the pricing section is not exactly
+   PLAN_ORDER, in order — so a renamed id, a removed tier or a new one
+   without its prose is a build error rather than a page that drifts.
+   transformIndexHtml runs in `vite` (dev) as well as `vite build`.
+   ============================================================ */
+function startFigures() {
+  const SAMPLE = resolve(__dirname, 'src/data/sample.dragon.json');
+  const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  const fail = (msg) => { throw new Error('start.html: ' + msg); };
+  return {
+    name: 'fms-start-figures',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        const file = String((ctx && (ctx.filename || ctx.path)) || '');
+        if (!/(^|[\\/])start\.html$/.test(file)) return;
+        const fig = sampleFigures(JSON.parse(readFileSync(SAMPLE, 'utf8')));
+        const values = { ...Object.fromEntries(Object.entries(fig).map(([k, v]) => ['dragon.' + k, v])),
+                         ...Object.fromEntries(PLAN_ORDER.map((id) => ['plan.' + id, planName(id)])) };
+
+        const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
+        const ids = tiers.map((m) => m[1]);
+        if (ids.join(',') !== PLAN_ORDER.join(',')) {
+          fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not PLAN_ORDER ['
+               + PLAN_ORDER.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match.');
+        }
+        for (const [, id, body] of tiers) {
+          if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
+        }
+        if (!html.includes('{{fms:dragon.')) fail('no {{fms:dragon.*}} placeholder — the sample figures must be derived, not typed.');
+
+        const out = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
+          if (!(key in values)) fail('unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
+          const v = values[key];
+          return fmt === 'word' ? (WORDS[v] || String(v)) : String(v);
+        });
+        const left = out.match(/\{\{[^}]*\}\}/);
+        if (left) fail('placeholder left unreplaced: ' + left[0]);
+        return out;
+      }
+    }
+  };
+}
+
+/* ============================================================
    Multi-page build. Each page is a real HTML entry, so the
    output is still a pile of static files — same Vercel config,
    same GitHub Pages story, no server required.
@@ -153,6 +218,7 @@ export default defineConfig({
   plugins: [
     materialSymbols(),
     stepIndex(),
+    startFigures(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',

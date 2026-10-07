@@ -233,6 +233,17 @@ function renderStrip(scene, maxDay) {
 
   const cast = castOf(scene);
   const row = h('div.sb-cast');
+  /* What the floor said, read from shoot.html's mark — the board is
+     the plan, and a plan that cannot see which strips are already in
+     the can gets rescheduled around scenes that are done (UX audit
+     L15). Read only; the mark is written on the shoot day. */
+  const st = scene.shotState || '';
+  if (st) {
+    row.append(h('a.sb-shot.is-' + st, {
+      href: 'shoot.html', title: 'Marked on the shoot day — change it there',
+      text: st === 'part' ? 'Part shot' : Scenes.shotLabel(st)
+    }));
+  }
   if (!cast.length) {
     row.append(h('span.sb-cast-none', { text: 'No cast tagged — this scene is invisible to the day out of days.' }));
   } else {

@@ -205,7 +205,8 @@ export async function addThem(opts) {
       type: 'success',
       action: 'Undo',
       onAction: () => {
-        Scenes.saveScenes(Scenes.listScenes().filter((s) => !ids.has(s.id)));
+        // Through the bin, so a shot added since is not orphaned.
+        Bin.unaddScenes(ids);
         safeRender();
         StudioUI.toast(`Removed the ${n} scene${n === 1 ? '' : 's'} just added.`, { type: 'info' });
       }

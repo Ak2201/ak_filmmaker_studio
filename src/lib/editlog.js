@@ -158,6 +158,18 @@ export function removePickup(id) {
   return d.pickups;
 }
 
+/** Put a removed pick-up back at its old place — the Undo on the
+    page's remove. A pick-up already there (a double Undo) is left. */
+export function restorePickup(row, index) {
+  if (!row || !row.id) return null;
+  const d = loadEdit();
+  if (d.pickups.some((p) => p.id === row.id)) return null;
+  const at = Math.max(0, Math.min(Number(index) || 0, d.pickups.length));
+  d.pickups.splice(at, 0, blankPickup(row));
+  writeAll(d);
+  return row;
+}
+
 /* ---- derived ------------------------------------------------
    Everything below READS. */
 
@@ -225,6 +237,12 @@ export function coverage(scenes, shots, edit) {
   const waste = rows.filter((r) => r.waste);
   const conflicts = rows.filter((r) => r.conflict);
   const openPickups = ed.pickups.filter((p) => !p.done);
+  /* Pick-ups whose scene is no longer in the list — written before
+     deletes went through the bin, or by a path that skipped it. No
+     row draws them, so they are returned for the page to list on
+     their own, or they could never be ticked or removed. */
+  const ids = new Set(all.map((s) => s.id));
+  const orphans = ed.pickups.filter((p) => !ids.has(p.sceneId));
 
   const eighths = (list) => totalEighths(list.map((r) => r.scene));
   return {
@@ -255,9 +273,13 @@ export function coverage(scenes, shots, edit) {
     conflicts,
     waste,
     openPickups,
+    orphans,
     /* The film can lock picture when nothing the cut needs is still
-       owed and no scene it claims was dropped. */
+       owed, no scene it claims was dropped, and the editor has no
+       pick-up open — an open pick-up IS something owed, typed by the
+       one person who knows it is. */
     ready: rows.length > 0 && owed.length === 0 && conflicts.length === 0
+      && openPickups.length === 0
   };
 }
 
@@ -344,6 +366,6 @@ export function putSceneBack(sceneId, snap) {
 export default {
   EDIT_KEY, CUT_STATES, cutLabel, takeSceneOut, putSceneBack,
   blankSceneEdit, blankPickup, loadEdit, sceneEdit, setSceneEdit,
-  listPickups, addPickup, updatePickup, removePickup,
+  listPickups, addPickup, updatePickup, removePickup, restorePickup,
   verdict, coverage, pickupText
 };

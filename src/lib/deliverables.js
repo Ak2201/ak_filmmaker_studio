@@ -131,6 +131,28 @@ export function removeCustom(id) {
   return d.custom;
 }
 
+/** Remove a custom line and hand back what it was — the row, its
+    place, and its status — so the page can offer an Undo. */
+export function takeCustom(id) {
+  const d = loadDeliverables();
+  const index = d.custom.findIndex((c) => c.id === id);
+  if (index < 0) return null;
+  const snap = { index, custom: d.custom[index], state: d.items[id] || null };
+  removeCustom(id);
+  return snap;
+}
+
+/** Put back what takeCustom() took. Nothing if it is already there. */
+export function putCustomBack(snap) {
+  if (!snap || !snap.custom) return null;
+  const d = loadDeliverables();
+  if (d.custom.some((c) => c.id === snap.custom.id)) return null;
+  d.custom.splice(Math.min(snap.index, d.custom.length), 0, snap.custom);
+  if (snap.state) d.items[snap.custom.id] = snap.state;
+  writeAll(d);
+  return snap.custom;
+}
+
 /* ---- derived ------------------------------------------------ */
 
 /**
@@ -228,5 +250,5 @@ export function askedBy(reqs) {
 export default {
   DELIVERABLES_KEY, STATES, stateMeta, WHEN, whenLabel,
   blankItemState, blankCustom, loadDeliverables, itemState, setItemState,
-  addCustom, removeCustom, listItems, groups, progress, requirements, askedBy
+  addCustom, removeCustom, takeCustom, putCustomBack, listItems, groups, progress, requirements, askedBy
 };

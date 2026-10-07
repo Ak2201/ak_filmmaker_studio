@@ -116,6 +116,24 @@
 
 /* Column sizing lives on the cells, for the reason in the header. */
 .vz-table { margin-top: var(--s3); }
+
+/* The sideways cue for the shot table (UX audit L30). Hidden where
+   the seven columns fit; under 900px the table scrolls inside itself,
+   so the cue says so, and the table's scrollbar is kept visible on
+   engines that would otherwise overlay it out of sight. */
+.vz-scroll-hint { display: none; }
+@media (max-width: 899px) {
+  .vz-scroll-hint {
+    display: block;
+    margin: var(--s3) 0 0;
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .vz-scroll-hint + .vz-table { margin-top: var(--s1); scrollbar-width: thin; scrollbar-color: var(--ink-faint) transparent; }
+}
 .vz-table th { white-space: nowrap; }
 .vz-table .vz-c-no   { width: 5rem; min-width: 5rem; }
 .vz-table .vz-c-lens { min-width: 6rem; }
@@ -367,6 +385,7 @@
    on paper. What goes on paper is the writing, not the controls.
    ------------------------------------------------------------ */
 @media print {
+  .vz-scroll-hint,
   .vz-add,
   .vz-add-frame,
   .vz-note,

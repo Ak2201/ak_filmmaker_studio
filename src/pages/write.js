@@ -63,6 +63,7 @@ import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Revision compare, revised-page marks and locked scene numbers: the
    panels under the Revisions list (src/ui/write-revisions.js). */
 import { mountRevisionTools, renderRevisionTools } from '../ui/write-revisions.js';
+import { mountCoverage } from '../ui/coverage.js';   // the Coverage tab: report + voice check
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
@@ -217,6 +218,7 @@ mountRevisionTools({
   // A revised-pages PDF keeps the scene numbers in the margins when they are locked.
   exportPDF: (extra) => exportPDF(Script.isNumberingLocked(doc.numbering), extra)
 });
+mountCoverage({ getDoc: () => doc, save: () => persistNow() });
 
 /* ---- the keyboard (Phase 2) ---------------------------------
    Prefs are READ once here and written only when the writer changes

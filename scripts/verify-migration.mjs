@@ -122,6 +122,23 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WRITE_BASELINE = process.argv.includes('--baseline');
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
 
+/* ---- the first-paint byte budget ------------------------------
+   scripts/budget.json holds, per page, the most JS+CSS a first paint
+   may fetch. `--budget` recaptures every row at 110% of what loads
+   now — the same shape of deliberate act as `--baseline`, and for the
+   same reason: a budget that moved by itself would never fail.
+
+   The three chunks named here are the ones vite.config.js keeps out
+   of `studio` on purpose, so a first paint never pays for them. A
+   fetch of any one of them at load is a regression whatever the byte
+   total says, and is failed by name. */
+const WRITE_BUDGET = process.argv.includes('--budget');
+const BUDGET_FILE = path.join(ROOT, 'scripts', 'budget.json');
+const BUDGET = fs.existsSync(BUDGET_FILE) ? JSON.parse(fs.readFileSync(BUDGET_FILE, 'utf8')) : { pages: {} };
+const LAZY_CHUNKS = /\/(supabase|pptxgen|sample\.dragon\.script)-[^/]*\.js$/;
+const measuredBudget = {};
+const knownLeaksSeen = new Set();   // which knownLazyFetches entries actually fired
+
 /* THE VERIFY RUN'S CLOCK IS NOT PINNED, and it must not be.
 
    A FROZEN_CLOCK + a UTC-pinned context used to sit here, solving
@@ -925,7 +942,28 @@ for (const spec of PAGES) {
     errors.push('console: ' + m.text());
   });
 
+  /* --- FIRST-PAINT BYTES, recorded on THIS load and no other -----
+     Every same-origin JS and CSS response the page fetches before it
+     settles, as loaded, before a project exists and before anything
+     is seeded. Summed per page and judged against scripts/budget.json
+     below; the lazy chunks (supabase, pptxgen, the sample script) are
+     named in the failure if any of them is fetched here, because the
+     whole point of their being separate chunks is that a first paint
+     never pays for them. */
+  const firstPaintLoads = [];
+  const onResponse = (r) => {
+    let u;
+    try { u = new URL(r.url()); } catch (e) { return; }
+    if (u.origin !== `http://localhost:${PORT}`) return;
+    if (!/\.(m?js|css)$/.test(u.pathname)) return;
+    firstPaintLoads.push(r.body().then((b) => ({ url: u.pathname, bytes: b.length })).catch(() => null));
+  };
+  page.on('response', onResponse);
+
   await page.goto(`http://localhost:${PORT}/${spec.page}`, { waitUntil: 'networkidle' });
+
+  page.off('response', onResponse);
+  const firstPaint = (await Promise.all(firstPaintLoads)).filter(Boolean);
 
   /* --- FIRST-RUN WIDTH, measured before a project exists ---------
      Everything below this point runs with a project created, because
@@ -1811,11 +1849,46 @@ for (const spec of PAGES) {
     lowContrastTotal,
     contrastMeasured,
     contrastStates,
+    firstPaintBytes: firstPaint.reduce((a, f) => a + f.bytes, 0),
+    firstPaintFiles: firstPaint.length,
+    firstPaintLazyLeaks: firstPaint.map((f) => f.url).filter((u) => LAZY_CHUNKS.test(u)),
     errors
   };
   report.push(row);
+  measuredBudget[spec.name] = { bytes: row.firstPaintBytes, files: firstPaint.map((f) => `${f.url} ${f.bytes}`) };
 
   const bad = [];
+  /* --- the first-paint byte budget ---------------------------------
+     See the recording above. The budget is a FILE rather than a
+     constant so that tightening it is a visible, reviewable edit; the
+     failure says how. A page with no row in the file fails too: a page
+     that is not budgeted is a page whose first paint can grow for ever
+     without anyone being told. */
+  if (!WRITE_BUDGET) {
+    const b = (BUDGET.pages || {})[spec.name];
+    if (!b || !Number.isFinite(b.bytes)) {
+      bad.push(`no first-paint budget for "${spec.name}" in scripts/budget.json — ` +
+        `measured ${row.firstPaintBytes} bytes; add a row, or run \`npm run verify -- --budget\` to recapture every row at 110% of what loads now`);
+    } else if (row.firstPaintBytes > b.bytes) {
+      bad.push(`first paint is ${row.firstPaintBytes} bytes of JS+CSS, over the ${b.bytes}-byte budget ` +
+        `(${firstPaint.length} files) — shrink the page, or raise "pages.${spec.name}.bytes" in scripts/budget.json deliberately; ` +
+        `\`npm run verify -- --budget\` recaptures every row at 110% of what loads now`);
+    }
+    /* A lazy chunk fetched on load fails by name — unless budget.json
+       KNOWS about it. `knownLazyFetches` is the same shape as EXPECTED:
+       a reasoned allowance that the anti-rot check after the loop fails
+       the moment it stops firing, so it cannot become a permanent
+       excuse. The first entry was written by the check that found it:
+       cloud.js's boot() fetches the Supabase SDK on every page once a
+       build carries a project URL. */
+    const known = BUDGET.knownLazyFetches || {};
+    for (const url of row.firstPaintLazyLeaks) {
+      const name = (url.match(LAZY_CHUNKS) || [])[1];
+      if (name && known[name]) { knownLeaksSeen.add(name); continue; }
+      bad.push(`a lazy chunk is fetched on load: ${url} — ` +
+        'supabase, pptxgen and the sample script must stay behind import() (vite.config.js manualChunks)');
+    }
+  }
   if (missingKeys.length) bad.push(`${missingKeys.length} data-keys missing`);
   if (missingWords.length) {
     bad.push(`${missingWords.length} unexplained missing words (${missingWords.slice(0, 6).join(', ')})`);
@@ -1888,6 +1961,55 @@ for (const spec of PAGES) {
   await ctx.close();
 }
 
+/* ---- the first-paint table, and the budget file ---------------- */
+{
+  const kb = (n) => (n / 1024).toFixed(1).padStart(7) + ' KB';
+  console.log('\nfirst paint (same-origin JS+CSS, as loaded, before any project exists):');
+  console.log('  ' + 'page'.padEnd(14) + 'files'.padStart(6) + '      loaded' + '      budget' + '  lazy chunks fetched on load');
+  for (const spec of PAGES) {
+    const m = measuredBudget[spec.name];
+    if (!m) continue;
+    const b = (BUDGET.pages || {})[spec.name];
+    const leaks = m.files.map((f) => f.split(' ')[0]).filter((u) => LAZY_CHUNKS.test(u)).map((u) => u.replace(/^\/assets\//, ''));
+    console.log('  ' + spec.name.padEnd(14) + String(m.files.length).padStart(6) + '  ' + kb(m.bytes)
+      + '  ' + (b && Number.isFinite(b.bytes) ? kb(b.bytes) : '     (none)') + '  ' + (leaks.join(', ') || '-'));
+  }
+  /* The anti-rot half of knownLazyFetches: an allowance that no page
+     fired is stale, and a stale allowance is a check that has quietly
+     stopped checking. Fix the leak, delete the row, in one commit. */
+  if (!WRITE_BUDGET) {
+    const stale = Object.keys(BUDGET.knownLazyFetches || {}).filter((k) => !knownLeaksSeen.has(k));
+    if (stale.length) {
+      failures++;
+      report.push({ page: 'first-paint budget', FAIL: [`stale knownLazyFetches entr${stale.length === 1 ? 'y' : 'ies'} in scripts/budget.json: ${stale.join(', ')} — no page fetched it on load any more; delete the row`] });
+      console.log(`✗ stale knownLazyFetches in scripts/budget.json: ${stale.join(', ')} (no longer fetched on load — delete the row)`);
+    } else if (knownLeaksSeen.size) {
+      console.log(`⚠ known lazy-chunk fetch(es) on load, allowed by scripts/budget.json with a reason: ${[...knownLeaksSeen].join(', ')}`);
+    }
+  }
+  if (WRITE_BUDGET) {
+    const pages = {};
+    for (const spec of PAGES) {
+      const m = measuredBudget[spec.name];
+      if (!m) continue;
+      // 110%, rounded up to the next KB, so the row reads as a figure rather than a measurement.
+      pages[spec.name] = { bytes: Math.ceil((m.bytes * 1.1) / 1024) * 1024, measured: m.bytes, files: m.files.length };
+    }
+    fs.writeFileSync(BUDGET_FILE, JSON.stringify({
+      _about: 'The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project ' +
+        'exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row ' +
+        'by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, ' +
+        'and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — ' +
+        'are failed by name if a first paint ever fetches one, whatever the total says.',
+      capturedAt: new Date().toISOString(),
+      // Carried over, never recaptured: each row is a reasoned allowance.
+      knownLazyFetches: BUDGET.knownLazyFetches || {},
+      pages
+    }, null, 2) + '\n');
+    console.log(`\n✓ budget written — ${Object.keys(pages).length} pages, scripts/budget.json`);
+  }
+}
+
 if (WRITE_BASELINE) {
   const sha = (() => {
     try {
@@ -1914,6 +2036,298 @@ if (WRITE_BASELINE) {
   console.log(`\n✓ baseline written — ${n} pages, ${keys} data-keys, from ${sha}`);
   console.log('  scripts/baseline.json');
   process.exit(0);
+}
+
+/* ---- scripts-off palette probe ----------------------------------
+   The theme check above runs the page's scripts, so the four JS
+   fallbacks in chrome.js could all be flipped to the wrong theme and
+   the run would stay green as long as they agreed with each other —
+   the bare `:root` half of tokens.css is invisible to it. CLAUDE.md
+   names the check that sees it and says it was run by hand: load the
+   built page with SCRIPTS OFF and ask what the ground already is.
+
+   Which theme is the default is READ, not named. The bare `:root`
+   block declares one palette; whichever `[data-theme="…"]` block
+   carries the same `--paper` is the default theme, and that is what
+   the ground must be before any script runs. The run also asks the
+   opposite question: with the OS preferring the OTHER scheme, the
+   `prefers-color-scheme` block must already paint that theme — so
+   neither kind of visitor sees a flash of the wrong palette.
+
+   Two more things nothing can fix after the fact are asserted on the
+   same scripts-off document: `color-scheme` is set (a form control or
+   a scrollbar painted in the other scheme is the one flash CSS cannot
+   cover), and `--sk-radius` resolves (studio.css declares its shapes
+   on bare `:root` so the first paint is right before skin.js runs —
+   the "skin defaults belong on bare :root" trap). */
+let scriptsOff = { checked: false };
+{
+  const css = fs.readFileSync(path.join(ROOT, 'src', 'styles', 'tokens.css'), 'utf8');
+  const blockAfter = (idx) => {
+    const open = css.indexOf('{', idx);
+    let depth = 0;
+    for (let i = open; i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
+    }
+    return '';
+  };
+  const decl = (block, prop) => ((block.match(new RegExp('(?:^|[;\\s])' + prop.replace(/[-]/g, '\\-') + '\\s*:\\s*([^;]+);')) || [])[1] || '').trim();
+  const bare = blockAfter(css.search(/^:root\s*\{/m));
+  const themed = {};
+  for (const m of css.matchAll(/^:root\[data-theme="([a-z]+)"\]\s*\{/gm)) themed[m[1]] = blockAfter(m.index);
+  const media = {};
+  for (const m of css.matchAll(/@media \(prefers-color-scheme:\s*(light|dark)\)\s*\{/g)) media[m[1]] = blockAfter(m.index);
+  const hexToRgb = (hex) => {
+    const h = hex.replace('#', '');
+    const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+    return `rgb(${parseInt(f.slice(0, 2), 16)}, ${parseInt(f.slice(2, 4), 16)}, ${parseInt(f.slice(4, 6), 16)})`;
+  };
+  const defaultPaper = decl(bare, '--paper');
+  const defaultScheme = decl(bare, 'color-scheme');
+  const defaultTheme = Object.keys(themed).find((t) => decl(themed[t], '--paper') === defaultPaper) || null;
+  const otherScheme = defaultScheme === 'dark' ? 'light' : 'dark';
+  const otherPaper = media[otherScheme] ? decl(media[otherScheme], '--paper') : '';
+
+  const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper };
+  const bad = [];
+  if (!defaultTheme) bad.push(`bare :root's --paper (${defaultPaper || 'missing'}) matches no [data-theme] block — cannot tell which theme is the default`);
+  if (!defaultScheme) bad.push('bare :root declares no color-scheme');
+  if (!otherPaper) bad.push(`no @media (prefers-color-scheme: ${otherScheme}) block restates --paper`);
+
+  const results = [];
+  if (!bad.length) {
+    const HOST = `http://localhost:${PORT}/__scripts-off-probe.html`;
+    for (const [scheme, wantPaper] of [[defaultScheme, defaultPaper], [otherScheme, otherPaper]]) {
+      const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+      const ppage = await pctx.newPage();
+      await ppage.route('**/__scripts-off-probe.html', (route) => route.fulfill({
+        status: 200, contentType: 'text/html', body: '<!doctype html><html><head><title>probe</title></head><body></body></html>'
+      }));
+      await ppage.goto(HOST, { waitUntil: 'load' });
+      for (const spec of PAGES) {
+        const facts = await ppage.evaluate(async (src) => {
+          const f = document.createElement('iframe');
+          f.setAttribute('sandbox', 'allow-same-origin');   // same origin so we can read it; NO allow-scripts
+          f.style.cssText = 'width:1200px;height:800px';
+          const loaded = new Promise((res) => { f.onload = res; setTimeout(res, 8000); });
+          f.src = src;
+          document.body.appendChild(f);
+          await loaded;
+          // Give pending stylesheets a frame; fonts can fail, the sheets cannot.
+          await new Promise((r) => setTimeout(r, 250));
+          const d = f.contentDocument;
+          if (!d || !d.documentElement) { f.remove(); return { error: 'no document' }; }
+          const de = d.documentElement;
+          const cs = d.defaultView.getComputedStyle(de);
+          const out = {
+            scriptsRan: !!d.querySelector('#app') && d.querySelector('#app').children.length > 0,
+            dataTheme: de.getAttribute('data-theme'),
+            dataSkin: de.getAttribute('data-skin'),
+            htmlBg: cs.backgroundColor,
+            bodyBg: d.body ? d.defaultView.getComputedStyle(d.body).backgroundColor : null,
+            colorScheme: cs.colorScheme,
+            skRadius: cs.getPropertyValue('--sk-radius').trim(),
+            paper: cs.getPropertyValue('--paper').trim(),
+            sheets: d.styleSheets.length
+          };
+          f.remove();
+          return out;
+        }, `http://localhost:${PORT}/${spec.page}`);
+        results.push({ page: spec.name, scheme, ...facts });
+        const want = hexToRgb(wantPaper);
+        const ground = facts.bodyBg && facts.bodyBg !== 'rgba(0, 0, 0, 0)' ? facts.bodyBg : facts.htmlBg;
+        if (facts.error) { bad.push(`${spec.name} (prefers ${scheme}): ${facts.error}`); continue; }
+        if (facts.scriptsRan) bad.push(`${spec.name} (prefers ${scheme}): the sandbox ran scripts — the probe is not measuring what it claims`);
+        if (facts.dataTheme) bad.push(`${spec.name} (prefers ${scheme}): [data-theme="${facts.dataTheme}"] is set with scripts off — the markup is choosing a theme`);
+        if (ground !== want) bad.push(`${spec.name} (prefers ${scheme}): scripts-off ground is ${ground}, the ${scheme === defaultScheme ? defaultTheme + ' (default)' : otherScheme} theme's --paper is ${want} (${wantPaper}) — a flash of the wrong palette`);
+        if (facts.colorScheme !== scheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${scheme}" — form controls and scrollbars will flash`);
+        if (!facts.skRadius || !/^\d/.test(facts.skRadius)) bad.push(`${spec.name} (prefers ${scheme}): --sk-radius is "${facts.skRadius}" with scripts off — the skin's defaults are not on bare :root`);
+      }
+      await pctx.close();
+    }
+  }
+  scriptsOff = { checked: !!results.length, ...probeFacts, probed: results.length, pages: results.length / 2 };
+  if (bad.length) { failures++; scriptsOff.FAIL = bad; }
+  report.push({ page: 'scripts-off palette', ...scriptsOff });
+  console.log(bad.length
+    ? `✗ scripts-off palette: ${bad.length} finding(s)\n  ` + bad.slice(0, 8).join('\n  ')
+    : `✓ scripts-off palette: ${results.length / 2} pages x 2 OS preferences paint the right ground before any script runs ` +
+      `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`);
+}
+
+/* ---- fragment-target sweep ---------------------------------------
+   "A nav target must not depend on data existing" (CLAUDE.md): six of
+   the eighteen fragment hrefs in navigation.json once lived only on
+   the POPULATED branch of a page's render, so on a studio with no
+   scenes the phase menu looked broken to exactly the person who had
+   never opened the page. The per-page checks above load each page at
+   its URL with no fragment, so they cannot tell whether an anchor
+   resolves — and a sticky band with the wrong `scroll-padding-top`
+   is a second bug with the same symptom: the heading lands behind the
+   chrome, which reads as the page landing in the wrong place.
+
+   So: every fragment href the app offers — navigation.json's modules,
+   guides and shelves; the hub's start cards, section links and the
+   journey strip; and every target the blueprint drawer and the
+   "DO THIS IN" tools resolve to from steps.stages.json — is loaded as
+   `page.html#frag` in THREE studio states (no project, an empty
+   project, the seeded Dragon sample), and each must (a) exist in the
+   DOM and (b) land with its top at or below the pinned chrome
+   (`--sh-cover-h`, falling back to `--sh-chrome-h`) and above the
+   fold. 0 missing and 0 obscured is the bar, and both halves matter.
+
+   IN VERIFY RATHER THAN ITS OWN SCRIPT, because the three states are
+   the gate's own fixtures (the same createProject() and the hub's own
+   sample button), and because a target that stops resolving is a
+   regression in the thing every commit is supposed to be checked
+   against. The cost is a few minutes of page loads; a separate
+   `prove:` script would be run by nobody until the menu looked broken
+   again. */
+let fragments = { checked: false };
+{
+  const nav = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'navigation.json'), 'utf8'));
+  const stages = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'steps.stages.json'), 'utf8'));
+  const known = new Set(PAGES.map((p) => p.page));
+  const targets = new Map();   // "page.html#frag" -> [sources]
+  const add = (href, source) => {
+    if (!href || !href.includes('#')) return;
+    const [file, frag] = href.split('#');
+    if (!frag) return;
+    const page = (file || 'index.html').replace(/^\.\//, '');
+    if (!known.has(page)) return;
+    const key = page + '#' + frag;
+    if (!targets.has(key)) targets.set(key, new Set());
+    targets.get(key).add(source);
+  };
+  // navigation.json: every href anywhere in it
+  const modulesById = new Map();
+  JSON.stringify(nav, (k, v) => {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      if (v.href) add(v.href, 'navigation.json' + (v.id ? ' ' + v.id : ''));
+      if (v.id && v.href) modulesById.set(v.id, v.href);
+      for (const g of v.guide || []) if (g && g.href) add(g.href, 'navigation.json guide');
+    }
+    return v;
+  });
+  // steps.stages.json: the drawer's "Open in the blueprint" and the step row's DO THIS IN tools
+  const BP = { feature: 'feature.html', production: 'feature.html', short: 'short.html' };
+  for (const [key, info] of Object.entries(stages.steps || {})) {
+    const [ns, id] = key.split(':');
+    if (!info || !Array.isArray(info.tools) || !info.tools.length) continue;
+    if (BP[ns]) add(BP[ns] + '#' + id, 'blueprint drawer');
+    for (const t of info.tools) {
+      if (typeof t === 'string') add(modulesById.get(t), 'steps.stages tool ' + t);
+      else if (t && t.href) add(t.href, 'steps.stages tool');
+    }
+  }
+  // the parts' covers
+  for (const [ns, parts] of Object.entries(stages.parts || {})) for (const p of parts) add(BP[ns] + '#' + p.cover, 'blueprint part cover');
+
+  const ORIGIN = `http://localhost:${PORT}`;
+  const sweep = async (label, prepare) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const pg = await ctx.newPage();
+    const errs = [];
+    pg.on('pageerror', (e) => errs.push(e.message));
+    await pg.goto(`${ORIGIN}/index.html`, { waitUntil: 'networkidle' });
+    const prepared = await prepare(pg);
+    const rows = [];
+    for (const key of [...targets.keys()].sort()) {
+      const [page, frag] = key.split('#');
+      await pg.goto(`${ORIGIN}/${page}#${frag}`, { waitUntil: 'load' }).catch((e) => errs.push(key + ': ' + e.message));
+      const measure = () => pg.evaluate((id) => {
+        const el = document.getElementById(id);
+        if (!el) return { missing: true };
+        const de = document.documentElement;
+        const cs = getComputedStyle(de);
+        const px = (v) => parseFloat(v) || 0;
+        const cover = px(cs.getPropertyValue('--sh-cover-h')) || px(cs.getPropertyValue('--sh-chrome-h'));
+        const r = el.getBoundingClientRect();
+        const hidden = !!el.closest('[hidden]') || (r.width === 0 && r.height === 0);
+        return { top: Math.round(r.top), cover: Math.round(cover), vh: innerHeight, hidden, scrollY: Math.round(scrollY) };
+      }, frag);
+      /* The verdict is the SETTLED position. html has scroll-behavior:
+         smooth and a jump to the end of the feature blueprint travels
+         ~72,000px in about 1.3s; the tab strip re-lands a frame after
+         it opens; and the band itself can change height when the spy
+         names a new stage. A measurement taken at 900ms passed
+         #phase-4 in one state and failed it in another on the same
+         build — the difference was which side of the band's growth
+         the sample fell. So: wait past the longest scroll, measure,
+         and give a bad answer one more second to become good. */
+      await pg.waitForTimeout(1700);
+      let m = await measure();
+      const ok = (x) => !x.missing && !x.hidden && x.top >= x.cover - 1 && x.top < x.vh;
+      if (!ok(m)) { await pg.waitForTimeout(1000); m = await measure(); }
+      rows.push({ key, ...m, ok: ok(m) });
+    }
+    await ctx.close();
+    return { label, prepared, rows, errs };
+  };
+
+  /* The sample, through the hub's own button — the same path a person
+     takes, so the lazy script import and every model it seeds are the
+     real ones. */
+  const prepareSample = async (pg) => {
+    const btn = await pg.$('[data-action="sample-project"]');
+    if (!btn) return false;
+    await btn.click();
+    try {
+      await pg.waitForFunction(() => {
+        const S = window.StudioStore; const p = S && S.currentProject();
+        return !!p && JSON.parse(localStorage.getItem('fms_scenes_v1') || '{}').scenes?.length > 10;
+      }, null, { timeout: 15000 });
+    } catch (e) { return false; }
+    await pg.waitForTimeout(600);
+    return true;
+  };
+
+  /* The hub's own fragment links — the journey strip's stage cards, the
+     start cards, the section links — harvested from the rendered hub
+     with a project open (the strip is hidden without one), BEFORE the
+     sweeps, so every state tests them. */
+  {
+    const hctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const hp = await hctx.newPage();
+    await hp.goto(`${ORIGIN}/index.html`, { waitUntil: 'networkidle' });
+    await prepareSample(hp);
+    const harvested = await hp.evaluate(() =>
+      [...document.querySelectorAll('#journey a[href], .start-card[href], .ql[href], .hero a[href^="#"], .nav-link[href^="#"], .eps-tour-item[href]')]
+        .map((a) => a.getAttribute('href')));
+    harvested.forEach((h) => add(h.startsWith('#') ? 'index.html' + h : h, 'hub'));
+    await hctx.close();
+  }
+
+  const states = [];
+  states.push(await sweep('no project', async () => true));
+  states.push(await sweep('empty project', async (pg) => pg.evaluate(() => {
+    const S = window.StudioStore;
+    if (!S) return false;
+    if (!S.currentProject()) S.createProject({ title: 'Verification', format: 'feature' });
+    return !!S.currentProject();
+  })));
+  states.push(await sweep('seeded sample', prepareSample));
+
+  const bad = [];
+  const summary = states.map((s) => {
+    const missing = s.rows.filter((r) => r.missing).map((r) => r.key);
+    const hidden = s.rows.filter((r) => !r.missing && r.hidden).map((r) => r.key);
+    const obscured = s.rows.filter((r) => !r.missing && !r.hidden && !r.ok)
+      .map((r) => `${r.key} (top ${r.top}px vs chrome ${r.cover}px, fold ${r.vh}px)`);
+    if (!s.prepared) bad.push(`state "${s.label}" could not be prepared — its ${s.rows.length} loads measured the wrong studio`);
+    if (missing.length) bad.push(`${s.label}: ${missing.length} fragment target(s) missing from the DOM: ${missing.slice(0, 8).join(', ')}`);
+    if (hidden.length) bad.push(`${s.label}: ${hidden.length} fragment target(s) present but hidden: ${hidden.slice(0, 8).join(', ')}`);
+    if (obscured.length) bad.push(`${s.label}: ${obscured.length} fragment target(s) land behind the chrome or below the fold: ${obscured.slice(0, 8).join('; ')}`);
+    if (s.errs.length) bad.push(`${s.label}: ${s.errs.length} page error(s): ${s.errs.slice(0, 3).join(' | ')}`);
+    return { state: s.label, prepared: s.prepared, targets: s.rows.length, missing: missing.length, hidden: hidden.length, obscured: obscured.length, pageErrors: s.errs.length };
+  });
+  fragments = { checked: true, targets: targets.size, states: summary };
+  if (bad.length) { failures++; fragments.FAIL = bad; }
+  report.push({ page: 'fragment targets', ...fragments });
+  console.log((bad.length ? '✗' : '✓') + ` fragment targets: ${targets.size} hrefs x ${states.length} states — `
+    + summary.map((s) => `${s.state}: ${s.missing} missing, ${s.hidden} hidden, ${s.obscured} obscured of ${s.targets}`).join('; '));
+  if (bad.length) bad.forEach((b) => console.log('  ' + b));
 }
 
 /* ---- backup round trip --------------------------------------

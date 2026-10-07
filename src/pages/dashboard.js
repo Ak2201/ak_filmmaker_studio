@@ -278,12 +278,23 @@ function section(id, eyebrow, title, deck) {
    check silently stopped running, which is the trap the hue
    assertion in verify already names.
 
-   Returns null when there are no scenes: a wall of green saying
-   nothing is wrong with nothing is the most misleading answer this
-   page could give. */
+   With no scenes it renders the SECTION and no checks: a wall of
+   green saying nothing is wrong with nothing is the most misleading
+   answer this page could give, so the list is withheld — but the id
+   is not. `journey.js` sends every failing check to
+   `dashboard.html#readiness`, and a nav target must not depend on
+   data existing (CLAUDE.md): the fragment sweep in verify found this
+   id absent in the no-project and empty-project states, so a link
+   followed after switching to an emptier film landed nowhere. The
+   wrapper always renders; the empty state sits inside it. */
 function renderReadiness() {
   const r = readiness();
-  if (!r.hasFilm) return null;
+  if (!r.hasFilm) {
+    return section('readiness', 'Derived from your scenes · nothing to tick',
+      'Could you shoot tomorrow?',
+      (Store.currentProject() ? 'Nothing to check yet. Once this film has scenes' : 'Nothing to check yet. Open a project and give it scenes')
+      + ' — written, imported or broken down — and this becomes a list of what would stop a shoot day.');
+  }
 
   const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';
   const deck = r.blockers
@@ -722,7 +733,11 @@ function render() {
               + 'what is still missing — read from the project you have open.'
         })
       ]),
-      renderNoProject()
+      renderNoProject(),
+      /* The id, even here: a link into #readiness followed with no
+         project open must land on the section that says why it is
+         empty, not on nothing. */
+      renderReadiness()
     );
   } else {
     const snap = snapshot(project);

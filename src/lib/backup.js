@@ -79,7 +79,8 @@ export const PROJECT_KEYS = {
   deliverables:      'fms_deliverables_v1',
   write_goals:       'fms_write_goals_v1',
   scene_bin:         'fms_scene_bin_v1',
-  characters:        'fms_characters_v1'
+  characters:        'fms_characters_v1',
+  costs:             'fms_costs_v1'
 };
 
 /* Deliberately NOT per project: the theme is a device preference

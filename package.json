@@ -29,6 +29,7 @@
     "test:import": "node scripts/test-import.mjs",
     "test:sun": "node scripts/test-sun.mjs",
     "test:callsheet": "node scripts/test-callsheet.mjs",
+    "test:costs": "node scripts/test-costs.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
     "prove:drive": "node scripts/prove-drive.mjs",

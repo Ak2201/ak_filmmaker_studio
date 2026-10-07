@@ -18,11 +18,13 @@ import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
+import '../styles/budget.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
+import { costSections, initCosts } from '../ui/budget-costs.js';
 import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 
@@ -73,19 +75,26 @@ function render() {
     h('p.bd-deck', {
       text: 'A line-item estimate that reads your schedule. Days come from the '
           + 'stripboard if you have built one, rates from the Chennai tables if '
-          + 'you want them, and every figure stays editable.'
+          + 'you want them, and every figure stays editable. Then, once you are '
+          + 'shooting: petty cash, crew payments and the cost report against it.'
     })
   ]));
 
+  /* TABS (src/ui/tabs.js, budget is on its list). The estimator and
+     its notes are the first tab, `#estimate`; the cost tabs after it
+     are views of src/lib/costs.js. Every section stays in the DOM —
+     a hidden tab is reached by its hash, and the gate still reads
+     every word in it. */
   const body = h('div.bd-list');
-  body.append(renderBudget());
+  const estimate = h('section#estimate.cx-sec', { 'data-tab-label': 'Estimate' });
+  estimate.append(renderBudget());
 
   /* The rate tables did not move. Saying so, with a route, is the
      difference between "this page is thin" and "the reference is
      one click away". Not `.bd-how`: that is the empty states' grid of
      numbered steps, and it laid these three blocks out as three
      columns. */
-  body.append(h('div.bd-notes', {}, [
+  estimate.append(h('div.bd-notes', {}, [
     h('h3', { text: 'Where the numbers come from' }),
     h('p', { text: rateProvenance() }),
     h('p', {}, [
@@ -98,11 +107,13 @@ function render() {
       '.'
     ])
   ]));
+  body.append(estimate, ...costSections());
   main.append(body);
 
   app.replaceChildren(main);
   mountShell();
   initBudget(app);
+  initCosts(app);
 
   try {
     StudioUI.autoAriaLabels();

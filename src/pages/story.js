@@ -720,7 +720,22 @@ function render() {
   held = false;
   if (rendering) { again = true; return; }
   rendering = true;
+  /* A redraw under a field the user is working in (a tension score
+     stepped with the arrows) keeps the focus — preservingFocus() — AND
+     keeps the field where it was on screen. The swap of the whole page
+     let the browser re-anchor the scroll, so each ArrowUp drifted the
+     page by a few dozen pixels (UX audit M1). */
+  const was = document.activeElement;
+  const wasId = was && was.id && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName) && app.contains(was) ? was.id : '';
+  const top0 = wasId ? was.getBoundingClientRect().top : 0;
   try { preservingFocus(draw); } finally {
+    if (wasId) {
+      const now = document.activeElement;
+      if (now && now.id === wasId) {
+        const dy = now.getBoundingClientRect().top - top0;
+        if (dy) window.scrollBy({ top: dy, behavior: 'instant' });   // not the page's smooth scroll
+      }
+    }
     rendering = false;
     if (again) { again = false; render(); }
   }
@@ -1123,12 +1138,20 @@ saveOnInput('textarea[data-st-field="step-text"]', (el) => {
   const s = story(); Story.updateOutlineStep(s, el.getAttribute('data-step'), { text: el.value }); Story.saveStory(s);
 }, 600);
 
-// Drag and drop onto the import card.
-document.addEventListener('dragover', (e) => { if (e.target.closest && e.target.closest('.st-drop')) { e.preventDefault(); e.target.closest('.st-drop').classList.add('is-over'); } });
+// Drag and drop onto the import card. A FILE dropped anywhere else on
+// the page is refused rather than left to the browser, which would open
+// it in place of the studio (UX audit L28). Text dragged into a field is
+// not a file and still drops as usual.
+const carriesFiles = (e) => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'));
+document.addEventListener('dragover', (e) => {
+  const d = e.target.closest && e.target.closest('.st-drop');
+  if (d) { e.preventDefault(); d.classList.add('is-over'); }
+  else if (carriesFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; }
+});
 document.addEventListener('dragleave', (e) => { const d = e.target.closest && e.target.closest('.st-drop'); if (d) d.classList.remove('is-over'); });
 document.addEventListener('drop', (e) => {
   const d = e.target.closest && e.target.closest('.st-drop');
-  if (!d) return;
+  if (!d) { if (carriesFiles(e)) e.preventDefault(); return; }
   e.preventDefault();
   d.classList.remove('is-over');
   importFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);

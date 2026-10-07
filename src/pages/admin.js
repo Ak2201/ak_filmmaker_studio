@@ -209,14 +209,14 @@ function render() {
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'No cloud, no console.', 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time.'));
   } else if (!signedIn) {
-    const sec = section('signin', 'Administrators', 'Sign in.', 'The console is shown by the role the database reports for the signed-in account, and every number on it is fetched by that account.');
+    const sec = section('signin', 'Administrators', 'Sign in.', 'Only the studio’s administrators can open the console. Sign in with an administrator’s Google account to see it.');
     sec.append(h('div.ad-actions', {}, [h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })]));
     body.append(sec);
   } else if (!st) {
     body.append(section('checking', 'One moment', 'Checking…', ''));
   } else if (!isAdmin) {
     const sec = section('denied', 'Administrators only', 'Not this account.',
-      'Signed in as ' + (c.getUserEmail() || 'this account') + '. An administrator is made by hand in the database (schema section 13.2); nothing on this site can grant it.');
+      'Signed in as ' + (c.getUserEmail() || 'this account') + '. Administrator access is granted by the studio’s owner and cannot be requested from this page.');
     sec.append(h('div.ad-actions', {}, [h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })]));
     body.append(sec);
   } else {

@@ -309,14 +309,12 @@
    pill would read as the page's loudest action. */
 .db-proj-flag {
   flex: none;
-  padding: 2px var(--s2);
-  border: 1px solid var(--accent);
-  border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 600;
   letter-spacing: var(--track-label);
-  color: var(--ink);
+  text-transform: uppercase;
+  color: var(--accent-deep);
 }
 .db-proj-open { flex: none; }
 

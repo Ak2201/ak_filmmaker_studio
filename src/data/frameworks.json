@@ -256,6 +256,8 @@
     "windows": 24,
     "lowTension": 3.5,
     "minRun": 0.12,
+    "minWords": 120,
+    "_minWords": "Below this many words the slack notes are not computed: 24 slices of an eight-word synopsis are fragments of words, and a 'low tension' run across them is invented rather than read. Five words a slice is the least that says anything.",
     "actShareTolerance": 0.08,
     "_actShareTolerance": "The write page's Outline tab: how far an act's share of the pages linked to a beat may sit from its conventional share (the regions below, summed per act number) before the coverage meter calls it over or under. 0.08 = eight percentage points.",
     "regions": [

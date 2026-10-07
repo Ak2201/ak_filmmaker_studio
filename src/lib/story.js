@@ -278,6 +278,17 @@ const regionAt = (pos, fwId) => {
 };
 const pct = (x) => `${Math.round(x * 100)}%`;
 
+/** Words in the synopsis, and whether there are enough of them for the
+ *  slack notes to mean anything (UX audit M27: an eight-word synopsis
+ *  was cut into 24 slices and "flagged" as slack). */
+export function wordCount(text) {
+  const m = String(text || '').match(/\S+/g);
+  return m ? m.length : 0;
+}
+export function tooShortForPacing(story) {
+  return wordCount(story && story.source) < (PACING.minWords || 0);
+}
+
 /** Pacing flags, derived from the heatmap and the matrix. Each is
  *  `{ kind, level, text, from?, to? }`; `from`/`to` are character
  *  offsets so a flag can scroll the synopsis to the stretch it means. */
@@ -307,11 +318,15 @@ export function pacingFlags(story, fwId = story.framework) {
     }
     run = [];
   };
-  heat.forEach((w, i) => {
-    const edge = i === 0 || i === n - 1;
-    if (w.tension <= PACING.lowTension && !(edge && !run.length)) run.push(w); else close();
-  });
-  close();
+  // Too short to slice: no slack note at all, rather than one read off
+  // fragments of words. The hand-tag notes below still apply.
+  if (!tooShortForPacing(story)) {
+    heat.forEach((w, i) => {
+      const edge = i === 0 || i === n - 1;
+      if (w.tension <= PACING.lowTension && !(edge && !run.length)) run.push(w); else close();
+    });
+    close();
+  }
 
   // Beats far from where the framework expects them. Only hand-made tags
   // can be "misplaced"; an inferred beat is by construction the nearest.

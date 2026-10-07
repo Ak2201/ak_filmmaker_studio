@@ -18,7 +18,7 @@
    [data-gate-action].
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { formatCode, normaliseCode, setCodePass, inviteLink } from '../lib/gate.js';
+import { formatCode, normaliseCode, setCodePass, inviteLink, errorSentence } from '../lib/gate.js';
 import '../styles/gate.css';
 
 const cloud = () => window.StudioCloud || null;
@@ -82,6 +82,7 @@ export function takeoverDialog(info = {}) {
 /* ---- FR-101: the invite-code box -------------------------------- */
 
 let codeBusy = false, codeError = '';
+let codeTyped = '';   // the box is rebuilt on every redraw; what was typed comes back (M16)
 
 /** A settings section for entering a code, or null when there is
  *  nothing to ask: no cloud, or already a member, or no gate deployed. */
@@ -90,14 +91,14 @@ export function inviteSection(section, st) {
   if (!c || !c.isConfigured()) return null;
   const signedIn = !!c.getSession();
   if (signedIn && st && (!st.deployed || (st.registered && !st.disabled))) return null;
-  const sec = section('invite', signedIn ? 'Invite' : 'Or, with a code', 'Have an invite code?',
+  const sec = section('invite', signedIn ? 'Invite' : 'With a code', 'Have an invite code?',
     signedIn
       ? 'If somebody handed you a code, enter it and you are through. No code? Request an invite instead — the administrator sees the account you signed in with.'
       : 'A code lets you straight in, with no sign-in. Enter it and you are through on this browser; sign in with Google whenever you want your work backed up to an account.');
   const form = h('form.gt-code', { 'data-gate-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'gtCode', text: 'Invite or screening pass code' }));
   form.append(h('input#gtCode.gt-input', { type: 'text', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
-    placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code', 'aria-describedby': 'gtCodeHint' }));
+    placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code', 'aria-describedby': 'gtCodeHint', value: formatCode(codeTyped) }));
   form.append(h('p#gtCodeHint.gt-meta', { text: 'Spaces and dashes are ignored. A screening pass opens the screening room instead.' }));
   /* The signed-out label used to read CONTINUE WITH GOOGLE, which is
      what happens AFTER a code checks out — and with the box empty the
@@ -120,6 +121,7 @@ async function submitCode(form) {
   const g = gate(), c = cloud();
   const raw = form.querySelector('[data-gate-field="code"]').value;
   if (!g) return;
+  codeTyped = raw;
   if (!normaliseCode(raw)) {
     codeError = c.getSession()
       ? 'Enter the code you were given — or request an invite above.'
@@ -133,6 +135,7 @@ async function submitCode(form) {
   try {
     if (c.getSession()) {
       await g.redeemCode(raw);
+      codeTyped = '';
       toast('Invite code accepted — sync is on.', 'success');
       await c.runGate();
       if (c.attachToCurrentProject) c.attachToCurrentProject();
@@ -155,7 +158,7 @@ async function submitCode(form) {
   } catch (e) {
     codeError = /screening pass/i.test(e.message || '')
       ? 'That is a screening pass. Open it in the screening room.'
-      : (e.message || 'That code could not be checked.');
+      : errorSentence(e, 'That code could not be checked.');
   } finally {
     codeBusy = false; rerender();
   }
@@ -193,7 +196,7 @@ async function loadAdmin({ quiet = false } = {}) {
     try { admin.projects = await g.admin.listProjects(); } catch (e) { admin.projects = []; }
     admin.loaded = true;
   } catch (e) {
-    admin.error = e.message || 'The console could not load.';
+    admin.error = errorSentence(e, 'The console could not load.');
   } finally {
     admin.busy = false; rerender();
   }
@@ -363,7 +366,7 @@ async function createCode(form) {
     admin.draft = {};
     await loadAdmin({ quiet: true });
     rerender();
-  } catch (e) { toast(e.message || 'The code was not created.', 'error'); }
+  } catch (e) { toast(errorSentence(e, 'The code was not created.'), 'error'); }
 }
 
 /* ---- wiring ------------------------------------------------------ */
@@ -418,7 +421,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       await navigator.clipboard.writeText(inviteLink(el.dataset.code));
       toast('Invite link copied — whoever opens it is in.');
     }
-  } catch (err) { toast(err.message || 'That did not work.', 'error'); }
+  } catch (err) { toast(errorSentence(err, 'That did not work.'), 'error'); }
 });
 
 export default { takeoverDialog, inviteSection, adminSection, wireGateUI };

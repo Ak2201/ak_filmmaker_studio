@@ -27,5 +27,11 @@ if (meta) {
   const prefix = meta.getAttribute('data-prefix') || '';
   const want = decodeURIComponent((location.hash || '').replace(/^#/, ''));
   const target = want && /^[\w-]+$/.test(want) ? prefix + want : frag;
-  location.replace('./' + file + (target ? '#' + target : ''));
+  /* An old fragment this stub cannot vouch for — dissect.html#anything
+     that was never an id — used to land on the Library's FIRST tab,
+     Films, because tabs.js falls back to it for a hash that matches
+     nothing. `?tab=` names the tab this page became, and tabs.js uses
+     it only in that case: a fragment that resolves still wins. */
+  const tab = target && target !== frag && frag ? '?tab=' + encodeURIComponent(frag) : '';
+  location.replace('./' + file + tab + (target ? '#' + target : ''));
 }

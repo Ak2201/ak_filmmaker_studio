@@ -747,9 +747,13 @@ function render() {
   if (!study) {
     main.append(h('div.bd-empty', {}, [
       h('div.bd-empty-mark', { text: '◉', 'aria-hidden': 'true' }),
-      h('h2', { text: 'No case studies shipped' }),
-      h('p', { text: 'src/data/studies.json holds no films, so there is nothing to select. '
-        + 'The schema and validate() live in src/lib/studies.js.' })
+      /* Plain words: this is a reader's page. It used to name the data
+         file and the validator, which is a note for whoever edits
+         studies.json (src/lib/studies.js holds its schema), not for a
+         filmmaker opening the Library. */
+      h('h2', { text: 'No case studies yet' }),
+      h('p', { text: 'There are no film studies in this edition of the Library yet. '
+        + 'The other shelves are all here.' })
     ]));
     app.replaceChildren(main);
     return;

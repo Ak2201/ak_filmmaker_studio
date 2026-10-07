@@ -2045,6 +2045,8 @@ a:focus-visible { outline-offset: 3px; }
    rule. */
 .sh-rail-item.is-active .sh-rail-icon { color: var(--chrome-ink); }
 .sh-rail-icon { font-size: 1.35em; line-height: 1; }
+/* The drawer's stage list exists for phones only; see the 719px block. */
+.sh-rail-stages { display: none; }
 
 /* ---- the single horizontal bar ---- */
 .sh-bar {
@@ -2825,6 +2827,20 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   .sh-find { display: none; }
 }
 
+/* ON A BAR WITH NO PAGE TOOLBAR, 720–1099px, THE HANDLE STAYS PUT.
+   The band wraps to two rows across this range, and where the handle
+   landed depended on the exact width: at the front of the bar, ahead
+   of the burger, up to 900px (the `order: -1` above); trailing the
+   stages mid-row from 901; the start of a third row at 1099 (UX audit
+   L23). Here the stages take the whole second row and the handle
+   closes the first, after the crumb — the same corner it holds at
+   1100px and up. The four toolbar pages are untouched: there the
+   handle is inside the page's cluster and wraps with it. */
+@media (min-width: 720px) and (max-width: 1099px) {
+  .sh-bar:not(:has(> .toolbar)) > .sh-phases { order: 1; flex: 1 1 100%; }
+  .sh-bar:not(:has(> .toolbar)) > .sh-find { order: 0; margin-left: auto; }
+}
+
 /* The dismiss control on a toast that does not expire. Every colour
    is a --panel-* token because the toast is a dark slab in all four
    themes, same as the chrome. */
@@ -3340,6 +3356,33 @@ html {
     scrollbar-width: none;
   }
   .sh-phases::-webkit-scrollbar { display: none; }
+  /* ...and with the scrollbar hidden, nothing said there was more of
+     it: at 390px Production and Post-Production simply were not there.
+     shell.js flags the edges with content past them and the edge
+     fades, the way a cut-off line of type reads as "keep going". A
+     mask, so it fades whatever is under it and names no colour of its
+     own beyond the opaque stop. */
+  .sh-phases[data-more="right"] {
+    mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left right"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6),
+                                var(--chrome) calc(100% - var(--s6)), transparent);
+  }
+  /* The drawer carries the stages too (buildRailStages in shell.js),
+     under a hairline after the global entries, and scrolls inside
+     itself when the two lists outgrow a short landscape screen. */
+  .sh-rail { overflow-y: auto; }
+  .sh-rail-stages {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--s2);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--chrome-hair);
+  }
   .sh-bar > .toolbar,
   .sh-bar[data-stacked] > .toolbar {
     flex: 1 1 100%;

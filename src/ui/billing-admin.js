@@ -46,7 +46,9 @@ async function load() {
     const [plans, payments, overview] = await Promise.all([Billing.refreshPlans(), Billing.admin.listPayments(200), Billing.admin.overview()]);
     S.plans = plans; S.payments = payments; S.overview = overview || {};
     // Section 20 may not have run yet; the rest of the console must not wait on it.
-    try { S.promos = await Billing.admin.listPromoCodes(); } catch (e) { S.promos = null; }
+    /* Members' own referral codes (schema section 22) are listed on the
+       Growth tab, by referrer; this table is the codes the owner made. */
+    try { S.promos = (await Billing.admin.listPromoCodes()).filter((c) => c.kind !== 'referral'); } catch (e) { S.promos = null; }
     // The grant form needs people to pick from; the gate's console already
     // lists members, so borrow that list rather than add a fourth RPC.
     try {
@@ -134,7 +136,7 @@ export function billingAdminSection(section, st) {
         const live = c.active && !(c.valid_until && Date.parse(c.valid_until) <= Date.now()) && !(Number.isInteger(c.max_uses) && c.uses >= c.max_uses);
         tb.append(h('tr' + (live ? '' : '.is-off'), { 'data-promo': c.code }, [
           h('td', {}, [h('code.gt-codeval', { text: c.code })]),
-          h('td', { text: promoLabel(c) }),
+          h('td', { text: promoLabel(c) + (c.commission_pct != null ? ` · ${Number(c.commission_pct)}% commission` : '') }),
           h('td', { text: c.plan_ids && c.plan_ids.length ? c.plan_ids.map(planName).join(', ') : 'every plan' }),
           h('td', { text: `${c.uses}${Number.isInteger(c.max_uses) ? ' of ' + c.max_uses : ''}` }),
           h('td', { text: (c.valid_from ? 'from ' + fmtDate(c.valid_from) + ' ' : '') + (c.valid_until ? 'until ' + fmtDate(c.valid_until) : c.valid_from ? '' : 'no end') }),
@@ -155,6 +157,7 @@ export function billingAdminSection(section, st) {
       h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', { id: 'baPromoValue', name: 'value', type: 'text', inputmode: 'decimal', placeholder: '10', required: true })]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', { id: 'baPromoMax', name: 'max_uses', type: 'number', min: 1, step: 1, placeholder: 'unlimited' })]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoUntil', text: 'Valid until' }), h('input', { id: 'baPromoUntil', name: 'valid_until', type: 'date' })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoComm', text: 'Commission % (affiliate)' }), h('input', { id: 'baPromoComm', name: 'commission', type: 'text', inputmode: 'decimal', placeholder: 'none' })]),
       h('div.ba-field.is-wide', {}, [h('label', { for: 'baPromoNote', text: 'Note (who it is for, where it was printed)' }), h('input', { id: 'baPromoNote', name: 'note', type: 'text', maxlength: 300 })])
     ]));
     const paid = S.plans.filter((p) => p.id !== 'free');
@@ -193,7 +196,7 @@ export function billingAdminSection(section, st) {
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
         h('td', { text: planName(p.plan_id) }),
         h('td', { text: p.period === 'lifetime' || p.period === 'grant' ? 'for good' : p.period + (p.ends_at ? ' · ends ' + fmtDate(p.ends_at) : '') }),
-        h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) }),
+        h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) + (p.credit_paise > 0 ? ` (upgrade; ${fmtPaise(p.credit_paise)} already paid)` : '') }),
         h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
         h('td', { text: p.status + (p.note ? ' — ' + p.note : '') }),
         h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })])
@@ -273,6 +276,14 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
   const plans = f.getAll('plan').map(String);
   const all = [...form.querySelectorAll('input[name="plan"]')].length;
   patch.plan_ids = plans.length && plans.length < all ? plans : null;
+  /* An affiliate code (schema section 23) is a promo code with a
+     commission; revenue and commission due are derived on the Growth tab. */
+  const comm = String(f.get('commission') || '').trim();
+  if (comm) {
+    const n = Number(comm);
+    if (!(n > 0 && n <= 100) || !/^\d+(\.\d{1,2})?$/.test(comm)) { toast(`"${comm}" is not a commission from 0.01 to 100%.`, 'error'); return; }
+    patch.commission_pct = n;
+  }
   if (!plans.length) { toast('Tick at least one plan the code applies to.', 'error'); return; }
   try {
     const row = await Billing.admin.setPromoCode(code, patch);

@@ -1,0 +1,27 @@
+/* ============================================================
+   GROWTH — the billing additions of schema sections 21–28
+   ------------------------------------------------------------
+   Upgrade lines, referral and gift panels, invoice buttons and the
+   console's growth tables. Read alongside plans.css, which it never
+   overrides; every colour is a token and every radius the skin's.
+   ============================================================ */
+.pl-upgrade { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
+.pl-card.is-upgrade .pl-price strong { color: var(--ink); }
+
+.gr-panel { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); margin-top: var(--s3);
+  background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-width: 48rem; }
+.gr-panel > h3 { margin: 0; }
+.gr-row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.gr-code { font-family: var(--f-mono); font-size: var(--t-lg); letter-spacing: var(--track-label); color: var(--ink); overflow-wrap: anywhere; }
+.gr-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }
+.gr-list { margin: 0; padding-left: var(--s4); display: grid; gap: var(--s1); font-size: var(--t-small); color: var(--ink-body); }
+.gr-list .is-off { color: var(--ink-muted); }
+.gr-fields { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.gr-fields label { display: block; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; margin-bottom: var(--s1); }
+.gr-fields input, .gr-fields select { width: 100%; box-sizing: border-box; }
+.gr-msg { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
+.gr-msg.is-error { color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+.gr-codes { margin: 0; padding: var(--s2) var(--s3); font-family: var(--f-mono); font-size: var(--t-small); white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-height: 16rem; overflow: auto; }
+.gr-bars { display: grid; gap: var(--s1); }
+.gr-check { display: inline-flex; gap: var(--s1); align-items: center; font-size: var(--t-small); color: var(--ink-body); }

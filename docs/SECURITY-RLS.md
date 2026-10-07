@@ -512,6 +512,85 @@ deactivates, it does not delete. Live checks:
 
 ---
 
+## 6c. The growth sections (schema §21 onward, 7 Oct 2026). **UNRUN.**
+
+Each section below passes `npm run test:schema` on PostgreSQL 16 (its own
+file in `scripts/schema-tests/`); none has met the live database. The
+checks are written to be run in order, after §21 onward has been pasted
+into the SQL editor and `rzp-order` redeployed.
+
+### §21 — upgrade by paying the difference
+
+| Object | Grant | Notes |
+|---|---|---|
+| `quote_for(uuid, text, text)` | nobody (internal) | the one price; reached through `quote_order` and `create_pending_payment` |
+| `paid_credit_paise(uuid)` | nobody (internal) | sums `paid` + `lifetime` rows |
+| `quote_order(text, text)` | `anon`, `authenticated` | now `quote_for(auth.uid(), …)` — a signed-in caller learns only their OWN credit |
+| `payments.credit_paise` | — | written by `create_pending_payment` (service role) only |
+
+The risk this section adds is a caller pricing somebody else's upgrade;
+`quote_order` takes no user argument, so it cannot. Live checks:
+
+1. As anon: `select quote_for('<any uuid>', 'indie', null)` → `42501`;
+   `select paid_credit_paise('<any uuid>')` → `42501`. As anon,
+   `quote_order('indie', null)` → the list price, `credit_paise: 0`.
+2. As a signed-in buyer who paid for Starter in test mode:
+   `quote_order('indie', null)` → `amount_paise` = Indie − what they paid,
+   `upgrade_from: 'starter'`; `quote_order('starter', null)` → `22023`
+   *"You already have Starter"*.
+3. The test-mode upgrade from `settings.html#plan`: Razorpay's order
+   shows the difference; the ledger row's `credit_paise` is the Starter
+   amount; the organisation is on Indie.
+4. With the service key, open an Indie and a Pro order for one test
+   user, activate Pro then Indie → `accounts.plan` stays `pro`.
+
+### §22 — referral codes
+
+| Table / function | Policy / grant | Permits | To whom |
+|---|---|---|---|
+| `billing_settings` | RLS on, **no policy**, API roles revoked | — | nobody from the client |
+| `referral_credits` | RLS on, **no policy**, API roles revoked | — | nobody from the client |
+| `my_referral()` | `authenticated` | the caller's OWN code and credits (amounts and dates, never the friend) | a signed-in member |
+| `ensure_referral_code(uuid)`, `payments_referral_after()` | nobody | mint a code; write a credit | internal / trigger |
+| `admin_get/set_billing_settings`, `admin_list_referral_credits`, `admin_mark_referral_paid` | `authenticated`, re-check `is_studio_admin()` | the console | an administrator |
+
+A credit is written only by the trigger on `payments`, which only the
+service role's `activate_payment()` moves to `paid`; a member cannot
+credit themselves because `quote_for()` refuses their own code. Live
+checks:
+
+1. As anon: `select count(*) from referral_credits` and
+   `from billing_settings` → `42501` (not `42P01`, which means §22 never
+   ran). `select my_referral()` → `42501`.
+2. As a signed-in member who has paid nothing: `my_referral()` →
+   `eligible: false`. After a test-mode purchase: `eligible: true`,
+   `code` `REF-XXXXXX`; asked again → the same code.
+3. As that member: `quote_order('indie', '<their code>')` → `ok: false,
+   reason: 'own_code'`.
+4. A second test account buys with the code → 10% off; after activation
+   the console's Growth tab shows one owed credit naming both addresses;
+   MARK SELECTED PAID → paid, and the first member's panel reads it.
+5. As a non-admin: `select admin_list_referral_credits()` → `42501`.
+
+### §23 — affiliate codes
+
+No new table: `promo_codes.commission_pct` sits in the table §20 already
+closed to the client. `admin_affiliate_report()` and
+`admin_affiliate_orders(text)` are granted to `authenticated` and
+re-check `is_studio_admin()`; the second returns buyers' e-mail
+addresses, so the check is the whole boundary. Live checks:
+
+1. As a non-admin: `select admin_affiliate_report()` and
+   `select admin_affiliate_orders('X')` → `42501`.
+2. As the admin: a code with "Commission %" 20 → the promo list says
+   "20% commission"; `admin_set_promo_code('<a REF- code>',
+   '{"commission_pct": 10}')` → `22023`.
+3. One test-mode purchase through it, one refunded: the Growth tab shows
+   orders 1, revenue = the paid amount, commission = floor(20%),
+   refunded 1.
+
+---
+
 ## Enumeration: can `anon` or a signed-in stranger list rows they were not given?
 
 Walked table by table, with `auth.uid()` null (anon) and with a valid-but-unrelated

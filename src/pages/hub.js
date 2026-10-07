@@ -1985,6 +1985,28 @@ function sampleCalc() {
    an import that fails (offline, before the chunk was ever cached)
    leaves a project with everything but its pages, rather than a
    project half-written. */
+/* start.html's "See it on a real film" link is index.html?sample=1: the
+   same action as the OPEN THE SAMPLE button, reached by URL. The
+   parameter is consumed (replaceState, so a reload does not seed a
+   second copy), and a sample that already exists in this namespace is
+   OPENED rather than duplicated. Under the site gate a stranger never
+   reaches this — the redirect to invite.html drops the query, which is
+   the correct answer today. */
+function openSampleFromURL() {
+  let params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return; }
+  if (params.get('sample') !== '1') return;
+  params.delete('sample');
+  const q = params.toString();
+  try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
+  const existing = Store.listProjects().find((p) => p.title === SAMPLE_TITLE);
+  if (existing) {
+    if (Store.currentProjectId() !== existing.id) Store.setCurrentProject(existing.id);
+    return;
+  }
+  openSampleProject().catch(sampleFailed);
+}
+
 function sampleFailed(err) {
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast('Could not open the sample project. ' + (err && err.message ? err.message : ''),
@@ -2552,6 +2574,7 @@ function init() {
   updateStatus();
   detectActivity();
   renderActivity();
+  openSampleFromURL();
 
   // FIRST RUN. This used to open the new-project modal on a 300ms timer:
   // a stranger's first sight of the studio was a dialog demanding a title

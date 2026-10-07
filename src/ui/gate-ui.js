@@ -114,6 +114,7 @@ export function inviteSection(section, st) {
   if (signedIn && !/(^|\/)invite(\.html)?$/.test(location.pathname)) {
     sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? Request an invite →' })]));
   }
+  sec.append(h('p.gt-meta', {}, [h('a', { href: 'start.html', text: 'What is this? About FilmMakerStudio →' })]));   // the public landing page, outside the gate
   return sec;
 }
 

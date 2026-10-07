@@ -38,20 +38,17 @@
 // `localStorage.getItem('fms_…')` scopes to the current project.
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
-import { parseNum, fmtINR } from '../lib/money.js';
+import { fmtINR } from '../lib/money.js';
 import Store from '../lib/store.js';
-import {
-  NOTE_PREFIX, buildBackup, downloadBackup, applyBackup, backupShape
-} from '../lib/backup.js';
 import { DRIVE_STATE_KEY } from '../lib/drive-sync.js';
 import { mountShell } from '../ui/shell.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import { wireActionBar } from '../ui/actionbar.js';
-import { renderLauncher, BUILT_MODULE_COUNT } from '../ui/launcher.js';
+import { renderLauncher } from '../ui/launcher.js';
 import { jobs } from '../lib/navmodel.js';
 /* The five stages and where the open film is in them — derived, stored
    nowhere. See src/lib/journey.js. */
-import { STAGES, stageOfStep, journey, guideJourney } from '../lib/journey.js';
+import { STAGES, stageOfStep, journey } from '../lib/journey.js';
 import { renderJourneyStrip } from '../ui/journey-strip.js';
 
 import '../styles/base.css';
@@ -66,7 +63,6 @@ import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, esc, delegate } from '../lib/dom.js';
-import PDF from '../lib/pdf.js';
 
 import featureData from '../data/steps.feature.json';
 import shortData   from '../data/steps.short.json';
@@ -92,6 +88,26 @@ import PlanGate    from '../lib/plan-gate.js';
 import { formatEighths } from '../lib/scenes.js';
 import { locationKey, locationLink } from '../lib/locations.js';
 
+/* THE SPLIT (7 Oct 2026). hub.js was 2,600 lines; four views moved to
+   src/pages/hub/ with their behaviour byte for byte — the first-run
+   panel, the project grid, the Backup menu, the resume/progress cards —
+   plus util.js for the strings they share. This file is the
+   composition: the markup, the search, the activity log, the sample
+   writer, the project actions and the event wiring. ALL_KEYS stays
+   here because it is the RESET list (CLAUDE.md). */
+import {
+  FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
+  FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
+  FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
+} from './hub/util.js';
+import { createResumeCards } from './hub/resume-cards.js';
+import { createBackupMenu } from './hub/backup-menu.js';
+import { sampleDays, samplePages } from './hub/first-run.js';
+import {
+  renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
+  setProjectFilter, setProjectSearch, setProjectSort
+} from './hub/project-cards.js';
+
 
 /* The theme toggle's tooltip, derived from the list it describes.
    It read "Theme — paper, sepia, ink" on three pages long after sepia
@@ -108,9 +124,6 @@ const PREF_KEY     = 'fms_studio_prefs_v1';
 /* Writer prefs (src/ui/format-guide.js): per device, in GLOBAL_KEYS
    too, so a backup carries them like the theme. */
 const WRITE_PREFS  = 'fms_write_prefs_v1';
-const FEATURE_KEY  = 'fms_filmmaker_combined_v1';
-const SHORT_KEY    = 'fms_shortfilm_blueprint_v1';
-const LIB_CALC_KEY = 'fms_library_calc_v1';
 const FEAT_PREFS   = 'fms_filmmaker_prefs_v1';
 const SHORT_PREFS  = 'fms_shortfilm_prefs_v1';
 const LIB_PREFS    = 'fms_library_prefs_v1';
@@ -195,10 +208,6 @@ const ALL_KEYS = [
 // ============================================================
 // PAGES — the new filenames, and a map off the old ones.
 // ============================================================
-const FEATURE_URL = 'feature.html';
-const SHORT_URL   = 'short.html';
-const DASHBOARD_URL = 'dashboard.html';
-const LIBRARY_URL = 'library.html';
 
 const RENAMED = {
   'arunak-filmmaker-blueprint.html': FEATURE_URL,
@@ -234,16 +243,6 @@ const PHASE_NAME = Object.fromEntries(STAGES.map((s) => [s.id, s.label]));
 const stageName = (ns, step) => PHASE_NAME[stageOfStep(ns, step.id)] || 'Story';
 const SHORT_STEPS   = shortData.steps;
 
-/** Strip authored markup so data HTML can be used as plain text. */
-function plain(s) {
-  return String(s ?? '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-}
-function clip(s, n = 104) {
-  const t = plain(s);
-  return t.length > n ? t.slice(0, n - 1).replace(/[\s,;·]+$/, '') + '…' : t;
-}
-/** "The Spark." → "The Spark" */
-function title(s) { return plain(s).replace(/\.$/, ''); }
 
 const WATCH_FILMS = watchlist.reduce((n, w) => n + (w.films ? w.films.length : 0), 0);
 
@@ -369,28 +368,6 @@ function chunk(arr, n) {
   return out;
 }
 
-// ============================================================
-// SMALL UTILITIES (ported verbatim)
-// ============================================================
-function parseStorage(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
-}
-function relTime(ts) {
-  const diff = Date.now() - ts;
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
-  const d = new Date(ts);
-  return (d.getMonth() + 1) + '/' + d.getDate();
-}
-function fmtRelDate(iso) {
-  if (!iso) return '—';
-  const t = new Date(iso).getTime();
-  if (isNaN(t)) return '—';
-  return relTime(t);
-}
-const $ = (sel) => document.querySelector(sel);
 
 // ============================================================
 // MARKUP
@@ -1029,274 +1006,16 @@ function renderGreeting() {
 }
 
 // ============================================================
-// PROGRESS — read straight out of each blueprint's local data
+// PROGRESS, THE RESUME CARD, THE STORAGE SUMMARY — src/pages/hub/resume-cards.js
 // ============================================================
-/** "Part II · Screenplay", from the journey. */
-function stageLabelOf(id, complete) {
-  if (complete) return 'All ' + STAGES.length + ' stages';
-  const st = STAGES.find((s) => s.id === id) || STAGES[0];
-  return 'Part ' + st.part + ' · ' + st.label;
-}
-
-function featureStageLabel(data) {
-  const cur = Store.currentProject();
-  if (cur && cur.format !== 'short' && lastJourney) {
-    return stageLabelOf(lastJourney.current, lastJourney.complete);
-  }
-  const g = guideJourney('feature', data);
-  return g.started ? stageLabelOf(g.current, false) : 'not started';
-}
-
-function computeFeatureStatus() {
-  const data = parseStorage(FEATURE_KEY);
-  const keys = Object.keys(data);
-  if (keys.length === 0) return { pct: 0, title: '', stage: featureStageLabel(data), stepsDone: {}, lastEditedStep: null };
-  const stepsDone = {};
-  keys.forEach(k => {
-    if (k.startsWith('fc_v1_')) { stepsDone['feat-' + k.slice(6)] = !!data[k]; }
-    if (k.startsWith('fc_v2_')) {
-      const n = parseInt(k.slice(6), 10);
-      if (!isNaN(n)) stepsDone['feat-' + String(n + 12).padStart(2, '0')] = !!data[k];
-    }
-    const m1 = k.match(/^s(\d+)_/);
-    const m2 = k.match(/^v2s(\d+)_/);
-    const b  = k.match(/^b(\d+)$/);
-    if (m1 && data[k] && String(data[k]).trim()) {
-      const n = String(m1[1]).padStart(2, '0');
-      stepsDone['feat-' + n] = stepsDone['feat-' + n] || 'partial';
-    }
-    if (m2 && data[k] && String(data[k]).trim()) {
-      const n = String(parseInt(m2[1], 10) + 12).padStart(2, '0');
-      stepsDone['feat-' + n] = stepsDone['feat-' + n] || 'partial';
-    }
-    if (b && data[k] && String(data[k]).trim()) stepsDone['feat-08'] = stepsDone['feat-08'] || 'partial';
-
-  });
-  /* The denominator is the fields the blueprint DECLARES, not the
-     keys that happen to be saved. Counting the saved blob meant a
-     project with eleven filled fields read 100% complete, and the
-     resume card offered it as "ready to shoot" while the dashboard
-     said 3% for the same data. See src/lib/blueprint-fields.js. */
-  /* And it is guideJourney()'s number, the one the project card and
-     the dashboard print, rather than a second tally over the same
-     fields: three surfaces on two pages reading one project have to
-     say one percentage, and a local copy is how they stop agreeing. */
-  const pct = guideJourney('feature', data).pct;
-  /* The stage is journey.js's answer, not a band of the percentage.
-     The bands said "Vol II · Pre-prod" for any blueprint 50–79% full,
-     whatever the film actually had in it, and "ready to shoot" for a
-     blueprint with no scenes. For the open feature project the stage is
-     the journey's current one (guide AND tools); otherwise the guide's
-     own reading of this blob. */
-  const stage = featureStageLabel(data);
-  let lastStepNum = null;
-  Object.keys(stepsDone).forEach(k => {
-    const match = k.match(/feat-(\d+)/);
-    if (!match) return;
-    const n = parseInt(match[1], 10);
-    if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
-  });
-  return {
-    pct,
-    title: data.meta_title || data.v1_title || '',
-    stage,
-    stepsDone,
-    lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2, '0') : null
-  };
-}
-
-function computeShortStatus() {
-  const data = parseStorage(SHORT_KEY);
-  const keys = Object.keys(data);
-  if (keys.length === 0) return { pct: 0, title: '', runtime: '', stepsDone: {}, lastEditedStep: null };
-  const stepsDone = {};
-  keys.forEach(k => {
-    const m  = k.match(/^s(\d+)_/);
-    const cm = k.match(/^ck_s(\d+)_/);
-    const bm = k.match(/^b(\d+)_/);
-    const pm = k.match(/^p_/);
-    const lm = k.match(/^ck_lock_/);
-    if (m && data[k] && String(data[k]).trim()) {
-      const n = String(m[1]).padStart(2, '0');
-      stepsDone['short-' + n] = stepsDone['short-' + n] || 'partial';
-    }
-    if (cm && data[k] === true) {
-      const n = String(cm[1]).padStart(2, '0');
-      stepsDone['short-' + n] = true;
-    }
-    if (bm && data[k] && String(data[k]).trim()) stepsDone['short-04'] = stepsDone['short-04'] || 'partial';
-    if (pm && data[k] && String(data[k]).trim()) stepsDone['short-09'] = stepsDone['short-09'] || 'partial';
-    if (lm && data[k] === true) stepsDone['short-11'] = true;
-
-    if (k.startsWith('_')) {
-      if (k === '_sceneMap' && Array.isArray(data[k])) {
-        if (data[k].some(r => Object.values(r).some(v => v && String(v).trim()))) {
-          stepsDone['short-06'] = stepsDone['short-06'] || 'partial';
-        }
-      }
-      if (k === '_script' && Array.isArray(data[k])) {
-        if (data[k].some(s => s.slug || s.action || (s.dialogues || []).some(d => d.line))) {
-          stepsDone['short-07'] = stepsDone['short-07'] || 'partial';
-        }
-      }
-      return;
-    }
-  });
-  /* The same number the project card and the dashboard print —
-     guideJourney()'s, against the fields the SHORT blueprint declares.
-     This used to add the script scenes and dialogue lines to both
-     sides as well, which is the short editor's own scoring and nobody
-     else's, so the resume card and the card under it disagreed about
-     one film. The script's own progress lives on the Write page. */
-  const pct = guideJourney('short', data).pct;
-  let lastStepNum = null;
-  Object.keys(stepsDone).forEach(k => {
-    const match = k.match(/short-(\d+)/);
-    if (!match) return;
-    const n = parseInt(match[1], 10);
-    if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
-  });
-  return {
-    pct,
-    title: data.meta_title || '',
-    runtime: data.meta_runtime || '',
-    stepsDone,
-    lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2, '0') : null
-  };
-}
-
-function computeLibraryStatus() {
-  const calc = parseStorage(LIB_CALC_KEY);
-  const seenRows = {};
-  Object.keys(calc).forEach(k => {
-    const m = k.match(/^ci_(\d+)_(\w+)$/);
-    if (!m) return;
-    seenRows[m[1]] = seenRows[m[1]] || {};
-    seenRows[m[1]][m[2]] = calc[k];
-  });
-  let count = 0, total = 0;
-  Object.keys(seenRows).forEach(idx => {
-    const r = seenRows[idx];
-    // Was three unanchored suffix tests, the trap CLAUDE.md names:
-    // `cr` matched "crew", a bare `l` matched "lens", `k` matched
-    // "bank". library.js was fixed years-of-commits ago and this copy
-    // never was, so the hub's budget figure and the calculator's
-    // could disagree about identical data. One parser now, in lib.
-    const days = parseNum(r.days);
-    const rate = parseNum(r.rate);
-    const sub = days * rate;
-    if (sub > 0) { count++; total += sub; }
-  });
-  return { count, total };
-}
-
-// ============================================================
-// STATUS RENDER
-// ============================================================
-let lastFeatStatus, lastShortStatus, lastLibStatus;
-
-function updateStatus() {
-  // First: the door's "Stage" and the resume card read lastJourney.
-  renderJourney();
-  const f = computeFeatureStatus(); lastFeatStatus = f;
-  $('#feat-title').textContent    = f.title || '—';
-  $('#feat-stage').textContent    = f.stage || '—';
-  $('#feat-progress').textContent = f.pct + '%';
-  $('#feat-bar').style.width      = f.pct + '%';
-
-  const s = computeShortStatus(); lastShortStatus = s;
-  $('#short-title').textContent    = s.title || '—';
-  $('#short-runtime').textContent  = s.runtime || '—';
-  $('#short-progress').textContent = s.pct + '%';
-  $('#short-bar').style.width      = s.pct + '%';
-
-  const l = computeLibraryStatus(); lastLibStatus = l;
-  $('#lib-calc').textContent  = l.count > 0 ? (l.count + ' items') : 'empty';
-  $('#lib-total').textContent = l.total > 0 ? fmtINR(l.total) : '—';
-
-  let bytes = 0, noteCount = 0;
-  ALL_KEYS.forEach(k => {
-    const v = localStorage.getItem(k);
-    if (v) bytes += v.length;
-  });
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith(NOTE_PREFIX)) {
-      noteCount++;
-      bytes += (localStorage.getItem(key) || '').length;
-    }
-  }
-  const kb = (bytes / 1024).toFixed(1);
-  const parts = [];
-  if (f.pct > 0 || f.title) parts.push('feature blueprint');
-  if (s.pct > 0 || s.title) parts.push('short blueprint');
-  if (l.count > 0) parts.push('equipment list (' + l.count + ' items)');
-  if (noteCount > 0) parts.push(noteCount + ' private notes');
-  const summary = parts.length
-    ? 'Tracked: ' + parts.join(', ') + '. '
-    : 'No projects yet — open a blueprint to start. ';
-  $('#storageBytes').textContent = summary + 'Total local storage: ' + kb + ' KB.';
-
-  updateResume(f, s);
-  updateIndexChecks(f, s);
-}
-
-function resumeBtn(href, label, alt) {
-  return h('a', { href, class: 'resume-btn' + (alt ? ' alt' : ''), text: label });
-}
-
-/* "last touched step-24" printed the anchor id, which is the URL's
-   word for a step and nobody's name for one. The link still goes to
-   the id; the sentence says the step's number and title. */
-function stepName(steps, id) {
-  const st = steps.find((x) => x.id === id);
-  return st ? st.num + ' · ' + title(st.titlePlain || st.title) : id;
-}
-
-function updateResume(f, s) {
-  const card    = $('#resumeCard');
-  const heading = $('#resumeTitle');
-  const body    = $('#resumeBody');
-  const actions = $('#resumeActions');
-  actions.textContent = '';
-
-  const featActive  = f.pct > 0 || f.title;
-  const shortActive = s.pct > 0 || s.title;
-  if (!featActive && !shortActive) { card.classList.remove('has-data'); return; }
-  card.classList.add('has-data');
-
-  const primary = ((f.pct >= s.pct && featActive) || !shortActive) ? 'feature' : 'short';
-
-  if (primary === 'feature') {
-    heading.textContent = f.title || 'Untitled feature';
-    body.innerHTML = '<strong>' + esc(f.stage) + '</strong> · ' + f.pct + '% complete' +
-      (f.lastEditedStep ? ' · last touched <strong>' + esc(stepName(FEATURE_STEPS, f.lastEditedStep)) + '</strong>' : '');
-    actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), 'CONTINUE FEATURE  →'));
-    if (shortActive) {
-      actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), '→ Switch to Short', true));
-    }
-  } else {
-    heading.textContent = s.title || 'Untitled short';
-    body.innerHTML = (s.runtime ? '<strong>' + esc(s.runtime) + '</strong> · ' : '') + s.pct + '% complete' +
-      (s.lastEditedStep ? ' · last touched <strong>' + esc(stepName(SHORT_STEPS, s.lastEditedStep)) + '</strong>' : '');
-    actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), 'CONTINUE SHORT  →'));
-    if (featActive) {
-      actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), '→ Switch to Feature', true));
-    }
-  }
-}
-
-function updateIndexChecks(f, s) {
-  document.querySelectorAll('[data-tcheck]').forEach(el => {
-    const k = el.getAttribute('data-tcheck');
-    const isComplete = f.stepsDone[k] === true || s.stepsDone[k] === true;
-    const isPartial  = f.stepsDone[k] || s.stepsDone[k];
-    el.classList.toggle('done', !!isPartial);
-    if (isComplete) { el.textContent = '✓'; el.style.opacity = ''; }
-    else if (isPartial) { el.textContent = '◐'; el.style.opacity = '0.6'; }
-    else { el.textContent = '✓'; el.style.opacity = ''; }
-  });
-}
+const resume = createResumeCards({
+  allKeys: ALL_KEYS,
+  renderJourney,
+  currentJourney: () => lastJourney,
+  featureSteps: FEATURE_STEPS,
+  shortSteps: SHORT_STEPS
+});
+const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibraryStatus } = resume;
 
 // ============================================================
 // GLOBAL SEARCH
@@ -1382,163 +1101,9 @@ function highlightActiveResult() {
 }
 
 // ============================================================
-// EXPORT / IMPORT / RESET  (cross-blueprint)
+// EXPORT / IMPORT / RESET — src/pages/hub/backup-menu.js
 // ============================================================
-
-/* The overview, as paper, beside the JSON. The two are not
-   alternatives: the JSON is the backup — the only one a local-first
-   app has — and a PDF of it would be useless for restoring anything.
-   This is the other half, the thing you hand somebody: what is in the
-   studio, how far each blueprint has got, and where to find the rest.
-
-   Deliberately NOT called a backup, and deliberately below the two
-   that are, so that nobody reaches for it at the moment they most
-   need the JSON. */
-function exportOverviewPDF() {
-  const projects = Store.listProjects();
-  const open = Store.currentProject();
-  PDF.exportPDF({
-    scope: 'overview',
-    project: "FilmMakerStudio",
-    label: 'Studio overview',
-    title: "FilmMakerStudio — overview",
-    subtitle: [
-      projects.length + (projects.length === 1 ? ' project' : ' projects'),
-      open && open.title ? 'open: ' + open.title : ''
-    ].filter(Boolean).join(' · ')
-  });
-}
-
-/* THE DOWNLOAD, and only the download. The object it writes to disk
-   is built by buildBackup() in src/lib/backup.js, which is also what
-   Drive uploads — one builder, so the file a user emails themselves
-   and the file in their Drive cannot drift apart. The long note that
-   used to live here, about listAllProjects and about the importer not
-   carrying `ns` across, moved there with the code it explains. */
-function exportAll() {
-  const n = downloadBackup();
-  logActivity('studio', 'Exported full studio backup — ' + n + ' project' + (n === 1 ? '' : 's'));
-}
-
-function importAll() { $('#importAllFile').click(); }
-
-/* READING A FILE OFF DISK, and only that. What the parsed object
-   MEANS — v1 or v2, which projects land, how a colliding id is
-   handled, how a pre-rename note key is mapped forward — is
-   applyBackup() in src/lib/backup.js, because Drive restores the
-   same object and two appliers is two sets of rules for one file.
-
-   The prompts stay here. `confirm` is passed in rather than called
-   there: what to ask a person is the page's business, and a library
-   that opens a modal is a library you cannot call from a sync. */
-function handleImportAll(e) {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = (ev) => {
-    try {
-      const all = JSON.parse(ev.target.result);
-      if (!backupShape(all).looksOurs) {
-        if (!confirm('This file does not look like a Studio backup. Try anyway?')) return;
-      }
-      const res = applyBackup(all, { mode: 'merge', confirm: (q) => confirm(q) });
-      if (!res.ok) { if (res.message) alert(res.message); return; }
-      if (res.added || res.replaced) {
-        logActivity('studio', 'Imported ' + res.added + ' project' + (res.added === 1 ? '' : 's'));
-      }
-      /* FLUSH BEFORE THE DIALOG, NOT JUST BEFORE THE RELOAD.
-
-         A restored screenplay is over the overflow threshold, so
-         applyBackup() has only STARTED its write when it returns. The
-         alert then blocks the event loop the IndexedDB transaction
-         needs and the reload destroys the connection, and the script
-         is gone — proved, through this exact path. Both halves have
-         to wait: holding the dialog longer made it worse, not better,
-         so moving the flush after it would not have been enough. */
-      Store.flushStorage().then(() => {
-        alert('✓ ' + res.message + ' Refreshing…');
-        location.reload();
-      });
-    } catch (err) {
-      alert('Import failed: ' + err.message);
-    }
-  };
-  r.readAsText(file);
-  e.target.value = '';
-}
-
-async function resetAll() {
-  /* This said "erases EVERYTHING" and then called removeItem for each
-     scoped key — which the storage proxy resolved to the ACTIVE project
-     only. Other projects survived a wipe the user was told was total.
-     Now it means what it says: every project, then the globals.
-
-     The account namespace put the same trap back: listProjects()
-     AND deleteProject() are both namespace-scoped, so this promised
-     to erase everything while leaving every account-only project on
-     disk. purgeProjectEverywhere() is the namespace-blind form and
-     exists for exactly this one caller. */
-  const projects = Store.listAllProjects();
-  const n = projects.length;
-  /* Say what is kept as well as what goes. The two sentences below are
-     the only place a user is told that an ACCOUNT's copy is a separate
-     thing from this device's — and getting that wrong in either
-     direction is the worst kind of bug this dialog can have. */
-  const c      = window.StudioCloud;
-  const signed = !!(c && c.getSession && c.getSession());
-  if (!confirm('This erases EVERYTHING on this device — ' + n + ' project' + (n === 1 ? '' : 's') +
-               ', both blueprints, library calc, all prefs, all comments. ' +
-               'EXPORT first if you want to keep anything.\n\nContinue?')) return;
-  if (!confirm('Are you absolutely sure? This cannot be undone.' +
-               (signed
-                 ? '\n\nYou will be signed out. Projects already in your account stay there — ' +
-                   'this clears the device, not the account. Sign in again to bring them back.'
-                 : '') +
-               '')) return;
-
-  // deleteProject already wipes that project's namespaced keys, using
-  // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
-  projects.forEach((p) => Store.purgeProjectEverywhere(p.id));
-
-  // Anything still unsuffixed (a studio that predates projects), then globals.
-  ALL_KEYS.forEach((k) => Store.rawRemove(k));
-  // The per-namespace open-project pointers. ALL_KEYS knows the bare
-  // name; an account pointer is `…@<uid>`, which it has never heard of,
-  // so a wipe left one behind aiming at a project that no longer exists.
-  Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));
-
-  const toRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(NOTE_PREFIX)) toRemove.push(k);
-  }
-  toRemove.forEach((k) => localStorage.removeItem(k));
-
-  /* AFTER the purge, never before. signOut() ends with
-     Store.setAccount(null), which SCHEDULES A RELOAD — run it first
-     and the page can come back before the wipe has finished.
-
-     Signing out is what makes keeping SYNC_CFG safe (see ALL_KEYS).
-     Leave the session alive and the next load pulls the account's
-     projects straight back down, which would make both confirmations
-     above untrue. The session is not an `fms_` key — supabase-js keeps
-     it under `sb-<ref>-auth-token` — so nothing above can clear it and
-     only this call can.
-
-     Purging first is also safe from the sync side: every write above
-     goes through rawRemove, which bypasses the storage proxy and so
-     emits no `saved` event for the cloud subscriber to push. */
-  if (signed) {
-    try { await c.signOut(); }
-    catch (e) { console.warn('[reset] sign-out', e); }
-  }
-
-  // Same reason as the import path above: removals clear IndexedDB
-  // records too, and the reload must not outrun them.
-  await Store.flushStorage();
-  alert('All studio data cleared — ' + n + ' project' + (n === 1 ? '' : 's') + ' removed. Refreshing…');
-  location.reload();
-}
+const { exportOverviewPDF, exportAll, importAll, handleImportAll, resetAll } = createBackupMenu({ allKeys: ALL_KEYS, logActivity });
 
 // ============================================================
 // ACTIVITY LOG
@@ -1557,9 +1122,9 @@ function logActivity(where, what, url) {
 function detectActivity() {
   const log  = parseStorage(ACTIVITY_KEY);
   const last = log.lastSnap || {};
-  const f = lastFeatStatus  || computeFeatureStatus();
-  const s = lastShortStatus || computeShortStatus();
-  const l = lastLibStatus   || computeLibraryStatus();
+  const f = resume.lastStatus().f || computeFeatureStatus();
+  const s = resume.lastStatus().s || computeShortStatus();
+  const l = resume.lastStatus().l || computeLibraryStatus();
   const now = {
     fp: f.pct, ft: f.title, fs: f.lastEditedStep,
     sp: s.pct, st: s.title, ss: s.lastEditedStep,
@@ -1634,172 +1199,11 @@ function clearActivity() {
 }
 
 // ============================================================
-// PROJECTS — list, create, switch, rename, duplicate, delete
+// PROJECTS — the grid and its cards are src/pages/hub/project-cards.js,
+// the first-run and sample-only panels src/pages/hub/first-run.js.
+// What stays here is create, switch, rename, duplicate, delete: the
+// actions, which re-render the switcher, the status and the greeting.
 // ============================================================
-const FORMAT_LABELS = {
-  feature: 'FEATURE FILM',
-  short: 'SHORT FILM',
-  documentary: 'DOCUMENTARY',
-  musicvideo: 'MUSIC VIDEO',
-  adfilm: 'AD FILM'
-};
-
-let projectFilter = 'all';
-let projectSort = 'recent';
-let projectSearchTerm = '';
-
-function applyProjectFilters(projects) {
-  let arr = projects.slice();
-  if (projectFilter !== 'all') arr = arr.filter(p => p.format === projectFilter);
-  if (projectSearchTerm) {
-    arr = arr.filter(p => (p.title || '').toLowerCase().indexOf(projectSearchTerm) >= 0);
-  }
-  if (projectSort === 'alpha') {
-    arr.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  } else if (projectSort === 'oldest') {
-    arr.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-  } else {
-    arr.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  }
-  return arr;
-}
-
-/* A project's blueprint blob, by its format, bypassing the proxy —
-   the cards speak about projects that are not open. */
-function projectBlob(p) {
-  try {
-    const key = (p.format === 'short' ? SHORT_KEY : FEATURE_KEY) + '__' + p.id;
-    const data = JSON.parse(Store.rawGet(key) || '{}');
-    return data && typeof data === 'object' ? data : {};
-  } catch (e) { return {}; }
-}
-
-/* Progress and stage for a card, from journey.js. The percentage used
-   to be filled keys over SAVED keys — the trap blueprint-fields.js is
-   named for, where eleven saved fields read 100% — and the label a
-   band of that percentage ("PRE-PROD" at 50–79%) that knew nothing
-   about the film. Now: the declared-field percentage, and the stage.
-   The OPEN project gets the full journey (guide and tools, read through
-   the proxy); any other project gets the guide's reading of its blob,
-   because its tools live under another id. */
-function projectStatus(p, active, openJourney) {
-  const g = guideJourney(p.format, projectBlob(p));
-  if (active && openJourney) {
-    return {
-      pct: g.pct,
-      label: openJourney.complete ? 'ALL ' + STAGES.length + ' STAGES'
-                                  : openJourney.currentLabel.toUpperCase()
-    };
-  }
-  return { pct: g.pct, label: g.started ? g.currentLabel.toUpperCase() : 'EMPTY' };
-}
-
-function projectCard(p, currentId, openJourney) {
-  const active = p.id === currentId;
-  const status = projectStatus(p, active, openJourney);
-  const pct = status.pct;
-  const card = h('div', {
-    class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
-    tabindex: '0', role: 'button',
-    'data-action': 'switch-project', 'data-id': p.id,
-    'aria-label': 'Switch to project ' + p.title
-  }, [
-    h('div.pc-actions', {}, [
-      h('button', { 'data-action': 'rename-project', 'data-id': p.id, 'aria-label': 'Rename project', title: 'Rename', text: '✎' }),
-      h('button', { 'data-action': 'duplicate-project', 'data-id': p.id, 'aria-label': 'Duplicate project', title: 'Duplicate', text: '⎘' }),
-      h('button', { 'data-action': 'delete-project', 'data-id': p.id, 'aria-label': 'Delete project', title: 'Delete', text: '×' })
-    ]),
-    h('div.pc-format', {
-      text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
-            (active ? ' · ACTIVE' : '') + ' · ' + status.label
-    }),
-    h('div.pc-title', { title: 'Double-click to rename', 'data-dblaction': 'rename-project', 'data-id': p.id, text: p.title }),
-    /* SHARE and OPEN sit IN the meta row, not over it. Share was
-       absolutely placed at the card's bottom-right, which is exactly
-       where "open →" ends, so hovering a card covered the one word
-       that said what clicking does. And "open →" was a span: clicking
-       it only switched the project, which left you on the hub. It is
-       a link now, to the project's dashboard, switching first. */
-    h('div.pc-meta', {}, [
-      h('span.pc-stat', { text: pct + '% · edited ' + fmtRelDate(p.updatedAt) }),
-      h('span.pc-foot', {}, [
-        h('button.pc-share', { type: 'button', 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
-        h('a.pc-open', {
-          href: DASHBOARD_URL, 'data-action': 'open-project', 'data-id': p.id,
-          'aria-label': 'Open ' + p.title + ' on its dashboard', text: 'open →'
-        })
-      ])
-    ])
-  ]);
-  return card;
-}
-
-/* ------------------------------------------------------------
-   FIRST RUN — what a stranger sees before anything is saved.
-
-   Three jobs, in this order: say what the studio is in one line,
-   let them look at something real without committing, and only then
-   ask for a project. The ask used to come first, as a modal, which
-   is why it is now the last thing on the panel rather than the first
-   thing on the screen.
-   ------------------------------------------------------------ */
-
-const TOUR = [
-  { href: 'library.html', label: 'Craft library',  note: 'Rules, directors, rates — no project needed' },
-  { href: 'library.html#case-studies', label: 'Case studies',   note: 'Four films, beat by beat' },
-  { href: 'library.html#dissection', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
-];
-
-function renderFirstRun() {
-  const panel = h('div.empty-projects-state', {}, [
-    h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
-    h('div.eps-title', { text: 'A blank desk.' }),
-    // DERIVED, not written. This sentence said "Twenty-two" while
-    // navigation.json held twenty-four, one line away from the launcher's
-    // own correct reduce over the same file — the hand-written list
-    // invariant 2 exists to stop. A digit rather than a spelled word on
-    // purpose: the alternative is a number-to-words helper for one
-    // caller, and this panel already prints a derived digit further
-    // down ("a feature, 36 scenes").
-    //
-    // The BUILT count, not the total. This is a promise, made to
-    // somebody who has not committed anything yet, with no qualifier
-    // beside it — so it has to be what they can open today, not what
-    // the map lists. The launcher may quote the total because it
-    // prints "N OF M BUILT" right next to it; this cannot.
-    h('div.eps-deck', {
-      text: BUILT_MODULE_COUNT + ' modules for writing, planning and shooting a film — '
-          + 'script to call sheet. Everything you write stays in this browser '
-          + 'unless you sign in.'
-    })
-  ]);
-
-  const tour = h('div.eps-tour');
-  tour.append(h('div.eps-tour-head', { text: 'Have a look around first' }));
-  TOUR.forEach((t) => {
-    const a = h('a.eps-tour-item', { href: t.href });
-    a.append(h('span.eps-tour-label', { text: t.label }),
-             h('span.eps-tour-note', { text: t.note }));
-    tour.append(a);
-  });
-  panel.append(tour);
-
-  /* The sample FIRST, and primary. A first-time filmmaker cannot judge
-     an empty studio; the filled one is the thing to look at before
-     being asked to name a film. Every action that was here is still
-     here — only the order and the emphasis moved. */
-  panel.append(h('div.eps-actions', {}, [
-    h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' }),
-    h('button.btn', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' })
-  ]));
-  panel.append(h('div.eps-fine', {
-    text: 'The sample is a real project you can edit or delete — it just arrives with a few '
-        + 'hundred fields filled in: a feature, ' + samplePages() + ' pages of script, the '
-        + sample.scenes.length + ' scenes broken down from them, a crew and a budget, '
-        + 'so every module has something to show.'
-  }));
-  return panel;
-}
 
 /* ------------------------------------------------------------
    THE SAMPLE PROJECT — Dragon, a feature.
@@ -1865,20 +1269,6 @@ const PAGES_PER_DAY_BANDS = [
 
 function sampleScenes() {
   return sample.scenes.map((s) => ({ ...s, id: sampleSceneId(s.number) }));
-}
-
-/* The two figures the hub quotes about the sample, derived from the
-   scene rows so the prose cannot drift from the board. Function
-   declarations, because the "where to start" markup is built before
-   this section in source order and reads them. */
-function sampleDays() {
-  return new Set(sample.scenes
-    .map((s) => parseInt(s.shootDay, 10))
-    .filter((n) => Number.isFinite(n) && n > 0)).size;
-}
-
-function samplePages() {
-  return formatEighths(sample.scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0));
 }
 
 /** The blueprint blob: the written answers, the ticked checklists, and
@@ -2072,102 +1462,6 @@ async function openSampleProject() {
   }
 }
 
-/* ------------------------------------------------------------
-   DEVICE PROJECTS, INSIDE AN ACCOUNT — the standing control.
-
-   cloud.js offers this ONCE, on a first sign-in. A one-shot offer is
-   not a control: dismiss it, or write a film next month while signed
-   out, and there was no way left in the whole app to bring that work
-   into the account. This panel is the way, and it is deliberately NOT
-   dismissible — it is answered by acting, and it takes itself off the
-   page the moment `listAdoptableProjects()` comes back empty.
-
-   THE GATE IS THE STORE'S ANSWER, never a page-local copy of it.
-   `listAdoptableProjects()` returns [] in the device namespace, so
-   "is somebody signed in" and "is there anything to bring in" are one
-   question, asked once, of the only file that knows. A page-local
-   mirror of "am I signed in" is exactly what goes stale — the AI key
-   bar stopped keeping one for this reason.
-
-   THE WORDING IS LOAD-BEARING. An earlier version of this flow said
-   UPLOAD ALL. Both halves of that were wrong: nothing is uploaded
-   (membership is a local `ns` field — the server is not involved) and
-   nothing moves. `adoptDeviceProjects()` ADDS the account to each
-   entry's `ns`, so there is ONE copy of the data listed in TWO
-   namespaces, and signing out still finds it. "Move" and "upload"
-   both promise something the storage model does not do, and a backup
-   that turned out to hold one film is what this studio's history says
-   those promises cost.
-   ------------------------------------------------------------ */
-
-/** Who the projects would become reachable as. The account id lives in
-    `fms_studio_account_v1`, but the id is not a thing a person
-    recognises, so the email comes off the live session and "this
-    account" is the honest fallback when it cannot be read. */
-function adoptAccountLabel() {
-  try {
-    const email = window.StudioCloud && StudioCloud.getUserEmail && StudioCloud.getUserEmail();
-    return email || 'this account';
-  } catch (e) { return 'this account'; }
-}
-
-function renderAdoptNotice() {
-  const host = $('#adoptNotice');
-  if (!host) return;
-
-  const adoptable = Store.listAdoptableProjects();
-  host.textContent = '';
-  host.hidden = adoptable.length === 0;
-  if (!adoptable.length) return;
-
-  const n   = adoptable.length;
-  const one = n === 1;
-
-  const panel = h('div.adopt-panel', {
-    role: 'region', 'aria-label': 'Projects on this device only'
-  }, [
-    h('div.adopt-eyebrow', { text: 'ON THIS DEVICE ONLY' }),
-    h('div.adopt-title', {
-      text: one
-        ? 'One project is on this device and not in this account.'
-        : n + ' projects are on this device and not in this account.'
-    }),
-    h('p.adopt-deck', {
-      text: 'Nothing is copied and nothing is taken away. '
-          + (one ? 'It stays' : 'They stay') + ' on this device, in this browser, exactly where '
-          + (one ? 'it is' : 'they are') + ' — and also become reachable while you are signed in as '
-          + adoptAccountLabel() + '. One copy of the work, listed in both places: sign out and '
-          + (one ? 'it is' : 'they are') + ' still here.'
-    })
-  ]);
-
-  /* REQUIREMENT, not decoration: say which films, by name, BEFORE
-     doing it. "3 projects" is a number somebody has to trust; three
-     titles are a number they can check. */
-  panel.append(h('div.adopt-affects', {
-    text: one ? 'This affects one project:' : 'This affects all ' + n + ' of them:'
-  }));
-  const list = h('ul.adopt-list');
-  adoptable.forEach((p) => list.append(h('li.adopt-item', {}, [
-    h('span.adopt-name', { text: p.title }),
-    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format).toUpperCase() })
-  ])));
-  panel.append(list);
-
-  panel.append(h('div.adopt-actions', {}, [
-    h('button.btn.primary', {
-      'data-action': 'adopt-device-projects',
-      text: one ? 'ADD IT TO THIS ACCOUNT' : 'ADD ALL ' + n + ' TO THIS ACCOUNT'
-    })
-  ]));
-  panel.append(h('div.adopt-fine', {
-    text: 'A film can belong to this device and to one account. To put one into a '
-        + 'different account, download a backup here and import it there.'
-  }));
-
-  host.append(panel);
-}
-
 function adoptDeviceProjectsNow() {
   const taken = Store.adoptDeviceProjects();
   if (!taken.length) { renderAdoptNotice(); return; }
@@ -2190,90 +1484,6 @@ function adoptDeviceProjectsNow() {
   renderProjectSwitcher();
   updateStatus();
   renderGreeting();
-}
-
-function renderProjects() {
-  const grid = $('#projectsGrid');
-  const toolbar = $('#projectsToolbar');
-  /* One call site, so every path that already re-renders the grid —
-     projects:changed, current:changed, a cross-tab storage event,
-     adoption itself — refreshes the panel too, and none of them has
-     to know it exists. */
-  renderAdoptNotice();
-  if (!grid) return;
-  const sampleOnly = PlanGate.sampleOnly();
-  const projects  = sampleOnly ? Store.listProjects().filter((p) => p.title === SAMPLE_TITLE) : Store.listProjects();
-  const currentId = Store.currentProjectId();
-
-  if (toolbar) toolbar.hidden = projects.length < 2;
-
-  grid.textContent = '';
-  applyPlanToControls();
-
-  if (projects.length === 0) {
-    grid.append(sampleOnly ? renderSampleOnly() : renderFirstRun());
-    return;
-  }
-
-  const filtered = applyProjectFilters(projects);
-
-  if (filtered.length === 0) {
-    grid.append(h('div.empty-projects-state', {}, [
-      h('div.eps-title', { text: 'No projects match.' }),
-      h('div.eps-deck', { text: 'Try a different filter or clear your search.' }),
-      h('button.btn', { 'data-action': 'reset-project-filters', text: 'RESET FILTERS' })
-    ]));
-    return;
-  }
-
-  // The open project's journey, once per render, for its card's stage.
-  const cur = currentId ? Store.currentProject() : null;
-  const openJourney = cur ? journey(cur) : null;
-  filtered.forEach(p => grid.append(projectCard(p, currentId, openJourney)));
-  if (PlanGate.allowed('new_projects')) {
-    grid.append(h('div.project-card.new-card', {
-      tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
-    }, [
-      h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
-      h('div.pc-cta', { text: 'NEW PROJECT' })
-    ]));
-  } else if (sampleOnly) {
-    grid.append(h('p.pc-plan-note', { text: 'Your plan opens the sample project. A paid plan adds films of your own.' }));
-  }
-}
-
-/* The free tier's hub: the sample, and the way up. */
-function renderSampleOnly() {
-  return h('div.empty-projects-state', {}, [
-    h('div.eps-title', { text: 'Open the ' + SAMPLE_TITLE + ' sample.' }),
-    h('div.eps-deck', { text: 'Your plan opens the sample project — ' + sample.scenes.length + ' scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
-    h('div.iv-actions', {}, [
-      h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE' }),
-      h('a.btn', { href: 'settings.html#plan', text: 'SEE PLANS' })
-    ])
-  ]);
-}
-
-/* Every way of making a project, hidden together or shown together:
-   the head button, the backups menu's import, the tool cards. Hidden,
-   not removed — the controls are markup the verify gate counts. */
-function applyPlanToControls() {
-  const can = PlanGate.allowed('new_projects');
-  document.querySelectorAll('[data-action="new-project"], [data-action="import-all"], [data-action="duplicate-project"]').forEach((el) => {
-    if (el.classList.contains('new-card')) return;   // drawn conditionally above
-    el.hidden = !can;
-  });
-}
-
-function resetProjectFilters() {
-  projectFilter = 'all';
-  projectSearchTerm = '';
-  projectSort = 'recent';
-  document.querySelectorAll('#projectsFilter button').forEach(b =>
-    b.classList.toggle('active', b.dataset.fmt === 'all'));
-  const search = $('#projectsSearch'); if (search) search.value = '';
-  const sort = $('#projectsSort');     if (sort) sort.value = 'recent';
-  renderProjects();
 }
 
 function shareProject(id) {
@@ -2473,7 +1683,7 @@ const CLICK_ACTIONS = {
   'share-project':         (el) => shareProject(el.dataset.id),
   'reset-project-filters': () => resetProjectFilters(),
   'set-filter':            (el) => {
-    projectFilter = el.dataset.fmt;
+    setProjectFilter(el.dataset.fmt);
     document.querySelectorAll('#projectsFilter button').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     renderProjects();
@@ -2516,11 +1726,11 @@ function wireEvents() {
   delegate(app, 'input', '#searchInput', (e) => performSearch(e.target.value));
   delegate(app, 'keydown', '#searchInput', (e) => searchKey(e));
   delegate(app, 'input', '#projectsSearch', (e) => {
-    projectSearchTerm = (e.target.value || '').toLowerCase();
+    setProjectSearch((e.target.value || '').toLowerCase());
     renderProjects();
   });
   delegate(app, 'change', '#projectsSort', (e) => {
-    projectSort = e.target.value;
+    setProjectSort(e.target.value);
     renderProjects();
   });
   delegate(app, 'change', '#importAllFile', (e) => handleImportAll(e));

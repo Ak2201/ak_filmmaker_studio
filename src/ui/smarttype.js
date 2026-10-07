@@ -125,7 +125,7 @@ export function createIndex() {
    whole new text-before-caret; `chain` says the list should reopen
    for the next part (an intro wants a location, a location a time).
    `exact` is true when what was typed is already a complete value. */
-export function suggest(type, before, index, ownId) {
+export function suggest(type, before, index, ownId, extraNames) {
   const raw = String(before || '');
   const U = up(raw);
   if (!U.trim()) return { items: [], exact: false };
@@ -169,7 +169,13 @@ export function suggest(type, before, index, ownId) {
         .map((x) => ({ label: x, value: name + ' ' + x, hint: 'extension' }));
       return { items, exact: SMARTTYPE.extensions.includes(typed.trim()) };
     }
+    /* The script's own cues first, most frequent first; then the names
+       on the Characters list (src/lib/characters.js) that no cue says
+       yet — somebody described before their first line. */
     const names = index.ranked('name', ownId);
+    if (extraNames && extraNames.length) {
+      for (const n of extraNames) { const u = up(n).trim(); if (u && !names.includes(u)) names.push(u); }
+    }
     const typed = U.trimStart();
     const items = names.filter((n) => starts(n, typed))
       .map((n) => ({ label: n, value: n, hint: 'character' }));
@@ -190,13 +196,15 @@ export function suggest(type, before, index, ownId) {
 }
 
 /* ---- the UI ---------------------------------------------------
-   createSmartType({ getElements, elementOf })
+   createSmartType({ getElements, elementOf, extraNames })
      getElements()      the live element array
      elementOf(ta)      the model element a textarea edits, or null
+     extraNames()       optional: more cue names to offer after the
+                        script's own (the Characters list)
    The page calls update(ta, el) from its input handler, handleKey(e, ta)
    first thing in its keydown handler, noteEdit(el) after a model
    change and invalidate() after anything structural. */
-export function createSmartType({ getElements, elementOf }) {
+export function createSmartType({ getElements, elementOf, extraNames }) {
   const index = createIndex();
   let list = null;
   let state = null;     // { ta, items, active }
@@ -283,7 +291,11 @@ export function createSmartType({ getElements, elementOf }) {
       return;
     }
     index.ensure(getElements());
-    const { items, exact } = suggest(el.type, ta.value, index, el.id);
+    let extra = null;
+    if (el.type === 'character' && typeof extraNames === 'function') {
+      try { extra = extraNames(); } catch (e) { extra = null; }
+    }
+    const { items, exact } = suggest(el.type, ta.value, index, el.id, extra);
     if (!items.length) { close(); return; }
     state = { ta, items, active: exact ? -1 : 0 };
     paint();

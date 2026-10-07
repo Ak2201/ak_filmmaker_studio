@@ -74,6 +74,10 @@ import Keys from '../lib/write-keys.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
+/* Characters as data (src/lib/characters.js) and the table read: the
+   Characters tab. A view of the cues plus the writer's notes; it edits
+   the script only through a rename, and then through scriptChanged(). */
+import { renderCharacters, wireCharacters, characterNames } from '../ui/characters-panel.js';
 /* The One-Pager, Treatment and Synopsis open on a starting draft from
    the Story page when they are empty (story.js docStarter, a read). */
 import { loadStory, docStarter, STARTER_KINDS } from '../lib/story.js';
@@ -216,7 +220,9 @@ WriteKeys.configure({
 });
 const smart = createSmartType({
   getElements: () => doc.elements,
-  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null
+  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null,
+  // Names on the Characters list that no cue says yet.
+  extraNames: characterNames
 });
 let openDocId = null;
 
@@ -1840,7 +1846,7 @@ function renderDocuments() {
 function render(focus) {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(), renderScreenplay(), BeatBoard.renderOutline(),
-    renderGenerate(), renderRevisions(), renderDocuments());
+    renderGenerate(), renderRevisions(), renderDocuments(), renderCharacters());
   app.replaceChildren(main);
   countNodes = null;
   smart.invalidate();
@@ -3696,6 +3702,19 @@ document.addEventListener('visibilitychange', () => {
 
 /* The Outline tab (src/ui/beat-board.js) edits the script through
    the page's own model and save path, never around it. */
+/* The Characters tab: a rename changes cues in place, and this is the
+   page's own path for "the script changed under these rows". */
+wireCharacters({
+  getDoc: () => doc,
+  scriptChanged: (ids) => {
+    ids.forEach((id) => autosize(rowOf(id)?.querySelector('.wr-text')));
+    smart.invalidate();
+    refreshCounters();
+    persistNow();
+    scheduleDerived();
+  }
+});
+
 BeatBoard.wireBeatBoard({
   getDoc: () => doc,
   saveDoc: () => persistNow(),

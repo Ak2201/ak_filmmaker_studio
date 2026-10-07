@@ -1282,3 +1282,125 @@ body.wr-dropping .bd-empty {
 }
 .wr-starter-msg strong { color: var(--ink); }
 
+/* ---- the Characters tab ------------------------------------- */
+.wr-tr {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  padding: var(--sk-card-pad, var(--s4));
+  background: var(--sk-card-bg, var(--paper-raised));
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule-hair));
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--accent);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, none);
+  min-width: 0;
+}
+.wr-tr-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.wr-tr-h {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--sk-card-h-size, var(--t-base));
+  font-style: var(--sk-card-h-style, normal);
+  color: var(--ink);
+}
+.wr-tr-total, .wr-ch-meta, .wr-ch-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.wr-tr-total, .wr-ch-lab { text-transform: uppercase; }
+/* The table scrolls inside its own box; the page never scrolls
+   sideways at 390px (the reports page's rule for its matrix). */
+.wr-tr-scroll { overflow-x: auto; min-width: 0; }
+.wr-tr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-body);
+}
+.wr-tr-table th, .wr-tr-table td {
+  padding: var(--s1) var(--s2);
+  border-bottom: 1px solid var(--rule-hair);
+  text-align: right;
+  white-space: nowrap;
+}
+.wr-tr-table th:first-child { text-align: left; color: var(--ink); font-family: var(--f-script); }
+.wr-tr-table thead th {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.wr-tr-note { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+.wr-tr-acts { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3); }
+.wr-tr-who select { min-width: 0; max-width: 100%; }
+
+.wr-ch-list { display: grid; gap: var(--s2); }
+.wr-ch {
+  background: var(--sk-card-bg, var(--paper-raised));
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule-hair));
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.wr-ch.is-derived { border-style: dashed; }
+.wr-ch-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  padding: var(--s3);
+  cursor: pointer;
+  min-width: 0;
+}
+.wr-ch-name { font-family: var(--f-script); font-size: var(--t-base); color: var(--ink); overflow-wrap: anywhere; }
+.wr-ch-tag {
+  padding: 0 var(--s2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+.wr-ch-body { display: grid; gap: var(--s4); padding: 0 var(--s3) var(--s3); min-width: 0; }
+.wr-ch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--s3);
+}
+.wr-ch-field { display: grid; gap: var(--s1); min-width: 0; }
+.wr-ch-input { width: 100%; min-width: 0; }
+textarea.wr-ch-input { resize: vertical; font-family: var(--f-body); font-size: var(--t-small); line-height: var(--lh-body); }
+.wr-ch-rename {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-hair);
+}
+.wr-ch-preview { margin: 0; color: var(--ink-body); font-size: var(--t-small); }
+.wr-ch-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+#main .btn.wr-ch-quiet { border-color: transparent; color: var(--ink-muted); }
+
+/* ---- the table read on paper -------------------------------- */
+.wr-tr-print { display: none; }
+@media print {
+  body.pdf-tableread #main > *:not(.wr-tr-print):not(#pdf-masthead) { display: none !important; }
+  body.pdf-tableread .wr-tr-print { display: block; color: var(--print-ink); }
+  body.pdf-tableread .wr-tr-print .wr-tr-scroll { overflow: visible; }
+  body.pdf-tableread .wr-tr-print .wr-tr-table { font-size: 10pt; color: var(--print-ink); }
+  body.pdf-tableread .wr-tr-print .wr-tr-table th,
+  body.pdf-tableread .wr-tr-print .wr-tr-table td { border-bottom: 0.3pt solid var(--print-rule); color: var(--print-ink); }
+  .wr-trp-h { margin: 0 0 4mm; font-size: 15pt; }
+  .wr-trp-note, .wr-trp-meta { margin: 2mm 0 0; font-size: 9pt; color: var(--print-muted); }
+  .wr-trp-part { break-before: page; font-family: var(--f-script); font-size: 11pt; }
+  .wr-trp-name { margin: 0; font-size: 13pt; }
+  .wr-trp-scene { margin: 6mm 0 2mm; font-weight: 700; text-transform: uppercase; break-after: avoid; }
+  .wr-trp-side { margin: 0 0 4mm; break-inside: avoid; }
+  .wr-trp-side p { margin: 0; white-space: pre-wrap; }
+  .wr-trp-cue-ctx { font-size: 9pt; color: var(--print-muted); margin-bottom: 1mm !important; }
+  .wr-trp-cue { margin-left: 38% !important; text-transform: uppercase; }
+  .wr-trp-paren { margin-left: 31% !important; }
+  .wr-trp-line { margin-left: 20% !important; margin-right: 18% !important; }
+}

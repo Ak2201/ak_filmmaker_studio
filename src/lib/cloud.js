@@ -104,8 +104,9 @@ const KEY_BY_SCOPE = Object.fromEntries(
    would be an upsert Postgres refuses on every save. When a schema
    section adds the scope, move the key into SCOPE_BY_KEY and out of
    this set in the same commit. `fms_scene_bin_v1` (the scene bin,
-   src/lib/scene-bin.js) joined it for the same reason. */
-const LOCAL_ONLY = new Set(['fms_write_goals_v1', 'fms_scene_bin_v1']);
+   src/lib/scene-bin.js) joined it for the same reason, and so did
+   `fms_characters_v1` (src/lib/characters.js). */
+const LOCAL_ONLY = new Set(['fms_write_goals_v1', 'fms_scene_bin_v1', 'fms_characters_v1']);
 const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {
   console.warn(

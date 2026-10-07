@@ -1,9 +1,7 @@
 {
   "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says. `knownLazyFetches` names a lazy chunk that IS fetched on load today, with the reason and where the fix belongs; the run fails if the entry stops firing, so fix the leak and delete the row in one commit.",
   "capturedAt": "2026-10-07T15:36:44.045Z",
-  "knownLazyFetches": {
-    "supabase": "cloud.js boot() calls ensureClient() unconditionally once a build carries VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (since the config became a build setting), so the ~98KB Supabase SDK is fetched on every page load for every visitor, signed in or not — against the stated invariant that it stays out of first paint. Found by this check on 7 Oct 2026 on 19 of 21 pages. The fix belongs in cloud.js (skip the import at boot when no sb-* session is stored and no OAuth redirect is pending; the site gate already knows a visitor with no session is signed out), not here."
-  },
+  "knownLazyFetches": {},
   "pages": {
     "hub": {
       "bytes": 1761280,

@@ -1801,6 +1801,21 @@ export default StudioCloud;
 // Kept as a fire-and-forget async call rather than top-level await, so
 // importing this module never blocks the importer's evaluation — the
 // old file was a separate <script type="module"> and behaved the same.
+/* Is a supabase-js session sitting in localStorage? Read without the
+   SDK: its key is `sb-<project-ref>-auth-token` (optionally chunked as
+   `.0`, `.1`), and the project ref depends on the configured URL, so
+   match the shape rather than rebuild the name. Storage that throws
+   answers "yes" — loading the SDK is the safe error. */
+function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^sb-.+-auth-token(\.\d+)?$/.test(k)) return true;
+    }
+    return false;
+  } catch (e) { return true; }
+}
+
 async function boot() {
   // A provider bounce we can explain before the client even exists.
   if (_redirect && _redirect.error) {
@@ -1818,7 +1833,18 @@ async function boot() {
   // Try to initialise the client if cfg exists; fail silently if not.
   // createClient({ detectSessionInUrl: true }) is what actually reads
   // the tokens out of the URL and turns them into a session.
-  await ensureClient();
+  //
+  // ...but only when there is something for it to restore. The SDK is
+  // ~98KB and nearly every visitor is signed out, so boot loads it only
+  // for a stored session, an OAuth redirect in the URL (handled above:
+  // `_redirect.pending`), or the extension (whose session is not in
+  // localStorage). Everything else that needs a client — a sign-in
+  // click, the invite-code check, a share link, billing, Drive — calls
+  // ensureClient() itself. The gate still fails closed: with no session
+  // `getSession()` is null, which the site gate reads as signed out.
+  const _needClient = inExtension() || (_redirect && _redirect.pending) || hasStoredSession();
+  if (_needClient) await ensureClient();
+  else cfg = getCfg();
 
   if (_redirect && _redirect.pending) {
     _signingIn = false;
@@ -1864,8 +1890,9 @@ async function boot() {
     // session, and onAuthStateChange's first-sign-in branch never
     // fires on a page load that starts out signed in.
     handlePendingInvites();
-  } else if (supabase) {
-    /* We got as far as a client and there is no session: the stored
+  } else if (supabase || (!_needClient && cfg && cfg.url && cfg.key)) {
+    /* We got as far as a client (or, with nothing stored to restore, as
+       far as knowing one is configured) and there is no session: the stored
        account id is stale (signed out elsewhere, or a token that died
        while this browser was closed). Clear it so the next load opens
        the device's own studio.

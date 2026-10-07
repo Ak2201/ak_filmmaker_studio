@@ -1259,3 +1259,26 @@ body.wr-dropping .bd-empty {
 .wx-tamil-foot > .wx-note { flex: 1 1 14rem; min-width: 0; }
 .wx-keep-ta[hidden] { display: none; }
 
+/* ---- a document's starting draft ---------------------------- */
+.wr-starter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--accent-wash);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--accent);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.wr-starter-msg {
+  flex: 1 1 18rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.wr-starter-msg strong { color: var(--ink); }
+

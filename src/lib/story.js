@@ -818,6 +818,72 @@ export function outlineMarkdown(story, fwId = story && story.framework, { title 
   return L.join('\n');
 }
 
+/* ---- starting drafts for the Write page's documents ----------
+   A READ HELPER. The One-Pager, the Treatment and the Synopsis on
+   write.html open with a first draft built from this story when, and
+   only when, the document is still empty. The draft is shown in the
+   editor and is NOT saved: it becomes the writer's text the moment
+   they type into it, and until then it is re-derived on every open,
+   so it is never a stale copy of the story. Returns '' when the story
+   has nothing to start from — an empty draft is no draft. */
+export const STARTER_KINDS = ['One-Pager', 'Treatment', 'Synopsis'];
+
+export function docStarter(story, kind, { title = '' } = {}) {
+  if (!STARTER_KINDS.includes(kind)) return '';
+  const s = story || blankStory();
+  const logline = String(s.logline || '').trim();
+  const idea = String(s.idea || '').trim();
+  const syn = String(s.source || '').trim();
+  const o = outlineByBeat(s, s.framework);
+  const hasOutline = o.withText > 0;
+  if (!logline && !syn && !hasOutline && !idea) return '';
+  const steps = () => stepsInOrder(s, s.framework)
+    .filter((x) => String(x.text || '').trim());
+  /* The outline as prose, one paragraph per act: what a synopsis or a
+     treatment is when there is no written synopsis yet. */
+  const outlineProse = () => {
+    const paras = [];
+    for (const st of steps()) {
+      const last = paras[paras.length - 1];
+      const t = String(st.text).trim().replace(/\s*\n\s*/g, ' ');
+      if (last && last.act === st.act) last.text += ' ' + t; else paras.push({ act: st.act, text: t });
+    }
+    return paras.map((p) => p.text).join('\n\n');
+  };
+  if (kind === 'Synopsis') {
+    return syn ? synopsisText(s).trim() : (hasOutline ? outlineProse() : logline || idea);
+  }
+  if (kind === 'One-Pager') {
+    const L = [];
+    if (title) L.push(title.toUpperCase(), '');
+    if (logline) L.push('LOGLINE', logline, '');
+    else if (idea) L.push('THE IDEA', idea, '');
+    const body = syn || (hasOutline ? outlineProse() : '');
+    if (body) {
+      // A one-pager carries the short synopsis: the first paragraphs
+      // up to about 250 words, never a sentence cut in half.
+      const out = [];
+      let n = 0;
+      for (const para of body.split(/\n\s*\n/)) {
+        const w = (para.match(/\S+/g) || []).length;
+        if (out.length && n + w > 250) break;
+        out.push(para.trim());
+        n += w;
+      }
+      L.push('SYNOPSIS', out.join('\n\n'), '');
+    }
+    L.push('TONE', '', 'COMPARABLE FILMS', '', 'WHY NOW', '');
+    return L.join('\n').trim() + '\n';
+  }
+  // Treatment: the logline, then the beat sheet and step outline.
+  const L = [];
+  if (logline) L.push(logline, '');
+  if (hasOutline) L.push(outlineMarkdown(s, s.framework, { title }));
+  else if (syn) L.push(synopsisText(s).trim());
+  else if (idea) L.push(idea);
+  return L.join('\n').trim() + '\n';
+}
+
 /** Link a sample story's steps to the sample's scene rows: each step
  *  naming a scene id that exists gives that scene its beat, when the
  *  scene has none. Mutates `scenes`; used once, when the hub seeds the

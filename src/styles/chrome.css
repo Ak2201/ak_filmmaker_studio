@@ -2875,21 +2875,13 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 @media (max-width: 900px) {
   .sh-find-label, .sh-find-key { display: none; }
   .sh-find { padding: var(--s1) var(--s2); }
-  /* AND IT MOVES TO THE FRONT OF THE BAR.
-
-     Measured at 375px before this rule: the handle wrapped to a
-     third row and the shell bar went from two rows to three —
-     about 300px of chrome above the first word of the page. This
-     file argues elsewhere that 164px of that is already worse
-     than losing the nav, so adding 150 more to gain a search
-     button would have been the wrong trade twice over.
-
-     order: -1 puts it in the first row beside the burger, where
-     there is room, instead of after six phase tabs, where there
-     is not. The reading order is unchanged for a screen reader:
-     `order` moves the box and not the DOM, and the control is a
-     labelled button either way. */
-  .sh-find { order: -1; }
+  /* This rule used to also move the handle to the FRONT of the bar
+     (`order: -1`), beside the burger, because at 375px it had wrapped
+     to a third row. It is hidden below 720px now and pinned to the
+     end of the first row from 720 to 1099 by the rule below, so the
+     front-of-bar move had nothing left to do — and it was half of the
+     jump UX audit L23 describes: front of the bar to 900, trailing
+     the stages from 901. */
 }
 
 /* Below 720px it goes entirely. The bottom action bar carries
@@ -2901,18 +2893,28 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   .sh-find { display: none; }
 }
 
-/* ON A BAR WITH NO PAGE TOOLBAR, 720–1099px, THE HANDLE STAYS PUT.
+/* 720–1099px: THE HANDLE STAYS PUT, ON EVERY BAR.
    The band wraps to two rows across this range, and where the handle
    landed depended on the exact width: at the front of the bar, ahead
-   of the burger, up to 900px (the `order: -1` above); trailing the
+   of the burger, up to 900px (the old `order: -1`); trailing the
    stages mid-row from 901; the start of a third row at 1099 (UX audit
    L23). Here the stages take the whole second row and the handle
    closes the first, after the crumb — the same corner it holds at
-   1100px and up. The four toolbar pages are untouched: there the
-   handle is inside the page's cluster and wraps with it. */
+   1100px and up.
+
+   This used to be scoped to bars WITHOUT a page toolbar, because on
+   the four toolbar pages the handle was a child of the toolbar and
+   wrapped with it — x=16 at 800, x=94 at 850, x=59 at 899 on the
+   feature blueprint, the second half of L23. shell.js leaves it a
+   direct child of the bar now, so one rule covers all twenty-two
+   pages: crumb and handle on the first row, the stages on the
+   second, the page's own controls (or the studio's .sh-tools zone,
+   which rides the first row beside the handle) after that. */
 @media (min-width: 720px) and (max-width: 1099px) {
-  .sh-bar:not(:has(> .toolbar)) > .sh-phases { order: 1; flex: 1 1 100%; }
-  .sh-bar:not(:has(> .toolbar)) > .sh-find { order: 0; margin-left: auto; }
+  .sh-bar > .sh-phases { order: 1; flex: 1 1 100%; }
+  .sh-bar > .sh-find { order: 0; margin-left: auto; }
+  .sh-bar > .sh-tools { order: 0; margin-left: 0; }
+  .sh-bar > .toolbar { order: 2; flex: 1 1 100%; }
 }
 
 /* The dismiss control on a toast that does not expire. Every colour
@@ -3295,6 +3297,23 @@ html {
 
 .sh-bar > .toolbar { column-gap: 6px; row-gap: var(--s2); align-items: center; }
 
+/* THE STUDIO'S OWN ZONE on the eighteen pages that build no toolbar:
+   the Appearance menu and the account pill, built by shell.js
+   (buildStudioTools) in the same corner the four toolbar pages keep
+   theirs. Same gap as the adopted toolbar so the two read as one
+   zone across pages; `flex: none` because it is two controls wide
+   and must never be what the band squeezes. Below 1100 it sits on
+   the first row after the palette handle (the 720–1099 rule above),
+   and alone at the right of that row on a phone, where the handle
+   is hidden. */
+.sh-bar > .sh-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  column-gap: 6px;
+  min-width: 0;
+}
+
 /* 1100–1439: the commonest laptop widths, and the range where the
    crumb, five stages and the cluster are within ~60px of sharing one
    row. The stages give up 4px a side, the palette handle its words
@@ -3392,16 +3411,27 @@ html {
    take an equal share of what is left (1fr), centres them whenever
    there is room and degrades to "packed, in order" when there is not.
    The cluster does not wrap inside its zone: if it cannot fit,
-   layoutBand() in shell.js sees the overflow and stacks it below. */
+   layoutBand() in shell.js sees the overflow and stacks it below.
+
+   FOUR COLUMNS, NOT THREE. The palette handle is a direct child of
+   the bar on every page now (it used to be moved inside the four
+   pages' toolbar — see adoptPageTools in shell.js for why that was
+   done and why it was undone), so it takes a max-content column of
+   its own between the stages and the zone. The stages are therefore
+   centred to within half the handle's width (16px) rather than
+   exactly, which is below the 22px imprecision the crumb note above
+   already accepts, and it is what buys one rule for the handle's
+   position across all twenty-two pages instead of two layouts. */
 @media (min-width: 1100px) {
   .sh-bar:not([data-stacked]) {
     display: grid;
-    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+    grid-template-columns: minmax(max-content, 1fr) auto max-content minmax(max-content, 1fr);
     align-items: center;
   }
   .sh-bar:not([data-stacked]) > .sh-where { justify-self: start; }
   .sh-bar:not([data-stacked]) > .sh-phases { margin-inline: 0; }
   .sh-bar:not([data-stacked]) > .sh-find,
+  .sh-bar:not([data-stacked]) > .sh-tools,
   .sh-bar:not([data-stacked]) > .toolbar { justify-self: end; }
   .sh-bar:not([data-stacked]) > .toolbar { flex-wrap: nowrap; }
 }
@@ -3413,14 +3443,35 @@ html {
    deliberate second row — full width, a hairline above it, the page's
    tools reading left to right and the account pill at the right edge
    — instead of whatever happened to wrap. */
-.sh-bar[data-stacked] > .toolbar {
+/* THE HAIRLINE IS A FLEX ITEM, AND IT IS WHAT BREAKS THE LINE. The
+   palette handle is a direct child of the bar now, not the first
+   child of the toolbar, and in the stacked state it has to START the
+   second row the way it did when it was inside — measured at 1100 on
+   the feature blueprint, left to find a place on the crumb's row it
+   took a row of its own (138px became 178). A pseudo-element with a
+   100% basis is a line break in a wrapping flex container; here it is
+   also the hairline, so the two rows are separated by exactly what
+   separated them before: a gap, one pixel, a gap. `order` then puts
+   the handle after the break and before the toolbar, and the
+   toolbar's basis is a handle and a gap short of the full row so the
+   two share it. */
+.sh-bar[data-stacked]::after {
+  content: "";
+  order: 1;
   flex: 1 1 100%;
-  justify-content: flex-start;
-  padding-top: var(--s2);
-  border-top: 1px solid var(--chrome-hair);
+  height: 1px;
+  background: var(--chrome-hair);
 }
-.sh-bar[data-stacked] > .toolbar > .sign-in-pill,
-.sh-bar[data-stacked] > .sh-find { margin-left: auto; }
+.sh-bar[data-stacked] > .sh-find { order: 2; margin-left: 0; }
+.sh-bar[data-stacked] > .toolbar {
+  order: 3;
+  flex: 1 1 calc(100% - var(--sh-ctl-h) - var(--s4));
+  justify-content: flex-start;
+}
+/* The account pill holds the right edge of that row; the studio zone,
+   if it is ever what stacks, follows the handle. */
+.sh-bar[data-stacked] > .toolbar > .sign-in-pill { margin-left: auto; }
+.sh-bar[data-stacked] > .sh-tools { order: 3; margin-left: 0; }
 
 /* ON A PHONE the stages scroll sideways in one line under the crumb
    rather than wrapping to three rows — which is where the hub's 261px
@@ -3470,8 +3521,24 @@ html {
     justify-content: flex-start;
     padding-top: 0;
     border-top: 0;
+    /* Third row, after the stages: the 720–1099 ordering, kept. */
+    order: 2;
   }
   .sh-bar > .toolbar > .sign-in-pill { margin-left: auto; }
+  /* And on the eighteen pages with no toolbar the studio zone shares
+     the FIRST row with the crumb (the stages take the second, which
+     `order: 1` is what arranges) — measured at 390 without this, it
+     wrapped to a row of its own and the band grew from 91 to 131px. */
+  .sh-bar > .sh-phases { order: 1; }
+  .sh-bar > .sh-tools { order: 0; margin-left: auto; }
+  /* The crumb's stage segment goes on those pages, for the reason the
+     1100–1279 rule gives: the filled stage pill directly under it says
+     the same thing. With it, "Screenplay › Scene List" plus the
+     burger plus the zone is 396px on a 358px row at 390, and the zone
+     wrapped anyway. Scoped to bars with the zone; the four toolbar
+     pages keep theirs, since nothing shares their first row. */
+  .sh-bar:has(> .sh-tools) .sh-where-phase,
+  .sh-bar:has(> .sh-tools) .sh-where-phase + .sh-where-sep { display: none; }
 }
 
 /* BETWEEN 561 AND 820 THE STRIP SCROLLS SIDEWAYS (the standalone

@@ -30,7 +30,7 @@ import '../lib/sitegate.js';
    SHOW, decided from billing_status() once the gate has answered. */
 import '../lib/plan-gate.js';
 import { registerSW } from '../lib/pwa.js';
-import { actionMenu } from './actionbar.js';
+import { actionMenu, wireActionBar } from './actionbar.js';
 import {
   attachSignInPill,
   refreshSignInPill,
@@ -449,6 +449,27 @@ function upgradeThemeButton(root) {
   host.replaceWith(menu);
 }
 StudioUI.upgradeThemeButton = upgradeThemeButton;
+
+/* The same menu on a page that never had a ◐ button to replace. The
+   eighteen pages without a `.toolbar` get a `.sh-tools` zone in the
+   shell band (buildStudioTools in shell.js) and this is what fills its
+   appearance half. Idempotent by the same test upgradeThemeButton
+   uses — one menu per host — so the shell can call it on every mount.
+   Appended at the FRONT of the host, so the zone reads appearance →
+   account the way the four toolbars do. */
+function mountAppearanceMenu(host) {
+  if (!host || host.querySelector('.tb-menu[data-appearance]')) return;
+  const menu = appearanceMenu();
+  menu.setAttribute('data-appearance', '');
+  host.insertBefore(menu, host.firstChild);
+  /* The toggle is a delegated listener that wireActionBar() installs,
+     and only the eight pages with menus of their own call it. A menu
+     on the other fourteen would mount and never open — which is what
+     the first run of this showed. Idempotent (a `wired` flag), so the
+     pages that already wire it lose nothing. */
+  wireActionBar();
+}
+StudioUI.mountAppearanceMenu = mountAppearanceMenu;
 
 /* Self-wired, so no page has to add an entry to its ACTIONS map for a
    setting none of them owns. */
@@ -1731,7 +1752,11 @@ function autoInit() {
     autoAriaLabels();
     StudioUI.polishEmptyStates();
     injectFooter();
-    // Auto-attach sign-in pill to the toolbar on every page
+    // Auto-attach the sign-in pill and the Appearance menu to the
+    // toolbar on the four pages that build one. The other eighteen
+    // have no toolbar and no DOM at all at this point — this runs at
+    // import — so their host is built by shell.js when the band is
+    // mounted (buildStudioTools), which calls the same two mounts.
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) attachSignInPill(toolbar);
     upgradeThemeButton(toolbar);

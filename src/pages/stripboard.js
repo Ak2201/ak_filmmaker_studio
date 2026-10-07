@@ -65,6 +65,7 @@ import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
+import DPR from '../lib/dpr.js';
 
 const app = document.getElementById('app');
 const CAST = 'cast';
@@ -378,6 +379,7 @@ function renderBoard(scenes) {
 
   const byDay = view.group === 'day';
   if (byDay) {
+    wrap.append(loadTargetControl());
     wrap.append(h('p.sb-hint', {
       text: 'Drag a strip by its handle to change its place in the day or drop it on '
           + 'another day — the order you set here is the order the shoot day and the '
@@ -388,25 +390,41 @@ function renderBoard(scenes) {
   }
 
   const maxDay = shootDays(scenes).reduce((a, b) => Math.max(a, b), 0);
+  const target = DPR.pageTarget();
+  const banners = byDay ? DPR.allBanners() : {};
   let hasUnscheduled = false;
   for (const group of groupScenes(scenes, view.group)) {
     const eighths = totalEighths(group.scenes);
     const section = h('div.sb-group');
-    section.append(h('div.sb-group-head', {}, [
+    const isDay = byDay && group.key !== Infinity;
+    const head = h('div.sb-group-head', {}, [
       h('h3.sb-group-name', { text: group.label }),
       h('span.sb-group-meta', {
         text: `${group.scenes.length} ${group.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(eighths)} ${eighths === 8 ? 'page' : 'pages'}`
       })
-    ]));
+    ]);
+    if (isDay) head.append(...dayLoadBits(group.key, eighths, target), bannerMenu(group.key));
+    section.append(head);
     /* In the day grouping every rack names its day, so a drop knows
        where it landed; "Not scheduled yet" is day 0 and a drop there
        takes the strip off the schedule. */
     const rack = h('div.sb-rack', byDay ? { 'data-day': String(group.key === Infinity ? 0 : group.key) } : {});
     if (byDay && group.key === Infinity) hasUnscheduled = true;
-    group.scenes.forEach((s) => rack.append(renderStrip(s, maxDay, byDay)));
+    if (isDay) {
+      /* Banners sit between the strips they were written between —
+         anchored to a scene, so dragging strips about keeps them. */
+      for (const it of DPR.layoutDay(group.scenes, banners[String(group.key)] || [])) {
+        rack.append(it.type === 'scene'
+          ? renderStrip(it.scene, maxDay, byDay)
+          : renderBanner(it.banner, group.key, group.scenes));
+      }
+    } else {
+      group.scenes.forEach((s) => rack.append(renderStrip(s, maxDay, byDay)));
+    }
     section.append(rack);
     wrap.append(section);
   }
+  if (byDay) fillHours();
 
   if (byDay) {
     /* Two targets that exist before anything is on them — a new day,
@@ -417,6 +435,130 @@ function renderBoard(scenes) {
     if (!hasUnscheduled) wrap.append(dropZone(0, 'Drop a strip here to take it off the schedule'));
   }
   return wrap;
+}
+
+/* ---- banners and the day's load ----------------------------------
+   Day-level strips — a company move, a travel or holding day, a note —
+   stored in fms_locations_v1 (src/lib/dpr.js); none of them is a scene
+   and none of them is written to one. The load warning is derived: the
+   day's pages against a target the AD sets (4 7/8 by default, an
+   honest indie day), plus an hours estimate when the script gives the
+   screen-time model something to read. */
+function dayLoadBits(day, eighths, target) {
+  const load = DPR.dayLoad(eighths, target);
+  const out = [];
+  if (load.over) {
+    out.push(h('span.sb-load.is-over', {
+      title: `The day carries ${formatEighths(eighths)} pages against a target of ${formatEighths(target)}.`,
+      text: `Over target · ${formatEighths(eighths)} / ${formatEighths(target)} pp`
+    }));
+  }
+  out.push(h('span.sb-group-hours', { 'data-hours-day': String(day) }));
+  return out;
+}
+
+function loadTargetControl() {
+  const target = DPR.pageTarget();
+  const sel = h('select.sb-day-sel', { 'data-action': 'sb-target', id: 'sb-target' });
+  for (let e = 16; e <= 64; e += 1) {
+    const opt = h('option', { value: String(e), text: formatEighths(e) + (e === DPR.DEFAULT_PAGE_TARGET ? ' · default' : '') });
+    if (e === target) opt.selected = true;
+    sel.append(opt);
+  }
+  if (target < 16 || target > 64) {
+    const opt = h('option', { value: String(target), text: formatEighths(target) });
+    opt.selected = true;
+    sel.append(opt);
+  }
+  return h('div.sb-target', {}, [
+    h('label.sb-day-lab', { for: 'sb-target', text: 'Pages per day before a warning' }),
+    sel
+  ]);
+}
+
+/* Screen time is a dynamic import: the model and the script reader are
+   not in this page's first paint, and a board without a script never
+   needs them. Filled in place, so no render is triggered by it. */
+let _hours = null;
+function fillHours() {
+  const paint = (secsByDay) => {
+    document.querySelectorAll('[data-hours-day]').forEach((el) => {
+      const sec = secsByDay.get(Number(el.dataset.hoursDay));
+      const hrs = DPR.estimateHours(sec, DPR.pageTarget());
+      el.textContent = hrs == null ? '' : `≈ ${hrs.toFixed(1)} h to shoot`;
+      el.title = hrs == null ? '' : 'Estimated from the script’s screen time at your page target, '
+        + `assuming a ${DPR.DAY_HOURS}-hour day. An estimate built on an estimate.`;
+    });
+  };
+  if (_hours) { paint(_hours()); return; }
+  Promise.all([import('../lib/screenplay-analysis.js'), import('../lib/script.js')])
+    .then(([A, S]) => {
+      _hours = () => {
+        const scenes = Scenes.listScenes();
+        const st = A.default.screenTime(scenes, S.loadScript().elements);
+        const out = new Map();
+        if (!st || !st.fromScript) return out;
+        for (const r of st.rows) {
+          if (r.method !== 'script') continue;
+          const d = shootDayOf(r.scene);
+          if (d) out.set(d, (out.get(d) || 0) + (Number(r.seconds) || 0));
+        }
+        return out;
+      };
+      paint(_hours());
+    })
+    .catch((e) => console.warn('[stripboard] screen time', e));
+}
+
+function bannerMenu(day) {
+  const menu = actionMenu('+ Banner', DPR.BANNER_KINDS.map((k) => ({ label: k.label, action: 'sb-banner-add' })), {
+    align: 'right', ariaLabel: `Add a banner to Day ${day}: a company move, travel day, holding day or note`
+  });
+  menu.classList.add('sb-banner-menu');
+  menu.querySelectorAll('[data-action="sb-banner-add"]').forEach((b, i) => {
+    b.setAttribute('data-kind', DPR.BANNER_KINDS[i].id);
+    b.setAttribute('data-day', String(day));
+  });
+  return menu;
+}
+
+const BANNER_HINT = {
+  move: 'How long, what travels',
+  travel: 'Where to, how',
+  holiday: 'Why: Sunday, festival, holding for weather',
+  note: 'Anything the unit should know'
+};
+
+function renderBanner(b, day, dayScenes) {
+  const el = h('div.sb-banner.is-' + b.kind, { 'data-banner': b.id, 'data-day': String(day), role: 'group', 'aria-label': DPR.bannerText(b) });
+  el.append(h('span.sb-banner-kind', { text: DPR.bannerLabel(b.kind) }));
+  const field = (name, label, value, ph) => {
+    const input = h('input.sb-banner-in', { type: 'text', placeholder: ph || '', 'data-banner-field': name, 'aria-label': label });
+    input.value = value || '';
+    return input;
+  };
+  if (b.kind === 'move') {
+    el.append(h('span.sb-banner-route', {}, [
+      field('from', 'Company move from', b.from, 'From'),
+      h('span', { text: '→', 'aria-hidden': 'true' }),
+      field('to', 'Company move to', b.to, 'To')
+    ]));
+  }
+  el.append(field('text', DPR.bannerLabel(b.kind) + ' note', b.text, BANNER_HINT[b.kind]));
+  const pos = h('select.sb-day-sel', { 'data-banner-field': 'after', 'aria-label': 'Where this banner sits in the day' });
+  const opts = [['', 'Top of the day']]
+    .concat(dayScenes.map((s) => [s.id, `After scene ${s.number || '—'}`]))
+    .concat([[DPR.AFTER_DAY, 'After the day']]);
+  const known = opts.some(([v]) => v === b.after);
+  for (const [v, t] of opts) {
+    const o = h('option', { value: v, text: t });
+    if (v === b.after || (!known && v === DPR.AFTER_DAY)) o.selected = true;
+    pos.append(o);
+  }
+  el.append(pos, h('button.sb-btn.is-danger', {
+    type: 'button', 'data-action': 'sb-banner-remove', 'aria-label': 'Remove this banner', text: 'Remove'
+  }));
+  return el;
 }
 
 const dropZone = (day, label) =>
@@ -611,6 +753,57 @@ delegate(document, 'change', '[data-strip-field="shootDay"]', (e, el) => {
   const rec = Locations.placeScene(id, day);
   render();
   if (rec && rec.fromDay !== rec.toDay) afterMove(rec, { focus: 'select' });
+});
+
+delegate(document, 'change', '[data-action="sb-target"]', (e, el) => {
+  DPR.setPageTarget(parseInt(el.value, 10));
+  render();
+  document.getElementById('sb-target')?.focus();
+});
+
+delegate(document, 'click', '[data-action="sb-banner-add"]', (e, el) => {
+  const day = parseInt(el.dataset.day, 10);
+  const kind = el.dataset.kind;
+  const patch = { kind };
+  if (kind === 'move') {
+    /* The first change of location on the day that no move covers yet
+       — the move the AD was about to type. */
+    const dayScenes = Locations.orderedDayScenes(day);
+    const taken = new Set(DPR.listBanners(day).filter((b) => b.kind === 'move').map((b) => b.after));
+    const next = DPR.impliedMoves(dayScenes).find((m) => !taken.has(m.after));
+    if (next) Object.assign(patch, next);
+  }
+  const b = DPR.addBanner(day, patch);
+  render();
+  announce(`${DPR.bannerLabel(kind)} added to Day ${day}.`);
+  const host = document.querySelector(`.sb-banner[data-banner="${CSS.escape(b.id)}"]`);
+  const first = host && host.querySelector('input, select');
+  if (first) first.focus();
+});
+
+delegate(document, 'change', '[data-banner-field]', (e, el) => {
+  const host = el.closest('.sb-banner');
+  if (!host) return;
+  const day = parseInt(host.dataset.day, 10);
+  const id = host.dataset.banner;
+  DPR.updateBanner(day, id, { [el.dataset.bannerField]: el.value });
+  if (el.dataset.bannerField === 'after') {
+    render();
+    const again = document.querySelector(`.sb-banner[data-banner="${CSS.escape(id)}"] [data-banner-field="after"]`);
+    if (again) again.focus();
+  }
+});
+
+delegate(document, 'click', '[data-action="sb-banner-remove"]', (e, el) => {
+  const host = el.closest('.sb-banner');
+  const day = parseInt(host.dataset.day, 10);
+  const gone = DPR.listBanners(day).find((b) => b.id === host.dataset.banner);
+  if (!gone) return;
+  DPR.removeBanner(day, gone.id);
+  render();
+  const said = `${DPR.bannerLabel(gone.kind)} removed from Day ${day}.`;
+  announce(said);
+  toast(said, { action: 'UNDO', onAction: () => { DPR.addBanner(day, gone); render(); announce('Undone.'); } });
 });
 
 /* ---- moving a strip: the shared tail -------------------------

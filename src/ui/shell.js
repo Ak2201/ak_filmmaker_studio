@@ -1226,7 +1226,10 @@ if (typeof window !== 'undefined') {
 let reland = null;   // { grew, deadline, lastY }
 function relandFragment(grew) {
   if (performance.now() - lastLanding > 4000) return;
-  const id = decodeURIComponent((location.hash || '').slice(1));
+  /* A malformed escape in the hash (#%E0%A4%A) throws here, and this
+     runs inside measureChrome(), which feeds every scroll offset. */
+  let id = '';
+  try { id = decodeURIComponent((location.hash || '').slice(1)); } catch (e) { return; }
   if (!id) return;
   if (reland) { reland.grew += grew; return; }   // grew twice before the scroll stopped
   reland = { grew, deadline: performance.now() + 4000, lastY: null };

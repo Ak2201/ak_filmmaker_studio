@@ -26,6 +26,12 @@
      (g) the console: an admin edits a price and the cards follow;
          a grant lands in the ledger and on the member
      (h) nothing here writes to localStorage
+     (j) promo codes (schema section 20): "Have a code?" reprices the
+         cards from quote_order, BUY carries the code, Checkout opens
+         with the DISCOUNTED amount, the ledger row has the code and
+         the code's use count moves at activation; a refused code
+         prints the server's sentence and prices nothing; the console
+         lists, adds and deactivates a code
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -241,8 +247,8 @@ try {
     const g = F.db.payments.find((x) => x.status === 'granted');
     ok(g && g.plan_id === 'pro' && g.amount_paise === 0 && g.note === 'festival comp', 'the ledger carries a ₹0 granted row with the note');
     ok(F.db.accounts.some((a) => a.owner_id === USERS['tok-amy'].id && a.plan === 'pro' && a.plan_until === null), 'Amy’s organisation is on Pro, for good');
-    await page.waitForFunction(() => /for good/.test((document.querySelector('#billing .gt-table') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the ledger’s Access column reads "for good"'), () => ok(false, 'the ledger’s Access column reads "for good"'));
-    await page.waitForFunction(() => /festival comp/.test((document.querySelector('#billing .gt-table') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the payments table shows it'), () => ok(false, 'the payments table shows it'));
+    await page.waitForFunction(() => /for good/.test((document.querySelector('#billing .ba-ledger') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the ledger’s Access column reads "for good"'), () => ok(false, 'the ledger’s Access column reads "for good"'));
+    await page.waitForFunction(() => /festival comp/.test((document.querySelector('#billing .ba-ledger') || {}).textContent || ''), null, { timeout: 8000 }).then(() => ok(true, 'the payments table shows it'), () => ok(false, 'the payments table shows it'));
     await page.setViewportSize({ width: 390, height: 844 });
     ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the billing console does not overflow at 390px');
     allErrors.push(...errors); await ctx.close();
@@ -323,6 +329,86 @@ try {
     ok(counts.pro === `${total} of ${total} features`, `the Pro card counts everything: ${counts.pro}`);
     ok(/Sample project only/.test(await amy.page.textContent('#plan .pl-card[data-plan="free"]')), 'and Free says "Sample project only" in words');
     allErrors.push(...amy.errors); await amy.ctx.close();
+  }
+
+  console.log('(j) promo codes');
+  F.reset(); RZP.mode = 'pay';
+  F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan');
+    await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    ok(!!(await page.$('#plan .pl-promo summary')), 'the row offers "Have a code?" under the cards');
+    ok((await prices(page)).find((x) => x[0] === 'indie')[1] === '₹7,999', 'before a code the Indie card shows the list price');
+    // a refused code first: nothing reprices, the server's sentence shows
+    await page.click('#plan .pl-promo summary');
+    await page.fill('#plPromoCode', 'nope-2026');
+    await page.click('#plan .pl-promo-form button[type="submit"]');
+    await page.waitForSelector('#plan .pl-promo-msg.is-error', { timeout: 8000 }).then(() => ok(true, 'an unknown code prints a refusal'), () => ok(false, 'an unknown code prints a refusal'));
+    { const t = await page.textContent('#plan .pl-promo-msg'); ok(/not one we know/.test(t), 'with the server’s sentence: ' + t.trim()); }
+    ok((await prices(page)).find((x) => x[0] === 'indie')[1] === '₹7,999' && !(await page.$('#plan .pl-card.has-promo')), 'and no card is repriced');
+    ok(F.db.calls.filter((c) => c === 'quote_order').length === 3, 'quote_order was asked once per buyable plan (three)');
+    // then the live one
+    await page.fill('#plPromoCode', 'launch 10');
+    await page.click('#plan .pl-promo-form button[type="submit"]');
+    await page.waitForSelector('#plan .pl-card[data-plan="indie"].has-promo', { timeout: 8000 }).then(() => ok(true, 'LAUNCH10 reprices the Indie card'), () => ok(false, 'LAUNCH10 reprices the Indie card'));
+    const p2 = await prices(page);
+    ok(p2.find((x) => x[0] === 'indie')[1] === '₹7,199.10' && p2.find((x) => x[0] === 'pro')[1] === '₹17,999.10', 'the cards show the discounted prices from quote_order (₹7,199.10 and ₹17,999.10 — 10% of a paise-exact price keeps its paise)');
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
+    ok(/₹799\.90 off with LAUNCH10/.test(await page.textContent('#plan .pl-card[data-plan="indie"]')), 'and the saving named');
+    ok(/LAUNCH10 applied to Starter, Indie, Pro/.test(await page.textContent('#plan .pl-promo-msg')), 'the box says which plans it applied to');
+    // buy with it
+    await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
+      .then(() => ok(true, 'the purchase goes through'), () => ok(false, 'the purchase goes through'));
+    ok(F.db.calls.includes('fn:rzp-order code LAUNCH10 ok'), 'rzp-order received the code and re-quoted it');
+    const last = await page.evaluate(() => window.__rzpLast);
+    ok(last && last.amount === 719910, 'Checkout opened with the DISCOUNTED amount (719910 paise), not the list');
+    const pay = F.db.payments.find((x) => x.plan_id === 'indie' && x.status === 'paid');
+    ok(pay && pay.promo_code === 'LAUNCH10' && pay.discount_paise === 79990 && pay.list_paise === 799900 && pay.amount_paise === 719910, 'the ledger row carries the code, the list price and the discount');
+    ok(F.db.promos.find((c) => c.code === 'LAUNCH10').uses === 1, 'the code’s use count moved at activation');
+    ok(!(await page.evaluate(() => Object.keys(localStorage).some((k) => /promo|code/i.test(k) && !/invite_code/.test(k)) || Object.values(localStorage).some((v) => /LAUNCH10/.test(String(v))))), 'the code is in no localStorage key or value');
+    allErrors.push(...errors); await ctx.close();
+
+    // the console: list, add, deactivate — and the card obeys
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.waitForSelector('#billing tr[data-promo="LAUNCH10"]', { timeout: 15000 }).then(() => ok(true, 'the console lists LAUNCH10'), () => ok(false, 'the console lists LAUNCH10'));
+    ok(/10% off/.test(await A.page.textContent('#billing tr[data-promo="LAUNCH10"]')) && /\b1\b/.test(await A.page.textContent('#billing tr[data-promo="LAUNCH10"] td:nth-child(4)')), 'with its discount and one use');
+    ok(/LAUNCH10 \(₹799\.90 off\)/.test(await A.page.textContent('#billing .ba-ledger')), 'the payments ledger shows the code on the discounted row');
+    await A.page.fill('#baPromoCode', 'fest 500');
+    await A.page.selectOption('#baPromoKind', 'amount');
+    await A.page.fill('#baPromoValue', '500');
+    await A.page.fill('#baPromoMax', '1');
+    await A.page.uncheck('#billing input[name="plan"][value="starter"]');
+    await A.page.fill('#baPromoNote', 'festival desk');
+    await A.page.click('form[data-ba-form="promo"] button[type="submit"]');
+    await A.page.waitForSelector('#billing tr[data-promo="FEST500"]', { timeout: 8000 }).then(() => ok(true, 'ADD CODE lands FEST500 in the list'), () => ok(false, 'ADD CODE lands FEST500 in the list'));
+    const fest = F.db.promos.find((c) => c.code === 'FEST500');
+    ok(fest && fest.amount_off_paise === 50000 && fest.max_uses === 1 && fest.plan_ids && fest.plan_ids.join() === 'indie,pro' && fest.note === 'festival desk', 'admin_set_promo_code received ₹500 as 50000 paise, one use, Indie and Pro only, with the note');
+    await A.page.click('#billing tr[data-promo="LAUNCH10"] [data-ba-action="promo-toggle"]');
+    await A.page.waitForFunction(() => /inactive/.test((document.querySelector('#billing tr[data-promo="LAUNCH10"]') || {}).textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'DEACTIVATE marks LAUNCH10 inactive'), () => ok(false, 'DEACTIVATE marks LAUNCH10 inactive'));
+    ok(F.db.promos.find((c) => c.code === 'LAUNCH10').active === false, 'and the fake’s row is inactive');
+    await A.page.setViewportSize({ width: 390, height: 844 });
+    ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the promo console does not overflow at 390px');
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    // a stranger on invite.html: the deactivated code is refused, the new one prices Pro and not Starter
+    const B = await newContext(browser, { tok: 'tok-ben' });
+    await B.page.goto(BASE + 'invite.html');
+    await B.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
+    await B.page.click('#buy .pl-promo summary');
+    await B.page.fill('#plPromoCode', 'LAUNCH10');
+    await B.page.click('#buy .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#buy .pl-promo-msg.is-error', { timeout: 8000 });
+    ok(/not active/.test(await B.page.textContent('#buy .pl-promo-msg')), 'invite.html: the deactivated code is refused as inactive');
+    await B.page.fill('#plPromoCode', 'FEST500');
+    await B.page.click('#buy .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#buy .pl-card[data-plan="pro"].has-promo', { timeout: 8000 });
+    ok(!(await B.page.$('#buy .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Indie, Pro/.test(await B.page.textContent('#buy .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
+    ok((await prices(B.page)).find((x) => x[0] === 'pro')[1] === '₹19,499', 'Pro reads ₹19,499 (₹500 off)');
+    allErrors.push(...B.errors); await B.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

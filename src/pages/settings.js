@@ -161,7 +161,7 @@ function renderPlan() {
     if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan\u2019s limits now.` }));
   }
   sec.append(planCards(billing.plans, st, {
-    onBuy: (planId, period, onStatus) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus }).then(() => refreshBilling()),
+    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => refreshBilling()),
     rerender: () => { if (!busy) render(); }
   }));
   return sec;

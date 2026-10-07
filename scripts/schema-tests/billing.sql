@@ -198,12 +198,20 @@ exception when sqlstate '42501' then raise notice 'ok - 10. a disabled member ->
 rollback;
 
 -- 11. accounts_guard still refuses the client; billing gets through
+-- B is on Pro since check 8, so the write has to be a CHANGE: setting
+-- plan = 'pro' on a Pro row is a no-op the guard rightly lets through,
+-- and the check passed for nothing until the grant was added above it.
 begin;
 select t.claims('00000000-0000-4000-8000-0000000000b1');
+select t.ok((select plan from public.accounts where owner_id = '00000000-0000-4000-8000-0000000000b1') = 'pro', '11. (control) B is on Pro, so the write below is a real change');
 do $$ begin
-  update public.accounts set plan = 'pro' where owner_id = '00000000-0000-4000-8000-0000000000b1';
+  update public.accounts set plan = 'starter' where owner_id = '00000000-0000-4000-8000-0000000000b1';
   raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 11. the owner cannot set their own plan (accounts_guard)'; end $$;
+do $$ begin
+  update public.accounts set seat_limit = 9999 where owner_id = '00000000-0000-4000-8000-0000000000b1';
+  raise exception 'should have refused';
+exception when sqlstate '42501' then raise notice 'ok - 11. nor their own seat_limit'; end $$;
 rollback;
 
 -- 12. billing_status

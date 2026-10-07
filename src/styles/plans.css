@@ -63,3 +63,17 @@
 
 /* The legal line under the cards: links in the brand-as-text colour. */
 .pl-legal a { color: var(--accent-deep); text-underline-offset: 2px; }
+
+/* ---- promo codes (schema section 20) ----------------------------- */
+.pl-price .pl-list { font-size: var(--t-small); color: var(--ink-muted); margin-left: var(--s2); }
+.pl-promo { max-width: var(--measure); }
+.pl-promo > summary { cursor: pointer; font-size: var(--t-small); color: var(--accent-deep); text-underline-offset: 2px; }
+.pl-promo-form { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin-top: var(--s2); }
+.pl-promo-label { font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono); letter-spacing: var(--track-label); text-transform: uppercase; flex-basis: 100%; }
+.pl-promo-input { flex: 1 1 10rem; min-width: 0; text-transform: uppercase; }
+.pl-promo-msg { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-body); }
+.pl-promo-msg.is-error { color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+.ba-promo { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); background: var(--paper-raised); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-width: 48rem; }
+.ba-promo-plans { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); font-size: var(--t-small); color: var(--ink-body); }
+.ba-promo-plans label { display: inline-flex; gap: var(--s1); align-items: center; }
+.gt-table .is-off { color: var(--ink-muted); }

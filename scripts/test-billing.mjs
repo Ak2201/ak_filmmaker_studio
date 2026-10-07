@@ -67,5 +67,24 @@ eq(R.parseRupees('-5'), null, 'negative refused');
 ok(R.receiptFor('0f4e2b1a-1111-2222-3333-444455556666').length <= 40, 'receipt within Razorpay’s 40 characters');
 ok(R.basicAuth('rzp_test_k', 's') === 'Basic ' + Buffer.from('rzp_test_k:s').toString('base64'), 'basic auth header');
 
+/* ---- promo codes (section 20): the helpers the client and the fake share ---- */
+eq(R.normalisePromo(' launch 10 '), 'LAUNCH10', 'a code is upper-cased with whitespace removed');
+eq(R.normalisePromo(null), '', 'nothing typed is the empty string');
+eq(R.normalisePromo('a-b\tc'), 'A-BC', 'tabs go, dashes stay');
+ok(R.isPromoShaped('launch10') && R.isPromoShaped('A-1'), 'three or more letters, digits or dashes is code-shaped');
+ok(!R.isPromoShaped('ab') && !R.isPromoShaped('-abc') && !R.isPromoShaped('a!b') && !R.isPromoShaped('x'.repeat(33)), 'too short, leading dash, punctuation or 33 chars is not');
+eq(R.MIN_ORDER_PAISE, 100, 'Razorpay’s minimum order is ₹1');
+eq(R.promoPrice(59900, 10, null), 53910, '10% off 59900 is 53910 (mirrors public.promo_price)');
+eq(R.promoPrice(999, 10, null), 900, 'a percentage floors the paise: 999 less 99.9 -> 900');
+eq(R.promoPrice(59900, null, 50000), 9900, '₹500 off 59900 is 9900');
+eq(R.promoPrice(59900, null, 100000), 100, '₹1000 off a ₹599 plan floors at 100 paise');
+eq(R.promoPrice(299900, 100, null), 100, 'a 100% code costs ₹1, never ₹0');
+eq(R.promoPrice(50, null, 10), 50, 'a sub-₹1 list price is never raised to the floor');
+eq(R.promoPrice(59900, null, null), 59900, 'no discount is the list price');
+eq(R.promoPrice(null, 10, null), null, 'no list price, no answer');
+eq(R.promoLabel({ percent_off: 10 }), '10% off', 'label for a percentage');
+eq(R.promoLabel({ amount_off_paise: 50000 }), '₹500 off', 'label for an amount');
+eq(R.promoLabel(null), '', 'label for nothing');
+
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

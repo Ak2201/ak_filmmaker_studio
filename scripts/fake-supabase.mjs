@@ -8,6 +8,7 @@
    `F.reset()` starts a scenario clean.
    ============================================================ */
 import { createHash, createHmac } from 'node:crypto';
+import { promoPrice, normalisePromo } from '../supabase/functions/_shared/razorpay.js';
 
 export const SB = 'https://conhlrulxfwkhsnymakz.supabase.co';
 export const REF = 'conhlrulxfwkhsnymakz';
@@ -51,8 +52,29 @@ function activate(orderId, paymentId, raw) {
   const a = accountForBuyer(pay.user_id);
   applyPlan(a, pay.plan_id);
   Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: null, raw });
+  // section 20: a code is spent at activation, once
+  if (pay.promo_code) { const c = F.db.promos.find((x) => x.code === pay.promo_code); if (c) c.uses++; }
   if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
   return { already: false, pay };
+}
+
+/* section 20: public.quote_order(), as the database answers it */
+const SENTENCE = { unknown: 'That code is not one we know. Check the spelling.', expired: 'That code has expired.', exhausted: 'That code has been used as many times as it allows.',
+  not_for_plan: 'That code does not apply to this plan.', inactive: 'That code is not active right now.' };
+export function quoteOrder(planId, rawCode) {
+  const pl = F.db.plans.find((p) => p.id === planId && p.active);
+  if (!pl || !(pl.price_paise > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
+  const code = normalisePromo(rawCode) || null;
+  const base = { plan_id: pl.id, list_paise: pl.price_paise, amount_paise: pl.price_paise, discount_paise: 0, code, ok: true, reason: null, sentence: null };
+  if (!code) return base;
+  const c = F.db.promos.find((x) => x.code === code);
+  const now = Date.now();
+  const reason = !c ? 'unknown' : !c.active || (c.valid_from && Date.parse(c.valid_from) > now) ? 'inactive'
+    : c.valid_until && Date.parse(c.valid_until) <= now ? 'expired' : Number.isInteger(c.max_uses) && c.uses >= c.max_uses ? 'exhausted'
+    : c.plan_ids && !c.plan_ids.includes(pl.id) ? 'not_for_plan' : null;
+  if (reason) return { ...base, ok: false, reason, sentence: SENTENCE[reason] };
+  const amt = promoPrice(pl.price_paise, c.percent_off ?? null, c.amount_off_paise ?? null);
+  return { ...base, amount_paise: amt, discount_paise: pl.price_paise - amt, percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
 }
 
 export const USERS = {
@@ -102,6 +124,8 @@ export function freshDb() {
       { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
     ],
     payments: [],
+    // section 20: one live launch code; the proof adds and refuses others
+    promos: [{ code: 'LAUNCH10', percent_off: 10, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null, active: true, note: 'launch week', created_at: new Date(now).toISOString() }],
     calls: []
   };
 }
@@ -175,6 +199,30 @@ function rpc(name, args, user, route) {
         status: 'granted', note: args.p_note || null, created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: null });
       if (!F.db.members.has(args.p_user)) F.db.members.set(args.p_user, { role: 'user', disabled_at: null });
       return json(route, 200, null);
+    }
+    case 'quote_order': {
+      try { return json(route, 200, quoteOrder(args.p_plan, args.p_code)); }
+      catch (e) { return pgErr(route, e.code || '22023', e.message); }
+    }
+    case 'admin_list_promo_codes': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, [...F.db.promos].sort((a, b) => (b.active - a.active) || Date.parse(b.created_at) - Date.parse(a.created_at)));
+    }
+    case 'admin_set_promo_code': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const code = normalisePromo(args.p_code);
+      if (!/^[A-Z0-9][A-Z0-9-]{2,31}$/.test(code)) return pgErr(route, '22023', 'A code is 3 to 32 letters, digits or dashes');
+      const patch = args.p_patch || {};
+      let c = F.db.promos.find((x) => x.code === code);
+      if (!c) {
+        if ((patch.percent_off == null) === (patch.amount_off_paise == null)) return pgErr(route, '22023', 'A code takes either a percentage (1–100) or an amount off in paise, not both');
+        c = { code, percent_off: null, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null, active: true, note: null, created_at: new Date().toISOString() };
+        F.db.promos.push(c);
+      }
+      for (const k of ['percent_off', 'amount_off_paise', 'max_uses', 'valid_from', 'valid_until', 'note']) if (k in patch) c[k] = patch[k];
+      if ('plan_ids' in patch) c.plan_ids = Array.isArray(patch.plan_ids) && patch.plan_ids.length ? patch.plan_ids : null;
+      if (typeof patch.active === 'boolean') c.active = patch.active;
+      return json(route, 200, c);
     }
     case 'admin_billing_overview': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
@@ -372,13 +420,19 @@ export async function handle(route) {
     if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
     if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
     if (body.period === 'month' || body.period === 'year') return json(route, 400, { error: 'Plans are bought once, for good — not by the month or the year' });
-    const amount = plan.price_paise;
-    if (!amount) return json(route, 400, { error: 'That plan is not for sale' });
+    if (!plan.price_paise) return json(route, 400, { error: 'That plan is not for sale' });
+    // section 20: the code is re-quoted here, never priced by the client
+    const q = quoteOrder(plan.id, body.code);
+    F.db.calls.push(`fn:rzp-order code ${q.code || '-'} ${q.ok ? 'ok' : q.reason}`);
+    if (!q.ok) return json(route, 400, { error: q.sentence });
+    const amount = q.amount_paise;
     const id = 'pay' + F.db.payments.length;
     const order_id = 'order_' + Math.random().toString(36).slice(2, 10);
     F.db.payments.push({ id, user_id: user.id, account_id: body.account_id || null, plan_id: plan.id, period: body.period, amount_paise: amount, currency: 'INR',
+      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code,
       razorpay_order_id: order_id, razorpay_payment_id: null, status: 'created', created_at: new Date().toISOString() });
-    return json(route, 200, { order_id, amount, currency: 'INR', key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id, prefill: { email: user.email } });
+    return json(route, 200, { order_id, amount, currency: 'INR', key_id: RZP.keyId, plan: plan.id, period: body.period, plan_name: plan.name, payment_id: id,
+      list_paise: q.list_paise, discount_paise: q.discount_paise, promo_code: q.code, prefill: { email: user.email } });
   }
   if (url.pathname === '/functions/v1/rzp-verify' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });

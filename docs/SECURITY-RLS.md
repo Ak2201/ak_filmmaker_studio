@@ -356,7 +356,7 @@ an abusive comment on it. Safe direction; left alone.
 | Policy | Cmd | Permits | To whom |
 |---|---|---|---|
 | `acc_select` | SELECT | read | `owner_id`, or any active member |
-| `acc_insert` | INSERT | create, `owner_id = auth.uid()` | any authenticated user, unlimited |
+| `acc_insert` | INSERT | create, `owner_id = auth.uid()` | any authenticated user, unlimited — and, until §19, with **any plan and any limits** (A1b) |
 | `acc_update` | UPDATE | write **every column** | `owner_id`, or an `owner`-*role* member |
 | `acc_delete` | DELETE | delete → **cascades every project in it** | `owner_id` only |
 | `am_select` | SELECT | read a member row | the member, or an owner/admin |
@@ -376,6 +376,39 @@ key raises the ceiling before the trigger checks it. Same for `storage_limit_mb`
 is deliberately **not** `security definer` — `is_privileged_caller()` has to see the
 real caller, and a definer function would report the definer's role and make every
 caller look privileged.
+
+### A1b — the customer could MINT an account on any plan. **HIGH (billing). Fixed in schema §19, UNRUN.**
+
+A1's fix was `accounts_guard`, a `BEFORE UPDATE` trigger. `acc_insert`'s
+`WITH CHECK` is `owner_id = auth.uid()` and nothing else, so
+
+```sql
+insert into accounts (name, owner_id, plan, seat_limit) values ('Mint', auth.uid(), 'pro', 999);
+```
+
+through PostgREST was refused by nothing: the guard never fired, the policy
+asked only whose account it was. `user_plan()` (§16.2) answers with the best
+plan among the organisations a user *owns*, so the minted row made every
+limit trigger in §16.8 and `billing_status()` read that user as Pro from then
+on — unlimited projects, shares and collaborators, the extension, every feature
+tick — for the cost of one POST with the publishable key. Found while the
+account panel was built (CLAUDE.md open item 5), recorded there, and left open
+until 7 Oct 2026.
+
+§19 extends the guard to `BEFORE INSERT OR UPDATE`. On INSERT, a caller that
+is neither privileged nor inside `apply_plan()`'s `fms.billing` flag may
+create a row only with the table's defaults — `plan 'free'`, `seat_limit 1`,
+`storage_limit_mb 500`, `plan_until null`, `plan_period null` — and anything
+else is the same `42501` *"Plan and limits are set by billing, not by the
+client"*. The policy itself is unchanged; the schema comment says why the
+guard and not a `WITH CHECK` (the definer functions bypass RLS, so a policy
+would not fire for them, and that asymmetry is the shape of this bug).
+Worth knowing: `account_for_buyer()` runs inside `admin_grant_plan()` as an
+*authenticated* admin — `is_privileged_caller()` is false there even though
+the function is `security definer` — and still passes, because it inserts
+`(name, owner_id)` and nothing else. That is why the rule is "equals the
+defaults", not "is privileged". `scripts/schema-tests/accounts.sql` proves
+all of it on a real PostgreSQL (15 checks); the live checks are below.
 
 ### A2 — an owner-*role* member could seize the account. **HIGH. Fixed.**
 
@@ -441,6 +474,41 @@ so the first invite raises `53400`. Correct for a one-seat plan; surprising if
 nobody expected it.
 
 ### A8 — anyone can create unlimited accounts. **Note.** No rate limit on `acc_insert`.
+
+---
+
+## 6b. `promo_codes` (schema §20, 7 Oct 2026). **UNRUN.**
+
+| Policy | Cmd | Permits | To whom |
+|---|---|---|---|
+| — | — | RLS enabled, **no policy**; `anon` and `authenticated` revoked outright | nobody from the client |
+
+The table is reached only through `quote_order(plan, code)` (`security
+definer`, granted to `anon` and `authenticated`, answers a price and a
+reason and never a row) and the two `admin_*` RPCs behind
+`is_studio_admin()`. What a stranger can learn by calling `quote_order` is
+whether a string is a live code and what it is worth — an offer, never
+entry; there is no rate limit, by decision (docs/BILLING.md §7). `uses` is
+written only by `activate_payment()`, which only the service role can call.
+`payments.promo_code` references the table with `on delete set null`, so a
+code can never be deleted out from under the ledger by accident; the console
+deactivates, it does not delete. Live checks:
+
+1. As the anon key, signed out: `select count(*) from promo_codes` → expect
+   `42501 permission denied`. **Not** `42P01` (the table does not exist — §20
+   never ran) and **not** `0 rows` (a policy exists that should not).
+2. As a signed-in non-admin: the same → 42501; `select
+   admin_list_promo_codes()` → 42501; `select admin_set_promo_code('X',
+   '{"percent_off":10}')` → 42501.
+3. As anon: `select quote_order('indie', 'NOTACODE')` → `ok: false, reason:
+   'unknown'`, the list price, a sentence. `select quote_order('indie',
+   null)` → `ok: true`, the list price.
+4. As the admin: make a code on the console; as anon quote it → `ok: true`
+   with the discounted amount; deactivate it on the console; quote again →
+   `inactive`.
+5. After one test-mode purchase with the code: the ledger row carries it,
+   `uses` reads 1 on the console, and a second purchase with a `max_uses: 1`
+   code is refused by `rzp-order` with *"used as many times as it allows"*.
 
 ---
 
@@ -552,6 +620,24 @@ select public.has_project_access('00000000-0000-0000-0000-000000000000','view');
    contains no `@`.
 8. **Plan is not client-writable.** As `A`: `update accounts set seat_limit = 9999`
    → expect 42501.
+8b. **Nor is it mintable (A1b, §19).** As `A`, with the publishable key:
+    `insert into accounts (name, owner_id, plan, seat_limit) values ('Mint', auth.uid(), 'pro', 999)`
+    → expect 42501 *"Plan and limits are set by billing"*. Repeat with only
+    `plan = 'pro'`, only `seat_limit = 2`, only `storage_limit_mb = 1`, only
+    `plan_until = now()` → 42501 each. Then the positive control:
+    `insert into accounts (name, owner_id) values ('Plain', auth.uid())` →
+    one row, `plan 'free'`, `seat_limit 1`, `storage_limit_mb 500`,
+    `plan_until null`. Then `select billing_status() ->> 'plan'` → still
+    `'free'`. If the first insert *succeeds*, §19 never ran — check with
+    `select tgtype from pg_trigger where tgname = 'accounts_guard'` in the SQL
+    editor: bit 2 (INSERT) must be set (tgtype 7 = BEFORE INSERT OR UPDATE,
+    ROW; 19 = BEFORE UPDATE only).
+8c. **The grant path still works through the new guard.** As the admin on
+    `admin.html` → Billing → Grant: grant a plan to a member who owns no
+    organisation → the ledger shows the ₹0 row and `billing_status()` for
+    that member names the plan. This is `account_for_buyer()` inserting with
+    defaults inside an *authenticated* admin's call — the case the guard
+    must let through.
 9. **Admin cannot become owner.** Make `C` an admin; `C` inserts a member row with
    `role='owner'` → expect 42501; `C` deletes the owner's row → expect 42501.
 10. **Realtime.** Subscribe as `B` to `pd:<A's project>` before any share exists;

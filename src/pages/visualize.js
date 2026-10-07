@@ -260,7 +260,14 @@ function renderSceneBlock(group) {
     }));
   }
 
-  if (group.shots.length) block.append(renderShotTable(group.shots));
+  if (group.shots.length) {
+    /* Seven columns cannot reflow, so on a phone the table scrolls
+       inside itself — about a thousand pixels of it in a 390px column,
+       with nothing to say there is more (UX audit L30). The hint shows
+       only at widths where the table overflows; see visualize.css. */
+    block.append(h('p.vz-scroll-hint', { 'aria-hidden': 'true', text: 'Swipe the table sideways for every column →' }));
+    block.append(renderShotTable(group.shots));
+  }
 
   if (scene) {
     const row = h('div.vz-scene-acts.pdf-menu-host', {}, [
@@ -1294,9 +1301,29 @@ delegate(document, 'click', '[data-action="vz-entry-add"]', (e, el) => {
   const input = document.querySelector('[data-entry="' + entry.id + '"] [data-entry-field="title"]');
   if (input) input.focus();
 });
+/* No confirm for one reference — but an Undo, because a pasted link
+   and its note are typed once and cannot be found again (UX audit
+   L16). It goes back in its old place. */
 delegate(document, 'click', '[data-action="vz-entry-del"]', (e, el) => {
-  Shots.removeEntry(boardIdOf(el), entryIdOf(el));
-  render();
+  const boardId = boardIdOf(el);
+  const entryId = entryIdOf(el);
+  const board = Shots.listBoards().find((b) => b.id === boardId);
+  const at = board ? board.entries.findIndex((x) => x.id === entryId) : -1;
+  const gone = at >= 0 ? board.entries[at] : null;
+  Shots.removeEntry(boardId, entryId);
+  render('[data-board="' + CSS.escape(boardId || '') + '"] [data-action="vz-entry-add"]');
+  if (!gone || !StudioUI.toast) return;
+  StudioUI.toast('Reference removed' + (gone.title ? ': ' + gone.title : ''), {
+    action: 'Undo',
+    onAction: () => {
+      const boards = Shots.listBoards();
+      const b = boards.find((x) => x.id === boardId);
+      if (!b || b.entries.some((x) => x.id === gone.id)) return;
+      b.entries.splice(Math.min(at, b.entries.length), 0, gone);
+      Shots.saveBoards(boards);
+      render();
+    }
+  });
 });
 delegate(document, 'change', '[data-entry-field]', (e, el) => {
   Shots.updateEntry(boardIdOf(el), entryIdOf(el), { [el.dataset.entryField]: el.value });

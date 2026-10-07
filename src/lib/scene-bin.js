@@ -201,6 +201,25 @@ export function emptyBin() {
   return n;
 }
 
+/**
+ * Undo an add: take scenes created moments ago back out through the
+ * bin, so anything hung on them in between (a shot, a call-sheet row,
+ * a pick-up) is not orphaned. An entry that gathered nothing is not
+ * kept — there is nothing in it to restore that the script does not
+ * already hold. Returns how many scenes left the list.
+ */
+export function unaddScenes(ids) {
+  let n = 0;
+  for (const id of ids) {
+    const e = binScene(id, { reason: 'hand' });
+    if (!e) continue;
+    n++;
+    const c = entryCounts(e);
+    if (!c.shots && !c.frames && !c.sheets && !c.pickups && !c.edit) deleteBinEntry(e.id);
+  }
+  return n;
+}
+
 /** Totals for a confirm over the whole bin. */
 export function binTotals(entries) {
   return (entries || listBin()).reduce((t, e) => {
@@ -212,5 +231,5 @@ export function binTotals(entries) {
 
 export default {
   BIN_KEY, listBin, entryCounts, describeEntry, binScene, restoreFromBin,
-  restoreMany, deleteBinEntry, emptyBin, binTotals
+  restoreMany, deleteBinEntry, emptyBin, binTotals, unaddScenes
 };

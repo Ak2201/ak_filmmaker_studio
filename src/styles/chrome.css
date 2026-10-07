@@ -578,12 +578,19 @@ a:focus-visible { outline-offset: 3px; }
   border-right: 1px solid var(--rule);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  transition: transform var(--speed-slow) var(--ease);
+  /* visibility trails the slide out and leads the slide in: see below. */
+  transition: transform var(--speed-slow) var(--ease), visibility 0s linear var(--speed-slow);
   scrollbar-width: thin;
 }
 .step-rail::-webkit-scrollbar { width: 6px; }
 .step-rail::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--radius-pill); }
 .step-rail.collapsed { transform: translateX(-100%); }
+/* A rail moved off-screen by a transform is still in the Tab order:
+   32 invisible links between the toolbar and the page (UX audit M23).
+   Closed means hidden, and hidden means out of the focus order and the
+   accessibility tree. `.show` is the one open state at every width. */
+.step-rail:not(.show) { visibility: hidden; }
+.step-rail.show { transition: transform var(--speed-slow) var(--ease); }
 
 .step-rail-toggle {
   position: fixed;
@@ -755,6 +762,34 @@ a:focus-visible { outline-offset: 3px; }
 .save-indicator.saving .si-dot { background: var(--panel-gilt); animation: pulse-soft 1.2s var(--ease) infinite; }
 .save-indicator.error  .si-dot { background: var(--danger-lift); }
 @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+/* WHERE IT SITS WITHOUT COVERING ANYTHING (UX audit L24). Bottom-left
+   at 16px put the pill over the first column of whatever page was
+   under it. Where the app rail is furniture, that corner is the rail's
+   own empty foot, so the pill is kept inside the rail's width and
+   covers no content at all. Where there is no rail, it shrinks to its
+   dot — the word stays in the element, so the live region still says
+   it — and only a FAILED save keeps its words on screen, because that
+   is the one state a person has to read. */
+@media (min-width: 1100px) {
+  body.has-sh-shell.rail-shown .save-indicator {
+    left: var(--s1);
+    max-width: calc(var(--sh-rail-w) - var(--s2));
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-inline: var(--s2);
+    letter-spacing: normal;
+    text-align: center;
+  }
+}
+body:not(.rail-shown) .save-indicator:not(.error) { padding: var(--s2); }
+body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
 .field-saved-mark {
   position: absolute;
@@ -1393,7 +1428,13 @@ a:focus-visible { outline-offset: 3px; }
   opacity: .1;
   pointer-events: none;
 }
+/* The right-hand end of the format line is where the three card
+   controls appear on hover, so it is kept clear for them: three
+   --s6 buttons and their gaps, less the difference between the card's
+   padding and the controls' inset. Without it "· PRE-PRODUCTION"
+   sat under the rename button on every card you pointed at. */
 .project-card .pc-format {
+  padding-right: calc(3 * var(--s6) + var(--s1));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -1426,8 +1467,10 @@ a:focus-visible { outline-offset: 3px; }
 }
 .project-card .pc-meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--s3);
+  gap: var(--s2) var(--s3);
   margin-top: auto;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1457,11 +1500,20 @@ a:focus-visible { outline-offset: 3px; }
   cursor: pointer;
 }
 .project-card .pc-actions button:hover { color: var(--accent-deep); border-color: var(--accent); }
+/* Share and open, in the meta row's flow rather than over it. */
+.project-card .pc-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-left: auto;
+}
+.project-card .pc-open {
+  color: var(--accent-deep);
+  font-weight: 700;
+  text-decoration: none;
+}
+.project-card .pc-open:hover { text-decoration: underline; }
 .project-card .pc-share {
-  position: absolute;
-  bottom: var(--s3);
-  right: var(--s3);
-  z-index: 2;
   padding: var(--s1) var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -1740,12 +1792,16 @@ a:focus-visible { outline-offset: 3px; }
     box-shadow: var(--shadow-lg);
   }
   .step-rail.show { transform: translateX(0); }
-  .step-rail-toggle { display: block; }
+  /* Mid-height, not at 64px: below 1100 the band is in flow, so 64px
+     sat under the announcement plate (sticky, a z above the rail) and
+     the tab could not be pressed at 390. */
+  .step-rail-toggle { display: block; top: 50%; transform: translateY(-50%); }
 }
 @media (min-width: 1101px) {
-  body.has-step-rail.rail-open main,
-  body.has-step-rail.rail-open .step,
-  body.has-step-rail.rail-open .ladder-step { margin-left: var(--rail-w); }
+  /* `main` only. The steps are inside it, so insetting `.step` and
+     `.ladder-step` as well indented them twice — a dead 220px column
+     on every step (UX audit M6). */
+  body.has-step-rail.rail-open main { margin-left: var(--rail-w); }
 }
 
 /* --- 820px: one column ------------------------------------- */
@@ -1983,9 +2039,18 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--chrome-ink);
   border-right: 1px solid var(--chrome-hair);
   transform: translateX(-100%);
+  /* Closed is HIDDEN, not just off-screen: a transform alone left
+     every rail link in the Tab order at 390 (UX audit M23). The
+     visibility change waits for the slide out and leads the slide in,
+     so setRail()'s focus() on open lands on a visible link. */
+  visibility: hidden;
+  transition: transform var(--speed-slow) var(--ease), visibility 0s linear var(--speed-slow);
+}
+.rail-shown .sh-rail {
+  transform: none;
+  visibility: visible;
   transition: transform var(--speed-slow) var(--ease);
 }
-.rail-shown .sh-rail { transform: none; }
 
 /* The scrim only exists below the breakpoint, where the rail is a
    drawer. Above it the rail is furniture and dimming the page you
@@ -2019,14 +2084,18 @@ a:focus-visible { outline-offset: 3px; }
   text-decoration: none;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
-  /* Not --track-label. Nine tracked characters do not fit a rail. */
+  /* Not --track-label. Nine tracked characters do not fit a rail —
+     and nine UPPERCASE characters do not either: "DASHBOARD" measured
+     71px against the cell's 63px of content, so overflow-wrap broke it
+     as "DASHBOA / RD", and "BLUEPRINTS" the same way (UX audit L21).
+     Sentence case is ~20% narrower and fits every label with room to
+     spare; overflow-wrap stays as the last resort for a longer one. */
   letter-spacing: .02em;
-  text-transform: uppercase;
   text-align: center;
 }
 .sh-rail-label {
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   line-height: var(--lh-snug);
 }
 .sh-rail-item:hover { background: var(--chrome-fill); color: var(--chrome-ink); }
@@ -2045,6 +2114,8 @@ a:focus-visible { outline-offset: 3px; }
    rule. */
 .sh-rail-item.is-active .sh-rail-icon { color: var(--chrome-ink); }
 .sh-rail-icon { font-size: 1.35em; line-height: 1; }
+/* The drawer's stage list exists for phones only; see the 719px block. */
+.sh-rail-stages { display: none; }
 
 /* ---- the single horizontal bar ---- */
 .sh-bar {
@@ -2430,6 +2501,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
      1100px boundary is the shell's, not the rail's 1101. */
   .step-rail,
   .step-rail-toggle { top: var(--sh-chrome-h, var(--s8)); }
+  .step-rail-toggle { transform: none; }
   .step-rail { max-height: calc(100vh - var(--sh-chrome-h, var(--s8)) - var(--s4)); }
 }
 
@@ -2699,7 +2771,11 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 @media (max-width: 719px) {
   .tb-menu { position: static; }
   .toolbar { position: relative; }
-  .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
+  /* .align-right named too: its `right: 0` is the more specific rule,
+     and it is what ran the Backup menu flush to the screen edge at 390
+     while this inset was meant to apply. */
+  .tb-menu-panel,
+  .tb-menu.align-right .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
 }
 
 /* ---- choice groups inside a menu ----------------------------
@@ -2823,6 +2899,20 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
    with no room at the top. */
 @media (max-width: 719px) {
   .sh-find { display: none; }
+}
+
+/* ON A BAR WITH NO PAGE TOOLBAR, 720–1099px, THE HANDLE STAYS PUT.
+   The band wraps to two rows across this range, and where the handle
+   landed depended on the exact width: at the front of the bar, ahead
+   of the burger, up to 900px (the `order: -1` above); trailing the
+   stages mid-row from 901; the start of a third row at 1099 (UX audit
+   L23). Here the stages take the whole second row and the handle
+   closes the first, after the crumb — the same corner it holds at
+   1100px and up. The four toolbar pages are untouched: there the
+   handle is inside the page's cluster and wraps with it. */
+@media (min-width: 720px) and (max-width: 1099px) {
+  .sh-bar:not(:has(> .toolbar)) > .sh-phases { order: 1; flex: 1 1 100%; }
+  .sh-bar:not(:has(> .toolbar)) > .sh-find { order: 0; margin-left: auto; }
 }
 
 /* The dismiss control on a toast that does not expire. Every colour
@@ -3209,6 +3299,7 @@ html {
    crumb, five stages and the cluster are within ~60px of sharing one
    row. The stages give up 4px a side, the palette handle its words
    (the key is in its title and aria-keyshortcuts), Backup its word
+   below 1280 (the rule after this block)
    — and the hub, the module pages
    and settings stay on one row at 1280 with the rail open. */
 @media (min-width: 1100px) and (max-width: 1439px) {
@@ -3223,8 +3314,14 @@ html {
     justify-content: center;
   }
   .sh-bar .project-switcher .ps-label { max-width: 10ch; }
-  /* Backup becomes its glyph. The word stays in the button as
-     visually-hidden text, so its accessible name is unchanged. */
+}
+/* Backup becomes its glyph only below 1280, where the row needs the
+   width. At 1280 it kept the word out for a row that had room for it,
+   and a bare ⇅ is not a word anybody reads as "backup" (UX audit
+   L24). The word stays in the button as visually-hidden text, so its
+   accessible name is unchanged, and the button's title says it on
+   hover. */
+@media (min-width: 1100px) and (max-width: 1279px) {
   .sh-bar [data-tb-backup] > .tb-menu-btn > span:first-child {
     position: absolute;
     width: 1px;
@@ -3340,6 +3437,33 @@ html {
     scrollbar-width: none;
   }
   .sh-phases::-webkit-scrollbar { display: none; }
+  /* ...and with the scrollbar hidden, nothing said there was more of
+     it: at 390px Production and Post-Production simply were not there.
+     shell.js flags the edges with content past them and the edge
+     fades, the way a cut-off line of type reads as "keep going". A
+     mask, so it fades whatever is under it and names no colour of its
+     own beyond the opaque stop. */
+  .sh-phases[data-more="right"] {
+    mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left right"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6),
+                                var(--chrome) calc(100% - var(--s6)), transparent);
+  }
+  /* The drawer carries the stages too (buildRailStages in shell.js),
+     under a hairline after the global entries, and scrolls inside
+     itself when the two lists outgrow a short landscape screen. */
+  .sh-rail { overflow-y: auto; }
+  .sh-rail-stages {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--s2);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--chrome-hair);
+  }
   .sh-bar > .toolbar,
   .sh-bar[data-stacked] > .toolbar {
     flex: 1 1 100%;
@@ -3348,4 +3472,19 @@ html {
     border-top: 0;
   }
   .sh-bar > .toolbar > .sign-in-pill { margin-left: auto; }
+}
+
+/* BETWEEN 561 AND 820 THE STRIP SCROLLS SIDEWAYS (the standalone
+   toolbar rule above), and two things made that scroll useless on
+   the feature blueprint at 768 (UX audit M11). The zone is
+   right-aligned, and content that overflows a flex-end row overflows
+   to the START, where no scrollbar can reach — the ⌘K handle sat at
+   x = -26 and the project button was cut in half. And every control
+   could shrink, so the Jump menu was squeezed to 26px rather than
+   scrolled to. `safe` keeps the right alignment while the strip
+   fits and falls back to start when it does not; flex-shrink: 0
+   makes overflow scroll instead of crush. */
+@media (min-width: 561px) and (max-width: 820px) {
+  .sh-bar > .toolbar { justify-content: safe flex-end; }
+  .sh-bar > .toolbar > * { flex-shrink: 0; }
 }

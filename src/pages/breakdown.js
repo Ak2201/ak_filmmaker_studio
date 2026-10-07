@@ -93,7 +93,11 @@ const how = (n, title, body) =>
 
 /* ---- one scene ---------------------------------------------- */
 function renderScene(scene, i, total) {
-  const card = h('article.bd-scene', { 'data-scene': scene.id });
+  /* The id is the command palette's target (breakdown.html#scene-…):
+     tabs.js picks the tab that holds it and the fragment resolver
+     lands on the card. Without it a scene result opened the top of
+     the page (UX audit M17). */
+  const card = h('article.bd-scene', { 'data-scene': scene.id, id: 'scene-' + scene.id });
 
   card.append(h('div.bd-scene-bar', {}, [
     h('span.bd-scene-no', { text: scene.number || String(i + 1) }),
@@ -530,7 +534,10 @@ function renderBin() {
 }
 
 /* ---- render ------------------------------------------------- */
-function render() {
+/* `focus` is a selector for the control to hand focus back to: a
+   full render replaces the one the reader was using, and without it
+   focus falls to <body> (UX audit M1; visualize.js's pattern). */
+function render(focus) {
   const scenes = Scenes.listScenes();
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
@@ -580,6 +587,10 @@ function render() {
   main.append(list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
+  if (focus) {
+    const node = document.querySelector(focus);
+    if (node) node.focus();
+  }
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -587,6 +598,7 @@ function render() {
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[breakdown] chrome', e); }
 }
+const inScene = (id, sel) => '[data-scene="' + CSS.escape(id || '') + '"] ' + sel;
 
 /* ---- events — delegated, no inline handlers ----------------- */
 const sceneIdOf = (el) => el.closest('[data-scene]')?.dataset.scene;
@@ -597,8 +609,18 @@ delegate(document, 'click', '[data-action="scene-add"]', () => {
   const last = document.querySelector('.bd-scene:last-of-type .bd-slug');
   if (last) last.focus();
 });
-delegate(document, 'click', '[data-action="scene-up"]',   (e, el) => { Scenes.moveScene(sceneIdOf(el), -1); render(); });
-delegate(document, 'click', '[data-action="scene-down"]', (e, el) => { Scenes.moveScene(sceneIdOf(el),  1); render(); });
+/* The moved scene keeps focus on the same arrow, or on the other one
+   when that arrow is now disabled at the end of the list. */
+function moveAndFocus(el, dir) {
+  const id = sceneIdOf(el);
+  Scenes.moveScene(id, dir);
+  const act = dir < 0 ? 'scene-up' : 'scene-down';
+  render(inScene(id, '[data-action="' + act + '"]'));
+  const btn = document.querySelector(inScene(id, '[data-action="' + act + '"]'));
+  if (btn && btn.disabled) document.querySelector(inScene(id, '[data-action="' + (dir < 0 ? 'scene-down' : 'scene-up') + '"]'))?.focus();
+}
+delegate(document, 'click', '[data-action="scene-up"]',   (e, el) => moveAndFocus(el, -1));
+delegate(document, 'click', '[data-action="scene-down"]', (e, el) => moveAndFocus(el,  1));
 delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
   const id = sceneIdOf(el);
   const scene = Scenes.listScenes().find((s) => s.id === id);
@@ -681,16 +703,40 @@ saveOnInput('[data-scene-field]', (el) => {
 });
 delegate(document, 'change', '[data-scene-field]', (e, el) => {
   const key = el.dataset.sceneField;
-  Scenes.updateScene(sceneIdOf(el), { [key]: sceneValue(el) });
-  if (key === 'eighths') render();
+  const id = sceneIdOf(el);
+  Scenes.updateScene(id, { [key]: sceneValue(el) });
+  /* Eighths change the card's page figure and the header's totals,
+     and nothing else on the page. `change` fires as focus LEAVES the
+     field, usually on Tab, so a full render here threw away the field
+     the reader was tabbing into (UX audit M1). Patch the two in place. */
+  if (key === 'eighths') {
+    const scenes = Scenes.listScenes();
+    const scene = scenes.find((s) => s.id === id);
+    const pages = document.querySelector(inScene(id, '.bd-pages'));
+    if (scene && pages) pages.textContent = formatEighths(scene.eighths);
+    const head = document.querySelector('#main > header.bd-head');
+    if (head) head.replaceWith(renderHeader(scenes));
+    else render();
+    // The song cards sum their scenes' pages; keep the tab's state.
+    const songs = document.getElementById('songs');
+    if (songs) {
+      const next = renderSongs(scenes);
+      ['hidden', 'role', 'aria-labelledby', 'tabindex'].forEach((a) => {
+        if (songs.hasAttribute(a)) next.setAttribute(a, songs.getAttribute(a));
+      });
+      songs.replaceWith(next);
+    }
+  }
 });
 delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   const cat = el.previousElementSibling.value;
   if (!el.value.trim()) return;
-  Scenes.tagElement(sceneIdOf(el), cat, el.value);
-  render();
+  const id = sceneIdOf(el);
+  Scenes.tagElement(id, cat, el.value);
+  // Back into the same scene's field, for the next element.
+  render(inScene(id, '[data-action-key="el-add"]'));
 });
 
 /* ---- songs — events ----------------------------------------- */

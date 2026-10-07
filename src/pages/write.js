@@ -57,7 +57,7 @@ import BeatBoard from '../ui/beat-board.js';
 import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
-import { binScene } from '../lib/scene-bin.js';
+import { binScene, unaddScenes } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
@@ -2281,8 +2281,8 @@ function reindexLater(from) {
     : setTimeout(run, 200);
 }
 
-function addElement(after, type) {
-  const el = blankElement({ type });
+function addElement(after, type, text = '') {
+  const el = blankElement({ type, text });
   const lenBefore = doc.elements.length;
   const at = after === null ? lenBefore : after + 1;
   doc.elements.splice(at, 0, el);
@@ -2305,6 +2305,37 @@ function addElement(after, type) {
   refreshCounters();
   applyFocus(row.querySelector('.wr-text'));
   scheduleDerived();
+}
+
+/** Where Return would split this field, or null when it would not:
+ *  the caret (or the selection) must start inside the text and stop
+ *  short of its end. A caret at 0 is not a split — that would leave
+ *  an empty element behind with the whole line moved under it. */
+function splitAt(ta) {
+  let a, b;
+  try { a = ta.selectionStart; b = ta.selectionEnd; } catch (e) { return null; }
+  if (a == null || b == null) return null;
+  return a > 0 && b < ta.value.length ? { a, b } : null;
+}
+
+/** Split element `i` at the caret: the head stays, the tail becomes a
+ *  new element straight after it — the same type, except after a
+ *  one-line type, where it takes `flowType` (Return's usual next). */
+const ONE_LINE = new Set(['scene', 'character', 'transition']);
+function splitElement(i, ta, flowType) {
+  const at = splitAt(ta);
+  const el = doc.elements[i];
+  if (!at || !el) return;
+  const head = ta.value.slice(0, at.a).replace(/\s+$/, '');
+  const tail = ta.value.slice(at.b).replace(/^\s+/, '');
+  el.text = head;
+  ta.value = head;
+  autosize(ta);
+  addElement(i, ONE_LINE.has(el.type) && flowType ? flowType : el.type, tail);
+  const next = document.activeElement;
+  if (next && next.matches && next.matches('.wr-text')) {
+    try { next.setSelectionRange(0, 0); } catch (e) { /* not a text field */ }
+  }
 }
 
 /** Take element `i` out, and put the caret in `neighbourOf(i)`. */
@@ -2522,6 +2553,17 @@ delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
       if (act.type !== el.type) setElementType(i, act.type);
       break;
     case 'return':
+      /* Return with the caret INSIDE the text splits the line there
+         (UX audit L26): the text after the caret becomes the next
+         element, in the SAME type — half a speech is still dialogue —
+         and the caret lands at its start. A one-line type (heading,
+         cue, transition) hands its tail to the type the flow table
+         says follows it instead. At the end of the line, or
+         with a selection reaching it, it is the flow table's move. */
+      if (act.op !== 'change' && splitAt(ta) !== null) { splitElement(i, ta, act.type); break; }
+      if (act.op === 'change') setElementType(i, act.type);
+      else addElement(i, act.type);
+      break;
     case 'tab':
       if (act.op === 'change') setElementType(i, act.type);
       else addElement(i, act.type);
@@ -2609,13 +2651,50 @@ WriteKeys.publishSheet(keyPrefs);
 /* Backspace in an empty element deletes it and steps back, which is
    how every screenwriting app behaves and what makes the Return
    mapping above safe to be wrong about. */
+/* It is UNDOABLE (UX audit L26). An empty line can still carry its
+   type, alternate takes, a dual flag and a private note keyed by its
+   id, and a Backspace too many used to take all of that with no way
+   back. One toast for a run of removals, not one per key — an
+   actionable toast does not time out, so a toast per Backspace would
+   stack up on screen — and Undo puts every line of the run back, with
+   its id, where it was. */
+let removedRun = [];      // [{ el, at }] in the order they were removed
+let removedToast = null;
 delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
   if (e.key !== 'Backspace' || ta.value !== '' || doc.elements.length < 2) return;
   const i = indexOfEl(idOf(ta, 'el'));
   if (i < 0) return;
   e.preventDefault();
+  removedRun.push({ el: doc.elements[i], at: i });
   removeElement(i, (k) => doc.elements[k - 1] || doc.elements[k]);
+  offerUndoRemoval();
 });
+function offerUndoRemoval() {
+  if (removedToast) { try { removedToast.dismiss(); } catch (e) { /* gone */ } }
+  const run = removedRun;
+  const n = run.length;
+  try {
+    removedToast = StudioUI.toast(n === 1 ? 'Empty line removed.' : n + ' empty lines removed.', {
+      type: 'info', action: 'Undo',
+      onAction: () => {
+        if (removedRun === run) { removedRun = []; removedToast = null; }
+        for (let k = run.length - 1; k >= 0; k--) {
+          const { el, at } = run[k];
+          if (indexOfEl(el.id) < 0) doc.elements.splice(Math.min(at, doc.elements.length), 0, el);
+        }
+        persistNow();
+        render(elFocus(run[0].el.id));
+      }
+    });
+  } catch (e) { /* chrome may not be up */ }
+}
+/* Typing anything closes the run: the next removal starts a new one. */
+document.addEventListener('input', (e) => {
+  if (removedRun.length && e.target && e.target.matches && e.target.matches('.wr-text')) {
+    removedRun = [];
+    if (removedToast) { try { removedToast.dismiss(); } catch (err) { /* gone */ } removedToast = null; }
+  }
+}, true);
 
 /* ---- Fountain export ---------------------------------------- */
 function download(text, filename, mime) {
@@ -3487,7 +3566,7 @@ async function breakIntoShots() {
         const ids = new Set(addedScenes);
         shotsToast(addedScenes.length + (addedScenes.length === 1 ? ' scene' : ' scenes')
           + ' added to the Breakdown · every scene already has shots', () => {
-          Scenes.saveScenes(Scenes.listScenes().filter((s) => !ids.has(s.id)));
+          unaddScenes(ids);   // through the bin: nothing hung on them is orphaned
           decorateShotCounts();
         });
       } else {
@@ -3541,7 +3620,7 @@ async function breakIntoShots() {
       + (sceneIds.size ? ' · ' + sceneIds.size + (sceneIds.size === 1 ? ' scene' : ' scenes') + ' added to the Breakdown' : ''),
     () => {
       Shots.saveShots(Shots.listShots().filter((s) => !shotIds.has(s.id)));
-      if (sceneIds.size) Scenes.saveScenes(Scenes.listScenes().filter((s) => !sceneIds.has(s.id)));
+      if (sceneIds.size) unaddScenes(sceneIds);   // through the bin, see scene-bin.js
       decorateShotCounts();
       say('Removed the ' + shotIds.size + (shotIds.size === 1 ? ' shot' : ' shots') + ' just added.');
     });

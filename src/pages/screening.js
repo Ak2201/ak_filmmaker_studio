@@ -31,7 +31,7 @@ import '../styles/modules.css';
 import '../styles/screening.css';
 
 import { h, delegate } from '../lib/dom.js';
-import { createGate, formatCode, normaliseCode } from '../lib/gate.js';
+import { createGate, formatCode, normaliseCode, errorSentence } from '../lib/gate.js';
 import { matrix, frameworkById } from '../lib/story.js';
 import { collectFrom, buildDeck } from '../lib/pitch-deck.js';
 import { createWatermark } from '../lib/watermark.js';
@@ -61,6 +61,7 @@ const Gate = createGate(getClient);
 
 let state = { stage: 'enter', error: '', busy: false, pass: null };
 let wm = null, expiryTimer = 0;
+let typed = null;   // { code, email } as last submitted; null until the first submit
 
 /* A pass in the URL (from the settings page's code box) is read once
    and stripped, so it does not sit in the address bar, the history or
@@ -81,9 +82,9 @@ function renderEnter() {
   const form = h('form.sc-form', { 'data-sc-form': 'open', autocomplete: 'off' });
   form.append(h('label', { for: 'scCode', text: 'Screening pass' }));
   form.append(h('input#scCode.sc-code', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40,
-    placeholder: 'XXXX-XXXX-XXXX', value: prefill ? formatCode(prefill) : '' }));
+    placeholder: 'XXXX-XXXX-XXXX', value: formatCode(typed ? typed.code : prefill) }));
   form.append(h('label', { for: 'scEmail', text: 'Your e-mail (optional)' }));
-  form.append(h('input#scEmail.sc-email', { type: 'email', placeholder: 'you@example.com', maxlength: 255 }));
+  form.append(h('input#scEmail.sc-email', { type: 'email', placeholder: 'you@example.com', maxlength: 255, value: typed ? typed.email : '' }));
   form.append(h('p.sc-note', { text: 'Whatever you open here is watermarked with this pass, the e-mail above and the time. The e-mail is not checked; it is printed on the page so the sender knows who is watching.' }));
   form.append(h('button.btn.primary', { type: 'submit', disabled: state.busy, text: state.busy ? 'OPENING…' : 'OPEN THE SCREENING' }));
   if (state.error) form.append(h('p.sc-error', { role: 'alert', text: state.error }));
@@ -197,7 +198,16 @@ delegate(document, 'submit', '[data-sc-form="open"]', async (e) => {
   e.preventDefault();
   const code = document.getElementById('scCode').value;
   const email = document.getElementById('scEmail').value.trim();
-  if (!normaliseCode(code)) return;
+  // What was typed survives every redraw, the error one included: the
+  // form is rebuilt from scratch, and it used to come back empty after
+  // a failed open (UX audit M16).
+  typed = { code, email };
+  if (!normaliseCode(code)) {
+    state.error = 'Enter the screening pass you were given — the code in the message from the sender.';
+    render();
+    const f = document.getElementById('scCode'); if (f) f.focus();
+    return;
+  }
   state.busy = true; state.error = ''; render();
   try {
     const pass = await Gate.openScreening(code, email);
@@ -206,7 +216,7 @@ delegate(document, 'submit', '[data-sc-form="open"]', async (e) => {
     state.busy = false;
     state.error = err.code === 'nocloud'
       ? 'This copy of the studio is not connected to a cloud project, so it cannot open passes.'
-      : (err.message || 'That screening pass could not be opened.');
+      : errorSentence(err, 'That screening pass could not be opened.');
   }
   render();
 });

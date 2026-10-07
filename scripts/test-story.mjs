@@ -109,6 +109,12 @@ const slack = { ...S.blankStory(), source: para('He sits. He thinks about the ra
 const sf = S.pacingFlags(slack, 'three_act');
 ok(sf.some((f) => f.kind === 'slack' && /Act/.test(f.text)), 'a long flat synopsis is flagged as slack, with its act named');
 
+// Too short to slice: an eight-word synopsis gets no slack note (M27).
+const tiny = { ...S.blankStory(), source: 'He sits. He waits. Nothing at all happens.' };
+ok(S.tooShortForPacing(tiny), 'an eight-word synopsis is too short for pacing');
+ok(!S.pacingFlags(tiny, 'three_act').some((f) => f.kind === 'slack'), 'an eight-word synopsis is not flagged as slack');
+ok(!S.tooShortForPacing(slack), 'a long synopsis is long enough for pacing');
+
 // A hand tag far from its convention is a placement note.
 const early = { ...S.blankStory(), source };
 const at0 = source.indexOf('Meena walks');

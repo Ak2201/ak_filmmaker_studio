@@ -21,6 +21,7 @@
    host page passes in is called when they change.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { errorSentence } from '../lib/gate.js';
 
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
@@ -124,7 +125,7 @@ async function submitRequest(form) {
        menu — redraws from the one answer. */
     await c.runGate();
   } catch (e) {
-    error = e.message || 'The request could not be sent.';
+    error = errorSentence(e, 'The request could not be sent.');
   } finally {
     busy = false; rerender();
   }

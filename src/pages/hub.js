@@ -39,13 +39,13 @@
 // Modules evaluate in import order; anything that reads localStorage
 // before this line would read the wrong (unscoped) keys.
 import { parseNum, fmtINR } from '../lib/money.js';
-import { featureKeys, shortKeys, progressAgainst } from '../lib/blueprint-fields.js';
 import Store from '../lib/store.js';
 import {
   NOTE_PREFIX, buildBackup, downloadBackup, applyBackup, backupShape
 } from '../lib/backup.js';
 import { DRIVE_STATE_KEY } from '../lib/drive-sync.js';
 import { mountShell } from '../ui/shell.js';
+import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import { wireActionBar } from '../ui/actionbar.js';
 import { renderLauncher, BUILT_MODULE_COUNT } from '../ui/launcher.js';
 /* The five stages and where the open film is in them — derived, stored
@@ -196,6 +196,7 @@ const ALL_KEYS = [
 // ============================================================
 const FEATURE_URL = 'feature.html';
 const SHORT_URL   = 'short.html';
+const DASHBOARD_URL = 'dashboard.html';
 const LIBRARY_URL = 'library.html';
 
 const RENAMED = {
@@ -424,6 +425,7 @@ function toolbarMarkup() {
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
       <div class="tb-menu align-right" data-tb-backup>
         <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"
+                title="Backup — export, import or erase the studio"
                 aria-expanded="false" aria-haspopup="true" aria-controls="tbm-backup">
           <span>Backup</span><span class="tb-caret" aria-hidden="true">▾</span>
         </button>
@@ -523,7 +525,7 @@ function projectsMarkup() {
       <div class="projects-inner">
         <div class="projects-head">
           <div>
-            <div class="lab">SECTION 0 · YOUR PROJECTS</div>
+            <div class="lab">PROJECTS · ONE PER FILM</div>
             <h2>Your <em>projects.</em></h2>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
             <p class="deck">Every script, every blueprint lives under a project. Create one, then everything you fill in across all three blueprints saves under it. Switch between them anytime.</p>
@@ -757,7 +759,7 @@ function toolsMarkup() {
           </button>
           <button class="tool-card" data-action="import-all">
             <div class="tool-icon">↑</div><h5>Import everything</h5>
-            <p>Restore from a previous backup. Replaces all current data.</p>
+            <p>Add the projects in a backup file to this studio. Nothing you already have is replaced.</p>
           </button>
           <button class="tool-card" data-action="print-hub">
             <div class="tool-icon">⎙</div><h5>Print this hub</h5>
@@ -1014,7 +1016,6 @@ function computeFeatureStatus() {
   const data = parseStorage(FEATURE_KEY);
   const keys = Object.keys(data);
   if (keys.length === 0) return { pct: 0, title: '', stage: featureStageLabel(data), stepsDone: {}, lastEditedStep: null };
-  let total = 0, filled = 0;
   const stepsDone = {};
   keys.forEach(k => {
     if (k.startsWith('fc_v1_')) { stepsDone['feat-' + k.slice(6)] = !!data[k]; }
@@ -1041,9 +1042,11 @@ function computeFeatureStatus() {
      project with eleven filled fields read 100% complete, and the
      resume card offered it as "ready to shoot" while the dashboard
      said 3% for the same data. See src/lib/blueprint-fields.js. */
-  const prog = progressAgainst(featureKeys(), data);
-  total = prog.total; filled = prog.done;
-  const pct = prog.pct;
+  /* And it is guideJourney()'s number, the one the project card and
+     the dashboard print, rather than a second tally over the same
+     fields: three surfaces on two pages reading one project have to
+     say one percentage, and a local copy is how they stop agreeing. */
+  const pct = guideJourney('feature', data).pct;
   /* The stage is journey.js's answer, not a band of the percentage.
      The bands said "Vol II · Pre-prod" for any blueprint 50–79% full,
      whatever the film actually had in it, and "ready to shoot" for a
@@ -1071,7 +1074,6 @@ function computeShortStatus() {
   const data = parseStorage(SHORT_KEY);
   const keys = Object.keys(data);
   if (keys.length === 0) return { pct: 0, title: '', runtime: '', stepsDone: {}, lastEditedStep: null };
-  let total = 0, filled = 0;
   const stepsDone = {};
   keys.forEach(k => {
     const m  = k.match(/^s(\d+)_/);
@@ -1093,19 +1095,11 @@ function computeShortStatus() {
 
     if (k.startsWith('_')) {
       if (k === '_sceneMap' && Array.isArray(data[k])) {
-        data[k].forEach(row => {
-          Object.values(row).forEach(v => { total++; if (v && String(v).trim()) filled++; });
-        });
         if (data[k].some(r => Object.values(r).some(v => v && String(v).trim()))) {
           stepsDone['short-06'] = stepsDone['short-06'] || 'partial';
         }
       }
       if (k === '_script' && Array.isArray(data[k])) {
-        data[k].forEach(scene => {
-          total++; if (scene.slug) filled++;
-          total++; if (scene.action) filled++;
-          (scene.dialogues || []).forEach(d => { total++; if (d.line) filled++; });
-        });
         if (data[k].some(s => s.slug || s.action || (s.dialogues || []).some(d => d.line))) {
           stepsDone['short-07'] = stepsDone['short-07'] || 'partial';
         }
@@ -1113,16 +1107,13 @@ function computeShortStatus() {
       return;
     }
   });
-  /* Same correction as the feature blueprint: the static fields are
-     counted against what the SHORT blueprint declares, not against
-     what happens to be saved. The dynamic rows above (script scenes,
-     dialogue lines) genuinely have no fixed denominator and keep
-     adding to both sides, which is the short editor's own scoring. */
-  {
-    const st = progressAgainst(shortKeys(), data);
-    total += st.total; filled += st.done;
-  }
-  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  /* The same number the project card and the dashboard print —
+     guideJourney()'s, against the fields the SHORT blueprint declares.
+     This used to add the script scenes and dialogue lines to both
+     sides as well, which is the short editor's own scoring and nobody
+     else's, so the resume card and the card under it disagreed about
+     one film. The script's own progress lives on the Write page. */
+  const pct = guideJourney('short', data).pct;
   let lastStepNum = null;
   Object.keys(stepsDone).forEach(k => {
     const match = k.match(/short-(\d+)/);
@@ -1219,6 +1210,14 @@ function resumeBtn(href, label, alt) {
   return h('a', { href, class: 'resume-btn' + (alt ? ' alt' : ''), text: label });
 }
 
+/* "last touched step-24" printed the anchor id, which is the URL's
+   word for a step and nobody's name for one. The link still goes to
+   the id; the sentence says the step's number and title. */
+function stepName(steps, id) {
+  const st = steps.find((x) => x.id === id);
+  return st ? st.num + ' · ' + title(st.titlePlain || st.title) : id;
+}
+
 function updateResume(f, s) {
   const card    = $('#resumeCard');
   const heading = $('#resumeTitle');
@@ -1236,7 +1235,7 @@ function updateResume(f, s) {
   if (primary === 'feature') {
     heading.textContent = f.title || 'Untitled feature';
     body.innerHTML = '<strong>' + esc(f.stage) + '</strong> · ' + f.pct + '% complete' +
-      (f.lastEditedStep ? ' · last touched <strong>' + esc(f.lastEditedStep) + '</strong>' : '');
+      (f.lastEditedStep ? ' · last touched <strong>' + esc(stepName(FEATURE_STEPS, f.lastEditedStep)) + '</strong>' : '');
     actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), 'CONTINUE FEATURE  →'));
     if (shortActive) {
       actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), '→ Switch to Short', true));
@@ -1244,7 +1243,7 @@ function updateResume(f, s) {
   } else {
     heading.textContent = s.title || 'Untitled short';
     body.innerHTML = (s.runtime ? '<strong>' + esc(s.runtime) + '</strong> · ' : '') + s.pct + '% complete' +
-      (s.lastEditedStep ? ' · last touched <strong>' + esc(s.lastEditedStep) + '</strong>' : '');
+      (s.lastEditedStep ? ' · last touched <strong>' + esc(stepName(SHORT_STEPS, s.lastEditedStep)) + '</strong>' : '');
     actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), 'CONTINUE SHORT  →'));
     if (featActive) {
       actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), '→ Switch to Feature', true));
@@ -1668,25 +1667,33 @@ function projectCard(p, currentId, openJourney) {
     class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
     tabindex: '0', role: 'button',
     'data-action': 'switch-project', 'data-id': p.id,
-    'aria-label': 'Open project ' + p.title
+    'aria-label': 'Switch to project ' + p.title
   }, [
     h('div.pc-actions', {}, [
       h('button', { 'data-action': 'rename-project', 'data-id': p.id, 'aria-label': 'Rename project', title: 'Rename', text: '✎' }),
       h('button', { 'data-action': 'duplicate-project', 'data-id': p.id, 'aria-label': 'Duplicate project', title: 'Duplicate', text: '⎘' }),
       h('button', { 'data-action': 'delete-project', 'data-id': p.id, 'aria-label': 'Delete project', title: 'Delete', text: '×' })
     ]),
-    h('button.pc-share', { 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
     h('div.pc-format', {
       text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
             (active ? ' · ACTIVE' : '') + ' · ' + status.label
     }),
     h('div.pc-title', { title: 'Double-click to rename', 'data-dblaction': 'rename-project', 'data-id': p.id, text: p.title }),
+    /* SHARE and OPEN sit IN the meta row, not over it. Share was
+       absolutely placed at the card's bottom-right, which is exactly
+       where "open →" ends, so hovering a card covered the one word
+       that said what clicking does. And "open →" was a span: clicking
+       it only switched the project, which left you on the hub. It is
+       a link now, to the project's dashboard, switching first. */
     h('div.pc-meta', {}, [
-      h('span', { text: pct + '% · edited ' + fmtRelDate(p.updatedAt) }),
-      // The stylesheet has no rule for this one span; the legacy page
-      // coloured it inline too, and it reads the accent token rather
-      // than a hex, so it still follows the theme.
-      h('span.pc-open', { style: 'color: var(--accent-deep)', text: 'open →' })
+      h('span.pc-stat', { text: pct + '% · edited ' + fmtRelDate(p.updatedAt) }),
+      h('span.pc-foot', {}, [
+        h('button.pc-share', { type: 'button', 'data-action': 'share-project', 'data-id': p.id, 'aria-label': 'Share project', title: 'Share', text: '↗ SHARE' }),
+        h('a.pc-open', {
+          href: DASHBOARD_URL, 'data-action': 'open-project', 'data-id': p.id,
+          'aria-label': 'Open ' + p.title + ' on its dashboard', text: 'open →'
+        })
+      ])
     ])
   ]);
   return card;
@@ -2325,11 +2332,14 @@ function openProjectModal(editId) {
     delete submit.dataset.editId;
   }
   overlay.classList.add('show');
+  holdFocus(overlay);   // Tab stays in the form; closing gives focus back
   setTimeout(() => titleInput.focus(), 50);
 }
 
 function closeProjectModal() {
-  $('#projectModal').classList.remove('show');
+  const overlay = $('#projectModal');
+  overlay.classList.remove('show');
+  releaseFocus(overlay);
 }
 
 function submitProjectModal(e) {
@@ -2411,6 +2421,13 @@ const CLICK_ACTIONS = {
   'close-project-modal':   () => closeProjectModal(),
   'toggle-switcher':       () => toggleProjectSwitcher(),
   'switch-project':        (el) => switchToProject(el.dataset.id),
+  // The card's "open →": make it the open project, then go to it.
+  // setCurrentProject() is a synchronous pointer write, so the page
+  // that loads next already reads this project.
+  'open-project':          (el) => {
+    if (Store.currentProjectId() !== el.dataset.id) Store.setCurrentProject(el.dataset.id);
+    location.href = el.getAttribute('href');
+  },
   'rename-project':        (el) => openProjectModal(el.dataset.id),
   'duplicate-project':     (el) => duplicateProject(el.dataset.id),
   'delete-project':        (el) => deleteProjectConfirm(el.dataset.id),
@@ -2439,6 +2456,12 @@ function wireEvents() {
 
   delegate(app, 'keydown', '[data-action][role="button"], [data-action][tabindex]', (e, el) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    /* A real control INSIDE a role=button card (rename, share, open)
+       answers its own key. Without this, Enter on the card's rename
+       button reached the card, switched project, and the
+       preventDefault swallowed the button's own click. */
+    const inner = e.target.closest('button, a[href], input, select, textarea');
+    if (inner && inner !== el && el.contains(inner)) return;
     const fn = CLICK_ACTIONS[el.dataset.action];
     if (!fn) return;
     e.preventDefault();
@@ -2538,7 +2561,11 @@ function init() {
   // things to try, and a sample project for people who would rather look
   // at a filled studio than an empty one.
 
-  Store.subscribe('projects:changed', () => { renderProjects(); renderProjectSwitcher(); renderGreeting(); });
+  /* updateStatus() too: the sample (and an import) write the blueprint
+     AFTER createProject() has switched to it, so without it the card
+     re-rendered at 69% while the resume card and the door beside it
+     still read the empty project they were drawn for — 0% and "—". */
+  Store.subscribe('projects:changed', () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
 Store.subscribe('plan:changed', () => { renderProjects(); renderProjectSwitcher(); });
   Store.subscribe('current:changed',  () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
 

@@ -285,7 +285,34 @@ export function backupShape(all) {
 export function applyBackup(all, opts) {
   opts = opts || {};
   const shape = backupShape(all);
+  const problem = notABackup(all, shape);
+  if (problem) return { ok: false, added: 0, replaced: 0, message: problem };
   return shape.version === 2 ? applyV2(all, shape, opts) : applyV1(all, opts);
+}
+
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/* WHAT A FILE MUST CARRY BEFORE ANYTHING IS WRITTEN. Anything that
+   was not v2 used to fall through to the v1 path, and v1 asks nothing
+   of its input — so `{"hello":1}` created an "Imported Project" (with
+   no project open), wrote nothing into it, and reported "✓ Studio data
+   imported." A v2 file must have its project list; a v1 file must hold
+   at least one of the fields a v1 backup was ever written with. The
+   check runs FIRST, because applyV1 creates a project before it looks
+   at the data. Returns the sentence to show, or null. */
+function notABackup(all, shape) {
+  const no = 'That file is not a studio backup — it holds none of the projects '
+           + 'or blueprint data a backup carries. Nothing was imported.';
+  if (!isObj(all)) return no;
+  if (shape.version === 2) {
+    return Array.isArray(all.projects) && isObj(all.data) &&
+           all.projects.every((p) => isObj(p) && typeof p.id === 'string' && p.id)
+      ? null
+      : 'That backup is damaged: its project list cannot be read. Nothing was imported.';
+  }
+  const carries = Object.keys(V1_KEYS).some((n) => isObj(all[n])) ||
+                  (isObj(all.notes) && Object.keys(all.notes).length > 0);
+  return carries ? null : no;
 }
 
 function applyGlobalsAndNotes(all) {

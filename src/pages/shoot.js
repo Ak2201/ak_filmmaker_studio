@@ -102,22 +102,42 @@ function sceneCard(scene) {
 
 /* ---- the page ------------------------------------------------ */
 
-function renderEmpty(reason) {
+/* An empty page says where the missing thing is made, as a link —
+   a sentence naming the stripboard with no way to reach it is a
+   dead end on a phone, where the band has scrolled away. */
+function renderEmpty(reason, link) {
   const main = h('main#main.sd-main');
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Shoot · today' }),
     h('h1.bd-title', { text: 'Shoot day.' }),
-    h('p.bd-deck', { text: reason })
+    h('p.bd-deck', { text: reason }),
+    link ? h('p', {}, [h('a.btn', { href: link.href, text: link.label })]) : null
   ]));
   return main;
 }
 
-function render() {
+/* "2024-02-12" is how the date is stored, not how anybody reads it.
+   Built from the parts rather than `new Date(iso)`, which reads a
+   bare ISO date as UTC midnight and prints the day before west of
+   Greenwich. Anything that is not a date prints as typed. */
+function niceDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  if (!m) return String(iso || '');
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/* `focus` is a selector for the control to hand focus back to: a
+   full render replaces the button that was pressed, and without it
+   focus falls to <body> and the next Tab starts from the top of the
+   page — the pattern visualize.js's render() set. */
+function render(focus) {
   const scenes = Scenes.listScenes();
   if (!scenes.length) {
     app.replaceChildren(renderEmpty(
       'No scenes yet. Break the script down first and the day builds itself — '
-      + 'this page is a view of the scene list, not a second copy of it.'));
+      + 'this page is a view of the scene list, not a second copy of it.',
+      { href: 'breakdown.html#scenes', label: 'Open the breakdown →' }));
     after();
     return;
   }
@@ -126,7 +146,8 @@ function render() {
   if (!all.length) {
     app.replaceChildren(renderEmpty(
       'No scene is on a shoot day yet. Put them on days in the stripboard and '
-      + 'they appear here, in the order you scheduled them.'));
+      + 'they appear here, in the order you scheduled them.',
+      { href: 'stripboard.html#stripboard', label: 'Open the stripboard →' }));
     after();
     return;
   }
@@ -137,12 +158,16 @@ function render() {
 
   const main = h('main#main.sd-main');
 
+  /* "today" only when it is: pickDay() falls back to the first day
+     with work left, and an eyebrow calling a February date "today"
+     in October is the page lying about the one thing it is for. */
+  const isToday = String(day.date || '').slice(0, 10) === Shoot.toISODate(new Date());
   main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Shoot · today' }),
+    h('p.bd-eyebrow', { text: isToday ? 'Shoot · today' : 'Shoot · day ' + day.day + ' of ' + all.length }),
     h('h1.bd-title', { text: 'Day ' + day.day + '.' }),
     h('p.bd-deck', {
       text: day.date
-        ? day.date
+        ? niceDate(day.date)
         : 'This day has no date yet — set one in the stripboard and the page can find it on the morning.'
     })
   ]));
@@ -189,10 +214,14 @@ function render() {
   main.append(list);
 
   app.replaceChildren(main);
-  after();
+  after(focus);
 }
 
-function after() {
+function after(focus) {
+  if (focus) {
+    const node = document.querySelector(focus);
+    if (node) node.focus();
+  }
   mountShell();
   /* Chrome initialises at import time when #app is still empty, so
      every page re-inits after its own render — the omission that
@@ -209,12 +238,16 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
   const act = el.getAttribute('data-shoot-action');
   if (act === 'day') {
     openDay = parseInt(el.getAttribute('data-day'), 10);
-    render();
+    render('[data-shoot-action="day"][data-day="' + openDay + '"]');
     return;
   }
   if (act === 'mark') {
-    Shoot.mark(el.getAttribute('data-scene'), el.getAttribute('data-state') || '');
-    render();
+    const id = el.getAttribute('data-scene');
+    const btn = [...el.classList].find((c) => /^sd-(?!btn$)/.test(c));
+    Shoot.mark(id, el.getAttribute('data-state') || '');
+    /* The same state's button on the same scene: its data-state has
+       flipped, so it is found by scene and class, not by state. */
+    render('[data-shoot-action="mark"][data-scene="' + CSS.escape(id) + '"]' + (btn ? '.' + btn : ''));
   }
 });
 

@@ -87,12 +87,16 @@ const StudioUI = {};
 // SKIP TO CONTENT (a11y)
 // ============================================================
 function injectSkipLink() {
-  if (document.querySelector('.skip-to-content')) return;
-  const a = document.createElement('a');
-  a.className = 'skip-to-content';
-  a.href = '#main';
-  a.textContent = 'Skip to content';
-  document.body.insertBefore(a, document.body.firstChild);
+  /* index, feature, short and library ship their own `.skip-link` in
+     the markup, so look for either class — checking only ours gave
+     those four pages two "Skip to content" stops in a row. */
+  if (!document.querySelector('.skip-to-content, .skip-link')) {
+    const a = document.createElement('a');
+    a.className = 'skip-to-content';
+    a.href = '#main';
+    a.textContent = 'Skip to content';
+    document.body.insertBefore(a, document.body.firstChild);
+  }
   // Ensure there's a main landmark to skip to
   if (!document.getElementById('main')) {
     const candidate = document.querySelector('section.hero, section.section, main');
@@ -551,7 +555,6 @@ StudioUI.flashFieldSaved = function (el) {
 const DEFAULT_SHORTCUTS = [
   { keys: ['?'],          label: 'Open this shortcut sheet' },
   { keys: ['Esc'],        label: 'Close any open dialog / dropdown' },
-  { keys: ['⌘/Ctrl', 'K'],label: 'Focus search (hub)' },
   { keys: ['⌘/Ctrl', 'S'],label: 'Save current blueprint' },
   /* Derived, not spelled. This label said "paper → sepia → ink" long
      after sepia was removed and after the order was reversed — a
@@ -562,7 +565,10 @@ const DEFAULT_SHORTCUTS = [
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },
   { keys: ['G'],          label: 'Jump to end' },
-  { keys: ['/'],          label: 'Focus the search input on this page' },
+  /* There was a "⌘/Ctrl K — Focus search (hub)" row here too. K is the
+     palette's on every page, the hub included; the hub's field moved
+     to `/`, so the row was wrong and the two rows are one. */
+  { keys: ['/'],          label: 'Focus the search input on this page (the hub, the blueprints)' },
   { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, settings' }
 ];
 /* A page may add its own section to the sheet — write.html prints its
@@ -762,6 +768,12 @@ function buildStepRail() {
     a.href = '#' + step.id;
     a.className = 'step-rail-item';
     a.dataset.target = step.id;
+    /* The feature blueprint's "only these 10" filter hides every step
+       without `.is-spine`; the rail carries the same class so the
+       same filter can hide the same entries (steps-path.css). A rail
+       listing 32 steps beside a page showing 10 offered 22 links that
+       went nowhere. */
+    if (step.classList.contains('is-spine')) a.classList.add('is-spine');
     a.innerHTML = (num ? '<span class="sri-num">' + num + '</span>' : '<span class="sri-num">·</span>') +
                   '<span class="sri-title">' + (title || 'Untitled') + '</span>' +
                   '<span class="sri-check"></span>';
@@ -828,8 +840,16 @@ function jumpStep(direction) {
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  const activeIdx = items.findIndex(i => i.classList.contains('active'));
-  const next = items[Math.max(0, Math.min(items.length - 1, (activeIdx === -1 ? 0 : activeIdx) + direction))];
+  /* Only steps that are on screen: a filter (the spine) can hide
+     sections, and j onto a display:none target scrolls nowhere. The
+     active item stays in the list even if hidden, so the walk still
+     knows where it starts from. */
+  const shown = items.filter(i => {
+    const t = document.getElementById(i.dataset.target);
+    return i.classList.contains('active') || (t && t.getClientRects().length > 0);
+  });
+  const activeIdx = shown.findIndex(i => i.classList.contains('active'));
+  const next = shown[Math.max(0, Math.min(shown.length - 1, (activeIdx === -1 ? 0 : activeIdx) + direction))];
   if (next) {
     const target = document.getElementById(next.dataset.target);
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1185,6 +1205,20 @@ function wireGlossaryPopovers() {
     el.addEventListener('mouseleave', hidePopover);
     el.addEventListener('focus', () => showPopover(term, el));
     el.addEventListener('blur', hidePopover);
+    /* role="button" promises Enter and Space, and a popover that opens
+       on focus has to close on Esc without moving focus (WCAG 1.4.13).
+       Enter/Space toggle it, so a keyboard reader who dismissed it can
+       bring it back without tabbing away and back again. */
+    el.addEventListener('keydown', (e) => {
+      const p = document.getElementById('glossaryPopover');
+      const open = !!(p && p.classList.contains('show'));
+      if (e.key === 'Escape' && open) {
+        e.preventDefault(); e.stopPropagation(); hidePopover();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (open) hidePopover(); else showPopover(term, el);
+      }
+    });
   });
 }
 

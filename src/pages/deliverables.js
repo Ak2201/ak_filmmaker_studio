@@ -128,15 +128,27 @@ function group(g, items, asked) {
   return sec;
 }
 
-function festivalBlock(reqs) {
+function festivalBlock(reqs, format) {
   const sec = h('section.dv-fest', { id: 'festivals', 'aria-labelledby': 'dv-fest-h' });
   sec.append(h('h2.dv-h2', { id: 'dv-fest-h', text: 'What your festivals ask for' }));
   if (!reqs.length) {
+    /* The tracker has one home, the short film blueprint's step 10,
+       and it is per project — so a feature's festivals go there too.
+       On a feature that has to be SAID, or the link reads as a wrong
+       turn into the other format's blueprint. */
+    const feature = format === 'feature';
     sec.append(h('p.dv-blurb', {
-      text: 'No festivals tracked yet. Add them on the short film’s festival step and each one '
+      text: feature
+        ? 'No festivals tracked yet. The submission tracker lives on the Short Film Blueprint’s '
+          + 'festival step and keeps this project’s festivals whatever its format — add a '
+          + 'feature’s festivals there and each one appears here with the format it asks for.'
+        : 'No festivals tracked yet. Add them on the short film’s festival step and each one '
           + 'appears here with the format it asks for.'
     }));
-    sec.append(h('a.btn', { href: 'short.html#step-10', text: 'OPEN THE SUBMISSION TRACKER' }));
+    sec.append(h('a.btn', {
+      href: 'short.html#step-10',
+      text: feature ? 'OPEN THE SUBMISSION TRACKER (SHORT FILM BLUEPRINT)' : 'OPEN THE SUBMISSION TRACKER'
+    }));
     return sec;
   }
   sec.append(h('p.dv-blurb', {
@@ -177,7 +189,9 @@ function blueprintBlock(says) {
 
 /* ---- the page ------------------------------------------------ */
 
-function render() {
+/* `focus` is a selector for the control to hand focus back to after
+   the full render replaces it (UX audit M1; visualize.js's pattern). */
+function render(focus) {
   const format = projectFormat();
   const data = Deliverables.loadDeliverables();
   const all = Deliverables.listItems(format, data);
@@ -208,7 +222,7 @@ function render() {
   const bp = blueprintBlock(blueprintSays());
   if (bp) main.append(bp);
 
-  main.append(festivalBlock(reqs));
+  main.append(festivalBlock(reqs, format));
 
   /* The filter: who is asking. 'always' items stay under every
      filter, because any screening needs them. */
@@ -242,10 +256,14 @@ function render() {
   main.append(add);
 
   app.replaceChildren(main);
-  after();
+  after(focus);
 }
 
-function after() {
+function after(focus) {
+  if (focus) {
+    const node = document.querySelector(focus);
+    if (node) node.focus();
+  }
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -258,15 +276,31 @@ function after() {
 
 delegate(document, 'click', '[data-dv-action]', (e, el) => {
   const act = el.getAttribute('data-dv-action');
-  if (act === 'show') { show = el.getAttribute('data-show') || 'all'; render(); return; }
-  if (act === 'custom-del') { Deliverables.removeCustom(el.getAttribute('data-item')); render(); }
+  if (act === 'show') {
+    show = el.getAttribute('data-show') || 'all';
+    render('[data-dv-action="show"][data-show="' + show + '"]');
+    return;
+  }
+  if (act === 'custom-del') {
+    /* Your own line, with its status and note: an Undo puts back all
+       three, at the place it held (UX audit L16). */
+    const id = el.getAttribute('data-item');
+    const snap = Deliverables.takeCustom(id);
+    render('[data-dv-form="custom"] input[name="label"]');
+    if (snap && StudioUI.toast) {
+      StudioUI.toast('Removed: ' + snap.custom.label, {
+        action: 'Undo',
+        onAction: () => { Deliverables.putCustomBack(snap); render(); }
+      });
+    }
+  }
 });
 
 delegate(document, 'change', '[data-dv-field]', (e, el) => {
   const id = el.getAttribute('data-item');
   const key = el.getAttribute('data-dv-field');
   Deliverables.setItemState(id, { [key]: el.value });
-  if (key === 'state') render();
+  if (key === 'state') render('[data-dv-field="state"][data-item="' + CSS.escape(id) + '"]');
 });
 
 /* A note saves as it is typed (UX audit H10): `change` alone lost

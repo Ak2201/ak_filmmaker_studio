@@ -288,6 +288,22 @@
   align-items: center;
   gap: var(--s2);
 }
+.sb-shot {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  padding: 0 var(--s2);
+  border: 1px solid var(--ink-faint);
+  border-left-width: 3px;
+  border-radius: var(--sk-radius);
+}
+.sb-shot.is-shot { border-color: var(--ok); }
+.sb-shot.is-part { border-color: var(--warn); }
+.sb-shot.is-dropped { border-style: dashed; }
 .sb-cast-lab {
   font-family: var(--f-mono);
   font-size: var(--t-micro);

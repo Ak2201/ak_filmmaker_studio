@@ -81,12 +81,19 @@ let active = '';
 
 function currentFromHash(sections) {
   const want = (location.hash || '').replace(/^#/, '');
-  if (!want) return '';
-  if (sections.some((s) => s.id === want)) return want;
-  // a fragment INSIDE a tab's section selects that tab
-  const el = document.getElementById(want);
-  const owner = el && sections.find((s) => s.contains(el));
-  return owner ? owner.id : '';
+  if (want) {
+    if (sections.some((s) => s.id === want)) return want;
+    // a fragment INSIDE a tab's section selects that tab
+    const el = document.getElementById(want);
+    const owner = el && sections.find((s) => s.contains(el));
+    if (owner) return owner.id;
+  }
+  /* `?tab=` is the moved-page stubs' fallback (src/pages/moved.js): the
+     tab their page became, for an old fragment that resolves to
+     nothing here. Only ever consulted after the hash has failed. */
+  let tab = '';
+  try { tab = new URLSearchParams(location.search).get('tab') || ''; } catch (e) { /* ignore */ }
+  return tab && sections.some((s) => s.id === tab) ? tab : '';
 }
 
 function show(sections, id, { setHash = true } = {}) {
@@ -103,6 +110,7 @@ function show(sections, id, { setHash = true } = {}) {
     t.setAttribute('aria-selected', String(on));
     t.tabIndex = on ? 0 : -1;
     t.classList.toggle('is-on', on);
+    if (on) intoStrip(t);
   });
   if (setHash && (location.hash || '').replace(/^#/, '') !== id) {
     /* replaceState rather than location.hash = …: no history entry per
@@ -111,6 +119,19 @@ function show(sections, id, { setHash = true } = {}) {
     try { history.replaceState(history.state, '', location.pathname + location.search + '#' + id); } catch (e) { /* ignore */ }
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }
+}
+
+/* The strip is one sideways-scrolling row (tabs.css), so the active
+   tab can start off-screen — a deep link to the last tab at 390px.
+   Bring it in by moving the STRIP's scroll only: scrollIntoView would
+   also scroll the window, under a sticky element, mid-load. */
+function intoStrip(tab) {
+  const strip = tab.parentElement;
+  if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
+  const s = strip.getBoundingClientRect();
+  const t = tab.getBoundingClientRect();
+  if (t.left < s.left) strip.scrollLeft -= s.left - t.left + 16;
+  else if (t.right > s.right) strip.scrollLeft += t.right - s.right + 16;
 }
 
 /** Make the element with this id visible, if a hidden tab is all that
@@ -235,10 +256,27 @@ export function installTabs() {
     const id = currentFromHash(sections);
     if (id && id !== active) show(sections, id, { setHash: false });
   });
+  /* ONLY MUTATIONS THAT CAN CHANGE THE SET OF TABS. The observer has to
+     watch the whole subtree — settings and admin replace <main>, other
+     pages re-render one section, and both arrive as childList records
+     at different depths — but most records are typing: write.html adds
+     and re-renders script rows inside one section on every keystroke,
+     and re-running apply() for each (a query of every section[id] on
+     the page) cost about 11ms a frame. A record matters when a node it
+     adds or removes is, or holds, a tab section, a <main> or the strip
+     itself; anything else happened inside a panel and leaves the tabs
+     as they were. */
+  const relevant = (n) => n.nodeType === 1 && (
+    n.matches('section[id], main, .tabs') || !!n.querySelector('section[id], main'));
   const app = document.getElementById('app') || document.body;
   let raf = 0;
-  new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; apply(); }); })
-    .observe(app, { childList: true, subtree: true });
+  new MutationObserver((records) => {
+    if (raf) return;
+    const hit = records.some((r) =>
+      [...r.addedNodes].some(relevant) || [...r.removedNodes].some(relevant));
+    if (!hit) return;
+    raf = requestAnimationFrame(() => { raf = 0; apply(); });
+  }).observe(app, { childList: true, subtree: true });
 }
 
 export default { installTabs, apply, revealTarget, TABBED };

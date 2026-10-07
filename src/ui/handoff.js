@@ -205,7 +205,8 @@ export async function addThem(opts) {
       type: 'success',
       action: 'Undo',
       onAction: () => {
-        Scenes.saveScenes(Scenes.listScenes().filter((s) => !ids.has(s.id)));
+        // Through the bin, so a shot added since is not orphaned.
+        Bin.unaddScenes(ids);
         safeRender();
         StudioUI.toast(`Removed the ${n} scene${n === 1 ? '' : 's'} just added.`, { type: 'info' });
       }
@@ -281,6 +282,8 @@ function afterSync(res, plan) {
   }
 }
 
+let emptyNoted = false;   // the "no headings left" note, once per emptying
+
 /** Run the sync now, if the headings changed since the last one. */
 export function syncNow() {
   syncTimer = 0;
@@ -292,7 +295,17 @@ export function syncNow() {
   const plan = reconcile(doc.elements, Scenes.listScenes(), { prev: syncPrev, bin: Bin.listBin() });
   // An empty script is "no script": nothing planned, and the baseline
   // is kept, so headings that come back are not mistaken for new ones.
-  if (plan.empty) return plan;
+  if (plan.empty) {
+    /* Said once, so deleting the last heading is not mistaken for the
+       Breakdown losing track (docs/KNOWN-ISSUES.md §7): zero headings
+       bins nothing, by design, so a failed load cannot empty it. */
+    if (!emptyNoted && syncPrev.size && Scenes.listScenes().length) {
+      emptyNoted = true;
+      StudioUI.toast('The script has no scene headings now, so the Breakdown keeps its scenes as they are. Delete them there if that is what you meant.', { type: 'info', duration: 8000 });
+    }
+    return plan;
+  }
+  emptyNoted = false;
   syncPrev = cur;
   if (isEmptyPlan(plan)) return plan;
   const res = applySync(plan);

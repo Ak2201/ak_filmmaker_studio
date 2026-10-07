@@ -147,7 +147,12 @@ export function saveScenes(scenes) {
 
 export function addScene(patch) {
   const scenes = listScenes();
-  const scene = blankScene({ number: String(scenes.length + 1), ...patch });
+  /* One past the highest number in use, not length + 1: after a delete
+     the count falls below the top number, and length + 1 handed out a
+     number another scene already had (UX audit M26). scene-sync.js
+     numbers new headings the same way. "12A" counts as 12. */
+  const top = scenes.reduce((n, s) => Math.max(n, parseInt(s && s.number, 10) || 0), 0);
+  const scene = blankScene({ number: String(top + 1), ...patch });
   scenes.push(scene);
   saveScenes(scenes);
   return scene;

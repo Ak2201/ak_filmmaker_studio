@@ -34,6 +34,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
+import Locations from '../lib/locations.js';
 
 const app = document.getElementById('app');
 
@@ -76,7 +77,7 @@ function renderHeader(contacts, sheets) {
     h('h1.bd-title', { text: 'Cast & Crew.' }),
     h('p.bd-deck', {
       text: 'Everybody on the film, once, with a department and a number. '
-          + 'The call sheet below is built from this list and from the scenes '
+          + 'The call sheets are built from this list and from the scenes '
           + 'in the breakdown — so a name is typed here and nowhere else.'
     }),
     h('div.bd-stats', {}, [
@@ -129,8 +130,11 @@ const how = (n, title, body) =>
 
 /* ---- one person --------------------------------------------- */
 function renderContact(contact) {
+  /* `c-<id>` is the command palette's target (contacts.html#c-…):
+     tabs.js opens the tab that holds it and the resolver lands on the
+     card, where a missing id used to land on the top of the page. */
   const card = h('article.ct-person.hue-' + hueOf(contact.department), {
-    'data-contact': contact.id
+    'data-contact': contact.id, id: 'c-' + contact.id
   });
 
   card.append(h('div.ct-person-bar', {}, [
@@ -148,15 +152,17 @@ function renderContact(contact) {
     ])
   ]));
 
+  const phone = field('input.ct-phone', {
+    type: 'tel', placeholder: '+91 …', 'data-contact-field': 'phone',
+    'aria-label': 'Phone number'
+  }, contact.phone);
+  const email = field('input.ct-email', {
+    type: 'email', placeholder: 'name@example.com', 'data-contact-field': 'email',
+    'aria-label': 'Email address'
+  }, contact.email);
   card.append(h('div.ct-person-reach', {}, [
-    labelled('Phone', field('input.ct-phone', {
-      type: 'tel', placeholder: '+91 …', 'data-contact-field': 'phone',
-      'aria-label': 'Phone number'
-    }, contact.phone)),
-    labelled('Email', field('input.ct-email', {
-      type: 'email', placeholder: 'name@example.com', 'data-contact-field': 'email',
-      'aria-label': 'Email address'
-    }, contact.email)),
+    labelled('Phone', phone, checkReach(phone)),
+    labelled('Email', email, checkReach(email)),
     labelled('Notes', field('input.ct-notes', {
       type: 'text', placeholder: 'Agent, dietary, travel — anything the office needs',
       'data-contact-field': 'notes', 'aria-label': 'Notes'
@@ -166,8 +172,39 @@ function renderContact(contact) {
   return card;
 }
 
-function labelled(label, control) {
-  return h('label.ct-fieldset', {}, [h('span.ct-flabel', { text: label }), control]);
+function labelled(label, control, hint) {
+  return h('label.ct-fieldset', {}, [h('span.ct-flabel', { text: label }), control, hint || null]);
+}
+
+/* A number or an address that cannot be dialled or sent to is still
+   SAVED — it may be half-typed, or the only thing anybody has — but
+   it says so, rather than surfacing at eleven at night when the
+   location falls through (UX audit L11). The email check is the
+   browser's own; a phone wants six digits and only the characters a
+   number is written with. */
+const PHONE_OK = /^[+\d\s().\-\/]*$/;
+function reachProblem(el) {
+  const v = String(el.value || '').trim();
+  if (!v) return '';
+  if (el.type === 'email') return el.validity && el.validity.typeMismatch ? 'Not an email address' : '';
+  const digits = (v.match(/\d/g) || []).length;
+  return !PHONE_OK.test(v) || digits < 6 ? 'Not a number anyone can dial' : '';
+}
+/** Mark the field, and return (or update) the hint line under it. */
+function checkReach(el, hint) {
+  const problem = reachProblem(el);
+  const line = hint || h('span.ct-invalid', { 'aria-live': 'polite' });
+  if (!line.id) line.id = 'ct-inv-' + Math.random().toString(36).slice(2, 9);
+  line.textContent = problem;
+  line.hidden = !problem;
+  if (problem) {
+    el.setAttribute('aria-invalid', 'true');
+    el.setAttribute('aria-describedby', line.id);
+  } else {
+    el.removeAttribute('aria-invalid');
+    el.removeAttribute('aria-describedby');
+  }
+  return line;
 }
 
 function deptSelect(value) {
@@ -241,10 +278,13 @@ function renderSheets(sheets, contacts, scenes) {
   );
 
   if (!contacts.length) {
-    wrap.append(h('p.bd-none', {
-      text: 'A call sheet calls people, so it needs the unit list first. '
-          + 'Add somebody above and a shoot day becomes possible.'
-    }));
+    /* A link rather than "above": the unit list is another TAB, so
+       a direction on the page pointed at nothing. */
+    wrap.append(h('p.bd-none', {}, [
+      'A call sheet calls people, so it needs the unit list first. Add somebody to ',
+      h('a', { href: '#contacts', text: 'the unit list' }),
+      ' and a shoot day becomes possible.'
+    ]));
     return wrap;
   }
 
@@ -260,6 +300,54 @@ function renderSheets(sheets, contacts, scenes) {
     type: 'button', 'data-action': 'sheet-add', text: '+  New call sheet'
   }));
   return wrap;
+}
+
+/* ---- the schedule's word on a sheet's date -----------------
+   A call sheet carries its own date, and the Plan calendar gives each
+   shoot DAY a date; nothing tied the two, so they could disagree with
+   neither saying so (UX audit M13). Neither copy is dropped — a sheet
+   typed before the calendar existed keeps its date — but the sheet now
+   reads the schedule through its scenes: if they all sit on one shoot
+   day, that day's calendar date is shown beside the sheet's, a
+   mismatch is named, and a sheet with no date of its own prints the
+   schedule's. Derived on every render, stored nowhere. */
+function scheduleOf(sheet, scenes) {
+  const days = [...new Set(sheet.sceneIds
+    .map((id) => scenes.find((s) => s.id === id))
+    .filter(Boolean)
+    .map((s) => Locations.shootDayOf(s))
+    .filter((d) => d > 0))].sort((a, b) => a - b);
+  if (days.length !== 1) return { days, day: 0, date: '' };
+  return { days, day: days[0], date: Locations.dayDate(days[0]) };
+}
+
+function renderSchedLine(sheet, scenes) {
+  const sc = scheduleOf(sheet, scenes);
+  const line = h('p.ct-sched', { 'aria-live': 'polite' });
+  if (!sc.days.length) { line.hidden = true; return line; }
+  if (!sc.day) {
+    line.append('These scenes are on days ' + sc.days.join(', ')
+      + ' of the schedule, so the sheet’s date is the only one there is.');
+    return line;
+  }
+  if (!sc.date) {
+    line.append('These scenes are Day ' + sc.day + ' on the stripboard, which has no date yet — ',
+      h('a', { href: 'plan.html#calendar', text: 'set it on the Plan calendar' }), '.');
+    return line;
+  }
+  if (sheet.date === sc.date) {
+    line.append('Day ' + sc.day + ' on the schedule — the same date.');
+    return line;
+  }
+  line.classList.add(sheet.date ? 'is-warn' : 'is-info');
+  line.append(sheet.date
+    ? 'The schedule has Day ' + sc.day + ' on ' + prettyDate(sc.date) + ', not this date. '
+    : 'Day ' + sc.day + ' on the schedule is ' + prettyDate(sc.date) + '. ');
+  line.append(h('button.mini-btn', {
+    type: 'button', 'data-action': 'sheet-sched-date', 'data-date': sc.date,
+    text: sheet.date ? 'Use the schedule’s date' : 'Use that date'
+  }));
+  return line;
 }
 
 function renderSheet(sheet, contacts, scenes) {
@@ -280,7 +368,7 @@ function renderSheetEdit(sheet, contacts, scenes) {
     h('div.ct-sheet-acts.pdf-menu-host', {}, [
       actionMenu('Export', [
         { label: 'Print this sheet', action: 'sheet-print' },
-        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'one page' }
+        { label: 'Save as PDF',      action: 'sheet-pdf', hint: 'this sheet only' }
       ], { align: 'right' }),
       iconBtn('✕', 'sheet-del', 'Delete this call sheet', false, true)
     ])
@@ -298,6 +386,7 @@ function renderSheetEdit(sheet, contacts, scenes) {
       'data-sheet-field': 'location', 'aria-label': 'Location'
     }, sheet.location))
   ]));
+  edit.append(renderSchedLine(sheet, scenes));
 
   edit.append(labelled('Notes', field('textarea.ct-sheet-notes', {
     rows: '2', placeholder: 'Weather, parking, nearest hospital, anything the day needs',
@@ -381,13 +470,15 @@ function renderSheetDoc(sheet, contacts, scenes) {
     .map((id) => scenes.find((s) => s.id === id))
     .filter(Boolean);
   const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const sched = scheduleOf(sheet, scenes);
 
   const doc = h('div.ct-doc');
   doc.append(h('div.ct-doc-head', {}, [
     h('p.ct-doc-eyebrow', { text: 'Call sheet' }),
     h('h3.ct-doc-title', { text: sheet.title || 'Shoot day' }),
     h('div.ct-doc-facts', {}, [
-      docFact('Date', prettyDate(sheet.date)),
+      docFact('Date', sheet.date ? prettyDate(sheet.date)
+        : (sched.date ? prettyDate(sched.date) + ' (from the schedule)' : prettyDate(''))),
       docFact('General call', sheet.generalCall || 'Not set'),
       docFact('Location', sheet.location || 'Not set'),
       docFact('Scenes', String(onSheet.length) + ' · ' + formatEighths(eighths) + ' pages')
@@ -528,9 +619,17 @@ delegate(document, 'change', '[data-contact-field]', (e, el) => {
   const key = el.dataset.contactField;
   Contacts.updateContact(id, { [key]: el.value });
   // Department moves the card to another group, so the list has to
-  // rebuild. Everything else only has to reach the call sheets.
-  if (key === 'department') render();
-  else refreshSheets();
+  // rebuild — and focus follows the card to its new group rather than
+  // falling to <body> (UX audit M1). Everything else only has to
+  // reach the call sheets.
+  if (key === 'department') {
+    render();
+    const sel = document.querySelector('[data-contact="' + CSS.escape(id) + '"] .ct-dept');
+    if (sel) {
+      sel.focus({ preventScroll: true });
+      sel.closest('.ct-person').scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  } else refreshSheets();
 });
 
 delegate(document, 'click', '[data-action="sheet-add"]', () => {
@@ -554,6 +653,11 @@ delegate(document, 'click', '[data-action="sheet-del"]', (e, el) => {
    store write only: the repaint stays on `change`, as above. */
 saveOnInput('[data-contact-field]', (el) => {
   Contacts.updateContact(contactIdOf(el), { [el.dataset.contactField]: el.value });
+});
+/* The invalid mark follows the typing, both ways. */
+delegate(document, 'input', '.ct-phone, .ct-email', (e, el) => {
+  const line = el.parentElement && el.parentElement.querySelector('.ct-invalid');
+  if (line) checkReach(el, line);
 });
 saveOnInput('[data-sheet-field]', (el) => {
   Contacts.updateCallSheet(sheetIdOf(el), { [el.dataset.sheetField]: el.value });
@@ -591,8 +695,29 @@ function syncDoc(el) {
   if (!card) return;
   const sheet = Contacts.listCallSheets().find((s) => s.id === card.dataset.sheet);
   if (!sheet) return;
+  const scenes = Scenes.listScenes();
   const doc = card.querySelector('.ct-doc');
-  if (doc) doc.replaceWith(renderSheetDoc(sheet, Contacts.listContacts(), Scenes.listScenes()));
+  if (doc) doc.replaceWith(renderSheetDoc(sheet, Contacts.listContacts(), scenes));
+  // Ticking a scene can move the sheet onto (or off) a schedule day.
+  const line = card.querySelector('.ct-sched');
+  if (line) line.replaceWith(renderSchedLine(sheet, scenes));
+}
+
+delegate(document, 'click', '[data-action="sheet-sched-date"]', (e, el) => {
+  const id = sheetIdOf(el);
+  Contacts.updateCallSheet(id, { date: el.dataset.date || '' });
+  refreshSheets();
+  document.querySelector('[data-sheet="' + CSS.escape(id || '') + '"] [data-sheet-field="date"]')?.focus();
+});
+
+/** The sheet's title without a leading "<project> —". */
+function dayName(title, project) {
+  const t = String(title || '').trim();
+  const p = String(project || '').trim();
+  const rest = p && t.toLowerCase().startsWith(p.toLowerCase()) ? t.slice(p.length) : '';
+  // Only at a separator: "Dragonfly Day 2" is not "Dragon" + "fly Day 2".
+  if (/^\s*[—–:·|-]\s*\S/.test(rest)) return rest.replace(/^\s*[—–:·|-]\s*/, '');
+  return t || 'Shoot day';
 }
 
 /* Print one sheet, not the page. The class comes off again on
@@ -629,10 +754,15 @@ delegate(document, 'click', '[data-action="sheet-pdf"]', (e, el) => {
   if (!card) return;
   const sheet = Contacts.listCallSheets().find((s) => s.id === card.dataset.sheet);
   if (!sheet) return;
-  const day = sheet.title || 'Shoot day';
+  /* A sheet is often titled "Dragon — Day 1", and the masthead and
+     the filename already lead with the project, so it printed as
+     "Dragon — Dragon — Day 1" (UX audit L12). The project prefix comes
+     off the day name here; the stored title is untouched. */
+  const project = PDF.projectTitle();
+  const day = dayName(sheet.title, project);
   PDF.exportPDF({
     scope: 'callsheet',
-    title: PDF.projectTitle() + ' — ' + day,
+    title: project + ' — ' + day,
     subtitle: [day, prettyDate(sheet.date), sheet.location].filter(Boolean).join(' · '),
     classes: ['ct-printing'],
     before: () => markOnlySheet(card),

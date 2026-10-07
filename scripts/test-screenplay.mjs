@@ -191,6 +191,8 @@ eq(s2.vehicles.map((x) => x.name).sort(), ['auto', 'lorry', 'police jeep'], 'veh
 eq(s2.stunts.map((x) => x.name).sort(), ['chases', 'crashes', 'falls'], 'stunts');
 ok(s2.sound.some((x) => x.name === 'siren'), 'lower-case sound word');
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
+eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
+eq(['mary-jane', "o'brien", 'dr. kumar (old)'].map(A.titleCase), ['Mary-Jane', "O'Brien", 'Dr. Kumar (Old)'], 'title case: hyphens, O\' prefixes, brackets');
 eq(A.suggestAll(scenes, script).length, 3, 'suggestAll returns only scenes with suggestions');
 
 /* ---- PRD §6: 120 pages inside 1200ms ---- */

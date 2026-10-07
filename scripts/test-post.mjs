@@ -72,6 +72,15 @@ const cov3 = E.coverage([scene('y', { shotState: 'shot' })], [], { scenes: {}, p
 ok(cov3.ready, 'everything the cut needs in the can and no conflicts is ready to lock');
 ok(!E.coverage([], [], { scenes: {}, pickups: [] }).ready, 'no scenes is not ready');
 
+/* An open pick-up is owed, whoever typed it (UX audit M12). */
+const pk = (id, sceneId, done) => ({ id, sceneId, what: 'an insert', done, at: '' });
+const cov4 = E.coverage([scene('y', { shotState: 'shot' })], [], { scenes: {}, pickups: [pk('a', 'y', false)] });
+ok(!cov4.ready, 'an open pick-up keeps the film from reading ready to lock');
+ok(E.coverage([scene('y', { shotState: 'shot' })], [], { scenes: {}, pickups: [pk('a', 'y', true)] }).ready,
+  'a done pick-up does not');
+const cov5 = E.coverage([scene('y', { shotState: 'shot' })], [], { scenes: {}, pickups: [pk('b', 'gone', false), pk('c', 'y', false)] });
+eq(cov5.orphans.map((p) => p.id).join(), 'b', 'a pick-up on a scene no longer in the list is returned as an orphan');
+
 /* ---- edit log: storage shape --------------------------------- */
 E.setSceneEdit('s1', { cut: '', note: '' });
 ok(!('s1' in E.loadEdit().scenes), 'a scene with nothing said about it is not stored');

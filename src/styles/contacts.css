@@ -367,22 +367,40 @@
    sheets print as documents, one per page.
    ------------------------------------------------------------ */
 
+/* The schedule's date beside the sheet's own (UX audit M13). */
+.ct-sched {
+  margin: calc(-1 * var(--s1)) 0 var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.ct-sched.is-warn { color: var(--ink); border-left: 3px solid var(--warn); padding-left: var(--s2); }
+.ct-sched .mini-btn { margin-left: var(--s2); }
+
 @media print {
   .sh-rail,
   .sh-bar,
   .ct-edit,
+  .ct-sched,
   .ct-add,
   .bd-empty,
   .ct-pick { display: none !important; }
 
   body.has-sh-shell { padding-left: 0 !important; }
 
+  /* The sheet may break between ROWS, never inside one. Avoiding a
+     break inside the whole sheet pushed any sheet taller than what was
+     left of page one — after the masthead — onto page two, so "one
+     page" printed as a near-empty page and the sheet (UX audit L12). */
   .ct-doc {
     display: block;
-    break-inside: avoid;
-    page-break-inside: avoid;
     color: var(--print-ink);
   }
+  .ct-doc-head,
+  .ct-doc-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .ct-doc-table thead { display: table-header-group; }
+  /* base.css's `overflow-wrap: anywhere` split "Department" mid-word
+     in a narrow column; a header breaks at spaces or not at all. */
+  .ct-doc-table th { overflow-wrap: normal; word-break: normal; hyphens: none; }
   .ct-sheet {
     display: block;
     margin: 0 0 var(--s6);
@@ -415,10 +433,25 @@
   body.ct-printing .ct-sheets > .bd-none,
   body.ct-printing .ct-sheet:not(.is-printing) { display: none !important; }
 
+  /* And the section's own air stands down too: 128px of padding and
+     a 32px margin below the sheet were enough on their own to spill a
+     full sheet onto a second, blank-but-for-air page. */
+  body.ct-printing .ct-sheets { padding-block: 0; }
   body.ct-printing .ct-sheet.is-printing {
+    margin: 0;
     border-top: 0;
     padding-top: 0;
     break-after: auto;
     page-break-after: auto;
   }
 }
+
+/* A number or address that will not work: saved anyway, and marked
+   (UX audit L11). The line says it in words, so the colour is never
+   the only signal. */
+.ct-person-reach input[aria-invalid="true"] { border-color: var(--danger); }
+.ct-invalid {
+  font-size: var(--t-micro);
+  color: var(--danger);
+}
+.ct-invalid[hidden] { display: none; }

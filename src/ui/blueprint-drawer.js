@@ -31,8 +31,9 @@
    also what touches `updatedAt` and tells cloud.js a save happened),
    writing only the keys this drawer changed. Values are stored the
    way each page's saveData() stores them: the feature writes
-   `el.value` for every control and `classList.contains('checked')`
-   for a checklist item; the short writes `!!checked` for a checkbox
+   `el.value` for every control but a checkbox (a boolean) and
+   `classList.contains('checked')` for a checklist item; the short
+   writes `!!checked` for a checkbox
    and the `done` class for a checklist item. There is no second copy
    and no new key.
 
@@ -73,8 +74,12 @@ const BLUEPRINTS = {
       ...PROD.production.map((step) => ({ ns: 'production', step })),
       ...PROD.post.map((step) => ({ ns: 'production', step }))
     ],
-    /* feature.js saveData(): `data[k] = el.value` for every control. */
-    read: (el) => el.value
+    /* feature.js saveData(): `el.value`, except a checkbox (the HOD
+       sign-offs), which is a boolean — its .value is "on" either way.
+       Loading reads `true`/"true" as ticked and a legacy "on" as not;
+       see savedTick() in feature.js. */
+    read: (el) => (el.type === 'checkbox' ? !!el.checked : el.value),
+    tick: (v) => v === true || v === 'true'
   },
   short: {
     key: 'fms_shortfilm_blueprint_v1',
@@ -83,7 +88,8 @@ const BLUEPRINTS = {
     checkedClass: 'done',
     steps: () => SHORT.steps.map((step) => ({ ns: 'short', step })),
     /* short.js saveData(): a checkbox is a boolean, the rest a string. */
-    read: (el) => (el.type === 'checkbox' ? !!el.checked : el.value || '')
+    read: (el) => (el.type === 'checkbox' ? !!el.checked : el.value || ''),
+    tick: (v) => !!v
   }
 };
 
@@ -323,7 +329,7 @@ function fillValues(root, bp, blob) {
       return;
     }
     if (!has) return;
-    if (bp === BLUEPRINTS.short && el.type === 'checkbox') el.checked = !!blob[k];
+    if (el.type === 'checkbox') el.checked = bp.tick(blob[k]);
     else el.value = blob[k];
   });
 }

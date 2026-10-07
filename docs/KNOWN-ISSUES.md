@@ -5,49 +5,11 @@ wrong, and the likely fix. Delete an entry in the same commit that
 fixes it; a list nobody prunes stops being believed.
 
 Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
-
-## 1. The Library's legacy dark-mode carry-over never runs
-
-- **Where:** `src/pages/library.js`, `adoptLegacyDarkPref()`.
-- **What goes wrong:** it reads `localStorage.getItem(PREF_KEY)`, and
-  `PREF_KEY` is not defined anywhere. It never has been since the line
-  arrived in `3c50d98`. The `ReferenceError` is swallowed by the
-  function's own `try/catch`, so nothing visibly breaks. The function
-  simply never does its job: a reader whose old Library page was dark
-  is not carried into the ink theme.
-- **Likely fix:** the per-page key is `fms_library_prefs_v1`, which is
-  listed in `src/lib/store.js` and is already a storage contract.
-  Before writing it in, check whether `chrome.js` already covers the
-  case. Around line 325 it migrates `fms_studio_prefs_v1.dark`. If it
-  does, delete the function instead.
-- **Do not** invent a new key name. CLAUDE.md invariant 1 applies.
-
-## 3. Case Studies' empty state names an internal file
-
-- **Where:** `src/ui/case-studies.js`, about line 751.
-- **What goes wrong:** with no films in the data, it tells the user
-  "src/data/studies.json holds no films". That is developer text on a
-  consumer page, which is the copy rule the consumer pass applied
-  everywhere else. This file belonged to another agent at the time, so
-  it was left alone.
-- **Likely fix:** plain words, for example "No case studies yet." The
-  state is reachable only if `studies.json` is emptied, so `verify`
-  will not notice either way.
-
-## 4. Unconfirmed: the Library's band height at 390px
-
-- **Where:** `measureChrome()` in `src/ui/shell.js`, as seen on
-  `library.html`.
-- **What was seen:** one agent read `--sh-chrome-h` as 180px on the
-  Library at 390px wide, where the band is not pinned and the value
-  should be 0. It was not inspected. It may be the Library's tab strip,
-  which sits at `top: 0` when the band is 0, being counted again. Check
-  that first, because the same family of bug made the strip drift down
-  the page (see CLAUDE.md open item 14).
-- **How to check:** open `library.html` in a 390px-wide window and read
-  `getComputedStyle(document.documentElement).getPropertyValue('--sh-chrome-h')`
-  and `--sh-cover-h`. Then jump to `#glossary` and see whether the
-  heading lands under or behind anything.
+Pruned 7 Oct 2026 with the Medium/Low fix pass over
+`docs/UX-AUDIT-2026-10-06.md`: §1, §3, the tab-strip observer in §6, and
+three of the five §7 leftovers are fixed and gone; §4 turned out not to
+be a bug (the 180px was `--sh-cover-h`, the tall tab strip the audit's
+M10 fixed, not `--sh-chrome-h`). What that pass left open is in §8.
 
 ## 5. Design question, not a bug: Case Studies is one long scroll
 
@@ -64,12 +26,11 @@ Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
   own `sliceScenes()`. It already drops the preamble, so it is not wrong
   today. It is a second copy of what `sliceScript()` in
   `src/lib/screenplay-analysis.js` now owns, and the next change to one
-  will miss the other.
-- **The tab strip's observer is costly.** `src/ui/tabs.js` reruns
-  `apply()`, which queries every `section[id]` on the page, on every DOM
-  mutation. On write.html that is about 11ms a frame while typing.
-  Filter the mutations, or limit the observer to `main`'s direct
-  children.
+  will miss the other. Checked 7 Oct and deliberately NOT merged: the
+  two are not identical — `sliceScript()` drops empty elements (an
+  empty heading included) and trims the heading text; `sliceScenes()`
+  keeps both — so folding them would change what an import produces.
+  Merge them only with a test that pins the import's output first.
 - **Screenplay lines are under 44px on touch, on purpose.** write.html's
   one-line textareas are about 30px tall under `pointer: coarse`.
   Raising them would stretch a 2,361-line script badly. Decide whether a
@@ -77,21 +38,49 @@ Recorded 6 Oct 2026, during the consumer pass (CLAUDE.md open item 14).
 
 ## 7. Leftovers from the story-first realignment (6 Oct 2026)
 
-- **Feature HOD checkboxes do not come back ticked.** `feature.js`
-  saves the `hod_*_check` boxes as `el.value` ("on"), so a ticked box
-  reads back unticked after a reload. The guide drawer copies that on
-  purpose rather than storing a second shape. Fix the page's save and
-  load together, with the stored value kept readable.
-- **Two scene removals still skip the bin.** The hand-off banner's
-  Undo (and "Break into shots"' Undo of the scenes it added) drop rows
-  directly. They only remove rows created moments earlier, but a shot
-  added in between would be orphaned. Route them through `binScene()`.
-- **Deleting the ONLY heading in a script bins nothing**, by design:
-  zero headings is treated as "no script" so a failed load cannot empty
-  the Breakdown. Say so in the UI if users trip on it.
 - **The guide pill on story.html lists five steps** (02, 03, 08, 09,
   10) with no hash. It works; a narrower rule (by open path step)
-  would read better.
+  needs a path-step → blueprint-step mapping and a change to
+  `src/ui/blueprint-drawer.js`.
 - **verify's AA walk only sees the Story page's empty state** (path
   step 1) and Write's default Margin mode. Steps 3, 4 and 6 and the
   Panel card were checked by hand (≥ 5.9:1), not by the gate.
+- **A Feature HOD box saved before 7 Oct reads back UNTICKED.** The
+  `hod_*_check` boxes used to be saved as `el.value` — the string
+  `"on"` for every box, ticked or not — so the stored value carried no
+  information. They are booleans now, and `true` / `"true"` load
+  ticked; a stored `"on"` is read as unticked on purpose, because
+  reading it as ticked would sign off all eleven boxes for everyone
+  who had ever saved the page. Unticked is what every reload showed
+  before the fix, so nobody loses a tick they could see. Not a bug to
+  fix; recorded so the next reader does not "correct" it.
+
+## 8. Left open by the Medium/Low fix pass (7 Oct 2026)
+
+- **18 of 22 pages have no sign-in or theme control in the band**
+  (audit M21, second half). The pill is built by `src/ui/auth.js` and
+  hangs off `.toolbar`, which only the four original pages have.
+  Putting it in the band means re-laying-out the band on every module
+  page, which is a design pass, not a fix.
+- **The palette handle still moves between 769 and 899px on the four
+  toolbar pages** (audit L23). Fixed on the module pages; on hub, the
+  two blueprints and the library it sits inside the page's controls
+  group and moves when that group wraps.
+- **Scene numbers cannot be edited by hand** (audit M26, second half).
+  `scene-sync.js` rewrites numbers from the script's headings, so an
+  editable field would be overwritten on the next heading change.
+  Duplicate numbers after a delete-then-add ARE fixed (highest + 1).
+- **A full call sheet can still print on two pages** (audit L12). The
+  padding and margin that pushed it over are gone and the masthead no
+  longer repeats the film's name, but the sample's 29-person Day 1 is
+  ~1,120px against ~1,017px of printable A4. The copy still says "on
+  one page"; change it or the sheet, not both.
+- **A few on-screen controls print below 4.5:1 from the dark theme**
+  — `--danger` delete icons, the stripboard's selects (audit M14's
+  tail). Titles and tables are fixed; `print.css` could hide those
+  controls outright, which is what paper wants anyway.
+- **`prove:gate`'s "the screening room wrote nothing to localStorage"
+  check failed once in three runs** on 7 Oct with every storage write
+  instrumented and none seen. Timing, most likely; it passed on the
+  final gated run. If it recurs, look at the harness's wait, not the
+  room.

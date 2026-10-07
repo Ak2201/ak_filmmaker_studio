@@ -393,3 +393,194 @@
 .rp-matrix tfoot .is-dense { font-weight: 700; color: var(--ink); }
 .rp-mx-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--s5); margin-top: var(--s4); }
 .rp-mx-list { margin: var(--s2) 0 0; padding-left: var(--s5); color: var(--ink-body); display: grid; gap: var(--s1); }
+
+/* ------------------------------------------------------------
+   THE SHOOT DAYS — one-liner, DPR, equipment, the offline pack
+   ------------------------------------------------------------
+   Same rules as the rest of this sheet: tokens for every colour,
+   --sk-* for every shape, nothing coloured that is not data. The
+   one-liner's day bands are ink on the sunk ground (a paper one-liner
+   is black bands), and an over-target day says so in WORDS as well
+   as with the --warn wash. Every table scrolls inside its own box.
+   ------------------------------------------------------------ */
+.rp-day { display: inline-flex; align-items: center; gap: var(--s2); }
+.rp-day-lab,
+.rp-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.rp-day-sel,
+.rp-in {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s1) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.rp-in::placeholder { color: var(--ink-muted); }
+.rp-day-sel:focus-visible,
+.rp-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
+.rp-h4 {
+  margin: var(--s5) 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.rp-dpr-title {
+  margin: 0 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  letter-spacing: var(--track-tight);
+}
+
+/* one-liner */
+.rp-ol { min-width: 42rem; }
+.rp-ol td, .rp-ol th { padding-block: var(--s1); }
+.rp-ol .rp-ol-head th {
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border-top: 2px solid var(--ink);
+  text-align: left;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.rp-ol .rp-ol-banner td {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  font-weight: 700;
+  color: var(--ink);
+  border-left: 3px solid var(--ink);
+}
+.rp-ol .rp-ol-total td {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule);
+}
+.rp-ol .rp-ol-total td.numeric { font-weight: 700; color: var(--ink); }
+.rp-ol .rp-ol-total.is-over td { background: var(--warn-wash); color: var(--warn-deep); font-weight: 700; }
+.rp-ol-key { margin: var(--s3) 0 var(--s1); font-size: var(--t-small); color: var(--ink-body); }
+
+/* the DPR */
+.rp-dpr-times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
+  gap: var(--s3);
+}
+.rp-field { display: grid; gap: var(--s1); align-content: start; }
+.rp-field.is-wide { grid-column: span 2; }
+.rp-dpr-calc { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-body); }
+.rp-rows { display: grid; gap: var(--s2); justify-items: start; }
+.rp-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 5rem minmax(0, 1fr) auto;
+  gap: var(--s2);
+  align-items: center;
+  width: 100%;
+}
+.rp-row.is-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+.rp-in-num { width: 100%; }
+.rp-notes { width: 100%; resize: vertical; line-height: var(--lh-snug); }
+.rp-mark {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 0 var(--s2);
+  border: 1px solid var(--ink-faint);
+  border-left-width: 3px;
+  border-radius: var(--sk-radius);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.rp-mark.is-shot { border-color: var(--ok); }
+.rp-mark.is-part { border-color: var(--warn); }
+.rp-mark.is-dropped { border-style: dashed; }
+.rp-mark.is-none { color: var(--ink-muted); }
+
+/* the offline pack */
+.rp-offline {
+  margin-top: var(--s7);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+}
+.rp-offline .rp-h3 { margin-top: 0; }
+.rp-offline .rp-card-note { color: var(--ink-body); }
+.rp-offline-list { margin: var(--s3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s1); }
+.rp-off { font-size: var(--t-small); color: var(--ink-body); padding-left: var(--s4); position: relative; }
+.rp-off::before { content: '\25CB'; position: absolute; left: 0; color: var(--ink-muted); }
+.rp-off.is-ok::before { content: '\2713'; color: var(--ok-deep); }
+.rp-off.is-note { color: var(--ink-muted); }
+.rp-off.is-note::before { content: ''; }
+
+/* the kit */
+.rp-kit-grid {
+  display: grid;
+  gap: var(--sk-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 34rem), 1fr));
+}
+.rp-kit-dept .rp-h4 { margin-top: 0; }
+.rp-kit-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.rp-kit-table th {
+  padding: var(--s1) var(--s1);
+  text-align: left;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.rp-kit-table td { padding: var(--s1); border-bottom: 1px solid var(--rule-hair); vertical-align: middle; }
+.rp-kit-table td .rp-in { width: 100%; min-width: 4rem; }
+.rp-kit-table th { white-space: nowrap; }
+.rp-kit-table td:first-child .rp-in { min-width: 9rem; }
+.rp-kit-table td:nth-child(2) .rp-in { min-width: 3rem; width: 3.5rem; }
+.rp-kit-tick { text-align: center; }
+.rp-kit-add { display: flex; gap: var(--s2); margin-top: var(--s3); }
+.rp-kit-add .rp-in { flex: 1 1 auto; }
+
+@media (max-width: 719px) {
+  .rp-row { grid-template-columns: minmax(0, 1fr) 5rem; }
+  .rp-row .rp-in:nth-child(3) { grid-column: 1 / -1; }
+  .rp-row.is-two { grid-template-columns: minmax(0, 1fr); }
+  .rp-field.is-wide { grid-column: 1 / -1; }
+}
+
+@media print {
+  .rp-x, .rp-kit-add, .rp-offline { display: none !important; }
+  .rp-in, .rp-day-sel { border: 0 !important; background: none !important; color: var(--print-ink) !important; padding: 0 !important; }
+  .rp-ol .rp-ol-head th { background: var(--print-wash) !important; color: var(--print-ink) !important; border-top-color: var(--print-ink) !important; }
+  .rp-ol .rp-ol-total.is-over td { background: var(--print-wash) !important; color: var(--print-ink) !important; }
+  .rp-mark { color: var(--print-ink) !important; border-color: var(--print-ink) !important; }
+  .rp-kit-dept { break-inside: avoid; }
+
+  /* One view at a time, the same way the sides print. The PDF
+     masthead is inserted into #main, so it is spared by id. */
+  body.rp-print-reports :is(#oneliner, #dpr, #kit) { display: none !important; }
+  body.rp-print-oneliner #main > *:not(#oneliner):not(#pdf-masthead),
+  body.rp-print-dpr #main > *:not(#dpr):not(#pdf-masthead),
+  body.rp-print-kit #main > *:not(#kit):not(#pdf-masthead) { display: none !important; }
+  body:is(.rp-print-oneliner, .rp-print-dpr, .rp-print-kit) #sides { break-before: auto; }
+}

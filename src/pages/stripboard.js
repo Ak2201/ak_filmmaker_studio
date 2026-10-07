@@ -23,6 +23,22 @@
    The SCHEDULE — which scenes are shot on which day — is real
    production data, so that goes on the scene.
 
+   THE ORDER WITHIN A DAY IS THE SCHEDULE TOO, and it is the second
+   thing this page writes (UX audit L31). In the Shoot day grouping a
+   strip can be dragged — by its handle, with pointer events, so a
+   finger works as well as a mouse — up and down its day or onto
+   another day, and the place it lands is kept: `order` inside
+   fms_locations_v1, through Locations.placeScene(), which also writes
+   the day onto the scene through the same updateScene() the picker
+   has always used. No new key. A day with no list renders in script
+   order, exactly as before. The shoot day, the Plan calendar and the
+   call sheet's schedule line all read it back through calendarDays().
+
+   Drag-only is a WCAG failure, so every move has a second route: the
+   handle is a menu (up, down, top, bottom), Alt+↑/↓ moves the focused
+   strip within its day, and the shoot-day picker is "move to day".
+   Every move is announced in a live region and offers UNDO in a toast.
+
    COLOUR. The paper board codes a strip by time of day, and this one
    does too, from the phase tokens. It does NOT reach for green and
    yellow the way a printed board does: green is --ok and amber is
@@ -47,6 +63,7 @@ import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/scenes.js';
+import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
 
 const app = document.getElementById('app');
@@ -199,6 +216,15 @@ function groupScenes(scenes, mode) {
   }
 
   const groups = [...buckets.values()];
+  if (mode === 'day') {
+    /* The one grouping with an order of its own: each day's strips in
+       the order the AD put them (locations.js), unlisted ones after in
+       script order. The unscheduled group stays in script order. */
+    const orders = Locations.listDayOrder();
+    for (const g of groups) {
+      if (g.key !== Infinity) g.scenes = Locations.orderByList(g.scenes, orders[String(g.key)]);
+    }
+  }
   if (mode === 'day' || mode === 'song') {
     groups.sort((a, b) => a.key - b.key);
   } else if (mode === 'time') {
@@ -215,10 +241,11 @@ function groupScenes(scenes, mode) {
 }
 
 /* ---- one strip ----------------------------------------------- */
-function renderStrip(scene, maxDay) {
+function renderStrip(scene, maxDay, movable) {
   const tod = TIME_CLASS[scene.dayNight] || 'tod-day';
-  const strip = h(`article.sb-strip.${tod}`, { 'data-scene': scene.id });
+  const strip = h(`article.sb-strip.${tod}` + (movable ? '.has-grip' : ''), { 'data-scene': scene.id });
 
+  if (movable) strip.append(moveHandle(scene));
   strip.append(
     h('span.sb-no', { text: scene.number || '—' }),
     h('span.sb-ie' + (scene.intExt === 'INT' ? '' : '.is-ext'), { text: scene.intExt }),
@@ -256,7 +283,37 @@ function renderStrip(scene, maxDay) {
   return strip;
 }
 
-/** Scheduling control. The one thing on this page that writes. */
+/* The handle. One control, two routes: drag it (pointer events, see
+   the drag section below) or press it for a menu that moves the
+   strip without a pointer. The menu is the action bar's — arrow keys,
+   Home/End, focus returned to the button — because `role="menu"` is
+   a promise and actionbar.js is where it is kept. */
+function moveHandle(scene) {
+  const n = scene.number || '';
+  const scheduled = shootDayOf(scene) > 0;
+  const items = scheduled ? [
+    { label: 'Move up',        action: 'sb-move', hint: 'Alt+↑' },
+    { label: 'Move down',      action: 'sb-move', hint: 'Alt+↓' },
+    '---',
+    { label: 'Move to top of day',    action: 'sb-move' },
+    { label: 'Move to bottom of day', action: 'sb-move' }
+  ] : [{ label: 'Pick a shoot day to place this strip', action: 'sb-move-focus' }];
+  const menu = actionMenu('⠿', items, {
+    compact: true,
+    ariaLabel: scheduled
+      ? `Move scene ${n}: drag it, or open for up, down, top and bottom`
+      : `Scene ${n} is not scheduled: drag it onto a day, or pick one`
+  });
+  menu.classList.add('sb-grip');
+  menu.querySelector('.tb-menu-btn').classList.add('sb-grip-btn');
+  const dirs = ['up', 'down', 'top', 'bottom'];
+  menu.querySelectorAll('[data-action="sb-move"]').forEach((b, i) => b.setAttribute('data-dir', dirs[i]));
+  return menu;
+}
+
+/** Scheduling control. Writes the day — through placeScene(), so the
+    strip lands at the end of the day it moves to and leaves the list
+    of the day it came from. */
 function dayPicker(scene, maxDay) {
   const current = shootDayOf(scene);
   const wrap = h('label.sb-day');
@@ -319,7 +376,19 @@ function renderBoard(scenes) {
   ]));
   wrap.append(controls, legend());
 
+  const byDay = view.group === 'day';
+  if (byDay) {
+    wrap.append(h('p.sb-hint', {
+      text: 'Drag a strip by its handle to change its place in the day or drop it on '
+          + 'another day — the order you set here is the order the shoot day and the '
+          + 'call sheet read. Without a mouse: Alt+↑ and Alt+↓ move the strip you are '
+          + 'on, the handle opens a Move menu, and the shoot-day picker moves it to '
+          + 'another day.'
+    }));
+  }
+
   const maxDay = shootDays(scenes).reduce((a, b) => Math.max(a, b), 0);
+  let hasUnscheduled = false;
   for (const group of groupScenes(scenes, view.group)) {
     const eighths = totalEighths(group.scenes);
     const section = h('div.sb-group');
@@ -329,13 +398,29 @@ function renderBoard(scenes) {
         text: `${group.scenes.length} ${group.scenes.length === 1 ? 'scene' : 'scenes'} · ${formatEighths(eighths)} ${eighths === 8 ? 'page' : 'pages'}`
       })
     ]));
-    const rack = h('div.sb-rack');
-    group.scenes.forEach((s) => rack.append(renderStrip(s, maxDay)));
+    /* In the day grouping every rack names its day, so a drop knows
+       where it landed; "Not scheduled yet" is day 0 and a drop there
+       takes the strip off the schedule. */
+    const rack = h('div.sb-rack', byDay ? { 'data-day': String(group.key === Infinity ? 0 : group.key) } : {});
+    if (byDay && group.key === Infinity) hasUnscheduled = true;
+    group.scenes.forEach((s) => rack.append(renderStrip(s, maxDay, byDay)));
     section.append(rack);
     wrap.append(section);
   }
+
+  if (byDay) {
+    /* Two targets that exist before anything is on them — a new day,
+       and (when every strip is scheduled) the way off the schedule.
+       The same reason the picker offers "N · new": starting a day
+       must not need its own control with its own empty state. */
+    wrap.append(dropZone(maxDay + 1, `Drop a strip here to start Day ${maxDay + 1}`));
+    if (!hasUnscheduled) wrap.append(dropZone(0, 'Drop a strip here to take it off the schedule'));
+  }
   return wrap;
 }
+
+const dropZone = (day, label) =>
+  h('div.sb-dropzone', { 'data-day': String(day), text: label });
 
 function legend() {
   const l = h('div.sb-legend', { 'aria-label': 'Strip colour key' });
@@ -522,8 +607,253 @@ delegate(document, 'click', '[data-action="sb-group"]', (e, el) => {
 
 delegate(document, 'change', '[data-strip-field="shootDay"]', (e, el) => {
   const day = Math.max(0, parseInt(el.value, 10) || 0);
-  Scenes.updateScene(sceneIdOf(el), { shootDay: day });
+  const id = sceneIdOf(el);
+  const rec = Locations.placeScene(id, day);
   render();
+  if (rec && rec.fromDay !== rec.toDay) afterMove(rec, { focus: 'select' });
+});
+
+/* ---- moving a strip: the shared tail -------------------------
+   Every route — a drop, the menu, Alt+arrows, the picker — ends
+   here: say what happened where a screen reader hears it, offer to
+   take it back, and put the focus back on the strip that moved so a
+   keyboard user is not dropped at the top of the page. */
+function describeMove(rec) {
+  const scene = Scenes.listScenes().find((s) => s.id === rec.sceneId);
+  const n = scene && scene.number ? `Scene ${scene.number}` : 'The scene';
+  if (!rec.toDay) return `${n} is off the schedule.`;
+  const total = Locations.orderedDayScenes(rec.toDay).length;
+  const where = rec.fromDay === rec.toDay ? `moved to position ${rec.index + 1} of ${total} on Day ${rec.toDay}`
+    : `moved to Day ${rec.toDay}, position ${rec.index + 1} of ${total}`;
+  return `${n} ${where}.`;
+}
+
+function afterMove(rec, opts = {}) {
+  if (!rec) return;
+  const said = describeMove(rec);
+  announce(said);
+  focusStrip(rec.sceneId, opts.focus);
+  toast(said, {
+    action: 'UNDO',
+    onAction: () => {
+      Locations.undoPlace(rec);
+      render();
+      announce('Undone.');
+      focusStrip(rec.sceneId, opts.focus);
+    }
+  });
+}
+
+/* role="status" rather than toggling aria-live on something that
+   already exists: see the toast note in chrome.js. Created once, kept
+   outside <main>, because render() replaces <main> and a live region
+   that is re-created is a live region several readers never hear. */
+function announce(text) {
+  let live = document.getElementById('sbLive');
+  if (!live) {
+    live = h('div#sbLive.visually-hidden', { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
+    document.body.append(live);
+  }
+  live.textContent = '';
+  // Two writes, a frame apart, so the same sentence twice is still read.
+  requestAnimationFrame(() => { live.textContent = text; });
+}
+
+function focusStrip(id, which) {
+  const strip = document.querySelector(`.sb-strip[data-scene="${CSS.escape(id)}"]`);
+  if (!strip) return;
+  const el = strip.querySelector(which === 'select' ? '.sb-day-sel' : '.sb-grip-btn') || strip.querySelector('.sb-day-sel');
+  if (el) el.focus({ preventScroll: true });
+  strip.scrollIntoView({ block: 'nearest' });
+}
+
+/* The menu on the handle. `data-dir` is stamped by moveHandle(). */
+delegate(document, 'click', '[data-action="sb-move"]', (e, el) => {
+  const id = sceneIdOf(el);
+  const dir = el.dataset.dir;
+  const scene = Scenes.listScenes().find((s) => s.id === id);
+  const day = scene ? shootDayOf(scene) : 0;
+  if (!scene || !day) return;
+  let rec = null;
+  if (dir === 'up' || dir === 'down') rec = Locations.nudgeScene(id, dir === 'up' ? -1 : 1);
+  else if (dir === 'top') rec = Locations.placeScene(id, day, { index: 0 });
+  else if (dir === 'bottom') rec = Locations.placeScene(id, day);
+  if (!rec) { announce(dir === 'up' || dir === 'top' ? 'Already at the top of the day.' : 'Already at the bottom of the day.'); return; }
+  render();
+  afterMove(rec);
+});
+delegate(document, 'click', '[data-action="sb-move-focus"]', (e, el) => {
+  const sel = el.closest('.sb-strip')?.querySelector('.sb-day-sel');
+  if (sel) sel.focus();
+});
+
+/* Alt+↑ / Alt+↓ on anything inside a strip, in the day grouping.
+   Alt rather than a bare arrow, because the arrows already mean
+   something inside the shoot-day <select>. */
+document.addEventListener('keydown', (e) => {
+  if (!e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  if (view.group !== 'day') return;
+  const strip = e.target && e.target.closest && e.target.closest('.sb-strip');
+  if (!strip) return;
+  e.preventDefault();
+  const id = strip.dataset.scene;
+  const rec = Locations.nudgeScene(id, e.key === 'ArrowUp' ? -1 : 1);
+  if (!rec) { announce(e.key === 'ArrowUp' ? 'Already at the top of the day.' : 'Already at the bottom of the day.'); return; }
+  const which = e.target.classList && e.target.classList.contains('sb-day-sel') ? 'select' : 'grip';
+  render();
+  afterMove(rec, { focus: which });
+});
+
+/* ---- drag ------------------------------------------------------
+   Pointer events, not HTML5 drag-and-drop: the DnD API does not fire
+   on a phone, and a stripboard that cannot be rearranged with a
+   thumb is a desk tool pretending. The handle has touch-action: none
+   so the browser does not scroll instead of dragging.
+
+   Nothing moves in the DOM until the drop. The strip under the
+   pointer dims and shrinks (the scale is multiplied by --motion, so
+   a reduced-motion reader sees the dim and no movement), a line
+   shows where it would land, a tag follows the pointer saying what is
+   being moved, and the racks and drop zones light as targets. Esc,
+   or a pointercancel, puts everything back and writes nothing. A
+   press that never travels six pixels is a click, which opens the
+   menu as usual. */
+const drag = { pending: null, active: false, at: null, line: null, tag: null, over: null, suppressClick: false };
+const DRAG_START_PX = 6;
+
+delegate(document, 'pointerdown', '.sb-strip .sb-grip-btn', (e, grip) => {
+  if (view.group !== 'day' || e.button !== 0) return;
+  const strip = grip.closest('.sb-strip');
+  drag.pending = { grip, strip, id: strip.dataset.scene, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+  try { grip.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
+});
+
+function beginDrag(e) {
+  const p = drag.pending;
+  drag.active = true;
+  drag.suppressClick = true;
+  p.strip.classList.add('is-dragging');
+  document.body.classList.add('sb-is-dragging');
+  drag.line = h('div.sb-drop-line', { 'aria-hidden': 'true' });
+  const scene = Scenes.listScenes().find((s) => s.id === p.id);
+  drag.tag = h('div.sb-drag-tag', { 'aria-hidden': 'true', text: `Scene ${(scene && scene.number) || ''}`.trim() });
+  document.body.append(drag.tag);
+  announce(`Dragging scene ${(scene && scene.number) || ''}. Release on a day, or press Escape to cancel.`);
+  updateDrag(e);
+}
+
+function setOver(el) {
+  if (drag.over === el) return;
+  if (drag.over) drag.over.classList.remove('is-over');
+  drag.over = el;
+  if (el) el.classList.add('is-over');
+}
+
+function updateDrag(e) {
+  const p = drag.pending;
+  drag.tag.style.left = e.clientX + 'px';
+  drag.tag.style.top = e.clientY + 'px';
+
+  /* Near an edge, nudge the page — a long board is taller than any
+     viewport, and a drag that cannot reach Day 14 is not a drag. */
+  const edge = 72, vh = window.innerHeight;
+  if (e.clientY < edge) window.scrollBy(0, -Math.ceil((edge - e.clientY) / 4));
+  else if (e.clientY > vh - edge) window.scrollBy(0, Math.ceil((e.clientY - (vh - edge)) / 4));
+
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const strip = under && under.closest('.sb-strip:not(.is-dragging)');
+  const rack = under && under.closest('.sb-rack[data-day]');
+  const zone = under && under.closest('.sb-dropzone[data-day]');
+
+  if (strip && strip.closest('.sb-rack[data-day]')) {
+    const r = strip.getBoundingClientRect();
+    const before = e.clientY < r.top + r.height / 2;
+    const day = parseInt(strip.closest('.sb-rack').dataset.day, 10);
+    if (before) strip.before(drag.line); else strip.after(drag.line);
+    drag.at = { day, [before ? 'before' : 'after']: strip.dataset.scene };
+    setOver(strip.closest('.sb-rack'));
+  } else if (rack) {
+    rack.append(drag.line);
+    drag.at = { day: parseInt(rack.dataset.day, 10) };
+    setOver(rack);
+  } else if (zone) {
+    drag.line.remove();
+    drag.at = { day: parseInt(zone.dataset.day, 10) };
+    setOver(zone);
+  } else {
+    drag.line.remove();
+    drag.at = null;
+    setOver(null);
+  }
+  /* The line right beside the strip being dragged is the strip's own
+     place: no target, so nothing is written for a drop there. */
+  if (drag.line.isConnected
+      && (drag.line.previousElementSibling === p.strip || drag.line.nextElementSibling === p.strip)) {
+    drag.at = null;
+    drag.line.remove();
+  }
+  p.strip.classList.toggle('is-droppable', !!drag.at);
+}
+
+/* `drop` false is a cancel. The click guard is lifted on a timer:
+   the click a pointerup produces is dispatched in the same task,
+   before any timer runs, so a drag's own click is still eaten — and a
+   drag whose render replaced the handle before that click could
+   land (so no click ever came) does not go on eating the next real
+   one. The first version did, and swallowed the UNDO in the toast. */
+function endDrag({ drop }) {
+  const p = drag.pending;
+  if (!p) return;
+  const at = drop ? drag.at : null;
+  setTimeout(() => { drag.suppressClick = false; }, 0);
+  if (drag.active) {
+    try { p.grip.releasePointerCapture(p.pointerId); } catch (err) { /* already released */ }
+    p.strip.classList.remove('is-dragging', 'is-droppable');
+    document.body.classList.remove('sb-is-dragging');
+    if (drag.line) drag.line.remove();
+    if (drag.tag) drag.tag.remove();
+    setOver(null);
+  }
+  const wasActive = drag.active;
+  drag.pending = null; drag.active = false; drag.at = null; drag.line = null; drag.tag = null;
+  if (!wasActive) return;
+  if (!at) { announce('Drag cancelled. Nothing moved.'); return; }
+  const rec = Locations.placeScene(p.id, at.day, { before: at.before, after: at.after });
+  render();
+  afterMove(rec);
+}
+
+document.addEventListener('pointermove', (e) => {
+  const p = drag.pending;
+  if (!p || e.pointerId !== p.pointerId) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < DRAG_START_PX) return;
+    beginDrag(e);
+    return;
+  }
+  e.preventDefault();
+  updateDrag(e);
+});
+document.addEventListener('pointerup', (e) => {
+  if (drag.pending && e.pointerId === drag.pending.pointerId) endDrag({ drop: true });
+});
+document.addEventListener('pointercancel', (e) => {
+  if (drag.pending && e.pointerId === drag.pending.pointerId) endDrag({ drop: false });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && drag.active) { e.preventDefault(); endDrag({ drop: false }); }
+});
+/* The click that follows a drag's pointerup would open the menu. */
+document.addEventListener('click', (e) => {
+  if (!drag.suppressClick) return;
+  drag.suppressClick = false;
+  e.preventDefault();
+  e.stopPropagation();
+}, true);
+/* A long press on a touch handle must not open the context menu. */
+document.addEventListener('contextmenu', (e) => {
+  if (drag.pending && e.target.closest && e.target.closest('.sb-grip-btn')) e.preventDefault();
 });
 
 /* Schedule by location: the first pass a 1st AD does by hand. Scenes
@@ -545,6 +875,8 @@ delegate(document, 'click', '[data-action="sb-auto"]', () => {
     if (!dayFor.has(key)) dayFor.set(key, dayFor.size + 1);
     Scenes.updateScene(scene.id, { shootDay: dayFor.get(key) });
   }
+  // A fresh schedule starts in script order within each day.
+  Locations.clearDayOrders();
   view.group = 'day';
   render();
   toast(`Scheduled into ${dayFor.size} ${dayFor.size === 1 ? 'day' : 'days'}, one per location.`);
@@ -555,6 +887,8 @@ delegate(document, 'click', '[data-action="sb-clear"]', () => {
   if (!scenes.length) return;
   if (!confirm(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
+  // No days, no order within them: a list for a day nothing is on is stranded data.
+  Locations.clearDayOrders();
   render();
 });
 
@@ -580,8 +914,8 @@ delegate(document, 'click', '[data-action="pdf-dood"]', () => {
 
 delegate(document, 'click', '[data-action="sb-print"]', () => window.print());
 
-function toast(message) {
-  try { StudioUI.toast(message, { type: 'info' }); } catch (e) { /* chrome may not be up */ }
+function toast(message, opts) {
+  try { StudioUI.toast(message, Object.assign({ type: 'info' }, opts || {})); } catch (e) { /* chrome may not be up */ }
 }
 
 render();

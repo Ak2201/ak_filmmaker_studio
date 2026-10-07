@@ -342,7 +342,28 @@ async function _doPull(opts) {
 }
 export function pull(opts) { return queue(() => _doPull(opts)); }
 
+/* THE HOUR, in one sentence, said the same way everywhere it comes up:
+   the Drive panel on settings.html prints it up front, and every path
+   here that ends in "the token is gone" prints it instead of Google's
+   wording. The Google token from a sign-in lasts about an hour, this
+   static build has nowhere to keep a refresh token (drive.js), and a
+   popup to mint another needs a click — so the honest message is
+   "press Connect", not "an error occurred". Local work is never at
+   stake: only the upload pauses. */
+export const HOUR_NOTE =
+  'Drive stays connected for about an hour after you sign in; after that, press '
+  + 'Connect again — your work is never lost, only the automatic upload pauses.';
+
+/* An expired or missing token, however Google or GIS phrased it. */
+function isTokenGone(e) {
+  if (!e) return false;
+  if (e.status === 401) return true;
+  const m = String((e && e.message) || e).toLowerCase();
+  return /popup|token|invalid_grant|unauthori[sz]ed|sign in again|no token/.test(m);
+}
+
 function errText(e) {
+  if (isTokenGone(e)) return HOUR_NOTE;
   const m = (e && e.message) || String(e);
   return m.length > 160 ? m.slice(0, 157) + '…' : m;
 }
@@ -526,7 +547,7 @@ async function autoConnectIfGranted() {
     await (isConnected() ? reconcile() : connect());
   } catch (e) {
     console.warn('[drive] auto-connect after sign-in', e);
-    setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. Try the button on Settings.');
+    setStatus(DRIVE_STATES.ERROR, 'Signed in, but Drive did not connect. ' + HOUR_NOTE);
   }
 }
 
@@ -659,8 +680,7 @@ function adoptSignInToken(sess) {
      Say so calmly rather than reporting an error for a state that is
      ordinary: the hour ran out, or this is a fresh tab. */
   if (!Drive.hasToken()) {
-    setStatus(DRIVE_STATES.IDLE,
-      'Connected. Open Settings and press Connect to sync this session.');
+    setStatus(DRIVE_STATES.IDLE, 'Connected, but not for this session. ' + HOUR_NOTE);
     return;
   }
 
@@ -672,7 +692,7 @@ function adoptSignInToken(sess) {
   Drive.getToken({ interactive: false })
     .then(() => reconcile())
     .catch((e) => setStatus(DRIVE_STATES.ERROR,
-      'Drive needs you to sign in again. ' + errText(e)));
+      isTokenGone(e) ? HOUR_NOTE : 'Drive needs you to sign in again. ' + errText(e)));
 })();
 
 /* Assigned for the same reason cloud.js assigns window.StudioCloud:
@@ -688,7 +708,7 @@ global.StudioDrive = {
 };
 
 export default {
-  DRIVE_STATE_KEY, DRIVE_STATES,
+  DRIVE_STATE_KEY, DRIVE_STATES, HOUR_NOTE,
   onDriveStatus, getDriveStatus, isConnected, ownsSync,
   connect, disconnect, push, pull, reconcile, resolveConflict,
   listVersions, restoreVersion, readState, localClock

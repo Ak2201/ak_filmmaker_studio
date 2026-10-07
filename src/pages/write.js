@@ -60,6 +60,9 @@ import Scenes from '../lib/scenes.js';
 import { binScene, unaddScenes } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
+/* Revision compare, revised-page marks and locked scene numbers: the
+   panels under the Revisions list (src/ui/write-revisions.js). */
+import { mountRevisionTools, renderRevisionTools } from '../ui/write-revisions.js';
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
@@ -200,6 +203,13 @@ const app = document.getElementById('app');
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
 mountWriteExtrasB({ getDoc: () => doc });   // hand-off banner, alternates, Tanglish
+mountRevisionTools({
+  getDoc: () => doc,
+  persistNow: () => persistNow(),
+  render: (focus) => render(focus),
+  // A revised-pages PDF keeps the scene numbers in the margins when they are locked.
+  exportPDF: (extra) => exportPDF(Script.isNumberingLocked(doc.numbering), extra)
+});
 
 /* ---- the keyboard (Phase 2) ---------------------------------
    Prefs are READ once here and written only when the writer changes
@@ -1636,12 +1646,12 @@ function renderRevisions() {
   }
 
   if (!doc.revisions.length) {
-    section.append(renderRevisionsEmpty());
+    section.append(renderRevisionsEmpty(), renderRevisionTools());
     return section;
   }
   const list = h('div.wr-rev-list');
   doc.revisions.forEach((r, i) => list.append(renderRevision(r, i, doc.revisions.length)));
-  section.append(list);
+  section.append(list, renderRevisionTools());
   return section;
 }
 
@@ -2013,6 +2023,7 @@ function refreshCueOffers() {
 let pvPageOf = new Map();       // element id -> page index it starts on
 let pvTotal = 0;
 let pvFocusId = null;
+let omittedSig = '';       // the OMITTED markers last placed (placeOmitted)
 
 function pvWhereText() {
   if (!pvTotal) return 'Paginating…';
@@ -2035,7 +2046,8 @@ function refreshPvStatus() {
 function clearPageView() {
   const page = pageNode();
   if (!page) return;
-  page.querySelectorAll('.wr-pbreak').forEach((n) => n.remove());
+  page.querySelectorAll('.wr-pbreak, .wr-omitted').forEach((n) => n.remove());
+  omittedSig = '';
   page.querySelectorAll('[data-scene-no]').forEach((n) => n.removeAttribute('data-scene-no'));
   pvPageOf = new Map();
   pvTotal = 0;
@@ -2044,7 +2056,8 @@ function clearPageView() {
 function applyPageView() {
   const page = pageNode();
   if (!pageView || !page || !Typeset) return;
-  const pages = Typeset.paginate(doc.elements);
+  // paginateDoc: a locked script's numbers and OMITTED rows, as the PDF sets them.
+  const pages = Typeset.paginateDoc(doc);
 
   const pageOf = new Map();
   const sceneNo = new Map();
@@ -2097,10 +2110,48 @@ function applyPageView() {
     else if (row.hasAttribute('data-scene-no')) row.removeAttribute('data-scene-no');
   }
 
+  placeOmitted(page, pages);
+
   pvPageOf = pageOf;
   pvTotal = pages.length;
   page.dataset.pages = String(pages.length);
   refreshPvStatus();
+}
+
+/* A locked script's OMITTED scenes (src/lib/script.js): rows the
+   paginator sets where a cut scene was, with no element behind them.
+   The page view shows each as a marker before the heading that now
+   follows it — or after the last row, for one at the end — so the
+   page breaks on screen, which already count it, are explained. */
+function placeOmitted(page, pages) {
+  const want = [];                   // [anchorId | null, numbers[]]
+  let pending = [];
+  for (const rows of pages) {
+    for (const r of rows) {
+      if (r.omitted) { pending.push(r.sceneNo); continue; }
+      if (pending.length && r.id && !r.cont) { want.push([r.id, pending]); pending = []; }
+    }
+  }
+  if (pending.length) want.push([null, pending]);
+  const sig = JSON.stringify(want);
+  const have = page.querySelectorAll('.wr-omitted');
+  if (sig === omittedSig && have.length === want.reduce((n, w) => n + w[1].length, 0)) return;
+  have.forEach((n) => n.remove());
+  omittedSig = sig;
+  const rows = allRows();
+  for (const [id, numbers] of want) {
+    const row = id ? rowOf(id) : rows[rows.length - 1];
+    if (!row) continue;
+    let target = row.closest('.wr-dual') || row;
+    const marks = numbers.map((n) => h('div.wr-omitted', { role: 'note', text: n + '  OMITTED' }));
+    if (!id) { target.after(...marks); continue; }
+    // Before a page break that sits right above the heading, so the
+    // break marker keeps its place directly over the row it names.
+    if (target.previousElementSibling && target.previousElementSibling.classList.contains('wr-pbreak')) {
+      target = target.previousElementSibling;
+    }
+    target.before(...marks);
+  }
 }
 
 async function setPageView(on) {
@@ -2758,7 +2809,11 @@ delegate(document, 'click', '[data-action="export-fdx"]', () => {
   download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
 });
 
-async function exportPDF(sceneNumbers) {
+/* `extra.marks` is a revised-pages export (src/ui/write-revisions.js):
+   the asterisks sit in the right margin, which the plain screenplay
+   setup clips, so it takes the wide setup the scene numbers use — same
+   1.5in gutter, the margins moved inside the printable area. */
+async function exportPDF(sceneNumbers, extra = {}) {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
@@ -2771,11 +2826,16 @@ async function exportPDF(sceneNumbers) {
     scope: 'screenplay',
     // Scene numbers live in the margins, which a PDF page clips; see
     // SETUPS['screenplay-wide'] in src/lib/pdf.js.
-    ...(sceneNumbers ? { setup: 'screenplay-wide', classes: ['pdf-sn'] } : {}),
+    ...(sceneNumbers || extra.marks
+      ? { setup: 'screenplay-wide', classes: extra.marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] }
+      : {}),
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
+    subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages', extra.note]
       .filter(Boolean).join(' · '),
-    before: () => { node = Typeset.buildDocument(doc, { ...exportMeta(), sceneNumbers }); main.append(node); },
+    before: () => {
+      node = Typeset.buildDocument(doc, { ...exportMeta(), sceneNumbers, marks: extra.marks });
+      main.append(node);
+    },
     after: () => { if (node) { node.remove(); node = null; } }
   });
 }
@@ -2788,7 +2848,7 @@ delegate(document, 'click', '[data-action="export-text"]', async () => {
   const title = Script.projectTitle();
   download(Typeset.toText(doc, exportMeta()),
     Script.slugify(title, 'screenplay') + '.txt', 'text/plain');
-  say('Exported ' + Typeset.sheetCount(doc.elements) + ' pages of screenplay text.');
+  say('Exported ' + Typeset.sheetCount(doc.elements, doc.numbering) + ' pages of screenplay text.');
 });
 
 /* ---- the pass: events ---------------------------------------

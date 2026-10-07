@@ -27,7 +27,7 @@ import Scenes, {
 import * as Songs from '../lib/songs.js';
 import * as Bin from '../lib/scene-bin.js';
 import '../styles/scene-bin.css';
-import { loadScript } from '../lib/script.js';
+import { loadScript, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
@@ -106,6 +106,20 @@ const how = (n, title, body) =>
    docs/KNOWN-ISSUES.md §8). Nothing in the app sorts by number — the
    list order IS the scene order — so "12A" needs no comparator. */
 const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in Write to renumber it.';
+/* LOCKED NUMBERS (src/lib/script.js). Once Write locks the scene
+   numbers, a bound scene's number is the lock's — 12A for a scene cut
+   in after 12 — and scene-sync.js writes it onto the row; the card says
+   so, because "change the heading to renumber it" stops being true. A
+   hand-made scene is still the Breakdown's own and stays editable. */
+const LOCKED_TITLE = 'Locked scene number, set in Write. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
+let NUM_LOCK = { locked: false, omitted: [] };
+function readNumberLock() {
+  try {
+    const s = loadScript();
+    if (!isNumberingLocked(s.numbering)) return { locked: false, omitted: [] };
+    return { locked: true, omitted: sceneNumbers(s.elements, s.numbering).omitted.map((o) => o.number) };
+  } catch (e) { return { locked: false, omitted: [] }; }
+}
 const numberKey = (n) => String(n || '').trim().toUpperCase();
 /** The numbers more than one scene carries, upper-cased. */
 function dupNumbers(scenes) {
@@ -126,8 +140,9 @@ function markNumber(el, scene, dups) {
   if (isDup) {
     el.setAttribute('title', 'Another scene is also numbered ' + String(scene.number).trim()
       + ' — allowed, but the schedule and the sides will show two of them');
-  } else if (scene.scriptElId) el.setAttribute('title', BOUND_TITLE);
+  } else if (scene.scriptElId) el.setAttribute('title', NUM_LOCK.locked ? LOCKED_TITLE : BOUND_TITLE);
   else el.removeAttribute('title');
+  el.classList.toggle('is-locked', !!(NUM_LOCK.locked && scene.scriptElId));
 }
 /** Re-mark every number on the page after one changed, in place — a
  *  render here would take the focus off the field being tabbed to. */
@@ -630,6 +645,14 @@ function render(focus) {
     tagging.append(renderEmpty());
   } else {
     DUPS = dupNumbers(scenes);
+    NUM_LOCK = readNumberLock();
+    if (NUM_LOCK.locked) {
+      tagging.append(h('p.bd-lock-note', {
+        text: 'Scene numbers are locked in Write: a scene inserted after 12 is 12A, and a cut scene keeps its number as OMITTED'
+          + (NUM_LOCK.omitted.length ? ' (omitted: ' + NUM_LOCK.omitted.join(', ') + ')' : '')
+          + '. Unlock them in Write’s Revisions to renumber.'
+      }));
+    }
     scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
     tagging.append(h('button.btn.bd-add', { type: 'button', 'data-action': 'scene-add', text: '+  Add scene' }));
   }

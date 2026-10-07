@@ -308,6 +308,9 @@ export function loadScript() {
   if (parsed.titlePage && typeof parsed.titlePage === 'object') {
     out.titlePage = normaliseTitlePage(parsed.titlePage);
   }
+  // Additive, and absent unless the numbers were ever locked.
+  const numbering = normaliseNumbering(parsed.numbering);
+  if (numbering) out.numbering = numbering;
   return out;
 }
 
@@ -330,6 +333,13 @@ export function saveScript(doc) {
     };
     // Additive, and absent unless filled in; see TITLE_FIELDS above.
     if (hasTitlePage(doc.titlePage)) blob.titlePage = normaliseTitlePage(doc.titlePage);
+    /* A locked script's new headings take their letters HERE, at the
+       save, and the in-memory doc keeps them — so a number is decided
+       once, by the save a person's edit caused, and never on a read. */
+    if (doc.numbering && doc.numbering.locked) {
+      doc.numbering = settleNumbering(doc.elements || [], doc.numbering);
+      blob.numbering = doc.numbering;
+    }
     localStorage.setItem(SCRIPT_KEY, JSON.stringify(blob));
     return true;
   } catch (e) {
@@ -347,7 +357,16 @@ export function makeRevision(elements, name) {
     name: String(name ?? '').trim() || 'Draft',
     date: nowISO(),
     elements: (elements || []).map((e) => {
+      /* `liveId` is the id the element had in the live script when the
+         snapshot was taken. It is NOT the snapshot's id (that stays
+         fresh, for the reason restoreElements() gives) — it is what
+         lets src/lib/script-diff.js say "this line was edited" rather
+         than "one line removed, one added" when two revisions, or a
+         revision and the live script, are compared. A revision taken
+         before the field existed has none, and the diff falls back to
+         aligning text. */
       const copy = { id: uid(), type: e.type, text: String(e.text ?? '') };
+      if (e.id) copy.liveId = String(e.id);
       if (e.dual === true && e.type === 'character') copy.dual = true;
       return copy;
     })
@@ -362,6 +381,243 @@ export function restoreElements(rev) {
     .map((e) => blankElement(e.dual === true
       ? { type: e.type, text: e.text, dual: true }
       : { type: e.type, text: e.text }));
+}
+
+/* ---- locked scene numbers ------------------------------------
+   Unlocked, a scene's number is its position: the Nth heading is
+   scene N, on screen, in the PDF and in the Breakdown. That is right
+   while a script is being written and wrong the day it is scheduled —
+   a call sheet, the sides and a stripboard all say "scene 12", and an
+   inserted scene that renumbered 12 to 13 makes every one of those
+   papers point at the wrong scene.
+
+   So a production LOCKS the numbers. From then on:
+     · a heading inserted after 12 is 12A, the next one after that 12B
+       (not 12AA — nobody on a floor says it); one inserted before
+       scene 1 is A1, the next B1;
+     · a heading deleted leaves its number behind as OMITTED, printed
+       where the scene was ("12  OMITTED"), so 11 is still followed by
+       12 on paper and nobody hunts for a missing scene;
+     · a moved heading keeps its number.
+
+   STORED INSIDE THE SCRIPT BLOB as `numbering`, absent until a script
+   is first locked (no new key, and an old blob is byte-identical
+   across a load and a save):
+
+     numbering: { locked: true, at: ISO, ids: { [headingId]: { n, t } } }
+
+   `ids` is the record: every number ever handed out, keyed by the
+   heading it was handed to, with that heading's text as of the last
+   save (`t`). An entry whose heading is gone IS the omitted scene — no
+   second list. `t` is how a cut-and-paste (a new id, the same words)
+   gets its number back, the same rule scene-sync.js uses for a move.
+
+   ONE FUNCTION decides every number: `sceneNumbers()`. The page view,
+   the PDF, the text export, the Breakdown's rows (through
+   scene-sync.js) and the save all ask it, so no two of them can
+   disagree about what scene 12A is. A heading new since the last save
+   gets a PROVISIONAL number from it, and `settleNumbering()` — called
+   by saveScript(), at a save a person's edit caused — writes that same
+   number into the record, so what was on screen is what is kept.
+
+   KNOWN EDGE, accepted: a second insert into a gap with no letter left
+   in order (one between 12 and an existing 12A) takes the next FREE
+   letter, 12B, so the gap prints 12, 12B, 12A. Unique and stable beats
+   ordered-but-renumbered, which is the one thing a lock forbids.
+   Unlocking is the way to tidy it, and unlocking renumbers. */
+const SN_RE = /^([A-Z]*)(\d+)([A-Z]*)$/;
+const LEAD_NUMBER = /^([A-Z]?\d+[A-Z]{0,2})[.)]?\s+(?=\S)/i;
+const snNorm = (t) => String(t ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+
+/** "12A" -> { pre: '', d: 12, suf: 'A' }; "A1" -> { pre: 'A', d: 1, suf: '' }; else null. */
+export function parseSceneNumber(n) {
+  const m = SN_RE.exec(String(n ?? '').trim().toUpperCase());
+  return m ? { pre: m[1], d: Number(m[2]), suf: m[3] } : null;
+}
+
+/** Script order of two scene numbers: A1 < B1 < 1 < 1A < 1B < 2. */
+export function compareSceneNumbers(a, b) {
+  const A = parseSceneNumber(a), B = parseSceneNumber(b);
+  if (!A || !B) return A ? -1 : B ? 1 : String(a).localeCompare(String(b));
+  if (A.d !== B.d) return A.d - B.d;
+  const rank = (x) => (x.pre ? 0 : x.suf ? 2 : 1);
+  if (rank(A) !== rank(B)) return rank(A) - rank(B);
+  const la = A.pre || A.suf, lb = B.pre || B.suf;
+  return la.length - lb.length || (la < lb ? -1 : la > lb ? 1 : 0);
+}
+
+/** '' -> A, A -> B, Z -> AA, AZ -> BA. */
+function nextLetters(s) {
+  if (!s) return 'A';
+  const c = s.split('');
+  for (let i = c.length - 1; i >= 0; i--) {
+    if (c[i] !== 'Z') { c[i] = String.fromCharCode(c[i].charCodeAt(0) + 1); return c.join(''); }
+    c[i] = 'A';
+  }
+  return 'A' + c.join('');
+}
+
+/** The script's headings, the way the paginator and scene-sync count
+    them: a `scene` element with text. */
+function snHeadings(elements) {
+  const out = [];
+  for (const el of elements || []) {
+    if (el && el.type === 'scene' && String(el.text ?? '').trim()) out.push(el);
+  }
+  return out;
+}
+
+/** The number a heading's own text carries ("12A INT. …"), or ''. */
+function textNumber(text) {
+  const m = LEAD_NUMBER.exec(String(text ?? '').trim());
+  return m && parseSceneNumber(m[1]) ? m[1].toUpperCase() : '';
+}
+
+export function normaliseNumbering(raw) {
+  if (!raw || typeof raw !== 'object' || raw.locked !== true) return null;
+  const ids = {};
+  const src = raw.ids && typeof raw.ids === 'object' ? raw.ids : {};
+  for (const [id, e] of Object.entries(src)) {
+    const n = String((e && e.n) ?? '').trim().toUpperCase();
+    if (id && n) ids[id] = { n, t: String((e && e.t) ?? '') };
+  }
+  return { locked: true, at: String(raw.at || nowISO()), ids };
+}
+
+export const isNumberingLocked = (numbering) => !!(numbering && numbering.locked === true);
+
+/**
+ * Every scene number as the script reads now. PURE.
+ *   → { locked, byId: Map(headingId → number),
+ *       omitted: [{ number, before: headingId | null }],   null = at the end
+ *       moved: Map(newHeadingId → oldEntryId),             a cut-and-paste
+ *       fresh: [headingId] }                               new since the last save
+ * Unlocked, the number is the position, as it always was.
+ */
+export function sceneNumbers(elements, numbering) {
+  const heads = snHeadings(elements);
+  const out = { locked: false, byId: new Map(), omitted: [], moved: new Map(), fresh: [] };
+  if (!isNumberingLocked(numbering)) {
+    heads.forEach((h, i) => out.byId.set(h.id, String(i + 1)));
+    return out;
+  }
+  out.locked = true;
+  const ids = numbering.ids || {};
+  const taken = new Set(Object.values(ids).map((e) => String(e.n).toUpperCase()));
+  const claimed = new Set();                        // entry keys in use
+  const present = new Set(heads.map((h) => h.id));
+
+  // 1. the heading still has its number
+  for (const h of heads) {
+    if (ids[h.id] && !out.byId.has(h.id)) { out.byId.set(h.id, ids[h.id].n); claimed.add(h.id); }
+  }
+  // 2. a heading that came back under a new id, with the same words
+  const orphans = Object.keys(ids).filter((k) => !present.has(k))
+    .sort((a, b) => compareSceneNumbers(ids[a].n, ids[b].n));
+  if (orphans.length) {
+    for (const h of heads) {
+      if (out.byId.has(h.id)) continue;
+      const key = snNorm(h.text);
+      const o = orphans.find((k) => !claimed.has(k) && snNorm(ids[k].t) === key);
+      if (!o) continue;
+      claimed.add(o);
+      out.byId.set(h.id, ids[o].n);
+      out.moved.set(h.id, o);
+    }
+  }
+  // 3. new headings: the number the text carries if it is free, else a letter
+  heads.forEach((h, k) => {
+    if (out.byId.has(h.id)) return;
+    out.fresh.push(h.id);
+    let n = textNumber(h.text);
+    if (n && taken.has(n)) n = '';
+    if (!n) {
+      let prev = '';
+      for (let j = k - 1; j >= 0 && !prev; j--) prev = out.byId.get(heads[j].id) || '';
+      let next = '';
+      for (let j = k + 1; j < heads.length && !next; j++) next = out.byId.get(heads[j].id) || '';
+      n = letterAfter(prev, next, taken);
+    }
+    taken.add(n);
+    out.byId.set(h.id, n);
+  });
+  // 4. what is left of the record is omitted, placed by its number
+  if (orphans.length) {
+    const order = heads.map((h) => out.byId.get(h.id));
+    for (const k of orphans) {
+      if (claimed.has(k)) continue;
+      const n = ids[k].n;
+      const at = order.findIndex((m) => compareSceneNumbers(m, n) > 0);
+      out.omitted.push({ number: n, before: at < 0 ? null : heads[at].id });
+    }
+  }
+  return out;
+}
+
+/** The number a heading inserted between `prev` and `next` takes. */
+function letterAfter(prev, next, taken) {
+  const free = (make, start) => {
+    let s = start;
+    for (let guard = 0; guard < 18278 && taken.has(make(s)); guard++) s = nextLetters(s);
+    return make(s);
+  };
+  const P = parseSceneNumber(prev);
+  if (P && P.pre) return free((s) => s + P.d, nextLetters(P.pre));          // A1 → B1
+  if (P) return free((s) => P.d + s, nextLetters(P.suf));                   // 12 → 12A, 12A → 12B
+  if (prev) return free((s) => prev.toUpperCase() + s, 'A');                // a number nobody parses
+  const N = parseSceneNumber(next);
+  if (N) return free((s) => s + N.d, 'A');                                  // before 1 → A1
+  // Nothing numbered anywhere: plain integers.
+  let i = 1;
+  while (taken.has(String(i))) i++;
+  return String(i);
+}
+
+/**
+ * Lock the numbers. `preset` — Map(headingId → number), the numbers the
+ * Breakdown's rows carry (an imported file's, for one) — wins when it
+ * numbers every heading uniquely and in order;
+ * else the numbers the headings' own text carries, when every one does,
+ * uniquely; else the positions, which is what the page view and the
+ * PDF were already showing.
+ */
+export function lockNumbering(elements, preset) {
+  const heads = snHeadings(elements);
+  const unique = (list) => list.every(Boolean)
+    && new Set(list.map((n) => n.toUpperCase())).size === list.length;
+  let nums = null;
+  if (preset && typeof preset.get === 'function') {
+    const list = heads.map((h) => String(preset.get(h.id) || '').trim().toUpperCase());
+    /* …and only when they run in script order. Rows numbered by an
+       import read 47, 48, 48A, 49 and are locked as they are; rows an
+       unlocked sync numbered "next free" (1, 2, 6, 3) are not a
+       numbering anybody issued, and the positions win. */
+    const ascending = list.every((n, i) => !i || compareSceneNumbers(list[i - 1], n) < 0);
+    if (heads.length && unique(list) && ascending && list.every((n) => parseSceneNumber(n))) nums = list;
+  }
+  if (!nums) {
+    const list = heads.map((h) => textNumber(h.text));
+    if (heads.length && unique(list)) nums = list;
+  }
+  if (!nums) nums = heads.map((h, i) => String(i + 1));
+  const ids = {};
+  heads.forEach((h, i) => { ids[h.id] = { n: nums[i], t: snNorm(h.text) }; });
+  return { locked: true, at: nowISO(), ids };
+}
+
+/** The record after a save: every heading's number (the provisional
+    ones made permanent), moved entries re-keyed to the new id, current
+    text noted, omitted entries kept. PURE — returns a new object. */
+export function settleNumbering(elements, numbering) {
+  if (!isNumberingLocked(numbering)) return numbering;
+  const res = sceneNumbers(elements, numbering);
+  const ids = {};
+  const movedFrom = new Set(res.moved.values());
+  for (const [k, e] of Object.entries(numbering.ids || {})) {
+    if (!movedFrom.has(k)) ids[k] = { n: e.n, t: e.t };
+  }
+  for (const h of snHeadings(elements)) ids[h.id] = { n: res.byId.get(h.id), t: snNorm(h.text) };
+  return { locked: true, at: numbering.at, ids };
 }
 
 /* ---- the page count ----------------------------------------
@@ -668,6 +924,8 @@ export default {
   LINES_PER_PAGE, typeLabel, revisionColour,
   blankElement, blankDocument, blankScript, loadScript, saveScript,
   makeRevision, restoreElements,
+  sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, compareSceneNumbers,
+  parseSceneNumber, isNumberingLocked,
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
   dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,
   TITLE_FIELDS, normaliseTitlePage, hasTitlePage,

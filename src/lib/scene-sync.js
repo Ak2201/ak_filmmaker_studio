@@ -55,6 +55,17 @@
        exists; applying silently would hide the one moment worth
        seeing. Nothing is lost either way — it is a bin.
 
+   LOCKED NUMBERS (src/lib/script.js, sceneNumbers()). When the script's
+   numbers are locked, `opts.numbering` carries the lock and the NUMBER
+   of every linked row is the lock's — 12A for a heading inserted after
+   12 — on every sync, not only when the heading's text changed, and a
+   new row takes its locked number rather than the next integer free.
+   That is how the Breakdown, the stripboard and the call sheets say
+   12A without a second numbering of their own. Unlocked, numbers
+   behave exactly as rule 1 says. `numberPatches()` / `applyNumbers()`
+   carry the numbers alone, for the moment the lock is set or released
+   (the headings have not changed, so a sync would not run).
+
    UNLINKED ROWS ARE NEVER TOUCHED except by rule 5's link, which
    writes `scriptElId` alone. A Breakdown with no script, or rows
    typed by hand with no heading to match, stay exactly as they are.
@@ -63,7 +74,7 @@ import './store.js';   // must evaluate before anything reads localStorage
 import Scenes from './scenes.js';
 import { matchScenes, isConfident } from './screenplay-analysis.js';
 import { parseSlug } from './script-import.js';
-import { elementLines, LINES_PER_PAGE } from './script.js';
+import { elementLines, LINES_PER_PAGE, sceneNumbers, isNumberingLocked } from './script.js';
 import * as Bin from './scene-bin.js';
 
 const norm = (t) => String(t ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
@@ -136,6 +147,7 @@ function sliceEighths(elements, at) {
  *                only headings whose text changed update their row;
  *                without it every unmatched heading is new.
  *   opts.bin     the bin's entries (listBin())
+ *   opts.numbering  the script's `numbering` (locked scene numbers), or none
  * Returns {
  *   add:     [{ headingId, text, after, before, row }]  row = blankScene patch
  *   update:  [{ id, patch }]
@@ -154,6 +166,19 @@ export function reconcile(elements, scenes, opts = {}) {
   const prev = asMap(opts.prev);
   const isNew = (h) => !prev || !prev.has(h.id);
   const byId = new Map(heads.map((h) => [h.id, h]));
+  const locked = isNumberingLocked(opts.numbering)
+    ? sceneNumbers(els, opts.numbering).byId
+    : null;
+  /* Locked, the number is the lock's and nothing else's: the heading's
+     text cannot move it, and every linked row is told it each time. */
+  const lockPatch = (headingId, scene, p) => {
+    if (!locked) return p;
+    const out = { ...p };
+    delete out.number;
+    const n = locked.get(headingId);
+    if (n && String(n) !== String((scene && scene.number) ?? '')) out.number = n;
+    return out;
+  };
   const claimed = new Map();          // headingId -> sceneId
   const patches = new Map();          // sceneId -> patch
   const addPatch = (id, p) => {
@@ -169,7 +194,8 @@ export function reconcile(elements, scenes, opts = {}) {
     const h = byId.get(s.scriptElId);
     if (h && !claimed.has(h.id)) {
       claimed.set(h.id, s.id);
-      if (!prev || prev.get(h.id) !== h.text) addPatch(s.id, fieldPatch(h.text, s));
+      const p = (!prev || prev.get(h.id) !== h.text) ? fieldPatch(h.text, s) : {};
+      addPatch(s.id, lockPatch(h.id, s, p));
     } else lost.push(s);
   }
 
@@ -187,7 +213,7 @@ export function reconcile(elements, scenes, opts = {}) {
       && (was ? norm(x.text) === norm(was) : !prev && sameAsRow(x)));
     if (h) {
       claimed.set(h.id, s.id);
-      addPatch(s.id, { scriptElId: h.id });
+      addPatch(s.id, lockPatch(h.id, s, { scriptElId: h.id }));
     } else {
       // 3. gone
       plan.bin.push({ sceneId: s.id, heading: was || '' });
@@ -210,6 +236,10 @@ export function reconcile(elements, scenes, opts = {}) {
     const row = e.scene.row;
     const patch = row.scriptElId === h.id ? {} : { scriptElId: h.id };
     if (norm(e.heading) !== norm(h.text)) Object.assign(patch, fieldPatch(h.text, { ...Scenes.blankScene(), ...row }));
+    if (locked) {
+      delete patch.number;
+      Object.assign(patch, lockPatch(h.id, row, {}));
+    }
     plan.restore.push({ entryId: e.id, headingId: h.id, patch });
   }
 
@@ -230,7 +260,7 @@ export function reconcile(elements, scenes, opts = {}) {
       if (!h || claimed.has(h.id)) continue;
       if (isConfident(p.how)) {
         claimed.set(h.id, p.scene.id);
-        addPatch(p.scene.id, { scriptElId: h.id });
+        addPatch(p.scene.id, lockPatch(h.id, p.scene, { scriptElId: h.id }));
       } else {
         plan.held.push(h.id);
       }
@@ -252,8 +282,8 @@ export function reconcile(elements, scenes, opts = {}) {
     if (sceneId) { lastAnchor = { kind: 'scene', id: sceneId }; return; }
     if (held.has(h.id) || !isNew(h)) return;
     const f = headingFields(h.text);
-    let number = String(f.number || '').trim();
-    if (!number || taken.has(number.toUpperCase())) {
+    let number = String((locked && locked.get(h.id)) || f.number || '').trim();
+    if (!locked && (!number || taken.has(number.toUpperCase()))) {
       do { top++; } while (taken.has(String(top)));
       number = String(top);
     }
@@ -282,6 +312,35 @@ export function reconcile(elements, scenes, opts = {}) {
   for (const [id, patch] of patches) plan.update.push({ id, patch });
   plan.mass = plan.bin.length >= 3 && plan.bin.length * 2 > plan.linked;
   return plan;
+}
+
+/**
+ * The number every LINKED row should carry, as patches — the lock's
+ * numbers when `numbering` is locked, the headings' positions when it
+ * is not (which is what "unlock and renumber" asks for). Rows typed by
+ * hand, with no heading, are never in it. PURE.
+ *   → [{ id, patch: { number } }]
+ */
+export function numberPatches(elements, scenes, numbering) {
+  const nums = sceneNumbers(elements, isNumberingLocked(numbering) ? numbering : null).byId;
+  const out = [];
+  for (const s of scenes || []) {
+    if (!s || !s.scriptElId) continue;
+    const n = nums.get(s.scriptElId);
+    if (n && String(n) !== String(s.number ?? '')) out.push({ id: s.id, patch: { number: n } });
+  }
+  return out;
+}
+
+/** numberPatches() against what is stored, written. Returns the count. */
+export function applyNumbers(elements, numbering) {
+  const list = Scenes.listScenes();
+  const patches = numberPatches(elements, list, numbering);
+  if (!patches.length) return 0;
+  const byId = new Map(list.map((s) => [s.id, s]));
+  for (const p of patches) Object.assign(byId.get(p.id), p.patch);
+  Scenes.saveScenes(list);
+  return patches.length;
 }
 
 /** True when a plan would change anything. */
@@ -347,8 +406,8 @@ export function applySync(plan) {
 
 /** reconcile() + applySync() against what is stored now. */
 export function syncScript(elements, opts = {}) {
-  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin() });
+  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin(), numbering: opts.numbering });
   return { plan, result: applySync(plan) };
 }
 
-export default { headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript };
+export default { headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };

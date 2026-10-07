@@ -448,6 +448,20 @@
      this (5.74:1) and the hairlines keep --print-rule. */
   --print-muted: #666666;
   --print-wash:  #f0f0f0;
+  /* Revised-page stock, for the optional page tint on a revised-pages
+     PDF (write.css, .wr-pg-tint). Pale enough that --print-ink stays far
+     above AA on every one of them; the colour NAME in the page header is
+     what carries the meaning, the tint only echoes the paper a
+     production office would print it on. */
+  --print-rev-white:     #ffffff;
+  --print-rev-blue:      #dde9fb;
+  --print-rev-pink:      #fbe1ea;
+  --print-rev-yellow:    #fbf4c8;
+  --print-rev-green:     #def3d8;
+  --print-rev-goldenrod: #f7e2ad;
+  --print-rev-buff:      #f3e8d3;
+  --print-rev-salmon:    #fadccf;
+  --print-rev-cherry:    #f6cfd6;
 }
 
 

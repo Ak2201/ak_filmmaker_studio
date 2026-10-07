@@ -44,10 +44,13 @@ npm run test:screenplay  # screen time, cast matrix, auto-tag, 120pp < 1200ms
 npm run test:post        # the edit log and deliverables derivations (item 13)
 npm run prove:drive # Drive backup, against a faked Drive — see open item 10
 npm run prove:gate  # invite gate, device lock, admin, screening room (item 11)
+npm run test:import      # script import + the one slicer (item 4)
+npm run test:stripboard  # per-day order, placeScene/undoPlace/nudgeScene (item 18)
+npm run og               # regenerate public/og.png from tokens (after a palette change)
 npm run build:extension   # the Chrome extension, into dist-extension/
 npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
-npm run test:schema       # the WHOLE schema on a real PostgreSQL + 48 §16 checks
+npm run test:schema       # the WHOLE schema on a real PostgreSQL + 133 checks (billing, accounts guard, promo)
 npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
@@ -61,6 +64,8 @@ for hosted previews that shouldn't outlive themselves in a cache.
 
 ```
 index.html feature.html short.html library.html   page entries (Vite MPA)
+start.html                                        the PUBLIC landing page, outside
+                                                  the site gate (item 18)
 invite.html                                       the doorway: where a closed
                                                   gate lands a sign-in — and,
                                                   now, every visitor who is not
@@ -125,7 +130,9 @@ src/
              print.css + one stylesheet per module page
   pages/     hub.js feature.js short.js library.js breakdown.js
              stripboard.js reports.js contacts.js visualize.js
-             write.js plan.js
+             write.js plan.js start.js
+             hub/  ← util, first-run, project-cards, backup-menu,
+                     resume-cards: hub.js is the composition
   sw.js      service worker (vite-plugin-pwa injectManifest)
 docs/KNOWN-ISSUES.md  bugs found and not yet fixed — check it first
 docs/UX-AUDIT-2026-10-06.md  the full UI/UX audit, ranked by severity
@@ -484,6 +491,13 @@ Then one studio-level check that is not per page:
 
 Current state: all four pages pass at 100% accounted coverage, and the round
 trip restores both projects.
+
+**Chunking is no longer one `studio` chunk.** `vite.config.js`
+`manualChunks` puts a shared CORE together by name, each `src/data` file in
+its own chunk, and everything else by page. A module with a page-wide side
+effect (it patches something, listens globally, mounts chrome) belongs in
+CORE, or it silently stops running on the pages that do not import it by
+name. Module pages fetch about 29-47% of the JS they did.
 
 **Re-baselining.** `npm run baseline` recaptures `scripts/baseline.json` from the
 current build. It is a deliberate act, not a fix for a failing run — the new
@@ -1045,23 +1059,24 @@ numbered as they are in the history.
 | 2 | The scene chain, both directions | Done | scene → breakdown → stripboard → DOOD → call sheet → budget, all reading `scenes.js`. "Use N days" fills only blank fields. |
 | 3 | AI, bring-your-own-key | Done | Two providers through one `callModel()`; key in `fms_ai_key_v1` via raw get/set, in NO registry; `connect-src` in both host configs. Synopsis→script is staged and resumable. |
 | 4 | Script import + screenplay PDF | Done | Position IS type in a PDF; the refusals (encrypted, scanned, no ToUnicode) are the feature. `test:pdf`. One slicer: `sliceScenes` is `sliceScript`. |
-| 5 | Collaboration + RLS | Deployed, **live checks unrun** | `docs/SECURITY-RLS.md` ends with checks needing two real accounts; none has run. `acc_insert` hole fixed in schema (7 Oct) — run it. Projects are not attached to accounts by any UI, on purpose. |
+| 5 | Collaboration + RLS | Deployed, **live checks unrun** | `docs/SECURITY-RLS.md` ends with checks needing two real accounts; none has run. `acc_insert` hole fixed in schema §19 (accounts guard now BEFORE INSERT OR UPDATE) — unrun live. Projects are not attached to accounts by any UI, on purpose. |
 | 6 | `--ink-faint` as text | Done | Three-deep ink hierarchy. The AA probe walks every text node; `::before/::after` content is not a text node. |
 | 7 | Chennai rates, festivals | Partly — sourcing | No union floor exists (FEFSI MoU expired 2025). Never apply an inflation multiplier; show the band AND the checked figure. A festival carries its own `lastChecked`. |
 | 8 | First run + the Dragon sample | Done | Reconstruction, says so everywhere. NO real person beside a contact; NO reproduction of the real screenplay. The script JSON is a dynamic import with a `vite.config.js` exception — both halves needed. |
 | 9 | The interaction pass | Done | Palette derives everything, writes nothing. `COUNTDOWN` strips festival numbers at both dates; a frozen clock contradicts it. rAF doesn't run in a background tab — measure synchronously first. |
 | 10 | Google Drive backup | Done; consent screen **not published** | Reuses the backup format. Head revision read from `readMeta` on BOTH sides. No silent re-mint exists: `getToken({interactive:false})` rejects; the sign-in grant lasts ~1h. `prove:drive`. |
 | 11 | PRD 2.0: stages, Story, gate, extension | Done; 13.8/14.5 live checks unrun | The gate FAILS CLOSED. `fms_invite_code_v1` is a key on its own. One owner per redirect (`landOnInvite` stands down under the site gate). `prove:gate` 108. |
-| 12 | Billing: Razorpay, tiers, plan features | Built; **§16–18 not run live**, no key | Price read server-side; limits are triggers raising `P0402`; paying grants entry; a lapse is computed. Full-time access (§18), no periods. `docs/BILLING.md` §1 is the deploy order. |
+| 12 | Billing: Razorpay, tiers, plan features | Built; **§16–§20 not run live**, no key | Price read server-side; promo codes (§20) are priced server-side too; limits are triggers raising `P0402`; paying grants entry; a lapse is computed. Full-time access (§18), no periods. `docs/BILLING.md` §1 is the deploy order. |
 | 13 | Post-production: edit log, deliverables | Done; **§17 not run live** | Edit log reads shoot marks, never writes them; the set's word is final. Catalogue ids are storage keys. |
 | 14 | Consumer pass: legal, Library shelves, tabs, plan gate, adoption | Done | Legal pages keep words in markup, load no skin, are not in the gate. Work with no project is ADOPTED into the next empty project. `x = (async()=>{… finally{x=null}})()` is a bug. |
 | 15 | The screenplay writer, six phases | Done | ONE type-change path (`setElementType`). Alt+digit by default; Ctrl+digit steals tabs. Goals key is local-only until a schema section widens the CHECK. |
 | 16 | Story first, blueprints beside stages, script drives scenes | Done | `scene-sync.js` + the scene bin; zero headings bins nothing. `_readTiered()` reads in-flight first. `steps.stages.json` is the sidecar; step JSON is regenerated. |
 | 17 | UX-audit Medium/Low pass + open-issues pass | Done | `docs/UX-AUDIT-2026-10-06.md` struck through item by item; `docs/KNOWN-ISSUES.md` holds two decisions. `modal-focus.js`, validated `applyBackup`, filtered tab observer, rails `visibility:hidden`, band controls everywhere, Case Studies in parts, wider AA walk. |
+| 18 | Launch readiness (7 Oct 2026) | Done in code; owner steps in `docs/LAUNCH.md` | Landing page `start.html` is outside the gate and keeps its words in markup; `navigation.json` is fetched there as a URL asset on purpose (not bundled). A module with a page-wide side effect belongs in CORE in `vite.config.js`. Stripboard's per-day order lives INSIDE `fms_locations_v1` as `order` — no new key. `promo_codes` has no client access: only `quote_order` and `create_pending_payment` (5-arg) touch it. The canonical host `thefilmmakerstudio.vercel.app` is a placeholder in ten files (LAUNCH §7). |
 
 **What is live and what is not** — the one list to trust: schema §1–§14
 have run on `conhlrulxfwkhsnymakz` (verified through PostgREST, not from
-the file); §16–§18 and the 7 Oct sections have NOT; the Google consent
+the file); §16–§20 have NOT; the Google consent
 screen is in Testing; no Razorpay key exists; none of the live RLS checks
 has been executed. Ask the database, not the file.
 

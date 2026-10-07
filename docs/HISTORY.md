@@ -541,7 +541,9 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Supabase also carries collaboration that a Drive file cannot. Worth
     knowing: `vite.config.js` folds every `src/lib` and `src/ui` module into one
     `studio` chunk, so cloud.js already evaluates on **every** page, not only
-    the three that import it by name.
+    the three that import it by name. **(Corrected 7 Oct: no longer true —
+    chunking is core-by-name, data by file, rest by page; see item 18 and
+    the chunking note in CLAUDE.md.)**
 
     **THE TOKEN, AND THE TWO THINGS THIS PARAGRAPH USED TO GET WRONG.**
     It is still never persisted BY THIS APP — a module variable, gone with the
@@ -1085,3 +1087,66 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     sheet no longer promises one page) and the pill's old step list.
     `docs/KNOWN-ISSUES.md` now holds two recorded decisions and one
     thing seen once.
+
+18. **Launch readiness (7 Oct 2026).** Branch `claude/launch-readiness`;
+    the owner's side is `docs/LAUNCH.md`.
+
+    **What.** (a) A public landing page, `start.html`, outside the site
+    gate (`sitegate` EXEMPT, rewrites in `vercel.json` and `netlify.toml`,
+    `invite.html` links to it, `index.html?sample=1` opens the Dragon
+    sample), with Open Graph / Twitter cards on the public pages,
+    `public/og.png` from `npm run og` (`scripts/make-og.mjs`), `robots.txt`,
+    `sitemap.xml` and a meta description on every html entry. (b) The
+    first-paint JS cut: `manualChunks` (core by name, data by file, rest by
+    page), `virtual:fms-step-index`, the blueprint drawer split into
+    -mount/-body, the glossary lazy, `extension-bridge` loading `story.js`
+    lazily. (c) Navigation in plain English: 37 `purpose` lines, a
+    Pre-Production group in the launcher, `jobs` in `navigation.json` and
+    three job cards on the hub, the sample button first in first-run, a
+    lock panel naming the lowest plan that includes the module; `hub.js`
+    split into `src/pages/hub/`. (d) Billing: schema §19 closes the
+    `accounts` INSERT hole (the guard fires BEFORE INSERT OR UPDATE) and
+    §20 adds promo codes; the invite-code caveat is documented.
+    (e) Stripboard drag-and-drop with a per-day order, Alt+Up/Down from the
+    keyboard; the Story page's "ways in" empty state; the Drive panel says
+    the one-hour window (`HOUR_NOTE`, `drive-sync.js`).
+
+    **Why.** The site is invite-only and a stranger from an ad hit a locked
+    door with no explanation; the module pages shipped the whole app's JS
+    on every load; the hub told people what modules were called, not what
+    they were for; and a hole in `accounts` let a signed-in user insert a
+    row naming themselves a tier.
+
+    **Measured (first-paint JS, raw KB, before to after).** index 1238 to
+    716; breakdown 1198 to 373; shoot 1183 to 342; write 1243 to 586;
+    story 1215 to 554; settings 1195 to 414. Gzipped, shoot 394 to 111.
+    Module pages fetch 29-47% of what they did; the hub 58%. Enter-key
+    paint on write unchanged at about 30ms.
+
+    **Decisions.**
+    - *Promo codes.* `promo_codes` has RLS on and no client policy, so no
+      client can list or read a code. The client only calls `quote_order`
+      (an RPC that returns the discounted price) and the 5-arg
+      `create_pending_payment`; `rzp-order` passes the code through and
+      the price is still read server-side. The UI is "Have a code?" on the
+      plan cards and a Promo codes block in the admin console.
+    - *Order inside the locations blob.* The stripboard's per-day order is
+      an `order` field on the entries already in `fms_locations_v1`
+      (`placeScene`, `undoPlace`, `nudgeScene` in `locations.js`), not a new
+      key: the storage contract is untouched and a stored day without
+      `order` reads in its old sequence.
+    - *Landing page, markup first.* Like the legal pages, its words are in
+      the HTML so a crawler and a link preview read them. The one exception
+      is `navigation.json`, fetched there as a URL asset so the page stays
+      out of the bundle on purpose.
+    - *The gate stays the door.* Nothing here opens the site; `start.html`
+      sells and links in. Opening it is the owner's choice (LAUNCH §1).
+    - *The canonical host is a placeholder*, the vercel.app address, until a
+      domain is settled.
+
+    **The owner must** work `docs/LAUNCH.md` top to bottom: decide the door,
+    publish the Google consent screen, finish the legal drafts, run schema
+    §16-§20 and the live RLS checks, set up Razorpay (redeploy `rzp-order`),
+    replace the placeholder host, then think about ads. Suites at this
+    point: `test:schema` 133, `test:billing` 50, `prove:billing` 93,
+    `test:stripboard` 66.

@@ -45,15 +45,17 @@ Check: every `[OWNER:` or "draft" marker is gone from the three files.
 Against project `conhlrulxfwkhsnymakz`, dashboard SQL editor, in order
 (`node scripts/deploy-billing.mjs --print` writes the SQL for you):
 §16 (plans, payments), §17 (edit log + deliverables scopes), §18
-(full-time access, features by plan), and the 7 Oct sections (the
-`acc_insert` fix and promo codes — numbers in `supabase-schema.sql`).
+(full-time access, features by plan), §19 (the accounts guard: closes
+the `acc_insert` hole) and §20 (promo codes).
 Then set the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address
 if it has signed in.
 
 Check: `select id from plans order by sort` returns four rows through
 PostgREST as a signed-in user; `billing_status()` answers `plan: 'free'`;
 the Edit Log and Deliverables pages sync instead of saying "saved
-locally only".
+locally only"; `select tgtype from pg_trigger where tgname='accounts_guard'`
+returns 7 (BEFORE INSERT OR UPDATE, row level); and, as the anon role,
+`select count(*) from promo_codes` fails with 42501.
 
 ## 5. Run the live security checks
 
@@ -70,7 +72,7 @@ Check: every row in those tables ticked, with the date.
 
 Test mode first. `docs/BILLING.md` §1 has the order: key id + secret as
 Supabase secrets, deploy the three functions (`rzp-webhook` with
-`--no-verify-jwt`), register the webhook URL, set `VITE_RAZORPAY_KEY_ID`
+`--no-verify-jwt`; REDEPLOY `rzp-order` too, since it now passes the promo code), register the webhook URL, set `VITE_RAZORPAY_KEY_ID`
 in `.env`, rebuild. Then set the REAL prices in the admin console — the
 seeded ₹2,999 / ₹7,999 / ₹19,999 are placeholders. Then promo codes, if
 you want a launch offer (admin console → Promo codes).
@@ -80,8 +82,18 @@ the plan lapse.
 
 ## 7. Domain, cards, crawlers
 
-- Set the production domain in `public/robots.txt` and `public/sitemap.xml`
-  (they carry the vercel.app host until you do) and in the `og:url` metas.
+- Replace `thefilmmakerstudio.vercel.app` with the production domain in:
+  `start.html` (canonical, og:url, og:image, twitter:image), `index.html`,
+  `invite.html`, `privacy.html`, `terms.html`, `refund.html` (og:url,
+  og:image, twitter:image), `public/robots.txt` (Sitemap line) and
+  `public/sitemap.xml` (five `<loc>`). `grep -rn thefilmmakerstudio.vercel.app
+  *.html public` lists them; `src/lib/gate.js` has one harmless fallback.
+- `invite.html` is `noindex, nofollow` yet listed in `sitemap.xml`: the two
+  disagree. Decision: drop the `/invite` entry from the sitemap (the landing
+  page is the crawlable door). Not yet done.
+- After any palette change run `npm run og` and commit `public/og.png`.
+- The Dragon figures on `start.html` are written in the markup, not
+  derived; if the sample changes, edit them by hand.
 - Paste the landing URL into WhatsApp and Instagram DM: a card with the
   image and the one-line hook should appear. If not, Meta's debugger
   (developers.facebook.com/tools/debug) says which tag it missed.

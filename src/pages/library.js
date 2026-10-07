@@ -740,15 +740,13 @@ function wireActions(root) {
 }
 
 /* ============================================================
-   THEME — carry the legacy per-page dark pref forward.
-   ============================================================ */
-function adoptLegacyDarkPref() {
-  try {
-    if (localStorage.getItem('fms_studio_theme_v1')) return; // already chosen
-    const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
-    if (p && p.dark) StudioUI.applyTheme('ink');
-  } catch (e) {}
-}
+   THEME
+   ============================================================
+   There used to be an adoptLegacyDarkPref() here, carrying the old
+   Library page's dark toggle into the ink theme. It read an undefined
+   PREF_KEY, so it never ran — and it never needed to: ink is the
+   default, and chrome.js's loadTheme() already hands ink to anyone
+   with no stored theme, which is exactly who it was for. */
 function syncThemeButton() {
   const theme = document.body.classList.contains('dark') ? 'ink' : 'paper';
   // applyTheme also updates #darkBtn's glyph, which did not exist
@@ -778,7 +776,6 @@ function render() {
 
   wireActions(app);
   mountShelf();
-  adoptLegacyDarkPref();
   syncThemeButton();
 
   // StudioUI boots before this module renders, so the bits of it

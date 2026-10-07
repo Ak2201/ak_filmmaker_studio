@@ -1897,8 +1897,9 @@ function wireEvents() {
 
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveData(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); toggleDark(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); document.getElementById('stepJumper').focus(); }
+    /* D and K are chrome.js's (theme, command palette) on every page.
+       Binding them here too cycled the theme twice per press and put
+       focus on the Jump menu behind the palette. */
   });
 }
 

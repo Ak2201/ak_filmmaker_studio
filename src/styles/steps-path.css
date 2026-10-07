@@ -202,6 +202,10 @@
    field keeps its value and its listeners — turning the filter off
    again restores a page that never went anywhere. */
 body.prio-spine-only .step:not(.is-spine) { display: none; }
+/* The rail follows the page (chrome.js copies `.is-spine` onto each
+   entry), and a Part with no spine step loses its label too. */
+body.prio-spine-only .step-rail-item:not(.is-spine),
+body.prio-spine-only .step-rail-group:not(:has(.is-spine)) { display: none; }
 
 @media print {
   /* A printed blueprint is the whole blueprint. A filter is a way of

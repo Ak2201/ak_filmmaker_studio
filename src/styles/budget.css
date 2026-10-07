@@ -1,0 +1,371 @@
+/* ============================================================
+   BUDGET — the cost tabs (src/ui/budget-costs.js)
+   ------------------------------------------------------------
+   Only what is this page's own. Cards, stats, buttons and the
+   estimator slab are the studio language (modules.css,
+   widgets.css, chrome.css). Every colour is a token, every shape
+   a --sk-* variable, every transform multiplied by --motion.
+
+   Text on a light ground takes --ink / --ink-muted / --accent-deep,
+   never a fill colour; "over budget" is said with a wash behind ink
+   and a filled flag, not with red text, because --danger as text
+   is under 4.5:1 on a light card.
+   ============================================================ */
+
+.cx-sec { display: grid; gap: var(--s4); min-width: 0; }
+.cx-sec > * { min-width: 0; }
+
+.cx-intro { display: grid; gap: var(--s2); }
+.cx-h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  font-style: var(--sk-card-h-style, normal);
+  color: var(--ink);
+}
+.cx-deck { margin: 0; max-width: 62ch; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-snug); }
+.cx-h3 {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.cx-h4 {
+  margin: var(--s2) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cx-hint { font-size: var(--t-micro); line-height: var(--lh-snug); color: var(--ink-muted); }
+p.cx-hint { margin: 0; }
+
+.cx-card {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  min-width: 0;
+}
+
+/* The strip's numbers are rupees with eight digits, not counts: one
+   size down from the shared stat, and never broken after the ₹. */
+.cx-stats .bd-stat strong { font-size: var(--t-xl); white-space: nowrap; }
+
+/* ---- fields --------------------------------------------------- */
+.cx-quick-row {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  align-items: start;
+}
+.cx-field { display: grid; gap: var(--s1); min-width: 0; }
+.cx-flabel {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cx-sec input[type="text"],
+.cx-sec input[type="url"],
+.cx-sec input[type="date"],
+.cx-sec select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-field-radius, var(--sk-radius));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.cx-sec input:focus-visible,
+.cx-sec select:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.cx-sec input:disabled { opacity: .5; }
+.cx-amount {
+  font-family: var(--f-display) !important;
+  font-size: var(--t-lg) !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cx-set { margin: 0; padding: 0; border: 0; display: grid; gap: var(--s1); min-width: 0; }
+.cx-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.cx-chip { position: relative; display: inline-flex; }
+.cx-chip input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.cx-chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--t-small);
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
+}
+.cx-chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-on); font-weight: 600; }
+.cx-chip input:focus-visible + span { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; }
+
+.cx-more { border-top: 1px solid var(--rule-hair); padding-top: var(--s2); }
+.cx-more > summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  font-size: var(--t-small);
+  color: var(--accent-deep);
+}
+.cx-more[open] > summary { margin-bottom: var(--s3); }
+.cx-more > :not(summary) + :not(summary) { margin-top: var(--s3); }
+
+.cx-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.cx-submit { min-height: 44px; padding-inline: var(--s5); font-size: var(--t-small); }
+.cx-usefee { align-self: end; }
+
+/* ---- tables --------------------------------------------------- */
+/* A wide table scrolls inside its own box at 390px; the page never
+   scrolls sideways. */
+.cx-scroll { overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; }
+.cx-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); color: var(--ink); }
+.cx-table caption {
+  text-align: left;
+  padding-bottom: var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cx-table th,
+.cx-table td {
+  padding: var(--s2) var(--s3) var(--s2) 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule-hair);
+}
+.cx-table thead th {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.cx-table tbody th { font-weight: 500; }
+.cx-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cx-table .cx-dept-row th,
+.cx-table .cx-dept-row td { padding-top: var(--s4); font-weight: 700; border-bottom-color: var(--rule); }
+.cx-table .cx-sub th, .cx-table .cx-sub td { font-weight: 600; color: var(--ink-body); }
+.cx-table tfoot th, .cx-table tfoot td { font-weight: 600; }
+.cx-table .cx-total th, .cx-table .cx-total td {
+  border-top: 2px solid var(--ink);
+  border-bottom: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 800;
+}
+.cx-table tr.is-over > *,
+.cx-table td.is-over { background: var(--danger-wash); }
+.cx-table td.is-over { font-weight: 700; }
+.cx-table tr.is-owed > * { background: var(--warn-wash); }
+.cx-table tr.is-set > * { background: var(--accent-wash); }
+.cx-report select { min-height: 32px; padding-block: var(--s1); font-size: var(--t-micro); min-width: 9rem; }
+.cx-wages input { min-width: 7rem; }
+.cx-top td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cx-cont input { max-width: 10rem; }
+
+.cx-flag {
+  display: inline-block;
+  margin-left: var(--s2);
+  padding: 0 var(--s2);
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--danger-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+.cx-bar {
+  display: block;
+  height: 4px;
+  margin-top: var(--s1);
+  min-width: 3rem;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.cx-bar > span {
+  display: block;
+  height: 100%;
+  width: var(--used, 0%);
+  background: var(--accent);
+}
+tr.is-over .cx-bar > span { background: var(--danger); }
+
+/* ---- notices ----------------------------------------------------- */
+.cx-alert {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--sk-card-pad);
+  border-radius: var(--sk-radius);
+  background: var(--danger-wash);
+  color: var(--ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  font-size: var(--t-small);
+}
+.cx-alert.cx-expired { background: var(--warn-wash); }
+.cx-alert p, .cx-alert ul { margin: 0; }
+.cx-alert ul { padding-left: var(--s5); display: grid; gap: var(--s1); }
+.cx-alert a { color: var(--ink); text-decoration: underline; }
+.cx-empty { display: grid; gap: var(--s3); justify-items: start; padding: var(--sk-card-pad); border: 1px dashed var(--rule); border-radius: var(--sk-radius); }
+.cx-empty p { margin: 0; color: var(--ink-body); font-size: var(--t-small); }
+.cx-taxnote { max-width: 72ch; }
+
+/* ---- the expense log -------------------------------------------- */
+.cx-day { display: grid; gap: var(--s1); }
+.cx-day-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s1);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.cx-day-total { color: var(--ink); font-variant-numeric: tabular-nums; }
+.cx-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.cx-log-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr) auto;
+  gap: var(--s3);
+  align-items: center;
+  padding: var(--s2) var(--s1);
+  border-bottom: 1px solid var(--rule-hair);
+  font-size: var(--t-small);
+}
+.cx-log-amt { font-family: var(--f-display); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.cx-log-what { color: var(--ink-body); overflow-wrap: anywhere; }
+.cx-log-note { display: block; color: var(--ink-muted); font-size: var(--t-micro); }
+.cx-receipt { margin-left: var(--s2); color: var(--accent-deep); }
+.cx-del { min-width: 32px; min-height: 32px; }
+
+/* ---- crew --------------------------------------------------------- */
+.cx-crew-dept { display: grid; gap: var(--s2); }
+.cx-dept-name {
+  margin: var(--s3) 0 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.cx-crew {
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  min-width: 0;
+}
+.cx-crew-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  min-height: 44px;
+  padding: var(--sk-card-pad);
+  padding-block: var(--s3);
+  cursor: pointer;
+}
+.cx-crew-name { font-family: var(--f-display); font-weight: 700; color: var(--ink); }
+.cx-crew-role { flex: 1 1 10rem; min-width: 0; color: var(--ink-muted); font-size: var(--t-small); overflow-wrap: anywhere; }
+.cx-crew-due { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.cx-crew-due.is-due { color: var(--ink); font-weight: 700; }
+.cx-crew-body { display: grid; gap: var(--s3); padding: var(--sk-card-pad); padding-top: 0; }
+.cx-sum {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius);
+}
+.cx-sum dt { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.cx-sum dd { margin: 0; font-family: var(--f-display); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.cx-pay { display: grid; gap: var(--s3); }
+
+/* ---- documents: top sheet, settlement ---------------------------- */
+.cx-doc { display: grid; gap: var(--s3); min-width: 0; }
+.cx-doc-eyebrow { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
+.cx-doc-title { margin: 0; font-family: var(--f-display); font-size: var(--t-2xl); font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cx-doc-sub { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+.cx-sign { margin-top: var(--s6); display: grid; gap: var(--s6); }
+.cx-sign p { margin: 0; }
+.cx-sign-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s4); }
+.cx-sign-row span { padding-top: var(--s2); border-top: 1px solid var(--ink); font-size: var(--t-micro); color: var(--ink-muted); }
+
+.cx-export { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.cx-export .btn { justify-self: start; }
+
+/* ---- touch: 44px targets ------------------------------------------ */
+@media (pointer: coarse) {
+  .cx-sec input[type="text"],
+  .cx-sec input[type="url"],
+  .cx-sec input[type="date"],
+  .cx-sec select,
+  .cx-chip span,
+  .cx-more > summary,
+  .cx-del,
+  .cx-sec .btn,
+  .cx-sec .mini-btn,
+  .cx-sec .bd-icon { min-height: 44px; }
+  .cx-del, .cx-sec .bd-icon { min-width: 44px; }
+  .cx-chip span { padding-inline: var(--s4); }
+}
+
+@media (max-width: 719px) {
+  .cx-log-row { grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr) auto; gap: var(--s2); }
+  .cx-sign-row { grid-template-columns: 1fr; }
+}
+
+/* ---- print -------------------------------------------------------- */
+#cxPrint { display: none; }
+@media print {
+  body.cx-printing > *:not(#cxPrint) { display: none !important; }
+  body.cx-printing #cxPrint { display: block; color: var(--print-ink); background: var(--print-paper); }
+  #cxPrint .cx-doc * { color: var(--print-ink) !important; }
+  #cxPrint .cx-table th, #cxPrint .cx-table td { border-color: var(--print-rule); }
+  #cxPrint .cx-table tr { break-inside: avoid; }
+  #cxPrint .cx-table thead { display: table-header-group; }
+  #cxPrint .cx-table th { overflow-wrap: normal; word-break: normal; }
+  #cxPrint .cx-sign-row span { border-color: var(--print-ink); }
+}

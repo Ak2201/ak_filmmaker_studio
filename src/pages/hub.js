@@ -151,6 +151,7 @@ const EDIT_KEY      = 'fms_edit_v1';
 const DELIVER_KEY   = 'fms_deliverables_v1';
 const GOALS_KEY     = 'fms_write_goals_v1';   // focus mode, src/lib/write-goals.js
 const SCENE_BIN_KEY = 'fms_scene_bin_v1';     // the scene bin, src/lib/scene-bin.js
+const COSTS_KEY     = 'fms_costs_v1';         // the budget's actuals, src/lib/costs.js
 /* The device-lock handle (src/lib/gate.js). In this reset list so a
    wiped studio forgets which session it held; deliberately NOT in
    GLOBAL_KEYS, for the reason the Drive pointer is not. */
@@ -165,7 +166,7 @@ const ALL_KEYS = [
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, WRITE_PREFS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY,
+  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
      Without it a wiped studio stays connected to a file full of
      work, and the next keystroke pushes the empty studio over it.

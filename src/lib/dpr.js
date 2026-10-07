@@ -278,7 +278,7 @@ export function removeBanner(day, id) {
 /** One-line words for a banner, the same on the board and the one-liner. */
 export function bannerText(b) {
   const label = bannerLabel(b.kind);
-  if (b.kind === 'move') {
+  if (b.kind === 'move' && (b.from || b.to)) {
     const route = [b.from || '?', b.to || '?'].join(' → ');
     return label + ': ' + route + (b.text ? ' — ' + b.text : '');
   }

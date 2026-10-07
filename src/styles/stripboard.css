@@ -614,6 +614,9 @@ body.pdf-print .sb-hint { display: none !important; }
   font-size: var(--t-small);
 }
 .sb-banner-route .sb-banner-in { flex: 0 1 9rem; }
+.sb-banner .sb-day-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
+.sb-banner .sb-btn { flex: 0 0 auto; }
+.sb-group-hours.is-over { color: var(--warn-deep); font-weight: 700; }
 .sb-banner-in::placeholder { color: var(--ink-muted); }
 .sb-banner-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
 

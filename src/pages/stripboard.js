@@ -486,6 +486,7 @@ function fillHours() {
       const sec = secsByDay.get(Number(el.dataset.hoursDay));
       const hrs = DPR.estimateHours(sec, DPR.pageTarget());
       el.textContent = hrs == null ? '' : `≈ ${hrs.toFixed(1)} h to shoot`;
+      el.classList.toggle('is-over', hrs != null && hrs > DPR.DAY_HOURS);
       el.title = hrs == null ? '' : 'Estimated from the script’s screen time at your page target, '
         + `assuming a ${DPR.DAY_HOURS}-hour day. An estimate built on an estimate.`;
     });

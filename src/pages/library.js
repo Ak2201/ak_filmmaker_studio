@@ -243,12 +243,16 @@ const SECTIONS = [
     id: 'equipment',
     nav: 'EQUIPMENT',
     tab: 'Equipment',
-    title: 'Equipment &amp; <em>Cost Estimator.</em>',
-    tocTitle: 'Equipment & Cost Estimator',
-    tocDesc: `Chennai ${rates.asOf} indicative ranges`,
+    /* The estimator moved to budget.html; this section kept only the
+       rate tables, and its title still advertised the calculator and
+       told the reader to "use the calculator at the bottom". It names
+       what is here now, and the deck routes to the Budget page. */
+    title: 'Equipment &amp; <em>Rates.</em>',
+    tocTitle: 'Equipment & Rates',
+    tocDesc: `Chennai ${rates.asOf} indicative ranges, some re-checked ${rateChecks.lastChecked}`,
     count: `${N_TABLES} RATE TABLES · ${rates.asOf}`,
     deck: `Indicative daily rental ranges, Chennai market, ${rates.asOf}, in ` +
-          `${numWord(N_TABLES)} tables. Use the calculator at the bottom to ` +
+          `${numWord(N_TABLES)} tables. The Budget page reads them to ` +
           `estimate kit cost for your shoot. Rates fluctuate; verify with ` +
           `vendors before locking your budget.`,
     body: renderEquipment
@@ -489,7 +493,15 @@ function renderEquipment() {
     // what the 2026 pass found for THIS section, which for four of
     // the six is "nothing published", stated rather than implied.
     const secNote = (rateChecks.sectionNotes || {})[sec.id];
-    block.append(h('p.hint', { text: `Rates as of ${rates.asOf}. Not updated since.` }));
+    /* "Not updated since" was printed under every table, including the
+       camera bodies, most of which carry a CHECKED row right below it.
+       Say so only where nothing in the section was re-checked. */
+    const anyChecked = (CHECKS_BY_SECTION.get(sec.id) || []).some((c) => c.confidence === 'checked');
+    block.append(h('p.hint', {
+      text: anyChecked
+        ? `Rates as of ${rates.asOf}; rows marked CHECKED were re-checked on ${rateChecks.lastChecked}.`
+        : `Rates as of ${rates.asOf}. Not updated since.`
+    }));
     if (secNote) {
       const srcNote = sourceOf(secNote.source);
       block.append(h('p.hint.rate-section-check', { 'data-confidence': secNote.confidence }, [

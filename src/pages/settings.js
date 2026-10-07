@@ -129,7 +129,26 @@ async function refreshBilling() {
 }
 function renderPlan() {
   const c = window.StudioCloud;
-  if (!c || !c.isConfigured() || !c.getSession() || !billing.plans) return null;
+  /* SIGNED OUT, THE TAB STILL EXISTS. plan-gate.js's upgrade panel, the
+     account menu and the billing toasts all link to settings.html#plan;
+     with no section by that id the tab strip fell back to its first
+     tab, so "See the plans" opened the AI-key form (UX audit M21). A
+     plan sits on an account, so signed out there is nothing to show
+     but the way in — said here, at the address everything links to. */
+  if (!c || !c.getSession()) {
+    const configured = !!(c && c.isConfigured && c.isConfigured());
+    const sec = section('plan', 'Plan', 'Sign in to see the plans.',
+      'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. It belongs to an account, so the plans and your usage show here once you are signed in. Work on this device is never limited.');
+    if (configured) {
+      sec.append(h('p', {}, [
+        h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })
+      ]));
+    } else {
+      sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
+    }
+    return sec;
+  }
+  if (!c.isConfigured() || !billing.plans) return null;
   const st = billing.st;
   const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' \u00b7 ' + st.account_name : ''}` : 'Choose a plan.',
     'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. Work on this device is never limited.');
@@ -810,6 +829,10 @@ delegate(document, 'click', '[data-action="storage-backup"]', () => {
                         + ((e && e.message) || 'Nothing was changed.'),
                         { duration: 6000 });
   }
+});
+
+delegate(document, 'click', '[data-action="plan-sign-in"]', () => {
+  openCloudAuthModal();
 });
 
 delegate(document, 'click', '[data-action="admin-configure"]', () => {

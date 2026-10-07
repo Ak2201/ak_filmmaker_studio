@@ -59,22 +59,33 @@ function rateProvenance() {
 function render() {
   const main = h('main#main.hue-plan');
 
-  main.append(
+  /* THE PAGE COLUMN. Every module page puts its head in `header.bd-head`
+     and its body in a column from the same family (modules.css) —
+     max-width, auto margins, side padding. This page put the head and
+     the two calculator blocks straight into <main>, so they ran from the
+     rail to the window edge with no gutter and the estimator's subtotal
+     column sat against (and under) the scrollbar. The same classes the
+     other pages use, rather than a budget stylesheet of its own; the
+     blueprint pill finds its host by `header.bd-head` too. */
+  main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Plan · what it costs' }),
-    h('h1.bd-h1', { text: 'Budget.' }),
-    h('p.bd-sub', {
+    h('h1.bd-title', { text: 'Budget.' }),
+    h('p.bd-deck', {
       text: 'A line-item estimate that reads your schedule. Days come from the '
           + 'stripboard if you have built one, rates from the Chennai tables if '
           + 'you want them, and every figure stays editable.'
     })
-  );
+  ]));
 
-  main.append(renderBudget());
+  const body = h('div.bd-list');
+  body.append(renderBudget());
 
   /* The rate tables did not move. Saying so, with a route, is the
      difference between "this page is thin" and "the reference is
-     one click away". */
-  main.append(h('div.bd-how', {}, [
+     one click away". Not `.bd-how`: that is the empty states' grid of
+     numbered steps, and it laid these three blocks out as three
+     columns. */
+  body.append(h('div.bd-notes', {}, [
     h('h3', { text: 'Where the numbers come from' }),
     h('p', { text: rateProvenance() }),
     h('p', {}, [
@@ -87,6 +98,7 @@ function render() {
       '.'
     ])
   ]));
+  main.append(body);
 
   app.replaceChildren(main);
   mountShell();

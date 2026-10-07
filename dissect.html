@@ -8,7 +8,9 @@
      keeps a #fragment (dissect.html#mine → library.html#mine); without
      scripts the refresh below lands on the tab. -->
 <meta name="fms-moved" content="library.html#dissection">
-<link rel="canonical" href="./library.html#dissection">
+<!-- vite-ignore: Vite treats a canonical href as an asset and emitted an
+     unbuilt copy of the page into assets/*.html, which the worker precached. -->
+<link vite-ignore rel="canonical" href="./library.html#dissection">
 <noscript><meta http-equiv="refresh" content="0; url=./library.html#dissection"></noscript>
 <script type="module" src="/src/pages/moved.js"></script>
 </head>

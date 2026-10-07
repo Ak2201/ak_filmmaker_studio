@@ -30,7 +30,17 @@
   --tabs-gutter: var(--s5);
   margin-inline: max(var(--tabs-gutter), calc((100% - var(--measure-wide)) / 2 + var(--tabs-gutter)));
   display: flex;
-  flex-wrap: wrap;
+  /* ONE ROW, SCROLLING SIDEWAYS. It wrapped, and the Library's eight
+     tabs at 390px made four sticky rows — 205px of strip pinned over
+     a 844px phone, on top of the band. One line that scrolls inside
+     itself is what the stage strip in the band already does; the tab
+     cut off at the edge is the hint that there are more, and tabs.js
+     scrolls the active one into view. The strip's own scroll, never
+     the page's: verify's 390px overflow check reads the document. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
   gap: var(--s1);
   padding: var(--s2) 0;
   margin-block: 0 var(--s4);
@@ -38,6 +48,8 @@
   border-bottom: var(--sk-card-line-w) solid var(--sk-card-line);
 }
 .tabs-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
   appearance: none;
   font: inherit;
   font-family: var(--f-mono);

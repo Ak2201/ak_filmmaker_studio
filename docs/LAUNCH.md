@@ -33,9 +33,15 @@ Check: sign in with a Google account that is not yours.
 
 ## 3. Finish the legal pages
 
-`privacy.html`, `terms.html`, `refund.html` are DRAFTS: no business name,
-no postal address, no GST number; refund window and governing law
-(India, Chennai courts) marked for you to confirm. Razorpay's business
+`privacy.html`, `terms.html`, `refund.html` now say the service is sold
+by an INDIVIDUAL (sole proprietor) and carry a marked
+`[OWNER: full legal name]` placeholder, plus `[OWNER: GSTIN, if
+registered]` on the one tax line in the Terms. The refund policy is
+decided (7 Oct 2026): purchases are FINAL, except a duplicate or erroneous
+charge (refunded), charged-but-never-activated (refunded or activated,
+the buyer's choice) and any refund Indian law requires; governing law
+India, Chennai courts. Still to fill in: the name, the GSTIN if any, and
+a postal address if Razorpay asks for one. Razorpay's business
 verification and Meta's ad review both read these.
 
 Check: every `[OWNER:` or "draft" marker is gone from the three files.
@@ -82,12 +88,15 @@ the plan lapse.
 
 ## 7. Domain, cards, crawlers
 
-- Replace `thefilmmakerstudio.vercel.app` with the production domain in:
+- `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner,
+  7 Oct 2026), no longer a placeholder: nothing to replace. It appears in
   `start.html` (canonical, og:url, og:image, twitter:image), `index.html`,
   `invite.html`, `privacy.html`, `terms.html`, `refund.html` (og:url,
   og:image, twitter:image), `public/robots.txt` (Sitemap line) and
-  `public/sitemap.xml` (four `<loc>`). `grep -rn thefilmmakerstudio.vercel.app
-  *.html public` lists them; `src/lib/gate.js` has one harmless fallback.
+  `public/sitemap.xml` (four `<loc>`); `grep -rn thefilmmakerstudio.vercel.app
+  *.html public` lists them and `src/lib/gate.js` has one harmless fallback.
+  A custom domain LATER would need those same ten files, the domain added
+  in Vercel, and the Google OAuth Authorised JavaScript origins.
 - `/invite` is no longer in `sitemap.xml` (done): it is the gate's doorway
   and `noindex, nofollow`, and the landing page is the crawlable door.
 - After any palette change run `npm run og` and commit `public/og.png`.

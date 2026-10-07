@@ -91,7 +91,18 @@
 }
 .sd-card.is-shot    { border-left-color: var(--ok); }
 .sd-card.is-part    { border-left-color: var(--warn); }
-.sd-card.is-dropped { border-left-color: var(--ink-faint); opacity: 0.72; }
+/* Dropped reads as set aside by its SHAPE, not by fading: opacity
+   took every word on the card to 3.72:1, under the AA floor, on the
+   one card somebody may need to read to argue it back in. A dashed
+   frame, a sunk ground and a struck slug say "not today" at full
+   contrast. */
+.sd-card.is-dropped {
+  border-style: dashed;
+  border-left-style: solid;
+  border-left-color: var(--ink-faint);
+  background: var(--paper-sunk, var(--paper-raised));
+}
+.sd-card.is-dropped .sd-slug { text-decoration: line-through; text-decoration-thickness: 1px; }
 
 .sd-head {
   display: flex;

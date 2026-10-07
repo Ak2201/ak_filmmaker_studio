@@ -57,7 +57,7 @@ import BeatBoard from '../ui/beat-board.js';
 import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
-import { binScene } from '../lib/scene-bin.js';
+import { binScene, unaddScenes } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
@@ -3487,7 +3487,7 @@ async function breakIntoShots() {
         const ids = new Set(addedScenes);
         shotsToast(addedScenes.length + (addedScenes.length === 1 ? ' scene' : ' scenes')
           + ' added to the Breakdown · every scene already has shots', () => {
-          Scenes.saveScenes(Scenes.listScenes().filter((s) => !ids.has(s.id)));
+          unaddScenes(ids);   // through the bin: nothing hung on them is orphaned
           decorateShotCounts();
         });
       } else {
@@ -3541,7 +3541,7 @@ async function breakIntoShots() {
       + (sceneIds.size ? ' · ' + sceneIds.size + (sceneIds.size === 1 ? ' scene' : ' scenes') + ' added to the Breakdown' : ''),
     () => {
       Shots.saveShots(Shots.listShots().filter((s) => !shotIds.has(s.id)));
-      if (sceneIds.size) Scenes.saveScenes(Scenes.listScenes().filter((s) => !sceneIds.has(s.id)));
+      if (sceneIds.size) unaddScenes(sceneIds);   // through the bin, see scene-bin.js
       decorateShotCounts();
       say('Removed the ' + shotIds.size + (shotIds.size === 1 ? ' shot' : ' shots') + ' just added.');
     });

@@ -188,6 +188,11 @@ function pickupItem(p) {
 
 /* ---- the page ------------------------------------------------ */
 
+/* The empty page keeps `#log` — navigation.json sends the phase
+   menu to edit.html#log, and a fragment that resolves only once
+   scenes exist leaves the person who has none exactly where they
+   were (CLAUDE.md, "A nav target must not depend on data existing").
+   It also says where the scenes come from, as a link. */
 function renderEmpty(reason) {
   const main = h('main#main.el-main');
   main.append(h('header.bd-head', {}, [
@@ -195,16 +200,36 @@ function renderEmpty(reason) {
     h('h1.bd-title', { text: 'Edit log.' }),
     h('p.bd-deck', { text: reason })
   ]));
+  main.append(h('div.el-list', { id: 'log' }, [
+    h('p', {}, [h('a.btn', { href: 'breakdown.html#scenes', text: 'Open the breakdown →' })])
+  ]));
   return main;
 }
 
-function render() {
+/** Pick-ups whose scene has left the list. Drawn on their own, with
+    the same tick and remove, or nothing could ever clear them. */
+function orphanBox(list) {
+  const box = h('section.el-conflicts.el-orphans', { 'aria-label': 'Pick-ups on removed scenes' });
+  box.append(h('h2.el-h2', { text: list.length === 1
+    ? 'One pick-up on a scene no longer in the list'
+    : list.length + ' pick-ups on scenes no longer in the list' }));
+  const ul = h('ul.el-pickups');
+  list.forEach((p) => ul.append(pickupItem(p)));
+  box.append(ul);
+  box.append(h('p', { text: 'Restore the scene from the Breakdown’s bin, or remove the pick-up here.' }));
+  return box;
+}
+
+/* `focus` is a selector for the control to hand focus back to after
+   the full render, which replaces it — the pattern visualize.js's
+   render() set. Without it focus falls to <body> (UX audit M1). */
+function render(focus) {
   const scenes = Scenes.listScenes();
   if (!scenes.length) {
     app.replaceChildren(renderEmpty(
       'No scenes yet. This page reads the shoot day’s marks against the scene list, '
       + 'so break the script down first and come back when the cameras have rolled.'));
-    after();
+    after(focus);
     return;
   }
 
@@ -256,6 +281,8 @@ function render() {
     main.append(box);
   }
 
+  if (cov.orphans.length) main.append(orphanBox(cov.orphans));
+
   /* Toolbar: the filter, and the pick-up list out the door. */
   const tools = h('div.el-tools');
   const nav = h('div.el-filters', { role: 'group', 'aria-label': 'Show' });
@@ -285,10 +312,14 @@ function render() {
   main.append(list);
 
   app.replaceChildren(main);
-  after();
+  after(focus);
 }
 
-function after() {
+function after(focus) {
+  if (focus) {
+    const node = document.querySelector(focus);
+    if (node) node.focus();
+  }
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -301,8 +332,30 @@ function after() {
 
 delegate(document, 'click', '[data-edit-action]', (e, el) => {
   const act = el.getAttribute('data-edit-action');
-  if (act === 'filter') { filter = el.getAttribute('data-filter') || 'all'; render(); return; }
-  if (act === 'pickup-del') { Edit.removePickup(el.getAttribute('data-pickup')); render(); return; }
+  if (act === 'filter') {
+    filter = el.getAttribute('data-filter') || 'all';
+    render('[data-edit-action="filter"][data-filter="' + filter + '"]');
+    return;
+  }
+  if (act === 'pickup-del') {
+    /* No confirm — a pick-up is one line — but an Undo, because the
+       line is the only record of what the editor asked for. It goes
+       back where it was, done flag and all. */
+    const id = el.getAttribute('data-pickup');
+    const all = Edit.listPickups();
+    const at = all.findIndex((p) => p.id === id);
+    const gone = all[at];
+    const row = el.closest('[data-scene]');
+    Edit.removePickup(id);
+    render(row ? '[data-edit-form="pickup"][data-scene="' + CSS.escape(row.getAttribute('data-scene')) + '"] input' : null);
+    if (gone && StudioUI.toast) {
+      StudioUI.toast('Pick-up removed: ' + gone.what, {
+        action: 'Undo',
+        onAction: () => { Edit.restorePickup(gone, at); render(); }
+      });
+    }
+    return;
+  }
   if (act === 'copy-pickups') {
     const text = Edit.pickupText() || 'Nothing owed — every scene the cut needs is in the can.';
     const done = () => StudioUI.toastSuccess && StudioUI.toastSuccess('Pick-up list copied');
@@ -318,8 +371,9 @@ delegate(document, 'change', '[data-edit-field]', (e, el) => {
   const key = el.getAttribute('data-edit-field');
   Edit.setSceneEdit(id, { [key]: el.value });
   /* The cut state changes the verdict, the counts and the filter
-     membership; a note changes nothing the page derives. */
-  if (key === 'cut') render();
+     membership; a note changes nothing the page derives. Focus goes
+     back to this scene's select — if the filter still shows it. */
+  if (key === 'cut') render('[data-edit-field="cut"][data-scene="' + CSS.escape(id) + '"]');
 });
 
 /* A note saves as it is typed — on `change` alone, a reload or a
@@ -330,14 +384,18 @@ saveOnInput('[data-edit-field]', (el) => {
 });
 
 delegate(document, 'change', '[data-pickup-done]', (e, el) => {
-  Edit.updatePickup(el.getAttribute('data-pickup-done'), { done: !!el.checked });
-  render();
+  const id = el.getAttribute('data-pickup-done');
+  Edit.updatePickup(id, { done: !!el.checked });
+  render('[data-pickup-done="' + CSS.escape(id) + '"]');
 });
 
 delegate(document, 'submit', '[data-edit-form="pickup"]', (e, form) => {
   e.preventDefault();
   const input = form.querySelector('input[name="what"]');
-  if (Edit.addPickup(form.getAttribute('data-scene'), input.value)) render();
+  const id = form.getAttribute('data-scene');
+  /* Back into the same scene's add line, so a run of pick-ups is
+     typed without reaching for the mouse between them. */
+  if (Edit.addPickup(id, input.value)) render('[data-edit-form="pickup"][data-scene="' + CSS.escape(id) + '"] input');
   else input.focus();
 });
 

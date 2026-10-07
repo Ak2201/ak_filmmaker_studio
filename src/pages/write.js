@@ -60,6 +60,7 @@ import Scenes from '../lib/scenes.js';
 import { binScene, unaddScenes } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
+import { mountCoverage } from '../ui/coverage.js';   // the Coverage tab: report + voice check
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
@@ -200,6 +201,7 @@ const app = document.getElementById('app');
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
 mountWriteExtrasB({ getDoc: () => doc });   // hand-off banner, alternates, Tanglish
+mountCoverage({ getDoc: () => doc, save: () => persistNow() });
 
 /* ---- the keyboard (Phase 2) ---------------------------------
    Prefs are READ once here and written only when the writer changes

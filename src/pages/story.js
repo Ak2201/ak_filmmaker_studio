@@ -56,6 +56,7 @@ import Pitch from '../lib/pitch-deck.js';
    them from there — one copy each. */
 import IO from '../lib/story-io.js';
 import { renderHeat as kitHeat, renderFlags as kitFlags, importSynopsis } from '../ui/story-kit.js';
+import { renderLoglineWorkshop } from '../ui/logline-workshop.js';   // AI logline check + variants
 
 const app = document.getElementById('app');
 
@@ -228,6 +229,7 @@ function renderLogline(s) {
   const bp = bpLogline();
   if (!s.logline.trim() && bp) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bp));
   sec.append(h('p.st-example', {}, [h('span.st-example-k', { text: 'Dragon: ' }), '“' + sample.blueprint.s2_log_final + '”']));
+  sec.append(renderLoglineWorkshop(s, { AI, Panelm, getStory: story, rerender: render, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }));
   sec.append(nextBtn(3, 'Structure'));
   return sec;
 }

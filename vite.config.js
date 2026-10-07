@@ -72,6 +72,57 @@ function materialSymbols() {
 }
 
 /* ============================================================
+   THE STEP INDEX, DERIVED — number and title of every blueprint
+   step, as a virtual module, for the guide drawer's pill
+   ------------------------------------------------------------
+   src/ui/blueprint-drawer.js draws a "Blueprint step 16 · Title" pill
+   on every module page a step's tools name. To label it, the pill
+   needs each step's `num` and `title` and nothing else; to DRAW the
+   step it needs the whole record, with its blocks and fields. Those
+   used to come from one import of both blueprints' JSON (~170 KB raw,
+   ~50 KB gzipped) on every one of those pages, to print a dozen words.
+
+   This plugin derives the dozen words at build time, from the same
+   three files, as `virtual:fms-step-index` — so there is no fourth
+   copy of a title anywhere on disk to drift (CLAUDE.md rule 2), and
+   `npm run extract` regenerating steps.feature.json regenerates this
+   with it. The drawer imports the index for the pill and reaches the
+   full records through `import()` when a pill is clicked.
+
+   The ORDER and the NAMESPACES are the drawer's: the feature blueprint
+   is vol1, vol2 (`feature`), production, post (`production`); the
+   short film is its `steps` (`short`). Keep them in step with
+   BLUEPRINTS in src/ui/blueprint-drawer-body.js.
+   ============================================================ */
+function stepIndex() {
+  const VIRTUAL = 'virtual:fms-step-index';
+  const RESOLVED = '\0' + VIRTUAL;
+  const FILES = ['steps.feature.json', 'steps.production.json', 'steps.short.json']
+    .map((f) => resolve(__dirname, 'src/data', f));
+  const plain = (step) => String(step.titlePlain || String(step.title || '').replace(/<[^>]+>/g, '')).trim();
+  const light = (ns) => (step) => ({ ns, step: { id: step.id, num: step.num, title: plain(step) } });
+  return {
+    name: 'fms-step-index',
+    resolveId(id) { return id === VIRTUAL ? RESOLVED : null; },
+    load(id) {
+      if (id !== RESOLVED) return null;
+      for (const f of FILES) this.addWatchFile(f);
+      const [feature, production, short] = FILES.map((f) => JSON.parse(readFileSync(f, 'utf8')));
+      const index = {
+        feature: [
+          ...(feature.vol1 || []).map(light('feature')),
+          ...(feature.vol2 || []).map(light('feature')),
+          ...(production.production || []).map(light('production')),
+          ...(production.post || []).map(light('production'))
+        ],
+        short: (short.steps || []).map(light('short'))
+      };
+      return 'export default ' + JSON.stringify(index) + ';';
+    }
+  };
+}
+
+/* ============================================================
    Multi-page build. Each page is a real HTML entry, so the
    output is still a pile of static files — same Vercel config,
    same GitHub Pages story, no server required.
@@ -101,6 +152,7 @@ export default defineConfig({
      ------------------------------------------------------------ */
   plugins: [
     materialSymbols(),
+    stepIndex(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -176,40 +228,80 @@ export default defineConfig({
         ...(process.env.FMS_EXTENSION ? { panel: resolve(__dirname, 'extension/panel.html') } : {})
       },
       output: {
-        /* A few modules under src/lib/ are reached only through
-           `import()` and must be allowed to stay their own chunk.
-           Naming a chunk for them would defeat the dynamic import:
-           `studio` is in every page's entry graph, so anything
-           folded into it is downloaded on first paint whether the
-           page ever uses it or not — which is the rule CLAUDE.md
-           states for Supabase and pptxgenjs, and these are the
-           same shape. Returning undefined leaves the splitter to
-           give each one its own chunk.
+        /* ------------------------------------------------------------
+           CHUNKING — one shared core, the data by consumer, the rest
+           by page.
 
-             screenplay-export  the typesetter — Save as PDF
-             shotlist-export    the shot division sheet
-             script-import      the .fountain/.txt/.fdx parser
-             ai                 the only module that can open a
-                                network connection, so the page
-                                that never drafts never loads it */
+           For a long time this was two rules: every src/data/*.json
+           into `data`, every src/lib and src/ui module into `studio`.
+           Both chunks were in every page's entry graph, so a module
+           page downloaded the whole studio before it painted — the
+           Shoot Day page fetched the case studies, both blueprints'
+           steps, the pitch deck typesetter and the billing console:
+           632 KB of code and 447 KB of JSON (212 + 146 KB gzipped)
+           to draw a card with a slug line on it.
+
+           THE CORE IS ONE CHUNK, STILL NAMED `studio`, AND STILL ON
+           EVERY PAGE. CLAUDE.md invariant 6 depends on it: store.js
+           must evaluate before anything reads localStorage, and
+           cloud.js — which no module page imports by name — must
+           evaluate everywhere, because its boot(), its `saved`
+           subscriber and `window.StudioCloud` are what sync, Drive
+           ownership (`ownsSync()`) and the gate's pause all read.
+           Being in the chunk that every page's chrome.js pulls is
+           how a module nobody imports runs on every page, so the
+           core is listed by NAME below rather than derived: a module
+           with a page-wide side effect belongs in CORE, and a module
+           that is not in CORE evaluates only on the pages that import
+           it. That is the one thing to check before moving a module
+           out — grep its top level for addEventListener, a
+           window.* global, Store.subscribe or a bare call.
+
+           EVERYTHING ELSE IS LEFT TO THE SPLITTER (return undefined):
+           a module one page imports lands in that page's chunk, a
+           module several pages share lands in a chunk those pages
+           share, and a module reached only through `import()` stays
+           its own chunk — which is what keeps Supabase, pptxgenjs,
+           the AI client, the typesetters and the sample script off
+           the first paint, and now does the same for the step
+           renderer, the story model and the PDF reader without a
+           list of exceptions to keep.
+
+           THE DATA IS GROUPED BY FILE, NOT BY CONSUMER, on purpose:
+           content changes on its own schedule, and a chunk that holds
+           JSON alone keeps its hash when code changes, so a returning
+           visitor re-downloads the one that moved. The groups are the
+           files one set of pages reads together; a JSON not named
+           here (frameworks, deliverables, format-rules, write-presets,
+           the element lexicon) is left to the splitter with its
+           consumer. The two lazily-imported sample files keep their
+           own chunks — hub.js and story-io.js reach them with
+           `import()`, and naming them would put a quarter of a
+           megabyte back on the first paint of every page that reads
+           the sample's scene list.
+           ------------------------------------------------------------ */
         manualChunks(id) {
-          if (/\/src\/lib\/(screenplay-export|shotlist-export|script-import|ai)\.js$/.test(id)) return;
           if (id.includes('@supabase')) return 'supabase';
-          /* The sample's 105 pages are the same shape of exception one
-             level down, and the `data` rule below would have swallowed
-             them: `data` is ONE chunk that every page's entry graph
-             pulls, so folding a screenplay into it would put a quarter
-             of a megabyte on the first paint of all twenty pages — to
-             serve one click on the hub. hub.js reaches it with
-             `import()`; returning undefined is what lets that mean
-             something. */
-          if (/\/src\/data\/sample\.dragon\.script\.json$/.test(id)) return;
-          /* Its story (idea, logline, step outline, synopsis) is the
-             same shape: read on the sample click on the hub and on
-             story.html's USE THE SAMPLE, never on a first paint. */
-          if (/\/src\/data\/sample\.dragon\.story\.json$/.test(id)) return;
-          if (id.includes('/src/data/')) return 'data';
-          if (id.includes('/src/lib/') || id.includes('/src/ui/')) return 'studio';
+          if (id.includes('/node_modules/')) return;
+
+          /* ---- the core: what chrome.js, cloud.js and shell.js need ---- */
+          const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount)\.js$/;
+          const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
+          if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
+          // billing.js's Razorpay helper, shared with the edge functions.
+          if (id.includes('/supabase/functions/_shared/')) return 'studio';
+
+          /* ---- the data, by file ---- */
+          if (/\/src\/data\/sample\.dragon\.(script|story)\.json$/.test(id)) return;   // lazy, see above
+          if (/\/src\/data\/sample\.dragon\.json$/.test(id)) return 'data-sample';
+          if (/\/src\/data\/steps\.(feature|short|production|tanglish|priority|copy)\.json$/.test(id)) return 'data-steps';
+          if (/\/src\/data\/(studies|dissections)\.json$/.test(id)) return 'data-studies';
+          if (/\/src\/data\/(films|directors|rules|watchlist)\.json$/.test(id)) return 'data-library';
+          if (/\/src\/data\/glossary\.json$/.test(id)) return 'data-glossary';
+          if (/\/src\/data\/rates\.chennai\.[^/]*\.json$/.test(id)) return 'data-rates';
+          if (/\/src\/data\/festivals(\.checks)?\.json$/.test(id)) return 'data-festivals';
+          return;
         }
       }
     }

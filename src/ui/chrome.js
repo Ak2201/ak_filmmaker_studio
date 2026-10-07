@@ -42,7 +42,9 @@ import {
 } from './auth.js';
 import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
-import glossaryData from '../data/glossary.json';
+/* glossary.json is NOT imported statically here. It is read through
+   `import()` inside wireGlossaryPopovers(), and only on a page that has
+   something to tag — see the note on that function. */
 import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palette.js';
 /* Side-effect import: fragments.js installs itself on load, which is
    deliberate. Every nav-bearing page already imports this file — all
@@ -64,16 +66,18 @@ import { injectFooter } from './footer.js';
    does. It does nothing at all — no script load, no fetch, no storage
    write — unless this build carries a Google client id AND this
    device has connected, so the cost of having it everywhere is the
-   module and nothing else, and vite.config.js already folds every
-   src/lib and src/ui module into the one `studio` chunk anyway. */
+   module and nothing else, and vite.config.js folds it into the one
+   `studio` chunk every page loads anyway. */
 import '../lib/drive-sync.js';
 /* The no-project banner on every page a stage module lives on. Side
    effect only; see the header of no-project.js for which pages. */
 import './no-project.js';
 /* The guide drawer: a "Blueprint step N" pill on every module page a
    blueprint step names in its tools (steps.stages.json, reversed at
-   runtime). Side effect only; pages with no mapping get nothing. */
-import './blueprint-drawer.js';
+   runtime). This is its LIGHT half: it reads the sidecar alone and
+   fetches the drawer — with both blueprints' step JSON behind it —
+   only on a page some step actually lands on. Side effect only. */
+import './blueprint-drawer-mount.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -1091,24 +1095,38 @@ function ensurePopover() {
    the legacy pages set them directly; anything already there wins, so a
    page can still override an entry. */
 const GLOSSARY = {};   // term -> { def, tanglish, examples }
-(function buildGlossary() {
-  const films = glossaryData.films || {};
-  for (const entry of glossaryData.terms || []) {
-    const record = {
-      def: entry.def,
-      tanglish: entry.tanglish,
-      examples: (entry.examples || []).map((ex) => ({
-        film: films[ex.film] || ex.film,
-        note: ex.note
-      }))
-    };
-    for (const key of [entry.term, ...(entry.aliases || [])]) {
-      GLOSSARY[key.toLowerCase()] = record;
+/** Every term and alias, longest first so "the lie" wins over "lie".
+ *  Filled by loadGlossary(); empty until the JSON has arrived. */
+let GLOSSARY_KEYS = [];
+let glossaryLoading = null;
+/* The JSON is fetched on demand rather than imported at the top: it is
+   23 KB that every one of the module pages used to download on first
+   paint to tag prose none of them has. wireGlossaryPopovers() asks for
+   it only when the page holds a taggable section or a [data-glossary]
+   element, so a page with neither never requests the chunk. The
+   dictionary is built once; a second call awaits the same promise. */
+function loadGlossary() {
+  if (glossaryLoading) return glossaryLoading;
+  glossaryLoading = import('../data/glossary.json').then((m) => {
+    const glossaryData = m.default || m;
+    const films = glossaryData.films || {};
+    for (const entry of glossaryData.terms || []) {
+      const record = {
+        def: entry.def,
+        tanglish: entry.tanglish,
+        examples: (entry.examples || []).map((ex) => ({
+          film: films[ex.film] || ex.film,
+          note: ex.note
+        }))
+      };
+      for (const key of [entry.term, ...(entry.aliases || [])]) {
+        GLOSSARY[key.toLowerCase()] = record;
+      }
     }
-  }
-})();
-/** Every term and alias, longest first so "the lie" wins over "lie". */
-const GLOSSARY_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    GLOSSARY_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+  }).catch((e) => { console.warn('[glossary] could not load', e); });
+  return glossaryLoading;
+}
 
 function showPopover(term, anchor) {
   const key = term.toLowerCase();
@@ -1216,7 +1234,17 @@ function autoTagGlossary(root) {
   }
 }
 
+/* Pages call this synchronously after every render; the tagging and
+   the wiring happen once the dictionary is in. Where the page has
+   nothing to tag and nothing tagged, nothing is fetched. The tags
+   only wrap text in a span, so the page's visible words are the same
+   before and after. */
+const GLOSSARY_SCOPE = 'section.step, section.section-body, .glossary-scope, [data-glossary]';
 function wireGlossaryPopovers() {
+  if (typeof document === 'undefined' || !document.querySelector(GLOSSARY_SCOPE)) return;
+  loadGlossary().then(wireGlossaryNow);
+}
+function wireGlossaryNow() {
   autoTagGlossary();
   document.querySelectorAll('[data-glossary]').forEach(el => {
     if (el._glossaryWired) return;

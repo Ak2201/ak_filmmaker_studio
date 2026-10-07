@@ -1,4 +1,5 @@
-/* =====================================================   REPORTS — the numbers, and the sides
+/* ============================================================
+   REPORTS — the numbers, and the sides
    ------------------------------------------------------------
    Two views of the SAME scene model (src/lib/scenes.js), and not a
    byte of storage of their own. Everything below — the eighths, the
@@ -42,7 +43,6 @@ import Locations from '../lib/locations.js';
 import Shoot from '../lib/shootday.js';
 import DPR from '../lib/dpr.js';
 import { offlineSupported, offlineStatus, makeOffline, SHOOT_PACK } from '../lib/pwa.js';
-=======
 import { listSongs, updateSong, durationSeconds, getTargetMinutes, setTargetMinutes, kindLabel } from '../lib/songs.js';
 import { loadStory } from '../lib/story.js';
 import { resolveBeat, actsOf, qualify } from '../lib/beat-outline.js';

@@ -63,7 +63,8 @@ const CSP_EPOCH = '2026-10-01-fonts';
 const BUILD    = digest(CSP_EPOCH + JSON.stringify(MANIFEST));
 const PRECACHE = `studio-precache-${BUILD}`;
 const RUNTIME  = `studio-runtime-${BUILD}`;
-const KEEP     = new Set([PRECACHE, RUNTIME]);
+const PACK     = `studio-pack-${BUILD}`;     // the offline shoot pack, see FMS_PACK below
+const KEEP     = new Set([PRECACHE, RUNTIME, PACK]);
 
 const SCOPE = self.registration.scope;
 
@@ -270,4 +271,65 @@ async function cacheFirst(request) {
 // shipping a second worker.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'FMS_PACK') {
+    const port = event.ports && event.ports[0];
+    event.waitUntil(
+      packPages(event.data.urls)
+        .then((results) => { if (port) port.postMessage({ ok: true, results }); })
+        .catch((e) => { if (port) port.postMessage({ ok: false, error: String(e && e.message || e) }); })
+    );
+  }
 });
+
+/* ------------------------------------------------------------
+   THE OFFLINE SHOOT PACK (src/lib/pwa.js makeOffline)
+   ------------------------------------------------------------
+   For each same-origin page: the page under its typed `.html` address
+   AND its clean address (cleanUrls answers `/shoot.html` with a 308 to
+   `/shoot`, and the clean one is what a bookmark holds — the precache
+   never has it, so offline it fell back to the hub), plus every file
+   the page's HTML names. Each response goes through clean() on the way
+   in, so nothing redirected is ever stored — the trap that shipped a
+   broken page once. The clean address is stored only when the host
+   served THE SAME page there: a host without cleanUrls may answer
+   `/shoot` with a 404 or with the hub, and keeping either under that
+   name would be a lie the next offline morning.
+   ------------------------------------------------------------ */
+const PACK_ASSET = /\b(?:src|href)="([^"]+\.(?:js|css|json|woff2|svg|png|webmanifest))"/g;
+
+async function packPages(urls) {
+  const cache = await caches.open(PACK);
+  const out = [];
+  for (const raw of [].concat(urls || [])) {
+    let url;
+    try { url = new URL(raw, SCOPE); } catch (e) { continue; }
+    if (url.origin !== self.location.origin || !/\.html$/.test(url.pathname)) continue;
+    const typed = url.href;
+    const res = await fetch(typed, { cache: 'reload' });
+    if (!res.ok) { out.push({ url: typed, ok: false }); continue; }
+    const body = await res.clone().text();
+    await cache.put(typed, await clean(res));
+
+    const cleanUrl = typed.replace(/\.html$/, '');
+    let cleanOk = false;
+    try {
+      const alt = await fetch(cleanUrl, { cache: 'reload' });
+      if (alt.ok && (await alt.clone().text()) === body) {
+        await cache.put(cleanUrl, await clean(alt));
+        cleanOk = true;
+      }
+    } catch (e) { /* the typed address is enough */ }
+
+    const assets = [...new Set([...body.matchAll(PACK_ASSET)].map((m) => new URL(m[1], typed).href))]
+      .filter((a) => new URL(a).origin === self.location.origin);
+    let files = 1;
+    await Promise.all(assets.map(async (a) => {
+      const have = await caches.match(a);
+      if (have && !have.redirected) { files++; return; }
+      const r = await fetch(a).catch(() => null);
+      if (r && r.ok) { await cache.put(a, await clean(r)); files++; }
+    }));
+    out.push({ url: typed, ok: true, clean: cleanOk, files });
+  }
+  return out;
+}

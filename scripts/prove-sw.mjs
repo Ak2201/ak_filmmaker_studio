@@ -35,6 +35,8 @@
      (f) the stubs are NOT in the precache; the manifest names no
          `assets/*.html`
      (g) a `/page` clean URL visited online is served offline too
+     (h) the offline shoot pack (reports.html#dpr): after its button,
+         `/shoot` — never visited — opens offline as the shoot day
 
    Run (needs Node >= 22.12; set PW_CHROMIUM if Playwright's own
    download is not present):
@@ -284,6 +286,23 @@ for (const r of vercel.redirects || []) {
 await page.goto(ORIGIN + '/breakdown', { waitUntil: 'networkidle' });
 await page.waitForTimeout(500);
 
+// (h) the offline shoot pack: press the DPR tab's button, online, then
+// (below, offline) open /shoot — a clean URL never visited, which
+// without the pack falls back to the hub.
+let packResult = null;
+{
+  await page.goto(ORIGIN + '/reports.html#dpr', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  let failed = null;
+  await page.click('[data-action="rp-offline"]').catch((e) => { failed = e.message; });
+  if (!failed) {
+    await page.waitForFunction(() => document.querySelectorAll('#rp-offline-list .rp-off.is-ok').length >= 3, null, { timeout: 30000 })
+      .catch((e) => { failed = e.message; });
+  }
+  packResult = failed ? { failed: failed.split('\n')[0] }
+    : await page.evaluate(() => [...document.querySelectorAll('#rp-offline-list li')].map((li) => li.textContent));
+}
+
 // (e) nothing cached is redirected
 const tainted = await page.evaluate(async () => {
   const bad = [];
@@ -321,6 +340,20 @@ for (const o of OFFLINE) {
     failed ? failed.split('\n')[0]
            : `title "${title}"${title !== o.want ? ` (expected "${o.want}")` : ''}, app ${hasApp ? 'rendered' : 'EMPTY'}`
              + (errors.length > before ? `; ${errors.slice(before).join(' | ')}` : ''));
+}
+{
+  let failed = packResult && packResult.failed ? packResult.failed : null;
+  let title = null, hasDay = false;
+  if (!failed) {
+    await page.goto(ORIGIN + '/shoot', { waitUntil: 'load' }).catch((e) => { failed = e.message; });
+    await page.waitForTimeout(500);
+    title = failed ? null : await page.title();
+    hasDay = failed ? false : await page.evaluate(() => !!document.querySelector('main.sd-main'));
+  }
+  check('(h) offline: "Make today available offline" keeps /shoot (a clean URL never visited) as the shoot day, not the hub',
+    !failed && title === titleOf('shoot.html') && hasDay,
+    failed ? String(failed).split('\n')[0]
+           : `title "${title}"; pack: ${(packResult || []).join(' | ')}`);
 }
 await context.setOffline(false);
 

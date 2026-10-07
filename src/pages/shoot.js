@@ -224,6 +224,12 @@ function render(focus) {
   day.scenes.forEach((s) => list.append(sceneCard(s, sun.late)));
   main.append(list);
 
+  /* The day answers the plan here; the report on it is written on
+     reports.html (src/lib/dpr.js), which reads these marks back. */
+  main.append(h('p.sd-dpr', {}, [
+    h('a.btn', { href: 'reports.html?day=' + day.day + '#dpr', text: 'End of day → DPR' })
+  ]));
+
   app.replaceChildren(main);
   after(focus);
 }

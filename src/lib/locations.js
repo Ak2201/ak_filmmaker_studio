@@ -152,20 +152,30 @@ function readAll() {
   if (!raw) return empty;
   try {
     const parsed = JSON.parse(raw) || {};
-    return {
+    const out = {
       days:   isPlainObject(parsed.days)   ? parsed.days   : {},
       recces: isPlainObject(parsed.recces) ? parsed.recces : {},
       media:  Array.isArray(parsed.media)  ? parsed.media  : [],
       order:  isPlainObject(parsed.order)  ? parsed.order  : {}
     };
+    // The day-level records (see DAY RECORDS below). Carried only when
+    // present, so a blob that never used them reads and writes back
+    // byte-identical to the shape it had before they existed.
+    for (const name of DAY_RECORDS) if (isPlainObject(parsed[name])) out[name] = parsed[name];
+    if (isPlainObject(parsed.prefs)) out.prefs = parsed.prefs;
+    return out;
   } catch (e) {
     return empty;
   }
 }
 
 function writeAll(data) {
+  const out = { ...data };
+  for (const name of [...DAY_RECORDS, 'prefs']) {
+    if (!isPlainObject(out[name]) || !Object.keys(out[name]).length) delete out[name];
+  }
   try {
-    localStorage.setItem(LOCATIONS_KEY, JSON.stringify(data));
+    localStorage.setItem(LOCATIONS_KEY, JSON.stringify(out));
     return true;
   } catch (e) {
     return false;
@@ -367,6 +377,80 @@ export function nudgeScene(sceneId, delta) {
   return placeScene(sceneId, day, { index: j });
 }
 
+/* ---- DAY RECORDS ------------------------------------------------
+   Three more things a shoot DAY has that no scene has a field for, so
+   they live here beside `days` and `order` rather than on the scenes
+   (shoot.html is the only view that writes to a scene, and these are
+   facts about the day, not about any scene on it):
+
+     dpr      { "3": { crewCall, firstShot, …, delays: [...] } }
+              the daily production report — what the day DID
+     banners  { "3": [{ id, kind, from, to, text, after }] }
+              company moves, travel and holding days, notes — the
+              header strips a paper board carries between scenes
+     kit      { "3": { camera: [{ id, item, qty, vendor, … }], … } }
+              the day's equipment lists, per department
+
+   Plus one preference, `prefs.pageTarget`, the eighths a day should
+   hold before the board warns. The shapes are src/lib/dpr.js's; this
+   file only keeps them, keyed by day number, shape-guaranteed. Every
+   one of them is absent from the blob until first written, and a day
+   whose record is emptied is DELETED rather than left as {} — a
+   lingering empty value is a stranded key. */
+export const DAY_RECORDS = ['dpr', 'banners', 'kit'];
+
+const isRecordValue = (name, v) => (name === 'banners' ? Array.isArray(v) : isPlainObject(v));
+
+/** One collection, shape-guaranteed: positive day numbers only, and
+    each value the shape its collection holds. */
+export function listDayRecords(name) {
+  if (!DAY_RECORDS.includes(name)) return {};
+  const all = readAll()[name];
+  const out = {};
+  if (!isPlainObject(all)) return out;
+  for (const [k, v] of Object.entries(all)) {
+    const day = parseInt(k, 10);
+    if (day > 0 && String(day) === String(k).trim() && isRecordValue(name, v)) out[String(day)] = v;
+  }
+  return out;
+}
+
+export function dayRecord(name, day) {
+  return listDayRecords(name)[String(parseInt(day, 10) || 0)] || null;
+}
+
+/** Write one day's record; null, [] or {} deletes it. */
+export function setDayRecord(name, day, value) {
+  const n = parseInt(day, 10);
+  if (!DAY_RECORDS.includes(name) || !Number.isFinite(n) || n <= 0) return false;
+  const coll = { ...listDayRecords(name) };
+  const empty = value == null
+    || (Array.isArray(value) && !value.length)
+    || (isPlainObject(value) && !Object.keys(value).length);
+  if (empty) delete coll[String(n)];
+  else if (isRecordValue(name, value)) coll[String(n)] = value;
+  else return false;
+  return patchAll({ [name]: coll });
+}
+
+/** The schedule preferences, shape-guaranteed (only known fields). */
+export function schedulePrefs() {
+  const p = readAll().prefs;
+  const out = {};
+  if (isPlainObject(p)) {
+    const t = parseInt(p.pageTarget, 10);
+    if (t > 0 && t <= 400) out.pageTarget = t;
+  }
+  return out;
+}
+
+export function setSchedulePrefs(patch) {
+  const next = { ...schedulePrefs(), ...(patch || {}) };
+  const t = parseInt(next.pageTarget, 10);
+  if (t > 0 && t <= 400) next.pageTarget = t; else delete next.pageTarget;
+  return patchAll({ prefs: next });
+}
+
 /**
  * The shooting calendar: one entry per shoot day in use, ascending,
  * each carrying its scenes IN SHOOTING ORDER, its locations, its page
@@ -564,6 +648,7 @@ export default {
   listDayDates, dayDate, setDayDate, calendarDays, unscheduledScenes, orphanDays,
   listDayOrder, dayOrder, setDayOrder, clearDayOrders, orderByList, orderedDayScenes,
   placeScene, undoPlace, nudgeScene,
+  DAY_RECORDS, listDayRecords, dayRecord, setDayRecord, schedulePrefs, setSchedulePrefs,
   getRecce, setRecce, removeRecce, locationIndex, unplacedScenes, orphanRecces,
   listMedia, saveMedia, addMedia, updateMedia, removeMedia,
   LINK_NONE, locationLink, dayLink, linkLabel

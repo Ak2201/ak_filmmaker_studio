@@ -564,3 +564,89 @@ body.pdf-print .sb-hint { display: none !important; }
   .sb-day  { grid-column: 1 / -1; }
   .sb-group-head { border-bottom-color: var(--rule-hair); }
 }
+
+/* ------------------------------------------------------------
+   6. BANNERS AND THE DAY'S LOAD (shoot-day grouping only)
+   ------------------------------------------------------------
+   A banner is not a scene, so it does not borrow the strip's
+   time-of-day hue: it is a neutral band with a heavy ink rule, the
+   way a paper board's header strips are black. The kind is carried
+   by its WORD, and a company move also by a dashed rule, so nothing
+   here depends on colour. The over-target chip is --warn because a
+   too-heavy day genuinely is a warning.
+   ------------------------------------------------------------ */
+.sb-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
+  background: var(--paper-sunk);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--ink);
+  border-radius: var(--sk-radius);
+  color: var(--ink);
+}
+.sb-banner.is-move { border-left-style: dashed; }
+.sb-banner.is-holiday,
+.sb-banner.is-travel { background: var(--paper-raised); }
+.sb-banner:focus-within { border-color: var(--accent); border-left-color: var(--ink); }
+.sb-banner-kind {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sb-banner-route { display: inline-flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-width: 0; }
+.sb-banner-in {
+  flex: 1 1 10rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s1) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-field-radius, var(--sk-radius));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.sb-banner-route .sb-banner-in { flex: 0 1 9rem; }
+.sb-banner .sb-day-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
+.sb-banner .sb-btn { flex: 0 0 auto; }
+.sb-group-hours.is-over { color: var(--warn-deep); font-weight: 700; }
+.sb-banner-in::placeholder { color: var(--ink-muted); }
+.sb-banner-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
+
+.sb-target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.sb-load,
+.sb-group-hours {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sb-load.is-over {
+  padding: 0 var(--s2);
+  background: var(--warn-wash);
+  color: var(--warn-deep);
+  border: 1px solid var(--warn);
+  border-radius: var(--sk-radius);
+  font-weight: 700;
+}
+.sb-group-hours { color: var(--ink-muted); }
+.sb-group-hours:empty { display: none; }
+.sb-banner-menu .tb-menu-btn { min-height: 28px; }
+
+@media print {
+  .sb-banner-menu, .sb-target, .sb-banner .sb-btn { display: none !important; }
+  .sb-banner { background: var(--print-wash) !important; color: var(--print-ink) !important; border-left-color: var(--print-ink) !important; }
+  .sb-banner-in, .sb-banner .sb-day-sel { border: 0 !important; background: none !important; color: var(--print-ink) !important; }
+}
+body.pdf-print .sb-banner-menu,
+body.pdf-print .sb-target,
+body.pdf-print .sb-banner .sb-btn { display: none !important; }

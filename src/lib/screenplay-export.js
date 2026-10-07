@@ -38,7 +38,7 @@
    counts, which are the format itself.
    ============================================================ */
 import { h } from './dom.js';
-import { ELEMENT_TYPE_IDS, dualPairs, hasTitlePage, CONTD_RE } from './script.js';
+import { ELEMENT_TYPE_IDS, dualPairs, hasTitlePage, CONTD_RE, sceneNumbers } from './script.js';
 
 /* ------------------------------------------------------------
    THE GEOMETRY
@@ -239,8 +239,26 @@ function dualBlock(els, pair) {
     "RAVI (CONT'D)", not "RAVI (CONT'D) (CONT'D)". */
 const contdCue = (speaker) => String(speaker).replace(CONTD_RE, ' ').replace(/\s+/g, ' ').trim() + " (CONT'D)";
 
-export function paginate(elements) {
+/* LOCKED NUMBERS AND OMITTED SCENES. `opts.numbers` is what
+   sceneNumbers() in src/lib/script.js says (paginateDoc() passes it):
+   each heading's `sceneNo` comes from it, and every OMITTED number is
+   set as a row of its own where the scene used to be — a slug-shaped
+   row with no element behind it (`id: null`, `omitted: true`), which
+   costs the same two blank lines and one line of text a heading does.
+   It changes where pages break, which is exactly why it has to be in
+   here and not painted on afterwards: the page view and the PDF take
+   their breaks from this function, so they agree about it. Without
+   `opts.numbers` the number is the heading's position, as before. */
+export function paginate(elements, opts = {}) {
   const els = elements || [];
+  const nums = opts && opts.numbers;
+  const byId = nums && nums.byId instanceof Map ? nums.byId : null;
+  const omitBefore = new Map();
+  const omitEnd = [];
+  for (const o of (nums && nums.omitted) || []) {
+    if (o.before) omitBefore.set(o.before, [...(omitBefore.get(o.before) || []), o.number]);
+    else omitEnd.push(o.number);
+  }
   const pairs = els.some((e) => e && e.dual === true)
     ? new Map(dualPairs(els).map((p) => [p.left[0], p]))
     : null;
@@ -254,8 +272,20 @@ export function paginate(elements) {
 
   const place = (row, cost) => { page.push(row); used += cost; };
 
+  /* An omitted scene moves whole, like a slug line, and keeps the one
+     line a slug line reserves under itself. */
+  const placeOmitted = (number) => {
+    speaker = '';
+    const row = { type: 'scene', omitted: true, id: null, lines: ['OMITTED'], sceneNo: String(number) };
+    const gap = page.length ? GEOMETRY.scene.blankBefore : 0;
+    if (used + gap + 1 + 1 <= BODY_LINES) { place({ ...row, blankBefore: gap }, gap + 1); return; }
+    flush();
+    place({ ...row, blankBefore: 0 }, 1);
+  };
+
   for (let idx = 0; idx < els.length; idx++) {
     const el = els[idx];
+    if (omitBefore.size && el && omitBefore.has(el.id)) omitBefore.get(el.id).forEach(placeOmitted);
     const pair = pairs && pairs.get(idx);
     if (pair) {
       const block = dualBlock(els, pair);
@@ -276,7 +306,10 @@ export function paginate(elements) {
     const geom = GEOMETRY[type];
     const lines = wrapText(text, geom.width);
     const id = el && el.id;
-    const extra = type === 'scene' ? { sceneNo: String(++sceneNo) } : null;
+    const extra = type === 'scene'
+      ? { sceneNo: (byId && byId.get(id)) || String(sceneNo + 1) }
+      : null;
+    if (type === 'scene') sceneNo++;
 
     if (type === 'character') speaker = text;
     if (type === 'scene' || type === 'transition' || type === 'action' || type === 'shot') speaker = '';
@@ -350,8 +383,19 @@ export function paginate(elements) {
        (CONT'D) it did not earn. */
     place({ type, lines, blankBefore: 0, id, ...extra }, lines.length);
   }
+  omitEnd.forEach(placeOmitted);
   flush();
   return pages;
+}
+
+/** The script's own pages: its elements, numbered the way its lock
+    (if any) says. Every renderer here, and the editor's page view,
+    paginates through this, so a locked script cannot print one set of
+    numbers and show another. */
+export function paginateDoc(doc) {
+  const els = (doc && doc.elements) || [];
+  if (!doc || !doc.numbering || doc.numbering.locked !== true) return paginate(els);
+  return paginate(els, { numbers: sceneNumbers(els, doc.numbering) });
 }
 
 /* ------------------------------------------------------------
@@ -427,8 +471,57 @@ function titleSheet(doc, meta) {
   ]);
 }
 
+/* ------------------------------------------------------------
+   REVISION MARKS
+   ------------------------------------------------------------
+   `meta.marks` — { ids, label, swatch, tint } — is the set of element
+   ids that changed since the revision a person chose
+   (src/lib/script-diff.js, revisedIds()), and how the pages that carry
+   them are labelled. The industry convention, as a production office
+   issues it:
+     · an asterisk in the RIGHT margin beside every changed line;
+     · each page that holds a change headed with the revision colour's
+       name ("Blue Revision") beside the page number — and, when
+       printed on coloured stock, the page itself in that colour, which
+       `tint` stands in for on a PDF.
+   Neither changes a single break: the asterisk sits in the margin and
+   the header sits in the line the page number already reserves, so a
+   marked PDF and an unmarked one paginate identically, and both agree
+   with the page view. */
+const markSet = (marks) => (marks && marks.ids
+  ? (marks.ids instanceof Set ? marks.ids : new Set(marks.ids))
+  : null);
+const rowMarked = (row, set) => !!set
+  && (row.ids ? row.ids.some((id) => set.has(id)) : !!(row.id && set.has(row.id)));
+
 /** One row of a page, as DOM, for the print document. */
 function rowNode(row, opts) {
+  const node = rowNodeBare(row, opts);
+  if (opts.marked && rowMarked(row, opts.marked)) {
+    node.classList.add('wr-pr-revd');
+    node.append(h('span.wr-pr-star', { text: '*', 'aria-label': 'revised' }));
+  }
+  return node;
+}
+
+function rowNodeBare(row, opts) {
+  if (row.omitted) {
+    /* "12  OMITTED". With the margins numbered the number is in them;
+       without, it is the text, because an OMITTED with no number says
+       nothing. */
+    const p = h('p.wr-pr.wr-pr-scene.wr-pr-omitted' + (row.blankBefore === 2 ? '.wr-pr-gap2' : ''), {
+      text: opts.sceneNumbers ? 'OMITTED' : row.sceneNo + '  OMITTED'
+    });
+    if (row.blankBefore === 0) p.classList.add('wr-pr-tight');
+    if (opts.sceneNumbers) {
+      p.classList.add('wr-pr-numbered');
+      p.append(
+        h('span.wr-pr-sn.wr-pr-sn-l', { text: row.sceneNo }),
+        h('span.wr-pr-sn.wr-pr-sn-r', { text: row.sceneNo })
+      );
+    }
+    return p;
+  }
   if (row.type === 'dual') {
     const node = h('div.wr-pr.wr-pr-dual');
     for (const col of row.cols) {
@@ -474,11 +567,22 @@ export function buildDocument(doc, meta = {}) {
   const root = h('div.wr-print');
   root.append(titleSheet(doc, meta));
 
-  const opts = { sceneNumbers: !!meta.sceneNumbers };
-  const pages = paginate((doc && doc.elements) || []);
+  const marked = markSet(meta.marks);
+  const opts = { sceneNumbers: !!meta.sceneNumbers, marked };
+  const pages = paginateDoc(doc);
   pages.forEach((rows, i) => {
+    const revised = !!marked && rows.some((r) => rowMarked(r, marked));
     const sheet = h('section.wr-pg');
-    sheet.append(h('div.wr-pg-num', { text: pageNumber(i) }));
+    if (revised) {
+      sheet.classList.add('wr-pg-revised');
+      if (meta.marks.tint && meta.marks.swatch) sheet.classList.add('wr-pg-tint', 'c-' + meta.marks.swatch);
+      sheet.append(h('div.wr-pg-num.has-rev', {}, [
+        h('span.wr-pg-rev', { text: String(meta.marks.label || 'Revised') }),
+        h('span', { text: pageNumber(i) })
+      ]));
+    } else {
+      sheet.append(h('div.wr-pg-num', { text: pageNumber(i) }));
+    }
     for (const row of rows) sheet.append(rowNode(row, opts));
     root.append(sheet);
   });
@@ -488,9 +592,19 @@ export function buildDocument(doc, meta = {}) {
   return root;
 }
 
-/** How many sheets the script prints on, title page excluded. */
-export function sheetCount(elements) {
-  return paginate(elements).length;
+/** How many sheets the script prints on, title page excluded. Pass
+    the whole doc to count a locked script's OMITTED rows too. */
+export function sheetCount(elements, numbering) {
+  return numbering ? paginateDoc({ elements, numbering }).length : paginate(elements).length;
+}
+
+/** Which pages (0-based) carry a revised line. For the export's
+    summary, and for a test that the marks land where the diff says. */
+export function revisedPages(doc, ids) {
+  const set = markSet({ ids });
+  const out = [];
+  paginateDoc(doc).forEach((rows, i) => { if (rows.some((r) => rowMarked(r, set))) out.push(i); });
+  return out;
 }
 
 /* ------------------------------------------------------------
@@ -506,6 +620,7 @@ const pad = (n) => ' '.repeat(Math.max(0, n));
 const TEXT_WIDTH = 60;
 
 function textRow(row) {
+  if (row.omitted) return [row.sceneNo + '  OMITTED'];
   if (row.type === 'dual') return row.lines.slice();
   const geom = row.type === 'more' ? GEOMETRY.paren : geometryOf(row.type);
   return row.lines.map((line) => {
@@ -550,15 +665,24 @@ export function toText(doc, meta = {}) {
     if (meta.date) { out.push(''); out.push(centre(String(meta.date))); }
   }
 
-  const pages = paginate((doc && doc.elements) || []);
+  const marked = markSet(meta.marks);
+  const pages = paginateDoc(doc);
   pages.forEach((rows, i) => {
     out.push('\f');                                  // a real page break
     const num = pageNumber(i);
-    out.push(num ? pad(Math.max(0, TEXT_WIDTH - num.length)) + num : '');
+    const rev = marked && rows.some((r) => rowMarked(r, marked)) ? String(meta.marks.label || 'Revised') : '';
+    const head = rev ? rev + (num ? '  ' + num : '') : num;
+    out.push(head ? pad(Math.max(0, TEXT_WIDTH - head.length)) + head : '');
     out.push('');
     rows.forEach((row, j) => {
       for (let b = 0; b < (j === 0 ? 0 : row.blankBefore); b++) out.push('');
-      out.push(...textRow(row));
+      const lines = textRow(row);
+      /* The asterisk, two columns right of the 60-character measure,
+         on the first line of a revised block. */
+      if (marked && rowMarked(row, marked) && lines.length) {
+        lines[0] = lines[0].padEnd(TEXT_WIDTH + 2) + '*';
+      }
+      out.push(...lines);
     });
   });
 
@@ -571,6 +695,6 @@ export function toText(doc, meta = {}) {
 
 export default {
   GEOMETRY, geometryOf, DUAL, PAGE_LINES, BODY_LINES,
-  wrapText, printedText, paginate, pageNumber, titlePageOf,
-  buildDocument, sheetCount, toText
+  wrapText, printedText, paginate, paginateDoc, pageNumber, titlePageOf,
+  buildDocument, sheetCount, revisedPages, toText
 };

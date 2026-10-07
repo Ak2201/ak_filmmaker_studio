@@ -43,6 +43,10 @@
      ai_tools        every model-backed tool
      exports         PDF, backup and other downloads
      drive_backup    Google Drive backup
+     remove_branding a PAID plan may switch off "Made with FilmMakerStudio"
+                     on decks, call sheets and the screening room
+                     (src/ui/footer.js reads it; the Free plan never may,
+                     whatever this says — the line is how Free grows)
    ============================================================ */
 import Store from './store.js';
 import nav from '../data/navigation.json';
@@ -57,7 +61,8 @@ export const CAPABILITIES = [
   ['script_import', 'Script import',          'Fountain, FDX and PDF importers'],
   ['ai_tools',      'AI tools',               'Every model-backed tool, on the user’s own key'],
   ['exports',       'Exports',                'PDF, backup and other downloads'],
-  ['drive_backup',  'Google Drive backup',    'The Drive connection on Settings']
+  ['drive_backup',  'Google Drive backup',    'The Drive connection on Settings'],
+  ['remove_branding', 'Remove branding',      'Switch off “Made with FilmMakerStudio” (paid plans only)']
 ];
 
 let features = null;      // null = unknown / not gated; an object once a plan is known

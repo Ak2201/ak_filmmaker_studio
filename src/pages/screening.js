@@ -22,6 +22,21 @@
    which scopes come back (story, blueprint, scenes; never contacts or
    money) — in screening_open(), schema section 13.6. This page only
    draws what it is given.
+
+   "MADE WITH FILMMAKERSTUDIO" closes the room (src/ui/footer.js). The
+   viewer has no plan, so the SENDER's decides: the line is shown unless
+   the pass row says `branding: false` (a server column that does not
+   exist yet — read defensively), with the sender's `ref` when it has one.
+
+   PUBLIC VIEW LINKS (src/lib/public-view.js) — a DESIGN behind a build
+   flag that is OFF. With VITE_PUBLIC_VIEW=on, `screening.html#view=<t>`
+   opens one rendered document (a pitch deck or a call sheet) through
+   the anon RPC public_view_open() — proposed, not deployed. This page
+   is used because it is already EXEMPT from the site gate, already
+   keeps no session, and already writes nothing. The token is read
+   from the FRAGMENT, which is never sent to a server or in a Referer,
+   and stripped from the address bar at once. With the flag off the
+   fragment is ignored and the page is exactly the screening room.
    ============================================================ */
 import '../lib/store.js';          /* FIRST — invariant 6. */
 import '../styles/base.css';
@@ -35,6 +50,11 @@ import { createGate, formatCode, normaliseCode, errorSentence } from '../lib/gat
 import { matrix, frameworkById } from '../lib/story.js';
 import { collectFrom, buildDeck } from '../lib/pitch-deck.js';
 import { createWatermark } from '../lib/watermark.js';
+import { brandLine } from '../ui/footer.js';
+import { openPublicView, renderCallSheet, renderPitch } from '../lib/public-view.js';
+
+/* Named directly so Vite inlines the one string. Anything but `on` is off. */
+const PUBLIC_VIEW = String(import.meta.env.VITE_PUBLIC_VIEW || '').toLowerCase() === 'on';
 
 const app = document.getElementById('app');
 
@@ -69,6 +89,13 @@ let typed = null;   // { code, email } as last submitted; null until the first s
 const params = new URLSearchParams(location.search);
 const prefill = normaliseCode(params.get('pass') || '');
 if (params.has('pass')) history.replaceState(null, '', location.pathname);
+
+/* A public view token, only when the flag is on; read once and stripped. */
+let viewToken = '';
+if (PUBLIC_VIEW) {
+  const m = /(?:^#|&)view=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+  if (m) { viewToken = m[1]; history.replaceState(null, '', location.pathname + location.search); }
+}
 
 /* ---- entering a pass ----------------------------------------- */
 
@@ -143,11 +170,12 @@ function renderRoom(pass) {
   }
 
   // The pitch deck, on screen: the same slides the PDF prints.
-  const deck = buildDeck(d);
+  const deck = buildDeck(d, { brand: false });   // the room closes with its own line
   deck.classList.add('sc-deck');
   main.append(block('deck', 'Pitch deck', [deck]));
 
   if (!blocks.length) main.append(h('p.sc-note', { text: 'This project has nothing shared in it yet.' }));
+  if (pass.branding !== false) main.append(brandLine({ ref: typeof pass.ref === 'string' ? pass.ref : '' }));
   return { main, blocks };
 }
 
@@ -169,7 +197,30 @@ function closeRoom(message) {
 
 /* ---- render ---------------------------------------------------- */
 
+/* ---- a public view (flag on only) ------------------------------ */
+
+function renderView(v) {
+  const main = h('main#main.sc-main.sc-room.pv-room');
+  main.append(h('header.sc-head', {}, [
+    h('p.bd-eyebrow', { text: (v.kind === 'callsheet' ? 'Call sheet' : 'Pitch deck') + ' · shared read-only' }),
+    h('h1.bd-title', { text: v.title || 'Untitled' }),
+    v.kind === 'callsheet' && v.payload.project ? h('p.bd-deck', { text: v.payload.project }) : null,
+    v.expiresAt ? h('p.sc-expiry', { text: expiryText(Date.parse(v.expiresAt) - Date.now()) }) : null
+  ].filter(Boolean)));
+  main.append(h('section.sc-block', { id: 'view' }, [v.kind === 'callsheet' ? renderCallSheet(v.payload) : renderPitch(v.payload)]));
+  if (v.branding) main.append(brandLine({ ref: v.ref }));
+  return main;
+}
+
 function render() {
+  if (state.stage === 'view' && state.view) {
+    app.replaceChildren(renderView(state.view));
+    return;
+  }
+  if (state.stage === 'viewing') {
+    app.replaceChildren(h('main#main.sc-main.sc-enter', {}, [h('p.sc-note', { role: 'status', text: 'Opening the shared link…' })]));
+    return;
+  }
   if (state.stage === 'room' && state.pass) {
     const { main, blocks } = renderRoom(state.pass);
     app.replaceChildren(main);
@@ -227,4 +278,16 @@ delegate(document, 'input', '#scCode', (e, el) => {
 // A pass is for watching: no context menu over the protected content.
 document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('.sc-room')) e.preventDefault(); });
 
-render();
+if (viewToken) {
+  state.stage = 'viewing';
+  render();
+  getClient().then((c) => openPublicView(c, viewToken)).then((view) => {
+    state = { stage: 'view', error: '', busy: false, pass: null, view };
+    render();
+  }).catch((err) => {
+    state = { stage: 'enter', error: err.message || 'That link could not be opened.', busy: false, pass: null };
+    render();
+  });
+} else {
+  render();
+}

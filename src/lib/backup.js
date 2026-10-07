@@ -106,7 +106,11 @@ export const GLOBAL_KEYS = {
      Travels with a backup like the theme does: a writer restoring a
      studio on a new machine wants the editor to behave as they left
      it. Not project-scoped; src/ui/format-guide.js owns the shape. */
-  write_prefs:  'fms_write_prefs_v1'
+  write_prefs:  'fms_write_prefs_v1',
+  /* The onboarding tour's place (src/ui/tour.js): which step, dismissed,
+     the hub checklist hidden. Per device, like the theme; written only
+     on a click. The checklist's TICKS are derived and stored nowhere. */
+  tour:         'fms_tour_v1'
 };
 
 export const NOTE_PREFIX = 'fms_note_';

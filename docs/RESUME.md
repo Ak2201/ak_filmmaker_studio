@@ -1,5 +1,12 @@
 # Where work stopped — resume here
 
+> **Pointer (7 Oct 2026):** all ten workstreams below have been merged into
+> ONE snapshot branch, `wip-all`, and documented in `docs/WIP.md` on that
+> branch. Read `docs/WIP.md` instead of the individual branches; the
+> originals are kept as `archive/*`. The text below is the earlier,
+> per-branch description.
+
+
 Written 7 Oct 2026 when the owner stopped every running agent. **Nothing
 in this file is on `main` except this file and `docs/FEATURE-IDEAS.md`.**
 The feature work lives on `wip/*` branches on GitHub. They are backups of

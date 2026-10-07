@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The PUBLIC pages only: the ones outside the site gate (the EXEMPT
+     list in src/lib/sitegate.js, minus screening.html, which is a guest
+     pass and not a page to find). Every other page redirects a visitor
+     who is not a member to invite.html, so listing it would list a
+     redirect. The URLs are the clean form both hosts serve (cleanUrls
+     on Vercel, the 200 rewrites in netlify.toml). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://thefilmmakerstudio.vercel.app/start</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://thefilmmakerstudio.vercel.app/invite</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thefilmmakerstudio.vercel.app/privacy</loc>
+    <lastmod>2026-10-06</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://thefilmmakerstudio.vercel.app/terms</loc>
+    <lastmod>2026-10-06</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://thefilmmakerstudio.vercel.app/refund</loc>
+    <lastmod>2026-10-06</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-volume="studio">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FilmMakerStudio — write, plan and shoot your film</title>
+<meta name="description" content="A browser-based studio for Tamil independent filmmakers: write the script, plan the shoot, run the set. Pay once, no subscription, works offline.">
+<link rel="canonical" href="https://thefilmmakerstudio.vercel.app/start">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FilmMakerStudio">
+<meta property="og:title" content="FilmMakerStudio — write, plan and shoot your film">
+<meta property="og:description" content="Pay once. No subscription. Works offline — your work stays in your browser. Script, breakdown, stripboard, budget, call sheets and the shoot day, in one desk.">
+<meta property="og:url" content="https://thefilmmakerstudio.vercel.app/start">
+<meta property="og:image" content="https://thefilmmakerstudio.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FilmMakerStudio — Pay once. No subscription. Works offline.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FilmMakerStudio — write, plan and shoot your film">
+<meta name="twitter:description" content="Pay once. No subscription. Works offline — your work stays in your browser.">
+<meta name="twitter:image" content="https://thefilmmakerstudio.vercel.app/og.png">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+</head>
+<body>
+<!-- ============================================================
+     THE PUBLIC LANDING PAGE. Reachable OUTSIDE the site gate (it is on
+     the EXEMPT list in src/lib/sitegate.js beside privacy, terms and
+     refund), so it follows the legal pages' pattern: the words live in
+     the MARKUP, so a crawler, a link preview and a reader with scripts
+     off all get the whole page. src/pages/start.js adds only what
+     cannot be static — the five stages and their modules, derived from
+     src/data/navigation.json (invariant 2), and the CTA's label, which
+     depends on whether this build has the gate on.
+     ============================================================ -->
+<main class="st" id="top">
+
+<header class="st-hero">
+  <p class="st-eyebrow">FilmMakerStudio</p>
+  <h1 class="st-title">Write the script. Plan the shoot. Run the set.<br>One desk, in your browser.</h1>
+  <p class="st-hook">Pay once. No subscription. Works offline &mdash; your work stays in your browser.</p>
+  <p class="st-lede">A production studio for independent filmmakers, built around how a Tamil unit
+  actually works: a screenplay that drives the breakdown, a breakdown that drives the schedule, the
+  budget and the call sheet, and a shoot-day view made for a phone on location.</p>
+  <p class="st-cta">
+    <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-gated="Request an invite" data-open="Open the studio">Request an invite</a>
+    <a class="st-btn" href="index.html?sample=1">See it on a real film</a>
+  </p>
+  <p class="st-fine">Free to try with a complete sample film. Paid tiers are a single payment, kept for good.</p>
+</header>
+
+<section class="st-sec" id="jobs" aria-labelledby="jobs-h">
+  <p class="st-eyebrow">Three jobs</p>
+  <h2 class="st-h2" id="jobs-h">What it does</h2>
+  <div class="st-grid st-grid-3">
+    <article class="st-card">
+      <h3 class="st-h3"><a href="write.html#screenplay">Write the script</a></h3>
+      <p>A screenplay editor that formats as you type &mdash; slug lines, action, cues, dialogue, dual
+      dialogue, transitions &mdash; and keeps the page count honest. Dialogue in Tamil or Tanglish with slugs
+      and action in English, which is what the crew shoots from. Import a <code>.fountain</code>, <code>.fdx</code>
+      or PDF; export a properly paginated screenplay PDF.</p>
+      <p class="st-more"><a href="write.html#screenplay">Screenplay &rarr;</a></p>
+    </article>
+    <article class="st-card">
+      <h3 class="st-h3"><a href="breakdown.html#breakdown">Plan the shoot</a></h3>
+      <p>Every scene heading in the script becomes a scene row. Break it down into cast, props, vehicles
+      and sound; lay the strips out into days; see the day-out-of-days, the locations and a budget at
+      Chennai rates; keep the unit list and print the call sheets &mdash; all from one scene model, so nothing
+      is typed twice.</p>
+      <p class="st-more"><a href="breakdown.html#breakdown">Script breakdown &rarr;</a></p>
+    </article>
+    <article class="st-card">
+      <h3 class="st-h3"><a href="shoot.html">Run the set</a></h3>
+      <p>The shoot day on a phone: today&rsquo;s scenes, who is called, and what you actually got &mdash;
+      shot, part, or dropped. The edit log reads those marks to say what is in the can and what is still
+      owed, and the deliverables list carries you to the censor copy, the DCP and the festival formats.</p>
+      <p class="st-more"><a href="shoot.html">Shoot day &rarr;</a></p>
+    </article>
+  </div>
+</section>
+
+<section class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
+  <p class="st-eyebrow">See it on a real film</p>
+  <h2 class="st-h2" id="sample-h">Open the studio with <em>Dragon</em> already loaded</h2>
+  <p>Rather than an empty desk, the sample is a complete feature: <em>Dragon</em> (2025, dir. Ashwath
+  Marimuthu) reconstructed as a production &mdash; a full 36-scene screenplay, the scenes broken down from
+  it, an 18-day schedule across 17 locations, a 29-person unit, a budget and two call sheets. Open any
+  page and there is something real on it to read, edit or delete.</p>
+  <p class="st-note">The public facts are credited and correct. Every piece of paperwork &mdash; the schedule,
+  the dates, the budget, the unit, the recces, the call sheets and every line of the script &mdash; is
+  invented for the demonstration and says so wherever it appears. No real person&rsquo;s contact details
+  and none of the film&rsquo;s actual screenplay are in it.</p>
+  <p class="st-cta"><a class="st-btn st-btn-primary" href="index.html?sample=1">Open the sample project</a></p>
+</section>
+
+<section class="st-sec" id="stages" aria-labelledby="stages-h">
+  <p class="st-eyebrow">Five stages</p>
+  <h2 class="st-h2" id="stages-h">From the idea to the screening</h2>
+  <p>The studio is arranged the way a film is made, in five stages. Each stage is a set of modules, and
+  every module reads the same film &mdash; the script, the scenes, the people, the days &mdash; so a change
+  in one place shows up in all of them.</p>
+  <!-- Filled by src/pages/start.js from src/data/navigation.json: the
+       stages, their built modules by label and purpose, and the two
+       shelves (Library, Blueprints). Never hand-write the list here. -->
+  <div class="st-stages" id="stageList" aria-live="polite">
+    <noscript><p class="st-note">The list of stages and modules is drawn from the studio&rsquo;s own
+    map and needs JavaScript to appear here. Everything on this page above and below reads without it.</p></noscript>
+  </div>
+</section>
+
+<section class="st-sec" id="offline" aria-labelledby="offline-h">
+  <p class="st-eyebrow">Local first</p>
+  <h2 class="st-h2" id="offline-h">Your film lives in your browser</h2>
+  <div class="st-grid st-grid-3">
+    <article class="st-card">
+      <h3 class="st-h3">Works offline</h3>
+      <p>Once a page has loaded, it opens again without a network &mdash; on a recce, on location, on a
+      train. Everything you type is saved to this browser as you type it, with no account required.</p>
+    </article>
+    <article class="st-card">
+      <h3 class="st-h3">Backed up your way</h3>
+      <p>Export the whole studio as one file whenever you like, or keep it current in your own Google
+      Drive. Sign in and your films sync to the cloud as well, with share links and comments for the
+      people you choose.</p>
+    </article>
+    <article class="st-card">
+      <h3 class="st-h3">AI if you want it, with your own key</h3>
+      <p>Shot divisions, dialogue passes, beat critique and a synopsis-to-script draft &mdash; each gated
+      behind a key you bring (Anthropic or Gemini) that stays on your device. Nothing here needs it.</p>
+    </article>
+  </div>
+</section>
+
+<section class="st-sec st-plans" id="plans" aria-labelledby="plans-h">
+  <p class="st-eyebrow">Pricing</p>
+  <h2 class="st-h2" id="plans-h">One payment. Yours for good.</h2>
+  <p>There is no subscription. A plan is bought once and never renews, never lapses and never asks
+  again. Prices are in Indian rupees, paid through Razorpay, and a full refund is yours within seven
+  days if it is not for you.</p>
+  <!-- The tier names mirror PLAN_ORDER / planName in src/lib/billing.js.
+       The PRICES live in the plans table on the server and are read by
+       the cards on invite.html; they are deliberately not printed here,
+       so this page can never disagree with what the checkout charges. -->
+  <ul class="st-tiers">
+    <li><strong>Free</strong><span>The whole desk, with the <em>Dragon</em> sample to work on. Try every module before you pay.</span></li>
+    <li><strong>Starter</strong><span>Your own films, synced to the cloud, with a few collaborators and share links per film, and the Chrome extension.</span></li>
+    <li><strong>Indie</strong><span>More films in the cloud, more collaborators and share links, and seats for a small organisation.</span></li>
+    <li><strong>Pro</strong><span>Unlimited films, collaborators and share links, and seats for a full production house.</span></li>
+  </ul>
+  <p class="st-note">Local work, Google Drive backup and the AI tools (with your own key) are on every tier,
+  including Free. The tiers differ in what syncs to the cloud, who you can share with, and how many seats
+  your organisation has.</p>
+  <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#buy">See plans and prices</a></p>
+</section>
+
+<section class="st-sec" id="faq" aria-labelledby="faq-h">
+  <p class="st-eyebrow">Questions</p>
+  <h2 class="st-h2" id="faq-h">Before you ask</h2>
+  <details class="st-faq">
+    <summary>Does it really work offline?</summary>
+    <p>Yes. The studio installs as a web app, and after your first visit every page opens from the device
+    with no connection. Your writing is saved to the browser as you type. Sync and backup run when you are
+    back online, if you have turned them on; nothing waits for them.</p>
+  </details>
+  <details class="st-faq">
+    <summary>Where is my data, and who can read it?</summary>
+    <p>On your device, in this browser&rsquo;s storage, unless you choose otherwise. Sign in with Google and
+    your films also sync to the studio&rsquo;s cloud, where row-level security keeps each account&rsquo;s rows
+    to itself. Connect Google Drive and a backup file sits in your own Drive, with Drive&rsquo;s own version
+    history. The <a href="privacy.html">Privacy Policy</a> lists exactly what is collected and why.</p>
+  </details>
+  <details class="st-faq">
+    <summary>What happens if I clear my browser?</summary>
+    <p>Work that was only in that browser goes with it &mdash; that is what local-first means, and it is why the
+    studio nags you about backups. Export a backup file now and then, or connect Drive once and forget about
+    it; signed-in films come back from the cloud on the next sign-in.</p>
+  </details>
+  <details class="st-faq">
+    <summary>Can I write in Tamil?</summary>
+    <p>Yes. Dialogue in Tamil script or in Tanglish, with slug lines and action in English &mdash; the arrangement
+    most Tamil units shoot from, and the one where the page count stays arithmetic. Tamil throughout is offered
+    too, with the page count labelled an estimate rather than a number the Courier grid cannot stand behind.</p>
+  </details>
+  <details class="st-faq">
+    <summary>Why is it invite-only?</summary>
+    <p>The studio is opening in small groups so that every new member gets looked after. Sign in with Google
+    and ask for an invite, enter a code if somebody gave you one, or buy a plan and come straight in.</p>
+  </details>
+  <details class="st-faq">
+    <summary>What if I want my money back?</summary>
+    <p>Ask within seven days of purchase and the full amount goes back to the card, UPI, net banking or wallet you
+    paid with. The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
+  </details>
+</section>
+
+<section class="st-sec st-close" id="go" aria-labelledby="go-h">
+  <h2 class="st-h2" id="go-h">Ready when you are.</h2>
+  <p class="st-cta">
+    <a class="st-btn st-btn-primary" id="ctaOpen2" href="invite.html" data-gated="Request an invite" data-open="Open the studio">Request an invite</a>
+    <a class="st-btn" href="index.html?sample=1">Open the sample first</a>
+  </p>
+</section>
+
+<footer class="st-foot">
+  <p>FilmMakerStudio &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a> &middot; <a href="refund.html">Refunds</a> &middot; <a href="mailto:arunaaron85@gmail.com">Contact</a></p>
+</footer>
+
+</main>
+<script type="module" src="/src/pages/start.js"></script>
+</body>
+</html>

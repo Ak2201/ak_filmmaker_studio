@@ -164,6 +164,9 @@ export default defineConfig({
         privacy:    resolve(__dirname, 'privacy.html'),
         terms:      resolve(__dirname, 'terms.html'),
         refund:     resolve(__dirname, 'refund.html'),
+        // The public landing page: outside the site gate, no app code
+        // (src/pages/start.js), the words in the markup like the legal pages.
+        start:      resolve(__dirname, 'start.html'),
         // Redirect stubs at the old filenames. Shipped so existing
         // bookmarks, the links in the published README and anything
         // already shared keep resolving instead of 404ing.

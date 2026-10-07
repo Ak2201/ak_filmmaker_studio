@@ -33,12 +33,22 @@
    neither: it is a chip, accepted by a click or by Alt+Return, and
    write.js's Return handler already ignores a Return with Alt held.
    The Tamil-script view is a PREVIEW under the line and is never
-   written into the script: the page count is arithmetic on a
-   romanised, fixed-width grid.
+   written into the line by itself: the page count is arithmetic on a
+   fixed-width grid, and the line in use is the writer's to choose.
+
+   TWO WAYS THE WRITER MAY TAKE THE TAMIL, both their own act:
+     - "Keep as Tamil take" stores the preview's rendering as one more
+       ALTERNATE take of this line (`alts`, above). The line in use is
+       untouched, and the Tamil take is chosen the way any take is,
+       with "Use this take". Dialogue only, because this strip is.
+     - "Type Tamil" (Alt/⌥ T) is src/ui/tamil-type.js: an opt-in mode
+       where each Roman word typed in a dialogue or parenthetical line
+       is offered in Tamil script and committed with Space or Return.
    ============================================================ */
 import { h } from '../lib/dom.js';
 import StudioUI from './chrome.js';
-import { wordIndex, suggest, wordBefore, toTamil } from '../lib/tanglish.js';
+import { wordIndex, suggest, wordBefore, toTamil, hasLatin } from '../lib/tanglish.js';
+import { mountTamilType, isTamilTyping, setTamilTyping, TAMIL_EVENT } from './tamil-type.js';
 
 let getDoc = () => null;
 
@@ -103,6 +113,12 @@ function buildStrip(row, el) {
         title: 'An approximate preview in Tamil script. Never saved into the script.',
         text: 'Tamil script'
       }),
+      h('button.btn.wx-mini', {
+        type: 'button', 'data-action': 'tamil-type-toggle',
+        'aria-pressed': isTamilTyping() ? 'true' : 'false',
+        title: 'Type Roman letters, get Tamil script — in dialogue and parentheticals only (Alt/⌥ T)',
+        text: 'Type Tamil'
+      }),
       h('span.wx-suggest-slot', { 'aria-live': 'polite' })
     ])
   );
@@ -113,9 +129,18 @@ function buildStrip(row, el) {
 
 function tamilPreview(text) {
   const t = String(text || '').trim();
+  const keep = h('button.btn.wx-mini.wx-keep-ta', {
+    type: 'button', 'data-action': 'tamil-keep',
+    title: 'Store this Tamil rendering as another take of the line. The line in use does not change.',
+    text: 'Keep as Tamil take'
+  });
+  keep.hidden = !hasLatin(t);
   return h('div.wx-tamil', {}, [
     h('p.wx-tamil-line', { lang: 'ta', text: t ? toTamil(t) : '—' }),
-    h('p.wx-note', { text: 'Approximate preview from the romanised line. It is not saved; the script stays romanised so the page count holds.' })
+    h('div.wx-tamil-foot', {}, [
+      h('p.wx-note', { text: 'Approximate preview from the romanised line. It is not saved unless you keep it as a take; the line in use stays as you typed it.' }),
+      keep
+    ])
   ]);
 }
 
@@ -277,6 +302,28 @@ function onClick(e) {
   const ta = row && row.querySelector('.wr-text');
   if (act === 'tanglish-accept') { acceptSuggestion(ta); return; }
   if (act === 'tamil-toggle') { showTamil = !showTamil; showStrip(row); refocus(row, btn); return; }
+  if (act === 'tamil-type-toggle') {
+    setTamilTyping(!isTamilTyping());   // the event below repaints the strip
+    if (ta) ta.focus();
+    return;
+  }
+  if (act === 'tamil-keep') {
+    let kept = false;
+    withRow(btn, (el) => {
+      const tamil = toTamil(String(el.text || '').trim());
+      if (!tamil || !hasLatin(el.text)) return;
+      const takes = takesOf(el);
+      if (takes.includes(tamil) || tamil === el.text) return;
+      takes.push(tamil);
+      setTakes(el, takes);
+      kept = true;
+    });
+    refocus(row, { dataset: { action: 'tamil-keep' } });
+    StudioUI.toast(kept
+      ? 'Kept as a Tamil take. The line in use is unchanged — open Alternates to use it.'
+      : 'That Tamil take is already kept.', { type: 'info' });
+    return;
+  }
   if (act === 'alts-toggle') {
     openFor = openFor === row.dataset.el ? null : row.dataset.el;
     showStrip(row);
@@ -349,6 +396,13 @@ function onClick(e) {
 /** `opts.getDoc` returns the page's in-memory script. */
 export function mountAltLines(opts = {}) {
   if (typeof opts.getDoc === 'function') getDoc = opts.getDoc;
+  try { mountTamilType(); } catch (e) { console.warn('[write] tamil typing', e); }
+  // The mode changed (button or Alt+T): repaint the strip that is up.
+  document.addEventListener(TAMIL_EVENT, () => {
+    const s = document.querySelector('.' + STRIP);
+    const b = s && s.querySelector('[data-action="tamil-type-toggle"]');
+    if (b) b.setAttribute('aria-pressed', isTamilTyping() ? 'true' : 'false');
+  });
 
   document.addEventListener('focusin', (e) => {
     const t = e.target;
@@ -388,6 +442,8 @@ export function mountAltLines(opts = {}) {
     if (!strip) return;
     const prev = strip.querySelector('.wx-tamil-line');
     if (prev) prev.textContent = ta.value.trim() ? toTamil(ta.value.trim()) : '—';
+    const keep = strip.querySelector('.wx-keep-ta');
+    if (keep) keep.hidden = !hasLatin(ta.value);
     updateSuggestion(ta);
   });
   document.addEventListener('keydown', (e) => {

@@ -334,5 +334,30 @@ ok(/not a \.docx/.test((await extractDocxText(new TextEncoder().encode('plain te
 const ole = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0]);
 ok(/password-protected/.test((await extractDocxText(ole.buffer)).fatal), 'an encrypted/OLE file is refused by name');
 
+/* ---- docStarter: the Write page's starting drafts ---- */
+{
+  const empty = S.blankStory();
+  eq(S.docStarter(empty, 'One-Pager'), '', 'an empty story starts no draft');
+  eq(S.docStarter({ ...empty, logline: 'A liar gets caught.' }, 'Notes'), '', 'only the three kinds get a draft');
+  const st = { ...empty, logline: 'A college topper fakes his way into a job.', source: 'Ragavan lies.\n\nHe is caught.' };
+  const op = S.docStarter(st, 'One-Pager', { title: 'Dragon' });
+  ok(/^DRAGON/.test(op) && /LOGLINE\nA college topper/.test(op) && /SYNOPSIS\nRagavan lies\./.test(op), 'one-pager: title, logline, synopsis');
+  ok(/COMPARABLE FILMS/.test(op), 'one-pager leaves the headings a writer fills in');
+  eq(S.docStarter(st, 'Synopsis'), 'Ragavan lies.\n\nHe is caught.', 'synopsis is the Story synopsis');
+  const tr = S.docStarter({ ...st }, 'Treatment', { title: 'Dragon' });
+  ok(tr.startsWith('A college topper') && /He is caught/.test(tr), 'treatment: logline, then the synopsis when there is no outline');
+  const withOutline = { ...empty, logline: 'L.' };
+  S.addOutlineStep(withOutline, { beat: S.qualifyBeat(withOutline.framework, S.frameworkById(withOutline.framework).beats[0].id), text: 'He opens a fake file.' });
+  const tr2 = S.docStarter(withOutline, 'Treatment');
+  ok(/Beat sheet and step outline/.test(tr2) && /He opens a fake file/.test(tr2), 'treatment uses outlineMarkdown() when there is an outline');
+  eq(S.docStarter(withOutline, 'Synopsis'), 'He opens a fake file.', 'synopsis falls back to the outline as prose');
+  const long = { ...empty, source: Array.from({ length: 6 }, (_, i) => ('word' + i + ' ').repeat(80).trim()).join('\n\n') };
+  const w = (S.docStarter(long, 'One-Pager').match(/\S+/g) || []).length;
+  ok(w < 300, 'the one-pager keeps the synopsis to about 250 words — got ' + w);
+  const before = JSON.stringify(st);
+  S.docStarter(st, 'Treatment'); S.docStarter(st, 'One-Pager');
+  eq(JSON.stringify(st), before, 'docStarter reads and never writes');
+}
+
 console.log(`${fail ? '✗' : '✓'} story model + docx: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -74,6 +74,13 @@ import Keys from '../lib/write-keys.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
+/* Characters as data (src/lib/characters.js) and the table read: the
+   Characters tab. A view of the cues plus the writer's notes; it edits
+   the script only through a rename, and then through scriptChanged(). */
+import { renderCharacters, wireCharacters, characterNames } from '../ui/characters-panel.js';
+/* The One-Pager, Treatment and Synopsis open on a starting draft from
+   the Story page when they are empty (story.js docStarter, a read). */
+import { loadStory, docStarter, STARTER_KINDS } from '../lib/story.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, DOC_KINDS,
   revisionColour, typeLabel,
@@ -213,7 +220,9 @@ WriteKeys.configure({
 });
 const smart = createSmartType({
   getElements: () => doc.elements,
-  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null
+  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null,
+  // Names on the Characters list that no cue says yet.
+  extraNames: characterNames
 });
 let openDocId = null;
 
@@ -1686,8 +1695,22 @@ function renderDocCard(d) {
   return card;
 }
 
+/* A STARTING DRAFT, shown and not saved. When a One-Pager, Treatment
+   or Synopsis has no text, its editor opens on a draft built from the
+   Story page (story.js docStarter). The model's body stays '' until
+   the writer types — the first keystroke saves the whole draft as
+   their text, through the same input handler as any other — so an
+   untouched draft is re-derived on every open and can never be a stale
+   copy of the story. "Clear it" empties the box for this visit. */
+const starterCleared = new Set();     // doc ids, this visit only
+function starterFor(d) {
+  if (String(d.body || '').trim() || starterCleared.has(d.id) || !STARTER_KINDS.includes(d.kind)) return '';
+  try { return docStarter(loadStory(), d.kind, { title: Script.projectTitle() }); } catch (e) { return ''; }
+}
+
 function renderDocEditor(d) {
   const words = wordCount(d.body);
+  const starter = starterFor(d);
   const kind = h('select', { 'data-doc-field': 'kind', 'aria-label': 'Document kind' });
   DOC_KINDS.forEach((k) => {
     const opt = h('option', { value: k, text: k });
@@ -1703,11 +1726,20 @@ function renderDocEditor(d) {
       }, d.title)),
       labelled('Kind', kind)
     ]),
+    starter ? h('div.wr-starter', { 'data-starter': '' }, [
+      h('p.wr-starter-msg', {}, [
+        h('strong', { text: 'Starting draft from your Story page.' }),
+        h('span', { text: ' Not saved until you change it — then it is yours to rewrite. Your Story page is not touched.' })
+      ]),
+      h('button.btn.wr-starter-clear', { type: 'button', 'data-action': 'doc-starter-clear', text: 'Clear it' })
+    ]) : null,
     field('textarea.wr-body', {
       rows: '14', spellcheck: 'true',
-      placeholder: 'Write it here. Plain prose — this is not the screenplay.',
+      placeholder: STARTER_KINDS.includes(d.kind)
+        ? 'Write it here. Fill in the Story page — logline, outline, synopsis — and this opens on a starting draft.'
+        : 'Write it here. Plain prose — this is not the screenplay.',
       'data-doc-field': 'body', 'aria-label': 'Document text'
-    }, d.body),
+    }, d.body || starter),
     h('div.wr-editor-foot', {}, [
       h('span.wr-words', {}, [
         h('strong', { 'data-count': 'docwords', text: String(words) }),
@@ -1814,7 +1846,7 @@ function renderDocuments() {
 function render(focus) {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(), renderScreenplay(), BeatBoard.renderOutline(),
-    renderGenerate(), renderRevisions(), renderDocuments());
+    renderGenerate(), renderRevisions(), renderDocuments(), renderCharacters());
   app.replaceChildren(main);
   countNodes = null;
   smart.invalidate();
@@ -3226,19 +3258,43 @@ delegate(document, 'click', '[data-action="doc-del"]', () => {
 delegate(document, 'input', 'textarea[data-doc-field="body"]', (e, ta) => {
   const d = doc.documents.find((x) => x.id === openDocId);
   if (!d) return;
+  // The first edit of a starting draft makes it the writer's text.
+  const starter = ta.closest('.wr-editor')?.querySelector('[data-starter]');
+  if (starter) starter.remove();
   d.body = ta.value;
   d.updated = new Date().toISOString();
   refreshCounters();
   persist();
 });
 
+delegate(document, 'click', '[data-action="doc-starter-clear"]', (e, btn) => {
+  const editor = btn.closest('.wr-editor');
+  const ta = editor && editor.querySelector('textarea[data-doc-field="body"]');
+  if (!ta) return;
+  starterCleared.add(editor.dataset.doc);
+  btn.closest('[data-starter]')?.remove();
+  ta.value = '';                    // the model's body is '' already: nothing to save
+  ta.focus();
+});
+
 delegate(document, 'change', '[data-doc-field]', (e, el) => {
   const key = el.dataset.docField;
   const d = doc.documents.find((x) => x.id === openDocId);
   if (!d) return;
+  /* A starting draft that was never edited is not the document's body;
+     a `change` on it (blur after nothing) must not save it. */
+  if (key === 'body' && el.closest('.wr-editor')?.querySelector('[data-starter]')) return;
   d[key] = el.value;
   d.updated = new Date().toISOString();
   persistNow();
+  // A new kind on an empty document: open on that kind's starting draft.
+  if (key === 'kind' && !String(d.body || '').trim()) {
+    const ed = document.querySelector(`.wr-editor[data-doc="${CSS.escape(d.id)}"]`);
+    if (ed) {
+      ed.replaceWith(renderDocEditor(d));
+      document.querySelector('.wr-editor select[data-doc-field="kind"]')?.focus();
+    }
+  }
   // Only the card above is stale. Replacing that one node keeps its
   // title, kind and word count honest without rebuilding the section
   // under the caret the user is still holding in the editor.
@@ -3646,6 +3702,19 @@ document.addEventListener('visibilitychange', () => {
 
 /* The Outline tab (src/ui/beat-board.js) edits the script through
    the page's own model and save path, never around it. */
+/* The Characters tab: a rename changes cues in place, and this is the
+   page's own path for "the script changed under these rows". */
+wireCharacters({
+  getDoc: () => doc,
+  scriptChanged: (ids) => {
+    ids.forEach((id) => autosize(rowOf(id)?.querySelector('.wr-text')));
+    smart.invalidate();
+    refreshCounters();
+    persistNow();
+    scheduleDerived();
+  }
+});
+
 BeatBoard.wireBeatBoard({
   getDoc: () => doc,
   saveDoc: () => persistNow(),

@@ -188,6 +188,20 @@ big.ensure(sample);
 const build = performance.now() - t0;
 t0 = performance.now();
 for (let i = 0; i < 200; i++) ST.suggest('character', 'ra', big, 's1');
+/* The Characters list's names come after the script's own cues, and a
+   name a cue already says is not offered twice. */
+{
+  const base = labels(ST.suggest('character', 'ma', ix, 'g', null));
+  eq(labels(ST.suggest('character', 'ma', ix, 'g', ['MALINI', 'maran'])), base.concat(['MALINI']), 'cue: Characters-list names after the cues, no duplicates');
+  ok(base.length && !base.includes('MALINI'), 'cue: no extra names is the old behaviour');
+}
+{
+  const sheet = K.shortcutRows(K.parsePrefs(null), SIX, false).rows;
+  ok(sheet.some((r) => r.keys.includes('Alt/⌥ T') && /Tamil typing/.test(r.label)), 'the sheet documents Alt+T, Tamil typing');
+  const taken = sheet.filter((r) => r.keys.includes('Alt/⌥ T'));
+  eq(taken.length, 1, 'Alt+T is bound once');
+  ok(!K.resolveKey({ key: 't', code: 'KeyT', altKey: true }, { type: 'dialogue', empty: false, known: SIX }), 'Alt+T is not a write-keys binding (tamil-type.js owns it)');
+}
 const per = (performance.now() - t0) / 200;
 ok(build < 50, 'index build on the sample ' + build.toFixed(1) + 'ms');
 ok(per < 5, 'one suggestion on the sample ' + per.toFixed(2) + 'ms');

@@ -25,10 +25,24 @@
       A capital at the start of a word is sentence case and is read as
       lower case; a capital anywhere else is a deliberate letter.
 
-   NEVER WRITE ITS OUTPUT INTO THE SCRIPT. The page count is arithmetic
-   on a fixed-width Courier grid and the dialogue is romanised so that
-   it stays one (CLAUDE.md, `--f-script` and open item 8). A Tamil-
-   script line in an element would be a line the grid cannot measure.
+   THE PREVIEW IS NEVER WRITTEN INTO THE SCRIPT BY ITSELF. The page
+   count is arithmetic on a fixed-width Courier grid (CLAUDE.md,
+   `--f-script` and open item 8), so nothing here ever turns a line the
+   writer typed in Roman letters into Tamil script behind their back.
+
+   Two things the WRITER may choose, each a keystroke or a click and
+   each limited to the speech:
+     - Tamil typing (src/ui/tamil-type.js): an opt-in mode in which a
+       romanised word typed into a dialogue or parenthetical line is
+       offered in Tamil script and committed with Space or Return. That
+       is the 'ta-dialogue' register of SCRIPT_LANGS in ai.js — Tamil
+       dialogue under English slugs and action — which is the register
+       whose page count stays exact, because the structural elements
+       (headings, action, cues) stay on the Latin grid.
+     - "Keep as Tamil take" (src/ui/alt-lines.js): the Tamil rendering
+       stored as an ALTERNATE take of a dialogue line. The line in use
+       stays exactly what the writer typed.
+   Action, headings, cues and transitions are never offered Tamil.
    ============================================================ */
 
 /* ---- 1. the word index ------------------------------------- */
@@ -192,10 +206,35 @@ export function wordToTamil(raw) {
   return out;
 }
 
+/** Tamil-script candidates for one romanised word, best first, at most
+ *  `max`, no duplicates. The first is wordToTamil's reading. The rest
+ *  are the readings the chat convention leaves open — a lower-case
+ *  n, l or r that the writer may have meant as ண, ள or ற — made by
+ *  reading ONE of them as its capital. Pure and small: a word is a
+ *  handful of letters, so this is a few dozen wordToTamil calls at
+ *  most, cheap enough for every keystroke. */
+export function tamilCandidates(raw, max = 4) {
+  const w = String(raw || '');
+  if (!/^[A-Za-z]+$/.test(w)) return [];
+  const out = [wordToTamil(w)];
+  const flips = { n: 'N', l: 'L', r: 'R' };
+  // Not the first letter: a capital there is read as sentence case.
+  for (let i = 1; i < w.length && out.length < max; i++) {
+    const to = flips[w[i]];
+    if (!to) continue;
+    const t = wordToTamil(w.slice(0, i) + to + w.slice(i + 1));
+    if (!out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
 /** Any text: every run of Latin letters is transliterated, everything
  *  else (spaces, punctuation, digits, hyphens) passes through. */
 export function toTamil(text) {
   return String(text ?? '').replace(WORD, (w) => wordToTamil(w));
 }
 
-export default { wordIndex, suggest, wordBefore, wordToTamil, toTamil };
+/** True when `text` has a Latin letter a Tamil rendering would change. */
+export const hasLatin = (text) => /[A-Za-z]/.test(String(text ?? ''));
+
+export default { wordIndex, suggest, wordBefore, wordToTamil, toTamil, tamilCandidates, hasLatin };

@@ -362,5 +362,96 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   ok(pms < 50, `paginate() on the 2,361-element sample in ${pms.toFixed(1)}ms (budget 50ms, run at idle)`);
 }
 
+/* ---- characters as data (src/lib/characters.js) ---------------- */
+{
+  const CH = await import('../src/lib/characters.js');
+  const { readFileSync } = await import('node:fs');
+  const sample = JSON.parse(readFileSync(new URL('../src/data/sample.dragon.script.json', import.meta.url), 'utf8')).elements;
+  const els = [
+    { id: 'e1', type: 'scene', text: 'INT. TEA STALL - DAY' },
+    { id: 'e2', type: 'character', text: 'ANBU' },
+    { id: 'e3', type: 'dialogue', text: 'Naan varen.' },
+    { id: 'e4', type: 'character', text: 'MEENA (O.S.)', dual: true },
+    { id: 'e5', type: 'paren', text: 'softly' },
+    { id: 'e6', type: 'dialogue', text: 'Seri, vaa.' },
+    { id: 'e7', type: 'action', text: 'Anbu leaves.' },
+    { id: 'e8', type: 'scene', text: 'EXT. ROAD - NIGHT' },
+    { id: 'e9', type: 'character', text: "ANBU (V.O.) (CONT'D)" },
+    { id: 'e10', type: 'dialogue', text: 'One more time.' },
+    { id: 'e11', type: 'dialogue', text: 'Please.' },
+    { id: 'e12', type: 'character', text: 'ANBUSELVAN' },
+    { id: 'e13', type: 'dialogue', text: 'Me again.' }
+  ];
+  // The merge: cues derive rows, stored rows keep their notes.
+  let m = CH.mergeWithCues([], els);
+  eq(m.map((c) => c.name), ['ANBU', 'MEENA', 'ANBUSELVAN'], 'every cue speaker is listed, in order of first cue');
+  ok(m.every((c) => c.derived), 'with nothing stored, every row is derived');
+  const stored = [CH.blankCharacter({ name: 'anbu', aliases: ['Anbuselvan'], want: 'a job' }), CH.blankCharacter({ name: 'KAVYA', need: 'rest' })];
+  m = CH.mergeWithCues(stored, els);
+  eq(m.map((c) => [c.name, c.derived, c.cues]), [['ANBU', false, 3], ['KAVYA', false, 0], ['MEENA', true, 1]], 'aliases fold in; a stored character with no cues is kept, never deleted');
+  eq(CH.ownerOf(stored, 'anbuselvan (V.O.)').name, 'ANBU', 'an alias finds its character through extensions and case');
+
+  // Storage: load/save through the storage given, an empty list removes the key.
+  const store = new Map();
+  const fake = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  ok(CH.saveCharacters(stored, fake) && store.has(CH.CHARACTERS_KEY), 'save writes fms_characters_v1');
+  eq(CH.loadCharacters(fake).map((c) => c.name), ['ANBU', 'KAVYA'], 'and loads it back');
+  eq(CH.loadCharacters(fake)[0].want, 'a job', 'notes round-trip');
+  CH.saveCharacters([], fake);
+  ok(!store.has(CH.CHARACTERS_KEY), 'an empty list removes the key');
+  store.set(CH.CHARACTERS_KEY, '{not json');
+  eq(CH.loadCharacters(fake), [], 'a corrupt value reads as empty, not a throw');
+  eq(CH.CHARACTERS_KEY, 'fms_characters_v1', 'the key name');
+
+  // Registered everywhere a per-project key must be.
+  const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  ok(/'fms_characters_v1'/.test(src('../src/lib/store.js')), 'in SCOPED_KEYS (store.js)');
+  ok(/characters:\s*'fms_characters_v1'/.test(src('../src/lib/backup.js')), 'in PROJECT_KEYS (backup.js)');
+  ok(/CHARACTERS_KEY = 'fms_characters_v1'/.test(src('../src/pages/hub.js')) && /SCENE_BIN_KEY, CHARACTERS_KEY/.test(src('../src/pages/hub.js')), 'in ALL_KEYS (hub.js)');
+  ok(/LOCAL_ONLY = new Set\([^)]*'fms_characters_v1'/.test(src('../src/lib/cloud.js')), 'LOCAL_ONLY in cloud.js until a schema section adds the scope');
+
+  // Rename: a plan with a count, extensions kept, dual flag kept, undoable.
+  const work = els.map((e) => ({ ...e }));
+  const plan = CH.renamePlan(work, ['ANBU', 'ANBUSELVAN'], 'Ravi');
+  eq(plan.cues, 3, 'the preview counts every cue the rename touches');
+  eq(plan.scenes, 2, 'and the scenes they are in');
+  eq(plan.changes.map((c) => c.after), ['RAVI', "RAVI (V.O.) (CONT'D)", 'RAVI'], 'extensions survive a rename');
+  eq(work[1].text, 'ANBU', 'a plan writes nothing');
+  const undo = CH.applyPlan(work, plan);
+  eq(work.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MEENA (O.S.)', "RAVI (V.O.) (CONT'D)", 'RAVI'], 'applied');
+  eq(work[3].dual, true, 'a dual-dialogue cue keeps its flag (the pair is derived, not stored)');
+  CH.applyPlan(work, undo);
+  eq(work.map((e) => e.text), els.map((e) => e.text), 'one undo puts every cue back');
+  ok(CH.renamePlan(work, 'MEENA', 'ANBU').merges, 'renaming onto a name already spoken says it merges');
+  eq(CH.renamePlan(work, 'ANBU', 'ANBU').cues, 0, 'a rename to the same name changes nothing');
+  eq(CH.renamePlan(work, 'NOBODY', 'X').cues, 0, 'an unknown name changes nothing');
+  const c = CH.blankCharacter({ name: 'ANBU', aliases: ['RAVI'] });
+  CH.renameCharacter(c, 'ravi');
+  eq([c.name, c.aliases], ['RAVI', []], 'the stored character takes the new name and drops it as an alias');
+
+  // The table read.
+  const tr = CH.tableRead(els, stored);
+  const anbu = tr.rows.find((r) => r.name === 'ANBU');
+  eq([anbu.speeches, anbu.lines, anbu.words, anbu.scenes], [3, 4, 8, 2], 'per character: speeches, lines, words, scenes (aliases folded)');
+  eq(anbu.seconds, Math.round(8 / A.DIALOGUE_WPS), 'speaking time at DIALOGUE_WPS');
+  const meena = tr.rows.find((r) => r.name === 'MEENA');
+  eq([meena.sides[0].paren, meena.sides[0].prevCue, meena.sides[0].prevText], ['softly', 'ANBU', 'Naan varen.'], 'sides carry the parenthetical and the line they answer');
+  eq(anbu.sides[1].prevCue, '', 'context does not cross a scene heading');
+  eq(anbu.sides[1].text, 'One more time.\nPlease.', 'a speech of two dialogue lines is one side');
+  eq(tr.rows[0].name, 'ANBU', 'most words first');
+  eq(CH.speakingMinutes(90), '1.5 min', 'minutes, to a tenth under ten');
+  eq(CH.speakingMinutes(1200), '20 min', 'and whole above');
+
+  // On the sample: fast enough to derive on render.
+  const big = sample.map((e, i) => ({ id: 'x' + i, ...e }));
+  const t5 = performance.now();
+  const mm = CH.mergeWithCues([], big);
+  const rr = CH.tableRead(big, []);
+  const rp = CH.renamePlan(big, 'RAGAVAN', 'D. RAGAVAN');
+  const cms = performance.now() - t5;
+  ok(mm.length >= 5 && rr.rows[0].name === 'RAGAVAN' && rp.cues === rr.rows[0].speeches, `characters on the sample: ${mm.length} parts, RAGAVAN leads, rename counts ${rp.cues}`);
+  ok(cms < 60, `merge + table read + rename plan on the sample in ${cms.toFixed(1)}ms (< 60)`);
+}
+
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);
 process.exit(fail ? 1 : 0);

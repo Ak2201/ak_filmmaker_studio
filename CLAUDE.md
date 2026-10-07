@@ -2063,6 +2063,30 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - Browser runs in this container need
       `PW_CHROMIUM=/opt/pw-browsers/chromium`.
 
+17. **The Medium/Low pass over the UX audit (7 Oct 2026).** All 27 Medium
+    and 30 of 31 Low items in `docs/UX-AUDIT-2026-10-06.md`, struck
+    through there item by item; five parallel agents, each on its own
+    file set, merged and gated once. Re-baselined from `94e062d` with
+    zero data-key movement on all 21 pages — the words that left are
+    named against the items (`replaces`, `above`/`below`, `bottom`/
+    `calculator`, the Feature keyboard line, the admin's signed-out copy).
+    Four things changed shared machinery and are worth knowing:
+    - **`src/ui/modal-focus.js`** — `holdFocus` / `releaseFocus`, the one
+      focus trap; the hub's project modal and the sign-in modal use it.
+      A new dialog takes it rather than a third keydown handler.
+    - **`applyBackup()` validates before it writes.** A v2 file needs a
+      `projects` array of objects with ids and a `data` object; a v1
+      file needs a known field. `{"hello":1}` used to import "1 project".
+    - **The tab strip observer filters.** `apply()` re-runs only when a
+      mutation adds or removes a `section[id]`, `main` or the strip —
+      settings and admin still re-tab; typing in write.html no longer
+      costs 11ms a frame. And the strip is one row that scrolls sideways.
+    - **The closed rails are `visibility: hidden`**, not just translated
+      off-screen, so they leave the Tab order; the change waits for the
+      slide so focus-on-open still lands on a visible link.
+    What is left open is in `docs/KNOWN-ISSUES.md` §8, and one decision
+    is in §7: an old `"on"` HOD checkbox value loads unticked, on purpose.
+
 ## Things that are deliberate, not oversights
 
 - ~~`radius: 2px`. The studio is printed matter, not iOS.~~ **Corrected, not

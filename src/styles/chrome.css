@@ -755,6 +755,34 @@ a:focus-visible { outline-offset: 3px; }
 .save-indicator.saving .si-dot { background: var(--panel-gilt); animation: pulse-soft 1.2s var(--ease) infinite; }
 .save-indicator.error  .si-dot { background: var(--danger-lift); }
 @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+/* WHERE IT SITS WITHOUT COVERING ANYTHING (UX audit L24). Bottom-left
+   at 16px put the pill over the first column of whatever page was
+   under it. Where the app rail is furniture, that corner is the rail's
+   own empty foot, so the pill is kept inside the rail's width and
+   covers no content at all. Where there is no rail, it shrinks to its
+   dot — the word stays in the element, so the live region still says
+   it — and only a FAILED save keeps its words on screen, because that
+   is the one state a person has to read. */
+@media (min-width: 1100px) {
+  body.has-sh-shell.rail-shown .save-indicator {
+    left: var(--s1);
+    max-width: calc(var(--sh-rail-w) - var(--s2));
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-inline: var(--s2);
+    letter-spacing: normal;
+    text-align: center;
+  }
+}
+body:not(.rail-shown) .save-indicator:not(.error) { padding: var(--s2); }
+body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
 .field-saved-mark {
   position: absolute;
@@ -1393,7 +1421,13 @@ a:focus-visible { outline-offset: 3px; }
   opacity: .1;
   pointer-events: none;
 }
+/* The right-hand end of the format line is where the three card
+   controls appear on hover, so it is kept clear for them: three
+   --s6 buttons and their gaps, less the difference between the card's
+   padding and the controls' inset. Without it "· PRE-PRODUCTION"
+   sat under the rename button on every card you pointed at. */
 .project-card .pc-format {
+  padding-right: calc(3 * var(--s6) + var(--s1));
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
@@ -1426,8 +1460,10 @@ a:focus-visible { outline-offset: 3px; }
 }
 .project-card .pc-meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--s3);
+  gap: var(--s2) var(--s3);
   margin-top: auto;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -1457,11 +1493,20 @@ a:focus-visible { outline-offset: 3px; }
   cursor: pointer;
 }
 .project-card .pc-actions button:hover { color: var(--accent-deep); border-color: var(--accent); }
+/* Share and open, in the meta row's flow rather than over it. */
+.project-card .pc-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-left: auto;
+}
+.project-card .pc-open {
+  color: var(--accent-deep);
+  font-weight: 700;
+  text-decoration: none;
+}
+.project-card .pc-open:hover { text-decoration: underline; }
 .project-card .pc-share {
-  position: absolute;
-  bottom: var(--s3);
-  right: var(--s3);
-  z-index: 2;
   padding: var(--s1) var(--s3);
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -2699,7 +2744,11 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 @media (max-width: 719px) {
   .tb-menu { position: static; }
   .toolbar { position: relative; }
-  .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
+  /* .align-right named too: its `right: 0` is the more specific rule,
+     and it is what ran the Backup menu flush to the screen edge at 390
+     while this inset was meant to apply. */
+  .tb-menu-panel,
+  .tb-menu.align-right .tb-menu-panel { left: var(--s3); right: var(--s3); min-width: 0; }
 }
 
 /* ---- choice groups inside a menu ----------------------------
@@ -3209,6 +3258,7 @@ html {
    crumb, five stages and the cluster are within ~60px of sharing one
    row. The stages give up 4px a side, the palette handle its words
    (the key is in its title and aria-keyshortcuts), Backup its word
+   below 1280 (the rule after this block)
    — and the hub, the module pages
    and settings stay on one row at 1280 with the rail open. */
 @media (min-width: 1100px) and (max-width: 1439px) {
@@ -3223,8 +3273,14 @@ html {
     justify-content: center;
   }
   .sh-bar .project-switcher .ps-label { max-width: 10ch; }
-  /* Backup becomes its glyph. The word stays in the button as
-     visually-hidden text, so its accessible name is unchanged. */
+}
+/* Backup becomes its glyph only below 1280, where the row needs the
+   width. At 1280 it kept the word out for a row that had room for it,
+   and a bare ⇅ is not a word anybody reads as "backup" (UX audit
+   L24). The word stays in the button as visually-hidden text, so its
+   accessible name is unchanged, and the button's title says it on
+   hover. */
+@media (min-width: 1100px) and (max-width: 1279px) {
   .sh-bar [data-tb-backup] > .tb-menu-btn > span:first-child {
     position: absolute;
     width: 1px;

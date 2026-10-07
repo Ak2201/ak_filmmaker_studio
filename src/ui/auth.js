@@ -27,6 +27,7 @@
    ============================================================ */
 import Store from '../lib/store.js';
 import { delegate, h } from '../lib/dom.js';
+import { holdFocus, releaseFocus } from './modal-focus.js';
 /* account.js imports nothing and reaches cloud.js through its global,
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
@@ -532,6 +533,7 @@ export function openCloudAuthModal(opts) {
   }
 
   m.classList.add('show');
+  holdFocus(m);   // Tab stays in the card; closing gives focus back
   setTimeout(() => {
     /* Focus the first thing you would actually use. With the email
        field gone that is the Google button itself — not a text input,
@@ -545,7 +547,7 @@ export function openCloudAuthModal(opts) {
 
 export function closeCloudAuthModal() {
   const m = document.getElementById('cloudAuthModal');
-  if (m) m.classList.remove('show');
+  if (m) { m.classList.remove('show'); releaseFocus(m); }
 }
 
 // ----- actions -------------------------------------------------

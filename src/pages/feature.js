@@ -27,8 +27,9 @@
 
    3. STORAGE KEYS ARE UNTOUCHED. Every data-key string is byte
       identical to the legacy page's, as are STORAGE_KEY,
-      PREF_KEY, NOTE_PREFIX and SYNC_CFG_KEY. Users have months
-      of work behind those strings.
+      PREF_KEY and NOTE_PREFIX. Users have months of work behind
+      those strings. (SYNC_CFG_KEY went with the old sync panel;
+      the key itself is cloud.js's and was never renamed.)
 
    4. THE FOUR LEGACY FIXES SURVIVE:
         a. updatePalette() does NOT call debouncedSave() — that
@@ -130,7 +131,6 @@ function themeTitle() {
 const STORAGE_KEY  = BLUEPRINT_KEY;
 const PREF_KEY     = 'fms_filmmaker_prefs_v1';
 const NOTE_PREFIX  = 'fms_note_';
-const SYNC_CFG_KEY = 'fms_supabase_cfg_v1';
 
 let statusEl = null;
 let saveTimer, savedAt = 0;
@@ -261,7 +261,7 @@ const HOWTO1_HTML       = `
   </div>
   <div class="tip-box" style="margin-top:14px; border-left-color: var(--accent);">
     <div class="label">SHORTCUTS &amp; FEATURES</div>
-    <p>Progress bar (top toolbar) tracks completion across all ${ALL_STEPS.length} steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> dark mode · <kbd>Ctrl+K</kbd> step jumper · <kbd>Ctrl+F</kbd> search · <kbd>Ctrl+Shift+R</kbd> reading mode. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
+    <p>Progress bar (top toolbar) tracks completion across all ${ALL_STEPS.length} steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click or Shift+click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> theme · <kbd>Ctrl+K</kbd> command palette · <kbd>/</kbd> search · <kbd>?</kbd> every shortcut. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
   </div>
 </section>
 `;
@@ -594,7 +594,7 @@ function renderToolbar() {
   ]);
 
   const moreMenu = actionMenu('More', [
-    { label: 'Reading mode',     action: 'toggleReadingMode', hint: '⌃⇧R', title: 'Hide inputs for distraction-free reading', id: 'readBtn' },
+    { label: 'Reading mode',     action: 'toggleReadingMode', title: 'Hide inputs for distraction-free reading', id: 'readBtn' },
     { label: 'Pitch deck',       href: '#pitch-deck' },
     { label: 'Sync & backup',    href: '#sync-section' },
     '---',
@@ -654,11 +654,13 @@ function syncSectionHTML() {
 
 function focusTimerHTML() {
   return `
-<div class="focus-timer" id="focusTimer" data-action="toggleTimer" title="Focus session — click to start / pause">
-  <span class="ft-icon">◷</span>
+<button type="button" class="focus-timer" id="focusTimer" data-action="toggleTimer"
+        aria-label="Focus timer, 25:00, not started"
+        title="Focus session — click to start / pause; Shift+click or right-click to reset">
+  <span class="ft-icon" aria-hidden="true">◷</span>
   <span id="ftTime">25:00</span>
   <span class="ft-pomo" id="ftPomo">×0</span>
-</div>`;
+</button>`;
 }
 
 /* ---- render ------------------------------------------------ */
@@ -1060,7 +1062,7 @@ function computeStepCompletion(stepEl) {
     // skip table rows for step status (count step-level fields only)
     if (f.closest('#sceneListBody, #shotListBody, #castListBody, #locListBody')) return;
     total++;
-    if (f.value && f.value.trim()) done++;
+    if (fieldFilled(f)) done++;
   });
   checks.forEach(c => { total++; if (c.classList.contains('checked')) done++; });
   // Include presence of any table content as "done"
@@ -1168,7 +1170,7 @@ function updateProgress() {
   document.querySelectorAll('input[data-key], textarea[data-key], select[data-key]').forEach(f => {
     if (f.closest('.toolbar, #sceneListBody, #shotListBody, #castListBody, #locListBody')) return;
     total++;
-    if (f.value && f.value.trim()) done++;
+    if (fieldFilled(f)) done++;
   });
   // All checklist items
   document.querySelectorAll('li[data-key]').forEach(li => {
@@ -1475,6 +1477,13 @@ function loadData() {
         el.setAttribute('aria-checked', on ? 'true' : 'false');
         return;
       }
+      if (el.type === 'checkbox') {
+        // See savedTick(): a checkbox's .value is "on" whether or not it
+        // is ticked, so assigning the stored value never ticked anything.
+        if (has) el.checked = savedTick(saved[k]);
+        else resetFieldToDefault(el);
+        return;
+      }
       if (has) el.value = saved[k];
       else resetFieldToDefault(el);
       if (el.tagName === 'SELECT' && k.startsWith('sl_') && k.endsWith('_charge')) recolorChargeCell(el);
@@ -1502,11 +1511,34 @@ function resetFieldToDefault(el) {
   }
 }
 
+/* THE HOD SIGN-OFF BOXES (step 30's `hod_*_check`) are the only
+   checkboxes on this page, and for as long as saveData() wrote
+   `el.value` for them it wrote "on" — a checkbox's value is "on"
+   ticked or not — and loadData() assigned it back to .value, which
+   ticks nothing. So a sign-off never survived a reload, and every box
+   counted as filled in the progress bar whatever its state.
+
+   They are saved as a boolean now, the shape collectData(), the
+   export and the short blueprint already use. A stored "on" carries
+   no information (every box ever saved says it, ticked or not), so it
+   reads as unticked — which is what every reload has shown until now,
+   so nobody loses a tick they could see. `true` and "true" (an import
+   through the old load, then a save, stringified it) read as ticked.
+   The guide drawer (src/ui/blueprint-drawer.js) reads and writes the
+   same shape. */
+function savedTick(v) { return v === true || v === 'true'; }
+/** Filled, for the progress bar and the step badges. */
+function fieldFilled(f) {
+  if (f.type === 'checkbox') return f.checked;
+  return !!(f.value && f.value.trim());
+}
+
 function saveData() {
   const data = {};
   document.querySelectorAll('[data-key]').forEach(el => {
     const k = el.getAttribute('data-key');
     if (el.tagName === 'LI') data[k] = el.classList.contains('checked');
+    else if (el.type === 'checkbox') data[k] = !!el.checked;
     else data[k] = el.value;
   });
   try {
@@ -2101,7 +2133,13 @@ function updatePalette() {
 /* ============================================================
    FOCUS TIMER (POMODORO)
    ============================================================ */
-let timerState = { running: false, paused: false, remaining: 25 * 60, pomos: 0, interval: null };
+/* A <button>, not a <div>: it was a click target nobody could Tab to
+   and a screen reader announced as three loose spans. `done` is its
+   own flag because tickTimer() resets `remaining` to 25:00 the moment
+   a session ends, so `.done` keyed off `remaining === 0` never showed
+   — the end of a session looked exactly like never having started.
+   It stays until the next click. */
+let timerState = { running: false, paused: false, done: false, remaining: 25 * 60, pomos: 0, interval: null };
 function formatTime(s) {
   const m = Math.floor(s / 60), sec = s % 60;
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
@@ -2114,15 +2152,23 @@ function updateTimerUI() {
   time.textContent = formatTime(timerState.remaining);
   pomo.textContent = '×' + timerState.pomos;
   t.classList.remove('running', 'paused', 'done');
-  if (timerState.remaining === 0) t.classList.add('done');
+  const state = timerState.running ? 'running'
+              : timerState.paused  ? 'paused'
+              : timerState.done    ? 'session done'
+              : 'not started';
+  if (timerState.done && !timerState.running) t.classList.add('done');
   else if (timerState.running) t.classList.add('running');
   else if (timerState.paused) t.classList.add('paused');
+  t.setAttribute('aria-pressed', timerState.running ? 'true' : 'false');
+  t.setAttribute('aria-label', 'Focus timer, ' + formatTime(timerState.remaining) + ', ' + state
+    + (timerState.pomos ? ', ' + timerState.pomos + ' completed' : ''));
 }
 function tickTimer() {
   if (!timerState.running) return;
   timerState.remaining--;
   if (timerState.remaining <= 0) {
     timerState.running = false;
+    timerState.done = true;
     timerState.pomos++;
     clearInterval(timerState.interval);
     timerState.remaining = 25 * 60;
@@ -2142,6 +2188,7 @@ function tickTimer() {
   updateTimerUI();
 }
 function toggleTimer() {
+  timerState.done = false;
   if (timerState.running) {
     timerState.running = false;
     timerState.paused = true;
@@ -2887,123 +2934,19 @@ async function exportPitchPPTX() {
 }
 
 /* ============================================================
-   SUPABASE SYNC PANEL
+   SUPABASE SYNC PANEL — gone, and its auto-push with it
+   ------------------------------------------------------------
+   This page used to carry its own Supabase client: a config form
+   (url, anon key, project id, auto on/off) under fms_supabase_cfg_v1
+   and an `input` listener that, with auto:'on', upserted the whole
+   blueprint into `projects` four seconds after every keystroke. The
+   form was removed when sync became the sign-in pill, but the
+   listener was not — so a device that had once saved auto:'on' kept
+   pushing, silently, with the anon key, into a row id cloud.js knows
+   nothing about (UX audit L8). cloud.js owns sync; nothing here talks
+   to Supabase any more. fms_supabase_cfg_v1 is cloud.js's override
+   now and is left exactly as stored.
    ============================================================ */
-function getSyncCfg() {
-  try { return JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || '{}'); } catch (e) { return {}; }
-}
-
-function setSyncStatus(msg, kind) {
-  const el = document.getElementById('syncStatus');
-  if (!el) return;
-  el.textContent = '●  ' + msg;
-  el.className = 'sync-status' + (kind ? ' ' + kind : '');
-}
-
-function loadSyncConfig() {
-  const cfg = getSyncCfg();
-  const u = document.getElementById('sync_url');
-  const k = document.getElementById('sync_key');
-  const p = document.getElementById('sync_project_id');
-  const a = document.getElementById('sync_auto');
-  if (u) u.value = cfg.url || '';
-  if (k) k.value = cfg.key || '';
-  if (p) p.value = cfg.projectId || '';
-  if (a) a.value = cfg.auto || 'off';
-  if (cfg.url && cfg.key && cfg.projectId) setSyncStatus('configured · ' + cfg.projectId, 'ok');
-  else setSyncStatus('not configured');
-}
-
-function saveSyncConfig() {
-  const cfg = {
-    url: (document.getElementById('sync_url').value || '').trim().replace(/\/$/, ''),
-    key: (document.getElementById('sync_key').value || '').trim(),
-    projectId: (document.getElementById('sync_project_id').value || '').trim(),
-    auto: document.getElementById('sync_auto').value
-  };
-  localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
-  if (cfg.url && cfg.key && cfg.projectId) setSyncStatus('configured · ' + cfg.projectId, 'ok');
-  else setSyncStatus('incomplete config', 'err');
-}
-
-async function syncTest() {
-  const cfg = getSyncCfg();
-  if (!cfg.url || !cfg.key) { setSyncStatus('missing url or key', 'err'); return; }
-  setSyncStatus('testing...');
-  try {
-    const res = await fetch(cfg.url + '/rest/v1/projects?select=id&limit=1', {
-      headers: { 'apikey': cfg.key, 'Authorization': 'Bearer ' + cfg.key }
-    });
-    if (res.ok) setSyncStatus('connection OK · table reachable', 'ok');
-    else setSyncStatus('connection failed: HTTP ' + res.status + ' (check table & RLS)', 'err');
-  } catch (err) { setSyncStatus('error: ' + err.message, 'err'); }
-}
-
-async function syncSave() {
-  const cfg = getSyncCfg();
-  if (!cfg.url || !cfg.key || !cfg.projectId) { setSyncStatus('configure first', 'err'); return; }
-  setSyncStatus('pushing...');
-  const data = collectData();
-  // Include comments
-  const notes = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (String(k).startsWith(NOTE_PREFIX)) notes[k.slice(NOTE_PREFIX.length)] = localStorage.getItem(k);
-  }
-  const payload = { id: cfg.projectId, data: { fields: data, notes: notes }, updated_at: new Date().toISOString() };
-  try {
-    const res = await fetch(cfg.url + '/rest/v1/projects?on_conflict=id', {
-      method: 'POST',
-      headers: {
-        'apikey': cfg.key,
-        'Authorization': 'Bearer ' + cfg.key,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) setSyncStatus('pushed at ' + new Date().toLocaleTimeString(), 'ok');
-    else {
-      const err = await res.text();
-      setSyncStatus('push failed: HTTP ' + res.status + ' — ' + err.slice(0, 100), 'err');
-    }
-  } catch (err) { setSyncStatus('error: ' + err.message, 'err'); }
-}
-
-async function syncLoad() {
-  const cfg = getSyncCfg();
-  if (!cfg.url || !cfg.key || !cfg.projectId) { setSyncStatus('configure first', 'err'); return; }
-  if (!confirm('This will REPLACE your current local data with the cloud version. Continue?')) return;
-  setSyncStatus('pulling...');
-  try {
-    const res = await fetch(cfg.url + '/rest/v1/projects?id=eq.' + encodeURIComponent(cfg.projectId) + '&select=*', {
-      headers: { 'apikey': cfg.key, 'Authorization': 'Bearer ' + cfg.key }
-    });
-    if (!res.ok) { setSyncStatus('pull failed: HTTP ' + res.status, 'err'); return; }
-    const rows = await res.json();
-    if (!rows.length) { setSyncStatus('no row found for project id', 'err'); return; }
-    const data = rows[0].data || {};
-    const fields = data.fields || {};
-    const notes = data.notes || {};
-    // Apply fields
-    Object.keys(fields).forEach(k => {
-      const el = document.querySelector(`[data-key="${CSS.escape(k)}"]`);
-      if (!el) return;
-      if (el.type === 'checkbox') el.checked = !!fields[k];
-      else el.value = fields[k];
-    });
-    // Apply notes
-    Object.keys(notes).forEach(k => localStorage.setItem(NOTE_PREFIX + k, notes[k]));
-    // Trigger listeners
-    document.querySelectorAll('[data-key]').forEach(el => {
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    saveData();
-    attachCommentButtons();
-    setSyncStatus('pulled at ' + new Date().toLocaleTimeString(), 'ok');
-  } catch (err) { setSyncStatus('error: ' + err.message, 'err'); }
-}
 
 /* ============================================================
    EVENT WIRING
@@ -3035,10 +2978,6 @@ const ACTIONS = {
   rebuildPitchDeck,
   exportPitchPPTX,
   printPitchOnly,
-  syncSave,
-  syncLoad,
-  syncTest,
-  saveSyncConfig,
   toggleSpineOnly: () => toggleSpineOnly(),
   dismissEntry,
   /* "Start from scratch" is the dismissal AND the jump. The panel's
@@ -3131,22 +3070,18 @@ function wireSearch() {
 }
 
 function wireKeyboardShortcuts() {
+  /* Ctrl/Cmd+S only. This handler used to claim four more, and every
+     one of them was owned twice or stolen:
+       - D cycled the theme here AND in chrome.js's global handler, so
+         one press cycled twice and, with two themes, did nothing;
+       - K focused the Jump menu while chrome.js opened the command
+         palette over it — the palette owns K on every page;
+       - F and Shift+R are the browser's find and hard reload, and a
+         page has no business taking either. Search is `/` (chrome.js)
+         and reading mode is in the More menu. */
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 's') {
       e.preventDefault(); saveData();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-      // let browser handle print
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-      e.preventDefault(); toggleDark();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      document.getElementById('stepJumper').focus();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      document.getElementById('searchInput').focus();
-      document.getElementById('searchInput').select();
-    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
-      e.preventDefault(); toggleReadingMode();
     }
   });
 }
@@ -3154,26 +3089,23 @@ function wireKeyboardShortcuts() {
 function wireFocusTimerReset() {
   const ft = document.getElementById('focusTimer');
   if (!ft) return;
-  ft.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
+  const reset = () => {
     clearInterval(timerState.interval);
-    timerState = { running: false, paused: false, remaining: 25 * 60, pomos: 0, interval: null };
+    timerState = { running: false, paused: false, done: false, remaining: 25 * 60, pomos: 0, interval: null };
     updateTimerUI();
-  });
-}
-
-/** Auto-push hook — listens to input events directly (debounced). */
-let _autoSyncDebounce;
-function wireAutoSync() {
-  const maybePush = (e) => {
-    if (!e.target.matches || !e.target.matches('[data-key]')) return;
-    const cfg = getSyncCfg();
-    if (cfg.auto !== 'on' || !cfg.url || !cfg.key || !cfg.projectId) return;
-    clearTimeout(_autoSyncDebounce);
-    _autoSyncDebounce = setTimeout(() => syncSave(), 4000);
   };
-  document.addEventListener('input', maybePush);
-  document.addEventListener('change', maybePush);
+  ft.addEventListener('contextmenu', (e) => { e.preventDefault(); reset(); });
+  /* Right-click is the only reset a pointer has; give the keyboard
+     and Shift+click the same one. Handled on the button itself and
+     stopped there, so the document-level toggleTimer delegate never
+     also sees it. */
+  ft.addEventListener('click', (e) => {
+    if (!e.shiftKey) return;
+    e.preventDefault(); e.stopPropagation(); reset();
+  });
+  ft.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); reset(); }
+  });
 }
 
 /** Rebuild the pitch deck whenever data changes (debounced). */
@@ -3269,7 +3201,6 @@ function boot() {
   wireSearch();
   wireKeyboardShortcuts();
   wireFocusTimerReset();
-  wireAutoSync();
   wirePitchRebuild();
 
   assignStepIds();
@@ -3284,7 +3215,6 @@ function boot() {
   attachWordCounter('v2s2_theme', 25);
 
   attachCommentButtons();
-  loadSyncConfig();
 
   reinitChrome();
 

@@ -1334,7 +1334,11 @@
 .focus-timer:hover { transform: translateY(-2px); }
 .focus-timer.running { background: var(--accent-deep); }
 .focus-timer.paused  { background: var(--panel-raised); }
-.focus-timer.done    { background: var(--ok); animation: focus-pulse 1.2s infinite; }
+/* Done reads from the ok TEXT pair, not the --ok fill: --ok is a fill
+   colour and the panel's light ink sat on the dark theme's #34d399 at
+   well under AA. */
+.focus-timer.done    { background: var(--ok-wash); color: var(--ok-deep); border-color: var(--ok); animation: focus-pulse 1.2s infinite; }
+.focus-timer.done .ft-pomo { color: var(--ok-deep); }
 @keyframes focus-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
 .focus-timer .ft-icon { font-size: var(--t-small); }
 .focus-timer .ft-pomo { margin-left: var(--s1); color: var(--panel-gilt); }

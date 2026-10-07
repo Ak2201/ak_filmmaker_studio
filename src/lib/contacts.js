@@ -68,6 +68,11 @@ export function blankCallSheet(patch = {}) {
     title: '',
     date: '',
     generalCall: '',
+    /* The planned wrap, "HH:MM" or ''. A FIELD spread under every
+       stored sheet, so older sheets read back '' — the songId pattern.
+       It is the one time the sunset check (src/lib/sun.js) is allowed
+       to judge a day by: no wrap, no flag. */
+    wrap: '',
     location: '',
     notes: '',
     sceneIds: [],

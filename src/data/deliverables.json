@@ -6,7 +6,11 @@
     "",
     "Indian specifics are stated carefully and should stay that way. The CBFC certificate is a legal requirement for public exhibition in India, not for a festival abroad; festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting that the festival itself usually arranges. The ratings named are the ones in force after the 2024 Cinematograph (Certification) Rules: U, UA 7+, UA 13+, UA 16+, A, S. If that changes, change it here.",
     "",
-    "Festival-specific FORMATS are not listed here. They are derived at render time from the submission tracker (fms_festivals_v1) and festivals.json's `format` field, so a festival you add appears on the page with the format it asks for and nothing has to be kept in step by hand."
+    "Festival-specific FORMATS are not listed here. They are derived at render time from the submission tracker (fms_festivals_v1) and festivals.json's `format` field, so a festival you add appears on the page with the format it asks for and nothing has to be kept in step by hand.",
+    "",
+    "`tool` on an item names a tab of the same page that helps make it ('dialogue-list', 'certification'); the row links to it.",
+    "",
+    "OPTIONAL GROUPS. A group with `optional: true` is a streamer's checklist and is OFF until the user switches it on for the film — its ids are storage keys like every other id, so they are new ids, never renamed ones. Each carries `source`, `sourceUrls` and `checked`. `published: false` marks a platform with no public delivery specification we could find: its items are a TEMPLATE for the spec sheet the platform sends you, and say so. Streamer specs change and are issued per title — the platform's own delivery requirements for YOUR title always win over this list."
   ],
   "groups": [
     {
@@ -84,24 +88,28 @@
       "items": [
         {
           "id": "subs_en",
+          "tool": "dialogue-list",
           "label": "English subtitles — SRT and a timed master list",
           "why": "Timed to the graded master's frame rate. The single most common reason a Tamil film is passed over at an international festival is a subtitle file that drifts, is too long to read, or translates the lines but not the meaning. Have them read by someone who did not make the film.",
           "when": "always"
         },
         {
           "id": "subs_burnt",
+          "tool": "dialogue-list",
           "label": "Burnt-in subtitle version",
           "why": "A copy of the screener and, if the festival asks, of the DCP with the subtitles rendered into the picture.",
           "when": "festival"
         },
         {
           "id": "captions_sdh",
+          "tool": "dialogue-list",
           "label": "Closed captions — SDH",
           "why": "Subtitles for the deaf and hard of hearing: dialogue plus sound description and speaker identification. Streamers and broadcasters require them; festivals increasingly ask.",
           "when": "release"
         },
         {
           "id": "dialogue_list",
+          "tool": "dialogue-list",
           "label": "Dialogue list — combined continuity and spotting list",
           "why": "Every spoken line with its timecode, in the original language and in English. The translator for every other territory works from this, not from the film.",
           "when": "release"
@@ -115,6 +123,7 @@
       "items": [
         {
           "id": "cbfc",
+          "tool": "certification",
           "label": "CBFC certificate",
           "why": "Required by law for public exhibition in India — a theatrical release, a satellite sale, most Indian streamers. Festivals abroad do not ask for it. Festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting, which the festival usually arranges. Ratings since 2024: U, UA 7+, UA 13+, UA 16+, A, S. Apply through the e-Cinepramaan portal with the final cut; a re-cut after certification needs a fresh certificate.",
           "when": "release"
@@ -185,6 +194,254 @@
           "label": "Press kit — EPK",
           "why": "The stills, the synopses, the statement, the credits and the technical specification (running time, aspect ratio, sound format, language, subtitles) in one PDF. Running time to the second: it decides which festival sections you qualify for.",
           "when": "festival"
+        }
+      ]
+    },
+    {
+      "id": "ott_netflix",
+      "label": "Netflix",
+      "optional": true,
+      "blurb": "From Netflix's published delivery specifications (Backlot help centre). What a given title owes is set by the Delivery Requirements List Netflix issues for it; this is the outline, not a substitute.",
+      "source": "Netflix Backlot help centre — Delivery Specifications (Version 5.1; enforcement of its changes began 2 January 2024), Dolby Vision HDR Mastering Guidelines, IMSC 1.1 Netflix Text Profile, Localization, Accessibility and Dubbing Branded Delivery Specifications. Read through search summaries: backlothelp.netflix.com was not reachable from the environment this was written in.",
+      "sourceUrls": [
+        "https://backlothelp.netflix.com/hc/en-us/articles/7262346654995",
+        "https://backlothelp.netflix.com/hc/en-us/articles/360000599948-Dolby-Vision-HDR-Mastering-Guidelines",
+        "https://backlothelp.netflix.com/hc/en-us/articles/360053755033-Netflix-IMSC-1-1-Text-Profile",
+        "https://backlothelp.netflix.com/hc/en-us/articles/7357416307603-Localization-Accessibility-and-Dubbing-Branded-Delivery-Specifications"
+      ],
+      "checked": "2026-10-07",
+      "items": [
+        {
+          "id": "nf_drl",
+          "label": "Delivery Requirements List for your title",
+          "why": "Netflix issues one per title. It names which of the items below apply and adds anything else they want; when it and this list disagree, it wins.",
+          "when": "release"
+        },
+        {
+          "id": "nf_imf",
+          "label": "IMF package — SMPTE ST 2067-21, Application #2E",
+          "why": "Netflix takes its picture and sound as an Interoperable Master Format package to Application #2E (the 2016 or 2020 edition of ST 2067-21). Native frame rate, no pulldown flags; a package with immersive sound also follows the IAB Level 0 plug-in (ST 2067-201).",
+          "when": "release"
+        },
+        {
+          "id": "nf_hdr",
+          "label": "Dolby Vision HDR master — where the title is delivered in HDR",
+          "why": "Netflix asks for HDR originals to be mastered in Dolby Vision and delivered as a Dolby Vision IMF package, from which it derives the HDR10 and SDR streams. A licensed SDR film may not need one: check the Delivery Requirements List before booking an HDR grade.",
+          "when": "release"
+        },
+        {
+          "id": "nf_audio",
+          "label": "Audio — printmaster, stereo and the stems",
+          "why": "The mixes and stems (printmaster, M&E, dialogue stems) your Delivery Requirements List names, inside the IMF. Make the M&E as you mix; recovering dialogue-free stems afterwards is expensive.",
+          "when": "release"
+        },
+        {
+          "id": "nf_nonsub",
+          "label": "Non-subtitled version",
+          "why": "Netflix's word for the picture without burned-in subtitles — titles and credits stay. If the film was finished with subtitles burned in for festivals, the clean version has to be conformed and graded again.",
+          "when": "release"
+        },
+        {
+          "id": "nf_text",
+          "label": "Timed text — TTML1, to Netflix's style guide",
+          "why": "Subtitles and closed captions as TTML1 (.ttml/.xml) timed to the master's frame rate. IMSC 1.1 (Netflix's nst1 profile) is, per Netflix's own page, the format for JAPANESE timed text only; check before delivering IMSC for any other language. Follow the Timed Text Style Guide for the language. The dialogue list on this page is the subtitler's starting point.",
+          "when": "release",
+          "tool": "dialogue-list"
+        }
+      ]
+    },
+    {
+      "id": "ott_prime",
+      "label": "Amazon Prime Video",
+      "optional": true,
+      "blurb": "From Prime Video's published Tech Docs (Video Central). Your licence agreement and Prime Video's per-title instructions decide the final list.",
+      "source": "Prime Video Tech Docs — Video requirements, Global packaging requirements, Audio, Captions and/or timed text, Dolby Vision & Dolby Atmos delivery requirements. Read through search summaries on 7 October 2026.",
+      "sourceUrls": [
+        "https://videocentral.amazon.com/support/delivery-experience/videos/video-requirements",
+        "https://videocentral.amazon.com/support/delivery-experience/delivery-overview/global-packaging-requirements",
+        "https://videocentral.amazon.com/support/delivery-experience/audio",
+        "https://videocentral.amazon.com/support/delivery-experience/timed-text",
+        "https://videocentral.amazon.com/support/de_DE/dolby-delivery"
+      ],
+      "checked": "2026-10-07",
+      "items": [
+        {
+          "id": "pv_mezz",
+          "label": "Video mezzanine — constant frame rate, correct flags",
+          "why": "A constant frame rate, scan type and field order declared correctly in the file header, an accepted display aspect ratio, and no telecine (a telecined source is rejected; inverse-telecine it first).",
+          "when": "release"
+        },
+        {
+          "id": "pv_semitextless",
+          "label": "Semi-textless master",
+          "why": "Prime Video's term for a master with NO burned-in subtitles in any language, so that subtitles and dubs can be added as separate files. Package from component assets rather than one finished file.",
+          "when": "release"
+        },
+        {
+          "id": "pv_hdr",
+          "label": "HDR — HDR10 with a matching SDR, or Dolby Vision",
+          "why": "An HDR delivery is HDR10, with a matching SDR source at the same resolution and identical runtime and conform. For Dolby Vision, a UHD SDR master and a ProRes 4444 (XQ) UHD HDR master with its Dolby Vision XML.",
+          "when": "release"
+        },
+        {
+          "id": "pv_audio",
+          "label": "Audio — one asset per language, conformed to the picture",
+          "why": "Each language as its own audio asset, conformed to the video mezzanine. The accepted channel layouts and loudness are on the Audio page; check them against your mix before you print master.",
+          "when": "release"
+        },
+        {
+          "id": "pv_text",
+          "label": "Timed text — DFXP/TTML, EBU-STL or iTT",
+          "why": "Prime Video lists DFXP/TTML (.dfxp), EBU-STL (.stl), iTT (.itt) and, for Japanese only, Lambda Cap. SRT is NOT on that list: convert the subtitler's SRT before delivery. A forced-narrative track must match the main video's language.",
+          "when": "release",
+          "tool": "dialogue-list"
+        }
+      ]
+    },
+    {
+      "id": "ott_aha",
+      "label": "Aha — delivery template",
+      "optional": true,
+      "published": false,
+      "blurb": "No public delivery specification from Aha could be found (checked 7 October 2026). These rows are the usual headings of a streamer's spec sheet, to fill in from the one their acquisitions team sends you — write what they ask for in each row's note.",
+      "source": "No published specification found; template only.",
+      "sourceUrls": [],
+      "checked": "2026-10-07",
+      "items": [
+        {
+          "id": "aha_spec",
+          "label": "Their delivery specification, in writing",
+          "why": "Ask for the spec sheet and the delivery schedule with the deal memo, before the grade is locked. Everything below is filled in from it, not from memory of another platform.",
+          "when": "release"
+        },
+        {
+          "id": "aha_master",
+          "label": "Picture master — in the format their spec names",
+          "why": "Codec, resolution, frame rate, HDR or SDR, and whether they take a file, an IMF package or a drive. Note it here.",
+          "when": "release"
+        },
+        {
+          "id": "aha_audio",
+          "label": "Audio — mixes and stems their spec names",
+          "why": "Usually a 5.1 and a stereo mix, and often M&E or dialogue stems for dubbing. Note the layout and loudness target they ask for.",
+          "when": "release"
+        },
+        {
+          "id": "aha_subs",
+          "label": "Subtitles and captions — formats and languages",
+          "why": "Which languages, which file format, and whether captions for the deaf and hard of hearing are required. The dialogue list on this page is the subtitler's starting point.",
+          "when": "release",
+          "tool": "dialogue-list"
+        },
+        {
+          "id": "aha_art",
+          "label": "Key art, stills and metadata",
+          "why": "Poster and thumbnail sizes, synopsis lengths, cast and crew credits, and the CBFC certificate details most Indian platforms put on the title page.",
+          "when": "release"
+        },
+        {
+          "id": "aha_qc",
+          "label": "Their QC pass",
+          "why": "Most platforms run their own technical check and return a fault list. Note who fixes what, and by when.",
+          "when": "release"
+        }
+      ]
+    },
+    {
+      "id": "ott_sunnxt",
+      "label": "Sun NXT — delivery template",
+      "optional": true,
+      "published": false,
+      "blurb": "No public delivery specification from Sun NXT could be found (checked 7 October 2026). These rows are the usual headings of a streamer's spec sheet, to fill in from the one their acquisitions team sends you — write what they ask for in each row's note.",
+      "source": "No published specification found; template only.",
+      "sourceUrls": [],
+      "checked": "2026-10-07",
+      "items": [
+        {
+          "id": "sunnxt_spec",
+          "label": "Their delivery specification, in writing",
+          "why": "Ask for the spec sheet and the delivery schedule with the deal memo, before the grade is locked. Everything below is filled in from it, not from memory of another platform.",
+          "when": "release"
+        },
+        {
+          "id": "sunnxt_master",
+          "label": "Picture master — in the format their spec names",
+          "why": "Codec, resolution, frame rate, HDR or SDR, and whether they take a file, an IMF package or a drive. Note it here.",
+          "when": "release"
+        },
+        {
+          "id": "sunnxt_audio",
+          "label": "Audio — mixes and stems their spec names",
+          "why": "Usually a 5.1 and a stereo mix, and often M&E or dialogue stems for dubbing. Note the layout and loudness target they ask for.",
+          "when": "release"
+        },
+        {
+          "id": "sunnxt_subs",
+          "label": "Subtitles and captions — formats and languages",
+          "why": "Which languages, which file format, and whether captions for the deaf and hard of hearing are required. The dialogue list on this page is the subtitler's starting point.",
+          "when": "release",
+          "tool": "dialogue-list"
+        },
+        {
+          "id": "sunnxt_art",
+          "label": "Key art, stills and metadata",
+          "why": "Poster and thumbnail sizes, synopsis lengths, cast and crew credits, and the CBFC certificate details most Indian platforms put on the title page.",
+          "when": "release"
+        },
+        {
+          "id": "sunnxt_qc",
+          "label": "Their QC pass",
+          "why": "Most platforms run their own technical check and return a fault list. Note who fixes what, and by when.",
+          "when": "release"
+        }
+      ]
+    },
+    {
+      "id": "ott_zee5",
+      "label": "ZEE5 — delivery template",
+      "optional": true,
+      "published": false,
+      "blurb": "No public delivery specification from ZEE5 could be found (checked 7 October 2026). These rows are the usual headings of a streamer's spec sheet, to fill in from the one their acquisitions team sends you — write what they ask for in each row's note.",
+      "source": "No published specification found; template only.",
+      "sourceUrls": [],
+      "checked": "2026-10-07",
+      "items": [
+        {
+          "id": "zee5_spec",
+          "label": "Their delivery specification, in writing",
+          "why": "Ask for the spec sheet and the delivery schedule with the deal memo, before the grade is locked. Everything below is filled in from it, not from memory of another platform.",
+          "when": "release"
+        },
+        {
+          "id": "zee5_master",
+          "label": "Picture master — in the format their spec names",
+          "why": "Codec, resolution, frame rate, HDR or SDR, and whether they take a file, an IMF package or a drive. Note it here.",
+          "when": "release"
+        },
+        {
+          "id": "zee5_audio",
+          "label": "Audio — mixes and stems their spec names",
+          "why": "Usually a 5.1 and a stereo mix, and often M&E or dialogue stems for dubbing. Note the layout and loudness target they ask for.",
+          "when": "release"
+        },
+        {
+          "id": "zee5_subs",
+          "label": "Subtitles and captions — formats and languages",
+          "why": "Which languages, which file format, and whether captions for the deaf and hard of hearing are required. The dialogue list on this page is the subtitler's starting point.",
+          "when": "release",
+          "tool": "dialogue-list"
+        },
+        {
+          "id": "zee5_art",
+          "label": "Key art, stills and metadata",
+          "why": "Poster and thumbnail sizes, synopsis lengths, cast and crew credits, and the CBFC certificate details most Indian platforms put on the title page.",
+          "when": "release"
+        },
+        {
+          "id": "zee5_qc",
+          "label": "Their QC pass",
+          "why": "Most platforms run their own technical check and return a fault list. Note who fixes what, and by when.",
+          "when": "release"
         }
       ]
     }

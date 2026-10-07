@@ -1,5 +1,4 @@
-/* ============================================================
-   REPORTS — the numbers, and the sides
+/* =====================================================   REPORTS — the numbers, and the sides
    ------------------------------------------------------------
    Two views of the SAME scene model (src/lib/scenes.js), and not a
    byte of storage of their own. Everything below — the eighths, the
@@ -43,6 +42,11 @@ import Locations from '../lib/locations.js';
 import Shoot from '../lib/shootday.js';
 import DPR from '../lib/dpr.js';
 import { offlineSupported, offlineStatus, makeOffline, SHOOT_PACK } from '../lib/pwa.js';
+=======
+import { listSongs, updateSong, durationSeconds, getTargetMinutes, setTargetMinutes, kindLabel } from '../lib/songs.js';
+import { loadStory } from '../lib/story.js';
+import { resolveBeat, actsOf, qualify } from '../lib/beat-outline.js';
+import '../styles/runtime.css';
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -484,6 +488,10 @@ function renderScreenTime(scenes, numbers) {
     stat(formatDuration(st.byPage), 'by page count'),
     stat(st.fromScript + ' / ' + scenes.length, 'scenes read from the script')
   ]));
+  /* With the songs counted, against the film's target: see
+     runtimeEstimate() for why a timed song REPLACES its scenes. */
+  sec.append(renderRuntime(st, scenes, numbers));
+  wireRuntime();
   /* The pairing is by heading, not by position (matchScenes()), and
      whatever it could not pair is said here rather than guessed at. */
   const notes = Analysis.describeMatch(st.match);
@@ -505,6 +513,184 @@ function renderScreenTime(scenes, numbers) {
   table.append(body);
   sec.append(h('div.rp-scroll', {}, [table]));
   return sec;
+}
+
+/* ---- running time with the songs, against a target ----------
+   The estimate above is read off the pages, and a song is barely on
+   the page. So the songs' own lengths are added (a timed song stands
+   in for the scenes linked to it — runtimeEstimate()), and the sum
+   is set against a target the producer types, overall and per act.
+
+   The per-act target is the target times the act's conventional
+   share in the Story page's framework (frameworks.json pacing), the
+   same share the Write page's outline meter uses. Scenes reach an
+   act through their `beatId`; a song through its linked scenes, else
+   its own Save the Cat placement. Everything here is derived on
+   render; the only things stored are what a person types — the
+   target (inside the songs blob) and each song's length (a field on
+   the song). */
+function runtimeGroups(scenes) {
+  let fwId = '';
+  try { fwId = loadStory().framework || ''; } catch (e) { fwId = ''; }
+  let acts = [];
+  try { acts = actsOf(fwId); } catch (e) { acts = []; }
+  const actOf = new Map();
+  const beatOrder = new Map();
+  let n = 0;
+  acts.forEach((a) => a.beats.forEach((b) => { actOf.set(b.id, a); beatOrder.set(b.id, n++); }));
+  const beatOfId = (id) => { try { const r = resolveBeat(id, fwId); return r ? r.beat : null; } catch (e) { return null; } };
+  const songBeat = (song) => {
+    const linked = scenes.find((s) => s.songId === song.id && beatOfId(s.beatId));
+    if (linked) return beatOfId(linked.beatId);
+    const p = String(song.placement || '');
+    if (!p) return null;
+    return beatOfId(p.includes(':') ? p : qualify('save_the_cat', p));
+  };
+  const actGroup = (b) => {
+    const a = b && actOf.get(b.id);
+    return a ? { key: 'act' + a.act, label: a.label, order: a.act, share: a.share } : null;
+  };
+  const beatGroup = (b) => (b && actOf.has(b.id)
+    ? { key: 'beat:' + b.id, label: b.label + ' · ' + actOf.get(b.id).label, order: beatOrder.get(b.id), share: 0 }
+    : null);
+  return {
+    byAct: { groupOf: (s) => actGroup(beatOfId(s && s.beatId)), songGroupOf: (s) => actGroup(songBeat(s)) },
+    byBeat: { groupOf: (s) => beatGroup(beatOfId(s && s.beatId)), songGroupOf: (s) => beatGroup(songBeat(s)) }
+  };
+}
+
+function fmtDelta(d) {
+  if (!d) return 'on target';
+  return (d > 0 ? '+' : '−') + formatDuration(Math.abs(d));
+}
+
+function renderRuntime(st, scenes, numbers) {
+  const box = h('div.rt-box', { id: 'runtime' });
+  const songs = listSongs();
+  const targetMin = getTargetMinutes();
+  const groups = runtimeGroups(scenes);
+  const songIn = songs.map((s) => ({ id: s.id, seconds: durationSeconds(s), placement: s.placement }));
+  const est = Analysis.runtimeEstimate(st, songIn, { targetSeconds: targetMin * 60, ...groups.byAct });
+  const byBeat = Analysis.runtimeEstimate(st, songIn, { targetSeconds: 0, ...groups.byBeat });
+
+  box.append(h('h3.rp-h3', { text: 'With the songs, against your target' }));
+
+  const field = h('div.rt-field');
+  field.append(h('label', { for: 'rt-target', text: 'Target running time, in minutes' }));
+  const input = h('input#rt-target.rt-target', {
+    type: 'number', min: '1', max: '600', step: '1', inputmode: 'numeric',
+    placeholder: 'e.g. 140', 'data-rt-field': 'target'
+  });
+  input.value = targetMin ? String(targetMin) : '';
+  field.append(input);
+  box.append(field);
+
+  box.append(h('div.bd-stats.rp-stats', {}, [
+    stat(formatDuration(est.total), 'estimated, songs included'),
+    stat(targetMin ? formatDuration(est.target) : '—', targetMin ? 'target' : 'no target set'),
+    stat(targetMin ? fmtDelta(est.delta) : '—', targetMin ? (est.delta > 0 ? 'over the target' : est.delta < 0 ? 'under the target' : 'difference') : 'difference')
+  ]));
+
+  const said = [];
+  if (!songs.length) said.push('No songs on the list, so this is the page estimate alone.');
+  else {
+    said.push(`${plural(est.songsTimed, 'song has', 'songs have')} a length, adding ${formatDuration(est.songSeconds)}.`);
+    if (est.songsUntimed) said.push(`${plural(est.songsUntimed, 'song has', 'songs have')} no length yet and add${est.songsUntimed === 1 ? 's' : ''} nothing — give each one below.`);
+    if (est.coveredScenes) said.push(`${plural(est.coveredScenes, 'scene linked to a timed song uses', 'scenes linked to timed songs use')} the song’s length instead of the page estimate, so nothing is counted twice.`);
+  }
+  box.append(h('p.bd-match-note', { text: said.join(' ') }));
+
+  if (songs.length) {
+    const t = h('table.scene-table.rp-table.rt-songs');
+    t.append(h('caption.rp-caption', { text: 'Each song’s length, as m:ss (4:30). The recording decides it, not the page.' }));
+    t.append(h('thead', {}, [h('tr', {}, [th('No.'), th('Song'), th('Kind'), th('Length'), th('Linked scenes', 'numeric')])]));
+    const body = h('tbody');
+    for (const s of songs) {
+      const linked = scenes.filter((x) => x.songId === s.id);
+      const name = String(s.title || '').trim() || 'Untitled song';
+      const len = h('input.rt-len', {
+        type: 'text', inputmode: 'decimal', placeholder: '4:30', autocomplete: 'off',
+        'data-rt-field': 'song-duration', 'data-song': s.id,
+        'aria-label': 'Length of song ' + (s.number || '') + ': ' + name
+      });
+      len.value = s.duration || '';
+      body.append(h('tr', {}, [
+        td(String(s.number || ''), 'mono'),
+        td(name, 'loc'),
+        td(kindLabel(s.kind)),
+        h('td', {}, [len]),
+        td(linked.length ? linked.map((x) => numbers.get(x.id) || x.number).join(', ') : '—', 'numeric')
+      ]));
+    }
+    t.append(body);
+    box.append(h('div.rp-scroll', {}, [t]));
+  }
+
+  if (est.groups.length) {
+    const t = h('table.scene-table.rp-table.rt-acts');
+    t.append(h('caption.rp-caption', { text: targetMin
+      ? 'Per act, against the target split by each act’s conventional share of the story framework.'
+      : 'Per act. Set a target above to see each act against its share of it.' }));
+    t.append(h('thead', {}, [h('tr', {}, [th('Act'), th('Scenes', 'numeric'), th('Songs', 'numeric'), th('Estimate', 'numeric'), th('Target', 'numeric'), th('Difference', 'numeric')])]));
+    const body = h('tbody');
+    const row = (g, label) => h('tr', {}, [
+      h('th.loc', { scope: 'row', text: label }),
+      td(String(g.sceneCount), 'numeric'), td(String(g.songCount), 'numeric'),
+      td(formatDuration(g.seconds), 'numeric'),
+      td(g.target ? formatDuration(g.target) : '—', 'numeric'),
+      td(g.target ? fmtDelta(g.delta) : '—', 'numeric')
+    ]);
+    est.groups.forEach((g) => body.append(row(g, g.label)));
+    if (est.ungrouped) body.append(row(est.ungrouped, 'Not linked to a beat'));
+    t.append(body);
+    box.append(h('div.rp-scroll', {}, [t]));
+  } else {
+    box.append(h('p.bd-none', { text: 'No scene is linked to a story beat yet, so there is no per-act split. '
+      + 'Link scenes to beats on the Write page’s Outline and each act appears here against its share of the target.' }));
+  }
+
+  if (byBeat.groups.length) {
+    const t = h('table.scene-table.rp-table.rt-beats');
+    t.append(h('caption.rp-caption', { text: 'Per beat, in story order. A beat has no target of its own; the act does.' }));
+    t.append(h('thead', {}, [h('tr', {}, [th('Beat'), th('Scenes', 'numeric'), th('Songs', 'numeric'), th('Estimate', 'numeric'), th('Share of the film', 'numeric')])]));
+    const body = h('tbody');
+    byBeat.groups.forEach((g) => body.append(h('tr', {}, [
+      h('th.loc', { scope: 'row', text: g.label }),
+      td(String(g.sceneCount), 'numeric'), td(String(g.songCount), 'numeric'),
+      td(formatDuration(g.seconds), 'numeric'),
+      td(byBeat.total ? Math.round((g.seconds / byBeat.total) * 100) + '%' : '—', 'numeric')
+    ])));
+    t.append(body);
+    box.append(h('div.rp-scroll', {}, [t]));
+  }
+  return box;
+}
+
+/* Wired once, from renderScreenTime(). A change saves, then the
+   runtime box alone is rebuilt — after the focus has moved, so a Tab
+   out of one length lands in the next one rather than being thrown
+   back to the top of the page. */
+function wireRuntime() {
+  if (wireRuntime.done) return;
+  wireRuntime.done = true;
+  delegate(document, 'change', '[data-rt-field]', (e, el) => {
+    const f = el.getAttribute('data-rt-field');
+    if (f === 'target') setTargetMinutes(el.value);
+    else if (f === 'song-duration') updateSong(el.getAttribute('data-song'), { duration: el.value });
+    else return;
+    setTimeout(() => {
+      const old = document.getElementById('runtime');
+      if (!old) return;
+      const a = document.activeElement;
+      const again = a && a.closest && a.closest('#runtime') && a.getAttribute('data-rt-field')
+        ? '[data-rt-field="' + a.getAttribute('data-rt-field') + '"]'
+          + (a.getAttribute('data-song') ? '[data-song="' + CSS.escape(a.getAttribute('data-song')) + '"]' : '')
+        : null;
+      const scenes = Scenes.listScenes();
+      old.replaceWith(renderRuntime(Analysis.screenTime(scenes, loadScript().elements), scenes, sceneNumbers(scenes)));
+      if (again) { const n = document.querySelector(again); if (n) n.focus(); }
+    }, 0);
+  });
 }
 
 /* ---- the cast matrix (PRD 2.0 FR-604) ------------------------

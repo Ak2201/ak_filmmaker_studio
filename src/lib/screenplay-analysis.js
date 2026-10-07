@@ -303,6 +303,89 @@ export function screenTime(scenes, elements) {
   return { rows, total, byPage, fromScript: rows.filter((r) => r.method === 'script').length, match };
 }
 
+/* ---- the running time, with the songs in it -----------------
+
+   A Tamil feature's songs are a fifth of its length and almost none
+   of it is on the page — a song scene is a heading and a line of
+   action — so screenTime() alone reads every song as a few seconds.
+   This adds what the song list says each song RUNS, and compares the
+   sum with a target.
+
+   NO SONG IS COUNTED TWICE. A song with a duration REPLACES the
+   page-read estimate of every scene linked to it (scene.songId): the
+   recording is the truth about how long those scenes play. A song
+   with no duration adds nothing, its linked scenes keep their
+   estimate, and both are counted and said, so a total that is low
+   because three songs have no length reads as that and not as a
+   short film.
+
+   PURE, like everything in this file. The caller passes each song's
+   length in seconds and, for the per-act and per-beat split, a
+   `groupOf(scene)` / `songGroupOf(song)` that answers
+   { key, label, order, share } or null — so this module knows
+   nothing about frameworks, stores nothing and reads nothing.
+
+   @param screen   screenTime()'s result
+   @param songs    [{ id, seconds, ... }]
+   @param opts     { targetSeconds, groupOf, songGroupOf }  */
+export function runtimeEstimate(screen, songs, opts = {}) {
+  const rows = (screen && screen.rows) || [];
+  const list = Array.isArray(songs) ? songs : [];
+  const target = Math.max(0, Math.round(Number(opts.targetSeconds) || 0));
+  const timed = new Map(list.filter((s) => Number(s.seconds) > 0).map((s) => [s.id, Math.round(Number(s.seconds))]));
+  const groups = new Map();
+  const groupFor = (g) => {
+    const key = g ? String(g.key) : '';
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key, label: g ? g.label : '', order: g && Number.isFinite(g.order) ? g.order : Infinity,
+        share: g && Number(g.share) > 0 ? Number(g.share) : 0,
+        sceneCount: 0, sceneSeconds: 0, songCount: 0, songSeconds: 0
+      });
+    }
+    return groups.get(key);
+  };
+  const ask = (fn, x) => { try { return typeof fn === 'function' ? fn(x) : null; } catch (e) { return null; } };
+
+  let sceneSeconds = 0, covered = 0;
+  for (const r of rows) {
+    const g = groupFor(ask(opts.groupOf, r.scene));
+    g.sceneCount += 1;
+    if (r.scene && r.scene.songId && timed.has(r.scene.songId)) { covered += 1; continue; }
+    sceneSeconds += r.seconds;
+    g.sceneSeconds += r.seconds;
+  }
+  let songSeconds = 0;
+  for (const s of list) {
+    const sec = timed.get(s.id) || 0;
+    if (!sec) continue;
+    songSeconds += sec;
+    const g = groupFor(ask(opts.songGroupOf, s));
+    g.songCount += 1;
+    g.songSeconds += sec;
+  }
+  const total = sceneSeconds + songSeconds;
+  const out = [...groups.values()].map((g) => {
+    const seconds = g.sceneSeconds + g.songSeconds;
+    const tgt = target && g.share ? Math.round(target * g.share) : 0;
+    return { ...g, seconds, target: tgt, delta: tgt ? seconds - tgt : 0 };
+  });
+  const grouped = out.filter((g) => g.key !== '').sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+  return {
+    total,
+    sceneSeconds,
+    songSeconds,
+    songs: list.length,
+    songsTimed: timed.size,
+    songsUntimed: list.length - timed.size,
+    coveredScenes: covered,
+    target,
+    delta: target ? total - target : 0,
+    groups: grouped,
+    ungrouped: out.find((g) => g.key === '') || null
+  };
+}
+
 export function formatDuration(sec) {
   const s = Math.max(0, Math.round(sec));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -476,4 +559,4 @@ export function suggestReport(scenes, elements) {
   return { rows, match };
 }
 
-export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, formatDuration, cueName, castMatrix, suggestElements, suggestAll };
+export default { sliceScript, headingParts, sceneParts, matchScenes, isConfident, describeMatch, pairScenes, suggestReport, estimateSlice, screenTime, runtimeEstimate, formatDuration, cueName, castMatrix, suggestElements, suggestAll };

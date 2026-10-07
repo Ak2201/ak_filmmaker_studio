@@ -19,6 +19,7 @@
     "test:schema": "node scripts/test-schema.mjs",
     "test:post": "node scripts/test-post.mjs",
     "test:format": "node scripts/test-format.mjs",
+    "test:delivery": "node scripts/test-delivery.mjs",
     "test:beats": "node scripts/test-beats.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",
     "test:keys": "node scripts/test-keys.mjs",

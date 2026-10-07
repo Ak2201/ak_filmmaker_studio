@@ -1,0 +1,397 @@
+{
+  "_about": [
+    "CERTIFICATION SENSITIVITY FLAGS — the rules src/lib/cbfc.js reads the script against. Content, so it lives here (rule 2 in CLAUDE.md). Nothing in this file is legal advice and the page says so wherever it shows any of it.",
+    "",
+    "HOW A RULE IS WRITTEN. `kind` is 'requirement' (a statutory or regulator's step the producer has to take — a disclaimer, a permission, a certificate), 'review' (content the Board's examining committee weighs under the certification guidelines) or 'caution' (a legal risk outside certification — defamation, trade marks). `reads` names what the rule is tested against: 'dialogue', 'action', 'heading', 'paren', 'synopsis' (the scene row's own line) and 'elements' (the breakdown's tags). Smoking, animals and uniforms are about what is ON SCREEN, so they do not read dialogue: a line that calls somebody a dog is not a dog on set.",
+    "",
+    "TERMS. Every tier carries `en` and `ta` lists. `ta` is ROMANISED Tamil / Tanglish, the way this app's sample script and most Tamil units write dialogue; `taScript` is a short Tamil-script list. They are STARTER LISTS: incomplete by design, and the page says so. Matching is whole-word and case-blind; a trailing `*` means 'and any ending' (stab* finds stabs, stabbed, stabbing; kolai* finds kolaikaaran), which is also how Tamil's suffixes are reached. A term with a space is a phrase.",
+    "",
+    "THE RATING HINT is the app's own heuristic, not the Board's criteria. Each tier names the lowest category the app GUESSES that content tends to land in (`hint`), or null where the content does not by itself move the category (tobacco has not affected the category since the 2012 COTPA amendment). The film-level hint is the highest tier that fired. The categories are the ones in force after the Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024 — the same list deliverables.json uses.",
+    "",
+    "SOURCES AND HONESTY. Every rule cites `source` (what the requirement rests on), `sourceUrls` (where it was read) and `checked` (when). Several official sites (cbfcindia.gov.in, the Netflix and MoHFW pages) were NOT reachable from the environment this file was written in, so some facts were read from secondary reports of the official text; `confidence` says which ('official' — read on the regulator's own site; 'secondary' — law-firm or press reports of the official text, consistent with each other; 'uncertain' — reported, not confirmed), and `uncertain` says what in particular to check. If a rule changes, change it here and move `checked`.",
+    "",
+    "A rule `id` is not a storage key (the page stores nothing), so it may be renamed — but the tests name them."
+  ],
+  "checked": "2026-10-07",
+  "disclaimer": "These flags are a word search over your script, not a reading of the film. They miss things a person would see and flag things that are fine. The likely-rating line is this app's guess, not the Board's criteria and not legal advice — the Board judges the finished film as a whole. Check anything that matters with your regional CBFC office or a lawyer.",
+  "ratings": [
+    { "id": "U",      "label": "U",      "means": "Unrestricted public exhibition." },
+    { "id": "UA 7+",  "label": "UA 7+",  "means": "Unrestricted, with parental guidance for children under 7." },
+    { "id": "UA 13+", "label": "UA 13+", "means": "Unrestricted, with parental guidance for children under 13." },
+    { "id": "UA 16+", "label": "UA 16+", "means": "Unrestricted, with parental guidance for children under 16." },
+    { "id": "A",      "label": "A",      "means": "Adults only." }
+  ],
+  "ratingsSource": {
+    "source": "Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024 (notified 15 March 2024), which split UA into UA 7+, UA 13+ and UA 16+ and moved applications to the e-Cinepramaan portal.",
+    "sourceUrls": [
+      "https://www.medianama.com/2024/06/223-online-film-certification-portal-introduced-in-cinematograph-rules-2024-by-ib-ministry-summary-of-key-points/",
+      "https://www.drishtiias.com/daily-updates/daily-news-analysis/cinematograph-certification-rules-2024"
+    ],
+    "checked": "2026-10-07",
+    "confidence": "secondary"
+  },
+  "guidelinesNote": {
+    "text": "The Board's certification guidelines under section 5B(2) of the Cinematograph Act, 1952 were revised in September 2026, replacing the guidelines of 6 December 1991. Press reports of the notification say the revision keeps the 1991 clauses and adds a mandatory anti-drug warning; the official text was not reachable from here, so the clauses below are quoted from the 1991 text as reported, and should be read against the 2026 notification.",
+    "sourceUrls": [
+      "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693",
+      "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html",
+      "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
+    ],
+    "checked": "2026-10-07",
+    "confidence": "secondary"
+  },
+  "rules": [
+    {
+      "id": "tobacco",
+      "label": "Smoking or tobacco on screen",
+      "kind": "requirement",
+      "reads": ["action", "heading", "paren", "synopsis", "elements"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["cigarette*", "cigar", "cigars", "beedi*", "bidi", "bidis", "smoking", "smokes a", "lights a cigarette", "tobacco", "gutka", "gutkha", "paan masala", "hookah", "vape*", "chewing tobacco", "snuff"],
+          "ta": ["sigarett*", "thammu", "dhum adi*", "dum adi*", "beedi pudi*"],
+          "taScript": ["சிகரெட்", "பீடி", "புகையிலை"]
+        }
+      ],
+      "what": "Any film that shows tobacco products or their use has to carry the anti-tobacco material the COTPA film rules prescribe, and give the Board an editorial justification for the display.",
+      "do": [
+        "Anti-tobacco health spots of at least 30 seconds at the beginning and the middle of the film.",
+        "An audio-visual disclaimer on the ill effects of tobacco, at least 20 seconds, at the beginning and the middle (sources differ on whether 'middle' means the interval).",
+        "A prominent static health warning at the bottom of the screen for as long as the tobacco is on screen.",
+        "A strong editorial justification for the display, given to the Board with the application.",
+        "Since 1 September 2023 the same material is required of films released on streaming platforms (online curated content)."
+      ],
+      "source": "Cigarettes and Other Tobacco Products (Prohibition of Advertisement and Regulation of Trade and Commerce, Production, Supply and Distribution) Rules — rule 11, as notified in 2011 (in force 14 November 2011) and amended in 2012 (in force 2 October 2012); extended to online curated content for films released on or after 1 September 2023.",
+      "sourceUrls": [
+        "https://taxguru.in/income-tax/notification-movies-tv-programmes-displaying-tobacco-products-effect-14112011.html",
+        "https://www.vitalstrategies.org/wp-content/uploads/2017/02/VS_ExecSummary_FilmRuleStudy02.pdf",
+        "https://mondaq.com/india/broadcasting-film-tv-radio/1407864/smoking-is-injurious-to-ott-platforms",
+        "https://theleaflet.in/from-theatre-to-home-anti-tobacco-warnings-to-be-displayed-on-ott-platforms"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "The exact placement of the disclaimer (middle of the film or at the interval), and whether a later draft making the streaming spots non-skippable was finalised. Read rule 11 in the current Gazette text."
+    },
+    {
+      "id": "drugs",
+      "label": "Narcotic drugs or psychotropic substances",
+      "kind": "requirement",
+      "reads": ["action", "heading", "paren", "synopsis", "elements", "dialogue"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["ganja", "cocaine", "heroin", "brown sugar", "mdma", "lsd", "meth", "opium", "charas", "hashish", "narcotic*", "drug addict*", "drug deal*", "snorts", "injects", "overdose*", "weed"],
+          "ta": ["kanja", "kanjaa", "ganjaa", "pothai", "bodhai"],
+          "taScript": ["கஞ்சா", "போதை"]
+        }
+      ],
+      "what": "The September 2026 guidelines require scenes depicting, involving the use, consumption or trafficking of narcotic drugs or psychotropic substances to carry a disclaimer or statutory warning, and the guidelines bar scenes that encourage, justify or glamorise drug addiction.",
+      "do": [
+        "Carry the on-screen message reported as fixed by the guidelines: \"Illicit Narcotics Destroy Health and Guarantees Imprisonment. Say No to Drugs.\" (check the exact wording against the notification).",
+        "Make sure the scene does not encourage, justify or glamorise drug use."
+      ],
+      "source": "Guidelines for certification of films under section 5B(2), Cinematograph Act, 1952, as revised by the Ministry of Information and Broadcasting in September 2026 (reported as notified on 16 or 18 September 2026).",
+      "sourceUrls": [
+        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693",
+        "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html",
+        "https://menafn.com/1111686987/CBFC-Certification-Say-No-To-Drugs-Warning-Made-Part-Of-Centres-Film-Certification-Guidelines"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "Read from press reports three weeks after notification; the date of notification and the warning's exact wording differ slightly between reports."
+    },
+    {
+      "id": "alcohol",
+      "label": "Alcohol",
+      "kind": "review",
+      "reads": ["action", "heading", "paren", "synopsis", "elements", "dialogue"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["alcohol*", "liquor", "whisky", "whiskey", "rum", "brandy", "vodka", "beer*", "wine", "toddy", "arrack", "drunk*", "booze*", "tasmac", "hangover", "a peg"],
+          "ta": ["sarakk*", "saraayam", "kudich*", "kudikk*", "thanni adi*", "thanni podu*", "mappu", "mappula", "quarter bottle", "kalla saarayam"],
+          "taScript": ["சாராயம்", "குடி", "மது"]
+        }
+      ],
+      "what": "The guidelines ask that scenes tending to justify or glorify drinking are not shown. Drinking itself is not barred and needs no disclaimer under the guidelines as reported; how the scene treats it is what the committee weighs.",
+      "do": [
+        "Check the scene does not justify or glorify drinking.",
+        "A liquor brand visible in frame is also a trade-mark and surrogate-advertising question — see 'Real people, brands and institutions'."
+      ],
+      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "sourceUrls": [
+        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "Many Tamil releases carry a 'drinking is injurious to health' caption; that is common practice, and we did not find it stated as a requirement. Ask the regional office."
+    },
+    {
+      "id": "animals",
+      "label": "Animals on screen",
+      "kind": "requirement",
+      "reads": ["action", "heading", "paren", "synopsis", "elements"],
+      "elementCategories": ["animals"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["dog", "dogs", "puppy", "cat", "cats", "kitten", "cow", "cows", "bull", "bulls", "buffalo*", "horse*", "elephant*", "goat*", "sheep", "hen", "hens", "rooster*", "parrot*", "pigeon*", "snake*", "cobra*", "monkey*", "camel*", "donkey*", "bird cage", "caged bird", "jallikattu", "cockfight*", "rabbit*"],
+          "ta": ["naai", "maadu", "eruma*", "kudhirai", "kuthirai", "yaanai", "aadu", "kozhi", "seval", "kili", "puraa", "paambu", "kurangu", "poonai"],
+          "taScript": ["நாய்", "மாடு", "யானை", "குதிரை", "பாம்பு"]
+        }
+      ],
+      "what": "An owner hiring out or lending a performing animal for a film must give the Animal Welfare Board of India prior information and a fitness certificate, and AWBI now gives its no-objection certificate only after a pre-shoot permission. The guidelines separately ask that cruelty to or abuse of animals is not presented needlessly.",
+      "do": [
+        "Apply to AWBI online for pre-shoot permission BEFORE the shoot day, with the pre-shoot fitness certificate (and vaccination records for dogs and cats).",
+        "Tell the State Animal Welfare Board, the district SPCA or the District Collector the shooting dates.",
+        "After the shoot, file the self-declaration that no cruelty was inflicted (and the transport declaration with photographs), and obtain the AWBI certificate for the film.",
+        "Background animals, computer-graphics animals and stock shots are the cases AWBI lists as not needing pre-shoot permission — say which applies."
+      ],
+      "source": "Performing Animals (Registration) Rules, 2001, rule 7 (prior information for use of a performing animal in a film), under the Prevention of Cruelty to Animals Act, 1960; AWBI's performing-animal procedure; certification guidelines on cruelty to animals.",
+      "sourceUrls": [
+        "https://awbi.gov.in/view/index/performing-animal",
+        "https://ffo.gov.in/sites/default/files/2023-12/performing_animals_registration_rules_2001.pdf",
+        "https://indiacinehub.gov.in/sites/default/files/2024-03/animal_owner_manual_0.pdf"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "That the Board asks for the AWBI certificate before it certifies is widely stated and is common practice; we did not find it written as a rule in an official text. The AWBI fee is listed as ₹25,000 for films but the page also refers to a revised fee structure."
+    },
+    {
+      "id": "violence",
+      "label": "Violence and gore",
+      "kind": "review",
+      "reads": ["action", "heading", "paren", "synopsis", "elements", "dialogue"],
+      "tiers": [
+        {
+          "id": "mild", "hint": "UA 7+",
+          "en": ["fight", "fights", "fighting", "punch", "punches", "punched", "punching", "slap", "slaps", "slapped", "kick", "kicks", "kicked", "kicking", "brawl*", "gun", "guns", "pistol*", "revolver*", "rifle*", "knife", "knives", "sickle*", "machete*", "dagger*", "threaten*"],
+          "ta": ["aruval*", "kathi", "kaththi", "kolluv*", "kolluven", "adichu", "adippen", "sandai"],
+          "taScript": ["அருவாள்", "கத்தி", "சண்டை"]
+        },
+        {
+          "id": "strong", "hint": "UA 13+",
+          "en": ["blood*", "bleed*", "stab*", "murder*", "corpse*", "dead body", "slit*", "torture*", "gunshot*", "strangl*", "lynch*"],
+          "ta": ["ratham", "raththam", "kolai*", "vettu*", "pinam"],
+          "taScript": ["ரத்தம்", "கொலை", "பிணம்"]
+        },
+        {
+          "id": "extreme", "hint": "UA 16+",
+          "en": ["behead*", "decapitat*", "dismember*", "gore", "gory", "severed", "acid attack", "disembowel*", "mutilat*", "burned alive"],
+          "ta": ["thalaya vettu*", "thalai vettu*"],
+          "taScript": []
+        }
+      ],
+      "what": "The guidelines ask that scenes glorifying or justifying violence are not shown, and that violence is not dwelt on beyond what the story needs. How much and how it is shown is what moves a film between categories.",
+      "do": [
+        "Decide what the camera holds on. The committee reads the cut, not the page; the same scene can pass or be cut depending on duration and detail.",
+        "Keep a clean alternative take of the most graphic moments — a requested cut is quicker to make from coverage than by trimming frames."
+      ],
+      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "sourceUrls": [
+        "https://rsdebate.nic.in/bitstream/123456789/198213/1/PQ_170_14061994_U7579_p237_p242.pdf",
+        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary"
+    },
+    {
+      "id": "sexual",
+      "label": "Sexual content",
+      "kind": "review",
+      "reads": ["action", "heading", "paren", "synopsis", "elements", "dialogue"],
+      "tiers": [
+        {
+          "id": "mild", "hint": "UA 13+",
+          "en": ["kiss*", "lingerie", "cleavage", "seduc*", "making out"],
+          "ta": ["mutham", "muththam", "ummaa"],
+          "taScript": ["முத்தம்"]
+        },
+        {
+          "id": "strong", "hint": "A",
+          "en": ["nude*", "naked", "topless", "undress*", "sex", "sexual*", "lovemaking", "making love", "bed scene", "intercourse", "condom*", "orgasm*"],
+          "ta": ["ammanam*"],
+          "taScript": []
+        },
+        {
+          "id": "violence", "hint": "UA 16+",
+          "en": ["rape*", "molest*", "grope*", "sexual assault", "sexual violence", "eve teas*", "eve-teas*"],
+          "ta": ["kedukk*"],
+          "taScript": []
+        }
+      ],
+      "what": "The guidelines ask that human sensibilities are not offended by vulgarity, obscenity or depravity, that women are not degraded or denigrated, and that sexual violence — attempted rape, rape or any form of molestation — is avoided, and where the theme needs it, kept to the minimum with no detail shown.",
+      "do": [
+        "For sexual violence, the guideline asks for the minimum and no detail: plan the coverage so the scene can be told without it.",
+        "Nudity or explicit sexual content usually means an A certificate; decide early whether the release plan can carry one."
+      ],
+      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "sourceUrls": [
+        "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/",
+        "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary"
+    },
+    {
+      "id": "language",
+      "label": "Abusive language and slurs",
+      "kind": "review",
+      "reads": ["dialogue", "paren", "action"],
+      "tiers": [
+        {
+          "id": "mild", "hint": "UA 7+",
+          "en": ["shit", "damn", "idiot", "moron", "bloody hell", "screw you"],
+          "ta": ["loosu", "naaye", "naai payale", "porukki", "mutta paiya", "kena", "kenai", "erumai", "paradesi"],
+          "taScript": ["நாயே"]
+        },
+        {
+          "id": "strong", "hint": "UA 16+",
+          "en": ["fuck*", "motherfuck*", "bastard*", "bitch*", "asshole*", "son of a bitch", "whore*", "slut*"],
+          "ta": ["otha", "ommala", "ommaala", "thevdiya*", "thevidiya*", "punda*", "koothi*", "sunni", "thayoli*", "baadu", "mayiru", "mairu", "lavada*", "gommala"],
+          "taScript": []
+        }
+      ],
+      "what": "The guidelines ask that dual-meaning words that obviously cater to baser instincts are not allowed and that human sensibilities are not offended by vulgarity. Examining committees routinely mute specific words; each muted word is a sound edit and, after certification, a re-certification.",
+      "do": [
+        "Record a clean alternative line (wild track or in the dub) for every flagged word you want to keep the option of losing.",
+        "Subtitles count: a word muted in the mix but left in the English subtitle is still on screen."
+      ],
+      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "sourceUrls": [
+        "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "Press reports of the 2026 revision did not describe its wording on language; the 1991 clauses are assumed retained."
+    },
+    {
+      "id": "community",
+      "label": "Caste, religion or community references",
+      "kind": "review",
+      "reads": ["dialogue", "action", "heading", "paren", "synopsis"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["caste*", "religion*", "religious", "communal", "riot*", "hindu*", "muslim*", "christian*", "dalit*", "brahmin*", "untouchab*", "conversion", "honour killing*", "honor killing*"],
+          "ta": ["jaathi*", "jathi*", "saathi*", "madham", "matham", "paarpan*", "parpan*", "thevar", "vanniyar*", "nadar", "gounder", "paraiya*", "pallar", "chakkiliya*", "keezh jaathi*", "mel jaathi*"],
+          "taScript": ["சாதி", "ஜாதி", "மதம்"]
+        }
+      ],
+      "what": "The guidelines ask that visuals or words contemptuous of racial, religious or other groups are not presented, and that communal, obscurantist, anti-scientific or anti-national attitudes are not promoted. A reference is not a problem; contempt is. These terms are flagged so a person reads the scene with that question in mind — in Tamil cinema caste depictions are also where protests and court petitions after release most often start.",
+      "do": [
+        "Read every flagged line for who is speaking and whether the film endorses it.",
+        "Where a real community is named, consider whether the scene needs the name."
+      ],
+      "source": "Guidelines for certification of films (1991), clause (xii) as reported, retained in the September 2026 revision.",
+      "sourceUrls": [
+        "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/",
+        "https://www.livelaw.in/amp/high-court/delhi-high-court/dont-release-films-ridiculing-religion-inciting-hatred-303618"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary"
+    },
+    {
+      "id": "realnames",
+      "label": "Real people, brands and institutions",
+      "kind": "caution",
+      "reads": ["dialogue", "action", "heading", "paren", "synopsis", "elements"],
+      "institutionWords": ["Hospital", "College", "School", "University", "Bank", "Hotel", "Limited", "Ltd", "Pvt", "Corporation", "Industries", "Police Station", "Mall", "Cinemas", "Channel", "Newspaper", "Trust", "Foundation"],
+      "genericWords": ["Engineering", "Government", "Govt", "Medical", "Arts", "Science", "Primary", "Higher", "Secondary", "Private", "Public", "City", "General", "Corporate", "Old", "New", "The", "A", "An", "Local", "Village", "District", "State", "Central", "Big", "Small", "Same", "Another", "Hostel", "Night", "Day", "Int", "Ext", "Of", "And", "Boys", "Girls", "Model", "Matriculation", "Higher Secondary", "Multi", "Speciality", "Super", "Nursing", "Dental", "Law", "Polytechnic", "Hall", "Front", "Back", "Main", "Assembly"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["chief minister", "prime minister", "dmk", "aiadmk", "admk", "bjp", "congress party", "pmk", "vck", "naam tamilar", "coca-cola", "coke", "pepsi", "iphone", "samsung", "swiggy", "zomato", "amazon", "flipkart", "whatsapp", "instagram", "facebook", "youtube", "google", "jio", "airtel", "tata motors", "tata group", "reliance", "maruti", "royal enfield", "ola", "uber", "rapido", "paytm", "gpay", "phonepe", "kingfisher", "mcdonald*", "kfc"],
+          "ta": ["thalaivar", "amma unavagam"],
+          "taScript": []
+        }
+      ],
+      "what": "Defamation is one of the grounds in section 5B(1) of the Cinematograph Act on which a certificate can be refused, and a real person, party or company shown in a bad light is a civil and criminal defamation risk long after certification. A brand visible or named on screen is a trade-mark question and, for a sponsor, a contract one.",
+      "do": [
+        "For a real person: consent in writing, or change the name and the identifying details.",
+        "For a brand: a release from the owner, a placement contract, or a fictional label — art department, not post.",
+        "A disclaimer that the story is fictional helps but does not cure a portrayal anyone can identify."
+      ],
+      "source": "Cinematograph Act, 1952, section 5B(1) (defamation as a ground); the law of defamation and the Trade Marks Act, 1999 apply independently of certification.",
+      "sourceUrls": [
+        "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "A word list cannot recognise a real person's name. Named institutions are found by a capitalised name before a word like Hospital or College; read the flagged lines, and look for real names the list cannot know."
+    },
+    {
+      "id": "emblems",
+      "label": "National emblem, flag, police or armed-forces uniforms",
+      "kind": "requirement",
+      "reads": ["action", "heading", "paren", "synopsis", "elements", "dialogue"],
+      "tiers": [
+        {
+          "id": "any", "hint": null,
+          "en": ["national flag", "tricolour", "tricolor", "flag hoisting", "flag", "emblem", "ashoka chakra", "lion capital", "national anthem", "jana gana mana", "police", "policeman", "policemen", "constable*", "inspector*", "sub-inspector*", "khaki", "army", "soldier*", "jawan*", "military", "navy", "naval", "air force", "crpf", "bsf", "commando*", "ips officer", "uniformed"],
+          "ta": ["kaaval*", "kaval nilayam", "thesiya kodi", "desiya kodi", "police-u"],
+          "taScript": ["காவல்", "தேசியக் கொடி"]
+        }
+      ],
+      "what": "The guidelines ask that national symbols and emblems are not shown except as the Emblems and Names (Prevention of Improper Use) Act, 1950 allows. The State Emblem of India (Prohibition of Improper Use) Act, 2005, the Prevention of Insults to National Honour Act, 1971 (the flag and the anthem) and the Flag Code of India, 2002 govern how the emblem, the flag and the anthem may be used. Police and armed-forces uniforms on actors are costume; shooting in them in public is a permission question.",
+      "do": [
+        "Show the flag and the anthem only in ways those Acts allow — no flag as a costume, a cloth or a prop that is handled carelessly.",
+        "Use a fictional insignia rather than the State Emblem on props such as a police cap badge or a letterhead, unless you have checked the use is permitted.",
+        "For a public location shot in police or forces uniform, take the jurisdictional police's permission — the location permission usually covers it, but say so in the application.",
+        "Films about the armed forces: a 2020 Ministry of Defence request that producers obtain its no-objection certificate was widely reported; check whether it applies before submission."
+      ],
+      "source": "Guidelines for certification of films (1991), clause (xix) as reported, retained in the September 2026 revision; Emblems and Names (Prevention of Improper Use) Act, 1950; State Emblem of India (Prohibition of Improper Use) Act, 2005; Prevention of Insults to National Honour Act, 1971; Flag Code of India, 2002.",
+      "sourceUrls": [
+        "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "uncertain",
+      "uncertain": "The guideline clause is reported consistently. The police-permission point is common practice rather than a rule we could cite, and the Ministry of Defence request is a 2020 press report whose current status we did not confirm."
+    },
+    {
+      "id": "children",
+      "label": "Children on set, and in hazardous scenes",
+      "kind": "requirement",
+      "reads": ["action", "heading", "paren", "synopsis", "elements"],
+      "childAgeUnder": 14,
+      "adultAge": 18,
+      "tiers": [
+        {
+          "id": "child", "hint": null, "label": "a child (under 14, or named as a child)",
+          "en": ["child", "children", "kid", "kids", "little boy", "small boy", "young boy", "little girl", "small girl", "young girl", "schoolgirl*", "schoolboy*", "schoolchildren", "baby", "babies", "infant*", "toddler*", "newborn"],
+          "ta": ["kuzhandhai*", "kozhandhai*", "kuzhanthai*", "chinna paiyan", "chinna ponnu", "paapa"],
+          "taScript": ["குழந்தை"]
+        },
+        {
+          "id": "adolescent", "hint": null, "kind": "review", "label": "aged 14 to 17, by the age the script gives",
+          "en": [], "ta": [], "taScript": []
+        },
+        {
+          "id": "hazard", "hint": null, "label": "a hazard in the same scene", "onlyWith": ["child", "adolescent"],
+          "en": ["fire", "flames", "burning", "explosion*", "blast*", "drown*", "river", "sea", "waves", "flood*", "traffic", "speeding", "train", "railway track*", "rooftop", "terrace edge", "ledge", "cliff", "knife", "knives", "gun", "guns", "fight*", "stunt*", "blood*", "crash*", "electric*", "acid", "wild animal*", "snake*", "beaten", "beating"],
+          "ta": ["aruval*", "thee", "kinaru"],
+          "taScript": []
+        }
+      ],
+      "what": "Under the Child and Adolescent Labour (Prohibition and Regulation) Act and its 2017 rules, a child under 14 may take part in an audio-visual production only with the District Magistrate's permission and on the rule's conditions. The guidelines separately bar scenes showing children as victims or perpetrators of violence, forcing children to witness violence, or subjecting them to any form of abuse.",
+      "do": [
+        "Before the shoot, take the District Magistrate's permission for every child artist, and give the undertaking the rule asks for.",
+        "No more than five hours of work a day and no more than three hours without rest; one responsible person on set for every five children at most.",
+        "No child kept out of school for more than 27 days; 20% of the child's earnings deposited in a fixed deposit in the child's name.",
+        "Carry the disclaimer that all measures were taken to ensure no abuse, neglect or exploitation of the child during shooting.",
+        "Where a child and a hazard share a scene: cover it so the child is never in the hazard — doubles, separate setups, or VFX — and keep the scene clear of the guideline on children and violence."
+      ],
+      "source": "Child and Adolescent Labour (Prohibition and Regulation) Amendment Rules, 2017 (G.S.R. 543(E), 2 June 2017), rule 2C; guidelines for certification of films as revised in September 2026.",
+      "sourceUrls": [
+        "https://ssrana.in/articles/child-actors-and-child-labour-laws/",
+        "https://abcaus.in/labour-laws/child-labour-prohibition-and-regulation-amendment-rules-2017.html",
+        "https://www.drishtiias.com/daily-updates/daily-news-analysis/child-labour-in-film-and-television-industry/print_manually",
+        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
+      ],
+      "checked": "2026-10-07",
+      "confidence": "secondary",
+      "uncertain": "Rule 2C speaks of a 'child' (under 14). A 14-to-17-year-old is an adolescent under the Act, barred only from hazardous work; this page flags them for a person to check, not as needing the District Magistrate's permission. We did not confirm whether the 2017 rules have been amended since."
+    }
+  ]
+}

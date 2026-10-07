@@ -103,6 +103,21 @@ export const normaliseCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z
 /** Display form: groups of four, the way a code is read aloud. */
 export const formatCode = (s) => normaliseCode(s).replace(/(.{4})(?=.)/g, '$1-');
 
+/** The sentence a person sees for a failed gate call. A dropped
+ *  connection surfaces from fetch() as a TypeError whose message is the
+ *  browser's own ("Failed to fetch", "Load failed", "NetworkError…"),
+ *  and that used to be printed verbatim (UX audit M16). A server's own
+ *  refusal is already a sentence and passes through. */
+export function errorSentence(err, fallback) {
+  const msg = (err && err.message) || '';
+  if (/failed to fetch|load failed|networkerror|network request failed/i.test(msg)) {
+    return (typeof navigator !== 'undefined' && navigator.onLine === false)
+      ? 'This device is offline. Connect to the internet and try again.'
+      : 'The studio could not reach its server. Check the connection and try again.';
+  }
+  return msg || fallback;
+}
+
 /* ---- holders ------------------------------------------------- */
 
 const webHolder = {

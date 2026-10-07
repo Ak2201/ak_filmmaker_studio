@@ -613,7 +613,9 @@ function renderProjects(projects, current) {
         })
       ]),
       isOpen
-        ? h('span.db-proj-flag', { text: 'OPEN' })
+        /* A status, not a control (UX audit L25): the bordered pill
+           beside the OPEN buttons of the other rows read as one more. */
+        ? h('span.db-proj-flag', { text: 'Open now' })
         : h('button.btn.db-proj-open', {
             type: 'button', 'data-action': 'open-project', 'data-project': p.id,
             text: 'Open'
@@ -713,11 +715,11 @@ function render() {
   if (!project) {
     main.append(
       h('header.bd-head', {}, [
-        h('p.bd-eyebrow', { text: 'Dashboard' }),
-        h('h1.bd-title', { text: 'Nothing open.' }),
+        h('p.bd-eyebrow', { text: 'Studio' }),
+        h('h1.bd-title', { text: 'Dashboard.' }),
         h('p.bd-deck', {
-          text: 'The dashboard reports on the project you have open. There is not '
-              + 'one, so there is nothing to report.'
+          text: 'Where a film stands: its blueprint, its scenes, its schedule and '
+              + 'what is still missing — read from the project you have open.'
         })
       ]),
       renderNoProject()

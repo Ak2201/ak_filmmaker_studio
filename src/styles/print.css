@@ -26,6 +26,45 @@
   }
 
   /* ----------------------------------------------------------
+     THE DARK PALETTE DOES NOT PRINT (UX audit M14). Resetting
+     html/body was not enough: every rule that reads --ink, a
+     -deep hue or a -wash still resolved to the ink theme's
+     values, so call-sheet titles and report tables printed
+     near-white on white paper. Under any theme but an explicit
+     light one (bare :root IS the dark palette) the page tokens
+     are pointed at the print family; the light theme already
+     prints correctly and keeps its colour. `html:root` outranks
+     :root[data-theme="dark"] so import order cannot undo it.
+     ---------------------------------------------------------- */
+  html:root:not([data-theme="light"]) {
+    color-scheme: light;
+    --paper:        var(--print-paper);
+    --paper-raised: var(--print-paper);
+    --paper-sunk:   var(--print-wash);
+    --paper-edge:   var(--print-rule);
+    --ink:          var(--print-ink);
+    --ink-body:     var(--print-ink);
+    --ink-muted:    var(--print-muted);
+    --ink-faint:    var(--print-rule);
+    --rule:         var(--print-rule);
+    --rule-hair:    var(--print-rule);
+    --feature-deep: var(--print-ink);   --feature-wash: var(--print-wash);
+    --shorts-deep:  var(--print-ink);   --shorts-wash:  var(--print-wash);
+    --library-deep: var(--print-ink);   --library-wash: var(--print-wash);
+    --visualize-deep: var(--print-ink); --visualize-wash: var(--print-wash);
+    --plan-deep:    var(--print-ink);   --plan-wash:    var(--print-wash);
+    --shoot-deep:   var(--print-ink);   --shoot-wash:   var(--print-wash);
+    --brand-deep:   var(--print-ink);   --brand-wash:   var(--print-wash);
+    --el-cast-deep: var(--print-ink);   --el-cast-wash: var(--print-wash);
+    --el-props-deep: var(--print-ink);  --el-props-wash: var(--print-wash);
+    --el-vehicles-deep: var(--print-ink); --el-vehicles-wash: var(--print-wash);
+    --el-sound-deep: var(--print-ink);  --el-sound-wash: var(--print-wash);
+    --ok-deep:      var(--print-ink);   --ok-wash:      var(--print-wash);
+    --warn-deep:    var(--print-ink);   --warn-wash:    var(--print-wash);
+    --danger-wash:  var(--print-wash);
+  }
+
+  /* ----------------------------------------------------------
      HIDE — chrome, controls and anything that only exists to be
      clicked. One list for all four pages.
      ---------------------------------------------------------- */

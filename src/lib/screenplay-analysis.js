@@ -412,7 +412,13 @@ const RE = {
 };
 const CAPS_SOUND = new RegExp('\\b(' + lexicon.soundCaps.words.map(escRe).join('|') + ')\\b', 'g');
 
-const titleCase = (s) => s.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+/* A capital after a space, a hyphen, a slash or an opening bracket —
+   NOT after an apostrophe, which `\b` counts as a word edge and which
+   made "RAGAVAN'S FATHER" into "Ragavan'S Father" (UX audit L27). An
+   O' or D' prefix is the one place a letter after one is a capital. */
+export const titleCase = (s) => String(s)
+  .replace(/(^|[\s\-/(])(\p{L})/gu, (m, pre, c) => pre + c.toUpperCase())
+  .replace(/(^|[\s\-/(])([OoDd])(['’])(\p{L})/gu, (m, pre, o, q, c) => pre + o.toUpperCase() + q + c.toUpperCase());
 
 /** What a scene's script text suggests should be on its breakdown,
  *  minus what is already tagged. Each suggestion carries `from`, the

@@ -444,12 +444,14 @@ export function formatPages(pages) {
   return n ? n.toFixed(1) : '0';
 }
 
-/** One page is roughly one minute of screen time. */
+/** One page is roughly one minute of screen time. Printed as minutes,
+ *  and as hours and minutes from an hour up: "106:30" beside "on
+ *  screen" read as a hundred and six hours (UX audit L29), and a
+ *  page-a-minute estimate has no business quoting seconds anyway. */
 export function formatRuntime(pages) {
-  const n = Math.max(0, Number(pages) || 0);
-  const mins = Math.floor(n);
-  const secs = Math.round((n - mins) * 60);
-  return mins + ':' + String(secs).padStart(2, '0');
+  const mins = Math.round(Math.max(0, Number(pages) || 0));
+  if (mins < 60) return mins + ' min';
+  return Math.floor(mins / 60) + 'h ' + String(mins % 60).padStart(2, '0') + 'm';
 }
 
 export function wordCount(text) {

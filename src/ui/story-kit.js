@@ -138,6 +138,9 @@ export function renderHeat(s, { interactive = true } = {}) {
 export function renderFlags(s, { interactive = true } = {}) {
   const flags = Story.pacingFlags(s);
   if (!flags.length) {
+    if (Story.tooShortForPacing(s)) {
+      return h('p.st-flags-ok', { text: `The pacing notes need a longer synopsis — about ${Story.PACING.minWords} words or more. This one has ${Story.wordCount(s.source)}.` });
+    }
     return h('p.st-flags-ok', { text: s.marks.length
       ? 'No pacing flags for this framework.'
       : 'Tag a few passages and the pacing notes appear here.' });

@@ -240,12 +240,15 @@ function phaseTab(phase, active) {
     type: 'button',
     'data-action': 'phase-toggle',
     'data-phase': phase.id,
-    'aria-expanded': 'false',
-    'aria-haspopup': 'true'
+    'aria-expanded': 'false'
   });
   btn.append(h('span.sh-phase-dot', { 'aria-hidden': 'true' }),
              h('span.sh-phase-label', { text: phase.label }));
-  const menu = h('div.sh-phase-menu', { hidden: true, role: 'menu', 'aria-label': phase.label });
+  /* A disclosure of links, like the Sections panel below: no
+     `role="menu"`, which promised arrow keys and one Tab stop that
+     nothing here implements (UX audit L17). Tab walks the links,
+     Escape closes, aria-expanded on the button says it is open. */
+  const menu = h('div.sh-phase-menu', { hidden: true, role: 'group', 'aria-label': phase.label });
   menu.append(h('div.sh-phase-menu-head', { text: phase.blurb }));
   /* `group` on a module is a sub-heading (Pre-Production's Break down ·
      See it · Cost & staff it · Schedule it). A heading is printed when
@@ -254,7 +257,7 @@ function phaseTab(phase, active) {
   let group = null;
   phase.modules.forEach((m) => {
     if (m.group && m.group !== group) {
-      menu.append(h('div.sh-phase-menu-group', { role: 'presentation', text: m.group }));
+      menu.append(h('div.sh-phase-menu-group', { text: m.group }));
     }
     group = m.group || null;
     menu.append(moduleRow(m));
@@ -270,7 +273,7 @@ function phaseTab(phase, active) {
     const links = h('span.sh-guide-links');
     guide.forEach((g, i) => {
       if (i) links.append(h('span.sh-guide-sep', { text: '·', 'aria-hidden': 'true' }));
-      links.append(h('a.sh-guide-link', { href: g.href, role: 'menuitem', text: g.label }));
+      links.append(h('a.sh-guide-link', { href: g.href, text: g.label }));
     });
     foot.append(links);
     menu.append(foot);
@@ -324,7 +327,6 @@ function renderCrumb(crumb, loc) {
         type: 'button',
         'data-action': 'crumb-phase',
         'data-phase': loc.phase.id,
-        'aria-haspopup': 'true',
         title: loc.phase.blurb
       }));
     } else if (loc.global && loc.module && loc.global !== home) {
@@ -413,8 +415,8 @@ function buildPageNav(toolbar) {
   btn.append(h('span.sh-pagenav-label', { text: 'Sections' }),
              h('span.sh-pagenav-caret', { text: '▾', 'aria-hidden': 'true' }));
 
-  /* A DISCLOSURE, not a `role="menu"`. The phase menus beside it claim
-     the menu role and the working notes are explicit about what that
+  /* A DISCLOSURE, not a `role="menu"` — and the phase menus beside it
+     no longer claim the role either (L17). The working notes are explicit about what that
      costs: `role="menu"` is a promise of arrow keys, Home, End and one
      Tab stop, and the note on actionbar.js records it being made and
      not kept. Nothing here implements any of that, so it does not
@@ -525,15 +527,16 @@ function buildPlate() {
   });
   plate.append(slides);
 
-  const dots = h('div.sh-plate-dots', { role: 'tablist', 'aria-label': 'Announcement' });
+  /* Plain buttons, the current one marked aria-current. They were a
+     tablist of tabs with no tabpanel and no arrow keys (UX audit L17). */
+  const dots = h('div.sh-plate-dots', { role: 'group', 'aria-label': 'Announcements' });
   items.forEach((it, i) => {
     dots.append(h('button.sh-plate-dot' + (i === 0 ? '.is-on' : ''), {
       type: 'button',
       'data-action': 'plate-go',
       'data-index': String(i),
-      'aria-label': it.text,
-      'aria-selected': String(i === 0),
-      role: 'tab'
+      'aria-label': 'Announcement ' + (i + 1) + ' of ' + items.length + ': ' + it.text,
+      'aria-current': i === 0 ? 'true' : 'false'
     }));
   });
   plate.append(dots);
@@ -570,7 +573,7 @@ function showPlate(i) {
   });
   dots.forEach((el, n) => {
     el.classList.toggle('is-on', n === at);
-    el.setAttribute('aria-selected', String(n === at));
+    el.setAttribute('aria-current', n === at ? 'true' : 'false');
   });
   /* The messages are different lengths, so the plate's height can
      change and the bar below it is parked on that measurement. */

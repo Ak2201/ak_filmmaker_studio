@@ -160,6 +160,24 @@ function focusItem(panel, i) {
 }
 
 function onMenuKey(e) {
+  /* The menu BUTTON answers the arrows too — the other half of the
+     menu-button pattern, and the half that was missing (UX audit L17):
+     a menu opened with the mouse left focus on the button, and ↓ there
+     did nothing. ↓ opens it on the first item, ↑ on the last. */
+  const btn = e.target.closest && e.target.closest('.tb-menu-btn');
+  if (btn && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    const p = btn.parentElement && btn.parentElement.querySelector('.tb-menu-panel');
+    if (!p) return;
+    e.preventDefault();
+    if (p.hidden) {
+      closeMenus(p, false);
+      p.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      clampIntoViewport(p);
+    }
+    focusItem(p, e.key === 'ArrowDown' ? 0 : -1);
+    return;
+  }
   const panel = e.target.closest && e.target.closest('.tb-menu-panel');
   if (!panel || panel.hidden) return;
   const items = menuItems(panel);

@@ -105,10 +105,10 @@ function providerPicker() {
    second form for the second provider is the duplication at the
    top of this file, and it is the copy that gets the privacy line
    wrong. */
-export function keyForm() {
+export function keyForm({ lead = true } = {}) {
   const prov = AI.provider();
   const box = h('div.ai-key');
-  box.append(h('p.ai-lead', {
+  if (lead) box.append(h('p.ai-lead', {
     text: 'This uses your own ' + prov.label + ' API key. It is saved in this browser '
         + 'only — it is never put in a backup file, never synced to the cloud, and '
         + 'never attached to a project. Every call is billed to your account.'
@@ -189,20 +189,25 @@ export function gate(lead, body, cta) {
     present and the user is not replacing it — so a caller can write
     `const g = keyGate(); if (g) { panel.append(g); return panel; }`
     and have the two gates stay genuinely independent. */
-export function keyGate(what) {
+/* The privacy sentence is said ONCE per panel (UX audit L22: the gate,
+   the form's lead and the disclosure used to say "your own key, it
+   stays on this device" three times over). The gate names what is
+   missing; the form's lead says where the key lives — unless the
+   caller draws a disclosure that already does, which `lead: false`
+   is for. */
+export function keyGate(what, { lead = true } = {}) {
   if (AI.hasKey() && !editingKey) return null;
   const wrap = h('div.ai-keygate');
   if (!AI.hasKey()) {
     wrap.append(gate(
       'No API key on this device.',
-      what + ' runs on ' + AI.provider().apiName + ' with a key of your own. '
-        + 'Paste one below — it stays on this device.'
+      what + ' runs on ' + AI.provider().apiName + '. Paste a key below to use it.'
     ));
     /* The only route back to the other provider when this one has
        no key saved. See providerPicker(). */
     wrap.append(providerPicker());
   }
-  wrap.append(keyForm());
+  wrap.append(keyForm({ lead }));
   // `blocking` tells the caller whether to stop here: replacing a key
   // that already works should not hide the rest of the panel.
   wrap.dataset.blocking = AI.hasKey() ? 'false' : 'true';
@@ -239,7 +244,7 @@ export function keySection(what, sends) {
      this page cannot get the "replacing a key that already works"
      case wrong either — the module decides, exactly as it does for
      the three panels. */
-  const kg = keyGate(what);
+  const kg = keyGate(what, { lead: false });   // the disclosure below says it
   if (kg) sec.append(kg);
   sec.append(disclose(sends));
   return sec;

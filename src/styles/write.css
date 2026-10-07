@@ -353,6 +353,20 @@ body.wr-dropping .bd-empty {
 @supports (field-sizing: content) {
   .wr-text { field-sizing: content; }
 }
+/* A SCREENPLAY LINE ON A PHONE IS A 44px TARGET. base.css raises every
+   control to 44px under `pointer: coarse` but deliberately leaves
+   textareas alone, so a one-line element here measured about 30px on
+   touch (KNOWN-ISSUES §6) — under the WCAG floor for a thing you have
+   to hit between its neighbours with a thumb. Decided for PHONES ONLY:
+   a tablet with a pencil, or a laptop with a touch screen, still shows
+   a 2,361-line script at the density a script has, and raising those
+   lines by half would stretch it by a thousand pixels a hundred pages.
+   The floor is a min-height, so a line that is already two or three
+   lines tall is untouched; `field-sizing: content` and the JS autosize
+   both respect it (a height under the minimum is simply the minimum). */
+@media (pointer: coarse) and (max-width: 720px) {
+  .wr-text { min-height: var(--sh-ctl-h, 44px); }
+}
 .wr-text:hover { border-color: var(--rule-hair); }
 .wr-text:focus { background: var(--paper); }
 

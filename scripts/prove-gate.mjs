@@ -507,26 +507,70 @@ try {
     const ctx = await browser.newContext({ serviceWorkers: 'block' });
     await ctx.route(SB + '/**', handle);
     await ctx.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    /* EVERY WRITE, FROM DOCUMENT START, WITH ITS KEY. The counter used
+       to be installed after goto(), and that lost a race once in three
+       runs: the supabase chunk is a lazy import that does not hold up
+       the load event, and auth-js probes localStorage as it evaluates
+       (`lswt-<random>`, set and removed at once — supportsLocalStorage()
+       in its locks module). Measured 8ms AHEAD of the patch on a quiet
+       machine, so on a loaded one it landed behind it and counted as
+       the room writing. Logging from the start, with keys, means a
+       failure here NAMES the key instead of reporting a bare count. */
+    await ctx.addInitScript(() => {
+      window.__writes = [];
+      const o = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (...a) {
+        window.__writes.push({ store: this === sessionStorage ? 'session' : 'local', key: String(a[0]) });
+        return o.apply(this, a);
+      };
+    });
     const page = await ctx.newPage();
     const errors = []; page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(BASE + 'screening.html?pass=PASSCODE2345');
     ok(!(await page.evaluate(() => location.search)), 'the pass is stripped from the address bar');
-    await page.evaluate(() => { window.__writes = 0; const o = Storage.prototype.setItem; Storage.prototype.setItem = function (...a) { window.__writes++; return o.apply(this, a); }; });
+    /* Settle before measuring: the lazy chunks have arrived and run
+       once the network has been quiet, which is the state a visitor's
+       page is in when they type the code. */
+    await page.waitForLoadState('networkidle');
+    const snapshot = () => page.evaluate(() => JSON.stringify([Object.entries(localStorage).sort(), Object.entries(sessionStorage).sort()]));
+    const before = await snapshot();
+    const n0 = await page.evaluate(() => window.__writes.length);
     await page.fill('#scEmail', 'programmer@festival.example');
     await page.click('button[type="submit"]');
     await page.waitForSelector('.sc-room', { timeout: 8000 });
+    const nRoom = await page.evaluate(() => window.__writes.length);
     const text = await page.textContent('.sc-room');
     ok(text.includes('Dragon') && text.includes('Inciting Incident') && text.includes('RAGAVAN'), 'beat sheet, character map and title are shown');
     ok(!text.includes('SECRET PHONE'), 'contacts never reach a pass holder');
     ok(await page.evaluate(() => !!document.querySelector('canvas[data-wm]') && [...document.querySelectorAll('.sc-block')].every((b) => b.style.backgroundImage.includes('data:image/png'))),
       'a canvas watermark is up and baked into every block');
     ok(F.db.redemptions.some((r) => r.viewer_email === 'programmer@festival.example' && r.access_id), 'the open is logged with the typed e-mail and an access id');
+    /* The watchdog answers a MutationObserver and a once-a-second tick,
+       so each wait here is for ITS reaction — the canvas back in the
+       document, the canvas visible again — never for a fixed number of
+       milliseconds that a slow run can outlast. */
     await page.evaluate(() => document.querySelector('canvas[data-wm]').remove());
-    await page.waitForTimeout(300);
-    ok(await page.evaluate(() => !!document.querySelector('canvas[data-wm]')), 'a removed watermark is put back');
-    for (let i = 0; i < 4; i++) { await page.evaluate(() => { const c = document.querySelector('canvas[data-wm]'); if (c) c.style.display = 'none'; }); await page.waitForTimeout(250); }
+    ok(await page.waitForSelector('canvas[data-wm]', { state: 'attached', timeout: 3000 }).then(() => true, () => false), 'a removed watermark is put back');
+    for (let i = 0; i < 4; i++) {
+      await page.evaluate(() => { const c = document.querySelector('canvas[data-wm]'); if (c) c.style.display = 'none'; });
+      // the mark is restyled (one strike), or the fourth strike has closed the room
+      await page.waitForFunction(() => { const c = document.querySelector('canvas[data-wm]'); return !!document.querySelector('.sc-enter') || (c && c.style.display !== 'none'); }, null, { timeout: 3000 }).catch(() => {});
+    }
     await page.waitForSelector('.sc-enter', { timeout: 5000 }).then(() => ok(true, 'repeated tampering takes the content off the page'), () => ok(false, 'repeated tampering takes the content off the page'));
-    ok((await page.evaluate(() => window.__writes)) === 0, 'the screening room wrote nothing to localStorage');
+    /* Two halves, because they fail differently. The ROOM — from the
+       moment it is up to the moment it is closed — must not touch
+       storage at all. The OPEN (submit → room) may carry a lazy chunk's
+       set-and-remove probe if the race above is lost even after
+       networkidle; what it must not do is leave anything behind, so the
+       opening is judged on what PERSISTED: the storage contents after
+       the close are the contents before the submit, byte for byte. */
+    const writes = await page.evaluate(() => window.__writes);
+    const inRoom = writes.slice(nRoom);
+    const onOpen = writes.slice(n0, nRoom);
+    const describe = (list) => list.map((w) => w.store + ':' + w.key).join(', ');
+    ok(inRoom.length === 0, 'the screening room wrote nothing to localStorage' + (inRoom.length ? ' — wrote ' + describe(inRoom) : ''));
+    ok((await snapshot()) === before, 'opening and closing the pass left storage exactly as it was'
+      + (onOpen.length ? ' (transient while opening: ' + describe(onOpen) + ')' : ''));
     allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {

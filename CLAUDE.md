@@ -2084,8 +2084,26 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - **The closed rails are `visibility: hidden`**, not just translated
       off-screen, so they leave the Tab order; the change waits for the
       slide so focus-on-open still lands on a visible link.
-    What is left open is in `docs/KNOWN-ISSUES.md` §8, and one decision
-    is in §7: an old `"on"` HOD checkbox value loads unticked, on purpose.
+    **And the open-issues pass, the same day,** closed everything that
+    one left in `docs/KNOWN-ISSUES.md`: the band carries a sign-in pill
+    and the Appearance menu on every shell page (`buildStudioTools()` in
+    shell.js, when `adoptPageTools()` finds no `.toolbar`; the four
+    toolbar pages keep theirs, so exactly one of each everywhere); the
+    palette handle is a direct child of `.sh-bar` and stays at the first
+    row's right end at every width; Case Studies has a second-level
+    strip over a study's PARTS (`#cs-<part>` picks a part, `#study-<slug>`
+    the film — the 21,000px was one film, not the list); `sliceScenes`
+    IS `sliceScript` now, pinned first by `npm run test:import`; the
+    Story guide pill reads the open path step through an additive
+    `paths` block in `steps.stages.json`; the AA walk measures Story at
+    path steps 3/4/6 and Write in Panel mode (3,124 and 1,800 nodes,
+    zero findings); module pages hide their controls in print; and
+    `prove:gate` (h) no longer races supabase-js's `lswt-*` storage
+    probe (108 assertions). Re-baselined again from the merged tree,
+    zero data-key movement; the words that left were `alone` (the call
+    sheet no longer promises one page) and the pill's old step list.
+    `docs/KNOWN-ISSUES.md` now holds two recorded decisions and one
+    thing seen once.
 
 ## Things that are deliberate, not oversights
 

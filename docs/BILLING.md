@@ -415,3 +415,34 @@ and is unchanged. `rzp-order` returns `credit_paise` and must be
 redeployed after §21 runs. Proved: `upgrade.sql` (28 checks) and
 `prove-billing.mjs` (k).
 
+### 9.2 Referral codes (§22)
+
+A referral code is a `promo_codes` row with `kind = 'referral'` and
+`owner_user_id` — so §20's whole path (the quote, the code on the order,
+the use counted at activation) carries it unchanged. Every member with an
+activated payment above ₹0 gets one, `REF-` + six characters from the
+invite alphabet: minted by the `payments_referral_after` trigger at
+activation, or on first ask by `my_referral()` for somebody who paid
+before §22 ran. One per member (partial unique index).
+
+- **The friend** gets `billing_settings.referral_friend_pct` off (default
+  10%). Changing it on the console reprices every referral code at once.
+- **The referrer** is owed, per ACTIVATED payment made with their code,
+  one `referral_credits` row: `referral_reward_pct` of what the friend
+  actually paid, OR a fixed `referral_reward_paise` (never more than the
+  friend paid) — exactly one is set. Default: 10%.
+- **Self-referral** is refused by `quote_for()` with reason `own_code`
+  wherever the buyer is known (the signed-in card, and always at
+  `rzp-order`). A refund of the friend's payment voids an unpaid credit.
+- **Payout is by hand.** The Growth tab on `admin.html` lists every
+  credit (referrer, friend, plan, what the friend paid, what is owed);
+  tick the ones paid by bank/UPI and MARK SELECTED PAID with a note.
+- **The member** sees their code with a COPY button, what it gives and
+  earns, and their credits (owed / paid / void) under the plan cards on
+  `settings.html#plan` — the account's billing tab rather than the
+  Account panel, which is not a billing file.
+
+`billing_settings` and `referral_credits` are closed to the client (RLS
+on, no policy, API roles revoked). Proved: `referral.sql` (37 checks),
+`prove-billing.mjs` (l). Nothing to redeploy.
+

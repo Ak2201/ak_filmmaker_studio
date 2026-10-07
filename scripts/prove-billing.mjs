@@ -446,6 +446,66 @@ try {
     ok(refused.status === 400 && /lower plan/.test(refused.body.error || ''), 'an order for a lower plan, sent by hand, is refused by the server: ' + (refused.body.error || refused.status));
     allErrors.push(...errors); await ctx.close();
   }
+
+  console.log('(l) referral codes (schema section 22)');
+  {
+    // continues from (k): Amy has paid, so she has a code. (k)'s context
+    // still holds her one-device lock (fresh for 90s), so release it.
+    F.db.sessions.clear();
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan');
+    await page.waitForSelector('#plan [data-gr-panel="referral"] .gr-code', { timeout: 10000 })
+      .then(() => ok(true, 'a paying member sees "Your referral code" under the cards'), () => ok(false, 'a paying member sees "Your referral code" under the cards'));
+    const code = (await page.textContent('#plan [data-gr-panel="referral"] .gr-code')).trim();
+    ok(/^REF-[A-HJ-KM-NP-Z2-9]{6}$/.test(code) && F.db.promos.some((c) => c.code === code && c.kind === 'referral' && c.owner_user_id === USERS['tok-amy'].id), 'the code is a REF- promo row owned by her: ' + code);
+    ok(/10% off/.test(await page.textContent('#plan [data-gr-panel="referral"]')), 'and says what it gives a friend');
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.click('#plan [data-gr-action="copy"]');
+    await page.waitForFunction((c) => [...document.querySelectorAll('.toast-host')].some((n) => n.textContent.includes('Copied ' + c)), code, { timeout: 5000 })
+      .then(() => ok(true, 'COPY copies it and says so'), () => ok(false, 'COPY copies it and says so'));
+    // her own code in the promo box: refused by the server
+    await page.click('#plan .pl-promo summary');
+    await page.fill('#plPromoCode', code);
+    await page.click('#plan .pl-promo-form button[type="submit"]');
+    await page.waitForSelector('#plan .pl-promo-msg.is-error', { timeout: 8000 }).catch(() => {});
+    ok(/your own referral code/.test(await page.textContent('#plan .pl-promo-msg')), 'self-referral is refused with the server’s sentence');
+    allErrors.push(...errors); await ctx.close();
+
+    // Ben, a stranger, buys Starter with it on invite.html
+    const B = await newContext(browser, { tok: 'tok-ben' });
+    await B.page.goto(BASE + 'invite.html');
+    await B.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
+    await B.page.click('#buy .pl-promo summary');
+    await B.page.fill('#plPromoCode', code.toLowerCase());
+    await B.page.click('#buy .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#buy .pl-card[data-plan="starter"].has-promo', { timeout: 8000 });
+    ok((await prices(B.page)).find((x) => x[0] === 'starter')[1] === '₹2,699.10', 'a friend sees Starter at 10% off (₹2,699.10)');
+    await B.page.click('#buy .pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    ok(await waitGate(B.page, 'open'), 'the friend’s purchase goes through');
+    const credit = F.db.credits.find((r) => r.referrer_user_id === USERS['tok-amy'].id);
+    ok(credit && credit.status === 'owed' && credit.basis_paise === 269910 && credit.amount_paise === 26991, 'activation credited Amy 10% of what Ben paid (₹269.91), owed');
+    allErrors.push(...B.errors); await B.ctx.close();
+
+    // the console lists it and records the payout
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#growth');
+    await A.page.waitForSelector('#growth tr[data-credit]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists the credit'), () => ok(false, 'the Growth tab lists the credit'));
+    ok(/amy@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')) && /ben@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')), 'naming referrer and friend');
+    await A.page.check('#growth input[name="credit"]');
+    await A.page.fill('#graPayNote', 'UPI 7 Oct');
+    await A.page.click('#growth form[data-gra-form="payout"] button[type="submit"]');
+    await A.page.waitForFunction(() => /paid/.test((document.querySelector('#growth tr[data-credit]') || {}).textContent || '') && !document.querySelector('#growth input[name="credit"]'), null, { timeout: 8000 })
+      .then(() => ok(true, 'MARK SELECTED PAID records the payout'), () => ok(false, 'MARK SELECTED PAID records the payout'));
+    ok(F.db.credits[0].status === 'paid' && F.db.credits[0].paid_note === 'UPI 7 Oct', 'the fake’s row is paid with the note');
+    await A.page.fill('#graRewardValue', '250');
+    await A.page.selectOption('#graRewardKind', 'paise');
+    await A.page.click('#growth form[data-gra-form="referral"] button[type="submit"]');
+    await A.page.waitForSelector('#growth .ba-saved', { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.referral_reward_paise === 25000 && F.db.settings.referral_reward_pct === null, 'the referral terms save: a fixed ₹250 reward, the percentage cleared');
+    await A.page.setViewportSize({ width: 390, height: 844 });
+    ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the Growth tab does not overflow at 390px');
+    allErrors.push(...A.errors); await A.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

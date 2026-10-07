@@ -46,7 +46,9 @@ async function load() {
     const [plans, payments, overview] = await Promise.all([Billing.refreshPlans(), Billing.admin.listPayments(200), Billing.admin.overview()]);
     S.plans = plans; S.payments = payments; S.overview = overview || {};
     // Section 20 may not have run yet; the rest of the console must not wait on it.
-    try { S.promos = await Billing.admin.listPromoCodes(); } catch (e) { S.promos = null; }
+    /* Members' own referral codes (schema section 22) are listed on the
+       Growth tab, by referrer; this table is the codes the owner made. */
+    try { S.promos = (await Billing.admin.listPromoCodes()).filter((c) => c.kind !== 'referral'); } catch (e) { S.promos = null; }
     // The grant form needs people to pick from; the gate's console already
     // lists members, so borrow that list rather than add a fourth RPC.
     try {

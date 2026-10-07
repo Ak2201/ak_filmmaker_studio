@@ -544,6 +544,34 @@ The risk this section adds is a caller pricing somebody else's upgrade;
 4. With the service key, open an Indie and a Pro order for one test
    user, activate Pro then Indie → `accounts.plan` stays `pro`.
 
+### §22 — referral codes
+
+| Table / function | Policy / grant | Permits | To whom |
+|---|---|---|---|
+| `billing_settings` | RLS on, **no policy**, API roles revoked | — | nobody from the client |
+| `referral_credits` | RLS on, **no policy**, API roles revoked | — | nobody from the client |
+| `my_referral()` | `authenticated` | the caller's OWN code and credits (amounts and dates, never the friend) | a signed-in member |
+| `ensure_referral_code(uuid)`, `payments_referral_after()` | nobody | mint a code; write a credit | internal / trigger |
+| `admin_get/set_billing_settings`, `admin_list_referral_credits`, `admin_mark_referral_paid` | `authenticated`, re-check `is_studio_admin()` | the console | an administrator |
+
+A credit is written only by the trigger on `payments`, which only the
+service role's `activate_payment()` moves to `paid`; a member cannot
+credit themselves because `quote_for()` refuses their own code. Live
+checks:
+
+1. As anon: `select count(*) from referral_credits` and
+   `from billing_settings` → `42501` (not `42P01`, which means §22 never
+   ran). `select my_referral()` → `42501`.
+2. As a signed-in member who has paid nothing: `my_referral()` →
+   `eligible: false`. After a test-mode purchase: `eligible: true`,
+   `code` `REF-XXXXXX`; asked again → the same code.
+3. As that member: `quote_order('indie', '<their code>')` → `ok: false,
+   reason: 'own_code'`.
+4. A second test account buys with the code → 10% off; after activation
+   the console's Growth tab shows one owed credit naming both addresses;
+   MARK SELECTED PAID → paid, and the first member's panel reads it.
+5. As a non-admin: `select admin_list_referral_credits()` → `42501`.
+
 ---
 
 ## Enumeration: can `anon` or a signed-in stranger list rows they were not given?

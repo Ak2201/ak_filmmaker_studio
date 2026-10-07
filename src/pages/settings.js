@@ -100,6 +100,7 @@ import { accountSection } from '../ui/account-panel.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
+import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 
 const app = document.getElementById('app');
 
@@ -161,9 +162,12 @@ function renderPlan() {
     if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan\u2019s limits now.` }));
   }
   sec.append(planCards(billing.plans, st, {
-    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => refreshBilling()),
+    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); return refreshBilling(); }),
     rerender: () => { if (!busy) render(); }
   }));
+  // Referral code, gifts, invoices (schema §22 onward): src/ui/growth-panels.js.
+  const growth = memberGrowthPanels(st, { rerender: () => { if (!busy) render(); } });
+  if (growth) sec.append(growth);
   return sec;
 }
 

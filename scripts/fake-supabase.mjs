@@ -55,13 +55,40 @@ function activate(orderId, paymentId, raw) {
   Object.assign(pay, { status: 'paid', razorpay_payment_id: paymentId, paid_at: new Date().toISOString(), account_id: a.id, ends_at: null, raw });
   // section 20: a code is spent at activation, once
   if (pay.promo_code) { const c = F.db.promos.find((x) => x.code === pay.promo_code); if (c) c.uses++; }
+  afterPaid(pay);
   if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
   return { already: false, pay };
 }
 
 /* section 20: public.quote_order(), as the database answers it */
 const SENTENCE = { unknown: 'That code is not one we know. Check the spelling.', expired: 'That code has expired.', exhausted: 'That code has been used as many times as it allows.',
-  not_for_plan: 'That code does not apply to this plan.', inactive: 'That code is not active right now.' };
+  not_for_plan: 'That code does not apply to this plan.', inactive: 'That code is not active right now.',
+  own_code: 'That is your own referral code — it is for the friends you share it with.', gift: 'That is a gift code. Redeem it under "Have a gift code?" instead.' };
+
+/* section 22: the payer's own referral code, minted on a paid payment;
+   the owner of a referral code used is credited (payments_referral_after). */
+const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const randCode = (prefix, n) => prefix + Array.from({ length: n }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
+export function ensureReferralCode(uid) {
+  const c = F.db.promos.find((x) => x.kind === 'referral' && x.owner_user_id === uid);
+  if (c) return c.code;
+  if (!F.db.payments.some((x) => x.user_id === uid && x.status === 'paid' && x.amount_paise > 0)) return null;
+  let code;
+  do { code = randCode('REF-', 6); } while (F.db.promos.some((x) => x.code === code));
+  F.db.promos.push({ code, percent_off: F.db.settings.referral_friend_pct, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null,
+    active: true, kind: 'referral', owner_user_id: uid, note: 'Referral', created_at: new Date().toISOString() });
+  return code;
+}
+function afterPaid(pay) {
+  if (pay.amount_paise > 0) ensureReferralCode(pay.user_id);
+  const c = pay.promo_code && F.db.promos.find((x) => x.code === pay.promo_code);
+  if (c && c.kind === 'referral' && c.owner_user_id && c.owner_user_id !== pay.user_id && !F.db.credits.some((r) => r.payment_id === pay.id)) {
+    const st = F.db.settings;
+    const amt = Number.isInteger(st.referral_reward_pct) ? Math.floor(pay.amount_paise * st.referral_reward_pct / 100) : Math.min(st.referral_reward_paise || 0, pay.amount_paise);
+    F.db.credits.push({ id: 'rc' + F.db.credits.length, referrer_user_id: c.owner_user_id, payment_id: pay.id, code: c.code, basis_paise: pay.amount_paise, amount_paise: amt,
+      status: 'owed', created_at: new Date().toISOString(), paid_at: null, paid_note: null });
+  }
+}
 /* section 21: what a user has already paid for full-time access */
 export function paidCredit(uid) {
   return F.db.payments.filter((x) => x.user_id === uid && x.status === 'paid' && x.period === 'lifetime').reduce((n, x) => n + x.amount_paise, 0);
@@ -88,12 +115,12 @@ export function quoteOrder(planId, rawCode, user = null) {
   if (!code) return base;
   const c = F.db.promos.find((x) => x.code === code);
   const now = Date.now();
-  const reason = !c ? 'unknown' : !c.active || (c.valid_from && Date.parse(c.valid_from) > now) ? 'inactive'
+  const reason = !c ? 'unknown' : c.kind === 'gift' ? 'gift' : !c.active || (c.valid_from && Date.parse(c.valid_from) > now) ? 'inactive'
     : c.valid_until && Date.parse(c.valid_until) <= now ? 'expired' : Number.isInteger(c.max_uses) && c.uses >= c.max_uses ? 'exhausted'
-    : c.plan_ids && !c.plan_ids.includes(pl.id) ? 'not_for_plan' : null;
+    : c.plan_ids && !c.plan_ids.includes(pl.id) ? 'not_for_plan' : user && c.owner_user_id === user.id ? 'own_code' : null;
   if (reason) return { ...base, ok: false, reason, sentence: SENTENCE[reason] };
   const amt = promoPrice(due, c.percent_off ?? null, c.amount_off_paise ?? null);
-  return { ...base, amount_paise: amt, discount_paise: due - amt, percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
+  return { ...base, amount_paise: amt, discount_paise: due - amt, kind: c.kind || 'promo', percent_off: c.percent_off ?? null, amount_off_paise: c.amount_off_paise ?? null };
 }
 
 export const USERS = {
@@ -145,6 +172,9 @@ export function freshDb() {
     payments: [],
     // section 20: one live launch code; the proof adds and refuses others
     promos: [{ code: 'LAUNCH10', percent_off: 10, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null, active: true, note: 'launch week', created_at: new Date(now).toISOString() }],
+    // section 22
+    settings: { referral_friend_pct: 10, referral_reward_pct: 10, referral_reward_paise: null },
+    credits: [],
     calls: []
   };
 }
@@ -242,6 +272,46 @@ function rpc(name, args, user, route) {
       if ('plan_ids' in patch) c.plan_ids = Array.isArray(patch.plan_ids) && patch.plan_ids.length ? patch.plan_ids : null;
       if (typeof patch.active === 'boolean') c.active = patch.active;
       return json(route, 200, c);
+    }
+    /* ---- section 22: referrals ---- */
+    case 'my_referral': {
+      if (!user) return pgErr(route, '42501', 'Sign in first');
+      const code = ensureReferralCode(user.id);
+      if (!code) return json(route, 200, { eligible: false, friend_pct: F.db.settings.referral_friend_pct });
+      const c = F.db.promos.find((x) => x.code === code);
+      const mine = F.db.credits.filter((r) => r.referrer_user_id === user.id);
+      const sum = (s) => mine.filter((r) => r.status === s).reduce((n, r) => n + r.amount_paise, 0);
+      return json(route, 200, { eligible: true, code, active: c.active, percent_off: c.percent_off, uses: c.uses,
+        reward_pct: F.db.settings.referral_reward_pct, reward_paise: F.db.settings.referral_reward_paise, owed_paise: sum('owed'), paid_paise: sum('paid'),
+        credits: mine.slice().reverse().map(({ amount_paise, status, created_at, paid_at }) => ({ amount_paise, status, created_at, paid_at })) });
+    }
+    case 'admin_get_billing_settings':
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, { ...F.db.settings });
+    case 'admin_set_billing_settings': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const p = args.p_patch || {};
+      const unknown = Object.keys(p).find((key) => !(key in F.db.settings));
+      if (unknown) return pgErr(route, '22023', 'Unknown setting "' + unknown + '"');
+      if (p.referral_reward_pct != null) { F.db.settings.referral_reward_pct = p.referral_reward_pct; F.db.settings.referral_reward_paise = null; }
+      if (p.referral_reward_paise != null) { F.db.settings.referral_reward_paise = p.referral_reward_paise; F.db.settings.referral_reward_pct = null; }
+      for (const key of Object.keys(p)) if (!/^referral_reward/.test(key)) F.db.settings[key] = p[key];
+      if ('referral_friend_pct' in p) for (const c of F.db.promos) if (c.kind === 'referral') c.percent_off = p.referral_friend_pct;
+      return json(route, 200, { ...F.db.settings });
+    }
+    case 'admin_list_referral_credits': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const em = (id) => (Object.values(USERS).find((u) => u.id === id) || {}).email || null;
+      return json(route, 200, F.db.credits.filter((r) => !args.p_status || r.status === args.p_status).map((r) => {
+        const pay = F.db.payments.find((x) => x.id === r.payment_id) || {};
+        return { ...r, referrer_email: em(r.referrer_user_id), friend_email: em(pay.user_id), plan_id: pay.plan_id };
+      }).sort((a, b) => (b.status === 'owed') - (a.status === 'owed')));
+    }
+    case 'admin_mark_referral_paid': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      let n = 0;
+      for (const r of F.db.credits) if ((args.p_ids || []).includes(r.id) && r.status === 'owed') { r.status = 'paid'; r.paid_at = new Date().toISOString(); r.paid_note = args.p_note || null; n++; }
+      return json(route, 200, n);
     }
     case 'admin_billing_overview': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');

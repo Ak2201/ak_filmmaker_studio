@@ -5040,3 +5040,401 @@ notify pgrst, 'reload schema';
 --  8. after deploying rzp-order (it returns credit_paise now): an
 --     upgrade from settings.html#plan opens Checkout at the difference.
 -- ============================================================
+
+
+-- ============================================================
+-- 22. REFERRAL CODES — every paying member brings a friend a discount
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026.
+--
+--   * A REFERRAL CODE IS A PROMO CODE. One more row in promo_codes,
+--     kind 'referral', owner_user_id the member it belongs to, a
+--     percentage off for the friend (billing_settings, default 10%).
+--     Everything §20 built — the quote, the order carrying the code,
+--     the use counted at activation — works on it unchanged, and the
+--     price is still decided by quote_for().
+--   * WHO GETS ONE: a member with at least one activated payment of
+--     more than ₹0. It is minted at that activation (a trigger), or on
+--     first ask by my_referral() for somebody who paid before this ran.
+--     One per member (a partial unique index).
+--   * THE REWARD IS A LEDGER, NOT A DISCOUNT. Each ACTIVATED payment
+--     made with somebody's referral code writes one referral_credits
+--     row for its owner: a percentage of what the friend actually paid,
+--     or a fixed amount (never more than they paid) — whichever the
+--     admin set. The owner pays these out by hand (bank/UPI) and marks
+--     them paid on the console; nothing here moves money. A refunded
+--     friend's payment voids an unpaid credit.
+--   * SELF-REFERRAL IS REFUSED where the buyer is known: quote_for()
+--     answers reason 'own_code' for a member quoting their own code,
+--     so neither the card nor rzp-order will price it. A signed-out
+--     quote has no buyer and cannot know; the order always does.
+--   * NEITHER TABLE IS READABLE FROM THE BROWSER. billing_settings and
+--     referral_credits have RLS on, no policies, the API roles revoked
+--     outright. A member reads their own code and credits through
+--     my_referral(); the admin through admin_* RPCs.
+--
+-- promo_codes.kind admits 'affiliate' and 'gift' from the start; §23
+-- and §25 use them, and widening a CHECK twice is two more chances to
+-- strand a row.
+-- ============================================================
+alter table public.promo_codes add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
+alter table public.promo_codes add column if not exists kind text not null default 'promo';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'promo_codes_kind_check') then
+    alter table public.promo_codes add constraint promo_codes_kind_check check (kind in ('promo','referral','affiliate','gift'));
+  end if;
+end $$;
+create unique index if not exists promo_codes_one_referral on public.promo_codes (owner_user_id) where kind = 'referral';
+
+create table if not exists public.billing_settings (
+  id                     boolean     primary key default true check (id),
+  referral_friend_pct    int         not null default 10 check (referral_friend_pct between 1 and 100),
+  referral_reward_pct    int         default 10 check (referral_reward_pct between 1 and 100),
+  referral_reward_paise  int         check (referral_reward_paise > 0),
+  updated_at             timestamptz not null default now(),
+  updated_by             uuid        references auth.users(id) on delete set null,
+  constraint billing_settings_one_reward check ((referral_reward_pct is null) <> (referral_reward_paise is null))
+);
+insert into public.billing_settings (id) values (true) on conflict (id) do nothing;
+alter table public.billing_settings enable row level security;
+revoke all on public.billing_settings from public, anon, authenticated;
+
+create table if not exists public.referral_credits (
+  id                uuid        primary key default gen_random_uuid(),
+  referrer_user_id  uuid        not null references auth.users(id) on delete cascade,
+  payment_id        uuid        not null unique references public.payments(id) on delete cascade,
+  code              text        not null,
+  basis_paise       int         not null check (basis_paise >= 0),   -- what the friend paid
+  amount_paise      int         not null check (amount_paise >= 0),  -- what the referrer is owed
+  status            text        not null default 'owed' check (status in ('owed','paid','void')),
+  created_at        timestamptz not null default now(),
+  paid_at           timestamptz,
+  paid_by           uuid        references auth.users(id) on delete set null,
+  paid_note         text
+);
+create index if not exists referral_credits_referrer_idx on public.referral_credits (referrer_user_id, created_at desc);
+alter table public.referral_credits enable row level security;
+revoke all on public.referral_credits from public, anon, authenticated;
+
+/** The member's referral code, minted if they have paid and have none.
+ *  NULL for somebody who has not paid. 'REF-' + 6 characters from the
+ *  invite alphabet (no 0/O/1/I/L), read aloud without a spelling. */
+create or replace function public.ensure_referral_code(p_user uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $fn$
+declare
+  alphabet constant text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  v     text;
+  bytes bytea;
+  i     int;
+  pct   int;
+begin
+  if p_user is null then return null; end if;
+  select c.code into v from public.promo_codes c where c.kind = 'referral' and c.owner_user_id = p_user;
+  if v is not null then return v; end if;
+  if not exists (select 1 from public.payments p where p.user_id = p_user and p.status = 'paid' and p.amount_paise > 0) then
+    return null;
+  end if;
+  select s.referral_friend_pct into pct from public.billing_settings s where s.id;
+  loop
+    bytes := gen_random_bytes(6);
+    v := 'REF-';
+    for i in 0..5 loop
+      v := v || substr(alphabet, (get_byte(bytes, i) % length(alphabet)) + 1, 1);
+    end loop;
+    exit when not exists (select 1 from public.promo_codes c where c.code = v);
+  end loop;
+  insert into public.promo_codes (code, percent_off, kind, owner_user_id, note)
+  values (v, coalesce(pct, 10), 'referral', p_user,
+          left('Referral: ' || coalesce((select u.email from auth.users u where u.id = p_user), p_user::text), 300))
+  on conflict do nothing;
+  -- A concurrent mint for the same member lost the unique index race:
+  -- read back whichever row won.
+  select c.code into v from public.promo_codes c where c.kind = 'referral' and c.owner_user_id = p_user;
+  return v;
+end;
+$fn$;
+revoke execute on function public.ensure_referral_code(uuid) from public, anon, authenticated;
+
+/** The sentence for a refused code, learning 'own_code' and 'gift'. */
+create or replace function public.promo_reason_sentence(p_reason text)
+returns text language sql immutable as $$
+  select case p_reason
+    when 'unknown'      then 'That code is not one we know. Check the spelling.'
+    when 'expired'      then 'That code has expired.'
+    when 'exhausted'    then 'That code has been used as many times as it allows.'
+    when 'not_for_plan' then 'That code does not apply to this plan.'
+    when 'inactive'     then 'That code is not active right now.'
+    when 'own_code'     then 'That is your own referral code — it is for the friends you share it with.'
+    when 'gift'         then 'That is a gift code. Redeem it under "Have a gift code?" instead.'
+    else 'That code cannot be used.' end;
+$$;
+
+/** §21's price, refusing a member's own referral code (and, for §25, a
+ *  gift code typed into the discount box). */
+create or replace function public.quote_for(p_user uuid, p_plan text, p_code text default null)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl     public.plans;
+  pc     public.promo_codes;
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  cur    text := 'free';
+  credit int  := 0;
+  due    int;
+  amt    int;
+  reason text;
+  base   jsonb;
+begin
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  if pl.id is null or coalesce(pl.price_paise, 0) <= 0 then
+    raise exception 'That plan is not for sale' using errcode = '22023';
+  end if;
+  if p_user is not null then
+    cur := public.user_plan(p_user);
+    if cur <> 'free' and public.plan_rank(pl.id) <= public.plan_rank(cur) then
+      if cur = pl.id then
+        raise exception 'You already have % — for good. There is nothing to pay.', pl.name using errcode = '22023', hint = 'same_plan';
+      end if;
+      raise exception 'You are on % already; % is a lower plan, and paying to have less is not something we sell.',
+        coalesce((select x.name from public.plans x where x.id = cur), initcap(cur)), pl.name using errcode = '22023', hint = 'downgrade';
+    end if;
+    credit := public.paid_credit_paise(p_user);
+  end if;
+  due := pl.price_paise - credit;
+  if due < 100 then due := least(pl.price_paise, 100); end if;
+  base := jsonb_build_object('plan_id', pl.id, 'list_paise', pl.price_paise, 'credit_paise', pl.price_paise - due,
+                             'due_paise', due, 'amount_paise', due, 'discount_paise', 0, 'code', v_code,
+                             'ok', true, 'reason', null, 'sentence', null,
+                             'upgrade_from', case when credit > 0 then cur end,
+                             'upgrade_from_name', case when credit > 0 then (select x.name from public.plans x where x.id = cur) end,
+                             'paid_paise', credit);
+  if v_code is null then return base; end if;
+  select * into pc from public.promo_codes c where c.code = v_code;
+  reason := case
+    when pc.code is null                                                   then 'unknown'
+    when pc.kind = 'gift'                                                  then 'gift'
+    when not pc.active                                                     then 'inactive'
+    when pc.valid_from is not null and pc.valid_from > now()               then 'inactive'
+    when pc.valid_until is not null and pc.valid_until <= now()            then 'expired'
+    when pc.max_uses is not null and pc.uses >= pc.max_uses                then 'exhausted'
+    when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
+    when p_user is not null and pc.owner_user_id = p_user                  then 'own_code'
+  end;
+  if reason is not null then
+    return base || jsonb_build_object('ok', false, 'reason', reason, 'sentence', public.promo_reason_sentence(reason));
+  end if;
+  amt := public.promo_price(due, pc.percent_off, pc.amount_off_paise);
+  return base || jsonb_build_object('amount_paise', amt, 'discount_paise', due - amt, 'kind', pc.kind,
+                                    'percent_off', pc.percent_off, 'amount_off_paise', pc.amount_off_paise);
+end;
+$fn$;
+revoke execute on function public.quote_for(uuid, text, text) from public, anon, authenticated;
+
+/** After a payment changes state: an activation mints the payer's own
+ *  referral code and credits the owner of the code they used; a refund
+ *  voids that credit if it has not been paid out. AFTER UPDATE, so it
+ *  sees the row exactly as activate_payment() / mark_payment_refunded()
+ *  left it, and it adds no line to either. */
+create or replace function public.payments_referral_after()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pc  public.promo_codes;
+  st  public.billing_settings;
+  amt int;
+begin
+  if new.status = 'paid' and old.status is distinct from 'paid' then
+    if new.amount_paise > 0 then perform public.ensure_referral_code(new.user_id); end if;
+    if new.promo_code is not null then
+      select * into pc from public.promo_codes c where c.code = new.promo_code;
+      if pc.kind = 'referral' and pc.owner_user_id is not null and pc.owner_user_id <> new.user_id then
+        select * into st from public.billing_settings s where s.id;
+        amt := case when st.referral_reward_pct is not null then (new.amount_paise * st.referral_reward_pct) / 100
+                    else least(coalesce(st.referral_reward_paise, 0), new.amount_paise) end;
+        insert into public.referral_credits (referrer_user_id, payment_id, code, basis_paise, amount_paise)
+        values (pc.owner_user_id, new.id, pc.code, new.amount_paise, amt)
+        on conflict (payment_id) do nothing;
+      end if;
+    end if;
+  elsif new.status = 'refunded' and old.status is distinct from 'refunded' then
+    update public.referral_credits r set status = 'void' where r.payment_id = new.id and r.status = 'owed';
+  end if;
+  return new;
+end;
+$fn$;
+revoke execute on function public.payments_referral_after() from public, anon, authenticated;
+drop trigger if exists payments_referral_after on public.payments;
+create trigger payments_referral_after after update of status on public.payments
+  for each row execute function public.payments_referral_after();
+
+/** The member's own view: their code (minted now if they have paid and
+ *  have none), what it gives a friend, and their credits. */
+create or replace function public.my_referral()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid  uuid := auth.uid();
+  v    text;
+  pc   public.promo_codes;
+  st   public.billing_settings;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  v := public.ensure_referral_code(uid);
+  select * into st from public.billing_settings s where s.id;
+  if v is null then
+    return jsonb_build_object('eligible', false, 'friend_pct', st.referral_friend_pct);
+  end if;
+  select * into pc from public.promo_codes c where c.code = v;
+  return jsonb_build_object(
+    'eligible', true, 'code', pc.code, 'active', pc.active, 'percent_off', pc.percent_off, 'uses', pc.uses,
+    'reward_pct', st.referral_reward_pct, 'reward_paise', st.referral_reward_paise,
+    'owed_paise', (select coalesce(sum(r.amount_paise), 0) from public.referral_credits r where r.referrer_user_id = uid and r.status = 'owed'),
+    'paid_paise', (select coalesce(sum(r.amount_paise), 0) from public.referral_credits r where r.referrer_user_id = uid and r.status = 'paid'),
+    'credits', coalesce((select jsonb_agg(jsonb_build_object('amount_paise', r.amount_paise, 'status', r.status,
+                            'created_at', r.created_at, 'paid_at', r.paid_at) order by r.created_at desc)
+                           from (select * from public.referral_credits x where x.referrer_user_id = uid order by x.created_at desc limit 50) r), '[]'::jsonb));
+end;
+$fn$;
+revoke execute on function public.my_referral() from public, anon;
+grant  execute on function public.my_referral() to authenticated;
+
+-- 22.1 THE CONSOLE ------------------------------------------------------
+create or replace function public.admin_get_billing_settings()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return (select to_jsonb(s) - 'id' from public.billing_settings s where s.id);
+end;
+$fn$;
+
+/** Patch the settings. Referral keys: referral_friend_pct (also applied
+ *  to every existing referral code, so the friend's discount is one
+ *  number), and EXACTLY one of referral_reward_pct / referral_reward_paise
+ *  (sending one clears the other). Later sections add their keys. */
+create or replace function public.admin_set_billing_settings(p_patch jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare k text;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  for k in select jsonb_object_keys(p_patch) loop
+    if k not in ('referral_friend_pct', 'referral_reward_pct', 'referral_reward_paise') then
+      raise exception 'Unknown setting "%"', k using errcode = '22023';
+    end if;
+  end loop;
+  update public.billing_settings s
+     set referral_friend_pct   = coalesce((p_patch ->> 'referral_friend_pct')::int, s.referral_friend_pct),
+         referral_reward_pct   = case when p_patch ? 'referral_reward_pct' then (p_patch ->> 'referral_reward_pct')::int
+                                      when p_patch ? 'referral_reward_paise' and p_patch ->> 'referral_reward_paise' is not null then null
+                                      else s.referral_reward_pct end,
+         referral_reward_paise = case when p_patch ? 'referral_reward_paise' then (p_patch ->> 'referral_reward_paise')::int
+                                      when p_patch ? 'referral_reward_pct' and p_patch ->> 'referral_reward_pct' is not null then null
+                                      else s.referral_reward_paise end,
+         updated_at = now(), updated_by = auth.uid()
+   where s.id;
+  if p_patch ? 'referral_friend_pct' then
+    update public.promo_codes c set percent_off = (p_patch ->> 'referral_friend_pct')::int, updated_at = now() where c.kind = 'referral';
+  end if;
+  return public.admin_get_billing_settings();
+exception
+  when check_violation then
+    raise exception 'A referral pays the friend 1–100%% off, and the referrer EITHER a percentage (1–100) OR a fixed amount in paise' using errcode = '22023';
+end;
+$fn$;
+
+create or replace function public.admin_list_referral_credits(p_status text default null)
+returns table (id uuid, referrer_user_id uuid, referrer_email text, code text, friend_email text, plan_id text,
+               basis_paise int, amount_paise int, status text, created_at timestamptz, paid_at timestamptz, paid_note text)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select r.id, r.referrer_user_id, ru.email::text, r.code, fu.email::text, p.plan_id,
+           r.basis_paise, r.amount_paise, r.status, r.created_at, r.paid_at, r.paid_note
+      from public.referral_credits r
+      join public.payments p on p.id = r.payment_id
+      left join auth.users ru on ru.id = r.referrer_user_id
+      left join auth.users fu on fu.id = p.user_id
+     where p_status is null or r.status = p_status
+     order by (r.status = 'owed') desc, r.created_at desc
+     limit 1000;
+end;
+$fn$;
+
+/** Mark credits paid out (by hand, outside this app). Only 'owed' rows
+ *  move; the count of rows that did is returned. */
+create or replace function public.admin_mark_referral_paid(p_ids uuid[], p_note text default null)
+returns int
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare n int;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  update public.referral_credits r
+     set status = 'paid', paid_at = now(), paid_by = auth.uid(), paid_note = left(p_note, 300)
+   where r.id = any (coalesce(p_ids, '{}')) and r.status = 'owed';
+  get diagnostics n = row_count;
+  return n;
+end;
+$fn$;
+
+revoke execute on function public.admin_get_billing_settings()               from public, anon;
+revoke execute on function public.admin_set_billing_settings(jsonb)          from public, anon;
+revoke execute on function public.admin_list_referral_credits(text)          from public, anon;
+revoke execute on function public.admin_mark_referral_paid(uuid[], text)     from public, anon;
+grant  execute on function public.admin_get_billing_settings()               to authenticated;
+grant  execute on function public.admin_set_billing_settings(jsonb)          to authenticated;
+grant  execute on function public.admin_list_referral_credits(text)          to authenticated;
+grant  execute on function public.admin_mark_referral_paid(uuid[], text)     to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 22.2 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. anon and authenticated: select from billing_settings and from
+--     referral_credits -> 42501. A non-admin calling any admin_* here
+--     -> 42501. anon calling my_referral -> 42501.
+--  2. a member who has paid nothing: my_referral() -> eligible false.
+--     After one activated payment: eligible, a code 'REF-XXXXXX' with
+--     percent_off 10; a second call returns the SAME code.
+--  3. that member quoting their own code -> ok false, reason own_code;
+--     create_pending_payment with it -> 22023.
+--  4. a friend buying with it -> 10% off; activation -> one
+--     referral_credits row 'owed' for the referrer at the reward
+--     setting; the code's uses 1; a second activation (already) adds
+--     nothing.
+--  5. admin_set_billing_settings('{"referral_reward_paise": 50000}')
+--     -> the pct cleared; the next referred payment credits ₹500 (or
+--     the payment, if less).
+--  6. mark_payment_refunded on the friend's payment -> the credit void.
+--  7. admin_mark_referral_paid([id]) -> 'paid', paid_at set; marking a
+--     void or paid row again changes nothing (count 0).
+-- ============================================================

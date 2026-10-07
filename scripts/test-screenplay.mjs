@@ -362,5 +362,55 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   ok(pms < 50, `paginate() on the 2,361-element sample in ${pms.toFixed(1)}ms (budget 50ms, run at idle)`);
 }
 
+/* ---- running time with the songs (runtimeEstimate) ----------
+   A timed song REPLACES its linked scenes' page estimate; an untimed
+   one adds nothing and leaves its scenes alone; the per-group split
+   comes from the caller's groupOf, and the act target is the target
+   times the act's share. Plus the song duration field in songs.js,
+   and the target stored inside the songs blob without a key. */
+{
+  const Sg = await import('../src/lib/songs.js');
+  const row = (id, seconds, patch = {}) => ({ scene: { id, songId: '', beatId: '', ...patch }, seconds });
+  const screen = { rows: [row('a', 600, { beatId: 'x:one' }), row('b', 60, { songId: 'sg1', beatId: 'x:two' }), row('c', 120, { songId: 'sg2' }), row('d', 300, { beatId: 'x:two' })] };
+  const songs = [{ id: 'sg1', seconds: 270 }, { id: 'sg2', seconds: 0 }, { id: 'sg3', seconds: 200 }];
+  const acts = { 'x:one': { key: 'a1', label: 'Act One', order: 1, share: 0.25 }, 'x:two': { key: 'a2', label: 'Act Two', order: 2, share: 0.75 } };
+  const est = A.runtimeEstimate(screen, songs, {
+    targetSeconds: 1600,
+    groupOf: (s) => acts[s.beatId] || null,
+    songGroupOf: (s) => (s.id === 'sg1' ? acts['x:two'] : null)
+  });
+  eq(est.sceneSeconds, 600 + 120 + 300, 'a timed song drops its linked scene from the page estimate; an untimed one does not');
+  eq(est.songSeconds, 470, 'every timed song adds its length, linked or not');
+  eq(est.total, 1490, 'total = scenes not covered + timed songs');
+  eq([est.songsTimed, est.songsUntimed, est.coveredScenes], [2, 1, 1], 'timed, untimed and covered are counted');
+  eq(est.delta, 1490 - 1600, 'delta against the target');
+  const a2 = est.groups.find((g) => g.key === 'a2');
+  eq([a2.sceneSeconds, a2.songSeconds, a2.seconds, a2.target], [300, 270, 570, 1200], 'Act Two: its scene, its song, and 75% of the target');
+  eq(est.groups.map((g) => g.key), ['a1', 'a2'], 'groups come back in order');
+  ok(est.ungrouped && est.ungrouped.sceneSeconds === 120 && est.ungrouped.songSeconds === 200, 'unlinked scenes and songs fall in the ungrouped bucket');
+  eq(A.runtimeEstimate(screen, [], {}).total, 1080, 'no songs: the page estimate alone');
+  eq(A.runtimeEstimate(screen, songs, { groupOf: () => { throw new Error('x'); } }).groups.length, 0, 'a groupOf that throws groups nothing rather than failing');
+
+  eq(['4:30', '4.30', '4', '4.5', '1:02:03', '', 'four', '4:75'].map(Sg.parseDuration), [270, 270, 240, 270, 3723, 0, 0, 0], 'parseDuration reads m:ss, m.ss, minutes and h:mm:ss');
+  eq(Sg.blankSong({ duration: '4.30' }).duration, '4:30', 'blankSong normalises a duration to m:ss');
+  eq(Sg.blankSong({ duration: 'long' }).duration, '', 'and stores nothing for a non-duration');
+  eq(Sg.blankSong().duration, '', 'a new song has no duration');
+
+  mem.clear();
+  Sg.addSong({ title: 'Intro' });
+  eq(Sg.setTargetMinutes('142'), 142, 'the target is stored');
+  ok(Sg.listSongs().length === 1, 'setting the target keeps the songs');
+  Sg.addSong({ title: 'Duet', duration: '3:50' });
+  eq(Sg.getTargetMinutes(), 142, 'a song write keeps the target');
+  eq(JSON.parse(mem.get('fms_songs_v1')).targetMinutes, 142, 'inside the songs blob — no new key');
+  eq([...mem.keys()], ['fms_songs_v1'], 'and nothing else was written');
+  eq(Sg.durationSeconds(Sg.listSongs()[1]), 230, 'durationSeconds reads the stored field');
+  eq(Sg.setTargetMinutes('nonsense'), 0, 'a non-number clears the target');
+  mem.set('fms_songs_v1', JSON.stringify({ songs: [{ id: 'old', title: 'Saved before durations' }] }));
+  eq(Sg.listSongs()[0].duration, '', 'a song saved before the field existed reads back with none');
+  eq(Sg.getTargetMinutes(), 0, 'and a blob with no target reads 0');
+  mem.clear();
+}
+
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);
 process.exit(fail ? 1 : 0);

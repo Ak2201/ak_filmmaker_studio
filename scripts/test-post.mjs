@@ -169,5 +169,32 @@ const asked = D.askedBy(reqs);
 ok(Array.isArray(asked.dcp) && asked.dcp[0] === dcpFest.name, 'askedBy names the festival behind the DCP');
 eq(D.requirements([]).length, 0, 'no submissions, no requirements');
 
+/* ---- deliverables: the optional streamer groups ------------- */
+mem.clear();
+const CAT = (await import('../src/data/deliverables.json')).default;
+const optional = CAT.groups.filter((g) => g.optional);
+ok(optional.length >= 5, 'the catalogue carries the streamer groups');
+ok(optional.every((g) => g.source && g.checked && Array.isArray(g.sourceUrls)), 'every optional group cites a source and a checked date');
+ok(optional.filter((g) => g.published === false).every((g) => /no public delivery specification/i.test(g.blurb)), 'a template group says it has no published spec');
+const allIds = CAT.groups.flatMap((g) => g.items.map((i) => i.id));
+eq(allIds.length, new Set(allIds).size, 'every catalogue id is unique — they are storage keys');
+ok(['master_prores', 'subs_en', 'dialogue_list', 'cbfc', 'press_kit'].every((id) => allIds.includes(id)), 'the original ids are all still there');
+const before = D.listItems('feature').length;
+ok(!D.listItems('feature').some((i) => i.id.startsWith('nf_')), 'a streamer group is off until switched on');
+eq(D.setGroupOn('ott_netflix', true), ['ott_netflix'], 'switching Netflix on');
+const nf = CAT.groups.find((g) => g.id === 'ott_netflix').items.length;
+eq(D.listItems('feature').length, before + nf, 'its items join the list');
+D.setItemState('nf_imf', { state: 'done' });
+eq(D.groupsOn(), ['ott_netflix'], 'an item write keeps the groups that are on');
+D.addCustom('Something else', 'release');
+eq(D.groupsOn(), ['ott_netflix'], 'and so does adding a custom line');
+eq(D.setGroupOn('not_a_group', true), ['ott_netflix'], 'an unknown group cannot be switched on');
+eq(D.setGroupOn('ott_netflix', false), [], 'switching it off');
+ok(!('groupsOn' in JSON.parse(mem.get('fms_deliverables_v1'))), 'nothing switched on stores no field');
+eq(D.itemState('nf_imf').state, 'done', 'switching a group off keeps the state of its items');
+ok(D.optionalGroups().every((g) => g.on === false), 'optionalGroups reports each one off');
+ok(CAT.groups.find((g) => g.id === 'text').items.filter((i) => i.tool === 'dialogue-list').length === 4, 'the subtitle rows link to the dialogue list');
+mem.clear();
+
 console.log(`\n${fail ? '✗' : '✓'} test:post — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

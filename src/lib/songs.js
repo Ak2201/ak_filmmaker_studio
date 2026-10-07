@@ -105,6 +105,13 @@ export function blankSong(patch = {}) {
     singers: '',
     playback: 'none',
     unit: 'main',
+    /* HOW LONG THE SONG PLAYS, as 'm:ss' ('' = not known yet). Typed,
+       not derived: a song's length is fixed by the recording, usually
+       before a frame of it is shot, and it is the one figure the
+       screen-time estimate cannot read off the page. Same arrival as
+       every other field here — spread under every stored row by
+       listSongs(), so a song saved before it existed reads back ''. */
+    duration: '',
     ...patch
   };
   // Vocabulary is re-checked rather than trusted: an unknown value
@@ -115,29 +122,91 @@ export function blankSong(patch = {}) {
   if (!UNITS.some((u) => u.id === s.unit)) s.unit = 'main';
   s.days = Math.max(0, Number(s.days) || 0);
   s.dancers = Math.max(0, Math.round(Number(s.dancers) || 0));
+  s.duration = normaliseDuration(s.duration);
   return s;
 }
+
+/* ---- duration ----------------------------------------------
+   'm:ss' in, 'm:ss' out. A bare number is MINUTES ('4' is a
+   four-minute song, nobody types a song's length in seconds), and
+   'h:mm:ss' is accepted for the medley that runs past an hour of
+   somebody's patience. Anything else is not a duration and is not
+   stored: a field that keeps 'four mins' would read as 0:00 in every
+   total and say nothing about why. */
+export function parseDuration(v) {
+  const t = String(v ?? '').trim();
+  if (!t) return 0;
+  let m;
+  /* '4.30' is how a song length is written on half the cue sheets in
+     Chennai and it means four thirty, not 4.3 minutes; two digits
+     after the point are seconds. One digit is a fraction: '4.5'. */
+  if ((m = /^(\d{1,3})[.,]([0-5]\d)$/.exec(t))) return Number(m[1]) * 60 + Number(m[2]);
+  if ((m = /^(\d{1,3})(?:[.,](\d))?$/.exec(t))) {
+    return Math.round((Number(m[1]) + (m[2] ? Number('0.' + m[2]) : 0)) * 60);
+  }
+  if ((m = /^(\d{1,3}):([0-5]?\d)$/.exec(t))) return Number(m[1]) * 60 + Number(m[2]);
+  if ((m = /^(\d{1,2}):([0-5]\d):([0-5]\d)$/.exec(t))) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+  return 0;
+}
+export function formatClock(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+export function normaliseDuration(v) {
+  const sec = parseDuration(v);
+  return sec > 0 ? formatClock(sec) : '';
+}
+/** A song's length in seconds; 0 when it has none. */
+export const durationSeconds = (song) => parseDuration(song && song.duration);
 
 /* ---- persistence -------------------------------------------
    Plain localStorage so store.js's proxy scopes it to the open
    project. Array.isArray on the way in: an empty array is truthy and
    a stored null is not an array, and that pair has already given a
    returning user a table with zero rows and no way to add one. */
-function readAll() {
+function readBlob() {
   let raw = null;
   try { raw = localStorage.getItem(SONGS_KEY); } catch (e) { /* private mode */ }
-  if (!raw) return { songs: [] };
+  if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    return { songs: Array.isArray(parsed.songs) ? parsed.songs : [] };
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch (e) {
-    return { songs: [] };
+    return {};
   }
 }
 
+function readAll() {
+  const parsed = readBlob();
+  return { songs: Array.isArray(parsed.songs) ? parsed.songs : [] };
+}
+
+/* The blob carries more than the list now (`targetMinutes`, below),
+   so a write MERGES over what is stored instead of replacing it: a
+   song edit must not wipe the film's target runtime, and a target
+   edit must not wipe the songs. */
 function writeAll(data) {
-  try { localStorage.setItem(SONGS_KEY, JSON.stringify(data)); return true; }
+  try { localStorage.setItem(SONGS_KEY, JSON.stringify({ ...readBlob(), ...data })); return true; }
   catch (e) { return false; }
+}
+
+/* ---- the film's target runtime -----------------------------
+   STORED INSIDE THIS BLOB as `targetMinutes`, not under a key of its
+   own: a new key is a registration in five places and a schema
+   section, and this is one number per project that only means
+   anything beside the songs — the estimate it is compared with is
+   screen time PLUS song durations. 0 = no target set. The songs
+   blob is already per project (SCOPED_KEYS), already in the backup
+   (PROJECT_KEYS) and already synced, so the field travels with them. */
+export function getTargetMinutes() {
+  const n = Number(readBlob().targetMinutes);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+}
+export function setTargetMinutes(minutes) {
+  const n = Math.round(Number(minutes) || 0);
+  const clean = n > 0 && n <= 600 ? n : 0;
+  writeAll({ targetMinutes: clean });
+  return clean;
 }
 
 export function listSongs() {

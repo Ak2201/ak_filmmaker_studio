@@ -1,0 +1,42 @@
+/* ============================================================
+   RUNTIME — the reports page's "with the songs, against your
+   target" block, inside the screen-time section. Tokens and --sk-*
+   shapes only; the tables reuse reports.css's .rp-table.
+   ============================================================ */
+.rt-box {
+  margin: var(--s5) 0;
+  padding-top: var(--s4);
+  border-top: var(--sk-card-line-w, 1px) solid var(--rule);
+  min-width: 0;
+}
+.rt-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin: var(--s3) 0 var(--s4);
+}
+.rt-field label {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.rt-target {
+  width: 8rem;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+}
+.rt-len {
+  width: 6rem;
+  max-width: 100%;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+}
+.rt-box .rp-scroll + .rp-scroll { margin-top: var(--s4); }
+
+@media print {
+  .rt-field { display: none; }
+  .rt-len { border: 0; padding: 0; background: none; }
+}

@@ -48,6 +48,7 @@ import { mountShell } from '../ui/shell.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import { wireActionBar } from '../ui/actionbar.js';
 import { renderLauncher, BUILT_MODULE_COUNT } from '../ui/launcher.js';
+import { jobs } from '../lib/navmodel.js';
 /* The five stages and where the open film is in them — derived, stored
    nowhere. See src/lib/journey.js. */
 import { STAGES, stageOfStep, journey, guideJourney } from '../lib/journey.js';
@@ -519,8 +520,38 @@ function heroMarkup() {
   });
 }
 
+/* ------------------------------------------------------------
+   THE THREE JOBS — write the script, plan the shoot, run the set.
+
+   The first thing above the project grid, in both states of the hub:
+   a stranger with no project and a filmmaker with six both need the
+   same three doors, and the first-run panel below is about the
+   PROJECT, not about what the studio does. Everything here is read
+   from navigation.json's `jobs` through navmodel.jobs(): the label and
+   the sentence are content, the href is the first built module of the
+   first stage the job names, the eyebrow is the stages' own labels and
+   the hue is the first stage's. Nothing is a hand-written link.
+   ------------------------------------------------------------ */
+function jobsMarkup() {
+  const list = jobs();
+  if (!list.length) return null;
+  const wrap = h('div.hub-jobs', { role: 'list', 'aria-label': 'Three things the studio does' });
+  list.forEach((j) => {
+    const card = h('a.job-card' + (j.hueClass ? '.' + j.hueClass : ''), { href: j.href, role: 'listitem' });
+    card.dataset.job = j.id;
+    card.append(
+      h('span.job-eyebrow', { text: j.stages.map((s) => s.label).join(' · ') }),
+      h('span.job-label', { text: j.label }),
+      h('span.job-line', { text: j.line }),
+      h('span.job-go', { text: 'Start in ' + j.module.label + ' →' })
+    );
+    wrap.append(card);
+  });
+  return wrap;
+}
+
 function projectsMarkup() {
-  return h('section#projects.projects-section', {
+  const sec = h('section#projects.projects-section', {
     html: `
       <div class="projects-inner">
         <div class="projects-head">
@@ -560,6 +591,10 @@ function projectsMarkup() {
         <div class="projects-grid" id="projectsGrid"></div>
       </div>`
   });
+  const doors = jobsMarkup();
+  const notice = sec.querySelector('#adoptNotice');
+  if (doors && notice) notice.before(doors);
+  return sec;
 }
 
 /* ------------------------------------------------------------
@@ -1749,9 +1784,13 @@ function renderFirstRun() {
   });
   panel.append(tour);
 
+  /* The sample FIRST, and primary. A first-time filmmaker cannot judge
+     an empty studio; the filled one is the thing to look at before
+     being asked to name a film. Every action that was here is still
+     here — only the order and the emphasis moved. */
   panel.append(h('div.eps-actions', {}, [
-    h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' }),
-    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN A SAMPLE PROJECT' })
+    h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' }),
+    h('button.btn', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' })
   ]));
   panel.append(h('div.eps-fine', {
     text: 'The sample is a real project you can edit or delete — it just arrives with a few '

@@ -2344,7 +2344,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   position: absolute;
   top: calc(100% + var(--s1));
   left: 0;
-  min-width: 260px;
+  /* 320, not 260: each row carries a one-line plain-English purpose
+     under its label, and at 260 the ellipsis took half of every
+     sentence. The max-width still yields to the viewport on a phone. */
+  min-width: 320px;
   max-width: min(340px, calc(100vw - var(--s4) * 2));
   padding: var(--s2);
   background: var(--panel);
@@ -2372,7 +2375,9 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 }
 .sh-mod {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* minmax(0, 1fr), not 1fr: the ellipsised purpose below must be
+     able to shrink the middle track rather than widen the menu. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0 var(--s2);
   width: 100%;
   padding: var(--s2) var(--s3);
@@ -2415,11 +2420,26 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   font-size: var(--t-small);
   font-weight: 600;
 }
+/* One line, ellipsised: a purpose is a plain sentence a first-timer
+   reads once, and a menu of seventeen rows that each wrap to two or
+   three lines is a menu nobody scrolls to the bottom of. The whole
+   sentence is on the tile in the launcher and in the palette. */
 .sh-mod-purpose {
   grid-area: 2 / 2 / 3 / 4;
+  min-width: 0;
   font-size: var(--t-tiny);
   color: var(--panel-muted);
   line-height: var(--lh-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Below 720px the menu is capped to the viewport and scrolls inside
+   itself; with Pre-Production's seventeen rows at two lines each it
+   was taller than a phone before the groups' headings were counted.
+   The label alone fits, and the purpose is one tap away on the hub. */
+@media (max-width: 719px) {
+  .sh-phase-menu .sh-mod-purpose { display: none; }
 }
 /* "Planned" is stated, not implied by a dead link. A module that looks
    clickable and does nothing is worse than one that says SOON. */

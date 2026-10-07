@@ -80,4 +80,27 @@ export function hueClassOf(group) {
   return 'sh-ph-' + group.hue;
 }
 
-export default { shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, guideStops };
+/** The first module a visitor can open in a stage: built, with an
+ *  href. The stage's menu, the rail's stage link and the hub's doors
+ *  all start there, so there is one answer. */
+export function firstModuleOf(phase) {
+  return ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href) || null;
+}
+
+/** The hub's three doors (`jobs` in navigation.json): each resolved to
+ *  the stages it names, the first stage's first built module (its
+ *  href is the door's), and that stage's hue class. A job whose stages
+ *  are all unknown or empty is dropped rather than drawn as a door to
+ *  nowhere. */
+export function jobs() {
+  const byId = Object.fromEntries(nav.phases.map((p) => [p.id, p]));
+  return (nav.jobs || []).map((j) => {
+    const stages = (j.stages || []).map((id) => byId[id]).filter(Boolean);
+    const lead = stages.map(firstModuleOf).find(Boolean);
+    if (!lead) return null;
+    const first = stages.find((p) => firstModuleOf(p) === lead);
+    return { id: j.id, label: j.label, line: j.line || '', stages, href: lead.href, module: lead, hueClass: hueClassOf(first) };
+  }).filter(Boolean);
+}
+
+export default { shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, guideStops, firstModuleOf, jobs };

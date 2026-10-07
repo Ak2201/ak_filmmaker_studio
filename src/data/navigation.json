@@ -1,19 +1,19 @@
 {
-  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists. The Blueprints are a second such shelf (feature.html, short.html): a guide that walks all five stages cannot be filed inside one of them, so each stage carries a `guide` list instead, linking to the blueprint part that covers it (`part` is the feature blueprint's Part number, one part per stage). `group` on a module is a sub-heading in its stage's menu (Pre-Production's four). `projectPages: true` on a shelf says its pages write a film, so src/ui/no-project.js gives them the no-project banner as it does a stage's pages.",
+  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists. The Blueprints are a second such shelf (feature.html, short.html): a guide that walks all five stages cannot be filed inside one of them, so each stage carries a `guide` list instead, linking to the blueprint part that covers it (`part` is the feature blueprint's Part number, one part per stage). `group` on a module is a sub-heading in its stage's menu (Pre-Production's four). `projectPages: true` on a shelf says its pages write a film, so src/ui/no-project.js gives them the no-project banner as it does a stage's pages. `jobs` is the hub’s three doors: each names the stages it covers and the hub derives its link from the first built module of the first stage listed, so nothing there is a hand-written href.",
   "global": [
     {
       "id": "home",
       "label": "Home",
       "icon": "⌂",
       "href": "index.html",
-      "purpose": "Projects and recent activity",
+      "purpose": "Your films, and where you left off",
       "sym": "home"
     },
     {
       "icon": "◴",
       "label": "Dashboard",
       "href": "dashboard.html",
-      "purpose": "Where the open project stands",
+      "purpose": "How far along the open film is, at a glance",
       "sym": "speed"
     },
     {
@@ -29,7 +29,7 @@
         {
           "id": "case-studies",
           "label": "Case Studies",
-          "purpose": "Four Tamil films, taken apart for craft",
+          "purpose": "Four Tamil films, studied scene by scene to see how they work",
           "status": "built",
           "href": "library.html#case-studies",
           "icon": "◐",
@@ -38,7 +38,7 @@
         {
           "id": "dissection",
           "label": "Dissection",
-          "purpose": "Take a finished film apart, then your own",
+          "purpose": "Pull a finished film apart sequence by sequence, then do the same to yours",
           "status": "built",
           "href": "library.html#dissection",
           "icon": "✂",
@@ -47,7 +47,7 @@
         {
           "id": "glossary",
           "label": "Craft Glossary",
-          "purpose": "Terms, explained through four Tamil films",
+          "purpose": "Film terms explained in plain words, with examples from four Tamil films",
           "status": "built",
           "href": "library.html#glossary",
           "icon": "¶",
@@ -69,7 +69,7 @@
         {
           "id": "feature-blueprint",
           "label": "Feature Blueprint",
-          "purpose": "32 guided steps, idea to delivery",
+          "purpose": "32 questions that walk a feature from idea to delivery, in order",
           "status": "built",
           "href": "feature.html",
           "icon": "▤",
@@ -78,7 +78,7 @@
         {
           "id": "short-blueprint",
           "label": "Short Blueprint",
-          "purpose": "11 steps for under 30 minutes",
+          "purpose": "11 steps for a film under 30 minutes, from idea to festival",
           "status": "built",
           "href": "short.html",
           "icon": "▥",
@@ -91,7 +91,7 @@
       "label": "Settings",
       "icon": "◍",
       "href": "settings.html",
-      "purpose": "The API key on this device, and how the studio looks",
+      "purpose": "Your account, your AI key on this device, and how the studio looks",
       "sym": "settings"
     },
     {
@@ -115,7 +115,7 @@
         {
           "id": "story-beats",
           "label": "Beats & Pacing",
-          "purpose": "Synopsis against a framework, with a tension curve",
+          "purpose": "Write the story and check its shape: where it rises, where it sags",
           "status": "built",
           "href": "story.html",
           "icon": "≈",
@@ -124,7 +124,7 @@
         {
           "id": "idea-vault",
           "label": "Idea Vault",
-          "purpose": "Clippings from the web, kept with the film",
+          "purpose": "Links, pictures and notes you collect for this film, kept in one place",
           "status": "built",
           "href": "story.html#vault",
           "icon": "✦",
@@ -133,7 +133,7 @@
         {
           "id": "pitch-deck",
           "label": "Pitch Deck",
-          "purpose": "One click to a landscape PDF for investors",
+          "purpose": "A short PDF that sells your film to investors, made in one click",
           "status": "built",
           "href": "story.html#pitch",
           "icon": "▭",
@@ -163,7 +163,7 @@
         {
           "id": "screenplay",
           "label": "Screenplay",
-          "purpose": "Write and format the script",
+          "purpose": "Write the script; the formatting is done for you",
           "status": "built",
           "href": "write.html#screenplay",
           "icon": "☰",
@@ -172,7 +172,7 @@
         {
           "id": "revisions",
           "label": "Revisions",
-          "purpose": "Coloured revision history",
+          "purpose": "Every saved draft of the script, so you can go back to an earlier one",
           "status": "built",
           "href": "write.html#revisions",
           "icon": "↻",
@@ -181,7 +181,7 @@
         {
           "id": "docs",
           "label": "Documents",
-          "purpose": "Treatments, notes, one-pagers",
+          "purpose": "Treatments, notes and one-page summaries, kept beside the script",
           "status": "built",
           "href": "write.html#documents",
           "icon": "⌸",
@@ -190,7 +190,7 @@
         {
           "id": "scene-list",
           "label": "Scene List",
-          "purpose": "Every scene, INT/EXT, D/N, location",
+          "purpose": "Every scene in order, with where it happens and whether it is day or night",
           "status": "built",
           "href": "breakdown.html#scenes",
           "icon": "≡",
@@ -199,7 +199,7 @@
         {
           "id": "screen-time",
           "label": "Screen Time",
-          "purpose": "Running time per scene, from dialogue and action rhythm",
+          "purpose": "How many minutes each scene will run on screen, worked out from the pages",
           "status": "built",
           "href": "reports.html#screentime",
           "icon": "◔",
@@ -217,7 +217,8 @@
           "label": "Short steps 6–8",
           "href": "short.html#step-06"
         }
-      ]
+      ],
+      "purpose": "Write the script; the formatting is done for you"
     },
     {
       "id": "preprod",
@@ -229,7 +230,7 @@
         {
           "id": "breakdowns",
           "label": "Script Breakdowns",
-          "purpose": "Tag cast, props, wardrobe, VFX",
+          "purpose": "Mark what each scene needs: actors, props, costumes, vehicles, effects",
           "status": "built",
           "href": "breakdown.html#breakdown",
           "icon": "⊞",
@@ -239,7 +240,7 @@
         {
           "id": "elements",
           "label": "Elements",
-          "purpose": "The element library across scenes",
+          "purpose": "Everything the film needs, listed once, with the scenes that need it",
           "status": "built",
           "href": "breakdown.html#elements",
           "icon": "✣",
@@ -249,7 +250,7 @@
         {
           "id": "auto-tag",
           "label": "Auto-Tagging",
-          "purpose": "Cast, props, vehicles, stunts and sound read from the script",
+          "purpose": "Reads the script and suggests the actors, props, vehicles, stunts and sounds in each scene",
           "status": "built",
           "href": "breakdown.html#suggest",
           "icon": "⌖",
@@ -259,7 +260,7 @@
         {
           "id": "cast-matrix",
           "label": "Cast Matrix",
-          "purpose": "Characters against scenes; who shares the most",
+          "purpose": "Which character is in which scene, and who shares the most scenes",
           "status": "built",
           "href": "reports.html#cast-matrix",
           "icon": "▦",
@@ -269,7 +270,7 @@
         {
           "id": "shot-list",
           "label": "Shot List",
-          "purpose": "Shots per scene, with size and move",
+          "purpose": "The shots you plan for each scene, with how close the camera is and how it moves",
           "status": "built",
           "href": "visualize.html#shot-list",
           "icon": "▶",
@@ -279,7 +280,7 @@
         {
           "id": "storyboard",
           "label": "Storyboard",
-          "purpose": "Frames against the shot list",
+          "purpose": "A drawing or picture for each shot you plan",
           "status": "built",
           "href": "visualize.html#storyboard",
           "icon": "⊟",
@@ -289,7 +290,7 @@
         {
           "id": "lookbook",
           "label": "Lookbook",
-          "purpose": "Reference images per department",
+          "purpose": "Pictures that show the look you want: costume, sets, colour, light",
           "status": "built",
           "href": "visualize.html#lookbook",
           "icon": "▩",
@@ -299,7 +300,7 @@
         {
           "id": "media",
           "label": "Media",
-          "purpose": "Your own reference files",
+          "purpose": "Your own files and pictures, kept with the film",
           "status": "built",
           "href": "plan.html#media",
           "icon": "◎",
@@ -309,7 +310,7 @@
         {
           "id": "budget",
           "label": "Budget",
-          "purpose": "Chennai rates, live totals",
+          "purpose": "What the film will cost, line by line, with Chennai rates to start from",
           "status": "built",
           "href": "budget.html",
           "icon": "₹",
@@ -319,7 +320,7 @@
         {
           "id": "contacts",
           "label": "Contacts",
-          "purpose": "Cast and crew by department",
+          "purpose": "Everyone on the film, with phone and e-mail, by department",
           "status": "built",
           "href": "contacts.html#contacts",
           "icon": "☺",
@@ -329,7 +330,7 @@
         {
           "id": "stripboard",
           "label": "Stripboard",
-          "purpose": "Order scenes into shoot days",
+          "purpose": "Your scenes in shooting order, grouped into shoot days",
           "status": "built",
           "href": "stripboard.html#stripboard",
           "icon": "☷",
@@ -339,7 +340,7 @@
         {
           "id": "songs",
           "label": "Songs",
-          "purpose": "Four to six per feature, each its own shoot block",
+          "purpose": "The songs in the film, each planned as its own block of shooting",
           "status": "built",
           "href": "breakdown.html#songs",
           "icon": "♫",
@@ -349,7 +350,7 @@
         {
           "id": "calendar",
           "label": "Calendar",
-          "purpose": "Prep, shoot and post dates",
+          "purpose": "The dates: when prep starts, when you shoot, when the edit is due",
           "status": "built",
           "href": "plan.html#calendar",
           "icon": "▦",
@@ -359,7 +360,7 @@
         {
           "id": "locations",
           "label": "Locations",
-          "purpose": "Recce notes and logistics",
+          "purpose": "Where you will shoot, with notes from your visits and how to get there",
           "status": "built",
           "href": "plan.html#locations",
           "icon": "⌂",
@@ -369,7 +370,7 @@
         {
           "id": "dood",
           "label": "Day Out of Days",
-          "purpose": "Cast availability across days",
+          "purpose": "Which actor works on which day, so nobody is called in for nothing",
           "status": "built",
           "href": "stripboard.html#dood",
           "icon": "⁙",
@@ -379,7 +380,7 @@
         {
           "id": "sides",
           "label": "Sides",
-          "purpose": "Per-day pages for cast and crew",
+          "purpose": "The script pages each actor needs for the day, ready to print",
           "status": "built",
           "href": "reports.html#sides",
           "icon": "▫",
@@ -389,7 +390,7 @@
         {
           "id": "reports",
           "label": "Reports",
-          "purpose": "Element, scene and day reports",
+          "purpose": "Printable lists of what each scene and each shoot day needs",
           "status": "built",
           "href": "reports.html#reports",
           "icon": "⌗",
@@ -420,7 +421,7 @@
         {
           "id": "shoot-day",
           "label": "Shoot Day",
-          "purpose": "Today's scenes, and what you actually got",
+          "purpose": "Today’s scenes on one screen, and a mark for what you actually shot",
           "status": "built",
           "href": "shoot.html",
           "icon": "▶",
@@ -429,7 +430,7 @@
         {
           "id": "call-sheets",
           "label": "Call Sheets",
-          "purpose": "Who, where, what time",
+          "purpose": "The sheet that tells everyone where to be, and at what time",
           "status": "built",
           "href": "contacts.html#call-sheets",
           "icon": "✉",
@@ -459,7 +460,7 @@
         {
           "id": "edit-log",
           "label": "Edit Log",
-          "purpose": "What was shot against what the cut needs, read from the shoot day’s marks",
+          "purpose": "What the edit still needs against what was shot, scene by scene",
           "status": "built",
           "href": "edit.html#log",
           "icon": "✂",
@@ -468,7 +469,7 @@
         {
           "id": "deliverables",
           "label": "Deliverables",
-          "purpose": "Censor certificate, subtitles, DCP and festival formats as one checklist",
+          "purpose": "The checklist of what leaves with the film: censor certificate, subtitles, cinema copy, festival files",
           "status": "built",
           "href": "deliverables.html#checklist",
           "icon": "☑",
@@ -486,6 +487,34 @@
           "label": "Short step 10",
           "href": "short.html#step-10"
         }
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "id": "write",
+      "label": "Write the script",
+      "line": "Start with the idea, find the story’s shape, then write the pages. The studio formats them for you.",
+      "stages": [
+        "story",
+        "screenplay"
+      ]
+    },
+    {
+      "id": "plan",
+      "label": "Plan the shoot",
+      "line": "Break the script down into what every scene needs, cost it, staff it, and put the scenes into shoot days.",
+      "stages": [
+        "preprod"
+      ]
+    },
+    {
+      "id": "set",
+      "label": "Run the set",
+      "line": "Call sheets for the day, a mark for every scene you shot, and a log of what the edit still needs.",
+      "stages": [
+        "production",
+        "post"
       ]
     }
   ]

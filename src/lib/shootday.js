@@ -119,4 +119,22 @@ export function overall(scenes) {
   };
 }
 
-export default { days, pickDay, detail, mark, overall, toISODate };
+/**
+ * The call sheets that are THIS day's: every scene they hold sits on
+ * shoot day `day`. Read-only, derived on the call — the same rule the
+ * call sheet uses to read its schedule date, so the two pages agree on
+ * which sheet a day has. A sheet with a planned wrap sorts first,
+ * because that is the time the sunset check reads.
+ */
+export function sheetsForDay(day, sheets, scenes) {
+  const n = Number(day) || 0;
+  if (!n) return [];
+  const list = scenes || Scenes.listScenes();
+  const byId = new Map(list.map((s) => [s.id, s]));
+  return (sheets || []).filter((sheet) => {
+    const on = (sheet.sceneIds || []).map((id) => byId.get(id)).filter(Boolean);
+    return on.length > 0 && on.every((s) => Locations.shootDayOf(s) === n);
+  }).sort((a, b) => (b.wrap ? 1 : 0) - (a.wrap ? 1 : 0));
+}
+
+export default { days, pickDay, detail, mark, overall, toISODate, sheetsForDay };

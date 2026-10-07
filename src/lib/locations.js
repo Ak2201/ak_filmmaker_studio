@@ -111,6 +111,17 @@ export function blankRecce(patch = {}) {
     bestTime: '',
     cost: '',
     notes: '',
+    /* WHERE IT IS, AND WHAT IS NEAR IT — the call sheet's route and
+       safety block (src/pages/contacts.js) and the day's sunrise
+       (src/lib/sun.js). Fields, not a key: getRecce() spreads this
+       under every stored record, so a recce saved before they existed
+       reads back blank. `lat`/`lng` are the strings an input gives
+       back; src/lib/recce-geo.js reads them as numbers. `hospital` and
+       `police` are free text — the nearest one, with its phone. */
+    lat: '',
+    lng: '',
+    hospital: '',
+    police: '',
     ...patch
   };
 }

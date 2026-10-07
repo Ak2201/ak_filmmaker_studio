@@ -38,6 +38,9 @@ import { h, delegate } from '../lib/dom.js';
 import Scenes, { SHOT_STATES, formatEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import Shoot from '../lib/shootday.js';
+import Contacts from '../lib/contacts.js';
+import Sun from '../lib/sun.js';
+import Geo from '../lib/recce-geo.js';
 
 const app = document.getElementById('app');
 
@@ -62,7 +65,7 @@ function castChips(scene) {
   return wrap;
 }
 
-function sceneCard(scene) {
+function sceneCard(scene, late) {
   const state = scene.shotState || '';
   const card = h('article.sd-card' + (state ? '.is-' + state : ''));
 
@@ -80,6 +83,11 @@ function sceneCard(scene) {
     card.append(h('p.sd-syn', { text: scene.synopsis }));
   }
   card.append(castChips(scene));
+  /* Words, not a colour: this exterior is planned into a day that
+     wraps after the light has gone. */
+  if (late && late.has(scene.id)) {
+    card.append(h('p.sd-flag', { text: 'Exterior · needs the light — shoot before sunset' }));
+  }
 
   /* One row of big targets. `aria-pressed` rather than a disabled
      button for the active one, because the state IS the control:
@@ -194,6 +202,9 @@ function render(focus) {
     main.append(h('p.sd-where', { text: day.locations.join(' · ') }));
   }
 
+  const sun = renderSun(day, scenes);
+  main.append(sun.node);
+
   /* Day switcher. Every day, not a prev/next pair: an AD jumping to
      Friday should not tap through Wednesday. */
   const nav = h('nav.sd-days', { 'aria-label': 'Shoot days' });
@@ -210,11 +221,71 @@ function render(focus) {
   main.append(nav);
 
   const list = h('div.sd-list');
-  day.scenes.forEach((s) => list.append(sceneCard(s)));
+  day.scenes.forEach((s) => list.append(sceneCard(s, sun.late)));
   main.append(list);
 
   app.replaceChildren(main);
   after(focus);
+}
+
+/* ---- the light ------------------------------------------------
+   Sunrise, sunset and golden hour for the day's date at its first
+   pinned location (src/lib/sun.js, offline). Chennai stands in, and
+   says so, for a location with no pin. The sunset flag reads the
+   planned wrap off the day's call sheet — a time somebody wrote down —
+   and never guesses one. */
+function deviceOffsetOn(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTimezoneOffset() : new Date().getTimezoneOffset();
+}
+
+function renderSun(day, scenes) {
+  const node = h('section.sd-sun', { 'aria-label': 'Daylight' });
+  const late = new Set();
+  if (!day.date) {
+    node.append(h('p.sd-sun-note', { text: 'Sunrise and sunset appear once this day has a date.' }));
+    return { node, late };
+  }
+  const places = day.locations.map((name) => ({ name, recce: Locations.getRecce(name) }));
+  const place = Geo.placeFor(places);
+  const light = Sun.daylight(day.date, place, { deviceOffset: deviceOffsetOn(day.date) });
+  if (!light) return { node, late };
+
+  const cell = (label, value) => h('div.sd-sun-cell', {}, [h('dt', { text: label }), h('dd', { text: value || '—' })]);
+  node.append(h('dl.sd-sun-row', {}, [
+    cell('Sunrise', light.sunrise),
+    cell('Sunset', light.sunset),
+    cell('Golden · am', light.goldenAm),
+    cell('Golden · pm', light.goldenPm)
+  ]));
+
+  const first = day.locations[0];
+  node.append(h('p.sd-sun-note', {
+    text: place.fallback
+      ? 'For Chennai (' + light.zone + ')' + (first ? ' — ' + first + ' has no map pin yet.' : '.')
+      : 'At ' + place.name + ', ' + light.zone + '.'
+  }));
+  if (place.fallback && first && 'geolocation' in navigator) {
+    node.append(h('button.btn.sd-sun-btn', {
+      type: 'button', 'data-shoot-action': 'locate', 'data-loc': first,
+      text: 'Pin ' + first + ' where this phone is'
+    }));
+  }
+
+  const sheet = Shoot.sheetsForDay(day.day, Contacts.listCallSheets(), scenes)[0];
+  if (sheet && sheet.wrap && Sun.isPastSunset(sheet.wrap, light)) {
+    const ext = day.scenes.filter((s) => Sun.needsDaylight(s) && s.shotState !== 'shot' && s.shotState !== 'dropped');
+    ext.forEach((s) => late.add(s.id));
+    node.append(h('p.sd-flag', {
+      role: 'note',
+      text: 'Wrap ' + sheet.wrap + ' is after sunset (' + light.sunset + ').'
+        + (ext.length
+          ? ' ' + ext.length + (ext.length === 1 ? ' exterior scene needs' : ' exterior scenes need')
+            + ' the light: ' + ext.map((s) => s.number || '—').join(', ') + '.'
+          : ' No exterior left to shoot today.')
+    }));
+  }
+  return { node, late };
 }
 
 function after(focus) {
@@ -239,6 +310,23 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
   if (act === 'day') {
     openDay = parseInt(el.getAttribute('data-day'), 10);
     render('[data-shoot-action="day"][data-day="' + openDay + '"]');
+    return;
+  }
+  if (act === 'locate') {
+    const name = el.getAttribute('data-loc');
+    if (!name || !('geolocation' in navigator)) return;
+    el.disabled = true;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const r = (n) => String(Math.round(n * 1e6) / 1e6);
+      Locations.setRecce(name, { lat: r(pos.coords.latitude), lng: r(pos.coords.longitude) });
+      StudioUI.toast(name + ' pinned here, to about ' + Math.round(pos.coords.accuracy || 0) + ' m.');
+      render();
+    }, (err) => {
+      el.disabled = false;
+      StudioUI.toast(err && err.code === 1
+        ? 'Location permission was refused. Paste a Maps link on the call sheet instead.'
+        : 'This phone could not find where it is. Paste a Maps link on the call sheet instead.');
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
     return;
   }
   if (act === 'mark') {

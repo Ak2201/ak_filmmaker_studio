@@ -1188,3 +1188,62 @@ body.wr-dropping .bd-empty {
 @media (prefers-reduced-motion: reduce) {
   .wr-gen-bar-fill { transition: none; }
 }
+
+/* ============================================================
+   CHARACTERS, THE TABLE READ, TAMIL TYPING, STARTING DRAFTS
+   ------------------------------------------------------------
+   src/ui/characters-panel.js, src/ui/tamil-type.js, the "Keep as
+   Tamil take" control in src/ui/alt-lines.js and the documents'
+   starting draft. Tokens only; every shape from the skin with its
+   fixed token as the fallback; text in the --ink / --ink-body /
+   --ink-muted hierarchy on card grounds the AA walk already clears.
+   ============================================================ */
+
+/* ---- the Tamil typing list (on <body>, like SmartType's) ----- */
+.tt-list {
+  position: absolute;
+  z-index: var(--z-float);
+  min-width: 10rem;
+  max-width: min(22rem, calc(100vw - 32px));
+  margin: 0;
+  padding: var(--s1);
+  list-style: none;
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--shadow-md);
+}
+.tt-list[hidden] { display: none; }
+.tt-opt {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  cursor: pointer;
+}
+.tt-opt.is-active { background: var(--accent-wash); }
+/* The Tamil word in the screenplay's own stack: --f-script names
+   Noto Sans Tamil LAST, so these glyphs come from it and the Latin
+   ones on the page are untouched (tokens.css; the gate checks it). */
+.tt-lab {
+  font-family: var(--f-script);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  color: var(--ink);
+}
+.tt-hint {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (pointer: coarse) {
+  .tt-opt { min-height: 44px; align-items: center; }
+}
+

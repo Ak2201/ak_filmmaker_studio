@@ -17,6 +17,16 @@
                     scene, and renaming it on the scene renames it here.
      a calendar     STORED, but only the thin half: shoot day NUMBER →
                     calendar DATE. One integer key, one "YYYY-MM-DD".
+     an order       STORED, thinly: shoot day NUMBER → the scene IDS
+                    on it, in the order the 1st AD put them. Nothing
+                    about the scene is in it — not its day (that is
+                    `scene.shootDay`), not its slug. A scene whose id
+                    is not in its day's list falls in after the listed
+                    ones, in script order, so a schedule written
+                    before this existed renders exactly as it did and
+                    needed no migration. An id in the list with no
+                    scene on that day is ignored on read and dropped
+                    on the next write to that day.
      a recce        STORED, keyed by the location name, holding ONLY
                     what a scene has no field for — address, contact,
                     permission, power, parking, toilets, best time,
@@ -57,7 +67,7 @@
    is how it ends up being yesterday.
    ============================================================ */
 import Store from './store.js';
-import { listScenes, totalEighths } from './scenes.js';
+import { listScenes, updateScene, totalEighths } from './scenes.js';
 
 export const LOCATIONS_KEY = 'fms_locations_v1';
 
@@ -129,14 +139,15 @@ const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 function readAll() {
   let raw = null;
   try { raw = localStorage.getItem(LOCATIONS_KEY); } catch (e) { /* private mode */ }
-  const empty = { days: {}, recces: {}, media: [] };
+  const empty = { days: {}, recces: {}, media: [], order: {} };
   if (!raw) return empty;
   try {
     const parsed = JSON.parse(raw) || {};
     return {
       days:   isPlainObject(parsed.days)   ? parsed.days   : {},
       recces: isPlainObject(parsed.recces) ? parsed.recces : {},
-      media:  Array.isArray(parsed.media)  ? parsed.media  : []
+      media:  Array.isArray(parsed.media)  ? parsed.media  : [],
+      order:  isPlainObject(parsed.order)  ? parsed.order  : {}
     };
   } catch (e) {
     return empty;
@@ -203,16 +214,162 @@ export function setDayDate(day, iso) {
   return patchAll({ days });
 }
 
+/* ---- the order within a day ------------------------------------
+   The stripboard's second write. The first is `scene.shootDay`; this
+   is WHERE on that day the strip sits, and it lives here rather than
+   on the scene because it is a property of the day's rack, not of
+   the scene — a scene moved to another day leaves this day's list
+   and joins that one's. Stored as { "3": [sceneId, …] }. */
+
+/** The stored map, shape-guaranteed: every value an array of strings. */
+export function listDayOrder() {
+  const order = readAll().order;
+  const out = {};
+  for (const [k, v] of Object.entries(order)) {
+    const day = parseInt(k, 10);
+    if (!(day > 0) || !Array.isArray(v)) continue;
+    const ids = v.filter((id) => typeof id === 'string' && id);
+    if (ids.length) out[String(day)] = ids;
+  }
+  return out;
+}
+
+/** The ids on one day, in order; [] when none has ever been set. */
+export function dayOrder(day) {
+  return listDayOrder()[String(parseInt(day, 10) || 0)] || [];
+}
+
+/** Write one day's list. An empty list DELETES the entry, for the
+    reason setDayDate() gives. Ids are de-duplicated, first wins. */
+export function setDayOrder(day, ids) {
+  const n = parseInt(day, 10);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  const order = { ...readAll().order };
+  const clean = [...new Set((ids || []).filter((id) => typeof id === 'string' && id))];
+  if (clean.length) order[String(n)] = clean;
+  else delete order[String(n)];
+  return patchAll({ order });
+}
+
+/** Forget every order list. For the board's "Clear days" and its
+    re-schedule: a new schedule starts from script order, and lists
+    for days that no longer exist are stranded data. */
+export function clearDayOrders() {
+  return patchAll({ order: {} });
+}
+
+/**
+ * PURE. Sort the scenes of one day by that day's list: listed ids
+ * first in list order, then every unlisted scene in the order given
+ * (script order, as listScenes() returns them). Ids in the list with
+ * no scene here are skipped. With no list this is the identity, which
+ * is the no-migration guarantee in one line.
+ */
+export function orderByList(scenes, ids) {
+  const list = Array.isArray(ids) ? ids : [];
+  if (!list.length) return scenes.slice();
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  const out = [];
+  const seen = new Set();
+  for (const id of list) {
+    const s = byId.get(id);
+    if (s && !seen.has(id)) { out.push(s); seen.add(id); }
+  }
+  for (const s of scenes) if (!seen.has(s.id)) out.push(s);
+  return out;
+}
+
+/** The scenes on `day`, in shooting order — the ONE accessor every
+    view of a day's scenes reads through (calendarDays below, and so
+    the shoot day, the Plan calendar and the stripboard's day rack). */
+export function orderedDayScenes(day, scenes) {
+  const n = parseInt(day, 10) || 0;
+  const mine = (scenes || listScenes()).filter((s) => shootDayOf(s) === n);
+  return n ? orderByList(mine, dayOrder(n)) : mine;
+}
+
+/**
+ * Put a scene on a day, at a place. THE one assignment path: the day
+ * goes on the scene through updateScene() exactly as the picker has
+ * always written it, and the two order lists it touches are patched
+ * around that write. `day` 0 unschedules.
+ *
+ *   at.before  — the id of the scene it lands in front of
+ *   at.after   — the id of the scene it lands behind
+ *   at.index   — a position in the day's current order
+ *   (none)     — the end of the day
+ *
+ * Returns what undo needs: the scene, both days and both lists as
+ * they were, or null when the scene does not exist. Undoing is
+ * `undoPlace(record)`, which puts the same bytes back.
+ */
+export function placeScene(sceneId, day, at = {}) {
+  const scenes = listScenes();
+  const scene = scenes.find((s) => s.id === sceneId);
+  if (!scene) return null;
+  const toDay = Math.max(0, parseInt(day, 10) || 0);
+  const fromDay = shootDayOf(scene);
+  const record = {
+    sceneId, fromDay, toDay,
+    fromOrder: fromDay ? dayOrder(fromDay) : [],
+    toOrder: toDay ? dayOrder(toDay) : []
+  };
+
+  // the full effective order of the target day, with this scene out
+  const target = orderedDayScenes(toDay, scenes).map((s) => s.id).filter((id) => id !== sceneId);
+  let index = target.length;
+  if (at.before && target.includes(at.before)) index = target.indexOf(at.before);
+  else if (at.after && target.includes(at.after)) index = target.indexOf(at.after) + 1;
+  else if (Number.isInteger(at.index)) index = Math.max(0, Math.min(target.length, at.index));
+  target.splice(index, 0, sceneId);
+
+  if (fromDay !== toDay) updateScene(sceneId, { shootDay: toDay });
+  if (fromDay && fromDay !== toDay) {
+    setDayOrder(fromDay, record.fromOrder.filter((id) => id !== sceneId));
+  }
+  if (toDay) setDayOrder(toDay, target);
+  record.index = index;
+  return record;
+}
+
+/** Reverse one placeScene(). Same path back: the day through
+    updateScene(), the two lists restored byte for byte. */
+export function undoPlace(record) {
+  if (!record || !record.sceneId) return false;
+  const scene = listScenes().find((s) => s.id === record.sceneId);
+  if (!scene) return false;
+  if (shootDayOf(scene) !== record.fromDay) updateScene(record.sceneId, { shootDay: record.fromDay });
+  if (record.toDay) setDayOrder(record.toDay, record.toOrder);
+  if (record.fromDay && record.fromDay !== record.toDay) setDayOrder(record.fromDay, record.fromOrder);
+  return true;
+}
+
+/** Move a scene one place up (-1) or down (+1) within its day. The
+    keyboard path. Returns the placeScene() record, or null at an end. */
+export function nudgeScene(sceneId, delta) {
+  const scenes = listScenes();
+  const scene = scenes.find((s) => s.id === sceneId);
+  const day = shootDayOf(scene);
+  if (!scene || !day) return null;
+  const ids = orderedDayScenes(day, scenes).map((s) => s.id);
+  const i = ids.indexOf(sceneId);
+  const j = i + (delta < 0 ? -1 : 1);
+  if (i < 0 || j < 0 || j >= ids.length) return null;
+  return placeScene(sceneId, day, { index: j });
+}
+
 /**
  * The shooting calendar: one entry per shoot day in use, ascending,
- * each carrying its scenes, its locations, its page total and its
- * cast. Every field but `date` is computed from the scenes on the
- * spot — which is why moving a scene on the stripboard rewrites this
- * page and nothing here has to be told.
+ * each carrying its scenes IN SHOOTING ORDER, its locations, its page
+ * total and its cast. Every field but `date` and the order is
+ * computed from the scenes on the spot — which is why moving a scene
+ * on the stripboard rewrites this page and nothing here has to be
+ * told.
  */
 export function calendarDays(scenes) {
   const list = scenes || listScenes();
   const dates = listDayDates();
+  const orders = listDayOrder();
   const buckets = new Map();
   for (const scene of list) {
     const day = shootDayOf(scene);
@@ -221,7 +378,7 @@ export function calendarDays(scenes) {
     buckets.get(day).push(scene);
   }
   return [...buckets.keys()].sort((a, b) => a - b).map((day) => {
-    const dayScenes = buckets.get(day);
+    const dayScenes = orderByList(buckets.get(day), orders[String(day)]);
     const cast = [];
     for (const scene of dayScenes) {
       for (const name of castOf(scene)) {
@@ -396,6 +553,8 @@ export default {
   locationKey, blankRecce, blankMedia,
   shootDayOf, locationName, castOf,
   listDayDates, dayDate, setDayDate, calendarDays, unscheduledScenes, orphanDays,
+  listDayOrder, dayOrder, setDayOrder, clearDayOrders, orderByList, orderedDayScenes,
+  placeScene, undoPlace, nudgeScene,
   getRecce, setRecce, removeRecce, locationIndex, unplacedScenes, orphanRecces,
   listMedia, saveMedia, addMedia, updateMedia, removeMedia,
   LINK_NONE, locationLink, dayLink, linkLabel

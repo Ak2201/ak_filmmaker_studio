@@ -59,21 +59,27 @@
       "what": "Any film that shows tobacco products or their use has to carry the anti-tobacco material the COTPA film rules prescribe, and give the Board an editorial justification for the display.",
       "do": [
         "Anti-tobacco health spots of at least 30 seconds at the beginning and the middle of the film.",
-        "An audio-visual disclaimer on the ill effects of tobacco, at least 20 seconds, at the beginning and the middle (sources differ on whether 'middle' means the interval).",
+        "An audio-visual disclaimer on the ill effects of tobacco, at least 20 seconds each, at the beginning and the middle. SETTLED 8 October 2026: rule 8 says 'beginning and middle of the film' and never mentions the interval.",
         "A prominent static health warning at the bottom of the screen for as long as the tobacco is on screen.",
-        "A strong editorial justification for the display, given to the Board with the application.",
-        "Since 1 September 2023 the same material is required of films released on streaming platforms (online curated content)."
+        "A strong editorial justification for the display, given to the Board with the application — rule 8 is a CONDITION OF CERTIFICATION, so the Board does not certify the film until these are met.",
+        "The static warning is black on white and in the language of the film (or of the dub or subtitle): 'Smoking causes cancer' or 'Smoking kills' for smoking forms, 'Tobacco causes cancer' or 'Tobacco kills' for smokeless ones (rule 8(4)).",
+        "NO BRAND. Rules 9 and 10 bar brand display, product placement and close-ups of packs, and require brand names and logos to be cropped or masked — dress the prop, not just the warning. Rule 11(5) says the same for online content.",
+        "Streaming: rule 11 requires the same 30-second spots, static message and 20-second disclaimer of the PUBLISHER of online curated content — the platform, not you. The start date is not written in the Gazette: rule 1(2) says three months after publication, and publication was 31 May 2023, so 1 September 2023 is COMPUTED rather than stated. The spots and the disclaimer are supplied on mohfw.gov.in / ntcp.mohfw.gov.in."
       ],
-      "source": "Cigarettes and Other Tobacco Products (Prohibition of Advertisement and Regulation of Trade and Commerce, Production, Supply and Distribution) Rules, 2004 — rule 4(6) and rules 7–8, as amended by G.S.R. 786(E) (2011) and G.S.R. 708(E) (in force 2 October 2012). Rule 11, added by G.S.R. 400(E) on 31 May 2023, applies the same material to online curated content; check its start date and scope against the Gazette.",
+      "source": "COTPA Rules, 2004 — RULES 7 TO 10, inserted by G.S.R. 786(E) (27 October 2011, in force 14 November 2011); rules 7 and 8 substituted by G.S.R. 708(E) (21 September 2012, in force 2 October 2012). Rule 8 governs films CBFC-certified after 2 October 2012; rule 7 covers older ones. Rule 11, inserted by G.S.R. 400(E) (31 May 2023), puts the same material on ONLINE CURATED CONTENT — and the duty there is the PUBLISHER's, meaning the platform, not the producer. DO NOT CITE RULE 4(6): this entry used to, and it is dead law. Rule 4(6) was the flat ban on tobacco in cinema and television, and the Delhi High Court QUASHED it in Mahesh Bhatt v Union of India, WP(C) 18761/2005, as ultra vires section 31 and violative of Article 19(1)(a). Read in the Gazette PDFs on ntcp.mohfw.gov.in, 8 October 2026.",
       "sourceUrls": [
         "https://taxguru.in/income-tax/notification-movies-tv-programmes-displaying-tobacco-products-effect-14112011.html",
         "https://www.vitalstrategies.org/wp-content/uploads/2017/02/VS_ExecSummary_FilmRuleStudy02.pdf",
         "https://mondaq.com/india/broadcasting-film-tv-radio/1407864/smoking-is-injurious-to-ott-platforms",
-        "https://theleaflet.in/from-theatre-to-home-anti-tobacco-warnings-to-be-displayed-on-ott-platforms"
+        "https://theleaflet.in/from-theatre-to-home-anti-tobacco-warnings-to-be-displayed-on-ott-platforms",
+        "https://ntcp.mohfw.gov.in/assets/document/Acts-Rules-Regulations/GSR-400(E).pdf",
+        "https://ntcp.mohfw.gov.in/assets/document/Acts-Rules-Regulations/GSR-708(E).pdf",
+        "https://ntcp.mohfw.gov.in/assets/document/Acts-Rules-Regulations/GSR-786(E).pdf",
+        "https://www.ntcp.mohfw.gov.in/acts_rules_regulations"
       ],
       "checked": "2026-10-08",
-      "confidence": "secondary",
-      "uncertain": "The exact placement of the disclaimer (middle of the film or at the interval), and whether a later draft making the streaming spots non-skippable was finalised. Read rule 11 in the current Gazette text."
+      "confidence": "official",
+      "uncertain": "Both old doubts are SETTLED against the Gazette: 'middle' means the middle of the film, and the final rule 11 carries no non-skippable language, so that draft was not carried through. What is left is small. The 1 September 2023 start is computed from rule 1(2), not printed. And on the quashing of rule 4(6) the sources disagree about the date — one opinion in the judgment PDF is signed 7 February 2008 while tobaccocontrollaws.org dates the decision 23 January 2009 — and the final bench outcome was not confirmed. What is certain is that rule 4(6) is not the provision to cite."
     },
     {
       "id": "drugs",
@@ -148,19 +154,23 @@
       "what": "An owner hiring out or lending a performing animal for a film must give the Animal Welfare Board of India prior information and a fitness certificate, and AWBI now gives its no-objection certificate only after a pre-shoot permission. The guidelines separately ask that cruelty to or abuse of animals is not presented needlessly.",
       "do": [
         "The producer applies to AWBI online for pre-shoot permission BEFORE the shoot day, with the animal owner's details, with the pre-shoot fitness certificate (and vaccination records for dogs and cats).",
-        "Tell the State Animal Welfare Board, the district SPCA or the District Collector the shooting dates.",
+        "THE BULL BAN IS THE ONE TO CHECK FIRST on a Tamil shoot: G.S.R. 528(E) bars bears, monkeys, tigers, panthers, lions and BULLS from being exhibited or trained as performing animals. A bull in shot is not a permission question, it is a prohibition question, and the answer may be that the scene cannot be filmed with a real animal at all. We have not checked what later litigation has done to the bull entry.",
+        "The animal's OWNER must be registered with AWBI — the manual gives Rs 5,000 once every five years, with inspection — and rule 7's prior information is the owner's duty, not yours. Check the registration before you book the animal.",
+        "Have a veterinary doctor at the shooting spot: that is what AWBI's manual asks for. It does not ask for an 'animal welfare officer', despite what is often said.",
         "After the shoot, file the self-declaration that no cruelty was inflicted (and the transport declaration with photographs), and obtain the AWBI certificate for the film.",
-        "Background animals, computer-graphics animals and stock shots are the cases AWBI lists as not needing pre-shoot permission — say which applies."
+        "Background scenes, computer-graphics animals, stock shots and foreign shoots are the ONLY cases in which AWBI will consider a direct post-shoot NOC with no pre-shoot permission. They are not exempt from AWBI paperwork — the direct NOC is the dearer of the two — so say which applies and budget for it. AWBI also takes applications only from the producer or production company, or someone it authorises in writing: it says it has no agents."
       ],
-      "source": "Performing Animals (Registration) Rules, 2001, rule 7 (prior information for use of a performing animal in a film), under the Prevention of Cruelty to Animals Act, 1960; AWBI's performing-animal procedure; certification guidelines on cruelty to animals.",
+      "source": "Performing Animals (Registration) Rules, 2001 — notification S.O. 267(E), 26 March 2001, under the Prevention of Cruelty to Animals Act, 1960; amended once, by S.O. 35(E) of 8 January 2002, which does not touch rule 7. Rule 7, 'Prior information for use of performing animals in films', read from the Gazette text on 8 October 2026: it carries NO notice period and no 'thirty days' — the only thirty days in the Rules is rule 3(1), the one-time registration window of 2001 — and the duty under it falls on the ANIMAL'S OWNER, not the producer. Separately: G.S.R. 528(E) of 11 July 2011 (MoEF), superseding G.S.R. 619(E) of 14 October 1998, BANS the exhibition or training as performing animals of bears, monkeys, tigers, panthers, lions and BULLS. Plus AWBI's own performing-animal procedure, and the certification guidelines on cruelty to animals.",
       "sourceUrls": [
         "https://awbi.gov.in/view/index/performing-animal",
         "https://ffo.gov.in/sites/default/files/2023-12/performing_animals_registration_rules_2001.pdf",
-        "https://indiacinehub.gov.in/sites/default/files/2024-03/animal_owner_manual_0.pdf"
+        "https://indiacinehub.gov.in/sites/default/files/2024-03/animal_owner_manual_0.pdf",
+        "https://awbi.gov.in/uploads/documents/168233793297The Performing Animal (Registration) Rules 2001.pdf",
+        "https://awbi.gov.in/uploads/documents/168234113928shooting_intimation_new.pdf"
       ],
       "checked": "2026-10-08",
-      "confidence": "secondary",
-      "uncertain": "That the Board asks for the AWBI certificate before it certifies is widely stated and is common practice; we did not find it written as a rule in an official text. AWBI lists ₹25,000 for pre-shoot permission and ₹30,000 for a certificate applied for only after the shoot, and the page also refers to a revised fee structure — confirm the current fee on awbi.gov.in."
+      "confidence": "official",
+      "uncertain": "That the Board asks for the AWBI certificate before it certifies is widely stated and is common practice; we did not find it written as a rule in an official text. On the fees, a correction: AWBI's page gives ₹25,000 for pre-shoot permission and ₹30,000 for a direct post-shoot NOC, and the 'revised fee structure' wording on that page attaches to the OTHER categories (race horses, events, circuses, polo ponies, elephants), not to these two — so the earlier note implying both were under revision was wrong. The page carries no date, so confirm before paying. Unchecked: what later litigation has done to the bull entry in G.S.R. 528(E)."
     },
     {
       "id": "violence",
@@ -382,11 +392,11 @@
       "do": [
         "Before the shoot, take the permission of the District Magistrate for the district where you are shooting, for every child artist. Rule 2C names what you file: an undertaking in FORM C, the list of child participants, and the consent of each parent or guardian — all BEFORE the activity starts. No child may be made to take part against their own will and consent, whatever the parent has signed.",
         "No more than five hours of work a day and no more than three hours without rest; one responsible person on set for every five children at most.",
-        "No child kept out of school for more than 27 days; 20% of the child's earnings deposited in a fixed deposit in the child's name.",
+        "No child to work more than TWENTY-SEVEN CONSECUTIVE DAYS, and education arranged so school lessons are not interrupted. This was stated here as 'no child kept out of school for more than 27 days', which is a different and wrong rule: the 27 days caps consecutive WORKING days, not absence. At least 20% of the child's earnings goes into a fixed deposit in a nationalised bank in the child's name, credited to them at majority.",
         "Carry the disclaimer that all measures were taken to ensure no abuse, neglect or exploitation of the child during shooting.",
         "Where a child and a hazard share a scene: cover it so the child is never in the hazard — doubles, separate setups, or VFX — and keep the scene clear of the guideline on children and violence."
       ],
-      "source": "Child and Adolescent Labour (Prohibition and Regulation) Amendment Rules, 2017 — rule 2C, inserted by G.S.R. 543(E) dated 2 June 2017. Citation CONFIRMED 8 October 2026, including the notification number, the date and the rule number. Rule 2C covers cinema, documentary, television including reality, quiz and talent shows, radio, drama serials and anchoring. Also: the NCPCR Guidelines for Child and Adolescent Participation in the Entertainment Industry, hosted on mib.gov.in, which is the nearest thing to a primary source in this file. Plus the guidelines for certification of films as revised 16 September 2026, which bar children as victims or perpetrators of violence.",
+      "source": "Child Labour (Prohibition and Regulation) Amendment Rules, 2017 — rule 2C, inserted by G.S.R. 543(E) dated 2 June 2017 (draft: G.S.R. 392(E), 20 April 2017; some sites wrongly cite the draft number for the final Rules). NOTE THE TITLE: the amending notification is the CHILD LABOUR Amendment Rules; it is rule 2 of that notification which RENAMES the 1988 principal rules to 'Child and Adolescent Labour…'. The undertaking in Form C is valid six months, and the producer must also name the person responsible for the child's safety. Citation CONFIRMED 8 October 2026, including the notification number, the date and the rule number. Rule 2C covers cinema, documentary, television including reality, quiz and talent shows, radio, drama serials and anchoring. Also: the NCPCR Guidelines for Child and Adolescent Participation in the Entertainment Industry, hosted on mib.gov.in, which is the nearest thing to a primary source in this file. Plus the guidelines for certification of films as revised 16 September 2026, which bar children as victims or perpetrators of violence.",
       "sourceUrls": [
         "https://ssrana.in/articles/child-actors-and-child-labour-laws/",
         "https://abcaus.in/labour-laws/child-labour-prohibition-and-regulation-amendment-rules-2017.html",

@@ -439,3 +439,18 @@ html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth;
 .st-voice-who { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
 .st-film { color: var(--ink-body); }
 .st-film span { color: var(--ink-muted); }
+
+/* ---- launch offers ---------------------------------------------- */
+.st-lead-form { max-width: 40rem; }
+.st-lead-row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.st-lead-row label { flex: 0 0 100%; font-weight: 600; }
+.st-lead-row input[type="email"] {
+  flex: 1 1 14rem; min-height: 44px; padding: 0 var(--s3);
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--paper-sunk); color: var(--ink); font: inherit;
+}
+.st-lead-consent { display: flex; gap: var(--s2); align-items: flex-start; margin-top: var(--s3); font-size: var(--t-small); }
+.st-lead-consent input { margin-top: 0.25em; width: 1.1rem; height: 1.1rem; flex: none; }
+.st-bad { color: var(--ink); font-weight: 600; }
+.st-link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-deep); text-decoration: underline; cursor: pointer; }
+.st-link:disabled { color: var(--ink-muted); text-decoration: none; cursor: default; }

@@ -6693,3 +6693,142 @@ notify pgrst, 'reload schema';
 --  GSTIN checksum, RLS (buyer sees own, admin all, anon none), the
 --  trigger, idempotence, set_buyer_gstin before and after issue.
 -- ============================================================
+
+-- ============================================================
+-- 29. LEADS AND FUNNEL COUNTS                    NOT RUN LIVE — owner approval
+-- ------------------------------------------------------------
+-- HANDOFF B4 + B5. Two small things, both closed to direct access.
+--
+--   leads   — an e-mail the visitor typed into the start page's "Get launch
+--             offers" form, with the exact consent sentence they saw. The
+--             client can INSERT through add_lead() and read nothing back;
+--             only an administrator lists or exports.
+--   events  — DAILY COUNTERS. (day, name, count). No user id, no e-mail,
+--             no IP, no user agent, no session: a counter cannot say who.
+--             Anon bumps one through bump_event(), whose names are an
+--             allowlist, so the table cannot be used as a free-text store.
+--
+-- RATE LIMIT: there is no IP to key on (and storing one is the thing this
+-- design avoids), so add_lead() throttles the TABLE: at most 30 new leads
+-- a minute and 2000 a day, each raising P0429. A bot can fill a day's
+-- allowance and no more; the administrator sees the pile and clears it.
+-- A repeat sign-up of the same address is a silent no-op (no oracle for
+-- "is this person on the list").
+-- ============================================================
+
+create table if not exists public.leads (
+  id           uuid primary key default gen_random_uuid(),
+  email        text not null check (length(email) between 6 and 254 and email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  consent_text text not null check (length(consent_text) between 10 and 1000),
+  source       text not null default 'start' check (source ~ '^[a-z0-9_-]{1,40}$'),
+  created_at   timestamptz not null default now()
+);
+create unique index if not exists leads_email_lower_key on public.leads (lower(email));
+create index if not exists leads_created_idx on public.leads (created_at desc);
+alter table public.leads enable row level security;
+revoke all on public.leads from public, anon, authenticated;
+-- no policies: RLS on, no grants. The RPCs below are the only way in or out.
+
+create table if not exists public.events (
+  day   date   not null,
+  name  text   not null check (name in ('landing_view','pricing_view','invite_request','signup','checkout_start','purchase')),
+  count bigint not null default 0 check (count >= 0),
+  primary key (day, name)
+);
+alter table public.events enable row level security;
+revoke all on public.events from public, anon, authenticated;
+
+-- 29.1 add_lead — callable by anon ------------------------------------
+create or replace function public.add_lead(p_email text, p_consent text, p_source text default 'start')
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare e text := lower(btrim(coalesce(p_email, '')));
+        c text := btrim(coalesce(p_consent, ''));
+        s text := coalesce(nullif(btrim(p_source), ''), 'start');
+begin
+  if length(e) < 6 or length(e) > 254 or e !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+    raise exception 'That does not look like an e-mail address.' using errcode = '22023';
+  end if;
+  if length(c) < 10 or length(c) > 1000 then
+    raise exception 'Consent is required.' using errcode = '22023';
+  end if;
+  if s !~ '^[a-z0-9_-]{1,40}$' then s := 'start'; end if;
+  if (select count(*) from public.leads where created_at > now() - interval '1 minute') >= 30
+     or (select count(*) from public.leads where created_at > now() - interval '1 day') >= 2000 then
+    raise exception 'Too many sign-ups just now. Try again later.' using errcode = 'P0429';
+  end if;
+  insert into public.leads (email, consent_text, source) values (e, c, s)
+    on conflict (lower(email)) do nothing;
+end;
+$fn$;
+
+-- 29.2 bump_event — callable by anon; the allowlist is the table's CHECK
+create or replace function public.bump_event(p_name text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if p_name is null or p_name not in ('landing_view','pricing_view','invite_request','signup','checkout_start','purchase') then
+    raise exception 'Unknown event.' using errcode = '22023';
+  end if;
+  insert into public.events (day, name, count) values ((now() at time zone 'Asia/Kolkata')::date, p_name, 1)
+    on conflict (day, name) do update set count = public.events.count + 1;
+end;
+$fn$;
+
+-- 29.3 the console ------------------------------------------------------
+create or replace function public.admin_list_leads()
+returns table (email text, source text, consent_text text, created_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query select l.email, l.source, l.consent_text, l.created_at from public.leads l order by l.created_at desc limit 5000;
+end;
+$fn$;
+
+create or replace function public.admin_funnel(p_from date, p_to date)
+returns table (name text, total bigint)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select n.name, coalesce(sum(e.count), 0)::bigint
+      from unnest(array['landing_view','pricing_view','invite_request','signup','checkout_start','purchase']) with ordinality as n(name, ord)
+      left join public.events e on e.name = n.name and e.day between coalesce(p_from, date '1970-01-01') and coalesce(p_to, date '2999-12-31')
+     group by n.name, n.ord order by n.ord;
+end;
+$fn$;
+
+revoke execute on function public.add_lead(text, text, text)     from public;
+revoke execute on function public.bump_event(text)               from public;
+revoke execute on function public.admin_list_leads()             from public, anon;
+revoke execute on function public.admin_funnel(date, date)       from public, anon;
+grant  execute on function public.add_lead(text, text, text)     to anon, authenticated;
+grant  execute on function public.bump_event(text)               to anon, authenticated;
+grant  execute on function public.admin_list_leads()             to authenticated;
+grant  execute on function public.admin_funnel(date, date)       to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 29.4 CHECKS TO RUN, none of which has been run live -----------------
+--  1. as anon: add_lead('a@b.co', '<consent>', 'start') -> ok; select on
+--     leads -> 42501; the same address again -> ok, still one row.
+--  2. add_lead('nope', ...) -> 22023. bump_event('anything') -> 22023.
+--  3. as a non-admin user: admin_list_leads / admin_funnel -> 42501.
+--  4. bump_event('landing_view') twice -> admin_funnel shows 2.
+--  5. events has no column but day, name, count.
+-- Test file: scripts/schema-tests/leads.sql (run by npm run test:schema).
+-- ============================================================

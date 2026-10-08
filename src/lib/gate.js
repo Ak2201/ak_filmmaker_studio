@@ -51,6 +51,8 @@
                       chrome.storage.session, per PRD FR-202.
    ============================================================ */
 
+import { bumpEvent } from './funnel.js';
+
 export const TICKET_KEY = 'fms_preauth_ticket';
 export const DEVICE_SESSION_KEY = 'fms_device_session_v1';
 /* THE CODE PASS. A valid invite code lets a visitor through the site
@@ -199,6 +201,7 @@ export function createGate(getClient) {
   async function requestInvite(note) {
     try {
       const r = one(await rpc('request_invite', { p_note: String(note || '').slice(0, 1000) || null, p_user_agent: ua() })) || {};
+      bumpEvent('invite_request');   // §29 daily count, fire-and-forget
       return { status: r.status || 'pending', requestedAt: r.requested_at || null, decidedAt: r.decided_at || null,
                decisionNote: r.decision_note || '', timesAsked: Number(r.times_asked) || 1 };
     } catch (e) {

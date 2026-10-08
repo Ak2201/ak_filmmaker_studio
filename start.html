@@ -69,6 +69,25 @@
   </figure>
 </section>
 
+<section class="st-sec st-lead" id="offers" aria-labelledby="offers-h">
+  <h2 class="st-h2" id="offers-h">Get launch offers</h2>
+  <p class="st-lede">Leave your e-mail and we will write when the studio opens its doors, and when there is an offer worth knowing about. Nothing else.</p>
+  <form class="st-lead-form" id="leadForm" novalidate>
+    <p class="st-lead-row">
+      <label for="leadEmail">E-mail</label>
+      <input id="leadEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
+      <button class="st-btn st-btn-primary" type="submit">Get launch offers</button>
+    </p>
+    <p class="st-lead-consent">
+      <input id="leadConsent" name="consent" type="checkbox" required>
+      <label for="leadConsent" id="leadConsentText">I agree that {{brand:name}} may e-mail me about its launch and offers at this address. I can withdraw this at any time by writing to {{brand:email}}. See the <a href="privacy.html">Privacy Policy</a>.</label>
+    </p>
+    <p class="st-fine" id="leadMsg" role="status" aria-live="polite"></p>
+  </form>
+  <p class="st-fine">This page counts visits in aggregate (a number per day, nothing about you) and honours Do Not Track.
+  <button class="st-link" type="button" id="noCount">Don&rsquo;t count this visit</button></p>
+</section>
+
 <section class="st-sec" id="features" aria-labelledby="features-h">
   <p class="st-eyebrow">Three steps</p>
   <h2 class="st-h2" id="features-h">Write &rarr; Plan &rarr; Shoot</h2>

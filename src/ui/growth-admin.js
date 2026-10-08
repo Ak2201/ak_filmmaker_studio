@@ -40,6 +40,8 @@ async function load() {
     S.settings = await settle('settings', Growth.admin.settings);
     S.credits = await settle('credits', () => Growth.admin.listReferralCredits());
     S.affiliates = await settle('affiliates', Growth.admin.affiliateReport);
+    S.leads = await settle('leads', Growth.admin.leads);
+    S.funnel = await settle('funnel', () => Growth.admin.funnel(S.from || null, S.to || null));
     S.state = 'ready';
   } catch (e) {
     S.error = e.message || 'The growth console could not load.'; S.state = 'error';
@@ -131,15 +133,52 @@ function affiliateBlock(sec) {
   sec.append(h('p.gt-meta', { text: `Commission due across all affiliates: ${fmtPaise(due)}.` }));
 }
 
+const FUNNEL_LABEL = { landing_view: 'Start page visits', pricing_view: 'Reached pricing', invite_request: 'Invite requests', signup: 'Sign-ups', checkout_start: 'Checkouts started', purchase: 'Purchases' };
+const csvCell = (v) => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t.replace(/"/g, '""') : t.replace(/"/g, '""'); };
+export function leadsCsv(rows) {
+  return ['email,source,created_at,consent_text'].concat(rows.map((r) => [r.email, r.source, r.created_at, r.consent_text].map((c) => '"' + csvCell(c) + '"').join(','))).join('\r\n');
+}
+
+function leadsBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Leads' }));
+  if (S.missing.leads) { sec.append(h('p.gt-meta', { text: 'Leads are not available on this database yet (schema section 29 has not run).' })); return; }
+  const rows = S.leads || [];
+  sec.append(h('p.gt-meta', { text: `${rows.length} e-mail address${rows.length === 1 ? '' : 'es'} left through “Get launch offers” on the start page, each stored with the consent sentence the visitor saw. Only administrators can read this list.` }));
+  if (!rows.length) return;
+  sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'leads-csv', text: 'EXPORT CSV' }));
+  const table = h('table.gt-table');
+  table.append(h('thead', {}, [h('tr', {}, ['When', 'E-mail', 'Source'].map((t) => h('th', { scope: 'col', text: t })))]));
+  table.append(h('tbody', {}, rows.slice(0, 200).map((r) => h('tr', {}, [h('td', { text: fmtDate(r.created_at) }), h('td', { text: r.email }), h('td', { text: r.source })]))));
+  sec.append(h('div.gt-scroll', {}, [table]));
+  if (rows.length > 200) sec.append(h('p.gt-meta', { text: `Showing the newest 200 of ${rows.length}; the CSV has them all.` }));
+}
+
+function funnelBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Funnel' }));
+  if (S.missing.funnel) { sec.append(h('p.gt-meta', { text: 'Funnel counts are not available on this database yet (schema section 29 has not run).' })); return; }
+  sec.append(h('p.gt-meta', { text: 'Daily totals per step, counted by this site itself with no identifier attached. Visitors who send Do Not Track or press “Don’t count this visit” are not in it, so read these as a floor.' }));
+  const rows = S.funnel || [];
+  const top = Number((rows[0] || {}).total) || 0;
+  const table = h('table.gt-table');
+  table.append(h('thead', {}, [h('tr', {}, ['Step', 'Count', 'Of start-page visits'].map((t) => h('th', { scope: 'col', text: t })))]));
+  table.append(h('tbody', {}, rows.map((r) => h('tr', { 'data-funnel': r.name }, [
+    h('td', { text: FUNNEL_LABEL[r.name] || r.name }), h('td', { text: String(r.total) }),
+    h('td', { text: top && r.name !== 'landing_view' ? `${Math.round((Number(r.total) / top) * 1000) / 10}%` : '—' })
+  ]))));
+  sec.append(h('div.gt-scroll', {}, [table]));
+}
+
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('growth', 'Growth', 'Referrals, affiliates, invoices and the funnel.',
-    'Everything around a purchase: what referrers are owed, what affiliates have earned, the invoice settings, the leads from the start page and how many people reach each step. Money is computed by the database; this tab only shows it and records what you did about it.');
+  const sec = section('growth', 'Growth', 'Referrals, affiliates, leads and the funnel.',
+    'Everything around a purchase: what referrers are owed, what affiliates have earned, the e-mail addresses left on the start page and how many people reach each step. Money is computed by the database; this tab only shows it and records what you did about it.');
   if (S.state === 'idle') load();
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
   referralBlock(sec);
   affiliateBlock(sec);
+  leadsBlock(sec);
+  funnelBlock(sec);
   sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
@@ -187,6 +226,13 @@ delegate(document, 'click', '[data-gra-action="aff-orders"]', async (e, el) => {
   try { S.affOrders = await Growth.admin.affiliateOrders(code); }
   catch (err) { S.affOrders = []; toast(err.message || 'The orders could not load.', 'error'); }
   rerender();
+});
+
+delegate(document, 'click', '[data-gra-action="leads-csv"]', () => {
+  const blob = new Blob([leadsCsv(S.leads || [])], { type: 'text/csv;charset=utf-8' });
+  const a = h('a', { href: URL.createObjectURL(blob), download: 'leads.csv' });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
 delegate(document, 'click', '[data-gra-action="reload"]', () => load());

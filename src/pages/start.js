@@ -25,6 +25,7 @@
    ============================================================ */
 import '../styles/base.css';
 import '../styles/start.css';
+import { addLead, bumpOnce, bumpEvent, optOut, optedOut } from '../lib/funnel.js';
 
 /* navigation.json is FETCHED, not imported. vite.config.js folds every
    `import` of src/data/*.json into one shared `data` chunk — 450KB that
@@ -170,3 +171,37 @@ renderVoices();
 
 const host = document.getElementById('stageList');
 if (host) renderStages(host);
+
+/* ---- 5. launch offers and the funnel -------------------------------
+   Plain fetch through src/lib/funnel.js: the Supabase SDK stays out of
+   first paint. The consent sentence stored with the address is the text
+   the visitor actually saw, read off the label. */
+const leadForm = document.getElementById('leadForm');
+if (leadForm) {
+  const msg = document.getElementById('leadMsg');
+  leadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = leadForm.elements.email.value.trim();
+    const say = (t, bad) => { msg.textContent = t; msg.classList.toggle('st-bad', !!bad); };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Please enter a valid e-mail address.', true); leadForm.elements.email.focus(); return; }
+    if (!leadForm.elements.consent.checked) { say('Please tick the box to say you agree.', true); return; }
+    const btn = leadForm.querySelector('button[type="submit"]');
+    btn.disabled = true; say('Saving…');
+    try {
+      await addLead(email, document.getElementById('leadConsentText').textContent.replace(/\s+/g, ' ').trim(), 'start');
+      leadForm.reset(); say('Thank you. You are on the list.');
+    } catch (err) { say(err.message, true); }
+    finally { btn.disabled = false; }
+  });
+}
+const noCount = document.getElementById('noCount');
+if (noCount) noCount.addEventListener('click', () => { optOut(); noCount.textContent = 'This visit is not counted'; noCount.disabled = true; });
+
+bumpOnce('landing_view');
+const pricing = document.getElementById('pricing');
+if (pricing && 'IntersectionObserver' in window) {
+  const io = new IntersectionObserver((es) => {
+    if (es.some((x) => x.isIntersecting)) { io.disconnect(); bumpOnce('pricing_view'); }
+  }, { threshold: 0.25 });
+  io.observe(pricing);
+}

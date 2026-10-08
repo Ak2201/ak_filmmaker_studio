@@ -26,6 +26,7 @@
    ============================================================ */
 import Store from './store.js';
 import { BRAND } from './brand.js';
+import { bumpEvent } from './funnel.js';
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -149,6 +150,7 @@ async function invoke(name, body) {
 export async function buy(planId, period = 'lifetime', { accountId = null, onStatus = () => {}, code = null } = {}) {
   if (!paymentsConfigured()) throw new BillingError('Payments are not switched on for this studio yet.', 'notconfigured');
   if (!PERIODS.includes(period)) throw new BillingError('Plans are bought once, for good.', 'period');
+  bumpEvent('checkout_start');   // §29 daily count, fire-and-forget
   onStatus('Preparing your order…');
   const [order] = await Promise.all([invoke('rzp-order', { plan: planId, period, account_id: accountId, code: normalisePromo(code) || null }), loadCheckout()]);
   if (!order || !order.order_id) throw new BillingError('No order came back.', 'edge');
@@ -183,6 +185,7 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
     razorpay_payment_id: response.razorpay_payment_id,
     razorpay_signature: response.razorpay_signature
   });
+  bumpEvent('purchase');
   Store.notify('billing:changed', result);
   // Paying grants entry: a non-member is a member now. Ask the gate again.
   try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the status call will say */ }

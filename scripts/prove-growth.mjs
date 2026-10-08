@@ -108,6 +108,8 @@ function seedViews() {
   VIEWS.set(tok('p'), { kind: 'pitch', title: 'Dragon', payload: Model.snapshotPitch({ title: 'Dragon', genre: 'Drama', logline: 'A young man living on a forged degree is recognised.', synopsis: '', beats: [], characters: [{ name: 'RAGAVAN', role: 'Protagonist', line: 'Wants: status.' }], keyScenes: [], numbers: [['36', 'scenes']], framework: 'Three-act', theme: '', world: '' }), expires_at: null, branding: true, revoked: false });
 }
 let viewCalls = 0;
+const LEADS = [], EVENTS = [];   // §29, faked here: add_lead / bump_event
+const json200 = (r, status = 204, body = '') => r.fulfill({ status, contentType: 'application/json', body });
 let refFor = {};   // user id -> referral code billing_status() reports
 async function route(r) {
   const url = new URL(r.request().url());
@@ -118,6 +120,16 @@ async function route(r) {
     const dead = !v || v.revoked || (v.expires_at && Date.parse(v.expires_at) <= Date.now());
     if (dead) return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '22023', message: 'That link has expired or is not valid', details: null, hint: null }) });
     return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ kind: v.kind, title: v.title, payload: v.payload, expires_at: v.expires_at, branding: v.branding, ref: v.ref || null }]) });
+  }
+  if (url.pathname === '/rest/v1/rpc/add_lead') {
+    const a = JSON.parse(r.request().postData() || '{}');
+    if (/reject/.test(a.p_email || '')) return json200(r, 429, JSON.stringify({ code: 'P0429', message: 'Too many sign-ups just now. Try again later.' }));
+    LEADS.push({ ...a, auth: r.request().headers()['authorization'] });
+    return json200(r);
+  }
+  if (url.pathname === '/rest/v1/rpc/bump_event') {
+    EVENTS.push(JSON.parse(r.request().postData() || '{}').p_name);
+    return json200(r);
   }
   if (url.pathname === '/rest/v1/rpc/billing_status') {
     // the shared fake's answer, plus the referral code billing is being taught
@@ -339,6 +351,48 @@ try {
     await open('short'); await page.waitForTimeout(1200);
     ok(viewCalls === before && /not complete/.test(await page.evaluate(() => (document.querySelector('.sc-error') || {}).textContent || '')), 'a malformed token makes no request');
     allErrors.push(...errors); await ctx.close();
+  }
+
+  console.log('(k) the start page: launch offers and the funnel');
+  {
+    const { ctx, page, errors } = await context(browser, { width: 390 });
+    const sdk = []; page.on('request', (q) => { if (/supabase-[\w-]+\.js/.test(q.url())) sdk.push(q.url()); });
+    LEADS.length = 0; EVENTS.length = 0;
+    await page.goto(BASE + 'start.html'); await page.waitForLoadState('networkidle');
+    ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'landing_view is counted once on load');
+    await page.goto(BASE + 'start.html'); await page.waitForLoadState('networkidle');
+    ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'and not again on a reload in the same session');
+    await page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await page.waitForTimeout(600);
+    ok(EVENTS.filter((e) => e === 'pricing_view').length === 1, 'pricing_view is counted when #pricing scrolls into view');
+    ok(sdk.length === 0, 'no Supabase SDK chunk is fetched on the start page');
+    ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'no new localStorage key');
+    await page.fill('#leadEmail', 'not-an-email'); await page.click('#leadForm button[type=submit]');
+    ok(LEADS.length === 0 && /valid e-mail/.test(await page.textContent('#leadMsg')), 'a malformed address is refused before any request');
+    await page.fill('#leadEmail', 'fan@example.test'); await page.click('#leadForm button[type=submit]');
+    ok(LEADS.length === 0 && /tick the box/.test(await page.textContent('#leadMsg')), 'no consent tick, no request');
+    await page.check('#leadConsent'); await page.click('#leadForm button[type=submit]');
+    await page.waitForFunction(() => /on the list/.test(document.getElementById('leadMsg').textContent), null, { timeout: 4000 }).catch(() => {});
+    ok(LEADS.length === 1 && LEADS[0].p_email === 'fan@example.test' && LEADS[0].p_source === 'start', 'a ticked, valid form sends add_lead(email, consent, source)');
+    ok(LEADS[0] && /agree/.test(LEADS[0].p_consent) && /Privacy Policy/.test(LEADS[0].p_consent), 'with the consent sentence the visitor saw');
+    ok(/on the list/.test(await page.textContent('#leadMsg')), 'and says thank you');
+    await page.fill('#leadEmail', 'reject@example.test'); await page.check('#leadConsent'); await page.click('#leadForm button[type=submit]');
+    await page.waitForFunction(() => /Too many/.test(document.getElementById('leadMsg').textContent), null, { timeout: 4000 }).catch(() => {});
+    ok(/Too many/.test(await page.textContent('#leadMsg')), 'a throttled answer is shown as a sentence');
+    allErrors.push(...errors); await ctx.close();
+    // opt-out and Do Not Track
+    const o = await context(browser, { width: 390 });
+    EVENTS.length = 0;
+    await o.page.goto(BASE + 'start.html'); await o.page.click('#noCount');
+    await o.page.evaluate(() => sessionStorage.removeItem('fms_funnel_pricing_view'));
+    await o.page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await o.page.waitForTimeout(600);
+    ok(EVENTS.filter((e) => e === 'pricing_view').length === 0, '"Don\'t count this visit" stops further counts');
+    await o.ctx.close();
+    const d = await browser.newContext({ serviceWorkers: 'block' });
+    await d.route(SB + '/**', route); await d.addInitScript(() => Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', { get: () => true }));
+    const dp = await d.newPage(); EVENTS.length = 0;
+    await dp.goto(BASE + 'start.html'); await dp.waitForLoadState('networkidle'); await dp.waitForTimeout(500);
+    ok(EVENTS.length === 0, 'Global Privacy Control: nothing is counted');
+    await d.close();
   }
 } finally {
   await browser.close();

@@ -146,6 +146,12 @@ function noteKey(k) {
    BUILD
    ============================================================ */
 
+/* The backup file's FORMAT id: a fixed tag written into every backup
+   as `_from`, and matched on restore. It is NOT the display name —
+   a rebrand changes BRAND.name and must never change this, or files
+   already in people's Drive stop being recognised. */
+export const FORMAT_ID = 'FilmMakerStudio';
+
 /**
  * The whole studio as one plain object. No download, no network,
  * no storage writes — this function only ever READS.
@@ -166,8 +172,7 @@ export function buildBackup() {
   const projects = Store.listAllProjects();
   const all = {
     _exported: new Date().toISOString(),
-    _from: "FilmMakerStudio",
-    _curator: 'Arunak',
+    _from: FORMAT_ID,
     _version: 2,
     projects,
     currentProject: Store.currentProjectId() || null,
@@ -261,7 +266,7 @@ export function backupShape(all) {
     : [];
   return {
     version:   v2 ? 2 : 1,
-    looksOurs: !!(all && all._from && String(all._from).includes('Studio')),
+    looksOurs: !!(all && all._from && (all._from === FORMAT_ID || String(all._from).includes('Studio'))),
     exported:  (all && all._exported) || null,
     projects,
     unfiled: unfiledBuckets.length > 0,

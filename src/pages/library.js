@@ -389,9 +389,6 @@ function renderCover() {
           h('span.title', { text: s.tocTitle }),
           h('span.desc', { text: s.tocDesc })
         ])))
-    ]),
-    h('div', {}, [
-      h('span.cover-byline', {}, ['CURATED BY ', h('span', { text: 'ARUNAK' })])
     ])
   ]);
 }
@@ -721,7 +718,7 @@ function renderFinal() {
       '"Watch films like a director, not an audience.', h('br'),
       'Then write films like an audience, not a director."'
     ]),
-    h('div.signature', {}, ['THE FILMMAKER\'S LIBRARY · CURATED BY ', h('span', { text: 'ARUNAK' })])
+    h('div.signature', {}, ['THE FILMMAKER\'S LIBRARY'])
   ]);
 }
 

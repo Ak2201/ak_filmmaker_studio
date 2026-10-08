@@ -94,6 +94,7 @@ import SAMPLE from '../data/sample.dragon.json';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
+import { BRAND } from '../lib/brand.js';
 import { parseNum, fmtINR } from '../lib/money.js';
 import { mountComments, togglePanel as toggleFieldThread, hasNote, paintBadges }
   from '../ui/comments.js';
@@ -202,9 +203,6 @@ const MASTER_COVER_HTML = `
       <div class="meta-field"><label>Stage</label><input type="text" data-key="meta_stage" placeholder="Story / Screenplay / Pre-prod…"></div>
     </div>
   </div>
-  <div>
-    <div class="master-byline">CURATED BY <span>ARUNAK</span></div>
-  </div>
 </section>
 `;
 const VOL1_COVER_HTML   = `
@@ -240,7 +238,6 @@ const VOL1_COVER_HTML   = `
       <div class="meta-field"><label>Draft</label><input type="text" data-key="v1_draft" placeholder="01 — Treatment"></div>
     </div>
   </div>
-  <div><div class="vol-byline">CURATED BY <span>ARUNAK</span></div></div>
 </section>
 `;
 const HOWTO1_HTML       = `
@@ -405,7 +402,6 @@ const VOL2_COVER_HTML   = `
       <div class="meta-field"><label>Estimated budget</label><input type="text" data-key="v2_budget"></div>
     </div>
   </div>
-  <div><div class="vol-byline">CURATED BY <span style="color:var(--accent-deep);">ARUNAK</span></div></div>
 </section>
 `;
 const HOWTO2_HTML       = `
@@ -515,7 +511,7 @@ const GLOSSARY_HTML     = `
 const FINAL_PAGE_HTML   = `
 <section class="final-page">
   <p class="quote">"Pre-production is where you direct the film. The shoot is where you protect it."</p>
-  <div class="signature">THE FILMMAKER'S BLUEPRINT · CURATED BY <span>ARUNAK</span></div>
+  <div class="signature">THE FILMMAKER'S BLUEPRINT</div>
   <div class="vol">PARTS I–V · COMPLETE · END OF DOCUMENT</div>
 </section>
 `;
@@ -1949,7 +1945,7 @@ async function exportMarkdown() {
   saveData();
   const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   const title = data.meta_title || data.v1_title || 'Untitled film';
-  let md = `# THE FILMMAKER'S BLUEPRINT\n## ${title}\n*Curated by Arunak*\n\n`;
+  let md = `# THE FILMMAKER'S BLUEPRINT\n## ${title}\n\n`;
   md += `**Director:** ${data.meta_director || data.v2_director || '—'}\n`;
   md += `**Started:** ${data.meta_started || '—'}\n`;
   md += `**Genre:** ${data.v1_genre || '—'}\n\n---\n\n`;
@@ -2089,7 +2085,7 @@ async function exportMarkdown() {
     for (const s of p.steps) md += renderStepBlock(s);
   });
 
-  md += `\n---\n*Generated from The Filmmaker's Blueprint · Curated by Arunak*\n`;
+  md += `\n---\n*Generated from The Filmmaker's Blueprint · ${BRAND.name}*\n`;
 
   const t = (data.meta_title || 'film').replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'film';
   const blob = new Blob([md], { type: 'text/markdown' });
@@ -2315,7 +2311,7 @@ function emailToSelf() {
     'LOGLINE\n' + logline + '\n\n' +
     'THEME\n' + theme + '\n\n' +
     'PROGRESS\n' + computeProgress() + '% across 24 steps\n\n' +
-    '— Sent from Arunak\'s Filmmaker Blueprint\n\n' +
+    '— Sent from ' + BRAND.name + '\n\n' +
     'NOTE: To export the full data, open the blueprint and click JSON.'
   );
   window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
@@ -2876,7 +2872,7 @@ async function exportPitchPPTX() {
     const pres = new PptxGenJS();
     pres.layout = 'LAYOUT_WIDE';
     pres.title = data.meta_title || 'Filmmaker Blueprint Pitch';
-    pres.author = data.meta_writer || 'Arunak';
+    pres.author = data.meta_writer || BRAND.name;
     const INK = '1A1815', GOLD = 'A87A32', PAPER = 'F5ECD6';
 
     slides.forEach((s) => {

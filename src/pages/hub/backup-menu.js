@@ -12,6 +12,7 @@ import Store from '../../lib/store.js';
 import { NOTE_PREFIX, downloadBackup, applyBackup, backupShape } from '../../lib/backup.js';
 import PDF from '../../lib/pdf.js';
 import { $ } from './util.js';
+import { BRAND } from '../../lib/brand.js';
 
 /**
  * @param {object} o
@@ -39,9 +40,9 @@ function exportOverviewPDF() {
   const open = Store.currentProject();
   PDF.exportPDF({
     scope: 'overview',
-    project: "FilmMakerStudio",
+    project: BRAND.name,
     label: 'Studio overview',
-    title: "FilmMakerStudio — overview",
+    title: BRAND.name + " — overview",
     subtitle: [
       projects.length + (projects.length === 1 ? ' project' : ' projects'),
       open && open.title ? 'open: ' + open.title : ''

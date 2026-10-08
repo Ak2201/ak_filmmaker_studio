@@ -47,6 +47,7 @@
 import Store from '../lib/store.js';
 import Billing from '../lib/billing.js';
 import { delegate } from '../lib/dom.js';
+import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
 import '../styles/footer.css';
 
 const LINKS = [
@@ -67,7 +68,7 @@ export const SUPPORT_WHATSAPP = (() => {
   return /^\d{8,15}$/.test(d) ? d : '';
 })();
 export const whatsAppConfigured = () => !!SUPPORT_WHATSAPP;
-export function whatsAppHref(text = 'Hi, I need help with FilmMakerStudio.') {
+export function whatsAppHref(text = 'Hi, I need help with ' + BRAND.name + '.') {
   if (!SUPPORT_WHATSAPP) return '';
   return 'https://wa.me/' + SUPPORT_WHATSAPP + (text ? '?text=' + encodeURIComponent(text) : '');
 }
@@ -87,8 +88,7 @@ export function whatsAppLink({ className = 'wa-link', label = 'Help on WhatsApp'
 /* ---- "Made with FilmMakerStudio" ----------------------------------- */
 /* The canonical host is a placeholder in ten files (LAUNCH §7); this is
    the eleventh, and the one constant to change with them. */
-export const BRAND_HOST = 'thefilmmakerstudio.vercel.app';
-export const BRAND_PATH = '/start';
+export { BRAND_HOST, BRAND_PATH };
 const PREFS_KEY = 'fms_studio_prefs_v1';
 const REF_RE = /^[A-Za-z0-9_-]{3,40}$/;
 
@@ -137,7 +137,7 @@ export function setBrandingOff(off) {
 export function brandLine({ ref, className = 'made-with' } = {}) {
   const p = document.createElement('p');
   p.className = className;
-  p.append(document.createTextNode('Made with FilmMakerStudio — '));
+  p.append(document.createTextNode('Made with ' + BRAND.name + ' — '));
   const a = document.createElement('a');
   const r = ref === undefined ? refCode : ref;
   a.href = brandURL(r);
@@ -217,7 +217,7 @@ export function planExtras(st) {
     const label = document.createElement('label');
     label.className = 'brand-toggle';
     label.htmlFor = id;
-    label.append(box, document.createTextNode(' Show “Made with FilmMakerStudio” on pitch decks, call sheets and the screening room'));
+    label.append(box, document.createTextNode(' Show “Made with ' + BRAND.name + '” on pitch decks, call sheets and the screening room'));
     const hint = document.createElement('p');
     hint.className = 'hint';
     hint.textContent = 'Your plan lets you remove the line. The choice is kept on this device.';
@@ -270,7 +270,7 @@ export function injectFooter() {
 
   const copy = document.createElement('p');
   copy.className = 'site-foot-copy';
-  copy.textContent = '© ' + new Date().getFullYear() + ' FilmMakerStudio';
+  copy.textContent = '© ' + new Date().getFullYear() + ' ' + BRAND.name;
 
   foot.append(nav, copy);
   document.body.append(foot);

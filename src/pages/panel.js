@@ -36,6 +36,7 @@ import '../lib/cloud.js';          /* sets window.StudioCloud; the gate lives th
 
 import StudioUI from '../ui/chrome.js';
 import { h, delegate } from '../lib/dom.js';
+import { BRAND } from '../lib/brand.js';
 import Store from '../lib/store.js';
 import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
 import { formatCode, normaliseCode } from '../lib/gate.js';
@@ -56,15 +57,15 @@ const head = (eyebrow, title, deck) => h('header.pn-head', {}, [
 ].filter(Boolean));
 
 function renderNotExtension() {
-  return h('main#main.pn-main', {}, [head('Filmmaker Studio', 'This is the extension panel.',
-    'Open it from the Filmmaker Studio button in Chrome’s toolbar. On the website, everything here is on the hub.'),
+  return h('main#main.pn-main', {}, [head(BRAND.name, 'This is the extension panel.',
+    'Open it from the ' + BRAND.name + ' button in Chrome’s toolbar. On the website, everything here is on the hub.'),
     h('a.btn', { href: '../index.html', text: 'GO TO THE HUB' })]);
 }
 
 function renderGatekeeper() {
   const main = h('main#main.pn-main');
   main.append(head('Step 1 of 3', 'Enter Invite / Screening Pass Code',
-    'Filmmaker Studio is invite-only. A screening pass opens one film read-only, without an account. No code? Sign in with Google and ask for an invite.'));
+    BRAND.name + ' is invite-only. A screening pass opens one film read-only, without an account. No code? Sign in with Google and ask for an invite.'));
   const form = h('form.gt-code', { 'data-pn-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'pnCode', text: 'Code' }));
   form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
@@ -166,7 +167,7 @@ function renderPipeline() {
   if (extAllowed === false) return renderNoExtension();
   const main = h('main#main.pn-main');
   const p = Store.currentProject ? Store.currentProject() : null;
-  main.append(head('Pipeline', p ? p.title : 'Filmmaker Studio', p ? null : 'No project open — pick one on the hub, or start in Story.'));
+  main.append(head('Pipeline', p ? p.title : BRAND.name, p ? null : 'No project open — pick one on the hub, or start in Story.'));
   const list = h('ol.pn-stages');
   /* moduleGroups(), not nav.phases: the five stages AND the shelves
      (the Library's three tabs, the two Blueprints). Reading only the
@@ -208,7 +209,7 @@ function renderPipeline() {
 function clipLine() {
   return h('p.pn-clips', { text: queued
     ? `${queued} clipping${queued === 1 ? '' : 's'} waiting for the Idea Vault — they arrive when you open a page.`
-    : 'Select text on any page and choose “Send to Filmmaker Studio” to keep it in the Idea Vault.' });
+    : 'Select text on any page and choose “Send to ' + BRAND.name + '” to keep it in the Idea Vault.' });
 }
 
 /* ---- the flow ---------------------------------------------------- */

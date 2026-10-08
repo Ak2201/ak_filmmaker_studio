@@ -921,7 +921,7 @@ function finalMarkup() {
     html: `
       <div class="final-inner">
         <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
-        <div class="signature">THE FILMMAKER'S STUDIO · CURATED BY <span>ARUNAK</span></div>
+        <div class="signature">THE FILMMAKER'S STUDIO</div>
       </div>`
   });
 }

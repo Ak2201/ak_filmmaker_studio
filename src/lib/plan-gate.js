@@ -49,6 +49,7 @@
                      whatever this says — the line is how Free grows)
    ============================================================ */
 import Store from './store.js';
+import { BRAND } from './brand.js';
 import nav from '../data/navigation.json';
 import { moduleGroups, shelves } from './navmodel.js';
 import { h } from './dom.js';
@@ -62,7 +63,7 @@ export const CAPABILITIES = [
   ['ai_tools',      'AI tools',               'Every model-backed tool, on the user’s own key'],
   ['exports',       'Exports',                'PDF, backup and other downloads'],
   ['drive_backup',  'Google Drive backup',    'The Drive connection on Settings'],
-  ['remove_branding', 'Remove branding',      'Switch off “Made with FilmMakerStudio” (paid plans only)']
+  ['remove_branding', 'Remove branding',      'Switch off “Made with ' + BRAND.name + '” (paid plans only)']
 ];
 
 let features = null;      // null = unknown / not gated; an object once a plan is known

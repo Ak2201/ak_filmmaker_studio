@@ -245,8 +245,7 @@ function renderCover() {
         h('label', { for: `f_${f.key}`, text: f.label }),
         h('input', { id: `f_${f.key}`, type: 'text', 'data-key': f.key, placeholder: f.placeholder })
       ])))
-    ]),
-    h('div', {}, [h('span.cover-byline', { html: 'CURATED BY <span>ARUNAK</span>' })])
+    ])
   ]);
 }
 
@@ -879,7 +878,7 @@ function renderFinalPage() {
       html: '"The best short films are not short stories.<br>They are single, indivisible moments'
           + '<br>caught at their exact temperature."'
     }),
-    h('div.signature', { html: 'THE SHORT FILM BLUEPRINT · CURATED BY <span>ARUNAK</span>' })
+    h('div.signature', { html: 'THE SHORT FILM BLUEPRINT' })
   ]);
 }
 

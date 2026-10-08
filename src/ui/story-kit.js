@@ -37,6 +37,7 @@
 import '../styles/story-heat.css';
 import '../styles/story-kit.css';
 import { h, delegate } from '../lib/dom.js';
+import { BRAND } from '../lib/brand.js';
 import * as Story from '../lib/story.js';
 import IO from '../lib/story-io.js';
 import Scenes from '../lib/scenes.js';
@@ -244,7 +245,7 @@ function panelVaultList() {
 function panelVault(card) {
   card.append(eyebrow('Story page · Idea Vault'));
   card.append(h('h3.sk-title', { text: 'Clippings for this film' }));
-  card.append(h('p.sk-lead', { text: 'A logline is easier to find with the raw material in view. These are this project’s clippings — the Chrome extension’s “Send to Filmmaker Studio” lands here too.' }));
+  card.append(h('p.sk-lead', { text: 'A logline is easier to find with the raw material in view. These are this project’s clippings — the Chrome extension’s “Send to ' + BRAND.name + '” lands here too.' }));
   card.append(h('div.sk-dyn', { 'data-sk-dyn': 'vault' }));
   const add = h('div.sk-vault-add');
   add.append(h('label.sk-label', { for: 'skClip', text: 'Add a clipping' }));

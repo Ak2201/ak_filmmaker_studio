@@ -55,6 +55,7 @@
    ============================================================ */
 import Store from './store.js';
 import { h } from './dom.js';
+import { BRAND } from './brand.js';
 
 /* ------------------------------------------------------------
    PAGE SETUPS
@@ -106,7 +107,7 @@ export function projectTitle() {
     const p = Store && Store.currentProject && Store.currentProject();
     if (p && p.title) return p.title;
   } catch (e) { /* no project yet — the hub may be the first page seen */ }
-  return "FilmMakerStudio";
+  return BRAND.name;
 }
 
 /* A filename, not a sentence. Browsers replace what they cannot use

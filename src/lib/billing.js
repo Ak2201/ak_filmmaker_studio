@@ -25,6 +25,7 @@
    account and is read from the server every time.
    ============================================================ */
 import Store from './store.js';
+import { BRAND } from './brand.js';
 import { PLAN_ORDER, planName } from './plans.js';
 import { fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel } from '../../supabase/functions/_shared/razorpay.js';
 
@@ -160,7 +161,7 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
       amount: order.amount,
       currency: order.currency || 'INR',
       order_id: order.order_id,
-      name: 'Filmmaker Studio',
+      name: BRAND.name,
       description: `${order.plan_name || planName(planId)} · full access, one payment${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
       notes: { plan: planId, period, promo_code: order.promo_code || '' },

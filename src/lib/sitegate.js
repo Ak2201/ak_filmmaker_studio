@@ -67,6 +67,23 @@
    ============================================================ */
 import Store from './store.js';
 import { getCodePass, clearCodePass, isMissing } from './gate.js';
+/* THE GATE CANNOT DECIDE WITHOUT THIS, so it asks for it rather than
+   hoping. cloud.js sets window.StudioCloud, and everything below reads
+   that global — evaluate() returns 'wait' until it appears, and after
+   GIVE_UP_MS that becomes a REDIRECT. Six page entries import cloud.js
+   by name (hub, feature, short, invite, panel, admin); no module page
+   does, and `vite.config.js` says so where it forces cloud into
+   CORE_LIB. That works in a BUILD, where every page loads the core
+   chunk, and fails in `npm run dev`, where a module loads only if
+   something imports it: on settings.html window.StudioCloud was simply
+   undefined, so the gate timed out and bounced a signed-in admin to
+   invite.html, isConfigured() was unreachable and the Plan section
+   announced "this build is not connected to a cloud project" with a
+   real project in .env. One missing import, and only the bundler was
+   hiding it. Side-effect import on purpose: the gate wants the global,
+   not the exports. No cycle — cloud.js imports store, drive, gate and
+   extension-bridge, none of which import this file. 8 Oct 2026. */
+import './cloud.js';
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
@@ -75,23 +92,16 @@ export const PASS_KEY = 'fms_sitegate_pass';   // sessionStorage, never localSto
  *  sessionStorage, diagnostic only; nothing decides on it. */
 export const WHY_KEY = 'fms_sitegate_why';
 /* The veil cannot stay up for ever, so an unanswered gate gives up and
-   FAILS CLOSED. Twenty seconds is right for the built site, where the
-   whole studio is a handful of chunks.
+   FAILS CLOSED. Twenty seconds, in dev as in the build.
 
-   IT IS WRONG FOR THE DEV SERVER, and the symptom is alarming rather
-   than slow: Vite serves every module as its own request, so a heavy
-   page (settings.html is the heaviest) can still be booting at twenty
-   seconds, and a signed-in admin gets bounced to invite.html as though
-   they had been refused. Measured on 8 Oct 2026 from the gate's own
-   breadcrumb — reason 'timeout', from /settings.html — while the built
-   site at the same moment was fine. Pre-bundling the Supabase SDK
-   (vite.config.js optimizeDeps) removed part of the delay, not all of
-   it, because the rest is the module waterfall itself.
-
-   Dev gets two minutes. Production is unchanged: this is the one
-   timing constant where being impatient looks exactly like being
-   locked out, and dev is the only place slow enough to prove it. */
-const GIVE_UP_MS = (env.DEV ? 120 : 20) * 1000;
+   It was briefly (env.DEV ? 120 : 20) on 8 Oct 2026, to stop the dev
+   server bouncing a signed-in admin to invite.html. That was treating
+   a symptom: the gate was not slow, it was never going to be answered,
+   because window.StudioCloud did not exist on module pages in dev —
+   see the import above. With the import in place the gate answers well
+   inside twenty seconds and the allowance is gone, deliberately. A
+   timeout here should stay loud enough to mean something. */
+const GIVE_UP_MS = 20000;
 const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start)(\.html)?$/;
 
 export function isExempt() {

@@ -85,7 +85,7 @@ once and not yet looked at.
   Rules, 2001 (connection failure) and a `thestatesman.com` report (403).
   AWBI hosts working copies of the 2001 Rules; they are now cited instead.
 
-## ROOT CAUSE FOUND, NOT YET FIXED: cloud.js never loads on the dev server
+## ~~ROOT CAUSE: cloud.js never loads on the dev server~~ FIXED 8 Oct 2026
 
 **8 Oct 2026.** `window.StudioCloud` is **undefined** on `settings.html`
 under `npm run dev`. Measured, not inferred: `hasStudioCloud: false`, and
@@ -117,12 +117,25 @@ implicit, and only the bundler was satisfying it.
 So this is not a dev-server quirk to be waited out. It is a genuine
 missing import that production hides.
 
-**The fix is small and should be deliberate:** give the gate an explicit
-`import '../lib/cloud.js'` (side-effect) in `src/lib/sitegate.js`, which
-`chrome.js` already pulls in on every page — so the thing that cannot
-work without cloud.js is the thing that asks for it. Do NOT "fix" it by
-lengthening the gate timeout; that was done on 8 Oct as a dev-server
-mitigation and it treats the symptom.
+**FIXED** by a side-effect `import './cloud.js'` in `src/lib/sitegate.js`,
+which `chrome.js` already pulls in on every page — so the thing that
+cannot work without cloud.js is now the thing that asks for it.
+
+One correction to the paragraph above, which said nothing imports
+cloud.js: **six page entries do** — hub, feature, short, invite, panel
+and admin. No MODULE page does, which is what `vite.config.js` means at
+its `CORE_LIB` line, and settings.html is one of them.
+
+Verified after the fix: `window.StudioCloud` present, `isConfigured`
+true, `isBooted` true, session restored, no redirect, and the Plan
+section renders 1,960 characters with the real cards — Rs.0 / Rs.599 /
+Rs.799 / Rs.999. breakdown.html loads too. No console errors.
+
+**And the mitigation was REVERTED.** `GIVE_UP_MS` went briefly to 120s
+in dev to stop the bouncing; it is back to 20s everywhere, and settings
+still loads well inside it. A timeout here should stay loud enough to
+mean something. The `optimizeDeps` entry for the Supabase SDK stays —
+that one is a genuine dev speed-up, not a workaround.
 
 ## The full pending list
 

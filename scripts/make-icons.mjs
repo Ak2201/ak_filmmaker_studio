@@ -38,6 +38,13 @@ function palette() {
   for (const [, name, value] of block.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
     out[name] = value;
   }
+  // The legacy names alias the semantic layer (--paper: var(--bg-primary)),
+  // so follow var() references until they land on a hex.
+  const refs = {};
+  for (const [, name, ref] of block.matchAll(/--([a-z0-9-]+):\s*var\(--([a-z0-9-]+)\)\s*;/g)) refs[name] = ref;
+  for (let pass = 0; pass < 5; pass++) {
+    for (const [name, ref] of Object.entries(refs)) if (!out[name] && out[ref]) out[name] = out[ref];
+  }
   const need = ['paper', 'paper-raised', 'ink', 'feature', 'shorts', 'library'];
   const missing = need.filter(n => !out[n]);
   if (missing.length) throw new Error('tokens.css is missing: ' + missing.join(', '));

@@ -6,8 +6,7 @@ emotional-craft plan from docs/WIP-EMOTION-PLAN.md, Phase 0."* Read
 
 Owner decisions already made (do not re-ask): **Learn + Apply**; **AI is in
 scope, as the last phase**; **learning free, tools paid** (a plan feature
-key); **built on top of `wip-all`**, not `main` (the owner's call, over a
-recommendation to build on `main`).
+key); built on **`develop`** (the owner first chose `wip-all`, which has since been merged).
 
 ## Context
 
@@ -25,33 +24,34 @@ studied films (`dragon`, `96`, `porthozhil`, `vikramvedha`) and `films.json`,
 function-labelled, no plot retelling, no quoted dialogue (the existing
 `_about` rules in `studies.json`, `dissections.json`, `glossary.json`).
 
-## Consequences of building on wip-all
+## Where to build it (corrected 8 Oct, late)
 
-`wip-all` is a snapshot union of ten unfinished workstreams (`docs/WIP.md`).
-It builds, but `verify` never completed on it, `prove:*` were never run, and
-`test:screenplay` has one stale assertion (`paginateDoc`). Therefore:
+**This section replaces "Consequences of building on wip-all".** The owner first
+chose to build on top of `wip-all`; since then the ten workstreams were
+integrated and released (`ad7ab02`), `wip-all` is fully merged and frozen, and
+`develop` = `main`. So:
 
-1. **Phase 0 comes first:** branch `wip-emotion` off `origin/wip-all`, run the
-   build and every `test:*`, run `verify` **uncapped**, record the baseline in
-   `docs/WIP-EMOTION.md`. Failures that exist before our change are recorded
-   as pre-existing, not fixed here.
-2. **This work cannot ship before `wip-all` is integrated.** It rides the same
-   integration pass. Keep every feature in new files with one-line
-   import/mount hooks so it can be lifted onto `main` later.
-3. **Reuse what `wip-all` already has:** `coverageBatch` / `planCoverage` and
-   `voiceCheck` in `src/lib/ai.js`, `src/ui/coverage.js`, `scripts/fake-ai.mjs`,
-   `scripts/test-ai-coverage.mjs`, `scripts/prove-ai-coverage.mjs`,
-   `src/lib/characters.js`, and the revisions' `paginateDoc`.
-4. **Line numbers below are from `main`.** `write.js`, `ai.js`, `story.js`,
-   `scenes.js`, `plan-gate.js` differ on `wip-all`; re-find each anchor by
-   symbol before editing.
-5. **New storage keys: none planned.** Every new field lives inside an
-   existing record, so the integration's cloud-scope schema section is not
-   widened for this work.
+1. **Phase 0 comes first, on `develop`:** branch `wip-emotion` off
+   `origin/develop` (not `wip-all`), run the build and every `test:*`, run
+   `verify` **uncapped**, record the baseline in `docs/WIP-EMOTION.md`. Failures
+   that exist before our change are recorded as pre-existing, not fixed here.
+2. **"Cannot ship before integration" no longer applies** — integration is done.
+   It ships through the normal release gate in `docs/BRANCHING.md`. Keep every
+   feature in new files with one-line import/mount hooks so it merges cleanly.
+3. **Everything this plan wanted to reuse now exists on `develop`:**
+   `coverageBatch` / `planCoverage` / `voiceCheck` in `src/lib/ai.js`,
+   `src/ui/coverage.js`, `scripts/fake-ai.mjs`, `scripts/test-ai-coverage.mjs`,
+   `scripts/prove-ai-coverage.mjs`, `src/lib/characters.js`, `paginateDoc`.
+   The stale `paginate` assertion was fixed in `2d52a59`.
+4. **Line numbers below are from the older `main`.** Re-find each anchor by
+   symbol on `develop` before editing.
+5. **New storage keys: none planned.** Every new field lives inside an existing
+   record. Schema §24 already added `characters` and `costs` to the scope CHECK;
+   this plan does not widen it. (The next free schema section is §25.)
 
 ## Phase 0 — Baseline (S)
 
-- `git worktree add .claude/worktrees/wip-emotion -b wip-emotion origin/wip-all`
+- `git worktree add .claude/worktrees/wip-emotion -b feature/emotional-craft origin/develop`
 - `npm install`; `VITE_SITE_GATE=off npx vite build --outDir dist-verify`;
   every `npm run test:*`; `VERIFY_DIST=dist-verify npm run verify` uncapped;
   `prove:sw`.
@@ -142,7 +142,7 @@ body 165-205; `beat-board.js:116-118`.
   `.bb-marker`, `delegate()` for clicks, nothing per keystroke, nothing across
   all 2,361 elements. New code in `src/ui/feeling-chip.js` with one import +
   one mount line in `write.js` (it already merges Revisions, Tamil typing and
-  Coverage on `wip-all` — keep our edit additive).
+  Coverage — keep our edit additive).
 - **Rule-based hints** — `src/data/format-rules.json` + cases in `checkOne`
   (`format-rules.js` ~160-200), severity **`hint` only**, individually
   dismissible, default-quiet. **Honest signals only:** scene length, dialogue
@@ -164,7 +164,7 @@ body 165-205; `beat-board.js:116-118`.
   is not word for word in the scene's own text (`sceneScriptText`, `ai.js:110`)
   is stripped and counted. Per scene returns
   `{quote, feelingAudienceGets, mechanism, tryThis}`; **writes nothing**.
-- **Reuse** the wip-all batching (`planCoverage`/`coverageBatch`), `fake-ai.mjs`
+- **Reuse** the existing coverage batching (`planCoverage`/`coverageBatch`), `fake-ai.mjs`
   and `prove-ai-coverage.mjs` patterns; surface from the existing coverage panel
   or the margin chip's popover.
 - **Gates:** `Panelm.keyGate` (`ai-panel.js:198`) then a click to run, mirroring

@@ -24,6 +24,43 @@ gift, edu, leads, funnel — schema §25 onward), the queued ideas (tasks
 11–14), the Tamil-labels decision (task 15), the emotional-craft layer, and
 the leftovers in `docs/KNOWN-ISSUES.md`.
 
+**UPDATE, 8 Oct 2026 evening — the owner checklist was STARTED, through
+the owner's own browser.** `docs/BROWSER-HANDOFF.md` was executed as far
+as it can go without the owner's legal identity and a Razorpay account.
+What is now true, each verified by reading it back rather than by
+running something and assuming:
+
+- **Schema §19 and §24 are LIVE** (`accounts_guard` tgtype 23, the
+  `project_data` scope CHECK 442 characters naming `characters` and
+  `costs`). §16–§18 were already live from 6 Oct. **§20–§23 are not run
+  and are deliberately deferred** to the Razorpay session, because §20
+  drops and recreates `create_pending_payment` and must land with the
+  `rzp-order` redeploy.
+- **The Google consent screen was never a blocker.** It is In production,
+  External, and needs no verification review. Its branding is filled in
+  and was being refused for one reason: the home page domain was not
+  registered to us. A Search Console property now exists and
+  auto-verified through the `google-site-verification` meta tag already
+  in `index.html` — which makes that tag load-bearing, see `CLAUDE.md`. Google
+  asks for 24 hours before re-requesting, so Branding → View issues →
+  "I have fixed the issues" on **9 Oct or later**.
+- **The read side of RLS is PROVEN** — `docs/SECURITY-RLS.md` LIVE CHECK
+  4. The check that file called "the last cheap check" for eight days
+  only ever needed real rows to exist, and they now do: `projects` holds
+  6 and `project_data` 30, and an anonymous GET still returns `[]`.
+- **The `[OWNER: full legal name]` placeholders are not pending edits —
+  they are LIVE on the public site**, on `/privacy`, `/terms` and
+  `/refund`. Razorpay's business verification and Meta's ad review both
+  read those pages. This is now the cheapest blocker on the list and the
+  only one nobody but the owner can clear.
+- The live prices are real and match no document: `free=0`,
+  `starter=59900`, `indie=79900`, `pro=99900` paise.
+
+The theme of the pass is that **the documents were wrong in the owner's
+favour more often than against it** — three blockers did not exist. The
+instruction that survives is `CLAUDE.md`'s: ask the database, ask the
+console, do not read the file and believe it.
+
 **Branch workflow (owner's rule, 8 Oct 2026): develop on `develop`, test, then promote to `main`.**
 `main` only ever receives work that passed the release gate. Full rules, the gate
 and the day-to-day commands are in **`docs/BRANCHING.md`**. `develop` was created

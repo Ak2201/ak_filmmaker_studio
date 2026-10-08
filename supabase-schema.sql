@@ -4304,7 +4304,19 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 19. THE ACCOUNTS INSERT HOLE — a self-minted Pro organisation
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Found while the account
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, as sections 19 and 24 together (the only two outstanding
+-- sections that matter before the 8 Oct build is deployed; 20-23 are
+-- deferred until Razorpay is live): "Success. No rows returned".
+-- Read back immediately afterwards: accounts_guard tgtype 23, i.e.
+-- BEFORE INSERT OR UPDATE FOR EACH ROW (tgtype & 4 and tgtype & 16 both
+-- true), where it had been 19 — BEFORE UPDATE only — all its life. The
+-- insert hole described below was open until this run. NOTE for anyone
+-- verifying: docs/LAUNCH.md section 4 said to expect tgtype 7; that is
+-- wrong and has been corrected. 7 is ROW+BEFORE+INSERT, insert only.
+-- BEFORE INSERT OR UPDATE FOR EACH ROW is 1+2+4+16 = 23.
+-- The 19.1 live checks are still unrun.
+-- Found while the account
 -- panel was being built and left on record in CLAUDE.md (open item 5)
 -- and docs/SECURITY-RLS.md (A1b): acc_insert checks only
 -- `owner_id = auth.uid()`, and accounts_guard — the trigger carrying
@@ -5627,7 +5639,15 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 24. TWO MORE SYNC SCOPES: characters and costs
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Until it runs, cloud.js
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, together with section 19: "Success. No rows returned".
+-- Read back immediately afterwards: project_data_scope_check now names
+-- 'characters' and 'costs' AND still names 'edit' and 'deliverables';
+-- the definition grew from 407 to 442 characters; project_data kept all
+-- 30 of its rows and projects all 6, so the constraint swap validated
+-- against the existing data rather than rejecting any of it. The 24.1
+-- live checks are still unrun.
+-- Until it ran, cloud.js
 -- would send upserts the CHECK refuses, so the two keys move from
 -- LOCAL_ONLY into SCOPE_BY_KEY in the same commit as this section and
 -- the deploy order in docs/LAUNCH.md puts §24 before that build goes

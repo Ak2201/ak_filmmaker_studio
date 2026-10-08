@@ -1075,7 +1075,7 @@ numbered as they are in the history.
 | 7 | Chennai rates, festivals | Partly — sourcing | No union floor exists (FEFSI MoU expired 2025). Never apply an inflation multiplier; show the band AND the checked figure. A festival carries its own `lastChecked`. |
 | 8 | First run + the Dragon sample | Done | Reconstruction, says so everywhere. NO real person beside a contact; NO reproduction of the real screenplay. The script JSON is a dynamic import with a `vite.config.js` exception — both halves needed. |
 | 9 | The interaction pass | Done | Palette derives everything, writes nothing. `COUNTDOWN` strips festival numbers at both dates; a frozen clock contradicts it. rAF doesn't run in a background tab — measure synchronously first. |
-| 10 | Google Drive backup | Done; consent screen **not published** | Reuses the backup format. Head revision read from `readMeta` on BOTH sides. No silent re-mint exists: `getToken({interactive:false})` rejects; the sign-in grant lasts ~1h. `prove:drive`. |
+| 10 | Google Drive backup | Done; consent screen **published** (8 Oct) | Reuses the backup format. Head revision read from `readMeta` on BOTH sides. No silent re-mint exists: `getToken({interactive:false})` rejects; the sign-in grant lasts ~1h. `prove:drive`. |
 | 11 | PRD 2.0: stages, Story, gate, extension | Done; 13.8/14.5 live checks unrun | The gate FAILS CLOSED. `fms_invite_code_v1` is a key on its own. One owner per redirect (`landOnInvite` stands down under the site gate). `prove:gate` 108. |
 | 12 | Billing: Razorpay, tiers, plan features | Built; **§16–§20 not run live**, no key | Price read server-side; promo codes (§20) are priced server-side too; limits are triggers raising `P0402`; paying grants entry; a lapse is computed. Full-time access (§18), no periods. `docs/BILLING.md` §1 is the deploy order. |
 | 13 | Post-production: edit log, deliverables | Done; **§17 not run live** | Edit log reads shoot marks, never writes them; the set's word is final. Catalogue ids are storage keys. |
@@ -1087,12 +1087,23 @@ numbered as they are in the history.
 | 19 | Handoff / WIP state (7–8 Oct 2026) | Superseded by 20; emotional-craft layer planned | `docs/HANDOFF.md` is the entry point. Branch deletion is blocked on GitHub (403), so `archive/*` and `wip/*` stay, frozen. Develop on `develop` (`docs/BRANCHING.md`). Planned-not-built: `docs/WIP-EMOTION-PLAN.md`. |
 | 20 | Release of the ten workstreams (8 Oct 2026) | Done; **§21–§24 not run live** | On set, schedule (DPR inside `fms_locations_v1`), writing (`fms_characters_v1`), revisions (`numbering` in the script blob), AI coverage, compliance (CBFC rules carry sources; the rating is a hint), money (`fms_costs_v1`), billing growth (§21–§23), growth UX (`fms_tour_v1`). §24 makes characters and costs SYNC — run it before this build goes live. A proof that fails on its own aborts is the proof's bug. |
 
-**What is live and what is not** — the one list to trust: schema §1–§14
-have run on `conhlrulxfwkhsnymakz` (verified through PostgREST, not from
-the file); §16–§24 have NOT been verified (the file's own headers claim
-§16–§18 ran on 6 Oct — ask the database); the Google consent
-screen is in Testing; no Razorpay key exists; none of the live RLS checks
-has been executed. Ask the database, not the file.
+**What is live and what is not** — the one list to trust, re-established
+by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
+`conhlrulxfwkhsnymakz` (verified through PostgREST, not from the file);
+**§16, §17 and §18 are live** (6 Oct) and **§19 and §24 are live**
+(8 Oct, read back: `accounts_guard` tgtype 23, the scope CHECK 442
+characters naming `characters` and `costs`); **§20–§23 have NOT run** and
+are deferred until Razorpay is live, because §20 drops and recreates
+`create_pending_payment` and belongs in the same session as the
+`rzp-order` redeploy. The **Google consent screen is PUBLISHED** — In
+production, External, and Google states verification is not required
+because no sensitive or restricted scopes are requested; its branding is
+filled in and awaiting re-verification after the 8 Oct Search Console
+ownership check. No Razorpay key exists. None of the live RLS checks has
+been executed. Ask the database, not the file — and note that this
+paragraph said "§16–§24 have NOT been verified" and "the consent screen
+is in Testing" while both had been false for days, which is the whole
+argument for asking.
 
 ## Things that are deliberate, not oversights
 
@@ -1131,6 +1142,17 @@ has been executed. Ask the database, not the file.
   gate**: `PAGES` is read from `baseline.json` and neither is in it, so the
   text check, the AA walk and the overflow measurement all skip them. Read
   them in a browser, at 390px, in both themes. Nothing else will.
+
+- **The `google-site-verification` meta tag in `index.html` is
+  load-bearing.** `<meta name="google-site-verification" content="-V57…">`
+  on line 31 is what proves to Google that this host is ours. It is the
+  sole ownership proof behind the Search Console property created on
+  8 Oct 2026, and that property is what the OAuth consent screen's
+  branding verification checks. Delete the tag and the branding stops
+  being shown to users on Google's next sweep — silently, and with a
+  24-hour minimum to undo. If you ever need the hub's `<head>` tidied,
+  add a second verification method in Search Console → Settings →
+  Ownership verification FIRST.
 
 - **The Supabase URL and anon key are a BUILD setting now**, in `.env` as
   `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, with anything in

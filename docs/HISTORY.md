@@ -1218,3 +1218,19 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       write.html: median 79 ms to the next frame, as before.
     - *First paint grew* on reports, deliverables, budget and write; the
       budget was recaptured with the reason (`docs/KNOWN-ISSUES.md`).
+
+21. **The cinematic UI revamp (8 Oct 2026).** Branch `Uirevamp`. The
+    owner's design spec — obsidian `--bg-*`, slate `--text-*`, gold
+    `--accent-gold*`, teal `--accent-teal*`, `--status-*` — is the bare
+    `:root`, and every legacy token aliases it; the light theme and the
+    theme switch are gone (owner: dark only). Two spec values failed AA and
+    were corrected in place (`--text-muted` → `--text-muted-aa` for text;
+    danger text #F87171). Phase hues retuned and moved off the gold and
+    teal (Screenplay coral, Pre-Production blue). Gold primary buttons with
+    a glow, ghost secondary buttons that turn teal, a 12px-blur glass band,
+    cards on `--bg-secondary` with gold hover, hero glow, teal chips, the
+    script page on a dark writing surface (print stays white). The icon and
+    OG generators now follow `var()` aliases. The gate found one real
+    regression — the card border override repainted the hue rule on the
+    hub's doors and start cards and the worked examples — fixed by giving
+    those a gold glow on hover instead. AA walk: 0 findings on all 21 pages.

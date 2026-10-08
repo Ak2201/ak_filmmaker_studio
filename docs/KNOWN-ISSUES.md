@@ -71,3 +71,11 @@ once and not yet looked at.
   hosts). Two were corrected (the COTPA rule numbers, Prime Video's timed
   text list) and two sharpened. Open each `sourceUrls` link in a browser
   before relying on the text, and bump that rule's `checked`.
+
+## The full pending list
+
+The ID-numbered registry of everything still to do (launch steps, production
+gaps, quality gaps, billing, queued ideas, the emotional-craft layer) is
+`docs/HANDOFF.md` §6c; the leftovers above are rows G1, G2, G7 and P12 there.
+The 8 Oct audit's wrong findings are NOT listed — they were re-checked against
+the code (see HANDOFF §9).

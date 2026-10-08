@@ -1000,13 +1000,12 @@ overflow.
 
 ### Still open
 
-1. **The read side is still unproven, and this has not moved.**
+1. ~~**The read side is still unproven, and this has not moved.**
    `projects` holds 0 rows, so an anonymous `[]` cannot distinguish "RLS
-   denied it" from "nothing is there". Every WRITE path above is
-   genuinely proven — a `42501` is a refusal, not an empty set — and
-   every READ path is not. One real row, saved by a signed-in user, then
-   still `[]` anonymously, closes it. **This is the last cheap check and
-   it should be done next.**
+   denied it" from "nothing is there".~~ **CLOSED 8 Oct 2026 — see LIVE
+   CHECK 4 at the end of this file.** `projects` now holds 6 rows and
+   `project_data` 30, and an anonymous GET still returns `[]` for both.
+   The ambiguity is gone and the read side passes.
 2. The remaining live checks needing two real accounts: collaborator
    isolation, share claim/expiry/revoke end to end, the comment-status
    and reply-cascade guards, and the account-tier escalations. The
@@ -1221,3 +1220,78 @@ in `A`'s hands.
 
 Check 9 is the one that proves "landed with the right account membership"
 rather than merely "a row changed".
+
+---
+
+## LIVE CHECK 4 — RUN 8 OCT 2026. THE READ SIDE IS PROVEN.
+
+The check this document has called "the last cheap check" since 30 Sep,
+and listed as the single highest-value item remaining, is done. It only
+ever needed one thing that did not exist yet: real rows. The studio now
+holds some.
+
+Run with nothing but the publishable anon key, against production
+(`conhlrulxfwkhsnymakz`), `GET /rest/v1/<table>?select=*&limit=3`:
+
+| Table | Real rows | Anon GET | Verdict |
+| --- | --- | --- | --- |
+| `projects` | **6** | `200 []` | **PROVEN** — rows exist and anon sees none |
+| `project_data` | **30** | `200 []` | **PROVEN** |
+| `payments` | **1** | `200 []` | **PROVEN** |
+| `accounts` | 2 | `401 42501` permission denied for function `account_role` | refused |
+| `account_members` | — | `401 42501` permission denied for function `account_role` | refused |
+| `studio_members` | 2 | `401 42501` permission denied for function `is_studio_admin` | refused |
+| `invite_codes` | — | `401 42501` permission denied for function `is_studio_admin` | refused |
+| `invite_redemptions` | — | `401 42501` permission denied for function `is_studio_admin` | refused |
+| `plans` | 4 | `200` with rows | **correct** — §18 intends anon to read plans |
+| `shares` | 0 | `200 []` | still ambiguous (table is empty) |
+| `project_collaborators` | 0 | `200 []` | still ambiguous (table is empty) |
+| `comments` | 0 | `200 []` | still ambiguous (table is empty) |
+
+**Three tables are now genuinely proven rather than merely silent**, and
+the distinction is the whole point of this check: an empty answer from an
+empty table proves nothing, an empty answer from a table holding 30 rows
+proves the policy. `projects`, `project_data` and `payments` all hold
+real data and all return `[]` to an anonymous caller.
+
+**Three are still ambiguous and will stay so until they hold a row.**
+`shares`, `project_collaborators` and `comments` are empty, so their
+`[]` means nothing either way. That is a gap in the evidence, not in the
+policy, and it closes the moment the collaboration features are
+exercised once — which is the two-account session already outstanding.
+
+Also observed, and not a security finding but worth recording: `payments`
+already holds one row although no Razorpay key is configured and no
+purchase is possible. Worth a look before the first real sale, so nobody
+mistakes it for one.
+
+### Who exists, as of 8 Oct 2026
+
+`auth.users` holds 3 accounts; `studio_members` holds 2; `accounts`
+holds 2. Addresses are deliberately not reproduced here — query
+`auth.users` for them. By role:
+
+- the project-owner account (the same one that owns the Google Cloud
+  project): `studio_members` role `admin`, signed in, created 3 Oct
+- a second personal account: role `user`, signed in, created 5 Oct
+- a third account on a corporate domain: **no `studio_members` row at
+  all**, signed in, created 5 Oct
+
+Three things follow, none of them acted on, because each is the owner's
+call and one is a privilege grant:
+
+- **The 13.2 bootstrap for the second `VITE_ADMIN_EMAILS` address is not
+  actionable**, and now for a checked reason rather than an assumed one:
+  that address does not exist in `auth.users` at all. It has never
+  signed in. `docs/LAUNCH.md` §4's "if it has signed in" resolves to no.
+- **`.env` may name the wrong address.** The second entry in
+  `VITE_ADMIN_EMAILS` has never signed in, while a visually
+  near-identical address HAS signed in and sits at role `user`. They are
+  different addresses and both may be deliberate — the one in `.env` is
+  the support e-mail on the Google consent screen, so it is certainly
+  real. But if the intent was that the signed-in account be an admin,
+  the env var names the wrong one and the console will never appear for
+  it. Nobody was promoted: deciding this is a privilege grant.
+- The corporate-domain account is signed in with no `studio_members`
+  row, so the gate holds it outside — fail-closed, working as designed.
+  It needs a row, or an invite, before it can sync.

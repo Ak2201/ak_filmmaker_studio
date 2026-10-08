@@ -200,8 +200,17 @@ live, and §20 drops and recreates `create_pending_payment` and
 `rzp-order`, per `docs/BILLING.md` §1 step 9, or every order fails with
 PGRST202.
 
-Then set the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address
-if it has signed in.
+**The 13.2 admin row for the second `VITE_ADMIN_EMAILS` address is NOT
+actionable, checked 8 Oct 2026.** That address does not exist in
+`auth.users`; it has never signed in, so there is no `user_id` to insert.
+`auth.users` holds three accounts: the project owner (role `admin`), a
+second personal account (role `user`) and one on a corporate domain with
+no `studio_members` row at all. Note that the second entry in
+`VITE_ADMIN_EMAILS` and the personal account that HAS signed in are
+visually near-identical but different addresses — if the intention was
+that the signed-in one be an admin, the env var names the wrong address
+and the console will never appear for it. That is a privilege decision,
+so nothing was granted. `docs/SECURITY-RLS.md`, LIVE CHECK 4.
 
 **Check** — and these are the values actually read back on 8 Oct, not
 predictions: `select id from plans order by sort` returns four rows

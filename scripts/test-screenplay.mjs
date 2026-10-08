@@ -354,7 +354,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   eq(X.toText({ elements: sample }, { title: 'T' }).split('\f').length - 1, pages.length, 'the text export has one form feed per paginated page');
   ok(pages.slice(1).every((p) => p.some((r) => r.id)), 'every page after the first starts at a known element, so the page view can mark it');
   const wsrc = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
-  ok(/Typeset\.paginate\(doc\.elements\)/.test(wsrc), "write.js's page view reads the PDF's own paginate()");
+  ok(/Typeset\.paginateDoc\(doc\)/.test(wsrc), "write.js's page view reads the PDF's own paginator (paginateDoc, which wraps paginate())");
   ok(!/function paginate|BODY_LINES|PAGE_LINES/.test(wsrc), 'write.js carries no paginator of its own');
   const t3 = performance.now();
   for (let k = 0; k < 5; k++) X.paginate(sample);
@@ -408,7 +408,8 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   ok(/'fms_characters_v1'/.test(src('../src/lib/store.js')), 'in SCOPED_KEYS (store.js)');
   ok(/characters:\s*'fms_characters_v1'/.test(src('../src/lib/backup.js')), 'in PROJECT_KEYS (backup.js)');
   ok(/CHARACTERS_KEY = 'fms_characters_v1'/.test(src('../src/pages/hub.js')) && /SCENE_BIN_KEY, CHARACTERS_KEY/.test(src('../src/pages/hub.js')), 'in ALL_KEYS (hub.js)');
-  ok(/LOCAL_ONLY = new Set\([^)]*'fms_characters_v1'/.test(src('../src/lib/cloud.js')), 'LOCAL_ONLY in cloud.js until a schema section adds the scope');
+  ok(/'fms_characters_v1':\s*'characters'/.test(src('../src/lib/cloud.js')) && !/LOCAL_ONLY = new Set\([^)]*'fms_characters_v1'/.test(src('../src/lib/cloud.js')), 'synced as scope characters (SCOPE_BY_KEY, schema §24), not LOCAL_ONLY');
+  ok(/'characters','costs'/.test(src('../supabase-schema.sql')), 'schema §24 names the characters scope');
 
   // Rename: a plan with a count, extensions kept, dual flag kept, undoable.
   const work = els.map((e) => ({ ...e }));

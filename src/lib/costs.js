@@ -11,8 +11,8 @@
    STORAGE CONTRACT. ONE new per-project key, `fms_costs_v1`, holding
    several collections — the pattern contacts.js set with people and
    call sheets under one key. Registered in SCOPED_KEYS (store.js),
-   PROJECT_KEYS (backup.js), ALL_KEYS (hub.js) and LOCAL_ONLY
-   (cloud.js) until a schema section gives it a cloud scope.
+   PROJECT_KEYS (backup.js), ALL_KEYS (hub.js) and SCOPE_BY_KEY
+   (cloud.js) as scope `costs`, which schema section 24 adds.
 
      expenses       [{ id, date, shootDay, line, category, amount,
                        gstPct, vendor, gstin, paidBy, method, note,

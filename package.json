@@ -30,6 +30,8 @@
     "test:sun": "node scripts/test-sun.mjs",
     "test:callsheet": "node scripts/test-callsheet.mjs",
     "test:costs": "node scripts/test-costs.mjs",
+    "test:revisions": "node scripts/test-revisions.mjs",
+    "test:ai-coverage": "node scripts/test-ai-coverage.mjs",
     "test:testimonials": "node scripts/check-testimonials.mjs",
     "ship": "npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",
@@ -40,6 +42,7 @@
     "prove:billing": "node scripts/prove-billing.mjs",
     "prove:sw": "node scripts/prove-sw.mjs",
     "prove:growth": "node scripts/prove-growth.mjs",
+    "prove:ai-coverage": "node scripts/prove-ai-coverage.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
     "density": "node scripts/density.mjs"
   },

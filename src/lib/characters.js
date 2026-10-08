@@ -14,8 +14,8 @@
    voice notes, aliases and the cast contact are work nobody can
    derive, so they live under `fms_characters_v1` (per project:
    SCOPED_KEYS in store.js, PROJECT_KEYS in backup.js, ALL_KEYS in
-   hub.js; LOCAL_ONLY in cloud.js until a schema section adds the
-   scope). A derived row becomes a stored one the first time the
+   hub.js; SCOPE_BY_KEY in cloud.js as scope `characters`, which
+   schema section 24 adds). A derived row becomes a stored one the first time the
    writer types something into it — never before.
 
    NEVER AUTO-DELETED. A stored character whose cues have all gone

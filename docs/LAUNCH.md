@@ -22,29 +22,89 @@ which page you land on.
 
 ## 2. Publish the Google consent screen
 
-Google Cloud project `filmstudio-495419` is in **Testing with zero test
-users**, so NO account can sign in — yours included. In the console: OAuth
-consent screen → Publishing status → Publish. It asks for the privacy
-policy and terms URLs on the authorised domain: `/privacy` and `/terms`
-exist for this. Add the final domain to Authorised JavaScript origins
-(`docs/GOOGLE-AUTH.md`).
+**ALREADY DONE — observed 8 Oct 2026 in the console.** This section said
+the project was "in Testing with zero test users, so NO account can sign
+in". That is false and has been for some time: project
+`filmstudio-495419` is **In production**, user type **External**, and the
+Verification Center states "Verification is not required since your app
+is not requesting any sensitive or restricted scopes." Sign-in works. The
+`filmstudio` OAuth client records a last-used date of 5 Oct 2026.
 
-Check: sign in with a Google account that is not yours.
+What is actually configured:
+
+| Thing | State on 8 Oct 2026 |
+| --- | --- |
+| Publishing status | In production, External |
+| Verification | Not required (no sensitive/restricted scopes) |
+| Client used by `.env` | `filmstudio`, `186547817753-qkjg…`, created 6 May 2026 |
+| Other client | `Filmmakers Studio - Drive (browser)`, `…-9lm4…`, 3 Oct 2026, unused |
+| Authorised JS origins | `https://ak-filmmaker-studio.vercel.app` (stale), `http://localhost:5173`, `http://localhost:4173`, `https://thefilmmakerstudio.vercel.app` |
+| Authorised redirect URI | `https://conhlrulxfwkhsnymakz.supabase.co/auth/v1/callback` |
+| Registered scopes | **none** — all three scope tables empty |
+| Branding | **entirely blank** — no app name, home page, privacy link, terms link or authorised domains |
+
+**The one real gap is branding, and it is a selling problem rather than a
+technical one.** Google reports "Your branding is not being shown to
+users." A consent screen with no app name shows a bare client ID at the
+exact moment someone is deciding whether to trust this with their film.
+Owner approved filling it on 8 Oct 2026, with these values:
+
+- App name `FilmMakerStudio` (the name in every `<title>` and the manifest)
+- Home page `https://thefilmmakerstudio.vercel.app/start.html` — the
+  PUBLIC landing page. Not `/`: that is the hub, behind the gate, and a
+  reviewer following it lands on `invite.html`.
+- Privacy `https://thefilmmakerstudio.vercel.app/privacy`,
+  terms `https://thefilmmakerstudio.vercel.app/terms` (both live, 200)
+- Authorised domain `vercel.app`
+
+**NOT YET APPLIED.** The browser session doing it lost its connection
+before the form was saved, and nothing was written. Also approved and not
+applied: removing the stale `https://ak-filmmaker-studio.vercel.app`
+origin from the `filmstudio` client. Do these together, and note that the
+per-row delete control in the new console appears on HOVER and the page
+SCROLLS when a field takes focus — screenshot immediately before clicking
+a trash icon, or you will delete the row below the one you meant (this
+happened; it was discarded unsaved).
+
+A second thing worth knowing before touching the scopes page: the scope
+tables are empty even though `signInWithGoogle()` asks for `drive.file`
+alongside e-mail. That is not breaking anything, because `drive.file` is
+in Google's non-sensitive class — which is exactly why the Verification
+Center says no review is needed. Registering it would describe it
+properly on the consent screen; registering the wrong thing there is how
+a project that needs no review acquires one.
 
 ## 3. Finish the legal pages
 
-`privacy.html`, `terms.html`, `refund.html` now say the service is sold
-by an INDIVIDUAL (sole proprietor) and carry a marked
-`[OWNER: full legal name]` placeholder, plus `[OWNER: GSTIN, if
-registered]` on the one tax line in the Terms. The refund policy is
-decided (7 Oct 2026): purchases are FINAL, except a duplicate or erroneous
-charge (refunded), charged-but-never-activated (refunded or activated,
-the buyer's choice) and any refund Indian law requires; governing law
-India, Chennai courts. Still to fill in: the name, the GSTIN if any, and
-a postal address if Razorpay asks for one. Razorpay's business
-verification and Meta's ad review both read these.
+**THE PLACEHOLDERS ARE LIVE ON THE PUBLIC SITE.** Checked 8 Oct 2026:
 
-Check: every `[OWNER:` or "draft" marker is gone from the three files.
+```
+/privacy  200  1 occurrence of "OWNER:"
+/terms    200  2 occurrences of "OWNER:"
+/refund   200  1 occurrence of "OWNER:"
+```
+
+`privacy.html`, `terms.html` and `refund.html` say the service is sold by
+an INDIVIDUAL (sole proprietor) and carry `[OWNER: full legal name]`,
+plus `[OWNER: GSTIN, if registered]` on the one tax line in the Terms.
+This section used to describe them as "still to fill in", which reads
+like a to-do; they are published, and a stranger can read the brackets
+today. Razorpay's business verification and Meta's ad review both read
+these pages, and an unfilled bracket on a Terms page is the kind of thing
+that gets an application rejected rather than queried. This is the
+cheapest blocker on the list to clear and the most expensive to leave.
+
+The refund policy itself is decided (7 Oct 2026): purchases are FINAL,
+except a duplicate or erroneous charge (refunded), charged-but-never-
+activated (refunded or activated, the buyer's choice) and any refund
+Indian law requires; governing law India, Chennai courts.
+
+Only the owner can supply: the full legal name, the GSTIN if registered,
+and a postal address if Razorpay asks for one. Nobody else can invent
+these, and a placed-holder name on a legal page is worse than no page.
+
+Check: `grep -rn '\[OWNER:' privacy.html terms.html refund.html` returns
+nothing, and the three live URLs contain no "OWNER:".
 
 ## 4. Run the schema sections that have never run
 

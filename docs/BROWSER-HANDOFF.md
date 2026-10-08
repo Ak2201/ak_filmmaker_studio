@@ -72,13 +72,35 @@ address, once it has signed in (`docs/LAUNCH.md` §4).
 
 ## 2. Google Cloud — publish the OAuth consent screen
 
-Project `filmstudio-495419` → APIs & Services → OAuth consent screen.
-It is in **Testing with zero test users**, so nobody can sign in.
-`docs/LAUNCH.md` §2 and `docs/GOOGLE-AUTH.md` have the details. Needs the
-privacy and terms URLs on `thefilmmakerstudio.vercel.app` (live), the
-`drive.file` scope, and the authorised origins already registered. Either
-publish (owner confirms) or, as a first step, add the owner's own Google
-account as a test user.
+**ALREADY PUBLISHED — observed 8 Oct 2026.** This step was written on the
+belief that project `filmstudio-495419` was "in Testing with zero test
+users, so nobody can sign in". It is **In production**, External, and the
+Verification Center says verification is not required because no
+sensitive or restricted scopes are requested. The `filmstudio` client
+(`186547817753-qkjg…`, the one `.env` uses) was last used 5 Oct 2026.
+The production host is already an authorised JavaScript origin and the
+Supabase callback is the registered redirect URI. Nothing to publish.
+
+**What IS missing is the branding**, and Google says so itself: "Your
+branding is not being shown to users." App name, home page, privacy link,
+terms link and authorised domains are all blank, so the consent screen
+shows a bare client ID. The owner approved filling it with the values now
+recorded in `docs/LAUNCH.md` §2 — note the home page is
+`/start.html`, not `/`, because `/` is behind the gate.
+
+**NOT APPLIED: the browser session lost its connection to Chrome before
+the form was saved.** Nothing was written. Still owed: set the five
+branding fields, and remove the stale
+`https://ak-filmmaker-studio.vercel.app` origin from the `filmstudio`
+client (also approved).
+
+One trap, paid for once already: in the new Google Auth Platform console
+the per-row delete is a trash icon that appears on HOVER, and clicking
+into a URI field SCROLLS the page. A trash icon clicked at coordinates
+taken from a screenshot older than the focus event deletes the row BELOW
+the one you meant — `localhost:5173` instead of the stale host, in this
+case. It was discarded unsaved. Screenshot immediately before the click,
+and verify which row the icon is level with.
 
 ## 3. Live security checks (before ANY payment)
 

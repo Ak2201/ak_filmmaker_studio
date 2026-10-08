@@ -18,16 +18,19 @@ run in parallel are in **§6d**. Where an earlier section of this file and
 "do the owner checklist" (that one is theirs — see §8) · "take lane 2" (§6d) ·
 "do P2" / "do B1" (any ID in §6c).
 
+> **The two UPDATE paragraphs below are a dated record of how the state moved.**
+> Where they or any figure in §2 (e.g. `prove:billing` 93, `prove:sw` 24) disagree
+> with §6c or §6, the later figure and §6c win — the counts grew as workstreams
+> were gated.
+
 **UPDATE, later on 8 Oct 2026 — "resume everything" ran and the ten
 workstreams are RELEASED.** Steps 1–11 of §6b were done on
 `feature/integration` (off `develop`), merged into `develop` and released to
 `main` with a `--no-ff` merge titled "Release: the ten workstreams". The
 tables below (§1, §6) describe the state BEFORE that and are kept as the
 record; `docs/HISTORY.md` item 20 is what changed. Still open: the owner
-checklist (§8, `docs/LAUNCH.md`, now including schema §21–§24 — run §24
-before this build goes live), the not-started billing items (GST invoices,
-gift, edu, leads, funnel — schema §25 onward), the queued ideas (tasks
-11–14), the Tamil-labels decision (task 15), the emotional-craft layer, and
+checklist (§8, `docs/LAUNCH.md`; schema §24 has since been run live — only §20–§23 remain), the not-started billing items (GST invoices,
+gift, edu, leads, funnel — schema §25 onward), the queued ideas (Q1–Q4), the Tamil-labels decision (Q5), the emotional-craft layer, and
 the leftovers in `docs/KNOWN-ISSUES.md`.
 
 **UPDATE, 8 Oct 2026 evening — the owner checklist was STARTED, through
@@ -54,8 +57,9 @@ running something and assuming:
   4. The check that file called "the last cheap check" for eight days
   only ever needed real rows to exist, and they now do: `projects` holds
   6 and `project_data` 30, and an anonymous GET still returns `[]`.
-- **The `[OWNER: full legal name]` placeholders are not pending edits —
-  they are LIVE on the public site**, on `/privacy`, `/terms` and
+- **(Historical — the legal NAME has since been filled, see P8/P9.) The
+  `[OWNER: full legal name]` placeholders were not pending edits —
+  they were LIVE on the public site**, on `/privacy`, `/terms` and
   `/refund`. Razorpay's business verification and Meta's ad review both
   read those pages. This is now the cheapest blocker on the list and the
   only one nobody but the owner can clear.
@@ -155,7 +159,7 @@ contradicts "your work stays in your browser"; if ever wanted, put it on
   base is now `develop`.)
 - **Copyright:** the book is copyrighted — original wording only, Tamil/Indian
   examples from the four studied films, one credit line, no reproduction.
-- **Still undecided (task #15):** Tamil-script UI labels (reverses `lang.js`'s
+- **Still undecided (Q5):** Tamil-script UI labels (reverses `lang.js`'s
   English-labels design).
 
 ## 4. What is live and what is not
@@ -423,6 +427,26 @@ live; §20–§23 written, tested and wired in the UI.
 | **4 Emotional craft** | E0–E5 | new files + one-line hooks in `story.js`, `scenes.js`, `library.js`, `ai.js`, `navigation.json`, `glossary.json`, `steps.stages.json` | lane 5 on `write.js` |
 | **5 Queued** | Q1–Q4 | `write.js`, `cloud.js`, `comments.js`, new weather module | lane 4 on `write.js` |
 | **Owner / browser** | P1, P3–P12 | no code (docs only: `LAUNCH.md`, `BILLING.md`) | — |
+
+
+### Where to start in each lane (ranked)
+
+| Lane | Order | First action |
+|---|---|---|
+| **1 Billing & growth** | 1. **B6** (copy fix, minutes) → 2. **P2** with the owner/browser (turns on promo, upgrade, referral, affiliate — already built) → 3. **B1** GST invoices (§25) → 4. **B4** + **B5** (leads, funnel — small, one session) → 5. **B2**, **B3** → 6. **B7** only after a security review | Open `src/ui/growth-admin.js:136-137` and make the heading say only what renders. Then, before writing any SQL, read `supabase-schema.sql` §21–§23 and `docs/BILLING.md` §7 so §25 follows their conventions. |
+| **2 Production** | 1. **G1** (after-sunset reads the DPR wrap) → 2. **G2** (recce fields on Plan) → 3. **G7** (dynamic imports, measurable) → 4. **G5** (only after checking the CBFC manual) | `src/pages/shoot.js:282`: take the later of the call-sheet `wrap` and the DPR's wrap for the day (`src/lib/dpr.js`), and add the case to `test:sun` / `test:stripboard`. |
+| **3 Quality** | 1. **T8** (make `ship` run the whole gate) → 2. **T4**, **T2**, **T1** (small) → 3. **T3**, **T9** (browser) → 4. **T10** CI (needs T8) | Read the release gate in `docs/BRANCHING.md`, then change `package.json`'s `ship` so it runs every `test:*` and the `prove:*` list; time it; record the cost. |
+| **4 Emotional craft** | E0 → E1 (the first shippable slice) → E2 → E3 → E4 → E5 | `git worktree add .claude/worktrees/emotional-craft -b feature/emotional-craft origin/develop`, then Phase 0 of `docs/WIP-EMOTION-PLAN.md` (build, every `test:*`, uncapped `verify`; write `docs/WIP-EMOTION.md`). |
+| **5 Queued** | Q5 is the owner's call first → Q2, Q1, Q4 → Q3 last (needs a schema number from lane 1) | Ask the owner about Q5 before touching anything; Q2 (`src/ui/comments.js`) is the safest build. |
+
+### Old numbers → registry IDs
+
+Earlier text in this file and in `docs/WIP.md` / `docs/RESUME.md` uses the
+session task numbers. Map: task **#9** → B1–B5 (+P2); **#10** public link → B7;
+**#11** weather → Q1; **#12** notes overview → Q2; **#13** goal sync → Q3;
+**#14** template packs → Q4; **#15** Tamil labels → Q5; **#16** integration →
+done (`ad7ab02`); **#18** emotional craft → E0–E5. Tasks #1–#8 and #10 (the
+workstreams) are done.
 
 Shared files where two lanes will collide — keep edits there to one-line hooks
 and rebase often: `write.js`, `store.js`, `backup.js`, `hub.js`, `package.json`,

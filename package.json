@@ -36,7 +36,7 @@
     "test:testimonials": "node scripts/check-testimonials.mjs",
     "shots": "node scripts/make-shots.mjs",
     "test:brand": "node scripts/check-brand.mjs",
-    "test:all": "npm run test:brand && npm run test:pdf && npm run test:story && npm run test:screenplay && npm run test:billing && npm run test:schema && npm run test:post && npm run test:format && npm run test:delivery && npm run test:beats && npm run test:tanglish && npm run test:keys && npm run test:shots && npm run test:sync && npm run test:stripboard && npm run test:import && npm run test:sun && npm run test:callsheet && npm run test:costs && npm run test:revisions && npm run test:ai-coverage && npm run test:testimonials",
+    "test:all": "npm run test:brand && npm run test:pdf && npm run test:story && npm run test:screenplay && npm run test:billing && npm run test:invoice && npm run test:schema && npm run test:post && npm run test:format && npm run test:delivery && npm run test:beats && npm run test:tanglish && npm run test:keys && npm run test:shots && npm run test:sync && npm run test:stripboard && npm run test:import && npm run test:sun && npm run test:callsheet && npm run test:costs && npm run test:revisions && npm run test:ai-coverage && npm run test:testimonials",
     "build:verify": "VITE_SITE_GATE=off vite build --outDir dist-verify",
     "test:ai-lazy": "node scripts/check-ai-lazy.mjs",
     "ship": "npm run test:all && npm run build:open && npm run verify && npm run build && npm run test:ai-lazy && npm run prove:gate && npm run prove:billing && npm run prove:storage && npm run prove:drive && npm run prove:sw && npm run build:extension && npm run prove:extension && npm run build:verify && npm run prove:growth && npm run prove:ai-coverage",

@@ -197,6 +197,43 @@ function themeColour() {
   catch (e) { return ''; }
 }
 
+/* ---- refunds (schema section 27) ------------------------------
+   A customer can only ASK. The money moves in the rzp-refund edge
+   function, which an administrator calls; the server re-checks the
+   role, the payment and the amount. Supabase stays lazy: every one of
+   these goes through client() first. A database where section 27 has
+   not run answers PGRST202 / 42P01 — callers treat that as "no refund
+   features here", see isRefundsMissing(). */
+export const REFUND_CATEGORIES = [
+  ['duplicate_charge', 'I was charged twice'],
+  ['not_delivered', 'I was charged but my plan did not arrive'],
+  ['legal', 'Another ground the law gives me'],
+  ['other', 'Something else']
+];
+export const isRefundsMissing = (e) => !!e && (e.code === 'PGRST202' || e.code === '42P01' || /Could not find|does not exist/i.test(String(e.message || '')));
+
+/** The switch, public: should Settings draw the request block at all? */
+export async function refundRequestsEnabled() {
+  const sb = await client();
+  const { data, error } = await sb.rpc('refund_requests_enabled');
+  if (error) throw error;
+  return data === true;
+}
+/** { enabled, eligible, can_request, payment, latest } for the signed-in account. */
+export async function myRefundStatus() {
+  const sb = await client();
+  const { data, error } = await sb.rpc('my_refund_status');
+  if (error) throw error;
+  return data || null;
+}
+/** File a request (not a refund). Resolves to the new request row. */
+export async function requestRefund(paymentId, category, message = '') {
+  const sb = await client();
+  const { data, error } = await sb.rpc('request_refund', { p_payment_id: paymentId, p_category: category, p_message: String(message || '').trim() });
+  if (error) throw error;
+  return data;
+}
+
 /* ---- admin ---------------------------------------------------- */
 
 export const admin = {
@@ -218,6 +255,40 @@ export const admin = {
     const { data, error } = await sb.rpc('admin_grant_plan', { p_user: userId, p_plan: planId, p_days: days, p_note: note || null });
     if (error) throw error;
     return data;
+  },
+  /** Refund a captured payment through Razorpay (the rzp-refund edge
+   *  function; admin-checked there). `amountPaise` null = in full. A
+   *  `requestId` settles that customer request on success. Resolves to
+   *  { ok, refund_id, status: 'pending'|'processed', amount_paise, email, plan_ended }. */
+  async refund(paymentId, { amountPaise = null, reason, requestId = null } = {}) {
+    const out = await invoke('rzp-refund', { payment_id: paymentId, amount_paise: amountPaise, reason, request_id: requestId });
+    Store.notify('billing:changed', out);
+    return out;
+  },
+  async listRefunds() {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_list_refunds');
+    if (error) throw error;
+    return data || [];
+  },
+  async listRefundRequests(status = null) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_list_refund_requests', { p_status: status });
+    if (error) throw error;
+    return data || [];
+  },
+  /** decision: 'declined' (note required) | 'approved' (mark only; the refund is admin.refund). */
+  async decideRefundRequest(id, decision, note = null) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_decide_refund_request', { p_id: id, p_decision: decision, p_note: note });
+    if (error) throw error;
+    return data;
+  },
+  async setRefundRequestsEnabled(on) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_refund_requests_enabled', { p_enabled: !!on });
+    if (error) throw error;
+    return data === true;
   },
   async overview() {
     const sb = await client();
@@ -243,4 +314,4 @@ export const admin = {
   }
 };
 
-export default { listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
+export default { requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };

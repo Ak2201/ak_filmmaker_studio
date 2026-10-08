@@ -32,6 +32,15 @@
          the code's use count moves at activation; a refused code
          prints the server's sentence and prices nothing; the console
          lists, adds and deactivates a code
+     (n) refunds (schema section 27): the customer's "Request a
+         refund" is absent while the admin's switch is off and appears
+         when it is on; a request is filed, not refunded; the console
+         lists it and APPROVE opens the REFUND dialog, which calls the
+         rzp-refund function (admin-checked) and the fake Razorpay
+         refund endpoint; a partial refund from the ledger needs a
+         reason, stays pending until the webhook, and the webhook is
+         idempotent; DECLINE needs a note the customer then reads; a
+         non-admin calling rzp-refund is refused
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -39,7 +48,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed } from './fake-supabase.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
@@ -550,6 +559,151 @@ try {
     await A2.page.waitForFunction(() => /cal@example\.com/.test(document.querySelector('#growth')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'ORDERS lists who bought through it'), () => ok(false, 'ORDERS lists who bought through it'));
     allErrors.push(...A2.errors); await A2.ctx.close();
+  }
+
+  console.log('(n) refunds: the switch, a request, approve -> refund, a partial refund, decline');
+  {
+    F.reset(); RZP.mode = 'pay'; RZP.refundMode = 'processed';
+    const seed = (tok, id, plan, paise, accId) => {
+      const u = USERS[tok];
+      F.db.members.set(u.id, { role: 'user', disabled_at: null });
+      F.db.accounts.push({ id: accId, name: u.email.split('@')[0] + "'s Studio", owner_id: u.id, plan, plan_period: 'lifetime', plan_until: null, seat_limit: 1, created_at: new Date().toISOString() });
+      F.db.payments.push({ id, user_id: u.id, account_id: accId, plan_id: plan, period: 'lifetime', amount_paise: paise, currency: 'INR', razorpay_order_id: 'order_' + id,
+        razorpay_payment_id: 'pay_' + id, status: 'paid', created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: null });
+    };
+    seed('tok-ben', 'payR1', 'starter', 299900, 'accR1');
+    seed('tok-amy', 'payR2', 'indie', 799900, 'accR2');
+    seed('tok-cal', 'payR3', 'starter', 299900, 'accR3');
+    const planOf = (accId) => { const a = F.db.accounts.find((x) => x.id === accId); return a.plan_until && Date.parse(a.plan_until) <= Date.now() ? 'ended' : a.plan; };
+
+    // 1. the switch is off: the customer has nothing to click
+    const B = await newContext(browser, { tok: 'tok-ben' });
+    await B.page.goto(BASE + 'settings.html#plan');
+    await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
+    await B.page.waitForTimeout(600);
+    ok(F.db.calls.includes('my_refund_status') && !(await B.page.$('[data-rf-panel]')), 'with the switch off, Ben has a captured payment and sees NO "Request a refund"');
+    ok(await B.page.evaluate(() => { const h = [...document.querySelectorAll('#plan h3')].map((e) => e.textContent); return !h.includes('Request a refund'); }), 'and the heading is not on the page');
+
+    // 2. the admin turns it on
+    F.db.sessions.clear();
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.waitForSelector('#baRefundSwitch', { timeout: 15000 });
+    ok(!(await A.page.isChecked('#baRefundSwitch')), 'the console switch "Let customers request refunds from Settings" reads OFF by default');
+    await A.page.check('#baRefundSwitch');
+    await A.page.waitForFunction(() => document.getElementById('baRefundSwitch') && document.getElementById('baRefundSwitch').checked && !document.getElementById('baRefundSwitch').disabled, null, { timeout: 8000 });
+    ok(F.db.rrEnabled === true, 'turning it on reaches the database (admin_set_refund_requests_enabled)');
+
+    // 3. the customer asks
+    await B.page.reload();
+    await B.page.waitForSelector('[data-rf-panel="request"]', { timeout: 12000 }).then(() => ok(true, 'with it on, Ben (captured payment) sees "Request a refund"'), () => ok(false, 'with it on, Ben sees "Request a refund"'));
+    ok(/Purchases are final/.test(await B.page.textContent('[data-rf-panel]')) && !!(await B.page.$('[data-rf-panel] a[href="refund.html"]')), 'it states the policy and links refund.html');
+    ok((await B.page.$$eval('#rfCategory option', (o) => o.map((x) => x.value))).join() === 'duplicate_charge,not_delivered,legal,other', 'the four reason categories are offered');
+    await B.page.selectOption('#rfCategory', 'not_delivered');
+    await B.page.fill('#rfMessage', 'Paid on 7 Oct, plan never showed.');
+    await B.page.click('[data-rf-form="request"] button[type="submit"]');
+    await B.page.waitForFunction(() => /Waiting for the studio/.test(document.querySelector('[data-rf-panel]')?.textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'the block shows the request as pending'), () => ok(false, 'the block shows the request as pending'));
+    ok(F.db.rreqs.length === 1 && F.db.rreqs[0].status === 'pending' && F.db.rreqs[0].category === 'not_delivered', 'the request reached the database as PENDING');
+    ok(F.db.refunds.length === 0 && F.db.rzpRefunds.length === 0 && F.db.payments.find((x) => x.id === 'payR1').status === 'paid', 'and nothing was refunded: a request is not a refund');
+    ok(!(await B.page.$('[data-rf-form="request"]')), 'the form is gone while one is open');
+
+    // 4. the admin approves: the dialog, then the refund
+    await A.page.click('#billing [data-ba-action="reload"]');
+    await A.page.waitForSelector('#refunds tr[data-rreq] [data-ba-action="rreq-approve"]', { timeout: 10000 });
+    ok(/ben@example\.com/.test(await A.page.textContent('#refunds tr[data-rreq]')) && /plan never showed/.test(await A.page.textContent('#refunds tr[data-rreq]')), 'the console lists the request with who and why');
+    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-approve"]', 'aria-label')) === 'Approve and refund ben@example.com', 'APPROVE carries the customer in its aria-label');
+    await A.page.click('#refunds [data-ba-action="rreq-approve"]');
+    await A.page.waitForSelector('.rf-dialog #rfReason', { timeout: 5000 });
+    ok(/ends .*plan today/.test(await A.page.textContent('.rf-dialog .rf-warn')), 'the dialog warns the refund ends the plan');
+    ok((await A.page.inputValue('#rfAmount')) === '2999' && /not_delivered|charged but my plan did not arrive/.test(await A.page.inputValue('#rfReason')), 'the amount defaults to the full ₹2,999 and the reason to the customer’s');
+    await A.page.fill('#rfReason', '');
+    await A.page.click('.rf-dialog button[type="submit"]');
+    ok(/reason/i.test(await A.page.textContent('.rf-dialog .gt-error')) && F.db.rzpRefunds.length === 0, 'an empty reason is refused in the dialog and Razorpay is not called');
+    await A.page.fill('#rfReason', 'Not delivered — verified');
+    await A.page.click('.rf-dialog button[type="submit"]');
+    await A.page.waitForFunction(() => !document.querySelector('.rf-dialog'), null, { timeout: 8000 });
+    ok(F.db.rzpRefunds.length === 1 && F.db.rzpRefunds[0].payment === 'pay_payR1' && F.db.rzpRefunds[0].amount === 299900 && F.db.rzpRefunds[0].notes.refunded_by === 'admin@example.com' && /verified/.test(F.db.rzpRefunds[0].notes.reason), 'the fake Razorpay was asked for the full ₹2,999 with the reason and the admin’s e-mail in its notes');
+    ok(F.db.payments.find((x) => x.id === 'payR1').status === 'refunded' && planOf('accR1') === 'ended', 'an immediate "processed" answer refunds the payment and ends the plan');
+    ok(F.db.rreqs[0].status === 'refunded', 'and the request is settled as refunded');
+    await A.page.waitForFunction(() => /\brefunded\b/.test(document.querySelector('#refunds tr[data-rreq]')?.textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'the console list shows it refunded'), () => ok(false, 'the console list shows it refunded'));
+    ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no REFUND for that payment any more');
+    await B.page.reload();
+    await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 }); await B.page.waitForTimeout(500);
+    ok(!(await B.page.$('[data-rf-panel]')), 'Ben’s block disappears once the payment is refunded (no captured, unrefunded payment)');
+
+    // 5. a partial refund from the ledger, Razorpay says pending, the webhook finishes it, twice
+    RZP.refundMode = 'pending';
+    await A.page.click('#billing [data-ba-action="reload"]');
+    const amyBtn = '#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund amy@example.com"]';
+    await A.page.waitForSelector(amyBtn, { timeout: 10000 });
+    await A.page.click(amyBtn);
+    await A.page.waitForSelector('.rf-dialog #rfAmount', { timeout: 5000 });
+    ok((await A.page.inputValue('#rfAmount')) === '7999', 'the ledger REFUND dialog opens at the full ₹7,999');
+    await A.page.fill('#rfAmount', '99999');
+    await A.page.fill('#rfReason', 'x');
+    await A.page.click('.rf-dialog button[type="submit"]');
+    ok(/between/.test(await A.page.textContent('.rf-dialog .gt-error')) && F.db.rzpRefunds.length === 1, 'more than was paid is refused in the dialog');
+    await A.page.fill('#rfAmount', '1000');
+    await A.page.fill('#rfReason', 'Duplicate charge, goodwill part');
+    const slow = A.page.click('.rf-dialog button[type="submit"]');
+    await slow;
+    await A.page.waitForFunction(() => !document.querySelector('.rf-dialog'), null, { timeout: 8000 });
+    ok(F.db.rzpRefunds.length === 2 && F.db.rzpRefunds[1].amount === 100000, 'a partial ₹1,000 went to Razorpay as 100000 paise');
+    ok(F.db.payments.find((x) => x.id === 'payR2').status === 'paid' && planOf('accR2') === 'indie', 'a PENDING refund leaves the payment and the plan alone until the webhook');
+    await A.page.click('#billing [data-ba-action="reload"]');
+    await A.page.waitForFunction(() => /refund pending/.test(document.querySelector('#billing .ba-ledger')?.textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'the ledger shows "refund pending"'), () => ok(false, 'the ledger shows "refund pending"'));
+    ok(!(await A.page.$(amyBtn)), 'and the REFUND button is gone while it is in flight (no double refund)');
+    const dbl = await A.page.evaluate(async ([sb, tok]) => {
+      const r = await fetch(sb + '/functions/v1/rzp-refund', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id: 'payR2', reason: 'again' }) });
+      return { status: r.status, body: await r.json() };
+    }, [SB, 'tok-admin']);
+    ok(dbl.status === 400 && /already in progress/.test(dbl.body.error) && F.db.rzpRefunds.length === 2, 'a second refund while one is pending is refused by the server');
+    webhookRefundProcessed('payR2'); webhookRefundProcessed('payR2');
+    ok(F.db.payments.find((x) => x.id === 'payR2').status === 'refunded' && planOf('accR2') === 'ended' && F.db.refunds.filter((f) => f.payment_id === 'payR2' && f.status !== 'failed').length === 1, 'the webhook (delivered twice) refunds once: one refund row, the plan ended');
+
+    // 6. a non-admin cannot call the function at all
+    const bad = await B.page.evaluate(async ([sb, tok]) => {
+      const r = await fetch(sb + '/functions/v1/rzp-refund', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id: 'payR3', reason: 'sneaky' }) });
+      return { status: r.status, body: await r.json() };
+    }, [SB, 'tok-ben']);
+    ok(bad.status === 403 && F.db.rzpRefunds.length === 2 && F.db.payments.find((x) => x.id === 'payR3').status === 'paid', 'a signed-in non-admin calling rzp-refund is refused (403) and nothing moves');
+
+    // 7. decline, with a note the customer reads
+    const C = await newContext(browser, { tok: 'tok-cal' });
+    await C.page.goto(BASE + 'settings.html#plan');
+    await C.page.waitForSelector('[data-rf-panel="request"]', { timeout: 12000 });
+    await C.page.selectOption('#rfCategory', 'other');
+    await C.page.click('[data-rf-form="request"] button[type="submit"]');
+    await C.page.waitForSelector('[data-rf-panel] .gt-error', { timeout: 5000 }).then(() => ok(true, '"Something else" with no words is refused in the form'), () => ok(false, '"Something else" with no words is refused in the form'));
+    ok(F.db.rreqs.length === 1, 'and no request was filed');
+    await C.page.fill('#rfMessage', 'Changed my mind');
+    await C.page.click('[data-rf-form="request"] button[type="submit"]');
+    await C.page.waitForFunction(() => /Waiting for the studio/.test(document.querySelector('[data-rf-panel]')?.textContent || ''), null, { timeout: 10000 });
+    await A.page.click('#billing [data-ba-action="reload"]');
+    await A.page.waitForSelector('#refunds [data-ba-action="rreq-decline"]', { timeout: 10000 });
+    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-decline"]', 'aria-label')) === 'Decline the request from cal@example.com', 'DECLINE carries the customer in its aria-label');
+    await A.page.click('#refunds [data-ba-action="rreq-decline"]');
+    await A.page.waitForSelector('.rf-dialog #rfNote', { timeout: 5000 });
+    await A.page.click('.rf-dialog button[type="submit"]');
+    ok(/Say why/.test(await A.page.textContent('.rf-dialog .gt-error')) && F.db.rreqs[1].status === 'pending', 'declining without a note is refused in the dialog');
+    await A.page.fill('#rfNote', 'Outside the refund policy: the plan was delivered.');
+    await A.page.click('.rf-dialog button[type="submit"]');
+    await A.page.waitForFunction(() => !document.querySelector('.rf-dialog'), null, { timeout: 8000 });
+    ok(F.db.rreqs[1].status === 'declined' && /Outside the refund policy/.test(F.db.rreqs[1].admin_note) && F.db.rzpRefunds.length === 2, 'the request is declined with the note and Razorpay was not called');
+    await C.page.reload();
+    await C.page.waitForFunction(() => /Declined/.test(document.querySelector('[data-rf-panel]')?.textContent || ''), null, { timeout: 12000 })
+      .then(() => ok(true, 'Cal sees the request as declined'), () => ok(false, 'Cal sees the request as declined'));
+    ok(/Outside the refund policy/.test(await C.page.textContent('[data-rf-panel]')) && !!(await C.page.$('[data-rf-form="request"]')), 'with the administrator’s note, and may ask again');
+    await C.page.setViewportSize({ width: 390, height: 800 });
+    ok(await C.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the request block does not overflow at 390px');
+    await A.page.setViewportSize({ width: 390, height: 800 });
+    ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the console’s refund list and ledger do not overflow at 390px');
+    ok(!(await C.page.evaluate(() => Object.keys(localStorage).some((k) => /refund/i.test(k)))), 'no refund state is kept in localStorage');
+    for (const x of [A, B, C]) { allErrors.push(...x.errors); await x.ctx.close(); }
+    RZP.refundMode = 'pending';
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

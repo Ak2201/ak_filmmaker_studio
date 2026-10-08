@@ -101,6 +101,7 @@ import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import Billing from '../lib/billing.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
+import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 /* The branding switch and the WhatsApp help line under the plan cards
    (footer.js owns both; null when neither applies to this build/plan). */
@@ -128,6 +129,7 @@ async function refreshBilling() {
   try {
     const [plans, st] = await Promise.all([Billing.listPlans(), Billing.status()]);
     billing = { plans, st, error: '', missing: false, loading: false };
+    refreshRefundRequest();   // a purchase or a refund changes what the server says
   } catch (e) {
     // The table or the RPC missing means section 16 has not run: say so, plainly, instead of a spinner.
     const missing = /does not exist|Could not find|PGRST/i.test(e.message || '');
@@ -204,6 +206,9 @@ function renderPlan() {
   // Referral code, gifts, invoices (schema §22 onward): src/ui/growth-panels.js.
   const growth = memberGrowthPanels(st, { rerender: () => { if (!busy) render(); } });
   if (growth) sec.append(growth);
+  // A request for a refund (schema §27): only when the admin has it on and there is a payment to refund.
+  const refundBlock = refundRequestPanel({ rerender: () => { if (!busy) render(); } });
+  if (refundBlock) sec.append(refundBlock);
   const invs = memberInvoicePanel(st, { rerender: () => { if (!busy) render(); } });   // schema §28
   if (invs) sec.append(invs);
   const extras = planExtras(st);

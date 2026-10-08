@@ -10,7 +10,7 @@
      node scripts/deploy-billing.mjs --sql       run §16 and §17 through
                                                  the Management API
      node scripts/deploy-billing.mjs --functions deploy rzp-order,
-                                                 rzp-verify, rzp-webhook
+                                                 rzp-verify, rzp-refund, rzp-webhook
                                                  (--no-verify-jwt), and
                                                  set the Razorpay secrets
                                                  that are in the env
@@ -105,6 +105,7 @@ if (doFns) {
   console.log('deploying edge functions …');
   cli('functions', 'deploy', 'rzp-order');
   cli('functions', 'deploy', 'rzp-verify');
+  cli('functions', 'deploy', 'rzp-refund');   // schema section 27; verifies the JWT and the admin role itself
   cli('functions', 'deploy', 'rzp-webhook', '--no-verify-jwt');
   const secrets = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'].filter((k) => process.env[k]);
   if (secrets.length) {
@@ -114,5 +115,5 @@ if (doFns) {
     console.log('  no RAZORPAY_* in the environment; the functions answer 503 until `supabase secrets set` runs');
   }
   console.log('✓ functions deployed. Register the webhook URL in the Razorpay dashboard:');
-  console.log(`  https://${REF}.supabase.co/functions/v1/rzp-webhook  (payment.captured, payment.failed, refund.processed)`);
+  console.log(`  https://${REF}.supabase.co/functions/v1/rzp-webhook  (payment.captured, payment.failed, refund.processed, refund.failed)`);
 }

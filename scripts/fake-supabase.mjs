@@ -18,7 +18,7 @@ export const F = { db: null, reset() { F.db = freshDb(); return F.db; } };
    The key secret the fake "edge functions" verify with, and the mode
    the Checkout stub reads ('pay' | 'dismiss' | 'tamper'). signFor()
    is what Razorpay does: HMAC-SHA256(order|payment, KEY_SECRET). */
-export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay' };
+export const RZP = { keyId: 'rzp_test_fake', secret: 'fake_key_secret_123', mode: 'pay', refundMode: 'pending' };   // refundMode: 'pending' | 'processed' | 'fail'
 export const signFor = async (order, payment) => createHmac('sha256', RZP.secret).update(`${order}|${payment}`).digest('hex');
 const PLAN_RANK = { free: 0, starter: 1, indie: 2, pro: 3 };
 /* Section 18: a plan is for good. applyPlan() writes plan_until null;
@@ -58,6 +58,21 @@ function activate(orderId, paymentId, raw) {
   afterPaid(pay);
   if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
   return { already: false, pay };
+}
+
+/* section 27: mark_payment_refunded() — idempotent, ends the plan it bought */
+function endPlanByRefund(pay) {
+  if (pay.status === 'refunded') return;
+  pay.status = 'refunded';
+  const a = F.db.accounts.find((x) => x.id === pay.account_id);
+  if (a && a.plan === pay.plan_id) a.plan_until = new Date(Date.now() - 1000).toISOString();
+}
+/** What the refund.processed WEBHOOK does, for a proof to call: settle the refunds row, end the plan once. */
+export function webhookRefundProcessed(paymentRowId) {
+  const f = F.db.refunds.find((x) => x.payment_id === paymentRowId && x.status !== 'failed');
+  if (f) f.status = 'processed';
+  const pay = F.db.payments.find((x) => x.id === paymentRowId);
+  if (pay) endPlanByRefund(pay);
 }
 
 /* section 20: public.quote_order(), as the database answers it */
@@ -175,6 +190,8 @@ export function freshDb() {
     // section 22
     settings: { referral_friend_pct: 10, referral_reward_pct: 10, referral_reward_paise: null },
     credits: [],
+    // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
+    refunds: [], rreqs: [], rrEnabled: false, rzpRefunds: [],
     calls: []
   };
 }
@@ -346,6 +363,53 @@ function rpc(name, args, user, route) {
       const by = {}; for (const a of F.db.accounts) { const k = accountPlan(a); by[k] = (by[k] || 0) + 1; }
       return json(route, 200, { paid_30d_paise: paid.reduce((n, x) => n + x.amount_paise, 0), paid_total_paise: paid.reduce((n, x) => n + x.amount_paise, 0),
         payments_30d: paid.length, active_by_plan: by, lapsing_14d: 0, refunds: F.db.payments.filter((x) => x.status === 'refunded').length });
+    }
+    /* ---- section 27: refund requests ---- */
+    case 'refund_requests_enabled': return json(route, 200, !!F.db.rrEnabled);
+    case 'admin_set_refund_requests_enabled': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      F.db.rrEnabled = !!args.p_enabled; return json(route, 200, F.db.rrEnabled);
+    }
+    case 'my_refund_status': {
+      if (!user) return pgErr(route, '42501', 'Sign in first');
+      const pay = F.db.payments.filter((x) => x.user_id === user.id && x.status === 'paid' && x.amount_paise > 0).sort((a, b) => Date.parse(b.paid_at) - Date.parse(a.paid_at)).pop() || null;
+      const mine = F.db.rreqs.filter((q) => q.user_id === user.id);
+      const q = mine[mine.length - 1] || null;
+      const busy = !!pay && (F.db.refunds.some((f) => f.payment_id === pay.id && f.status !== 'failed') || F.db.rreqs.some((r) => r.payment_id === pay.id && (r.status === 'pending' || r.status === 'approved')));
+      return json(route, 200, { enabled: F.db.rrEnabled, eligible: F.db.rrEnabled && !!pay, can_request: F.db.rrEnabled && !!pay && !busy,
+        payment: pay ? { id: pay.id, plan_id: pay.plan_id, amount_paise: pay.amount_paise, paid_at: pay.paid_at } : null,
+        latest: q ? { id: q.id, status: q.status, category: q.category, message: q.message, admin_note: q.admin_note, created_at: q.created_at, decided_at: q.decided_at, payment_id: q.payment_id } : null });
+    }
+    case 'request_refund': {
+      if (!user) return pgErr(route, '42501', 'Sign in first');
+      if (!F.db.rrEnabled) return pgErr(route, '42501', 'Refund requests are not open right now. Write to us instead.');
+      if (!['duplicate_charge', 'not_delivered', 'legal', 'other'].includes(args.p_category)) return pgErr(route, '22023', 'Choose a reason');
+      const pay = F.db.payments.find((x) => x.id === args.p_payment_id);
+      if (!pay || pay.user_id !== user.id) return pgErr(route, '42501', 'That is not one of your payments');
+      if (pay.status !== 'paid') return pgErr(route, '22023', pay.status === 'refunded' ? 'That payment has already been refunded' : 'Only a payment that went through can be refunded');
+      if (F.db.rreqs.some((r) => r.payment_id === pay.id && (r.status === 'pending' || r.status === 'approved'))) return pgErr(route, '22023', 'You already have a request open for that payment');
+      const q = { id: 'rq' + F.db.rreqs.length, user_id: user.id, payment_id: pay.id, category: args.p_category, message: String(args.p_message || ''), status: 'pending', admin_note: null, created_at: new Date().toISOString(), decided_at: null };
+      F.db.rreqs.push(q); return json(route, 200, q);
+    }
+    case 'admin_list_refund_requests': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, [...F.db.rreqs].reverse().filter((q) => !args.p_status || q.status === args.p_status).map((q) => {
+        const pay = F.db.payments.find((x) => x.id === q.payment_id) || {};
+        return { ...q, email: (Object.values(USERS).find((u) => u.id === q.user_id) || {}).email, plan_id: pay.plan_id, amount_paise: pay.amount_paise, razorpay_payment_id: pay.razorpay_payment_id, payment_status: pay.status };
+      }));
+    }
+    case 'admin_decide_refund_request': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const q = F.db.rreqs.find((x) => x.id === args.p_id);
+      if (!q) return pgErr(route, '22023', 'No such request');
+      if (args.p_decision === 'declined' && !String(args.p_note || '').trim()) return pgErr(route, '22023', 'Say why, in a sentence — the customer will read it');
+      if (q.status !== 'pending' && q.status !== 'approved') return pgErr(route, '22023', 'That request was already ' + q.status);
+      Object.assign(q, { status: args.p_decision, admin_note: String(args.p_note || '').trim() || null, decided_at: new Date().toISOString() });
+      return json(route, 200, q);
+    }
+    case 'admin_list_refunds': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, [...F.db.refunds].reverse());
     }
     case 'studio_status': {
       const m = user && F.db.members.get(user.id);
@@ -568,6 +632,31 @@ export async function handle(route) {
     return json(route, 200, { ok: true, plan: r.pay.plan_id, ends_at: r.pay.ends_at, account_id: r.pay.account_id, already: r.already });
   }
 
+  /* ---- rzp-refund: the admin check, begin_refund, a fake Razorpay, record_refund ---- */
+  if (url.pathname === '/functions/v1/rzp-refund' && req.method() === 'POST') {
+    if (!user) return json(route, 401, { error: 'Sign in first.' });
+    if (!F.db.members.get(user.id) || F.db.members.get(user.id).role !== 'admin') { F.db.calls.push('fn:rzp-refund refused non-admin'); return json(route, 403, { error: 'Administrators only.' }); }
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    if (!String(body.reason || '').trim()) return json(route, 400, { error: 'A reason is required.' });
+    const pay = F.db.payments.find((x) => x.id === body.payment_id);
+    if (!pay) return json(route, 400, { error: 'No such payment' });
+    if (pay.status !== 'paid') return json(route, 400, { error: pay.status === 'refunded' ? 'That payment has already been refunded' : `Only a captured payment can be refunded (this one is ${pay.status})` });
+    if (F.db.refunds.some((f) => f.payment_id === pay.id && f.status !== 'failed')) return json(route, 400, { error: 'A refund for that payment is already in progress' });
+    const amount = body.amount_paise == null ? pay.amount_paise : body.amount_paise;
+    if (!Number.isInteger(amount) || amount < 1 || amount > pay.amount_paise) return json(route, 400, { error: `The amount must be between 1 paisa and the ${pay.amount_paise} paise that was paid` });
+    const rq = body.request_id ? F.db.rreqs.find((x) => x.id === body.request_id) : null;
+    if (body.request_id && (!rq || rq.payment_id !== pay.id || !['pending', 'approved'].includes(rq.status))) return json(route, 400, { error: 'That request is not open for this payment' });
+    const f = { id: 'rf' + F.db.refunds.length, payment_id: pay.id, request_id: body.request_id || null, razorpay_refund_id: null, amount_paise: amount, status: 'initiated', reason: body.reason, error: null, created_at: new Date().toISOString() };
+    F.db.refunds.push(f);
+    // the fake Razorpay: POST /v1/payments/{id}/refund
+    F.db.rzpRefunds.push({ payment: pay.razorpay_payment_id, amount, receipt: f.id, notes: { reason: body.reason, refunded_by: user.email } });
+    F.db.calls.push(`fn:rzp-refund ${pay.razorpay_payment_id} ${amount}`);
+    if (RZP.refundMode === 'fail') { Object.assign(f, { status: 'failed', error: 'The payment has already been fully refunded' }); return json(route, 502, { error: f.error }); }
+    f.razorpay_refund_id = 'rfnd_' + f.id; f.status = RZP.refundMode === 'processed' ? 'processed' : 'pending';
+    if (rq) Object.assign(rq, { status: 'refunded', decided_at: rq.decided_at || new Date().toISOString() });
+    if (f.status === 'processed') endPlanByRefund(pay);
+    return json(route, 200, { ok: true, refund_id: f.razorpay_refund_id, status: f.status, amount_paise: amount, email: (Object.values(USERS).find((u) => u.id === pay.user_id) || {}).email, plan_ended: f.status === 'processed' });
+  }
   if (url.pathname.startsWith('/rest/v1/invite_codes')) {
     if (!user || F.db.members.get(user.id)?.role !== 'admin') return json(route, 200, []);
     return json(route, 200, F.db.codes);

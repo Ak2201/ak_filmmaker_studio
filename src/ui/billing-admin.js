@@ -30,9 +30,11 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, parseRupees, planName, promoLabel, normalisePromo, isPromoShaped } from '../lib/billing.js';
+import { refundDialog, declineDialog, categoryText } from './refund-admin.js';
 import '../styles/plans.css';
+import '../styles/refunds.css';
 
-const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '' };
+const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '', refunds: null, rreqs: null, rrEnabled: false, rrBusy: false };
 let rerender = () => {};
 
 const LIMIT_FIELDS = [
@@ -49,6 +51,12 @@ async function load() {
     /* Members' own referral codes (schema section 22) are listed on the
        Growth tab, by referrer; this table is the codes the owner made. */
     try { S.promos = (await Billing.admin.listPromoCodes()).filter((c) => c.kind !== 'referral'); } catch (e) { S.promos = null; }
+    /* Refunds (schema section 27). null = the section has not run here: the
+       REFUND buttons and the requests block simply do not draw. */
+    try {
+      const [refunds, rreqs, on] = await Promise.all([Billing.admin.listRefunds(), Billing.admin.listRefundRequests(), Billing.refundRequestsEnabled()]);
+      S.refunds = refunds; S.rreqs = rreqs; S.rrEnabled = on;
+    } catch (e) { S.refunds = null; S.rreqs = null; }
     // The grant form needs people to pick from; the gate's console already
     // lists members, so borrow that list rather than add a fourth RPC.
     try {
@@ -183,14 +191,19 @@ export function billingAdminSection(section, st) {
   g.append(h('p.gt-meta', { text: 'A grant puts the member’s organisation on that plan for good and admits a non-member. It is recorded as a ₹0 payment.' }));
   sec.append(g);
 
+  // Refund requests (schema section 27)
+  if (S.rreqs) sec.append(refundBlock());
+
   // Ledger
   sec.append(h('h3.gt-h3', { text: `Payments (${S.payments.length})` }));
   if (!S.payments.length) sec.append(h('p.gt-meta', { text: 'No payments yet.' }));
   else {
     const table = h('table.gt-table.ba-ledger');
-    table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Code', 'Status', 'Razorpay'].map((t) => h('th', { scope: 'col', text: t })))]));
+    table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Plan', 'Access', 'Amount', 'Code', 'Status', 'Razorpay', ...(S.refunds ? [''] : [])].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const p of S.payments) {
+      const rf = S.refunds ? S.refunds.filter((r) => r.payment_id === p.id && r.status !== 'failed') : [];
+      const inflight = rf.find((r) => r.status === 'initiated' || r.status === 'pending');
       tb.append(h('tr', {}, [
         h('td', { text: fmtDate(p.paid_at || p.created_at) }),
         h('td', {}, [h('span', { text: p.email }), p.account_name ? h('br') : null, p.account_name ? h('span.gt-meta', { text: p.account_name }) : null].filter(Boolean)),
@@ -198,9 +211,12 @@ export function billingAdminSection(section, st) {
         h('td', { text: p.period === 'lifetime' || p.period === 'grant' ? 'for good' : p.period + (p.ends_at ? ' · ends ' + fmtDate(p.ends_at) : '') }),
         h('td', { text: p.status === 'granted' ? '₹0 (grant)' : fmtPaise(p.amount_paise) + (p.credit_paise > 0 ? ` (upgrade; ${fmtPaise(p.credit_paise)} already paid)` : '') }),
         h('td', { text: p.promo_code ? `${p.promo_code} (${fmtPaise(p.discount_paise || 0)} off)` : '—' }),
-        h('td', { text: p.status + (p.note ? ' — ' + p.note : '') }),
-        h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })])
-      ]));
+        h('td', { text: p.status + (inflight ? ' · refund ' + inflight.status : '') + (p.note ? ' — ' + p.note : '') }),
+        h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })]),
+        S.refunds ? h('td', {}, [p.status === 'paid' && p.razorpay_payment_id && p.amount_paise > 0 && !inflight
+          ? h('button.btn.danger', { type: 'button', 'data-ba-action': 'refund', 'data-id': p.id, 'aria-label': `Refund ${p.email}, ${planName(p.plan_id)}, ${fmtPaise(p.amount_paise)}`, text: 'REFUND' })
+          : null].filter(Boolean)) : null
+      ].filter(Boolean)));
     }
     table.append(tb);
     sec.append(h('div.gt-scroll', {}, [table]));
@@ -208,6 +224,43 @@ export function billingAdminSection(section, st) {
   sec.append(h('button.btn', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
+
+/* The switch, and the requests customers have filed. A refund itself
+   is rzp-refund; APPROVE opens the same dialog the ledger's REFUND does. */
+function refundBlock() {
+  const box = h('div.rf-admin', { id: 'refunds' });
+  box.append(h('h3.gt-h3', { text: `Refund requests (${S.rreqs.filter((r) => r.status === 'pending').length} waiting)` }));
+  box.append(h('label.rf-switch', { for: 'baRefundSwitch' }, [
+    h('input', { id: 'baRefundSwitch', type: 'checkbox', 'data-ba-action': 'refund-switch', checked: S.rrEnabled, disabled: S.rrBusy }),
+    h('span', { text: 'Let customers request refunds from Settings' })
+  ]));
+  box.append(h('p.gt-meta', { text: 'Off by default. When on, a member with a captured, unrefunded payment sees “Request a refund” under their plan. It only files a request; nothing is refunded until you approve it here. refund.html is the policy: purchases are final except a duplicate charge, a charge not delivered, or where the law requires.' }));
+  if (!S.rreqs.length) { box.append(h('p.gt-meta', { text: 'No requests yet.' })); return box; }
+  const table = h('table.gt-table.rf-requests');
+  table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Payment', 'Why', 'State', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+  const tb = h('tbody');
+  for (const r of S.rreqs) {
+    const open = (r.status === 'pending' || r.status === 'approved') && r.payment_status === 'paid';
+    tb.append(h('tr', { 'data-rreq': r.id }, [
+      h('td', { text: fmtDate(r.created_at) }),
+      h('td', { text: r.email }),
+      h('td', { text: `${planName(r.plan_id)} · ${fmtPaise(r.amount_paise)}` + (r.payment_status !== 'paid' ? ` · ${r.payment_status}` : '') }),
+      h('td', {}, [h('strong', { text: categoryText(r.category) }), r.message ? h('p.rf-msg', { text: r.message }) : null].filter(Boolean)),
+      h('td', {}, [h('span.rf-pill.is-' + r.status, { text: r.status }), r.admin_note ? h('p.rf-msg', { text: r.admin_note }) : null].filter(Boolean)),
+      h('td', {}, open ? [h('div.rf-btns', {}, [
+        h('button.btn.danger', { type: 'button', 'data-ba-action': 'rreq-approve', 'data-id': r.id, 'aria-label': `Approve and refund ${r.email}`, text: 'APPROVE' }),
+        r.status === 'pending' ? h('button.btn', { type: 'button', 'data-ba-action': 'rreq-decline', 'data-id': r.id, 'aria-label': `Decline the request from ${r.email}`, text: 'DECLINE' }) : null
+      ].filter(Boolean))] : [])
+    ]));
+  }
+  table.append(tb);
+  box.append(h('div.gt-scroll', {}, [table]));
+  return box;
+}
+
+const refundToast = (out) => toast(out.status === 'processed'
+  ? `Refunded ${fmtPaise(out.amount_paise)} to ${out.email || 'the customer'}. Their plan has ended.`
+  : `Refund of ${fmtPaise(out.amount_paise)} sent to Razorpay for ${out.email || 'the customer'}. It is pending; their plan ends when Razorpay confirms.`, 'success');
 
 export function wireBillingAdmin(render) { rerender = render || (() => {}); }
 
@@ -298,6 +351,43 @@ delegate(document, 'click', '[data-ba-action="promo-toggle"]', async (e, el) => 
     await Billing.admin.setPromoCode(el.dataset.code, { active: el.dataset.active !== 'true' });
     await load();
   } catch (err) { toast(err.message || 'The code was not changed.', 'error'); }
+});
+
+delegate(document, 'click', '[data-ba-action="refund"]', async (e, el) => {
+  const payment = S.payments.find((p) => p.id === el.dataset.id);
+  if (!payment) return;
+  el.disabled = true;
+  try {
+    const out = await refundDialog({ payment });
+    if (out) { refundToast(out); await load(); }
+  } finally { el.disabled = false; }
+});
+delegate(document, 'click', '[data-ba-action="rreq-approve"]', async (e, el) => {
+  const request = (S.rreqs || []).find((r) => r.id === el.dataset.id);
+  const payment = request && S.payments.find((p) => p.id === request.payment_id);
+  if (!request || !payment) { toast('That payment is not in the ledger’s latest 200 rows. Refund it from the ledger once it is.', 'error'); return; }
+  el.disabled = true;
+  try {
+    const out = await refundDialog({ payment, request });
+    if (out) { refundToast(out); await load(); }
+  } finally { el.disabled = false; }
+});
+delegate(document, 'click', '[data-ba-action="rreq-decline"]', async (e, el) => {
+  const request = (S.rreqs || []).find((r) => r.id === el.dataset.id);
+  if (!request) return;
+  el.disabled = true;
+  try {
+    const out = await declineDialog({ request, email: request.email });
+    if (out) { toast('Declined. The customer will see your note.', 'success'); await load(); }
+  } finally { el.disabled = false; }
+});
+delegate(document, 'change', '[data-ba-action="refund-switch"]', async (e, el) => {
+  S.rrBusy = true; el.disabled = true;
+  try {
+    S.rrEnabled = await Billing.admin.setRefundRequestsEnabled(el.checked);
+    toast(S.rrEnabled ? 'Customers can now request refunds from Settings.' : 'Refund requests are off. Customers no longer see the form.', 'success');
+  } catch (err) { S.rrEnabled = !el.checked; toast(err.message || 'The switch was not changed.', 'error'); }
+  S.rrBusy = false; rerender();
 });
 
 delegate(document, 'click', '[data-ba-action="reload"]', () => load());

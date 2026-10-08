@@ -10,7 +10,8 @@
 
      payment.captured  -> activate_payment()   (idempotent)
      payment.failed    -> mark_payment_failed()
-     refund.processed  -> mark_payment_refunded()  (ends the plan today)
+     refund.processed  -> record_refund() + mark_payment_refunded()  (ends the plan today)
+     refund.failed     -> record_refund()   (schema section 27; rzp-refund starts refunds)
 
    The payment entity is passed whole as p_raw.payment, and since
    schema section 20 activate_payment() compares its `amount` with the
@@ -56,7 +57,24 @@ Deno.serve(async (req) => {
         break;
       }
       case 'refund.processed': {
-        if (refund?.payment_id) await svc.rpc('mark_payment_refunded', { p_payment_id: refund.payment_id, p_raw: { event: evt.event, refund } });
+        if (refund?.payment_id) {
+          // Section 27: settle the refunds row (also records a refund made in the
+          // Razorpay dashboard), then end the plan. mark_payment_refunded is a
+          // no-op for a payment already 'refunded', so rzp-refund's own call and
+          // this one never process anything twice. record_refund is tried
+          // first and its absence (section 27 not run) must not lose the refund.
+          const raw = { event: evt.event, refund };
+          const rec = await svc.rpc('record_refund', { p_refund: null, p_payment_rzp: refund.payment_id, p_rzp_refund: refund.id ?? null, p_status: 'processed', p_amount: refund.amount ?? null, p_error: null, p_raw: raw });
+          if (rec.error) console.warn('[rzp-webhook] record_refund', rec.error.message);
+          await svc.rpc('mark_payment_refunded', { p_payment_id: refund.payment_id, p_raw: raw });
+        }
+        break;
+      }
+      case 'refund.failed': {
+        if (refund?.payment_id) {
+          const rec = await svc.rpc('record_refund', { p_refund: null, p_payment_rzp: refund.payment_id, p_rzp_refund: refund.id ?? null, p_status: 'failed', p_amount: refund.amount ?? null, p_error: 'Razorpay marked the refund failed.', p_raw: { event: evt.event, refund } });
+          if (rec.error) console.warn('[rzp-webhook] record_refund', rec.error.message);
+        }
         break;
       }
       default:

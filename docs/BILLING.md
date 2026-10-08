@@ -474,7 +474,75 @@ both; the commission is paid by hand. Proved: `affiliate.sql` (19
 checks), `prove-billing.mjs` (m). Nothing to redeploy.
 
 
-## 10. Buyer invoices — Bill of Supply (schema §28, 8 Oct 2026). NOT RUN LIVE — owner approval.
+
+## 10. Refunds — schema §27 (8 Oct 2026). NOT RUN LIVE.
+
+`refund.html` says purchases are final except a duplicate charge, a charge
+that was not delivered, and where the law requires. §27 is how the studio
+honours those without the Razorpay dashboard, and how a customer asks.
+
+**Deploy order.** (1) Run §27 of `supabase-schema.sql` (it needs §16, §18
+and §22 — it adds a column to `billing_settings` — and replaces
+`mark_payment_refunded`). (2) `supabase functions deploy rzp-refund`
+(verifies the JWT itself; the gateway check is fine too). (3) **Redeploy
+`rzp-webhook`** — it now calls `record_refund()` on `refund.processed` and
+learns `refund.failed`; add `refund.failed` to the webhook's events in the
+Razorpay dashboard. Secrets are reused: `RAZORPAY_KEY_ID` and
+`RAZORPAY_KEY_SECRET`; nothing new is set. `node scripts/deploy-billing.mjs
+--functions` now deploys `rzp-refund` too. Then ship the client.
+
+**The button (A).** Console → Billing → Payments: REFUND on every `paid`
+row. The dialog asks for an amount (rupees, full by default, never more
+than was paid) and a REQUIRED reason, and warns that a refund ends the
+plan. The function: Auth names the caller, then `is_studio_admin()` is
+called AS the caller (the same check every console RPC makes) — a
+non-admin gets 403 and nothing else runs. `begin_refund()` then locks the
+payment row and checks it is captured, not refunded, has no refund in
+flight, and that the amount fits; it writes a `refunds` row (`initiated`)
+BEFORE Razorpay is called. Razorpay is called with Basic auth, the amount,
+`receipt` = the refunds row id, `X-Refund-Idempotency` = the same id and
+notes (reason, admin e-mail). `record_refund()` stores `pending` or
+`processed`, or `failed` with Razorpay's sentence (a failed attempt does not
+block a retry; an `initiated` row from a crash does, until looked at). One
+refund per payment: a second partial is refused rather than guessed at.
+
+**Who ends the plan — decided: both paths, idempotent.** A `processed`
+answer (instant refunds) makes `record_refund()` call
+`mark_payment_refunded()`; normal-speed refunds answer `pending` and the
+`refund.processed` webhook does the same through `record_refund()` and
+`mark_payment_refunded()`. `mark_payment_refunded()` now returns at once
+for a payment already `refunded`, and `refunds` is upserted by the Razorpay
+refund id, so whichever arrives first does the work and the other changes
+nothing — including a webhook redelivered after the buyer bought again,
+which used to end the new plan. A refund made in the Razorpay dashboard is
+recorded by the webhook too. **A partial refund also ends the plan** (that
+is what the webhook has always done); the dialog says so.
+
+**Requests (B, C).** `billing_settings.refund_requests_enabled`, OFF by
+default, is flipped by the switch on Billing ("Let customers request
+refunds from Settings") through `admin_set_refund_requests_enabled()`; the
+one public fact is `refund_requests_enabled()`. While off,
+`request_refund()` refuses (42501), the Settings block does not draw and
+the INSERT policy refuses a direct insert. When on, settings.html#plan
+shows "Request a refund" to a member with a captured, unrefunded payment
+(`my_refund_status()`): a reason category and some words, filed as a
+`refund_requests` row — never a refund. One open request per payment, three
+a day. The block shows pending / approved / declined (with the admin's
+note) and the form returns only when a new request may be made. The
+console's "Refund requests" list: APPROVE opens the REFUND dialog with the
+request attached (on success the request becomes `refunded`; on a refused
+refund it stays pending), DECLINE requires a note
+(`admin_decide_refund_request`). `refunds` is closed to the client; the
+console reads it through `admin_list_refunds()`.
+
+**Proved:** `scripts/schema-tests/refunds.sql` (46 checks: RLS and RPC
+refusals, the lock, double processing) in `npm run test:schema`; `prove:billing`
+(n) against a faked Razorpay refund endpoint. **Not proved:** the function
+against real Razorpay (the `X-Refund-Idempotency` header and the
+`receipt`/`notes` fields follow Razorpay's refund API but have not met a
+live account), and the live checks at the foot of §27.
+
+## 11. Buyer invoices — Bill of Supply (schema §28, 8 Oct 2026). NOT RUN LIVE — owner approval.
 
 The seller is an individual **not registered for GST**, so the document is a
 **Bill of Supply**: no tax is charged or shown. `doc_type` is CHECKed to

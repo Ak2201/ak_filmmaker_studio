@@ -6023,6 +6023,412 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
+-- 27. REFUNDS: the admin's REFUND button, and customer requests   NOT RUN LIVE — owner approval
+-- ------------------------------------------------------------
+-- refund.html: purchases are final, with three exceptions (a duplicate
+-- charge, a charge that was not delivered, where the law requires).
+-- This section is the plumbing for honouring them without the Razorpay
+-- dashboard, and for letting a customer ASK. It adds:
+--   27.1 refunds          one row per attempt to refund a payment.
+--                         Written ONLY by the rzp-refund edge function
+--                         (service role): begin_refund() before
+--                         Razorpay is called, record_refund() after,
+--                         and again from the webhook.
+--   27.2 refund_requests  a customer's ask. Owner reads and inserts
+--                         their own; an admin reads all; every
+--                         decision goes through an RPC.
+--   27.3 the switch       billing_settings.refund_requests_enabled,
+--                         OFF by default. While off, request_refund()
+--                         refuses and the Settings block does not draw.
+--   27.4 mark_payment_refunded() learns to be called twice: the
+--                         function's own immediate 'processed' answer
+--                         and the refund.processed webhook BOTH call
+--                         it. Nothing is processed twice; the second
+--                         call returns at once.
+-- WHO MAY REFUND: the edge function asks Auth for the caller and then
+-- calls is_studio_admin() AS THAT CALLER; the console's own RPCs call
+-- the same check. A refund is money leaving, so the button is not
+-- trusted and the function is not either: begin_refund() re-checks the
+-- payment (paid, nothing already refunded or in flight, amount within
+-- what was paid) under a row lock.
+-- A processed refund ENDS the plan it bought (mark_payment_refunded, as
+-- since section 16) — a partial one too. The console says so.
+-- ============================================================
+
+-- 27.1 REFUNDS ---------------------------------------------------------
+create table if not exists public.refunds (
+  id                  uuid        primary key default gen_random_uuid(),
+  payment_id          uuid        not null references public.payments(id) on delete cascade,
+  request_id          uuid,
+  razorpay_refund_id  text        unique,
+  amount_paise        int         not null check (amount_paise > 0),
+  status              text        not null default 'initiated' check (status in ('initiated','pending','processed','failed')),
+  reason              text        not null check (length(btrim(reason)) between 1 and 500),
+  refunded_by         uuid        references auth.users(id) on delete set null,
+  error               text,
+  created_at          timestamptz not null default now(),
+  processed_at        timestamptz,
+  raw                 jsonb
+);
+create index if not exists refunds_payment_idx on public.refunds (payment_id, created_at desc);
+alter table public.refunds enable row level security;
+revoke all on public.refunds from public, anon, authenticated;
+-- No policies: the console reads through admin_list_refunds().
+
+-- 27.2 REFUND REQUESTS -------------------------------------------------
+create table if not exists public.refund_requests (
+  id          uuid        primary key default gen_random_uuid(),
+  user_id     uuid        not null default auth.uid() references auth.users(id) on delete cascade,
+  payment_id  uuid        not null references public.payments(id) on delete cascade,
+  category    text        not null check (category in ('duplicate_charge','not_delivered','legal','other')),
+  message     text        not null default '' check (length(message) <= 1000),
+  status      text        not null default 'pending' check (status in ('pending','approved','declined','refunded')),
+  admin_note  text        check (admin_note is null or length(admin_note) <= 500),
+  created_at  timestamptz not null default now(),
+  decided_at  timestamptz,
+  decided_by  uuid        references auth.users(id) on delete set null
+);
+create index if not exists refund_requests_user_idx on public.refund_requests (user_id, created_at desc);
+create unique index if not exists refund_requests_one_open on public.refund_requests (payment_id) where status in ('pending','approved');
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'refunds_request_fk') then
+    alter table public.refunds add constraint refunds_request_fk foreign key (request_id) references public.refund_requests(id) on delete set null;
+  end if;
+end $$;
+
+-- 27.3 THE SWITCH ------------------------------------------------------
+alter table public.billing_settings add column if not exists refund_requests_enabled boolean not null default false;
+
+/** Public on purpose: the one fact the Settings page needs before it
+ *  decides whether to draw the form. Nothing else of billing_settings
+ *  is readable. */
+create or replace function public.refund_requests_enabled()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$ select coalesce((select s.refund_requests_enabled from public.billing_settings s where s.id), false); $$;
+
+create or replace function public.admin_set_refund_requests_enabled(p_enabled boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_enabled is null then raise exception 'Say on or off' using errcode = '22023'; end if;
+  update public.billing_settings s set refund_requests_enabled = p_enabled, updated_at = now(), updated_by = auth.uid() where s.id;
+  return p_enabled;
+end;
+$fn$;
+
+-- RLS on refund_requests. Writes by anyone but the owner's own INSERT
+-- (and the RPCs below) do not exist: the absence of an update policy IS
+-- the policy.
+alter table public.refund_requests enable row level security;
+revoke all on public.refund_requests from public, anon, authenticated;
+grant select, insert on public.refund_requests to authenticated;
+drop policy if exists rr_select on public.refund_requests;
+create policy rr_select on public.refund_requests for select
+  using (user_id = auth.uid() or public.is_studio_admin());
+drop policy if exists rr_insert on public.refund_requests;
+create policy rr_insert on public.refund_requests for insert
+  with check (
+    user_id = auth.uid()
+    and status = 'pending' and admin_note is null and decided_at is null and decided_by is null
+    and public.refund_requests_enabled()
+    and exists (select 1 from public.payments p where p.id = payment_id and p.user_id = auth.uid() and p.status = 'paid' and p.amount_paise > 0)
+  );
+
+-- 27.4 THE CUSTOMER'S SIDE ---------------------------------------------
+/** Ask for a refund. A REQUEST, not a refund: it waits for an admin.
+ *  Refused (with the sentence to show) when the switch is off, the
+ *  payment is not yours, not captured, already refunded or being
+ *  refunded, a request for it is open, or you have asked three times in
+ *  a day. */
+create or replace function public.request_refund(p_payment_id uuid, p_category text, p_message text default '')
+returns public.refund_requests
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare me uuid := auth.uid(); pay public.payments; r public.refund_requests;
+begin
+  if me is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  if not public.refund_requests_enabled() then
+    raise exception 'Refund requests are not open right now. Write to us instead.' using errcode = '42501';
+  end if;
+  if p_category is null or p_category not in ('duplicate_charge','not_delivered','legal','other') then
+    raise exception 'Choose a reason' using errcode = '22023';
+  end if;
+  if length(coalesce(p_message, '')) > 1000 then raise exception 'Keep the message under 1000 characters' using errcode = '22023'; end if;
+  if p_category = 'other' and length(btrim(coalesce(p_message, ''))) < 5 then
+    raise exception 'Tell us what happened' using errcode = '22023';
+  end if;
+  select * into pay from public.payments p where p.id = p_payment_id for update;
+  if pay.id is null or pay.user_id <> me then raise exception 'That is not one of your payments' using errcode = '42501'; end if;
+  if pay.status = 'refunded' then raise exception 'That payment has already been refunded' using errcode = '22023'; end if;
+  if pay.status <> 'paid' or pay.amount_paise <= 0 then raise exception 'Only a payment that went through can be refunded' using errcode = '22023'; end if;
+  if exists (select 1 from public.refunds f where f.payment_id = pay.id and f.status in ('initiated','pending','processed')) then
+    raise exception 'A refund for that payment is already on its way' using errcode = '22023';
+  end if;
+  if exists (select 1 from public.refund_requests q where q.payment_id = pay.id and q.status in ('pending','approved')) then
+    raise exception 'You already have a request open for that payment' using errcode = '22023';
+  end if;
+  if (select count(*) from public.refund_requests q where q.user_id = me and q.created_at > now() - interval '1 day') >= 3 then
+    raise exception 'You have asked three times today. Please wait for an answer.' using errcode = '22023';
+  end if;
+  insert into public.refund_requests (user_id, payment_id, category, message)
+  values (me, pay.id, p_category, btrim(coalesce(p_message, ''))) returning * into r;
+  return r;
+end;
+$fn$;
+
+/** What Settings draws: the switch, the payment a request would be
+ *  about (the latest captured, unrefunded one), whether a new request
+ *  may be made, and the latest request with the admin's answer. */
+create or replace function public.my_refund_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare me uuid := auth.uid(); pay public.payments; q public.refund_requests; en boolean; busy boolean;
+begin
+  if me is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  en := public.refund_requests_enabled();
+  select * into pay from public.payments p
+   where p.user_id = me and p.status = 'paid' and p.amount_paise > 0
+   order by p.paid_at desc nulls last, p.created_at desc limit 1;
+  select * into q from public.refund_requests r where r.user_id = me order by r.created_at desc limit 1;
+  busy := pay.id is not null and (
+       exists (select 1 from public.refunds f where f.payment_id = pay.id and f.status in ('initiated','pending','processed'))
+    or exists (select 1 from public.refund_requests r where r.payment_id = pay.id and r.status in ('pending','approved')));
+  return jsonb_build_object(
+    'enabled', en,
+    'eligible', en and pay.id is not null,
+    'can_request', en and pay.id is not null and not busy,
+    'payment', case when pay.id is null then null else jsonb_build_object('id', pay.id, 'plan_id', pay.plan_id, 'amount_paise', pay.amount_paise, 'paid_at', pay.paid_at) end,
+    'latest', case when q.id is null then null else jsonb_build_object('id', q.id, 'status', q.status, 'category', q.category, 'message', q.message,
+                'admin_note', q.admin_note, 'created_at', q.created_at, 'decided_at', q.decided_at, 'payment_id', q.payment_id) end
+  );
+end;
+$fn$;
+
+-- 27.5 THE CONSOLE'S SIDE ----------------------------------------------
+create or replace function public.admin_list_refund_requests(p_status text default null)
+returns table (id uuid, email text, payment_id uuid, plan_id text, amount_paise int, razorpay_payment_id text, payment_status text,
+               category text, message text, status text, admin_note text, created_at timestamptz, decided_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select q.id, u.email::text, q.payment_id, p.plan_id, p.amount_paise, p.razorpay_payment_id, p.status,
+           q.category, q.message, q.status, q.admin_note, q.created_at, q.decided_at
+      from public.refund_requests q
+      join public.payments p on p.id = q.payment_id
+      join auth.users u on u.id = q.user_id
+     where p_status is null or q.status = p_status
+     order by (q.status = 'pending') desc, q.created_at desc
+     limit 500;
+end;
+$fn$;
+
+/** DECLINE needs a note (the customer reads it). APPROVE only marks the
+ *  request approved — the refund itself is the rzp-refund function,
+ *  which the console calls with the request id and which marks the
+ *  request 'refunded'. Approving without refunding is for a refund made
+ *  some other way (a bank transfer, the Razorpay dashboard). */
+create or replace function public.admin_decide_refund_request(p_id uuid, p_decision text, p_note text default null)
+returns public.refund_requests
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare q public.refund_requests;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_decision not in ('approved','declined') then raise exception 'Decision is approved or declined' using errcode = '22023'; end if;
+  if p_decision = 'declined' and length(btrim(coalesce(p_note, ''))) = 0 then
+    raise exception 'Say why, in a sentence — the customer will read it' using errcode = '22023';
+  end if;
+  select * into q from public.refund_requests r where r.id = p_id for update;
+  if q.id is null then raise exception 'No such request' using errcode = '22023'; end if;
+  if q.status not in ('pending','approved') then raise exception 'That request was already %', q.status using errcode = '22023'; end if;
+  update public.refund_requests r set status = p_decision, admin_note = nullif(left(btrim(coalesce(p_note, '')), 500), ''),
+         decided_at = now(), decided_by = auth.uid()
+   where r.id = p_id returning * into q;
+  return q;
+end;
+$fn$;
+
+create or replace function public.admin_list_refunds()
+returns table (id uuid, payment_id uuid, request_id uuid, razorpay_refund_id text, amount_paise int, status text, reason text, error text, created_at timestamptz)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query select f.id, f.payment_id, f.request_id, f.razorpay_refund_id, f.amount_paise, f.status, f.reason, f.error, f.created_at
+                 from public.refunds f order by f.created_at desc limit 1000;
+end;
+$fn$;
+
+-- 27.6 THE REFUND, for the payment service only ------------------------
+/** Before Razorpay is called: lock the payment, check it can be
+ *  refunded, and write the intent. A crash after this leaves an
+ *  'initiated' row that blocks a second attempt until an admin looks —
+ *  never a refund without a record. The row's id is the receipt and the
+ *  idempotency key sent to Razorpay. */
+create or replace function public.begin_refund(p_payment uuid, p_amount int, p_reason text, p_admin uuid, p_request uuid default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare pay public.payments; amt int; f public.refunds; q public.refund_requests; em text;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.id = p_payment for update;
+  if pay.id is null then raise exception 'No such payment' using errcode = '22023'; end if;
+  if pay.status = 'refunded' then raise exception 'That payment has already been refunded' using errcode = '22023'; end if;
+  if pay.status <> 'paid' or pay.razorpay_payment_id is null or pay.amount_paise <= 0 then
+    raise exception 'Only a captured payment can be refunded (this one is %)', pay.status using errcode = '22023';
+  end if;
+  if exists (select 1 from public.refunds r where r.payment_id = pay.id and r.status in ('initiated','pending','processed')) then
+    raise exception 'A refund for that payment is already in progress' using errcode = '22023';
+  end if;
+  amt := coalesce(p_amount, pay.amount_paise);
+  if amt < 1 or amt > pay.amount_paise then
+    raise exception 'The amount must be between 1 paisa and the % paise that was paid', pay.amount_paise using errcode = '22023';
+  end if;
+  if length(btrim(coalesce(p_reason, ''))) = 0 then raise exception 'A reason is required' using errcode = '22023'; end if;
+  if p_request is not null then
+    select * into q from public.refund_requests r where r.id = p_request for update;
+    if q.id is null or q.payment_id <> pay.id then raise exception 'That request is not about this payment' using errcode = '22023'; end if;
+    if q.status not in ('pending','approved') then raise exception 'That request was already %', q.status using errcode = '22023'; end if;
+  end if;
+  insert into public.refunds (payment_id, request_id, amount_paise, reason, refunded_by)
+  values (pay.id, p_request, amt, left(btrim(p_reason), 500), p_admin) returning * into f;
+  select u.email::text into em from auth.users u where u.id = pay.user_id;
+  return jsonb_build_object('refund_id', f.id, 'razorpay_payment_id', pay.razorpay_payment_id, 'amount_paise', amt, 'email', em, 'plan_id', pay.plan_id);
+end;
+$fn$;
+
+/** After Razorpay answers (and again from the webhook). Upserts by the
+ *  Razorpay refund id so the two callers cannot make two rows; a
+ *  'processed' status ends the plan through mark_payment_refunded() and
+ *  settles the request. p_refund is our row id from begin_refund(), or
+ *  null when the webhook hears of a refund made in the dashboard. */
+create or replace function public.record_refund(p_refund uuid, p_payment_rzp text, p_rzp_refund text, p_status text, p_amount int, p_error text default null, p_raw jsonb default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare f public.refunds; pay public.payments;
+begin
+  perform public.billing_require_service();
+  if p_status not in ('pending','processed','failed') then raise exception 'Unknown refund status' using errcode = '22023'; end if;
+  select * into f from public.refunds r where (p_refund is not null and r.id = p_refund) or (p_rzp_refund is not null and r.razorpay_refund_id = p_rzp_refund)
+   order by (r.id = p_refund) desc nulls last limit 1 for update;
+  if f.id is null then
+    -- A refund made outside the console (the Razorpay dashboard): record it.
+    select * into pay from public.payments p where p.razorpay_payment_id = p_payment_rzp;
+    if pay.id is null or p_rzp_refund is null or coalesce(p_amount, 0) < 1 then return; end if;
+    insert into public.refunds (payment_id, razorpay_refund_id, amount_paise, status, reason, processed_at, raw)
+    values (pay.id, p_rzp_refund, p_amount, p_status, 'Made in the Razorpay dashboard', case when p_status = 'processed' then now() end, p_raw)
+    returning * into f;
+  else
+    -- never walk a settled row backwards (a late 'pending' after 'processed')
+    if f.status = 'processed' and p_status <> 'processed' then return; end if;
+    update public.refunds r set status = p_status, razorpay_refund_id = coalesce(r.razorpay_refund_id, p_rzp_refund), error = p_error,
+           processed_at = case when p_status = 'processed' then coalesce(r.processed_at, now()) else r.processed_at end,
+           raw = coalesce(p_raw, r.raw)
+     where r.id = f.id returning * into f;
+  end if;
+  if p_status = 'processed' then
+    select * into pay from public.payments p where p.id = f.payment_id;
+    perform public.mark_payment_refunded(pay.razorpay_payment_id, p_raw);
+  end if;
+  if p_status in ('pending','processed') and f.request_id is not null then
+    update public.refund_requests q set status = 'refunded', decided_at = coalesce(q.decided_at, now()),
+           decided_by = coalesce(q.decided_by, f.refunded_by)
+     where q.id = f.request_id and q.status in ('pending','approved');
+  end if;
+end;
+$fn$;
+
+-- 27.7 mark_payment_refunded, callable twice --------------------------
+/** As section 16.6, plus: a payment already 'refunded' returns at once.
+ *  The function's own 'processed' answer and the webhook both call it,
+ *  and a webhook redelivered after the buyer bought the plan again must
+ *  not end the NEW plan. */
+create or replace function public.mark_payment_refunded(p_payment_id text, p_raw jsonb default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare pay public.payments;
+begin
+  perform public.billing_require_service();
+  select * into pay from public.payments p where p.razorpay_payment_id = p_payment_id for update;
+  if pay.id is null or pay.status = 'refunded' then return; end if;
+  update public.payments p set status = 'refunded', raw = coalesce(p_raw, p.raw) where p.id = pay.id;
+  if pay.account_id is not null then
+    perform set_config('fms.billing', 'on', true);
+    update public.accounts a set plan_until = least(a.plan_until, now()), updated_at = now()
+     where a.id = pay.account_id and a.plan = pay.plan_id;
+  end if;
+end;
+$fn$;
+
+revoke execute on function public.refund_requests_enabled()                                     from public;
+revoke execute on function public.admin_set_refund_requests_enabled(boolean)                    from public, anon;
+revoke execute on function public.request_refund(uuid, text, text)                              from public, anon;
+revoke execute on function public.my_refund_status()                                            from public, anon;
+revoke execute on function public.admin_list_refund_requests(text)                              from public, anon;
+revoke execute on function public.admin_decide_refund_request(uuid, text, text)                 from public, anon;
+revoke execute on function public.admin_list_refunds()                                          from public, anon;
+revoke execute on function public.begin_refund(uuid, int, text, uuid, uuid)                     from public, anon, authenticated;
+revoke execute on function public.record_refund(uuid, text, text, text, int, text, jsonb)       from public, anon, authenticated;
+revoke execute on function public.mark_payment_refunded(text, jsonb)                            from public, anon, authenticated;
+grant  execute on function public.refund_requests_enabled()                                     to anon, authenticated;
+grant  execute on function public.admin_set_refund_requests_enabled(boolean)                    to authenticated;
+grant  execute on function public.request_refund(uuid, text, text)                              to authenticated;
+grant  execute on function public.my_refund_status()                                            to authenticated;
+grant  execute on function public.admin_list_refund_requests(text)                              to authenticated;
+grant  execute on function public.admin_decide_refund_request(uuid, text, text)                 to authenticated;
+grant  execute on function public.admin_list_refunds()                                          to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 27.8 CHECKS TO RUN, none of which has been run live -----------------
+-- (scripts/schema-tests/refunds.sql runs them on a scratch PostgreSQL.)
+--  1. as a customer: select from refunds -> 42501; request_refund while
+--     the switch is off -> 42501; refund_requests_enabled() is false.
+--  2. admin_set_refund_requests_enabled(true) as a customer -> 42501.
+--  3. with it on, request_refund for another member's payment -> 42501;
+--     for your own captured one -> a pending row; a second -> 22023.
+--  4. a customer reads only their own refund_requests; an admin reads all.
+--  5. begin_refund as an authenticated user -> 42501; as the service
+--     role on a 'created' payment -> 22023; on a paid one for more than
+--     was paid -> 22023; twice -> 22023 the second time.
+--  6. record_refund(... 'processed') -> payments.status 'refunded', the
+--     plan ended, the request 'refunded'; the webhook's call again ->
+--     no change.
+
+-- ============================================================
 -- 28. BUYER INVOICES — Bill of Supply, gapless per financial year
 -- ------------------------------------------------------------
 -- NOT RUN LIVE — owner approval. Run after §16–§26 (needs payments,

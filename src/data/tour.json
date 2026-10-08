@@ -1,0 +1,78 @@
+{
+  "_comment": "The onboarding tour and the hub's first-week checklist (src/ui/tour.js). Copy only: the anchors are CSS selectors tried in order (a [data-tour] attribute first, so a page can name its own anchor), and every checklist tick is DERIVED from the open film in tour.js by the item's id — nothing here, and nothing about a tick, is stored. Only the tour's own place (which step, dismissed) is kept, in fms_tour_v1, and only when the reader clicks.",
+  "steps": [
+    {
+      "id": "sample",
+      "page": "index",
+      "href": "index.html#projects",
+      "anchor": ["[data-tour=\"sample\"]", "[data-action=\"sample-project\"]", "#projects"],
+      "title": "Start with a real film",
+      "body": "The Dragon sample is a complete production — a screenplay, its scenes broken down, a schedule, a unit list and call sheets. Open it and every page of the studio has something on it to read, edit or delete.",
+      "doneBody": "The sample is open. Next, the story it was built from.",
+      "action": "Open the sample"
+    },
+    {
+      "id": "story",
+      "page": "story",
+      "href": "story.html",
+      "anchor": ["[data-tour=\"story\"]", "#main .bd-head", "#main h1", "#main"],
+      "title": "Story: the idea, the logline, the beats",
+      "body": "Write the synopsis and tag its passages to the beats of a structure; the heatmap and the pacing notes are worked out from what you tag. The pitch deck is printed from here."
+    },
+    {
+      "id": "write",
+      "page": "write",
+      "href": "write.html#screenplay",
+      "anchor": ["[data-tour=\"write\"]", "#screenplay", "#main"],
+      "title": "Write: the screenplay",
+      "body": "It formats as you type — slug lines, action, cues, dialogue — and keeps the page count honest. Every scene heading you write becomes a scene in the breakdown."
+    },
+    {
+      "id": "breakdown",
+      "page": "breakdown",
+      "href": "breakdown.html#breakdown",
+      "anchor": ["[data-tour=\"breakdown\"]", "#breakdown", "#scenes", "#main"],
+      "title": "Breakdown: what each scene needs",
+      "body": "Tag cast, props, vehicles and sound against each scene. The elements list, the schedule, the budget and the call sheets all read these tags, so nothing is typed twice."
+    },
+    {
+      "id": "stripboard",
+      "page": "stripboard",
+      "href": "stripboard.html#stripboard",
+      "anchor": ["[data-tour=\"stripboard\"]", "#stripboard", "#main"],
+      "title": "Stripboard: scenes into shoot days",
+      "body": "Drag the strips into days. The day out of days, the calendar and the call sheets follow the board."
+    },
+    {
+      "id": "callsheet",
+      "page": "contacts",
+      "href": "contacts.html#call-sheets",
+      "anchor": ["[data-tour=\"callsheet\"]", "#call-sheets", "#main"],
+      "title": "Call sheets: who, where, when",
+      "body": "A call sheet is a day's scenes plus the people called for them. Print one, or save it as a PDF to send to the unit."
+    },
+    {
+      "id": "shoot",
+      "page": "shoot",
+      "href": "shoot.html",
+      "anchor": ["[data-tour=\"shoot\"]", "#main .bd-head", "#main h1", "#main"],
+      "title": "Shoot day: on the phone, on the set",
+      "body": "Today's scenes, biggest first, with who is called. Mark each one shot, part or dropped; the edit log reads those marks to say what is in the can and what is still owed.",
+      "action": "Finish the tour"
+    }
+  ],
+  "checklist": {
+    "label": "YOUR FIRST WEEK",
+    "title": "Find your way round.",
+    "deck": "Seven things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
+    "items": [
+      { "id": "sample",    "label": "Open the Dragon sample",           "href": "index.html?sample=1" },
+      { "id": "story",     "label": "Write a logline or a synopsis",    "href": "story.html" },
+      { "id": "script",    "label": "Start the screenplay",             "href": "write.html#screenplay" },
+      { "id": "scene",     "label": "Have a scene in the breakdown",    "href": "breakdown.html#scenes" },
+      { "id": "scheduled", "label": "Put a scene on a shoot day",       "href": "stripboard.html#stripboard" },
+      { "id": "callsheet", "label": "Make a call sheet",                "href": "contacts.html#call-sheets" },
+      { "id": "shot",      "label": "Mark a scene on the shoot day",    "href": "shoot.html" }
+    ]
+  }
+}

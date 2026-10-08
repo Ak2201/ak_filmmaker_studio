@@ -121,6 +121,19 @@
 }
 .legal-key p:last-child { margin-bottom: 0; }
 
+/* A detail the OWNER has still to supply — the seller's legal name, a
+   GSTIN — printed in brackets and marked so nobody reads it as filled
+   in. Fixed tokens only: no skin loads on these pages. */
+.legal-ph {
+  background: var(--warn-wash);
+  color: var(--warn-deep);
+  border: 1px dashed var(--warn-deep);
+  border-radius: var(--radius);
+  padding: 0 0.3em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .legal-foot {
   margin-top: var(--s7);
   padding-top: var(--s4);

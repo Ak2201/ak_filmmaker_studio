@@ -33,9 +33,15 @@ Check: sign in with a Google account that is not yours.
 
 ## 3. Finish the legal pages
 
-`privacy.html`, `terms.html`, `refund.html` are DRAFTS: no business name,
-no postal address, no GST number; refund window and governing law
-(India, Chennai courts) marked for you to confirm. Razorpay's business
+`privacy.html`, `terms.html`, `refund.html` now say the service is sold
+by an INDIVIDUAL (sole proprietor) and carry a marked
+`[OWNER: full legal name]` placeholder, plus `[OWNER: GSTIN, if
+registered]` on the one tax line in the Terms. The refund policy is
+decided (7 Oct 2026): purchases are FINAL, except a duplicate or erroneous
+charge (refunded), charged-but-never-activated (refunded or activated,
+the buyer's choice) and any refund Indian law requires; governing law
+India, Chennai courts. Still to fill in: the name, the GSTIN if any, and
+a postal address if Razorpay asks for one. Razorpay's business
 verification and Meta's ad review both read these.
 
 Check: every `[OWNER:` or "draft" marker is gone from the three files.
@@ -46,7 +52,18 @@ Against project `conhlrulxfwkhsnymakz`, dashboard SQL editor, in order
 (`node scripts/deploy-billing.mjs --print` writes the SQL for you):
 §16 (plans, payments), §17 (edit log + deliverables scopes), §18
 (full-time access, features by plan), §19 (the accounts guard: closes
-the `acc_insert` hole) and §20 (promo codes).
+the `acc_insert` hole), §20 (promo codes), §21 (upgrade by paying the
+difference), §22 (referral codes and credits), §23 (affiliate codes) and
+§24 (the characters and costs sync scopes). Run §24 BEFORE deploying the
+8 Oct 2026 release or later: that build syncs `fms_characters_v1` and
+`fms_costs_v1`, and until §24 runs Postgres refuses those two upserts
+(the rest keep syncing, and both stay on the device).
+**The schema file and this list disagree about §16–§18:** the file's
+own headers say §16, §17 and §18 were RUN on 6 Oct 2026 through the SQL
+editor, while the handoff notes say §16–§20 have not run. Ask the
+database before running anything (`select price_paise from plans` exists
+only after §18; the scope CHECK names `'edit'` only after §17), and run
+only the sections it does not have.
 Then set the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address
 if it has signed in.
 
@@ -56,6 +73,8 @@ the Edit Log and Deliverables pages sync instead of saying "saved
 locally only"; `select tgtype from pg_trigger where tgname='accounts_guard'`
 returns 7 (BEFORE INSERT OR UPDATE, row level); and, as the anon role,
 `select count(*) from promo_codes` fails with 42501.
+And `select pg_get_constraintdef(oid) from pg_constraint where conname =
+'project_data_scope_check'` names `'characters'` and `'costs'`.
 
 ## 5. Run the live security checks
 
@@ -82,18 +101,23 @@ the plan lapse.
 
 ## 7. Domain, cards, crawlers
 
-- Replace `thefilmmakerstudio.vercel.app` with the production domain in:
+- `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner,
+  7 Oct 2026), no longer a placeholder: nothing to replace. It appears in
   `start.html` (canonical, og:url, og:image, twitter:image), `index.html`,
   `invite.html`, `privacy.html`, `terms.html`, `refund.html` (og:url,
   og:image, twitter:image), `public/robots.txt` (Sitemap line) and
-  `public/sitemap.xml` (five `<loc>`). `grep -rn thefilmmakerstudio.vercel.app
-  *.html public` lists them; `src/lib/gate.js` has one harmless fallback.
-- `invite.html` is `noindex, nofollow` yet listed in `sitemap.xml`: the two
-  disagree. Decision: drop the `/invite` entry from the sitemap (the landing
-  page is the crawlable door). Not yet done.
+  `public/sitemap.xml` (four `<loc>`); `grep -rn thefilmmakerstudio.vercel.app
+  *.html public` lists them and `src/lib/gate.js` has one harmless fallback.
+  A custom domain LATER would need those same ten files, the domain added
+  in Vercel, and the Google OAuth Authorised JavaScript origins.
+- `/invite` is no longer in `sitemap.xml` (done): it is the gate's doorway
+  and `noindex, nofollow`, and the landing page is the crawlable door.
 - After any palette change run `npm run og` and commit `public/og.png`.
-- The Dragon figures on `start.html` are written in the markup, not
-  derived; if the sample changes, edit them by hand.
+- The Dragon figures and the tier names on `start.html` are stamped into
+  the markup AT BUILD TIME (`fms-start-figures` in `vite.config.js`, from
+  `sampleFigures()` and `src/lib/plans.js`), so a change to the sample or a
+  renamed tier reaches the page with no edit; a mismatched tier list fails
+  the build.
 - Paste the landing URL into WhatsApp and Instagram DM: a card with the
   image and the one-line hook should appear. If not, Meta's debugger
   (developers.facebook.com/tools/debug) says which tag it missed.

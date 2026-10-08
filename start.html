@@ -84,9 +84,15 @@
 <section class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
   <p class="st-eyebrow">See it on a real film</p>
   <h2 class="st-h2" id="sample-h">Open the studio with <em>Dragon</em> already loaded</h2>
+  <!-- Every fms:dragon placeholder figure is stamped at BUILD time by the
+       fms-start-figures plugin in vite.config.js, from sampleFigures()
+       over src/data/sample.dragon.json — the hub's own derivation — so
+       the words are in the served markup and cannot drift. Never type
+       a number here. -->
   <p>Rather than an empty desk, the sample is a complete feature: <em>Dragon</em> (2025, dir. Ashwath
-  Marimuthu) reconstructed as a production &mdash; a full 36-scene screenplay, the scenes broken down from
-  it, an 18-day schedule across 17 locations, a 29-person unit, a budget and two call sheets. Open any
+  Marimuthu) reconstructed as a production &mdash; a full {{fms:dragon.scenes}}-scene screenplay of {{fms:dragon.pages}} pages, the scenes
+  broken down from it, a schedule of {{fms:dragon.days}} shoot days across {{fms:dragon.locations}} locations, a
+  {{fms:dragon.unit}}-person unit, a budget and {{fms:dragon.callSheets:word}} call sheets. Open any
   page and there is something real on it to read, edit or delete.</p>
   <p class="st-note">The public facts are credited and correct. Every piece of paperwork &mdash; the schedule,
   the dates, the budget, the unit, the recces, the call sheets and every line of the script &mdash; is
@@ -137,22 +143,54 @@
   <p class="st-eyebrow">Pricing</p>
   <h2 class="st-h2" id="plans-h">One payment. Yours for good.</h2>
   <p>There is no subscription. A plan is bought once and never renews, never lapses and never asks
-  again. Prices are in Indian rupees, paid through Razorpay, and a full refund is yours within seven
-  days if it is not for you.</p>
-  <!-- The tier names mirror PLAN_ORDER / planName in src/lib/billing.js.
-       The PRICES live in the plans table on the server and are read by
-       the cards on invite.html; they are deliberately not printed here,
-       so this page can never disagree with what the checkout charges. -->
+  again. Prices are in Indian rupees, paid through Razorpay. Every module can be tried free first,
+  because a purchase is final.</p>
+  <!-- The tier NAMES and ORDER are stamped at build time from
+       PLAN_ORDER / planName in src/lib/plans.js (fms-start-figures in
+       vite.config.js): each <li data-tier> must be one PLAN_ORDER id, in
+       order, printing its fms:plan.ID placeholder, or the build fails. The prose
+       beside each name is markup. The PRICES live in the plans table on
+       the server and are read by the cards on invite.html; they are
+       deliberately not printed here, so this page can never disagree
+       with what the checkout charges. -->
   <ul class="st-tiers">
-    <li><strong>Free</strong><span>The whole desk, with the <em>Dragon</em> sample to work on. Try every module before you pay.</span></li>
-    <li><strong>Starter</strong><span>Your own films, synced to the cloud, with a few collaborators and share links per film, and the Chrome extension.</span></li>
-    <li><strong>Indie</strong><span>More films in the cloud, more collaborators and share links, and seats for a small organisation.</span></li>
-    <li><strong>Pro</strong><span>Unlimited films, collaborators and share links, and seats for a full production house.</span></li>
+    <li data-tier="free"><strong>{{fms:plan.free}}</strong><span>The whole desk, with the <em>Dragon</em> sample to work on. Try every module before you pay.</span></li>
+    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><span>Your own films, synced to the cloud, with a few collaborators and share links per film, and the Chrome extension.</span></li>
+    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><span>More films in the cloud, more collaborators and share links, and seats for a small organisation.</span></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><span>Unlimited films, collaborators and share links, and seats for a full production house.</span></li>
   </ul>
   <p class="st-note">Local work, Google Drive backup and the AI tools (with your own key) are on every tier,
   including Free. The tiers differ in what syncs to the cloud, who you can share with, and how many seats
   your organisation has.</p>
   <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#buy">See plans and prices</a></p>
+</section>
+
+<!-- ============================================================
+     VOICES — testimonials and films made with the studio. Rendered BY
+     HAND from src/data/testimonials.json (the words stay in the markup,
+     like the rest of this page) and checked against it by
+     `npm run test:testimonials` (scripts/check-testimonials.mjs), which
+     fails if the two disagree. The JSON is EMPTY, so this section is
+     `hidden` and nothing in it renders. NEVER invent a testimonial, a
+     person or a film: every entry needs the person's written consent,
+     on file — see the _comment in the JSON for the steps.
+
+     One testimonial, when there is one (copy, fill, and un-hide both the
+     section and the list):
+       <li class="st-voice" data-testimonial="ID-FROM-THE-JSON">
+         <blockquote><p>Their words, verbatim.</p></blockquote>
+         <p class="st-voice-who"><strong>Name</strong>, role<span> · Film title</span></p>
+       </li>
+     One film:
+       <li class="st-film" data-film="ID-FROM-THE-JSON">
+         <strong>Film title</strong> <span>(year) · director · format</span>
+       </li>
+     ============================================================ -->
+<section class="st-sec st-voices" id="voices" aria-labelledby="voices-h" hidden data-testimonials="0" data-films="0">
+  <p class="st-eyebrow">Made with it</p>
+  <h2 class="st-h2" id="voices-h">Films and filmmakers</h2>
+  <ul class="st-voice-list" id="voiceList" hidden></ul>
+  <ul class="st-film-list" id="filmList" hidden></ul>
 </section>
 
 <section class="st-sec" id="faq" aria-labelledby="faq-h">
@@ -190,8 +228,10 @@
   </details>
   <details class="st-faq">
     <summary>What if I want my money back?</summary>
-    <p>Ask within seven days of purchase and the full amount goes back to the card, UPI, net banking or wallet you
-    paid with. The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
+    <p>Purchases are final, which is why the whole studio can be tried free with the sample first. The exceptions
+    are refunded in full to the card, UPI, net banking or wallet you paid with: a duplicate or mistaken charge, a
+    payment for a plan that was never activated (or we activate it, your choice), and any refund Indian law requires.
+    The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
   </details>
 </section>
 

@@ -9,7 +9,9 @@
         id, the period, a promo CODE (schema section 20) and
         (optionally) which organisation they own;
      2. create_pending_payment() — the PRICE COMES FROM THE DATABASE,
-        never from the request: the code is re-quoted there, the
+        never from the request: an upgrade is priced as the difference
+        from what this buyer already paid (section 21), the code is
+        re-quoted there, the
         discounted amount is what the row records and what Razorpay is
         asked for, and the row exists before Razorpay is called, so a
         crash between the two leaves a 'created' row and never a
@@ -89,6 +91,7 @@ Deno.serve(async (req) => {
     order_id: order.id, amount: order.amount, currency: order.currency, key_id: keyId,
     plan, period, plan_name: row.plan_name, payment_id: row.payment_id,
     list_paise: row.list_paise ?? row.amount_paise, discount_paise: row.discount_paise ?? 0, promo_code: row.promo_code ?? null,
+    credit_paise: row.credit_paise ?? 0,   // section 21: what an upgrade took off for plans already paid for
     prefill: { email: user.email ?? '', name: user.user_metadata?.full_name ?? '' }
   });
 });

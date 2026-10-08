@@ -374,3 +374,92 @@ them sign in with Google as well, and the gate then reads their (free)
 plan — or approve their request from the queue, which admits them with
 an account from the start. A screening pass is unaffected: it opens
 one project read-only and nothing else.
+
+## 9. Growth — schema §21 onward (7 Oct 2026). NOT RUN LIVE.
+
+Eight additions asked for at launch, each its own schema section, each
+with checks in `scripts/schema-tests/<name>.sql` (run by
+`npm run test:schema` AFTER §1–§20 and their own three files, because
+§21 deliberately changes what §20 charged a returning buyer) and live
+checks in `docs/SECURITY-RLS.md` §6c. The rule of §7 holds throughout:
+**the client never sends an amount** — it sends a plan id, a code, and
+now optional buyer details; every price is computed in the database.
+
+### 9.1 Upgrade by paying the difference (§21)
+
+`quote_for(user, plan, code)` is now THE price, and both callers use it:
+`quote_order()` asks it for `auth.uid()` (the cards), and
+`create_pending_payment()` for the buyer `rzp-order` verified. For a
+signed-in buyer:
+
+```
+credit = sum(amount_paise) of their payments with status 'paid' and period 'lifetime'
+due    = list − credit, floored at ₹1 (100 paise)  → never below 0
+amount = promo_price(due, code)                    → a code discounts the DIFFERENCE
+```
+
+A grant (₹0) credits nothing, a refunded payment credits nothing, and a
+month/year payment from before §18 credits nothing — it bought a period,
+not the plan. The plan already held, or a lower one, is refused with
+`22023` (hint `same_plan` / `downgrade`) at quote and at order.
+`payments.credit_paise` records the credit, so every row reads
+`amount = list − credit − discount`. `activate_payment()` now applies a
+plan only when it is HIGHER than the organisation's current one: two
+orders paid out of order no longer leave a Pro buyer on Indie.
+
+The cards (`plan-cards.js`) ask `quote_order(plan, null)` for each higher
+tier once per (plan held, payments) state, and a card with a credit
+reads **"Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)"**, the
+list price struck beside the difference. A signed-out quote has no user
+and is unchanged. `rzp-order` returns `credit_paise` and must be
+redeployed after §21 runs. Proved: `upgrade.sql` (28 checks) and
+`prove-billing.mjs` (k).
+
+### 9.2 Referral codes (§22)
+
+A referral code is a `promo_codes` row with `kind = 'referral'` and
+`owner_user_id` — so §20's whole path (the quote, the code on the order,
+the use counted at activation) carries it unchanged. Every member with an
+activated payment above ₹0 gets one, `REF-` + six characters from the
+invite alphabet: minted by the `payments_referral_after` trigger at
+activation, or on first ask by `my_referral()` for somebody who paid
+before §22 ran. One per member (partial unique index).
+
+- **The friend** gets `billing_settings.referral_friend_pct` off (default
+  10%). Changing it on the console reprices every referral code at once.
+- **The referrer** is owed, per ACTIVATED payment made with their code,
+  one `referral_credits` row: `referral_reward_pct` of what the friend
+  actually paid, OR a fixed `referral_reward_paise` (never more than the
+  friend paid) — exactly one is set. Default: 10%.
+- **Self-referral** is refused by `quote_for()` with reason `own_code`
+  wherever the buyer is known (the signed-in card, and always at
+  `rzp-order`). A refund of the friend's payment voids an unpaid credit.
+- **Payout is by hand.** The Growth tab on `admin.html` lists every
+  credit (referrer, friend, plan, what the friend paid, what is owed);
+  tick the ones paid by bank/UPI and MARK SELECTED PAID with a note.
+- **The member** sees their code with a COPY button, what it gives and
+  earns, and their credits (owed / paid / void) under the plan cards on
+  `settings.html#plan` — the account's billing tab rather than the
+  Account panel, which is not a billing file.
+
+`billing_settings` and `referral_credits` are closed to the client (RLS
+on, no policy, API roles revoked). Proved: `referral.sql` (37 checks),
+`prove-billing.mjs` (l). Nothing to redeploy.
+
+### 9.3 Affiliate codes (§23)
+
+An affiliate code is a promo code with `commission_pct` (0 < pct ≤ 100);
+`admin_set_promo_code()` learns that one key and sets `kind =
+'affiliate'` (clearing it makes the code a plain `promo` again; referral
+and gift codes refuse one). Make it on Billing → Promo codes with
+"Commission %" filled in. The buyer's discount is the code's, as §20.
+
+**Nothing is stored per order.** `admin_affiliate_report()` derives, per
+code, from the ledger at read time: paid orders, revenue (the sum of
+`amount_paise` — already net of the discount AND any §21 upgrade
+credit), the discount given, `commission_due = floor(revenue × pct /
+100)`, refunds (which drop out of revenue by status), and the last order.
+`admin_affiliate_orders(code)` lists who bought. The Growth tab shows
+both; the commission is paid by hand. Proved: `affiliate.sql` (19
+checks), `prove-billing.mjs` (m). Nothing to redeploy.
+

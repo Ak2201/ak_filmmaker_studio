@@ -354,12 +354,154 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   eq(X.toText({ elements: sample }, { title: 'T' }).split('\f').length - 1, pages.length, 'the text export has one form feed per paginated page');
   ok(pages.slice(1).every((p) => p.some((r) => r.id)), 'every page after the first starts at a known element, so the page view can mark it');
   const wsrc = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
-  ok(/Typeset\.paginate\(doc\.elements\)/.test(wsrc), "write.js's page view reads the PDF's own paginate()");
+  ok(/Typeset\.paginateDoc\(doc\)/.test(wsrc), "write.js's page view reads the PDF's own paginator (paginateDoc, which wraps paginate())");
   ok(!/function paginate|BODY_LINES|PAGE_LINES/.test(wsrc), 'write.js carries no paginator of its own');
   const t3 = performance.now();
   for (let k = 0; k < 5; k++) X.paginate(sample);
   const pms = (performance.now() - t3) / 5;
   ok(pms < 50, `paginate() on the 2,361-element sample in ${pms.toFixed(1)}ms (budget 50ms, run at idle)`);
+}
+
+/* ---- characters as data (src/lib/characters.js) ---------------- */
+{
+  const CH = await import('../src/lib/characters.js');
+  const { readFileSync } = await import('node:fs');
+  const sample = JSON.parse(readFileSync(new URL('../src/data/sample.dragon.script.json', import.meta.url), 'utf8')).elements;
+  const els = [
+    { id: 'e1', type: 'scene', text: 'INT. TEA STALL - DAY' },
+    { id: 'e2', type: 'character', text: 'ANBU' },
+    { id: 'e3', type: 'dialogue', text: 'Naan varen.' },
+    { id: 'e4', type: 'character', text: 'MEENA (O.S.)', dual: true },
+    { id: 'e5', type: 'paren', text: 'softly' },
+    { id: 'e6', type: 'dialogue', text: 'Seri, vaa.' },
+    { id: 'e7', type: 'action', text: 'Anbu leaves.' },
+    { id: 'e8', type: 'scene', text: 'EXT. ROAD - NIGHT' },
+    { id: 'e9', type: 'character', text: "ANBU (V.O.) (CONT'D)" },
+    { id: 'e10', type: 'dialogue', text: 'One more time.' },
+    { id: 'e11', type: 'dialogue', text: 'Please.' },
+    { id: 'e12', type: 'character', text: 'ANBUSELVAN' },
+    { id: 'e13', type: 'dialogue', text: 'Me again.' }
+  ];
+  // The merge: cues derive rows, stored rows keep their notes.
+  let m = CH.mergeWithCues([], els);
+  eq(m.map((c) => c.name), ['ANBU', 'MEENA', 'ANBUSELVAN'], 'every cue speaker is listed, in order of first cue');
+  ok(m.every((c) => c.derived), 'with nothing stored, every row is derived');
+  const stored = [CH.blankCharacter({ name: 'anbu', aliases: ['Anbuselvan'], want: 'a job' }), CH.blankCharacter({ name: 'KAVYA', need: 'rest' })];
+  m = CH.mergeWithCues(stored, els);
+  eq(m.map((c) => [c.name, c.derived, c.cues]), [['ANBU', false, 3], ['KAVYA', false, 0], ['MEENA', true, 1]], 'aliases fold in; a stored character with no cues is kept, never deleted');
+  eq(CH.ownerOf(stored, 'anbuselvan (V.O.)').name, 'ANBU', 'an alias finds its character through extensions and case');
+
+  // Storage: load/save through the storage given, an empty list removes the key.
+  const store = new Map();
+  const fake = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  ok(CH.saveCharacters(stored, fake) && store.has(CH.CHARACTERS_KEY), 'save writes fms_characters_v1');
+  eq(CH.loadCharacters(fake).map((c) => c.name), ['ANBU', 'KAVYA'], 'and loads it back');
+  eq(CH.loadCharacters(fake)[0].want, 'a job', 'notes round-trip');
+  CH.saveCharacters([], fake);
+  ok(!store.has(CH.CHARACTERS_KEY), 'an empty list removes the key');
+  store.set(CH.CHARACTERS_KEY, '{not json');
+  eq(CH.loadCharacters(fake), [], 'a corrupt value reads as empty, not a throw');
+  eq(CH.CHARACTERS_KEY, 'fms_characters_v1', 'the key name');
+
+  // Registered everywhere a per-project key must be.
+  const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  ok(/'fms_characters_v1'/.test(src('../src/lib/store.js')), 'in SCOPED_KEYS (store.js)');
+  ok(/characters:\s*'fms_characters_v1'/.test(src('../src/lib/backup.js')), 'in PROJECT_KEYS (backup.js)');
+  ok(/CHARACTERS_KEY = 'fms_characters_v1'/.test(src('../src/pages/hub.js')) && /SCENE_BIN_KEY, CHARACTERS_KEY/.test(src('../src/pages/hub.js')), 'in ALL_KEYS (hub.js)');
+  ok(/'fms_characters_v1':\s*'characters'/.test(src('../src/lib/cloud.js')) && !/LOCAL_ONLY = new Set\([^)]*'fms_characters_v1'/.test(src('../src/lib/cloud.js')), 'synced as scope characters (SCOPE_BY_KEY, schema §24), not LOCAL_ONLY');
+  ok(/'characters','costs'/.test(src('../supabase-schema.sql')), 'schema §24 names the characters scope');
+
+  // Rename: a plan with a count, extensions kept, dual flag kept, undoable.
+  const work = els.map((e) => ({ ...e }));
+  const plan = CH.renamePlan(work, ['ANBU', 'ANBUSELVAN'], 'Ravi');
+  eq(plan.cues, 3, 'the preview counts every cue the rename touches');
+  eq(plan.scenes, 2, 'and the scenes they are in');
+  eq(plan.changes.map((c) => c.after), ['RAVI', "RAVI (V.O.) (CONT'D)", 'RAVI'], 'extensions survive a rename');
+  eq(work[1].text, 'ANBU', 'a plan writes nothing');
+  const undo = CH.applyPlan(work, plan);
+  eq(work.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MEENA (O.S.)', "RAVI (V.O.) (CONT'D)", 'RAVI'], 'applied');
+  eq(work[3].dual, true, 'a dual-dialogue cue keeps its flag (the pair is derived, not stored)');
+  CH.applyPlan(work, undo);
+  eq(work.map((e) => e.text), els.map((e) => e.text), 'one undo puts every cue back');
+  ok(CH.renamePlan(work, 'MEENA', 'ANBU').merges, 'renaming onto a name already spoken says it merges');
+  eq(CH.renamePlan(work, 'ANBU', 'ANBU').cues, 0, 'a rename to the same name changes nothing');
+  eq(CH.renamePlan(work, 'NOBODY', 'X').cues, 0, 'an unknown name changes nothing');
+  const c = CH.blankCharacter({ name: 'ANBU', aliases: ['RAVI'] });
+  CH.renameCharacter(c, 'ravi');
+  eq([c.name, c.aliases], ['RAVI', []], 'the stored character takes the new name and drops it as an alias');
+
+  // The table read.
+  const tr = CH.tableRead(els, stored);
+  const anbu = tr.rows.find((r) => r.name === 'ANBU');
+  eq([anbu.speeches, anbu.lines, anbu.words, anbu.scenes], [3, 4, 8, 2], 'per character: speeches, lines, words, scenes (aliases folded)');
+  eq(anbu.seconds, Math.round(8 / A.DIALOGUE_WPS), 'speaking time at DIALOGUE_WPS');
+  const meena = tr.rows.find((r) => r.name === 'MEENA');
+  eq([meena.sides[0].paren, meena.sides[0].prevCue, meena.sides[0].prevText], ['softly', 'ANBU', 'Naan varen.'], 'sides carry the parenthetical and the line they answer');
+  eq(anbu.sides[1].prevCue, '', 'context does not cross a scene heading');
+  eq(anbu.sides[1].text, 'One more time.\nPlease.', 'a speech of two dialogue lines is one side');
+  eq(tr.rows[0].name, 'ANBU', 'most words first');
+  eq(CH.speakingMinutes(90), '1.5 min', 'minutes, to a tenth under ten');
+  eq(CH.speakingMinutes(1200), '20 min', 'and whole above');
+
+  // On the sample: fast enough to derive on render.
+  const big = sample.map((e, i) => ({ id: 'x' + i, ...e }));
+  const t5 = performance.now();
+  const mm = CH.mergeWithCues([], big);
+  const rr = CH.tableRead(big, []);
+  const rp = CH.renamePlan(big, 'RAGAVAN', 'D. RAGAVAN');
+  const cms = performance.now() - t5;
+  ok(mm.length >= 5 && rr.rows[0].name === 'RAGAVAN' && rp.cues === rr.rows[0].speeches, `characters on the sample: ${mm.length} parts, RAGAVAN leads, rename counts ${rp.cues}`);
+  ok(cms < 60, `merge + table read + rename plan on the sample in ${cms.toFixed(1)}ms (< 60)`);
+}
+
+/* ---- running time with the songs (runtimeEstimate) ----------
+   A timed song REPLACES its linked scenes' page estimate; an untimed
+   one adds nothing and leaves its scenes alone; the per-group split
+   comes from the caller's groupOf, and the act target is the target
+   times the act's share. Plus the song duration field in songs.js,
+   and the target stored inside the songs blob without a key. */
+{
+  const Sg = await import('../src/lib/songs.js');
+  const row = (id, seconds, patch = {}) => ({ scene: { id, songId: '', beatId: '', ...patch }, seconds });
+  const screen = { rows: [row('a', 600, { beatId: 'x:one' }), row('b', 60, { songId: 'sg1', beatId: 'x:two' }), row('c', 120, { songId: 'sg2' }), row('d', 300, { beatId: 'x:two' })] };
+  const songs = [{ id: 'sg1', seconds: 270 }, { id: 'sg2', seconds: 0 }, { id: 'sg3', seconds: 200 }];
+  const acts = { 'x:one': { key: 'a1', label: 'Act One', order: 1, share: 0.25 }, 'x:two': { key: 'a2', label: 'Act Two', order: 2, share: 0.75 } };
+  const est = A.runtimeEstimate(screen, songs, {
+    targetSeconds: 1600,
+    groupOf: (s) => acts[s.beatId] || null,
+    songGroupOf: (s) => (s.id === 'sg1' ? acts['x:two'] : null)
+  });
+  eq(est.sceneSeconds, 600 + 120 + 300, 'a timed song drops its linked scene from the page estimate; an untimed one does not');
+  eq(est.songSeconds, 470, 'every timed song adds its length, linked or not');
+  eq(est.total, 1490, 'total = scenes not covered + timed songs');
+  eq([est.songsTimed, est.songsUntimed, est.coveredScenes], [2, 1, 1], 'timed, untimed and covered are counted');
+  eq(est.delta, 1490 - 1600, 'delta against the target');
+  const a2 = est.groups.find((g) => g.key === 'a2');
+  eq([a2.sceneSeconds, a2.songSeconds, a2.seconds, a2.target], [300, 270, 570, 1200], 'Act Two: its scene, its song, and 75% of the target');
+  eq(est.groups.map((g) => g.key), ['a1', 'a2'], 'groups come back in order');
+  ok(est.ungrouped && est.ungrouped.sceneSeconds === 120 && est.ungrouped.songSeconds === 200, 'unlinked scenes and songs fall in the ungrouped bucket');
+  eq(A.runtimeEstimate(screen, [], {}).total, 1080, 'no songs: the page estimate alone');
+  eq(A.runtimeEstimate(screen, songs, { groupOf: () => { throw new Error('x'); } }).groups.length, 0, 'a groupOf that throws groups nothing rather than failing');
+
+  eq(['4:30', '4.30', '4', '4.5', '1:02:03', '', 'four', '4:75'].map(Sg.parseDuration), [270, 270, 240, 270, 3723, 0, 0, 0], 'parseDuration reads m:ss, m.ss, minutes and h:mm:ss');
+  eq(Sg.blankSong({ duration: '4.30' }).duration, '4:30', 'blankSong normalises a duration to m:ss');
+  eq(Sg.blankSong({ duration: 'long' }).duration, '', 'and stores nothing for a non-duration');
+  eq(Sg.blankSong().duration, '', 'a new song has no duration');
+
+  mem.clear();
+  Sg.addSong({ title: 'Intro' });
+  eq(Sg.setTargetMinutes('142'), 142, 'the target is stored');
+  ok(Sg.listSongs().length === 1, 'setting the target keeps the songs');
+  Sg.addSong({ title: 'Duet', duration: '3:50' });
+  eq(Sg.getTargetMinutes(), 142, 'a song write keeps the target');
+  eq(JSON.parse(mem.get('fms_songs_v1')).targetMinutes, 142, 'inside the songs blob — no new key');
+  eq([...mem.keys()], ['fms_songs_v1'], 'and nothing else was written');
+  eq(Sg.durationSeconds(Sg.listSongs()[1]), 230, 'durationSeconds reads the stored field');
+  eq(Sg.setTargetMinutes('nonsense'), 0, 'a non-number clears the target');
+  mem.set('fms_songs_v1', JSON.stringify({ songs: [{ id: 'old', title: 'Saved before durations' }] }));
+  eq(Sg.listSongs()[0].duration, '', 'a song saved before the field existed reads back with none');
+  eq(Sg.getTargetMinutes(), 0, 'and a blob with no target reads 0');
+  mem.clear();
 }
 
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);

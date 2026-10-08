@@ -248,7 +248,12 @@ export function shortcutRows(prefs, known, ctrlDigits) {
     { keys: ['Alt/⌥ D'], label: 'Dual dialogue on this cue' },
     { keys: ['Ctrl/⌘ Shift K'], label: 'Note on this line' },
     { keys: ['Ctrl/⌘ Shift S'], label: 'Scene navigator — jump to a scene heading' },
-    { keys: ['↑ ↓', 'Tab / Return', 'Esc'], label: 'SmartType: move, accept, dismiss' }
+    { keys: ['↑ ↓', 'Tab / Return', 'Esc'], label: 'SmartType: move, accept, dismiss' },
+    /* src/ui/tamil-type.js. Alt+T because every other Alt letter the
+       editor might want is free and T is the one that names it; it is
+       matched on e.code there, like Alt+D, since Option+T is '†'. */
+    { keys: ['Alt/⌥ T'], label: 'Tamil typing on or off — dialogue and parentheticals only' },
+    { keys: ['Space', 'Return', 'Esc'], label: 'Tamil typing: commit the word in Tamil script, or keep it in Roman letters' }
   );
   return { preset: p.label, rows };
 }

@@ -68,24 +68,39 @@ export function blankCustom(patch = {}) {
 }
 
 /* ---- persistence -------------------------------------------- */
-function readAll() {
+function readRaw() {
   let raw = null;
   try { raw = localStorage.getItem(DELIVERABLES_KEY); } catch (e) { /* private mode */ }
-  if (!raw) return { items: {}, custom: [] };
-  try {
-    const p = JSON.parse(raw);
-    return {
-      items: (p && p.items && typeof p.items === 'object' && !Array.isArray(p.items)) ? p.items : {},
-      custom: Array.isArray(p && p.custom) ? p.custom : []
-    };
-  } catch (e) {
-    return { items: {}, custom: [] };
-  }
+  if (!raw) return null;
+  try { const p = JSON.parse(raw); return p && typeof p === 'object' && !Array.isArray(p) ? p : null; }
+  catch (e) { return null; }
 }
 
+function readAll() {
+  const p = readRaw();
+  if (!p) return { items: {}, custom: [] };
+  return {
+    items: (p.items && typeof p.items === 'object' && !Array.isArray(p.items)) ? p.items : {},
+    custom: Array.isArray(p.custom) ? p.custom : []
+  };
+}
+
+/* `groupsOn` — which OPTIONAL groups (a streamer's checklist) this
+   project has switched on — is a FIELD of the same blob rather than a
+   key of its own. Every writer below builds its object from
+   loadDeliverables(), which knows nothing about it, so the write
+   carries the stored value across unless the caller sets one. */
 function writeAll(data) {
-  try { localStorage.setItem(DELIVERABLES_KEY, JSON.stringify(data)); return true; }
+  const next = { items: data.items, custom: data.custom };
+  const on = Array.isArray(data.groupsOn) ? data.groupsOn : storedGroupsOn();
+  if (on.length) next.groupsOn = on;
+  try { localStorage.setItem(DELIVERABLES_KEY, JSON.stringify(next)); return true; }
   catch (e) { return false; }
+}
+
+function storedGroupsOn() {
+  const p = readRaw();
+  return p && Array.isArray(p.groupsOn) ? p.groupsOn.filter((id) => typeof id === 'string') : [];
 }
 
 export function loadDeliverables() {
@@ -96,6 +111,27 @@ export function loadDeliverables() {
     items,
     custom: d.custom.map((c) => blankCustom(c)).filter((c) => String(c.label || '').trim())
   };
+}
+
+/* ---- optional groups --------------------------------------
+   A group with `optional: true` in the catalogue (Netflix, Prime
+   Video, the Tamil streamers) is off until the user switches it on
+   for this film: forty streamer items on a festival short would be
+   forty rows of noise and a progress figure that never reaches 100. */
+const optionalIds = () => (catalogue.groups || []).filter((g) => g.optional).map((g) => g.id);
+
+export function groupsOn() {
+  const known = optionalIds();
+  return storedGroupsOn().filter((id) => known.includes(id));
+}
+
+export function setGroupOn(id, on) {
+  if (!optionalIds().includes(id)) return groupsOn();
+  const cur = groupsOn().filter((g) => g !== id);
+  if (on) cur.push(id);
+  const d = loadDeliverables();
+  writeAll({ ...d, groupsOn: cur });
+  return cur;
 }
 
 export function itemState(id, data) {
@@ -165,8 +201,10 @@ export function putCustomBack(snap) {
  */
 export function listItems(format, data) {
   const d = data || loadDeliverables();
+  const on = Array.isArray(d.groupsOn) ? d.groupsOn : groupsOn();
   const out = [];
   (catalogue.groups || []).forEach((g) => {
+    if (g.optional && !on.includes(g.id)) return;
     (g.items || []).forEach((it) => {
       if (Array.isArray(it.formats) && format && !it.formats.includes(format)) return;
       out.push({ ...it, group: g.id, groupLabel: g.label, custom: false, ...itemState(it.id, d) });
@@ -179,7 +217,17 @@ export function listItems(format, data) {
 }
 
 export function groups() {
-  return (catalogue.groups || []).map((g) => ({ id: g.id, label: g.label, blurb: g.blurb || '' }));
+  return (catalogue.groups || []).map((g) => ({
+    id: g.id, label: g.label, blurb: g.blurb || '',
+    optional: !!g.optional, source: g.source || '', sourceUrls: g.sourceUrls || [],
+    checked: g.checked || '', published: g.published !== false
+  }));
+}
+
+/** The groups a user may switch on, with whether each one is. */
+export function optionalGroups() {
+  const on = groupsOn();
+  return groups().filter((g) => g.optional).map((g) => ({ ...g, on: on.includes(g.id) }));
 }
 
 /**
@@ -250,5 +298,6 @@ export function askedBy(reqs) {
 export default {
   DELIVERABLES_KEY, STATES, stateMeta, WHEN, whenLabel,
   blankItemState, blankCustom, loadDeliverables, itemState, setItemState,
-  addCustom, removeCustom, takeCustom, putCustomBack, listItems, groups, progress, requirements, askedBy
+  addCustom, removeCustom, takeCustom, putCustomBack, listItems, groups, optionalGroups, groupsOn, setGroupOn,
+  progress, requirements, askedBy
 };

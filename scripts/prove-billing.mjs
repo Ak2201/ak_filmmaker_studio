@@ -321,7 +321,12 @@ try {
        6 Oct 2026 — src/lib/navmodel.js joins the two lists the same way). */
     const NAV = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8'));
     const built = [...NAV.phases, ...NAV.global].flatMap((p) => p.modules || []).filter((m) => m.status !== 'planned').length;
-    const total = built + 5;
+    // Every capability row counts except sample_only, which narrows
+    // rather than grants. Read from plan-gate.js rather than typed here,
+    // or each new capability (remove_branding was the sixth) fails this.
+    const capSrc = fs.readFileSync(path.join(ROOT, 'src/lib/plan-gate.js'), 'utf8');
+    const caps = [...(capSrc.match(/export const CAPABILITIES = \[([\s\S]*?)\n\];/) || ['', ''])[1].matchAll(/\['([a-z_]+)'/g)].map((m) => m[1]);
+    const total = built + caps.filter((k) => k !== 'sample_only').length;
     await amy.page.goto(BASE + 'settings.html#plan');
     await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });
     const counts = await amy.page.$$eval('#plan .pl-card', (cards) => Object.fromEntries(cards.map((c) => [c.dataset.plan, (c.querySelector('.pl-features-n') || {}).textContent])));
@@ -409,6 +414,142 @@ try {
     ok(!(await B.page.$('#buy .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Indie, Pro/.test(await B.page.textContent('#buy .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
     ok((await prices(B.page)).find((x) => x[0] === 'pro')[1] === '₹19,499', 'Pro reads ₹19,499 (₹500 off)');
     allErrors.push(...B.errors); await B.ctx.close();
+  }
+
+  console.log('(k) upgrade by paying the difference (schema section 21)');
+  F.reset(); RZP.mode = 'pay';
+  {
+    const amy = USERS['tok-amy'].id;
+    F.db.members.set(amy, { role: 'user', disabled_at: null });
+    const at = new Date(Date.now() - 3 * 86400e3).toISOString();
+    F.db.accounts.push({ id: 'acc_amy', name: 'Amy’s Studio', owner_id: amy, plan: 'starter', plan_until: null, plan_period: 'lifetime', seat_limit: 1, created_at: at });
+    F.db.payments.push({ id: 'payS', user_id: amy, account_id: 'acc_amy', plan_id: 'starter', period: 'lifetime', amount_paise: 299900, list_paise: 299900, discount_paise: 0, credit_paise: 0,
+      currency: 'INR', razorpay_order_id: 'order_s', razorpay_payment_id: 'pay_s', status: 'paid', created_at: at, paid_at: at });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan');
+    await page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-upgrade', { timeout: 10000 })
+      .then(() => ok(true, 'a Starter holder sees an upgrade line on the Indie card'), () => ok(false, 'a Starter holder sees an upgrade line on the Indie card'));
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)', 'it reads "Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)"');
+    const p = await prices(page);
+    ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
+    ok(!(await page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'the plan already held offers no button');
+    await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
+      .then(() => ok(true, 'the upgrade goes through and Indie is the current plan'), () => ok(false, 'the upgrade goes through and Indie is the current plan'));
+    const last = await page.evaluate(() => window.__rzpLast);
+    ok(last && last.amount === 500000, 'Checkout opened at the difference (500000 paise), not the list');
+    const row = F.db.payments.find((x) => x.plan_id === 'indie' && x.status === 'paid');
+    ok(row && row.credit_paise === 299900 && row.list_paise === 799900 && row.amount_paise === 500000, 'the ledger row carries list, credit and the amount paid');
+    await page.waitForFunction(() => /you paid ₹7,999 for Indie/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
+      .then(() => ok(true, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'), () => ok(false, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'));
+    ok((await prices(page)).find((x) => x[0] === 'pro')[1] === '₹12,000', 'Pro now costs ₹12,000 (1999900 − 799900)');
+    const refused = await page.evaluate(async ([sb]) => {
+      const r = await fetch(sb + '/functions/v1/rzp-order', { method: 'POST', headers: { Authorization: 'Bearer tok-amy', 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: 'starter', period: 'lifetime' }) });
+      return { status: r.status, body: await r.json() };
+    }, [SB]);
+    ok(refused.status === 400 && /lower plan/.test(refused.body.error || ''), 'an order for a lower plan, sent by hand, is refused by the server: ' + (refused.body.error || refused.status));
+    allErrors.push(...errors); await ctx.close();
+  }
+
+  console.log('(l) referral codes (schema section 22)');
+  {
+    // continues from (k): Amy has paid, so she has a code. (k)'s context
+    // still holds her one-device lock (fresh for 90s), so release it.
+    F.db.sessions.clear();
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'settings.html#plan');
+    await page.waitForSelector('#plan [data-gr-panel="referral"] .gr-code', { timeout: 10000 })
+      .then(() => ok(true, 'a paying member sees "Your referral code" under the cards'), () => ok(false, 'a paying member sees "Your referral code" under the cards'));
+    const code = (await page.textContent('#plan [data-gr-panel="referral"] .gr-code')).trim();
+    ok(/^REF-[A-HJ-KM-NP-Z2-9]{6}$/.test(code) && F.db.promos.some((c) => c.code === code && c.kind === 'referral' && c.owner_user_id === USERS['tok-amy'].id), 'the code is a REF- promo row owned by her: ' + code);
+    ok(/10% off/.test(await page.textContent('#plan [data-gr-panel="referral"]')), 'and says what it gives a friend');
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.click('#plan [data-gr-action="copy"]');
+    await page.waitForFunction((c) => [...document.querySelectorAll('.toast-host')].some((n) => n.textContent.includes('Copied ' + c)), code, { timeout: 5000 })
+      .then(() => ok(true, 'COPY copies it and says so'), () => ok(false, 'COPY copies it and says so'));
+    // her own code in the promo box: refused by the server
+    await page.click('#plan .pl-promo summary');
+    await page.fill('#plPromoCode', code);
+    await page.click('#plan .pl-promo-form button[type="submit"]');
+    await page.waitForSelector('#plan .pl-promo-msg.is-error', { timeout: 8000 }).catch(() => {});
+    ok(/your own referral code/.test(await page.textContent('#plan .pl-promo-msg')), 'self-referral is refused with the server’s sentence');
+    allErrors.push(...errors); await ctx.close();
+
+    // Ben, a stranger, buys Starter with it on invite.html
+    const B = await newContext(browser, { tok: 'tok-ben' });
+    await B.page.goto(BASE + 'invite.html');
+    await B.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
+    await B.page.click('#buy .pl-promo summary');
+    await B.page.fill('#plPromoCode', code.toLowerCase());
+    await B.page.click('#buy .pl-promo-form button[type="submit"]');
+    await B.page.waitForSelector('#buy .pl-card[data-plan="starter"].has-promo', { timeout: 8000 });
+    ok((await prices(B.page)).find((x) => x[0] === 'starter')[1] === '₹2,699.10', 'a friend sees Starter at 10% off (₹2,699.10)');
+    await B.page.click('#buy .pl-card[data-plan="starter"] [data-plan-action="buy"]');
+    ok(await waitGate(B.page, 'open'), 'the friend’s purchase goes through');
+    const credit = F.db.credits.find((r) => r.referrer_user_id === USERS['tok-amy'].id);
+    ok(credit && credit.status === 'owed' && credit.basis_paise === 269910 && credit.amount_paise === 26991, 'activation credited Amy 10% of what Ben paid (₹269.91), owed');
+    allErrors.push(...B.errors); await B.ctx.close();
+
+    // the console lists it and records the payout
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#growth');
+    await A.page.waitForSelector('#growth tr[data-credit]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists the credit'), () => ok(false, 'the Growth tab lists the credit'));
+    ok(/amy@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')) && /ben@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')), 'naming referrer and friend');
+    await A.page.check('#growth input[name="credit"]');
+    await A.page.fill('#graPayNote', 'UPI 7 Oct');
+    await A.page.click('#growth form[data-gra-form="payout"] button[type="submit"]');
+    await A.page.waitForFunction(() => /paid/.test((document.querySelector('#growth tr[data-credit]') || {}).textContent || '') && !document.querySelector('#growth input[name="credit"]'), null, { timeout: 8000 })
+      .then(() => ok(true, 'MARK SELECTED PAID records the payout'), () => ok(false, 'MARK SELECTED PAID records the payout'));
+    ok(F.db.credits[0].status === 'paid' && F.db.credits[0].paid_note === 'UPI 7 Oct', 'the fake’s row is paid with the note');
+    await A.page.fill('#graRewardValue', '250');
+    await A.page.selectOption('#graRewardKind', 'paise');
+    await A.page.click('#growth form[data-gra-form="referral"] button[type="submit"]');
+    await A.page.waitForSelector('#growth .ba-saved', { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.referral_reward_paise === 25000 && F.db.settings.referral_reward_pct === null, 'the referral terms save: a fixed ₹250 reward, the percentage cleared');
+    await A.page.setViewportSize({ width: 390, height: 844 });
+    ok(await A.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the Growth tab does not overflow at 390px');
+    allErrors.push(...A.errors); await A.ctx.close();
+  }
+
+  console.log('(m) affiliate codes (schema section 23)');
+  F.db.sessions.clear();
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
+    await A.page.fill('#baPromoCode', 'festdesk');
+    await A.page.fill('#baPromoValue', '5');
+    await A.page.fill('#baPromoComm', '20');
+    await A.page.fill('#baPromoNote', 'Chennai festival desk');
+    await A.page.click('form[data-ba-form="promo"] button[type="submit"]');
+    await A.page.waitForSelector('#billing tr[data-promo="FESTDESK"]', { timeout: 8000 }).catch(() => {});
+    const fd = F.db.promos.find((c) => c.code === 'FESTDESK');
+    ok(fd && fd.kind === 'affiliate' && fd.commission_pct === 20 && fd.percent_off === 5, 'ADD CODE with a commission makes an affiliate code (5% off, 20% commission)');
+    ok(/20% commission/.test(await A.page.textContent('#billing tr[data-promo="FESTDESK"]')), 'the promo list says so');
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    const C = await newContext(browser, { tok: 'tok-cal' });
+    await C.page.goto(BASE + 'invite.html');
+    await C.page.waitForSelector('#buy .pl-card', { timeout: 10000 });
+    await C.page.click('#buy .pl-promo summary');
+    await C.page.fill('#plPromoCode', 'FESTDESK');
+    await C.page.click('#buy .pl-promo-form button[type="submit"]');
+    await C.page.waitForSelector('#buy .pl-card[data-plan="indie"].has-promo', { timeout: 8000 });
+    await C.page.click('#buy .pl-card[data-plan="indie"] [data-plan-action="buy"]');
+    ok(await waitGate(C.page, 'open'), 'Cal buys Indie through the affiliate code');
+    allErrors.push(...C.errors); await C.ctx.close();
+
+    F.db.sessions.clear();
+    const A2 = await newContext(browser, { tok: 'tok-admin' });
+    await A2.page.goto(BASE + 'admin.html#growth');
+    await A2.page.waitForSelector('#growth tr[data-affiliate="FESTDESK"]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists FESTDESK under Affiliates'), () => ok(false, 'the Growth tab lists FESTDESK under Affiliates'));
+    const cells = await A2.page.$$eval('#growth tr[data-affiliate="FESTDESK"] td', (tds) => tds.map((t) => t.textContent));
+    ok(cells[3] === '1' && cells[4] === '₹7,599.05' && cells[6] === '₹1,519.81', `one order, revenue net of the 5% (₹7,599.05), commission due ₹1,519.81: ${cells.slice(3, 7).join(' / ')}`);
+    await A2.page.click('#growth [data-gra-action="aff-orders"][data-code="FESTDESK"]');
+    await A2.page.waitForFunction(() => /cal@example\.com/.test(document.querySelector('#growth')?.textContent || ''), null, { timeout: 8000 })
+      .then(() => ok(true, 'ORDERS lists who bought through it'), () => ok(false, 'ORDERS lists who bought through it'));
+    allErrors.push(...A2.errors); await A2.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

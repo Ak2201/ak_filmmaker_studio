@@ -40,6 +40,7 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { billingAdminSection, wireBillingAdmin } from '../ui/billing-admin.js';
+import { growthAdminSection, wireGrowthAdmin } from '../ui/growth-admin.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 
 const app = document.getElementById('app');
@@ -49,7 +50,7 @@ const gate = () => (cloud() && cloud().gate) || null;
 /* THE CATEGORIES are the shell's tabs now (src/ui/tabs.js): every
    section below is one tab, named by data-tab-label, one on screen at
    a time, picked by the hash. admin.html#billing lands on Billing. */
-const TAB_LABELS = { overview: 'Overview', organisations: 'Organisations', people: 'People', 'admin-console': 'Access', billing: 'Billing', features: 'Features' };
+const TAB_LABELS = { overview: 'Overview', organisations: 'Organisations', people: 'People', 'admin-console': 'Access', billing: 'Billing', growth: 'Growth', features: 'Features' };
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.ad-sec.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
@@ -227,6 +228,8 @@ function render() {
     const feats = planFeaturesSection(section, st);
     const bill = billingAdminSection(section, st);
     if (bill) body.append(bill);
+    const growth = growthAdminSection(section, st);
+    if (growth) body.append(growth);
     if (feats) body.append(feats);
   }
 
@@ -247,6 +250,7 @@ document.addEventListener('click', (e) => {
 
 wireGateUI(render);
 wireBillingAdmin(render);
+wireGrowthAdmin(render);
 wirePlanFeatures(render);
 Store.subscribe('gate:changed', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));

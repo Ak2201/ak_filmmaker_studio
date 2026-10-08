@@ -58,6 +58,7 @@ import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
 import { sliceScript } from './screenplay-analysis.js';
+import { cueName as cueOf } from './screenplay-analysis.js';
 import Providers, {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
@@ -1630,4 +1631,872 @@ export async function draftOutlineSteps(job, { onStatus, signal } = {}) {
   const out = parsed.steps.map((t) => str(t, 600)).filter((t) => t && !have.has(t.toLowerCase())).slice(0, 4);
   if (!out.length) throw new AIError('The reply held no new steps.', 'empty-result');
   return { steps: out, truncated, model };
+}
+
+/* ============================================================
+   READING THE WHOLE SCRIPT — coverage, the logline workshop and
+   the character-voice check
+   ------------------------------------------------------------
+   Three more jobs on the one `callModel()` above, and the rule
+   that governs all three is the one beatCritique() already keeps:
+
+     A MODEL MAY NOT TELL A WRITER THEY WROTE SOMETHING THEY DID
+     NOT. Every quotation these jobs return is checked, here, word
+     for word against the writer's own text — the scene it cites,
+     the line it names, the logline they typed — with the same
+     normalisation beatCritique uses (forCompare: whitespace, case
+     and the curly quotes a word processor substitutes). A quote
+     that does not verify is STRIPPED and COUNTED, and the count is
+     returned so the page can say so. Nothing is printed inside
+     quotation marks that the check did not find.
+
+   The checker is exported (quoteChecker) so the page and the tests
+   use the same function rather than a second copy of it.
+
+   NONE OF THESE WRITES ANYTHING. Each resolves to a proposal; the
+   page shows it and a person decides. The one that is stored —
+   coverage, because it is paid for and re-reading it must not bill
+   again — is stored by the PAGE, inside the script blob, through
+   the page's own save path.
+   ============================================================ */
+
+/* Shorter than this is not evidence: "he" is in every script. */
+const MIN_QUOTE = 4;
+
+/** Strip the quotation marks a model wraps a quote in. The marks are
+    the model's punctuation, not the writer's words. */
+function unwrapQuote(q) {
+  return String(q ?? '').trim()
+    .replace(/^["'“”‘’«»]+/, '')
+    .replace(/["'“”‘’«»]+$/, '')
+    .trim();
+}
+
+/**
+ * The quote check, as a function. `source` is the writer's text (a
+ * string or an array of strings); the returned function answers "is
+ * this quote word for word in it?" with forCompare(), the same
+ * normalisation beatCritique() uses. An elided quote ("I will … go")
+ * fails on its own: the ellipsis is not in the script.
+ */
+export function quoteChecker(source) {
+  const hay = forCompare([].concat(source ?? []).join('\n'));
+  return (quote) => {
+    const q = unwrapQuote(quote);
+    if (q.length < MIN_QUOTE) return false;
+    return hay.includes(forCompare(q));
+  };
+}
+export const normaliseForQuote = forCompare;
+
+/* ---- the script, as numbered scenes ------------------------
+   The ONE slicer (sliceScript) and the one plain-text rendering
+   (sceneScriptText). A scene's number is its own sceneNumber if the
+   writer set one, else its position, which is what the page prints
+   beside the heading. */
+export function coverageScenes(elements) {
+  return sliceScript(elements || []).map((s, i) => ({
+    n: String(s.number || (i + 1)),
+    heading: s.heading,
+    text: sceneScriptText(s)
+  }));
+}
+
+/** A fingerprint of the script's words, so a stored report knows
+    which draft it read. FNV-1a over type and text: cheap, stable,
+    and it changes when a single character does. */
+export function scriptSignature(elements) {
+  let hash = 0x811c9dc5;
+  let n = 0;
+  for (const el of elements || []) {
+    const s = String(el && el.type) + '\u0001' + String((el && el.text) ?? '') + '\u0002';
+    for (let i = 0; i < s.length; i++) {
+      hash ^= s.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    n++;
+  }
+  return n + '-' + hash.toString(16).padStart(8, '0');
+}
+
+/* ---- the plan, and what it will cost -----------------------
+   Batched by CHARACTERS, never splitting a scene. 36,000 characters
+   is roughly 9,000 tokens of English in — far under any input limit,
+   and small enough that the per-batch summaries (out) stay well under
+   the 8,000-token ceiling each batch is given. A scene longer than a
+   batch is a batch of its own. */
+export const COVERAGE_BATCH_CHARS = 36000;
+const COVERAGE_OVERHEAD = 2400;      // the system prompt and the rules, per call
+const SYNTH_PER_SCENE = 260;         // a summary line, as the synthesis reads it
+const SYNTH_PER_BATCH = 2600;        // the evidence each batch hands on
+
+const hasTamil = (s) => /[஀-௿]/.test(s);
+
+export function planCoverage(elements, { batchChars = COVERAGE_BATCH_CHARS } = {}) {
+  const scenes = coverageScenes(elements);
+  const batches = [];
+  let cur = [], size = 0;
+  scenes.forEach((s, i) => {
+    const len = s.text.length;
+    if (cur.length && size + len > batchChars) { batches.push(cur); cur = []; size = 0; }
+    cur.push(i); size += len;
+  });
+  if (cur.length) batches.push(cur);
+  const chars = scenes.reduce((n, s) => n + s.text.length, 0);
+  const inChars = chars + batches.length * COVERAGE_OVERHEAD
+    + scenes.length * SYNTH_PER_SCENE + batches.length * SYNTH_PER_BATCH + COVERAGE_OVERHEAD;
+  return {
+    scenes, batches, chars,
+    tokensIn: Math.ceil(inChars / 4),
+    requests: batches.length ? batches.length + 1 : 0,
+    /* chars/4 is an English rule of thumb; Tamil script runs at three
+       to six tokens a word, so the page says the figure is low. */
+    tamil: scenes.some((s) => hasTamil(s.text))
+  };
+}
+
+const ASPECTS = ['premise', 'structure', 'character', 'dialogue', 'pacing', 'marketability'];
+export const COVERAGE_ASPECTS = ASPECTS.slice();
+export const VERDICTS = ['pass', 'consider', 'recommend'];
+
+const COVERAGE_SYSTEM = [
+  'You are a studio script reader writing coverage on a screenplay for a Tamil',
+  'production company that makes films for theatrical release and for OTT. You',
+  'are reading the script in parts; this call is one part.',
+  '',
+  'Rules:',
+  '· Every observation must QUOTE the script, verbatim — a short span copied',
+  '  character for character from the scene you cite, with no paraphrase, no',
+  '  ellipsis and no translation. Cite the scene by the number given. A note you',
+  '  cannot anchor to words on the page is a note about a film you imagined.',
+  '  Leave it out.',
+  '· Read what is on the page. Do not invent plot, characters or scenes.',
+  '· Be specific and be fair. Coverage that only praises or only attacks is',
+  '  useless to the person who has to decide.',
+  '· Quote the script in its own language. Write your own notes in English.',
+  '· Answer only with the JSON the schema describes.'
+].join('\n');
+
+function coverageBatchSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['scenes', 'evidence'],
+    properties: {
+      scenes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['scene', 'summary'],
+          properties: {
+            scene: { type: 'string', description: 'the scene number given, copied exactly' },
+            summary: { type: 'string', description: 'one or two sentences: what happens, and what changes' }
+          }
+        }
+      },
+      evidence: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['aspect', 'scene', 'quote', 'note'],
+          properties: {
+            aspect: { type: 'string', enum: ASPECTS.slice() },
+            scene: { type: 'string', description: 'the scene number the quote is from' },
+            quote: { type: 'string', description: 'a short span copied VERBATIM from that scene' },
+            note: { type: 'string', description: 'one sentence: what this shows, good or bad' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildCoverageBatchPrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('This is part ' + job.part + ' of ' + job.parts + ' of the screenplay'
+    + (job.title ? ' "' + job.title + '"' : '') + '.');
+  parts.push('For EVERY scene below, write a one- or two-sentence summary keyed by its scene number.');
+  parts.push('Then list up to twelve pieces of evidence a reader would put in coverage —');
+  parts.push('premise, structure (an act break, a midpoint, a turn), character (what the');
+  parts.push('protagonist wants and needs), dialogue, pacing, and how it would play to a');
+  parts.push('Tamil theatrical or OTT audience. Each one quotes the scene it cites.');
+  parts.push('');
+  for (const s of job.scenes) {
+    parts.push('--- SCENE ' + s.n + ' ---');
+    parts.push(s.text);
+    parts.push('');
+  }
+  return parts.join('\n');
+}
+
+/* Verify one cited quote against the scene it names; failing that,
+   against the other scenes this call could see. A quote that is
+   genuinely in the script but under the wrong number is still the
+   writer's words, so it is RE-NUMBERED to where it actually is — and
+   counted, so the page can say so — rather than discarded. */
+function placeQuote(quote, sceneN, checkers, order) {
+  const q = unwrapQuote(quote);
+  if (q.length < MIN_QUOTE) return null;
+  const own = checkers.get(String(sceneN));
+  if (own && own(q)) return { scene: String(sceneN), quote: q, moved: false };
+  for (const n of order) {
+    const c = checkers.get(n);
+    if (c && c(q)) return { scene: n, quote: q, moved: true };
+  }
+  return null;
+}
+
+/**
+ * One batch of coverage: summaries and verified evidence.
+ *   job { scenes:[{n, heading, text}], part, parts, title, context }
+ * Resolves to { summaries:[{scene, summary}], evidence:[{aspect, scene,
+ * quote, note}], removed, renumbered, truncated, model }.
+ */
+export async function coverageBatch(job, { onStatus, signal } = {}) {
+  const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((s) => s && s.text);
+  if (!scenes.length) throw new AIError('There are no scenes in this part to read.', 'noscenes');
+  const checkers = new Map(scenes.map((s) => [String(s.n), quoteChecker(s.text)]));
+  const order = scenes.map((s) => String(s.n));
+
+  const { parsed, truncated, model } = await callModel({
+    system: COVERAGE_SYSTEM,
+    user: buildCoverageBatchPrompt({ ...job, scenes }),
+    schema: coverageBatchSchema(),
+    maxTokens: 8000,
+    effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"summary"/g) || []).length;
+      return 'Reading part ' + job.part + ' of ' + job.parts + (n ? ' — ' + n + ' of ' + scenes.length + ' scenes' : '…');
+    }
+  });
+
+  const known = new Set(order);
+  const summaries = (Array.isArray(parsed.scenes) ? parsed.scenes : [])
+    .filter((s) => s && typeof s === 'object' && known.has(String(s.scene ?? '').trim()))
+    .map((s) => ({ scene: String(s.scene).trim(), summary: str(s.summary, 500) }))
+    .filter((s) => s.summary);
+
+  let removed = 0, renumbered = 0;
+  const evidence = [];
+  for (const e of Array.isArray(parsed.evidence) ? parsed.evidence : []) {
+    if (!e || typeof e !== 'object') continue;
+    const note = str(e.note, 400);
+    if (!note) continue;
+    const at = placeQuote(str(e.quote, 400), String(e.scene ?? '').trim(), checkers, order);
+    if (!at) { removed++; continue; }
+    if (at.moved) renumbered++;
+    evidence.push({
+      aspect: ASPECTS.includes(e.aspect) ? e.aspect : 'premise',
+      scene: at.scene, quote: at.quote, note
+    });
+  }
+  return { summaries, evidence: evidence.slice(0, 16), removed, renumbered, truncated, model };
+}
+
+function pointsSchema(desc) {
+  return {
+    type: 'array',
+    description: desc,
+    items: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['scene', 'quote', 'note'],
+      properties: {
+        scene: { type: 'string', description: 'the scene number' },
+        quote: { type: 'string', description: 'a short span copied VERBATIM from that scene — reuse the evidence quotes given' },
+        note: { type: 'string', description: 'one or two sentences' }
+      }
+    }
+  };
+}
+
+function coverageSynthSchema() {
+  const section = (desc) => ({
+    type: 'object',
+    additionalProperties: false,
+    required: ['assessment', 'points'],
+    properties: {
+      assessment: { type: 'string', description: desc },
+      points: pointsSchema('two to four points, each citing a scene and a verbatim quote')
+    }
+  });
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['logline', 'premise', 'structure', 'character', 'dialogue', 'pacing',
+      'marketability', 'verdict', 'verdictWhy'],
+    properties: {
+      logline: { type: 'string', description: 'the logline as a reader would write it from this script, one sentence' },
+      premise: section('two or three sentences on the premise and whether it holds'),
+      structure: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['assessment', 'actBreaks', 'points'],
+        properties: {
+          assessment: { type: 'string', description: 'two or three sentences on the shape of the script' },
+          actBreaks: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['label', 'scene', 'quote', 'note'],
+              properties: {
+                label: { type: 'string', description: 'e.g. "End of act one", "Midpoint", "Interval"' },
+                scene: { type: 'string' },
+                quote: { type: 'string', description: 'verbatim from that scene' },
+                note: { type: 'string' }
+              }
+            }
+          },
+          points: pointsSchema('structural points, each citing a scene and a verbatim quote')
+        }
+      },
+      character: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['protagonist', 'want', 'need', 'assessment', 'points'],
+        properties: {
+          protagonist: { type: 'string' },
+          want: { type: 'string', description: 'what they consciously want, as the script shows it' },
+          need: { type: 'string', description: 'what they actually need, or "unclear"' },
+          assessment: { type: 'string', description: 'how clearly the want and the need read on the page' },
+          points: pointsSchema('character points, each citing a scene and a verbatim quote')
+        }
+      },
+      dialogue: section('two or three sentences on the dialogue'),
+      pacing: section('two or three sentences on the pacing'),
+      marketability: section('two or three sentences on how it plays to a Tamil theatrical and OTT audience'),
+      verdict: { type: 'string', enum: VERDICTS.slice() },
+      verdictWhy: { type: 'string', description: 'one or two sentences' }
+    }
+  };
+}
+
+export function buildCoverageSynthPrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('You have read the whole screenplay' + (job.title ? ' "' + job.title + '"' : '')
+    + ' in ' + job.parts + (job.parts === 1 ? ' part' : ' parts') + '. Write the coverage.');
+  parts.push('');
+  parts.push('Every point and every act break must cite a scene number and quote that scene');
+  parts.push('VERBATIM. The quotes in the evidence below are already checked against the');
+  parts.push('script — reuse them, copied exactly. Do not quote anything else.');
+  parts.push('The verdict is one of: pass, consider, recommend.');
+  parts.push('');
+  parts.push('--- THE SCENES, IN ORDER ---');
+  for (const s of job.summaries) parts.push(s.scene + '. ' + (s.heading ? s.heading + ' — ' : '') + s.summary);
+  parts.push('');
+  parts.push('--- EVIDENCE GATHERED WHILE READING ---');
+  for (const e of job.evidence) {
+    parts.push('[' + e.aspect + '] scene ' + e.scene + ': "' + e.quote + '" — ' + e.note);
+  }
+  return parts.join('\n');
+}
+
+function verifyPoints(list, place, tally) {
+  return (Array.isArray(list) ? list : [])
+    .filter((p) => p && typeof p === 'object')
+    .map((p) => {
+      const note = str(p.note, 600);
+      const raw = str(p.quote, 400);
+      const at = raw ? place(raw, String(p.scene ?? '').trim()) : null;
+      if (raw && !at) tally.removed++;
+      if (at && at.moved) tally.renumbered++;
+      const out = { scene: at ? at.scene : '', quote: at ? at.quote : '', note };
+      if (p.label !== undefined) out.label = str(p.label, 80);
+      return out;
+    })
+    .filter((p) => p.note || p.quote)
+    .slice(0, 8);
+}
+
+/**
+ * The final synthesis. Every quote in it is checked against the FULL
+ * script — the scene it cites first, then any scene — not merely
+ * against the evidence handed in, so a quote the model "remembered"
+ * differently is caught here too. A point whose quote fails keeps its
+ * note and loses its quote and its scene number; the page marks it.
+ *
+ *   job { summaries:[{scene, heading, summary}], evidence, parts, title,
+ *         context, scenes:[{n, heading, text}] }
+ */
+export async function coverageSynthesis(job, { onStatus, signal } = {}) {
+  const scenes = Array.isArray(job && job.scenes) ? job.scenes : [];
+  if (!scenes.length) throw new AIError('There is no script to cover.', 'noscenes');
+  const checkers = new Map(scenes.map((s) => [String(s.n), quoteChecker(s.text)]));
+  const order = scenes.map((s) => String(s.n));
+  const place = (q, n) => placeQuote(q, n, checkers, order);
+
+  const { parsed, truncated, model } = await callModel({
+    system: COVERAGE_SYSTEM.replace('this call is one part.', 'this call is the report.'),
+    user: buildCoverageSynthPrompt(job),
+    schema: coverageSynthSchema(),
+    maxTokens: 12000,
+    effort: 'high',
+    onStatus, signal,
+    progress: (sofar) => {
+      const done = ASPECTS.filter((a) => sofar.includes('"' + a + '"')).length;
+      return 'Writing the report… ' + done + ' of ' + ASPECTS.length + ' sections';
+    }
+  });
+
+  const tally = { removed: 0, renumbered: 0 };
+  const sec = (v) => ({
+    assessment: str(v && v.assessment, 1200),
+    points: verifyPoints(v && v.points, place, tally)
+  });
+  const st = parsed.structure || {};
+  const ch = parsed.character || {};
+  const report = {
+    logline: str(parsed.logline, 500),
+    premise: sec(parsed.premise),
+    structure: {
+      assessment: str(st.assessment, 1200),
+      actBreaks: verifyPoints((Array.isArray(st.actBreaks) ? st.actBreaks : [])
+        .map((b) => ({ ...(b || {}), label: (b && b.label) || '' })), place, tally),
+      points: verifyPoints(st.points, place, tally)
+    },
+    character: {
+      protagonist: str(ch.protagonist, 120),
+      want: str(ch.want, 400),
+      need: str(ch.need, 400),
+      assessment: str(ch.assessment, 1200),
+      points: verifyPoints(ch.points, place, tally)
+    },
+    dialogue: sec(parsed.dialogue),
+    pacing: sec(parsed.pacing),
+    marketability: sec(parsed.marketability),
+    verdict: VERDICTS.includes(parsed.verdict) ? parsed.verdict : '',
+    verdictWhy: str(parsed.verdictWhy, 600)
+  };
+  if (!report.verdict && !report.premise.assessment) {
+    throw new AIError('The reply was not a coverage report, so nothing was saved.', 'malformed');
+  }
+  return { report, removed: tally.removed, renumbered: tally.renumbered, truncated, model };
+}
+
+/**
+ * The whole run, resumable. `prior` is a checkpoint from an earlier run
+ * of the SAME draft ({ sig, batchCount, parts:[batch results] }); the
+ * batches already in it are NOT sent again, which is the difference
+ * between a stopped run and a run that bills twice. `onCheckpoint` is
+ * called after every batch, before the next one is spent, so the page
+ * can store it.
+ *
+ * Resolves to the finished coverage. Throws AIError ('aborted' on Stop)
+ * with every finished batch already handed to onCheckpoint.
+ */
+export async function runCoverage(job, { onStatus, onCheckpoint, signal, batchChars } = {}) {
+  const plan = planCoverage(job && job.elements, { batchChars });
+  if (!plan.batches.length) {
+    throw new AIError('There are no scene headings in the script yet, so there is nothing to cover.', 'noscenes');
+  }
+  const sig = scriptSignature(job.elements);
+  const prior = job.prior && job.prior.sig === sig && Array.isArray(job.prior.parts)
+    && job.prior.batchCount === plan.batches.length ? job.prior : null;
+  const state = { sig, batchCount: plan.batches.length, parts: prior ? prior.parts.slice() : [], model: '' };
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  const checkpoint = () => {
+    if (!onCheckpoint) return;
+    try { onCheckpoint({ ...state, parts: state.parts.slice() }); } catch (e) { console.warn('[ai] checkpoint', e); }
+  };
+  const stopped = () => new AIError('Stopped. The parts already read are kept, and Resume carries on from there.', 'aborted');
+  let sent = 0;
+
+  for (let b = state.parts.length; b < plan.batches.length; b++) {
+    if (signal && signal.aborted) throw stopped();
+    const scenes = plan.batches[b].map((i) => plan.scenes[i]);
+    say('Reading part ' + (b + 1) + ' of ' + plan.batches.length + '…');
+    let r;
+    try {
+      r = await coverageBatch({ scenes, part: b + 1, parts: plan.batches.length,
+        title: job.title, context: job.context }, { onStatus, signal });
+    } catch (e) {
+      if (e && e.kind === 'aborted') throw stopped();
+      throw e;
+    }
+    sent++;
+    state.parts.push({ summaries: r.summaries, evidence: r.evidence, removed: r.removed, renumbered: r.renumbered });
+    state.model = r.model;
+    checkpoint();
+  }
+
+  if (signal && signal.aborted) throw stopped();
+  const headingOf = new Map(plan.scenes.map((s) => [s.n, s.heading]));
+  const summaries = state.parts.flatMap((p) => p.summaries)
+    .map((s) => ({ ...s, heading: headingOf.get(s.scene) || '' }));
+  const evidence = state.parts.flatMap((p) => p.evidence).slice(0, 180);
+  say('Writing the report…');
+  let syn;
+  try {
+    syn = await coverageSynthesis({ summaries, evidence, parts: plan.batches.length,
+      title: job.title, context: job.context, scenes: plan.scenes }, { onStatus, signal });
+  } catch (e) {
+    if (e && e.kind === 'aborted') throw stopped();
+    throw e;
+  }
+  sent++;
+  const readRemoved = state.parts.reduce((n, p) => n + (p.removed || 0), 0);
+  const readRenumbered = state.parts.reduce((n, p) => n + (p.renumbered || 0), 0);
+  return {
+    sig,
+    report: syn.report,
+    summaries,
+    removed: syn.removed,
+    readRemoved,
+    renumbered: syn.renumbered + readRenumbered,
+    requests: sent,
+    scenes: plan.scenes.length,
+    truncated: !!syn.truncated,
+    model: syn.model
+  };
+}
+
+/* ------------------------------------------------------------
+   THE LOGLINE WORKSHOP
+   ------------------------------------------------------------
+   Two things in one call: a check of the WRITER'S logline against
+   the five parts a logline is made of, and five variants. In the
+   check, `found` is the span of their logline that carries that
+   part — verbatim, verified, stripped and counted if it is not —
+   so "your stakes are 'or lose the house'" is something they can
+   see they wrote. The variants are the model's own words and the
+   page marks them as such; nothing replaces the writer's logline
+   without a click and a confirm.
+   ------------------------------------------------------------ */
+export const LOGLINE_PARTS = [
+  { id: 'protagonist', label: 'Protagonist' },
+  { id: 'goal', label: 'Goal' },
+  { id: 'obstacle', label: 'Obstacle' },
+  { id: 'stakes', label: 'Stakes' },
+  { id: 'irony', label: 'Irony' }
+];
+const LOGLINE_IDS = LOGLINE_PARTS.map((p) => p.id);
+
+function loglineSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['check', 'variants'],
+    properties: {
+      check: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['part', 'present', 'found', 'note'],
+          properties: {
+            part: { type: 'string', enum: LOGLINE_IDS.slice() },
+            present: { type: 'boolean' },
+            found: { type: 'string', description: 'the words of THEIR logline that carry this part, copied verbatim — empty if absent' },
+            note: { type: 'string', description: 'one sentence' }
+          }
+        }
+      },
+      variants: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['text', 'angle'],
+          properties: {
+            text: { type: 'string', description: 'a complete logline, one sentence' },
+            angle: { type: 'string', description: 'a few words: what this version leans on' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildLoglinePrompt(job) {
+  const lines = [
+    'A writer of a Tamil ' + (job.format === 'short' ? 'short film' : 'feature')
+      + ' has asked for a workshop on their logline.',
+    '',
+    'THEIR LOGLINE:',
+    job.logline,
+    ''
+  ];
+  if (job.idea) lines.push('THEIR IDEA: ' + job.idea, '');
+  if (job.synopsis) lines.push('THEIR SYNOPSIS (context only — do not quote it):', job.synopsis, '');
+  lines.push(
+    'First, check THEIR logline for each of: protagonist, goal, obstacle, stakes, irony.',
+    'For each, `found` is the exact words of their logline that carry it, copied',
+    'character for character — or empty if the logline does not have it. Never put',
+    'words in `found` that are not in their logline.',
+    '',
+    'Then write FIVE variants. Each a single sentence, each genuinely different —',
+    'one leaning on the irony, one on the stakes, one shorter, and so on. Keep their',
+    'story: same protagonist, same world. Do not invent a different film.',
+    'Write in the language they wrote in.'
+  );
+  return lines.join('\n');
+}
+
+/**
+ * job { logline, idea, synopsis, format }
+ * Resolves to { check:[{part, label, present, found, note}], variants:
+ * [{text, angle}], removed, truncated, model }. WRITES NOTHING.
+ */
+export async function loglineWorkshop(job, { onStatus, signal } = {}) {
+  const logline = str(job && job.logline, 800);
+  if (!logline) throw new AIError('Write your logline first — the workshop works on yours.', 'nocontent');
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending your logline to ' + getModel() + '…');
+
+  const { parsed, truncated, model } = await callModel({
+    system: 'You are a story editor running a logline workshop. You check what the writer wrote, quoting only their words, and you offer alternatives they may take or leave.',
+    user: buildLoglinePrompt({ ...job, logline, idea: str(job.idea, 1200), synopsis: str(job.synopsis, 6000) }),
+    schema: loglineSchema(),
+    maxTokens: 4000,
+    effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"angle"/g) || []).length;
+      return n ? 'Writing variants… ' + n + ' of 5' : 'Checking your logline…';
+    }
+  });
+
+  const check = quoteChecker(logline);
+  let removed = 0;
+  const byPart = new Map();
+  for (const c of Array.isArray(parsed.check) ? parsed.check : []) {
+    if (!c || typeof c !== 'object' || !LOGLINE_IDS.includes(c.part) || byPart.has(c.part)) continue;
+    let found = unwrapQuote(str(c.found, 400));
+    if (found && !check(found)) { removed++; found = ''; }
+    byPart.set(c.part, { present: c.present === true && !!found, found, note: str(c.note, 300) });
+  }
+  const rows = LOGLINE_PARTS.map((p) => ({
+    part: p.id, label: p.label,
+    ...(byPart.get(p.id) || { present: false, found: '', note: '' })
+  }));
+  const seen = new Set([forCompare(logline)]);
+  const variants = [];
+  for (const v of Array.isArray(parsed.variants) ? parsed.variants : []) {
+    if (!v || typeof v !== 'object') continue;
+    const text = str(v.text, 600);
+    if (!text || seen.has(forCompare(text))) continue;
+    seen.add(forCompare(text));
+    variants.push({ text, angle: str(v.angle, 80) });
+    if (variants.length === 5) break;
+  }
+  if (!variants.length) throw new AIError('The reply held no variants, so nothing is shown.', 'empty-result');
+  return { check: rows, variants, removed, truncated, model };
+}
+
+/* ------------------------------------------------------------
+   THE CHARACTER-VOICE CHECK
+   ------------------------------------------------------------
+   One character's dialogue, every line of it, numbered with the
+   scene it is in. The model describes the voice the script has
+   established and lists the lines that break it. Each break names
+   a line id and quotes it; the quote is checked against THAT line
+   (then the other lines in the call — re-mapped and counted when
+   exactly one holds it), and the scene number printed is OURS,
+   from the script, never the model's. A suggested rewrite is
+   offered as an alternate take: the page puts it in `alts`, never
+   into the line in use.
+
+   Batched like coverage, by characters: a lead in a feature can
+   speak 15,000 words. Every batch is given the same spread sample
+   of the character's lines as the reference voice, so a break in
+   part three is judged against the same character as part one.
+   ------------------------------------------------------------ */
+export const VOICE_BATCH_CHARS = 30000;
+const VOICE_SAMPLE_CHARS = 5000;
+
+/* A cue as a person: cueName() from screenplay-analysis.js, the one
+   rule the cast matrix uses, imported as cueOf. */
+
+/** Every speech by `name`, with its scene number. */
+export function characterLines(elements, name) {
+  const want = cueOf(name);
+  const out = [];
+  let scene = '', sceneIdx = 0, speaker = '';
+  for (const el of elements || []) {
+    if (!el) continue;
+    const text = String(el.text ?? '');
+    if (el.type === 'scene') {
+      if (!text.trim()) continue;
+      sceneIdx++;
+      scene = String(el.sceneNumber || '').trim() || String(sceneIdx);
+      speaker = '';
+      continue;
+    }
+    if (el.type === 'character') { speaker = cueOf(text); continue; }
+    if (el.type === 'paren') continue;
+    if (el.type === 'dialogue') {
+      if (speaker && speaker === want && text.trim()) out.push({ id: String(el.id), scene: scene || '—', text: text.trim() });
+      continue;
+    }
+    speaker = '';
+  }
+  return out;
+}
+
+/** The speaking cast, most lines first. */
+export function speakingCharacters(elements) {
+  const count = new Map();
+  let speaker = '';
+  for (const el of elements || []) {
+    if (!el) continue;
+    if (el.type === 'character') { speaker = cueOf(el.text); continue; }
+    if (el.type === 'paren') continue;
+    if (el.type === 'dialogue' && speaker && String(el.text ?? '').trim()) {
+      count.set(speaker, (count.get(speaker) || 0) + 1);
+      continue;
+    }
+    speaker = '';
+  }
+  return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name, lines]) => ({ name, lines }));
+}
+
+export function planVoiceCheck(lines, { batchChars = VOICE_BATCH_CHARS } = {}) {
+  const batches = [];
+  let cur = [], size = 0;
+  for (const l of lines || []) {
+    const len = l.text.length + 24;
+    if (cur.length && size + len > batchChars) { batches.push(cur); cur = []; size = 0; }
+    cur.push(l); size += len;
+  }
+  if (cur.length) batches.push(cur);
+  const chars = (lines || []).reduce((n, l) => n + l.text.length + 24, 0);
+  const sample = batches.length > 1 ? VOICE_SAMPLE_CHARS : 0;
+  return {
+    batches, chars,
+    tokensIn: Math.ceil((chars + batches.length * (COVERAGE_OVERHEAD + sample)) / 4),
+    requests: batches.length,
+    tamil: (lines || []).some((l) => hasTamil(l.text))
+  };
+}
+
+/** A sample spread across the whole part, so every batch is judged
+    against the same character. */
+function voiceSample(lines) {
+  const out = [];
+  let size = 0;
+  const step = Math.max(1, Math.floor(lines.length / 30));
+  for (let i = 0; i < lines.length && size < VOICE_SAMPLE_CHARS; i += step) {
+    out.push(lines[i]); size += lines[i].text.length;
+  }
+  return out;
+}
+
+function voiceSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['voice', 'breaks'],
+    properties: {
+      voice: { type: 'string', description: 'two or three sentences: how this character talks across the script' },
+      breaks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['line', 'quote', 'why', 'rewrite'],
+          properties: {
+            line: { type: 'string', description: 'the line id given in brackets, copied exactly' },
+            quote: { type: 'string', description: 'the words in that line that break the voice, copied VERBATIM' },
+            why: { type: 'string', description: 'one line: why this does not sound like them' },
+            rewrite: { type: 'string', description: 'the whole line rewritten in their voice, or empty' }
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildVoicePrompt(job) {
+  const parts = [];
+  const ctx = contextBlock(job.context);
+  if (ctx) parts.push(ctx);
+  parts.push('Check the voice of ' + job.character + ' in this screenplay.');
+  parts.push('List ONLY the lines that break the voice the script has established for them:');
+  parts.push('a word they would not use, a register that slips, a line that sounds like the');
+  parts.push('writer explaining rather than the character speaking. Most lines are fine; do not');
+  parts.push('list a line just to have something to say. For each break, quote the words that');
+  parts.push('break it VERBATIM from that line, say why in one line, and optionally rewrite');
+  parts.push('the whole line in their voice, in the same language and register as the script.');
+  parts.push('');
+  if (job.sample && job.sample.length) {
+    parts.push('--- HOW ' + job.character + ' TALKS ACROSS THE SCRIPT (reference only) ---');
+    for (const l of job.sample) parts.push('scene ' + l.scene + ': ' + l.text);
+    parts.push('');
+  }
+  parts.push('--- THE LINES TO CHECK (part ' + job.part + ' of ' + job.parts + ') ---');
+  for (const l of job.lines) parts.push('[' + l.id + '] scene ' + l.scene + ': ' + l.text);
+  return parts.join('\n');
+}
+
+/**
+ * job { elements, character, context } — or { character, lines }.
+ * Resolves to { character, voice, breaks:[{id, scene, line, quote, why,
+ * rewrite}], removed, remapped, lines, requests, truncated, model }.
+ * WRITES NOTHING.
+ */
+export async function voiceCheck(job, { onStatus, signal, batchChars } = {}) {
+  const character = cueOf(job && job.character);
+  if (!character) throw new AIError('Pick a character first.', 'nocharacter');
+  const lines = Array.isArray(job.lines) ? job.lines : characterLines(job.elements, character);
+  if (lines.length < 2) {
+    throw new AIError(character + ' has ' + (lines.length ? 'one line' : 'no lines')
+      + ' in the script — a voice needs a few lines to be established.', 'nocontent');
+  }
+  const plan = planVoiceCheck(lines, { batchChars });
+  const sample = plan.batches.length > 1 ? voiceSample(lines) : [];
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+
+  let voice = '', removed = 0, remapped = 0, truncated = false, model = '';
+  const breaks = [];
+  const seen = new Set();
+  for (let b = 0; b < plan.batches.length; b++) {
+    if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    const batch = plan.batches[b];
+    say('Reading ' + character + '’s lines'
+      + (plan.batches.length > 1 ? ' — part ' + (b + 1) + ' of ' + plan.batches.length : '') + '…');
+    const r = await callModel({
+      system: 'You are a dialogue editor checking one character\'s voice across a Tamil screenplay. You quote the writer exactly, and you never flag a line that already sounds right.',
+      user: buildVoicePrompt({ character, lines: batch, sample, part: b + 1, parts: plan.batches.length, context: job.context }),
+      schema: voiceSchema(),
+      maxTokens: 8000,
+      effort: 'medium',
+      onStatus, signal,
+      progress: (sofar) => {
+        const n = (sofar.match(/"why"/g) || []).length;
+        return 'Listening to ' + character + (n ? '… ' + n + (n === 1 ? ' line flagged' : ' lines flagged') : '…');
+      }
+    });
+    model = r.model; truncated = truncated || r.truncated;
+    if (!voice) voice = str(r.parsed.voice, 800);
+    for (const x of Array.isArray(r.parsed.breaks) ? r.parsed.breaks : []) {
+      if (!x || typeof x !== 'object') continue;
+      const quote = unwrapQuote(str(x.quote, 600));
+      let line = byId.get(String(x.line ?? '').trim().replace(/^\[|\]$/g, ''));
+      if (!(line && quoteChecker(line.text)(quote))) {
+        const hits = batch.filter((l) => quoteChecker(l.text)(quote));
+        if (hits.length === 1) { line = hits[0]; remapped++; }
+        else { removed++; continue; }
+      }
+      if (seen.has(line.id)) continue;
+      seen.add(line.id);
+      const rewrite = str(x.rewrite, 2000);
+      breaks.push({
+        id: line.id, scene: line.scene, line: line.text, quote,
+        why: str(x.why, 300),
+        rewrite: rewrite && forCompare(rewrite) !== forCompare(line.text) ? rewrite : ''
+      });
+    }
+  }
+  return { character, voice, breaks, removed, remapped, lines: lines.length,
+    requests: plan.batches.length, truncated, model };
 }

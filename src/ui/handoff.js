@@ -292,7 +292,7 @@ export function syncNow() {
   const cur = headingMap(doc.elements);
   if (!syncPrev) { syncPrev = cur; return null; }
   if (cur.size === syncPrev.size && [...cur].every(([id, t]) => syncPrev.get(id) === t)) return null;
-  const plan = reconcile(doc.elements, Scenes.listScenes(), { prev: syncPrev, bin: Bin.listBin() });
+  const plan = reconcile(doc.elements, Scenes.listScenes(), { prev: syncPrev, bin: Bin.listBin(), numbering: doc.numbering });
   // An empty script is "no script": nothing planned, and the baseline
   // is kept, so headings that come back are not mistaken for new ones.
   if (plan.empty) {

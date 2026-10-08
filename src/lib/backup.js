@@ -78,7 +78,9 @@ export const PROJECT_KEYS = {
   edit:              'fms_edit_v1',
   deliverables:      'fms_deliverables_v1',
   write_goals:       'fms_write_goals_v1',
-  scene_bin:         'fms_scene_bin_v1'
+  scene_bin:         'fms_scene_bin_v1',
+  characters:        'fms_characters_v1',
+  costs:             'fms_costs_v1'
 };
 
 /* Deliberately NOT per project: the theme is a device preference
@@ -104,7 +106,11 @@ export const GLOBAL_KEYS = {
      Travels with a backup like the theme does: a writer restoring a
      studio on a new machine wants the editor to behave as they left
      it. Not project-scoped; src/ui/format-guide.js owns the shape. */
-  write_prefs:  'fms_write_prefs_v1'
+  write_prefs:  'fms_write_prefs_v1',
+  /* The onboarding tour's place (src/ui/tour.js): which step, dismissed,
+     the hub checklist hidden. Per device, like the theme; written only
+     on a click. The checklist's TICKS are derived and stored nowhere. */
+  tour:         'fms_tour_v1'
 };
 
 export const NOTE_PREFIX = 'fms_note_';

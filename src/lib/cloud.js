@@ -88,7 +88,12 @@ const SCOPE_BY_KEY = {
   // has NOT run against the database at the time of writing — until it
   // does, Postgres refuses these two upserts and the rest still sync.
   'fms_edit_v1':                'edit',
-  'fms_deliverables_v1':        'deliverables'
+  'fms_deliverables_v1':        'deliverables',
+  // Schema section 24, which has NOT run against the database at the
+  // time of writing — until it does, Postgres refuses these two upserts
+  // and the rest still sync (the same window section 17 had).
+  'fms_characters_v1':          'characters',
+  'fms_costs_v1':               'costs'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])
@@ -104,7 +109,9 @@ const KEY_BY_SCOPE = Object.fromEntries(
    would be an upsert Postgres refuses on every save. When a schema
    section adds the scope, move the key into SCOPE_BY_KEY and out of
    this set in the same commit. `fms_scene_bin_v1` (the scene bin,
-   src/lib/scene-bin.js) joined it for the same reason. */
+   src/lib/scene-bin.js) joined it for the same reason.
+   `fms_characters_v1` and `fms_costs_v1` were here until schema
+   section 24 named their scopes. */
 const LOCAL_ONLY = new Set(['fms_write_goals_v1', 'fms_scene_bin_v1']);
 const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {

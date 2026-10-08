@@ -422,3 +422,12 @@
   .pal-overlay, .sh-find, .mobile-actionbar { display: none !important; }
   body.pal-open { overflow: visible !important; }
 }
+
+/* "Made with FilmMakerStudio" on a printed call sheet: the footer's
+   hidden line (src/ui/footer.js) is the one thing of the footer that
+   prints, and only while a call sheet is printing. */
+@media print {
+  body.ct-printing .site-foot { display: block !important; border: 0; margin: 0; padding: 4mm 0 0; background: none; }
+  body.ct-printing .site-foot > :not(.site-foot-made) { display: none !important; }
+  body.ct-printing .site-foot-made { display: block !important; margin: 0; }
+}

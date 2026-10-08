@@ -1,0 +1,83 @@
+{
+  "_about": [
+    "THE CREW WAGE TABLE — a starting point for a fee, never a floor.",
+    "",
+    "READ THIS BEFORE ADDING A NUMBER. There is no current union scale to",
+    "quote. The FEFSI–TFPC wage MoU signed in 2022 expired on 9 March 2025",
+    "and had not been replaced when the dispute reached the Madras High",
+    "Court, which sent it to mediation (rates.chennai.checks.json,",
+    "`hansindia-fefsi`; CLAUDE.md open item 7). No primary copy of the 2022",
+    "MoU's per-craft schedule was found, so the per-craft `bata` fields are",
+    "null on purpose: a figure typed here from memory would be shown to a",
+    "producer as though somebody had checked it.",
+    "",
+    "The one figure in this file is `general`: the day pay the FEFSI",
+    "president described in a press interview after the March 2022 hike.",
+    "It is a quote about the agreement, not the agreement, and it is",
+    "EXPIRED. The page says both on every line that shows it.",
+    "",
+    "The user overrides any row (bata, call hours, overtime rule) on the",
+    "budget page; overrides live in fms_costs_v1 under `wageOverrides`, keyed",
+    "by row `id`. Row ids are therefore storage keys — never rename one.",
+    "",
+    "VERSIONED. A new agreement is a new `version` block, not an edit to",
+    "this one: `validFrom`, `validTo`, `source` and `status` describe the",
+    "agreement the rows came from. `status` is one of: expired, current,",
+    "draft. Nothing in the app may treat an `expired` table as current."
+  ],
+  "version": "fefsi-tfpc-2022",
+  "title": "FEFSI–TFPC wage MoU, 2022",
+  "status": "expired",
+  "validFrom": "2022-03",
+  "validTo": "2025-03-09",
+  "lastChecked": "2026-10-07",
+  "statusNote": "Last published agreement (2022 MoU) — EXPIRED 9 March 2025, in Madras High Court mediation. No current union floor exists. Confirm every figure with your union before you budget it.",
+  "sources": {
+    "hansindia-fefsi": {
+      "name": "The Hans India — FEFSI moves Madras HC over underpayment to technicians",
+      "url": "https://www.thehansindia.com/news/national/south-indian-film-employees-federation-moves-madras-hc-over-underpayment-to-technicians-983973",
+      "kind": "News report",
+      "published": "2025-06-30",
+      "says": "The 2022 MoU expired on 9 March 2025; FEFSI's case was that technicians in the state often earn less than ₹3,000 a day."
+    },
+    "dtnext-reel-big-fight": {
+      "name": "DT Next — Reel big fight: Producers vs Union workers",
+      "url": "https://www.dtnext.in/entertainment/cinema/reel-big-fight-producers-vs-union-workers",
+      "kind": "Press interview (FEFSI president R.K. Selvamani)",
+      "says": "Day pay was ₹850; FEFSI members were given a ₹450 hike in March 2022, making it ₹1,300 a day for the three years of the agreement.",
+      "caveat": "A union leader's account in an interview, not the agreement's schedule, and the article was not re-read when this table was written (2026-10-07). Treat it as reported, not verified."
+    }
+  },
+  "general": {
+    "id": "general",
+    "craft": "FEFSI member — general daily bata (as reported)",
+    "bata": 1300,
+    "unit": "day",
+    "confidence": "reported",
+    "source": "dtnext-reel-big-fight",
+    "note": "One figure for a member's day, quoted by the union's president; the MoU's per-craft grades were not published with it."
+  },
+  "rules": {
+    "callHours": null,
+    "otRule": null,
+    "note": "The 2022 MoU's call-time and overtime clauses were not found published. Set the ones your unit agreed on each row — call hours (a shift's length) and the overtime rule (e.g. half a bata per extra two hours) are yours to fill in."
+  },
+  "rows": [
+    { "id": "camera-assistant",   "craft": "Camera assistant",                 "department": "Camera",     "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "light-technician",   "craft": "Light technician / lightman",      "department": "Camera",     "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "grip",               "craft": "Grip / dolly / crane operator",    "department": "Camera",     "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "sound-assistant",    "craft": "Sound assistant / boom",           "department": "Sound",      "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "art-assistant",      "craft": "Art assistant",                    "department": "Art",        "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "set-worker",         "craft": "Set worker — carpenter, painter, moulder", "department": "Art", "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "costumer",           "craft": "Costumer / dresser",               "department": "Costume",    "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "makeup",             "craft": "Make-up artist",                   "department": "Makeup",     "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "hair",               "craft": "Hair dresser",                     "department": "Makeup",     "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "assistant-director", "craft": "Assistant director",               "department": "Direction",  "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "production-assistant","craft": "Production assistant / manager's assistant", "department": "Production", "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "driver",             "craft": "Driver",                           "department": "Production", "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "cook",               "craft": "Unit cook / catering",             "department": "Production", "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "junior-artist",      "craft": "Junior artist (extra)",            "department": "Cast",       "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "stunt",              "craft": "Stunt artist",                     "department": "Cast",       "bata": null, "unit": "day", "callHours": null, "otRule": null },
+    { "id": "dancer",             "craft": "Dancer",                           "department": "Cast",       "bata": null, "unit": "day", "callHours": null, "otRule": null }
+  ]
+}

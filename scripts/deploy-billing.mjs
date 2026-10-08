@@ -81,7 +81,7 @@ async function runSql(query) {
 }
 
 if (doSql) {
-  console.log(`running schema §16–§17 on ${REF} …`);
+  console.log(`running schema §16 onward on ${REF} …`);
   await runSql(sliceSchema());
   // Ask the database, not the file (CLAUDE.md, open item 5).
   const plans = await runSql(`select id, monthly_paise, yearly_paise from public.plans order by sort`);
@@ -92,8 +92,9 @@ if (doSql) {
   console.log('  plans:', plans.map((p) => `${p.id} ${p.monthly_paise}/${p.yearly_paise}`).join(', '));
   console.log('  functions:', fns.map((f) => f.proname).join(', '));
   console.log('  project_data scopes include edit/deliverables:', /'edit'/.test(JSON.stringify(scope)) && /'deliverables'/.test(JSON.stringify(scope)));
+  console.log('  project_data scopes include characters/costs (§24):', /'characters'/.test(JSON.stringify(scope)) && /'costs'/.test(JSON.stringify(scope)));
   if (plans.length !== 4 || fns.length !== 5) { console.error('✗ the schema did not land as expected'); process.exit(1); }
-  console.log('✓ schema §16–§17 are live');
+  console.log('✓ schema §16 onward is live');
 }
 
 if (doFns) {

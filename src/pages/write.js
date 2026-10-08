@@ -60,6 +60,10 @@ import Scenes from '../lib/scenes.js';
 import { binScene, unaddScenes } from '../lib/scene-bin.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
+/* Revision compare, revised-page marks and locked scene numbers: the
+   panels under the Revisions list (src/ui/write-revisions.js). */
+import { mountRevisionTools, renderRevisionTools } from '../ui/write-revisions.js';
+import { mountCoverage } from '../ui/coverage.js';   // the Coverage tab: report + voice check
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
@@ -74,6 +78,13 @@ import Keys from '../lib/write-keys.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
+/* Characters as data (src/lib/characters.js) and the table read: the
+   Characters tab. A view of the cues plus the writer's notes; it edits
+   the script only through a rename, and then through scriptChanged(). */
+import { renderCharacters, wireCharacters, characterNames } from '../ui/characters-panel.js';
+/* The One-Pager, Treatment and Synopsis open on a starting draft from
+   the Story page when they are empty (story.js docStarter, a read). */
+import { loadStory, docStarter, STARTER_KINDS } from '../lib/story.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, DOC_KINDS,
   revisionColour, typeLabel,
@@ -200,6 +211,14 @@ const app = document.getElementById('app');
    was" is a thing that goes stale and then lies. */
 let doc = Script.loadScript();
 mountWriteExtrasB({ getDoc: () => doc });   // hand-off banner, alternates, Tanglish
+mountRevisionTools({
+  getDoc: () => doc,
+  persistNow: () => persistNow(),
+  render: (focus) => render(focus),
+  // A revised-pages PDF keeps the scene numbers in the margins when they are locked.
+  exportPDF: (extra) => exportPDF(Script.isNumberingLocked(doc.numbering), extra)
+});
+mountCoverage({ getDoc: () => doc, save: () => persistNow() });
 
 /* ---- the keyboard (Phase 2) ---------------------------------
    Prefs are READ once here and written only when the writer changes
@@ -213,7 +232,9 @@ WriteKeys.configure({
 });
 const smart = createSmartType({
   getElements: () => doc.elements,
-  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null
+  elementOf: (ta) => doc.elements[indexOfEl(idOf(ta, 'el'))] || null,
+  // Names on the Characters list that no cue says yet.
+  extraNames: characterNames
 });
 let openDocId = null;
 
@@ -1636,12 +1657,12 @@ function renderRevisions() {
   }
 
   if (!doc.revisions.length) {
-    section.append(renderRevisionsEmpty());
+    section.append(renderRevisionsEmpty(), renderRevisionTools());
     return section;
   }
   const list = h('div.wr-rev-list');
   doc.revisions.forEach((r, i) => list.append(renderRevision(r, i, doc.revisions.length)));
-  section.append(list);
+  section.append(list, renderRevisionTools());
   return section;
 }
 
@@ -1686,8 +1707,22 @@ function renderDocCard(d) {
   return card;
 }
 
+/* A STARTING DRAFT, shown and not saved. When a One-Pager, Treatment
+   or Synopsis has no text, its editor opens on a draft built from the
+   Story page (story.js docStarter). The model's body stays '' until
+   the writer types — the first keystroke saves the whole draft as
+   their text, through the same input handler as any other — so an
+   untouched draft is re-derived on every open and can never be a stale
+   copy of the story. "Clear it" empties the box for this visit. */
+const starterCleared = new Set();     // doc ids, this visit only
+function starterFor(d) {
+  if (String(d.body || '').trim() || starterCleared.has(d.id) || !STARTER_KINDS.includes(d.kind)) return '';
+  try { return docStarter(loadStory(), d.kind, { title: Script.projectTitle() }); } catch (e) { return ''; }
+}
+
 function renderDocEditor(d) {
   const words = wordCount(d.body);
+  const starter = starterFor(d);
   const kind = h('select', { 'data-doc-field': 'kind', 'aria-label': 'Document kind' });
   DOC_KINDS.forEach((k) => {
     const opt = h('option', { value: k, text: k });
@@ -1703,11 +1738,20 @@ function renderDocEditor(d) {
       }, d.title)),
       labelled('Kind', kind)
     ]),
+    starter ? h('div.wr-starter', { 'data-starter': '' }, [
+      h('p.wr-starter-msg', {}, [
+        h('strong', { text: 'Starting draft from your Story page.' }),
+        h('span', { text: ' Not saved until you change it — then it is yours to rewrite. Your Story page is not touched.' })
+      ]),
+      h('button.btn.wr-starter-clear', { type: 'button', 'data-action': 'doc-starter-clear', text: 'Clear it' })
+    ]) : null,
     field('textarea.wr-body', {
       rows: '14', spellcheck: 'true',
-      placeholder: 'Write it here. Plain prose — this is not the screenplay.',
+      placeholder: STARTER_KINDS.includes(d.kind)
+        ? 'Write it here. Fill in the Story page — logline, outline, synopsis — and this opens on a starting draft.'
+        : 'Write it here. Plain prose — this is not the screenplay.',
       'data-doc-field': 'body', 'aria-label': 'Document text'
-    }, d.body),
+    }, d.body || starter),
     h('div.wr-editor-foot', {}, [
       h('span.wr-words', {}, [
         h('strong', { 'data-count': 'docwords', text: String(words) }),
@@ -1814,7 +1858,7 @@ function renderDocuments() {
 function render(focus) {
   const main = h('main', { id: 'main' });
   main.append(renderHeader(), renderScreenplay(), BeatBoard.renderOutline(),
-    renderGenerate(), renderRevisions(), renderDocuments());
+    renderGenerate(), renderRevisions(), renderDocuments(), renderCharacters());
   app.replaceChildren(main);
   countNodes = null;
   smart.invalidate();
@@ -2013,6 +2057,7 @@ function refreshCueOffers() {
 let pvPageOf = new Map();       // element id -> page index it starts on
 let pvTotal = 0;
 let pvFocusId = null;
+let omittedSig = '';       // the OMITTED markers last placed (placeOmitted)
 
 function pvWhereText() {
   if (!pvTotal) return 'Paginating…';
@@ -2035,7 +2080,8 @@ function refreshPvStatus() {
 function clearPageView() {
   const page = pageNode();
   if (!page) return;
-  page.querySelectorAll('.wr-pbreak').forEach((n) => n.remove());
+  page.querySelectorAll('.wr-pbreak, .wr-omitted').forEach((n) => n.remove());
+  omittedSig = '';
   page.querySelectorAll('[data-scene-no]').forEach((n) => n.removeAttribute('data-scene-no'));
   pvPageOf = new Map();
   pvTotal = 0;
@@ -2044,7 +2090,8 @@ function clearPageView() {
 function applyPageView() {
   const page = pageNode();
   if (!pageView || !page || !Typeset) return;
-  const pages = Typeset.paginate(doc.elements);
+  // paginateDoc: a locked script's numbers and OMITTED rows, as the PDF sets them.
+  const pages = Typeset.paginateDoc(doc);
 
   const pageOf = new Map();
   const sceneNo = new Map();
@@ -2097,10 +2144,48 @@ function applyPageView() {
     else if (row.hasAttribute('data-scene-no')) row.removeAttribute('data-scene-no');
   }
 
+  placeOmitted(page, pages);
+
   pvPageOf = pageOf;
   pvTotal = pages.length;
   page.dataset.pages = String(pages.length);
   refreshPvStatus();
+}
+
+/* A locked script's OMITTED scenes (src/lib/script.js): rows the
+   paginator sets where a cut scene was, with no element behind them.
+   The page view shows each as a marker before the heading that now
+   follows it — or after the last row, for one at the end — so the
+   page breaks on screen, which already count it, are explained. */
+function placeOmitted(page, pages) {
+  const want = [];                   // [anchorId | null, numbers[]]
+  let pending = [];
+  for (const rows of pages) {
+    for (const r of rows) {
+      if (r.omitted) { pending.push(r.sceneNo); continue; }
+      if (pending.length && r.id && !r.cont) { want.push([r.id, pending]); pending = []; }
+    }
+  }
+  if (pending.length) want.push([null, pending]);
+  const sig = JSON.stringify(want);
+  const have = page.querySelectorAll('.wr-omitted');
+  if (sig === omittedSig && have.length === want.reduce((n, w) => n + w[1].length, 0)) return;
+  have.forEach((n) => n.remove());
+  omittedSig = sig;
+  const rows = allRows();
+  for (const [id, numbers] of want) {
+    const row = id ? rowOf(id) : rows[rows.length - 1];
+    if (!row) continue;
+    let target = row.closest('.wr-dual') || row;
+    const marks = numbers.map((n) => h('div.wr-omitted', { role: 'note', text: n + '  OMITTED' }));
+    if (!id) { target.after(...marks); continue; }
+    // Before a page break that sits right above the heading, so the
+    // break marker keeps its place directly over the row it names.
+    if (target.previousElementSibling && target.previousElementSibling.classList.contains('wr-pbreak')) {
+      target = target.previousElementSibling;
+    }
+    target.before(...marks);
+  }
 }
 
 async function setPageView(on) {
@@ -2758,7 +2843,11 @@ delegate(document, 'click', '[data-action="export-fdx"]', () => {
   download(Script.toFDX(doc, { title }), Script.slugify(title, 'screenplay') + '.fdx', 'application/xml');
 });
 
-async function exportPDF(sceneNumbers) {
+/* `extra.marks` is a revised-pages export (src/ui/write-revisions.js):
+   the asterisks sit in the right margin, which the plain screenplay
+   setup clips, so it takes the wide setup the scene numbers use — same
+   1.5in gutter, the margins moved inside the printable area. */
+async function exportPDF(sceneNumbers, extra = {}) {
   if (!doc.elements.length) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
@@ -2771,11 +2860,16 @@ async function exportPDF(sceneNumbers) {
     scope: 'screenplay',
     // Scene numbers live in the margins, which a PDF page clips; see
     // SETUPS['screenplay-wide'] in src/lib/pdf.js.
-    ...(sceneNumbers ? { setup: 'screenplay-wide', classes: ['pdf-sn'] } : {}),
+    ...(sceneNumbers || extra.marks
+      ? { setup: 'screenplay-wide', classes: extra.marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] }
+      : {}),
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages']
+    subtitle: [currentRevision(), formatPages(pageCount(doc.elements)) + ' pages', extra.note]
       .filter(Boolean).join(' · '),
-    before: () => { node = Typeset.buildDocument(doc, { ...exportMeta(), sceneNumbers }); main.append(node); },
+    before: () => {
+      node = Typeset.buildDocument(doc, { ...exportMeta(), sceneNumbers, marks: extra.marks });
+      main.append(node);
+    },
     after: () => { if (node) { node.remove(); node = null; } }
   });
 }
@@ -2788,7 +2882,7 @@ delegate(document, 'click', '[data-action="export-text"]', async () => {
   const title = Script.projectTitle();
   download(Typeset.toText(doc, exportMeta()),
     Script.slugify(title, 'screenplay') + '.txt', 'text/plain');
-  say('Exported ' + Typeset.sheetCount(doc.elements) + ' pages of screenplay text.');
+  say('Exported ' + Typeset.sheetCount(doc.elements, doc.numbering) + ' pages of screenplay text.');
 });
 
 /* ---- the pass: events ---------------------------------------
@@ -3226,19 +3320,43 @@ delegate(document, 'click', '[data-action="doc-del"]', () => {
 delegate(document, 'input', 'textarea[data-doc-field="body"]', (e, ta) => {
   const d = doc.documents.find((x) => x.id === openDocId);
   if (!d) return;
+  // The first edit of a starting draft makes it the writer's text.
+  const starter = ta.closest('.wr-editor')?.querySelector('[data-starter]');
+  if (starter) starter.remove();
   d.body = ta.value;
   d.updated = new Date().toISOString();
   refreshCounters();
   persist();
 });
 
+delegate(document, 'click', '[data-action="doc-starter-clear"]', (e, btn) => {
+  const editor = btn.closest('.wr-editor');
+  const ta = editor && editor.querySelector('textarea[data-doc-field="body"]');
+  if (!ta) return;
+  starterCleared.add(editor.dataset.doc);
+  btn.closest('[data-starter]')?.remove();
+  ta.value = '';                    // the model's body is '' already: nothing to save
+  ta.focus();
+});
+
 delegate(document, 'change', '[data-doc-field]', (e, el) => {
   const key = el.dataset.docField;
   const d = doc.documents.find((x) => x.id === openDocId);
   if (!d) return;
+  /* A starting draft that was never edited is not the document's body;
+     a `change` on it (blur after nothing) must not save it. */
+  if (key === 'body' && el.closest('.wr-editor')?.querySelector('[data-starter]')) return;
   d[key] = el.value;
   d.updated = new Date().toISOString();
   persistNow();
+  // A new kind on an empty document: open on that kind's starting draft.
+  if (key === 'kind' && !String(d.body || '').trim()) {
+    const ed = document.querySelector(`.wr-editor[data-doc="${CSS.escape(d.id)}"]`);
+    if (ed) {
+      ed.replaceWith(renderDocEditor(d));
+      document.querySelector('.wr-editor select[data-doc-field="kind"]')?.focus();
+    }
+  }
   // Only the card above is stale. Replacing that one node keeps its
   // title, kind and word count honest without rebuilding the section
   // under the caret the user is still holding in the editor.
@@ -3646,6 +3764,19 @@ document.addEventListener('visibilitychange', () => {
 
 /* The Outline tab (src/ui/beat-board.js) edits the script through
    the page's own model and save path, never around it. */
+/* The Characters tab: a rename changes cues in place, and this is the
+   page's own path for "the script changed under these rows". */
+wireCharacters({
+  getDoc: () => doc,
+  scriptChanged: (ids) => {
+    ids.forEach((id) => autosize(rowOf(id)?.querySelector('.wr-text')));
+    smart.invalidate();
+    refreshCounters();
+    persistNow();
+    scheduleDerived();
+  }
+});
+
 BeatBoard.wireBeatBoard({
   getDoc: () => doc,
   saveDoc: () => persistNow(),

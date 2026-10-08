@@ -89,7 +89,14 @@ const SCOPED_KEYS = [
   // The scene bin (src/lib/scene-bin.js): scenes the script no longer
   // has, with every dependent, waiting for Restore or Delete for good.
   // Local only, the same treatment as fms_write_goals_v1.
-  'fms_scene_bin_v1'
+  'fms_scene_bin_v1',
+  // The script's characters as data (src/lib/characters.js): what the
+  // writer says about each one. Local only, like the two above.
+  'fms_characters_v1',
+  // The budget's actuals (src/lib/costs.js): petty cash, expenses,
+  // crew fees and advances. Local only until a schema section adds
+  // its scope, the same treatment as fms_write_goals_v1.
+  'fms_costs_v1'
   // intentionally NOT scoped: fms_studio_prefs_v1 (dark mode = global),
   //                            fms_supabase_cfg_v1 (account-level),
   //                            fms_note_* (per-field notes, fine global for now)

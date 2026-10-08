@@ -35,6 +35,9 @@ import PDF from '../lib/pdf.js';
 import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
+import Sun from '../lib/sun.js';
+import Geo from '../lib/recce-geo.js';
+import WA from '../lib/callsheet-text.js';
 
 const app = document.getElementById('app');
 
@@ -381,12 +384,16 @@ function renderSheetEdit(sheet, contacts, scenes) {
     labelled('General call', field('input', {
       type: 'time', 'data-sheet-field': 'generalCall', 'aria-label': 'General call time'
     }, sheet.generalCall)),
+    labelled('Planned wrap', field('input', {
+      type: 'time', 'data-sheet-field': 'wrap', 'aria-label': 'Planned wrap time'
+    }, sheet.wrap)),
     labelled('Location', field('input', {
       type: 'text', placeholder: 'Unit base — where everybody reports',
       'data-sheet-field': 'location', 'aria-label': 'Location'
     }, sheet.location))
   ]));
   edit.append(renderSchedLine(sheet, scenes));
+  edit.append(renderLight(sheet, scenes));
 
   edit.append(labelled('Notes', field('textarea.ct-sheet-notes', {
     rows: '2', placeholder: 'Weather, parking, nearest hospital, anything the day needs',
@@ -459,6 +466,8 @@ function renderSheetEdit(sheet, contacts, scenes) {
   pp.append(plist);
   edit.append(pp);
 
+  edit.append(renderRouteEdit(sheet, scenes));
+  edit.append(renderSend(sheet, contacts, scenes));
   return edit;
 }
 
@@ -484,6 +493,19 @@ function renderSheetDoc(sheet, contacts, scenes) {
       docFact('Scenes', String(onSheet.length) + ' · ' + formatEighths(eighths) + ' pages')
     ])
   ]));
+
+  const lit = lightOf(sheet, scenes);
+  if (lit) {
+    doc.append(h('div.ct-doc-facts.ct-doc-light', {}, [
+      docFact('Sunrise', lit.light.sunrise || '—'),
+      docFact('Sunset', lit.light.sunset || '—'),
+      docFact('Golden hour', [lit.light.goldenAm, lit.light.goldenPm].filter(Boolean).join(' · ') || '—'),
+      docFact('Planned wrap', sheet.wrap || 'Not set')
+    ]));
+    doc.append(h('p.ct-doc-small', { text: lightNote(lit) }));
+    const late = lateScenes(sheet, onSheet, lit.light);
+    if (late.length) doc.append(h('p.ct-doc-flag', { text: lateText(sheet, lit.light, late) }));
+  }
 
   if (onSheet.length) {
     const table = h('table.ct-doc-table');
@@ -528,6 +550,8 @@ function renderSheetDoc(sheet, contacts, scenes) {
     doc.append(h('p.ct-doc-none', { text: 'Nobody is called on this sheet yet.' }));
   }
 
+  doc.append(renderRouteDoc(onSheet));
+
   if (sheet.notes) {
     doc.append(h('div.ct-doc-notes', {}, [
       h('p.ct-doc-eyebrow', { text: 'Notes' }),
@@ -547,6 +571,288 @@ function row(cell, values) {
   const tr = h('tr');
   values.forEach((v) => tr.append(h(cell, { text: v })));
   return tr;
+}
+
+/* ---- the day's light, the route, and the message ----------------
+   Three views read off models this page does not own: the sun from
+   src/lib/sun.js, the places from the recces in src/lib/locations.js,
+   the message from src/lib/callsheet-text.js. All derived on render;
+   the only things written are recce fields, through setRecce(), which
+   is the same record the Plan page's recce cards edit. */
+
+const sheetScenes = (sheet, scenes) => sheet.sceneIds
+  .map((id) => scenes.find((s) => s.id === id))
+  .filter(Boolean);
+
+/** The distinct places a sheet's scenes are shot at, in sheet order,
+    each with its recce. A place is a scene's location: there is no
+    list of them to keep in step. */
+function placesOf(onSheet) {
+  const seen = new Set();
+  const out = [];
+  for (const s of onSheet) {
+    const name = Locations.locationName(s);
+    const key = Locations.locationKey(name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, name, recce: Locations.getRecce(name) });
+  }
+  return out;
+}
+
+/** The date the sheet is for: its own, else the schedule's. */
+function sheetDateOf(sheet, scenes) {
+  return sheet.date || scheduleOf(sheet, scenes).date || '';
+}
+
+/** { light, place } for the sheet's date at its first pinned place, or
+    null with no date. Chennai stands in, flagged, for a place with no pin. */
+function lightOf(sheet, scenes) {
+  const date = sheetDateOf(sheet, scenes);
+  if (!date) return null;
+  const place = Geo.placeFor(placesOf(sheetScenes(sheet, scenes)));
+  const light = Sun.daylight(date, place, { deviceOffset: deviceOffsetOn(date) });
+  return light ? { light, place } : null;
+}
+
+/* What this device's clock was offset by on that date, for a place
+   outside India (sun.js reads India as IST without asking). */
+function deviceOffsetOn(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTimezoneOffset() : new Date().getTimezoneOffset();
+}
+
+function lightNote(lit) {
+  return lit.place.fallback
+    ? 'Times for Chennai (' + lit.light.zone + ') — no location on this sheet has a pin yet. Add one under Route & safety.'
+    : 'Times at ' + lit.place.name + ', ' + lit.light.zone + '. Golden hour: the sun between 4° below and 6° above the horizon.';
+}
+
+/** The scenes that need daylight when the planned wrap is after sunset.
+    No wrap typed, no flag: the check judges a time somebody wrote down. */
+function lateScenes(sheet, onSheet, light) {
+  if (!Sun.isPastSunset(sheet.wrap, light)) return [];
+  return onSheet.filter(Sun.needsDaylight);
+}
+function lateText(sheet, light, late) {
+  return 'Wrap ' + sheet.wrap + ' is after sunset (' + light.sunset + '). '
+    + (late.length === 1 ? 'Exterior scene ' : 'Exterior scenes ')
+    + late.map((s) => s.number || '—').join(', ')
+    + ' need the light — shoot ' + (late.length === 1 ? 'it' : 'them') + ' before ' + light.sunset + '.';
+}
+
+function renderLight(sheet, scenes) {
+  const wrap = h('div.ct-light', { 'aria-live': 'polite' });
+  const lit = lightOf(sheet, scenes);
+  if (!lit) {
+    wrap.append(h('p.ct-light-note', { text: 'Give the sheet a date and its sunrise, sunset and golden hour appear here.' }));
+    return wrap;
+  }
+  const { light } = lit;
+  wrap.append(h('dl.ct-light-row', {}, [
+    lightCell('Sunrise', light.sunrise || '—'),
+    lightCell('Sunset', light.sunset || '—'),
+    lightCell('Golden · morning', light.goldenAm || '—'),
+    lightCell('Golden · evening', light.goldenPm || '—')
+  ]));
+  wrap.append(h('p.ct-light-note', { text: lightNote(lit) }));
+  const late = lateScenes(sheet, sheetScenes(sheet, scenes), light);
+  if (late.length) wrap.append(h('p.ct-flag', { role: 'note', text: lateText(sheet, light, late) }));
+  return wrap;
+}
+const lightCell = (label, value) =>
+  h('div.ct-light-cell', {}, [h('dt', { text: label }), h('dd', { text: value })]);
+
+/* ---- route & safety: the editing side -------------------------- */
+const ROUTE_FIELDS = [
+  ['address', 'Address', 'Where the van goes — a pin, a landmark, a street'],
+  ['parking', 'Parking', 'Where the unit parks, and how far the carry is'],
+  ['hospital', 'Nearest hospital', 'Name, distance, casualty phone'],
+  ['police', 'Nearest police station', 'Station, and its number']
+];
+const canLocate = () => typeof navigator !== 'undefined' && 'geolocation' in navigator;
+
+function renderRouteEdit(sheet, scenes) {
+  const places = placesOf(sheetScenes(sheet, scenes));
+  const wrap = h('div.ct-pick.ct-route', { 'data-places': places.map((p) => p.key).join('|') });
+  wrap.append(h('h3.ct-pick-head', { text: 'Route & safety' }));
+  if (!places.length) {
+    wrap.append(h('p.ct-pick-none', { text: 'Tick a scene with a location and its route and safety details appear here — and on the printed sheet.' }));
+    return wrap;
+  }
+  wrap.append(h('p.ct-pick-none', { text: 'Filed against the location, so every sheet and the Plan page’s recce card share them.' }));
+  places.forEach((p) => wrap.append(routePlace(p)));
+  return wrap;
+}
+
+function routePlace(p) {
+  const box = h('details.ct-route-place', { 'data-loc': p.name });
+  const pin = Geo.coordsOf(p.recce);
+  box.append(h('summary', {}, [
+    h('span.ct-route-name', { text: p.name }),
+    h('span.ct-route-pin', { text: pin ? 'Pinned' : 'No pin' })
+  ]));
+  const grid = h('div.ct-route-grid');
+  ROUTE_FIELDS.forEach(([key, label, ph]) => {
+    grid.append(labelled(label, field('input', {
+      type: 'text', placeholder: ph, 'data-route-field': key,
+      'aria-label': label + ' — ' + p.name
+    }, p.recce[key])));
+  });
+  const geoInput = field('input', {
+    type: 'text', inputmode: 'url', 'data-route-geo': '',
+    placeholder: 'Paste a Google Maps link, or 13.0827, 80.2707',
+    'aria-label': 'Map pin for ' + p.name
+  }, pin ? pin.lat + ', ' + pin.lng : '');
+  grid.append(labelled('Map pin', geoInput,
+    h('span.ct-route-status', { 'aria-live': 'polite', text: pinText(pin) })));
+  box.append(grid);
+  const acts = h('div.ct-route-acts');
+  if (canLocate()) {
+    acts.append(h('button.btn.ct-route-btn', {
+      type: 'button', 'data-action': 'route-locate', text: 'Use this device’s location'
+    }));
+  }
+  const link = Geo.recceMapsLink(p.name, p.recce);
+  acts.append(h('a.btn.ct-route-btn.ct-route-map', {
+    href: link, target: '_blank', rel: 'noopener noreferrer', text: 'Open in Maps'
+  }));
+  box.append(acts);
+  return box;
+}
+const pinText = (pin) => pin ? 'Pinned at ' + pin.lat + ', ' + pin.lng
+  : 'No pin yet — sunrise and sunset fall back to Chennai.';
+
+/* ---- route & safety: the paper side ---------------------------- */
+function renderRouteDoc(onSheet) {
+  const places = placesOf(onSheet);
+  if (!places.length) return null;
+  const table = h('table.ct-doc-table.ct-doc-route');
+  table.append(h('caption', { text: 'Route & safety' }));
+  table.append(h('thead', {}, [row('th', ['Location', 'Address · map', 'Parking', 'Nearest hospital', 'Nearest police'])]));
+  const body = h('tbody');
+  places.forEach((p) => {
+    const pin = Geo.coordsOf(p.recce);
+    const where = h('td', {}, [
+      p.recce.address || '',
+      pin ? h('span.ct-doc-pin', { text: (p.recce.address ? ' · ' : '') + pin.lat + ', ' + pin.lng }) : null,
+      h('a.ct-doc-map', {
+        href: Geo.recceMapsLink(p.name, p.recce), target: '_blank', rel: 'noopener noreferrer',
+        text: (p.recce.address || pin ? ' · ' : '') + 'Map'
+      })
+    ]);
+    body.append(h('tr', {}, [
+      h('td', { text: p.name }), where,
+      h('td', { text: p.recce.parking || '—' }),
+      h('td', { text: p.recce.hospital || 'Not noted' }),
+      h('td', { text: p.recce.police || 'Not noted' })
+    ]));
+  });
+  table.append(body);
+  return table;
+}
+
+/* ---- the message ------------------------------------------------- */
+
+/** Who is called, in the order the paper lists them. */
+function calledOf(sheet, contacts) {
+  const byId = Object.fromEntries(contacts.map((c) => [c.id, c]));
+  return Object.keys(sheet.calls)
+    .map((id) => byId[id])
+    .filter(Boolean)
+    .sort((a, b) => {
+      const da = DEPARTMENTS.indexOf(a.department);
+      const db = DEPARTMENTS.indexOf(b.department);
+      return da === db ? String(a.name).localeCompare(String(b.name)) : da - db;
+    });
+}
+
+/** The sheet's facts, looked up now, for callsheet-text.js. */
+function factsOf(sheet, scenes) {
+  const onSheet = sheetScenes(sheet, scenes);
+  const sched = scheduleOf(sheet, scenes);
+  const places = placesOf(onSheet);
+  const lit = lightOf(sheet, scenes);
+  const first = places.find((p) => Geo.coordsOf(p.recce)) || places.find((p) => p.recce.address) || null;
+  const mapUrl = first ? Geo.recceMapsLink(first.name, first.recce)
+    : Geo.mapsLink({ address: sheet.location || (places[0] ? places[0].name : '') });
+  const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const date = sheetDateOf(sheet, scenes);
+  return {
+    film: PDF.projectTitle(),
+    title: sheet.title || 'Shoot day',
+    dayNumber: sched.day || 0,
+    date: date ? prettyDate(date) : '',
+    generalCall: sheet.generalCall,
+    wrap: sheet.wrap,
+    location: sheet.location || (places[0] ? places[0].name : ''),
+    mapUrl,
+    light: lit ? { ...lit.light, fallback: lit.place.fallback } : null,
+    scenes: onSheet.map((s) => ({ number: s.number, slug: slugOf(s), pages: formatEighths(s.eighths) })),
+    pagesTotal: formatEighths(eighths),
+    notes: sheet.notes
+  };
+}
+
+const personOf = (sheet, c) =>
+  ({ name: c.name, role: c.role, department: c.department, call: sheet.calls[c.id] || '' });
+
+const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+function renderSend(sheet, contacts, scenes) {
+  const wrap = h('div.ct-pick.ct-send');
+  wrap.append(h('h3.ct-pick-head', { text: 'Send this sheet' }));
+  const facts = factsOf(sheet, scenes);
+  const unit = WA.unitMessage(facts);
+  const acts = h('div.ct-send-acts');
+  acts.append(h('a.btn.primary.ct-send-wa', {
+    href: WA.waLink('', unit), target: '_blank', rel: 'noopener noreferrer',
+    text: 'Send to WhatsApp'
+  }));
+  if (canShare()) {
+    acts.append(h('button.btn', { type: 'button', 'data-action': 'sheet-share', text: 'Share…' }));
+  }
+  acts.append(h('button.btn', { type: 'button', 'data-action': 'sheet-copy', text: 'Copy text' }));
+  wrap.append(acts);
+  wrap.append(h('p.ct-pick-none', {
+    text: 'One message for the whole unit — WhatsApp asks which chat or group. '
+        + unit.length + ' characters.'
+  }));
+
+  const called = calledOf(sheet, contacts);
+  if (!called.length) {
+    wrap.append(h('p.ct-pick-none', { text: 'Call somebody above and each person gets their own message, with their own call time first.' }));
+    return wrap;
+  }
+  const list = h('ul.ct-send-list');
+  called.forEach((c) => {
+    const digits = WA.waDigits(c.phone);
+    const li = h('li.ct-send-row', { 'data-contact': c.id });
+    li.append(h('span.ct-send-who', {}, [
+      h('span.ct-pick-name', { text: c.name || 'Unnamed' }),
+      h('span.ct-pick-role', { text: [c.department, c.role].filter(Boolean).join(' · ') })
+    ]));
+    li.append(h('span.ct-send-call', {
+      text: sheet.calls[c.id] || (sheet.generalCall ? sheet.generalCall + ' (general)' : 'General call')
+    }));
+    if (digits) {
+      li.append(h('a.btn.ct-send-btn', {
+        href: WA.waLink(digits, WA.personMessage(facts, personOf(sheet, c))),
+        target: '_blank', rel: 'noopener noreferrer',
+        'aria-label': 'WhatsApp ' + (c.name || 'this person') + ' their call',
+        text: 'WhatsApp'
+      }));
+    } else {
+      li.append(h('button.btn.ct-send-btn', {
+        type: 'button', 'data-action': 'sheet-copy-person',
+        'aria-label': 'Copy the message for ' + (c.name || 'this person') + ' — no phone number on the unit list',
+        text: 'Copy text'
+      }));
+    }
+    list.append(li);
+  });
+  wrap.append(list);
+  return wrap;
 }
 
 /* ---- render -------------------------------------------------- */
@@ -701,6 +1007,36 @@ function syncDoc(el) {
   // Ticking a scene can move the sheet onto (or off) a schedule day.
   const line = card.querySelector('.ct-sched');
   if (line) line.replaceWith(renderSchedLine(sheet, scenes));
+  syncDerived(card, sheet, scenes);
+}
+
+/* The parts of a sheet that are read off OTHER models — the light, the
+   route block's place list, the send panel — rebuilt in place. The
+   route block's inputs are only rebuilt when its set of places changed,
+   so a field somebody is typing in survives a tick of a scene box. */
+function syncDerived(card, sheet, scenes) {
+  const contacts = Contacts.listContacts();
+  const light = card.querySelector('.ct-light');
+  if (light) light.replaceWith(renderLight(sheet, scenes));
+  const route = card.querySelector('.ct-route');
+  const places = placesOf(sheetScenes(sheet, scenes)).map((p) => p.key).join('|');
+  if (route && route.dataset.places !== places) route.replaceWith(renderRouteEdit(sheet, scenes));
+  const send = card.querySelector('.ct-send');
+  if (send) send.replaceWith(renderSend(sheet, contacts, scenes));
+}
+
+/** Every sheet's derived parts, after a recce changed under all of them. */
+function syncAllDerived() {
+  const scenes = Scenes.listScenes();
+  const sheets = Contacts.listCallSheets();
+  const contacts = Contacts.listContacts();
+  document.querySelectorAll('.ct-sheet[data-sheet]').forEach((card) => {
+    const sheet = sheets.find((s) => s.id === card.dataset.sheet);
+    if (!sheet) return;
+    const doc = card.querySelector('.ct-doc');
+    if (doc) doc.replaceWith(renderSheetDoc(sheet, contacts, scenes));
+    syncDerived(card, sheet, scenes);
+  });
 }
 
 delegate(document, 'click', '[data-action="sheet-sched-date"]', (e, el) => {
@@ -768,6 +1104,155 @@ delegate(document, 'click', '[data-action="sheet-pdf"]', (e, el) => {
     before: () => markOnlySheet(card),
     after: () => card.classList.remove('is-printing')
   });
+});
+
+/* ---- route & safety, and sending — events -----------------------
+   A recce field is filed against the LOCATION, so one edit is true of
+   every sheet that shoots there: the other sheets' copies of the field
+   are brought into step in place, and every sheet's derived parts (the
+   light, the paper, the message) are rebuilt. Nothing is re-rendered
+   under the caret. */
+const locOf = (el) => el.closest('[data-loc]')?.dataset.loc || '';
+
+function stepRoutePlaces(name, except) {
+  const recce = Locations.getRecce(name);
+  const pin = Geo.coordsOf(recce);
+  document.querySelectorAll('.ct-route-place').forEach((box) => {
+    if (Locations.locationKey(box.dataset.loc) !== Locations.locationKey(name)) return;
+    box.querySelectorAll('[data-route-field]').forEach((inp) => {
+      if (inp !== except) inp.value = recce[inp.dataset.routeField] || '';
+    });
+    const geo = box.querySelector('[data-route-geo]');
+    if (geo && geo !== except) geo.value = pin ? pin.lat + ', ' + pin.lng : '';
+    const status = box.querySelector('.ct-route-status');
+    if (status && !(except && except.matches('[data-route-geo]') && box.contains(except))) status.textContent = pinText(pin);
+    const chip = box.querySelector('.ct-route-pin');
+    if (chip) chip.textContent = pin ? 'Pinned' : 'No pin';
+    const map = box.querySelector('.ct-route-map');
+    if (map) map.href = Geo.recceMapsLink(name, recce);
+  });
+}
+
+function afterRecce(name, except) {
+  stepRoutePlaces(name, except);
+  syncAllDerived();
+}
+
+saveOnInput('[data-route-field]', (el) => {
+  const name = locOf(el);
+  if (name) Locations.setRecce(name, { [el.dataset.routeField]: el.value });
+});
+delegate(document, 'change', '[data-route-field]', (e, el) => {
+  const name = locOf(el);
+  if (!name) return;
+  Locations.setRecce(name, { [el.dataset.routeField]: el.value });
+  afterRecce(name, el);
+});
+
+/* The pin field takes a pasted Maps link or a bare pair, keeps the
+   COORDINATES and shows them back. What was pasted is not stored: the
+   link is a way of typing two numbers. A link with none in it (a short
+   maps.app.goo.gl link) is refused in words, and nothing is written. */
+delegate(document, 'change', '[data-route-geo]', (e, el) => {
+  const name = locOf(el);
+  if (!name) return;
+  const status = el.parentElement && el.parentElement.querySelector('.ct-route-status');
+  const text = el.value.trim();
+  if (!text) {
+    Locations.setRecce(name, { lat: '', lng: '' });
+    if (status) status.textContent = pinText(null);
+    afterRecce(name, el);
+    return;
+  }
+  const at = Geo.parseLatLng(text);
+  if (!at) {
+    if (status) {
+      status.textContent = /goo\.gl|maps\.app/i.test(text)
+        ? 'A short link carries no coordinates. Open it, then paste the long address-bar link.'
+        : 'No coordinates in that. Paste a Google Maps link, or two numbers like 13.0827, 80.2707.';
+    }
+    el.setAttribute('aria-invalid', 'true');
+    return;
+  }
+  el.removeAttribute('aria-invalid');
+  Locations.setRecce(name, { lat: String(at.lat), lng: String(at.lng) });
+  el.value = at.lat + ', ' + at.lng;
+  if (status) status.textContent = pinText(at);
+  afterRecce(name, el);
+});
+
+/* Where the phone is, as the location's pin — for the recce done
+   standing in it. Optional, asked for only on the tap, and a refusal is
+   a sentence rather than an error. */
+delegate(document, 'click', '[data-action="route-locate"]', (e, el) => {
+  const name = locOf(el);
+  if (!name || !canLocate()) return;
+  el.disabled = true;
+  navigator.geolocation.getCurrentPosition((pos) => {
+    el.disabled = false;
+    const lat = Math.round(pos.coords.latitude * 1e6) / 1e6;
+    const lng = Math.round(pos.coords.longitude * 1e6) / 1e6;
+    Locations.setRecce(name, { lat: String(lat), lng: String(lng) });
+    afterRecce(name, null);
+    StudioUI.toast(name + ' pinned where this device is, to about '
+      + Math.round(pos.coords.accuracy || 0) + ' m.');
+  }, (err) => {
+    el.disabled = false;
+    StudioUI.toast(err && err.code === 1
+      ? 'Location permission was refused — paste a Maps link instead.'
+      : 'This device could not find where it is. Paste a Maps link instead.');
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+});
+
+function sheetAndFacts(el) {
+  const sheet = Contacts.listCallSheets().find((s) => s.id === sheetIdOf(el));
+  if (!sheet) return null;
+  return { sheet, facts: factsOf(sheet, Scenes.listScenes()) };
+}
+
+/* Clipboard, with the selection fallback for a browser (or an http
+   preview) that has no async clipboard. */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = h('textarea', { 'aria-hidden': 'true', class: 'ct-copy-buffer' });
+    ta.value = text;
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+}
+
+delegate(document, 'click', '[data-action="sheet-copy"]', async (e, el) => {
+  const got = sheetAndFacts(el);
+  if (!got) return;
+  const ok = await copyText(WA.unitMessage(got.facts));
+  StudioUI.toast(ok ? 'Call sheet copied — paste it into the unit group.' : 'Could not reach the clipboard.');
+});
+
+delegate(document, 'click', '[data-action="sheet-copy-person"]', async (e, el) => {
+  const got = sheetAndFacts(el);
+  const c = got && Contacts.listContacts().find((x) => x.id === contactIdOf(el));
+  if (!c) return;
+  const ok = await copyText(WA.personMessage(got.facts, personOf(got.sheet, c)));
+  StudioUI.toast(ok ? 'Copied ' + (c.name || 'their') + '’s call — there is no phone number to send it to.'
+    : 'Could not reach the clipboard.');
+});
+
+delegate(document, 'click', '[data-action="sheet-share"]', async (e, el) => {
+  const got = sheetAndFacts(el);
+  if (!got || !canShare()) return;
+  try {
+    await navigator.share({ title: [got.facts.film, got.facts.title].filter(Boolean).join(' — '), text: WA.unitMessage(got.facts) });
+  } catch (err) {
+    /* AbortError is the person closing the sheet; nothing to say. */
+    if (err && err.name !== 'AbortError') StudioUI.toast('Sharing did not open on this device. Use Copy text.');
+  }
 });
 
 render();

@@ -1,0 +1,242 @@
+/* ============================================================
+   COVERAGE — the reader's report and the voice check (write.html)
+   ------------------------------------------------------------
+   The panels themselves are ai.css's (.ai-panel, the gates, the
+   disclosure, the mark); this sheet adds the report — a verdict,
+   six sections, and a list of points, each a scene number, the
+   writer's own words and a note — and the one print rule that
+   turns the tab into a document.
+
+   The quote is the writer's text and reads like it: the script's
+   face, set back from the model's note, which is in the body face.
+   A point that lost its quote says so in the WARN family, the same
+   family as .ai-mark, because "the model said this and could not
+   show it" is a model fact, not a page fact.
+
+   SHAPES ARE --sk-*, COLOURS ARE TOKENS; no colour here is a fill
+   used as text.
+   ============================================================ */
+
+.cv { display: grid; gap: var(--s5); }
+.cv > .bd-sub { max-width: var(--sk-deck-measure); }
+
+.cv-cost {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-body);
+}
+.cv-cost strong { color: var(--ink); }
+
+/* ---- the report --------------------------------------------- */
+.cv-report {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+  color: var(--sk-card-ink);
+  min-width: 0;
+}
+.cv-report-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--s3);
+}
+.cv-report-bar .ai-field { min-width: 0; max-width: 100%; }
+.cv-report-bar .ai-sel { max-width: 100%; }
+
+.cv-report-head { display: grid; gap: var(--s2); }
+.cv-report-head .bd-eyebrow { margin: 0; }
+.cv-verdict {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  font-style: var(--sk-card-h-style);
+  line-height: 1.1;
+  color: var(--ink);
+}
+.cv-verdict.is-recommend { color: var(--ok-deep); }
+.cv-verdict.is-consider { color: var(--warn-deep); }
+.cv-verdict.is-pass { color: var(--danger); }
+.cv-verdict-why {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.cv-meta {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+
+.cv-stale,
+.cv-removed {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  max-width: var(--sk-deck-measure);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--warn-deep);
+  background: var(--warn-wash);
+  border: var(--sk-card-line-w) solid var(--warn);
+  border-radius: var(--sk-radius, var(--radius));
+}
+
+.cv-part {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: var(--sk-deco-rule-w) solid var(--sk-deco-rule-c);
+  min-width: 0;
+}
+.cv-h {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.cv-sub {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink-body);
+}
+.cv-logline,
+.cv-assess {
+  margin: 0;
+  max-width: var(--sk-deck-measure);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.cv-logline { font-size: var(--t-lg); color: var(--ink); }
+
+.cv-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  font-size: var(--t-small);
+}
+.cv-dl dt { color: var(--ink-muted); }
+.cv-dl dd { margin: 0; color: var(--ink-body); }
+
+.cv-points {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cv-point {
+  display: grid;
+  gap: var(--s1);
+  max-width: var(--sk-deck-measure);
+  min-width: 0;
+}
+.cv-point-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cv-label { color: var(--ink-body); }
+.cv-sc { color: var(--accent-deep); }
+.cv-quote {
+  margin: 0;
+  padding-left: var(--s3);
+  border-left: var(--sk-hue-rule-w) solid var(--rule);
+  font-family: var(--f-script);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.cv-line {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.cv-note {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  color: var(--ink-body);
+}
+.cv-unquoted {
+  margin: 0;
+  font-size: var(--t-micro);
+  color: var(--warn-deep);
+}
+.cv-rewrite { margin-top: var(--s1); justify-items: start; }
+
+/* ---- print: the tab becomes the document --------------------
+   pdf.js stages `body.pdf-print.pdf-coverage.cv-print`; every
+   sibling of #coverage goes, and so does every control inside it.
+   The masthead is kept by pdf.css's own id rule. */
+@media print {
+  body.cv-print #main > :not(#coverage):not(#pdf-masthead) { display: none !important; }
+  body.cv-print #coverage { display: block !important; }
+  body.cv-print #coverage > .bd-sub,
+  body.cv-print #coverage .cv-noprint { display: none !important; }
+  body.cv-print .cv-report {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: var(--print-paper);
+    color: var(--print-ink);
+  }
+  body.cv-print .cv-report *,
+  body.cv-print .cv-verdict { color: var(--print-ink) !important; background: none !important; }
+  body.cv-print .cv-part { break-inside: auto; }
+  body.cv-print .cv-point { break-inside: avoid; }
+}
+
+/* ---- the logline workshop (story.html) ---------------------- */
+.st-lw { margin-top: var(--s4); }
+.st-lw-check,
+.st-lw-variants {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-lw-part {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  gap: var(--s1) var(--s3);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.st-lw-k {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-body);
+}
+.st-lw-part.is-on .st-lw-k { color: var(--ok-deep); }
+.st-lw-part.is-off .st-lw-k { color: var(--warn-deep); }
+.st-lw-found { color: var(--ink); overflow-wrap: anywhere; }
+.st-lw-missing { color: var(--ink-muted); font-style: italic; }
+.st-lw-note { grid-column: 2; color: var(--ink-muted); }
+.st-lw-variants .ai-option { justify-items: start; }
+@media (max-width: 520px) {
+  .st-lw-part { grid-template-columns: minmax(0, 1fr); }
+  .st-lw-note { grid-column: 1; }
+}

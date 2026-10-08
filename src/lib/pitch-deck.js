@@ -24,6 +24,12 @@
    PRINTED THROUGH src/lib/pdf.js, like every other document here, so
    Tamil shapes correctly and the text stays selectable. The deck is
    built into #main for the length of the print job and removed after.
+
+   THE LAST SLIDE CARRIES "Made with FilmMakerStudio" (src/ui/footer.js
+   brandLine), with the member's ?ref= code when billing knows one —
+   unless a paid plan allowed it off and the user switched it off.
+   buildDeck() takes it as `opts.brand` so the screening room, which
+   prints its own line for the room, can build the deck without it.
    ============================================================ */
 import Store from './store.js';   // must evaluate before anything reads localStorage
 import PDF from './pdf.js';
@@ -32,6 +38,7 @@ import { listScenes } from './scenes.js';
 import { loadScript } from './script.js';
 import { loadStory, matrix, frameworkById } from './story.js';
 import { castMatrix, screenTime, formatDuration } from './screenplay-analysis.js';
+import { brandLine, brandingOn } from '../ui/footer.js';
 
 const FEATURE_KEY = 'fms_filmmaker_combined_v1';
 
@@ -121,8 +128,11 @@ export function collectFrom({ bp = {}, story = null, scenes = [], script = null,
 const slide = (eyebrow, title, body) =>
   h('section.pd-slide', {}, [h('p.pd-eyebrow', { text: eyebrow }), title ? h('h2.pd-title', { text: title }) : null, ...[].concat(body)].filter(Boolean));
 
-/** The deck as DOM. Slides with nothing to say are omitted. */
-export function buildDeck(d) {
+/** The deck as DOM. Slides with nothing to say are omitted.
+ *  `opts.brand`: true (the default) adds the growth line to the last
+ *  slide when brandingOn() says so; false leaves it off; an element
+ *  is used as given. */
+export function buildDeck(d, opts = {}) {
   const deck = h('div#pitchDeck.pd-deck');
   deck.append(h('section.pd-slide.pd-cover', {}, [
     h('p.pd-eyebrow', { text: d.genre || 'A film' }),
@@ -160,11 +170,15 @@ export function buildDeck(d) {
     d.numbers.forEach(([v, l]) => row.append(h('div', {}, [h('strong', { text: v }), h('span', { text: l })])));
     deck.append(slide('The production', '', row));
   }
+  const brand = opts.brand === undefined ? true : opts.brand;
+  const line = brand === true ? (brandingOn() ? brandLine({ className: 'made-with pd-made' }) : null)
+             : (brand && brand.nodeType === 1 ? brand : null);
+  if (line && deck.lastElementChild) deck.lastElementChild.append(line);
   return deck;
 }
 
 /** How many slides the deck would have — for the button's label. */
-export const slideCount = (d = collectPitch()) => buildDeck(d).children.length;
+export const slideCount = (d = collectPitch()) => buildDeck(d, { brand: false }).children.length;
 
 /** One click: build, print, remove. Returns false if a print job is
  *  already running or there is nothing to put in the deck. */

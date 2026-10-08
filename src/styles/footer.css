@@ -50,6 +50,49 @@
   color: var(--ink-muted);
 }
 
+/* ---- the WhatsApp help link (only when VITE_SUPPORT_WHATSAPP is set) */
+.site-foot .wa-link { font-weight: 600; }
+
+/* ---- "Made with FilmMakerStudio" (footer.js brandLine) ------------
+   One quiet line. On the pitch deck and in the screening room it is in
+   the flow; in this footer it is the call sheet's copy and is hidden
+   on screen — print.css shows it under body.ct-printing only. */
+.made-with {
+  margin: var(--s4) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+.made-with a {
+  color: var(--brand-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.site-foot-made { display: none; }
+
+/* ---- Settings → Plan extras ---------------------------------------- */
+.plan-extras {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+}
+.plan-extras .brand-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.plan-extras .brand-toggle input { margin-top: 0.2em; flex: none; }
+.plan-extras .hint,
+.plan-extras .wa-line { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+.plan-extras .wa-link { color: var(--brand-deep); font-weight: 600; }
+
 @media print {
   .site-foot { display: none; }
+  .made-with { color: var(--print-muted); }
+  .made-with a { color: var(--print-ink); }
 }

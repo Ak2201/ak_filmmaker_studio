@@ -35,6 +35,8 @@
      (f) the stubs are NOT in the precache; the manifest names no
          `assets/*.html`
      (g) a `/page` clean URL visited online is served offline too
+     (h) the offline shoot pack (reports.html#dpr): after its button,
+         `/shoot` — never visited — opens offline as the shoot day
 
    Run (needs Node >= 22.12; set PW_CHROMIUM if Playwright's own
    download is not present):
@@ -206,8 +208,17 @@ page.on('console', (m) => {
   if (m.type() !== 'error') return;
   // The sandbox cannot reach Google Fonts; that is the environment.
   if (/fonts\.g(oogleapis|static)\.com|ERR_TUNNEL|ERR_INTERNET_DISCONNECTED|Failed to load resource/.test(m.text())) return;
+  // Chromium fetches the manifest's install icon from the BROWSER
+  // process, outside the page and its worker, whenever a page with a
+  // manifest loads. When that fetch is still in flight as the run
+  // turns the context offline (step (d)/(h)) it fails and Chromium
+  // logs this — one run in two in this container. It says nothing
+  // about the app; the icon itself is asserted directly below
+  // (precached, served by the worker, a real SVG).
+  if (/^Error while trying to use the following icon from the Manifest/.test(m.text())) { iconNotices.push(m.text()); return; }
   errors.push('console: ' + m.text());
 });
+const iconNotices = [];
 
 // (a) install + precache
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' });
@@ -284,6 +295,23 @@ for (const r of vercel.redirects || []) {
 await page.goto(ORIGIN + '/breakdown', { waitUntil: 'networkidle' });
 await page.waitForTimeout(500);
 
+// (h) the offline shoot pack: press the DPR tab's button, online, then
+// (below, offline) open /shoot — a clean URL never visited, which
+// without the pack falls back to the hub.
+let packResult = null;
+{
+  await page.goto(ORIGIN + '/reports.html#dpr', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  let failed = null;
+  await page.click('[data-action="rp-offline"]').catch((e) => { failed = e.message; });
+  if (!failed) {
+    await page.waitForFunction(() => document.querySelectorAll('#rp-offline-list .rp-off.is-ok').length >= 3, null, { timeout: 30000 })
+      .catch((e) => { failed = e.message; });
+  }
+  packResult = failed ? { failed: failed.split('\n')[0] }
+    : await page.evaluate(() => [...document.querySelectorAll('#rp-offline-list li')].map((li) => li.textContent));
+}
+
 // (e) nothing cached is redirected
 const tainted = await page.evaluate(async () => {
   const bad = [];
@@ -298,6 +326,15 @@ const tainted = await page.evaluate(async () => {
   }
   return { bad, total };
 });
+{
+  const icon = await page.evaluate(async () => {
+    const r = await caches.match(new URL('icons/icon.svg', location.href).href);
+    const t = r ? await r.text() : '';
+    return { cached: !!r, svg: /^<svg[\s>]/.test(t.trim()), type: r ? r.headers.get('content-type') : null };
+  });
+  check('the manifest icon is precached and is a real SVG', icon.cached && icon.svg,
+    JSON.stringify(icon) + (iconNotices.length ? `; Chromium's own icon fetch logged ${iconNotices.length} notice(s) (see the console filter)` : ''));
+}
 check('(e) no cached response is `redirected: true`', tainted.bad.length === 0,
   `${tainted.total} cached responses inspected` + (tainted.bad.length ? `; tainted: ${tainted.bad.slice(0, 5).join(', ')}` : ''));
 
@@ -321,6 +358,20 @@ for (const o of OFFLINE) {
     failed ? failed.split('\n')[0]
            : `title "${title}"${title !== o.want ? ` (expected "${o.want}")` : ''}, app ${hasApp ? 'rendered' : 'EMPTY'}`
              + (errors.length > before ? `; ${errors.slice(before).join(' | ')}` : ''));
+}
+{
+  let failed = packResult && packResult.failed ? packResult.failed : null;
+  let title = null, hasDay = false;
+  if (!failed) {
+    await page.goto(ORIGIN + '/shoot', { waitUntil: 'load' }).catch((e) => { failed = e.message; });
+    await page.waitForTimeout(500);
+    title = failed ? null : await page.title();
+    hasDay = failed ? false : await page.evaluate(() => !!document.querySelector('main.sd-main'));
+  }
+  check('(h) offline: "Make today available offline" keeps /shoot (a clean URL never visited) as the shoot day, not the hub',
+    !failed && title === titleOf('shoot.html') && hasDay,
+    failed ? String(failed).split('\n')[0]
+           : `title "${title}"; pack: ${(packResult || []).join(' | ')}`);
 }
 await context.setOffline(false);
 

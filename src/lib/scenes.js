@@ -22,6 +22,7 @@
    ============================================================ */
 import Store from './store.js';
 import { binScene } from './scene-bin.js';
+import { formatEighths } from './sample-figures.js';
 
 export const SCENES_KEY = 'fms_scenes_v1';
 
@@ -289,16 +290,10 @@ export function elementIndex() {
     a.category === b.category ? a.name.localeCompare(b.name) : a.category.localeCompare(b.category));
 }
 
-/** Eighths as the industry writes them: 2 4/8, or 3/8 for under a page. */
-export function formatEighths(e) {
-  const n = Math.max(0, Math.round(Number(e) || 0));
-  const pages = Math.floor(n / 8);
-  const rem = n % 8;
-  if (!pages && !rem) return '0';
-  if (!pages) return `${rem}/8`;
-  if (!rem) return String(pages);
-  return `${pages} ${rem}/8`;
-}
+
+/* formatEighths is pure and lives in sample-figures.js, so the build
+   can import it without store.js; re-exported here for every caller. */
+export { formatEighths };
 
 export function totalEighths(scenes) {
   return (scenes || listScenes()).reduce((a, s) => a + (Number(s.eighths) || 0), 0);

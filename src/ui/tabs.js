@@ -41,7 +41,7 @@ import nav from '../data/navigation.json';
 import { h } from '../lib/dom.js';
 import '../styles/tabs.css';
 
-const TABBED = new Set(['settings', 'admin', 'library', 'breakdown', 'stripboard', 'reports', 'contacts', 'visualize', 'write', 'plan']);
+const TABBED = new Set(['settings', 'admin', 'library', 'breakdown', 'stripboard', 'reports', 'contacts', 'visualize', 'write', 'plan', 'budget']);
 
 const page = () => (typeof location === 'undefined' ? '' : (location.pathname.split('/').pop() || 'index.html').toLowerCase().replace(/\.html$/, '').replace(/^$/, 'index'));
 

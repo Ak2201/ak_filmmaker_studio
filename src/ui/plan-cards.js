@@ -34,6 +34,7 @@ import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
 import '../styles/plans.css';
+import '../styles/growth.css';
 
 const period = 'lifetime';     // the only period there is
 let busyPlan = '';
@@ -43,6 +44,25 @@ let hooks = { onBuy: null, rerender: null };
    answer), a sentence when it was refused, and whether the box is open. */
 const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false };
 const appliedQuote = (planId) => { const q = promo.quotes[planId]; return q && q.ok && q.code ? q : null; };
+
+/* UPGRADE BY PAYING THE DIFFERENCE (schema section 21). For somebody who
+   has already paid, the server prices a higher tier as its list price
+   less what they paid; the cards ask quote_order() for each buyable
+   tier once per (plan held, payments) state and print the answer. The
+   arithmetic is the server's — this only shows it. A promo quote
+   already includes the credit, so it wins when both exist. */
+const upg = { key: '', quotes: {}, busy: false };
+const upgradeQuote = (planId) => { const q = upg.quotes[planId]; return q && q.ok && q.credit_paise > 0 ? q : null; };
+function loadUpgradeQuotes(st, ids) {
+  const paid = ((st && st.payments) || []).filter((p) => p.status === 'paid').length;
+  if (!st || st.plan === 'free' || !paid || !ids.length) { upg.key = ''; upg.quotes = {}; return; }
+  const key = `${st.plan}:${paid}:${ids.join(',')}`;
+  if (upg.key === key || upg.busy) return;
+  upg.busy = true; upg.key = key;
+  Promise.all(ids.map((id) => Billing.quote(id, null).then((q) => [id, q], () => [id, null])))
+    .then((answers) => { upg.quotes = Object.fromEntries(answers); })
+    .finally(() => { upg.busy = false; if (hooks.rerender) hooks.rerender(); });
+}
 
 const LIMIT_LINES = [
   ['projects',      (n) => n === null ? 'Unlimited cloud projects' : `${n} cloud project${n === 1 ? '' : 's'}`],
@@ -100,8 +120,10 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
   for (const p of plans.filter((x) => x.active || x.id === current)) {
     const isCurrent = p.id === current;
     const price = priceFor(p, period);
-    const q = appliedQuote(p.id);
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : '') + (q ? '.has-promo' : ''), { 'data-plan': p.id });
+    const pq = appliedQuote(p.id);
+    const uq = upgradeQuote(p.id);
+    const q = pq || uq;
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id });
     card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : p.id === 'free' ? 'Baseline' : ' ' }));
     card.append(h('h3.pl-name', { text: p.name || planName(p.id) }));
     card.append(h('p.pl-blurb', { text: p.blurb || '' }));
@@ -110,7 +132,8 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
       q ? h('s.pl-list', { text: fmtPaise(q.list_paise), 'aria-label': 'list price ' + fmtPaise(q.list_paise) }) : null,
       h('span', { text: p.id === 'free' ? '' : price === null ? ' not for sale' : ' once · yours for good' })
     ].filter(Boolean)));
-    if (q) card.append(h('p.pl-save', { text: `${fmtPaise(q.discount_paise)} off with ${q.code}` }));
+    if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${p.name || planName(p.id)} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
+    if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
     card.append(limitList(p.limits));
     card.append(featureBlock(p));
     /* A button only where there is something to buy: a higher tier.
@@ -130,6 +153,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     row.append(card);
   }
   wrap.append(row);
+  loadUpgradeQuotes(st, buyable);
   if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));

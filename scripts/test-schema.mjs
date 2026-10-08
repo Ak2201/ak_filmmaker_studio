@@ -18,7 +18,9 @@
 
    The check files run IN ORDER in one database: billing.sql (§16 +
    §18) seeds the people and edits a price, accounts.sql (§19) and
-   promo.sql (§20) build on what it left. A check that needs a clean
+   promo.sql (§20) build on what it left — against §1–§20 only. Then
+   §21 onward loads, and the growth files (GROWTH_FILES) run against the
+   whole schema. A check that needs a clean
    state opens its own transaction and rolls it back.
 
    What it does NOT prove: Supabase's own objects beyond the shim
@@ -26,12 +28,15 @@
    anything about the edge functions. It proves the SQL is the SQL.
    ============================================================ */
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DB = process.env.SCHEMA_TEST_DB || 'fms_schema_test';
 const keep = process.argv.includes('--keep');
+/* The growth sections' checks, one file per section, in section order. */
+const GROWTH_FILES = ['upgrade.sql', 'referral.sql', 'affiliate.sql', 'scopes.sql'];
 
 function psql(args, { db = DB, input } = {}) {
   const base = ['psql', '-X', '-v', 'ON_ERROR_STOP=1', '-q', '-d', db, ...args];
@@ -56,16 +61,31 @@ console.log('shim …');
 r = psql(['-f', 'scripts/schema-tests/shim.sql']);
 if (r.status !== 0) fail('the shim did not load', r);
 
-console.log('supabase-schema.sql …');
+/* TWO PHASES, because the schema is a history. §1–§20 load first and
+   the three files written for them run against the database AS THOSE
+   SECTIONS LEFT IT — their checks describe §20's behaviour (a Starter
+   buyer quoting Indie paid the list price), which §21 deliberately
+   changed. Then §21 onward loads on top, exactly as the owner will run
+   it on the live project, and the growth files run against the final
+   state, re-asserting the §20 invariants that still hold. Splitting at
+   the section header rather than editing the old files keeps both
+   statements true at once. */
+const full = fs.readFileSync(path.join(ROOT, 'supabase-schema.sql'), 'utf8');
+const lines = full.split('\n');
+const at = lines.findIndex((l) => /^-- 21\. /.test(l));
+if (at < 1) fail('could not find the §21 header to split the schema at');
+const phase1 = lines.slice(0, at - 1).join('\n') + '\n';
+const phase2 = lines.slice(at - 1).join('\n');
+
+console.log('supabase-schema.sql §1–§20 …');
 const t0 = Date.now();
-r = psql(['-f', 'supabase-schema.sql']);
-if (r.status !== 0) fail('supabase-schema.sql did not load cleanly', r);
+r = psql(['-f', '-'], { input: phase1 });
+if (r.status !== 0) fail('supabase-schema.sql (§1–§20) did not load cleanly', r);
 const warnings = (r.stderr || '').split('\n').filter((l) => /WARNING/.test(l));
-console.log(`✓ the whole schema loads (${Math.round((Date.now() - t0) / 100) / 10}s${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
+console.log(`✓ §1–§20 load (${Math.round((Date.now() - t0) / 100) / 10}s${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
 
 let total = 0, failed = 0;
-// In order: later files use the people and prices the earlier ones left.
-for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) {
+function runChecks(file) {
   console.log(`checks: ${file} …`);
   r = psql(['-f', 'scripts/schema-tests/' + file]);
   const notices = (r.stderr || '').split('\n').filter((l) => /^(psql:.*)?NOTICE:\s+ok - /.test(l) || /NOTICE:\s+ok - /.test(l));
@@ -73,6 +93,18 @@ for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) {
   notices.forEach((l) => console.log('  ✓ ' + l.replace(/.*ok - /, '')));
   if (r.status !== 0) { failed++; fail(`${file} failed after ${notices.length} passing check(s)`, r); }
 }
+// In order: later files use the people and prices the earlier ones left.
+for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) runChecks(file);
+
+console.log('supabase-schema.sql §21 onward …');
+r = psql(['-f', '-'], { input: phase2 });
+if (r.status !== 0) fail('supabase-schema.sql (§21 onward) did not load cleanly on top of §1–§20', r);
+console.log('✓ the whole schema loads');
+/* §21 onward: each growth file seeds its own people (fresh uuids), so
+   what promo.sql left behind cannot make a check pass for the wrong
+   reason. The list is explicit, like the first one: a file that exists
+   and is not named here is not run, and nothing would say so. */
+for (const file of GROWTH_FILES) runChecks(file);
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

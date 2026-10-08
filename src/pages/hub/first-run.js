@@ -12,24 +12,20 @@
    ============================================================ */
 import { h } from '../../lib/dom.js';
 import { BUILT_MODULE_COUNT } from '../../ui/launcher.js';
-import { formatEighths } from '../../lib/scenes.js';
+import { sampleFigures } from '../../lib/sample-figures.js';
 import sample from '../../data/sample.dragon.json';
 
 const SAMPLE_TITLE = sample.title;
 
-/* The two figures the hub quotes about the sample, derived from the
-   scene rows so the prose cannot drift from the board. Function
+/* The figures the hub quotes about the sample, derived from the scene
+   rows so the prose cannot drift from the board. ONE derivation,
+   sampleFigures() in src/lib/sample-figures.js, which the build also
+   uses to stamp start.html's copy of the same numbers. Function
    declarations, because the "where to start" markup is built before
    this section in source order and reads them. */
-function sampleDays() {
-  return new Set(sample.scenes
-    .map((s) => parseInt(s.shootDay, 10))
-    .filter((n) => Number.isFinite(n) && n > 0)).size;
-}
+function sampleDays() { return sampleFigures(sample).days; }
 
-function samplePages() {
-  return formatEighths(sample.scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0));
-}
+function samplePages() { return sampleFigures(sample).pages; }
 
 /* ------------------------------------------------------------
    FIRST RUN — what a stranger sees before anything is saved.

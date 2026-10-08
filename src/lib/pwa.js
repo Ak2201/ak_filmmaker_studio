@@ -107,4 +107,65 @@ export function registerSW() {
   return registration;
 }
 
-export default { registerSW, onInstallAvailable, canInstall, promptInstall };
+
+
+/* ============================================================
+   THE OFFLINE SHOOT PACK
+   ------------------------------------------------------------
+   The precache already holds every page as `page.html`. What it does
+   NOT hold is the address people actually open: the host sets
+   cleanUrls, so a phone that bookmarked `/shoot` asks for a URL no
+   install ever cached, and offline it gets the hub instead of the
+   day. makeOffline() asks the worker (src/sw.js, 'FMS_PACK') to fetch
+   each page under both addresses and every file the page loads, and
+   keep them in a cache of their own. offlineStatus() answers from the
+   caches themselves — what is there, not what was promised — and
+   counts a redirected entry as missing, which is the SW trap in
+   CLAUDE.md read from the page's side.
+   ============================================================ */
+export const SHOOT_PACK = ['shoot.html', 'contacts.html', 'reports.html'];
+
+export function offlineSupported() {
+  return typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+    && !!navigator.serviceWorker.controller && typeof caches !== 'undefined';
+}
+
+const base = () => new URL('./', location.href);
+const cleanOf = (page) => new URL(page.replace(/\.html$/, ''), base()).href;
+const ASSET = /\b(?:src|href)="([^"]+\.(?:js|css|json|woff2|svg|png|webmanifest))"/g;
+
+async function usable(url) {
+  const hit = await caches.match(url, { ignoreSearch: true });
+  return hit && !hit.redirected ? hit : null;
+}
+
+/** For each page: is it cached, under its clean address too, and how
+    many of the files it loads are cached beside it. */
+export async function offlineStatus(pages = SHOOT_PACK) {
+  if (typeof caches === 'undefined') return pages.map((page) => ({ page, ready: false, clean: false, files: 0, missing: 0 }));
+  return Promise.all(pages.map(async (page) => {
+    const html = await usable(new URL(page, base()).href);
+    const clean = !!(await usable(cleanOf(page)));
+    let files = 0, missing = 0;
+    if (html) {
+      const text = await html.clone().text();
+      const urls = [...new Set([...text.matchAll(ASSET)].map((m) => new URL(m[1], base()).href))];
+      for (const u of urls) { if (await usable(u)) files++; else missing++; }
+      files += 1;
+    }
+    return { page, ready: !!html && missing === 0, clean, files, missing };
+  }));
+}
+
+/** Ask the worker to keep the pack; resolves with offlineStatus(). */
+export function makeOffline(pages = SHOOT_PACK) {
+  if (!offlineSupported()) return Promise.reject(new Error('no service worker'));
+  return new Promise((resolve, reject) => {
+    const ch = new MessageChannel();
+    const timer = setTimeout(() => reject(new Error('timeout')), 30000);
+    ch.port1.onmessage = () => { clearTimeout(timer); offlineStatus(pages).then(resolve, reject); };
+    navigator.serviceWorker.controller.postMessage(
+      { type: 'FMS_PACK', urls: pages.map((p) => new URL(p, base()).href) }, [ch.port2]);
+  });
+}
+export default { registerSW, onInstallAvailable, canInstall, promptInstall, offlineSupported, offlineStatus, makeOffline, SHOOT_PACK };

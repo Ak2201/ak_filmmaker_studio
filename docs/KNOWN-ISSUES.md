@@ -171,6 +171,22 @@ a live data-loss bug. **Read S2 and S3 together before changing
 either**, and establish which of the two is wrong — the test or the
 code. `scripts/prove-storage.mjs` around lines 999-1014.
 
+**Status on `sell/a8` (HEAD a944d78, 8 Oct 2026): does not reproduce.**
+`npm run prove:storage` passes all 91 checks, twice, with S2 and S3 green.
+The S2 `Control+A` + `Backspace` reaches the script model: the scene and its
+2 shots and 1 frame land in `fms_scene_bin_v1__<A>`, so the hypothesis that
+the clear is a no-op is refuted for this code (no app code was changed).
+The old failure is not explained by this branch's code and was not
+investigated further; it may have been fixed between `2ca58b9` and here.
+
+**The real weakness found: S3 passed on a no-op.** On a no-op S2 the scene
+stays in the list, the shots are unchanged and the bin is never written, so
+the three S3 checks (undo restores id, shots byte-identical, bin empty) all
+pass on nothing. `scripts/prove-storage.mjs` now asserts the state Ctrl+Z
+undoes before pressing it (bin holds 1 entry with 2 shots and 1 frame; scene
+list holds only HALL). A mutant with the S2 clear removed fails those two
+checks.
+
 Release note: today's promotion of `develop` to `main` went ahead with
 this failing, because it fails identically on both branches and holding
 13 unrelated commits for it helps nobody. It is not fixed and is not

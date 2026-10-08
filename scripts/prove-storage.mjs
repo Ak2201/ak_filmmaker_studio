@@ -1008,6 +1008,16 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
   check('S2 B\'s keys are byte-identical', await bKeys(), bBefore);
 
   // Ctrl+Z in the field: the heading comes back, and so does everything.
+  // S3 must fail when S2 was a no-op. On a no-op the scene is still in
+  // the list, the shots are unchanged and the bin was never written, so
+  // the three S3 checks below would all pass on nothing. Assert the
+  // state Ctrl+Z is supposed to undo actually exists first.
+  const binBeforeUndo = await rawJSON('fms_scene_bin_v1__' + A);
+  const sceneCountBeforeUndo = (await rawJSON('fms_scenes_v1__' + A) || { scenes: [] }).scenes.length;
+  check('S3 before Ctrl+Z the scene is in A\'s bin, with its shots and frame',
+    binBeforeUndo && binBeforeUndo.entries ? [binBeforeUndo.entries.length, binBeforeUndo.entries[0].shots.length, binBeforeUndo.entries[0].frames.length] : null,
+    [1, 2, 1]);
+  check('S3 before Ctrl+Z A\'s scene list holds only HALL', sceneCountBeforeUndo, 1);
   await ta.click();
   await page.keyboard.press('Control+Z');
   await page.waitForFunction((k) => {

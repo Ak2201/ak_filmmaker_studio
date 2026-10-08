@@ -30,36 +30,119 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
 
 ## 1. Supabase — run the missing schema sections (§16 → §24)
 
-Project ref `conhlrulxfwkhsnymakz`, dashboard → SQL editor.
+**DONE IN PART, 8 Oct 2026.** Project ref `conhlrulxfwkhsnymakz`,
+dashboard → SQL editor, signed in as the owner.
 
-1. Read what is there (paste, run, report to the owner):
-   ```sql
-   select column_name from information_schema.columns
-    where table_schema='public' and table_name='plans' and column_name='price_paise';      -- §18
-   select pg_get_constraintdef(oid) from pg_constraint where conname='project_data_scope_check'; -- §17 'edit', §24 'characters'
-   select tgtype from pg_trigger where tgname='accounts_guard';                               -- §19: 7
-   select to_regclass('public.promo_codes'), to_regclass('public.referral_credits');        -- §20, §22
-   select proname from pg_proc where proname in ('quote_order','admin_affiliate_report','quote_for');
-   ```
-2. `node scripts/deploy-billing.mjs --print > /tmp/schema-16-on.sql` prints
-   §16 to the end. Run ONLY the sections the read-back says are missing,
-   in order, each as its own run (they are written to be re-runnable, but
-   confirm with the owner before re-running one that already exists).
-   **§24 must be live before the 8 Oct build is deployed**, or characters
-   and costs stay device-only.
-3. Re-run the read-back; all five lines should now show the section.
-4. Then the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address if
-   it has signed in (`docs/LAUNCH.md` §4).
+The read-back settled the disagreement this file flagged: **the schema
+file was right and the handoff note was wrong.** §16, §17 and §18 were
+already live from 6 Oct (the `plans` and `payments` tables, twelve
+billing functions, `plans.price_paise`, and a scope CHECK of 407
+characters naming `'deliverables'`). §19 through §24 were all absent:
+`accounts_guard` was tgtype 19, BEFORE UPDATE only; `promo_codes`,
+`referral_credits` and `affiliate_codes` did not exist; `quote_order`,
+`quote_for`, `admin_promo_report`, `redeem_referral` and
+`admin_affiliate_report` did not exist; the scope CHECK named neither
+`'characters'` nor `'costs'`.
+
+**§19 and §24 were run** — owner's decision, those two only, because
+they are the two that bite before a sale exists. "Success. No rows
+returned", then read back: tgtype **23** (INSERT and UPDATE both set),
+the scope CHECK **442** characters naming `'characters'`, `'costs'` and
+still `'edit'` and `'deliverables'`, and `project_data` / `projects`
+intact at 30 / 6 rows. Recorded in the `-- RUN` headers of both sections
+in `supabase-schema.sql` and in `docs/LAUNCH.md` §4.
+
+**§20–§23 were deliberately NOT run.** Promo, upgrade-by-difference,
+referral and affiliate do nothing until Razorpay is live, and §20 drops
+and recreates `create_pending_payment` and `admin_list_payments` — so it
+belongs in the same session as the `rzp-order` redeploy
+(`docs/BILLING.md` §1 step 9), not before it.
+
+Two things for whoever picks this up:
+
+- **`docs/LAUNCH.md` §4's tgtype check was wrong** and is corrected. It
+  said 7; `before insert or update … for each row` is 23. A correct run
+  verified against 7 reads as a failure.
+- **The live prices are real and match no document.** `free=0,
+  starter=59900, indie=79900, pro=99900` paise. Confirm them with the
+  owner rather than re-seeding the placeholders.
+
+Still owed here: the 13.2 admin row for the second `VITE_ADMIN_EMAILS`
+address, once it has signed in (`docs/LAUNCH.md` §4).
 
 ## 2. Google Cloud — publish the OAuth consent screen
 
-Project `filmstudio-495419` → APIs & Services → OAuth consent screen.
-It is in **Testing with zero test users**, so nobody can sign in.
-`docs/LAUNCH.md` §2 and `docs/GOOGLE-AUTH.md` have the details. Needs the
-privacy and terms URLs on `thefilmmakerstudio.vercel.app` (live), the
-`drive.file` scope, and the authorised origins already registered. Either
-publish (owner confirms) or, as a first step, add the owner's own Google
-account as a test user.
+**ALREADY PUBLISHED, AND THE BRANDING IS ALREADY FILLED IN — observed
+8 Oct 2026.** This step assumed `filmstudio-495419` was "in Testing with
+zero test users, so nobody can sign in". It is **In production**,
+External; Google says verification is not required because no sensitive
+or restricted scopes are requested; the `filmstudio` client (the one
+`.env` uses) was last used 5 Oct 2026; the production host is an
+authorised JS origin and the Supabase callback is the registered redirect
+URI. Nothing to publish and no fields to type.
+
+**What is actually wrong is ownership of the domain.** The Verification
+Center's "Your branding is not being shown to users" resolves to one
+issue: the home page URL `https://thefilmmakerstudio.vercel.app` "is not
+registered to you". Google Search Console holds **no property at all**
+for `arunkumarmohanans@gmail.com`, the account that owns the Cloud
+project — which is a different address from the `arunaaron85@gmail.com`
+on the consent screen, and the ownership check follows the project.
+
+The route through, in `docs/LAUNCH.md` §2 in full: add the host as a
+URL-prefix property (not a Domain property — `vercel.app` is a public
+suffix and we do not hold its DNS), verify with the HTML file committed
+to `public/` (its contents are one line, so no download is needed), wait
+the 24 hours Google asks for, then Branding → View issues → "I have fixed
+the issues".
+
+**Nothing was clicked in Search Console** — creating the property changes
+the owner's Google account and is theirs to approve.
+
+Still owed, approved 8 Oct: removing the stale
+`https://ak-filmmaker-studio.vercel.app` origin. One trap paid for once:
+the per-row delete appears on HOVER and the page SCROLLS when a field
+takes focus, so a trash icon clicked from a slightly stale screenshot
+deletes the row below the one you meant. It took `localhost:5173`; it was
+discarded unsaved.
+
+A method note for whoever works this file next: `get_page_text` does not
+emit the VALUES of form inputs. Reading this page with it reports every
+filled field as blank, and that produced a wrong report here before a
+screenshot corrected it. Screenshot before claiming a form is empty.
+
+### What was done on 8 Oct 2026, and what is left
+
+1. **Search Console property created and AUTO-VERIFIED.** A URL-prefix
+   property for `https://thefilmmakerstudio.vercel.app` under
+   `arunkumarmohanans@gmail.com`. Google verified it instantly, by the
+   **HTML tag** method, because `index.html:31` already carries
+   `<meta name="google-site-verification" content="-V57…">` and it is
+   served live. No file, no commit and no deploy were needed. That tag is
+   now load-bearing — see the note in `CLAUDE.md` under "Things that are
+   deliberate".
+2. **The authorised origins are tidied.** The `filmstudio` client now
+   holds exactly `http://localhost:5173`, `http://localhost:4173` and
+   `https://thefilmmakerstudio.vercel.app`, verified by re-reading the
+   form after a full reload. The redirect URI is untouched.
+3. **STILL OWED: wait 24 hours, then re-request.** Google's own words:
+   "Verify ownership of your home page, then wait 24 hours before
+   retrying to allow our systems to update." So on **9 Oct 2026 or
+   later**, go to Branding → View issues → "I have fixed the issues" →
+   Proceed. Clicking it sooner just spends a round trip.
+
+**A trap worth more than the tidy-up it came from.** In the new Google
+Auth Platform console, deleting a URI row **commits immediately** — there
+is no Save to confirm it and no Cancel to take it back. The per-row trash
+appears on HOVER, and clicking into a field SCROLLS the page, so a trash
+clicked from a screenshot taken before the focus event hits the row
+BELOW the one intended. That happened here: it removed
+`http://localhost:5173`, this session reported it as "discarded unsaved"
+because no Save had been clicked, and that report was WRONG — a reload
+two steps later showed the origin genuinely gone from the server. It was
+restored by overwriting the stale host's row rather than deleting
+anything, which is the safer shape for this form: **edit a row's value
+instead of deleting a row** whenever the counts allow it.
 
 ## 3. Live security checks (before ANY payment)
 

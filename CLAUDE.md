@@ -1103,10 +1103,14 @@ filled in and awaiting re-verification after the 8 Oct Search Console
 ownership check. **Razorpay is WIRED END TO END in TEST MODE (8 Oct):** the three edge
 functions are deployed and ACTIVE (`rzp-order` and `rzp-verify` with
 `verify_jwt: true`, `rzp-webhook` with `verify_jwt: false`), and
-`VITE_RAZORPAY_KEY_ID` carries the TEST key id. Probed live: the webhook
-answers 503 "webhook secret not configured" and `rzp-order` answers 401
-without a JWT, both correct. Missing: the two SECRETS in Supabase, the
-webhook registration, and any live key. No purchase has been made.
+`VITE_RAZORPAY_KEY_ID` carries the TEST key id. All three secrets are set
+and the webhook is registered in Razorpay. Probed live at each stage: the
+webhook answered 503 "webhook secret not configured" while its secret was
+missing and answers **401 "bad signature"** now that it is set, which is
+the proof the HMAC path runs and rejects what it cannot verify;
+`rzp-order` answers 401 without a JWT. **Still missing: a LIVE key, and
+any purchase at all** — not even a test one. Configured and unexercised
+is a weaker claim than working, and it is the one the evidence supports.
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
 paragraph said "§16–§24 have NOT been verified" and "the consent screen

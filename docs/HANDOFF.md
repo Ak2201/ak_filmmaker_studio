@@ -468,6 +468,20 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
   equipment links, KEEP WORKING loop, Loading-forever plan section, admin
   console CLEAR/aria/double-click, plan-gate grammar and upgrade target).
 
+**Also built 9 Oct (NOT RUN LIVE):** schema §27 refunds (admin REFUND
+button through the new `rzp-refund` edge function; customer "Request a
+refund" in Settings, shown only when the console switch is on, off by
+default), §28 Bill of Supply invoices (gapless `FMS/YYYY-YY/NNNNNN`,
+PDF in Settings, console tab), §29 leads + aggregate funnel counts
+(landing form, no SDK on first paint, DNT/GPC honoured), production gaps
+G1–G6, quality T1/T2/T4/T8, icon generator fixed. Release and marketing
+plan: `docs/RELEASE-PLAN.md`.
+
+**Owner steps for those:** run §26, §27, §28, §29 in order in the SQL
+editor (ask the database first what is live); `supabase functions deploy
+rzp-refund`; redeploy `rzp-webhook` and add `refund.failed` to the
+Razorpay webhook events; then try one test-mode refund end to end.
+
 **Owner steps left from R:** run §26 live; rename starter→Basic and
 indie→Intermediate in the console if §26 is not run; seed `plans.features`
 from `matrixFeatures()` when the tiers should actually differ; set

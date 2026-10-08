@@ -362,7 +362,11 @@ try {
     ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'landing_view is counted once on load');
     await page.goto(BASE + 'start.html'); await page.waitForLoadState('networkidle');
     ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'and not again on a reload in the same session');
-    await page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await page.waitForTimeout(600);
+    await page.evaluate(() => document.getElementById('pricing').scrollIntoView());
+    /* The observer fires, then a fetch lands: poll for it rather than
+       guess a delay (600ms failed under load). */
+    for (let t = 0; t < 50 && !EVENTS.includes('pricing_view'); t++) await page.waitForTimeout(100);
+    await page.waitForTimeout(300);   // and a second, wrong count would have arrived by now
     ok(EVENTS.filter((e) => e === 'pricing_view').length === 1, 'pricing_view is counted when #pricing scrolls into view');
     ok(sdk.length === 0, 'no Supabase SDK chunk is fetched on the start page');
     ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'no new localStorage key');

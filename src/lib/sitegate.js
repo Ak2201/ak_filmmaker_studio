@@ -71,7 +71,27 @@ import { getCodePass, clearCodePass, isMissing } from './gate.js';
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
 export const PASS_KEY = 'fms_sitegate_pass';   // sessionStorage, never localStorage
-const GIVE_UP_MS = 20000;
+/** Why the last redirect happened, for the page that lands after it.
+ *  sessionStorage, diagnostic only; nothing decides on it. */
+export const WHY_KEY = 'fms_sitegate_why';
+/* The veil cannot stay up for ever, so an unanswered gate gives up and
+   FAILS CLOSED. Twenty seconds is right for the built site, where the
+   whole studio is a handful of chunks.
+
+   IT IS WRONG FOR THE DEV SERVER, and the symptom is alarming rather
+   than slow: Vite serves every module as its own request, so a heavy
+   page (settings.html is the heaviest) can still be booting at twenty
+   seconds, and a signed-in admin gets bounced to invite.html as though
+   they had been refused. Measured on 8 Oct 2026 from the gate's own
+   breadcrumb — reason 'timeout', from /settings.html — while the built
+   site at the same moment was fine. Pre-bundling the Supabase SDK
+   (vite.config.js optimizeDeps) removed part of the delay, not all of
+   it, because the rest is the module waterfall itself.
+
+   Dev gets two minutes. Production is unchanged: this is the one
+   timing constant where being impatient looks exactly like being
+   locked out, and dev is the only place slow enough to prove it. */
+const GIVE_UP_MS = (env.DEV ? 120 : 20) * 1000;
 const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start)(\.html)?$/;
 
 export function isExempt() {
@@ -99,6 +119,16 @@ function deny(reason) {
   decided = true;
   clearTimeout(timer);
   try { sessionStorage.removeItem(PASS_KEY); } catch (e) { /* ignore */ }
+  /* WHY the gate sent them away, and from where. The redirect destroys
+     the page that knew, so without this a bounce is indistinguishable
+     from a broken page — which is exactly how it reads, and how it read
+     for an hour on 8 Oct 2026. invite.html may print it; a developer can
+     read it in sessionStorage after any unexplained redirect. */
+  try {
+    sessionStorage.setItem(WHY_KEY, JSON.stringify({
+      reason, from: location.pathname + location.hash, at: new Date().toISOString(),
+    }));
+  } catch (e) { /* private mode: the breadcrumb is a nicety */ }
   document.documentElement.dataset.sitegate = 'denied';
   Store.notify('sitegate:denied', { reason });
   location.replace('invite.html');

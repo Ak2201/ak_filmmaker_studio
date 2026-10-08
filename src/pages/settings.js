@@ -927,6 +927,19 @@ async function refreshGate() {
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('billing:changed', () => refreshBilling());
 if (window.StudioCloud && window.StudioCloud.onAuth) window.StudioCloud.onAuth(() => setTimeout(refreshBilling, 0));
+/* AND ON BOOT, WHICH IS THE ONLY SIGNAL A RESTORED SESSION GIVES.
+   refreshBilling() returns empty-handed when getSession() is null, and
+   the call below runs at module evaluation — before cloud.js has
+   finished restoring a stored session. The onAuth hook above does not
+   cover it: ensureClient() reads the stored session synchronously
+   BEFORE registering the auth listener, so a restored session fires no
+   SIGNED_IN event (cloud.js says so in as many words). The result was a
+   Plan section that rendered EMPTY on every ordinary load — renderPlan()
+   returns null while `billing.plans` is null — while AI key, Storage,
+   Drive and Appearance all filled in, which makes it read as a broken
+   page rather than a missing fetch. src/lib/sitegate.js subscribes to
+   this same event for the same reason. 8 Oct 2026. */
+Store.subscribe('cloud:booted', () => refreshBilling());
 refreshBilling();
 Store.subscribe('gate:changed', () => refreshGate());
 refreshGate();

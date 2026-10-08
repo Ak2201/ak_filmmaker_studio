@@ -52,7 +52,7 @@ const authKey = (cfg) => `sb-${cfg.ref}-auth-token`;
 
 function setup() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU, title: 'Send to Filmmaker Studio', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: MENU, title: 'Send to __NAME__', contexts: ['selection'] });
   });
   // 0.5 minutes is the shortest period Chrome allows an alarm (since
   // Chrome 120), and exactly the PRD's 30-second cadence.

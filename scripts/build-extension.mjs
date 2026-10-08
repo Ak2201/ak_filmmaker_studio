@@ -55,7 +55,11 @@ const manifest = fs.readFileSync(path.join(ROOT, 'extension/manifest.template.js
 fs.writeFileSync(path.join(OUT, 'manifest.json'), manifest);
 
 fs.mkdirSync(path.join(OUT, 'extension'), { recursive: true });
-fs.copyFileSync(path.join(ROOT, 'extension/background.js'), path.join(OUT, 'extension/background.js'));
+// background.js is copied, not bundled, so it cannot import brand.js;
+// its one visible string takes the same __NAME__ token as the manifest.
+fs.writeFileSync(path.join(OUT, 'extension/background.js'),
+  fs.readFileSync(path.join(ROOT, 'extension/background.js'), 'utf8')
+    .replaceAll('__NAME__', JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8')).name));
 
 const env = readEnv();
 const url = String(env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');

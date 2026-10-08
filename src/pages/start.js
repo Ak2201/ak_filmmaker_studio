@@ -33,12 +33,8 @@ import '../styles/start.css';
 const NAV_URL = new URL('../data/navigation.json', import.meta.url);
 
 /* ---- 1. the chosen theme ------------------------------------------ */
-const THEME_KEY = 'fms_studio_theme_v1';           // chrome.js THEME_KEY
-const CSS_THEME = { ink: 'dark', paper: 'light' };  // chrome.js CSS_THEME
-try {
-  const t = CSS_THEME[localStorage.getItem(THEME_KEY)];
-  if (t) document.documentElement.setAttribute('data-theme', t);
-} catch (e) { /* storage blocked: the OS setting stands */ }
+/* Dark only: one palette, stamped for anything that keys off it. */
+document.documentElement.setAttribute('data-theme', 'dark');
 
 /* ---- 2. the CTA ---------------------------------------------------- */
 /* Named directly so Vite inlines the one string; reading it off the

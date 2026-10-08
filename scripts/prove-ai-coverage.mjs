@@ -170,7 +170,7 @@ async function session({ width, theme, provider }) {
 
 const KEY = { anthropic: 'sk-ant-PROVEPROVEPROVEPROVE12', gemini: 'AIzaPROVEPROVEPROVEPROVE12' };
 
-for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'paper', 'gemini']]) {
+for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'ink', 'gemini']]) {
   const tag = '[' + width + ' ' + theme + ' ' + provider + '] ';
   requests.length = 0;
   const { ctx, page, errors } = await session({ width, theme, provider });

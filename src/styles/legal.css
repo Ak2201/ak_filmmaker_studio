@@ -18,9 +18,8 @@
    this codebase where that is correct rather than the trap
    CLAUDE.md names.
 
-   Every colour, size and space is a token. The page therefore
-   follows the OS light/dark preference through tokens.css's own
-   media query without a line of JavaScript.
+   Every colour, size and space is a token. The page is dark only, from
+   tokens.css's bare :root, without a line of JavaScript.
    ============================================================ */
 
 .legal {

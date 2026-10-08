@@ -59,9 +59,9 @@
      card is plain white, so it is already lighter than the page; the
      hairline and the 1px shadow are what give it an edge rather than
      what give it its shape. */
-  --sk-card-bg:         var(--paper-raised);
+  --sk-card-bg:         var(--bg-secondary);
   --sk-card-ink:        var(--ink-body);
-  --sk-card-line:       var(--rule-hair);
+  --sk-card-line:       var(--border-subtle);
   --sk-card-line-w:     1px;
   --sk-card-shadow:     var(--shadow-sm);
   --sk-deco-bg:         var(--paper-raised);
@@ -160,13 +160,13 @@
      focus timer — and that is deliberate rather than left over: a
      dark floating surface over a light page is how a tooltip reads
      as temporary. */
-  --sk-slab-bg:         var(--accent-wash);
-  --sk-slab-ink:        var(--ink);
-  --sk-slab-muted:      var(--ink-muted);
-  --sk-slab-accent:     var(--accent-deep);
-  --sk-slab-accent-on:  var(--accent-on);
-  --sk-slab-fill:       var(--paper-raised);
-  --sk-slab-hair:       var(--rule);
+  --sk-slab-bg:         var(--bg-secondary);
+  --sk-slab-ink:        var(--text-primary);
+  --sk-slab-muted:      var(--text-secondary);
+  --sk-slab-accent:     var(--accent-gold);
+  --sk-slab-accent-on:  var(--bg-primary);
+  --sk-slab-fill:       var(--bg-tertiary);
+  --sk-slab-hair:       var(--border-subtle);
   --sk-slab-rule-w:     0;
-  --sk-slab-rule-c:     var(--accent-deep);
+  --sk-slab-rule-c:     var(--accent-gold);
 }

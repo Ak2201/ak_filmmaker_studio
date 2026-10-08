@@ -1096,3 +1096,51 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   font-size: var(--t-small);
   color: var(--ink-muted);
 }
+
+/* ============================================================
+   CINEMATIC REVAMP (8 Oct 2026) — cards, hero glow, chips.
+   ============================================================ */
+:root .door,
+:root .start-card,
+:root .example,
+:root .bd-example,
+:root .job-card,
+:root .hub-stat-strip .hss-item {
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+:root .door:hover,
+:root .door:focus-within,
+:root .start-card:hover,
+:root .start-card:focus-within,
+:root .example:hover,
+:root .example:focus-within,
+:root .job-card:hover,
+:root .job-card:focus-within,
+:root .film-card:hover,
+:root .film-card:focus-within,
+:root .tool-card:hover,
+:root .tool-card:focus-within,
+:root .lx-mod:hover,
+:root .lx-mod:focus-within {
+  border-color: var(--border-accent);
+}
+/* Hero surfaces: the glow layered over the card colour. */
+:root .hero,
+:root .cover,
+:root .first-run,
+:root .start-hero {
+  background-color: var(--bg-secondary);
+  background-image: var(--hero-glow);
+}
+/* Chips, tags and pills that are labels, not categories: teal. */
+:root .watch-step .step-tag,
+:root .fest-card .tier,
+:root .scene-tag,
+:root .section-head .right .lx-here-tag {
+  background: var(--accent-teal-subtle);
+  color: var(--accent-teal);
+  border: 1px solid var(--accent-teal-subtle);
+  border-radius: var(--radius-pill);
+  padding-inline: var(--s2);
+}

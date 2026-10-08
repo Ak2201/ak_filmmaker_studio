@@ -3575,3 +3575,107 @@ html {
   .sh-bar > .toolbar { justify-content: safe flex-end; }
   .sh-bar > .toolbar > * { flex-shrink: 0; }
 }
+
+/* ============================================================
+   CINEMATIC REVAMP (8 Oct 2026) — buttons, the band, fields.
+   Appended LAST and prefixed with :root so it out-ranks the
+   `.sh-bar .btn` / `.toolbar .btn` rules above without !important.
+   Primary actions read --accent-gold DIRECTLY, never --accent:
+   pages set --accent to a phase hue and a CTA must not follow it.
+   ============================================================ */
+
+/* Secondary / ghost: transparent, hairline, teal on hover. */
+:root .btn,
+:root .tb-link,
+:root .toolbar .btn,
+:root .toolbar .tb-link,
+:root .sh-bar .btn,
+:root .sh-rail .btn,
+:root .studio-no-project-banner .btn,
+:root .modal-actions .mbtn,
+:root .cm-btn {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+:root .btn:hover,
+:root .tb-link:hover,
+:root .toolbar .btn:hover,
+:root .toolbar .tb-link:hover,
+:root .sh-bar .btn:hover,
+:root .sh-rail .btn:hover,
+:root .studio-no-project-banner .btn:hover,
+:root .modal-actions .mbtn:hover,
+:root .cm-btn:hover {
+  background: transparent;
+  color: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+/* Primary: gold fill, dark ink (9.4:1), the glow. */
+:root .btn.primary,
+:root .toolbar .btn.primary,
+:root .sh-bar .btn.primary,
+:root .sh-rail .btn.primary,
+:root .studio-no-project-banner .btn.primary,
+:root .modal-actions .mbtn.primary,
+:root .cm-btn.primary {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: var(--bg-primary);
+  font-weight: 700;
+  box-shadow: var(--shadow-cta);
+  transition: background var(--speed) var(--ease),
+              border-color var(--speed) var(--ease),
+              box-shadow var(--speed) var(--ease),
+              color var(--speed) var(--ease);
+}
+:root .btn.primary:hover,
+:root .btn.primary:active,
+:root .toolbar .btn.primary:hover,
+:root .sh-bar .btn.primary:hover,
+:root .sh-rail .btn.primary:hover,
+:root .studio-no-project-banner .btn.primary:hover,
+:root .modal-actions .mbtn.primary:hover,
+:root .modal-actions .mbtn.primary:active,
+:root .cm-btn.primary:hover,
+:root .cm-btn.primary:active {
+  background: var(--accent-gold-hover);
+  border-color: var(--accent-gold-hover);
+  color: var(--bg-primary);
+}
+
+/* The nav band: frosted glass over the page, with a solid fallback. */
+:root .sh-bar {
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  backdrop-filter: var(--blur-glass);
+  border-bottom: 1px solid var(--border-subtle);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root .sh-bar { background: var(--chrome); }
+}
+
+/* Fields: the tertiary surface, gold focus ring. */
+:root input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+:root textarea,
+:root select,
+:root .search-input,
+:root .toolbar-search input {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+:root input:focus,
+:root textarea:focus,
+:root select:focus,
+:root .search-input:focus,
+:root .toolbar-search input:focus,
+:root .cm-card select:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px var(--accent-gold-glow);
+}
+:root input::placeholder,
+:root textarea::placeholder,
+:root .search-input::placeholder,
+:root .toolbar-search input::placeholder { color: var(--text-muted-aa); }

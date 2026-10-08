@@ -22,9 +22,8 @@
 
    THAT IS ALSO WHY NO SKIN IS LOADED. skin.js globs
    src/styles/skins/ and sets the --sk-* family; none of it runs
-   here, so legal.css reads the fixed tokens instead. Light and
-   dark still work, because tokens.css answers
-   prefers-color-scheme on bare :root with no JavaScript at all.
+   here, so legal.css reads the fixed tokens instead. The site is dark only; bare :root in tokens.css carries the palette
+   with no JavaScript at all.
 
    THE ONE THING IT DOES BESIDES (UX audit L20): honour the theme the
    reader CHOSE elsewhere in the studio, which the OS query alone
@@ -38,9 +37,5 @@
 import '../styles/base.css';
 import '../styles/legal.css';
 
-const THEME_KEY = 'fms_studio_theme_v1';           // chrome.js THEME_KEY
-const CSS_THEME = { ink: 'dark', paper: 'light' };  // chrome.js CSS_THEME
-try {
-  const t = CSS_THEME[localStorage.getItem(THEME_KEY)];
-  if (t) document.documentElement.setAttribute('data-theme', t);
-} catch (e) { /* storage blocked: the OS setting stands */ }
+/* Dark only: one palette, stamped for anything that keys off it. */
+document.documentElement.setAttribute('data-theme', 'dark');

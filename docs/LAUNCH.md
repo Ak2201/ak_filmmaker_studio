@@ -95,6 +95,39 @@ Google's non-sensitive class — which is exactly why the Verification
 Center says no review is needed. Registering the wrong thing there is how
 a project that needs no review acquires one.
 
+### What was done on 8 Oct 2026, and what is left
+
+1. **Search Console property created and AUTO-VERIFIED.** A URL-prefix
+   property for `https://thefilmmakerstudio.vercel.app` under
+   `arunkumarmohanans@gmail.com`. Google verified it instantly, by the
+   **HTML tag** method, because `index.html:31` already carries
+   `<meta name="google-site-verification" content="-V57…">` and it is
+   served live. No file, no commit and no deploy were needed. That tag is
+   now load-bearing — see the note in `CLAUDE.md` under "Things that are
+   deliberate".
+2. **The authorised origins are tidied.** The `filmstudio` client now
+   holds exactly `http://localhost:5173`, `http://localhost:4173` and
+   `https://thefilmmakerstudio.vercel.app`, verified by re-reading the
+   form after a full reload. The redirect URI is untouched.
+3. **STILL OWED: wait 24 hours, then re-request.** Google's own words:
+   "Verify ownership of your home page, then wait 24 hours before
+   retrying to allow our systems to update." So on **9 Oct 2026 or
+   later**, go to Branding → View issues → "I have fixed the issues" →
+   Proceed. Clicking it sooner just spends a round trip.
+
+**A trap worth more than the tidy-up it came from.** In the new Google
+Auth Platform console, deleting a URI row **commits immediately** — there
+is no Save to confirm it and no Cancel to take it back. The per-row trash
+appears on HOVER, and clicking into a field SCROLLS the page, so a trash
+clicked from a screenshot taken before the focus event hits the row
+BELOW the one intended. That happened here: it removed
+`http://localhost:5173`, this session reported it as "discarded unsaved"
+because no Save had been clicked, and that report was WRONG — a reload
+two steps later showed the origin genuinely gone from the server. It was
+restored by overwriting the stale host's row rather than deleting
+anything, which is the safer shape for this form: **edit a row's value
+instead of deleting a row** whenever the counts allow it.
+
 ## 3. Finish the legal pages
 
 **THE PLACEHOLDERS ARE LIVE ON THE PUBLIC SITE.** Checked 8 Oct 2026:

@@ -3,6 +3,9 @@
 > **New session? Read `docs/HANDOFF.md` first.** It records everything done on
 > 7–8 Oct 2026, every branch and where unfinished work sits, the owner's
 > decisions, and what is planned. Then come back here for the invariants.
+>
+> **Branching:** develop on `develop`; `main` only receives tested work through the
+> release gate in `docs/BRANCHING.md`. Never commit unfinished work to `main`.
 
 Read this before changing anything. It is short on purpose; the parts that look
 like fussy rules is there because breaking it has already cost a user their work

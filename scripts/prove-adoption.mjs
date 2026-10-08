@@ -22,7 +22,8 @@
    Plus the overflow case the gate structurally cannot test: 390px
    entered at LOAD rather than by a resize afterwards.
 
-   Run:  node prove-adoption.mjs        (needs a fresh `npm run build`)
+   Run:  npm run prove:adoption   (needs a fresh `npm run build:open`;
+         PW_CHROMIUM=<path> picks a Chromium other than Playwright's own)
    ============================================================ */
 import http from 'node:http';
 import fs from 'node:fs';
@@ -78,7 +79,7 @@ const probe = () => ({
   adoptable: window.StudioStore.listAdoptableProjects().map((p) => p.title)
 });
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
 const errors = [];

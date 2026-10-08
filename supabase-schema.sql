@@ -5778,7 +5778,32 @@ notify pgrst, 'reload schema';
 -- 25. UNDOING AN ADMIN DECISION — recover a declined account,
 --     and clear a user back to a stranger
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 8 Oct 2026.
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor: "Success. No rows returned", twice - see the correction
+-- below. Read back: the function exists, returns jsonb, takes
+-- (p_user uuid, p_note text DEFAULT NULL), is SECURITY DEFINER, and
+-- the grants are right - anon EXECUTE false, authenticated true.
+--
+-- THREE OF THE 25.1 CHECKS ARE DONE, live, against this database:
+--   * on a uuid that does not exist: returns every flag false and
+--     touches nobody, so the function runs clean against a stranger.
+--   * on YOURSELF: 42501 "You cannot clear your own account" - the
+--     guard holds, and studio_status still answered 'admin' after.
+--   * the anon grant: revoked, confirmed by has_function_privilege.
+-- Still unrun: a non-admin caller, an admin target, a real clear of a
+-- real user, and the one that matters most - that their projects
+-- survive it.
+--
+-- AND THE FIRST RUN HAD A BUG THE PROBE CAUGHT. signed_out was set
+-- from "the delete did not raise" rather than from rows affected, so
+-- clearing a user with no session - or one who does not exist -
+-- reported signed_out true. An administrator would read that as "their
+-- session was revoked" when nothing had been. It uses get diagnostics
+-- now and the re-run reports false. Worth keeping because it is the
+-- shape of mistake a dry read never finds: the statement succeeded,
+-- the fact it asserted was false.
+--
+-- Owner's ask, 8 Oct 2026.
 --
 -- The console could let somebody IN and keep them out, and nothing
 -- else. Two doors were missing and both were asked for by name:
@@ -5815,6 +5840,7 @@ declare
   v_requests   int := 0;
   v_redeems    int := 0;
   v_sessions   int := 0;
+  v_authrows   int := 0;
   v_authgone   boolean := false;
   v_target     public.studio_members;
 begin
@@ -5858,7 +5884,14 @@ begin
   -- must not cost the caller the rest of the reset.
   begin
     delete from auth.sessions where user_id = p_user;
-    v_authgone := true;
+    /* ROWS, not "no exception". Deleting zero rows succeeds, so the
+       first version reported signed_out true for a user who had no
+       session at all - including one that does not exist. An admin
+       reading "signed out" would believe a session had been revoked
+       when none had. Caught by the 25.1 probe on a non-existent uuid,
+       8 Oct 2026. */
+    get diagnostics v_authrows = row_count;
+    v_authgone := v_authrows > 0;
   exception when others then
     v_authgone := false;
   end;

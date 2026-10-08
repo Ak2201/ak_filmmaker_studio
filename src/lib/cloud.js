@@ -388,8 +388,10 @@ export function ownsSync() { return !!(isConfigured() && session && syncAllowed(
 // code, or a request for an invite). ONLY that first load: a marker
 // in sessionStorage is set when the sign-in begins and consumed by the
 // first runGate() that sees it, so a visitor who is waiting on an
-// administrator can still open the breakdown without being bounced
-// off every page. Local work was never behind the gate and is not now.
+// administrator can still be on invite.html. Under the website gate
+// (src/lib/sitegate.js) every OTHER page bounces a closed account back
+// to invite.html, so "keep working" is no longer a route from there;
+// local work is hidden from a visitor outside the gate, not deleted.
 // ============================================================
 const Gate = createGate(() => ensureClient());
 const GATE_LANDING_KEY = 'fms_gate_landing';

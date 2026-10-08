@@ -24,7 +24,13 @@ import '../styles/gate.css';
 
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
-const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
+const toast = (msg, type, duration) => {
+  if (!window.StudioUI || !StudioUI.toast) return;
+  const o = {};
+  if (type) o.type = type;
+  if (duration) o.duration = duration;
+  StudioUI.toast(msg, Object.keys(o).length ? o : undefined);
+};
 
 /* ---- FR-203: the takeover prompt -------------------------------- */
 
@@ -168,7 +174,7 @@ async function submitCode(form) {
 
 /* ---- FR-102 / FR-103: the admin console ------------------------- */
 
-const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null,
+const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null, showAllDecided: false,
   /* What the admin has typed into "Issue a code" but not submitted. The
      console redraws on every load — twice after each code it issues —
      and a redraw rebuilt the form from defaults, so a second code begun
@@ -230,8 +236,8 @@ export function adminSection(section, st) {
         h('td', { text: r.note || '—' }),
         h('td', { text: browserOf(r.user_agent) || '—' }),
         h('td.gt-row-actions', {}, [
-          h('button.btn.primary', { type: 'button', 'data-gate-action': 'approve', 'data-id': r.user_id, 'data-email': r.email, text: 'APPROVE' }),
-          h('button.btn.danger', { type: 'button', 'data-gate-action': 'decline', 'data-id': r.user_id, 'data-email': r.email, text: 'DECLINE' })
+          h('button.btn.primary', { type: 'button', 'data-gate-action': 'approve', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Approve ' + r.email, text: 'APPROVE' }),
+          h('button.btn.danger', { type: 'button', 'data-gate-action': 'decline', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Decline ' + r.email, text: 'DECLINE' })
         ])
       ]));
     }
@@ -245,9 +251,15 @@ export function adminSection(section, st) {
        person waited out seven days for nothing. A declined row now
        carries LET THEM IN; an approved one carries CLEAR, which is the
        way back out. Owner's ask, 8 Oct 2026. */
-    const det = h('details.gt-decided', {}, [h('summary', { text: `Decided (${decided.length})` })]);
-    const ul = h('ul.gt-list');
-    decided.slice(0, 30).forEach((r) => {
+    const det = h('details.gt-decided', { open: admin.showAllDecided }, [h('summary', { text: `Decided (${decided.length})` })]);
+    const ul = h('ul.gt-list.gt-list-plain');
+    /* CLEAR is refused by the database for an administrator and for
+       yourself (admin_reset_user), so the button is not offered there. */
+    const protectedEmails = new Set(admin.members.filter((m) => m.role === 'admin').map((m) => String(m.email || '').toLowerCase()));
+    const me = String((cloud() && cloud().getUserEmail && cloud().getUserEmail()) || '').toLowerCase();
+    if (me) protectedEmails.add(me);
+    const shown = admin.showAllDecided ? decided : decided.slice(0, 30);
+    shown.forEach((r) => {
       const line = `${fmtDate(r.decided_at)} — ${r.email} — ${r.status}`
         + (r.decided_by_email ? ` by ${r.decided_by_email}` : '')
         + (r.decision_note ? ` — “${r.decision_note}”` : '');
@@ -255,13 +267,18 @@ export function adminSection(section, st) {
         h('span', { text: line }),
         h('span.gt-row-actions', {}, [
           r.status === 'declined'
-            ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, text: 'LET THEM IN' })
+            ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Let ' + r.email + ' in', text: 'LET THEM IN' })
             : null,
-          h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, text: 'CLEAR' })
+          protectedEmails.has(String(r.email || '').toLowerCase()) ? null
+            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Clear ' + r.email, text: 'CLEAR' })
         ].filter(Boolean))
       ]));
     });
     det.append(ul);
+    if (decided.length > 30) {
+      det.append(h('p', {}, [h('button.btn', { type: 'button', 'data-gate-action': 'toggle-decided',
+        text: admin.showAllDecided ? 'SHOW FEWER' : `SHOW ALL (${decided.length})` })]));
+    }
     sec.append(det);
   }
 
@@ -347,12 +364,12 @@ export function adminSection(section, st) {
         h('td', { text: [browserOf(m.user_agent), m.client_ip].filter(Boolean).join(' · ') }),
         h('td.gt-row-actions', {}, [
           live(m) ? h('button.btn', { type: 'button', 'data-gate-action': 'terminate', 'data-id': m.user_id, text: 'END SESSION' }) : null,
-          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, text: 'DISABLE' }) : null,
+          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Disable ' + m.email, text: 'DISABLE' }) : null,
           /* DISABLE keeps the row and stops them; CLEAR removes the row
              and makes the next sign-in a new one. Not offered for an
              admin — schema section 25 refuses it anyway, and a button
              that always errors is worse than no button. */
-          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, text: 'CLEAR' }) : null
+          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Clear ' + m.email, text: 'CLEAR' }) : null
         ].filter(Boolean))
       ]));
     }
@@ -422,6 +439,9 @@ delegate(document, 'input', '[data-gate-field="code"]', (e, el) => {
 delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   const g = gate();
   const act = el.dataset.gateAction;
+  if (el.disabled) return;
+  if (act === 'toggle-decided') { admin.showAllDecided = !admin.showAllDecided; rerender(); return; }
+  el.disabled = true;   // one click, one RPC
   try {
     if (act === 'revoke') {
       if (!window.confirm('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.')) return;
@@ -459,7 +479,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       const bits = [];
       if (out && out.membership_removed) bits.push('membership removed');
       if (out && out.request_removed) bits.push('request cleared');
-      if (out && out.redemptions_freed) bits.push(`${out.redemptions_freed} code use freed`);
+      if (out && out.redemptions_freed) bits.push(`${out.redemptions_freed} code ${out.redemptions_freed === 1 ? 'use' : 'uses'} freed`);
       if (out && out.device_lock_cleared) bits.push('device lock cleared');
       bits.push(out && out.signed_out ? 'signed out' : 'session left in place');
       toast(`${el.dataset.email} is a stranger again — ${bits.join(', ')}.`, 'success', 6000);
@@ -473,6 +493,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       toast('Invite link copied — whoever opens it is in.');
     }
   } catch (err) { toast(errorSentence(err, 'That did not work.'), 'error'); }
+  finally { el.disabled = false; }
 });
 
 export default { takeoverDialog, inviteSection, adminSection, wireGateUI };

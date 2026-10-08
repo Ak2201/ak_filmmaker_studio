@@ -81,6 +81,20 @@ function legalLine(lead) {
   ]);
 }
 
+/* sitegate.js leaves the reason it turned a visitor away in
+   sessionStorage (fms_sitegate_why). Say it once, plainly; no new key. */
+function whySentence() {
+  let w = null;
+  try { w = JSON.parse(sessionStorage.getItem('fms_sitegate_why') || 'null'); } catch (e) { w = null; }
+  if (!w || !w.reason) return '';
+  const r = String(w.reason).toLowerCase();
+  const page = w.from ? String(w.from).replace(/^\//, '').split(/[?#]/)[0] : '';
+  const lead = page ? 'You were sent here from ' + page + ' because ' : 'You were sent here because ';
+  if (r === 'signedout') return lead + 'the studio is invite-only and you are not signed in.';
+  if (r === 'timeout' || r === 'unreachable') return lead + 'your invite could not be checked just then. Everything on this device is still here.';
+  return lead + 'this account is not an invited member yet.';
+}
+
 function render() {
   const c = cloud();
   const g = (c && c.getGateState && c.getGateState()) || { state: 'unknown', reason: '', status: null };
@@ -94,6 +108,8 @@ function render() {
     h('p.bd-deck', { text: deckFor(c, g) })
   ]));
   const body = h('div.iv-body');
+  const why = whySentence();
+  if (why) body.append(h('p.bd-sub.iv-why', { role: 'status', text: why }));
 
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'Nothing to redeem.',
@@ -119,6 +135,20 @@ function render() {
     ]));
     sec.append(legalLine('By continuing you agree to the '));
     body.append(sec);
+    /* start.html links to invite.html#buy. A plan is bought by an
+       account, so signed out the cards' way in is signing in. */
+    if (plans) {
+      const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
+        'A paid plan lets an account in without an invite. Sign in with Google first, then choose a plan here.');
+      buy.append(planCards(plans, null, {
+        onBuy: () => { const b = document.querySelector('[data-auth-action="google"]'); if (b) b.click(); },
+        rerender: render
+      }));
+      buy.append(h('div.iv-actions', {}, [
+        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' })
+      ]));
+      body.append(buy);
+    }
   } else if (g.state === 'unknown') {
     body.append(section('checking', 'One moment', 'Checking your invite…', 'Checking the invite for ' + (email || 'this account') + '.'));
   } else if (g.state === 'open') {
@@ -159,8 +189,8 @@ function render() {
     const out = section('meanwhile', 'Meanwhile', 'Your work is safe.',
       'Anything already saved on this device stays exactly as it is. Once you are in, everything opens again and sync starts by itself.');
     out.append(h('div.iv-actions', {}, [
-      h('a.btn', { href: 'index.html', text: 'KEEP WORKING' }),
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
+      h('a.btn', { href: 'start.html', text: 'ABOUT THE STUDIO' })
     ]));
     body.append(out);
   }
@@ -219,7 +249,7 @@ adoptLinkCode();
 let plans = null;
 async function loadPlans() {
   const c = cloud();
-  if (!c || !c.isConfigured() || !c.getSession()) return;
+  if (!c || !c.isConfigured()) return;
   try { plans = await Billing.listPlans(); } catch (e) { plans = null; }   // section 16 not run: no cards
   render();
 }

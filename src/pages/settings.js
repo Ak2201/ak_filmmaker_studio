@@ -118,16 +118,19 @@ const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
    (billing_status and the plans table); nothing about a plan is
    remembered in this browser. Rendered for a signed-in account only —
    a signed-out visitor has no organisation to put a plan on. */
-let billing = { plans: null, st: null, error: '' };
+let billing = { plans: null, st: null, error: '', missing: false, loading: false };
 async function refreshBilling() {
   const c = window.StudioCloud;
-  if (!c || !c.isConfigured() || !c.getSession()) { billing = { plans: null, st: null, error: '' }; return; }
+  if (!c || !c.isConfigured() || !c.getSession()) { billing = { plans: null, st: null, error: '', missing: false, loading: false }; if (!busy) render(); return; }
+  billing = { ...billing, error: '', missing: false, loading: true };
+  if (!busy) render();
   try {
     const [plans, st] = await Promise.all([Billing.listPlans(), Billing.status()]);
-    billing = { plans, st, error: '' };
+    billing = { plans, st, error: '', missing: false, loading: false };
   } catch (e) {
-    // The table or the RPC missing means section 16 has not run: no section, no noise.
-    billing = { plans: null, st: null, error: /does not exist|Could not find|PGRST/i.test(e.message || '') ? '' : (e.message || '') };
+    // The table or the RPC missing means section 16 has not run: say so, plainly, instead of a spinner.
+    const missing = /does not exist|Could not find|PGRST/i.test(e.message || '');
+    billing = { plans: null, st: null, error: missing ? '' : (e.message || 'The plans did not load.'), missing, loading: false };
   }
   if (!busy) render();
 }
@@ -171,11 +174,12 @@ function renderPlan() {
   if (!c.isConfigured()) return null;
   if (!billing.plans) {
     const sec = section('plan', 'Plan',
-      billing.error ? 'The plans did not load.' : 'Loading the plans…',
+      billing.missing ? 'Plans are not set up on this project yet.' : billing.error ? 'The plans did not load.' : 'Loading the plans…',
       'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.');
     if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
+    if (billing.missing) sec.append(h('p.hint', { text: 'Plans are not set up on this project yet. Everything else here works, and work on this device is never limited.' }));
     sec.append(h('p', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'plan-retry', text: 'TRY AGAIN' })
+      h('button.btn', { type: 'button', 'data-action': 'plan-retry', 'data-plan-retry': '1', disabled: billing.loading ? true : null, text: billing.loading ? 'LOADING…' : 'TRY AGAIN' })
     ]));
     const extras0 = planExtras(null);
     if (extras0) sec.append(extras0);
@@ -879,7 +883,17 @@ delegate(document, 'click', '[data-action="storage-backup"]', () => {
 delegate(document, 'click', '[data-action="plan-retry"]', async (e, el) => {
   el.disabled = true;
   el.textContent = 'LOADING…';
-  await refreshBilling();   // re-renders on its own
+  try { await refreshBilling(); } catch (err) { /* refreshBilling catches its own */ }
+  if (billing.loading) billing.loading = false;
+  render();   // never leave the section on LOADING
+  const again = document.querySelector('[data-plan-retry]');
+  const target = again || document.getElementById('plan');
+  if (target) {
+    const heading = !again && target.querySelector('h2');
+    const f = again || heading || target;
+    if (!again) f.setAttribute('tabindex', '-1');
+    try { f.focus({ preventScroll: true }); } catch (err2) { /* ignore */ }
+  }
 });
 delegate(document, 'click', '[data-action="plan-sign-in"]', () => {
   openCloudAuthModal();
@@ -972,7 +986,7 @@ if (window.StudioCloud && window.StudioCloud.onAuth) window.StudioCloud.onAuth((
    Drive and Appearance all filled in, which makes it read as a broken
    page rather than a missing fetch. src/lib/sitegate.js subscribes to
    this same event for the same reason. 8 Oct 2026. */
-Store.subscribe('cloud:booted', () => refreshBilling());
+Store.subscribe('cloud:booted', () => refreshBilling());   // re-renders at once, with the loading state when a session exists
 refreshBilling();
 Store.subscribe('gate:changed', () => refreshGate());
 refreshGate();

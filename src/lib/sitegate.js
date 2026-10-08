@@ -224,8 +224,9 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
   Store.subscribe('gate:changed', () => (decided ? redecide() : decide()));
   /* cloud.js assigns window.StudioCloud when it evaluates, which may be
      after this module on a page whose entry imports it later. Poll
-     briefly for the global rather than import it — importing cloud.js
-     here would put it on pages that chose not to carry it. */
+     briefly for the global. (This module DOES import cloud.js, above,
+     so the global exists once that evaluates; the poll is a belt for
+     an entry whose cloud.js finishes assigning it a tick later.) */
   const hook = setInterval(() => {
     const c = window.StudioCloud;
     if (!c) return;

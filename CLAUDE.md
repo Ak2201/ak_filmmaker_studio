@@ -405,6 +405,13 @@ Theme and skin are orthogonal: theme picks the palette, skin picks the shapes.
 All nine combinations have to work, which is why a skin never writes a literal
 colour — only `var(--token)`.
 
+**8. The product name lives in ONE file: `src/data/brand.json`.** JS reads
+`src/lib/brand.js`; HTML uses `{{brand:name|upper|short|host|email|seller|tagline}}`,
+stamped by the `fms-brand` plugin (an unknown key fails the build). Never type
+the name, the owner's name or "curated by" into code, markup or data —
+`npm run test:brand` fails the ship. Never put the name in a storage key or a
+format id either: backup's `_from` is the fixed `FORMAT_ID`.
+
 **5. No inline `onclick` / `onchange` anywhere.**
 A strict CSP ships in `vercel.json`; an inline handler breaks the page under it.
 Use `delegate()` from `src/lib/dom.js` with `data-action` attributes. Some `raw`

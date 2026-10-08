@@ -432,6 +432,52 @@ new RPC so `prove:billing` exercises the real pages.
 | Q4 | Paid template / sample-pack plumbing + one free ORIGINAL starter | gate by a `plans.features` key; no real people, no reproduced scripts (`CLAUDE.md` item 8) |
 | Q5 | **Owner decision:** Tamil-script UI labels | reverses `lang.js`'s English-labels design — decide before anyone builds |
 
+### R — Sell-ready pass (lane 6): DONE 9 Oct on `feature/sell-ready`, merged to `main`
+
+Built by eight parallel agents and integrated in one pass (the commits that
+start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
+`Invite`, `prove:storage`, `prove:growth`).
+
+- **R1 One brand variable.** `src/data/brand.json` is the product's name,
+  host, support e-mail, seller and tagline; `src/lib/brand.js` exports it;
+  the `fms-brand` plugin in `vite.config.js` stamps `{{brand:*}}` into every
+  HTML entry and the PWA manifest; `build-extension.mjs` fills `__NAME__`;
+  `make-og.mjs`/`make-icons.mjs` read it. `npm run test:brand` (first step of
+  `ship`) fails on a stray name, `arunak`, `curated by` or the owner's Gmail.
+  The backup file's `_from` is a FIXED `FORMAT_ID` in `backup.js`, so a
+  rename never breaks restore.
+- **R2 Owner traces removed.** No "Curated by Arunak" bylines, exports,
+  e-mail signature or PPTX author. The seller's legal name stays on the
+  legal pages only, through `{{brand:seller}}`.
+- **R3 Tiers.** Labels Free / Basic / Intermediate / Pro on the unchanged ids
+  free / starter / indie / pro (`src/lib/plans.js`). Schema **§26** makes the
+  limit messages read the stored plan name and renames the default seed
+  names. **§26 is NOT RUN LIVE.**
+- **R4 Plan matrix.** `src/data/plan-matrix.json` + `matrixFeatures(id)`:
+  what each tier includes. It drives the landing page's pricing table and does
+  NOT gate anything until the owner seeds `plans.features` from it.
+- **R5 Landing page.** `start.html` redesigned (header, hero with screenshots
+  from `npm run shots`, pricing with visible list prices, FAQ). Strangers
+  are now sent to `start.html`, not `invite.html`, by the site gate.
+- **R6 Dashboard.** "Today's desk": continue, readiness, next actions, this
+  week, plan, Drive state. All derived; nothing written.
+- **R7 UX fixes.** The audit's H1–H4, M1–M7 and the Lows (dead budget and
+  equipment links, KEEP WORKING loop, Loading-forever plan section, admin
+  console CLEAR/aria/double-click, plan-gate grammar and upgrade target).
+
+**Owner steps left from R:** run §26 live; rename starter→Basic and
+indie→Intermediate in the console if §26 is not run; seed `plans.features`
+from `matrixFeatures()` when the tiers should actually differ; set
+`supportEmail` in `brand.json` to a dedicated inbox (it is still the
+personal Gmail); the list prices on `start.html` are stamped from
+`vite.config.js` `startFigures` — keep them equal to the console's prices.
+`npm run icons` currently inverts the icon colours (pre-existing), so the
+committed icons were not regenerated; fix the generator before a rename.
+
+**To rename the product:** edit `name` in `src/data/brand.json`, run
+`npm run og`, `npm run test:brand`, rebuild, then `npm run baseline`
+(the footer's brand word is in every page's word set).
+
 ### E — Emotional-craft layer (lane 4)
 
 E0 Phase 0 baseline of `develop` · E1 Phase A vocabulary, glossary, Library

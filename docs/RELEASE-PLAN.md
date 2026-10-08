@@ -731,7 +731,13 @@ rough [H]: S under 2 days, M 2–5 days, L over 5 days.
 | 11 | E0–E5 | Emotional-craft layer (A: vocabulary and Library shelf; B: Story emotion layer; C: per-scene feeling; D: AI emotional read; E: case studies) | L total; A is S–M and pure content | Differentiator; "learning free, tools paid"; needs `deny-shingles.txt` first |
 | 12 | G1, G2, G7 | Production gaps (after-sunset on DPR wrap, Plan recce fields, lazy CBFC import) | S each | Quality, first paint |
 | 13 | T1–T4, T9 | Test gaps (revision tint, ai.js chunk, Tamil typing in a browser, adoption proof, browser walks) | S each | Confidence |
-| later | N1–N7 | The "N" ideas | — | **The N1–N7 list is not defined in the docs read for this plan** (HANDOFF §6c has no N block). Name them in the registry before scheduling |
+| later | N1 | Onboarding checklist on the dashboard (derived; writes only on action) | S | Retention: first-week activation |
+| later | N2 | "What's in my plan" page in Settings, from `src/data/plan-matrix.json` | S | Fewer pre-sale questions; upsell clarity |
+| later | N3 | In-app changelog drawer (`src/data/changelog.json`) | S | Shows momentum to paying users |
+| later | N4 | Referral reward shown on the dashboard (uses §22) | S | Word of mouth |
+| later | N5 | 30-second demo video slot on the landing page | S (content) | Conversion |
+| later | N6 | Shareable read-only pitch-deck links, after the B8 security review | M | Growth loop through every deck sent |
+| later | N7 | Upgrade nudges at plan limits naming the next tier and the difference price | S | Basic → Intermediate → Pro climb |
 
 Selection rule: after launch let customer requests and the funnel reorder
 this table; write the change here and in HANDOFF §6c.

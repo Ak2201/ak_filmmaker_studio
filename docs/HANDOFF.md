@@ -478,6 +478,14 @@ committed icons were not regenerated; fix the generator before a rename.
 `npm run og`, `npm run test:brand`, rebuild, then `npm run baseline`
 (the footer's brand word is in every page's word set).
 
+### N — New selling ideas (from the 8 Oct sell-ready plan; not started)
+
+N1 dashboard onboarding checklist · N2 "what's in my plan" page from
+`plan-matrix.json` · N3 changelog drawer · N4 referral reward on the
+dashboard (§22) · N5 landing demo video · N6 read-only pitch-deck links
+(after B8's review) · N7 upgrade nudges at plan limits. Detail and
+priority: `docs/RELEASE-PLAN.md` §9.
+
 ### E — Emotional-craft layer (lane 4)
 
 E0 Phase 0 baseline of `develop` · E1 Phase A vocabulary, glossary, Library

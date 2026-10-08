@@ -8,11 +8,11 @@
     "",
     "THE RATING HINT is the app's own heuristic, not the Board's criteria. Each tier names the lowest category the app GUESSES that content tends to land in (`hint`), or null where the content does not by itself move the category (tobacco has not affected the category since the 2012 COTPA amendment). The film-level hint is the highest tier that fired. The categories are the ones in force after the Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024 — the same list deliverables.json uses.",
     "",
-    "SOURCES AND HONESTY. Every rule cites `source` (what the requirement rests on), `sourceUrls` (where it was read) and `checked` (when). Several official sites (cbfcindia.gov.in, the Netflix and MoHFW pages) were NOT reachable from the environment this file was written in, so some facts were read from secondary reports of the official text; `confidence` says which ('official' — read on the regulator's own site; 'secondary' — law-firm or press reports of the official text, consistent with each other; 'uncertain' — reported, not confirmed), and `uncertain` says what in particular to check. If a rule changes, change it here and move `checked`.",
+    "SOURCES AND HONESTY. Every rule cites `source` (what the requirement rests on), `sourceUrls` (where it was read) and `checked` (when). `confidence` says how well it is known ('official' — read on the regulator's own site; 'secondary' — law-firm or press reports of the official text, consistent with each other; 'uncertain' — reported, not confirmed), and `uncertain` says what in particular to check. If a rule changes, change it here and move `checked`. THE SOURCE CHECK OF 8 OCTOBER 2026 re-read these in a real browser, which earlier passes could not: 16 of the 18 cited URLs answer, cbfcindia.gov.in and awbi.gov.in and mib.gov.in among them. Nothing was found to be WRONG. What changed is precision — the 1991 notification is numbered S.O. 836(E), the 2026 revision is dated 16 September and SUPERSEDES rather than amends it, the anti-drug wording is confirmed verbatim, and rule 2C's notification number and date are confirmed. Two things are worth knowing before anyone re-checks. The 2026 guidelines text is still not published by CBFC or MIB, so every clause NUMBER quoted below is the 1991 one and none has been checked against the current text — CBFC's own clarification that the core provisions are unchanged is why they are still quoted at all. And cbfcindia.gov.in's certification page is STALER than the law: it still describes UA as 'below the age of twelve', three years after the 2024 Rules split it. An official site is not automatically the most current source, which is the opposite of the assumption this note used to make.",
     "",
     "A rule `id` is not a storage key (the page stores nothing), so it may be renamed — but the tests name them."
   ],
-  "checked": "2026-10-07",
+  "checked": "2026-10-08",
   "disclaimer": "These flags are a word search over your script, not a reading of the film. They miss things a person would see and flag things that are fine. The likely-rating line is this app's guess, not the Board's criteria and not legal advice — the Board judges the finished film as a whole. Check anything that matters with your regional CBFC office or a lawyer.",
   "ratings": [
     { "id": "U",      "label": "U",      "means": "Unrestricted public exhibition." },
@@ -22,22 +22,24 @@
     { "id": "A",      "label": "A",      "means": "Adults only." }
   ],
   "ratingsSource": {
-    "source": "Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024 (notified 15 March 2024), which split UA into UA 7+, UA 13+ and UA 16+ and moved applications to the e-Cinepramaan portal.",
+    "source": "Cinematograph (Amendment) Act, 2023 and the Cinematograph (Certification) Rules, 2024 — notified 15 March 2024, replacing the 1983 Rules — which split UA into UA 7+, UA 13+ and UA 16+ and moved applications to the e-Cinepramaan portal. The markers reached the certification GUIDELINES later, by an amendment in May 2025, which is why a 1991-dated guideline document can still be current and yet name them. TWO TRAPS for whoever re-checks this. The CBFC's own certification page still describes UA as 'below the age of twelve' and has not been updated for the 2024 split, so the official site is STALER than the Rules — do not 'correct' the three markers back to UA 12 from it. And the Act also provides an S certificate, 'restricted to specialized audiences such as doctors or scientists'; it is deliberately absent from the list above, because that list is an ORDERED SEVERITY SCALE the rating hint walks and scripts/test-delivery.mjs asserts exactly, and S is orthogonal to severity rather than above A.",
     "sourceUrls": [
       "https://www.medianama.com/2024/06/223-online-film-certification-portal-introduced-in-cinematograph-rules-2024-by-ib-ministry-summary-of-key-points/",
-      "https://www.drishtiias.com/daily-updates/daily-news-analysis/cinematograph-certification-rules-2024"
+      "https://www.drishtiias.com/daily-updates/daily-news-analysis/cinematograph-certification-rules-2024",
+      "https://www.cbfcindia.gov.in/cbfcAdmin/certification.php"
     ],
-    "checked": "2026-10-07",
+    "checked": "2026-10-08",
     "confidence": "secondary"
   },
   "guidelinesNote": {
-    "text": "The Board's certification guidelines under section 5B(2) of the Cinematograph Act, 1952 were revised in September 2026, replacing the guidelines of 6 December 1991. Press reports of the notification say the revision keeps the 1991 clauses and adds a mandatory anti-drug warning; the official text was not reachable from here, so the clauses below are quoted from the 1991 text as reported, and should be read against the 2026 notification.",
+    "text": "The Board's certification guidelines under section 5B(2) of the Cinematograph Act, 1952 were revised on 16 SEPTEMBER 2026. The operative words, as CBFC itself published them, are 'in exercise of powers conferred by sub-section (2) of section 5B of the Cinematograph Act, 1952 (37 of 1952) and in supersession of notification No. S.O. 836(E), dated the 6th December, 1991' — so the 1991 guidelines are SUPERSEDED, not amended. CBFC's clarification of 19 September 2026, issued through PIB and reposted by the Board, says only two substantive changes have been made in 35 years: the UA age markers (2024, written into the guidelines in May 2025) and this anti-drug message, and that 'except for these two changes, the core provisions and principles governing film certification have remained unchanged'. The clauses quoted below are therefore the 1991 ones, which the Board says still hold in substance. The 2026 text itself is still not published on cbfcindia.gov.in or mib.gov.in, so no clause NUMBER below has been checked against it.",
     "sourceUrls": [
       "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693",
       "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html",
-      "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
+      "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/",
+      "https://www.deccanherald.com/entertainment/except-for-anti-drug-warning-core-provisions-remain-unchanged-cbfc-issues-clarification-on-new-guidelines-4152695"
     ],
-    "checked": "2026-10-07",
+    "checked": "2026-10-08",
     "confidence": "secondary"
   },
   "rules": [
@@ -88,18 +90,20 @@
       ],
       "what": "The September 2026 guidelines require scenes depicting, involving the use, consumption or trafficking of narcotic drugs or psychotropic substances to carry a disclaimer or statutory warning, and the guidelines bar scenes that encourage, justify or glamorise drug addiction.",
       "do": [
-        "Carry the on-screen message reported as fixed by the guidelines: \"Illicit Narcotics Destroy Health and Guarantees Imprisonment. Say No to Drugs.\" (check the exact wording against the notification).",
+        "Carry the on-screen message fixed by the guidelines: \"Illicit Narcotics Destroy Health and Guarantees Imprisonment. Say No to Drugs.\" — wording CONFIRMED 8 October 2026 against CBFC's own published clause and three independent reports, including the lower-case 'to'.",
         "Make sure the scene does not encourage, justify or glamorise drug use."
       ],
-      "source": "Guidelines for certification of films under section 5B(2), Cinematograph Act, 1952, as revised by the Ministry of Information and Broadcasting in September 2026 (reported as notified on 16 or 18 September 2026).",
+      "source": "Guidelines for certification of films under section 5B(2), Cinematograph Act, 1952, as revised by the Ministry of Information and Broadcasting and notified on 16 SEPTEMBER 2026 (the date is CBFC's own, not a press inference). SEPARATELY, for a release that streams: an MIB advisory dated 24 August 2026 asks OTT platforms to display the SAME warning during scenes of drug consumption or use, continuing an advisory of 26 November 2024; private TV channels were told the same. Those are ADVISORIES, not rules, and MediaNama reported it could not find the August one on MIB's own site — treat them as a strong expectation rather than a citable obligation.",
       "sourceUrls": [
         "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693",
         "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html",
-        "https://menafn.com/1111686987/CBFC-Certification-Say-No-To-Drugs-Warning-Made-Part-Of-Centres-Film-Certification-Guidelines"
+        "https://menafn.com/1111686987/CBFC-Certification-Say-No-To-Drugs-Warning-Made-Part-Of-Centres-Film-Certification-Guidelines",
+        "https://www.deccanherald.com/entertainment/except-for-anti-drug-warning-core-provisions-remain-unchanged-cbfc-issues-clarification-on-new-guidelines-4152695",
+        "https://www.medianama.com/2026/08/223-mib-ott-drug-warning/"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
-      "uncertain": "Read from press reports three weeks after notification; the date of notification and the warning's exact wording differ slightly between reports."
+      "uncertain": "Settled 8 October 2026: the date is 16 September 2026 and the wording is confirmed verbatim. What is still unread is the notification text itself, which is not published — so the warning's required SIZE, PLACEMENT and DURATION on screen are unknown, and the OTT advisory is reported rather than sighted at source."
     },
     {
       "id": "alcohol",
@@ -119,11 +123,11 @@
         "Check the scene does not justify or glorify drinking.",
         "A liquor brand visible in frame is also a trade-mark and surrogate-advertising question — see 'Real people, brands and institutions'."
       ],
-      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "source": "Guidelines for certification of films, notified 6 December 1991 as S.O. 836(E), and SUPERSEDED on 16 September 2026 by revised guidelines under section 5B(2). CBFC's own clarification (PIB, 19 September 2026) says the core provisions and principles are unchanged across the two changes made in 35 years, so this clause survives in substance; the 2026 text is not published, so its clause NUMBER here is the 1991 one and is unverified.",
       "sourceUrls": [
         "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
       "uncertain": "Many Tamil releases carry a 'drinking is injurious to health' caption; that is common practice, and we did not find it stated as a requirement. Ask the regional office."
     },
@@ -188,12 +192,12 @@
         "Decide what the camera holds on. The committee reads the cut, not the page; the same scene can pass or be cut depending on duration and detail.",
         "Keep a clean alternative take of the most graphic moments — a requested cut is quicker to make from coverage than by trimming frames."
       ],
-      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "source": "Guidelines for certification of films, notified 6 December 1991 as S.O. 836(E), and SUPERSEDED on 16 September 2026 by revised guidelines under section 5B(2). CBFC's own clarification (PIB, 19 September 2026) says the core provisions and principles are unchanged across the two changes made in 35 years, so this clause survives in substance; the 2026 text is not published, so its clause NUMBER here is the 1991 one and is unverified.",
       "sourceUrls": [
         "https://rsdebate.nic.in/bitstream/123456789/198213/1/PQ_170_14061994_U7579_p237_p242.pdf",
         "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary"
     },
     {
@@ -226,12 +230,12 @@
         "For sexual violence, the guideline asks for the minimum and no detail: plan the coverage so the scene can be told without it.",
         "Nudity or explicit sexual content usually means an A certificate; decide early whether the release plan can carry one."
       ],
-      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "source": "Guidelines for certification of films, notified 6 December 1991 as S.O. 836(E), and SUPERSEDED on 16 September 2026 by revised guidelines under section 5B(2). CBFC's own clarification (PIB, 19 September 2026) says the core provisions and principles are unchanged across the two changes made in 35 years, so this clause survives in substance; the 2026 text is not published, so its clause NUMBER here is the 1991 one and is unverified.",
       "sourceUrls": [
         "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/",
         "https://www.thestatesman.com/entertainment/new-cbfc-rules-put-drug-use-sexual-abuse-communal-content-under-closer-watch-heres-what-filmmakers-need-to-know-1503640511.html"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary"
     },
     {
@@ -258,11 +262,11 @@
         "Record a clean alternative line (wild track or in the dub) for every flagged word you want to keep the option of losing.",
         "Subtitles count: a word muted in the mix but left in the English subtitle is still on screen."
       ],
-      "source": "Guidelines for certification of films (1991), retained in the September 2026 revision as reported.",
+      "source": "Guidelines for certification of films, notified 6 December 1991 as S.O. 836(E), and SUPERSEDED on 16 September 2026 by revised guidelines under section 5B(2). CBFC's own clarification (PIB, 19 September 2026) says the core provisions and principles are unchanged across the two changes made in 35 years, so this clause survives in substance; the 2026 text is not published, so its clause NUMBER here is the 1991 one and is unverified.",
       "sourceUrls": [
         "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
       "uncertain": "Press reports of the 2026 revision did not describe its wording on language; the 1991 clauses are assumed retained."
     },
@@ -284,12 +288,12 @@
         "Read every flagged line for who is speaking and whether the film endorses it.",
         "Where a real community is named, consider whether the scene needs the name."
       ],
-      "source": "Guidelines for certification of films (1991), clause (xii) as reported, retained in the September 2026 revision.",
+      "source": "Guidelines for certification of films, 6 December 1991 (S.O. 836(E)), clause (xii) as reported — SUPERSEDED on 16 September 2026 but unchanged in substance per CBFC's clarification. The clause NUMBER is from the 1991 text and could not be checked against the 2026 notification, which is not published.",
       "sourceUrls": [
         "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/",
         "https://www.livelaw.in/amp/high-court/delhi-high-court/dont-release-films-ridiculing-religion-inciting-hatred-303618"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary"
     },
     {
@@ -339,15 +343,15 @@
         "Show the flag and the anthem only in ways those Acts allow — no flag as a costume, a cloth or a prop that is handled carelessly.",
         "Use a fictional insignia rather than the State Emblem on props such as a police cap badge or a letterhead, unless you have checked the use is permitted.",
         "For a public location shot in police or forces uniform, take the jurisdictional police's permission — the location permission usually covers it, but say so in the application.",
-        "Films about the armed forces: a 2020 Ministry of Defence request that producers obtain its no-objection certificate was widely reported; check whether it applies before submission."
+        "Films about the armed forces: get the Ministry of Defence NOC question answered BEFORE you shoot, not at submission. In 2020 MoD wrote to CBFC asking that production houses be advised to obtain an NOC for any film, documentary or web series on an Army theme, and reporting since describes scripts being run past military officials before production. It is an advisory to the Board rather than a statute — but it has teeth: a Minister of State for Defence told Parliament in February 2022 that an NOC had been REFUSED for a film, on national-security and image grounds. MoD weighs national security, law and order, discipline in the forces, service ethos and the forces' image. Budget for the delay."
       ],
-      "source": "Guidelines for certification of films (1991), clause (xix) as reported, retained in the September 2026 revision; Emblems and Names (Prevention of Improper Use) Act, 1950; State Emblem of India (Prohibition of Improper Use) Act, 2005; Prevention of Insults to National Honour Act, 1971; Flag Code of India, 2002.",
+      "source": "Guidelines for certification of films, 6 December 1991 (S.O. 836(E)), clause (xix) as reported — SUPERSEDED on 16 September 2026 but unchanged in substance per CBFC's clarification; the clause NUMBER is unverified against the 2026 text. Emblems and Names (Prevention of Improper Use) Act, 1950; State Emblem of India (Prohibition of Improper Use) Act, 2005; Prevention of Insults to National Honour Act, 1971; Flag Code of India, 2002.",
       "sourceUrls": [
         "https://www.bananaip.com/intellepedia/central-board-film-certification-india-process-guidelines/"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "uncertain",
-      "uncertain": "The guideline clause is reported consistently. The police-permission point is common practice rather than a rule we could cite, and the Ministry of Defence request is a 2020 press report whose current status we did not confirm."
+      "uncertain": "The guideline clause is reported consistently, but its NUMBER is unverified against the unpublished 2026 text. The police-permission point is still common practice rather than a rule we can cite. The MoD NOC is confirmed to be live and to have been refused at least once, but we have found no notification or circular text — only reporting and a parliamentary answer, so its exact scope (Army only, or all three services; feature films only, or web series too) is not settled. A uniform worn by an actor on a closed set is costume: the Official Secrets Act provisions on military uniform are about DECEPTION, which a film set is not."
     },
     {
       "id": "children",
@@ -376,22 +380,23 @@
       ],
       "what": "Under the Child and Adolescent Labour (Prohibition and Regulation) Act and its 2017 rules, a child under 14 may take part in an audio-visual production only with the District Magistrate's permission and on the rule's conditions. The guidelines separately bar scenes showing children as victims or perpetrators of violence, forcing children to witness violence, or subjecting them to any form of abuse.",
       "do": [
-        "Before the shoot, take the District Magistrate's permission for every child artist, and give the undertaking the rule asks for.",
+        "Before the shoot, take the permission of the District Magistrate for the district where you are shooting, for every child artist. Rule 2C names what you file: an undertaking in FORM C, the list of child participants, and the consent of each parent or guardian — all BEFORE the activity starts. No child may be made to take part against their own will and consent, whatever the parent has signed.",
         "No more than five hours of work a day and no more than three hours without rest; one responsible person on set for every five children at most.",
         "No child kept out of school for more than 27 days; 20% of the child's earnings deposited in a fixed deposit in the child's name.",
         "Carry the disclaimer that all measures were taken to ensure no abuse, neglect or exploitation of the child during shooting.",
         "Where a child and a hazard share a scene: cover it so the child is never in the hazard — doubles, separate setups, or VFX — and keep the scene clear of the guideline on children and violence."
       ],
-      "source": "Child and Adolescent Labour (Prohibition and Regulation) Amendment Rules, 2017 (G.S.R. 543(E), 2 June 2017), rule 2C; guidelines for certification of films as revised in September 2026.",
+      "source": "Child and Adolescent Labour (Prohibition and Regulation) Amendment Rules, 2017 — rule 2C, inserted by G.S.R. 543(E) dated 2 June 2017. Citation CONFIRMED 8 October 2026, including the notification number, the date and the rule number. Rule 2C covers cinema, documentary, television including reality, quiz and talent shows, radio, drama serials and anchoring. Also: the NCPCR Guidelines for Child and Adolescent Participation in the Entertainment Industry, hosted on mib.gov.in, which is the nearest thing to a primary source in this file. Plus the guidelines for certification of films as revised 16 September 2026, which bar children as victims or perpetrators of violence.",
       "sourceUrls": [
         "https://ssrana.in/articles/child-actors-and-child-labour-laws/",
         "https://abcaus.in/labour-laws/child-labour-prohibition-and-regulation-amendment-rules-2017.html",
         "https://www.drishtiias.com/daily-updates/daily-news-analysis/child-labour-in-film-and-television-industry/print_manually",
-        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693"
+        "https://www.indiatvnews.com/entertainment/news/cbfc-s-new-film-certification-guidelines-explained-drug-warnings-age-ratings-and-more-2026-09-19-1054693",
+        "https://mib.gov.in/sites/default/files/2024-05/ncpcr-guidelinesf-for-child-and-adolescent-participatiion-in-the-entertainment-industry-and-any-commercial-entertainment-activity_0.pdf"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
-      "uncertain": "Rule 2C speaks of a 'child' (under 14). A 14-to-17-year-old is an adolescent under the Act, barred only from hazardous work; this page flags them for a person to check, not as needing the District Magistrate's permission. We did not confirm whether the 2017 rules have been amended since."
+      "uncertain": "Rule 2C speaks of a 'child' (under 14). A 14-to-17-year-old is an adolescent under the Act, barred only from hazardous work; this page flags them for a person to check, not as needing the District Magistrate's permission. AND THE RULES ARE AMENDED STATE BY STATE, which matters more to this app's users than the central text does: Maharashtra amended its Child and Adolescent Labour rules in 2025 and Goa in 2024, so the central rule 2C is a floor and the applicable conditions are the ones the STATE has made. A producer shooting in Tamil Nadu should read the Tamil Nadu rules before relying on the figures above; we have not read them."
     }
   ]
 }

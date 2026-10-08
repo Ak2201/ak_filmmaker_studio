@@ -15,7 +15,7 @@ feature/<name> ──► develop ──(release gate passes)──► main
 | Branch | Rule |
 |---|---|
 | `main` | Production. Deployable at all times. Receives **only** a `--no-ff` merge of `develop` that passed the release gate, a hotfix, or a docs-only change. Never receive unfinished work. |
-| `develop` | Integration. Every feature lands here first. May be red between features, but a feature branch is merged only after **its own** tests pass. Created 8 Oct 2026 from `wip-all` (`973ad47`), so it currently holds the ten unfinished workstreams — see `docs/WIP.md`. |
+| `develop` | Integration. Every feature lands here first. May be red between features, but a feature branch is merged only after **its own** tests pass. Created 8 Oct 2026 from `wip-all` (`973ad47`); the ten workstreams it carried were released to `main` the same day. |
 | `feature/<name>` | One piece of work, cut from `develop`, merged back into `develop` with `--no-ff`. Example: `feature/on-set`, `feature/emotional-craft`. |
 | `hotfix/<name>` | Cut from `main` for a production bug; merge to `main`, then merge `main` into `develop`. |
 | `wip-all`, `archive/*`, `wip/*` | **Frozen.** Backups of the 7 Oct stopped work. Do not develop on them; they cannot be deleted (GitHub returns 403). `develop` continues from `wip-all`. |
@@ -69,11 +69,17 @@ git push origin main
 
 ## Today's position
 
-`develop` is **not releasable**: it is the unfinished union, `verify` never
-completed on it, and no `prove:*` has run. **Nothing moves from `develop` to
-`main` until the integration pass (`docs/HANDOFF.md` §6b step 11) has run the
-gate above and it is green.** Docs-only commits may go straight to `main`;
+The first release ran on 8 Oct 2026: the ten workstreams, gated on
+`feature/integration`, merged into `develop` and then into `main`
+("Release: the ten workstreams", gate counts in the merge message). `develop`
+and `main` are level after it. Docs-only commits may go straight to `main`;
 merge `main` into `develop` afterwards so they do not diverge.
+
+Two things learned running the gate the first time: `--baseline` and
+`--budget` must be SEPARATE runs (in a `--baseline` run the budget is not
+measured, so a combined run writes an empty `pages` map), and a proof that
+counts the requests it aborts itself fails for its own reasons — judge a
+failed resource by its URL.
 
 ## What only the owner can set (not possible from this container)
 

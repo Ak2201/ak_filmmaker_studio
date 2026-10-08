@@ -69,16 +69,26 @@ once and not yet looked at.
 - ~~**The CBFC/AWBI/OTT facts were re-checked against search summaries, not
   the pages themselves** (8 Oct 2026; the container cannot reach the cited
   hosts).~~ **CLOSED 8 Oct 2026 (evening), from a session with a real
-  browser.** 16 of the 18 cited URLs answer; nothing in the file was wrong;
-  the citations are now precise (S.O. 836(E), 16 September 2026, in
-  supersession not amendment; G.S.R. 543(E) confirmed; the anti-drug wording
-  confirmed verbatim). **What remains open is narrower and should not be
-  confused with the above:** the 2026 guidelines text is still unpublished by
-  CBFC and MIB, so every clause NUMBER in `cbfc-rules.json` is the 1991 one
-  and none has been checked against the current text. That cannot be closed
-  by effort, only by the Ministry publishing it. The `realnames` rule
-  (Cinematograph Act s.5B(1), defamation, Trade Marks Act) was not re-checked
-  and keeps its older `checked` date, deliberately.
+  browser.** 16 of the 18 cited URLs answer; the citations are now precise,
+  and reading the Gazette text found one real error nobody had caught: the
+  file cited COTPA **rule 4(6)**, which the Delhi High Court QUASHED in
+  Mahesh Bhatt v Union of India. The operative provisions are rules 7-10.
+  **What remains open is narrower and should not be confused with the
+  above:** the 2026 CBFC guidelines text is still unpublished by CBFC and
+  MIB, so every clause NUMBER in `cbfc-rules.json` is the 1991 one and none
+  has been checked against the current text. That cannot be closed by
+  effort, only by the Ministry publishing it. The `realnames` rule
+  (Cinematograph Act s.5B(1), defamation, Trade Marks Act) was not
+  re-checked and keeps its older `checked` date, deliberately.
 - **Two cited URLs do not answer** and should be replaced when a working copy
   is found: the `ffo.gov.in` PDF of the Performing Animals (Registration)
   Rules, 2001 (connection failure) and a `thestatesman.com` report (403).
+  AWBI hosts working copies of the 2001 Rules; they are now cited instead.
+
+## The full pending list
+
+The ID-numbered registry of everything still to do (launch steps, production
+gaps, quality gaps, billing, queued ideas, the emotional-craft layer) is
+`docs/HANDOFF.md` §6c; the leftovers above are rows G1, G2, G7 and P12 there.
+The 8 Oct audit's wrong findings are NOT listed — they were re-checked against
+the code (see HANDOFF §9).

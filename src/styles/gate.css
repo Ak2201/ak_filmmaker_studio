@@ -36,3 +36,6 @@
 .gt-decided { margin-top: var(--s2); }
 .gt-decided > summary { cursor: pointer; font-size: var(--t-small); color: var(--ink-muted); }
 .gt-decided > .gt-list { margin-top: var(--s2); }
+/* A decided row carries actions now (LET THEM IN / CLEAR), so the text
+   and the buttons share the line and wrap together on a phone. */
+.gt-decided-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }

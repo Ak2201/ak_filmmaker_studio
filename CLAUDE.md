@@ -1100,7 +1100,22 @@ order fails PGRST202. It is not deployed at all yet. The **Google consent screen
 production, External, and Google states verification is not required
 because no sensitive or restricted scopes are requested; its branding is
 filled in and awaiting re-verification after the 8 Oct Search Console
-ownership check. No Razorpay key exists. None of the live RLS checks has
+ownership check. **Razorpay is WIRED END TO END in TEST MODE (8 Oct):** the three edge
+functions are deployed and ACTIVE (`rzp-order` and `rzp-verify` with
+`verify_jwt: true`, `rzp-webhook` with `verify_jwt: false`), and
+`VITE_RAZORPAY_KEY_ID` carries the TEST key id. All three secrets are set
+and the webhook is registered in Razorpay. Probed live at each stage: the
+webhook answered 503 "webhook secret not configured" while its secret was
+missing and answers **401 "bad signature"** now that it is set, which is
+the proof the HMAC path runs and rejects what it cannot verify;
+`rzp-order` answers 401 without a JWT. **A TEST PURCHASE HAS NOW BEEN MADE AND IT WORKED** (8 Oct 2026): a
+`payments` row reads plan `starter`, status `paid`, 59900 paise INR,
+with a real `razorpay_order_id` and `razorpay_payment_id`, and the
+buying account's `accounts.plan` moved to `starter`. So order → checkout
+→ verify → activation is exercised, not merely configured. **Still
+missing: a LIVE key** — everything so far is test mode — and a refund
+has never been exercised.
+None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
 paragraph said "§16–§24 have NOT been verified" and "the consent screen
 is in Testing" while both had been false for days, which is the whole

@@ -313,6 +313,18 @@ export function createGate(getClient) {
       catch (e) { if (isMissing(e)) return []; throw e; }
     },
     decideRequest: (userId, approve, note = '') => rpc('admin_decide_request', { p_user: userId, p_approve: !!approve, p_note: note || null }),
+    /** Recover a declined account. There is no undo_decline function
+     *  and there should not be: approving a declined row inserts the
+     *  membership and sets the status to 'approved', which is what
+     *  ends the cooling-off too (it is read from status + decided_at).
+     *  Named so the console can say what it means. Schema section 25. */
+    recoverRequest: (userId, note = '') => rpc('admin_decide_request', { p_user: userId, p_approve: true, p_note: note || null }),
+    /** Clear a user back to a stranger: membership, invite request,
+     *  code redemptions, the device lock and their auth session.
+     *  Leaves their projects, their organisation and any payment
+     *  alone — see schema section 25 for why. Returns a summary of
+     *  what actually went. */
+    resetUser: (userId, note = '') => rpc('admin_reset_user', { p_user: userId, p_note: note || null }),
     /* Section 15: the application as a whole. Read-only. */
     overview: async () => (await rpc('admin_overview')) || {},
     listAccounts: async () => (await rpc('admin_list_accounts')) || [],

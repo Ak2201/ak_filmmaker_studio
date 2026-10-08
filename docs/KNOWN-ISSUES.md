@@ -85,6 +85,138 @@ once and not yet looked at.
   Rules, 2001 (connection failure) and a `thestatesman.com` report (403).
   AWBI hosts working copies of the 2001 Rules; they are now cited instead.
 
+## ~~ROOT CAUSE: cloud.js never loads on the dev server~~ FIXED 8 Oct 2026
+
+**8 Oct 2026.** `window.StudioCloud` is **undefined** on `settings.html`
+under `npm run dev`. Measured, not inferred: `hasStudioCloud: false`, and
+`cloud.js` is absent from `performance.getEntriesByType('resource')`.
+
+One cause, every symptom:
+
+- the site gate never gets an answer, so it hits `GIVE_UP_MS` and
+  **fails closed** — the breadcrumb reads `reason: "timeout"`. Every
+  gated page bounces a signed-in admin to `invite.html`.
+- `isConfigured()` is unreachable, so the Plan section renders
+  "This build is not connected to a cloud project" even though `.env`
+  carries a real project.
+- there is no session, so `refreshBilling()` bails and `billing.plans`
+  stays null — which is why the Plan section was EMPTY before
+  `renderPlan()` was taught to show its failure.
+
+**Why the built site is fine, and this is the part worth keeping.**
+`vite.config.js` folds every `src/lib` and `src/ui` module into one
+`studio` chunk, so in production cloud.js evaluates on every page as a
+side effect of bundling. `CLAUDE.md` already states this. In dev there
+is no chunk, so a module loads only if something imports it — and
+**nothing imports `cloud.js` at all**: `grep -rln "from '.*lib/cloud'"
+src/` returns nothing. `sitegate.js` polls for `window.StudioCloud`
+rather than importing it; `billing.js` reads `window.StudioCloud`;
+`settings.js` reads it too. The dependency is real and entirely
+implicit, and only the bundler was satisfying it.
+
+So this is not a dev-server quirk to be waited out. It is a genuine
+missing import that production hides.
+
+**FIXED** by a side-effect `import './cloud.js'` in `src/lib/sitegate.js`,
+which `chrome.js` already pulls in on every page — so the thing that
+cannot work without cloud.js is now the thing that asks for it.
+
+One correction to the paragraph above, which said nothing imports
+cloud.js: **six page entries do** — hub, feature, short, invite, panel
+and admin. No MODULE page does, which is what `vite.config.js` means at
+its `CORE_LIB` line, and settings.html is one of them.
+
+Verified after the fix: `window.StudioCloud` present, `isConfigured`
+true, `isBooted` true, session restored, no redirect, and the Plan
+section renders 1,960 characters with the real cards — Rs.0 / Rs.599 /
+Rs.799 / Rs.999. breakdown.html loads too. No console errors.
+
+**And the mitigation was REVERTED.** `GIVE_UP_MS` went briefly to 120s
+in dev to stop the bouncing; it is back to 20s everywhere, and settings
+still loads well inside it. A timeout here should stay loud enough to
+mean something. The `optimizeDeps` entry for the Supabase SDK stays —
+that one is a genuine dev speed-up, not a workaround.
+
+## prove:storage fails 2 checks — the scene bin, and it PRE-DATES today
+
+**9 Oct 2026.** `npm run prove:storage` fails exactly two checks:
+
+```
+FAIL  S2 clearing the heading bins A's scene with its 2 shots and 1 frame
+FAIL  S2 …and A's scene list and shot list no longer hold them
+```
+
+**Confirmed pre-existing, not a regression.** Run on `main` at
+`2ca58b9` it fails the SAME two checks, and `scenes.js`, `script.js`,
+`shots.js`, `store.js`, `write.js` and `scripts/prove-storage.mjs` are
+byte-identical between `main` and `develop` — so the code under test
+has not moved. Checked this way round deliberately: "I did not touch
+it" is the reasoning that was wrong twice on 8 Oct.
+
+**What it means, and why it is not cosmetic.** Clearing a slug line in
+the script is supposed to move that scene, with its shots and frames,
+into `fms_scene_bin_v1__<project>` so Ctrl+Z can bring it back. The
+proof says the bin does not receive it, and that A's scene and shot
+lists still hold the rows. On the face of it a user clearing a heading
+could lose the scene's shots rather than bin them, which is the
+data-loss class `CLAUDE.md` exists to prevent.
+
+**One thing that does not fit, and should be understood before anyone
+"fixes" it:** the very next check, S3, PASSES — Ctrl+Z brings the scene
+back with the same id and its shots and frame byte-identical, and
+reports A's bin empty afterwards. A restore that works implies
+something was stored. So this may be an assertion that has drifted from
+the implementation (wrong key, wrong shape, wrong counts) rather than
+a live data-loss bug. **Read S2 and S3 together before changing
+either**, and establish which of the two is wrong — the test or the
+code. `scripts/prove-storage.mjs` around lines 999-1014.
+
+Release note: today's promotion of `develop` to `main` went ahead with
+this failing, because it fails identically on both branches and holding
+13 unrelated commits for it helps nobody. It is not fixed and is not
+forgotten.
+
+## verify fails 1 check — feature.html's first-paint budget — and it PRE-DATES today
+
+**9 Oct 2026.** `npm run verify` fails exactly one check, on `feature`:
+
+```
+first paint is 1,088,622 bytes of JS+CSS, over the 1,053,696-byte
+budget (48 files)
+```
+
+**Pre-existing, measured on both branches rather than argued:**
+
+| | bytes | files |
+| --- | --- | --- |
+| `main` @ `2ca58b9` | 1,088,622 | 48 |
+| `develop` (static cloud import) | 1,089,038 | 48 |
+| `develop` (dynamic, reverted) | 1,090,683 | 49 |
+
+So `main` is already ~35 KB (3.3%) over, and everything the 9 Oct branch
+adds is **+416 bytes**. The budget in `scripts/budget.json` was recaptured
+at `93909cd` during the 8 Oct release, at "110% of what loads now" — so
+either something landed after that recapture, or the recapture was taken
+against a different build. Worth establishing which before reaching for
+`npm run verify -- --budget`, because recapturing now would bake the
+overrun in permanently and silence the check.
+
+**A trap this cost an hour.** The obvious culprit looked like
+`sitegate.js`'s new `import './cloud.js'` pulling cloud into CORE_LIB.
+It is not: `feature.js:72` has imported cloud.js directly for ages, so
+that page never lacked it. Switching to a dynamic import made the number
+WORSE (+2,061 bytes and an extra chunk) and was reverted. Do not re-try
+that switch; the numbers are in the comment in `sitegate.js`.
+
+Everything else in `verify` passes: 21 pages, 0 data-keys missing,
+0 idle writes, 0 overflow at 390px, 2 distinct themes, 1 skin,
+fragment targets 0 missing / 0 hidden / 0 obscured across all three
+states, the scripts-off palette probe, and the backup round trip.
+
+Release note: `develop` was promoted to `main` on 9 Oct with this
+failing, because it fails identically on `main` and the branch's own
+contribution is 416 bytes.
+
 ## The full pending list
 
 The ID-numbered registry of everything still to do (launch steps, production

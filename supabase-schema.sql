@@ -5772,3 +5772,157 @@ notify pgrst, 'reload schema';
 --  2. a character note and an expense written on device A appear on
 --     device B after its next pull.
 -- ============================================================
+
+
+-- ============================================================
+-- 25. UNDOING AN ADMIN DECISION — recover a declined account,
+--     and clear a user back to a stranger
+-- ------------------------------------------------------------
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor: "Success. No rows returned", twice - see the correction
+-- below. Read back: the function exists, returns jsonb, takes
+-- (p_user uuid, p_note text DEFAULT NULL), is SECURITY DEFINER, and
+-- the grants are right - anon EXECUTE false, authenticated true.
+--
+-- THREE OF THE 25.1 CHECKS ARE DONE, live, against this database:
+--   * on a uuid that does not exist: returns every flag false and
+--     touches nobody, so the function runs clean against a stranger.
+--   * on YOURSELF: 42501 "You cannot clear your own account" - the
+--     guard holds, and studio_status still answered 'admin' after.
+--   * the anon grant: revoked, confirmed by has_function_privilege.
+-- Still unrun: a non-admin caller, an admin target, a real clear of a
+-- real user, and the one that matters most - that their projects
+-- survive it.
+--
+-- AND THE FIRST RUN HAD A BUG THE PROBE CAUGHT. signed_out was set
+-- from "the delete did not raise" rather than from rows affected, so
+-- clearing a user with no session - or one who does not exist -
+-- reported signed_out true. An administrator would read that as "their
+-- session was revoked" when nothing had been. It uses get diagnostics
+-- now and the re-run reports false. Worth keeping because it is the
+-- shape of mistake a dry read never finds: the statement succeeded,
+-- the fact it asserted was false.
+--
+-- Owner's ask, 8 Oct 2026.
+--
+-- The console could let somebody IN and keep them out, and nothing
+-- else. Two doors were missing and both were asked for by name:
+--
+--   * RECOVER A DECLINED ACCOUNT. admin_decide_request(u, true)
+--     already does exactly the right thing to a declined row - it
+--     inserts the studio_members row and flips the status to
+--     'approved', which also ends the seven-day cooling-off, because
+--     that is computed from status plus decided_at. So recovery needs
+--     NO SQL. It needed a button: gate-ui.js listed decided requests
+--     in a read-only <details> and offered no way back. Said here
+--     because the next person will look for a function that does not
+--     exist, and should not write one.
+--
+--   * CLEAR A USER TO FRESH, which is this section. There was no way
+--     to make somebody a stranger again: no way to free the invite
+--     code they consumed, to let them ask a second time after a
+--     decline, or to end a session held by an account being handed on.
+--
+-- WHAT IT DELIBERATELY DOES NOT TOUCH, because "fresh" is easy to read
+-- as "gone": projects, project_data, accounts, account_members and
+-- payments are all left exactly as they are. A person's films are not
+-- an administrator's to delete from a console, and a refund is a
+-- Razorpay decision rather than a tidy-up. Clearing a user who owns an
+-- organisation leaves the organisation and its plan standing.
+create or replace function public.admin_reset_user(p_user uuid, p_note text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_members    int := 0;
+  v_requests   int := 0;
+  v_redeems    int := 0;
+  v_sessions   int := 0;
+  v_authrows   int := 0;
+  v_authgone   boolean := false;
+  v_target     public.studio_members;
+begin
+  if not public.is_studio_admin() then
+    raise exception 'Administrators only' using errcode = '42501';
+  end if;
+  if p_user is null then
+    raise exception 'No user given' using errcode = '22023';
+  end if;
+  -- Two refusals that stop a console from locking itself out. An admin
+  -- clearing themselves would drop their own membership mid-click; an
+  -- admin clearing a PEER would do it without that peer agreeing. Demote
+  -- first, deliberately, then clear - two steps on purpose.
+  if p_user = auth.uid() then
+    raise exception 'You cannot clear your own account' using errcode = '42501';
+  end if;
+  select * into v_target from public.studio_members m where m.user_id = p_user;
+  if v_target.role = 'admin' then
+    raise exception 'That account is an administrator. Change their role first, then clear them.'
+      using errcode = '42501';
+  end if;
+
+  delete from public.studio_members       where user_id = p_user;
+  get diagnostics v_members  = row_count;
+  delete from public.invite_requests      where user_id = p_user;
+  get diagnostics v_requests = row_count;
+  -- Frees the seat on whatever code they came in through: a code with
+  -- max_uses 1, spent on somebody being cleared, becomes usable again.
+  delete from public.invite_redemptions   where user_id = p_user;
+  get diagnostics v_redeems  = row_count;
+  -- The device lock. Without this the next sign-in can be refused as a
+  -- second device by a session nobody is holding.
+  delete from public.user_active_sessions where user_id = p_user;
+  get diagnostics v_sessions = row_count;
+
+  -- AND THE SESSION ITSELF, which is the part that makes the next
+  -- sign-in a new one rather than a resumed one. Deleting the device
+  -- lock above does NOT sign anybody out: their refresh token is still
+  -- good and the browser keeps using it. This revokes it. Wrapped,
+  -- because auth.sessions is not ours and a permissions change there
+  -- must not cost the caller the rest of the reset.
+  begin
+    delete from auth.sessions where user_id = p_user;
+    /* ROWS, not "no exception". Deleting zero rows succeeds, so the
+       first version reported signed_out true for a user who had no
+       session at all - including one that does not exist. An admin
+       reading "signed out" would believe a session had been revoked
+       when none had. Caught by the 25.1 probe on a non-existent uuid,
+       8 Oct 2026. */
+    get diagnostics v_authrows = row_count;
+    v_authgone := v_authrows > 0;
+  exception when others then
+    v_authgone := false;
+  end;
+
+  return jsonb_build_object(
+    'membership_removed', v_members  > 0,
+    'request_removed',    v_requests > 0,
+    'redemptions_freed',  v_redeems,
+    'device_lock_cleared', v_sessions > 0,
+    'signed_out',         v_authgone,
+    'note',               nullif(left(trim(coalesce(p_note, '')), 500), '')
+  );
+end;
+$fn$;
+
+revoke execute on function public.admin_reset_user(uuid, text) from public, anon;
+grant  execute on function public.admin_reset_user(uuid, text) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 25.1 CHECKS TO RUN, none of which has been run yet -----------------
+--  1. as a non-admin: rpc admin_reset_user -> 42501.
+--  2. as an admin, on yourself -> 42501, 'cannot clear your own'.
+--  3. as an admin, on another ADMIN -> 42501, naming the demote step.
+--  4. on a declined non-member -> request_removed true, and they can
+--     ask again at once rather than waiting out the cooling-off.
+--  5. on a member who came in through a one-use code -> that code has
+--     a use back; redemptions_freed 1.
+--  6. signed_out true, and that user's next page load asks them to
+--     sign in rather than resuming.
+--  7. their projects are all still there afterwards. This is the check
+--     that matters most: the function is destructive by name and must
+--     not be by effect.
+-- ============================================================

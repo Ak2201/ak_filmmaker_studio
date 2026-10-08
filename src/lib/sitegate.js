@@ -67,10 +67,51 @@
    ============================================================ */
 import Store from './store.js';
 import { getCodePass, clearCodePass, isMissing } from './gate.js';
+/* THE GATE CANNOT DECIDE WITHOUT THIS, so it asks for it rather than
+   hoping. cloud.js sets window.StudioCloud, and everything below reads
+   that global — evaluate() returns 'wait' until it appears, and after
+   GIVE_UP_MS that becomes a REDIRECT. Six page entries import cloud.js
+   by name (hub, feature, short, invite, panel, admin); no module page
+   does, and `vite.config.js` says so where it forces cloud into
+   CORE_LIB. That works in a BUILD, where every page loads the core
+   chunk, and fails in `npm run dev`, where a module loads only if
+   something imports it: on settings.html window.StudioCloud was simply
+   undefined, so the gate timed out and bounced a signed-in admin to
+   invite.html, isConfigured() was unreachable and the Plan section
+   announced "this build is not connected to a cloud project" with a
+   real project in .env. One missing import, and only the bundler was
+   hiding it. Side-effect import on purpose: the gate wants the global,
+   not the exports. No cycle — cloud.js imports store, drive, gate and
+   extension-bridge, none of which import this file.
+
+   STATIC, AND MEASURED. This was briefly `import('./cloud.js')`, on a
+   diagnosis that turned out to be wrong: feature.html was over its
+   first-paint budget and I attributed the 35KB to cloud.js being
+   dragged into CORE_LIB by this edge. It was not. `feature.js` has
+   always imported cloud.js directly (line 72), so that page never
+   lacked it, and the budget overrun is PRE-EXISTING — `main` fails the
+   same check at 1,088,622 bytes. Measured on both branches: main
+   1,088,622 / 48 files, static here 1,089,038 / 48, dynamic
+   1,090,683 / 49. The dynamic form cost MORE and added a chunk. Static
+   it is, at +416 bytes for everything this branch adds. 8-9 Oct 2026. */
+import './cloud.js';
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
 export const PASS_KEY = 'fms_sitegate_pass';   // sessionStorage, never localStorage
+/** Why the last redirect happened, for the page that lands after it.
+ *  sessionStorage, diagnostic only; nothing decides on it. */
+export const WHY_KEY = 'fms_sitegate_why';
+/* The veil cannot stay up for ever, so an unanswered gate gives up and
+   FAILS CLOSED. Twenty seconds, in dev as in the build.
+
+   It was briefly (env.DEV ? 120 : 20) on 8 Oct 2026, to stop the dev
+   server bouncing a signed-in admin to invite.html. That was treating
+   a symptom: the gate was not slow, it was never going to be answered,
+   because window.StudioCloud did not exist on module pages in dev —
+   see the import above. With the import in place the gate answers well
+   inside twenty seconds and the allowance is gone, deliberately. A
+   timeout here should stay loud enough to mean something. */
 const GIVE_UP_MS = 20000;
 const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start)(\.html)?$/;
 
@@ -99,6 +140,16 @@ function deny(reason) {
   decided = true;
   clearTimeout(timer);
   try { sessionStorage.removeItem(PASS_KEY); } catch (e) { /* ignore */ }
+  /* WHY the gate sent them away, and from where. The redirect destroys
+     the page that knew, so without this a bounce is indistinguishable
+     from a broken page — which is exactly how it reads, and how it read
+     for an hour on 8 Oct 2026. invite.html may print it; a developer can
+     read it in sessionStorage after any unexplained redirect. */
+  try {
+    sessionStorage.setItem(WHY_KEY, JSON.stringify({
+      reason, from: location.pathname + location.hash, at: new Date().toISOString(),
+    }));
+  } catch (e) { /* private mode: the breadcrumb is a nicety */ }
   document.documentElement.dataset.sitegate = 'denied';
   Store.notify('sitegate:denied', { reason });
   location.replace('invite.html');

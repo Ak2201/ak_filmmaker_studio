@@ -154,7 +154,33 @@ function renderPlan() {
     if (extras) sec.append(extras);
     return sec;
   }
-  if (!c.isConfigured() || !billing.plans) return null;
+  /* THE PLAN SECTION MUST NEVER VANISH SILENTLY, and it used to.
+     This line was `if (!c.isConfigured() || !billing.plans) return null;`
+     — so whenever refreshBilling() came back empty-handed the whole
+     section disappeared, while AI key, Storage, Drive and Appearance
+     all rendered beside it. The page reads as broken rather than as a
+     fetch that failed, and the `billing.error` line below could never
+     be reached to say otherwise: the bail was ABOVE it. Signed out it
+     was fine, which is what made it look like a settings bug rather
+     than a billing one. Found 8 Oct 2026 by rendering the page signed
+     out and seeing the section appear.
+
+     No cloud in the build is still nothing to show — a plan needs an
+     account. But "signed in and the plans did not load" is a state the
+     reader is entitled to see, and to retry. */
+  if (!c.isConfigured()) return null;
+  if (!billing.plans) {
+    const sec = section('plan', 'Plan',
+      billing.error ? 'The plans did not load.' : 'Loading the plans…',
+      'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.');
+    if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
+    sec.append(h('p', {}, [
+      h('button.btn', { type: 'button', 'data-action': 'plan-retry', text: 'TRY AGAIN' })
+    ]));
+    const extras0 = planExtras(null);
+    if (extras0) sec.append(extras0);
+    return sec;
+  }
   const st = billing.st;
   const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' \u00b7 ' + st.account_name : ''}` : 'Choose a plan.',
     'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. Work on this device is never limited.');
@@ -848,6 +874,11 @@ delegate(document, 'click', '[data-action="storage-backup"]', () => {
   }
 });
 
+delegate(document, 'click', '[data-action="plan-retry"]', async (e, el) => {
+  el.disabled = true;
+  el.textContent = 'LOADING…';
+  await refreshBilling();   // re-renders on its own
+});
 delegate(document, 'click', '[data-action="plan-sign-in"]', () => {
   openCloudAuthModal();
 });
@@ -927,6 +958,19 @@ async function refreshGate() {
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('billing:changed', () => refreshBilling());
 if (window.StudioCloud && window.StudioCloud.onAuth) window.StudioCloud.onAuth(() => setTimeout(refreshBilling, 0));
+/* AND ON BOOT, WHICH IS THE ONLY SIGNAL A RESTORED SESSION GIVES.
+   refreshBilling() returns empty-handed when getSession() is null, and
+   the call below runs at module evaluation — before cloud.js has
+   finished restoring a stored session. The onAuth hook above does not
+   cover it: ensureClient() reads the stored session synchronously
+   BEFORE registering the auth listener, so a restored session fires no
+   SIGNED_IN event (cloud.js says so in as many words). The result was a
+   Plan section that rendered EMPTY on every ordinary load — renderPlan()
+   returns null while `billing.plans` is null — while AI key, Storage,
+   Drive and Appearance all filled in, which makes it read as a broken
+   page rather than a missing fetch. src/lib/sitegate.js subscribes to
+   this same event for the same reason. 8 Oct 2026. */
+Store.subscribe('cloud:booted', () => refreshBilling());
 refreshBilling();
 Store.subscribe('gate:changed', () => refreshGate());
 refreshGate();

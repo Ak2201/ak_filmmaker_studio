@@ -203,6 +203,22 @@ export default defineConfig({
   base: './',
   appType: 'mpa',
   /* ------------------------------------------------------------
+     DEV ONLY, AND IT FIXES A BUG THAT LOOKS LIKE A BROKEN APP.
+     The site gate gives up after GIVE_UP_MS (20s) and FAILS CLOSED:
+     a boot that has not finished is a redirect to invite.html, which
+     is correct for a gate and indistinguishable from the page being
+     broken. `boot()` in cloud.js awaits ensureClient(), which imports
+     the ~98KB Supabase SDK. Vite pre-bundles a dependency on FIRST
+     IMPORT unless told otherwise, so on a cold dev server that import
+     could take longer than the 20 seconds the gate allows — and every
+     gated page bounced to invite.html while the built site, where the
+     SDK is already bundled, was fine. Diagnosed 8 Oct 2026 from the
+     gate's own breadcrumb: reason 'timeout', from /settings.html.
+     Naming it here pre-bundles it when the dev server starts instead.
+     This changes nothing about the build: optimizeDeps is dev-only.
+     ------------------------------------------------------------ */
+  optimizeDeps: { include: ['@supabase/supabase-js'] },
+  /* ------------------------------------------------------------
      PWA. `injectManifest` rather than `generateSW`: the caching
      rules are opinionated (Supabase must never be cached, HTML is
      stale-while-revalidate, hashed assets are cache-first), so the

@@ -12,6 +12,12 @@ is marked **unverified**.
 "resume the emotional-craft plan, Phase 0" · "run the integration pass" ·
 "do the owner checklist" (that one is theirs — see §8).
 
+**Branch workflow (owner's rule, 8 Oct 2026): develop on `develop`, test, then promote to `main`.**
+`main` only ever receives work that passed the release gate. Full rules, the gate
+and the day-to-day commands are in **`docs/BRANCHING.md`**. `develop` was created
+from `wip-all` and currently holds the ten unfinished workstreams, so it is **not
+releasable yet** — nothing goes to `main` until the integration pass is green.
+
 **Product in one paragraph.** FilmMakerStudio: a browser-based, local-first
 studio for Tamil/Indian indie filmmakers (story → screenplay → breakdown →
 stripboard → call sheets → shoot day → edit log → deliverables), with
@@ -30,6 +36,7 @@ for invariants before changing anything.
 |---|---|---|
 | `main` | `7c56c81` | **Green, gated.** Everything through the launch-readiness merge, plus `docs/FEATURE-IDEAS.md` and `docs/RESUME.md`. This file's commit sits on top. |
 | `wip-all` | `989fbf0` (before this file) | **Unfinished union of ten workstreams**, merged onto `main@7c56c81`. Builds; `verify` never completed; no `prove:*` run. **Not for merging as it stands.** Reference doc: `docs/WIP.md` (on this branch only). |
+| `develop` | `973ad47` (at creation) | **The development branch.** Same commit as `wip-all` when created; all new work lands here via `feature/*` branches. Promoted to `main` only through the release gate in `docs/BRANCHING.md`. Not releasable yet. |
 | `archive/*` (10) | see §6 | The ten individual workstream branches, pushed as backups before the merge. |
 | `wip/*` (10) | same commits as `archive/*` | The original backup names. **Cannot be deleted** (GitHub proxy returns HTTP 403 on branch deletion). Ignore them; use `archive/*`. |
 | `feature/on-set` | `75438f7` | The one **finished and gated** feature branch (WhatsApp call sheet, sunrise/sunset, route sheet). Same commit as `archive/ac7bac5586116f143`. |
@@ -173,7 +180,7 @@ off its `archive/…` branch (full names below), gate it, and only then move on.
 | 8 | **AI** | Run `prove-ai-coverage` for BOTH providers against `fake-ai`; confirm a fabricated quote is stripped and counted; confirm `ai.js` stays out of first paint. |
 | 9 | **Billing growth** | `pg_ctlcluster 16 main start`, run `test:schema`; finish the §23 docs (`docs/BILLING.md`, `docs/SECURITY-RLS.md`); **then start GST invoices as schema §24** (buyer GSTIN checksum, gapless financial-year invoice number, "Bill of Supply" mode because the seller is an individual); then gift, edu, leads, funnel (§25 onward). |
 | 10 | **Growth UX** | Run `verify` (the tour must write nothing while idle), gated `prove:gate` (screening room) and `prove:billing`; the public-link SQL stays a proposal. |
-| 11 | **Integration pass** (task 16) | New branch off the latest `main`; merge the gated branches; one schema section widening the scope CHECK for `fms_characters_v1` and `fms_costs_v1`; full gate; re-baseline with zero data-key movement; update docs; merge to `main`. |
+| 11 | **Integration pass** (task 16) — this is the release gate of `docs/BRANCHING.md` run on `develop` | Finish and gate each branch and merge it into `develop`; one schema section widening the scope CHECK for `fms_characters_v1` and `fms_costs_v1`; full gate; re-baseline with zero data-key movement; update docs; then merge `develop` into `main` with `--no-ff`. |
 | 12 | **Queued ideas** (tasks 11–14) and the **owner decision** on Tamil-script UI labels (task 15) | Start only after step 11. |
 
 **Emotional-craft layer vs the integration pass.** The owner chose to build
@@ -239,6 +246,7 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 |---|---|---|
 | `CLAUDE.md` | main | invariants, commands, traps, status table |
 | `docs/HANDOFF.md` | main, wip-all | **this file** |
+| `docs/BRANCHING.md` | main, develop | **develop → main workflow and the release gate** |
 | `docs/WIP-EMOTION-PLAN.md` | main, wip-all | the emotional-craft plan |
 | `docs/WIP.md` | wip-all only | per-workstream detail for the ten unfinished branches |
 | `docs/RESUME.md` | main, wip-all | where each stopped workstream was (first version) |

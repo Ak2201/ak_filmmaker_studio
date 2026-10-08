@@ -40,6 +40,7 @@ import Locations from '../lib/locations.js';
 import Shoot from '../lib/shootday.js';
 import Contacts from '../lib/contacts.js';
 import Sun from '../lib/sun.js';
+import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 
 const app = document.getElementById('app');
@@ -279,12 +280,13 @@ function renderSun(day, scenes) {
   }
 
   const sheet = Shoot.sheetsForDay(day.day, Contacts.listCallSheets(), scenes)[0];
-  if (sheet && sheet.wrap && Sun.isPastSunset(sheet.wrap, light)) {
+  const wrapAt = DPR.laterWrap(sheet && sheet.wrap, DPR.getDPR(day.day).wrap);
+  if (wrapAt && Sun.isPastSunset(wrapAt, light)) {
     const ext = day.scenes.filter((s) => Sun.needsDaylight(s) && s.shotState !== 'shot' && s.shotState !== 'dropped');
     ext.forEach((s) => late.add(s.id));
     node.append(h('p.sd-flag', {
       role: 'note',
-      text: 'Wrap ' + sheet.wrap + ' is after sunset (' + light.sunset + ').'
+      text: 'Wrap ' + wrapAt + ' is after sunset (' + light.sunset + ').'
         + (ext.length
           ? ' ' + ext.length + (ext.length === 1 ? ' exterior scene needs' : ' exterior scenes need')
             + ' the light: ' + ext.map((s) => s.number || '—').join(', ') + '.'

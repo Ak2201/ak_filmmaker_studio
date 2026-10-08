@@ -39,6 +39,7 @@
    `npm run test:screenplay` can run all of it in Node.
    ============================================================ */
 import { cueSpeaker } from './script.js';
+import { csvField } from './dialogue-list.js';
 import { DIALOGUE_WPS } from './screenplay-analysis.js';
 
 export const CHARACTERS_KEY = 'fms_characters_v1';
@@ -292,8 +293,21 @@ export function speakingMinutes(seconds) {
   return (m < 10 ? Math.round(m * 10) / 10 : Math.round(m)) + ' min';
 }
 
+/** The table read as a spreadsheet: one row per character — speeches,
+    lines, words, estimated seconds and minutes, scenes. BOM first, like
+    the dialogue list, so Excel reads it as UTF-8. */
+export function tableReadCSV(read) {
+  const head = ['Character', 'Speeches', 'Lines', 'Words', 'Est. seconds', 'Est. minutes', 'Scenes'];
+  const lines = [head.map(csvField).join(',')];
+  for (const r of (read && read.rows) || []) {
+    lines.push([r.name, r.speeches, r.lines, r.words, r.seconds, Math.round(r.seconds / 6) / 10, r.scenes]
+      .map(csvField).join(','));
+  }
+  return '\ufeff' + lines.join('\r\n') + '\r\n';
+}
+
 export default {
   CHARACTERS_KEY, CHARACTER_FIELDS, blankCharacter, parseAliases, loadCharacters, saveCharacters,
   cueSpeakers, ownerOf, mergeWithCues, adopt, renamePlan, applyPlan, renameCharacter,
-  tableRead, speakingMinutes, normName
+  tableRead, tableReadCSV, speakingMinutes, normName
 };

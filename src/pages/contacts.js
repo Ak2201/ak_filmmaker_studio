@@ -36,6 +36,7 @@ import Contacts, { DEPARTMENTS } from '../lib/contacts.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
 import Sun from '../lib/sun.js';
+import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 import WA from '../lib/callsheet-text.js';
 
@@ -504,7 +505,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
     ]));
     doc.append(h('p.ct-doc-small', { text: lightNote(lit) }));
     const late = lateScenes(sheet, onSheet, lit.light);
-    if (late.length) doc.append(h('p.ct-doc-flag', { text: lateText(sheet, lit.light, late) }));
+    if (late.length) doc.append(h('p.ct-doc-flag', { text: lateText(sheet, onSheet, lit.light, late) }));
   }
 
   if (onSheet.length) {
@@ -628,14 +629,21 @@ function lightNote(lit) {
     : 'Times at ' + lit.place.name + ', ' + lit.light.zone + '. Golden hour: the sun between 4° below and 6° above the horizon.';
 }
 
-/** The scenes that need daylight when the planned wrap is after sunset.
+/** The wrap the flag judges: the later of the sheet's planned wrap and
+    the DPR's wrap for the single shoot day its scenes sit on. */
+function wrapOf(sheet, onSheet) {
+  const days = [...new Set(onSheet.map((s) => Locations.shootDayOf(s)).filter((d) => d > 0))];
+  return DPR.laterWrap(sheet.wrap, days.length === 1 ? DPR.getDPR(days[0]).wrap : '');
+}
+
+/** The scenes that need daylight when the wrap is after sunset.
     No wrap typed, no flag: the check judges a time somebody wrote down. */
 function lateScenes(sheet, onSheet, light) {
-  if (!Sun.isPastSunset(sheet.wrap, light)) return [];
+  if (!Sun.isPastSunset(wrapOf(sheet, onSheet), light)) return [];
   return onSheet.filter(Sun.needsDaylight);
 }
-function lateText(sheet, light, late) {
-  return 'Wrap ' + sheet.wrap + ' is after sunset (' + light.sunset + '). '
+function lateText(sheet, onSheet, light, late) {
+  return 'Wrap ' + wrapOf(sheet, onSheet) + ' is after sunset (' + light.sunset + '). '
     + (late.length === 1 ? 'Exterior scene ' : 'Exterior scenes ')
     + late.map((s) => s.number || '—').join(', ')
     + ' need the light — shoot ' + (late.length === 1 ? 'it' : 'them') + ' before ' + light.sunset + '.';
@@ -656,8 +664,9 @@ function renderLight(sheet, scenes) {
     lightCell('Golden · evening', light.goldenPm || '—')
   ]));
   wrap.append(h('p.ct-light-note', { text: lightNote(lit) }));
-  const late = lateScenes(sheet, sheetScenes(sheet, scenes), light);
-  if (late.length) wrap.append(h('p.ct-flag', { role: 'note', text: lateText(sheet, light, late) }));
+  const onS = sheetScenes(sheet, scenes);
+  const late = lateScenes(sheet, onS, light);
+  if (late.length) wrap.append(h('p.ct-flag', { role: 'note', text: lateText(sheet, onS, light, late) }));
   return wrap;
 }
 const lightCell = (label, value) =>

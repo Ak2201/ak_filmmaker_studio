@@ -62,6 +62,16 @@ export function toMinutes(t) {
   return h * 60 + mi;
 }
 
+/** The later of several "HH:MM" wraps (the call sheet's planned one,
+    the DPR's actual one), compared as clock minutes; '' when none is a
+    time. A wrap after midnight is not handled: sunset is an evening
+    question and 00:30 reads as early. */
+export function laterWrap(...times) {
+  let best = '', bm = -1;
+  for (const t of times) { const m = toMinutes(t); if (m != null && m > bm) { bm = m; best = str(t).trim(); } }
+  return best;
+}
+
 /** Minutes from a to b; across midnight when b is earlier (a night
     shoot wraps "before" it called). null when either is missing. */
 export function span(a, b) {
@@ -561,7 +571,7 @@ export function oneLiner(scenes) {
 }
 
 export default {
-  toMinutes, span, formatMinutes,
+  toMinutes, laterWrap, span, formatMinutes,
   DPR_TIMES, DELAY_REASONS, blankDPR, blankDelay, blankIncident, getDPR, saveDPR,
   addDelay, updateDelay, removeDelay, addIncident, updateIncident, removeIncident, dprSummary,
   BANNER_KINDS, AFTER_DAY, bannerLabel, blankBanner, listBanners, allBanners, addBanner, updateBanner,

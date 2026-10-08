@@ -176,5 +176,14 @@ eq(Shoot.sheetsForDay(2, sheets, all).map((s) => s.id), [], 'day 2: none');
 eq(Shoot.sheetsForDay(0, sheets, all), [], 'day 0 is no day');
 ok(s1 && s2 && s3, 'scenes seeded');
 
+/* the after-sunset flag also reads the DPR's wrap (G1) */
+const DPRm = (await import('../src/lib/dpr.js')).default;
+eq(DPRm.laterWrap('17:00', '19:10'), '19:10', 'DPR wrap later than planned wins');
+eq(DPRm.laterWrap('', ''), '', 'no wrap anywhere, no flag');
+const rc = L.getRecce('Test Place');
+eq([rc.lat, rc.lng, rc.hospital, rc.police], ['', '', '', ''], 'recce carries all four fields (Plan edits them)');
+L.setRecce('Test Place', { lat: '13.1', lng: '80.2', hospital: 'GH', police: 'T4' });
+eq([L.getRecce('Test Place').hospital, L.getRecce('Test Place').lat], ['GH', '13.1'], 'a Plan write is what the call sheet reads');
+
 console.log(`\n  callsheet: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

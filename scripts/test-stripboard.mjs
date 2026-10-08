@@ -243,6 +243,23 @@ ok(!('banners' in JSON.parse(mem.get('fms_locations_v1'))), 'removing the last b
 eq(D.impliedMoves(L.orderedDayScenes(1)).map((m) => m.from + '>' + m.to), ['L2>L3'], 'impliedMoves: where consecutive locations differ');
 ok(L.dayOrder(1).every((id) => !/^bn_/.test(id)), 'banners never enter the order lists');
 
+/* travel / holding / note banners: label, text, default position */
+const tv = D.addBanner(1, { kind: 'travel', from: 'Chennai', to: 'Ooty', text: 'Overnight' });
+const hd = D.addBanner(1, { kind: 'holiday', text: 'Held for rain' });
+const nt = D.addBanner(1, { kind: 'note', text: 'Unit call 6am' });
+eq([D.bannerLabel('travel'), D.bannerLabel('holiday'), D.bannerLabel('note'), D.bannerLabel('bogus')],
+  ['Travel day', 'Holding / day off', 'Note', 'Note'], 'bannerLabel for the three non-move kinds, unknown falls back to Note');
+ok(/^Travel day/.test(D.bannerText(tv)) && /Overnight/.test(D.bannerText(tv)), 'travel bannerText carries label and note');
+ok(/Held for rain/.test(D.bannerText(hd)), 'holding bannerText carries its note');
+eq(D.layoutDay(L.orderedDayScenes(1), D.listBanners(1)).filter((x) => x.type === 'banner').map((x) => x.banner.kind).sort(),
+  ['holiday', 'note', 'travel'], 'all three kinds lay out');
+[tv, hd, nt].forEach((b) => D.removeBanner(1, b.id));
+
+/* the DPR's wrap joins the planned one for the after-sunset flag */
+eq(D.laterWrap('17:00', '19:10'), '19:10', 'laterWrap takes the DPR wrap when later');
+eq(D.laterWrap('20:00', '19:10'), '20:00', 'laterWrap keeps the planned wrap when later');
+eq([D.laterWrap('', ''), D.laterWrap('', '18:30'), D.laterWrap(undefined, 'junk')], ['', '18:30', ''], 'laterWrap: blanks and junk are ignored');
+
 /* ---- load ----------------------------------------------------- */
 eq(D.pageTarget(), 39, 'default target 4 7/8 pages');
 eq([D.dayLoad(40).over, D.dayLoad(39).over, D.dayLoad(20, 16).over], [true, false, true], 'dayLoad');

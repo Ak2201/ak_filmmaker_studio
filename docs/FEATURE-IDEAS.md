@@ -69,7 +69,7 @@ it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
 |---|---|---|---|
 | Characters as data, one-step rename across every cue | M | no | built (writing) — release 8 Oct 2026 |
 | Treatment / one-pager / synopsis documents that start pre-filled | S | no | built (writing) — release 8 Oct 2026 |
-| Table-read export (lines, words, minutes per character) | S | no | built (writing) — release 8 Oct 2026 |
+| Table-read export (lines, words, minutes per character) | S | no | built (writing; print + CSV) — release 8 Oct 2026 |
 | Commit Tamil script as an alternate take | S | no | built (writing) — release 8 Oct 2026 |
 | Script-notes overview across the whole script | S | no (existing comments) | not started |
 | Writing-goal history across devices | S | yes (widen the CHECK) | not started |

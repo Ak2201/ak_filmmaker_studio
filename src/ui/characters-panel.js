@@ -35,7 +35,7 @@ import PDF from '../lib/pdf.js';
 import { listContacts } from '../lib/contacts.js';
 import C, {
   CHARACTER_FIELDS, loadCharacters, saveCharacters, mergeWithCues, adopt,
-  renamePlan, applyPlan, renameCharacter, tableRead, speakingMinutes, parseAliases, normName
+  renamePlan, applyPlan, renameCharacter, tableRead, tableReadCSV, speakingMinutes, parseAliases, normName
 } from '../lib/characters.js';
 
 let hooks = {
@@ -210,7 +210,8 @@ function fill(section) {
       h('p.wr-tr-note', { text: 'Minutes are an estimate: dialogue spoken at about 2.6 words a second, before any pause an actor takes.' }),
       read.rows.length ? h('div.wr-tr-acts', {}, [
         h('label.wr-ch-field.wr-tr-who', {}, [h('span.wr-ch-lab', { text: 'Read sides for' }), sideSel]),
-        h('button.btn', { type: 'button', 'data-action': 'tr-print', text: 'Print the table read' })
+        h('button.btn', { type: 'button', 'data-action': 'tr-print', text: 'Print the table read' }),
+        h('button.btn', { type: 'button', 'data-action': 'tr-csv', text: 'Download as CSV' })
       ]) : null
     ]),
     h('div.wr-ch-list', {}, merged.map((c) => card(c, read, contacts)))
@@ -272,6 +273,17 @@ function printNode(read, who) {
     root.append(part);
   }
   return root;
+}
+
+function downloadTableReadCSV() {
+  const doc = hooks.getDoc();
+  const read = tableRead((doc && doc.elements) || [], list());
+  if (!read.rows.length) { StudioUI.toast('Nobody speaks yet — there is nothing to export.', { type: 'info' }); return; }
+  const base = (PDF.projectTitle() || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'film';
+  const url = URL.createObjectURL(new Blob([tableReadCSV(read)], { type: 'text/csv;charset=utf-8' }));
+  const a = h('a', { href: url, download: base + '-table-read.csv' });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function printTableRead() {
@@ -436,6 +448,7 @@ export function wireCharacters(opts = {}) {
   delegate(document, 'click', '#characters [data-action="ch-rename"]', (e, btn) => doRename(btn));
   delegate(document, 'click', '#characters [data-action="ch-forget"]', (e, btn) => forget(btn));
   delegate(document, 'click', '#characters [data-action="tr-print"]', () => printTableRead());
+  delegate(document, 'click', '#characters [data-action="tr-csv"]', () => downloadTableReadCSV());
   // Shown again: the cues may have changed on the Screenplay tab.
   addEventListener('hashchange', () => { if (location.hash === '#characters') refreshCharacters(); });
   // Another tab wrote the list (or a backup was restored there).

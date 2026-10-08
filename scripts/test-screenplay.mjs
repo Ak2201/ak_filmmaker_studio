@@ -442,6 +442,11 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   eq(tr.rows[0].name, 'ANBU', 'most words first');
   eq(CH.speakingMinutes(90), '1.5 min', 'minutes, to a tenth under ten');
   eq(CH.speakingMinutes(1200), '20 min', 'and whole above');
+  const csv = CH.tableReadCSV(tr).replace(/^\ufeff/, '').split('\r\n');
+  eq(csv[0], 'Character,Speeches,Lines,Words,Est. seconds,Est. minutes,Scenes', 'table-read CSV header');
+  eq(csv.length, tr.rows.length + 2, 'one CSV row per character, plus header and trailing break');
+  ok(csv[1].startsWith('ANBU,'), 'CSV rows follow the table-read order');
+  ok(CH.tableReadCSV(tr).charCodeAt(0) === 0xfeff, 'CSV starts with a BOM');
 
   // On the sample: fast enough to derive on render.
   const big = sample.map((e, i) => ({ id: 'x' + i, ...e }));

@@ -42,6 +42,7 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
+import Geo from '../lib/recce-geo.js';
 
 const app = document.getElementById('app');
 
@@ -389,6 +390,9 @@ function renderLocation(loc) {
     labelled('Power', textField('power', loc.recce.power, 'Mains on site? How far is the point? Genny needed?')),
     labelled('Parking', textField('parking', loc.recce.parking, 'Where the unit parks, and how far the carry is')),
     labelled('Toilets', textField('toilets', loc.recce.toilets, 'On site, next door, or bring one')),
+    labelled('Map pin', pinField(loc.recce)),
+    labelled('Nearest hospital', textField('hospital', loc.recce.hospital, 'Name, distance, casualty phone')),
+    labelled('Nearest police station', textField('police', loc.recce.police, 'Station, and its number')),
     labelled('Cost', textField('cost', loc.recce.cost, 'Per day, plus whatever they actually meant'))
   );
   card.append(grid);
@@ -414,6 +418,16 @@ function renderLocation(loc) {
 
 function labelled(label, control) {
   return h('label.pl-field', {}, [h('span.pl-flabel', { text: label }), control]);
+}
+
+function pinField(recce) {
+  const pin = Geo.coordsOf(recce);
+  const el = h('input.pl-input', {
+    type: 'text', placeholder: 'Paste a Google Maps link, or 13.0827, 80.2707',
+    'data-recce-geo': '1', 'aria-label': 'Map pin: a Maps link or latitude and longitude'
+  });
+  el.value = pin ? pin.lat + ', ' + pin.lng : '';
+  return el;
 }
 
 function textField(name, value, placeholder) {
@@ -728,6 +742,24 @@ delegate(document, 'change', '[data-recce-field]', (e, el) => {
 /* Typed text saves as it is typed, not only when the field is left —
    a reload or a closed tab used to take it (UX audit H10). The store
    write only; the in-place patches stay on `change`. */
+delegate(document, 'change', '[data-recce-geo]', (e, el) => {
+  const name = locNameOf(el);
+  if (!name) return;
+  const text = el.value.trim();
+  if (!text) { Locations.setRecce(name, { lat: '', lng: '' }); el.removeAttribute('aria-invalid'); return; }
+  const at = Geo.parseLatLng(text);
+  if (!at) {
+    el.setAttribute('aria-invalid', 'true');
+    el.title = /goo\.gl|maps\.app/i.test(text)
+      ? 'A short link carries no coordinates. Paste the long address-bar link.'
+      : 'No coordinates in that. Paste a Maps link, or two numbers like 13.0827, 80.2707.';
+    return;
+  }
+  el.removeAttribute('aria-invalid'); el.removeAttribute('title');
+  Locations.setRecce(name, { lat: String(at.lat), lng: String(at.lng) });
+  el.value = at.lat + ', ' + at.lng;
+});
+
 saveOnInput('[data-recce-field]', (el) => {
   const name = locNameOf(el);
   if (name) Locations.setRecce(name, { [el.dataset.recceField]: el.value });

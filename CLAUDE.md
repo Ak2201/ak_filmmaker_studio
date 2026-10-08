@@ -1092,10 +1092,11 @@ by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
 `conhlrulxfwkhsnymakz` (verified through PostgREST, not from the file);
 **§16, §17 and §18 are live** (6 Oct) and **§19 and §24 are live**
 (8 Oct, read back: `accounts_guard` tgtype 23, the scope CHECK 442
-characters naming `characters` and `costs`); **§20–§23 have NOT run** and
-are deferred until Razorpay is live, because §20 drops and recreates
-`create_pending_payment` and belongs in the same session as the
-`rzp-order` redeploy. The **Google consent screen is PUBLISHED** — In
+characters naming `characters` and `costs`); **§20–§23 are live** (8 Oct), so
+**§1 to §24 have all run and no schema work is outstanding**. One rule
+survives for the deploy: §20 recreated `create_pending_payment` with five
+arguments, so `rzp-order` must be deployed from CURRENT source or every
+order fails PGRST202. It is not deployed at all yet. The **Google consent screen is PUBLISHED** — In
 production, External, and Google states verification is not required
 because no sensitive or restricted scopes are requested; its branding is
 filled in and awaiting re-verification after the 8 Oct Search Console

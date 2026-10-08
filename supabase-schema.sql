@@ -4416,7 +4416,25 @@ create trigger accounts_guard
 -- ============================================================
 -- 20. PROMO CODES — a discount on the one price, decided by the server
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask for the launch,
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, as sections 20 to 23 together (the owner's call, once the
+-- Razorpay work began): "Success. No rows returned". Read back
+-- immediately afterwards: all 22 objects these four sections create are
+-- present -- promo_codes, referral_credits and billing_settings, and the
+-- functions quote_order, quote_for, promo_price, promo_reason_sentence,
+-- paid_credit_paise, ensure_referral_code, my_referral,
+-- payments_referral_after, admin_set_promo_code, admin_list_promo_codes,
+-- admin_list_referral_credits, admin_mark_referral_paid,
+-- admin_affiliate_report, admin_affiliate_orders,
+-- admin_get_billing_settings, admin_set_billing_settings -- plus
+-- create_pending_payment, activate_payment and admin_list_payments, which
+-- section 20 drops and recreates. plans still holds 4 rows.
+-- THE DEPLOY DEBT THIS CREATES: rzp-order must be deployed from the
+-- CURRENT source, because it passes p_code to the five-argument
+-- create_pending_payment that now exists. It is not deployed at all yet,
+-- so nothing is broken in the meantime -- but do not deploy an older copy.
+-- The 20.2 / 21.1 / 22.2 / 23.1 live checks are still unrun.
+-- Owner's ask, 7 Oct 2026.
 -- 7 Oct 2026: offers and promo codes. Kept inside the decisions §16
 -- and §18 already made (docs/BILLING.md §7 has the long form):
 --
@@ -4797,7 +4815,25 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 21. UPGRADE BY PAYING THE DIFFERENCE
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026:
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, as sections 20 to 23 together (the owner's call, once the
+-- Razorpay work began): "Success. No rows returned". Read back
+-- immediately afterwards: all 22 objects these four sections create are
+-- present -- promo_codes, referral_credits and billing_settings, and the
+-- functions quote_order, quote_for, promo_price, promo_reason_sentence,
+-- paid_credit_paise, ensure_referral_code, my_referral,
+-- payments_referral_after, admin_set_promo_code, admin_list_promo_codes,
+-- admin_list_referral_credits, admin_mark_referral_paid,
+-- admin_affiliate_report, admin_affiliate_orders,
+-- admin_get_billing_settings, admin_set_billing_settings -- plus
+-- create_pending_payment, activate_payment and admin_list_payments, which
+-- section 20 drops and recreates. plans still holds 4 rows.
+-- THE DEPLOY DEBT THIS CREATES: rzp-order must be deployed from the
+-- CURRENT source, because it passes p_code to the five-argument
+-- create_pending_payment that now exists. It is not deployed at all yet,
+-- so nothing is broken in the meantime -- but do not deploy an older copy.
+-- The 20.2 / 21.1 / 22.2 / 23.1 live checks are still unrun.
+-- Owner's ask, 7 Oct 2026.
 -- somebody on Starter who wants Indie pays Indie's price LESS what they
 -- have already paid, not Indie's price again. Kept inside §16/§18/§20:
 --
@@ -5057,7 +5093,25 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 22. REFERRAL CODES — every paying member brings a friend a discount
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026.
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, as sections 20 to 23 together (the owner's call, once the
+-- Razorpay work began): "Success. No rows returned". Read back
+-- immediately afterwards: all 22 objects these four sections create are
+-- present -- promo_codes, referral_credits and billing_settings, and the
+-- functions quote_order, quote_for, promo_price, promo_reason_sentence,
+-- paid_credit_paise, ensure_referral_code, my_referral,
+-- payments_referral_after, admin_set_promo_code, admin_list_promo_codes,
+-- admin_list_referral_credits, admin_mark_referral_paid,
+-- admin_affiliate_report, admin_affiliate_orders,
+-- admin_get_billing_settings, admin_set_billing_settings -- plus
+-- create_pending_payment, activate_payment and admin_list_payments, which
+-- section 20 drops and recreates. plans still holds 4 rows.
+-- THE DEPLOY DEBT THIS CREATES: rzp-order must be deployed from the
+-- CURRENT source, because it passes p_code to the five-argument
+-- create_pending_payment that now exists. It is not deployed at all yet,
+-- so nothing is broken in the meantime -- but do not deploy an older copy.
+-- The 20.2 / 21.1 / 22.2 / 23.1 live checks are still unrun.
+-- Owner's ask, 7 Oct 2026.
 --
 --   * A REFERRAL CODE IS A PROMO CODE. One more row in promo_codes,
 --     kind 'referral', owner_user_id the member it belongs to, a
@@ -5455,7 +5509,25 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 23. AFFILIATE CODES — a promo code that earns its owner a commission
 -- ------------------------------------------------------------
--- NOT YET RUN against conhlrulxfwkhsnymakz. Owner's ask, 7 Oct 2026:
+-- RUN 8 Oct 2026 against conhlrulxfwkhsnymakz through the dashboard's
+-- SQL editor, as sections 20 to 23 together (the owner's call, once the
+-- Razorpay work began): "Success. No rows returned". Read back
+-- immediately afterwards: all 22 objects these four sections create are
+-- present -- promo_codes, referral_credits and billing_settings, and the
+-- functions quote_order, quote_for, promo_price, promo_reason_sentence,
+-- paid_credit_paise, ensure_referral_code, my_referral,
+-- payments_referral_after, admin_set_promo_code, admin_list_promo_codes,
+-- admin_list_referral_credits, admin_mark_referral_paid,
+-- admin_affiliate_report, admin_affiliate_orders,
+-- admin_get_billing_settings, admin_set_billing_settings -- plus
+-- create_pending_payment, activate_payment and admin_list_payments, which
+-- section 20 drops and recreates. plans still holds 4 rows.
+-- THE DEPLOY DEBT THIS CREATES: rzp-order must be deployed from the
+-- CURRENT source, because it passes p_code to the five-argument
+-- create_pending_payment that now exists. It is not deployed at all yet,
+-- so nothing is broken in the meantime -- but do not deploy an older copy.
+-- The 20.2 / 21.1 / 22.2 / 23.1 live checks are still unrun.
+-- Owner's ask, 7 Oct 2026.
 -- codes for film schools, YouTubers and festival desks that pay their
 -- holder a share of what comes in through them.
 --

@@ -183,8 +183,11 @@ and wrong in the owner's favour — three supposed blockers did not exist.
 - Schema **§1–§14** live (verified through PostgREST). **§16, §17, §18**
   live since 6 Oct. **§19 and §24** live since 8 Oct — read back as
   `accounts_guard` tgtype **23** and a `project_data` scope CHECK of **442**
-  characters naming `characters` and `costs`. **§20–§23 are NOT run**, on
-  purpose: they belong with the Razorpay deploy.
+  characters naming `characters` and `costs`. **§20–§23 live since 8 Oct** too, run
+  when the Razorpay work began — so **§1 to §24 are now ALL live** and no
+  schema step remains. `rzp-order` must be deployed from current source
+  (§20 recreated `create_pending_payment` with five arguments); it is not
+  deployed at all yet, so nothing is broken meanwhile.
 - The **Google consent screen is PUBLISHED** — In production, External, and
   Google says verification is not required because no sensitive or
   restricted scopes are requested. It was never in Testing-with-no-users by
@@ -270,7 +273,7 @@ gated `prove:gate` 108 and `prove:billing` 124.
 |---|---|---|
 | 1 | ~~CBFC/AWBI/OTT source check~~ | **DONE 8 Oct 2026 (evening), from a browser session.** 16 of 18 URLs answer; Gazette text read where published. One real error found and fixed: the file cited COTPA **rule 4(6)**, which the Delhi High Court quashed. What is left is not a task: the 2026 CBFC guidelines text is unpublished, so clause NUMBERS stay unverified until the Ministry publishes it. |
 | 2 | **Billing growth, the unstarted five** | GST invoices, gift, edu, leads, funnel. Not started, no tables, no code. `src/lib/growth.js`'s header says so. |
-| 3 | **§20–§23 are not LIVE** | Written and tested, never run against the database. They belong in the same session as the Razorpay deploy, because §20 recreates `create_pending_payment` and `rzp-order` must be redeployed after. |
+| 3 | ~~§20–§23 are not LIVE~~ | **DONE 8 Oct 2026.** All 22 objects read back present; §1–§24 are now live and no schema work remains. What carries forward is a deploy rule, not a task: `rzp-order` must come from current source. |
 | 4 | **Emotional-craft layer** | Plan only. `docs/WIP-EMOTION-PLAN.md`. |
 | 5 | **Queued ideas** | Monsoon weather flag, script-notes overview, writing-goal sync across devices, paid template packs. None started. |
 | 6 | **Owner decision: Tamil-script UI labels** | Undecided. Reverses `lang.js`'s design, so decide before building. |

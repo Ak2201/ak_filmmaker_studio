@@ -185,10 +185,10 @@ time, and re-running a live section is risk you do not need to take).
 | 17 | edit log + deliverables sync scopes | LIVE 6 Oct |
 | 18 | full-time access, features by plan | LIVE 6 Oct |
 | 19 | the accounts guard: closes the `acc_insert` hole | **LIVE 8 Oct** |
-| 20 | promo codes | NOT RUN |
-| 21 | upgrade by paying the difference | NOT RUN |
-| 22 | referral codes and credits | NOT RUN |
-| 23 | affiliate codes | NOT RUN |
+| 20 | promo codes | **LIVE 8 Oct** |
+| 21 | upgrade by paying the difference | **LIVE 8 Oct** |
+| 22 | referral codes and credits | **LIVE 8 Oct** |
+| 23 | affiliate codes | **LIVE 8 Oct** |
 | 24 | the characters and costs sync scopes | **LIVE 8 Oct** |
 
 §19 and §24 were run together on 8 Oct 2026 because those two are the
@@ -199,12 +199,15 @@ syncs `fms_characters_v1` and `fms_costs_v1` and Postgres refused both
 upserts until the CHECK knew the two scopes (the rest kept syncing, and
 both stayed on the device).
 
-§20–§23 are deliberately deferred: they are promo, upgrade-by-difference,
-referral and affiliate, none of which can do anything until Razorpay is
-live, and §20 drops and recreates `create_pending_payment` and
-`admin_list_payments` — so run it in the SAME session that redeploys
-`rzp-order`, per `docs/BILLING.md` §1 step 9, or every order fails with
-PGRST202.
+**§20–§23 ran on 8 Oct 2026**, when the Razorpay work started. **THE WHOLE
+SCHEMA, §1 TO §24, IS NOW LIVE** — there is no schema step left on this
+checklist. All 22 objects read back present.
+
+The debt that creates: §20 dropped and recreated `create_pending_payment`
+with five arguments, so **`rzp-order` must be deployed from the CURRENT
+source**, not an older copy, or every order fails PGRST202
+(`docs/BILLING.md` §1 step 9). It is not deployed at all yet, so nothing is
+broken in the meantime — this is a rule for the deploy, not a live fault.
 
 **The 13.2 admin row for the second `VITE_ADMIN_EMAILS` address is NOT
 actionable, checked 8 Oct 2026.** That address does not exist in

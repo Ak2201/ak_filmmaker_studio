@@ -616,6 +616,7 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 | `docs/RESUME.md` | main, develop | where each stopped workstream was (superseded; history) |
 | `docs/FEATURE-IDEAS.md` | main, develop | ~55 ranked ideas with statuses, market table, positioning |
 | `docs/LAUNCH.md` | main, develop | owner checklist (current) |
+| `docs/RELEASE-PLAN.md` | sell/doc | release gates, T-14 to T+30 timeline, pricing offers, channels, funnel, support, risks |
 | `docs/BROWSER-HANDOFF.md` | main, develop | the launch steps a local Claude-in-Chrome session can do |
 | `docs/HISTORY.md` | main, develop | the long build log, items 1–20 |
 | `docs/KNOWN-ISSUES.md` | main, develop | recorded decisions, things seen once, release leftovers |

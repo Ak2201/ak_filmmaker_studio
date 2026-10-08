@@ -1,5 +1,9 @@
 # Where work stopped — resume here
 
+> **Superseded as the entry point by `docs/HANDOFF.md`** (8 Oct 2026), which
+> covers everything done and planned. This file is the first, narrower version
+> and is kept for its per-workstream notes.
+
 Written 7 Oct 2026 when the owner stopped every running agent. **Nothing
 in this file is on `main` except this file and `docs/FEATURE-IDEAS.md`.**
 The feature work lives on `wip/*` branches on GitHub. They are backups of

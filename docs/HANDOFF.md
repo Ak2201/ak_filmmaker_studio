@@ -7,16 +7,23 @@ planned, and what only the owner can do. Facts here were checked against the
 repo (`git log`, `git ls-remote`) when it was written; anything not checked
 is marked **unverified**.
 
-**Reconciled 8 Oct 2026 (late) against `develop` = `main` = `cc4e580`, with a
-code audit.** The pending work is the registry in **§6c**; the lanes that can
+**Reconciled 8 Oct 2026 (late) against `develop` = `main`, with a code audit;
+re-checked and corrected later the same day.** The commit it was reconciled
+against was `cc4e580`; `main` and `develop` have moved since (the CBFC source
+check). Run `git log --oneline -1` rather than trusting a commit id written
+into prose — this file has carried a stale one twice. The pending work is the registry in **§6c**; the lanes that can
 run in parallel are in **§6d**. Where an earlier section of this file and
 §6c disagree, §6c wins — it was checked against the code on that commit.
 
 **Starting phrases the owner can use:**
-"resume everything" · "resume <workstream name>" (§6) ·
-"resume the emotional-craft plan, Phase 0" · "run the integration pass" ·
-"do the owner checklist" (that one is theirs — see §8) · "take lane 2" (§6d) ·
-"do P2" / "do B1" (any ID in §6c).
+"take lane 2" (§6d) · "do P2" / "do B1" (any ID in §6c) ·
+"resume the emotional-craft plan, Phase 0" ·
+"do the owner checklist" (that one is theirs — see §8).
+
+~~"resume everything"~~ and ~~"run the integration pass"~~ no longer mean
+anything: the ten workstreams are released and the integration pass is done.
+~~"resume <workstream name>"~~ likewise — §6 lists them as finished, not as
+work. Use a lane or an ID.
 
 > **The two UPDATE paragraphs below are a dated record of how the state moved.**
 > Where they or any figure in §2 (e.g. `prove:billing` 93, `prove:sw` 24) disagree
@@ -90,7 +97,8 @@ for invariants before changing anything.
 
 ## 1. State of the repo (GitHub, `Ak2201/ak_filmmaker_studio`) — checked 8 Oct, late
 
-`main` and `develop` are **the same commit** (`cc4e580`). The release of the
+`main` and `develop` are **level with each other** (they were `cc4e580` when
+this was written and have moved since — check, do not quote). The release of the
 ten workstreams happened (`ad7ab02`); everything below that was "unfinished"
 is merged. Verified with `git merge-base --is-ancestor <ref> origin/develop`:
 `wip-all`, `feature/on-set`, `claude/launch-leftovers` and every
@@ -102,12 +110,15 @@ develop on them.
 | `main` | Production. Receives only gated releases and docs-only commits (`docs/BRANCHING.md`). |
 | `develop` | Development branch. **All new work goes through `feature/<name>` branches cut from it.** Level with `main` right now. |
 | `feature/integration` | The integration branch (`38de170`); merged. (The launch-steps work was merged as `525430d` from a branch that was never pushed.) |
-| `wip-all`, `archive/*` (10), `wip/*` (10) | **Frozen backups, fully merged.** GitHub returns HTTP 403 on branch deletion, so they stay. Ignore them. |
+| `wip-all`, `archive/*` (10), `wip/*` (10) | **Frozen backups, fully merged.** Ignore them. They stay because nobody has tidied them, NOT because they cannot be deleted — see the correction in §5. |
 | `feature/on-set`, `claude/launch-leftovers`, `claude/feature-ideas`, `claude/fix-*`, `claude/launch-readiness`, `claude/improvement-ideas-0gwjyx`, `revamped-ui` | Merged or old. History only. |
 
 **Gotcha — the main checkout may have any branch checked out.** Do work in a
 worktree (`git worktree add .claude/worktrees/<name> -b feature/<name>
-origin/develop`), never in `/home/user/ak_filmmaker_studio` itself.
+origin/develop`), never in the main checkout itself — which is
+`/home/user/ak_filmmaker_studio` in a cloud container and
+`/Users/arun-9285/filmmakers-studio` on the owner's Mac. Two sessions sharing
+one checkout is real here: on 8 Oct two of them rewrote this file at once.
 Worktrees left by earlier sessions may still exist (`git worktree list`);
 stopped agents' worktrees can hold uncommitted files that the stop hook
 nags about — their content is already merged, so do not commit them.
@@ -126,7 +137,8 @@ nags about — their content is already merged, so do not commit them.
 | 8 Oct | **`develop` created** and the branch rule written (`docs/BRANCHING.md`). | `943b92b` |
 | 8 Oct | **Integration pass and release** by another session: all ten workstreams gated, schema §24 added for `fms_characters_v1` / `fms_costs_v1`, budget recaptured, re-baseline with zero data-key movement. | `ad7ab02` |
 | 8 Oct | **Launch steps through the owner's browser** (`docs/BROWSER-HANDOFF.md`): schema §19 and §24 run live, Google consent screen found already published, Search Console verified, RLS read side proven, owner's legal name filled on the legal pages. | `53278e4`…`0b49c56` |
-| 8 Oct | **Code audit of what was planned vs built** (this reconciliation): §6c. Of 12 audit claims, 5 were wrong on re-check and are NOT listed as gaps. | this commit |
+| 8 Oct | **Code audit of what was planned vs built** (this reconciliation): §6c. Of 12 audit claims, 5 were wrong on re-check and are NOT listed as gaps. | `e8ee850`, `f812826` |
+| 8 Oct | **The CBFC/AWBI/OTT source check**, from a browser: Gazette text read, three real errors fixed (the tobacco rule cited COTPA rule 4(6), which the Delhi High Court quashed; the animals rule required a notification nobody requires; the children rule mis-stated the 27 days), the G.S.R. 528(E) ban on bulls as performing animals added. | `81b91eb`…`d95fe03` |
 
 Verification at the time of the `5791a27` merge: all `test:*`, `prove:storage`,
 `prove:drive`, `prove:gate` 108, `prove:billing` 93, `prove:extension` 30,
@@ -201,7 +213,13 @@ the opposite of five of these for days.
   and the Google findings were done (`docs/BROWSER-HANDOFF.md`). Everything
   tagged "owner / browser session" in §6c needs the second kind of session.
 - GitHub **returns transient HTTP 500 on push**: retry with 5/10/20/30 s backoff.
-  **Branch deletion is blocked (403)** — never plan on deleting a remote branch.
+  ~~**Branch deletion is blocked (403)** — never plan on deleting a remote
+  branch.~~ **WRONG, corrected 8 Oct 2026:** `git push origin --delete
+  feature/launch-steps` succeeded from a local session signed in as the owner,
+  and the ref is gone. The 403 was a property of the CLOUD CONTAINER's
+  credential, not of the repository — which is exactly the kind of limit that
+  gets written down as a fact about the world. 32 remote branches are still
+  there; they can be tidied whenever someone wants to.
   A branch named `wip` cannot coexist with `wip/…` refs.
 - Browser runs need `PW_CHROMIUM=/opt/pw-browsers/chromium`. `npm install`
   rewrites `package-lock.json` — `git checkout package-lock.json`.
@@ -334,7 +352,7 @@ cloud container session.
 | P6 | **Google Branding re-request**: Branding → View issues → "I have fixed the issues" on **9 Oct 2026 or later** | owner / browser | the branding status clears | `LAUNCH.md` §2 |
 | P7 | Submit `sitemap.xml` in Search Console; paste the landing URL into WhatsApp and Instagram DM and run Meta's debugger | owner | a link card with the image appears | `LAUNCH.md` §7 |
 | P8 | **GSTIN line on Terms**: supply the number, or delete that sentence if there is no registration | owner | no `[OWNER: GSTIN…]` marker on `/terms` | `LAUNCH.md` §3 |
-| P9 | **Deploy `main`** so the legal name is live on the public site (the live site updates only on deploy) | owner | `/terms` shows the name | — |
+| P9 | ~~**Deploy `main`** so the legal name is live on the public site~~ **DONE 8 Oct 2026.** `main` was promoted and Vercel rebuilt from it; `/privacy`, `/terms` and `/refund` all serve the owner's legal name now, confirmed by fetching the live pages. Only the GSTIN marker is left, which is P8. | owner | done | — |
 | P10 | **The door**: keep the invite gate, or open it for launch (`VITE_SITE_GATE=off`) | owner | decision written in `LAUNCH.md` §1 | `LAUNCH.md` §1 |
 | P11 | Optional: set `VITE_SUPPORT_WHATSAPP` (digits) so the footer shows a WhatsApp help link | owner | link renders | `src/ui/footer.js` |
 | P12 | ~~Open every `sourceUrls` link of the CBFC / AWBI / OTT rules in a real browser~~ **DONE 8 Oct 2026**: links read, Gazette text read where published, quashed rule 4(6) removed, AWBI fees and the performing-animal ban (G.S.R. 528(E)) added, `checked` moved. STILL OPEN in this row: check write.html on a real phone at 390px (an `isMobile`-emulation screenshot once showed ~350px of blank ground — see `KNOWN-ISSUES.md`) | browser / owner | the phone check | `KNOWN-ISSUES.md` |
@@ -496,8 +514,9 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
   data-key movement; deliberate copy changes only.
 - Anything a stopped agent left uncommitted exists only as a snapshot commit —
   look at `archive/*`, not the agent worktrees.
-- Do not name a branch `wip` in a repo that has `wip/…` branches. Do not plan on deleting
-  remote branches.
+- Do not name a branch `wip` in a repo that has `wip/…` branches. ~~Do not plan
+  on deleting remote branches.~~ That was wrong — deletion works for a session
+  with the owner's own credential; see §5.
 - "Verify green" on a branch means nothing until it is run uncapped on the
   merged tree.
 - **Documents about state go stale within hours.** This file said the Google
@@ -529,4 +548,13 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
 | `docs/HISTORY.md` | main, develop | the long build log, items 1–20 |
 | `docs/KNOWN-ISSUES.md` | main, develop | recorded decisions, things seen once, release leftovers |
 | `docs/UX-AUDIT-2026-10-06.md` | main | audit, struck through |
-| `docs/BILLING.md`, `SECURITY-RLS.md`, `GATE.md`, `STORAGE-MODEL.md`, `EXTENSION.md`, `GOOGLE-AUTH.md`, `DEPLOY.md`, `LIVE-CHECKS.md` | main | subsystem docs |
+| `docs/BILLING.md`, `SECURITY-RLS.md`, `GATE.md`, `STORAGE-MODEL.md`, `EXTENSION.md`, `DEPLOY.md`, `LIVE-CHECKS.md` | main | subsystem docs |
+| `docs/GOOGLE-AUTH.md` | main | **STALE — do not follow it.** Flagged 8 Oct 2026. It is a generic setup runbook from before any of this existed: it names no real Google project (it tells you to CREATE one called `filmmakers-studio-auth`, when the live one is `filmstudio-495419`), lists three scopes and omits `drive.file`, points at the dead host `ak-filmmaker-studio.vercel.app`, describes the Supabase config as a per-browser `localStorage` key under the OLD `arunak_` prefix, and says "none of it is done yet" when the consent screen is published and in production. The live facts are in §4 of this file and `docs/LAUNCH.md` §2. Rewrite it or delete it; following it would undo working configuration. |
+
+**Two notes on using this table.** `docs/BILLING.md` §0 still prints the old
+placeholder prices (₹2,999 / ₹7,999 / ₹19,999); the live table says ₹599 /
+₹799 / ₹999 and the live table wins (§4). And a doc being listed here is not
+a promise that it is current — `GOOGLE-AUTH.md` above is the proof. Check a
+status claim against the database, the console or `git log` before acting on
+it, which is this file's own standing instruction and the one it has itself
+broken most often.

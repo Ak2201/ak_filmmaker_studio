@@ -157,8 +157,20 @@ Only the owner can supply: the full legal name, the GSTIN if registered,
 and a postal address if Razorpay asks for one. Nobody else can invent
 these, and a placed-holder name on a legal page is worse than no page.
 
+**The legal NAME is filled in, 8 Oct 2026** — supplied by the owner and
+written into all three pages, with the `.legal-ph` wrapper removed in
+each (that class is a dashed amber "not supplied yet" marker, so leaving
+it would have rendered a real legal name as a warning). **One marker
+remains**, the GSTIN on the Terms' tax line: it is still
+`[OWNER: GSTIN, if registered]`, and if there is no registration the
+right fix is to delete that sentence rather than fill it.
+
+**The live site still shows the OLD text until `main` is deployed.**
+Filling these pages in the repo changes nothing a stranger, Razorpay or
+Meta can see; the host builds from `main`.
+
 Check: `grep -rn '\[OWNER:' privacy.html terms.html refund.html` returns
-nothing, and the three live URLs contain no "OWNER:".
+only the GSTIN line, and the three live URLs contain no "OWNER:".
 
 ## 4. Run the schema sections that have never run
 

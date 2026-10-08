@@ -203,8 +203,13 @@ and wrong in the owner's favour — three supposed blockers did not exist.
   returns **401 "bad signature"** now it is set. That TRANSITION is the
   proof, and re-running that probe is the right check after any secret
   rotation. `rzp-order` returns 401 without a JWT.
-  **Still missing: a LIVE key, and any purchase at all** — not even a
-  test one. The path is configured and unexercised.
+  **A TEST PURCHASE WORKED, 8 Oct 2026.** Verified in the database, not
+  from the UI: a `payments` row at plan `starter`, status `paid`, 59900
+  paise, carrying a real `razorpay_order_id` and `razorpay_payment_id`,
+  and the buying account's `accounts.plan` is now `starter`. The whole
+  path — order, checkout, verify, activation — is exercised.
+  **Still missing: a LIVE key** (all of this is test mode) and a refund,
+  which has never been run.
   One trap paid for here: creating the webhook in Razorpay and setting
   `RAZORPAY_WEBHOOK_SECRET` in Supabase are two halves of ONE step. Doing
   only the first leaves Razorpay posting events into a 503. `supabase

@@ -137,15 +137,15 @@ function render() {
     body.append(sec);
     /* start.html links to invite.html#buy. A plan is bought by an
        account, so signed out the cards' way in is signing in. */
-    if (plans) {
+    /* Signed out, the prices are on start.html: fetching the plan rows
+       here would pull the Supabase SDK into this page's first paint,
+       which the budget forbids (CLAUDE.md, "lazy chunks"). */
+    {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan lets an account in without an invite. Sign in with Google first, then choose a plan here.');
-      buy.append(planCards(plans, null, {
-        onBuy: () => { const b = document.querySelector('[data-auth-action="google"]'); if (b) b.click(); },
-        rerender: render
-      }));
+        'A paid plan lets an account in without an invite. Sign in with Google first, then choose a plan.');
       buy.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' })
+        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
+        h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
       ]));
       body.append(buy);
     }
@@ -249,7 +249,7 @@ adoptLinkCode();
 let plans = null;
 async function loadPlans() {
   const c = cloud();
-  if (!c || !c.isConfigured()) return;
+  if (!c || !c.isConfigured() || !c.getSession()) return;
   try { plans = await Billing.listPlans(); } catch (e) { plans = null; }   // section 16 not run: no cards
   render();
 }

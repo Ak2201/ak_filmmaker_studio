@@ -148,6 +148,9 @@ match something the code computes.
 
    ```
    http://localhost:5173          ← vite dev  (npm run dev)
+   https://thefilmakerlocal.vercel.app   ← DEV PREVIEW, added 9 Oct 2026.
+                                  One 'm' in filmaker; the production host
+                                  below has two. Tracks the develop branch.
    http://localhost:4173          ← vite preview  (npm run preview)
    https://<your-site>.netlify.app
    https://<your-custom-domain>   ← if you have one

@@ -168,6 +168,63 @@ prices are placeholders. One test-mode purchase end to end, one refund.
 - Real prices; the Razorpay account; the second test account.
 - Optional: `VITE_SUPPORT_WHATSAPP` (digits with country code).
 
+## 6. Dev preview on Vercel — thefilmakerlocal — DONE 9 Oct 2026
+
+**Live at `https://thefilmakerlocal.vercel.app`.** One "m" in
+*filmaker*, deliberately: it is NOT the production host
+`thefilmmakerstudio.vercel.app`, and the two differ by a single letter,
+so read twice before changing anything on either.
+
+| Setting | Value |
+| --- | --- |
+| Vercel project | `thefilmakerlocal` (Hobby, `arunaaron85-5576's projects`) |
+| Repository | `Ak2201/ak_filmmaker_studio` |
+| **Production Branch** | **`develop`** — every push to develop redeploys this |
+| Framework preset | Vite; build and output left at the preset defaults, which ARE `npm run build` and `dist` |
+| Environment | `VITE_DISABLE_SW=1`, Production and Preview |
+| Deployment Protection | Vercel Authentication, Standard — **already on by default**, nothing was changed |
+| First deployment | `4844bb7`, Ready in 14s |
+
+The gate is ON here, exactly as in production: this is `npm run build`,
+not `build:open`. The committed `.env` supplies the Supabase and Google
+values, so nothing secret was typed anywhere.
+
+**Sign-in was made to work on the new address** — two settings, both
+additive, nothing removed:
+
+- Google Cloud `filmstudio-495419` → OAuth client `filmstudio` →
+  Authorised JavaScript origins now hold four:
+  `http://localhost:5173`, `http://localhost:4173`,
+  `https://thefilmmakerstudio.vercel.app` and
+  `https://thefilmakerlocal.vercel.app`.
+- Supabase `conhlrulxfwkhsnymakz` → Auth → URL Configuration → Redirect
+  URLs now hold four, the new one being
+  `https://thefilmakerlocal.vercel.app/**`.
+
+Both were re-read after a full page reload rather than trusted from the
+save toast. Razorpay needed nothing: Checkout works from any origin and
+the webhook points at Supabase.
+
+**Checked in the browser:**
+
+- the root serves, and lands on `/start` — NOT `invite.html`. The plan
+  for this section predicted invite.html; `start.html` is the public
+  landing page now and the gate sends a signed-out visitor there. Not a
+  fault, but the expectation in older notes is stale.
+- a typed `.html` URL opens. `/settings.html` and `/index.html` both
+  resolve, which is the check that matters for CLAUDE.md's
+  service-worker redirect trap — a 200 to curl means nothing there.
+- **no service worker is registered** (`getRegistrations()` is empty),
+  so `VITE_DISABLE_SW=1` did what it was set for and this preview will
+  not outlive itself in anybody's cache.
+
+**NOT tested: an actual Google sign-in round trip on the new origin.**
+The configuration is in place and verified, but nobody has signed in
+through `thefilmakerlocal.vercel.app` yet. Google warns an origin change
+can take five minutes to a few hours to take effect, so a first attempt
+that fails with `redirect_uri_mismatch` may only mean "too soon" — try
+again later before changing the settings back.
+
 ## When done
 
 Update `docs/HANDOFF.md`'s top note and `CLAUDE.md`'s "What is live"

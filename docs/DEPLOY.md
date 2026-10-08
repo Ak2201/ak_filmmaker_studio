@@ -12,6 +12,30 @@ release a working writing tool is the wrong trade.
 
 ---
 
+## Hosts — there are TWO Vercel projects, and they differ by one letter
+
+| | Production | Dev preview |
+| --- | --- | --- |
+| Address | `thefilmmakerstudio.vercel.app` | `thefilmakerlocal.vercel.app` |
+| Vercel project | the original | `thefilmakerlocal` |
+| Branch deployed | `main` | **`develop`** |
+| Build | `npm run build` (gate ON) | `npm run build` (gate ON) |
+| Service worker | registered | **disabled**, `VITE_DISABLE_SW=1` |
+| Who can see it | anybody with an invite | Vercel Authentication (Standard) |
+
+**READ THE NAME TWICE.** Production has two "m"s — *thefil**mm**aker* —
+and the preview has one — *thefil**m**aker*. They are one letter apart
+and both end `.vercel.app`. Changing a setting on the wrong one is a
+quiet way to take the live site down.
+
+Set up 9 Oct 2026; the full record, including what was checked in the
+browser and what was NOT, is `docs/BROWSER-HANDOFF.md` §6. Both hosts
+are registered as Google OAuth origins and as Supabase redirect URLs,
+so sign-in is configured on each.
+
+Pushing to `develop` redeploys the preview; pushing to `main` redeploys
+production. That is the whole of the difference day to day.
+
 ## v1 — the static app
 
 ### 1. Pre-flight

@@ -155,6 +155,49 @@ movement**; recapture `scripts/budget.json` only if growth is justified;
 update statuses in `docs/FEATURE-IDEAS.md`, the `CLAUDE.md` table,
 `docs/HISTORY.md`, `docs/LAUNCH.md`; merge to `main`.
 
+## 6b. Recommended order, and the first action for each workstream
+
+**"Resume everything" means this order.** Work each item in its own worktree
+off its `archive/…` branch (full names below), gate it, and only then move on.
+
+| Step | Do | First action |
+|---|---|---|
+| 0 | **Owner steps, in parallel, never blocking** (§8) | The owner publishes the consent screen and fills the legal placeholders; nothing below waits on it. |
+| 1 | **On set** — nothing to do | Already gated on `feature/on-set`. Add the four recce fields to the Plan page's recce card only if wanted. |
+| 2 | **Leftovers + legal** | Build open, `verify` uncapped, then gated `prove:gate` + `prove:billing`; read refund/terms/privacy at 390 and 1280 in both themes; check `start.html` with scripts OFF. |
+| 3 | **Schedule** | Run the full gate; confirm the DPR only reads `shotState`; run `prove:sw` (it touches `src/sw.js` — read the service-worker trap in `CLAUDE.md` first). |
+| 4 | **Writing** | `verify` was running when stopped — rerun it; keep the Tamil font last in `--f-script`; measure Enter-paint (~30 ms). |
+| 5 | **Revisions** | Fix the `Element.append(null)` bug in `write-revisions.js` (filter `null` before `append`), rebuild, then add an npm script for `test-revisions.mjs`. |
+| 6 | **Compliance** | Finish the runtime tests in `test-screenplay.mjs` and the optional-group tests in `test-post.mjs`; verify each CBFC/AWBI/OTT fact against its cited source. |
+| 7 | **Money** | Open `budget.html` on the Dragon sample and walk every tab; confirm `fms_costs_v1` survives export and import; keep the wage table labelled "last published, 2022 MoU, expired". |
+| 8 | **AI** | Run `prove-ai-coverage` for BOTH providers against `fake-ai`; confirm a fabricated quote is stripped and counted; confirm `ai.js` stays out of first paint. |
+| 9 | **Billing growth** | `pg_ctlcluster 16 main start`, run `test:schema`; finish the §23 docs (`docs/BILLING.md`, `docs/SECURITY-RLS.md`); **then start GST invoices as schema §24** (buyer GSTIN checksum, gapless financial-year invoice number, "Bill of Supply" mode because the seller is an individual); then gift, edu, leads, funnel (§25 onward). |
+| 10 | **Growth UX** | Run `verify` (the tour must write nothing while idle), gated `prove:gate` (screening room) and `prove:billing`; the public-link SQL stays a proposal. |
+| 11 | **Integration pass** (task 16) | New branch off the latest `main`; merge the gated branches; one schema section widening the scope CHECK for `fms_characters_v1` and `fms_costs_v1`; full gate; re-baseline with zero data-key movement; update docs; merge to `main`. |
+| 12 | **Queued ideas** (tasks 11–14) and the **owner decision** on Tamil-script UI labels (task 15) | Start only after step 11. |
+
+**Emotional-craft layer vs the integration pass.** The owner chose to build
+it on top of `wip-all`. Phase 0 (a baseline of `wip-all`) can run at any time
+and does not depend on the steps above. Phases A–E may then proceed on a
+`wip-emotion` branch, **but nothing from it ships until the integration pass
+(step 11) has happened**, and when it does, `wip-emotion` is merged into the
+integrated branch (the work is kept in new files with one-line hooks to make
+that cheap). If the integration pass comes first, the cleaner route is to
+branch `wip-emotion` off the integrated branch instead — tell the owner which
+they prefer before Phase A.
+
+**Full branch names** (the `…` in tables above is never a real name):
+`archive/leftovers`, `archive/ac7bac5586116f143` (On set),
+`archive/a8500da1354391964` (Schedule), `archive/a40f499bfa0c512e8` (Writing),
+`archive/abc1d13439ac92b6b` (Revisions), `archive/a55b1a0c890ccf84e` (AI),
+`archive/acc100544ab48cea5` (Compliance), `archive/ad27555771d505845` (Money),
+`archive/a1db0236c653737b2` (Billing growth), `archive/adb4de922f32dffae`
+(Growth UX).
+
+**Where the newer launch checklist is:** `docs/LAUNCH.md` on `main` is the older
+version; the newer one (with the legal and domain updates) is on
+`claude/launch-leftovers` and `wip-all`. Read that one.
+
 ## 7. The emotional-craft plan (planned, not built)
 
 Full plan: **`docs/WIP-EMOTION-PLAN.md`**. Summary: Phase 0 baseline of

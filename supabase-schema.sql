@@ -5623,3 +5623,60 @@ notify pgrst, 'reload schema';
 --  4. '{"commission_pct": null}' -> kind back to 'promo', gone from the
 --     report.
 -- ============================================================
+
+-- ============================================================
+-- 24. TWO MORE SYNC SCOPES: characters and costs
+-- ------------------------------------------------------------
+-- NOT YET RUN against conhlrulxfwkhsnymakz. Until it runs, cloud.js
+-- would send upserts the CHECK refuses, so the two keys move from
+-- LOCAL_ONLY into SCOPE_BY_KEY in the same commit as this section and
+-- the deploy order in docs/LAUNCH.md puts §24 before that build goes
+-- live. Same procedure as sections 12, 13.7 and 17: the constraint is
+-- rebuilt (Postgres has no ALTER CONSTRAINT for a CHECK) and found by
+-- its definition, because an inline column CHECK is named by the
+-- server.
+--
+--   characters  `fms_characters_v1` — what the writer says about each
+--               character (src/lib/characters.js). Who speaks is
+--               derived from the script's cues and is not in it.
+--   costs       `fms_costs_v1` — expenses, petty-cash floats and crew
+--               payments (src/lib/costs.js). The estimate stays in
+--               `library`.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs',
+      'story','idea_vault',
+      'edit','deliverables',
+      'characters','costs'
+    ));
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- 24.1 CHECKS TO RUN, none of which has been run yet ---------------
+--  1. a member upserting project_data with scope 'characters' or
+--     'costs' on a project they own -> allowed; 'anything_else' ->
+--     23514 (check violation); 'edit' and 'deliverables' still allowed.
+--  2. a character note and an expense written on device A appear on
+--     device B after its next pull.
+-- ============================================================

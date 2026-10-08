@@ -145,7 +145,23 @@ async function session({ width, theme, provider }) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  /* A failed resource is judged by its URL, not by the console line,
+     which carries none. Two are this harness's own doing and are not
+     findings: every off-origin request is aborted below (ERR_FAILED),
+     and the fake answers the "failed run" with a 529 on purpose. */
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) errors.push(m.text());
+  });
+  page.on('response', (r) => {
+    const u = r.url();
+    if (r.status() >= 400 && !(r.status() === 529 && /anthropic\.com|googleapis\.com/.test(u))) errors.push(r.status() + ' ' + u);
+  });
+  // ERR_ABORTED is the browser cancelling a request because the page
+  // navigated or a lazy import was superseded — not a failure to load.
+  page.on('requestfailed', (r) => {
+    const why = (r.failure() || {}).errorText || '';
+    if (r.url().startsWith(BASE) && !/ERR_ABORTED/.test(why)) errors.push('failed ' + r.url() + ' ' + why);
+  });
   await page.route(/^https:\/\/(api\.anthropic\.com|generativelanguage\.googleapis\.com)\//, route);
   await page.route((u) => !u.href.startsWith(BASE) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
   page.on('dialog', (d) => d.accept());

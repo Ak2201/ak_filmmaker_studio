@@ -12,11 +12,22 @@ is marked **unverified**.
 "resume the emotional-craft plan, Phase 0" · "run the integration pass" ·
 "do the owner checklist" (that one is theirs — see §8).
 
+**UPDATE, later on 8 Oct 2026 — "resume everything" ran and the ten
+workstreams are RELEASED.** Steps 1–11 of §6b were done on
+`feature/integration` (off `develop`), merged into `develop` and released to
+`main` with a `--no-ff` merge titled "Release: the ten workstreams". The
+tables below (§1, §6) describe the state BEFORE that and are kept as the
+record; `docs/HISTORY.md` item 20 is what changed. Still open: the owner
+checklist (§8, `docs/LAUNCH.md`, now including schema §21–§24 — run §24
+before this build goes live), the not-started billing items (GST invoices,
+gift, edu, leads, funnel — schema §25 onward), the queued ideas (tasks
+11–14), the Tamil-labels decision (task 15), the emotional-craft layer, and
+the leftovers in `docs/KNOWN-ISSUES.md`.
+
 **Branch workflow (owner's rule, 8 Oct 2026): develop on `develop`, test, then promote to `main`.**
 `main` only ever receives work that passed the release gate. Full rules, the gate
 and the day-to-day commands are in **`docs/BRANCHING.md`**. `develop` was created
-from `wip-all` and currently holds the ten unfinished workstreams, so it is **not
-releasable yet** — nothing goes to `main` until the integration pass is green.
+from `wip-all`; since the release it is level with `main`.
 
 **Product in one paragraph.** FilmMakerStudio: a browser-based, local-first
 studio for Tamil/Indian indie filmmakers (story → screenplay → breakdown →

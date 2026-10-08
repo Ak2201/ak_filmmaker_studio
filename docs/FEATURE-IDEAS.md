@@ -13,7 +13,10 @@ live database like §16–§20 (see `docs/LAUNCH.md` §4). Everything else is
 local-first and works with no server.
 
 **Status** is where each idea stood when this file was written: the nine
-feature agents started on 7 Oct are building every idea marked *building*.
+feature agents started on 7 Oct built every idea now marked *built*; it
+reached `main` in the release of 8 Oct 2026 (`docs/HISTORY.md` item 20).
+The billing items marked *not started* need schema sections of their own,
+from §25 (§24 is the characters/costs sync scopes).
 Strike an idea through, and say where it landed, in the commit that ships
 it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
 
@@ -21,27 +24,27 @@ it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
 
 | # | Idea | What it gives the buyer | Size | Server | Status |
 |---|---|---|---|---|---|
-| 1 | WhatsApp call sheet | One tap sends each person their own call time, location (Maps link) and scenes, to the unit group or one by one. Indian crews run on WhatsApp; no competitor does this. | S | no | building (on-set) |
-| 2 | Petty cash + daily expense log | Batta, food, fuel and location tips logged per day against a budget line, with float in, spent and balance. | M | no | building (money) |
-| 3 | Budget vs actuals (cost report) | Estimate, spent and variance per line, so overruns show on day 3, not at wrap. Saturation.io charges $25/user/month for this. | M | no | building (money) |
-| 4 | Daily Production Report (DPR) | End-of-day call/wrap times, scenes and pages shot against plan, delays, spend. Reads the shoot-day marks. | M | no | building (schedule) |
-| 5 | Upgrade by paying the difference | A Starter buyer moves to Indie for the price gap, so small first sales climb the tiers. | M | yes | building (billing) |
-| 6 | Referral + affiliate codes | Every buyer gets a personal code; film-YouTubers get tracked commissions. Builds on the promo codes (§20). | S–M | yes | building (billing) |
-| 7 | "Made with FilmMakerStudio" on decks, screening links and call sheets | Every pitch deck a director sends advertises the product, carrying their referral code. Free plans keep it; paid plans can remove it. | S | no | building (growth) |
+| 1 | WhatsApp call sheet | One tap sends each person their own call time, location (Maps link) and scenes, to the unit group or one by one. Indian crews run on WhatsApp; no competitor does this. | S | no | built (on-set) — release 8 Oct 2026 |
+| 2 | Petty cash + daily expense log | Batta, food, fuel and location tips logged per day against a budget line, with float in, spent and balance. | M | no | built (money) — release 8 Oct 2026 |
+| 3 | Budget vs actuals (cost report) | Estimate, spent and variance per line, so overruns show on day 3, not at wrap. Saturation.io charges $25/user/month for this. | M | no | built (money) — release 8 Oct 2026 |
+| 4 | Daily Production Report (DPR) | End-of-day call/wrap times, scenes and pages shot against plan, delays, spend. Reads the shoot-day marks. | M | no | built (schedule) — release 8 Oct 2026 |
+| 5 | Upgrade by paying the difference | A Starter buyer moves to Indie for the price gap, so small first sales climb the tiers. | M | yes | built (billing) — release 8 Oct 2026 |
+| 6 | Referral + affiliate codes | Every buyer gets a personal code; film-YouTubers get tracked commissions. Builds on the promo codes (§20). | S–M | yes | built (billing) — release 8 Oct 2026 |
+| 7 | "Made with FilmMakerStudio" on decks, screening links and call sheets | Every pitch deck a director sends advertises the product, carrying their referral code. Free plans keep it; paid plans can remove it. | S | no | built (growth) — release 8 Oct 2026 |
 
 ## Tier 2 — strong differentiators
 
 | # | Idea | Why | Size | Server | Status |
 |---|---|---|---|---|---|
-| 8 | Tamil-script typing (type phonetically, get Tamil) | Scrite and WRAPPLAB, the two India-specific rivals, lead with this. Dialogue only, so the page count stays exact. | M | no | building (writing) |
-| 9 | Crew payments + advances ledger | Agreed fee, advances (cash/UPI), balance due, days worked — settled at wrap without disputes. | M | no | building (money) |
-| 10 | CBFC prep kit + sensitivity flags | Rule-based flags (smoking disclaimer, animal NOC, violence, real names) with cited sources, a likely-rating hint, the dialogue list, the e-Cinepramaan checklist. | M | no | building (compliance) |
-| 11 | Revision compare + revised-page marks | What changed between drafts; industry asterisks and coloured pages in the PDF. | M | no | building (revisions) |
-| 12 | Locked scene numbers (12A, OMITTED) | Call sheets stop renumbering once shooting starts. | M | no | building (revisions) |
-| 13 | GST invoices — buyers and vendor bills | A buyer can't book the purchase without a tax invoice; productions need GST/TDS on rentals and crew. | M | yes (buyer side) | building (billing; money for vendor bills) |
-| 14 | Sunrise / sunset / golden hour on the shoot day | Plan exteriors around the light, computed offline. | S | no | building (on-set) |
-| 15 | Dialogue list / subtitle prep export | Numbered CSV and an SRT starting file, Tamil and English side by side, for subtitlers and dubbing. | S | no | building (compliance) |
-| 16 | Target runtime with songs counted | Set 140 minutes; see estimate vs target per act, songs included. | S | no | building (compliance) |
+| 8 | Tamil-script typing (type phonetically, get Tamil) | Scrite and WRAPPLAB, the two India-specific rivals, lead with this. Dialogue only, so the page count stays exact. | M | no | built (writing) — release 8 Oct 2026 |
+| 9 | Crew payments + advances ledger | Agreed fee, advances (cash/UPI), balance due, days worked — settled at wrap without disputes. | M | no | built (money) — release 8 Oct 2026 |
+| 10 | CBFC prep kit + sensitivity flags | Rule-based flags (smoking disclaimer, animal NOC, violence, real names) with cited sources, a likely-rating hint, the dialogue list, the e-Cinepramaan checklist. | M | no | built (compliance) — release 8 Oct 2026 |
+| 11 | Revision compare + revised-page marks | What changed between drafts; industry asterisks and coloured pages in the PDF. | M | no | built (revisions) — release 8 Oct 2026 |
+| 12 | Locked scene numbers (12A, OMITTED) | Call sheets stop renumbering once shooting starts. | M | no | built (revisions) — release 8 Oct 2026 |
+| 13 | GST invoices — buyers and vendor bills | A buyer can't book the purchase without a tax invoice; productions need GST/TDS on rentals and crew. | M | yes (buyer side) | buyer invoices not started (schema §25 onward); GST and TDS on expenses and crew built (money) |
+| 14 | Sunrise / sunset / golden hour on the shoot day | Plan exteriors around the light, computed offline. | S | no | built (on-set) — release 8 Oct 2026 |
+| 15 | Dialogue list / subtitle prep export | Numbered CSV and an SRT starting file, Tamil and English side by side, for subtitlers and dubbing. | S | no | built (compliance) — release 8 Oct 2026 |
+| 16 | Target runtime with songs counted | Set 140 minutes; see estimate vs target per act, songs included. | S | no | built (compliance) — release 8 Oct 2026 |
 | 17 | Emotional craft layer (Library shelf + glossary, per-beat/per-scene intended emotion, emotion curve, honest hints, AI emotional read) | Teaches and applies the craft of engineering the audience's feeling; learning free, tools paid. Original wording only — the source book is copyrighted. | M–L | no | **planned** — `docs/WIP-EMOTION-PLAN.md` |
 
 ## Tier 3 — good, later
@@ -50,24 +53,24 @@ it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
 
 | Idea | Size | Server | Status |
 |---|---|---|---|
-| FEFSI bata wage table, versioned — shipped as the last published (2022, expired) table, never as current | M | no | building (money) |
-| Budget top sheet with contingency | S | no | building (money) |
-| Movie Magic-style budget CSV export | M | no | building (money) |
-| Printable one-liner schedule | S | no | building (schedule) |
-| Route sheet: address, Maps link, nearest hospital and police | S | no | building (on-set) |
-| Equipment checklists per shoot day | M | no | building (schedule) |
-| Stripboard banners: company moves, travel/holding days, day-load warning | S–M | no | building (schedule) |
-| Offline "shoot pack" for the day | M | no | building (schedule) |
+| FEFSI bata wage table, versioned — shipped as the last published (2022, expired) table, never as current | M | no | built (money) — release 8 Oct 2026 |
+| Budget top sheet with contingency | S | no | built (money) — release 8 Oct 2026 |
+| Movie Magic-style budget CSV export | M | no | built (money) — release 8 Oct 2026 |
+| Printable one-liner schedule | S | no | built (schedule) — release 8 Oct 2026 |
+| Route sheet: address, Maps link, nearest hospital and police | S | no | built (on-set) — release 8 Oct 2026 |
+| Equipment checklists per shoot day | M | no | built (schedule) — release 8 Oct 2026 |
+| Stripboard banners: company moves, travel/holding days, day-load warning | S–M | no | built (schedule) — release 8 Oct 2026 |
+| Offline "shoot pack" for the day | M | no | built (schedule) — release 8 Oct 2026 |
 | Monsoon weather flag on EXT days | S | no, but an external API + `connect-src` | not started |
 
 **Writing**
 
 | Idea | Size | Server | Status |
 |---|---|---|---|
-| Characters as data, one-step rename across every cue | M | no | building (writing) |
-| Treatment / one-pager / synopsis documents that start pre-filled | S | no | building (writing) |
-| Table-read export (lines, words, minutes per character) | S | no | building (writing) |
-| Commit Tamil script as an alternate take | S | no | building (writing) |
+| Characters as data, one-step rename across every cue | M | no | built (writing) — release 8 Oct 2026 |
+| Treatment / one-pager / synopsis documents that start pre-filled | S | no | built (writing) — release 8 Oct 2026 |
+| Table-read export (lines, words, minutes per character) | S | no | built (writing) — release 8 Oct 2026 |
+| Commit Tamil script as an alternate take | S | no | built (writing) — release 8 Oct 2026 |
 | Script-notes overview across the whole script | S | no (existing comments) | not started |
 | Writing-goal history across devices | S | yes (widen the CHECK) | not started |
 
@@ -76,25 +79,25 @@ for word; a quote that isn't is stripped and counted.
 
 | Idea | Size | Status |
 |---|---|---|
-| Coverage report (a reader's report on the whole script) | M | building (AI) |
-| Logline workshop | S | building (AI) |
-| Character-voice check | S | building (AI) |
+| Coverage report (a reader's report on the whole script) | M | built (AI) — release 8 Oct 2026 |
+| Logline workshop | S | built (AI) — release 8 Oct 2026 |
+| Character-voice check | S | built (AI) — release 8 Oct 2026 |
 
 **Growth and money**
 
 | Idea | Size | Server | Status |
 |---|---|---|---|
-| Onboarding tour + first-week checklist (derived, writes only on action) | M | no | building (growth) |
-| Landing-page e-mail capture | S | yes | building (billing) |
-| First-party funnel counts — no pixel, no personal data, opt-out | S | yes | building (billing) |
-| Testimonials section (ships empty; never invented) | S | no | building (growth) |
-| WhatsApp support link (`VITE_SUPPORT_WHATSAPP`) | S | no | building (growth) |
-| Gift a licence | M | yes | building (billing) |
-| Film-school licence (seats + bulk student codes) | M | yes | building (billing) |
+| Onboarding tour + first-week checklist (derived, writes only on action) | M | no | built (growth) — release 8 Oct 2026 |
+| Landing-page e-mail capture | S | yes | not started (schema §25 onward) |
+| First-party funnel counts — no pixel, no personal data, opt-out | S | yes | not started (schema §25 onward) |
+| Testimonials section (ships empty; never invented) | S | no | built (growth) — release 8 Oct 2026 |
+| WhatsApp support link (`VITE_SUPPORT_WHATSAPP`) | S | no | built (growth) — release 8 Oct 2026 |
+| Gift a licence | M | yes | not started (schema §25 onward) |
+| Film-school licence (seats + bulk student codes) | M | yes | not started (schema §25 onward) |
 | Public read-only call-sheet / deck links that don't hit the invite gate | M | yes, needs a security review | DESIGN ONLY (growth) — proposal SQL, feature flag off |
 | Paid template / sample packs | L (content) | small | not started |
 | Tamil-script UI labels | L | no | not started — reverses `lang.js`'s design; decide first |
-| OTT delivery checklists (Netflix, Prime; Aha / Sun NXT / ZEE5 user-filled — no published specs) | S | no | building (compliance) |
+| OTT delivery checklists (Netflix, Prime; Aha / Sun NXT / ZEE5 user-filled — no published specs) | S | no | built (compliance) — release 8 Oct 2026 |
 
 ## Market context
 

@@ -338,7 +338,7 @@ try {
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Billing,Features', 'the console is six tabs, Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Billing,Growth,Features', 'the console is seven tabs (Growth since schema §22–§23), Overview selected: ' + tabs.join(', '));
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
     ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');

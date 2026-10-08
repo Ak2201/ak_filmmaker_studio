@@ -1,10 +1,10 @@
 /* ============================================================
    GROWTH — the browser's half of schema sections 21 onward
    ------------------------------------------------------------
-   Referral codes and credits (§22), affiliate reports (§23), GST
-   invoices (§24), gift licences (§25), film-school seats and bulk codes
-   (§26), and the console's reads of leads (§27) and funnel counts
-   (§28). Kept beside billing.js rather than inside it so the two can
+   Referral codes and credits (§22) and affiliate reports (§23). GST
+   invoices, gift licences, film-school seats, leads and funnel counts
+   are PLANNED, not in the schema yet; each will take the next free
+   section number when it is written. Kept beside billing.js rather than inside it so the two can
    move independently: billing.js is the purchase, this is everything
    around it.
 

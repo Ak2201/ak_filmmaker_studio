@@ -62,14 +62,14 @@
         "A strong editorial justification for the display, given to the Board with the application.",
         "Since 1 September 2023 the same material is required of films released on streaming platforms (online curated content)."
       ],
-      "source": "Cigarettes and Other Tobacco Products (Prohibition of Advertisement and Regulation of Trade and Commerce, Production, Supply and Distribution) Rules — rule 11, as notified in 2011 (in force 14 November 2011) and amended in 2012 (in force 2 October 2012); extended to online curated content for films released on or after 1 September 2023.",
+      "source": "Cigarettes and Other Tobacco Products (Prohibition of Advertisement and Regulation of Trade and Commerce, Production, Supply and Distribution) Rules, 2004 — rule 4(6) and rules 7–8, as amended by G.S.R. 786(E) (2011) and G.S.R. 708(E) (in force 2 October 2012). Rule 11, added by G.S.R. 400(E) on 31 May 2023, applies the same material to online curated content; check its start date and scope against the Gazette.",
       "sourceUrls": [
         "https://taxguru.in/income-tax/notification-movies-tv-programmes-displaying-tobacco-products-effect-14112011.html",
         "https://www.vitalstrategies.org/wp-content/uploads/2017/02/VS_ExecSummary_FilmRuleStudy02.pdf",
         "https://mondaq.com/india/broadcasting-film-tv-radio/1407864/smoking-is-injurious-to-ott-platforms",
         "https://theleaflet.in/from-theatre-to-home-anti-tobacco-warnings-to-be-displayed-on-ott-platforms"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
       "uncertain": "The exact placement of the disclaimer (middle of the film or at the interval), and whether a later draft making the streaming spots non-skippable was finalised. Read rule 11 in the current Gazette text."
     },
@@ -143,7 +143,7 @@
       ],
       "what": "An owner hiring out or lending a performing animal for a film must give the Animal Welfare Board of India prior information and a fitness certificate, and AWBI now gives its no-objection certificate only after a pre-shoot permission. The guidelines separately ask that cruelty to or abuse of animals is not presented needlessly.",
       "do": [
-        "Apply to AWBI online for pre-shoot permission BEFORE the shoot day, with the pre-shoot fitness certificate (and vaccination records for dogs and cats).",
+        "The producer applies to AWBI online for pre-shoot permission BEFORE the shoot day, with the animal owner's details, with the pre-shoot fitness certificate (and vaccination records for dogs and cats).",
         "Tell the State Animal Welfare Board, the district SPCA or the District Collector the shooting dates.",
         "After the shoot, file the self-declaration that no cruelty was inflicted (and the transport declaration with photographs), and obtain the AWBI certificate for the film.",
         "Background animals, computer-graphics animals and stock shots are the cases AWBI lists as not needing pre-shoot permission — say which applies."
@@ -154,9 +154,9 @@
         "https://ffo.gov.in/sites/default/files/2023-12/performing_animals_registration_rules_2001.pdf",
         "https://indiacinehub.gov.in/sites/default/files/2024-03/animal_owner_manual_0.pdf"
       ],
-      "checked": "2026-10-07",
+      "checked": "2026-10-08",
       "confidence": "secondary",
-      "uncertain": "That the Board asks for the AWBI certificate before it certifies is widely stated and is common practice; we did not find it written as a rule in an official text. The AWBI fee is listed as ₹25,000 for films but the page also refers to a revised fee structure."
+      "uncertain": "That the Board asks for the AWBI certificate before it certifies is widely stated and is common practice; we did not find it written as a rule in an official text. AWBI lists ₹25,000 for pre-shoot permission and ₹30,000 for a certificate applied for only after the shoot, and the page also refers to a revised fee structure — confirm the current fee on awbi.gov.in."
     },
     {
       "id": "violence",

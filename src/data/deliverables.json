@@ -125,7 +125,7 @@
           "id": "cbfc",
           "tool": "certification",
           "label": "CBFC certificate",
-          "why": "Required by law for public exhibition in India — a theatrical release, a satellite sale, most Indian streamers. Festivals abroad do not ask for it. Festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting, which the festival usually arranges. Ratings since 2024: U, UA 7+, UA 13+, UA 16+, A, S. Apply through the e-Cinepramaan portal with the final cut; a re-cut after certification needs a fresh certificate.",
+          "why": "Required by law for theatrical exhibition in India and asked for by TV broadcasters. Streaming platforms rate titles themselves under the IT Rules 2021, though many Indian platforms ask for the certificate in the contract. Festivals abroad do not ask for it. Festivals in India screen uncertified films under an exemption from the Ministry of Information and Broadcasting, which the festival usually arranges. Ratings since 2024: U, UA 7+, UA 13+, UA 16+, A, S. Apply through the e-Cinepramaan portal with the final cut; a re-cut after certification needs a fresh certificate.",
           "when": "release"
         },
         {
@@ -291,8 +291,8 @@
         },
         {
           "id": "pv_text",
-          "label": "Timed text — DFXP/TTML, EBU-STL or iTT",
-          "why": "Prime Video lists DFXP/TTML (.dfxp), EBU-STL (.stl), iTT (.itt) and, for Japanese only, Lambda Cap. SRT is NOT on that list: convert the subtitler's SRT before delivery. A forced-narrative track must match the main video's language.",
+          "label": "Timed text — DFXP/TTML, EBU-STL, iTT, SCC, SMPTE-TT or SRT",
+          "why": "Prime Video lists DFXP/TTML, EBU-STL, iTT, SCC, SMPTE-TT and SRT; Lambda Cap is the only format for Japanese. Files must run the video's full length, and frame-based timecodes need the frame rate declared in the delivery manifest — confirm with your Partner Operations Manager before delivery. A forced-narrative track must match the main video's language.",
           "when": "release",
           "tool": "dialogue-list"
         }

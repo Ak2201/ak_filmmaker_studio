@@ -1180,3 +1180,41 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - *Re-baselined.* Only the navigation pass's purpose-line words and
       settings' `closing`/`may` moved; zero `data-key` movement on all 21
       pages (720 keys).
+
+19. **The handoff and the stopped work (7–8 Oct 2026).** Ten feature
+    agents were stopped mid-work by the owner; their snapshots are
+    `archive/*`, merged into `wip-all`, and `develop` was cut from it.
+    `docs/HANDOFF.md`, `docs/WIP.md` and `docs/BRANCHING.md` record it.
+
+20. **Release: the ten workstreams reach `main` (8 Oct 2026).** Branch
+    `feature/integration` off `develop`, merged back into `develop` and
+    released to `main` through the gate in `docs/BRANCHING.md`. What it
+    took, because the merged tree had never been run whole:
+    - *Every suite on the merged tree.* 23 `test:*` suites (three new npm
+      scripts: `test:revisions`, `test:ai-coverage`, `prove:ai-coverage`);
+      one stale assertion (`write.js` calls `paginateDoc(doc)`, which wraps
+      `paginate()`).
+    - *Schema §24* adds the `characters` and `costs` sync scopes;
+      `fms_characters_v1` and `fms_costs_v1` left `LOCAL_ONLY` for
+      `SCOPE_BY_KEY` in the same commit. `scripts/schema-tests/scopes.sql`;
+      `test:schema` 225. NOT run live; `docs/LAUNCH.md` §4 orders it.
+    - *Four proofs were wrong, not the app.* `prove:ai-coverage` counted
+      the requests it aborts itself and the fake's intended 529;
+      `prove:sw` failed one run in two on Chromium's browser-process
+      fetch of the manifest install icon racing the switch to offline (the
+      icon is now asserted directly); `prove:billing` typed the feature
+      total (40 since `remove_branding`) and now reads `CAPABILITIES`;
+      `prove:gate` expected six console tabs (Growth is the seventh).
+    - *Compliance facts re-checked* against search summaries (the cited
+      hosts are unreachable from the container): the COTPA film rules are
+      rule 4(6) and 7–8 (rule 11 is the 2023 online-content rule); Prime
+      Video does list SRT; streamers rate under the IT Rules 2021, not
+      CBFC; AWBI's applicant is the producer.
+    - *Browser walk on the Dragon sample*: revisions (snapshot, compare,
+      lock numbers — no literal "null", 0 overflow at 390), all six cost
+      tabs, an expense through the form surviving into the studio backup,
+      the DPR leaving `fms_scenes_v1` untouched, the legal pages at 390 and
+      1280 in both themes, `start.html` with scripts off. Enter on
+      write.html: median 79 ms to the next frame, as before.
+    - *First paint grew* on reports, deliverables, budget and write; the
+      budget was recaptured with the reason (`docs/KNOWN-ISSUES.md`).

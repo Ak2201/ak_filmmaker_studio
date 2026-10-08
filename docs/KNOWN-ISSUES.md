@@ -51,3 +51,23 @@ once and not yet looked at.
   `thefilmmakerstudio.vercel.app` (owner, 7 Oct 2026). A custom domain later
   needs the ten files in `docs/LAUNCH.md` section 7, Vercel, and the Google
   authorised origins.
+
+## Left over from the 8 Oct 2026 release (the ten workstreams)
+
+- **First paint grew on four pages, and the budget was recaptured for it.**
+  reports (+43 KB: DPR, one-liner, running time), deliverables (+41 KB:
+  CBFC flags, dialogue list), budget (+22 KB: the six cost tabs) and write
+  (+2 KB). The growth is the features themselves, visible on those pages'
+  first render. The cheapest win if it matters: `src/pages/deliverables.js`
+  imports `src/data/cbfc-rules.json` (32 KB raw) and `lib/pdf.js` at module
+  scope although the PDF is only needed inside the export click — making
+  both dynamic needs the certification section to render after an await.
+- **On set: two small leftovers.** The recce card in `src/pages/plan.js`
+  does not show the four recce fields (`lat lng hospital police`) the call
+  sheet reads, and the after-sunset flag reads only the call sheet's
+  `wrap`, not the DPR's day-level wrap (`src/lib/dpr.js`).
+- **The CBFC/AWBI/OTT facts were re-checked against search summaries, not
+  the pages themselves** (8 Oct 2026; the container cannot reach the cited
+  hosts). Two were corrected (the COTPA rule numbers, Prime Video's timed
+  text list) and two sharpened. Open each `sourceUrls` link in a browser
+  before relying on the text, and bump that rule's `checked`.

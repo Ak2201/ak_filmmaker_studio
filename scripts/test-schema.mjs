@@ -36,7 +36,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const DB = process.env.SCHEMA_TEST_DB || 'fms_schema_test';
 const keep = process.argv.includes('--keep');
 /* The growth sections' checks, one file per section, in section order. */
-const GROWTH_FILES = ['upgrade.sql', 'referral.sql', 'affiliate.sql'];
+const GROWTH_FILES = ['upgrade.sql', 'referral.sql', 'affiliate.sql', 'scopes.sql'];
 
 function psql(args, { db = DB, input } = {}) {
   const base = ['psql', '-X', '-v', 'ON_ERROR_STOP=1', '-q', '-d', db, ...args];

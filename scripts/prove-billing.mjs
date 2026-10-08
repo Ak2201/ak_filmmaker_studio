@@ -321,7 +321,12 @@ try {
        6 Oct 2026 — src/lib/navmodel.js joins the two lists the same way). */
     const NAV = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8'));
     const built = [...NAV.phases, ...NAV.global].flatMap((p) => p.modules || []).filter((m) => m.status !== 'planned').length;
-    const total = built + 5;
+    // Every capability row counts except sample_only, which narrows
+    // rather than grants. Read from plan-gate.js rather than typed here,
+    // or each new capability (remove_branding was the sixth) fails this.
+    const capSrc = fs.readFileSync(path.join(ROOT, 'src/lib/plan-gate.js'), 'utf8');
+    const caps = [...(capSrc.match(/export const CAPABILITIES = \[([\s\S]*?)\n\];/) || ['', ''])[1].matchAll(/\['([a-z_]+)'/g)].map((m) => m[1]);
+    const total = built + caps.filter((k) => k !== 'sample_only').length;
     await amy.page.goto(BASE + 'settings.html#plan');
     await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });
     const counts = await amy.page.$$eval('#plan .pl-card', (cards) => Object.fromEntries(cards.map((c) => [c.dataset.plan, (c.querySelector('.pl-features-n') || {}).textContent])));

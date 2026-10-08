@@ -399,5 +399,45 @@ const at = (els, id) => els.findIndex((e) => e.id === id);
   ok(!Sync.numberPatches(moved, hand, null).some((p) => p.id === 'hand'), 'a hand-made row is never renumbered');
 }
 
+/* ================================================================
+   5. THE REVISED-PAGE TINT
+   ------------------------------------------------------------
+   buildDocument() paints a revised sheet in the revision colour when
+   marks.tint is on, and only then. A tint on a page that is not
+   revised, or a tint that leaks onto every sheet, is the failure.
+   ================================================================ */
+{
+  const { parseHTML } = await import('linkedom');
+  const { document: linkDoc } = parseHTML('<!doctype html><html><body></body></html>');
+  const hadDoc = 'document' in globalThis, hadNode = 'Node' in globalThis;
+  globalThis.document = linkDoc;
+  globalThis.Node = linkDoc.defaultView ? linkDoc.defaultView.Node : class {};
+  try {
+    const S = sample.elements.map((e) => blankElement(e));
+    const rev = makeRevision(S, 'Blue');
+    const now = S.map((e) => ({ ...e }));
+    now[700] = { ...now[700], text: now[700].text + ' (revised)' };
+    const ids = Diff.revisedIds(Diff.diffElements(rev.elements, now));
+    const sheetsOf = (tint) => {
+      const root = Typeset.buildDocument({ elements: now }, { title: 'T', marks: { ids, label: 'Blue Revision', swatch: 'blue', tint } });
+      return [...root.querySelectorAll('section.wr-pg')];
+    };
+    const on = sheetsOf(true);
+    const off = sheetsOf(false);
+    const revisedOn = on.filter((s) => s.classList.contains('wr-pg-revised'));
+    ok(revisedOn.length >= 1, 'tint: a revised sheet exists to tint');
+    ok(revisedOn.every((s) => s.classList.contains('wr-pg-tint') && s.classList.contains('c-blue')),
+      'tint on: every revised sheet carries wr-pg-tint and its colour class');
+    ok(on.filter((s) => !s.classList.contains('wr-pg-revised')).every((s) => !s.classList.contains('wr-pg-tint')),
+      'tint on: an unrevised sheet is not tinted');
+    ok(off.every((s) => !s.classList.contains('wr-pg-tint')), 'tint off: no sheet is tinted');
+    ok(off.filter((s) => s.classList.contains('wr-pg-revised')).length === revisedOn.length,
+      'tint off: the revised sheets are still marked, just not tinted');
+  } finally {
+    if (!hadDoc) delete globalThis.document;
+    if (!hadNode) delete globalThis.Node;
+  }
+}
+
 console.log(`test:revisions — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

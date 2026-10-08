@@ -37,6 +37,7 @@
    ------------------------------------------------------------ */
 .pdf-masthead { display: none; }
 .wr-print { display: none; }
+.inv-doc { display: none; }
 
 /* A dropdown is absolutely positioned. Outside the toolbar there is
    nothing positioned to hang it from, so at phone width the panel
@@ -45,6 +46,20 @@
 .pdf-menu-host { position: relative; }
 
 @media print {
+
+  /* THE INVOICE. src/lib/invoice-pdf.js appends one .inv-doc to <body>
+     for the length of the job; everything else steps aside. */
+  body.pdf-invoice > *:not(.inv-doc) { display: none !important; }
+  body.pdf-invoice > .inv-doc { display: block; color: var(--print-ink); background: var(--print-paper); font: 11pt/1.45 var(--f-body, sans-serif); }
+  .inv-doc h1 { font-size: 20pt; margin: 0 0 2pt; }
+  .inv-doc .inv-no { font-size: 12pt; margin: 0 0 14pt; }
+  .inv-doc .inv-cols { display: flex; gap: 24pt; margin-bottom: 14pt; }
+  .inv-doc .inv-cols > div { flex: 1; }
+  .inv-doc h2 { font-size: 9pt; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 3pt; }
+  .inv-doc table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; }
+  .inv-doc th, .inv-doc td { text-align: left; padding: 5pt 4pt; border-bottom: 1px solid var(--print-ink); }
+  .inv-doc td.inv-amt, .inv-doc th.inv-amt { text-align: right; }
+  .inv-doc .inv-note { font-size: 9.5pt; margin-top: 12pt; }
 
   /* ----------------------------------------------------------
      THE MASTHEAD

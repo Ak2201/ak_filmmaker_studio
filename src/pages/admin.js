@@ -40,6 +40,7 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { billingAdminSection, wireBillingAdmin } from '../ui/billing-admin.js';
+import { invoiceAdminSection } from '../ui/invoice-panels.js';
 import { growthAdminSection, wireGrowthAdmin } from '../ui/growth-admin.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 
@@ -228,6 +229,8 @@ function render() {
     const feats = planFeaturesSection(section, st);
     const bill = billingAdminSection(section, st);
     if (bill) body.append(bill);
+    const inv = invoiceAdminSection(section, st, { rerender: render });   // schema §28
+    if (inv) body.append(inv);
     const growth = growthAdminSection(section, st);
     if (growth) body.append(growth);
     if (feats) body.append(feats);

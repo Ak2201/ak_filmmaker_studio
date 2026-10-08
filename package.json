@@ -16,6 +16,7 @@
     "test:story": "node scripts/test-story.mjs",
     "test:screenplay": "node scripts/test-screenplay.mjs",
     "test:billing": "node scripts/test-billing.mjs",
+    "test:invoice": "node scripts/test-invoice.mjs",
     "test:schema": "node scripts/test-schema.mjs",
     "test:post": "node scripts/test-post.mjs",
     "test:format": "node scripts/test-format.mjs",

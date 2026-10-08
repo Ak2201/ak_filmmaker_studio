@@ -1,10 +1,12 @@
 {
-  "_comment": "THE product identity. Change `name` here and rebuild: every page title, meta tag, footer, export, manifest, extension and the OG image (npm run og) follow. Never put this name in a storage key or a file-format id; backup.js keeps its own fixed FORMAT_ID so a rename never breaks restore. `supportEmail` is the address customers write to; replace it with a dedicated support inbox. `seller` is the legal seller identity the policy pages must show.",
+  "_comment": "THE product identity. Change `name` here and rebuild: every page title, meta tag, footer, export, manifest, extension and the OG image (npm run og) follow. Never put this name in a storage key or a file-format id; backup.js keeps its own fixed FORMAT_ID so a rename never breaks restore. `supportEmail` is the address customers write to; replace it with a dedicated support inbox. `seller` is the legal seller identity the policy pages must show. `address` and `gstin` are optional and EMPTY while the seller is an individual not registered for GST: invoices are then a Bill of Supply. Fill `gstin` only when registered (and add a tax-invoice mode, schema §28 note).",
   "name": "FilmMakerStudio",
   "short": "Studio",
   "host": "thefilmmakerstudio.vercel.app",
   "path": "/start",
   "supportEmail": "arunaaron85@gmail.com",
   "seller": "Arun Kumar Mohanan",
+  "address": "",
+  "gstin": "",
   "tagline": "Write, plan and shoot your film"
 }

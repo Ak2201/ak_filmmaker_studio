@@ -473,3 +473,35 @@ credit), the discount given, `commission_due = floor(revenue × pct /
 both; the commission is paid by hand. Proved: `affiliate.sql` (19
 checks), `prove-billing.mjs` (m). Nothing to redeploy.
 
+
+## 10. Buyer invoices — Bill of Supply (schema §28, 8 Oct 2026). NOT RUN LIVE — owner approval.
+
+The seller is an individual **not registered for GST**, so the document is a
+**Bill of Supply**: no tax is charged or shown. `doc_type` is CHECKed to
+`bill_of_supply`; when `src/data/brand.json` `gstin` is filled, widen that
+CHECK in a new section and add a tax-invoice mode (CGST+SGST vs IGST). Until
+then an empty `gstin` prints "supplier not registered under GST". `address`
+and `gstin` are optional brand keys, empty by default.
+
+- **Number** `FMS/2026-27/000123`: FY is 1 April to 31 March read in
+  Asia/Kolkata; the counter restarts each FY. Gapless: `issue_invoice()` locks
+  the FY's `invoice_counters` row `FOR UPDATE` and bumps it in the same
+  transaction as the insert. Invoices are never edited or deleted.
+- **When**: an AFTER UPDATE trigger on `payments` (`payments_invoice_after`)
+  issues one when a payment becomes `paid` with a price above zero, so
+  `activate_payment()` and its redefinitions are untouched. Granted and
+  zero-rupee payments get none. A failure in the sub-block warns, leaves the
+  payment paid and burns no number; `admin_issue_invoice(payment_id)` repairs it.
+- **Buyer GSTIN** (optional): `gstin_valid()` checks format, state code and the
+  mod-36 checksum; `src/lib/invoice.js` mirrors it. `set_buyer_gstin()` works
+  **only before issue** (payment `created`/`failed`): an issued number is a
+  legal record and is never edited. After issue it raises 22023.
+- **RLS**: buyer reads own (`inv_select_own`), admin all; counters and buyer
+  details are closed; `my_invoices()`, `admin_list_invoices()`.
+- **Client**: Plan tab lists invoices with DOWNLOAD PDF; the console has an
+  Invoices section (`src/ui/invoice-panels.js`). The PDF is built in the
+  browser through the print path (`src/lib/invoice-pdf.js`, lazy).
+- **Run order**: after §16–§26, run §28 in the SQL editor (idempotent). Nothing
+  to redeploy; payments made before §28 are not back-filled (call
+  `admin_issue_invoice` per payment if wanted). Proved: `npm run test:schema`
+  (`invoice.sql`) and `npm run test:invoice`.

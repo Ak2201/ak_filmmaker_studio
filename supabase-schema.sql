@@ -6021,3 +6021,269 @@ notify pgrst, 'reload schema';
 --     up to 3 projects ...".
 --  3. rename a plan in the console, repeat 2: the sentence follows.
 -- ============================================================
+
+-- ============================================================
+-- 28. BUYER INVOICES — Bill of Supply, gapless per financial year
+-- ------------------------------------------------------------
+-- NOT RUN LIVE — owner approval. Run after §16–§26 (needs payments,
+-- is_studio_admin, plans). Idempotent.
+--
+-- The seller is an INDIVIDUAL not registered for GST, so the document
+-- is a BILL OF SUPPLY: no tax is charged and none is shown. doc_type is
+-- CHECKed to 'bill_of_supply' for that reason; the day the seller has a
+-- GSTIN, widen the CHECK to admit 'tax_invoice' (a new section, not an
+-- edit of this one) and teach issue_invoice to choose.
+--
+-- NUMBER: FMS/2026-27/000123 — "FMS" / Indian financial year (1 April to
+-- 31 March, read in Asia/Kolkata) / a six-digit counter that restarts at
+-- 000001 each year. GAPLESS because the counter row is locked FOR UPDATE
+-- and bumped inside the same transaction that inserts the invoice: a
+-- rollback undoes both, so a number is never spent without a document.
+-- Never delete an invoice; there is no policy or function that does.
+--
+-- WHEN: automatically, when a payment becomes 'paid' with a price above
+-- zero (an AFTER UPDATE trigger on payments, the pattern §22 uses — so
+-- activate_payment() and every later redefinition of it are untouched).
+-- Granted and zero-rupee payments get none. The issue runs in a
+-- sub-block: if it fails the payment still stands, a WARNING is logged,
+-- and admin_issue_invoice(payment) issues it afterwards.
+--
+-- BUYER GSTIN: optional, validated by format AND checksum
+-- (gstin_valid, mirrored by src/lib/invoice.js). set_buyer_gstin() is
+-- allowed ONLY BEFORE the invoice is issued (while the payment is
+-- 'created' or 'failed'), because an issued number is a legal record
+-- and is never edited. After issue it raises 22023.
+-- ============================================================
+
+-- 28.1 GSTIN VALIDATION ----------------------------------------------
+create or replace function public.gstin_valid(p text)
+returns boolean
+language plpgsql
+immutable
+set search_path = public, pg_temp
+as $fn$
+declare
+  g     text := upper(btrim(coalesce(p, '')));
+  cs    constant text := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  i     int; v int; f int; prod int; total int := 0; st int;
+begin
+  if g !~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$' then return false; end if;
+  st := substr(g, 1, 2)::int;
+  if not ((st between 1 and 38) or st in (97, 99)) then return false; end if;
+  for i in 1..14 loop
+    v := strpos(cs, substr(g, i, 1)) - 1;
+    f := case when i % 2 = 1 then 1 else 2 end;
+    prod := v * f;
+    total := total + prod / 36 + prod % 36;
+  end loop;
+  return substr(cs, ((36 - total % 36) % 36) + 1, 1) = substr(g, 15, 1);
+end;
+$fn$;
+grant execute on function public.gstin_valid(text) to anon, authenticated;
+
+-- 28.2 FINANCIAL YEAR AND NUMBER ---------------------------------------
+create or replace function public.invoice_fy(p_at timestamptz)
+returns text
+language sql
+immutable
+set search_path = public, pg_temp
+as $fn$
+  select y || '-' || lpad(((y + 1) % 100)::text, 2, '0')
+    from (select case when extract(month from (p_at at time zone 'Asia/Kolkata')) >= 4
+                      then extract(year from (p_at at time zone 'Asia/Kolkata'))::int
+                      else extract(year from (p_at at time zone 'Asia/Kolkata'))::int - 1 end as y) s;
+$fn$;
+grant execute on function public.invoice_fy(timestamptz) to anon, authenticated;
+
+create or replace function public.invoice_number(p_fy text, p_seq int)
+returns text
+language sql
+immutable
+as $fn$ select 'FMS/' || p_fy || '/' || lpad(p_seq::text, 6, '0'); $fn$;
+grant execute on function public.invoice_number(text, int) to anon, authenticated;
+
+-- 28.3 TABLES ------------------------------------------------------------
+create table if not exists public.invoice_counters (
+  fy      text primary key check (fy ~ '^[0-9]{4}-[0-9]{2}$'),
+  last_n  int  not null default 0 check (last_n >= 0)
+);
+alter table public.invoice_counters enable row level security;   -- no policies: closed
+
+create table if not exists public.invoice_buyer_details (
+  payment_id uuid primary key references public.payments(id) on delete cascade,
+  user_id    uuid not null,
+  gstin      text check (gstin is null or public.gstin_valid(gstin)),
+  updated_at timestamptz not null default now()
+);
+alter table public.invoice_buyer_details enable row level security;  -- closed; read by issue_invoice
+
+-- payment_id and user_id are deliberately NOT foreign keys: an invoice
+-- is a tax record and outlives a deleted payment row or account.
+create table if not exists public.invoices (
+  id            uuid primary key default gen_random_uuid(),
+  number        text not null unique,
+  fy            text not null,
+  seq           int  not null,
+  payment_id    uuid not null unique,
+  user_id       uuid not null,
+  doc_type      text not null default 'bill_of_supply' check (doc_type in ('bill_of_supply')),
+  buyer_name    text not null,
+  buyer_email   text,
+  buyer_gstin   text check (buyer_gstin is null or public.gstin_valid(buyer_gstin)),
+  plan_id       text not null,
+  plan_name     text not null,
+  amount_paise  int  not null check (amount_paise > 0),
+  currency      text not null default 'INR',
+  issued_at     timestamptz not null default now(),
+  unique (fy, seq)
+);
+create index if not exists invoices_user_idx on public.invoices(user_id, issued_at desc);
+alter table public.invoices enable row level security;
+drop policy if exists inv_select_own on public.invoices;
+create policy inv_select_own on public.invoices for select using (user_id = auth.uid());
+drop policy if exists inv_select_admin on public.invoices;
+create policy inv_select_admin on public.invoices for select using (public.is_studio_admin());
+-- No insert/update/delete policy: issue_invoice() is the only writer.
+revoke all on public.invoice_counters, public.invoice_buyer_details from public, anon, authenticated;
+revoke all on public.invoices from public, anon;
+revoke insert, update, delete on public.invoices from authenticated;
+
+-- 28.4 ISSUING ---------------------------------------------------------
+/** Idempotent: a payment that already has an invoice returns it. Locks
+ *  the FY's counter row, so concurrent captures queue and numbers stay
+ *  consecutive. Internal: not callable from the client. */
+create or replace function public.issue_invoice(p_payment uuid)
+returns public.invoices
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pay public.payments;
+  inv public.invoices;
+  v_fy text;
+  v_n  int;
+  em  text; nm text; pn text; gs text;
+begin
+  select * into inv from public.invoices i where i.payment_id = p_payment;
+  if inv.id is not null then return inv; end if;
+  select * into pay from public.payments p where p.id = p_payment;
+  if pay.id is null then raise exception 'No such payment' using errcode = '22023'; end if;
+  if pay.status <> 'paid' or pay.amount_paise <= 0 then
+    raise exception 'Only a paid, non-zero payment is invoiced' using errcode = '22023';
+  end if;
+  v_fy := public.invoice_fy(coalesce(pay.paid_at, now()));
+  insert into public.invoice_counters (fy, last_n) values (v_fy, 0) on conflict (fy) do nothing;
+  select c.last_n + 1 into v_n from public.invoice_counters c where c.fy = v_fy for update;
+  update public.invoice_counters c set last_n = v_n where c.fy = v_fy;
+  select u.email::text, coalesce(nullif(btrim(u.raw_user_meta_data ->> 'full_name'), ''), nullif(btrim(u.raw_user_meta_data ->> 'name'), ''))
+    into em, nm from auth.users u where u.id = pay.user_id;
+  select coalesce((select x.name from public.plans x where x.id = pay.plan_id), initcap(pay.plan_id)) into pn;
+  select d.gstin into gs from public.invoice_buyer_details d where d.payment_id = pay.id;
+  insert into public.invoices (number, fy, seq, payment_id, user_id, doc_type, buyer_name, buyer_email, buyer_gstin,
+                               plan_id, plan_name, amount_paise, currency, issued_at)
+  values (public.invoice_number(v_fy, v_n), v_fy, v_n, pay.id, pay.user_id, 'bill_of_supply', coalesce(nm, em, 'Customer'), em, gs,
+          pay.plan_id, pn, pay.amount_paise, pay.currency, now())
+  returning * into inv;
+  return inv;
+end;
+$fn$;
+revoke execute on function public.issue_invoice(uuid) from public, anon, authenticated;
+
+create or replace function public.payments_invoice_after()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if new.status = 'paid' and old.status is distinct from 'paid' and new.amount_paise > 0 then
+    begin
+      perform public.issue_invoice(new.id);
+    exception when others then
+      -- the sub-block rolls the counter back with it: still gapless
+      raise warning 'invoice not issued for payment %: %', new.id, sqlerrm;
+    end;
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists payments_invoice_after on public.payments;
+create trigger payments_invoice_after after update of status on public.payments
+  for each row execute function public.payments_invoice_after();
+
+-- 28.5 RPCs ---------------------------------------------------------------
+create or replace function public.my_invoices()
+returns setof public.invoices
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$ select * from public.invoices i where i.user_id = auth.uid() order by i.issued_at desc; $fn$;
+revoke execute on function public.my_invoices() from public, anon;
+grant  execute on function public.my_invoices() to authenticated;
+
+create or replace function public.admin_list_invoices(p_limit int default 500)
+returns setof public.invoices
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query select * from public.invoices i order by i.issued_at desc limit greatest(1, least(p_limit, 2000));
+end;
+$fn$;
+revoke execute on function public.admin_list_invoices(int) from public, anon;
+grant  execute on function public.admin_list_invoices(int) to authenticated;
+
+/** The console's repair path when the automatic issue warned. */
+create or replace function public.admin_issue_invoice(p_payment uuid)
+returns public.invoices
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return public.issue_invoice(p_payment);
+end;
+$fn$;
+revoke execute on function public.admin_issue_invoice(uuid) from public, anon;
+grant  execute on function public.admin_issue_invoice(uuid) to authenticated;
+
+/** The buyer's own GSTIN for one of their payments, BEFORE the invoice
+ *  exists. Empty string clears it. */
+create or replace function public.set_buyer_gstin(p_payment uuid, p_gstin text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare pay public.payments; g text := nullif(upper(btrim(coalesce(p_gstin, ''))), '');
+begin
+  if auth.uid() is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  select * into pay from public.payments p where p.id = p_payment and p.user_id = auth.uid();
+  if pay.id is null then raise exception 'No such payment' using errcode = '42501'; end if;
+  if exists (select 1 from public.invoices i where i.payment_id = p_payment) or pay.status not in ('created', 'failed') then
+    raise exception 'This invoice has been issued and cannot change. Enter the GSTIN before paying.' using errcode = '22023';
+  end if;
+  if g is not null and not public.gstin_valid(g) then
+    raise exception 'That GSTIN does not pass the format and checksum test' using errcode = '22023';
+  end if;
+  insert into public.invoice_buyer_details (payment_id, user_id, gstin) values (p_payment, auth.uid(), g)
+  on conflict (payment_id) do update set gstin = excluded.gstin, updated_at = now();
+end;
+$fn$;
+revoke execute on function public.set_buyer_gstin(uuid, text) from public, anon;
+grant  execute on function public.set_buyer_gstin(uuid, text) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 28.6 CHECKS TO RUN, none of which has been run live ----------------------
+--  scripts/schema-tests/invoice.sql runs them on a scratch database:
+--  gapless numbers, FY rollover (31 Mar 23:59 IST vs 1 Apr 00:00 IST),
+--  GSTIN checksum, RLS (buyer sees own, admin all, anon none), the
+--  trigger, idempotence, set_buyer_gstin before and after issue.
+-- ============================================================

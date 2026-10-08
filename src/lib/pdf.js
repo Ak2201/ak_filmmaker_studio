@@ -97,6 +97,8 @@ export const DOCUMENTS = {
   reports:    { setup: 'a4',         label: 'Production reports', classes: ['rp-print-reports'] },
   board:      { setup: 'landscape',  label: 'Stripboard' },
   dood:       { setup: 'landscape',  label: 'Day Out of Days' },
+  // An invoice is its own letterhead.
+  invoice:    { setup: 'a4',         label: 'Invoice', masthead: false },
   // The deck is its own cover, so no masthead above it.
   pitch:      { setup: 'landscape',  label: 'Pitch deck', masthead: false }
 };

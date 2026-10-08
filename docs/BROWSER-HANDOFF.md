@@ -72,35 +72,44 @@ address, once it has signed in (`docs/LAUNCH.md` §4).
 
 ## 2. Google Cloud — publish the OAuth consent screen
 
-**ALREADY PUBLISHED — observed 8 Oct 2026.** This step was written on the
-belief that project `filmstudio-495419` was "in Testing with zero test
-users, so nobody can sign in". It is **In production**, External, and the
-Verification Center says verification is not required because no
-sensitive or restricted scopes are requested. The `filmstudio` client
-(`186547817753-qkjg…`, the one `.env` uses) was last used 5 Oct 2026.
-The production host is already an authorised JavaScript origin and the
-Supabase callback is the registered redirect URI. Nothing to publish.
+**ALREADY PUBLISHED, AND THE BRANDING IS ALREADY FILLED IN — observed
+8 Oct 2026.** This step assumed `filmstudio-495419` was "in Testing with
+zero test users, so nobody can sign in". It is **In production**,
+External; Google says verification is not required because no sensitive
+or restricted scopes are requested; the `filmstudio` client (the one
+`.env` uses) was last used 5 Oct 2026; the production host is an
+authorised JS origin and the Supabase callback is the registered redirect
+URI. Nothing to publish and no fields to type.
 
-**What IS missing is the branding**, and Google says so itself: "Your
-branding is not being shown to users." App name, home page, privacy link,
-terms link and authorised domains are all blank, so the consent screen
-shows a bare client ID. The owner approved filling it with the values now
-recorded in `docs/LAUNCH.md` §2 — note the home page is
-`/start.html`, not `/`, because `/` is behind the gate.
+**What is actually wrong is ownership of the domain.** The Verification
+Center's "Your branding is not being shown to users" resolves to one
+issue: the home page URL `https://thefilmmakerstudio.vercel.app` "is not
+registered to you". Google Search Console holds **no property at all**
+for `arunkumarmohanans@gmail.com`, the account that owns the Cloud
+project — which is a different address from the `arunaaron85@gmail.com`
+on the consent screen, and the ownership check follows the project.
 
-**NOT APPLIED: the browser session lost its connection to Chrome before
-the form was saved.** Nothing was written. Still owed: set the five
-branding fields, and remove the stale
-`https://ak-filmmaker-studio.vercel.app` origin from the `filmstudio`
-client (also approved).
+The route through, in `docs/LAUNCH.md` §2 in full: add the host as a
+URL-prefix property (not a Domain property — `vercel.app` is a public
+suffix and we do not hold its DNS), verify with the HTML file committed
+to `public/` (its contents are one line, so no download is needed), wait
+the 24 hours Google asks for, then Branding → View issues → "I have fixed
+the issues".
 
-One trap, paid for once already: in the new Google Auth Platform console
-the per-row delete is a trash icon that appears on HOVER, and clicking
-into a URI field SCROLLS the page. A trash icon clicked at coordinates
-taken from a screenshot older than the focus event deletes the row BELOW
-the one you meant — `localhost:5173` instead of the stale host, in this
-case. It was discarded unsaved. Screenshot immediately before the click,
-and verify which row the icon is level with.
+**Nothing was clicked in Search Console** — creating the property changes
+the owner's Google account and is theirs to approve.
+
+Still owed, approved 8 Oct: removing the stale
+`https://ak-filmmaker-studio.vercel.app` origin. One trap paid for once:
+the per-row delete appears on HOVER and the page SCROLLS when a field
+takes focus, so a trash icon clicked from a slightly stale screenshot
+deletes the row below the one you meant. It took `localhost:5173`; it was
+discarded unsaved.
+
+A method note for whoever works this file next: `get_page_text` does not
+emit the VALUES of form inputs. Reading this page with it reports every
+filled field as blank, and that produced a wrong report here before a
+screenshot corrected it. Screenshot before claiming a form is empty.
 
 ## 3. Live security checks (before ANY payment)
 

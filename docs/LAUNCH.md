@@ -30,48 +30,69 @@ Verification Center states "Verification is not required since your app
 is not requesting any sensitive or restricted scopes." Sign-in works. The
 `filmstudio` OAuth client records a last-used date of 5 Oct 2026.
 
-What is actually configured:
-
 | Thing | State on 8 Oct 2026 |
 | --- | --- |
 | Publishing status | In production, External |
 | Verification | Not required (no sensitive/restricted scopes) |
-| Client used by `.env` | `filmstudio`, `186547817753-qkjg…`, created 6 May 2026 |
+| Client used by `.env` | `filmstudio`, `186547817753-qkjg…`, created 6 May 2026, last used 5 Oct 2026 |
 | Other client | `Filmmakers Studio - Drive (browser)`, `…-9lm4…`, 3 Oct 2026, unused |
 | Authorised JS origins | `https://ak-filmmaker-studio.vercel.app` (stale), `http://localhost:5173`, `http://localhost:4173`, `https://thefilmmakerstudio.vercel.app` |
 | Authorised redirect URI | `https://conhlrulxfwkhsnymakz.supabase.co/auth/v1/callback` |
-| Registered scopes | **none** — all three scope tables empty |
-| Branding | **entirely blank** — no app name, home page, privacy link, terms link or authorised domains |
+| Registered scopes | none — all three scope tables empty |
+| Branding fields | **all filled in** |
+| Branding verification | **REJECTED** — see below |
 
-**The one real gap is branding, and it is a selling problem rather than a
-technical one.** Google reports "Your branding is not being shown to
-users." A consent screen with no app name shows a bare client ID at the
-exact moment someone is deciding whether to trust this with their film.
-Owner approved filling it on 8 Oct 2026, with these values:
+**The branding is filled in, and Google has refused to show it.** App
+name `FilmMakerStudio`, support email `arunaaron85@gmail.com`, home page
+`https://thefilmmakerstudio.vercel.app`, privacy `…/privacy`, terms
+`…/terms`, authorised domains including
+`conhlrulxfwkhsnymakz.supabase.co`. Nothing there needs typing.
 
-- App name `FilmMakerStudio` (the name in every `<title>` and the manifest)
-- Home page `https://thefilmmakerstudio.vercel.app/start.html` — the
-  PUBLIC landing page. Not `/`: that is the hub, behind the gate, and a
-  reviewer following it lands on `invite.html`.
-- Privacy `https://thefilmmakerstudio.vercel.app/privacy`,
-  terms `https://thefilmmakerstudio.vercel.app/terms` (both live, 200)
-- Authorised domain `vercel.app`
+The Verification Center's "Your branding is not being shown to users"
+has exactly one issue behind it, and it is not a blank field:
 
-**NOT YET APPLIED.** The browser session doing it lost its connection
-before the form was saved, and nothing was written. Also approved and not
-applied: removing the stale `https://ak-filmmaker-studio.vercel.app`
-origin from the `filmstudio` client. Do these together, and note that the
-per-row delete control in the new console appears on HOVER and the page
-SCROLLS when a field takes focus — screenshot immediately before clicking
-a trash icon, or you will delete the row below the one you meant (this
-happened; it was discarded unsaved).
+> The website of your home page URL "https://thefilmmakerstudio.vercel.app"
+> is not registered to you. Verify ownership of your home page, then wait
+> 24 hours before retrying to allow our systems to update.
 
-A second thing worth knowing before touching the scopes page: the scope
-tables are empty even though `signInWithGoogle()` asks for `drive.file`
-alongside e-mail. That is not breaking anything, because `drive.file` is
-in Google's non-sensitive class — which is exactly why the Verification
-Center says no review is needed. Registering it would describe it
-properly on the consent screen; registering the wrong thing there is how
+**And Google Search Console holds NO property for the account that owns
+the Cloud project** (`arunkumarmohanans@gmail.com` — note this is NOT the
+`arunaaron85@gmail.com` on the consent screen; the ownership check
+follows the project, so the property must be created under the project
+owner's account). Search Console opens on its "Add a website" welcome
+screen, which is what it shows when the account has no properties at all.
+
+So the sequence is: add `https://thefilmmakerstudio.vercel.app` as a
+**URL-prefix** property (a Domain property cannot work — `vercel.app` is
+on the Public Suffix List and the DNS is not ours), verify it, wait 24
+hours as Google asks, then return to Branding → View issues → "I have
+fixed the issues". Do NOT click that before the 24 hours: a failed
+re-verification is another round trip.
+
+For the verification token, prefer the **HTML file** method and commit
+the file to `public/`, which Vercel serves at the root. The file's
+contents are one line — `google-site-verification: <the filename>` — so
+it can be authored from the filename shown in Search Console without
+downloading anything. The meta-tag method would mean putting a tag in
+`index.html`, which is the page behind the gate, and markup is the one
+place this project tries not to keep content.
+
+**Not done, and deliberately so:** nothing was clicked in Search Console,
+because creating the property is a change to the owner's Google account.
+
+Also still owed, approved 8 Oct: remove the stale
+`https://ak-filmmaker-studio.vercel.app` origin from the `filmstudio`
+client. Note that in the new console the per-row delete is a trash icon
+revealed on HOVER, and clicking into a URI field SCROLLS the page — a
+trash clicked from a screenshot taken before the focus event removes the
+row BELOW the one intended. That happened once (it took `localhost:5173`)
+and was discarded unsaved. Screenshot immediately before the click.
+
+A last note before anyone edits the scopes page: the scope tables are
+empty even though `signInWithGoogle()` asks for `drive.file` alongside
+e-mail, and nothing is broken by that, because `drive.file` is in
+Google's non-sensitive class — which is exactly why the Verification
+Center says no review is needed. Registering the wrong thing there is how
 a project that needs no review acquires one.
 
 ## 3. Finish the legal pages

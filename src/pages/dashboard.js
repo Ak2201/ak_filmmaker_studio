@@ -63,7 +63,11 @@ import Contacts from '../lib/contacts.js';
 import Shots from '../lib/shots.js';
 import { loadScript, pageCount, formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
-import { readiness } from '../lib/readiness.js';
+import { readiness, sceneLabel } from '../lib/readiness.js';
+import PlanGate from '../lib/plan-gate.js';
+import { getDriveStatus } from '../lib/drive-sync.js';
+import { dprSummary } from '../lib/dpr.js';
+import { planName } from '../lib/plans.js';
 
 
 const app = document.getElementById('app');
@@ -349,12 +353,191 @@ function readinessRow(c) {
   return row;
 }
 
+/* ============================================================
+   TODAY'S DESK
+   ------------------------------------------------------------
+   Six tiles, all derived on render and none stored. Where a figure
+   does not exist on the client the tile says so rather than inventing
+   one: the plan's project limit lives in the database (a trigger
+   raises P0402), and no model records when a backup file was last
+   exported, so neither is shown as a number. */
+const MS_DAY = 86400000;
+
+/** 'YYYY-MM-DD' as a LOCAL midnight; null when it is not a date. */
+function localDay(str) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+function daysFromToday(date) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((date - t) / MS_DAY);
+}
+function when(n) {
+  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? 'in ' + n + ' days' : Math.abs(n) + ' days ago';
+}
+
+function tile(id, eyebrow, title) {
+  const t = h('section.db-tile', { 'aria-labelledby': 'dbt-' + id });
+  t.append(h('p.db-tile-eyebrow', { text: eyebrow }), h('h2.db-tile-h', { id: 'dbt-' + id, text: title }));
+  return t;
+}
+
+function continueTarget(snap) {
+  const log = recentActivity(1)[0];
+  if (log && log.url) return { href: log.url, what: String(log.what || 'where you left off'), ts: log.ts };
+  const next = firstUnfinished(snap.main);
+  if (next) {
+    return { href: snap.main.blueprint.href + '#' + next.step.id,
+      what: 'Step ' + next.step.num + ' · ' + next.step.title, ts: null };
+  }
+  if (snap.journey && snap.journey.next) return { href: snap.journey.next.href, what: snap.journey.next.label, ts: null };
+  return { href: snap.main.blueprint.href, what: snap.main.blueprint.label, ts: null };
+}
+
+function renderContinue(snap, projects) {
+  const latest = projects.slice().sort((a, b) => Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0))[0];
+  const tl = tile('continue', 'Continue', 'Pick up where you left off');
+  tl.classList.add('db-tile-wide');
+  if (latest && latest.id !== snap.project.id) {
+    tl.append(
+      h('p.db-tile-line', { text: 'You last edited \u201c' + latest.title + '\u201d, ' + relTime(latest.updatedAt)
+        + '. \u201c' + snap.project.title + '\u201d is the one open now.' }),
+      h('button.btn.primary.db-big', {
+        type: 'button', 'data-action': 'open-project', 'data-project': latest.id,
+        'aria-label': 'Open ' + latest.title, text: 'Open \u201c' + latest.title + '\u201d  \u2192'
+      })
+    );
+    return tl;
+  }
+  const t = continueTarget(snap);
+  tl.append(
+    h('p.db-tile-line', { text: t.what + (t.ts ? ' \u00b7 ' + relTime(t.ts) : '') }),
+    h('a.btn.primary.db-big', { href: t.href, 'aria-label': 'Continue: ' + t.what, text: 'Continue  \u2192' })
+  );
+  return tl;
+}
+
+function renderProjectTile(snap) {
+  const tl = tile('project', FORMAT_LABEL[snap.project.format] || 'Project', snap.project.title);
+  const j = snap.journey;
+  tl.append(h('p.db-tile-line', { text: 'Stage: ' + (j ? j.currentLabel : 'Story') }));
+  const r = readiness();
+  if (!r.hasFilm) {
+    tl.append(h('p.db-tile-line', { text: 'Readiness: no scenes yet, so nothing to check.' }));
+  } else {
+    const pass = r.checks.filter((c) => c.passed);
+    tl.append(h('p.db-tile-line', {
+      text: 'Readiness: ' + pass.length + ' of ' + r.checks.length + ' checks pass \u00b7 '
+        + r.blockers + ' blocker' + (r.blockers === 1 ? '' : 's') + ', ' + r.gaps + ' gap' + (r.gaps === 1 ? '' : 's')
+    }));
+    const ul = h('ul.db-tick');
+    r.checks.forEach((c) => ul.append(h('li' + (c.passed ? '.is-pass' : '.is-fail'), {
+      text: (c.passed ? '\u2713 ' : '\u2022 ') + c.label
+    })));
+    tl.append(ul);
+  }
+  const upcoming = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
+    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0];
+  tl.append(h('p.db-tile-line', {
+    text: upcoming ? 'Next shoot: day ' + upcoming.d.day + ' \u00b7 ' + when(upcoming.n)
+      : snap.days.length ? 'Shoot countdown: no upcoming dated day.' : 'Shoot countdown: no shoot days planned yet.'
+  }));
+  return tl;
+}
+
+function renderActions(snap) {
+  const tl = tile('actions', 'Next', 'Three things to do');
+  const r = readiness();
+  const rank = (c) => (c.severity === 'blocker' ? 0 : 1);
+  const todo = r.checks.filter((c) => !c.passed).sort((a, b) => rank(a) - rank(b) || b.count - a.count).slice(0, 3);
+  const ul = h('ul.db-acts');
+  if (!r.hasFilm) {
+    ul.append(h('li', {}, [h('a.db-gap-link', { href: 'breakdown.html', text: 'Add the scenes' }),
+      h('span.db-gap-why', { text: 'Readiness is derived from them.' })]));
+  } else if (!todo.length) {
+    ul.append(h('li', {}, [h('span.db-gap-why', { text: 'Every readiness check passes.' })]));
+  } else {
+    todo.forEach((c) => ul.append(h('li', {}, [
+      h('a.db-gap-link', { href: c.where || 'dashboard.html#readiness', text: c.label + ' \u2014 ' + c.count }),
+      h('span.db-gap-why', { text: c.hint })
+    ])));
+  }
+  tl.append(ul);
+  return tl;
+}
+
+function renderWeek(snap) {
+  const tl = tile('week', 'This week', 'Shoot days and call sheets');
+  const covered = new Set();
+  snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
+  const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
+    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= -1 && x.n <= 7)
+    .sort((a, b) => a.n - b.n);
+  if (!rows.length) {
+    tl.append(h('p.db-tile-line', { text: snap.datedDays
+      ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
+      h('a.db-gap-link', { href: 'plan.html#calendar', text: 'Open the calendar' }));
+    return tl;
+  }
+  const ul = h('ul.db-acts');
+  for (const x of rows) {
+    const sheet = x.d.scenes.some((s) => covered.has(s.id));
+    let dpr = '';
+    if (x.n <= 0) {
+      const rec = dprSummary(x.d.day, snap.scenes).record;
+      dpr = ' \u00b7 report ' + (rec && (rec.crewCall || rec.wrap) ? 'started' : 'not started');
+    }
+    ul.append(h('li', {}, [
+      h('a.db-gap-link', { href: sheet ? 'contacts.html#call-sheets' : 'reports.html#sides',
+        text: 'Day ' + x.d.day + ' \u00b7 ' + when(x.n) }),
+      h('span.db-gap-why', { text: x.d.scenes.length + ' scene' + (x.d.scenes.length === 1 ? '' : 's')
+        + ' \u00b7 ' + (sheet ? 'call sheet made' : 'no call sheet') + dpr })
+    ]));
+  }
+  tl.append(ul);
+  return tl;
+}
+
+function renderPlanTile(projects) {
+  const tl = tile('plan', 'Plan & usage', 'Your plan');
+  const cp = PlanGate.currentPlan();
+  const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
+  tl.append(
+    h('p.db-tile-line', { text: name ? name + ' plan' : 'Not signed in \u2014 working locally on this device' }),
+    h('p.db-tile-line', { text: projects.length + ' project' + (projects.length === 1 ? '' : 's')
+      + ' here. The plan sets how many you can keep; Settings shows what yours allows.' }),
+    h('a.btn.db-tile-go', { href: 'settings.html#plan', 'aria-label': 'Plans and upgrade, in Settings',
+      text: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans' })
+  );
+  return tl;
+}
+
+function renderBackupTile() {
+  const tl = tile('backup', 'Backup', 'Is your work safe?');
+  let st = null;
+  try { st = getDriveStatus(); } catch (e) { /* a status is not a transfer */ }
+  tl.append(h('p.db-tile-line', { text: st && st.connected
+    ? 'Google Drive: connected' + (st.syncedAt ? ', last synced ' + relTime(st.syncedAt) : ', not yet synced') + '.'
+    : 'Google Drive: not connected.' }));
+  tl.append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
+    + 'this page cannot see when you last exported one.' }));
+  tl.append(h('a.btn.db-tile-go', { href: 'index.html', 'aria-label': 'Export a backup, from the studio home page', text: 'Export a backup' }));
+  return tl;
+}
+
+function renderDesk(snap, projects) {
+  const sec = h('section.db-desk', { id: 'desk', 'aria-label': 'Today\u2019s desk' });
+  sec.append(renderContinue(snap, projects), renderProjectTile(snap), renderActions(snap),
+    renderWeek(snap), renderPlanTile(projects), renderBackupTile());
+  return sec;
+}
+
 /* ---- header ----------------------------------------------------- */
 function renderHead(snap) {
   const head = h('header.bd-head');
   head.append(
     h('p.bd-eyebrow', {
-      text: 'Dashboard · ' + (FORMAT_LABEL[snap.project.format] || 'Project')
+      text: 'Today\u2019s desk \u00b7 ' + (FORMAT_LABEL[snap.project.format] || 'Project')
     }),
     h('h1.bd-title', { text: snap.project.title }),
     h('p.bd-deck', {
@@ -461,8 +644,8 @@ function renderNext(snap) {
   if (snap.days.length && !snap.budget.lines) {
     gaps.push([
       'The budget is empty',
-      'You have ' + snap.days.length + ' shoot day' + (snap.days.length === 1 ? '' : 's') + '; the calculator can start from them.',
-      'library.html#budget'
+      'You have ' + snap.days.length + ' shoot day' + (snap.days.length === 1 ? '' : 's') + '; the estimator can start from them.',
+      'budget.html'
     ]);
   }
 
@@ -594,7 +777,7 @@ function renderChain(snap) {
     chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' revision' + (snap.revisions === 1 ? '' : 's') + ' saved', 'write.html', 'library'),
     chainCard(snap.budget.short, 'Budget', snap.budget.lines
       ? snap.budget.exact + ' across ' + snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's')
-      : 'Nothing costed yet', 'library.html#budget', 'plan')
+      : 'Nothing costed yet', 'budget.html', 'plan')
   );
   sec.append(grid);
   return sec;
@@ -643,16 +826,42 @@ function renderProjects(projects, current) {
   return sec;
 }
 
-/* ---- recent ------------------------------------------------------ */
-function renderActivity() {
-  const entries = recentActivity(6);
+/* ---- recent ------------------------------------------------------
+   TWO sources, both read-only, and the copy says which. The hub's log
+   (fms_studio_activity_v1) only records blueprint progress, the
+   equipment list and backups — it does not see scene, contact or
+   script edits, so this page does not claim it does. The second source
+   is the shoot day's own marks: `shotAt` on a scene, written by
+   shoot.html. No other model carries a per-record timestamp. */
+function derivedActivity(scenes) {
+  const out = [];
+  for (const sc of scenes) {
+    if (!sc.shotAt || (sc.shotState !== 'shot' && sc.shotState !== 'part')) continue;
+    out.push({
+      ts: Date.parse(sc.shotAt),
+      what: sceneLabel(sc) + (sc.shotState === 'part' ? ' partly shot' : ' marked shot'),
+      url: 'shoot.html'
+    });
+  }
+  return out.filter((e) => Number.isFinite(e.ts));
+}
+
+function renderActivity(scenes) {
+  const logged = recentActivity(12).map((e) => ({
+    ts: typeof e.ts === 'number' ? e.ts : Date.parse(e.ts),
+    what: String(e.what || e.where || 'Edited'), url: e.url
+  }));
+  const entries = logged.concat(derivedActivity(scenes))
+    .filter((e) => Number.isFinite(e.ts))
+    .sort((a, b) => b.ts - a.ts).slice(0, 8);
   if (!entries.length) return null;
   const sec = section('recent', 'Recent', 'What moved lately.',
-    'Logged by the studio as you work. This project only.');
+    'Blueprint progress, equipment lists and backups from the studio log, plus scenes '
+    + 'marked shot on set. Edits to scenes, people and the script are not logged. This project only.');
   const list = h('ol.db-log');
   for (const e of entries) {
     const line = h('li.db-log-row');
-    const what = h('span.db-log-what', { text: String(e.what || e.where || 'Edited') });
+    const what = h('span.db-log-what', { text: e.what });
     line.append(
       e.url ? h('a.db-link', { href: e.url }, [what]) : what,
       h('span.db-log-when', { text: relTime(e.ts) })
@@ -707,7 +916,7 @@ function renderFirstRun(project) {
     h('div.bd-how', {}, [
       how('1', 'The spark', 'One "what if", in your own words. It is the only step that cannot be derived from another.', 'feature.html#step-01', 'Open step 01'),
       how('2', 'The scenes', 'If the story is already in your head, list the scenes — the stripboard, the reports and the call sheets all read from that one list.', 'breakdown.html', 'Open the breakdown'),
-      how('3', 'The rates', 'What things actually cost in Chennai, and a calculator that reads your shoot days.', 'library.html#budget', 'Open the budget')
+      how('3', 'The rates', 'What things actually cost in Chennai, and an estimator that reads your shoot days.', 'budget.html', 'Open the budget')
     ]),
     h('div.db-cta-row', {}, [
       h('a.btn.primary.bd-cta', { href: 'feature.html#step-01', text: 'Start at the spark  →' })
@@ -741,7 +950,7 @@ function render() {
     );
   } else {
     const snap = snapshot(project);
-    main.append(renderHead(snap));
+    main.append(renderHead(snap), renderDesk(snap, projects));
     /* After the stat tiles and before everything else, empty project
        included: "you are in Story, write the logline" is the most
        useful thing this page can say to a film with nothing in it. */
@@ -761,7 +970,7 @@ function render() {
     const ready = renderReadiness();
     if (ready) main.append(ready);
     main.append(renderProjects(projects, project));
-    const activity = renderActivity();
+    const activity = renderActivity(snap.scenes);
     if (activity) main.append(activity);
   }
 
@@ -792,5 +1001,6 @@ delegate(document, 'click', '[data-action="open-project"]', (e, el) => {
 /* The project changed under us — switched here, or renamed on the hub. */
 Store.subscribe('current:changed', () => render());
 Store.subscribe('project:meta', () => render());
+Store.subscribe('plan:changed', () => render());
 
 render();

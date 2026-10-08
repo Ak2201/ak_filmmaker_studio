@@ -281,7 +281,7 @@ const ANCHORS = {
     { label: `${films.length} Films Analyzed`,     hash: '#films',     num: 'I',   snippet: 'One extractable lesson per film' },
     { label: `${directors.length} Director Archetypes`, hash: '#directors', num: 'II',  snippet: 'Ten voices to study as schools of filmmaking' },
     { label: `${rules.length} Rules of Thumb`,     hash: '#rules',     num: 'III', snippet: 'Craft maxims, attributed where the source is known' },
-    { label: 'Equipment Calculator',               hash: '#equipment', num: 'IV',  snippet: 'Chennai 2024-25 rate ranges — build a kit, get a daily total' },
+    { label: 'Equipment Calculator',               hash: '', href: 'budget.html#estimate', num: 'IV',  snippet: 'Build a kit on the Budget page — Chennai 2024-25 rate ranges, a daily total' },
     { label: `${WATCH_FILMS}-Film Watch List`,     hash: '#watch',     num: 'V',   snippet: 'Three films to study per blueprint step' }
   ]
 };
@@ -345,7 +345,7 @@ const SEARCH_INDEX = [
     url: `${SHORT_URL}#step-10`
   })),
   ...ANCHORS.library.map(a => ({
-    kind: 'library', label: a.label, snippet: a.snippet, url: LIBRARY_URL + a.hash
+    kind: 'library', label: a.label, snippet: a.snippet, url: a.href || LIBRARY_URL + a.hash
   }))
 ];
 
@@ -634,9 +634,9 @@ function doorsMarkup() {
     ['SEED', '#step-01'], ['5 BEATS', '#step-04'],
     ['SCRIPT', '#step-07'], ['FESTIVALS', '#step-10'], ['GLOSSARY', '#glossary']
   ];
-  const libQl = ANCHORS.library.map(a => [a.hash.slice(1).toUpperCase(), a.hash]);
+  const libQl = ANCHORS.library.map(a => a.href ? ['BUDGET', null] : [a.hash.slice(1).toUpperCase(), a.hash]);
   const ql = (base, pairs) =>
-    pairs.map(([t, hash]) => `<a class="ql" href="${base}${hash}">${esc(t)}</a>`).join('');
+    pairs.map(([t, hash]) => `<a class="ql" href="${hash === null ? 'budget.html#estimate' : base + hash}">${esc(t)}</a>`).join('');
 
   return h('section#doors.section', {
     html: `
@@ -697,7 +697,7 @@ function doorsMarkup() {
             <ul class="door-contents">
               <li>${films.length} films, one extractable lesson each</li>
               <li>${directors.length} director archetypes</li>
-              <li>${rules.length} craft rules + equipment calculator</li>
+              <li>${rules.length} craft rules + equipment rate tables</li>
               <li>${WATCH_FILMS}-film watch list, mapped to each step</li>
             </ul>
             <div class="door-status">
@@ -748,7 +748,7 @@ function startMarkup() {
           <a class="start-card" href="${FEATURE_URL}">
             <div class="question">PATH D · I want a complete example</div>
             <h4>Load the ${esc(sample.title)} sample</h4>
-            <p>Open the Feature Blueprint, click <strong>SAMPLE</strong> in the toolbar. Loads a fully filled blueprint for a ${sampleDays()}-day feature — or take the whole project, ${sample.scenes.length} scenes and a unit list included, from the projects panel. The worked examples inside the steps are still based on <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> and the 2023 Tamil thriller <em>Por Thozhil</em>.</p>
+            <p>Open the Feature Blueprint, open <strong>More ▾</strong> in the toolbar and choose <strong>Load sample</strong>. Loads a fully filled blueprint for a ${sampleDays()}-day feature — or take the whole project, ${sample.scenes.length} scenes and a unit list included, from the projects panel. The worked examples inside the steps are still based on <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> and the 2023 Tamil thriller <em>Por Thozhil</em>.</p>
             <span class="arrow">OPEN  →</span>
           </a>
         </div>
@@ -775,7 +775,7 @@ function toolsMarkup() {
             <p>Every project, preference and comment in one backup file.</p>
           </button>
           <button class="tool-card" data-action="import-all">
-            <div class="tool-icon">↑</div><h5>Import everything</h5>
+            <div class="tool-icon">↑</div><h5>Import a backup</h5>
             <p>Add the projects in a backup file to this studio. Nothing you already have is replaced.</p>
           </button>
           <button class="tool-card" data-action="print-hub">
@@ -783,16 +783,16 @@ function toolsMarkup() {
             <p>Snapshot of the studio overview. Each blueprint has its own print mode.</p>
           </button>
           <button class="tool-card" data-action="reset-all">
-            <div class="tool-icon">⌫</div><h5>Reset everything</h5>
+            <div class="tool-icon">⌫</div><h5>Erase everything</h5>
             <p>Erase all studio data. Export first if you want to keep anything.</p>
           </button>
           <a class="tool-card f" href="${FEATURE_URL}#pitch-deck">
             <div class="tool-icon">▦</div><h5>Auto Pitch Deck</h5>
             <p>10 slides built from your filled fields. Inside the Feature Blueprint. Exports as .pptx.</p>
           </a>
-          <a class="tool-card" href="${LIBRARY_URL}#equipment">
+          <a class="tool-card" href="budget.html#estimate">
             <div class="tool-icon">₹</div><h5>Equipment Calculator</h5>
-            <p>Chennai 2024-25 rate ranges. Build a kit, get a daily-rate total.</p>
+            <p>On the Budget page: build a kit from Chennai 2024-25 rate ranges and get a daily-rate total.</p>
           </a>
           <a class="tool-card s" href="${SHORT_URL}#step-08">
             <div class="tool-icon">.fnt</div><h5>Fountain Export</h5>
@@ -850,7 +850,7 @@ function indexMarkup() {
     tocItem(SHORT_URL, a.hash, '··', a.label)));
 
   const libSections = tocGroup('SECTIONS', ANCHORS.library.map(a =>
-    tocItem(LIBRARY_URL, a.hash, a.num, a.label)));
+    tocItem(a.href || LIBRARY_URL, a.href ? '' : a.hash, a.num, a.label)));
   const libFilms = tocGroup('FILMS ANALYZED', chunk(films.map(f => f.title), 3).map(row =>
     tocItem(LIBRARY_URL, '#films', '··', row.join(' · '))));
   const libDirectors = tocGroup('DIRECTORS', chunk(directors.map(d => d.name), 2).map(row =>
@@ -1157,7 +1157,7 @@ function detectActivity() {
     if (now.lc > (last.lc || 0)) {
       arr.unshift({ ts: Date.now(), where: 'lib',
         what: 'Equipment list: ' + (last.lc || 0) + ' → ' + now.lc + ' items (' + fmtINR(now.lt) + ')',
-        url: LIBRARY_URL + '#equipment' });
+        url: 'budget.html#estimate' });
     }
   }
   log.entries = arr.slice(0, ACTIVITY_LIMIT);

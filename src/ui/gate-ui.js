@@ -238,10 +238,28 @@ export function adminSection(section, st) {
     sec.append(h('div.gt-scroll', {}, [table]));
   }
   if (decided.length) {
+    /* DECIDED ROWS ARE NOT ONLY HISTORY. A decline used to be final as
+       far as the console went — the list was text, so an administrator
+       who changed their mind, or mis-clicked, had nowhere to go and the
+       person waited out seven days for nothing. A declined row now
+       carries LET THEM IN; an approved one carries CLEAR, which is the
+       way back out. Owner's ask, 8 Oct 2026. */
     const det = h('details.gt-decided', {}, [h('summary', { text: `Decided (${decided.length})` })]);
     const ul = h('ul.gt-list');
-    decided.slice(0, 30).forEach((r) => ul.append(h('li', { text: `${fmtDate(r.decided_at)} — ${r.email} — ${r.status}`
-      + (r.decided_by_email ? ` by ${r.decided_by_email}` : '') + (r.decision_note ? ` — “${r.decision_note}”` : '') })));
+    decided.slice(0, 30).forEach((r) => {
+      const line = `${fmtDate(r.decided_at)} — ${r.email} — ${r.status}`
+        + (r.decided_by_email ? ` by ${r.decided_by_email}` : '')
+        + (r.decision_note ? ` — “${r.decision_note}”` : '');
+      ul.append(h('li.gt-decided-row', {}, [
+        h('span', { text: line }),
+        h('span.gt-row-actions', {}, [
+          r.status === 'declined'
+            ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, text: 'LET THEM IN' })
+            : null,
+          h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, text: 'CLEAR' })
+        ].filter(Boolean))
+      ]));
+    });
     det.append(ul);
     sec.append(det);
   }
@@ -328,7 +346,12 @@ export function adminSection(section, st) {
         h('td', { text: [browserOf(m.user_agent), m.client_ip].filter(Boolean).join(' · ') }),
         h('td.gt-row-actions', {}, [
           live(m) ? h('button.btn', { type: 'button', 'data-gate-action': 'terminate', 'data-id': m.user_id, text: 'END SESSION' }) : null,
-          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, text: 'DISABLE' }) : null
+          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, text: 'DISABLE' }) : null,
+          /* DISABLE keeps the row and stops them; CLEAR removes the row
+             and makes the next sign-in a new one. Not offered for an
+             admin — schema section 25 refuses it anyway, and a button
+             that always errors is worse than no button. */
+          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, text: 'CLEAR' }) : null
         ].filter(Boolean))
       ]));
     }
@@ -417,6 +440,28 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       const note = window.prompt(`Decline ${el.dataset.email}? They can ask again after seven days.\n\nA line for them (optional):`, '');
       if (note === null) return;
       await g.admin.decideRequest(el.dataset.id, false, note); await loadAdmin();
+    } else if (act === 'recover') {
+      /* The mirror of 'decline', and it needs no new RPC: approving a
+         declined row inserts the membership and flips the status, which
+         is also what ends the seven-day cooling-off. */
+      await g.admin.recoverRequest(el.dataset.id); await loadAdmin();
+      toast(`${el.dataset.email} is in after all. The decline is undone and the cooling-off with it.`, 'success');
+    } else if (act === 'reset-user') {
+      /* Destructive, so it says exactly what goes and exactly what does
+         NOT — "fresh" reads as "deleted" to most people, and the thing
+         an administrator is most afraid of here is losing somebody's
+         films. Schema section 25 keeps that promise; this sentence is
+         the one the person clicking actually reads. */
+      if (!window.confirm(`Clear ${el.dataset.email}?\n\nThis removes their membership, their invite request, the invite code they used (freeing it) and their session — so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.`)) return;
+      const out = await g.admin.resetUser(el.dataset.id);
+      await loadAdmin();
+      const bits = [];
+      if (out && out.membership_removed) bits.push('membership removed');
+      if (out && out.request_removed) bits.push('request cleared');
+      if (out && out.redemptions_freed) bits.push(`${out.redemptions_freed} code use freed`);
+      if (out && out.device_lock_cleared) bits.push('device lock cleared');
+      bits.push(out && out.signed_out ? 'signed out' : 'session left in place');
+      toast(`${el.dataset.email} is a stranger again — ${bits.join(', ')}.`, 'success', 6000);
     } else if (act === 'reload') {
       await loadAdmin();
     } else if (act === 'copy') {

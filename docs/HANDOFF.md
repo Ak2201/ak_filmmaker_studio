@@ -194,7 +194,27 @@ and wrong in the owner's favour — three supposed blockers did not exist.
   the time anyone checked. Its BRANDING is filled in and awaiting
   re-verification; domain ownership was proved on 8 Oct through the
   `google-site-verification` meta tag already in `index.html`.
-- **No Razorpay key exists.** Still true.
+- **Razorpay is WIRED END TO END in TEST MODE as of 8 Oct.** All three
+  edge functions deployed and ACTIVE; all three secrets set; the webhook
+  registered in Razorpay; `VITE_RAZORPAY_KEY_ID` holds the TEST key id,
+  which is what turns the BUY buttons on. Verified by probing the live
+  endpoints at each stage, never from a dashboard: the webhook returned
+  503 "webhook secret not configured" while its secret was missing and
+  returns **401 "bad signature"** now it is set. That TRANSITION is the
+  proof, and re-running that probe is the right check after any secret
+  rotation. `rzp-order` returns 401 without a JWT.
+  **A TEST PURCHASE WORKED, 8 Oct 2026.** Verified in the database, not
+  from the UI: a `payments` row at plan `starter`, status `paid`, 59900
+  paise, carrying a real `razorpay_order_id` and `razorpay_payment_id`,
+  and the buying account's `accounts.plan` is now `starter`. The whole
+  path — order, checkout, verify, activation — is exercised.
+  **Still missing: a LIVE key** (all of this is test mode) and a refund,
+  which has never been run.
+  One trap paid for here: creating the webhook in Razorpay and setting
+  `RAZORPAY_WEBHOOK_SECRET` in Supabase are two halves of ONE step. Doing
+  only the first leaves Razorpay posting events into a 503. `supabase
+  secrets list` prints digests, not values, and is what tells the two
+  apart safely.
 - **The RLS read side is PROVEN** — `docs/SECURITY-RLS.md` LIVE CHECK 4.
   `projects` holds 6 rows and `project_data` 30, and an anonymous GET still
   returns `[]`. The checks needing TWO real accounts have still never run.

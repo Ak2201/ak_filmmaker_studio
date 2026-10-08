@@ -1100,7 +1100,14 @@ order fails PGRST202. It is not deployed at all yet. The **Google consent screen
 production, External, and Google states verification is not required
 because no sensitive or restricted scopes are requested; its branding is
 filled in and awaiting re-verification after the 8 Oct Search Console
-ownership check. No Razorpay key exists. None of the live RLS checks has
+ownership check. **Razorpay is HALF LIVE (8 Oct):** the three edge
+functions are deployed and ACTIVE (`rzp-order` and `rzp-verify` with
+`verify_jwt: true`, `rzp-webhook` with `verify_jwt: false`), and
+`VITE_RAZORPAY_KEY_ID` carries the TEST key id. Probed live: the webhook
+answers 503 "webhook secret not configured" and `rzp-order` answers 401
+without a JWT, both correct. Missing: the two SECRETS in Supabase, the
+webhook registration, and any live key. No purchase has been made.
+None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
 paragraph said "§16–§24 have NOT been verified" and "the consent screen
 is in Testing" while both had been false for days, which is the whole

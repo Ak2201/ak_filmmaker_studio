@@ -194,7 +194,14 @@ and wrong in the owner's favour — three supposed blockers did not exist.
   the time anyone checked. Its BRANDING is filled in and awaiting
   re-verification; domain ownership was proved on 8 Oct through the
   `google-site-verification` meta tag already in `index.html`.
-- **No Razorpay key exists.** Still true.
+- **Razorpay is HALF LIVE as of 8 Oct.** All three edge functions are
+  deployed and ACTIVE; `VITE_RAZORPAY_KEY_ID` holds the TEST key id,
+  which is what turns the BUY buttons on. Verified by probing the live
+  endpoints, not assumed: the webhook returns 503 "webhook secret not
+  configured" (public by design, failing closed) and `rzp-order` returns
+  401 without a JWT. Still missing: the two secrets in Supabase function
+  secrets, the webhook registered in Razorpay, and a live key. No
+  purchase has been made.
 - **The RLS read side is PROVEN** — `docs/SECURITY-RLS.md` LIVE CHECK 4.
   `projects` holds 6 rows and `project_data` 30, and an anonymous GET still
   returns `[]`. The checks needing TWO real accounts have still never run.

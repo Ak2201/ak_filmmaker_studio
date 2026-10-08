@@ -597,7 +597,14 @@ try {
     // 3. the customer asks
     await B.page.reload();
     await B.page.waitForSelector('[data-rf-panel="request"]', { timeout: 12000 }).then(() => ok(true, 'with it on, Ben (captured payment) sees "Request a refund"'), () => ok(false, 'with it on, Ben sees "Request a refund"'));
-    ok(/Purchases are final/.test(await B.page.textContent('[data-rf-panel]')) && !!(await B.page.$('[data-rf-panel] a[href="refund.html"]')), 'it states the policy and links refund.html');
+    /* settings.html re-renders main as billing, gate and refund status
+       arrive, so wait for the settled form rather than read the first
+       paint of the panel (a read too early was a 1-in-3 failure). */
+    const rfSettled = () => B.page.waitForFunction(() => {
+      const p = document.querySelector('[data-rf-panel="request"]');
+      return !!(p && /Purchases are final/.test(p.textContent) && p.querySelector('a[href="refund.html"]') && document.querySelectorAll('#rfCategory option').length === 4);
+    }, null, { timeout: 12000 }).then(() => true, () => false);
+    ok(await rfSettled(), 'it states the policy and links refund.html');
     ok((await B.page.$$eval('#rfCategory option', (o) => o.map((x) => x.value))).join() === 'duplicate_charge,not_delivered,legal,other', 'the four reason categories are offered');
     await B.page.selectOption('#rfCategory', 'not_delivered');
     await B.page.fill('#rfMessage', 'Paid on 7 Oct, plan never showed.');
@@ -696,7 +703,10 @@ try {
     await C.page.reload();
     await C.page.waitForFunction(() => /Declined/.test(document.querySelector('[data-rf-panel]')?.textContent || ''), null, { timeout: 12000 })
       .then(() => ok(true, 'Cal sees the request as declined'), () => ok(false, 'Cal sees the request as declined'));
-    ok(/Outside the refund policy/.test(await C.page.textContent('[data-rf-panel]')) && !!(await C.page.$('[data-rf-form="request"]')), 'with the administrator’s note, and may ask again');
+    ok(await C.page.waitForFunction(() => {
+      const p = document.querySelector('[data-rf-panel]');
+      return !!(p && /Outside the refund policy/.test(p.textContent) && document.querySelector('[data-rf-form="request"]'));
+    }, null, { timeout: 12000 }).then(() => true, () => false), 'with the administrator’s note, and may ask again');
     await C.page.setViewportSize({ width: 390, height: 800 });
     ok(await C.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the request block does not overflow at 390px');
     await A.page.setViewportSize({ width: 390, height: 800 });

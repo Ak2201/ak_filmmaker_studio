@@ -1100,7 +1100,7 @@ order fails PGRST202. It is not deployed at all yet. The **Google consent screen
 production, External, and Google states verification is not required
 because no sensitive or restricted scopes are requested; its branding is
 filled in and awaiting re-verification after the 8 Oct Search Console
-ownership check. **Razorpay is HALF LIVE (8 Oct):** the three edge
+ownership check. **Razorpay is WIRED END TO END in TEST MODE (8 Oct):** the three edge
 functions are deployed and ACTIVE (`rzp-order` and `rzp-verify` with
 `verify_jwt: true`, `rzp-webhook` with `verify_jwt: false`), and
 `VITE_RAZORPAY_KEY_ID` carries the TEST key id. Probed live: the webhook

@@ -30,26 +30,45 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
 
 ## 1. Supabase — run the missing schema sections (§16 → §24)
 
-Project ref `conhlrulxfwkhsnymakz`, dashboard → SQL editor.
+**DONE IN PART, 8 Oct 2026.** Project ref `conhlrulxfwkhsnymakz`,
+dashboard → SQL editor, signed in as the owner.
 
-1. Read what is there (paste, run, report to the owner):
-   ```sql
-   select column_name from information_schema.columns
-    where table_schema='public' and table_name='plans' and column_name='price_paise';      -- §18
-   select pg_get_constraintdef(oid) from pg_constraint where conname='project_data_scope_check'; -- §17 'edit', §24 'characters'
-   select tgtype from pg_trigger where tgname='accounts_guard';                               -- §19: 7
-   select to_regclass('public.promo_codes'), to_regclass('public.referral_credits');        -- §20, §22
-   select proname from pg_proc where proname in ('quote_order','admin_affiliate_report','quote_for');
-   ```
-2. `node scripts/deploy-billing.mjs --print > /tmp/schema-16-on.sql` prints
-   §16 to the end. Run ONLY the sections the read-back says are missing,
-   in order, each as its own run (they are written to be re-runnable, but
-   confirm with the owner before re-running one that already exists).
-   **§24 must be live before the 8 Oct build is deployed**, or characters
-   and costs stay device-only.
-3. Re-run the read-back; all five lines should now show the section.
-4. Then the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address if
-   it has signed in (`docs/LAUNCH.md` §4).
+The read-back settled the disagreement this file flagged: **the schema
+file was right and the handoff note was wrong.** §16, §17 and §18 were
+already live from 6 Oct (the `plans` and `payments` tables, twelve
+billing functions, `plans.price_paise`, and a scope CHECK of 407
+characters naming `'deliverables'`). §19 through §24 were all absent:
+`accounts_guard` was tgtype 19, BEFORE UPDATE only; `promo_codes`,
+`referral_credits` and `affiliate_codes` did not exist; `quote_order`,
+`quote_for`, `admin_promo_report`, `redeem_referral` and
+`admin_affiliate_report` did not exist; the scope CHECK named neither
+`'characters'` nor `'costs'`.
+
+**§19 and §24 were run** — owner's decision, those two only, because
+they are the two that bite before a sale exists. "Success. No rows
+returned", then read back: tgtype **23** (INSERT and UPDATE both set),
+the scope CHECK **442** characters naming `'characters'`, `'costs'` and
+still `'edit'` and `'deliverables'`, and `project_data` / `projects`
+intact at 30 / 6 rows. Recorded in the `-- RUN` headers of both sections
+in `supabase-schema.sql` and in `docs/LAUNCH.md` §4.
+
+**§20–§23 were deliberately NOT run.** Promo, upgrade-by-difference,
+referral and affiliate do nothing until Razorpay is live, and §20 drops
+and recreates `create_pending_payment` and `admin_list_payments` — so it
+belongs in the same session as the `rzp-order` redeploy
+(`docs/BILLING.md` §1 step 9), not before it.
+
+Two things for whoever picks this up:
+
+- **`docs/LAUNCH.md` §4's tgtype check was wrong** and is corrected. It
+  said 7; `before insert or update … for each row` is 23. A correct run
+  verified against 7 reads as a failure.
+- **The live prices are real and match no document.** `free=0,
+  starter=59900, indie=79900, pro=99900` paise. Confirm them with the
+  owner rather than re-seeding the placeholders.
+
+Still owed here: the 13.2 admin row for the second `VITE_ADMIN_EMAILS`
+address, once it has signed in (`docs/LAUNCH.md` §4).
 
 ## 2. Google Cloud — publish the OAuth consent screen
 

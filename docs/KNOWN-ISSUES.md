@@ -59,7 +59,7 @@ once and not yet looked at.
   CBFC flags, dialogue list), budget (+22 KB: the six cost tabs) and write
   (+2 KB). The growth is the features themselves, visible on those pages'
   first render. The cheapest win if it matters: `src/pages/deliverables.js`
-  imports `src/data/cbfc-rules.json` (32 KB raw) and `lib/pdf.js` at module
+  imports `src/data/cbfc-rules.json` (~44 KB raw — 32 KB until the 8 Oct source check grew it) and `lib/pdf.js` at module
   scope although the PDF is only needed inside the export click — making
   both dynamic needs the certification section to render after an await.
 - **On set: two small leftovers.** The recce card in `src/pages/plan.js`

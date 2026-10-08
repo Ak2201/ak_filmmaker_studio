@@ -130,47 +130,41 @@ instead of deleting a row** whenever the counts allow it.
 
 ## 3. Finish the legal pages
 
-**THE PLACEHOLDERS ARE LIVE ON THE PUBLIC SITE.** Checked 8 Oct 2026:
+**DONE except the GSTIN, 8 Oct 2026 — and it is LIVE.** The owner supplied
+the legal name; it is written into `privacy.html`, `terms.html` and
+`refund.html`, `main` was deployed, and the public site has rebuilt.
+Confirmed by fetching the live pages:
 
 ```
-/privacy  200  1 occurrence of "OWNER:"
-/terms    200  2 occurrences of "OWNER:"
-/refund   200  1 occurrence of "OWNER:"
+/privacy  name present, no "OWNER:" marker
+/terms    name present, ONE "OWNER:" marker — the GSTIN
+/refund   name present, no "OWNER:" marker
 ```
 
-`privacy.html`, `terms.html` and `refund.html` say the service is sold by
-an INDIVIDUAL (sole proprietor) and carry `[OWNER: full legal name]`,
-plus `[OWNER: GSTIN, if registered]` on the one tax line in the Terms.
-This section used to describe them as "still to fill in", which reads
-like a to-do; they are published, and a stranger can read the brackets
-today. Razorpay's business verification and Meta's ad review both read
-these pages, and an unfilled bracket on a Terms page is the kind of thing
-that gets an application rejected rather than queried. This is the
-cheapest blocker on the list to clear and the most expensive to leave.
+The `.legal-ph` wrapper was removed with the text in each case, not just
+its contents: that class renders a dashed amber "the owner has still to
+supply this" box, so leaving it would have printed a real legal name as a
+warning. The GSTIN marker keeps its wrapper, correctly, because that one
+IS still unsupplied.
+
+**The one thing left: the GSTIN**, on the Terms' tax line
+(`terms.html:82`). Supply the number, or — if there is no registration —
+delete that sentence rather than fill it. A postal address may also be
+needed if Razorpay asks for one.
+
+Why it mattered that these went out before anyone noticed: the brackets
+were not pending edits, they were published, and Razorpay's business
+verification and Meta's ad review both read these pages. An unfilled
+bracket on a Terms page gets an application rejected rather than queried.
 
 The refund policy itself is decided (7 Oct 2026): purchases are FINAL,
 except a duplicate or erroneous charge (refunded), charged-but-never-
 activated (refunded or activated, the buyer's choice) and any refund
 Indian law requires; governing law India, Chennai courts.
 
-Only the owner can supply: the full legal name, the GSTIN if registered,
-and a postal address if Razorpay asks for one. Nobody else can invent
-these, and a placed-holder name on a legal page is worse than no page.
-
-**The legal NAME is filled in, 8 Oct 2026** — supplied by the owner and
-written into all three pages, with the `.legal-ph` wrapper removed in
-each (that class is a dashed amber "not supplied yet" marker, so leaving
-it would have rendered a real legal name as a warning). **One marker
-remains**, the GSTIN on the Terms' tax line: it is still
-`[OWNER: GSTIN, if registered]`, and if there is no registration the
-right fix is to delete that sentence rather than fill it.
-
-**The live site still shows the OLD text until `main` is deployed.**
-Filling these pages in the repo changes nothing a stranger, Razorpay or
-Meta can see; the host builds from `main`.
-
 Check: `grep -rn '\[OWNER:' privacy.html terms.html refund.html` returns
-only the GSTIN line, and the three live URLs contain no "OWNER:".
+only the GSTIN line, and the three live URLs contain no "OWNER:" except
+that one.
 
 ## 4. Run the schema sections that have never run
 
@@ -271,8 +265,11 @@ Check: every row in those tables ticked, with the date.
 Test mode first. `docs/BILLING.md` §1 has the order: key id + secret as
 Supabase secrets, deploy the three functions (`rzp-webhook` with
 `--no-verify-jwt`; REDEPLOY `rzp-order` too, since it now passes the promo code), register the webhook URL, set `VITE_RAZORPAY_KEY_ID`
-in `.env`, rebuild. Then set the REAL prices in the admin console — the
-seeded ₹2,999 / ₹7,999 / ₹19,999 are placeholders. Then promo codes, if
+in `.env`, rebuild. The prices are ALREADY REAL on the console — `free 0 / starter 59900 /
+indie 79900 / pro 99900` paise, read from the live table on 8 Oct 2026 —
+so CONFIRM them with the owner rather than re-seeding the old
+₹2,999 / ₹7,999 / ₹19,999 placeholders, which only `docs/BILLING.md` §0
+still prints. Then promo codes, if
 you want a launch offer (admin console → Promo codes).
 
 Check: one real test-mode purchase end to end, then one refund, and see

@@ -250,7 +250,7 @@ the `archive/…` branches at the end of §6b are history, not a worklist.
 | On set | `src/lib/sun.js`, `src/lib/callsheet-text.js`; `test:sun`, `test:callsheet` |
 | Schedule | `src/lib/dpr.js`; `prove:sw` 26 |
 | Writing (characters) | `src/ui/characters-panel.js`, `src/lib/characters.js`; `fms_characters_v1`; scope live in §24 |
-| Script revisions | the `Element.append(null)` bug is FIXED — `write-revisions.js:158` filters with `.filter(Boolean)`; `test:revisions` exists |
+| Script revisions | the `Element.append(null)` bug is FIXED — `write-revisions.js:175` filters with `.filter(Boolean)` (`:158` is only the comment — this file said 158 until 8 Oct); `test:revisions` exists |
 | Compliance | runtime tests in `test-screenplay.mjs`, optional-group tests in `test-post.mjs` — both pass |
 | Money (costs) | `src/lib/costs.js`, `src/ui/budget-costs.js`; `test:costs`; six tabs browser-walked on the Dragon sample |
 | AI | `prove:ai-coverage` against `scripts/fake-ai.mjs`, BOTH providers; a fabricated quote is stripped and counted |
@@ -331,8 +331,10 @@ the 8 Oct schema and Google findings.
 ## 6c. THE PENDING REGISTRY — every item still to do, with an ID
 
 **This is the work list.** IDs are stable: say "do P2" or "do G2" and a
-session knows what is meant. Every row was checked by reading the code on
-`develop@cc4e580` (not by trusting an earlier doc). **Branch:** cut
+session knows what is meant. Every row was checked by reading the code, not by
+trusting an earlier doc — first at `cc4e580`, then re-checked row by row on
+8 Oct 2026, which struck G5, split P12 and corrected three line numbers.
+The branches have moved since; check `git log`, do not quote a commit id. **Branch:** cut
 `feature/<id>-<slug>` from `develop`; merge back into `develop` only after the
 feature's own tests pass; promote to `main` only through the release gate in
 `docs/BRANCHING.md`. **Who:** *owner* = only the owner can; *browser* = a
@@ -355,7 +357,8 @@ cloud container session.
 | P9 | ~~**Deploy `main`** so the legal name is live on the public site~~ **DONE 8 Oct 2026.** `main` was promoted and Vercel rebuilt from it; `/privacy`, `/terms` and `/refund` all serve the owner's legal name now, confirmed by fetching the live pages. Only the GSTIN marker is left, which is P8. | owner | done | — |
 | P10 | **The door**: keep the invite gate, or open it for launch (`VITE_SITE_GATE=off`) | owner | decision written in `LAUNCH.md` §1 | `LAUNCH.md` §1 |
 | P11 | Optional: set `VITE_SUPPORT_WHATSAPP` (digits) so the footer shows a WhatsApp help link | owner | link renders | `src/ui/footer.js` |
-| P12 | ~~Open every `sourceUrls` link of the CBFC / AWBI / OTT rules in a real browser~~ **DONE 8 Oct 2026**: links read, Gazette text read where published, quashed rule 4(6) removed, AWBI fees and the performing-animal ban (G.S.R. 528(E)) added, `checked` moved. STILL OPEN in this row: check write.html on a real phone at 390px (an `isMobile`-emulation screenshot once showed ~350px of blank ground — see `KNOWN-ISSUES.md`) | browser / owner | the phone check | `KNOWN-ISSUES.md` |
+| P12 | ~~Open every `sourceUrls` link of the CBFC / AWBI / OTT rules in a real browser~~ **DONE 8 Oct 2026**: links read, Gazette text read where published, the quashed rule 4(6) removed, AWBI fees corrected and the G.S.R. 528(E) ban on bulls as performing animals added. Nothing left here. | browser | done | `KNOWN-ISSUES.md` |
+| P13 | **Check `write.html` on a REAL phone at 390px.** Split out of P12 on 8 Oct 2026, because P12 now reads DONE and a live task was hiding in its tail. An `isMobile`-emulation screenshot once showed ~350px of blank ground; emulation is not a phone, so this needs a physical device | owner / browser | the page is confirmed on a real handset, or the bug is reproduced and filed | `KNOWN-ISSUES.md` |
 
 ### G — Production gaps (cloud, lane 2). Each verified in the code.
 
@@ -363,19 +366,19 @@ cloud container session.
 |---|---|---|---|---|
 | G1 | The **after-sunset flag reads only the call sheet's planned `wrap`**, never the DPR's day-level wrap | `src/pages/shoot.js:282`, `src/pages/contacts.js` ~634, `src/lib/dpr.js` | a day whose DPR wrap is after sunset is flagged too | extend `test:sun` / `test:stripboard` |
 | G2 | The **Plan page recce card omits `lat lng hospital police`**, which the call sheet reads and writes | `src/pages/plan.js` (no match for those fields) | all four editable on Plan, and a change there shows on the call sheet and vice versa | `test:callsheet` |
-| G5 | The "CBFC-format PDF" is just the **dialogue-list print** (`dl-print`, `src/pages/deliverables.js:462`). Unknown whether its layout matches what e-Cinepramaan asks for | `src/lib/dialogue-list.js` | check the CBFC manual's required columns; either match them or relabel the button honestly | `test:delivery` |
-| G7 | `deliverables.js` imports `cbfc-rules.json` (32 KB) and `lib/pdf.js` at module scope although the PDF is only needed on a click (cheapest first-paint win; recorded in `KNOWN-ISSUES.md`) | `src/pages/deliverables.js` | both become dynamic; the certification section renders after an await; `scripts/budget.json` recaptured lower | `verify` |
+| G5 | ~~The "CBFC-format PDF" is just the dialogue-list print; relabel the button honestly~~ **STRUCK 8 Oct 2026 — the premise was false.** No string "CBFC-format PDF" exists anywhere in the code; the button at `src/pages/deliverables.js:462` is already labelled "PRINT OR SAVE AS PDF", and `:468-473` already tells the reader no prescribed dialogue-list template could be found, names the conventional layout it uses, and says to check with the regional office. There is nothing dishonest to fix. If anything is left it is a question for the OWNER — whether a regional office wants a different layout — not a code task. | — | — | — |
+| G7 | `deliverables.js` imports `cbfc-rules.json` (~44 KB — it was 32 KB until the 8 Oct source check grew it, which makes this worth MORE than when it was filed) and `lib/pdf.js` at module scope although the PDF is only needed on a click (cheapest first-paint win; recorded in `KNOWN-ISSUES.md`) | `src/pages/deliverables.js` | both become dynamic; the certification section renders after an await; `scripts/budget.json` recaptured lower | `verify` |
 
 ### T — Quality gaps (cloud, lane 3). Each verified.
 
 | ID | Gap | Evidence | Fix |
 |---|---|---|---|
 | T1 | **No assertion for the revised-page tint** | `scripts/test-revisions.mjs` has no `tint` | add one (tint class present when chosen, absent otherwise) |
-| T2 | **`ai.js` is not in the first-paint guard.** the `LAZY_CHUNKS` regex names only `supabase`, `pptxgen`, `sample.dragon.script` | `scripts/verify-migration.mjs:138` | add the `ai` chunk to `LAZY_CHUNKS` and fix the failure message at ~1889 |
+| T2 | **`ai.js` is not in the first-paint guard.** The `LAZY_CHUNKS` regex names only `supabase`, `pptxgen`, `sample.dragon.script`. **NOT a one-line change, re-checked 8 Oct 2026:** `vite.config.js` `manualChunks` (352-374) defines no `ai` chunk, so there is no stable name to match; and `ai.js` is statically imported by `src/ui/ai-panel.js:48`, which `src/pages/settings.js:83` imports statically — so adding the pattern would fail settings' first paint until `scripts/budget.json` `knownLazyFetches` (currently `{}`) allows it. Decide the chunk first, then the guard | `scripts/verify-migration.mjs:138`, `vite.config.js:352-374` | `ai` has its own chunk, the guard names it, and `verify` passes on settings | `verify` |
 | T3 | **Tamil typing is only regex-read, never executed** | `scripts/test-tanglish.mjs` lines 67–70 read the source | a browser proof that typing "vanakkam" in a dialogue line yields Tamil and writes the pref only on toggle |
 | T4 | **`scripts/prove-adoption.mjs` has no npm entry** | `package.json` | add `prove:adoption`, run it, record the result |
 | T8 | **`npm run ship` runs only `build:open`, `verify`, `build`, `prove:gate`** — none of the `test:*` suites, nor `prove:billing/sw/storage/drive/extension` | `package.json:36` | make `ship` (or a new `gate`) run the full release gate from `docs/BRANCHING.md`; this is also the seed of CI |
-| T9 | **Browser walk of the revisions, coverage and costs UIs** on the Dragon sample, 390 and 1280, both themes. The `Element.append(null)` fix at `write-revisions.js:158` was never exercised in a browser | — | no console error; revision compare opens; coverage renders; each cost tab loads |
+| T9 | **Browser walk of the revisions, coverage and costs UIs** on the Dragon sample, 390 and 1280, both themes. The `Element.append(null)` fix at `write-revisions.js:175` was never exercised in a browser | — | no console error; revision compare opens; coverage renders; each cost tab loads |
 | T10 | **CI does not exist** (`.github/` is absent). Branch protection on `main` is also unset (owner, GitHub settings) | repo root | a workflow running the T8 gate on every PR to `main` (needs Playwright's Chromium + PostgreSQL 16) |
 
 ### B — Billing and growth (lane 1; owns schema §25 onward; ONE session at a time)
@@ -443,8 +446,8 @@ live; §20–§23 written, tested and wired in the UI.
 | **2 Production** | G1, G2, G5, G7 | `src/lib/dpr.js`, `locations.js`, `sun.js`, `callsheet-text.js`, `src/pages/shoot.js`, `contacts.js`, `plan.js`, `reports.js`, `stripboard.js`, `deliverables.js` | — |
 | **3 Quality** | T1–T4, T8–T10 | `scripts/*`, `package.json`, `.github/workflows/*` (new), `scripts/budget.json` | lane 4 while both recapture `budget.json` |
 | **4 Emotional craft** | E0–E5 | new files + one-line hooks in `story.js`, `scenes.js`, `library.js`, `ai.js`, `navigation.json`, `glossary.json`, `steps.stages.json` | lane 5 on `write.js` |
-| **5 Queued** | Q1–Q4 | `write.js`, `cloud.js`, `comments.js`, new weather module | lane 4 on `write.js` |
-| **Owner / browser** | P1, P3–P12 | no code (docs only: `LAUNCH.md`, `BILLING.md`) | — |
+| **5 Queued** | Q1–Q4, **Q5** (the owner's decision — it was in no lane until 8 Oct, so nobody owned it) | `write.js`, `cloud.js`, `comments.js`, new weather module | lane 4 on `write.js` |
+| **Owner / browser** | P1, **P2** (shared with lane 1 — it needs the browser AND the schema), P3–P8, P10–P13. P9 and P12 are done. | no code (docs only: `LAUNCH.md`, `BILLING.md`) | — |
 
 
 ### Where to start in each lane (ranked)

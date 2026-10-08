@@ -36,10 +36,20 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 
 | | Free | Starter | Indie | Pro |
 | --- | --- | --- | --- | --- |
-| Price, once | — | ₹2,999 | ₹7,999 | ₹19,999 |
+| Price, once | — | ₹2,999 | ₹7,999 | ₹19,999 | ← **STALE, see below** |
 | Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |
+
+> **THE PRICES IN THAT ROW ARE NOT THE LIVE ONES.** Read from the `plans`
+> table on 8 Oct 2026: `free 0 / starter 59900 / indie 79900 / pro 99900`
+> paise — **₹599 / ₹799 / ₹999**. Somebody set real prices on the admin
+> console and no document followed. The table above is left as written
+> rather than silently rewritten, because which figures the owner INTENDS
+> is the owner's call, not a documentation fix (registry row P3). The
+> server reads the price from the table on every order, so the live
+> figures are what a buyer pays whatever this page says.
+
 | Live share links | 0 | 3 | 10 | unlimited |
 | Organisation seats | 1 | 1 | 3 | 10 |
 | Chrome extension | no | yes | yes | yes |

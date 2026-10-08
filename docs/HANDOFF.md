@@ -148,13 +148,34 @@ contradicts "your work stays in your browser"; if ever wanted, put it on
 
 ## 4. What is live and what is not
 
-Schema §1–§14 have run on the live Supabase project `conhlrulxfwkhsnymakz`
-(verified through PostgREST). **§16–§20 are written and tested but not run
-live; §21–§23 exist only on `wip-all`/`archive/a1db…`.** The Google consent
-screen is **in Testing** (no account can sign in). **No Razorpay key exists.**
-**None of the live RLS checks has ever run.** Prices seeded in the database
-are placeholders. Legal pages on `main` are still the older drafts; the new
-ones are on `claude/launch-leftovers` only. Ask the database, not the file.
+**Re-established 8 Oct 2026 by asking the database and the Google console
+directly.** Every clause of the paragraph that used to sit here was wrong,
+and wrong in the owner's favour — three supposed blockers did not exist.
+
+- Schema **§1–§14** live (verified through PostgREST). **§16, §17, §18**
+  live since 6 Oct. **§19 and §24** live since 8 Oct — read back as
+  `accounts_guard` tgtype **23** and a `project_data` scope CHECK of **442**
+  characters naming `characters` and `costs`. **§20–§23 are NOT run**, on
+  purpose: they belong with the Razorpay deploy.
+- The **Google consent screen is PUBLISHED** — In production, External, and
+  Google says verification is not required because no sensitive or
+  restricted scopes are requested. It was never in Testing-with-no-users by
+  the time anyone checked. Its BRANDING is filled in and awaiting
+  re-verification; domain ownership was proved on 8 Oct through the
+  `google-site-verification` meta tag already in `index.html`.
+- **No Razorpay key exists.** Still true.
+- **The RLS read side is PROVEN** — `docs/SECURITY-RLS.md` LIVE CHECK 4.
+  `projects` holds 6 rows and `project_data` 30, and an anonymous GET still
+  returns `[]`. The checks needing TWO real accounts have still never run.
+- **Prices are REAL, not placeholders:** `free=0, starter=59900,
+  indie=79900, pro=99900` paise. `docs/BILLING.md` §0 still says
+  ₹2,999/₹7,999/₹19,999; believe the table.
+- **The legal pages on `main` are the newest** and carry the owner's legal
+  name as of `0b49c56`. One `[OWNER: GSTIN, if registered]` marker remains
+  on the Terms' tax line.
+
+Ask the database, not the file — and note that this very paragraph asserted
+the opposite of five of these for days.
 
 ## 5. Environment facts a new session must know
 
@@ -176,72 +197,89 @@ ones are on `claude/launch-leftovers` only. Ask the database, not the file.
   not built" when it was; "no UI" when `coverage.js` has one). **Check a claim
   against the branch before writing it down.**
 
-## 6. The open work (task list as of 8 Oct)
+## 6. The open work — REWRITTEN 8 Oct 2026, after the release
 
-| Task | Workstream | Branch (`archive/…`) | State | Doc |
-|---|---|---|---|---|
-| 1 | Leftovers + legal | `leftovers` / `claude/launch-leftovers` `a204d49` | 2 commits; verify + proofs not re-run after the legal edit; read legal pages in a browser | `docs/WIP.md` §3.1 |
-| 2 | **On set** | `ac7bac5586116f143` / `feature/on-set` `75438f7` | **Done and gated** | §3.2 |
-| 3 | Money | `ad27555771d505845` `547d370` | written, **unverified**; key `fms_costs_v1` | §3.8 |
-| 4 | Schedule | `a8500da1354391964` `a449645` | 6 commits, written, ungated | §3.3 |
-| 5 | Script revisions | `abc1d13439ac92b6b` `a20cb45` | uncommitted at stop; **known bug** `Element.append(null)` in `write-revisions.js` | §3.5 |
-| 6 | Writing | `a40f499bfa0c512e8` `433bc35` | 4 commits; key `fms_characters_v1`; verify unfinished | §3.4 |
-| 7 | Compliance | `acc100544ab48cea5` `6e51ad2` | uncommitted at stop; tests unfinished | §3.7 |
-| 8 | AI | `a55b1a0c890ccf84e` `ea3b52a` | uncommitted at stop; voice-check code + UI exist (verify) | §3.6 |
-| 9 | Billing growth | `a1db0236c653737b2` `478d852` | §21 upgrade, §22 referral, §23 affiliate done; **GST invoices, gift, edu, leads, funnel not started** | §3.9 |
-| 10 | Growth UX | `adb4de922f32dffae` `76b5f1f` | uncommitted at stop; tour key `fms_tour_v1`; public-link design OFF | §3.10 |
-| 11–14 | Queued, **nobody started**: monsoon weather flag; script-notes overview; writing-goal sync across devices (needs schema CHECK); paid template-pack plumbing | — | not started | `docs/FEATURE-IDEAS.md` |
-| 15 | **Owner decision:** Tamil-script UI labels | — | undecided | — |
-| 16 | **Integration pass** (blocked on all above) | `wip-all` → new branch off latest `main` | not started | `docs/RESUME.md`, `docs/WIP.md` §8 |
-| 17 | Consolidation into `wip-all` + `docs/WIP.md` | `wip-all` | done | — |
-| new | **Emotional-craft layer** | plan only | planned, Phase 0 not run | `docs/WIP-EMOTION-PLAN.md` |
+**The table that used to sit here described the state BEFORE
+`ad7ab02` "Release: the ten workstreams — gate green".** It listed ten
+workstreams as unverified, ungated or uncommitted on `archive/…`
+branches. All ten are merged, gated and on `main`. Anyone reading the old
+table would have re-done finished work — so it is replaced rather than
+annotated. `docs/HISTORY.md` item 20 is the record of the release itself;
+the `archive/…` branches at the end of §6b are history, not a worklist.
 
-**New storage keys so far:** `fms_characters_v1` (per project), `fms_costs_v1`
-(per project) — both need the Supabase scope CHECK widened in one schema
-section; `fms_tour_v1` (device); `fms_no_analytics_v1` planned. **Schema
-sections:** next free number is **§24**; only one agent may write schema
-sections at a time.
+### The ten workstreams: all DONE
 
-**Integration pass (task 16), short form:** merge finished branches into a new
-branch off the latest `main`; one schema section widening the scope CHECK;
-run every `test:*`, `prove:storage/drive/sw/extension`, gated `prove:gate` +
-`prove:billing`, and `verify` uncapped; re-baseline only with **zero data-key
-movement**; recapture `scripts/budget.json` only if growth is justified;
-update statuses in `docs/FEATURE-IDEAS.md`, the `CLAUDE.md` table,
-`docs/HISTORY.md`, `docs/LAUNCH.md`; merge to `main`.
+| Workstream | Evidence |
+|---|---|
+| On set | `src/lib/sun.js`, `src/lib/callsheet-text.js`; `test:sun`, `test:callsheet` |
+| Schedule | `src/lib/dpr.js`; `prove:sw` 26 |
+| Writing (characters) | `src/ui/characters-panel.js`, `src/lib/characters.js`; `fms_characters_v1`; scope live in §24 |
+| Script revisions | the `Element.append(null)` bug is FIXED — `write-revisions.js:158` filters with `.filter(Boolean)`; `test:revisions` exists |
+| Compliance | runtime tests in `test-screenplay.mjs`, optional-group tests in `test-post.mjs` — both pass |
+| Money (costs) | `src/lib/costs.js`, `src/ui/budget-costs.js`; `test:costs`; six tabs browser-walked on the Dragon sample |
+| AI | `prove:ai-coverage` against `scripts/fake-ai.mjs`, BOTH providers; a fabricated quote is stripped and counted |
+| Growth UX (tour) | `src/ui/tour.js`; `fms_tour_v1`; `prove:growth` 50 |
+| Billing growth (§21–§23) | upgrade, referral, affiliate written and tested; `src/lib/growth.js`, `src/ui/growth-admin.js` |
+| Integration pass | `38de170` → `ad7ab02`; `develop` and `main` are level |
+| Leftovers + legal | gated in the release; the legal pages were re-read in a browser on 8 Oct AFTER the owner's legal name was filled in — 375px and 1280px, both themes, zero overflow, zero console errors |
 
-## 6b. Recommended order, and the first action for each workstream
+Release record in `ad7ab02`: `verify` passes all 21 pages with 0 data-keys
+moved; 21 `test:*` suites pass; `prove:storage`, `prove:drive`, `prove:sw`
+26, `prove:growth` 50, `prove:ai-coverage`, `prove:extension` 30;
+gated `prove:gate` 108 and `prove:billing` 124.
 
-**"Resume everything" means this order.** Work each item in its own worktree
-off its `archive/…` branch (full names below), gate it, and only then move on.
+### What is actually still open
+
+| # | Item | State |
+|---|---|---|
+| 1 | **CBFC/AWBI/OTT source check** | The tests pass. The CITATIONS were re-checked against search summaries only, because the cited hosts are unreachable from a container. Open each `sourceUrls` link in a real browser and bump `checked`. A session with a browser can do this. |
+| 2 | **Billing growth, the unstarted five** | GST invoices, gift, edu, leads, funnel. Not started, no tables, no code. `src/lib/growth.js`'s header says so. |
+| 3 | **§20–§23 are not LIVE** | Written and tested, never run against the database. They belong in the same session as the Razorpay deploy, because §20 recreates `create_pending_payment` and `rzp-order` must be redeployed after. |
+| 4 | **Emotional-craft layer** | Plan only. `docs/WIP-EMOTION-PLAN.md`. |
+| 5 | **Queued ideas** | Monsoon weather flag, script-notes overview, writing-goal sync across devices, paid template packs. None started. |
+| 6 | **Owner decision: Tamil-script UI labels** | Undecided. Reverses `lang.js`'s design, so decide before building. |
+| 7 | **No CI** | There is no `.github/` directory at all, so the release gate is only ever run by hand. `docs/BRANCHING.md` says so too. |
+| 8 | **Owner-only launch steps** | `docs/LAUNCH.md`. Razorpay, the two-account live RLS checks, the GSTIN, and re-requesting Google's branding review on 9 Oct or later. |
+
+Two small leftovers nobody has logged as blocking: the Plan page's recce
+card does not show the four recce fields (lat, lng, hospital, police), and
+the after-sunset flag reads the call sheet's wrap but not the DPR's.
+`docs/KNOWN-ISSUES.md`.
+
+**Storage keys added by the ten:** `fms_characters_v1` and `fms_costs_v1`
+(per project, both now live in the schema via §24), `fms_tour_v1` (device).
+`fms_no_analytics_v1` is still only planned.
+
+**THE NEXT FREE SCHEMA SECTION IS §25, NOT §24.** The old §6b told the next
+session to build GST invoices as §24; §24 became the characters and costs
+sync scopes and is live. Renumber before writing anything.
+
+## 6b. What to do next, in order
+
+The old §6b was a twelve-step plan for gating ten workstreams. They are
+gated. What remains is short, and most of it is the owner's.
 
 | Step | Do | First action |
 |---|---|---|
-| 0 | **Owner steps, in parallel, never blocking** (§8) | The owner publishes the consent screen and fills the legal placeholders; nothing below waits on it. |
-| 1 | **On set** — nothing to do | Already gated on `feature/on-set`. Add the four recce fields to the Plan page's recce card only if wanted. |
-| 2 | **Leftovers + legal** | Build open, `verify` uncapped, then gated `prove:gate` + `prove:billing`; read refund/terms/privacy at 390 and 1280 in both themes; check `start.html` with scripts OFF. |
-| 3 | **Schedule** | Run the full gate; confirm the DPR only reads `shotState`; run `prove:sw` (it touches `src/sw.js` — read the service-worker trap in `CLAUDE.md` first). |
-| 4 | **Writing** | `verify` was running when stopped — rerun it; keep the Tamil font last in `--f-script`; measure Enter-paint (~30 ms). |
-| 5 | **Revisions** | Fix the `Element.append(null)` bug in `write-revisions.js` (filter `null` before `append`), rebuild, then add an npm script for `test-revisions.mjs`. |
-| 6 | **Compliance** | Finish the runtime tests in `test-screenplay.mjs` and the optional-group tests in `test-post.mjs`; verify each CBFC/AWBI/OTT fact against its cited source. |
-| 7 | **Money** | Open `budget.html` on the Dragon sample and walk every tab; confirm `fms_costs_v1` survives export and import; keep the wage table labelled "last published, 2022 MoU, expired". |
-| 8 | **AI** | Run `prove-ai-coverage` for BOTH providers against `fake-ai`; confirm a fabricated quote is stripped and counted; confirm `ai.js` stays out of first paint. |
-| 9 | **Billing growth** | `pg_ctlcluster 16 main start`, run `test:schema`; finish the §23 docs (`docs/BILLING.md`, `docs/SECURITY-RLS.md`); **then start GST invoices as schema §24** (buyer GSTIN checksum, gapless financial-year invoice number, "Bill of Supply" mode because the seller is an individual); then gift, edu, leads, funnel (§25 onward). |
-| 10 | **Growth UX** | Run `verify` (the tour must write nothing while idle), gated `prove:gate` (screening room) and `prove:billing`; the public-link SQL stays a proposal. |
-| 11 | **Integration pass** (task 16) — this is the release gate of `docs/BRANCHING.md` run on `develop` | Finish and gate each branch and merge it into `develop`; one schema section widening the scope CHECK for `fms_characters_v1` and `fms_costs_v1`; full gate; re-baseline with zero data-key movement; update docs; then merge `develop` into `main` with `--no-ff`. |
-| 12 | **Queued ideas** (tasks 11–14) and the **owner decision** on Tamil-script UI labels (task 15) | Start only after step 11. |
+| 1 | **Owner-only, and it blocks the money** | `docs/LAUNCH.md`: the GSTIN (or delete that Terms sentence), the Razorpay account, a second Google account for the live RLS checks. Nothing in the repo moves these. |
+| 2 | **Google branding re-request** | 9 Oct 2026 or later — 24 hours after the Search Console ownership check. Branding → View issues → "I have fixed the issues". |
+| 3 | **Razorpay, and §20–§23 with it** | `docs/BILLING.md` §1 in order. Run §20 and redeploy `rzp-order` in the SAME session or every order fails PGRST202. Prices are already real on the console — confirm, do not re-seed. |
+| 4 | **The CBFC/AWBI/OTT source check** | Needs a browser, not a container. One link at a time, bump `checked` per rule, leave `confidence` honest. |
+| 5 | **CI** | `.github/workflows/` does not exist. The release gate is the obvious thing to automate first; `docs/BRANCHING.md` lists it. |
+| 6 | **GST invoices as schema §25** | Buyer GSTIN checksum, gapless financial-year invoice number, "Bill of Supply" mode because the seller is an individual. Then gift, edu, leads, funnel (§26 onward). |
+| 7 | **Emotional-craft layer** | Phase 0 first. See the correction below before branching. |
+| 8 | **Queued ideas, and the Tamil-labels decision** | Last. |
 
-**Emotional-craft layer vs the integration pass.** The owner chose to build
-it on top of `wip-all`. Phase 0 (a baseline of `wip-all`) can run at any time
-and does not depend on the steps above. Phases A–E may then proceed on a
-`wip-emotion` branch, **but nothing from it ships until the integration pass
-(step 11) has happened**, and when it does, `wip-emotion` is merged into the
-integrated branch (the work is kept in new files with one-line hooks to make
-that cheap). If the integration pass comes first, the cleaner route is to
-branch `wip-emotion` off the integrated branch instead — tell the owner which
-they prefer before Phase A.
+**The emotional-craft plan names the wrong base branch.**
+`docs/WIP-EMOTION-PLAN.md` was written when `wip-all` was the tip and says
+to baseline Phase 0 against it and merge into "the integrated branch"
+later. The integration pass has HAPPENED: branch `wip-emotion` off
+`develop` instead, and treat the plan's `wip-all` references as historical.
+Nothing is blocked by this — it is a one-line correction to make before
+Phase 0, not a redesign.
 
-**Full branch names** (the `…` in tables above is never a real name):
+**Historical branch names**, kept because `docs/WIP.md` and `docs/HISTORY.md`
+refer to them. They are MERGED; do not resume work on them:
 `archive/leftovers`, `archive/ac7bac5586116f143` (On set),
 `archive/a8500da1354391964` (Schedule), `archive/a40f499bfa0c512e8` (Writing),
 `archive/abc1d13439ac92b6b` (Revisions), `archive/a55b1a0c890ccf84e` (AI),
@@ -249,26 +287,39 @@ they prefer before Phase A.
 `archive/a1db0236c653737b2` (Billing growth), `archive/adb4de922f32dffae`
 (Growth UX).
 
-**Where the newer launch checklist is:** `docs/LAUNCH.md` on `main` is the older
-version; the newer one (with the legal and domain updates) is on
-`claude/launch-leftovers` and `wip-all`. Read that one.
+**`docs/LAUNCH.md` on `main` IS the current one.** The old note here sent
+readers to a copy on `claude/launch-leftovers` or `wip-all`; that was true
+before the release and is wrong now — `main` carries the newest, including
+the 8 Oct schema and Google findings.
 
 ## 7. The emotional-craft plan (planned, not built)
 
-Full plan: **`docs/WIP-EMOTION-PLAN.md`**. Summary: Phase 0 baseline of
-`wip-all`; **A** vocabulary + Library shelf + glossary (the first shippable
-slice, pure content); **B** Story emotion layer inside `fms_story_v1`; **C**
-per-scene `feeling` field + margin chip + honest rule-based hints; **D** AI
-"emotional read" with verbatim-quote verification; **E** case-study and
-dissection emotion columns. It cannot ship before `wip-all` is integrated.
+Full plan: **`docs/WIP-EMOTION-PLAN.md`**. Summary: Phase 0 baseline;
+**A** vocabulary + Library shelf + glossary (the first shippable slice, pure
+content); **B** Story emotion layer inside `fms_story_v1`; **C** per-scene
+`feeling` field + margin chip + honest rule-based hints; **D** AI "emotional
+read" with verbatim-quote verification; **E** case-study and dissection
+emotion columns.
+
+**The plan's base branch is out of date.** It says Phase 0 baselines
+`wip-all` and that nothing ships "before `wip-all` is integrated". The
+integration pass HAPPENED (`ad7ab02`), so branch `wip-emotion` off
+`develop` and read the plan's `wip-all` references as historical. That is
+the only correction needed; the phases themselves still stand.
 
 ## 8. Owner-only steps (the container cannot do these)
 
-See **`docs/LAUNCH.md`**: publish the Google consent screen; run schema
-§16–§23 on the live project (`node scripts/deploy-billing.mjs --print`) and
-check with the live queries; run the two-account RLS checks in
-`docs/SECURITY-RLS.md` **before taking payments**; Razorpay (test mode
-first), real prices, `VITE_RAZORPAY_KEY_ID`; fill the legal placeholders;
+See **`docs/LAUNCH.md`**. ~~Publish the Google consent screen~~ — already
+published; what is left there is one click, re-requesting the branding
+review on 9 Oct 2026 or later. ~~Run schema §16–§23~~ — §16–§19 and §24 are
+live; only **§20–§23** remain, and they go in the same session as the
+`rzp-order` redeploy. Run the **two-account** RLS checks in
+`docs/SECURITY-RLS.md` **before taking payments** (the read-side check is
+now done; the rest need a second real Google account). Razorpay (test mode
+first), `VITE_RAZORPAY_KEY_ID` — but the prices are already real, so
+CONFIRM them rather than re-seeding. ~~Fill the legal placeholders~~ — the
+legal name is filled; only the **GSTIN** is left, and if there is no
+registration the fix is deleting that sentence rather than filling it;
 (for the emotional-craft layer) supply `scripts/deny-shingles.txt`; set
 `VITE_SUPPORT_WHATSAPP` if wanted. To let a session do the network steps,
 allow the Supabase/Razorpay hosts in the environment's Network access and

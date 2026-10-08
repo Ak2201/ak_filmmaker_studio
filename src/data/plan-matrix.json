@@ -1,0 +1,415 @@
+{
+  "_about": "Client-visible feature matrix: the planned single source for the pricing table. It does NOT change gating by itself; live gating comes from the database plans.features. Plan ids are the DB ids (free/starter/indie/pro); labels are Basic/Intermediate/Pro. kind=limit rows are enforced by plans.limits. `inverted` rows are true (restricting) for the listed plans.",
+  "plans": {
+    "free": "Free",
+    "starter": "Basic",
+    "indie": "Intermediate",
+    "pro": "Pro"
+  },
+  "features": [
+    {
+      "key": "sample_only",
+      "kind": "capability",
+      "label": "Sample project only",
+      "inverted": true,
+      "plans": [
+        "free"
+      ]
+    },
+    {
+      "key": "new_projects",
+      "kind": "capability",
+      "label": "New projects",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "script_import",
+      "kind": "capability",
+      "label": "Script import",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "exports",
+      "kind": "capability",
+      "label": "Exports",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "drive_backup",
+      "kind": "capability",
+      "label": "Google Drive backup",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "ai_tools",
+      "kind": "capability",
+      "label": "AI tools (your own key)",
+      "plans": [
+        "pro"
+      ]
+    },
+    {
+      "key": "remove_branding",
+      "kind": "capability",
+      "label": "Remove branding",
+      "plans": [
+        "pro"
+      ]
+    },
+    {
+      "key": "case-studies",
+      "kind": "module",
+      "label": "Case Studies",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "dissection",
+      "kind": "module",
+      "label": "Dissection",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "glossary",
+      "kind": "module",
+      "label": "Craft Glossary",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "feature-blueprint",
+      "kind": "module",
+      "label": "Feature Blueprint",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "short-blueprint",
+      "kind": "module",
+      "label": "Short Blueprint",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "story-beats",
+      "kind": "module",
+      "label": "Beats & Pacing",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "idea-vault",
+      "kind": "module",
+      "label": "Idea Vault",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "pitch-deck",
+      "kind": "module",
+      "label": "Pitch Deck",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "screenplay",
+      "kind": "module",
+      "label": "Screenplay",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "revisions",
+      "kind": "module",
+      "label": "Revisions",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "docs",
+      "kind": "module",
+      "label": "Documents",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "scene-list",
+      "kind": "module",
+      "label": "Scene List",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "screen-time",
+      "kind": "module",
+      "label": "Screen Time",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "breakdowns",
+      "kind": "module",
+      "label": "Script Breakdowns",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "elements",
+      "kind": "module",
+      "label": "Elements",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "auto-tag",
+      "kind": "module",
+      "label": "Auto-Tagging",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "cast-matrix",
+      "kind": "module",
+      "label": "Cast Matrix",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "shot-list",
+      "kind": "module",
+      "label": "Shot List",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "storyboard",
+      "kind": "module",
+      "label": "Storyboard",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "lookbook",
+      "kind": "module",
+      "label": "Lookbook",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "media",
+      "kind": "module",
+      "label": "Media",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "budget",
+      "kind": "module",
+      "label": "Budget",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "contacts",
+      "kind": "module",
+      "label": "Contacts",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "stripboard",
+      "kind": "module",
+      "label": "Stripboard",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "songs",
+      "kind": "module",
+      "label": "Songs",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "calendar",
+      "kind": "module",
+      "label": "Calendar",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "locations",
+      "kind": "module",
+      "label": "Locations",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "dood",
+      "kind": "module",
+      "label": "Day Out of Days",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "sides",
+      "kind": "module",
+      "label": "Sides",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "reports",
+      "kind": "module",
+      "label": "Reports",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "shoot-day",
+      "kind": "module",
+      "label": "Shoot Day",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "call-sheets",
+      "kind": "module",
+      "label": "Call Sheets",
+      "plans": [
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "edit-log",
+      "kind": "module",
+      "label": "Edit Log",
+      "plans": [
+        "pro"
+      ]
+    },
+    {
+      "key": "deliverables",
+      "kind": "module",
+      "label": "Deliverables",
+      "plans": [
+        "pro"
+      ]
+    },
+    {
+      "key": "extension",
+      "kind": "limit",
+      "label": "Chrome extension",
+      "plans": [
+        "starter",
+        "indie",
+        "pro"
+      ],
+      "note": "Enforced by limits.extension, not features"
+    }
+  ]
+}

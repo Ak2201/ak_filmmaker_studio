@@ -155,7 +155,7 @@ async function checkPlan() {
 function renderNoExtension() {
   const main = h('main#main.pn-main');
   main.append(head('Your plan', 'The extension is not in your plan.',
-    'The Free tier covers the website and local work. Starter, Indie and Pro include the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
+    'The Free tier covers the website and local work. ' + Billing.PLAN_ORDER.slice(1).map(Billing.planName).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' include the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
   main.append(h('a.btn.primary', { href: '../settings.html#plan', target: '_blank', rel: 'noopener', text: 'SEE PLANS' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I HAVE UPGRADED' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));

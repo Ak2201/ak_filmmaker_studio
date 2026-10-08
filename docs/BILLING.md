@@ -34,21 +34,21 @@ else) and `new_projects`. Signed-out and code-only visitors are not gated
 here — the site gate already decided whether they see the app. This is the
 owner's product boundary; the data boundary stays RLS and the triggers.
 
-| | Free | Starter | Indie | Pro |
+| | Free | Basic (`starter`) | Intermediate (`indie`) | Pro |
 | --- | --- | --- | --- | --- |
-| Price, once | — | ₹2,999 | ₹7,999 | ₹19,999 | ← **STALE, see below** |
+| Price, once (live, 8 Oct 2026) | — | ₹599 (59900 paise) | ₹799 (79900) | ₹999 (99900) |
 | Sample only / new projects | yes / no | no / yes | no / yes | no / yes |
 | Cloud projects | 1 | 3 | 10 | unlimited |
 | Collaborators / film | 0 | 2 | 5 | unlimited |
 
-> **THE PRICES IN THAT ROW ARE NOT THE LIVE ONES.** Read from the `plans`
-> table on 8 Oct 2026: `free 0 / starter 59900 / indie 79900 / pro 99900`
-> paise — **₹599 / ₹799 / ₹999**. Somebody set real prices on the admin
-> console and no document followed. The table above is left as written
-> rather than silently rewritten, because which figures the owner INTENDS
-> is the owner's call, not a documentation fix (registry row P3). The
-> server reads the price from the table on every order, so the live
-> figures are what a buyer pays whatever this page says.
+> **Labels.** Tiers are labelled Basic / Intermediate / Pro (§26,
+> `plans.name`); the ids `free / starter / indie / pro`, the CHECKs,
+> `plan_rank` and `PLAN_ORDER` are unchanged. The prices are the live
+> ones, read from the `plans` table on 8 Oct 2026; the server reads the
+> price from the table on every order. The seeded figures §18 wrote
+> (₹2,999 / ₹7,999 / ₹19,999) are history. The feature matrix proposed
+> for the pricing table is `src/data/plan-matrix.json`
+> (`matrixFeatures(planId)` in `plans.js`); it does not gate anything.
 
 | Live share links | 0 | 3 | 10 | unlimited |
 | Organisation seats | 1 | 1 | 3 | 10 |

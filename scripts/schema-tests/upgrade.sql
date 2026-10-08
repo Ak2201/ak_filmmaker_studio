@@ -54,8 +54,8 @@ select t.claims('00000000-0000-4000-8000-000000002101');
 select t.ok((public.quote_order('indie', null) ->> 'amount_paise')::int = 500000, '2. Starter paid ₹2,999: Indie quotes ₹5,000 (799900 − 299900)');
 select t.ok((public.quote_order('indie', null) ->> 'credit_paise')::int = 299900 and (public.quote_order('indie', null) ->> 'list_paise')::int = 799900,
   '2. with credit_paise 299900 and the list price beside it');
-select t.ok((public.quote_order('indie', null) ->> 'upgrade_from') = 'starter' and (public.quote_order('indie', null) ->> 'upgrade_from_name') = 'Starter',
-  '2. naming what was paid for (upgrade_from starter / Starter)');
+select t.ok((public.quote_order('indie', null) ->> 'upgrade_from') = 'starter' and (public.quote_order('indie', null) ->> 'upgrade_from_name') = 'Basic',
+  '2. naming what was paid for (upgrade_from starter / Basic, §26 label)');
 select t.ok((public.quote_order('pro', null) ->> 'amount_paise')::int = 1700000, '2. and Pro quotes ₹17,000 (1999900 − 299900)');
 do $$ declare h text; begin
   perform public.quote_order('starter', null);
@@ -149,6 +149,25 @@ select t.claims('00000000-0000-4000-8000-00000000000a');
 select t.ok((select credit_paise = 299900 and amount_paise = 450000 from public.admin_list_payments(1000) where razorpay_order_id = 'order_up_2'),
   '9. admin_list_payments shows credit_paise on the upgrade row');
 select t.ok((select credit_paise = 0 from public.admin_list_payments(1000) where razorpay_order_id = 'order_up_1'), '9. and 0 on a first purchase');
+rollback;
+
+-- 10. §26: the limit sentence names the plan by its STORED name
+begin;
+select t.ok((select name from public.plans where id = 'starter') = 'Basic' and (select name from public.plans where id = 'indie') = 'Intermediate',
+  '10. the seeded labels are Basic / Intermediate');
+select t.claims('00000000-0000-4000-8000-00000000000a');
+select public.admin_set_plan('starter', '{"name": "Basic Plus"}');
+select t.claims('00000000-0000-4000-8000-000000002103');
+insert into public.projects (owner_id, title) values ('00000000-0000-4000-8000-000000002103', 'L1');
+insert into public.projects (owner_id, title) values ('00000000-0000-4000-8000-000000002103', 'L2');
+insert into public.projects (owner_id, title) values ('00000000-0000-4000-8000-000000002103', 'L3');
+do $$ begin
+  insert into public.projects (owner_id, title) values ('00000000-0000-4000-8000-000000002103', 'L4');
+  raise exception 'should have refused';
+exception when sqlstate 'P0402' then
+  if sqlerrm not like 'Your Basic Plus plan syncs up to 3 projects%' then raise exception 'wrong message: %', sqlerrm; end if;
+  raise notice 'ok - 10. the fourth project -> P0402 naming the stored plan name';
+end $$;
 rollback;
 
 \echo

@@ -101,11 +101,16 @@ function featureBlock(p) {
   return wrap;
 }
 
-function limitList(limits) {
+function limitList(limits, features) {
   const ul = h('ul.pl-limits');
   for (const [key, text] of LIMIT_LINES) ul.append(h('li', { text: text(cap(limits, key)) }));
   ul.append(h('li', { text: limits && limits.extension ? 'Chrome extension included' : 'Chrome extension not included' }));
-  ul.append(h('li', { text: 'Local work, Drive backup and AI tools (your own key) on every plan' }));
+  const f = features || {};
+  const items = ['Local work'];
+  if (f.drive_backup !== false) items.push('Drive backup');
+  if (f.ai_tools !== false) items.push('AI tools (your own key)');
+  const said = items.length > 1 ? items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1] : items[0];
+  ul.append(h('li', { text: said + (items.length > 1 ? ' are' : ' is') + ' included' }));
   return ul;
 }
 
@@ -134,7 +139,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     ].filter(Boolean)));
     if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${p.name || planName(p.id)} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
     if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
-    card.append(limitList(p.limits));
+    card.append(limitList(p.limits, p.features));
     card.append(featureBlock(p));
     /* A button only where there is something to buy: a higher tier.
        The current tier says so instead, and a lower one offers nothing

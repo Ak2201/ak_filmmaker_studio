@@ -5926,3 +5926,98 @@ notify pgrst, 'reload schema';
 --     that matters most: the function is destructive by name and must
 --     not be by effect.
 -- ============================================================
+
+-- ============================================================
+-- 26. TIER LABELS: Basic / Intermediate / Pro            NOT RUN LIVE — owner approval
+-- ------------------------------------------------------------
+-- Ids stay free / starter / indie / pro (CHECKs, plan_rank and the
+-- client's PLAN_ORDER are untouched). Only the label changes, and the
+-- label lives in plans.name. Two things follow:
+--   26.1 the three P0402 limit triggers named the plan with
+--        initcap(id) -- "Starter", "Indie" -- ignoring the table, so a
+--        console rename never reached the sentence. They read the
+--        stored name now, falling back to initcap if the row is gone.
+--   26.2 the seeded names move, guarded so a name an admin already
+--        edited in the console is never clobbered.
+-- ============================================================
+
+-- 26.1 THE LIMITS, NAMING THE PLAN BY ITS STORED NAME ----------------
+create or replace function public.enforce_project_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  pl  := public.user_plan(new.owner_id);
+  cap := public.plan_cap(public.user_limits(new.owner_id), 'projects');
+  if cap is null then return new; end if;
+  select count(*) into n from public.projects p where p.owner_id = new.owner_id;
+  if n >= cap then
+    raise exception 'Your % plan syncs up to % project%. Upgrade to add another to the cloud; it is still saved on this device.',
+      coalesce((select x.name from public.plans x where x.id = pl), initcap(pl)), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.enforce_share_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid; cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  pl  := public.user_plan(owner);
+  cap := public.plan_cap(public.user_limits(owner), 'shares');
+  if cap is null then return new; end if;
+  select count(*) into n from public.shares s join public.projects p on p.id = s.project_id
+   where p.owner_id = owner and (s.expires_at is null or s.expires_at > now());
+  if n >= cap then
+    raise exception 'Your % plan allows % live share link%. Revoke one, or upgrade.',
+      coalesce((select x.name from public.plans x where x.id = pl), initcap(pl)), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.enforce_collaborator_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare owner uuid; cap int; n int; pl text;
+begin
+  if public.is_privileged_caller() then return new; end if;
+  select p.owner_id into owner from public.projects p where p.id = new.project_id;
+  pl  := public.user_plan(owner);
+  cap := public.plan_cap(public.user_limits(owner), 'collaborators');
+  if cap is null then return new; end if;
+  select count(*) into n from public.project_collaborators pc where pc.project_id = new.project_id;
+  if n >= cap then
+    raise exception 'This film''s owner is on the % plan, which allows % collaborator% per film.',
+      coalesce((select x.name from public.plans x where x.id = pl), initcap(pl)), cap, case when cap = 1 then '' else 's' end using errcode = 'P0402';
+  end if;
+  return new;
+end;
+$fn$;
+
+-- 26.2 THE SEEDED LABELS ----------------------------------------------
+update public.plans set name = 'Basic'        where id = 'starter' and name = 'Starter';
+update public.plans set name = 'Intermediate' where id = 'indie'   and name = 'Indie';
+
+notify pgrst, 'reload schema';
+
+-- 26.3 CHECKS TO RUN, none of which has been run live -----------------
+--  1. select id, name from plans order by sort -> Free, Basic,
+--     Intermediate, Pro (or whatever the console had set).
+--  2. a Basic owner's fourth project -> P0402 "Your Basic plan syncs
+--     up to 3 projects ...".
+--  3. rename a plan in the console, repeat 2: the sentence follows.
+-- ============================================================

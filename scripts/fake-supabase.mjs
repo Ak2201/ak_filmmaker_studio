@@ -165,8 +165,8 @@ export function freshDb() {
     // section 16
     plans: [
       { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', features: { sample_only: true, new_projects: false }, price_paise: 0, monthly_paise: 0, yearly_paise: 0, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
-      { id: 'starter', name: 'Starter', blurb: 'One writer, a few films, a couple of readers.', features: {}, price_paise: 299900, monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
-      { id: 'indie',   name: 'Indie',   blurb: 'A small team taking a film through production.', features: {}, price_paise: 799900, monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
+      { id: 'starter', name: 'Basic', blurb: 'One writer, a few films, a couple of readers.', features: {}, price_paise: 299900, monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
+      { id: 'indie',   name: 'Intermediate', blurb: 'A small team taking a film through production.', features: {}, price_paise: 799900, monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
       { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
     ],
     payments: [],

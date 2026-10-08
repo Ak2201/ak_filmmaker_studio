@@ -149,7 +149,7 @@ try {
     ok(acc && acc.plan === 'indie' && acc.plan_until === null, 'Amy owns an organisation on Indie with no end date');
     { const t = await page.textContent('#plan'); ok(!/Until|Lapsed|RENEW|EXTEND/.test(t) && /Nothing to renew/.test(t), 'the card says there is nothing to renew, and prints no expiry'); }
     ok(!(await page.$('.pl-card[data-plan="starter"] [data-plan-action="buy"]')), 'a lower tier offers no button once Indie is held');
-    ok((await page.textContent('#plan .bd-h2')).includes('Indie'), 'the section title names the plan and the organisation');
+    ok((await page.textContent('#plan .bd-h2')).includes('Intermediate'), 'the section title names the plan and the organisation');
     /* (h) Nothing about the purchase lands in localStorage. The plan is
        a fact about the account, read from the server every time. Other
        modules may write during the re-render (the rail's open state, the
@@ -361,7 +361,7 @@ try {
     ok(p2.find((x) => x[0] === 'indie')[1] === '₹7,199.10' && p2.find((x) => x[0] === 'pro')[1] === '₹17,999.10', 'the cards show the discounted prices from quote_order (₹7,199.10 and ₹17,999.10 — 10% of a paise-exact price keeps its paise)');
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
     ok(/₹799\.90 off with LAUNCH10/.test(await page.textContent('#plan .pl-card[data-plan="indie"]')), 'and the saving named');
-    ok(/LAUNCH10 applied to Starter, Indie, Pro/.test(await page.textContent('#plan .pl-promo-msg')), 'the box says which plans it applied to');
+    ok(/LAUNCH10 applied to Basic, Intermediate, Pro/.test(await page.textContent('#plan .pl-promo-msg')), 'the box says which plans it applied to');
     // buy with it
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
@@ -411,7 +411,7 @@ try {
     await B.page.fill('#plPromoCode', 'FEST500');
     await B.page.click('#buy .pl-promo-form button[type="submit"]');
     await B.page.waitForSelector('#buy .pl-card[data-plan="pro"].has-promo', { timeout: 8000 });
-    ok(!(await B.page.$('#buy .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Indie, Pro/.test(await B.page.textContent('#buy .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
+    ok(!(await B.page.$('#buy .pl-card[data-plan="starter"].has-promo')) && /FEST500 applied to Intermediate, Pro/.test(await B.page.textContent('#buy .pl-promo-msg')), 'FEST500 prices Indie and Pro and leaves Starter alone');
     ok((await prices(B.page)).find((x) => x[0] === 'pro')[1] === '₹19,499', 'Pro reads ₹19,499 (₹500 off)');
     allErrors.push(...B.errors); await B.ctx.close();
   }
@@ -429,7 +429,7 @@ try {
     await page.goto(BASE + 'settings.html#plan');
     await page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-upgrade', { timeout: 10000 })
       .then(() => ok(true, 'a Starter holder sees an upgrade line on the Indie card'), () => ok(false, 'a Starter holder sees an upgrade line on the Indie card'));
-    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)', 'it reads "Upgrade to Indie — ₹5,000 (you paid ₹2,999 for Starter)"');
+    ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)', 'it reads "Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)"');
     const p = await prices(page);
     ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
@@ -441,7 +441,7 @@ try {
     ok(last && last.amount === 500000, 'Checkout opened at the difference (500000 paise), not the list');
     const row = F.db.payments.find((x) => x.plan_id === 'indie' && x.status === 'paid');
     ok(row && row.credit_paise === 299900 && row.list_paise === 799900 && row.amount_paise === 500000, 'the ledger row carries list, credit and the amount paid');
-    await page.waitForFunction(() => /you paid ₹7,999 for Indie/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
+    await page.waitForFunction(() => /you paid ₹7,999 for Intermediate/.test((document.querySelector('#plan .pl-card[data-plan="pro"] .pl-upgrade') || {}).textContent || ''), null, { timeout: 10000 })
       .then(() => ok(true, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'), () => ok(false, 'the Pro card re-quotes: everything paid so far (₹7,999) is credited'));
     ok((await prices(page)).find((x) => x[0] === 'pro')[1] === '₹12,000', 'Pro now costs ₹12,000 (1999900 − 799900)');
     const refused = await page.evaluate(async ([sb]) => {

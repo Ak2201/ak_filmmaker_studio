@@ -180,16 +180,17 @@ export function pageLocked() {
    typed anywhere in this file; the plans page quotes those. Until the
    table has answered, or if it cannot (signed out, section 18 not run,
    offline), the sentence is the honest general one. */
-const PAID_FALLBACK = 'Included in the paid plans.';
+const PAID_FALLBACK = 'Included in a higher plan.';
 async function lowestPlanWith(ids) {
   const plans = await Billing.listPlans();
   const open = plans
-    .filter((p) => p && p.active !== false && p.id !== 'free' && p.id !== plan)
+    .filter((p) => p && p.active !== false && p.id !== 'free' && Billing.planRank(p.id) > Billing.planRank(plan))
     .sort((a, b) => (a.sort ?? Billing.planRank(a.id)) - (b.sort ?? Billing.planRank(b.id)));
   return open.find((p) => ids.every((id) => !p.features || p.features[id] !== false)) || null;
 }
 function includedLine(ids) {
-  const line = h('p.pg-lock-plan', { text: PAID_FALLBACK });
+  const top = Billing.planRank(plan) >= Billing.PLAN_ORDER.length - 1;
+  const line = h('p.pg-lock-plan', { text: top ? '' : PAID_FALLBACK });
   lowestPlanWith(ids).then((p) => {
     if (p) line.textContent = 'Included in the ' + (p.name || Billing.planName(p.id)) + ' plan.';
   }).catch(() => { /* the fallback stands */ });
@@ -218,7 +219,7 @@ function lockCard(mods) {
     card.append(ul);
   }
   card.append(
-    h('p.pg-lock-p', { text: (names ? names + ' is' : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
+    h('p.pg-lock-p', { text: (names ? names + (list.length > 1 ? ' are' : ' is') : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
     includedLine(list.map((m) => m.id)),
     h('div.pg-lock-actions', {}, [
       h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),

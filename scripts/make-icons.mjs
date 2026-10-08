@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
+const BRAND = JSON.parse(readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8')).name;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -63,8 +64,8 @@ function mark({ inset = 0 } = {}) {
   const slash = (x) =>
     `<polygon points="${x},150 ${x + 30},150 ${x + 12},212 ${x - 18},212"/>`;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="FilmMakerStudio">
-  <title>FilmMakerStudio</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="${BRAND}">
+  <title>${BRAND}</title>
   <defs>
     <clipPath id="board"><rect x="76" y="222" width="360" height="186" rx="10"/></clipPath>
     <clipPath id="stick"><rect x="76" y="150" width="360" height="62" rx="6"/></clipPath>

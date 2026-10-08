@@ -50,6 +50,7 @@ for (const f of ['sw.js', 'manifest.webmanifest', 'registerSW.js']) fs.rmSync(pa
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const manifest = fs.readFileSync(path.join(ROOT, 'extension/manifest.template.json'), 'utf8')
+  .replaceAll('__NAME__', JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8')).name)
   .replace('__VERSION__', String(pkg.version || '1.0.0').replace(/[^0-9.]/g, '') || '1.0.0');
 fs.writeFileSync(path.join(OUT, 'manifest.json'), manifest);
 

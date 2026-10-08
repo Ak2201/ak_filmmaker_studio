@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Filmmaker Studio",
-  "short_name": "FilmMakerStudio",
+  "name": "__NAME__",
+  "short_name": "__NAME__",
   "version": "__VERSION__",
   "description": "Story, screenplay and production tools for filmmakers — in a side panel, with a web clipper for your Idea Vault.",
   "action": {
-    "default_title": "Open Filmmaker Studio",
+    "default_title": "Open __NAME__",
     "default_icon": { "192": "icons/icon-192.png" }
   },
   "icons": { "192": "icons/icon-192.png", "512": "icons/icon-512.png" },

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
 import { PLAN_ORDER, planName } from './src/lib/plans.js';
@@ -188,6 +188,50 @@ function startFigures() {
 }
 
 /* ============================================================
+   THE PRODUCT NAME, STAMPED INTO EVERY PAGE (src/data/brand.json)
+   ------------------------------------------------------------
+   `{{brand:name|short|host|email|seller|tagline|upper}}` in any HTML
+   entry. An unknown key throws, so a typo is a build error. The PWA
+   manifest (public/manifest.webmanifest) carries `{{brand:name}}` too:
+   it is filled in the output dir at writeBundle, before the service
+   worker plugin globs dist/, and by a middleware under `vite dev`.
+   ============================================================ */
+export function brandReplace(text, brand, where = 'html') {
+  const values = {
+    name: brand.name, short: brand.short, host: brand.host, email: brand.supportEmail,
+    seller: brand.seller, tagline: brand.tagline, upper: String(brand.name).toUpperCase()
+  };
+  return text.replace(/\{\{brand:([^}]*)\}\}/g, (all, key) => {
+    if (!(key in values)) throw new Error(where + ': unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
+    return String(values[key]);
+  });
+}
+function brandPlugin() {
+  const load = () => JSON.parse(readFileSync(resolve(__dirname, 'src/data/brand.json'), 'utf8'));
+  let outDir = 'dist';
+  return {
+    name: 'fms-brand',
+    configResolved(c) { outDir = resolve(c.root, c.build.outDir); },
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) { return brandReplace(html, load(), String((ctx && (ctx.filename || ctx.path)) || 'html')); }
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!/^\/manifest\.webmanifest(\?|$)/.test(req.url || '')) return next();
+        res.setHeader('Content-Type', 'application/manifest+json');
+        res.end(brandReplace(readFileSync(resolve(__dirname, 'public/manifest.webmanifest'), 'utf8'), load(), 'manifest.webmanifest'));
+      });
+    },
+    writeBundle() {
+      const f = resolve(outDir, 'manifest.webmanifest');
+      if (!existsSync(f)) return;
+      writeFileSync(f, brandReplace(readFileSync(f, 'utf8'), load(), 'manifest.webmanifest'));
+    }
+  };
+}
+
+/* ============================================================
    Multi-page build. Each page is a real HTML entry, so the
    output is still a pile of static files — same Vercel config,
    same GitHub Pages story, no server required.
@@ -234,6 +278,7 @@ export default defineConfig({
   plugins: [
     materialSymbols(),
     stepIndex(),
+    brandPlugin(),
     startFigures(),
     VitePWA({
       strategies: 'injectManifest',

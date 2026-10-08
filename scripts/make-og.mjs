@@ -58,7 +58,7 @@ function palette() {
 
 const C = palette();
 
-const NAME = 'FilmMakerStudio';
+const NAME = JSON.parse(readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8')).name;
 const HOOK = ['Pay once. No subscription.', 'Works offline — your work stays in your browser.'];
 const SUB  = 'Write the script · Plan the shoot · Run the set';
 const FONT = `'Plus Jakarta Sans', 'Liberation Sans', 'DejaVu Sans', Arial, sans-serif`;

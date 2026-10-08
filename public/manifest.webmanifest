@@ -1,5 +1,5 @@
 {
-  "name": "FilmMakerStudio",
+  "name": "{{brand:name}}",
   "short_name": "Studio",
   "description": "A working desk for screenwriting, pre-production and craft study.",
   "lang": "en",

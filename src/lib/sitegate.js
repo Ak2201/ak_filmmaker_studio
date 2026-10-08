@@ -82,7 +82,18 @@ import { getCodePass, clearCodePass, isMissing } from './gate.js';
    real project in .env. One missing import, and only the bundler was
    hiding it. Side-effect import on purpose: the gate wants the global,
    not the exports. No cycle — cloud.js imports store, drive, gate and
-   extension-bridge, none of which import this file. 8 Oct 2026. */
+   extension-bridge, none of which import this file.
+
+   STATIC, AND MEASURED. This was briefly `import('./cloud.js')`, on a
+   diagnosis that turned out to be wrong: feature.html was over its
+   first-paint budget and I attributed the 35KB to cloud.js being
+   dragged into CORE_LIB by this edge. It was not. `feature.js` has
+   always imported cloud.js directly (line 72), so that page never
+   lacked it, and the budget overrun is PRE-EXISTING — `main` fails the
+   same check at 1,088,622 bytes. Measured on both branches: main
+   1,088,622 / 48 files, static here 1,089,038 / 48, dynamic
+   1,090,683 / 49. The dynamic form cost MORE and added a chunk. Static
+   it is, at +416 bytes for everything this branch adds. 8-9 Oct 2026. */
 import './cloud.js';
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};

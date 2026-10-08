@@ -156,7 +156,7 @@ Tracked in the revamp plan. Next up:
 
 ## Credits
 
-**Curated by Arunak.** Tamil cinema lessons drawn from the work of the directors
+Tamil cinema lessons drawn from the work of the directors
 profiled in the Library. Por Thozhil (2023, dir. Vignesh Raja) is referenced
 throughout as a craft case study.
 

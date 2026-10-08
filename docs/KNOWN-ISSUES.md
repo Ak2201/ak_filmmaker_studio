@@ -85,6 +85,45 @@ once and not yet looked at.
   Rules, 2001 (connection failure) and a `thestatesman.com` report (403).
   AWBI hosts working copies of the 2001 Rules; they are now cited instead.
 
+## ROOT CAUSE FOUND, NOT YET FIXED: cloud.js never loads on the dev server
+
+**8 Oct 2026.** `window.StudioCloud` is **undefined** on `settings.html`
+under `npm run dev`. Measured, not inferred: `hasStudioCloud: false`, and
+`cloud.js` is absent from `performance.getEntriesByType('resource')`.
+
+One cause, every symptom:
+
+- the site gate never gets an answer, so it hits `GIVE_UP_MS` and
+  **fails closed** — the breadcrumb reads `reason: "timeout"`. Every
+  gated page bounces a signed-in admin to `invite.html`.
+- `isConfigured()` is unreachable, so the Plan section renders
+  "This build is not connected to a cloud project" even though `.env`
+  carries a real project.
+- there is no session, so `refreshBilling()` bails and `billing.plans`
+  stays null — which is why the Plan section was EMPTY before
+  `renderPlan()` was taught to show its failure.
+
+**Why the built site is fine, and this is the part worth keeping.**
+`vite.config.js` folds every `src/lib` and `src/ui` module into one
+`studio` chunk, so in production cloud.js evaluates on every page as a
+side effect of bundling. `CLAUDE.md` already states this. In dev there
+is no chunk, so a module loads only if something imports it — and
+**nothing imports `cloud.js` at all**: `grep -rln "from '.*lib/cloud'"
+src/` returns nothing. `sitegate.js` polls for `window.StudioCloud`
+rather than importing it; `billing.js` reads `window.StudioCloud`;
+`settings.js` reads it too. The dependency is real and entirely
+implicit, and only the bundler was satisfying it.
+
+So this is not a dev-server quirk to be waited out. It is a genuine
+missing import that production hides.
+
+**The fix is small and should be deliberate:** give the gate an explicit
+`import '../lib/cloud.js'` (side-effect) in `src/lib/sitegate.js`, which
+`chrome.js` already pulls in on every page — so the thing that cannot
+work without cloud.js is the thing that asks for it. Do NOT "fix" it by
+lengthening the gate timeout; that was done on 8 Oct as a dev-server
+mitigation and it treats the symptom.
+
 ## The full pending list
 
 The ID-numbered registry of everything still to do (launch steps, production

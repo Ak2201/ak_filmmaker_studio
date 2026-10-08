@@ -137,6 +137,45 @@ still loads well inside it. A timeout here should stay loud enough to
 mean something. The `optimizeDeps` entry for the Supabase SDK stays —
 that one is a genuine dev speed-up, not a workaround.
 
+## prove:storage fails 2 checks — the scene bin, and it PRE-DATES today
+
+**9 Oct 2026.** `npm run prove:storage` fails exactly two checks:
+
+```
+FAIL  S2 clearing the heading bins A's scene with its 2 shots and 1 frame
+FAIL  S2 …and A's scene list and shot list no longer hold them
+```
+
+**Confirmed pre-existing, not a regression.** Run on `main` at
+`2ca58b9` it fails the SAME two checks, and `scenes.js`, `script.js`,
+`shots.js`, `store.js`, `write.js` and `scripts/prove-storage.mjs` are
+byte-identical between `main` and `develop` — so the code under test
+has not moved. Checked this way round deliberately: "I did not touch
+it" is the reasoning that was wrong twice on 8 Oct.
+
+**What it means, and why it is not cosmetic.** Clearing a slug line in
+the script is supposed to move that scene, with its shots and frames,
+into `fms_scene_bin_v1__<project>` so Ctrl+Z can bring it back. The
+proof says the bin does not receive it, and that A's scene and shot
+lists still hold the rows. On the face of it a user clearing a heading
+could lose the scene's shots rather than bin them, which is the
+data-loss class `CLAUDE.md` exists to prevent.
+
+**One thing that does not fit, and should be understood before anyone
+"fixes" it:** the very next check, S3, PASSES — Ctrl+Z brings the scene
+back with the same id and its shots and frame byte-identical, and
+reports A's bin empty afterwards. A restore that works implies
+something was stored. So this may be an assertion that has drifted from
+the implementation (wrong key, wrong shape, wrong counts) rather than
+a live data-loss bug. **Read S2 and S3 together before changing
+either**, and establish which of the two is wrong — the test or the
+code. `scripts/prove-storage.mjs` around lines 999-1014.
+
+Release note: today's promotion of `develop` to `main` went ahead with
+this failing, because it fails identically on both branches and holding
+13 unrelated commits for it helps nobody. It is not fixed and is not
+forgotten.
+
 ## The full pending list
 
 The ID-numbered registry of everything still to do (launch steps, production

@@ -163,6 +163,30 @@ function startFigures() {
         const values = { ...Object.fromEntries(Object.entries(fig).map(([k, v]) => ['dragon.' + k, v])),
                          ...Object.fromEntries(PLAN_ORDER.map((id) => ['plan.' + id, planName(id)])) };
 
+        /* List prices (₹, pay once). The server's plans table is what the
+           checkout charges; this is the sales page's copy of the same
+           figures and the page says "confirmed at checkout". */
+        const LIST_PRICE = { free: 0, starter: 599, indie: 799, pro: 999 };
+        for (const id of PLAN_ORDER) values['price.' + id] = '\u20B9' + LIST_PRICE[id].toLocaleString('en-IN');
+        /* The comparison table's body, from src/data/plan-matrix.json.
+           [row label, matrix key]; a missing key fails the build. */
+        const MATRIX = JSON.parse(readFileSync(resolve(__dirname, 'src/data/plan-matrix.json'), 'utf8'));
+        const ROWS = [
+          ['Your own films', 'new_projects'],
+          ['Screenplay editor, revisions', 'screenplay'], ['Script import and exports', 'script_import'],
+          ['Breakdown, scene list, shot list', 'breakdowns'], ['Stripboard, day out of days, calendar', 'stripboard'],
+          ['Budget at Chennai rates', 'budget'], ['Call sheets and the shoot day', 'call-sheets'],
+          ['Google Drive backup', 'drive_backup'], ['AI tools (your own key)', 'ai_tools'],
+          ['Edit log and deliverables', 'edit-log']
+        ];
+        const cell = (yes) => yes ? '<td class="st-yes"><span aria-hidden="true">\u2713</span><span class="st-vh">Included</span></td>'
+                                  : '<td class="st-no"><span aria-hidden="true">\u2014</span><span class="st-vh">Not included</span></td>';
+        values['matrix.rows'] = ROWS.map(([label, key]) => {
+          const row = MATRIX.features.find((f) => f.key === key);
+          if (!row) fail('plan-matrix.json has no feature "' + key + '"');
+          return '<tr><th scope="row">' + label + '</th>' + PLAN_ORDER.map((id) => cell(row.plans.includes(id))).join('') + '</tr>';
+        }).join('');
+
         const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
         const ids = tiers.map((m) => m[1]);
         if (ids.join(',') !== PLAN_ORDER.join(',')) {

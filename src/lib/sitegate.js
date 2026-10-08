@@ -28,7 +28,8 @@
                                  visitor in signed out or signed in
                                  and closed alike; invalid, it is
                                  forgotten and the rest applies
-        Signed out            -> invite.html
+        Signed out            -> start.html (the public landing page;
+                                 every other refusal goes to invite.html)
         no cloud in the build -> invite.html (nobody can be checked,
                                  so nobody is in — fail closed)
         gate 'open' or 'lost' -> show the page ('lost' is a member
@@ -152,7 +153,11 @@ function deny(reason) {
   } catch (e) { /* private mode: the breadcrumb is a nicety */ }
   document.documentElement.dataset.sitegate = 'denied';
   Store.notify('sitegate:denied', { reason });
-  location.replace('invite.html');
+  /* A STRANGER (signed out, no valid code) is sent to the public landing
+     page, which says what the product is and links on to invite.html;
+     everyone else (signed in but not a member, nobody checkable, a
+     timeout) goes straight to the doorway. Both targets are EXEMPT. */
+  location.replace(reason === 'signedout' ? 'start.html' : 'invite.html');
 }
 
 /** Why the current state is or is not through. Exported for the

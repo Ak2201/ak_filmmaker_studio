@@ -35,55 +35,95 @@
      src/data/navigation.json (invariant 2), and the CTA's label, which
      depends on whether this build has the gate on.
      ============================================================ -->
-<main class="st" id="top">
-
-<header class="st-hero">
-  <p class="st-eyebrow">{{brand:upper}}</p>
-  <h1 class="st-title">Write the script. Plan the shoot. Run the set.<br>One desk, in your browser.</h1>
-  <p class="st-hook">Pay once. No subscription. Works offline &mdash; your work stays in your browser.</p>
-  <p class="st-lede">A production studio for independent filmmakers, built around how a Tamil unit
-  actually works: a screenplay that drives the breakdown, a breakdown that drives the schedule, the
-  budget and the call sheet, and a shoot-day view made for a phone on location.</p>
-  <p class="st-cta">
-    <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-gated="Request an invite" data-open="Open the studio">Request an invite</a>
-    <a class="st-btn" href="index.html?sample=1">See it on a real film</a>
-  </p>
-  <p class="st-fine">Free to try with a complete sample film. Paid tiers are a single payment, kept for good.</p>
+<header class="st-top" id="top">
+  <div class="st-top-in">
+    <a class="st-brand" href="#top">{{brand:name}}</a>
+    <nav class="st-nav" aria-label="Page sections">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="st-signin" href="invite.html">Sign in</a>
+    <a class="st-btn st-btn-primary st-btn-sm" href="invite.html#request">Request invite</a>
+  </div>
 </header>
 
-<section class="st-sec" id="jobs" aria-labelledby="jobs-h">
-  <p class="st-eyebrow">Three jobs</p>
-  <h2 class="st-h2" id="jobs-h">What it does</h2>
+<main class="st">
+
+<section class="st-hero" aria-labelledby="hero-h">
+  <div class="st-hero-copy">
+    <p class="st-eyebrow">{{brand:upper}}</p>
+    <h1 class="st-title" id="hero-h">Write the script. Plan the shoot. Run the set.</h1>
+    <p class="st-hook">Pay once. Your script stays on your machine.</p>
+    <p class="st-lede">One desk in your browser, built around how a Tamil unit works: a screenplay that drives the
+    breakdown, the schedule, the budget and the call sheet &mdash; and a shoot-day view made for a phone on location.
+    No subscription, and it keeps working with no network.</p>
+    <p class="st-cta">
+      <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html#request" data-gated="Request an invite" data-open="Open the studio" data-open-href="index.html">Request an invite</a>
+      <a class="st-btn" href="#pricing">See pricing</a>
+    </p>
+    <p class="st-fine" data-gated="The studio is invite-only for now. Once you are in, the Dragon sample film is free to open and edit." data-open="Free to try with a complete sample film. Paid plans are a single payment, kept for good.">The studio is invite-only for now. Once you are in, the Dragon sample film is free to open and edit.</p>
+  </div>
+  <figure class="st-shot st-shot-hero">
+    <img src="shots/hub.webp" width="1280" height="800" alt="The studio's home screen with the Dragon sample film open, showing where you left off in the feature blueprint.">
+  </figure>
+</section>
+
+<section class="st-sec" id="features" aria-labelledby="features-h">
+  <p class="st-eyebrow">Three steps</p>
+  <h2 class="st-h2" id="features-h">Write &rarr; Plan &rarr; Shoot</h2>
+  <ol class="st-steps">
+    <li class="st-step">
+      <div class="st-step-copy">
+        <p class="st-step-n">1</p>
+        <h3 class="st-h3">Write</h3>
+        <p>A screenplay editor that formats as you type &mdash; slug lines, action, cues, dialogue, dual dialogue &mdash; and keeps
+        the page count honest. Tamil, Tanglish or English. Import a <code>.fountain</code>, <code>.fdx</code> or PDF; export a properly
+        paginated screenplay PDF.</p>
+        <p class="st-more"><a href="write.html#screenplay" data-app>Screenplay &rarr;</a></p>
+      </div>
+      <figure class="st-shot"><img loading="lazy" src="shots/write.webp" width="1280" height="800" alt="The screenplay page of the Dragon sample: 106.5 pages, 2,361 elements and the running time on screen."></figure>
+    </li>
+    <li class="st-step">
+      <div class="st-step-copy">
+        <p class="st-step-n">2</p>
+        <h3 class="st-h3">Plan</h3>
+        <p>Every scene heading becomes a scene row. Break it down into cast, props and vehicles, lay the strips out into
+        shoot days, see the day out of days and the locations, and price it at Chennai rates &mdash; all from one scene
+        model, so nothing is typed twice.</p>
+        <p class="st-more"><a href="stripboard.html" data-app>Stripboard &rarr;</a></p>
+      </div>
+      <figure class="st-shot"><img loading="lazy" src="shots/stripboard.webp" width="1280" height="800" alt="The stripboard for the Dragon sample, scenes laid out into shoot days."></figure>
+    </li>
+    <li class="st-step">
+      <div class="st-step-copy">
+        <p class="st-step-n">3</p>
+        <h3 class="st-h3">Shoot</h3>
+        <p>The shoot day on a phone: today&rsquo;s scenes, who is called, sunrise and golden hour for the location, and what
+        you actually got &mdash; shot, part or dropped. The edit log reads those marks to say what is in the can.</p>
+        <p class="st-more"><a href="shoot.html" data-app>Shoot day &rarr;</a></p>
+      </div>
+      <figure class="st-shot"><img loading="lazy" src="shots/shoot.webp" width="1280" height="800" alt="Shoot day 1 of the Dragon sample: scenes and pages today, sunrise, sunset and golden hour times."></figure>
+    </li>
+  </ol>
+</section>
+
+<section class="st-sec" id="india" aria-labelledby="india-h">
+  <p class="st-eyebrow">Made here</p>
+  <h2 class="st-h2" id="india-h">Built for Indian sets</h2>
   <div class="st-grid st-grid-3">
-    <article class="st-card">
-      <h3 class="st-h3"><a href="write.html#screenplay">Write the script</a></h3>
-      <p>A screenplay editor that formats as you type &mdash; slug lines, action, cues, dialogue, dual
-      dialogue, transitions &mdash; and keeps the page count honest. Dialogue in Tamil or Tanglish with slugs
-      and action in English, which is what the crew shoots from. Import a <code>.fountain</code>, <code>.fdx</code>
-      or PDF; export a properly paginated screenplay PDF.</p>
-      <p class="st-more"><a href="write.html#screenplay">Screenplay &rarr;</a></p>
-    </article>
-    <article class="st-card">
-      <h3 class="st-h3"><a href="breakdown.html#breakdown">Plan the shoot</a></h3>
-      <p>Every scene heading in the script becomes a scene row. Break it down into cast, props, vehicles
-      and sound; lay the strips out into days; see the day-out-of-days, the locations and a budget at
-      Chennai rates; keep the unit list and print the call sheets &mdash; all from one scene model, so nothing
-      is typed twice.</p>
-      <p class="st-more"><a href="breakdown.html#breakdown">Script breakdown &rarr;</a></p>
-    </article>
-    <article class="st-card">
-      <h3 class="st-h3"><a href="shoot.html">Run the set</a></h3>
-      <p>The shoot day on a phone: today&rsquo;s scenes, who is called, and what you actually got &mdash;
-      shot, part, or dropped. The edit log reads those marks to say what is in the can and what is still
-      owed, and the deliverables list carries you to the censor copy, the DCP and the festival formats.</p>
-      <p class="st-more"><a href="shoot.html">Shoot day &rarr;</a></p>
-    </article>
+    <article class="st-card"><h3 class="st-h3">WhatsApp call sheets</h3><p>Call sheets laid out to be sent as a message the unit will actually read, not a PDF nobody opens.</p></article>
+    <article class="st-card"><h3 class="st-h3">Tamil typing</h3><p>Dialogue in Tamil script or Tanglish with slugs in English, and a page count that says when it is an estimate.</p></article>
+    <article class="st-card"><h3 class="st-h3">FEFSI bata table</h3><p>Crew bata and daily rates in one table that feeds the budget, so a schedule change moves the money.</p></article>
+    <article class="st-card"><h3 class="st-h3">CBFC &amp; OTT kits</h3><p>A deliverables checklist for the censor copy, the DCP and the festival and OTT formats, ticked off against the cut.</p></article>
+    <article class="st-card"><h3 class="st-h3">Chennai rates</h3><p>Budget lines at Chennai market rates &mdash; shown as a band with the date each figure was last checked, never a guess dressed as a fact.</p></article>
+    <article class="st-card"><h3 class="st-h3">Sunrise to golden hour</h3><p>Sun times for each location and day, so the schedule respects the light.</p></article>
   </div>
 </section>
 
 <section class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
   <p class="st-eyebrow">See it on a real film</p>
-  <h2 class="st-h2" id="sample-h">Open the studio with <em>Dragon</em> already loaded</h2>
+  <h2 class="st-h2" id="sample-h">The studio, with <em>Dragon</em> already loaded</h2>
   <!-- Every fms:dragon placeholder figure is stamped at BUILD time by the
        fms-start-figures plugin in vite.config.js, from sampleFigures()
        over src/data/sample.dragon.json — the hub's own derivation — so
@@ -92,19 +132,18 @@
   <p>Rather than an empty desk, the sample is a complete feature: <em>Dragon</em> (2025, dir. Ashwath
   Marimuthu) reconstructed as a production &mdash; a full {{fms:dragon.scenes}}-scene screenplay of {{fms:dragon.pages}} pages, the scenes
   broken down from it, a schedule of {{fms:dragon.days}} shoot days across {{fms:dragon.locations}} locations, a
-  {{fms:dragon.unit}}-person unit, a budget and {{fms:dragon.callSheets:word}} call sheets. Open any
-  page and there is something real on it to read, edit or delete.</p>
+  {{fms:dragon.unit}}-person unit, a budget and {{fms:dragon.callSheets:word}} call sheets.</p>
   <p class="st-note">The public facts are credited and correct. Every piece of paperwork &mdash; the schedule,
   the dates, the budget, the unit, the recces, the call sheets and every line of the script &mdash; is
   invented for the demonstration and says so wherever it appears. No real person&rsquo;s contact details
   and none of the film&rsquo;s actual screenplay are in it.</p>
-  <p class="st-cta"><a class="st-btn st-btn-primary" href="index.html?sample=1">Open the sample project</a></p>
+  <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#request" data-gated="Request an invite" data-open="Open the sample project" data-open-href="index.html?sample=1">Request an invite</a></p>
 </section>
 
 <section class="st-sec" id="stages" aria-labelledby="stages-h">
   <p class="st-eyebrow">Five stages</p>
   <h2 class="st-h2" id="stages-h">From the idea to the screening</h2>
-  <p>The studio is arranged the way a film is made, in five stages. Each stage is a set of modules, and
+  <p>The studio is arranged the way a film is made. Each stage is a set of modules, and
   every module reads the same film &mdash; the script, the scenes, the people, the days &mdash; so a change
   in one place shows up in all of them.</p>
   <!-- Filled by src/pages/start.js from src/data/navigation.json: the
@@ -112,57 +151,36 @@
        shelves (Library, Blueprints). Never hand-write the list here. -->
   <div class="st-stages" id="stageList" aria-live="polite">
     <noscript><p class="st-note">The list of stages and modules is drawn from the studio&rsquo;s own
-    map and needs JavaScript to appear here. Everything on this page above and below reads without it.</p></noscript>
+    map and needs JavaScript to appear here. Everything else on this page reads without it.</p></noscript>
   </div>
 </section>
 
-<section class="st-sec" id="offline" aria-labelledby="offline-h">
-  <p class="st-eyebrow">Local first</p>
-  <h2 class="st-h2" id="offline-h">Your film lives in your browser</h2>
-  <div class="st-grid st-grid-3">
-    <article class="st-card">
-      <h3 class="st-h3">Works offline</h3>
-      <p>Once a page has loaded, it opens again without a network &mdash; on a recce, on location, on a
-      train. Everything you type is saved to this browser as you type it, with no account required.</p>
-    </article>
-    <article class="st-card">
-      <h3 class="st-h3">Backed up your way</h3>
-      <p>Export the whole studio as one file whenever you like, or keep it current in your own Google
-      Drive. Sign in and your films sync to the cloud as well, with share links and comments for the
-      people you choose.</p>
-    </article>
-    <article class="st-card">
-      <h3 class="st-h3">AI if you want it, with your own key</h3>
-      <p>Shot divisions, dialogue passes, beat critique and a synopsis-to-script draft &mdash; each gated
-      behind a key you bring (Anthropic or Gemini) that stays on your device. Nothing here needs it.</p>
-    </article>
-  </div>
-</section>
-
-<section class="st-sec st-plans" id="plans" aria-labelledby="plans-h">
+<section class="st-sec st-plans" id="pricing" aria-labelledby="pricing-h">
   <p class="st-eyebrow">Pricing</p>
-  <h2 class="st-h2" id="plans-h">One payment. Yours for good.</h2>
-  <p>There is no subscription. A plan is bought once and never renews, never lapses and never asks
-  again. Prices are in Indian rupees, paid through Razorpay. Every module can be tried free first,
-  because a purchase is final.</p>
+  <h2 class="st-h2" id="pricing-h">One payment. Yours for good.</h2>
+  <p>There is no subscription. A plan is bought once with full-time access, and never renews or lapses. Prices are in
+  Indian rupees, paid through Razorpay. Price confirmed at checkout.</p>
   <!-- The tier NAMES and ORDER are stamped at build time from
-       PLAN_ORDER / planName in src/lib/plans.js (fms-start-figures in
-       vite.config.js): each <li data-tier> must be one PLAN_ORDER id, in
-       order, printing its fms:plan.ID placeholder, or the build fails. The prose
-       beside each name is markup. The PRICES live in the plans table on
-       the server and are read by the cards on invite.html; they are
-       deliberately not printed here, so this page can never disagree
-       with what the checkout charges. -->
+       PLAN_ORDER / planName in src/lib/plans.js, the list PRICES and the
+       table rows from startFigures() in vite.config.js (fms-start-figures,
+       rows from src/data/plan-matrix.json): each <li data-tier> must be one
+       PLAN_ORDER id, in order, printing its fms:plan.ID placeholder, or the
+       build fails. -->
   <ul class="st-tiers">
-    <li data-tier="free"><strong>{{fms:plan.free}}</strong><span>The whole desk, with the <em>Dragon</em> sample to work on. Try every module before you pay.</span></li>
-    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><span>Your own films, synced to the cloud, with a few collaborators and share links per film, and the Chrome extension.</span></li>
-    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><span>More films in the cloud, more collaborators and share links, and seats for a small organisation.</span></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><span>Unlimited films, collaborators and share links, and seats for a full production house.</span></li>
+    <li data-tier="free"><strong>{{fms:plan.free}}</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and the learning modules.</span></li>
+    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>Your own films: screenplay, breakdown and exports.</span></li>
+    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>Adds stripboard, budget, call sheets, the shoot day and Drive backup.</span></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>Everything, including AI tools with your own key, the edit log and deliverables.</span></li>
   </ul>
-  <p class="st-note">Local work, Google Drive backup and the AI tools (with your own key) are on every tier,
-  including Free. The tiers differ in what syncs to the cloud, who you can share with, and how many seats
-  your organisation has.</p>
-  <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#buy">See plans and prices</a></p>
+  <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
+    <table class="st-table">
+      <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.free}}</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
+      <tbody>{{fms:matrix.rows}}</tbody>
+    </table>
+  </div>
+  <p class="st-note">Prices are one-time list prices, confirmed at checkout. Local work and the learning library are on every plan. A higher plan can be had later by paying the difference.</p>
+  <p class="st-compare">Subscription tools charge every month for as long as you keep making films. Here you pay once and the desk is yours.</p>
+  <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html#buy">See plans</a></p>
 </section>
 
 <!-- ============================================================
@@ -204,47 +222,53 @@
   </details>
   <details class="st-faq">
     <summary>Where is my data, and who can read it?</summary>
-    <p>On your device, in this browser&rsquo;s storage, unless you choose otherwise. Sign in with Google and
-    your films also sync to the studio&rsquo;s cloud, where row-level security keeps each account&rsquo;s rows
-    to itself. Connect Google Drive and a backup file sits in your own Drive, with Drive&rsquo;s own version
-    history. The <a href="privacy.html">Privacy Policy</a> lists exactly what is collected and why.</p>
+    <p>On your device, in this browser&rsquo;s storage, unless you choose otherwise. Your script stays on your machine.
+    Sign in with Google and your films can also sync to the studio&rsquo;s cloud, where row-level security keeps each
+    account&rsquo;s rows to itself; connect Google Drive and a backup file sits in your own Drive. Export the whole
+    studio as one file whenever you like. The <a href="privacy.html">Privacy Policy</a> lists exactly what is collected and why.</p>
   </details>
   <details class="st-faq">
     <summary>What happens if I clear my browser?</summary>
-    <p>Work that was only in that browser goes with it &mdash; that is what local-first means, and it is why the
-    studio nags you about backups. Export a backup file now and then, or connect Drive once and forget about
-    it; signed-in films come back from the cloud on the next sign-in.</p>
+    <p>Work that was only in that browser goes with it &mdash; that is what local-first means. Export a backup file now and then,
+    or connect Drive once and forget about it; signed-in films come back from the cloud on the next sign-in.</p>
   </details>
   <details class="st-faq">
     <summary>Can I write in Tamil?</summary>
     <p>Yes. Dialogue in Tamil script or in Tanglish, with slug lines and action in English &mdash; the arrangement
-    most Tamil units shoot from, and the one where the page count stays arithmetic. Tamil throughout is offered
-    too, with the page count labelled an estimate rather than a number the Courier grid cannot stand behind.</p>
+    most Tamil units shoot from. Tamil throughout is offered too, with the page count labelled an estimate.</p>
+  </details>
+  <details class="st-faq">
+    <summary>Which devices can I use?</summary>
+    <p>Any current browser on a laptop, tablet or phone. Your work lives in each browser, so to move between devices use
+    a backup file, Google Drive or a signed-in cloud sync. The shoot-day view is designed for a phone.</p>
+  </details>
+  <details class="st-faq">
+    <summary>Can I upgrade later?</summary>
+    <p>Yes. Pay the difference between your plan and the higher one and you are upgraded; nothing you made is touched.</p>
   </details>
   <details class="st-faq">
     <summary>Why is it invite-only?</summary>
-    <p>The studio is opening in small groups so that every new member gets looked after. Sign in with Google
-    and ask for an invite, enter a code if somebody gave you one, or buy a plan and come straight in.</p>
+    <p>The studio is opening in small groups so that every new member gets looked after. Request an invite, enter a
+    code if somebody gave you one, or buy a plan and come straight in.</p>
   </details>
   <details class="st-faq">
     <summary>What if I want my money back?</summary>
-    <p>Purchases are final, which is why the whole studio can be tried free with the sample first. The exceptions
-    are refunded in full to the card, UPI, net banking or wallet you paid with: a duplicate or mistaken charge, a
-    payment for a plan that was never activated (or we activate it, your choice), and any refund Indian law requires.
-    The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
+    <p>Purchases are final. The exceptions are refunded in full to the card, UPI, net banking or wallet you paid with:
+    a duplicate or mistaken charge, a payment for a plan that was never delivered (or we activate it, your choice), and any refund
+    Indian law requires. The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
   </details>
 </section>
 
 <section class="st-sec st-close" id="go" aria-labelledby="go-h">
   <h2 class="st-h2" id="go-h">Ready when you are.</h2>
   <p class="st-cta">
-    <a class="st-btn st-btn-primary" id="ctaOpen2" href="invite.html" data-gated="Request an invite" data-open="Open the studio">Request an invite</a>
-    <a class="st-btn" href="index.html?sample=1">Open the sample first</a>
+    <a class="st-btn st-btn-primary" id="ctaOpen2" href="invite.html#request" data-gated="Request an invite" data-open="Open the studio" data-open-href="index.html">Request an invite</a>
+    <a class="st-btn" href="invite.html">Sign in</a>
   </p>
 </section>
 
 <footer class="st-foot">
-  <p>{{brand:name}} &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a> &middot; <a href="refund.html">Refunds</a> &middot; <a href="mailto:{{brand:email}}">Contact</a></p>
+  <p>{{brand:name}} &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a> &middot; <a href="refund.html">Refunds</a> &middot; <a href="mailto:{{brand:email}}">{{brand:email}}</a></p>
 </footer>
 
 </main>

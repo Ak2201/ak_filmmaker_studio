@@ -40,10 +40,22 @@ document.documentElement.setAttribute('data-theme', 'dark');
 /* Named directly so Vite inlines the one string; reading it off the
    env OBJECT inlines every VITE_* value into this chunk. */
 const GATED = String(import.meta.env.VITE_SITE_GATE || 'invite').toLowerCase() !== 'off';   // sitegate.js SITE_GATE
-for (const a of document.querySelectorAll('a[data-gated][data-open]')) {
-  a.textContent = GATED ? a.dataset.gated : a.dataset.open;
-  a.setAttribute('href', GATED ? 'invite.html' : 'index.html');
+for (const n of document.querySelectorAll('[data-gated][data-open]')) {
+  n.textContent = GATED ? n.dataset.gated : n.dataset.open;
+  if (n.tagName === 'A') n.setAttribute('href', GATED ? 'invite.html#request' : (n.dataset.openHref || 'index.html'));
 }
+
+/* Under the gate every app page bounces a stranger, so a "try it" link
+   would land them on the landing page they came from. Point every link
+   into the app at the doorway instead. The open build keeps its hrefs. */
+const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
+function gateAppLinks(root) {
+  if (!GATED) return;
+  for (const a of root.querySelectorAll('a[href]')) {
+    if (APP_PAGE.test(a.getAttribute('href'))) a.setAttribute('href', 'invite.html#request');
+  }
+}
+gateAppLinks(document);
 
 /* ---- 3. the stages ------------------------------------------------- */
 function el(tag, attrs = {}, children = []) {
@@ -110,7 +122,51 @@ async function renderStages(host) {
       ...shelves.map(shelfCard)
     ])
   );
+  gateAppLinks(host);
 }
+
+/* ---- 4. testimonials ----------------------------------------------
+   src/data/testimonials.json is { testimonials: [], films: [] }. The
+   section stays hidden while both are empty. When an entry exists and
+   the markup does not already carry it (scripts/check-testimonials.mjs
+   keeps hand-copied markup honest), draw it here so a consented quote
+   can never be stranded in the JSON. Textual only, no storage. */
+const VOICES_URL = new URL('../data/testimonials.json', import.meta.url);
+async function renderVoices() {
+  const sec = document.getElementById('voices');
+  if (!sec) return;
+  let data;
+  try {
+    const r = await fetch(VOICES_URL);
+    if (!r.ok) return;
+    data = await r.json();
+  } catch (e) { return; }
+  const T = (Array.isArray(data.testimonials) ? data.testimonials : []).filter((t) => t && t.id && t.quote && t.name && t.consentOn);
+  const F = (Array.isArray(data.films) ? data.films : []).filter((f) => f && f.id && f.title && f.consentOn);
+  const vl = document.getElementById('voiceList'), fl = document.getElementById('filmList');
+  let shown = 0;
+  for (const t of T) {
+    if (sec.querySelector(`[data-testimonial="${CSS.escape(t.id)}"]`)) { shown++; continue; }
+    vl.append(el('li', { class: 'st-voice', 'data-testimonial': t.id }, [
+      el('blockquote', {}, [el('p', { text: t.quote })]),
+      el('p', { class: 'st-voice-who', text: [t.name, t.role, t.film].filter(Boolean).join(' · ') })
+    ]));
+    shown++;
+  }
+  for (const f of F) {
+    if (sec.querySelector(`[data-film="${CSS.escape(f.id)}"]`)) { shown++; continue; }
+    fl.append(el('li', { class: 'st-film', 'data-film': f.id }, [
+      el('strong', { text: f.title }),
+      el('span', { text: ' ' + [f.year && `(${f.year})`, f.director, f.format].filter(Boolean).join(' · ') })
+    ]));
+    shown++;
+  }
+  if (!shown) return;
+  vl.hidden = !vl.children.length;
+  fl.hidden = !fl.children.length;
+  sec.hidden = false;
+}
+renderVoices();
 
 const host = document.getElementById('stageList');
 if (host) renderStages(host);

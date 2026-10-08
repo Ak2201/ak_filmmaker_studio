@@ -43,7 +43,7 @@
      (k) DECLINE: the requester sees the decision and the note, and is
          not offered the form again inside the cooling-off week
      (l) THE SITE GATE: a signed-out visitor to any page is sent to
-         invite.html; so is a signed-in non-member; a member sees the
+         start.html (the public landing page); so is a signed-in non-member; a member sees the
          page with the gate attribute cleared; the screening room and
          the legal pages are exempt
      (m) THE CONSOLE: admin.html shows the studio's numbers and the
@@ -301,10 +301,10 @@ try {
     const page = await ctx.newPage();
     for (const p of ['index.html', 'breakdown.html', 'settings.html']) {
       await page.goto(BASE + p);
-      ok(await urlBecomes(page, /invite\.html/), `signed out: ${p} → invite.html`);
+      ok(await urlBecomes(page, /start\.html/), `signed out: ${p} -> start.html (the public landing page)`);
     }
     const hidden = await page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility);
-    ok(hidden === 'visible', 'invite.html renders (it is the one page a stranger may see)');
+    ok(hidden === 'visible', 'start.html renders (the public page a stranger lands on)');
     await page.goto(BASE + 'screening.html');
     await page.waitForTimeout(800);
     ok(/screening\.html/.test(page.url()) && (await page.evaluate(() => getComputedStyle(document.body).visibility)) === 'visible', 'screening.html is exempt');
@@ -396,7 +396,7 @@ try {
     await ctx3.addInitScript((v) => { if (!sessionStorage.getItem('__code')) { localStorage.setItem('fms_invite_code_v1', v); sessionStorage.setItem('__code', '1'); } }, stored);
     const p3 = await ctx3.newPage();
     await p3.goto(BASE + 'story.html');
-    await p3.waitForURL(/invite\.html/, { timeout: 10000 }).then(() => ok(true, 'a revoked code no longer opens the door'), () => ok(false, 'a revoked code no longer opens the door'));
+    await p3.waitForURL(/start\.html/, { timeout: 10000 }).then(() => ok(true, 'a revoked code no longer opens the door (a stranger lands on start.html)'), () => ok(false, 'a revoked code no longer opens the door (a stranger lands on start.html)'));
     ok(!(await p3.evaluate(() => localStorage.getItem('fms_invite_code_v1'))), 'and the browser forgets it');
     F.db.codes.find((c) => c.code === 'LINKCODE2345').revoked_at = null;
     await ctx3.close();
@@ -418,7 +418,8 @@ try {
     await ctx.route(/accounts\.google\.com|fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
     const page = await ctx.newPage();
     await page.goto(BASE + 'settings.html');
-    await urlBecomes(page, /invite\.html/);   // the site gate; settings.html also has a code box, so wait for the doorway first
+    await urlBecomes(page, /start\.html/);   // a stranger lands on the public page, then goes on to the doorway
+    await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#invite #gtCode');
     await page.fill('#gtCode', 'BENCODE23456');
     await page.click('#invite button[type="submit"]');

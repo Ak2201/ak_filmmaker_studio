@@ -33,6 +33,7 @@
     "test:revisions": "node scripts/test-revisions.mjs",
     "test:ai-coverage": "node scripts/test-ai-coverage.mjs",
     "test:testimonials": "node scripts/check-testimonials.mjs",
+    "shots": "node scripts/make-shots.mjs",
     "test:brand": "node scripts/check-brand.mjs",
     "ship": "npm run test:brand && npm run build:open && npm run verify && npm run build && npm run prove:gate",
     "live-checks": "node scripts/live-checks.mjs",

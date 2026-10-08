@@ -66,8 +66,19 @@ once and not yet looked at.
   does not show the four recce fields (`lat lng hospital police`) the call
   sheet reads, and the after-sunset flag reads only the call sheet's
   `wrap`, not the DPR's day-level wrap (`src/lib/dpr.js`).
-- **The CBFC/AWBI/OTT facts were re-checked against search summaries, not
+- ~~**The CBFC/AWBI/OTT facts were re-checked against search summaries, not
   the pages themselves** (8 Oct 2026; the container cannot reach the cited
-  hosts). Two were corrected (the COTPA rule numbers, Prime Video's timed
-  text list) and two sharpened. Open each `sourceUrls` link in a browser
-  before relying on the text, and bump that rule's `checked`.
+  hosts).~~ **CLOSED 8 Oct 2026 (evening), from a session with a real
+  browser.** 16 of the 18 cited URLs answer; nothing in the file was wrong;
+  the citations are now precise (S.O. 836(E), 16 September 2026, in
+  supersession not amendment; G.S.R. 543(E) confirmed; the anti-drug wording
+  confirmed verbatim). **What remains open is narrower and should not be
+  confused with the above:** the 2026 guidelines text is still unpublished by
+  CBFC and MIB, so every clause NUMBER in `cbfc-rules.json` is the 1991 one
+  and none has been checked against the current text. That cannot be closed
+  by effort, only by the Ministry publishing it. The `realnames` rule
+  (Cinematograph Act s.5B(1), defamation, Trade Marks Act) was not re-checked
+  and keeps its older `checked` date, deliberately.
+- **Two cited URLs do not answer** and should be replaced when a working copy
+  is found: the `ffo.gov.in` PDF of the Performing Animals (Registration)
+  Rules, 2001 (connection failure) and a `thestatesman.com` report (403).

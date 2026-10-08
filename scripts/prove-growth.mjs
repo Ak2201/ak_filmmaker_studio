@@ -45,6 +45,9 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { F, USERS, SB, REF, handle, sessionFor } from './fake-supabase.mjs';
 import * as Model from '../src/lib/public-view-model.js';
+const BRAND = JSON.parse(fs.readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8'));
+const MADE = 'Made with ' + BRAND.name + ' — ' + BRAND.host + BRAND.path;
+const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT = 'dist-growth';
@@ -197,14 +200,14 @@ try {
     ok(await page.evaluate(() => getComputedStyle(document.querySelector('.site-foot-made')).display === 'none'), 'hidden in an ordinary print of the page');
     await page.emulateMedia({ media: 'screen' });
     const line = await printedSheetLine(page);
-    ok(line === 'Made with FilmMakerStudio — thefilmmakerstudio.vercel.app/start', 'shown, without a ref, while a call sheet prints: ' + JSON.stringify(line));
+    ok(line === MADE, 'shown, without a ref, while a call sheet prints: ' + JSON.stringify(line));
     await page.goto(BASE + 'story.html#pitch'); await page.waitForTimeout(1500);
     const deck = await page.evaluate(() => new Promise((resolve) => {
       window.print = () => { const d = document.getElementById('pitchDeck'); const last = d && d.lastElementChild; resolve(last ? (last.querySelector('.made-with') || {}).textContent || '' : null); };
       const b = document.querySelector('[data-st="pitch"]'); if (!b) return resolve('NO BUTTON'); b.click();
       setTimeout(() => resolve('TIMEOUT'), 3000);
     }));
-    ok(deck === 'Made with FilmMakerStudio — thefilmmakerstudio.vercel.app/start', 'the pitch deck PDF ends with the line: ' + JSON.stringify(deck));
+    ok(deck === MADE, 'the pitch deck PDF ends with the line: ' + JSON.stringify(deck));
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -215,7 +218,7 @@ try {
     await page.goto(BASE + 'index.html?sample=1'); await page.waitForTimeout(2500);
     await page.goto(BASE + 'contacts.html#call-sheets'); await page.waitForTimeout(2500);
     const line = await printedSheetLine(page);
-    ok(line === 'Made with FilmMakerStudio — thefilmmakerstudio.vercel.app/start?ref=DRAGON7', 'the line carries the member\'s ?ref= code: ' + JSON.stringify(line));
+    ok(line === MADE + '?ref=DRAGON7', 'the line carries the member\'s ?ref= code: ' + JSON.stringify(line));
     await page.goto(BASE + 'settings.html#plan');
     const found = await page.waitForSelector('#brandingToggle', { timeout: 8000 }).then(() => true, () => false);
     await page.waitForLoadState('networkidle'); await page.waitForTimeout(800);   // settings redraws as billing answers
@@ -242,7 +245,7 @@ try {
     ok(await page.$('#brandingToggle') === null, 'Free: no switch');
     await page.goto(BASE + 'index.html?sample=1'); await page.waitForTimeout(2500);
     await page.goto(BASE + 'contacts.html#call-sheets'); await page.waitForTimeout(2500);
-    ok(/^Made with FilmMakerStudio/.test(await printedSheetLine(page) || ''), "Free: a stored 'off' is ignored, the line prints");
+    ok(new RegExp('^' + reEsc('Made with ' + BRAND.name)).test(await printedSheetLine(page) || ''), "Free: a stored 'off' is ignored, the line prints");
     allErrors.push(...errors); await ctx.close();
 
     F.db.plans.find((p) => p.id === 'indie').features = { remove_branding: false };
@@ -259,7 +262,7 @@ try {
     await page.goto(BASE + 'screening.html?pass=PASSCODE2345');
     await page.click('button[type="submit"]');
     await page.waitForSelector('.sc-room', { timeout: 8000 });
-    ok(/Made with FilmMakerStudio — thefilmmakerstudio\.vercel\.app\/start$/.test(await page.evaluate(() => (document.querySelector('.sc-room > .made-with') || {}).textContent || '')), 'the room closes with the line');
+    ok(new RegExp(reEsc(MADE) + '$').test(await page.evaluate(() => (document.querySelector('.sc-room > .made-with') || {}).textContent || '')), 'the room closes with the line');
     const n = await page.evaluate(() => [...document.querySelectorAll('.made-with')].filter((e) => e.getClientRects().length).map((e) => e.className + '@' + (e.parentElement && e.parentElement.className)));
     ok(n.length === 1, 'once (the on-screen deck does not repeat it)' + (n.length === 1 ? '' : ': ' + JSON.stringify(n)));
     allErrors.push(...errors); await ctx.close();
@@ -310,7 +313,7 @@ try {
     ok(/Day 3 — College/.test(text) && /Ravi K/.test(text) && /DOP/.test(text) && /The walk-out/.test(text), 'the call sheet is drawn: title, the call, the scene');
     ok(!/98400|unit\.example/.test(await page.content()), 'no phone number or e-mail anywhere in the page');
     ok(!(await page.evaluate(() => location.hash)), 'the token is stripped from the address bar');
-    ok(/thefilmmakerstudio\.vercel\.app\/start\?ref=DRAGON7$/.test(await page.evaluate(() => (document.querySelector('.pv-room > .made-with') || {}).textContent || '')), "the line carries the sender's ref");
+    ok(new RegExp(reEsc(BRAND.host + BRAND.path + '?ref=DRAGON7') + '$').test(await page.evaluate(() => (document.querySelector('.pv-room > .made-with') || {}).textContent || '')), "the line carries the sender's ref");
     await page.waitForLoadState('networkidle');
     const tv = await now(page);
     await page.waitForTimeout(1500);

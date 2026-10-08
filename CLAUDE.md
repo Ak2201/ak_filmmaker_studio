@@ -59,7 +59,9 @@ npm run og               # regenerate public/og.png from tokens (after a palette
 npm run build:extension   # the Chrome extension, into dist-extension/
 npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
-npm run test:schema       # the WHOLE schema on a real PostgreSQL + 133 checks (billing, accounts guard, promo)
+npm run test:schema       # the WHOLE schema on a real PostgreSQL + 225 checks (pg_ctlcluster 16 main start first)
+npm run test:sun / test:callsheet / test:costs / test:delivery / test:revisions / test:ai-coverage / test:testimonials  # item 20
+npm run prove:growth / prove:ai-coverage / prove:storage  # item 20 (ai-coverage reads dist-verify/)
 npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)
 npm run density   # design-density report; measures, asserts nothing
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
@@ -1082,11 +1084,13 @@ numbered as they are in the history.
 | 16 | Story first, blueprints beside stages, script drives scenes | Done | `scene-sync.js` + the scene bin; zero headings bins nothing. `_readTiered()` reads in-flight first. `steps.stages.json` is the sidecar; step JSON is regenerated. |
 | 17 | UX-audit Medium/Low pass + open-issues pass | Done | `docs/UX-AUDIT-2026-10-06.md` struck through item by item; `docs/KNOWN-ISSUES.md` holds two decisions. `modal-focus.js`, validated `applyBackup`, filtered tab observer, rails `visibility:hidden`, band controls everywhere, Case Studies in parts, wider AA walk. |
 | 18 | Launch readiness (7 Oct 2026) | Done in code; owner steps in `docs/LAUNCH.md` | Landing page `start.html` is outside the gate and keeps its words in markup; `navigation.json` is fetched there as a URL asset on purpose (not bundled). A module with a page-wide side effect belongs in CORE in `vite.config.js`. Stripboard's per-day order lives INSIDE `fms_locations_v1` as `order` — no new key. `promo_codes` has no client access: only `quote_order` and `create_pending_payment` (5-arg) touch it. The host `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner, 7 Oct 2026), in ten files; a custom domain later needs the same ten files + Vercel + Google authorised origins (LAUNCH §7). start.html's Dragon figures and tier names are stamped at build time (`fms-start-figures`). Purchases are final bar three exceptions; the webhook's refund handling stays for them. |
-| 19 | Handoff / WIP state (7–8 Oct 2026) | Ten workstreams unfinished on `wip-all`; emotional-craft layer planned | `docs/HANDOFF.md` is the entry point. `wip-all` is a snapshot union, **not for merging as-is**; branch deletion is blocked on GitHub (403), so `archive/*` and `wip/*` stay. Only *On set* (`feature/on-set`) is finished and gated. Planned-not-built: `docs/WIP-EMOTION-PLAN.md`. |
+| 19 | Handoff / WIP state (7–8 Oct 2026) | Superseded by 20; emotional-craft layer planned | `docs/HANDOFF.md` is the entry point. Branch deletion is blocked on GitHub (403), so `archive/*` and `wip/*` stay, frozen. Develop on `develop` (`docs/BRANCHING.md`). Planned-not-built: `docs/WIP-EMOTION-PLAN.md`. |
+| 20 | Release of the ten workstreams (8 Oct 2026) | Done; **§21–§24 not run live** | On set, schedule (DPR inside `fms_locations_v1`), writing (`fms_characters_v1`), revisions (`numbering` in the script blob), AI coverage, compliance (CBFC rules carry sources; the rating is a hint), money (`fms_costs_v1`), billing growth (§21–§23), growth UX (`fms_tour_v1`). §24 makes characters and costs SYNC — run it before this build goes live. A proof that fails on its own aborts is the proof's bug. |
 
 **What is live and what is not** — the one list to trust: schema §1–§14
 have run on `conhlrulxfwkhsnymakz` (verified through PostgREST, not from
-the file); §16–§20 have NOT; the Google consent
+the file); §16–§24 have NOT been verified (the file's own headers claim
+§16–§18 ran on 6 Oct — ask the database); the Google consent
 screen is in Testing; no Razorpay key exists; none of the live RLS checks
 has been executed. Ask the database, not the file.
 

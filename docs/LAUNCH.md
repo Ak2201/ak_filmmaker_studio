@@ -52,7 +52,18 @@ Against project `conhlrulxfwkhsnymakz`, dashboard SQL editor, in order
 (`node scripts/deploy-billing.mjs --print` writes the SQL for you):
 §16 (plans, payments), §17 (edit log + deliverables scopes), §18
 (full-time access, features by plan), §19 (the accounts guard: closes
-the `acc_insert` hole) and §20 (promo codes).
+the `acc_insert` hole), §20 (promo codes), §21 (upgrade by paying the
+difference), §22 (referral codes and credits), §23 (affiliate codes) and
+§24 (the characters and costs sync scopes). Run §24 BEFORE deploying the
+8 Oct 2026 release or later: that build syncs `fms_characters_v1` and
+`fms_costs_v1`, and until §24 runs Postgres refuses those two upserts
+(the rest keep syncing, and both stay on the device).
+**The schema file and this list disagree about §16–§18:** the file's
+own headers say §16, §17 and §18 were RUN on 6 Oct 2026 through the SQL
+editor, while the handoff notes say §16–§20 have not run. Ask the
+database before running anything (`select price_paise from plans` exists
+only after §18; the scope CHECK names `'edit'` only after §17), and run
+only the sections it does not have.
 Then set the 13.2 admin row for the second `VITE_ADMIN_EMAILS` address
 if it has signed in.
 
@@ -62,6 +73,8 @@ the Edit Log and Deliverables pages sync instead of saying "saved
 locally only"; `select tgtype from pg_trigger where tgname='accounts_guard'`
 returns 7 (BEFORE INSERT OR UPDATE, row level); and, as the anon role,
 `select count(*) from promo_codes` fails with 42501.
+And `select pg_get_constraintdef(oid) from pg_constraint where conname =
+'project_data_scope_check'` names `'characters'` and `'costs'`.
 
 ## 5. Run the live security checks
 

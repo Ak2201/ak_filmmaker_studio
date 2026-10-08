@@ -1,5 +1,9 @@
 # Where work stopped — resume here
 
+> **Superseded as the entry point by `docs/HANDOFF.md`** (8 Oct 2026), which
+> covers everything done and planned. This file is the first, narrower version
+> and is kept for its per-workstream notes.
+
 > **Pointer (7 Oct 2026):** all ten workstreams below have been merged into
 > ONE snapshot branch, `wip-all`, and documented in `docs/WIP.md` on that
 > branch. Read `docs/WIP.md` instead of the individual branches; the

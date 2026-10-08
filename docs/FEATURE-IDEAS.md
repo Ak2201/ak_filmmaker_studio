@@ -42,6 +42,7 @@ it — the same rule as `docs/UX-AUDIT-2026-10-06.md`.
 | 14 | Sunrise / sunset / golden hour on the shoot day | Plan exteriors around the light, computed offline. | S | no | building (on-set) |
 | 15 | Dialogue list / subtitle prep export | Numbered CSV and an SRT starting file, Tamil and English side by side, for subtitlers and dubbing. | S | no | building (compliance) |
 | 16 | Target runtime with songs counted | Set 140 minutes; see estimate vs target per act, songs included. | S | no | building (compliance) |
+| 17 | Emotional craft layer (Library shelf + glossary, per-beat/per-scene intended emotion, emotion curve, honest hints, AI emotional read) | Teaches and applies the craft of engineering the audience's feeling; learning free, tools paid. Original wording only — the source book is copyrighted. | M–L | no | **planned** — `docs/WIP-EMOTION-PLAN.md` |
 
 ## Tier 3 — good, later
 

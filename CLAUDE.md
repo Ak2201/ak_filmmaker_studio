@@ -1,5 +1,9 @@
 # FilmMakerStudio — working notes
 
+> **New session? Read `docs/HANDOFF.md` first.** It records everything done on
+> 7–8 Oct 2026, every branch and where unfinished work sits, the owner's
+> decisions, and what is planned. Then come back here for the invariants.
+
 Read this before changing anything. It is short on purpose; the parts that look
 like fussy rules is there because breaking it has already cost a user their work
 or silently broken a page.
@@ -1075,6 +1079,7 @@ numbered as they are in the history.
 | 16 | Story first, blueprints beside stages, script drives scenes | Done | `scene-sync.js` + the scene bin; zero headings bins nothing. `_readTiered()` reads in-flight first. `steps.stages.json` is the sidecar; step JSON is regenerated. |
 | 17 | UX-audit Medium/Low pass + open-issues pass | Done | `docs/UX-AUDIT-2026-10-06.md` struck through item by item; `docs/KNOWN-ISSUES.md` holds two decisions. `modal-focus.js`, validated `applyBackup`, filtered tab observer, rails `visibility:hidden`, band controls everywhere, Case Studies in parts, wider AA walk. |
 | 18 | Launch readiness (7 Oct 2026) | Done in code; owner steps in `docs/LAUNCH.md` | Landing page `start.html` is outside the gate and keeps its words in markup; `navigation.json` is fetched there as a URL asset on purpose (not bundled). A module with a page-wide side effect belongs in CORE in `vite.config.js`. Stripboard's per-day order lives INSIDE `fms_locations_v1` as `order` — no new key. `promo_codes` has no client access: only `quote_order` and `create_pending_payment` (5-arg) touch it. The host `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner, 7 Oct 2026), in ten files; a custom domain later needs the same ten files + Vercel + Google authorised origins (LAUNCH §7). start.html's Dragon figures and tier names are stamped at build time (`fms-start-figures`). Purchases are final bar three exceptions; the webhook's refund handling stays for them. |
+| 19 | Handoff / WIP state (7–8 Oct 2026) | Ten workstreams unfinished on `wip-all`; emotional-craft layer planned | `docs/HANDOFF.md` is the entry point. `wip-all` is a snapshot union, **not for merging as-is**; branch deletion is blocked on GitHub (403), so `archive/*` and `wip/*` stay. Only *On set* (`feature/on-set`) is finished and gated. Planned-not-built: `docs/WIP-EMOTION-PLAN.md`. |
 
 **What is live and what is not** — the one list to trust: schema §1–§14
 have run on `conhlrulxfwkhsnymakz` (verified through PostgREST, not from

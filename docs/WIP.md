@@ -465,6 +465,9 @@ then each command above.
 
 ## 8. Integration checklist, ideas, decisions, limits
 
+> **Start at `docs/HANDOFF.md`.** Planned, not started: the emotional-craft layer →
+> `docs/WIP-EMOTION-PLAN.md` (built on top of this branch, Phase 0 first).
+
 ### Checklist (updated from `docs/RESUME.md`)
 
 1. Fix the known problems in §7; work each workstream's resume brief in §3. `wip-all` carries all ten merged, so the per-branch merge step of the old list is done.

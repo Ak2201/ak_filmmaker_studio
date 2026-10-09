@@ -530,7 +530,7 @@ console.log('\n--- disconnect ---');
 }
 
 console.log('\n--- the settings page, both themes, both widths ---');
-for (const theme of ['ink']) {   // dark only: one theme
+for (const theme of ['paper', 'ink']) {
   for (const width of [1280, 390]) {
     const seed = () => {
       localStorage.setItem('fms_drive_sync_v1', JSON.stringify({

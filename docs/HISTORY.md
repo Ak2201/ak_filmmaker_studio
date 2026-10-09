@@ -1247,3 +1247,15 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     JSON at build time, and both callers read that. Measured: 975,174 bytes,
     44 files, 78 KB under the unchanged budget; the card and labels render
     as before. `scripts/budget.json` was not touched.
+
+23. **The revamp's colours reverted, its components kept (9 Oct 2026).**
+    Owner's call: the obsidian/gold/teal palette and dark-only theme go,
+    the component styling stays. `tokens.css` is the pre-revamp file
+    again (violet, ink default, light theme restored) plus a role-name
+    alias block; `chrome.js`, `palette.js`, the legal pages, the theme
+    probe in verify and the proofs that walked one theme are back to two
+    themes; `write.css`/`write-revisions.css` (script page) and
+    `skins/studio.css` (the slab) are their pre-revamp selves; icons and
+    the OG image regenerated in violet. Three rules that put text in
+    `--bg-primary` on the brand fill now read `--brand-on`, which is the
+    right on-colour in both themes.

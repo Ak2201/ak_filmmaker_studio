@@ -472,31 +472,33 @@ body.wr-dropping .bd-empty {
    from the PDF's paginator (write.js), never from this stylesheet.
    ------------------------------------------------------------ */
 .wr-page.is-pageview {
-  --ink: var(--script-ink);
-  --ink-body: var(--script-ink);
-  --ink-muted: var(--text-secondary);
-  --paper: var(--script-paper);
-  --paper-raised: var(--script-paper);
-  --rule: var(--border-subtle);
-  --rule-hair: var(--border-subtle);
-  --accent: var(--script-ink);
-  --accent-deep: var(--script-ink);
-  --accent-wash: var(--bg-tertiary);
-  --accent-on: var(--script-paper);
-  background: var(--script-paper);
-  color: var(--script-ink);
+  --ink: var(--print-ink);
+  --ink-body: var(--print-ink);
+  --ink-muted: var(--print-muted);
+  --paper: var(--print-paper);
+  --paper-raised: var(--print-paper);
+  --rule: var(--print-rule);
+  --rule-hair: var(--print-rule);
+  --accent: var(--print-ink);
+  --accent-deep: var(--print-ink);
+  --accent-wash: var(--print-wash);
+  --accent-on: var(--print-paper);
+  --danger: var(--print-ink);
+  --danger-on: var(--print-paper);
+  background: var(--print-paper);
+  color: var(--print-ink);
 }
-.wr-page.is-pageview .wr-text { color: var(--script-ink); }
+.wr-page.is-pageview .wr-text { color: var(--print-ink); }
 
 .wr-pbreak {
   margin-block: var(--s2);
   padding-top: var(--s1);
-  border-top: 1px dashed var(--border-subtle);
+  border-top: 1px dashed var(--print-rule);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--print-muted);
 }
 .wr-pbreak.is-split { text-align: center; }
 .wr-page:not(.is-pageview) .wr-pbreak { display: none; }
@@ -543,7 +545,7 @@ body.wr-dropping .bd-empty {
     line-height: 1;
     background: transparent;
   }
-  .wr-page.is-pageview .wr-text:focus { outline: none; background: var(--bg-tertiary); }
+  .wr-page.is-pageview .wr-text:focus { outline: none; background: var(--print-wash); }
 
   /* The format's own measures, in characters — the PDF's numbers. */
   .wr-page.is-pageview .wr-el.t-scene,
@@ -589,7 +591,7 @@ body.wr-dropping .bd-empty {
     font-size: 12pt;
     line-height: 1;
     font-weight: 700;
-    color: var(--script-ink);
+    color: var(--print-ink);
   }
   .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::before { right: calc(100% + 0.6in); }
   .wr-page.is-pageview .wr-el.t-scene[data-scene-no]::after { left: calc(100% + 0.35in); }
@@ -846,15 +848,14 @@ body.wr-dropping .bd-empty {
 }
 #main .btn:hover:not(:disabled) { background: var(--ink); color: var(--paper-raised); }
 #main .btn.primary {
-  background: var(--accent-gold);
-  border-color: var(--accent-gold);
-  color: var(--bg-primary);
-  box-shadow: var(--shadow-cta);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
 }
 #main .btn.primary:hover:not(:disabled) {
-  background: var(--accent-gold-hover);
-  border-color: var(--accent-gold-hover);
-  color: var(--bg-primary);
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--accent-on);
 }
 #main .btn.danger { background: none; color: var(--danger); border-color: var(--danger); }
 #main .btn.danger:hover:not(:disabled),

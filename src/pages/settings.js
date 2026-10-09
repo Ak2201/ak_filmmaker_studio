@@ -291,10 +291,8 @@ function renderAppearance() {
     'Choose how the studio looks on this browser. Your choice is not part of '
       + 'any project or backup.');
 
-  if (StudioUI.themeOrder().length > 1) {   // dark only: nothing to choose
-    sec.append(choices('Theme', 'data-theme-choice', StudioUI.currentTheme(),
-      StudioUI.themeOrder().map((t) => ({ value: t, label: titleCase(t) }))));
-  }
+  sec.append(choices('Theme', 'data-theme-choice', StudioUI.currentTheme(),
+    StudioUI.themeOrder().map((t) => ({ value: t, label: titleCase(t) }))));
 
   /* A second skin file is what makes this a choice; with one, a radio
      row is a control that cannot do anything — the same mistake as a

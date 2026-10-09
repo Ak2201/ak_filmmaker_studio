@@ -234,7 +234,7 @@ function settingItems() {
   /* Themes and skins are asked for, not listed. THEME_ORDER lives
      in chrome.js and the skins are discovered from the CSSOM, so
      a fifth theme or a seventh skin appears here by existing. */
-  if (UI && UI.themeOrder && UI.themeOrder().length > 1) { // dark only: no theme entries
+  if (UI && UI.themeOrder) {
     const LABEL = { paper: 'Paper', sepia: 'Sepia', ink: 'Ink', desk: 'Desk' };
     for (const t of UI.themeOrder()) {
       out.push(entry({

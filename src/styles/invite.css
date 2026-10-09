@@ -61,3 +61,10 @@
    links in the brand-as-text colour. */
 .iv-legal { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
 .iv-legal a { color: var(--accent-deep); text-underline-offset: 2px; }
+
+/* .bd-head drops to the 16px gutter below 720px and this body did
+   not, so on a phone the cards sat 8px inside the heading's left edge.
+   settings.css already carries the same rule for .st-body. */
+@media (max-width: 719px) {
+  .iv-body { padding-inline: var(--s4); }
+}

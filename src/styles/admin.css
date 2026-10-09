@@ -75,3 +75,10 @@
 .ad-tag.is-pending { color: var(--warn-deep, var(--accent-deep)); }
 .ad-tag.is-off     { color: var(--danger); }
 
+
+/* .bd-head drops to the 16px gutter below 720px and this body did
+   not, so on a phone the cards sat 8px inside the heading's left edge.
+   settings.css already carries the same rule for .st-body. */
+@media (max-width: 719px) {
+  .ad-body { padding-inline: var(--s4); }
+}

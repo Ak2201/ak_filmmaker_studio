@@ -48,7 +48,7 @@
 }
 .st-flag.is-warn { border-left-color: var(--warn); background: var(--warn-wash); color: var(--ink); }
 .st-flag-go { all: unset; cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
-.st-flag-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.st-flag-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .st-flags-ok { color: var(--ink-muted); font-size: var(--t-small); }
 
 /* Read only: the blueprint's copy of the curve is not a control. */

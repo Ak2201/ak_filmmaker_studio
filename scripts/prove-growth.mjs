@@ -184,7 +184,7 @@ function priceNoticeBody() {
 
 const LEADS = [], EVENTS = [];   // §29, faked here: add_lead / bump_event
 const json200 = (r, status = 204, body = '') => r.fulfill({ status, contentType: 'application/json', body });
-let refFor = {};   // user id -> referral code billing_status() reports
+let refFor = {};   // user id -> referral code my_referral() reports
 async function route(r) {
   const url = new URL(r.request().url());
   if (url.pathname === '/rest/v1/rpc/public_view_open') {
@@ -209,16 +209,15 @@ async function route(r) {
     EVENTS.push(JSON.parse(r.request().postData() || '{}').p_name);
     return json200(r);
   }
-  if (url.pathname === '/rest/v1/rpc/billing_status') {
-    // the shared fake's answer, plus the referral code billing is being taught
+  if (url.pathname === '/rest/v1/rpc/my_referral') {
+    /* §22's own answer. Only the members this run gives a code to have
+       one, so the shared fake's ensureReferralCode() cannot mint one for
+       a paid fixture and put a ?ref= where a check expects none. */
     const auth = (r.request().headers()['authorization'] || '').replace(/^Bearer\s+/i, '');
     const u = Object.entries(USERS).find(([k]) => k === auth);
-    const resp = await new Promise((resolve) => handle({ request: () => r.request(), fulfill: (o) => resolve(o) }));
-    if (u && refFor[u[1].id] && resp && resp.status === 200) {
-      const body = JSON.parse(resp.body); body.referral_code = refFor[u[1].id];
-      return r.fulfill({ ...resp, body: JSON.stringify(body) });
-    }
-    return r.fulfill(resp);
+    const code = u && refFor[u[1].id];
+    return r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(code ? { eligible: true, code, active: true } : { eligible: false }) });
   }
   return handle(r);
 }

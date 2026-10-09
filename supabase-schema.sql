@@ -7259,6 +7259,7 @@ begin
     'trial_enabled', coalesce(s.trial_enabled, false),
     'trial_active',  t_on,
     'trial_ends_at', t_ends,
+    'trial_minutes', coalesce(s.trial_minutes, 30),
     'trial_used',    m.trial_started_at is not null,
     'trial_source',  m.trial_source,
     'trial_scope',   case when t_on then m.trial_scope end,

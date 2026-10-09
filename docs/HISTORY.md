@@ -1259,3 +1259,54 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     the OG image regenerated in violet. Three rules that put text in
     `--bg-primary` on the brand fill now read `--brand-on`, which is the
     right on-colour in both themes.
+
+24. **The pre-ship UI/UX pass (9 Oct 2026).** A browser sweep of every
+    page (1280 and 390, ink and paper, the Dragon sample seeded through
+    the hub's own button) for console errors, overflow, stray
+    "null"/"undefined", off-screen and unnamed controls — then four
+    parallel reviews, one per page group, that opened every tab, menu,
+    modal and empty state and judged the screenshots. About fifty fixes;
+    the full list is in the three commits ending `b2b6d34`. The ones
+    worth knowing before touching the same code:
+
+    - **`replaceChildren()` / `append()` print `null`** — found live
+      three more times (step 15's Lookbook hand-off, the steps path,
+      the call sheet's route block). The old baseline had RECORDED the
+      word "null" on feature, so the gate was guarding the bug.
+    - **`outline: 2px solid var(--focus)` is invalid** — `--focus` is a
+      whole outline shorthand, so the declaration drops and there is no
+      ring at all. The Story page, format guide and panel had it.
+    - **`h('h3.x#id')` gives no id** — `h()` reads an id only before the
+      classes. Reports' Equipment counts never updated because of it.
+    - **"&amp;" as text** — data descriptions are HTML; three places set
+      them as text. The hub search's `plain()` now decodes entities.
+    - **A blocked icon font printed the ligature names** ("auto_stories")
+      over labels after `display=block`'s three seconds. `chrome.js`
+      marks `html.sym-ready` once a Material Symbols face has LOADED and
+      `base.css` keeps each `.sym` an invisible 1em box until then.
+      Verify reads innerHTML, so its word check is unaffected.
+    - **The breadcrumb names a non-module tab** (Reports' DPR, Write's
+      Characters) with no stage, instead of keeping the last module.
+    - **Developer notes were rendered**: `cbfc-rules.json`'s
+      `ratingsSource.source` carried "TWO TRAPS for whoever re-checks
+      this", printed under "Likely rating". Moved to `_note`.
+    - `test:schema` was red on main: §30's seeded price rises made
+      `upgrade.sql`'s higher test prices violate `plans_next_price_check`.
+
+    **Re-baselined**, deliberately: three allowances would have been
+    needed (`null` on feature, `amp` on short and library — each a
+    removed bug), which is past the line `EXPECTED`'s note draws. The
+    per-page diff was read first: 0 data-keys moved on all 21 pages;
+    words lost were those three plus clock words (the hub greeting, the
+    festival countdowns); words gained were already-shipped copy the
+    old capture predated (the theme toggle's label, settings' region
+    choice).
+
+    **Left as decisions, not bugs:** the hub's "Pick up where you left
+    off" means the highest step with data while the dashboard's means
+    the first unfinished one; Write's page view counts 115 pages where
+    the stat reads 106.5 (two metrics); `:root .btn` in the revamp block
+    out-ranks any earlier 0,2,0 button state (settings' choice buttons
+    were fixed by doubling the class); `.scene-table` as `display:block`
+    shrink-wraps narrow tables; `public/shots/hub.webp` predates the
+    resume-line fix and wants recapturing.

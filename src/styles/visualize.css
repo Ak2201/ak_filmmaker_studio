@@ -118,11 +118,11 @@
 .vz-table { margin-top: var(--s3); }
 
 /* The sideways cue for the shot table (UX audit L30). Hidden where
-   the seven columns fit; under 900px the table scrolls inside itself,
+   the seven columns fit; under 940px the table scrolls inside itself,
    so the cue says so, and the table's scrollbar is kept visible on
    engines that would otherwise overlay it out of sight. */
 .vz-scroll-hint { display: none; }
-@media (max-width: 899px) {
+@media (max-width: 939px) {
   .vz-scroll-hint {
     display: block;
     margin: var(--s3) 0 0;
@@ -135,11 +135,18 @@
   .vz-scroll-hint + .vz-table { margin-top: var(--s1); scrollbar-width: thin; scrollbar-color: var(--ink-faint) transparent; }
 }
 .vz-table th { white-space: nowrap; }
-.vz-table .vz-c-no   { width: 5rem; min-width: 5rem; }
-.vz-table .vz-c-lens { min-width: 6rem; }
-.vz-table .vz-c-desc { min-width: 15rem; }
-.vz-table .vz-c-done { min-width: 6rem; }
-.vz-table .vz-c-ctrl { width: 6rem; min-width: 6rem; }
+/* Sized to FIT the wide measure (887px) — at the old widths the table
+   needed 1016px, so even at 1280 it scrolled with no cue and the row
+   controls sat out of sight past the right edge. Tighter cell padding
+   and slightly narrower pickers buy the 130px.
+   Doubled class: widgets.css's `.scene-table td` ties and loads later. */
+.vz-table.scene-table th,
+.vz-table.scene-table td { padding-inline: var(--s2); }
+.vz-table .vz-c-no   { width: 4rem; min-width: 4rem; }
+.vz-table .vz-c-lens { min-width: 5rem; }
+.vz-table .vz-c-desc { min-width: 14rem; }
+.vz-table .vz-c-done { min-width: 5.5rem; }
+.vz-table .vz-c-ctrl { width: 5.5rem; min-width: 5.5rem; }
 .vz-table td { vertical-align: top; }
 
 /* Selects are not covered by the shared in-table field rule, which
@@ -147,7 +154,7 @@
    instead of the full-bleed form control from base.css. */
 .vz-table select {
   width: 100%;
-  min-width: 7rem;
+  min-width: 6rem;
   padding: var(--s2);
   background: transparent;
   border: 1px solid transparent;
@@ -359,6 +366,13 @@
 }
 
 .vz-table .vz-c-ref { min-width: 13rem; }
+/* Where both tables fit (the scroll-hint breakpoint), let them span
+   the column. As a display:block scroll box the table shrink-wraps its
+   content, so the lookbook's rows stopped 50px short of their own
+   border and header band. */
+@media (min-width: 940px) {
+  .vz-table.scene-table { display: table; width: 100%; }
+}
 .vz-entry-link {
   display: inline-block;
   margin-top: var(--s1);

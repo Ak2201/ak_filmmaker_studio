@@ -169,12 +169,23 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
       notes: { plan: planId, period, promo_code: order.promo_code || '' },
       ...(themeColour() ? { theme: { color: themeColour() } } : {}),
       handler: (resp) => { settled = true; resolve(resp); },
-      modal: { ondismiss: () => { if (!settled) reject(new BillingError('Payment cancelled. Nothing was charged.', 'dismissed')); } }
+      modal: { ondismiss: () => {
+        if (settled) return;
+        settled = true;
+        reject(failure
+          ? new BillingError(failure, 'failed')
+          : new BillingError('Payment cancelled. Nothing was charged.', 'dismissed'));
+      } }
     });
+    /* Checkout keeps its form open after a failed attempt so the buyer
+       can retry. Rejecting here made a retry that then SUCCEEDED land on
+       an already-rejected promise: rzp-verify never ran, the card said
+       "did not go through" and BUY came back while the webhook activated
+       the plan — an invitation to pay twice. Remember the failure; the
+       promise settles on success or on the form closing. */
+    let failure = '';
     rz.on('payment.failed', (e) => {
-      if (settled) return;
-      settled = true;
-      reject(new BillingError((e && e.error && e.error.description) || 'The payment did not go through. Nothing was charged.', 'failed'));
+      failure = (e && e.error && e.error.description) || 'The payment did not go through. Nothing was charged.';
     });
     rz.open();
   });

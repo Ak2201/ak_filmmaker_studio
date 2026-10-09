@@ -179,6 +179,7 @@
 }
 .db-phase {
   display: grid;
+  align-content: start;
   gap: var(--s2);
   padding: var(--sk-card-pad);
   background: var(--sk-card-bg);
@@ -186,20 +187,26 @@
   border-left: var(--sk-hue-rule-w) solid var(--hue, var(--accent));
   border-radius: var(--sk-radius);
 }
+/* nowrap: with wrap the percentage stayed beside a short label
+   ("Part I · Story  99%") and dropped onto its own line under a long
+   one, so the cards in one row put their figure in two places. The
+   label wraps inside itself instead; the figure keeps the corner. */
 .db-phase-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s2);
 }
 .db-phase-label {
+  min-width: 0;
   font-family: var(--f-display);
   font-size: var(--sk-card-h-size);
   font-weight: 800;
   color: var(--ink);
 }
 .db-phase-pct {
+  flex: none;
   font-family: var(--f-mono);
   font-size: var(--t-small);
   font-weight: 600;
@@ -455,7 +462,9 @@
 
 .rd-go {
   display: inline-block;
-  margin-top: var(--s2);
+  /* 19px tall without it — under the 24px target on a phone. */
+  padding-block: var(--s1);
+  margin-top: var(--s1);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-wide);

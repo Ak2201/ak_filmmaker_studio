@@ -158,7 +158,10 @@ async function _refreshOnce() {
       if (st && typeof st.entitled === 'boolean') {
         ent = {
           entitled: st.entitled,
-          reason: st.entitled ? (st.trial_active ? 'trial' : 'paid')
+          /* A paid plan wins over a trial still running beside it:
+             trial_active() ignores the plan, so a buyer who paid
+             mid-trial would otherwise keep the countdown band. */
+          reason: st.entitled ? ((st.trial_active && plan === 'free') ? 'trial' : 'paid')
                               : (st.trial_enabled === false ? 'off' : 'expired'),
           endsAt: st.trial_ends_at || null,
           used: st.trial_used === true,
@@ -327,7 +330,7 @@ function wallPanel() {
   const off = e.reason === 'off';
   const card = h('div.pg-lock-card.pg-wall-card', {}, [
     h('p.bd-eyebrow', { text: off ? 'The studio' : 'Your trial' }),
-    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : 'Your thirty minutes are up.' }),
+    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : 'Your free trial is over.' }),
     h('p.pg-lock-p', { text: off
       ? 'A plan opens the whole desk: your script, your breakdown, your schedule, your budget, your call sheets.'
       : 'You have been reading Dragon — a complete Tamil feature, scene by scene. A plan opens the same desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),

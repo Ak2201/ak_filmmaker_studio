@@ -1147,6 +1147,8 @@ select.field-input {
 .status-row:last-child { margin-bottom: 0; }
 .status-value {
   max-width: 60%;
+  /* an italic's overhang sits past its box; the ellipsis clip cut it */
+  padding-right: 0.15em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1680,3 +1682,10 @@ body.reading-mode .how-to { padding-block: var(--s6); }
   .watch-film { grid-template-columns: 1fr; gap: var(--s1); }
   .status-value { max-width: 100%; }
 }
+
+/* The glossary terms are <dl class="gloss-item">, and nothing reset the
+   UA's dl margin or dd indent: every definition sat 40px right of its
+   term and every card carried 16px of margin into the grid's own gap,
+   on both blueprints. */
+.gloss-list > .gloss-item { margin: 0; }
+.gloss-list > .gloss-item dd { margin: 0; }

@@ -41,6 +41,12 @@
   box-shadow: inset 0 3px 0 var(--accent);
 }
 .dv-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: var(--focus-offset); }
+/* Three tabs are 378px at the desk padding, so at 390 "Dialogue list"
+   wrapped onto a second row of its own under the open tab. */
+@media (max-width: 479px) {
+  .dv-tabs { gap: 0; }
+  .dv-tab { padding-inline: var(--s3); }
+}
 .dv-panel[hidden] { display: none !important; }
 
 .dv-h3 {

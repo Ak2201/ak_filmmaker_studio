@@ -16,6 +16,15 @@
    tab, as it already did below 720px. */
 .lib-embed .ds-bar { position: static; }
 
+/* The tab strip takes the module pages' column by default
+   (--measure-wide, centred: 234-1122px at 1280). The Library's own
+   sections are full-bleed bands whose heads are inset by --gutter, so
+   that column started 108px right of every section heading, left the
+   heading scrolling visibly past on both sides of the pinned strip,
+   and cut "Craft Glossary" off at 1280 with room to spare. Here the
+   strip takes the heads' inset instead. */
+main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
+
 /* ---- the craft glossary: every film's example, under the term ---- */
 .lib-gloss-ex {
   display: grid;

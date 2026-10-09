@@ -241,6 +241,17 @@ function updateStatus() {
 
   updateResume(f, s);
   updateIndexChecks(f, s);
+  unpolishFilled();
+}
+
+/* polishEmptyStates() runs once at boot, while these still read "—",
+   and tags them .empty-charm (inline-flex, a leading dot). Once real
+   content lands the class has to go, or every <strong> in the resume
+   line becomes its own flex column and the sentence breaks apart. */
+function unpolishFilled() {
+  document.querySelectorAll('.empty-charm').forEach((el) => {
+    if (el.textContent.trim() !== '—') el.classList.remove('empty-charm');
+  });
 }
 
 function resumeBtn(href, label, alt) {

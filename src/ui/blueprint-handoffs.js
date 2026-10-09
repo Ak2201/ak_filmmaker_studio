@@ -240,7 +240,9 @@ function lookbookState() {
 
 function drawLookbook(slot) {
   const { board, fresh } = lookbookState();
-  slot.replaceChildren(
+  /* filter(Boolean): the native replaceChildren() prints a null child
+     as the text "null" — h() skips nulls, the DOM method does not. */
+  slot.replaceChildren(...[
     h('button.btn.bph-go', {
       type: 'button', 'data-bph': 'lookbook', disabled: !fresh.length,
       text: fresh.length ? 'Add ' + plural(fresh.length, 'reference') + ' to the Lookbook' : 'Add to the Lookbook'
@@ -252,7 +254,7 @@ function drawLookbook(slot) {
           : 'Write a lighting or frame reference, or name a palette colour, first.'
     }),
     board ? h('a.btn.bph-link', { href: 'visualize.html#lookbook', text: 'Open the Lookbook →' }) : null
-  );
+  ].filter(Boolean));
 }
 
 let lookbookUndo = null;

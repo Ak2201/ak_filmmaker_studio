@@ -207,6 +207,14 @@
   border-radius: var(--sk-radius);
   box-shadow: var(--sk-card-shadow);
 }
+/* The hub's six figures: a flex-basis of 140px wrapped them 5 + 1 in
+   the hero's column, and the last stat stretched across a row alone.
+   A grid keeps the rows even — six across a desk, three over three on
+   a phone. */
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr));
+}
 .bd-stat strong,
 .hero-stat .num,
 .hub-stat-strip .hss-num {
@@ -480,7 +488,10 @@
   margin-bottom: var(--s6);
   text-align: left;
 }
-.bd-how-step { display: grid; gap: var(--s2); }
+/* align-content: start — the three columns are stretched to one height
+   by the row, and auto rows share the spare height out, so shorter
+   columns pushed their title down and the titles sat on two lines. */
+.bd-how-step { display: grid; gap: var(--s2); align-content: start; }
 .bd-how-num {
   display: inline-grid;
   place-items: center;
@@ -889,6 +900,11 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   font-size: var(--t-micro);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+  /* One width for "2" and "2 4/8", so every scene row wraps (or not)
+     the same way instead of by the length of its page count. */
+  min-width: 4.5ch;
+  text-align: right;
+  white-space: nowrap;
 }
 .bd-synopsis { width: 100%; resize: vertical; line-height: var(--lh-snug); }
 
@@ -952,7 +968,7 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   gap: var(--s3);
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
-.bd-el { display: grid; gap: 2px; padding: var(--s3) var(--s4); }
+.bd-el { display: grid; gap: 2px; padding: var(--s3) var(--s4); align-content: start; }
 /* --hue-deep, not --hue. A hue is a FILL: painted behind something it
    is fine, set as text on a light card it runs 2.33:1 in Desk, where
    --library is a bright amber. --hue-deep is the same colour chosen to

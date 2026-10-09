@@ -1324,6 +1324,15 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       1100px, where every one fits its column (measured) except the
       Reports cast matrix, which keeps scrolling. The Library's rate
       card rows stopped ~500px short of their own border before.
+    - **The refund-request form lost what you typed.** settings.js calls
+      `refreshRefundRequest()` after every billing refresh, and one can
+      land at any moment (an auth event, the gate answering); it cleared
+      the panel's error and data, and the re-render rebuilt the form
+      empty. `prove:billing` caught it intermittently — 3 checks red on
+      two of three runs — and it read as a flake. The draft and the
+      error now survive a refresh, the last answer stays drawn while
+      the new one loads, and a sent request hides the form until the
+      server's answer arrives. Four consecutive runs: 186/0.
     - `public/shots/*.webp` recaptured. `make-shots.mjs` now fetches the
       Google fonts through Node, so a container whose proxy Chromium
       does not trust still shoots real faces — no TLS check relaxed.

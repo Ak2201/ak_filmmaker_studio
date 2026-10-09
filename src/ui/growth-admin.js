@@ -38,6 +38,13 @@ import '../styles/growth.css';
 
 let rerender = () => {};
 const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
+
+/* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
+   every form on the console from its defaults 2.5s after a save, under
+   whatever the next form was being filled in with. */
+function clearNote(text) {
+  for (const n of document.querySelectorAll('.ba-saved')) if (n.textContent === text) n.remove();
+}
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—');
 /* The price-rise sentence names a DAY, not a timestamp: "from 31
    October" is what a buyer can hold us to, and printing 18:29 UTC
@@ -475,7 +482,7 @@ delegate(document, 'submit', '[data-gra-form="referral"]', async (e, form) => {
   try {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'referral'; rerender();
-    setTimeout(() => { S.saved = ''; rerender(); }, 2500);
+    setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The referral terms were not saved.', 'error'); }
 });
 
@@ -499,7 +506,7 @@ delegate(document, 'submit', '[data-gra-form="trial"]', async (e, form) => {
   try {
     S.settings = await Growth.admin.setSettings(patch);
     S.saved = 'trial'; rerender();
-    setTimeout(() => { S.saved = ''; rerender(); }, 2500);
+    setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The trial terms were not saved.', 'error'); }
 });
 
@@ -514,7 +521,7 @@ delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => 
     await Billing.admin.grantTrial(whoId, mins, String(f.get('note') || '').trim());
     S.granted = `Granted — ${mins} minute${mins === 1 ? '' : 's'}, starting now.`;
     rerender();
-    setTimeout(() => { S.granted = ''; rerender(); }, 4000);
+    { const note = S.granted; setTimeout(() => { if (S.granted === note) S.granted = ''; clearNote(note); }, 4000); }
   } catch (err) { toast(err.message || 'The time was not granted.', 'error'); }
 });
 
@@ -549,7 +556,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
     }
     if (!anyRise) S.prices = await Billing.priceNotice();
     S.saved = 'pricerise'; rerender();
-    setTimeout(() => { S.saved = ''; rerender(); }, 2500);
+    setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The price rise was not scheduled.', 'error'); await load(); }
 });
 

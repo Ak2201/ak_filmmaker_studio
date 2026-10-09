@@ -365,7 +365,11 @@ function readTrialOffer(st) {
        returns no `trial_enabled` at all, and undefined must not read as
        "offer them one" any more than it reads as "wall them". */
     const on = st && st.trial_enabled === true && st.trial_used !== true && st.entitled !== true;
-    trialOffer = on ? { minutes: 30 } : null;
+    /* The console can set any length (1 minute to 31 days), so the
+       offer reads the server's figure; 30 is the column's default, for
+       a database that predates the key. */
+    const mins = Number(st && st.trial_minutes);
+    trialOffer = on ? { minutes: mins > 0 ? Math.round(mins) : 30 } : null;
   } catch (e) { trialOffer = null; }
 }
 wireGateUI(render);

@@ -893,15 +893,48 @@ const COUNTDOWN = (() => {
       .filter((d) => ISO.test(String(d)));
   } catch (e) { /* no overlay on disk means no countdowns on the page */ }
 
-  let capturedAt = null;
+  let capturedAt = null, capturedDay = null;
   try {
-    capturedAt = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).capturedAt;
+    const b = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
+    capturedAt = b.capturedAt;
+    capturedDay = b.capturedDay || null;   // written since 9 Oct 2026; see below
   } catch (e) { /* no baseline yet — nothing to reconcile against */ }
   if (!dates.length || !capturedAt) return new Set();
 
   const vocabulary = (on) =>
     new Set(dates.flatMap((d) => words(relativeDays(daysUntil(d, on)))));
-  const then = vocabulary(todayISO(new Date(capturedAt)));
+
+  /* WHICH DAY WAS THE BASELINE CAPTURED ON? The file stores an INSTANT,
+     and `todayISO` reads LOCAL components — so the answer depends on the
+     zone of whoever is asking, not of whoever captured. That is not
+     hypothetical here: this baseline was written at 2026-10-08T22:00Z by
+     a session running in UTC, where the browser's day was the 8th; read
+     back on a machine at UTC+5:30 the same instant is the 9th. COUNTDOWN
+     then compared the 9th with the 9th, concluded nothing had moved,
+     excluded nothing — and the page's real one-day drift surfaced as
+     `15 unexplained missing words (122, 125, 128, 153, 189, 27, ...)`,
+     every one a bare integer counting down to a festival.
+
+     It reads as a copy regression on a page nobody edited, and it will
+     hit anyone whose zone differs from the capturer's. Two fixes, and
+     the first makes the second unnecessary over time:
+
+       - `capturedDay` is written into the baseline from now on, so the
+         day is recorded rather than re-derived;
+       - for a baseline that predates it, take the UNION of the two days
+         that instant could mean. A union can only ever exclude MORE
+         countdown words, never fewer, so it cannot leak a real missing
+         word — it costs a few integers of coverage and nothing else. */
+  let thenDays;
+  if (capturedDay && ISO.test(String(capturedDay))) {
+    thenDays = [capturedDay];
+  } else {
+    const d = new Date(capturedAt);
+    const p = (n) => String(n).padStart(2, '0');
+    const utcDay = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+    thenDays = [...new Set([todayISO(d), utcDay])];
+  }
+  const then = new Set(thenDays.flatMap((day) => [...vocabulary(day)]));
   const now = vocabulary(todayISO());
   return new Set([...then, ...now].filter((w) => !(then.has(w) && now.has(w))));
 })();
@@ -2027,6 +2060,11 @@ for (const spec of PAGES) {
         'and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — ' +
         'are failed by name if a first paint ever fetches one, whatever the total says.',
       capturedAt: new Date().toISOString(),
+    /* The LOCAL calendar day of the capture. capturedAt alone is an
+       instant, and COUNTDOWN needs the day the capturing BROWSER was
+       on — see the note in COUNTDOWN for the day this cost. */
+    capturedDay: (() => { const d = new Date(), p = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })(),
       // Carried over, never recaptured: each row is a reasoned allowance.
       knownLazyFetches: BUDGET.knownLazyFetches || {},
       pages
@@ -2046,6 +2084,11 @@ if (WRITE_BASELINE) {
       'Reference for npm run verify. Regenerate ONLY with `npm run build && npm run baseline`, ' +
       'and only when the current output is known good — it becomes the thing every later run is judged against.',
     capturedAt: new Date().toISOString(),
+    /* The LOCAL calendar day of the capture. capturedAt alone is an
+       instant, and COUNTDOWN needs the day the capturing BROWSER was
+       on — see the note in COUNTDOWN for the day this cost. */
+    capturedDay: (() => { const d = new Date(), p = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })(),
     capturedFrom: sha,
     provenance:
       'Captured from the build at the commit above. The FIRST baseline (16bf3b4) came from a build that ' +

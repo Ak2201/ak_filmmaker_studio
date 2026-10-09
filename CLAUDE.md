@@ -926,6 +926,33 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   state. `verify` counts the themes rather than naming a number of them, so
   it asserts two distinct backgrounds now and would assert five without an
   edit.
+- **A baseline stores an INSTANT; a countdown needs a DAY, and the two
+  are not the same across a timezone.** `COUNTDOWN` predicts which
+  festival numbers moved by deriving them at the baseline's `capturedAt`
+  and at now. It read the capture with `getFullYear/getMonth/getDate` —
+  LOCAL components — so the day it computed depended on the zone of
+  whoever was running verify, not of whoever captured.
+
+  That bit: the baseline was written at `2026-10-08T22:00Z` by a session
+  in UTC, where the browser's day was the 8th. Read back on a machine at
+  UTC+5:30, the same instant is the 9th. COUNTDOWN compared the 9th with
+  the 9th, decided nothing had moved, excluded nothing — and the page's
+  real one-day drift surfaced as `15 unexplained missing words (122, 125,
+  128, 153, 189, 27, …)`, every one a bare integer. It reads as a copy
+  regression on a page nobody has edited, and it is not one.
+
+  The baseline now records `capturedDay` alongside `capturedAt`, so the
+  day is stored rather than re-derived. For a baseline written before
+  that, COUNTDOWN takes the UNION of the two days the instant could
+  mean — a union can only exclude MORE countdown words, never fewer, so
+  it cannot hide a real missing word; it costs a few integers of
+  coverage and nothing else.
+
+  The same note already warns against freezing the clock or pinning the
+  timezone to solve this. Both are still wrong; this is the third
+  mechanism and the only one that does not make the browser and the
+  script disagree about what day it is.
+
 - **A stable position is not an arrival, and `behavior: 'auto'` does not
   mean instant.** `fragments.js` re-lands a fragment after the page
   renders, because the browser makes exactly one attempt at parse time.

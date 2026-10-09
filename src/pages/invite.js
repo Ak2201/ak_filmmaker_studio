@@ -95,7 +95,30 @@ function whySentence() {
   return lead + 'this account is not an invited member yet.';
 }
 
+/* WHAT THE READER HAS TYPED, ACROSS A REDRAW.
+   This page replaces `main` on every gate event, every plans load and
+   every auth change — by design, from one source. The invite-request
+   note is the one field a person types into slowly (it asks who they
+   are and who sent them), so it is the one a redraw can throw away.
+   prove:gate caught exactly that: a request row arriving with the right
+   attested e-mail and an EMPTY note, intermittently, depending on
+   whether a round trip landed mid-sentence.
+
+   Carried by id rather than by a general form-state mechanism because
+   there is exactly one such field; if a second ever appears, this is
+   the place to generalise. */
+function keepTyped() {
+  const el = document.getElementById('irNote');
+  return el ? el.value : null;
+}
+function restoreTyped(v) {
+  if (v == null || v === '') return;
+  const el = document.getElementById('irNote');
+  if (el && !el.value) el.value = v;
+}
+
 function render() {
+  const typed = keepTyped();
   const c = cloud();
   const g = (c && c.getGateState && c.getGateState()) || { state: 'unknown', reason: '', status: null };
   const signedIn = !!(c && c.getSession && c.getSession());
@@ -218,6 +241,7 @@ function render() {
 
   main.append(body);
   app.replaceChildren(main);
+  restoreTyped(typed);
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -314,14 +338,29 @@ let trialOffer = null;
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
-  try { plans = await Billing.listPlans(); } catch (e) { plans = null; }   // section 16 not run: no cards
-  await loadTrialOffer();
+  /* BOTH IN FLIGHT, ONE RENDER. These were sequential for an hour and
+     it was a real bug, not just a slow page: every render() replaces
+     `main`, so a reader who has started typing their note into the
+     request form loses it when the second round trip lands. Awaiting
+     the status AFTER the plans doubled the window in which that
+     happens, and prove:gate caught it as an intermittent "the note and
+     the browser that asked" — the row arrived with the right e-mail
+     and name, attested by auth, and an empty note.
+
+     Parallel restores the single round trip. The note is ALSO preserved
+     across a render now (below), because the window can never be zero:
+     this page redraws on every gate event by design. */
+  const [pl, st] = await Promise.all([
+    Billing.listPlans().catch(() => null),   // section 16 not run: no cards
+    Billing.status().catch(() => null)
+  ]);
+  plans = pl;
+  readTrialOffer(st);
   render();
 }
 
-async function loadTrialOffer() {
+function readTrialOffer(st) {
   try {
-    const st = await Billing.status();
     /* The key has to be PRESENT to be believed: an older database
        returns no `trial_enabled` at all, and undefined must not read as
        "offer them one" any more than it reads as "wall them". */

@@ -859,8 +859,11 @@ async function syncBeatTableLabels() {
   const cells = document.querySelectorAll('#step-08 .beat-table .beat-name strong');
   if (!cells.length) return;
   try {
-    const { getBeatSheetMethod } = await import('../lib/studies.js');
-    const beats = (getBeatSheetMethod('save-the-cat') || {}).beats;
+    /* The methods from the build-time slice, not lib/studies.js: that
+       pulls the whole 104 KB studies.json into this page's first paint
+       (it was the entire budget overrun, 9 Oct 2026). */
+    const { methods } = await import('virtual:beat-example-data');
+    const beats = (methods.find((m) => m.id === 'save-the-cat') || {}).beats;
     if (!Array.isArray(beats)) return;
     if (beats.length !== cells.length) {
       console.warn('[feature] beat table has', cells.length, 'rows but the method has',

@@ -65,7 +65,13 @@
    ============================================================ */
 
 import { h } from '../lib/dom.js';
-import { getStudy, getBeatSheetMethod } from '../lib/studies.js';
+/* The film and the methods come from a build-time slice of
+   studies.json (studySlicePlugin in vite.config.js), not from
+   src/lib/studies.js: that module imports the whole 104 KB file, and
+   this card sits on the Feature blueprint's first paint. */
+import { study as SLICED_STUDY, methods as SLICED_METHODS } from 'virtual:beat-example-data';
+const getStudy = (slug) => (SLICED_STUDY && SLICED_STUDY.meta && SLICED_STUDY.meta.slug === slug ? SLICED_STUDY : null);
+const getBeatSheetMethod = (id) => SLICED_METHODS.find((m) => m.id === id) || null;
 
 /* The gloss is shown in BOTH languages, always — src/ui/steps.js
    explains the distinction: a GLOSS accompanies, a FULL TRANSLATION

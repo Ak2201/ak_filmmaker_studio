@@ -192,47 +192,6 @@ this failing, because it fails identically on both branches and holding
 13 unrelated commits for it helps nobody. It is not fixed and is not
 forgotten.
 
-## verify fails 1 check — feature.html's first-paint budget — and it PRE-DATES today
-
-**9 Oct 2026.** `npm run verify` fails exactly one check, on `feature`:
-
-```
-first paint is 1,088,622 bytes of JS+CSS, over the 1,053,696-byte
-budget (48 files)
-```
-
-**Pre-existing, measured on both branches rather than argued:**
-
-| | bytes | files |
-| --- | --- | --- |
-| `main` @ `2ca58b9` | 1,088,622 | 48 |
-| `develop` (static cloud import) | 1,089,038 | 48 |
-| `develop` (dynamic, reverted) | 1,090,683 | 49 |
-
-So `main` is already ~35 KB (3.3%) over, and everything the 9 Oct branch
-adds is **+416 bytes**. The budget in `scripts/budget.json` was recaptured
-at `93909cd` during the 8 Oct release, at "110% of what loads now" — so
-either something landed after that recapture, or the recapture was taken
-against a different build. Worth establishing which before reaching for
-`npm run verify -- --budget`, because recapturing now would bake the
-overrun in permanently and silence the check.
-
-**A trap this cost an hour.** The obvious culprit looked like
-`sitegate.js`'s new `import './cloud.js'` pulling cloud into CORE_LIB.
-It is not: `feature.js:72` has imported cloud.js directly for ages, so
-that page never lacked it. Switching to a dynamic import made the number
-WORSE (+2,061 bytes and an extra chunk) and was reverted. Do not re-try
-that switch; the numbers are in the comment in `sitegate.js`.
-
-Everything else in `verify` passes: 21 pages, 0 data-keys missing,
-0 idle writes, 0 overflow at 390px, 2 distinct themes, 1 skin,
-fragment targets 0 missing / 0 hidden / 0 obscured across all three
-states, the scripts-off palette probe, and the backup round trip.
-
-Release note: `develop` was promoted to `main` on 9 Oct with this
-failing, because it fails identically on `main` and the branch's own
-contribution is 416 bytes.
-
 ## The full pending list
 
 The ID-numbered registry of everything still to do (launch steps, production

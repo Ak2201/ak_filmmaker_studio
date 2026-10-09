@@ -6,7 +6,7 @@ Chrome, signed in as the owner) because the cloud container cannot reach
 Supabase, Google Cloud or Razorpay. **For a session running on the owner's
 computer with the Claude in Chrome extension connected.**
 
-Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"* (or *"do section 6 of docs/BROWSER-HANDOFF.md"* for the Vercel preview alone).
+Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
 
 ## Rules for the session doing this
 
@@ -168,44 +168,62 @@ prices are placeholders. One test-mode purchase end to end, one refund.
 - Real prices; the Razorpay account; the second test account.
 - Optional: `VITE_SUPPORT_WHATSAPP` (digits with country code).
 
-## 6. Dev preview on Vercel — `thefilmakerlocal`
+## 6. Dev preview on Vercel — thefilmakerlocal — DONE 9 Oct 2026
 
-Owner's ask, 9 Oct 2026: a separate Vercel project named
-**`thefilmakerlocal`** (spelled exactly so, one "m") that deploys the
-**`develop`** branch, for testing before `main`. The cloud session cannot
-reach `api.vercel.com`, so it is done here in the owner's browser. Ask the
-owner before each save; never paste a token or secret into chat or git.
+**Live at `https://thefilmakerlocal.vercel.app`.** One "m" in
+*filmaker*, deliberately: it is NOT the production host
+`thefilmmakerstudio.vercel.app`, and the two differ by a single letter,
+so read twice before changing anything on either.
 
-1. **Create the project.** vercel.com → Add New → Project → import
-   `Ak2201/ak_filmmaker_studio`. Project name `thefilmakerlocal`.
-   Framework preset **Vite**; build command `npm run build` (the site gate
-   ON, same as production); output directory `dist`. Add one environment
-   variable: `VITE_DISABLE_SW=1` (CLAUDE.md: a hosted preview should not
-   leave a service worker behind in people's browsers). Every other
-   `VITE_*` value comes from the committed `.env`. Deploy once, then
-   Settings → Git → **Production Branch = `develop`** and redeploy.
-2. **Keep it private.** Settings → Deployment Protection → turn on
-   **Vercel Authentication**. `vercel.json` sends no noindex header, and
-   the site gate only hides the app pages, not `start.html` or the legal
-   pages.
-3. **Let sign-in work on the new address** (use the address Vercel
-   actually assigned, normally `https://thefilmakerlocal.vercel.app`):
-   - Google Cloud project `filmstudio-495419` → APIs & Services →
-     Credentials → the web client "Filmmakers Studio - Drive (browser)" →
-     **Authorised JavaScript origins**: add the address (scheme and host,
-     no path — see `docs/GOOGLE-AUTH.md`).
-   - Supabase `conhlrulxfwkhsnymakz` → Authentication → URL Configuration →
-     **Redirect URLs**: add `https://thefilmakerlocal.vercel.app/**`.
-   - Razorpay needs nothing: Checkout works from any origin and the
-     webhook goes to Supabase.
-4. **Check it in the browser:** the root lands on `invite.html` (the
-   gate is on); Google sign-in completes and returns to the preview; one
-   typed `.html` URL opens (the service-worker redirect trap in
-   CLAUDE.md); the dark gold/teal design is what renders.
-5. **Record it.** In `docs/DEPLOY.md`: the address, the branch (`develop`),
-   the build settings and that protection is on. Add the origin to the
-   list in `docs/GOOGLE-AUTH.md`. Commit on `develop`, then merge `develop`
-   into `main` per `docs/BRANCHING.md` (docs-only).
+| Setting | Value |
+| --- | --- |
+| Vercel project | `thefilmakerlocal` (Hobby, `arunaaron85-5576's projects`) |
+| Repository | `Ak2201/ak_filmmaker_studio` |
+| **Production Branch** | **`develop`** — every push to develop redeploys this |
+| Framework preset | Vite; build and output left at the preset defaults, which ARE `npm run build` and `dist` |
+| Environment | `VITE_DISABLE_SW=1`, Production and Preview |
+| Deployment Protection | Vercel Authentication, Standard — **already on by default**, nothing was changed |
+| First deployment | `4844bb7`, Ready in 14s |
+
+The gate is ON here, exactly as in production: this is `npm run build`,
+not `build:open`. The committed `.env` supplies the Supabase and Google
+values, so nothing secret was typed anywhere.
+
+**Sign-in was made to work on the new address** — two settings, both
+additive, nothing removed:
+
+- Google Cloud `filmstudio-495419` → OAuth client `filmstudio` →
+  Authorised JavaScript origins now hold four:
+  `http://localhost:5173`, `http://localhost:4173`,
+  `https://thefilmmakerstudio.vercel.app` and
+  `https://thefilmakerlocal.vercel.app`.
+- Supabase `conhlrulxfwkhsnymakz` → Auth → URL Configuration → Redirect
+  URLs now hold four, the new one being
+  `https://thefilmakerlocal.vercel.app/**`.
+
+Both were re-read after a full page reload rather than trusted from the
+save toast. Razorpay needed nothing: Checkout works from any origin and
+the webhook points at Supabase.
+
+**Checked in the browser:**
+
+- the root serves, and lands on `/start` — NOT `invite.html`. The plan
+  for this section predicted invite.html; `start.html` is the public
+  landing page now and the gate sends a signed-out visitor there. Not a
+  fault, but the expectation in older notes is stale.
+- a typed `.html` URL opens. `/settings.html` and `/index.html` both
+  resolve, which is the check that matters for CLAUDE.md's
+  service-worker redirect trap — a 200 to curl means nothing there.
+- **no service worker is registered** (`getRegistrations()` is empty),
+  so `VITE_DISABLE_SW=1` did what it was set for and this preview will
+  not outlive itself in anybody's cache.
+
+**NOT tested: an actual Google sign-in round trip on the new origin.**
+The configuration is in place and verified, but nobody has signed in
+through `thefilmakerlocal.vercel.app` yet. Google warns an origin change
+can take five minutes to a few hours to take effect, so a first attempt
+that fails with `redirect_uri_mismatch` may only mean "too soon" — try
+again later before changing the settings back.
 
 ## When done
 

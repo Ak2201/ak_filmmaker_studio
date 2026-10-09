@@ -1302,11 +1302,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     old capture predated (the theme toggle's label, settings' region
     choice).
 
-    **Left as decisions, not bugs:** the hub's "Pick up where you left
-    off" means the highest step with data while the dashboard's means
-    the first unfinished one; Write's page view counts 115 pages where
-    the stat reads 106.5 (two metrics); `:root .btn` in the revamp block
-    out-ranks any earlier 0,2,0 button state (settings' choice buttons
-    were fixed by doubling the class); `.scene-table` as `display:block`
-    shrink-wraps narrow tables; `public/shots/hub.webp` predates the
-    resume-line fix and wants recapturing.
+    **The follow-up the same day closed what this left open:**
+
+    - The hub's resume card and the dashboard's Continue now name ONE
+      step, `nextGuideStep()` in `journey.js` (the first step whose fields
+      are not all in). The hub's used to be the highest-numbered step
+      with any data, labelled "last touched" — step 24 on the sample
+      where the dashboard said 08. The card says "next up" now.
+    - Write's two page counts are labelled as the two measures they are:
+      the stats are the schedule's 55-lines-a-page count; the page view
+      says "printed pages" (the PDF's sheets, which run longer).
+    - `billing_status()` no longer gives a buyer who paid mid-trial the
+      trial plan's features (`and pl = 'free'`), with a schema check
+      seen red without the fix; LAUNCH §4 lists the re-run.
+    - `:root .btn` was measured on every page, both themes, for selected
+      states drawn like unselected ones. None lost; three (Deliverables
+      and Edit Log filters, Shoot's day picker) marked the selection with
+      the focus ring's exact outline, so a focused and a selected button
+      looked the same. They are filled now, as settings' choices are.
+    - The `display:block` data tables go back to `display: table` from
+      1100px, where every one fits its column (measured) except the
+      Reports cast matrix, which keeps scrolling. The Library's rate
+      card rows stopped ~500px short of their own border before.
+    - `public/shots/*.webp` recaptured. `make-shots.mjs` now fetches the
+      Google fonts through Node, so a container whose proxy Chromium
+      does not trust still shoots real faces — no TLS check relaxed.

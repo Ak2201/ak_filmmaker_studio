@@ -457,7 +457,22 @@ export function guideJourney(format, data) {
   return { current: cur.id, currentLabel: cur.label, started, pct: g.pct };
 }
 
+/**
+ * The step to pick up at: the first, in blueprint order, whose fields
+ * are not all filled. The dashboard's "Continue" and the hub's resume
+ * card both read this, so the two "pick up where you left off"s name
+ * one step (the hub's used to be the HIGHEST-numbered step with any
+ * data, which on the sample sent you to step 24 while the dashboard
+ * said 08). Null for a blob with nothing in it, or every step done.
+ */
+export function nextGuideStep(ns, data) {
+  const g = guideProgress(ns, data);
+  if (!g.fields.done) return null;
+  for (const st of g.stages) for (const s of st.steps) if (s.fieldsTotal && !s.complete) return s;
+  return null;
+}
+
 export default {
-  STAGES, stageById, stageHueClass, stageOfStep, guideSteps, guideProgress,
+  STAGES, stageById, stageHueClass, stageOfStep, guideSteps, guideProgress, nextGuideStep,
   journey, guideJourney, blueprintFor, BLUEPRINT
 };

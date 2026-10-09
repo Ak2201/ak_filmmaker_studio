@@ -93,7 +93,13 @@
 /* ---- filters ----------------------------------------------- */
 .dv-tools { margin-bottom: var(--s4); }
 .dv-filters { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.dv-filter.is-on { outline: 2px solid var(--accent); outline-offset: var(--focus-offset); }
+/* The chosen one is FILLED, as settings' choices are. An outline alone
+   was the keyboard focus ring exactly, so the selected filter read as
+   "focused" and a focused one as "selected". Doubled class: `:root .btn`
+   in chrome.css is 0,2,0 and declared later. */
+.dv-filter.dv-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.dv-filter.dv-filter.is-on:hover,
+.dv-filter.dv-filter.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
 
 /* ---- a group ------------------------------------------------ */
 .dv-group { margin: 0 0 var(--s6); }

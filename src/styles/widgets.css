@@ -162,6 +162,18 @@
   background: var(--paper-raised);
   border: 1px solid var(--rule);
 }
+/* The cost of display:block: the rows sit in an anonymous table box
+   that shrink-wraps its content, so a table narrower than its column
+   drew its border and band full width and its rows stopped short — the
+   Library's rate card by ~500px of a 1156px box. From the desk up every
+   one of these tables fits its column (measured on all pages with the
+   sample at 1100, 1280 and 1440) except the Reports cast matrix, which
+   is as wide as the cast is long, so the rest go back to being tables
+   there. A new table wider than a desk column needs adding to the
+   :not() list, or it will widen its column instead of scrolling. */
+@media (min-width: 1100px) {
+  :is(.pp-table, .scene-table, .beat-table, .equip-table):not(.rp-matrix) { display: table; }
+}
 .pp-table th,
 .scene-table th,
 .beat-table th,

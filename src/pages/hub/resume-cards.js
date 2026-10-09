@@ -13,7 +13,7 @@
 import Store from '../../lib/store.js';
 import { parseNum, fmtINR } from '../../lib/money.js';
 import { NOTE_PREFIX } from '../../lib/backup.js';
-import { STAGES, guideJourney } from '../../lib/journey.js';
+import { STAGES, guideJourney, nextGuideStep } from '../../lib/journey.js';
 import { h, esc } from '../../lib/dom.js';
 import { FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY, FEATURE_URL, SHORT_URL, parseStorage, title, $ } from './util.js';
 
@@ -91,19 +91,14 @@ function computeFeatureStatus() {
      the journey's current one (guide AND tools); otherwise the guide's
      own reading of this blob. */
   const stage = featureStageLabel(data);
-  let lastStepNum = null;
-  Object.keys(stepsDone).forEach(k => {
-    const match = k.match(/feat-(\d+)/);
-    if (!match) return;
-    const n = parseInt(match[1], 10);
-    if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
-  });
+  /* journey.js's answer, the same step the dashboard's Continue names. */
+  const next = nextGuideStep('feature', data);
   return {
     pct,
     title: data.meta_title || data.v1_title || '',
     stage,
     stepsDone,
-    lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2, '0') : null
+    lastEditedStep: next ? next.id : null
   };
 }
 
@@ -151,19 +146,13 @@ function computeShortStatus() {
      else's, so the resume card and the card under it disagreed about
      one film. The script's own progress lives on the Write page. */
   const pct = guideJourney('short', data).pct;
-  let lastStepNum = null;
-  Object.keys(stepsDone).forEach(k => {
-    const match = k.match(/short-(\d+)/);
-    if (!match) return;
-    const n = parseInt(match[1], 10);
-    if (lastStepNum === null || n > lastStepNum) lastStepNum = n;
-  });
+  const next = nextGuideStep('short', data);
   return {
     pct,
     title: data.meta_title || '',
     runtime: data.meta_runtime || '',
     stepsDone,
-    lastEditedStep: lastStepNum ? 'step-' + String(lastStepNum).padStart(2, '0') : null
+    lastEditedStep: next ? next.id : null
   };
 }
 
@@ -283,7 +272,7 @@ function updateResume(f, s) {
   if (primary === 'feature') {
     heading.textContent = f.title || 'Untitled feature';
     body.innerHTML = '<strong>' + esc(f.stage) + '</strong> · ' + f.pct + '% complete' +
-      (f.lastEditedStep ? ' · last touched <strong>' + esc(stepName(FEATURE_STEPS, f.lastEditedStep)) + '</strong>' : '');
+      (f.lastEditedStep ? ' · next up <strong>' + esc(stepName(FEATURE_STEPS, f.lastEditedStep)) + '</strong>' : '');
     actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), 'CONTINUE FEATURE  →'));
     if (shortActive) {
       actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), '→ Switch to Short', true));
@@ -291,7 +280,7 @@ function updateResume(f, s) {
   } else {
     heading.textContent = s.title || 'Untitled short';
     body.innerHTML = (s.runtime ? '<strong>' + esc(s.runtime) + '</strong> · ' : '') + s.pct + '% complete' +
-      (s.lastEditedStep ? ' · last touched <strong>' + esc(stepName(SHORT_STEPS, s.lastEditedStep)) + '</strong>' : '');
+      (s.lastEditedStep ? ' · next up <strong>' + esc(stepName(SHORT_STEPS, s.lastEditedStep)) + '</strong>' : '');
     actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), 'CONTINUE SHORT  →'));
     if (featActive) {
       actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), '→ Switch to Feature', true));

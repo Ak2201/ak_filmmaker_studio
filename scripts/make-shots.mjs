@@ -49,6 +49,16 @@ const SHOTS = [
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block', colorScheme: 'dark' });
+/* The fonts go through Node, not the browser. A container whose proxy
+   Chromium does not trust (but Node does, via NODE_EXTRA_CA_CERTS) would
+   otherwise shoot the page in fallback faces with the icons hidden —
+   and nothing about TLS is relaxed to get there. Harmless anywhere else. */
+await ctx.route(/^https:\/\/fonts\.(googleapis|gstatic)\.com\//, async (route) => {
+  try {
+    const r = await fetch(route.request().url(), { headers: { 'user-agent': route.request().headers()['user-agent'] || '' } });
+    await route.fulfill({ status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'application/octet-stream', 'access-control-allow-origin': '*' }, body: Buffer.from(await r.arrayBuffer()) });
+  } catch (e) { await route.abort(); }
+});
 const page = await ctx.newPage();
 for (const [name, url, file] of SHOTS) {
   await page.goto(BASE + url, { waitUntil: 'load' });

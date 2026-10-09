@@ -322,6 +322,22 @@ select t.ok((public.billing_status() ->> 'trial_active')::bool
 select t.ok((select trial_minutes from public.studio_members where user_id = '00000000-0000-4000-8000-0000000000f1') = 525600
         and (select trial_source  from public.studio_members where user_id = '00000000-0000-4000-8000-0000000000f1') = 'admin',
   '30. (19) a year, recorded as an administrator''s grant');
+-- and once F PAYS while that trial still runs, the plan bought wins:
+-- the features are Pro's, not the trial plan's borrowed map.
+select t.claims('00000000-0000-4000-8000-00000000000a');
+-- the seeds give indie and pro the same (empty) map, so mark the trial
+-- plan's apart or the check below cannot tell the two answers apart
+select public.admin_set_plan('indie', '{"features": {"trial_marker": true}}');   -- trial_plan is unset here, so indie
+select t.claims('00000000-0000-4000-8000-0000000000f1');
+select t.ok((public.billing_status() -> 'features' ->> 'trial_marker')::bool,
+  '30. (19) (control) before paying, the full trial shows the trial plan''s map');
+select t.claims('00000000-0000-4000-8000-00000000000a');
+select public.admin_grant_plan('00000000-0000-4000-8000-0000000000f1', 'pro', 0, 'paid mid-trial');
+select t.claims('00000000-0000-4000-8000-0000000000f1');
+select t.ok((public.billing_status() ->> 'plan') = 'pro'
+        and (public.billing_status() -> 'features') = (select features from public.plans where id = 'pro')
+        and (public.billing_status() -> 'features' ->> 'trial_marker') is null,
+  '30. (19) a buyer whose full trial is still running gets the BOUGHT plan''s features, not the trial plan''s');
 rollback;
 
 -- and the backfill did not hand entitlement to somebody an

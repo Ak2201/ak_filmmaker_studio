@@ -7238,7 +7238,10 @@ begin
   -- already seeded as {"sample_only": true, "new_projects": false}. That
   -- is why the trial needed no new gating on the client.
   feat := coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb);
-  if t_on and m.trial_scope = 'full' then
+  -- Only while the person has not paid: a buyer whose trial is still
+  -- running keeps the plan they BOUGHT, not the trial plan's map (a Pro
+  -- buyer was held to Indie's features until the trial clock ran out).
+  if t_on and m.trial_scope = 'full' and pl = 'free' then
     feat := coalesce((select p.features from public.plans p
                        where p.id = coalesce(s.trial_plan, 'indie')), '{}'::jsonb);
   end if;

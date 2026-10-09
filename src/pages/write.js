@@ -382,6 +382,9 @@ function prettyStamp(iso) {
        + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
+/* The page view's "printed pages" tooltip (see pvWhereText). */
+const PV_WHERE_TITLE = 'Sheets as the PDF prints them. The page count in the stats is the schedule\'s measure: 55 lines a page, which the breakdown\'s eighths are built on.';
+
 /* ---- header ------------------------------------------------- */
 function renderHeader() {
   const pages = pageCount(doc.elements);
@@ -396,7 +399,7 @@ function renderHeader() {
     }),
     h('div.bd-stats', {}, [
       h('div.bd-stat', {}, [
-        h('strong', { 'data-count': 'pages', text: formatPages(pages) }),
+        h('strong', { 'data-count': 'pages', text: formatPages(pages), title: 'At 55 lines a page, the measure the schedule uses. The printed PDF can run a few pages longer.' }),
         h('span', { text: 'pages' })
       ]),
       h('div.bd-stat', {}, [
@@ -606,7 +609,7 @@ function renderScreenplay() {
   ]));
   if (pageView && doc.elements.length) {
     section.append(h('p.wr-pv-status', { role: 'status', 'aria-live': 'polite' }, [
-      h('span', { 'data-pv': 'where', text: pvWhereText() }),
+      h('span', { 'data-pv': 'where', title: PV_WHERE_TITLE, text: pvWhereText() }),
       h('span.wr-gauge-sep', { text: ' · ', 'aria-hidden': 'true' }),
       h('span', { text: 'breaks as the PDF prints them' })
     ]));
@@ -2066,9 +2069,14 @@ function pvWhereText() {
     // A blank element prints nothing; it is on the page of the line before it.
     for (let k = indexOfEl(pvFocusId); k >= 0 && p === undefined; k--) p = pvPageOf.get(doc.elements[k].id);
   }
+  /* "printed": these are the PDF's sheets, which run longer than the
+     55-lines-a-page count in the stats (page breaks, MORE/CONT'D, a
+     scene kept off a page foot). Both are right; they measure two
+     things, and an unlabelled 115 beside an unlabelled 106.5 read as
+     a bug. */
   return p === undefined
-    ? pvTotal + (pvTotal === 1 ? ' page' : ' pages')
-    : 'Page ' + (p + 1) + ' of ' + pvTotal;
+    ? pvTotal + (pvTotal === 1 ? ' printed page' : ' printed pages')
+    : 'Printed page ' + (p + 1) + ' of ' + pvTotal;
 }
 
 function refreshPvStatus() {
@@ -2202,7 +2210,7 @@ async function setPageView(on) {
   let status = document.querySelector('.wr-pv-status');
   if (on && !status) {
     status = h('p.wr-pv-status', { role: 'status', 'aria-live': 'polite' }, [
-      h('span', { 'data-pv': 'where', text: pvWhereText() }),
+      h('span', { 'data-pv': 'where', title: PV_WHERE_TITLE, text: pvWhereText() }),
       h('span.wr-gauge-sep', { text: ' · ', 'aria-hidden': 'true' }),
       h('span', { text: 'breaks as the PDF prints them' })
     ]);

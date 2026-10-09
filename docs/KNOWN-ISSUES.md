@@ -62,10 +62,6 @@ once and not yet looked at.
   imports `src/data/cbfc-rules.json` (~44 KB raw — 32 KB until the 8 Oct source check grew it) and `lib/pdf.js` at module
   scope although the PDF is only needed inside the export click — making
   both dynamic needs the certification section to render after an await.
-- **On set: two small leftovers.** The recce card in `src/pages/plan.js`
-  does not show the four recce fields (`lat lng hospital police`) the call
-  sheet reads, and the after-sunset flag reads only the call sheet's
-  `wrap`, not the DPR's day-level wrap (`src/lib/dpr.js`).
 - ~~**The CBFC/AWBI/OTT facts were re-checked against search summaries, not
   the pages themselves** (8 Oct 2026; the container cannot reach the cited
   hosts).~~ **CLOSED 8 Oct 2026 (evening), from a session with a real

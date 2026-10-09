@@ -304,6 +304,37 @@ export function brandReplace(text, brand, where = 'html') {
     return String(values[key]);
   });
 }
+/* ============================================================
+   THE WORKED EXAMPLE'S SLICE OF studies.json (9 Oct 2026)
+   ------------------------------------------------------------
+   `virtual:beat-example-data` exports the ONE film the Feature
+   blueprint's step 08 shows (its meta and beat sheets) and the
+   beat-sheet methods, cut out of src/data/studies.json at build time.
+   Before this, step 08 imported all of studies.json (the 104 KB
+   data-studies chunk) on every first paint to show one card and fix
+   fifteen labels, and that alone put feature.html over its first-paint
+   budget. Derived, not copied (invariant 2): the JSON stays the only
+   place the words live, and a missing film fails the build.
+   ============================================================ */
+export const BEAT_EXAMPLE_FILM = 'dragon';
+function studySlicePlugin() {
+  const ID = 'virtual:beat-example-data', RID = '\0' + ID;
+  const file = resolve(__dirname, 'src/data/studies.json');
+  return {
+    name: 'fms-study-slice',
+    resolveId(id) { return id === ID ? RID : null; },
+    load(id) {
+      if (id !== RID) return null;
+      this.addWatchFile(file);
+      const s = JSON.parse(readFileSync(file, 'utf8'));
+      const film = (s.films || []).find((f) => f && f.meta && f.meta.slug === BEAT_EXAMPLE_FILM);
+      if (!film) this.error('studies.json has no film "' + BEAT_EXAMPLE_FILM + '" for the worked example');
+      return 'export const study = ' + JSON.stringify({ meta: film.meta, beatSheets: film.beatSheets || [] }) + ';\n'
+        + 'export const methods = ' + JSON.stringify(s.beatSheetMethods || []) + ';\n';
+    }
+  };
+}
+
 function brandPlugin() {
   const load = () => JSON.parse(readFileSync(resolve(__dirname, 'src/data/brand.json'), 'utf8'));
   let outDir = 'dist';
@@ -377,6 +408,7 @@ export default defineConfig({
     materialSymbols(),
     stepIndex(),
     brandPlugin(),
+    studySlicePlugin(),
     startFigures(),
     VitePWA({
       strategies: 'injectManifest',

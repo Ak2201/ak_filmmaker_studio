@@ -64,6 +64,7 @@ npm run test:sun / test:callsheet / test:costs / test:delivery / test:revisions 
 npm run prove:growth / prove:ai-coverage / prove:storage  # item 20 (ai-coverage reads dist-verify/)
 npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)
 npm run density   # design-density report; measures, asserts nothing
+# CI: .github/workflows/gate.yml runs test:all, verify and every prove:* on PRs into main/develop and pushes to develop
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
 ```
@@ -256,22 +257,7 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. **SINCE 8 OCT 2026 THE PALETTE IS THE CINEMATIC
-DARK SYSTEM, AND IT IS THE ONLY THEME** (owner's decision): obsidian
-surfaces (`--bg-primary/secondary/tertiary/glass`), amber gold for the
-product and every primary action (`--accent-gold*`), electric teal for
-features, tags and progress (`--accent-teal*`), `--status-*`. The legacy
-names below (`--paper`, `--ink`, `--brand`, `--chrome-*`, `--panel-*`, the
-phase hues) still exist and ALIAS the semantic layer — read the paragraphs
-below as history of how they came to exist, not as the current values.
-Two AA corrections to the spec live in tokens.css: `--text-muted` is NOT a
-text colour (4.0:1) — muted text takes `--text-muted-aa`; and danger TEXT
-is `--danger` #F87171, `--status-danger` #EF4444 being a fill. Primary
-buttons read `--accent-gold` directly, never `--accent`. A card that
-carries its variant's hue as a coloured rule (`.door`, `.start-card`,
-`.example`) must not have its `border-color` overridden — verify's
-hue-coding check caught exactly that in the revamp.
-The text from here on describes the violet era: **the palette was violet, and the default was INK** —
+Every colour is a token. **The palette is violet, and the default is INK** —
 a near-black ground with a violet cast. The light theme (`paper`) is the
 alternate and is described below as the ground most of this section's worked
 examples were measured against: a lavender-tinted page,
@@ -1190,7 +1176,7 @@ numbered as they are in the history.
 | 18 | Launch readiness (7 Oct 2026) | Done in code; owner steps in `docs/LAUNCH.md` | Landing page `start.html` is outside the gate and keeps its words in markup; `navigation.json` is fetched there as a URL asset on purpose (not bundled). A module with a page-wide side effect belongs in CORE in `vite.config.js`. Stripboard's per-day order lives INSIDE `fms_locations_v1` as `order` — no new key. `promo_codes` has no client access: only `quote_order` and `create_pending_payment` (5-arg) touch it. The host `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner, 7 Oct 2026), in ten files; a custom domain later needs the same ten files + Vercel + Google authorised origins (LAUNCH §7). start.html's Dragon figures and tier names are stamped at build time (`fms-start-figures`). Purchases are final bar three exceptions; the webhook's refund handling stays for them. |
 | 19 | Handoff and pending work (8 Oct 2026) | Released; pending registry in `docs/HANDOFF.md` §6c | `docs/HANDOFF.md` is the entry point: repo state, decisions, what is live, and an ID-numbered pending registry (P launch steps, G production gaps, T quality gaps, B billing, Q queued, E emotional craft) with lanes that can run in parallel. Develop on `develop`, release through `docs/BRANCHING.md`. Branch deletion is blocked on GitHub (403). |
 | 20 | Release of the ten workstreams (8 Oct 2026) | Done; **§21–§24 not run live** | On set, schedule (DPR inside `fms_locations_v1`), writing (`fms_characters_v1`), revisions (`numbering` in the script blob), AI coverage, compliance (CBFC rules carry sources; the rating is a hint), money (`fms_costs_v1`), billing growth (§21–§23), growth UX (`fms_tour_v1`). §24 makes characters and costs SYNC — run it before this build goes live. A proof that fails on its own aborts is the proof's bug. |
-| 21 | Cinematic UI revamp (8 Oct 2026) | Done | One dark theme; gold/teal on obsidian; glass nav; the script page on `--script-paper`. `themeOrder()` is `['ink']` and stored light values are ignored, not deleted. Re-baselined for the removed theme-switch words only. |
+| 21 | Cinematic UI revamp (8 Oct 2026) — colours REVERTED 9 Oct | Component styling kept | The owner kept the revamp's components (glass nav band, outlined secondary buttons, card borders, the primary button's glow, teal-style chips) and reverted its obsidian/gold/teal colours and dark-only theme. The violet palette and both themes are back; the revamp's role names (`--bg-*`, `--accent-gold*`, `--accent-teal*`, `--border-*`, `--shadow-cta`, `--hero-glow`) survive as ALIASES of the violet tokens at the foot of `tokens.css`, so they follow the theme. Text on a brand fill is `--brand-on`, never `--bg-primary`. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

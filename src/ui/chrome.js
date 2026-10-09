@@ -242,7 +242,7 @@ const THEME_KEY = 'fms_studio_theme_v1';
    light / sepia / dark (see tokens.css). The app's own names are
    paper / sepia / ink and the STORED value keeps those — THEME_KEY is
    part of the storage contract. Map between the two here, once. */
-const CSS_THEME = { ink: 'dark' };
+const CSS_THEME = { ink: 'dark', paper: 'light' };
 /* TWO themes, and INK is the default.
 
    sepia and desk are gone. Four palettes meant four sets of every
@@ -267,15 +267,14 @@ const CSS_THEME = { ink: 'dark' };
    asserts that the number of distinct backgrounds equals the number of
    themes, so neither dropping a theme nor reordering this needs a
    change there. */
-/* DARK ONLY (owner decision): one theme. A stored 'paper'/'light'/'sepia'
-   is ignored and left in place. */
-const THEME_ORDER = ['ink'];
+const THEME_ORDER = ['ink', 'paper'];
 
 /* Canonical reader. The root attribute is the source of truth; the body
    classes are a mirror kept for the pages that still read them. */
 function currentTheme() {
   switch (document.documentElement.getAttribute('data-theme')) {
     case 'dark':  return 'ink';
+    case 'light': return 'paper';
   }
   if (document.body && document.body.classList.contains('dark')) return 'ink';
   /* Falls back to INK. The bare :root in tokens.css carries the
@@ -287,7 +286,6 @@ function currentTheme() {
 }
 
 function applyTheme(theme) {
-  theme = 'ink'; // one theme: any other name resolves to ink
   // Stamp the root FIRST. This is the line the stylesheets actually key
   // off, and documentElement exists long before body does, so setting it
   // ahead of the body guard also avoids a flash of the wrong palette.
@@ -317,7 +315,7 @@ function applyTheme(theme) {
      loadTheme()'s unknown-theme branch to paper. */
   document.body.classList.remove('dark', 'sepia');
   if (theme === 'ink') document.body.classList.add('dark');
-  // THEME_KEY is deliberately not written: there is nothing to choose.
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   // Update any picker UIs
   document.querySelectorAll('.theme-picker button').forEach(b => {
     b.classList.toggle('active', b.dataset.theme === theme);
@@ -329,8 +327,37 @@ function applyTheme(theme) {
   }
 }
 function loadTheme() {
-  // Dark only: whatever is stored (paper, light, sepia) is ignored, not deleted.
-  applyTheme('ink');
+  let t;
+  try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
+  if (THEME_ORDER.indexOf(t) >= 0) {
+    applyTheme(t);
+  } else {
+    /* INK IS THE DEFAULT, and every fallback here has to say so.
+
+       This branch runs for anyone with no stored choice, and also for
+       anyone whose stored choice is a theme that no longer exists —
+       sepia and desk are not in THEME_ORDER and fall through to here.
+
+       THE LEGACY TEST FLIPS WITH THE DEFAULT, and it flips to
+       `=== false` rather than to `!== false`. The point of the old
+       `=== true` was never "true means ink"; it was "only an
+       EXPLICIT setting may override the default, and absent is not
+       explicit". `fms_studio_prefs_v1.dark` is a dark-mode toggle, so
+       `false` is a reader who deliberately turned dark off — that is
+       a choice of paper and is honoured. Missing, or any non-boolean,
+       is not evidence of anything and gets the default, exactly as a
+       missing key did before.
+
+       Written as `!== false` it would read the same for the two
+       values that exist and silently hand paper to `undefined` the
+       day someone stores a string; the strict test keeps "absent and
+       false behave the same" from being accidentally true rather
+       than deliberately so. */
+    try {
+      const old = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}');
+      applyTheme(old.dark === false ? 'paper' : 'ink');
+    } catch (e) { applyTheme('ink'); }
+  }
 }
 StudioUI.applyTheme = applyTheme;
 /* Exposed so scripts/verify can iterate the real list instead of
@@ -338,10 +365,12 @@ StudioUI.applyTheme = applyTheme;
 StudioUI.themeOrder = () => THEME_ORDER.slice();
 StudioUI.currentTheme = currentTheme;
 StudioUI.cycleTheme = function () {
-  applyTheme('ink'); // one theme: nothing to cycle to
+  const i = THEME_ORDER.indexOf(currentTheme());
+  const next = THEME_ORDER[(i + 1) % THEME_ORDER.length];
+  applyTheme(next);
+  StudioUI.toast('Theme: ' + next, { type: 'info', duration: 1400 });
 };
 StudioUI.attachThemePicker = function (host) {
-  if (THEME_ORDER.length < 2) return; // one theme: no picker
   if (!host || host.querySelector('.theme-picker')) return;
   const wrap = document.createElement('div');
   wrap.className = 'theme-picker';
@@ -398,13 +427,23 @@ function appearanceMenu() {
      a second row — 40px of permanent chrome bought with one label. */
   return actionMenu('◐', [
     {
+      label: 'Theme',
+      action: 'set-theme',
+      attr: 'data-theme-choice',
+      value: currentTheme(),
+      choices: THEME_ORDER.map((t) => ({
+        value: t,
+        label: t.charAt(0).toUpperCase() + t.slice(1)
+      }))
+    },
+    {
       label: 'Design',
       action: 'set-skin',
       attr: 'data-skin-choice',
       value: currentSkin(),
       choices: listSkins().map((sk) => ({ value: sk.id, label: sk.label }))
     }
-  ], { align: 'right', compact: true, ariaLabel: 'Appearance — design' });
+  ], { align: 'right', compact: true, ariaLabel: 'Appearance — theme and design' });
 }
 StudioUI.appearanceMenu = appearanceMenu;
 
@@ -551,6 +590,7 @@ const DEFAULT_SHORTCUTS = [
      after sepia was removed and after the order was reversed — a
      hand-written copy of THEME_ORDER, which is the list it is
      describing. Same reason the step list lives in JSON. */
+  { keys: ['⌘/Ctrl', 'D'],label: `Cycle theme (${THEME_ORDER.join(' → ')})` },
   { keys: ['j'],          label: 'Next step (in any blueprint)' },
   { keys: ['k'],          label: 'Previous step' },
   { keys: ['g g'],        label: 'Jump to top' },
@@ -664,7 +704,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
-    // Dark only: Ctrl/Cmd+D is a no-op (left to the browser).
+    // Cycle theme — hub already binds toggleDark; we override by cycling
+    e.preventDefault();
+    StudioUI.cycleTheme();
     return;
   }
   if (!isTextInput(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {

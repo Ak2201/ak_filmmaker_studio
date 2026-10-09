@@ -21,20 +21,23 @@
    The rule in CLAUDE.md that this page "may not read --sk-*" was
    really "may not depend on skin.js". It imports the skin directly.
 
-   COLOUR HAS A JOB HERE: teal teaches, gold buys. --accent-teal is
-   the learning colour (step numbers, the chips on what a step
-   contains, the counted facts); --accent-gold is the money colour
-   and belongs to every call to action, every price and the launch
-   band. Gold as a FILL takes --brand-on for its label, never white
-   (2.3:1). --text-muted is NOT a text colour (4.0:1) — muted text
-   takes --ink-muted, which maps to --text-muted-aa.
+   ONE ACCENT (owner, 9 Oct 2026). This page was built when the studio
+   was dark-only, and it used two colours with two jobs: teal taught,
+   gold bought. The palette went back to violet with two themes the same
+   day, and in that system --accent-gold and --accent-teal BOTH alias
+   violet (--brand and --brand-deep) — so the distinction rendered as two
+   shades of one hue, which reads as an accident rather than a decision.
 
-   390px IS THE DESIGN TARGET, not the fallback: this sheet is
-   written mobile-first and widened at 720px and 1100px. Nothing here
-   measures at 390 except a person, because start.html is not in
-   baseline.json — read the comment above the media queries before
-   adding a fixed width to anything.
-   ============================================================ */
+   So there is one accent now, and it is --accent-gold, which is --brand.
+   Where the old split carried meaning the page uses WEIGHT, SIZE and
+   RULES instead of a second hue: a step numeral is large and light, a
+   chip is a wash of the brand, a tick is bold. Those survive a palette
+   change; a second colour that happens to be the same colour does not.
+
+   As text on a light ground the brand needs --brand-deep, which is the brand as TEXT,
+   never the fill: that is CLAUDE.md's "a fill is not a text colour", and
+   it bites here because this page is read in BOTH themes now.
+   */
 
 @import '../styles/skins/studio.css';
 
@@ -60,7 +63,7 @@
   font-weight: 700;
   letter-spacing: var(--sk-eyebrow-track);
   text-transform: var(--sk-eyebrow-transform);
-  color: var(--accent-teal);
+  color: var(--brand-deep);
   margin: 0 0 var(--s2);
 }
 .st-eyebrow-gold { color: var(--accent-gold); }
@@ -348,15 +351,20 @@ button.st-btn-primary {
   padding: 0.2em 0.7em;
   margin: 0 0 var(--s2);
   border-radius: var(--radius-pill);
-  background: var(--accent-teal-subtle);
-  color: var(--accent-teal);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
   font-size: var(--t-tiny);
   font-weight: 700;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   max-width: 100%;
 }
-.st-chip-gold { background: var(--accent-gold-glow); color: var(--accent-gold); }
+/* --brand-deep, not --brand: the chip's ground is the brand at 22%, so
+   the brand ON it measured 2.95:1 in the LIGHT theme — a fill used as a
+   text colour, the mistake CLAUDE.md names, and invisible until 9 Oct
+   because this page had only ever been rendered dark. The deep variant
+   is the brand AS TEXT and is mixed for exactly this. */
+.st-chip-gold { background: var(--accent-gold-glow); color: var(--brand-deep); }
 
 /* ---- the invite band -------------------------------------------- */
 
@@ -365,7 +373,7 @@ button.st-btn-primary {
   padding: var(--sk-card-pad);
   background: var(--sk-card-bg);
   border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-left: var(--sk-hue-rule-w) solid var(--accent-teal);
+  border-left: var(--sk-hue-rule-w) solid var(--accent-gold);
   border-radius: var(--sk-radius);
   box-shadow: var(--sk-card-shadow);
 }
@@ -374,7 +382,7 @@ button.st-btn-primary {
   font-size: var(--t-lg);
   font-weight: 700;
   letter-spacing: var(--track-wide);
-  color: var(--accent-teal);
+  color: var(--brand-deep);
 }
 
 /* ---- the launch-price band -------------------------------------- */
@@ -431,7 +439,7 @@ button.st-btn-primary {
   font-size: var(--t-xl);
   font-weight: 800;
   line-height: 1;
-  color: var(--accent-teal);
+  color: var(--brand-deep);
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -462,7 +470,7 @@ button.st-btn-primary {
   font-size: var(--sk-stepnum-size);
   font-weight: 800;
   line-height: 1;
-  color: var(--accent-teal);
+  color: var(--brand-deep);
   margin: 0 0 var(--s2);
   font-variant-numeric: tabular-nums;
 }
@@ -494,7 +502,7 @@ button.st-btn-primary {
   font-weight: 700;
   letter-spacing: var(--sk-eyebrow-track);
   text-transform: var(--sk-eyebrow-transform);
-  color: var(--accent-teal);
+  color: var(--brand-deep);
   margin: 0 0 var(--s2);
 }
 
@@ -587,7 +595,7 @@ button.st-btn-primary {
 .st-table thead th { border-top: 0; font-family: var(--sk-display); color: var(--ink); }
 .st-table tbody th { text-align: left; font-weight: 500; color: var(--ink); }
 .st-table th:first-child { text-align: left; }
-.st-yes { color: var(--accent-teal); font-weight: 700; }
+.st-yes { color: var(--brand-deep); font-weight: 700; }
 .st-no { color: var(--ink-muted); }
 .st-compare { font-weight: 600; color: var(--ink); }
 

@@ -84,9 +84,10 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 
 /* The promise that the work is not hostage, set apart from the sell so
    it reads as a fact rather than a reassurance in a sales paragraph.
-   Teal, not gold: gold on this card belongs to the thing you buy. */
+   A brand rule rather than a second hue: the palette went back to
+   violet on 9 Oct and the two accents alias one colour there. */
 .pg-wall-safe {
-  border-left: var(--sk-hue-rule-w, 4px) solid var(--accent-teal, var(--accent));
+  border-left: var(--sk-hue-rule-w, 4px) solid var(--brand);
   padding: var(--s2) var(--s3);
   background: var(--paper-sunk);
   border-radius: var(--sk-radius, var(--radius));
@@ -109,7 +110,10 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .tb-body { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 /* Teal, because gold on this page belongs to the thing you buy, and
    the SEE PLANS button beside it is the gold thing. */
-.tb-flag { background: var(--accent-teal, var(--accent)); color: var(--bg-primary); }
+/* --brand-on, not --bg-primary: on a brand fill the readable colour is
+   the one the palette nominates, and in the light theme --bg-primary is
+   pale-on-violet. That exact substitution is named in the 9 Oct revert. */
+.tb-flag { background: var(--brand); color: var(--brand-on); }
 .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-cta { flex: none; }
 .sh-plate.is-urgent .tb-flag { background: var(--accent-gold); }

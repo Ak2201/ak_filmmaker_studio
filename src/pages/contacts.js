@@ -551,7 +551,10 @@ function renderSheetDoc(sheet, contacts, scenes) {
     doc.append(h('p.ct-doc-none', { text: 'Nobody is called on this sheet yet.' }));
   }
 
-  doc.append(renderRouteDoc(onSheet));
+  /* renderRouteDoc() returns null for a sheet with no scenes, and the
+     native append() prints that as the word "null" on the paper. */
+  const route = renderRouteDoc(onSheet);
+  if (route) doc.append(route);
 
   if (sheet.notes) {
     doc.append(h('div.ct-doc-notes', {}, [

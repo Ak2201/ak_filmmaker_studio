@@ -517,6 +517,10 @@ body.pdf-print .sb-hint { display: none !important; }
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
+  /* A day number is one token. Squeezed by `width: 100%` with the
+     label tracking on, "10" broke into a "1" over a "0" on every
+     two-digit day; the scroll wrapper is what absorbs the width. */
+  white-space: nowrap;
 }
 
 .sb-cell {

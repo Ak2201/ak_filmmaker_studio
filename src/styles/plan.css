@@ -212,6 +212,11 @@
 }
 .pl-table td.pl-pages { font-variant-numeric: tabular-nums; text-align: right; }
 .pl-table td.pl-what { color: var(--ink-body); min-width: 16ch; }
+/* Headers and the scene number are single tokens. Squeezed by the
+   synopsis column with the label tracking on, "Sc", "Time", "Pages"
+   and a two-digit scene broke one letter per line. */
+.pl-table th,
+.pl-table td.num { white-space: nowrap; }
 
 /* ------------------------------------------------------------
    2. LOCATIONS — the recce card

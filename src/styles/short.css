@@ -1,0 +1,21 @@
+/* ============================================================
+   SHORT — what is only this page's own.
+   ------------------------------------------------------------
+   THE SCENE MAP (step 06) at phone width. `.scene-table` is a
+   display:block scroll container (widgets.css), so its rows lay out
+   as an anonymous table that SHRINKS to the container instead of
+   scrolling: at 390 the slug, who and what columns were squeezed to
+   42px with 18px fields, and every header wrapped one letter per line.
+   A floor on the fields gives the columns a width to keep, and the
+   table then scrolls sideways inside itself as it was meant to. The
+   page body still never moves. Scoped by the tbody id, which only
+   this page's scene map carries.
+   ============================================================ */
+@media (max-width: 720px) {
+  .scene-table:has(#sceneMapBody) th,
+  #sceneMapBody td:first-child { white-space: nowrap; }
+  #sceneMapBody select { min-width: 8rem; }
+  #sceneMapBody input[data-field="slug"] { min-width: 12rem; }
+  #sceneMapBody input[data-field="who"] { min-width: 8rem; }
+  #sceneMapBody textarea[data-field="what"] { min-width: 14rem; }
+}

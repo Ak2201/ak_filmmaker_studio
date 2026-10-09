@@ -180,12 +180,18 @@
    the three buttons measured 36px (UX audit H8). base.css's coarse
    floor is (0,3,0) at 44px; this sits above both. */
 .sd-btn { flex: 1 1 0; }
+/* The resting outline at full rule strength: at the hairline the three
+   unmarked taps read as one empty band on a phone held at arm's length. */
+.sd-actions .sd-btn:not(.is-on) { border-color: var(--rule); }
 :root .sd-actions .sd-btn.sd-btn { min-height: 48px; }
 /* The live state is filled rather than outlined, so which one is
    true is readable at arm's length on a bright location. */
 .sd-btn.is-on.sd-shot    { background: var(--ok);   color: var(--on-fill); border-color: var(--ok); }
 .sd-btn.is-on.sd-part    { background: var(--warn); color: var(--on-fill); border-color: var(--warn); }
 .sd-btn.is-on.sd-dropped { background: var(--ink-muted); color: var(--paper); border-color: var(--ink-muted); }
+
+/* The hand-off to the report sat flush under the last card. */
+.sd-dpr { margin: var(--s5) 0 0; }
 
 @media (min-width: 720px) {
   .sd-list { grid-template-columns: 1fr 1fr; }

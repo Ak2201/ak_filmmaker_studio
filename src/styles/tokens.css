@@ -832,7 +832,9 @@
   --bg-primary:         var(--paper);
   --bg-secondary:       var(--paper-raised);
   --bg-tertiary:        var(--paper-sunk);
-  --bg-glass:           color-mix(in srgb, var(--chrome) 82%, transparent);
+  /* 92%, not 82%: under 82% the page text scrolling beneath was
+     plainly readable behind the breadcrumb at both widths. Still glass. */
+  --bg-glass:           color-mix(in srgb, var(--chrome) 92%, transparent);
   --text-primary:       var(--ink);
   --text-secondary:     var(--ink-body);
   --text-muted:         var(--ink-faint);     /* NOT a text colour */

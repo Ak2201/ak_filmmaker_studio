@@ -68,8 +68,12 @@
 
 /* The chosen one. Same pairing as .btn.primary — --accent on
    --accent-on — because it is the same statement: this is the live
-   one. A fill is not a text colour, and this is a fill. */
-.st-choice.is-on {
+   one. A fill is not a text colour, and this is a fill.
+   The class is doubled on purpose: `:root .btn` in chrome.css (the
+   revamp's outlined secondary) is 0,2,0 and declared later, so a plain
+   `.st-choice.is-on` lost the tie and the chosen theme and region were
+   drawn exactly like the unchosen ones. */
+.st-choice.st-choice.is-on {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-on);
@@ -78,8 +82,8 @@
    which on the chosen button would read as "not chosen" for as long
    as the pointer is on it. Deepening instead says the same thing the
    primary button says on hover. */
-.st-choice.is-on:hover,
-.st-choice.is-on:focus-visible {
+.st-choice.st-choice.is-on:hover,
+.st-choice.st-choice.is-on:focus-visible {
   background: var(--accent-deep);
   border-color: var(--accent-deep);
   color: var(--accent-on);

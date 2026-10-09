@@ -202,8 +202,9 @@
   text-align: center;
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.scene-table td.num { width: var(--s6); font-size: var(--t-tiny); }
+.scene-table td.num { width: var(--s6); font-size: var(--t-tiny); white-space: nowrap; }
 .beat-table .beat-name { width: 30%; padding: var(--s3); font-family: var(--f-body); color: var(--ink); }
 .beat-table .beat-name strong { display: block; font-size: var(--t-small); color: var(--ink); }
 .beat-table .beat-name .pct {

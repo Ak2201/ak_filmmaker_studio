@@ -607,7 +607,7 @@ function renderWatchlist() {
       title: 'Jump to this step in the blueprint',
       text: `${step.label} ↗`
     }),
-    h('h4', { text: step.heading }),
+    h('h4', { html: step.heading }),   // HTML by the extractor schema (scripts/extract/library.mjs); as text "&amp;" showed literally
     h('div.watch-films', {}, (step.films || []).map((f) => h('div.watch-film', {}, [
       h('span.title', { text: `${f.title} (${f.year})` }),
       h('span.why', { text: f.why })

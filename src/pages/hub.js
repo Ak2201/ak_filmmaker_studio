@@ -100,6 +100,7 @@ import {
   FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
   FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
 } from './hub/util.js';
+import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.json
 import { createResumeCards } from './hub/resume-cards.js';
 import { createBackupMenu } from './hub/backup-menu.js';
 import { sampleDays, samplePages } from './hub/first-run.js';
@@ -342,7 +343,7 @@ const SEARCH_INDEX = [
   })),
   ...watchlist.map(w => ({
     kind: 'library',
-    label: `Watch list · ${w.heading}`,
+    label: `Watch list · ${plain(w.heading)}`,
     snippet: `${w.label} · ${w.films.map(f => f.title).join(' · ')}`,
     url: `${LIBRARY_URL}#watch`
   })),
@@ -929,7 +930,7 @@ function finalMarkup() {
     html: `
       <div class="final-inner">
         <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
-        <div class="signature">THE FILMMAKER'S STUDIO</div>
+        <div class="signature">${esc(BRAND.name.toUpperCase())}</div>
       </div>`
   });
 }

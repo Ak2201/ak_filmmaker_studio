@@ -1,0 +1,100 @@
+# The release gate from docs/BRANCHING.md, run by GitHub instead of by hand.
+# Three jobs in parallel so the long page check does not hold up the rest.
+# Branch protection on main (owner-only) should require all three.
+name: Gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # test:schema uses runuser only when root with no PGHOST; on the
+      # runner it connects through these.
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: psql client
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - run: npm run test:all
+
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:open
+      # Uncapped on purpose: a time cap kills Chromium mid-sweep and reads
+      # as a "browser closed" failure (CLAUDE.md).
+      - run: npm run verify 2>&1 | tee verify.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-log
+          path: verify.log
+          retention-days: 7
+
+  proofs:
+    name: proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: gated build
+        run: npm run build
+      - run: npm run test:ai-lazy
+      - run: npm run prove:gate
+      - run: npm run prove:billing
+      - run: npm run prove:storage
+      - run: npm run prove:drive
+      - run: npm run prove:sw
+      - run: npm run build:extension
+      - run: npm run prove:extension
+      - name: open build for the growth and AI proofs
+        run: npm run build:verify
+      - run: npm run prove:growth
+      - run: npm run prove:ai-coverage

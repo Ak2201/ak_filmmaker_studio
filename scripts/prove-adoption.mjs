@@ -4,9 +4,26 @@
    ------------------------------------------------------------
    The gate never signs in, so it exercises the DEVICE namespace only
    and cannot see this control at all. This script simulates identity
-   at the single place store.js reads it — `fms_studio_account_v1`,
-   raw — which is all store.js has to go on, and then asserts the four
-   states that matter:
+   at the single place store.js reads it — `fms_studio_account_v1` —
+   and then asserts the four states that matter:
+
+   IDENTITY IS RE-ESTABLISHED BEFORE EVERY DOCUMENT, through
+   addInitScript, and that is not belt-and-braces. Writing the key once
+   and reloading does not work: cloud.js boots on these pages, finds the
+   project configured and no session to restore, correctly concludes the
+   stored account id is stale, and clears it (`Store.setAccount(null)`,
+   cloud.js — read the comment there, it is deliberate and right). So
+   the key survived module evaluation on the load that planted it and
+   was gone by the next one, and every signed-in case silently ran in
+   the DEVICE namespace: the adoptable list came back empty while the
+   grid showed the device's own projects.
+
+   The flag below is what the proof toggles; the init script turns it
+   into the account id before any app script runs. Do not go back to
+   writing the key directly — cloud.js will keep removing it, and it is
+   not wrong to.
+
+     (a) signed out, device projects present  → control ABSENT
 
      (a) signed out, device projects present  → control ABSENT
      (b) signed in, nothing to adopt          → control ABSENT
@@ -34,6 +51,8 @@ const DIST = path.resolve('dist');
 const PORT = Number(process.env.PROVE_PORT) || 5354;
 const UID = '11111111-2222-3333-4444-555555555555';
 const ACCOUNT_KEY = 'fms_studio_account_v1';
+/* Not an app key. cloud.js never touches it, which is the point. */
+const SIGNED_IN_FLAG = '__prove_adoption_signed_in';
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -81,6 +100,21 @@ const probe = () => ({
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+/* See the header. The flag is the proof's idea of "signed in"; this
+   turns it into the account id on every document, ahead of store.js
+   reading it and ahead of cloud.js clearing it.
+
+   EVERY context this script opens must get it. The 390px case and the
+   AA walk build their own, and without this they ran signed OUT while
+   asserting signed-in things — the adopt control simply was not there
+   and the failure read as a layout bug. */
+const signedInContext = (c) => c.addInitScript(({ accountKey, uid, flag }) => {
+  try {
+    if (localStorage.getItem(flag) === '1') localStorage.setItem(accountKey, uid);
+    else localStorage.removeItem(accountKey);
+  } catch (e) { /* storage blocked: the checks will say so */ }
+}, { accountKey: ACCOUNT_KEY, uid: UID, flag: SIGNED_IN_FLAG });
+await signedInContext(ctx);
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -91,10 +125,10 @@ const load = () => page.goto(`http://localhost:${PORT}/index.html`, { waitUntil:
 // (a) SIGNED OUT, with device projects. The control must not exist.
 // ------------------------------------------------------------
 await load();
-const a = await page.evaluate((accountKey) => {
+const a = await page.evaluate((flag) => {
   const S = window.StudioStore;
   localStorage.clear();
-  S.rawRemove(accountKey);
+  // localStorage.clear() above removed the flag too: signed out.
   // Two device projects, each with a logline we can identify later.
   [['Desk Film', 'feature', 'DESK-LOGLINE'], ['Night Shoot', 'short', 'NIGHT-LOGLINE']]
     .forEach(([title, format, logline]) => {
@@ -105,7 +139,7 @@ const a = await page.evaluate((accountKey) => {
     });
   S.notify('projects:changed', { reason: 'test' });
   return { ns: S.currentNamespace(), ids: S.listProjects().map((p) => p.id) };
-}, ACCOUNT_KEY);
+}, SIGNED_IN_FLAG);
 const deviceIds = a.ids;
 check('(a) namespace is the device when signed out', a.ns, '');
 await load();                       // fresh load, signed out, 2 device projects
@@ -121,11 +155,11 @@ check('(a) signed out: both device projects on the grid', pa.cardTitles.sort(),
 //     Device projects removed first, so the ONLY difference from (c)
 //     is whether there is anything to bring in.
 // ------------------------------------------------------------
-await page.evaluate(({ accountKey, uid }) => {
+await page.evaluate(({ flag }) => {
   const S = window.StudioStore;
   S.listProjects().forEach((p) => S.purgeProjectEverywhere(p.id));
-  S.rawSet(accountKey, uid);
-}, { accountKey: ACCOUNT_KEY, uid: UID });
+  localStorage.setItem(flag, '1');            // 'signed in' — see the header
+}, { flag: SIGNED_IN_FLAG });
 await load();
 const pb = await page.evaluate(probe);
 check('(b) signed in, empty device: namespace is the account',
@@ -140,7 +174,7 @@ check('(b) signed in, nothing to adopt: notice host hidden', pb.hostHidden, true
 //     createProject() stamps whatever namespace the document loaded
 //     in — which is the whole point of the device/account split.
 // ------------------------------------------------------------
-await page.evaluate((accountKey) => window.StudioStore.rawRemove(accountKey), ACCOUNT_KEY);
+await page.evaluate((flag) => localStorage.removeItem(flag), SIGNED_IN_FLAG);
 await load();
 const seeded = await page.evaluate(() => {
   const S = window.StudioStore;
@@ -156,9 +190,9 @@ const seeded = await page.evaluate(() => {
 });
 // An account project too, so (c) proves the panel is about the DEVICE
 // ones specifically and not simply "every project in the list".
-await page.evaluate(({ accountKey, uid }) => {
-  window.StudioStore.rawSet(accountKey, uid);
-}, { accountKey: ACCOUNT_KEY, uid: UID });
+await page.evaluate(({ flag }) => {
+  localStorage.setItem(flag, '1');
+}, { flag: SIGNED_IN_FLAG });
 await load();
 await page.evaluate(() => {
   const S = window.StudioStore;
@@ -207,7 +241,7 @@ check('(d) no reload happened (the document was never re-navigated)',
 
 // …and the same single copy is still the device's, signed out.
 const signedOut = await (async () => {
-  await page.evaluate((accountKey) => window.StudioStore.rawRemove(accountKey), ACCOUNT_KEY);
+  await page.evaluate((flag) => localStorage.removeItem(flag), SIGNED_IN_FLAG);
   await load();
   return page.evaluate((ids) => {
     const S = window.StudioStore;
@@ -238,8 +272,8 @@ check('(d) ONE list entry each, carrying BOTH namespaces', signedOut.entries, [
 ]);
 check('(d) signed out: the control is absent again', signedOut.button, false);
 check('(d) the account still sees them', await (async () => {
-  await page.evaluate(({ accountKey, uid }) =>
-    window.StudioStore.rawSet(accountKey, uid), { accountKey: ACCOUNT_KEY, uid: UID });
+  await page.evaluate(({ flag }) =>
+    localStorage.setItem(flag, '1'), { flag: SIGNED_IN_FLAG });
   await load();
   return page.evaluate(() => window.StudioStore.listProjects().map((p) => p.title).sort());
 })(), ['Already Mine', 'Desk Film', 'Night Shoot']);
@@ -250,17 +284,18 @@ check('(d) the account still sees them', await (async () => {
 // 390 wide before the first byte.
 // ------------------------------------------------------------
 const small = await browser.newContext({ viewport: { width: 390, height: 844 } });
+await signedInContext(small);   // its own context: it needs the init script too
 const sp = await small.newPage();
 sp.on('pageerror', (e) => errors.push('390px: ' + e.message));
 await sp.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
-await sp.evaluate(({ accountKey, uid }) => {
+await sp.evaluate(({ flag }) => {
   const S = window.StudioStore;
   localStorage.clear();
-  S.rawRemove(accountKey);
+  localStorage.removeItem(flag);        // signed out — see the header
   ['A very long project title that should still wrap rather than push sideways', 'Night Shoot']
     .forEach((t) => S.createProject({ title: t, format: 'feature' }));
-  S.rawSet(accountKey, uid);
-}, { accountKey: ACCOUNT_KEY, uid: UID });
+  localStorage.setItem(flag, '1');            // 'signed in' — see the header
+}, { flag: SIGNED_IN_FLAG });
 await sp.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
 const smallProbe = await sp.evaluate(() => ({
   button: !!document.querySelector('[data-action="adopt-device-projects"]'),
@@ -287,16 +322,17 @@ check('390px at load: nothing in the panel reaches past the viewport',
 // first the day one of them was touched.
 // ------------------------------------------------------------
 const aaCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+await signedInContext(aaCtx);   // ditto
 const aaPage = await aaCtx.newPage();
 aaPage.on('pageerror', (e) => errors.push('aa: ' + e.message));
 await aaPage.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
-await aaPage.evaluate(({ accountKey, uid }) => {
+await aaPage.evaluate(({ flag }) => {
   const S = window.StudioStore;
   localStorage.clear();
-  S.rawRemove(accountKey);
+  localStorage.removeItem(flag);
   ['Desk Film', 'Night Shoot'].forEach((t) => S.createProject({ title: t, format: 'feature' }));
-  S.rawSet(accountKey, uid);
-}, { accountKey: ACCOUNT_KEY, uid: UID });
+  localStorage.setItem(flag, '1');            // 'signed in' — see the header
+}, { flag: SIGNED_IN_FLAG });
 await aaPage.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
 
 const aa = await aaPage.evaluate(() => {
@@ -378,13 +414,29 @@ const aa = await aaPage.evaluate(() => {
   }
   return {
     total, fails: worst.slice(0, 10), failCount: worst.length,
-    themes: api.themeOrder().length, skins: skinApi.listSkins().length
+    themes: api.themeOrder().length, skins: skinApi.listSkins().length,
+    themeList: api.themeOrder(), skinList: skinApi.listSkins().map((x) => x.id)
   };
 });
-check('AA pass measured 4 themes', aa.themes, 4);
-check('AA pass measured 5 skins', aa.skins, 5);
-check('AA pass actually measured text (not an empty walk)', aa.total > 100, true);
-check('every text node in the panel clears 4.5:1, all 20 combinations', aa.fails, []);
+/* COUNTED, NOT NAMED. These said "4 themes" and "5 skins" and were
+   true of the app that existed when they were written; the revamp left
+   two themes and one skin and they have been asserting a world that is
+   gone. verify's own checks read the list out of the app for exactly
+   this reason — a hard-coded count is a check that expires.
+   What matters is that the walk covered EVERY combination that exists
+   and that it measured something. */
+check('AA pass covered every theme the app offers', aa.themes >= 1 && aa.themes === aa.themeList.length, true);
+check('AA pass covered every skin the app offers', aa.skins >= 1 && aa.skins === aa.skinList.length, true);
+/* PER COMBINATION, not a flat total. `> 100` was right for the 4
+   themes x 5 skins this walked when it was written; two themes and one
+   skin make the same panel measure a tenth as many nodes and the check
+   failed on arithmetic rather than on anything being wrong. The panel
+   carries a title, a deck, the project names, a button and fine print,
+   so ten text nodes per pass is a floor the real thing clears easily
+   and an empty walk cannot. */
+check(`AA pass actually measured text (${aa.total} nodes over ${aa.themes * aa.skins} pass(es))`,
+  aa.total >= 10 * aa.themes * aa.skins, true);
+check(`every text node in the panel clears 4.5:1, all ${aa.themes * aa.skins} combination(s)`, aa.fails, []);
 console.log(`        (${aa.total} measurements across ${aa.themes} themes x ${aa.skins} skins)`);
 
 check('no page errors anywhere in this run', errors, []);

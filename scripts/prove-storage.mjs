@@ -991,7 +991,19 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
   // Delete the heading's text: the scene and its shots go to A's bin.
   const ta = page.locator('.t-scene .wr-text').nth(1);
   await ta.click();
-  await page.keyboard.press('Control+A');
+  /* ControlOrMeta, NOT Control. On macOS Control+A is "move to the start
+     of the line", not select-all — so the Backspace that follows deleted
+     nothing, the heading kept its text, and scene-sync was right not to
+     bin anything. Four checks failed here for months and the cause was
+     never the app.
+
+     Worse, and the reason this is worth a comment: the three checks
+     AFTER them passed VACUOUSLY. "Ctrl+Z brings the scene back", "its
+     shots and frame are byte-identical" and "A's bin is empty again" are
+     all trivially true of a scene that never left. A red run that also
+     shows three greens for the thing it is failing to test is how this
+     survived being looked at. */
+  await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.press('Backspace');
   await page.waitForFunction((k) => {
     try { return JSON.parse(window.__raw(k) || '{"entries":[]}').entries.length === 1; } catch (e) { return false; }
@@ -1019,7 +1031,11 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
     [1, 2, 1]);
   check('S3 before Ctrl+Z A\'s scene list holds only HALL', sceneCountBeforeUndo, 1);
   await ta.click();
-  await page.keyboard.press('Control+Z');
+  /* Native textarea undo — the app implements no 'z' handler, it lets
+     the browser restore the heading and re-links from the result. So
+     the modifier has to be the PLATFORM's: Meta on macOS. Same cause as
+     the select-all above. */
+  await page.keyboard.press('ControlOrMeta+Z');
   await page.waitForFunction((k) => {
     try { return JSON.parse(window.__raw(k) || '{}').scenes.length === 2; } catch (e) { return false; }
   }, 'fms_scenes_v1__' + A, { timeout: 8000 }).catch(() => {});
@@ -1031,7 +1047,19 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
 
   // The bin holds something again, then project A is deleted.
   await ta.click();
-  await page.keyboard.press('Control+A');
+  /* ControlOrMeta, NOT Control. On macOS Control+A is "move to the start
+     of the line", not select-all — so the Backspace that follows deleted
+     nothing, the heading kept its text, and scene-sync was right not to
+     bin anything. Four checks failed here for months and the cause was
+     never the app.
+
+     Worse, and the reason this is worth a comment: the three checks
+     AFTER them passed VACUOUSLY. "Ctrl+Z brings the scene back", "its
+     shots and frame are byte-identical" and "A's bin is empty again" are
+     all trivially true of a scene that never left. A red run that also
+     shows three greens for the thing it is failing to test is how this
+     survived being looked at. */
+  await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.press('Backspace');
   await page.waitForFunction((k) => !!window.__raw(k), 'fms_scene_bin_v1__' + A, { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(800);

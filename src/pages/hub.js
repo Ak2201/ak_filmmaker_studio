@@ -105,7 +105,15 @@ import { createBackupMenu } from './hub/backup-menu.js';
 import { sampleDays, samplePages } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
-  setProjectFilter, setProjectSearch, setProjectSort
+  setProjectFilter, setProjectSearch, setProjectSort,
+  /* Used by the three sentences this file writes after adopting. It was
+     exported and never imported, so every one of them threw
+     `adoptAccountLabel is not defined` — the toast that confirms the
+     adoption, and the line that says the work is in both places. The
+     adoption itself had already happened, so the symptom was a silent
+     failure to tell anybody about it. prove:adoption could not see it
+     while the proof was running signed out. */
+  adoptAccountLabel
 } from './hub/project-cards.js';
 
 

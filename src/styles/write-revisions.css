@@ -146,7 +146,7 @@
   margin-top: 2em;
   font-family: var(--f-script);
   font-weight: 700;
-  color: var(--script-ink);
+  color: var(--print-ink);
   white-space: pre;
 }
 

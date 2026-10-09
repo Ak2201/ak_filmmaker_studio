@@ -2074,32 +2074,31 @@ let scriptsOff = { checked: false };
   };
   const decl = (block, prop) => ((block.match(new RegExp('(?:^|[;\\s])' + prop.replace(/[-]/g, '\\-') + '\\s*:\\s*([^;]+);')) || [])[1] || '').trim();
   const bare = blockAfter(css.search(/^:root\s*\{/m));
+  const themed = {};
+  for (const m of css.matchAll(/^:root\[data-theme="([a-z]+)"\]\s*\{/gm)) themed[m[1]] = blockAfter(m.index);
+  const media = {};
+  for (const m of css.matchAll(/@media \(prefers-color-scheme:\s*(light|dark)\)\s*\{/g)) media[m[1]] = blockAfter(m.index);
   const hexToRgb = (hex) => {
     const h = hex.replace('#', '');
     const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
     return `rgb(${parseInt(f.slice(0, 2), 16)}, ${parseInt(f.slice(2, 4), 16)}, ${parseInt(f.slice(4, 6), 16)})`;
   };
-  // --paper is an alias (var(--bg-primary)); follow it one hop to the hex.
-  let defaultPaper = decl(bare, '--paper');
-  const alias = defaultPaper.match(/^var\((--[\w-]+)\)$/);
-  if (alias) defaultPaper = decl(bare, alias[1]);
+  const defaultPaper = decl(bare, '--paper');
   const defaultScheme = decl(bare, 'color-scheme');
-  /* DARK ONLY: one theme, so BOTH OS preferences must paint the default
-     ground (bare :root's --paper, #0D0F14) and color-scheme stays the
-     default's. There is no second palette to flash to. */
-  const defaultTheme = 'ink';
+  const defaultTheme = Object.keys(themed).find((t) => decl(themed[t], '--paper') === defaultPaper) || null;
   const otherScheme = defaultScheme === 'dark' ? 'light' : 'dark';
-  const otherPaper = defaultPaper;
+  const otherPaper = media[otherScheme] ? decl(media[otherScheme], '--paper') : '';
 
   const probeFacts = { defaultTheme, defaultScheme, defaultPaper, otherScheme, otherPaper };
   const bad = [];
-  if (!defaultPaper) bad.push("bare :root declares no --paper");
+  if (!defaultTheme) bad.push(`bare :root's --paper (${defaultPaper || 'missing'}) matches no [data-theme] block — cannot tell which theme is the default`);
   if (!defaultScheme) bad.push('bare :root declares no color-scheme');
+  if (!otherPaper) bad.push(`no @media (prefers-color-scheme: ${otherScheme}) block restates --paper`);
 
   const results = [];
   if (!bad.length) {
     const HOST = `http://localhost:${PORT}/__scripts-off-probe.html`;
-    for (const [scheme, wantPaper] of [['dark', defaultPaper], ['light', defaultPaper]]) {
+    for (const [scheme, wantPaper] of [[defaultScheme, defaultPaper], [otherScheme, otherPaper]]) {
       const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
       const ppage = await pctx.newPage();
       await ppage.route('**/__scripts-off-probe.html', (route) => route.fulfill({
@@ -2142,7 +2141,7 @@ let scriptsOff = { checked: false };
         if (facts.scriptsRan) bad.push(`${spec.name} (prefers ${scheme}): the sandbox ran scripts — the probe is not measuring what it claims`);
         if (facts.dataTheme) bad.push(`${spec.name} (prefers ${scheme}): [data-theme="${facts.dataTheme}"] is set with scripts off — the markup is choosing a theme`);
         if (ground !== want) bad.push(`${spec.name} (prefers ${scheme}): scripts-off ground is ${ground}, the ${scheme === defaultScheme ? defaultTheme + ' (default)' : otherScheme} theme's --paper is ${want} (${wantPaper}) — a flash of the wrong palette`);
-        if (facts.colorScheme !== defaultScheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${defaultScheme}" — form controls and scrollbars will flash`);
+        if (facts.colorScheme !== scheme) bad.push(`${spec.name} (prefers ${scheme}): color-scheme is "${facts.colorScheme}" with scripts off, expected "${scheme}" — form controls and scrollbars will flash`);
         if (!facts.skRadius || !/^\d/.test(facts.skRadius)) bad.push(`${spec.name} (prefers ${scheme}): --sk-radius is "${facts.skRadius}" with scripts off — the skin's defaults are not on bare :root`);
       }
       await pctx.close();

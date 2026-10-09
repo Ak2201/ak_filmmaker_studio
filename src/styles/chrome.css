@@ -3622,7 +3622,7 @@ html {
 :root .cm-btn.primary {
   background: var(--accent-gold);
   border-color: var(--accent-gold);
-  color: var(--bg-primary);
+  color: var(--brand-on);
   font-weight: 700;
   box-shadow: var(--shadow-cta);
   transition: background var(--speed) var(--ease),
@@ -3642,7 +3642,7 @@ html {
 :root .cm-btn.primary:active {
   background: var(--accent-gold-hover);
   border-color: var(--accent-gold-hover);
-  color: var(--bg-primary);
+  color: var(--brand-on);
 }
 
 /* The nav band: frosted glass over the page, with a solid fallback. */

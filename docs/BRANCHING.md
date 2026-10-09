@@ -83,14 +83,18 @@ failed resource by its URL.
 
 ## What only the owner can set (not possible from this container)
 
-- **Branch protection on `main`** (GitHub → Settings → Branches): require a
-  pull request from `develop`, require the status checks below, disallow
-  direct pushes and force pushes.
-- **CI**: the repo has no `.github/workflows/`, so nothing enforces the gate.
-  Adding a workflow that runs steps 2–6 on every PR to `main` is the natural
-  next task (the browser tests need Playwright's Chromium and, for
-  `test:schema`, PostgreSQL 16 — both installable in a GitHub runner).
-  Until then the gate is run by hand and recorded in the merge commit.
+- **Branch protection on `main`** (GitHub → Settings → Branches → Add rule
+  for `main`): require a pull request, require the status checks **`tests`,
+  `verify` and `proofs`** (they appear in the list after the workflow has
+  run once), disallow direct pushes and force pushes. Until this is set, the
+  checks report but do not block.
+- **CI exists since 9 Oct 2026**: `.github/workflows/gate.yml` ("Gate") runs
+  steps 2–5 on every pull request into `main` or `develop`, on every push to
+  `develop`, and by hand (Actions → Gate → Run workflow). Three parallel
+  jobs: `tests` (`test:all` against a `postgres:16` service), `verify`
+  (open build, uncapped, log kept 7 days on failure) and `proofs` (gated
+  build and every `prove:*`). The first-paint budget (step 6) is inside
+  `verify`. Steps 7–8 (docs, the schema list) stay a human's job.
 - **Vercel / Netlify**: confirm the production branch is `main`, and that
   `develop` deploys only as a preview (a preview must not be indexed — check
   `robots.txt`/`noindex` behaviour on preview URLs).

@@ -64,6 +64,7 @@ npm run test:sun / test:callsheet / test:costs / test:delivery / test:revisions 
 npm run prove:growth / prove:ai-coverage / prove:storage  # item 20 (ai-coverage reads dist-verify/)
 npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)
 npm run density   # design-density report; measures, asserts nothing
+# CI: .github/workflows/gate.yml runs test:all, verify and every prove:* on PRs into main/develop and pushes to develop
 npm run extract   # regenerate src/data/*.json from legacy/ and self-check
 npm run icons     # regenerate PWA icons from tokens.css
 ```

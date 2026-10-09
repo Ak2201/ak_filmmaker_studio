@@ -1220,29 +1220,38 @@ buying account's `accounts.plan` moved to `starter`. So order → checkout
 → verify → activation is exercised, not merely configured. **Still
 missing: a LIVE key** — everything so far is test mode — and a refund
 has never been exercised.
-**SECTIONS 26-30 ARE WRITTEN AND NONE OF THEM IS LIVE** (probed over
-PostgREST on 9 Oct 2026, not read from the file: `add_lead`,
-`bump_event`, `refund_requests_enabled`, `my_invoices` and
-`admin_funnel` all answer PGRST202, and `plans.name` is still
-`Starter`/`Indie` while the client says Basic/Intermediate). Two
-consequences worth knowing before trusting a page: **the start page's
-e-mail capture and funnel counters do nothing on the live site** — they
-fail silently by design — and `billing_status()` carries no `entitled`
-key, so the trial and the paywall are inert, which is exactly what the
-fail-open rule above is for.
+**SECTIONS 26-31 ARE ALL LIVE** (run 9 Oct 2026 through the dashboard SQL
+editor, each verified afterwards by asking PostgREST rather than reading
+the screen). `plans.name` is Basic / Intermediate at last, so the server
+and the client agree; `refund_requests_enabled()` answers; `my_invoices`
+and `admin_funnel` answer 42501 to anon, which is the function existing
+and refusing rather than missing; `bump_event` returns 204, so the start
+page's counters and its e-mail capture do something for the first time.
 
-**THE FREE PLAN IS BEING WITHDRAWN (§30, owner 9 Oct 2026).** Signing in
-buys thirty minutes with the Dragon sample; an invite code buys seven
-days; then a wall. The trial is a SECOND AXIS and does not touch `plan`,
-`plan_until` or `plan_period` — a trial user's plan is literally `free`,
-whose `features` map is already `sample_only`, so the scope needed no new
-gating. The first draft granted `pro` for the trial's length, which looks
-neater and is wrong: `quote_for` raises `same_plan`/`downgrade` for
-anyone not on free, so a trial user on `pro` could not have bought
-anything at all. The trial columns live on `studio_members`, not
-`accounts`, because `acc_delete` lets a user delete their own accounts
-row and `accounts_guard` defends only the six columns it names — either
-would have made the once-only check erasable by the person it checks.
+**THE TRIAL AND THE PRICE RISE ARE LIVE.** `price_notice()` is
+anon-callable and reads: Basic 59900 → 99900, Intermediate 79900 →
+149900, Pro 99900 → 199900, all at 2026-10-31T18:29Z, 1 of 100 founding
+seats taken. `price_notice('USD')` returns the dollar figures AND the
+rupee amount that will actually be charged, in the same object, because
+hiding the charged amount until checkout is drip pricing.
+
+**The rise was PROVED to fire by itself**, inside a transaction that
+rolled back so production was never changed: `effective_price('indie')`
+is 79900 today, 149900 once `next_price_at` is moved into the past,
+79900 again when it is restored, and 149900 when
+`price_rises_after_buyers` reaches `paid_buyers()`. `rising` goes false
+in both risen states, so a card can never advertise a change already
+made. That is the evidence behind the sentence on the landing page.
+
+**PASTING SQL THROUGH THE CLIPBOARD CORRUPTS IT.** `pbcopy` → Chrome
+paste turned every em-dash into `‚Äî` — UTF-8 bytes read as MacRoman —
+and §30's user-facing refusal sentences contain em-dashes and `₹`, so
+the mojibake would have shipped to buyers. The fix is to base64 the file
+(pure ASCII crosses the clipboard), decode it in the page, and set the
+Monaco model directly; then SHA-256 the editor's contents against the
+file before pressing Run. Every section this session was checked that
+way and every one matched byte for byte. Never paste schema SQL without
+a checksum.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

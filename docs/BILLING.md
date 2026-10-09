@@ -574,7 +574,7 @@ and `gstin` are optional brand keys, empty by default.
   `admin_issue_invoice` per payment if wanted). Proved: `npm run test:schema`
   (`invoice.sql`) and `npm run test:invoice`.
 
-## 12. The trial, and the free plan's withdrawal (schema §30, 9 Oct 2026). NOT RUN LIVE.
+## 12. The trial, and the free plan's withdrawal (schema §30, 9 Oct 2026). RUN LIVE 9 Oct 2026.
 
 **The owner's decision: the free plan stops being a place to live.** Signing
 in buys **thirty minutes with the Dragon sample**; an invite code buys
@@ -686,6 +686,10 @@ server locks out the people who have paid, and `npm run verify` loads all
 
 ### Deploy order
 
-§26 → §27 → §28 → §29 → §30 → §31, one editor tab each. **None of §26–§31
-is live** (probed over PostgREST, 9 Oct 2026). §29 must run before the
-landing page's e-mail capture does anything at all.
+§26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
+each verified afterwards over PostgREST rather than from the screen.
+
+**Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
+§30's refusal sentences carry em-dashes and `₹`, so that mojibake would
+have reached buyers. Base64 the section, decode it in the page, set the
+Monaco model, then SHA-256 the editor against the file before Run.

@@ -5928,7 +5928,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 26. TIER LABELS: Basic / Intermediate / Pro            NOT RUN LIVE — owner approval
+-- 26. TIER LABELS: Basic / Intermediate / Pro            RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
 -- Ids stay free / starter / indie / pro (CHECKs, plan_rank and the
 -- client's PLAN_ORDER are untouched). Only the label changes, and the
@@ -6023,7 +6023,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 27. REFUNDS: the admin's REFUND button, and customer requests   NOT RUN LIVE — owner approval
+-- 27. REFUNDS: the admin's REFUND button, and customer requests   RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
 -- refund.html: purchases are final, with three exceptions (a duplicate
 -- charge, a charge that was not delivered, where the law requires).
@@ -6429,7 +6429,7 @@ notify pgrst, 'reload schema';
 --     no change.
 
 -- ============================================================
--- 28. BUYER INVOICES — Bill of Supply, gapless per financial year
+-- 28. BUYER INVOICES — Bill of Supply, gapless per financial year   RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
 -- NOT RUN LIVE — owner approval. Run after §16–§26 (needs payments,
 -- is_studio_admin, plans). Idempotent.
@@ -6695,7 +6695,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 29. LEADS AND FUNNEL COUNTS                    NOT RUN LIVE — owner approval
+-- 29. LEADS AND FUNNEL COUNTS                    RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
 -- HANDOFF B4 + B5. Two small things, both closed to direct access.
 --
@@ -6834,7 +6834,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 30. THE TRIAL, AND A PRICE RISE THAT FIRES ITSELF   NOT RUN LIVE — owner approval
+-- 30. THE TRIAL, AND A PRICE RISE THAT FIRES ITSELF   RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decision, 9 Oct 2026: THE FREE PLAN STOPS BEING A PLACE
 -- TO LIVE. Signing in buys thirty minutes with the Dragon sample; then
@@ -7659,7 +7659,7 @@ update public.billing_settings set price_rises_after_buyers = 100
 -- ============================================================
 
 -- ============================================================
--- 31. REGION AND CURRENCY — one checkout, two price tags
+-- 31. REGION AND CURRENCY — one checkout, two price tags   RUN LIVE 9 Oct 2026
 --                                                NOT RUN LIVE — owner approval
 -- ------------------------------------------------------------
 -- The owner's decision, 9 Oct 2026: ONE CHECKOUT FOR NOW. Razorpay,

@@ -65,6 +65,16 @@ jobs:
       # as a "browser closed" failure (CLAUDE.md).
       - run: npm run verify 2>&1 | tee verify.log; exit ${PIPESTATUS[0]}
         shell: bash
+      - name: what failed
+        if: failure()
+        run: |
+          grep -E '^✗' verify.log || true
+          node -e '
+            const t = require("fs").readFileSync("verify.log", "utf8");
+            const i = t.indexOf("[\n  {"); if (i < 0) process.exit(0);
+            const rows = JSON.parse(t.slice(i, t.lastIndexOf("]") + 1));
+            for (const r of rows) if (r.FAIL && r.FAIL.length) console.log((r.page || r.name) + ": " + r.FAIL.join(" | ").slice(0, 600));
+          ' || true
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

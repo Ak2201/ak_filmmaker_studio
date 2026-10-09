@@ -47,6 +47,7 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
 import '../styles/festivals.css';
+import '../styles/short.css';
 import '../styles/steps-stages.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -690,7 +691,7 @@ function renderFestivals() {
   const grid = h('div.fest-grid', {}, festivalData.festivals.map((f) => h(`div.fest-card.t${f.tier}`, {}, [
     h('div.tier', { text: f.tierLabel }),
     h('h4', { text: f.name }),
-    h('p', { text: f.description }),
+    h('p', { html: f.description }),   // HTML by the extractor schema (innerHTML); as text the entity showed literally
     h('p.req', { text: f.req }),
     renderFestCheck(f),
     h('button.fest-track', {

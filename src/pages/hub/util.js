@@ -23,9 +23,17 @@ const FORMAT_LABELS = {
   adfilm: 'AD FILM'
 };
 
-/** Strip authored markup so data HTML can be used as plain text. */
+/** Strip authored markup so data HTML can be used as plain text —
+ *  and decode its entities, or "Horror &amp; fantastic" reaches a
+ *  text node (or esc()) still spelled as an entity. */
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '\u2014', ndash: '\u2013', hellip: '\u2026', rsquo: '\u2019', lsquo: '\u2018', rdquo: '\u201d', ldquo: '\u201c' };
 function plain(s) {
-  return String(s ?? '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  return String(s ?? '').replace(/<[^>]*>/g, '')
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+      if (e[0] === '#') { const n = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return Number.isFinite(n) ? String.fromCodePoint(n) : m; }
+      return ENTITIES[e.toLowerCase()] ?? m;
+    })
+    .replace(/\s+/g, ' ').trim();
 }
 function clip(s, n = 104) {
   const t = plain(s);

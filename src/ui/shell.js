@@ -189,6 +189,22 @@ function resolveModule(hash) {
         if (sec && sec !== el && sec.contains(el) && (!best || best.sec.contains(sec))) best = { x, sec };
       }
       if (best) return { phase: best.x.phase, module: best.x.module, global: best.x.global, exact: true };
+      /* A tab that is no module of its own (Reports' DPR and Equipment,
+         Write's Characters and Coverage): name the tab. Without this the
+         crumb kept the last module's name ("Cast Matrix" over the DPR),
+         or fell back to the page's first module on a direct load. */
+      const panel = el.closest('[role="tabpanel"]');
+      const base = mods.find((x) => x.phase) || mods[0];
+      const tab = panel && document.getElementById('tab-' + panel.id);
+      const label = ((tab && tab.textContent) || (panel && panel.dataset.tabLabel) || '').trim();
+      if (panel && base && label) {
+        /* No stage: nothing records which one a non-module tab belongs
+           to, and a guess put Reports' DPR under "Screenplay". */
+        return {
+          phase: null, global: null, exact: true,
+          module: { id: 'tab:' + panel.id, label, href: CURRENT + '#' + panel.id, sym: base.module.sym, icon: base.module.icon }
+        };
+      }
     }
   }
   /* A page that is an app-scope destination in its own right says so

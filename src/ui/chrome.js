@@ -93,6 +93,34 @@ const global = typeof window !== 'undefined' ? window : globalThis;
 const StudioUI = {};
 
 // ============================================================
+// ICON FONT READINESS
+// ============================================================
+// The marks are Material Symbols LIGATURES: until the font arrives the
+// span holds the symbol's NAME. display=block hides it for ~3s, then a
+// network that blocks Google Fonts (or a first load offline) printed
+// "home", "auto_stories" over the labels beside them. base.css keeps
+// each .sym an invisible 1em box until a face of that family has
+// actually LOADED — every icon is aria-hidden beside its own label, so
+// an icon that never comes is a gap, not a word. Reads only.
+(function watchSymbolFont() {
+  const root = document.documentElement;
+  const done = () => root.classList.add('sym-ready');
+  let fonts;
+  try { fonts = document.fonts; } catch (e) { fonts = null; }
+  if (!fonts || typeof fonts.forEach !== 'function') return done();
+  const check = () => {
+    if (root.classList.contains('sym-ready')) return;
+    let ok = false;
+    fonts.forEach((f) => { if (f.status === 'loaded' && /Material Symbols/i.test(f.family)) ok = true; });
+    if (ok) done();
+  };
+  check();
+  try { fonts.addEventListener('loadingdone', check); } catch (e) { /* older engines */ }
+  try { fonts.ready.then(check); } catch (e) { /* older engines */ }
+  window.addEventListener('load', check, { once: true });
+})();
+
+// ============================================================
 // SKIP TO CONTENT (a11y)
 // ============================================================
 function injectSkipLink() {
@@ -848,6 +876,14 @@ function buildStepRail() {
       if (entry.isIntersecting) {
         items.forEach(i => i.classList.remove('active'));
         it.classList.add('active');
+        /* Keep the active step in view inside the rail. Past Part II it
+           was below the rail's fold, so the rail stopped saying where
+           you are. The rail's own scrollTop only — scrollIntoView would
+           move the page too. */
+        if (rail.classList.contains('show')) {
+          const r = rail.getBoundingClientRect(), b = it.getBoundingClientRect();
+          if (b.top < r.top || b.bottom > r.bottom) rail.scrollTop += (b.top - r.top) - (r.height - b.height) / 2;
+        }
       }
     });
   }, { rootMargin: '-30% 0px -65% 0px', threshold: 0 });

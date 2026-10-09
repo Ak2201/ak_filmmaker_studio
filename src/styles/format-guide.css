@@ -118,7 +118,7 @@
 }
 .fg-panel-title { margin: 0; font-size: var(--t-lg); color: var(--ink); }
 .fg-panel-title:focus { outline: none; }
-.fg-panel-title:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--focus); outline-offset: 2px; }
+.fg-panel-title:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
 .fg-panel-count { flex: 1 1 auto; font-size: var(--t-small); color: var(--ink-muted); }
 .fg-panel-empty { margin: 0; color: var(--ink-body); }
 .fg-list {

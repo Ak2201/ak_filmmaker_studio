@@ -87,12 +87,22 @@
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
-.rp-dist { display: grid; gap: var(--s3); }
-.rp-dist-row {
+.rp-dist {
   display: grid;
   grid-template-columns: 5.5rem minmax(0, 1fr) auto;
-  align-items: center;
   gap: var(--s3);
+}
+/* SUBGRID, so the value column is sized once for the whole card.
+   Each row as its own grid sized its `auto` column to its own label,
+   and "29 scenes · 85 6/8 pp" beside "5 scenes · 14 pp" left the
+   meters different lengths — a bar chart whose tracks do not line up
+   reads as data that does not either. */
+.rp-dist-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  row-gap: var(--s2);
+  align-items: center;
 }
 .rp-dist-key {
   font-family: var(--f-mono);
@@ -313,7 +323,7 @@
 @media (max-width: 719px) {
   .rp-sec { padding-inline: var(--s4); padding-block: var(--s5) var(--s6); }
   .rp-h3 { margin-top: var(--s6); }
-  .rp-dist-row { grid-template-columns: 4.5rem minmax(0, 1fr); }
+  .rp-dist { grid-template-columns: 4.5rem minmax(0, 1fr); }
   .rp-dist-val { grid-column: 2; justify-self: end; }
   .rp-side-el { grid-template-columns: 1fr; gap: 2px; }
   .rp-spacer { display: none; }
@@ -386,6 +396,16 @@
    is never carried by colour alone. */
 .rp-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rp-stats { margin-block: var(--s4); }
+/* The DPR's six figures as an even grid. As a wrapping flex row the
+   sixth ("lost to delays") fell to a line of its own at desk width and
+   stretched across the whole card, which read as a headline rather
+   than as the sixth of six. 2 × 3 on a phone, 3 × 2, then one row. */
+#rp-dpr-derived {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 600px)  { #rp-dpr-derived { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { #rp-dpr-derived { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .rp-matrix th.rp-mx-col { text-align: center; font-family: var(--f-mono); font-size: var(--t-tiny); min-width: 2.2rem; }
 .rp-matrix .rp-mx-cell { text-align: center; color: var(--accent-deep); font-size: var(--t-small); }
 .rp-matrix .is-dense { background: var(--warn-wash); }

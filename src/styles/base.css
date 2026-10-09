@@ -335,3 +335,7 @@ p, .deck, .step-deck, .hint, li { text-wrap: pretty; }
   -webkit-font-smoothing: antialiased;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
+/* Until chrome.js has seen the face LOAD, the span holds a symbol's
+   name, not its glyph: keep it an invisible glyph-sized box so a
+   blocked font never prints "auto_stories" over a label. */
+html:not(.sym-ready) .sym.sym.sym { visibility: hidden; max-width: 1em; overflow: hidden; }

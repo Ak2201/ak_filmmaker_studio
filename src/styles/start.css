@@ -142,6 +142,9 @@
 }
 
 .st-note { font-size: var(--t-small); color: var(--ink-muted); }
+/* A note straight after a card grid sat flush against the cards'
+   bottom edge (#proof); the grid carries no bottom margin of its own. */
+.st-grid + .st-note { margin-top: var(--s4); }
 .st-fine { font-size: var(--t-small); color: var(--ink-muted); margin-top: var(--s3); }
 .st-legal { font-size: var(--t-small); color: var(--ink-muted); margin-top: var(--s2); }
 .st-more { margin-top: auto; font-size: var(--t-small); font-weight: 600; }
@@ -289,9 +292,12 @@ button.st-btn-primary {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -40% -20% auto -20%;
-  height: 90%;
-  background: radial-gradient(60% 60% at 50% 50%, var(--accent-gold-glow), transparent 72%);
+  inset: 0;
+  /* closest-side, so the wash has faded to nothing before it meets the
+     section's edge. The old box hung 40% above and 20% either side and
+     was then clipped by overflow on the section, which drew the glow
+     as a lit rectangle with a hard top and left edge at both widths. */
+  background: radial-gradient(closest-side at 35% 30%, var(--accent-gold-glow), transparent);
   pointer-events: none;
 }
 .st-hero-copy { min-width: 0; }
@@ -431,7 +437,7 @@ button.st-btn-primary {
 .st-short-step .st-sn { grid-area: n; }
 .st-short-step .st-h3 { grid-area: h; margin: 0; }
 .st-short-say { grid-area: s; margin: var(--s2) 0 0; }
-.st-short-step .st-chip { grid-area: t; margin: var(--s3) 0 0; }
+.st-short-step .st-chip { grid-area: t; margin: var(--s3) 0 0; justify-self: start; }
 
 /* The step numeral: teal, the one place a number is the design. */
 .st-sn {
@@ -593,6 +599,10 @@ button.st-btn-primary {
 .st-table { width: 100%; min-width: 30rem; border-collapse: collapse; font-size: var(--t-small); }
 .st-table th, .st-table td { padding: var(--s2) var(--s3); border-top: 1px solid var(--rule-hair); text-align: center; color: var(--ink-body); }
 .st-table thead th { border-top: 0; font-family: var(--sk-display); color: var(--ink); }
+/* base.css gives every th overflow-wrap:anywhere, which at 390 split
+   the tier names mid-word ("Fre|e", "Basi|c"). A plan name is one
+   word; the wrapper scrolls sideways when the row is wider. */
+.st-table thead th { overflow-wrap: normal; white-space: nowrap; }
 .st-table tbody th { text-align: left; font-weight: 500; color: var(--ink); }
 .st-table th:first-child { text-align: left; }
 .st-yes { color: var(--brand-deep); font-weight: 700; }
@@ -658,7 +668,7 @@ button.st-btn-primary {
 .st-foot {
   max-width: var(--measure-wide);
   margin: var(--s7) auto 0;
-  padding: var(--s4) var(--gutter) var(--s6);
+  padding: var(--s4) 0 var(--s6);
   border-top: 1px solid var(--rule-hair);
 }
 .st-foot p { color: var(--ink-muted); font-size: var(--t-small); margin: 0; }
@@ -745,7 +755,10 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
   .st-at-wide { display: inline; }
   .st-cta > .st-btn { flex: 0 0 auto; }
   .st-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
-  .st-tiers { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  /* Four tiers, always (stamped from PLAN_ORDER). auto-fit at 13rem
+     gave three columns in the 836px column and orphaned Pro on a row
+     of its own; two by two, then four across, never three plus one. */
+  .st-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .st-stage-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
   .st-voice-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
 }
@@ -766,7 +779,12 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
 }
 
 @media (min-width: 1000px) {
+  .st-tiers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .st-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; padding: var(--s7) 0; }
+  /* The copy column runs ~1100px at 1280, so centring the shot against
+     it parked the picture below the fold of the hero with an empty
+     quarter above it. Top-align it with the headline instead. */
+  .st-hero .st-shot-hero { align-self: start; margin-top: var(--s6); }
   .st-step { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); align-items: center; gap: var(--s6); }
   .st-step:nth-child(even) .st-step-copy { order: 2; }
 }

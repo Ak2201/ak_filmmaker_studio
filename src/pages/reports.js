@@ -115,7 +115,9 @@ function byCategory(index) {
   return ELEMENT_CATEGORIES.map((c) => rows.get(c.id)).filter(Boolean);
 }
 
-const mix = (counts) => Object.entries(counts).map(([k, n]) => k + ' ' + n).join(' · ');
+/* A no-break space inside each pair: in a narrow column "EXT 1 · INT 2"
+   broke as "INT" over "2", which reads as a count for the next row. */
+const mix = (counts) => Object.entries(counts).map(([k, n]) => k + '\u00a0' + n).join(' · ');
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 
 function slugOf(scene) {
@@ -1118,7 +1120,7 @@ function fillKit(sec, scenes) {
   out.push(tools);
 
   const sheet = h('div.rp-kit', { 'data-day': String(day) });
-  sheet.append(h('h3.rp-dpr-title#rp-kit-title', { text: kitTitle(day, tally) }));
+  sheet.append(h('h3#rp-kit-title.rp-dpr-title', { text: kitTitle(day, tally) }));
   const grid = h('div.rp-kit-grid');
   for (const dept of DPR.DEPARTMENTS) {
     const card = h('article.rp-card.rp-kit-dept');

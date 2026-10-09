@@ -35,6 +35,13 @@ import '../styles/plans.css';
 import '../styles/refunds.css';
 
 const S = { loaded: false, busy: false, error: '', plans: [], payments: [], overview: {}, members: [], saved: '', granted: '', promos: [], promoMade: '', refunds: null, rreqs: null, rrEnabled: false, rrBusy: false };
+
+/* A "Saved." note clears itself IN PLACE. Re-rendering for it rebuilt
+   every form on the console from its defaults 2.5s after a save, under
+   whatever the next form was being filled in with. */
+function clearNote(text) {
+  for (const n of document.querySelectorAll('.ba-saved')) if (n.textContent === text) n.remove();
+}
 let rerender = () => {};
 
 const LIMIT_FIELDS = [
@@ -289,7 +296,7 @@ delegate(document, 'submit', '[data-ba-form="plan"]', async (e, form) => {
     await Billing.admin.setPlan(id, patch);
     S.saved = id;
     await load();
-    setTimeout(() => { S.saved = ''; rerender(); }, 2500);
+    setTimeout(() => { S.saved = ''; clearNote('Saved.'); }, 2500);
   } catch (err) { toast(err.message || 'The plan was not saved.', 'error'); }
 });
 
@@ -342,7 +349,7 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
     const row = await Billing.admin.setPromoCode(code, patch);
     S.promoMade = `Added ${row && row.code ? row.code : code}.`;
     await load();
-    setTimeout(() => { S.promoMade = ''; rerender(); }, 2500);
+    { const made = S.promoMade; setTimeout(() => { if (S.promoMade === made) S.promoMade = ''; clearNote(made); }, 2500); }
   } catch (err) { toast(err.message || 'The code was not saved.', 'error'); }
 });
 

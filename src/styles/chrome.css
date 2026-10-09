@@ -2107,7 +2107,10 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   background: var(--chrome-fill-strong);
   border-left-color: var(--accent-lift);
   color: var(--chrome-ink);
-  font-weight: 700;
+  /* 600 and no tracking, not 700: the bolder face widened "Dashboard"
+     past the cell and overflow-wrap broke it "Dashboar / d". */
+  font-weight: 600;
+  letter-spacing: 0;
 }
 /* Same reason as .sh-where-here .sh-where-icon below: the active
    cell's ground is lifted, so its glyph is ink and the hue is the
@@ -2523,6 +2526,17 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   .step-rail-toggle { top: var(--sh-chrome-h, var(--s8)); }
   .step-rail-toggle { transform: none; }
   .step-rail { max-height: calc(100vh - var(--sh-chrome-h, var(--s8)) - var(--s4)); }
+  body.rail-shown.rail-open .step-rail-toggle { left: calc(var(--sh-rail-w) + var(--rail-w)); }
+}
+/* Open, the tab hangs off the rail's outer edge rather than sitting on
+   the rail's own "STEPS" heading. */
+body.rail-open .step-rail-toggle { left: var(--rail-w); }
+/* Below the desk the tab is fixed over the page's left edge (22px
+   wide) and the page's own gutter is 16-24px, so the controls nearest
+   the edge — the language toggle at 17px — sat under it. 8px more
+   clears it without giving up a column on a phone. */
+@media (max-width: 1099px) {
+  body.has-step-rail main { padding-left: var(--s2); }
 }
 
 /* ---- narrow: off-canvas behind the burger ---- */
@@ -2747,7 +2761,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   position: absolute;
   top: calc(100% + var(--s1));
   left: 0;
-  min-width: 220px;
+  min-width: 280px;   /* 220 wrapped "Export / .fountain" beside its hint */
   padding: var(--s2);
   background: var(--panel);
   color: var(--panel-ink);
@@ -3299,7 +3313,9 @@ html {
 }
 .sh-bar .sh-find-icon { font-size: var(--t-small); }
 .sh-bar .sh-find-key { padding: 2px var(--s1); line-height: 1; }
-.sh-bar .project-switcher .ps-label { max-width: 14ch; }
+/* 18ch: "— NO PROJECT —" is fourteen tracked characters and 14ch
+   ellipsised it to "— NO PRO…" on a bar with room to spare. */
+.sh-bar .project-switcher .ps-label { max-width: 18ch; }
 .sh-bar .project-switcher.empty { color: var(--danger); border-color: var(--danger); }
 .sh-bar .save-status,
 .sh-bar .progress-text { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: normal; }

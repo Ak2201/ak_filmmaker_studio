@@ -32,9 +32,8 @@
         and ALL_KEYS already carry it) — no new key — and is written
         only when that checkbox is clicked.
         `?ref=<code>` is added when the signed-in member has a referral
-        code. Billing is being taught referral codes in parallel, so it
-        is read DEFENSIVELY — Billing.referralCode() if it exists, else
-        the field on billing_status() — and omitted when neither says.
+        code — read from my_referral() via growth.js (see
+        learnReferral below) — and omitted when it has none.
    2. "HELP ON WHATSAPP" — VITE_SUPPORT_WHATSAPP (digits, country code
       first). Set, the link renders here, in Settings → Plan and on
       invite.html (which imports chrome.js too). Unset, nothing renders
@@ -45,7 +44,6 @@
       this module only ever READS.
    ============================================================ */
 import Store from '../lib/store.js';
-import Billing from '../lib/billing.js';
 import { delegate } from '../lib/dom.js';
 import { BRAND, BRAND_HOST, BRAND_PATH } from '../lib/brand.js';
 import '../styles/footer.css';
@@ -147,28 +145,22 @@ export function brandLine({ ref, className = 'made-with' } = {}) {
   return p;
 }
 
-/* The referral code, read defensively: whichever shape billing.js ends
-   up exposing, and nothing at all when it exposes none. Asked once per
-   page, and only for a signed-in member on a page that prints a branded
-   document or when billing offers a dedicated (cheap) lookup — never a
-   second billing_status() round trip on every page of the studio. */
+/* The referral code comes from my_referral() (§22, via growth.js) —
+   billing_status() carries none, so the old read of it there could
+   never find one and the ?ref= was silently dead. Asked once per page,
+   and only for a signed-in member on a page that prints a branded
+   document: never an extra round trip on every page of the studio.
+   growth.js is imported lazily so it stays out of first paint. */
 const BRANDED_PAGES = /(^|\/)(contacts|story|feature)(\.html)?$/;
 async function learnReferral() {
-  if (refAsked) return;
+  if (refAsked || !BRANDED_PAGES.test(location.pathname)) return;
+  refAsked = true;
   try {
-    let v = '';
-    if (typeof Billing.referralCode === 'function') v = await Billing.referralCode();
-    else if (typeof Billing.referralCode === 'string') v = Billing.referralCode;
-    else if (BRANDED_PAGES.test(location.pathname)) {
-      refAsked = true;
-      const st = await Billing.status();
-      v = st && (st.referral_code || (st.referral && st.referral.code) || st.ref_code || '');
-    }
-    refAsked = true;
-    if (v && typeof v === 'object') v = v.code || '';
-    const r = cleanRef(v);
+    const Growth = await import('../lib/growth.js');
+    const r0 = await Growth.myReferral();
+    const r = cleanRef(r0 && r0.eligible && r0.active !== false ? r0.code : '');
     if (r !== refCode) { refCode = r; syncFootBrand(); }
-  } catch (e) { refAsked = true; /* no code: the line goes out without one */ }
+  } catch (e) { /* no code: the line goes out without one */ }
 }
 
 /* The hidden line in the footer that a printed call sheet shows. */

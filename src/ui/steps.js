@@ -249,7 +249,7 @@ export function mountStepsPath(before, groups) {
   const list = h('ol.st-path-list');
   for (const rung of path) {
     const item = h('li.st-path-item', { 'data-path-step': rung.step.id });
-    item.append(
+    item.append(...[
       h('span.st-path-tick', { 'data-path-tick': rung.step.id, text: '○', 'aria-hidden': 'true' }),
       h('a.st-path-link', { href: '#' + rung.step.id }, [
         h('span.st-path-num', { text: rung.step.num }),
@@ -259,7 +259,7 @@ export function mountStepsPath(before, groups) {
         })
       ]),
       rung.note ? h('span.st-path-note', { text: rung.note }) : null
-    );
+    ].filter(Boolean));   // a native append() prints null as "null"
     list.append(item);
   }
   wrap.append(list);

@@ -101,7 +101,7 @@ const BLUEPRINTS = {
     page: 'short.html',
     name: 'Short Film Blueprint',
     checkedClass: 'done',
-    steps: () => SHORT.steps.map((step) => ({ ns: 'short', step })),
+    steps: () => INDEX.short,
     /* short.js saveData(): a checkbox is a boolean, the rest a string. */
     read: (el) => (el.type === 'checkbox' ? !!el.checked : el.value || ''),
     tick: (v) => !!v

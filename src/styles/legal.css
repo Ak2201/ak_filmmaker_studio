@@ -31,7 +31,10 @@
 
 .legal-back {
   display: inline-block;
-  margin-bottom: var(--s5);
+  /* 19px of text is too small a target on a phone; the padding makes
+     it 35px tall without moving the heading (margin absorbs it). */
+  padding-block: var(--s2);
+  margin-bottom: var(--s3);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
   letter-spacing: var(--track-wide);

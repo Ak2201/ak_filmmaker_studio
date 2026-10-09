@@ -40,11 +40,18 @@
   background: var(--ok);
   border-radius: inherit;
 }
-.bb-acts-pace { display: grid; gap: var(--s2); }
-.bb-pace {
+.bb-acts-pace {
   display: grid;
   grid-template-columns: 6.5rem minmax(0, 1fr) auto;
   gap: var(--s2);
+}
+/* Subgrid: the figures column is sized once for all three acts, so
+   "8% / 25%" and "13% / 25%" no longer leave the tracks — and the
+   expected-share ticks on them — at three different lengths. */
+.bb-pace {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
   font-size: var(--t-small);
 }

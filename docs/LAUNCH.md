@@ -168,6 +168,29 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
+> **NOTHING IS OUTSTANDING AS OF 9 Oct 2026.** §26, §27, §28, §29, §30 and
+> §31 were all run that day through the dashboard SQL editor, each verified
+> afterwards over PostgREST rather than from the screen: `plans.name` is
+> Basic / Intermediate, `refund_requests_enabled()` answers,
+> `my_invoices` and `admin_funnel` answer 42501 to anon (existing and
+> refusing, not missing), `bump_event` returns 204, and `price_notice()`
+> is anon-callable and carries the live rise. **§1–§31 have all run.**
+>
+> Two things this step now owes whoever runs the next section:
+>
+> **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into
+> `‚Äî` — UTF-8 bytes read as MacRoman — and §30's user-facing refusal
+> sentences carry em-dashes and `₹`, so the mojibake would have reached
+> buyers. The route that works: base64 the section (pure ASCII crosses
+> the clipboard), decode it in the page into the Monaco model, then
+> SHA-256 the editor against the file before pressing Run.
+>
+> **Supabase's "destructive operations" warning is not a reason to stop,
+> but it is a reason to look.** It fired on §27, §28 and §31; every
+> instance was a `drop policy|trigger if exists` immediately followed by
+> its recreation. Read the drops before confirming.
+
+
 **ASKED THE DATABASE, 8 Oct 2026.** The file's headers were right and the
 handoff note was wrong: the note said §16–§20 had not run; in fact
 §16, §17 and §18 were already live from 6 Oct, and only §19–§24 were

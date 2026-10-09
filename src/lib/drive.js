@@ -68,7 +68,11 @@
 /* ------------------------------------------------------------
    CONSTANTS
    ------------------------------------------------------------ */
-export const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive.file';
+/* The scope lives in auth-scope.js: start.html builds its own Google
+   sign-in without loading this module, and the two must ask for the
+   same thing or the Drive consent is missing from the session. */
+import { DRIVE_SCOPE } from './auth-scope.js';
+export { DRIVE_SCOPE };
 export const API_ORIGIN    = 'https://www.googleapis.com';
 export const IDENTITY_ORIGIN = 'https://accounts.google.com';
 export const GIS_SRC       = IDENTITY_ORIGIN + '/gsi/client';

@@ -55,41 +55,23 @@ import { bumpEvent } from './funnel.js';
 
 export const TICKET_KEY = 'fms_preauth_ticket';
 export const DEVICE_SESSION_KEY = 'fms_device_session_v1';
-/* THE CODE PASS. A valid invite code lets a visitor through the site
-   gate WITHOUT signing in (owner's decision, 5 Oct 2026): the code is
-   kept in this browser and re-verified by verify_invite() once per
-   browser session, so a revoked, expired or exhausted code shuts the
-   door on the next session. It spends nothing — redeem_invite() is
-   still the step that makes a member, and it runs by itself the first
-   time this browser signs in (cloud.js runGate()). In ALL_KEYS (reset
-   forgets it) and in no other registry: it is a bearer secret for this
-   browser, the way the device lock handle is, and a backup carrying it
-   would hand the code to whoever restores the file. */
-export const CODE_PASS_KEY = 'fms_invite_code_v1';
-export function getCodePass() {
-  try { const v = JSON.parse(localStorage.getItem(CODE_PASS_KEY) || 'null'); return v && v.code ? v : null; } catch (e) { return null; }
-}
-export function setCodePass(code, extra = {}) {
-  const v = { code: normaliseCode(code), at: new Date().toISOString(), ...extra };
-  try { localStorage.setItem(CODE_PASS_KEY, JSON.stringify(v)); } catch (e) { /* private mode: this visit only */ }
-  return v;
-}
-export function clearCodePass() { try { localStorage.removeItem(CODE_PASS_KEY); } catch (e) { /* ignore */ } }
-/** The shareable form of a code: the doorway with the code in the
- *  FRAGMENT, which a browser never sends to a server, so the link can
- *  sit in a chat without landing in anybody's access log. invite.js
- *  reads it, strips it from the address bar and enters. */
-export function inviteLink(code, base) {
-  const origin = base || (typeof location !== 'undefined' ? location.href : 'https://thefilmmakerstudio.vercel.app/');
-  return new URL('invite.html#code=' + formatCode(code), origin).href;
-}
-/** The code carried by an invite link, or ''. */
-export function codeFromLocation(loc) {
-  const l = loc || (typeof location !== 'undefined' ? location : null);
-  if (!l) return '';
-  const m = /(?:^#|&)code=([^&]+)/.exec(String(l.hash || ''));
-  return m ? normaliseCode(decodeURIComponent(m[1])) : '';
-}
+/* The code's FORMAT, its STORAGE KEY and its LINK shapes moved to
+   src/lib/invite-code.js, which imports nothing. start.html carries
+   the sign-in now and must read a code out of its own URL, and this
+   module is in the shared CORE chunk — importing it there would put
+   the whole app on the landing page. Re-exported here so every
+   existing caller of gate.js is unchanged. */
+import {
+  CODE_PASS_KEY, getCodePass, setCodePass, clearCodePass,
+  inviteLink, startInviteLink, codeFromLocation,
+  normaliseCode, formatCode
+} from './invite-code.js';
+export {
+  CODE_PASS_KEY, getCodePass, setCodePass, clearCodePass,
+  inviteLink, startInviteLink, codeFromLocation,
+  normaliseCode, formatCode
+};
+
 export const HEARTBEAT_MS = 30000;   // PRD §6: 30 seconds
 export const STALE_MS = 90000;       // the server's cutoff; stated here for the UI
 
@@ -98,12 +80,6 @@ const uuid = () => (globalThis.crypto && crypto.randomUUID
   : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
     }));
-
-/** FR-101: strip whitespace and punctuation, capitalise. The server
- *  normalises too; this is so the box shows what will be checked. */
-export const normaliseCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-/** Display form: groups of four, the way a code is read aloud. */
-export const formatCode = (s) => normaliseCode(s).replace(/(.{4})(?=.)/g, '$1-');
 
 /** The sentence a person sees for a failed gate call. A dropped
  *  connection surfaces from fetch() as a TypeError whose message is the

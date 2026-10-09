@@ -199,3 +199,47 @@ gaps, quality gaps, billing, queued ideas, the emotional-craft layer) is
 `docs/HANDOFF.md` §6c; the leftovers above are rows G1, G2, G7 and P12 there.
 The 8 Oct audit's wrong findings are NOT listed — they were re-checked against
 the code (see HANDOFF §9).
+
+## `prove:storage` S2/S3 — clearing a heading does not bin the scene (9 Oct 2026)
+
+**Red on `main` and on `develop`, identically: 4 checks, same assertions.**
+Verified by running the proof on a clean `origin/main` worktree — not a
+regression from the trial/landing-page work.
+
+```
+FAIL  S2 clearing the heading bins A's scene with its 2 shots and 1 frame
+        got null                        want [true,2,1]
+FAIL  S2 …and A's scene list and shot list no longer hold them
+        got [["HALL","KITCHEN"],2,1]    want [["HALL"],0,0]
+FAIL  S3 before Ctrl+Z the scene is in A's bin, with its shots and frame
+FAIL  S3 before Ctrl+Z A's scene list holds only HALL
+```
+
+The bin is empty and the scene list still holds KITCHEN, so clearing the
+heading appears to do nothing. `scene-sync.js` has a deliberate rule that
+ZERO headings bins nothing (open item 16) — but this case leaves one
+heading, so it should bin.
+
+**The part that needs a careful eye before fixing:** three assertions
+immediately after these PASS — "Ctrl+Z brings the scene back, same id,
+same place", "…and its shots and frame, byte-identical", "…and A's bin is
+empty again". If the scene never left, all three pass **vacuously**: the
+undo restores something that was never removed and the bin is empty
+because it was never filled. So the proof currently reports 3 green
+checks for a feature that may be entirely broken. That is the
+"a check that can skip itself" trap in CLAUDE.md, arrived at from the
+other side — do not read those passes as evidence the undo path works.
+
+## `prove:adoption` — red, and redder on `main` (9 Oct 2026)
+
+`main` 10 passed / 9 failed; `develop` 12 passed / 7 failed. Pre-existing
+and not from the trial work — bisected by disabling `openSampleForTrial()`
+in `hub.js`, which changed nothing.
+
+The signed-in cases are wrong in both directions at once: the adoptable
+list comes back empty when it should name two device projects, while the
+grid shows those two device projects instead of the account's own. The
+proof fakes sign-in purely by writing `fms_studio_account_v1` and never
+touches the Supabase fake, so §30 cannot explain it; it looks like
+namespace filtering in `listProjects()`, which is invariant 1 territory
+and worth treating as urgent.

@@ -69,3 +69,60 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .pg-lock-mod-label { font-family: var(--f-display); font-weight: 700; color: var(--ink); }
 .pg-lock-mod-purpose { font-size: var(--t-small); line-height: var(--lh-snug); color: var(--ink-muted); }
 .pg-lock-plan { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
+
+/* ---- the wall (§30): the trial ended, nothing was bought ----
+   A VARIANT of .pg-lock, not a second overlay. Everything that
+   positions the panel, hides `main` under it and makes it work at
+   390px is already above; this only changes the voice — the module
+   lock is a sign on one door, the wall is the end of the trial.
+
+   Deliberately NOT more alarming than the lock: no red, no shake, no
+   full-bleed black. Someone who has just spent thirty minutes reading
+   a screenplay is being asked to buy, not warned about a problem. */
+.pg-wall-card { max-width: var(--measure); }
+.pg-wall .pg-lock-h { color: var(--ink); }
+
+/* The promise that the work is not hostage, set apart from the sell so
+   it reads as a fact rather than a reassurance in a sales paragraph.
+   A brand rule rather than a second hue: the palette went back to
+   violet on 9 Oct and the two accents alias one colour there. */
+.pg-wall-safe {
+  border-left: var(--sk-hue-rule-w, 4px) solid var(--brand);
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink-body);
+}
+
+/* The page under the wall is hidden by the existing [data-plan-lock]
+   rules. [data-paywall] is here so a page can tell the two apart —
+   the shell uses it to drop its own sticky chrome, which otherwise
+   floats above a panel that is meant to be the only thing on screen. */
+:root[data-paywall] .sh-bar,
+:root[data-paywall] .mab { display: none; }
+
+/* ---- the trial band (§30) ----
+   Rules for the countdown while it is borrowing .sh-plate. The plate
+   supplies the pinning, the ground and the hairline; this only lays
+   out what is inside it, so nothing here can change the measured
+   height the sticky arithmetic depends on. */
+.sh-plate.tb-on { gap: var(--s3); }
+.tb-body { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+/* Teal, because gold on this page belongs to the thing you buy, and
+   the SEE PLANS button beside it is the gold thing. */
+/* --brand-on, not --bg-primary: on a brand fill the readable colour is
+   the one the palette nominates, and in the light theme --bg-primary is
+   pale-on-violet. That exact substitution is named in the 9 Oct revert. */
+.tb-flag { background: var(--brand); color: var(--brand-on); }
+.tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-cta { flex: none; }
+.sh-plate.is-urgent .tb-flag { background: var(--accent-gold); }
+
+/* At 390px the plate is most of a line already. The sentence shortens
+   itself (trial-band.js drops "with the sample film" under ten
+   minutes) and the button keeps its full target size rather than
+   shrinking — it is the one thing on this band anybody taps. */
+@media (max-width: 560px) {
+  .tb-body { gap: var(--s1); }
+  .tb-cta { padding-inline: var(--s2); }
+}

@@ -45,7 +45,7 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
-import { getCodePass, clearCodePass, codeFromLocation, formatCode } from '../lib/gate.js';
+import { getCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -95,7 +95,30 @@ function whySentence() {
   return lead + 'this account is not an invited member yet.';
 }
 
+/* WHAT THE READER HAS TYPED, ACROSS A REDRAW.
+   This page replaces `main` on every gate event, every plans load and
+   every auth change — by design, from one source. The invite-request
+   note is the one field a person types into slowly (it asks who they
+   are and who sent them), so it is the one a redraw can throw away.
+   prove:gate caught exactly that: a request row arriving with the right
+   attested e-mail and an EMPTY note, intermittently, depending on
+   whether a round trip landed mid-sentence.
+
+   Carried by id rather than by a general form-state mechanism because
+   there is exactly one such field; if a second ever appears, this is
+   the place to generalise. */
+function keepTyped() {
+  const el = document.getElementById('irNote');
+  return el ? el.value : null;
+}
+function restoreTyped(v) {
+  if (v == null || v === '') return;
+  const el = document.getElementById('irNote');
+  if (el && !el.value) el.value = v;
+}
+
 function render() {
+  const typed = keepTyped();
   const c = cloud();
   const g = (c && c.getGateState && c.getGateState()) || { state: 'unknown', reason: '', status: null };
   const signedIn = !!(c && c.getSession && c.getSession());
@@ -170,6 +193,27 @@ function render() {
     const pending = st && st.requestStatus === 'pending';
     const sec = section('request', 'Step two', pending ? 'Your request is in.' : 'Ask for an invite.',
       'Signed in as ' + email + ', which is not a member of this studio yet.');
+    /* THE TRIAL IS THE FIRST ROAD IN NOW (§30, owner 9 Oct 2026).
+       Before this, a signed-in stranger's only move was to ask for an
+       invite and wait for a human. Thirty minutes with the sample is
+       the thing they came for, so it goes above the request block —
+       which stays, because a trial is not a membership and somebody
+       who has used theirs still needs a way to ask.
+
+       Drawn only when the server says one is available. trialOffer is
+       null when section 30 has not run, when the switch is off, when
+       this account has had its trial, or when it has already paid —
+       and in every one of those cases the page reads exactly as it did
+       before, which is why nothing here is conditional on a version. */
+    if (trialOffer) {
+      const t = section('trial', 'Step two', 'Start your ' + trialOffer.minutes + ' minutes.',
+        'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside. No card, nothing to fill in.');
+      t.append(h('div.iv-actions', {}, [
+        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + trialOffer.minutes + ' MINUTES' })
+      ]));
+      t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
+      body.append(t);
+    }
     sec.append(requestBlock(st, g.reason));
     body.append(sec);
     const code = inviteSection(section, st);
@@ -179,7 +223,7 @@ function render() {
        activates server-side and runGate() is asked again. */
     if (plans) {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan lets this account in without an invite. One payment, access for good. Invited members start on the free plan.');
+        'A paid plan lets this account in without an invite. One payment, access for good — and it is the only thing that keeps the studio open once a trial has run out.');
       buy.append(planCards(plans, null, {
         onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { onStatus, code }),
         rerender: render
@@ -197,6 +241,7 @@ function render() {
 
   main.append(body);
   app.replaceChildren(main);
+  restoreTyped(typed);
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -214,7 +259,44 @@ document.addEventListener('click', (e) => {
     try { sessionStorage.removeItem('fms_sitegate_pass'); } catch (err) { /* ignore */ }
     render();
   }
+  if (el.dataset.ivAction === 'start-trial') startTrial(el);
 });
+
+/* TWO STEPS, AND THE SECOND IS NOT OPTIONAL. start_trial() inserts the
+   studio_members row, which is what the SITE gate reads — so until the
+   gate is asked again, the studio still refuses this browser even
+   though the server has already said yes. Billing.buy() does the same
+   pair for the same reason. */
+async function startTrial(btn) {
+  const msg = document.getElementById('trialMsg');
+  const say = (t, bad) => { if (msg) { msg.textContent = t; msg.classList.toggle('iv-bad', !!bad); } };
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = 'STARTING…';
+  try {
+    const r = await Billing.startTrial();
+    if (!r || !r.started) {
+      /* The ordinary refusals come back as a verdict, not an error —
+         see start_trial()'s header for why. */
+      const why = {
+        used: 'You have already had your trial on this account. A plan opens the studio for good.',
+        paid: 'You have already bought a plan — you should be in. Try reloading.',
+        disabled: 'Trials are not open at the moment.'
+      }[r && r.reason] || 'That did not start. Please try again.';
+      say(why, true);
+      btn.disabled = false; btn.textContent = was;
+      trialOffer = null;
+      return;
+    }
+    say('You are in. Opening the studio…');
+    const c = cloud();
+    if (c && c.runGate) await c.runGate();
+    Store.notify('billing:changed', null);
+    location.href = 'index.html';
+  } catch (e) {
+    say(errorSentence(e, 'That did not start. Please try again.'), true);
+    btn.disabled = false; btn.textContent = was;
+  }
+}
 
 /* AN INVITE LINK: invite.html#code=XXXX-XXXX-XXXX. The code is read
    once, taken off the address bar (so a reload, a bookmark or a
@@ -247,11 +329,44 @@ adoptLinkCode();
    the session, then the gate's answer a round trip after it — so it
    redraws on each, from the one source. */
 let plans = null;
+/* §30. { minutes } when this account may start a trial, else null.
+   Null covers four different "no" answers — section 30 has not run, the
+   owner switched trials off, this account has had one, this account has
+   paid — and the page is identical in all four, which is what lets the
+   same build run against a database that has never heard of a trial. */
+let trialOffer = null;
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
-  try { plans = await Billing.listPlans(); } catch (e) { plans = null; }   // section 16 not run: no cards
+  /* BOTH IN FLIGHT, ONE RENDER. These were sequential for an hour and
+     it was a real bug, not just a slow page: every render() replaces
+     `main`, so a reader who has started typing their note into the
+     request form loses it when the second round trip lands. Awaiting
+     the status AFTER the plans doubled the window in which that
+     happens, and prove:gate caught it as an intermittent "the note and
+     the browser that asked" — the row arrived with the right e-mail
+     and name, attested by auth, and an empty note.
+
+     Parallel restores the single round trip. The note is ALSO preserved
+     across a render now (below), because the window can never be zero:
+     this page redraws on every gate event by design. */
+  const [pl, st] = await Promise.all([
+    Billing.listPlans().catch(() => null),   // section 16 not run: no cards
+    Billing.status().catch(() => null)
+  ]);
+  plans = pl;
+  readTrialOffer(st);
   render();
+}
+
+function readTrialOffer(st) {
+  try {
+    /* The key has to be PRESENT to be believed: an older database
+       returns no `trial_enabled` at all, and undefined must not read as
+       "offer them one" any more than it reads as "wall them". */
+    const on = st && st.trial_enabled === true && st.trial_used !== true && st.entitled !== true;
+    trialOffer = on ? { minutes: 30 } : null;
+  } catch (e) { trialOffer = null; }
 }
 wireGateUI(render);
 wireRequestUI(render);

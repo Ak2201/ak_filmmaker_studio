@@ -68,8 +68,10 @@
    The result count goes to a polite live region, because a list
    that silently became empty is a list that did not answer.
    ============================================================ */
-import nav from '../data/navigation.json';
-import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
+/* navigation.json through navmodel.js, never directly: globals()
+   and moduleGroups() apply the region filter, so a module hidden on
+   the map is not quietly reachable from the palette. */
+import { moduleGroups, hueClassOf, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId, setCurrentProject } from '../lib/store.js';
@@ -161,7 +163,7 @@ function entry(o) {
 function navItems() {
   const out = [];
   const isAdmin = (() => { try { return window.StudioCloud.getGateState().role === 'admin'; } catch (e) { return false; } })();
-  for (const g of nav.global) {
+  for (const g of globals()) {
     if (g.adminOnly && !isAdmin) continue;   // the console: shown by the server's role, as in the rail
     out.push(entry({
       id: 'nav:' + (g.id || g.href),

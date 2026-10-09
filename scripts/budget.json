@@ -1,5 +1,5 @@
 {
-  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
+  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks \u2014 supabase-*, pptxgen-*, sample.dragon.script-* \u2014 are failed by name if a first paint ever fetches one, whatever the total says.",
   "capturedAt": "2026-10-08T13:26:02.102Z",
   "knownLazyFetches": {},
   "pages": {
@@ -104,9 +104,10 @@
       "files": 13
     },
     "admin": {
-      "bytes": 521216,
-      "measured": 473570,
-      "files": 13
+      "bytes": 575681,
+      "measured": 523347,
+      "files": 15,
+      "why": "Raised deliberately 9 Oct 2026, this ROW ONLY, not a --budget recapture. Two causes, both intended. (1) The admin console gained the Trial and Price-rise blocks (schema 30). (2) gate-ui.js now imports startInviteLink, so every app page fetches the small `startlib` chunk \u2014 2.6 KB here, and admin was the only page close enough to its ceiling to tip. That chunk exists because start.html was statically importing a 209 KB app bundle to send one counter; +2.6 KB on an internal page buys -206 KB on the public landing page. The alternative was duplicating CODE_PASS_KEY \u2014 a storage key \u2014 into start.js, which invariant 1 forbids."
     }
   }
 }

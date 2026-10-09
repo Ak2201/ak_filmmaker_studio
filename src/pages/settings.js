@@ -82,6 +82,7 @@ import { h, delegate } from '../lib/dom.js';
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
+import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
@@ -219,7 +220,7 @@ function renderPlan() {
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -309,6 +310,54 @@ function renderAppearance() {
       text: 'Design: ' + only.label + '.'
     }));
   }
+
+  return sec;
+}
+
+/* ---- India / International ----------------------------------
+   The one setting on this page that changes what the STUDIO offers
+   rather than how it looks, which is why it is not folded into
+   Appearance.
+
+   IT RELOADS. Every count the map prints — "29 modules", "6 of 6
+   ready", the stage headings — is derived once at import time
+   (src/ui/launcher.js says so in as many words), and the rail, the
+   phase bar and the palette index are all built at load. Re-rendering
+   this one page would leave every one of those saying the other
+   region's number. A reload is one second and it cannot be half
+   right; a live re-render of nine modules' worth of derived counts
+   can. region.js still notifies `region:changed` for anything that
+   wants it. */
+function renderRegion() {
+  const now = region();
+  const chosen = chosenRegion();
+  const guess = detectRegion();
+  const sec = section('region', 'This device · not part of the film',
+    'Where you are making this film.',
+    'India, or somewhere else. This changes what the studio OFFERS, not what '
+      + 'it charges: there is one checkout and it settles in rupees either way.');
+
+  sec.append(choices('Mode', 'data-region-choice', now,
+    REGIONS.map((r) => ({ value: r.id, label: r.label, title: r.line }))));
+
+  /* What actually changes, said in the words of the things that
+     change rather than as "India-specific content". */
+  sec.append(h('p.st-note', { text: now === 'IN'
+    ? 'India: the certification checks, the Chennai rate card and the Indian '
+      + 'festival deadlines are all on, and prices show in rupees.'
+    : 'International: the India-only parts of the studio are hidden rather than '
+      + 'replaced. There is no verified rate card, union figure or festival '
+      + 'deadline for anywhere else yet, and this studio will not print an '
+      + 'invented one — so those pages show nothing rather than something made up. '
+      + 'Everything you have written is untouched and comes straight back if you '
+      + 'switch to India.' }));
+
+  sec.append(h('p.st-note', { text: chosen
+    ? 'You chose this, so it stays chosen — the studio will not change it back, '
+      + 'wherever you open it.'
+    : 'Guessed from your device’s time zone (' + (guess === 'IN' ? 'India' : 'outside India')
+      + '). Nothing was looked up and nothing was sent anywhere; your choice '
+      + 'above replaces the guess for good.' }));
 
   return sec;
 }
@@ -775,7 +824,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderKey(), renderPlan(), renderStorage(), renderDrive(), renderAppearance(),
+  body.append(...[renderKey(), renderPlan(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               accountSection(section), inviteSection(section, gateStatus),
               consolePointer(), renderAdmin()].filter(Boolean));
   main.append(body);
@@ -812,6 +861,19 @@ Panel.onAIChange(() => render());
    setting, which is the shape of the money-parser trap. */
 delegate(document, 'click', '[data-theme-choice], [data-skin-choice]', () => {
   render();
+});
+
+/* Region, and UNLIKE the two above this page owns it: there is no
+   document-level listener for [data-region-choice] anywhere, because
+   the choice is not applied by painting something — it is applied by
+   loading the app again with a different map. See renderRegion().
+   setRegion() is a no-op when the value has not moved, so clicking
+   the mode you are already in does not reload the page under you. */
+delegate(document, 'click', '[data-region-choice]', (e, el) => {
+  const want = el.getAttribute('data-region-choice');
+  if (want === region()) return;
+  try { setRegion(want); } catch (err) { StudioUI.toastError('That region is not one the studio knows.'); return; }
+  location.reload();
 });
 
 /* ---- Drive --------------------------------------------------

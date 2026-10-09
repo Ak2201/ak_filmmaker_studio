@@ -1441,6 +1441,43 @@ function openSampleFromURL() {
   openSampleProject().catch(sampleFailed);
 }
 
+/* §30. A TRIAL IS THIRTY MINUTES; NONE OF THEM SHOULD GO ON FINDING
+   THE DOOR. A new account signs in, lands here, and — because the free
+   plan's features are sample_only — sees a grid filtered to a sample
+   project that does not exist yet, with renderSampleOnly()'s single
+   button in it. That button is correct and it should still be there;
+   it just should not be the first thing a stopwatch is spent on.
+
+   So when the server says a trial is RUNNING and this namespace holds
+   nothing at all, the sample opens itself. Three guards, each load-
+   bearing:
+     - trial only. A paying member's empty studio is an empty studio on
+       purpose, and seeding it would be putting a film they did not ask
+       for into their list.
+     - zero projects. Never on top of somebody's own work.
+     - once per load, and it awaits the existing lazy import() rather
+       than reaching past it: `sample.dragon.script-*` is a named
+       first-paint budget failure, so it must stay behind the dynamic
+       boundary openSampleProject() already draws. */
+let sampleAutoTried = false;
+function openSampleForTrial() {
+  const go = () => {
+    if (sampleAutoTried) return;
+    const e = PlanGate.entitlement();
+    if (e.reason !== 'trial') return;          // 'unknown' included: never guess
+    if (Store.listAllProjects().length) return;
+    sampleAutoTried = true;
+    openSampleProject().then(() => {
+      renderProjects();
+      renderProjectSwitcher();
+    }).catch(sampleFailed);
+  };
+  go();
+  /* billing_status() lands a round trip after first paint, so the
+     answer above is usually 'unknown' on the first call. */
+  Store.subscribe('plan:changed', go);
+}
+
 function sampleFailed(err) {
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast('Could not open the sample project. ' + (err && err.message ? err.message : ''),
@@ -1829,6 +1866,7 @@ function init() {
   detectActivity();
   renderActivity();
   openSampleFromURL();
+  openSampleForTrial();
 
   // FIRST RUN. This used to open the new-project modal on a 300ms timer:
   // a stranger's first sight of the studio was a dialog demanding a title

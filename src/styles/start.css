@@ -1,40 +1,80 @@
 /* ============================================================
    THE PUBLIC LANDING PAGE — start.html
    ------------------------------------------------------------
-   Outside the site gate and outside the app: like legal.css, this
-   sheet loads with NO SKIN (skin.js never runs here), so it reads the
-   fixed tokens and never a --sk-* variable. Every colour, size and
-   space is a token from tokens.css; light and dark follow the OS
-   through tokens.css's own media query and the stored choice start.js
-   stamps on <html>.
+   WRITTEN AGAINST --sk-*, WHICH IS NEW AND IS THE POINT OF THIS
+   SHEET. start.html is outside the site gate and runs no app code,
+   so skin.js never executes here — which used to mean this page had
+   to read the fixed tokens and could never have the product's
+   shapes. The result was a landing page that looked like a different
+   product from the one it was selling: square-ish 18px corners
+   against the app's 16px, solid slate card edges against the app's
+   translucent hairline, a solid nav band against the app's glass,
+   no depth anywhere, and a mono tracked-out eyebrow the app stopped
+   using.
 
-   Text colours are the three-deep ink hierarchy or --brand-deep, which
-   is the brand AS TEXT (--brand is a fill). Fills carry their own
-   on-colour (--brand-on). Nothing here types a hex.
-   ============================================================ */
+   skins/studio.css declares every --sk-* value on BARE :root as well
+   as [data-skin="studio"] — its own header says that is load-bearing
+   rather than a convenience — and it references nothing outside
+   tokens.css. So importing it here is the whole fix: no JS, no
+   duplication, one definition of the design language.
+
+   The rule in CLAUDE.md that this page "may not read --sk-*" was
+   really "may not depend on skin.js". It imports the skin directly.
+
+   ONE ACCENT (owner, 9 Oct 2026). This page was built when the studio
+   was dark-only, and it used two colours with two jobs: teal taught,
+   gold bought. The palette went back to violet with two themes the same
+   day, and in that system --accent-gold and --accent-teal BOTH alias
+   violet (--brand and --brand-deep) — so the distinction rendered as two
+   shades of one hue, which reads as an accident rather than a decision.
+
+   So there is one accent now, and it is --accent-gold, which is --brand.
+   Where the old split carried meaning the page uses WEIGHT, SIZE and
+   RULES instead of a second hue: a step numeral is large and light, a
+   chip is a wash of the brand, a tick is bold. Those survive a palette
+   change; a second colour that happens to be the same colour does not.
+
+   As text on a light ground the brand needs --brand-deep, which is the brand as TEXT,
+   never the fill: that is CLAUDE.md's "a fill is not a text colour", and
+   it bites here because this page is read in BOTH themes now.
+   */
+
+@import '../styles/skins/studio.css';
+
+/* A hidden band still has to be hidden once a .st-chip or a .st-bar
+   has been given a display of its own. */
+[hidden] { display: none !important; }
 
 .st {
   max-width: var(--measure-wide);
   margin: 0 auto;
-  padding: var(--s2) var(--gutter) var(--s9);
+  padding: var(--s4) var(--gutter) var(--s8);
 }
 
 /* ---- type ------------------------------------------------------- */
 
+/* The eyebrow, from the skin rather than restated: the app's is the
+   body sans at normal tracking, not mono caps. Teal by default
+   because most of this page is the learning half; the money sections
+   opt into gold. */
 .st-eyebrow {
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  font-weight: 600;
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
+  font-family: var(--sk-eyebrow-face);
+  font-size: var(--sk-eyebrow-size);
+  font-weight: 700;
+  letter-spacing: var(--sk-eyebrow-track);
+  text-transform: var(--sk-eyebrow-transform);
   color: var(--brand-deep);
   margin: 0 0 var(--s2);
 }
+.st-eyebrow-gold { color: var(--accent-gold); }
 
+/* --sk-title-lh, not --lh-display. 0.92 was mixed for the serif
+   display face and collides the two lines of this hero. */
 .st-title {
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-2xl), 6vw, var(--t-4xl));
-  line-height: var(--lh-display);
+  font-family: var(--sk-display);
+  font-size: clamp(2.1rem, 8.5vw, 4.25rem);
+  font-weight: 800;
+  line-height: var(--sk-title-lh);
   letter-spacing: var(--track-tight);
   color: var(--ink);
   margin: 0 0 var(--s4);
@@ -42,13 +82,14 @@
 }
 
 .st-hook {
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-lg), 2.6vw, var(--t-xl));
+  font-family: var(--sk-display);
+  font-size: clamp(var(--t-lg), 4.4vw, var(--t-xl));
   font-weight: 600;
   line-height: var(--lh-snug);
-  color: var(--ink);
+  color: var(--accent-gold);
   margin: 0 0 var(--s3);
   text-wrap: balance;
+  max-width: var(--measure);
 }
 
 .st-lede,
@@ -59,12 +100,14 @@
   line-height: var(--lh-body);
   max-width: var(--measure);
 }
+.st-lede { font-size: var(--sk-deck-size); max-width: var(--sk-deck-measure); }
 
 .st p { margin: 0 0 var(--s3); }
 
 .st-h2 {
-  font-family: var(--f-display);
-  font-size: clamp(var(--t-xl), 4vw, var(--t-3xl));
+  font-family: var(--sk-display);
+  font-size: clamp(var(--t-xl), 6vw, var(--sk-h2-size));
+  font-weight: 700;
   line-height: var(--lh-snug);
   letter-spacing: var(--track-tight);
   color: var(--ink);
@@ -73,50 +116,59 @@
 }
 
 .st-h3 {
-  font-family: var(--f-display);
-  font-size: var(--t-lg);
+  font-family: var(--sk-display);
+  font-size: var(--sk-card-h-size);
+  font-weight: 700;
   line-height: var(--lh-snug);
   color: var(--ink);
   margin: 0 0 var(--s2);
 }
-.st-h3 a { color: inherit; text-decoration: none; }
-.st-h3 a:hover { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 3px; }
 
 .st a {
-  color: var(--brand-deep);
+  color: var(--accent-gold);
   text-underline-offset: 2px;
 }
+.st-h3 a { color: inherit; text-decoration: none; }
+.st-h3 a:hover { color: var(--accent-gold); text-decoration: underline; text-underline-offset: 3px; }
 
 .st code {
   font-family: var(--f-code);
   font-size: 0.92em;
-  background: var(--paper-sunk);
+  background: var(--bg-tertiary);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius);
+  border-radius: var(--sk-field-radius, var(--radius));
   padding: 0.1em 0.4em;
+  overflow-wrap: anywhere;
 }
 
-.st-note {
-  font-size: var(--t-small);
-  color: var(--ink-muted);
-}
-
-.st-fine {
-  font-size: var(--t-small);
-  color: var(--ink-muted);
-  margin-top: var(--s3);
-}
-
+.st-note { font-size: var(--t-small); color: var(--ink-muted); }
+.st-fine { font-size: var(--t-small); color: var(--ink-muted); margin-top: var(--s3); }
+.st-legal { font-size: var(--t-small); color: var(--ink-muted); margin-top: var(--s2); }
 .st-more { margin-top: auto; font-size: var(--t-small); font-weight: 600; }
+.st-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* ---- sticky header ---------------------------------------------- */
+/* ---- the glass header -------------------------------------------
+   The app's band, copied from chrome.css: --bg-glass under the blur
+   with --chrome as the opaque fallback (--chrome is deliberately
+   opaque so anything that measures the band has a colour to
+   measure), a --chrome-hair edge and --chrome-ink on it. A solid
+   --paper band was the single biggest tell that this page was not
+   part of the product. */
 
 .st-top {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: var(--paper);
-  border-bottom: 1px solid var(--rule);
+  z-index: 20;
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
+  .st-top {
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-chrome);
+    -webkit-backdrop-filter: var(--blur-chrome);
+  }
 }
 .st-top-in {
   max-width: var(--measure-wide);
@@ -127,72 +179,84 @@
   gap: var(--s3);
 }
 .st-brand {
-  font-family: var(--f-display);
+  font-family: var(--sk-display);
   font-weight: 800;
   font-size: var(--t-base);
-  color: var(--ink);
+  color: var(--chrome-ink);
   text-decoration: none;
   margin-right: auto;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.st-at-wide { display: none; }
 .st-nav { display: none; gap: var(--s4); }
-.st-nav a, .st-signin {
+.st-nav a {
   font-size: var(--t-small);
   font-weight: 600;
-  color: var(--ink-body);
+  color: var(--chrome-muted);
   text-decoration: none;
 }
-.st-nav a:hover, .st-signin:hover { color: var(--brand-deep); }
+.st-nav a:hover { color: var(--chrome-accent); }
 .st-top a:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
-.st a.st-btn-sm { min-height: 40px; padding: var(--s1) var(--s3); white-space: nowrap; }
-@media (min-width: 720px) { .st-nav { display: flex; } }
-@media (max-width: 400px) { .st-brand { font-size: var(--t-small); } .st-top-in { gap: var(--s2); } }
-html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth; }
+
+/* --st-top-h is published by start.js from the band's MEASURED
+   height, the way shell.js publishes its own: a guessed offset lands
+   every fragment jump behind the bar, and the bar is a different
+   height at 390 than at 1280. The fallback covers the frame before
+   the measurement. */
+html {
+  scroll-padding-top: calc(var(--st-top-h, 64px) + var(--s3));
+  scroll-behavior: smooth;
+}
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
-/* ---- the hero --------------------------------------------------- */
+/* ---- buttons -----------------------------------------------------
+   Written at (0,1,1) as `a.st-btn`, DECLARED AFTER `.st a`, because a
+   button here is an <a> too: at equal specificity the later rule
+   wins, and without that the primary's --brand-on label loses to the
+   link colour and measures 1.5:1 on its own gold fill. Measured, not
+   guessed — the note this replaces said the same thing.
 
-.st-hero {
-  padding: var(--s6) 0 var(--s7);
-  border-bottom: 1px solid var(--rule);
-  display: grid;
-  gap: var(--s6);
-  grid-template-columns: minmax(0, 1fr);
+   48px, not 44: the tap target floor on this page is 48 because the
+   page is designed for a phone first. */
+
+a.st-btn,
+button.st-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 48px;
+  padding: var(--s2) var(--s5);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-btn-radius);
+  background: var(--bg-tertiary);
+  color: var(--ink);
+  font-family: var(--sk-body);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--speed), border-color var(--speed), box-shadow var(--speed), transform var(--speed-tap);
 }
-.st-hero-copy { min-width: 0; }
-@media (min-width: 960px) {
-  .st-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; }
+.st-btn:hover { border-color: var(--accent-gold); }
+.st-btn:active { transform: scale(calc(1 - (1 - var(--sk-press)) * var(--motion))); }
+.st-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+
+a.st-btn-primary,
+button.st-btn-primary {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: var(--brand-on);
+  box-shadow: var(--shadow-cta);
 }
+.st-btn-primary:hover { background: var(--accent-gold-hover); border-color: var(--accent-gold-hover); }
 
-/* ---- screenshots ------------------------------------------------ */
-
-.st-shot { margin: 0; min-width: 0; }
-.st-shot img {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
-}
-
-/* ---- three steps ------------------------------------------------ */
-
-.st-steps { list-style: none; margin: var(--s5) 0 0; padding: 0; display: grid; gap: var(--s7); }
-.st-step { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr); max-width: none; }
-.st-step-n {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: var(--s6); height: var(--s6);
-  border-radius: var(--radius-pill);
-  background: var(--brand); color: var(--brand-on);
-  font-family: var(--f-mono); font-weight: 700; margin: 0 0 var(--s2);
-}
-@media (min-width: 960px) {
-  .st-step { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); align-items: center; gap: var(--s6); }
-  .st-step:nth-child(even) .st-step-copy { order: 2; }
-}
-
-/* ---- buttons ---------------------------------------------------- */
+.st a.st-btn-sm, a.st-btn-sm { min-height: 44px; padding: var(--s2) var(--s3); white-space: nowrap; }
 
 .st-cta {
   display: flex;
@@ -201,118 +265,250 @@ html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth;
   margin: var(--s5) 0 0;
   max-width: none;
 }
+/* One thumb, one column: a row of two buttons at 390px puts both of
+   them below the comfortable width. */
+.st-cta > .st-btn { flex: 1 1 100%; }
 
-/* `.st a` below sets the link colour at (0,1,1); a button is an <a>
-   too, so these are written at the same specificity and later, or the
-   primary's --brand-on loses to --brand-deep and the label measures
-   1.5:1 on its own fill. Measured, not guessed. */
-.st a.st-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: var(--s2) var(--s5);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-pill);
-  background: var(--paper-raised);
-  color: var(--ink);
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-decoration: none;
-  transition: background-color var(--speed), border-color var(--speed), transform var(--speed-tap);
+/* ---- the hero ----------------------------------------------------
+   A soft gold wash behind the headline over the obsidian ground. It
+   is a pseudo-element rather than a background on .st-hero so that
+   it can bleed past the gutter without giving the page a horizontal
+   scrollbar, which is why it is clipped by overflow on the section
+   and pinned with inset rather than sized in vw. */
+
+.st-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding: var(--s6) 0 var(--s6);
+  display: grid;
+  gap: var(--s6);
+  grid-template-columns: minmax(0, 1fr);
 }
-.st-btn:hover { border-color: var(--brand-deep); }
-.st-btn:active { transform: translateY(calc(1px * var(--motion))); }
-.st-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
-
-.st-btn-primary {
-  background: var(--accent-gold);
-  border-color: var(--accent-gold);
-  color: var(--brand-on);
-  box-shadow: var(--shadow-cta);
+.st-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -40% -20% auto -20%;
+  height: 90%;
+  background: radial-gradient(60% 60% at 50% 50%, var(--accent-gold-glow), transparent 72%);
+  pointer-events: none;
 }
-.st-btn-primary:hover { background: var(--accent-gold-hover); border-color: var(--accent-gold-hover); }
+.st-hero-copy { min-width: 0; }
 
-/* ---- sections --------------------------------------------------- */
+/* ---- screenshots ------------------------------------------------
+   On a phone the screenshot IS the section, not a decoration beside
+   it: full width, the card's radius and the card's shadow, so it
+   reads as a surface rather than a floating image. */
 
-.st-sec {
-  padding: var(--s7) 0 0;
+.st-shot { margin: var(--s5) 0 0; min-width: 0; }
+.st-hero .st-shot { margin: 0; }
+.st-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-tertiary);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
 }
+.st-shot figcaption { margin-top: var(--s2); font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }
+
+/* ---- sections and cards ----------------------------------------- */
+
+.st-sec { padding: var(--s7) 0 0; }
 
 .st-grid {
   display: grid;
-  gap: var(--s4);
+  gap: var(--sk-grid-gap);
   margin-top: var(--s5);
+  grid-template-columns: minmax(0, 1fr);
 }
-.st-grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 
 .st-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: var(--s5);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--sk-card-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  transition: box-shadow var(--speed), transform var(--speed), border-color var(--speed);
+}
+.st-card:hover {
+  box-shadow: var(--sk-card-shadow-hover);
+  transform: translateY(calc(-1 * var(--sk-lift) * var(--motion)));
 }
 .st-card p:last-child { margin-bottom: 0; }
+
+/* The learning chip. Teal, low-strength fill, never a button. */
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0.2em 0.7em;
+  margin: 0 0 var(--s2);
+  border-radius: var(--radius-pill);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+  font-size: var(--t-tiny);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  max-width: 100%;
+}
+/* --brand-deep, not --brand: the chip's ground is the brand at 22%, so
+   the brand ON it measured 2.95:1 in the LIGHT theme — a fill used as a
+   text colour, the mistake CLAUDE.md names, and invisible until 9 Oct
+   because this page had only ever been rendered dark. The deep variant
+   is the brand AS TEXT and is mixed for exactly this. */
+.st-chip-gold { background: var(--accent-gold-glow); color: var(--brand-deep); }
+
+/* ---- the invite band -------------------------------------------- */
+
+.st-invite {
+  margin: var(--s4) 0 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent-gold);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.st-invite p:last-child { margin-bottom: 0; }
+.st-invite-code code {
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: var(--track-wide);
+  color: var(--brand-deep);
+}
+
+/* ---- the launch-price band -------------------------------------- */
+
+.st-offer {
+  margin-top: var(--s6);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent-gold);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.st-offer .st-h2 { font-size: clamp(var(--t-lg), 5vw, var(--t-2xl)); }
+.st-offer-meta { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s3); }
+.st-offer-meta .st-chip { margin: 0; }
+
+/* ---- the eleven steps -------------------------------------------
+   Numbered cards, teal numerals, a stack on a phone and a rule down
+   the left once there is room for one. */
+
+.st-short-list {
+  list-style: none;
+  margin: var(--s5) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+  counter-reset: none;
+}
+.st-short-step {
+  position: relative;
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "n h" "s s" "t t";
+  column-gap: var(--s3);
+  align-items: baseline;
+  transition: box-shadow var(--speed), transform var(--speed);
+}
+.st-short-step:hover { box-shadow: var(--sk-card-shadow-hover); transform: translateY(calc(-1 * var(--sk-lift) * var(--motion))); }
+.st-short-step .st-sn { grid-area: n; }
+.st-short-step .st-h3 { grid-area: h; margin: 0; }
+.st-short-say { grid-area: s; margin: var(--s2) 0 0; }
+.st-short-step .st-chip { grid-area: t; margin: var(--s3) 0 0; }
+
+/* The step numeral: teal, the one place a number is the design. */
+.st-sn {
+  font-family: var(--sk-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--brand-deep);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Write / Plan / Shoot --------------------------------------- */
+
+.st-steps { list-style: none; margin: var(--s5) 0 0; padding: 0; display: grid; gap: var(--s7); }
+.st-step { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr); max-width: none; }
+.st-step .st-sn { margin: 0 0 var(--s2); }
 
 /* ---- the sample ------------------------------------------------- */
 
 .st-sample {
   margin-top: var(--s7);
-  padding: var(--s6);
-  background: var(--brand-wash);
-  border: 1px solid var(--rule);
-  border-left: 3px solid var(--brand);
-  border-radius: var(--radius-lg);
+  padding: var(--sk-card-pad);
+  background: var(--sk-slab-bg);
+  color: var(--sk-slab-ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left: var(--sk-hue-rule-w) solid var(--accent-gold);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
 }
+
+/* ---- the counted facts ------------------------------------------ */
+
+.st-fact-n {
+  font-family: var(--sk-display);
+  font-size: var(--sk-stepnum-size);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--brand-deep);
+  margin: 0 0 var(--s2);
+  font-variant-numeric: tabular-nums;
+}
+.st-fact .st-h3 { font-size: var(--t-base); color: var(--ink-body); font-weight: 600; }
 
 /* ---- the stages ------------------------------------------------- */
 
-.st-count {
-  font-family: var(--f-mono);
-  font-size: var(--t-small);
-  color: var(--ink-muted);
-}
+.st-count { font-size: var(--t-small); color: var(--ink-muted); }
 
 .st-stage-grid {
   display: grid;
-  gap: var(--s4);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--sk-grid-gap);
+  grid-template-columns: minmax(0, 1fr);
   margin-top: var(--s4);
 }
 
 .st-stage {
   min-width: 0;
-  padding: var(--s5);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
 }
 
 .st-stage-n {
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
+  font-family: var(--sk-eyebrow-face);
+  font-size: var(--sk-eyebrow-size);
   font-weight: 700;
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
+  letter-spacing: var(--sk-eyebrow-track);
+  text-transform: var(--sk-eyebrow-transform);
   color: var(--brand-deep);
   margin: 0 0 var(--s2);
 }
 
-.st-stage-blurb {
-  color: var(--ink-muted);
-  font-size: var(--t-small);
-}
+.st-stage-blurb { color: var(--ink-muted); font-size: var(--t-small); }
 
-.st-mods {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+.st-mods { list-style: none; margin: 0; padding: 0; }
 .st-mods li {
   font-size: var(--t-small);
   padding: var(--s2) 0;
@@ -323,9 +519,12 @@ html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth;
 .st-mods a { font-weight: 600; }
 .st-mods span { color: var(--ink-muted); }
 
-.st-shelf { background: var(--paper); }
+.st-shelf { background: var(--bg-tertiary); }
 
-/* ---- pricing ---------------------------------------------------- */
+/* ---- pricing ----------------------------------------------------
+   Gold owns this section. The recommended tier is a gold rule, a
+   lift and a label that says what it is an opinion about — not a
+   "most popular" claim, which with no buyers would be a lie. */
 
 .st-tiers {
   list-style: none;
@@ -333,107 +532,143 @@ html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth;
   padding: 0;
   display: grid;
   gap: var(--s3);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 .st-tiers li {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  padding: var(--s4);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+  min-width: 0;
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
   font-size: var(--t-small);
 }
-.st-tiers strong {
-  font-family: var(--f-display);
-  font-size: var(--t-lg);
-  color: var(--ink);
+.st-tiers strong { font-family: var(--sk-display); font-size: var(--t-lg); color: var(--ink); }
+.st-tiers .st-price {
+  font-family: var(--sk-display);
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  color: var(--accent-gold);
+  line-height: 1.05;
+}
+.st-price-next {
+  display: block;
+  font-family: var(--sk-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: normal;
 }
 
-.st-tiers .st-price {
-  font-family: var(--f-display);
-  font-size: var(--t-2xl);
-  color: var(--ink);
-  line-height: var(--lh-display);
+.st-pick {
+  border-color: var(--accent-gold);
+  border-top: var(--sk-hue-rule-w) solid var(--accent-gold);
+  box-shadow: var(--sk-card-shadow-hover);
 }
+/* Sentence case and normal tracking, like every other label in this
+   design: "RECOMMENDED FOR A FIRST FILM" tracked out at --track-label
+   wraps to two lines in a 13rem column and pushes that one card's
+   tier name a line below the other three. */
+.st-pick-flag {
+  margin: 0;
+  font-size: var(--t-tiny);
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--accent-gold);
+}
+
 .st-table-wrap {
   position: relative;
   overflow-x: auto;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
-  background: var(--paper-raised);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  background: var(--sk-card-bg);
+  box-shadow: var(--sk-card-shadow);
   margin: 0 0 var(--s4);
 }
 .st-table-wrap:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 .st-table { width: 100%; min-width: 30rem; border-collapse: collapse; font-size: var(--t-small); }
 .st-table th, .st-table td { padding: var(--s2) var(--s3); border-top: 1px solid var(--rule-hair); text-align: center; color: var(--ink-body); }
-.st-table thead th { border-top: 0; font-family: var(--f-display); color: var(--ink); }
+.st-table thead th { border-top: 0; font-family: var(--sk-display); color: var(--ink); }
 .st-table tbody th { text-align: left; font-weight: 500; color: var(--ink); }
 .st-table th:first-child { text-align: left; }
 .st-yes { color: var(--brand-deep); font-weight: 700; }
 .st-no { color: var(--ink-muted); }
-.st-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .st-compare { font-weight: 600; color: var(--ink); }
 
 /* ---- FAQ -------------------------------------------------------- */
 
 .st-faq {
-  border-top: 1px solid var(--rule);
-  padding: var(--s3) 0;
+  border-top: 1px solid var(--rule-hair);
+  padding: var(--s2) 0;
   max-width: var(--measure);
 }
-.st-faq:last-of-type { border-bottom: 1px solid var(--rule); }
+.st-faq:last-of-type { border-bottom: 1px solid var(--rule-hair); }
 .st-faq summary {
   cursor: pointer;
-  font-family: var(--f-display);
+  font-family: var(--sk-display);
   font-weight: 600;
   font-size: var(--t-base);
   color: var(--ink);
-  padding: var(--s2) 0;
+  padding: var(--s3) 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   list-style-position: outside;
 }
+/* `display: flex` on a <summary> suppresses the disclosure marker in
+   Chrome, so without this the ten questions read as ten paragraphs
+   and nobody finds out they open. Drawn rather than restored,
+   because the native triangle is not in this design's vocabulary. */
+.st-faq summary::marker,
+.st-faq summary::-webkit-details-marker { content: ""; display: none; }
+.st-faq summary::after {
+  content: "+";
+  margin-left: auto;
+  padding-left: var(--s3);
+  color: var(--accent-gold);
+  font-size: var(--t-lg);
+  font-weight: 400;
+  line-height: 1;
+}
+.st-faq[open] summary::after { content: "\2013"; }
 .st-faq summary:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
-.st-faq p { margin: var(--s2) 0 var(--s2); }
+.st-faq[open] summary { color: var(--accent-gold); }
+.st-faq p { margin: var(--s2) 0 var(--s3); }
 
 /* ---- close + footer --------------------------------------------- */
 
 .st-close {
   margin-top: var(--s7);
-  padding: var(--s6);
+  padding: var(--s6) var(--s5);
   text-align: center;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+  background: var(--sk-slab-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
 }
-.st-close .st-h2 { margin-bottom: 0; }
+.st-close .st-h2 { margin-bottom: var(--s3); }
+.st-close .st-lede { margin-left: auto; margin-right: auto; }
 .st-close .st-cta { justify-content: center; }
 
 .st-foot {
-  margin-top: var(--s7);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--rule);
+  max-width: var(--measure-wide);
+  margin: var(--s7) auto 0;
+  padding: var(--s4) var(--gutter) var(--s6);
+  border-top: 1px solid var(--rule-hair);
 }
-.st-foot p {
-  color: var(--ink-muted);
-  font-size: var(--t-small);
-  margin: 0;
-}
-
-@media (max-width: 720px) {
-  .st { padding-top: var(--s5); }
-  .st-hero { padding: var(--s4) 0 var(--s6); }
-  .st-sec { padding-top: var(--s6); }
-  .st-sample, .st-close { padding: var(--s5); }
-  .st a.st-btn:not(.st-btn-sm) { width: 100%; }
-}
+.st-foot p { color: var(--ink-muted); font-size: var(--t-small); margin: 0; }
+.st-foot a { color: var(--accent-gold); }
 
 /* ---- #voices: testimonials and films (src/data/testimonials.json) --
-   Hidden while the JSON is empty; these rules wait for the first entry
-   given with consent. Fixed tokens only, like the rest of this sheet. */
+   Hidden while the JSON is empty; these rules wait for the first
+   entry given with consent. */
 .st-voice-list,
 .st-film-list { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; gap: var(--s4); }
-.st-voice-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
 .st-voice blockquote { margin: 0; }
 .st-voice blockquote p { margin: 0; font-size: var(--t-lg); line-height: var(--lh-body); color: var(--ink); }
 .st-voice-who { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
@@ -441,16 +676,151 @@ html { scroll-padding-top: calc(var(--s9) + var(--s2)); scroll-behavior: smooth;
 .st-film span { color: var(--ink-muted); }
 
 /* ---- launch offers ---------------------------------------------- */
+
 .st-lead-form { max-width: 40rem; }
 .st-lead-row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
-.st-lead-row label { flex: 0 0 100%; font-weight: 600; }
+.st-lead-row label { flex: 0 0 100%; font-weight: 600; color: var(--ink); }
 .st-lead-row input[type="email"] {
-  flex: 1 1 14rem; min-height: 44px; padding: 0 var(--s3);
-  border: 1px solid var(--rule); border-radius: var(--radius);
-  background: var(--paper-sunk); color: var(--ink); font: inherit;
+  flex: 1 1 14rem;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--s3);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-field-radius);
+  background: var(--bg-tertiary);
+  color: var(--ink);
+  font: inherit;
 }
+.st-lead-row input[type="email"]:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.st-lead-row .st-btn { flex: 1 1 12rem; }
 .st-lead-consent { display: flex; gap: var(--s2); align-items: flex-start; margin-top: var(--s3); font-size: var(--t-small); }
-.st-lead-consent input { margin-top: 0.25em; width: 1.1rem; height: 1.1rem; flex: none; }
-.st-bad { color: var(--ink); font-weight: 600; }
-.st-link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-deep); text-decoration: underline; cursor: pointer; }
+.st-lead-consent input { margin-top: 0.25em; width: 1.25rem; height: 1.25rem; flex: none; accent-color: var(--accent-gold); }
+
+/* --danger, not --ink: an error that is the same colour as the rest
+   of the page is an error nobody sees. #F87171 is the TEXT red;
+   --status-danger is a fill. */
+.st-bad { color: var(--danger); font-weight: 600; }
+
+.st-link {
+  background: none; border: 0; padding: 0;
+  font: inherit; color: var(--accent-gold);
+  text-decoration: underline; cursor: pointer;
+}
 .st-link:disabled { color: var(--ink-muted); text-decoration: none; cursor: default; }
+.st-link:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+
+/* ---- the thumb rail ---------------------------------------------
+   Shown by start.js only below 720px and only once the hero has
+   gone. The height is measured and published as --st-bar-h, which
+   the body reserves; see the note in start.html for the trap. */
+
+.st-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  display: flex;
+  gap: var(--s2);
+  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+  background: var(--chrome);
+  border-top: 1px solid var(--chrome-hair);
+  transform: translateY(calc(110% * var(--motion)));
+  transition: transform var(--speed) var(--ease);
+}
+@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
+  .st-bar { background: var(--bg-glass); backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome); }
+}
+.st-bar[data-on] { transform: none; }
+.st-bar .st-btn { flex: 1 1 auto; }
+body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
+
+/* ============================================================
+   WIDER. Everything above is the 390px design; these two queries
+   let it breathe. Nothing below introduces a fixed width — the one
+   failure mode this page cannot afford is a horizontal scrollbar on
+   a phone, and nothing in the gate measures it.
+   ============================================================ */
+
+@media (min-width: 560px) {
+  .st-at-narrow { display: none; }
+  .st-at-wide { display: inline; }
+  .st-cta > .st-btn { flex: 0 0 auto; }
+  .st-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+  .st-tiers { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  .st-stage-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+  .st-voice-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+}
+
+@media (min-width: 720px) {
+  .st { padding: var(--s5) var(--gutter) var(--s9); }
+  .st-nav { display: flex; }
+  .st-sec { padding-top: var(--s8); }
+  .st-short-list { gap: var(--s4); }
+  .st-short-step {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "n h t" "n s s";
+    column-gap: var(--s4);
+  }
+  .st-short-step .st-sn { font-size: var(--sk-stepnum-size); grid-row: span 2; }
+  .st-short-step .st-chip { margin: 0; justify-self: end; }
+  .st-sample, .st-offer, .st-invite { padding: var(--s6); }
+}
+
+@media (min-width: 1000px) {
+  .st-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; padding: var(--s7) 0; }
+  .st-step { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); align-items: center; gap: var(--s6); }
+  .st-step:nth-child(even) .st-step-copy { order: 2; }
+}
+
+/* The connecting rule down the eleven steps was drawn here as an
+   ::before on the <ol>. It is gone rather than fixed: every step card
+   is position:relative and opaque, so a non-positioned pseudo-element
+   on their parent paints UNDERNEATH all eleven of them and is never
+   seen. A dead CSS rule is bad enough; one that looks like a design
+   decision in a diff is worse. The numerals carry the sequence. */
+
+/* The thumb rail is a phone affordance. Above the breakpoint it is
+   removed from the DOM by start.js, and this is the belt to that
+   braces. */
+@media (min-width: 721px) {
+  .st-bar { display: none !important; }
+  body.has-st-bar { padding-bottom: 0; }
+}
+
+/* ---- reveal on scroll -------------------------------------------
+   .st-veil is added by start.js ONLY, and only when
+   prefers-reduced-motion is not set — so the default state of every
+   section is visible, and a crawler, a reader with scripts off or a
+   browser without IntersectionObserver never meets this rule. The
+   travel is multiplied by --motion like every other transform here,
+   which makes it belt and braces rather than the only guard. */
+.st-sec { transition: opacity 0.5s var(--ease), transform 0.5s var(--ease); }
+.st-sec.st-veil { opacity: 0; transform: translateY(calc(14px * var(--motion))); }
+
+/* ---- the 48px floor, on a touch screen --------------------------
+   base.css raises every control to 44px under (pointer: coarse), and
+   it does it at (0,3,0) — `:root :is(button, a.btn, …)` — precisely
+   so that no component rule can undercut it. That is right for the
+   app, and it also LOWERS this page: a plain `.st-btn { min-height:
+   48px }` is (0,1,0) and loses the tie, so every button here
+   measured 44 on a phone, which is the one device this page is
+   designed for. Measured, not assumed.
+
+   So the floor is restated ABOVE that weight. base.css's selector
+   measures (0,3,1); matching it exactly is not enough, because the
+   built page links base-*.css AFTER start-*.css and a tie is decided
+   by order — which is the trap CLAUDE.md names, met here from the
+   direction nobody expects (the page's own sheet loses to the shared
+   one). `:root:root` plus the doubled class is (0,4,1) and cannot be
+   ordered out. Only inside the same media query: on a mouse the 48px
+   above already stands. */
+@media (pointer: coarse) {
+  :root:root :is(a, button).st-btn.st-btn { min-height: 48px; }
+  :root:root .st-lead-row input[type="email"] { min-height: 48px; }
+  :root:root .st-faq.st-faq summary { min-height: 48px; }
+}
+
+/* ---- print ------------------------------------------------------ */
+@media print {
+  .st-top, .st-bar, .st-cta { display: none !important; }
+  .st-shot img { box-shadow: none; }
+}

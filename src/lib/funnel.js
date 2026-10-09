@@ -43,6 +43,9 @@ async function rpc(name, args) {
     let m = ''; try { m = (await r.json()).message || ''; } catch (e) { /* */ }
     const err = new Error(m || ('HTTP ' + r.status)); err.status = r.status; throw err;
   }
+  /* The body, for the one caller that wants it. The counters ignore it.
+     A 204 and an empty body both read as null rather than throwing. */
+  try { return await r.json(); } catch (e) { return null; }
 }
 
 /** Fire and forget. Never throws, never awaits anything the caller needs. */
@@ -70,4 +73,25 @@ export async function addLead(email, consentText, source = 'start') {
   }
 }
 
-export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured };
+/** The prices, and any scheduled rise, for the signed-out landing page.
+ *  §30's price_notice() — anon-callable, one narrow fact per plan.
+ *
+ *  WHY IT IS HERE and not in billing.js: billing.js goes through the
+ *  Supabase SDK, which is a ~98 KB chunk that must never be fetched on
+ *  start.html (prove:growth asserts exactly that, and the first-paint
+ *  budget would fail by name). This file already owns the plain-fetch
+ *  pattern for precisely that reason.
+ *
+ *  NEVER THROWS. The page ships the current prices in its markup; this
+ *  only ever ADDS the coming ones. A failure here must leave a correct
+ *  page, not a broken one — so the caller gets null and shows nothing.
+ *
+ *  Not gated on optedOut(): this is a price list, not a count. Someone
+ *  who has asked not to be counted still deserves to be told what the
+ *  thing costs. */
+export async function priceNotice() {
+  if (!configured()) return null;
+  try { return await rpc('price_notice', {}); } catch (e) { return null; }
+}
+
+export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice };

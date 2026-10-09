@@ -25,3 +25,16 @@
   background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); max-height: 16rem; overflow: auto; }
 .gr-bars { display: grid; gap: var(--s1); }
 .gr-check { display: inline-flex; gap: var(--s1); align-items: center; font-size: var(--t-small); color: var(--ink-body); }
+
+/* ---- the price rise (schema section 30) ---------------------------
+   THE REHEARSAL. Not a form hint — it is the sentence the public page
+   will print, drawn at reading size on its own surface so the owner
+   reads it as copy rather than skims it as a label. The same reason
+   the eyebrow above it is quiet: the paragraph is the thing. */
+.gr-seats { margin: 0; font-size: var(--t-small); color: var(--ink-body); max-width: var(--measure); }
+.gr-preview-h { margin: var(--s2) 0 0; font-size: var(--t-tiny); color: var(--ink-muted); font-family: var(--f-mono);
+  letter-spacing: var(--track-label); text-transform: uppercase; }
+.gr-preview { display: grid; gap: var(--s2); padding: var(--s3); max-width: var(--measure);
+  background: var(--paper-sunk); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
+.gr-preview:empty { display: none; }
+.gr-preview-line { margin: 0; color: var(--ink); font-size: var(--t-base); line-height: var(--lh-body); }

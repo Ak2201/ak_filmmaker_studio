@@ -54,6 +54,11 @@
          browser and re-verified next session, the console offers the
          code as a link, opening the link enters, and a revoked code
          is forgotten and shuts the door
+     (o) THE LANDING PAGE'S DOORWAY (§30 / plan part 6): the Continue
+         with Google button navigates to the project's own
+         /auth/v1/authorize carrying provider=google, the right
+         redirect_to and the Drive scope; and start.html#code= holds
+         the code for this browser, scrubs the fragment and says so
 
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
@@ -62,25 +67,42 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { F, USERS, SB, REF, handle, sessionFor, freshDb } from './fake-supabase.mjs';
+/* invite-code.js has NO imports, deliberately (that is the whole reason
+   it was split out of gate.js), so Node can load the shipped source
+   itself and this proof can check the link builders directly. */
+import { inviteLink, startInviteLink } from '../src/lib/invite-code.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 /* This proof is about the GATED build — the one the hosts deploy. The
    open build (npm run build:open, for verify) would pass the sign-in
    scenarios and silently skip the site gate, so it is refused here the
    way verify refuses the gated one. */
+/* PROVE_DIST serves a build other than dist/. Several worktrees and
+   several sessions share this checkout and rebuild dist/ under each
+   other — the same reason verify has VERIFY_DIST and VERIFY_PORT —
+   and a proof reading a directory somebody else is mid-write of
+   fails as "the gate is broken". Build your own and point here:
+     npx vite build --outDir dist-gate && PROVE_DIST=dist-gate PROVE_PORT=5361 npm run prove:gate */
+const OUT = process.env.PROVE_DIST || 'dist';
 {
-  const idx = path.join(ROOT, 'dist', 'index.html');
+  const idx = path.join(ROOT, OUT, 'index.html');
   const stamp = fs.existsSync(idx) ? (fs.readFileSync(idx, 'utf8').match(/<meta name="fms-site-gate" content="([a-z]+)"/) || [])[1] : null;
   if (stamp !== 'invite') {
-    console.error(`✗ dist/ was built with the site gate ${stamp === 'off' ? 'OFF' : 'unstamped'}; this proof needs the production build: npm run build`);
+    console.error(`✗ ${OUT}/ was built with the site gate ${stamp === 'off' ? 'OFF' : 'unstamped'}; this proof needs the production build: npm run build`);
     process.exit(2);
   }
 }
 const PORT = Number(process.env.PROVE_PORT) || 5357;
 const BASE = `http://localhost:${PORT}/`;
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  ✓ ' + m); } else { fail++; console.log('  ✗ ' + m); } };
+/* A check whose SUBJECT is missing is reported as skipped, never as a
+   pass — the hue-coding assertion in verify is the precedent. The thing
+   that was missing has always failed an ok() of its own first, so the
+   run is already red; this only stops the follow-on checks from
+   printing ticks for work nobody did. */
+const skip = (m) => { skipped++; console.log('  – skipped: ' + m); };
 
 /* `landing: true` seeds the marker cloud.js writes when a sign-in
    begins, so a seeded session behaves as the FIRST load after it. */
@@ -141,7 +163,7 @@ async function armClosedSnap(page) {
 }
 
 /* ---- run ------------------------------------------------------ */
-const srv = spawn(process.execPath, [path.join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
+const srv = spawn(process.execPath, [path.join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--outDir', OUT, '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 2500));
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const allErrors = [];
@@ -486,7 +508,22 @@ try {
     await page.click('#admin-console form[data-gate-form="create"] button[type="submit"]');
     await page.waitForSelector('.gt-link', { timeout: 8000 });
     const link = await page.textContent('.gt-link');
-    ok(new RegExp('^' + BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'invite\\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').test(link), 'a new code is shown as an invite link, code in the fragment: ' + link);
+    /* CHANGED, and it tests a product decision that changed rather
+       than a bug: this used to assert invite.html#code=. The console
+       hands out the LANDING page's form now, because a code buys a
+       seven-day trial rather than permanent free entry (§30) and a
+       trial is counted against an account on the server — so the code
+       has to meet a sign-in to be worth its week, and the sign-in
+       lives on start.html. The old form is not dead; see below. */
+    ok(new RegExp('^' + BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'start\\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').test(link), 'a new code is shown as a LANDING link, code in the fragment: ' + link);
+    /* And the old shape still builds, because every link already sent
+       to somebody points at invite.html and a code is a thing people
+       paste into a group chat months later. Read from the module
+       itself: (n) above proves such a link still opens the door. */
+    ok(inviteLink('linkcode2345', 'https://example.test/') === 'https://example.test/invite.html#code=LINK-CODE-2345',
+      'inviteLink() still produces the invite.html form for links already sent: ' + inviteLink('linkcode2345', 'https://example.test/'));
+    ok(startInviteLink('linkcode2345', 'https://example.test/') === 'https://example.test/start.html#code=LINK-CODE-2345',
+      'startInviteLink() is the new one, same code, same fragment');
     await page.selectOption('#gtType', 'screening_pass');
     await page.selectOption('#gtDur', '2');
     await page.selectOption('#gtProj', 'p1');
@@ -574,6 +611,82 @@ try {
       + (onOpen.length ? ' (transient while opening: ' + describe(onOpen) + ')' : ''));
     allErrors.push(...errors); await ctx.close();
   }
+
+  console.log('(o) the landing page: the Google button and a code in the URL');
+  F.reset(); F.db.sessions.clear();
+  {
+    const ctx = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx.route(SB + '/**', handle);
+    await ctx.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(BASE + 'start.html');
+    await page.waitForLoadState('load');
+
+    /* ---- THE AUTHORIZE URL, AND WHY THIS ASSERTION EXISTS ----------
+       start.html carries the sign-in now, and src/lib/start-auth.js
+       builds Supabase's authorize URL BY HAND rather than calling
+       auth-js: cloud.js lives in the shared `studio` CORE chunk, so
+       even a click-time import would fetch about a megabyte on the one
+       click that has to be instant, and prove:growth asserts no
+       Supabase chunk is fetched on this page at all.
+
+       The cost of that is that the URL's SHAPE is now pinned in our
+       own source. If Supabase ever changes /auth/v1/authorize, the
+       app's own sign-in keeps working — it goes through the SDK — and
+       only the landing page breaks, silently, for everyone arriving
+       for the first time. Nothing else in this repository would point
+       at it. THIS IS THE ONLY CHECK THAT CATCHES THAT DRIFT. Do not
+       delete it, and do not relax it to "something was requested". */
+    const btn = await page.$('[data-start-auth="google"]');
+    ok(!!btn, 'start.html carries a Continue with Google control ([data-start-auth="google"])');
+    if (!btn) {
+      skip('the authorize URL: origin and path, provider, redirect_to, scopes (no button to click)');
+    } else {
+      const nav = page.waitForRequest((q) => /\/auth\/v1\/authorize/.test(q.url()), { timeout: 8000 }).catch(() => null);
+      await btn.click();
+      const req = await nav;
+      const u = req ? new URL(req.url()) : null;
+      ok(!!u && u.origin + u.pathname === SB + '/auth/v1/authorize', 'the button navigates to <project>/auth/v1/authorize: ' + (u ? u.origin + u.pathname : 'no request was made'));
+      ok(!!u && u.searchParams.get('provider') === 'google', 'carrying provider=google');
+      /* index.html, never back here: the flow is implicit, the tokens
+         come home in the fragment, and only auth-js's
+         detectSessionInUrl can store them. */
+      ok(!!u && u.searchParams.get('redirect_to') === BASE + 'index.html', 'redirect_to is index.html, where auth-js can store the tokens: ' + (u ? u.searchParams.get('redirect_to') : '—'));
+      /* One consent covers Drive: ask for less here and drive-sync.js
+         finds no provider_token later and the user meets a second
+         consent screen for a permission they believe they gave. */
+      ok(!!u && /drive\.file/.test(u.searchParams.get('scopes') || ''), 'and asks for the Drive scope in the same consent: ' + (u ? u.searchParams.get('scopes') : '—'));
+    }
+
+    /* ---- A CODE IN THE LANDING URL --------------------------------
+       The console hands out start.html#code= now (block (f)), so this
+       is the path a real invite takes. The fragment is never sent to a
+       server, which is why the code travels in one — and it is
+       scrubbed from the address bar so it cannot be shoulder-read or
+       pasted onward by accident. cloud.js's runGate() redeems what is
+       held here the first time this browser signs in. */
+    const p2 = await ctx.newPage();
+    const perrs = []; p2.on('pageerror', (e) => perrs.push(e.message));
+    await p2.goto(BASE + 'start.html#code=LINK-CODE-2345');
+    const held = await p2.waitForFunction(() => localStorage.getItem('fms_invite_code_v1'), null, { timeout: 8000 })
+      .then((h) => h.jsonValue(), () => null);
+    ok(!!held, 'start.html#code= holds the code in fms_invite_code_v1');
+    ok(!!held && JSON.parse(held).code === 'LINKCODE2345', 'normalised, the dashes dropped: ' + String(held).slice(0, 80));
+    ok(!/code=/.test(p2.url()), 'and the fragment is stripped from the address bar: ' + p2.url());
+    /* THE CONTRACT FOR THE BAND is the attribute, not a class or a
+       phrase: a visitor who followed an invite link must be told it
+       took, or the only feedback for a correct code is that nothing
+       visible happened. */
+    const band = await p2.evaluate(() => {
+      const el = document.querySelector('[data-invite-band], #inviteBand');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120), shown: !el.hidden && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' };
+    });
+    ok(!!band && band.shown, 'the invite band is shown ([data-invite-band] or #inviteBand): ' + JSON.stringify(band));
+    allErrors.push(...errs, ...perrs); await ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }
@@ -581,5 +694,5 @@ try {
 const real = allErrors.filter((e) => !/net::|ERR_|CERT|fetch/i.test(e));
 ok(real.length === 0, 'no page errors' + (real.length ? ': ' + real.slice(0, 3).join(' | ') : ''));
 await browser.close(); srv.kill();
-console.log(`${fail ? '✗' : '✓'} gate proof: ${pass} passed, ${fail} failed`);
+console.log(`${fail ? '✗' : '✓'} gate proof: ${pass} passed, ${fail} failed${skipped ? `, ${skipped} skipped` : ''}`);
 process.exit(fail ? 1 : 0);

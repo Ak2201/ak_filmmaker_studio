@@ -39,6 +39,17 @@ export const myReferral = () => rpc('my_referral');
 
 export const admin = {
   settings: () => rpc('admin_get_billing_settings'),
+  /** The one settings patch, and its allowlist is the schema's, not
+   *  this file's — §30 added `trial_enabled`, `trial_minutes`,
+   *  `code_trial_days`, `trial_scope`, `trial_plan` and
+   *  `price_rises_after_buyers` to it beside the referral keys, each
+   *  validated server-side with its own sentence. An unknown key is
+   *  refused there rather than filtered here, so this stays a pipe:
+   *  a key the database has never heard of must say so out loud.
+   *
+   *  The SCHEDULED PRICE itself is not in here. It lives on `plans`,
+   *  per tier, and goes through Billing.admin.setNextPrice() — the one
+   *  call that refuses a "rise" that is not a rise. */
   setSettings: (patch) => rpc('admin_set_billing_settings', { p_patch: patch }),
   listReferralCredits: (status = null) => rpc('admin_list_referral_credits', { p_status: status }).then((d) => d || []),
   markReferralPaid: (ids, note) => rpc('admin_mark_referral_paid', { p_ids: ids, p_note: note || null }),

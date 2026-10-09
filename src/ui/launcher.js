@@ -48,8 +48,10 @@
    instead of navigating nowhere. No new handler, and nothing here
    knows what a toast is.
    ============================================================ */
-import nav from '../data/navigation.json';
-import { moduleGroups, hueClassOf } from '../lib/navmodel.js';
+/* navigation.json is read through navmodel.js (phases/globals/
+   moduleGroups), which applies the region filter — see its header.
+   No unfiltered second view of the map lives here. */
+import { moduleGroups, hueClassOf, phases, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listScenes, elementIndex } from '../lib/scenes.js';
@@ -88,6 +90,11 @@ import '../styles/launcher.css';
 /* Counted over moduleGroups(), not nav.phases: the Library's three
    reference tools moved off the Story stage on 6 Oct 2026 and are
    still modules — on the map below as the Library's own row. */
+/* COUNTED AT IMPORT, which is correct only because the region is
+   fixed for the life of a document: the Settings control RELOADS
+   after a change rather than notifying, precisely so these three
+   and every other derived count cannot go stale. */
+const STAGE_COUNT = phases().length;
 const MODULE_COUNT = moduleGroups().reduce((n, p) => n + p.modules.length, 0);
 export const BUILT_MODULE_COUNT = moduleGroups().reduce(
   (n, p) => n + p.modules.filter((m) => m.status === 'built').length, 0);
@@ -321,12 +328,12 @@ function whereAmI() {
   }
   // No fragment match: the first module on this page still tells the
   // user which phase they are standing in, which is most of the answer.
-  for (const phase of nav.phases) {
+  for (const phase of phases()) {
     for (const m of phase.modules) {
       if (m.href && base(m.href.split('#')[0]) === here) return { phase, module: m };
     }
   }
-  for (const g of nav.global) {
+  for (const g of globals()) {
     if (g.href && base(g.href) === here) return { phase: null, module: null, global: g };
   }
   return { phase: null, module: null };
@@ -440,7 +447,7 @@ export function renderLauncher() {
         // Derived, like the module count beside it: this said "Six
         // phases" in a hard-coded string, which was wrong the day the
         // six became the PRD's five stages.
-        document.createTextNode(`${NUMBER_WORDS[nav.phases.length] || nav.phases.length} stages, `),
+        document.createTextNode(`${NUMBER_WORDS[STAGE_COUNT] || STAGE_COUNT} stages, `),
         h('em', { text: `${MODULE_COUNT} modules.` })
       ]),
       h('p.deck', {

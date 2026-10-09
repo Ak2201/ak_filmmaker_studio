@@ -893,15 +893,48 @@ const COUNTDOWN = (() => {
       .filter((d) => ISO.test(String(d)));
   } catch (e) { /* no overlay on disk means no countdowns on the page */ }
 
-  let capturedAt = null;
+  let capturedAt = null, capturedDay = null;
   try {
-    capturedAt = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).capturedAt;
+    const b = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
+    capturedAt = b.capturedAt;
+    capturedDay = b.capturedDay || null;   // written since 9 Oct 2026; see below
   } catch (e) { /* no baseline yet — nothing to reconcile against */ }
   if (!dates.length || !capturedAt) return new Set();
 
   const vocabulary = (on) =>
     new Set(dates.flatMap((d) => words(relativeDays(daysUntil(d, on)))));
-  const then = vocabulary(todayISO(new Date(capturedAt)));
+
+  /* WHICH DAY WAS THE BASELINE CAPTURED ON? The file stores an INSTANT,
+     and `todayISO` reads LOCAL components — so the answer depends on the
+     zone of whoever is asking, not of whoever captured. That is not
+     hypothetical here: this baseline was written at 2026-10-08T22:00Z by
+     a session running in UTC, where the browser's day was the 8th; read
+     back on a machine at UTC+5:30 the same instant is the 9th. COUNTDOWN
+     then compared the 9th with the 9th, concluded nothing had moved,
+     excluded nothing — and the page's real one-day drift surfaced as
+     `15 unexplained missing words (122, 125, 128, 153, 189, 27, ...)`,
+     every one a bare integer counting down to a festival.
+
+     It reads as a copy regression on a page nobody edited, and it will
+     hit anyone whose zone differs from the capturer's. Two fixes, and
+     the first makes the second unnecessary over time:
+
+       - `capturedDay` is written into the baseline from now on, so the
+         day is recorded rather than re-derived;
+       - for a baseline that predates it, take the UNION of the two days
+         that instant could mean. A union can only ever exclude MORE
+         countdown words, never fewer, so it cannot leak a real missing
+         word — it costs a few integers of coverage and nothing else. */
+  let thenDays;
+  if (capturedDay && ISO.test(String(capturedDay))) {
+    thenDays = [capturedDay];
+  } else {
+    const d = new Date(capturedAt);
+    const p = (n) => String(n).padStart(2, '0');
+    const utcDay = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+    thenDays = [...new Set([todayISO(d), utcDay])];
+  }
+  const then = new Set(thenDays.flatMap((day) => [...vocabulary(day)]));
   const now = vocabulary(todayISO());
   return new Set([...then, ...now].filter((w) => !(then.has(w) && now.has(w))));
 })();
@@ -927,10 +960,35 @@ const report = [];
 const captured = {};
 let failures = 0;
 
+/* THE GATE ALWAYS MEASURES THE INDIA BUILD (§31 region mode).
+   `fms_region_v1` decides whether the India-only material renders — the
+   certification tab's CBFC / COTPA / AWBI checks today, and whatever
+   else is tagged later. When nothing is stored, region.js GUESSES from
+   the browser's time zone, which means the words on a baselined page
+   would depend on where the machine running the gate happens to be:
+   this checkout passes in Chennai and fails in Frankfurt, reported as
+   "unexplained missing words" on a page nobody edited.
+
+   So it is pinned, not guessed. India is the SUPERSET — International
+   only ever hides — so measuring it is measuring the most words the
+   page can produce, which is the right thing for a coverage check to
+   compare against. A baseline captured without this pin is a baseline
+   that encodes somebody's time zone.
+
+   The International build is therefore NOT covered by the text check.
+   It is a hide, so it cannot introduce a word; what it can do is leave
+   a fragment target empty, and that is why the certification section
+   keeps its id and its tab and says why it is empty rather than
+   vanishing. Read it by hand with the region switched. */
+const PIN_REGION = (ctx) => ctx.addInitScript(() => {
+  try { localStorage.setItem('fms_region_v1', 'IN'); } catch (e) { /* private mode */ }
+});
+
 for (const spec of PAGES) {
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 900 }
   });
+  await PIN_REGION(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -2002,6 +2060,11 @@ for (const spec of PAGES) {
         'and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — ' +
         'are failed by name if a first paint ever fetches one, whatever the total says.',
       capturedAt: new Date().toISOString(),
+    /* The LOCAL calendar day of the capture. capturedAt alone is an
+       instant, and COUNTDOWN needs the day the capturing BROWSER was
+       on — see the note in COUNTDOWN for the day this cost. */
+    capturedDay: (() => { const d = new Date(), p = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })(),
       // Carried over, never recaptured: each row is a reasoned allowance.
       knownLazyFetches: BUDGET.knownLazyFetches || {},
       pages
@@ -2021,6 +2084,11 @@ if (WRITE_BASELINE) {
       'Reference for npm run verify. Regenerate ONLY with `npm run build && npm run baseline`, ' +
       'and only when the current output is known good — it becomes the thing every later run is judged against.',
     capturedAt: new Date().toISOString(),
+    /* The LOCAL calendar day of the capture. capturedAt alone is an
+       instant, and COUNTDOWN needs the day the capturing BROWSER was
+       on — see the note in COUNTDOWN for the day this cost. */
+    capturedDay: (() => { const d = new Date(), p = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })(),
     capturedFrom: sha,
     provenance:
       'Captured from the build at the commit above. The FIRST baseline (16bf3b4) came from a build that ' +
@@ -2100,6 +2168,7 @@ let scriptsOff = { checked: false };
     const HOST = `http://localhost:${PORT}/__scripts-off-probe.html`;
     for (const [scheme, wantPaper] of [[defaultScheme, defaultPaper], [otherScheme, otherPaper]]) {
       const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+      await PIN_REGION(pctx);   /* see PIN_REGION */
       const ppage = await pctx.newPage();
       await ppage.route('**/__scripts-off-probe.html', (route) => route.fulfill({
         status: 200, contentType: 'text/html', body: '<!doctype html><html><head><title>probe</title></head><body></body></html>'
@@ -2227,6 +2296,7 @@ let fragments = { checked: false };
   const ORIGIN = `http://localhost:${PORT}`;
   const sweep = async (label, prepare) => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await PIN_REGION(ctx);   /* see PIN_REGION */
     const pg = await ctx.newPage();
     const errs = [];
     pg.on('pageerror', (e) => errs.push(e.message));
@@ -2289,6 +2359,7 @@ let fragments = { checked: false };
      sweeps, so every state tests them. */
   {
     const hctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await PIN_REGION(hctx);   /* see PIN_REGION */
     const hp = await hctx.newPage();
     await hp.goto(`${ORIGIN}/index.html`, { waitUntil: 'networkidle' });
     await prepareSample(hp);

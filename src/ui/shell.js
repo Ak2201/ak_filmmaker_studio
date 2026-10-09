@@ -36,14 +36,16 @@
    netlify.toml. Anything clickable is a real <a>, or carries
    data-action and is bound by delegate().
    ============================================================ */
-import nav from '../data/navigation.json';
+/* navigation.json is read through navmodel.js (phases/globals), which
+   applies the region filter — see its header. Imported for nothing
+   else here, so there is no second, unfiltered view of the map. */
 import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
-import { moduleGroups, guideStops } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals } from '../lib/navmodel.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -72,7 +74,7 @@ const CURRENT = (() => {
 
 /** The global (app-scope) destination this page is, if it is one. */
 function globalHere() {
-  return nav.global.find((g) => g.href.toLowerCase().split('#')[0] === CURRENT) || null;
+  return globals().find((g) => g.href.toLowerCase().split('#')[0] === CURRENT) || null;
 }
 
 /** The modules this page hosts, in navigation order, with their fragment. */
@@ -91,8 +93,8 @@ function hereModules() {
       if (file.toLowerCase() === CURRENT) out.push({ phase, global, module: m, frag: frag || '' });
     }
   };
-  for (const phase of nav.phases) add(phase, null, phase.modules);
-  for (const g of nav.global) if (Array.isArray(g.modules)) add(null, g, g.modules);
+  for (const phase of phases()) add(phase, null, phase.modules);
+  for (const g of globals()) if (Array.isArray(g.modules)) add(null, g, g.modules);
   return out;
 }
 
@@ -308,7 +310,7 @@ function renderCrumb(crumb, loc) {
   crumb.textContent = '';
   crumb.className = 'sh-where' + (loc.phase ? ` sh-ph-${loc.phase.hue}` : '');
 
-  const home = nav.global[0];
+  const home = globals()[0];
   const here = loc.module || loc.global;
   /* On the hub itself the root IS the destination. "Studio › Home"
      is two names for one place and reads like a bug. */
@@ -446,7 +448,7 @@ function buildPageNav(toolbar) {
 
 function buildRail() {
   const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
-  nav.global.forEach((g) => {
+  globals().forEach((g) => {
     /* A shelf is "here" on its own page and on the pages of its
        modules: the Blueprints entry lands on the hub's blueprint
        section, and is lit on feature.html and short.html. */
@@ -484,7 +486,7 @@ function buildRail() {
    up (chrome.css), where every stage is on screen in the band. */
 function buildRailStages() {
   const wrap = h('div.sh-rail-stages', { role: 'group', 'aria-label': 'Stages' });
-  nav.phases.forEach((p) => {
+  phases().forEach((p) => {
     const first = (p.modules || []).find((m) => m.status !== 'planned' && m.href);
     if (!first) return;
     /* The drawer is 72px wide, so a stage's blurb and its modules'
@@ -657,7 +659,7 @@ function buildBar(active) {
   bar.append(crumb);
 
   const tabs = h('div.sh-phases');
-  nav.phases.forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
+  phases().forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
   bar.append(tabs);
 
   /* The palette's handle. ⌘K is the fast way in and it is also

@@ -1234,3 +1234,16 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     regression — the card border override repainted the hue rule on the
     hub's doors and start cards and the worked examples — fixed by giving
     those a gold glow on hover instead. AA walk: 0 findings on all 21 pages.
+
+22. **feature.html back under its first-paint budget (9 Oct 2026).** The
+    overrun was never growth: on a first load the page fetched the whole
+    104 KB `data-studies` chunk (all of `studies.json`) to show step 08's
+    worked-example card and fix fifteen beat labels, and whether that
+    request landed before verify's network-idle point decided whether it
+    was counted — the 8 Oct budget was captured on a run where it did not
+    (957,897 bytes, 39 files), later runs counted it (1,077,586, 48).
+    `studySlicePlugin` in `vite.config.js` now cuts `virtual:beat-example-data`
+    (the one film, its beat sheets, the methods: 17 KB) out of the same
+    JSON at build time, and both callers read that. Measured: 975,174 bytes,
+    44 files, 78 KB under the unchanged budget; the card and labels render
+    as before. `scripts/budget.json` was not touched.

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
-import { PLAN_ORDER, planName } from './src/lib/plans.js';
+import { PLAN_ORDER, planName, LIST_PRICE, inr } from './src/lib/plans.js';
 
 /* ============================================================
    THE ICON FONT, DERIVED — one <link> for every page, from the data
@@ -152,6 +152,36 @@ function startFigures() {
   const SAMPLE = resolve(__dirname, 'src/data/sample.dragon.json');
   const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
   const fail = (msg) => { throw new Error('start.html: ' + msg); };
+  const json = (p) => JSON.parse(readFileSync(resolve(__dirname, 'src/data/' + p), 'utf8'));
+
+  /* The eleven steps of the Short Blueprint are the landing page's
+     primary section — they ARE the beginner curriculum — so the list
+     is DERIVED from steps.short.json rather than typed beside it
+     (invariant 2: a hand-written copy of a list on a sales page is
+     the first thing to drift from the product). Title, pacing and the
+     opening of the deck all come from the step itself; nothing here
+     is editorial. Edit the blueprint and the landing page follows. */
+  const sentences = (text, min) => {
+    const plain = String(text || '').replace(/<[^>]+>/g, '');
+    const parts = plain.split(/(?<=[.?!])\s+/);
+    let out = '';
+    for (const s of parts) { out += (out ? ' ' : '') + s; if (out.length >= min) break; }
+    return out;
+  };
+  function shortList(steps) {
+    return steps.map((s, i) => {
+      const n = String(i + 1).padStart(2, '0');
+      const title = String(s.titlePlain || '').replace(/\.$/, '');
+      const time = String((s.badge && s.badge.time) || s.time || '').replace(/^~\s*/, '').toLowerCase();
+      return '<li class="st-short-step" data-short-step="' + s.id + '">'
+           + '<p class="st-sn" aria-hidden="true">' + n + '</p>'
+           + '<h3 class="st-h3"><span class="st-vh">Step ' + n + '. </span>' + title + '</h3>'
+           + '<p class="st-short-say">' + sentences(s.deck, 64) + '</p>'
+           + (time ? '<p class="st-chip">' + time + '</p>' : '')
+           + '</li>';
+    }).join('');
+  }
+
   return {
     name: 'fms-start-figures',
     transformIndexHtml: {
@@ -163,11 +193,40 @@ function startFigures() {
         const values = { ...Object.fromEntries(Object.entries(fig).map(([k, v]) => ['dragon.' + k, v])),
                          ...Object.fromEntries(PLAN_ORDER.map((id) => ['plan.' + id, planName(id)])) };
 
-        /* List prices (₹, pay once). The server's plans table is what the
-           checkout charges; this is the sales page's copy of the same
-           figures and the page says "confirmed at checkout". */
-        const LIST_PRICE = { free: 0, starter: 599, indie: 799, pro: 999 };
-        for (const id of PLAN_ORDER) values['price.' + id] = '\u20B9' + LIST_PRICE[id].toLocaleString('en-IN');
+        /* THE LEARNING FIGURES. Every one is a COUNT of rows in the
+           data the app itself renders, read here so that adding a
+           step, a case study or a glossary term moves the sales page
+           with it. Typing "11 steps" into the markup is how a page
+           ends up advertising "32 questions" for a blueprint that has
+           24 — which navigation.json did. */
+        const SHORT = json('steps.short.json');
+        const FEATURE = json('steps.feature.json');
+        const STUDIES = json('studies.json');
+        const GLOSSARY = json('glossary.json');
+        const FILMS = json('films.json');
+        const shortSteps = (SHORT.steps || []);
+        values['short.steps'] = shortSteps.length;
+        values['feature.steps'] = Object.values(FEATURE).reduce((n, v) => n + (Array.isArray(v) ? v.length : 0), 0);
+        values['studies.count'] = (STUDIES.films || []).length;
+        values['glossary.count'] = (GLOSSARY.terms || []).length;
+        values['films.count'] = (Array.isArray(FILMS) ? FILMS : []).length;
+        for (const k of ['short.steps', 'feature.steps', 'studies.count', 'glossary.count', 'films.count']) {
+          if (!values[k]) fail(k + ' counted 0 — the data file it reads moved or changed shape.');
+        }
+        values['short.list'] = shortList(shortSteps);
+
+        /* List prices (₹, pay once), from src/lib/plans.js — the SAME
+           constant start.js reads at runtime to print the current price
+           beside a scheduled one. It used to be declared here, which
+           meant the page's two prices came from two places; the client
+           then had to parse "₹799" back out of the DOM to show a rise,
+           and that is how a wrong price ships. The server's plans table
+           is still what the checkout charges, and the page says
+           "confirmed at checkout". A scheduled rise is NEVER stamped: it
+           arrives from price_notice() at runtime, because a figure baked
+           into the HTML is a claim the server can contradict an hour
+           later. */
+        for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
         /* The comparison table's body, from src/data/plan-matrix.json.
            [row label, matrix key]; a missing key fails the build. */
         const MATRIX = JSON.parse(readFileSync(resolve(__dirname, 'src/data/plan-matrix.json'), 'utf8'));
@@ -197,6 +256,21 @@ function startFigures() {
           if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
         }
         if (!html.includes('{{fms:dragon.')) fail('no {{fms:dragon.*}} placeholder — the sample figures must be derived, not typed.');
+
+        /* NO BARE RUPEE SIGN IN THE SOURCE. Every ₹ on this page must
+           arrive from a {{fms:price.*}} expansion, which reads
+           LIST_PRICE in src/lib/plans.js — the same constant the
+           client reads to print a scheduled rise beside the current
+           figure. A price typed into the markup is a claim the server
+           can contradict an hour later, and the launch-offer band is
+           exactly where somebody would type one. Checked on the
+           SOURCE, before expansion, so the expansions themselves are
+           the only ₹ that can survive. */
+        if (html.includes('₹')) {
+          const at = html.indexOf('₹');
+          fail('a bare ₹ in the markup, near "' + html.slice(Math.max(0, at - 50), at + 20).replace(/\s+/g, ' ').trim()
+               + '". Prices come from {{fms:price.<tier>}} (src/lib/plans.js), never typed; a scheduled rise arrives at runtime from price_notice().');
+        }
 
         const out = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
           if (!(key in values)) fail('unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
@@ -439,8 +513,29 @@ export default defineConfig({
           if (id.includes('/node_modules/')) return;
 
           /* ---- the core: what chrome.js, cloud.js and shell.js need ---- */
+          /* ---- STARTLIB: the pure modules the landing page shares ----
+             Everything here is imported BOTH by something in CORE and by
+             start.html, imports nothing itself, and must never end up inside
+             `studio`.
+
+             This was already costing us. funnel.js is imported by gate.js
+             (CORE) for one bump_event call, so Rollup folded it into `studio`
+             — and start.js's only JavaScript import is funnel.js, so the
+             landing page was statically importing a 209 KB app bundle to send
+             one counter. The page that exists to ship almost no JavaScript was
+             shipping all of it, and nothing caught it: prove:growth asserts no
+             SUPABASE chunk loads there, which was true the whole time.
+
+             invite-code.js (gate.js + start.js, for a code in the URL) and
+             auth-scope.js (drive.js + start-auth.js, for the Google scope)
+             would each have arrived the same way.
+
+             They must stay import-free for this to hold. The day one of them
+             imports store.js, this line silently stops being enough and the
+             209 KB comes back. */
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

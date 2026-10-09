@@ -1,5 +1,40 @@
 {
   "_comment": "Testimonials and films made with FilmMakerStudio, for start.html's #voices section. EMPTY ON PURPOSE: nothing here may be invented — not a quote, not a person, not a film. To add one: (1) get the person's written consent to publish their words, name, role and (if any) film title, and keep that consent on file with the date; (2) add an object below — { id, quote, name, role, film?, consentOn } for a testimonial, { id, title, year?, director?, format?, consentOn } for a film — quoting them verbatim; (3) copy it into start.html's #voices section by hand in the markup of the commented example there, and remove `hidden` from the section and from the list you used; (4) run `npm run test:testimonials`, which fails if the markup and this file disagree in either direction. Withdrawn consent means removing the entry from BOTH places in the same commit. Shape: {testimonials: [...], films: [...]}; src/pages/start.js reads this file and draws any entry the markup lacks, then un-hides #voices.",
   "testimonials": [],
-  "films": []
+  "films": [],
+  "_examplesComment": "NOT DATA. Nothing here is published, and nothing here is real. `_examples` is ignored by src/pages/start.js (which reads `testimonials` and `films`) and by scripts/check-testimonials.mjs (which checks those same two arrays against the markup, in both directions). It cannot render; that is the point of putting it under a key neither reader knows. It exists because the owner asked for testimonials and inventing them is not available: a fabricated review is prohibited under the Consumer Protection Act and BIS IS 19000:2022, and 'false popularity' is a named practice in the CCPA's 2023 dark-patterns guidelines. What IS available is knowing what to ask for. Each example below shows the SHAPE of a testimonial that would actually sell this product to a beginner — the attribution is angle-bracketed so no line here can ever be mistaken for a person. To publish a real one: get written consent for the words, the name, the role and the film; keep it on file with its date; add the entry to `testimonials` with `consentOn`; copy it by hand into start.html's #voices markup; run `npm run test:testimonials`. Withdrawn consent means removing it from BOTH places in the same commit.",
+  "_examples": [
+    {
+      "_why": "The strongest shape: names the thing they could not do before. A beginner reading this recognises themselves, not an expert.",
+      "quote": "I had a script and no idea what happened next. I did not know what a breakdown was, or that a schedule came out of one. <product> walked me through it and I shot my first short in <month>.",
+      "name": "<their name>",
+      "role": "<first-time director, city>",
+      "film": "<film title>",
+      "consentOn": null
+    },
+    {
+      "_why": "Specific and checkable beats enthusiastic. One concrete artefact they produced is worth a paragraph of praise.",
+      "quote": "The call sheet went out on WhatsApp the night before and nobody rang me in the morning to ask where to come. That had never happened on any set I had been on.",
+      "name": "<their name>",
+      "role": "<assistant director>",
+      "film": "<film title>",
+      "consentOn": null
+    },
+    {
+      "_why": "The India-specific differentiator, in a user's own words. Only worth publishing if somebody actually says it unprompted.",
+      "quote": "Writing the dialogue in Tamil and having the budget come out in Chennai rates meant I was not translating my own film twice.",
+      "name": "<their name>",
+      "role": "<writer-director>",
+      "film": "<film title>",
+      "consentOn": null
+    },
+    {
+      "_why": "The learning claim, which is the page's central promise. The most valuable one to collect and the hardest to earn.",
+      "quote": "I used it as a course. I did the eleven steps in order and by the end I had a film and I understood why each piece existed.",
+      "name": "<their name>",
+      "role": "<student, film school or self-taught>",
+      "film": "<film title>",
+      "consentOn": null
+    }
+  ]
 }

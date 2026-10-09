@@ -927,10 +927,35 @@ const report = [];
 const captured = {};
 let failures = 0;
 
+/* THE GATE ALWAYS MEASURES THE INDIA BUILD (§31 region mode).
+   `fms_region_v1` decides whether the India-only material renders — the
+   certification tab's CBFC / COTPA / AWBI checks today, and whatever
+   else is tagged later. When nothing is stored, region.js GUESSES from
+   the browser's time zone, which means the words on a baselined page
+   would depend on where the machine running the gate happens to be:
+   this checkout passes in Chennai and fails in Frankfurt, reported as
+   "unexplained missing words" on a page nobody edited.
+
+   So it is pinned, not guessed. India is the SUPERSET — International
+   only ever hides — so measuring it is measuring the most words the
+   page can produce, which is the right thing for a coverage check to
+   compare against. A baseline captured without this pin is a baseline
+   that encodes somebody's time zone.
+
+   The International build is therefore NOT covered by the text check.
+   It is a hide, so it cannot introduce a word; what it can do is leave
+   a fragment target empty, and that is why the certification section
+   keeps its id and its tab and says why it is empty rather than
+   vanishing. Read it by hand with the region switched. */
+const PIN_REGION = (ctx) => ctx.addInitScript(() => {
+  try { localStorage.setItem('fms_region_v1', 'IN'); } catch (e) { /* private mode */ }
+});
+
 for (const spec of PAGES) {
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 900 }
   });
+  await PIN_REGION(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -2101,6 +2126,7 @@ let scriptsOff = { checked: false };
     const HOST = `http://localhost:${PORT}/__scripts-off-probe.html`;
     for (const [scheme, wantPaper] of [['dark', defaultPaper], ['light', defaultPaper]]) {
       const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+      await PIN_REGION(pctx);   /* see PIN_REGION */
       const ppage = await pctx.newPage();
       await ppage.route('**/__scripts-off-probe.html', (route) => route.fulfill({
         status: 200, contentType: 'text/html', body: '<!doctype html><html><head><title>probe</title></head><body></body></html>'
@@ -2228,6 +2254,7 @@ let fragments = { checked: false };
   const ORIGIN = `http://localhost:${PORT}`;
   const sweep = async (label, prepare) => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await PIN_REGION(ctx);   /* see PIN_REGION */
     const pg = await ctx.newPage();
     const errs = [];
     pg.on('pageerror', (e) => errs.push(e.message));
@@ -2290,6 +2317,7 @@ let fragments = { checked: false };
      sweeps, so every state tests them. */
   {
     const hctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await PIN_REGION(hctx);   /* see PIN_REGION */
     const hp = await hctx.newPage();
     await hp.goto(`${ORIGIN}/index.html`, { waitUntil: 'networkidle' });
     await prepareSample(hp);

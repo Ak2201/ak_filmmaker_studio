@@ -573,3 +573,119 @@ and `gstin` are optional brand keys, empty by default.
   to redeploy; payments made before §28 are not back-filled (call
   `admin_issue_invoice` per payment if wanted). Proved: `npm run test:schema`
   (`invoice.sql`) and `npm run test:invoice`.
+
+## 12. The trial, and the free plan's withdrawal (schema §30, 9 Oct 2026). NOT RUN LIVE.
+
+**The owner's decision: the free plan stops being a place to live.** Signing
+in buys **thirty minutes with the Dragon sample**; an invite code buys
+**seven days**; then a wall. One switch in the console turns trials off
+entirely, and sign-in then lands straight on the wall.
+
+### Entitlement is a second axis
+
+```
+entitled     = user_plan(uid) <> 'free'  OR  trial_active
+trial_active = trial_started_at is not null
+           AND now() < trial_started_at + trial_minutes
+           AND billing_settings.trial_enabled
+           AND disabled_at is null
+```
+
+**Nothing in §30 touches `plan`, `plan_until`, `plan_period`,
+`apply_plan()`, `accounts_guard` or `mark_payment_refunded()`.** A trial
+user's plan is literally `free`, and free's `features` map was already
+`{"sample_only": true, "new_projects": false}` from §18 — so the trial's
+scope needed **no new gating anywhere**. `plan-gate.js`, `hub.js` and
+`hub/project-cards.js` already filter the studio to the sample.
+
+**The design that was rejected, and why it matters.** The first draft
+granted `pro` for the trial's length. It reads better and it is wrong:
+`quote_for` raises `same_plan` / `downgrade` for anybody whose
+`user_plan` is not free, so **a trial user on `pro` could not have bought
+anything at all** for the length of their trial. The feature would have
+sold nothing.
+
+**The trial columns live on `studio_members`, not `accounts`.** Two
+independent holes closed by that choice: `acc_delete` is
+`for delete using (owner_id = auth.uid())`, so a user can DELETE their own
+accounts row through PostgREST and come back for a fresh trial; and
+`accounts_guard` defends only the six columns it names, so a `PATCH` from
+the devtools console would reset `trial_started_at`. `studio_members` has
+select-only RLS and no write grants — the absence of a policy is the
+policy.
+
+**`trial_minutes` is a snapshot per member.** Read live from the settings
+and an owner editing 30 → 10 would end every running trial mid-sentence,
+and 30 → 240 would resurrect expired ones. The setting decides only what
+the *next* trial gets; the console says so.
+
+**The grandfather backfill is not optional.** `trial_enabled` defaults
+true and no existing member has a `trial_started_at`, so the instant the
+predicates exist every member invited under the old rules is
+`entitled = false` and meets the wall. §30 backfills everyone already
+through the gate with a year at full scope, **in the same transaction** —
+between the two, every existing member is locked out.
+
+### The price rise fires itself
+
+`plans.next_price_paise` + `plans.next_price_at`, and
+`billing_settings.price_rises_after_buyers`. `effective_price(plan)`
+returns the new figure once the date has passed **or** the buyer cap has
+filled, whichever comes first, and **`quote_for` reads it** — nothing else
+in the file computes a price.
+
+That is the whole legal basis for the countdown on the landing page. A
+price rise announced and not executed is "false urgency", the first named
+practice in India's CCPA *Guidelines for Prevention and Regulation of Dark
+Patterns, 2023*, and this is an Indian seller charging through Razorpay.
+So the database refuses a rise that is not one: `plans_next_price_check`
+requires `next_price_paise > price_paise`, and `admin_set_next_price()`
+refuses a lower price, a price with no date, and (via the constraint) a
+date with no price.
+
+Seeded 9 Oct 2026, editable from the console: starter ₹599 → **₹999**,
+indie ₹799 → **₹1,499**, pro ₹999 → **₹1,999**, all at 31 Oct 2026
+23:59 IST, cap **100** buyers.
+
+**Each seeded update is guarded with `price_paise < <new>`.** The file's
+own §18 seed carries the yearly placeholders (299900 / 799900 / 1999900),
+against which those "rises" are falls — and a raised `check_violation`
+there would roll back the whole of §30, the trial included. Guarded, a
+tier whose price is not what was measured is skipped rather than fatal.
+
+### What `entitled` is not
+
+**A product boundary, not a data one.** Every page, script and JSON file
+on this site is public and static; a lapsed visitor with devtools can
+delete the wall and read all of it, and can still sync one cloud project
+because the free plan's limits allow one. RLS and the P0402 limit triggers
+are the real boundary and §30 does not move them. The client says so in
+`plan-gate.js`'s banner and the schema says so in §30's header.
+
+Two more honest limits, both written into the section: founding seats are
+**not reserved** between order creation and activation, so several buyers
+at the last seat all get the old price; and an order quoted while the old
+price stood **activates at its quoted amount** afterwards, because you
+cannot re-charge a card.
+
+### The client half
+
+| | |
+|---|---|
+| `plan-gate.js` | `entitlement()`, `entitled()`, `trialEndsAt()`, `walled()`; the wall is `.pg-lock.pg-wall`, a VARIANT of the existing lock, never a rename |
+| `ui/trial-band.js` | borrows the single `.sh-plate` and gives it back; minutes, not seconds |
+| `billing.js` | `startTrial()` → `rpc('start_trial')` |
+| `funnel.js` | `priceNotice()` → `rpc('price_notice')`, plain fetch, never throws |
+| `invite.js` | the trial CTA, above the request block |
+| `hub.js` | opens the sample by itself when a trial is running and the studio is empty |
+
+**`entitlement()` fails OPEN** — unknown means entitled. See the trap of
+that name in `CLAUDE.md`: a paywall that closes when it cannot reach the
+server locks out the people who have paid, and `npm run verify` loads all
+21 pages signed out.
+
+### Deploy order
+
+§26 → §27 → §28 → §29 → §30 → §31, one editor tab each. **None of §26–§31
+is live** (probed over PostgREST, 9 Oct 2026). §29 must run before the
+landing page's e-mail capture does anything at all.

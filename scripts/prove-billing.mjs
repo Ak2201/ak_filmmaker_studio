@@ -41,6 +41,13 @@
          reason, stays pending until the webhook, and the webhook is
          idempotent; DECLINE needs a note the customer then reads; a
          non-admin calling rzp-refund is refused
+     (o) THE TRIAL AND THE WALL (schema section 30): while a trial runs
+         the shell's plate carries the band and the hub shows the
+         sample alone with no NEW PROJECT; when it has run out the
+         paywall covers index.html but NOT settings.html#plan, which
+         is where a plan is bought; DOWNLOAD MY WORK produces a real
+         file from behind the wall, because nothing a person wrote is
+         held hostage to a sale; and an administrator is never walled
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -48,7 +55,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial } from './fake-supabase.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
@@ -69,8 +76,13 @@ if (build.status !== 0) { console.error(build.stdout || '', build.stderr || '');
 }
 const PORT = Number(process.env.PROVE_PORT) || 5358;
 const BASE = `http://localhost:${PORT}/`;
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  ✓ ' + m); } else { fail++; console.log('  ✗ ' + m); } };
+/* A check whose subject is missing reports itself skipped rather than
+   quietly not running — the hue-coding assertion in verify is the
+   precedent, and the missing subject has always failed an ok() of its
+   own first, so the run is already red. */
+const skip = (m) => { skipped++; console.log('  – skipped: ' + m); };
 
 /* Razorpay Checkout, stubbed: `open()` asks the fake for a genuine
    signature over this order and a fresh payment id, then calls the
@@ -276,6 +288,18 @@ try {
      free tier, so her organisations go back to Free first — otherwise
      every check below measures Pro and fails for the wrong reason. */
   for (const a of F.db.accounts) if (a.owner_id === USERS['tok-amy'].id) { a.plan = 'free'; a.plan_until = null; }
+  /* SECTION 30 MADE THE SCENARIO EXPLICIT, and the setup had to change
+     with it — this is not a relaxed assertion, it is the same
+     assertion pointed at the user it was always about.
+     "A member on Free" is now two different people: one mid-trial at
+     'sample' scope, who sees the free plan's own feature map, and a
+     grandfathered member from before section 30, whose trial is a year
+     at 'full' scope and who therefore borrows ANOTHER plan's features
+     (30.6). A row created the old way defaults to the second, so every
+     feature check below was reading Indie's empty map and finding
+     everything allowed. This block is about the free tier's map, so
+     Amy is the first of the two, said out loud. */
+  setTrial(USERS['tok-amy'].id, { minutes: 60, source: 'signup', scope: 'sample' });
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
     await A.page.goto(BASE + 'admin.html#features');
@@ -715,6 +739,117 @@ try {
     for (const x of [A, B, C]) { allErrors.push(...x.errors); await x.ctx.close(); }
     RZP.refundMode = 'pending';
   }
+
+  console.log('(o) the trial, and the wall when it runs out');
+  F.reset();
+  {
+    /* Amy: a member, on Free, mid-trial. Her plan is literally 'free'
+       and free's features are already {sample_only, new_projects:false}
+       from section 18 — which is the whole point of the design: the
+       trial needed no new gating anywhere, only a second axis saying
+       whether she may be here at all. */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    setTrial(USERS['tok-amy'].id, { minutes: 30, source: 'signup', scope: 'sample' });
+    for (const a of F.db.accounts) if (a.owner_id === USERS['tok-amy'].id) { a.plan = 'free'; a.plan_until = null; }
+
+    const amy = await newContext(browser, { tok: 'tok-amy' });
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.evaluate((uid) => {
+      const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
+      const now = new Date().toISOString();
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
+      localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
+    }, USERS['tok-amy'].id);
+    await amy.page.reload();
+    ok(await waitGate(amy.page, 'open'), 'a trial user is through the gate (start_trial inserts the member row, which is what admits them)');
+    /* THE BAND BORROWS THE ONE .sh-plate rather than adding a second
+       sticky element — shell.js measures the FIRST plate it finds and
+       parks the toolbar under it, so a second band would sit beneath
+       the toolbar and a hidden first one would measure zero and drop
+       the toolbar on top. .tb-on is the plate wearing the trial. */
+    await amy.page.waitForSelector('.sh-plate.tb-on', { timeout: 10000 })
+      .then(() => ok(true, 'the shell plate carries the trial band (.sh-plate.tb-on)'), () => ok(false, 'the shell plate carries the trial band (.sh-plate.tb-on)'));
+    ok(/minute/i.test(await amy.page.textContent('.sh-plate.tb-on').catch(() => '')), 'saying how long is left, in MINUTES — a ticking second counter on a thirty-minute trial is pressure theatre');
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'and the page is NOT walled while the trial runs');
+    await amy.page.waitForFunction(() => document.querySelectorAll('#projectsGrid .project-card:not(.new-card)').length === 1, null, { timeout: 10000 })
+      .then(() => ok(true, 'the hub shows ONE project'), () => ok(false, 'the hub shows ONE project'));
+    const titles = await amy.page.$$eval('#projectsGrid .project-card:not(.new-card)', (c) => c.map((x) => x.textContent));
+    ok(titles.length === 1 && /Dragon/.test(titles[0]), 'and it is the Dragon sample: ' + JSON.stringify(titles));
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered during the trial');
+
+    /* ---- the thirty minutes are up -------------------------------
+       expireTrial() backdates the row; the SERVER decides, which is
+       why this is a reload and not a clock. */
+    expireTrial(USERS['tok-amy'].id);
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 })
+      .then(() => ok(true, 'index.html is covered by the paywall once the trial has run out'), () => ok(false, 'index.html is covered by the paywall once the trial has run out'));
+    /* The wall is a VARIANT of the module lock, never a rename of it:
+       (c) and (i) above read .pg-lock, .pg-lock-card and .pg-flag by
+       name and must keep working. */
+    ok(!!(await amy.page.$('.pg-lock.pg-wall .pg-lock-card.pg-wall-card')), 'as a variant of the existing lock, both class names present');
+    ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not deleted');
+    ok(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-paywall')), 'and :root carries data-paywall');
+    ok(!(await amy.page.$('.sh-plate.tb-on')), 'the trial band is gone, and the announcement plate is back');
+
+    /* YOU CANNOT BUY FROM BEHIND A WALL. settings is exempt by name,
+       matched WITHOUT the .html because vercel's cleanUrls makes the
+       live pathname `/settings` — an exemption anchored to .html
+       would have walled the page you pay on, on the live site and
+       nowhere else. */
+    await amy.page.goto(BASE + 'settings.html#plan');
+    await amy.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'settings.html#plan is NOT walled — it is where a plan is bought');
+    ok(!!(await amy.page.$('#plan .pl-card')), 'and the tiers are there to buy');
+
+    /* ---- DOWNLOAD MY WORK ----------------------------------------
+       The one door that must stay open. It calls backup.js directly
+       rather than the hub's exportAll(), because the wall appears on
+       every page and exportAll() needs hub.js. */
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForSelector('.pg-lock.pg-wall [data-action="pg-export"]', { timeout: 12000 }).catch(() => {});
+    const btn = await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]');
+    ok(!!btn, 'the wall offers DOWNLOAD MY WORK');
+    if (!btn) {
+      skip('the download produces a real file (no button to press)');
+    } else {
+      const dl = amy.page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
+      await btn.click();
+      const file = await dl;
+      ok(!!file, 'pressing it produces a real download' + (file ? ': ' + file.suggestedFilename() : ''));
+      if (file) {
+        const to = path.join(OUT, '__wall-backup.json');
+        await file.saveAs(to).catch(() => {});
+        let body = null; try { body = JSON.parse(fs.readFileSync(to, 'utf8')); } catch (e) { /* */ }
+        ok(!!body, 'and the file is a readable backup, not an empty blob');
+        ok(!!body && /Dragon|p-dragon/.test(JSON.stringify(body)), 'carrying the work that was on the device');
+        try { fs.unlinkSync(to); } catch (e) { /* */ }
+      } else {
+        skip('the downloaded file is a readable backup (nothing was downloaded)');
+      }
+    }
+    allErrors.push(...amy.errors); await amy.ctx.close();
+
+    /* ---- an administrator is never walled -------------------------
+       The owner locked out of their own studio by their own paywall
+       is a 2 a.m. incident. The role is the SERVER's answer, carried
+       on the gate state, not anything the client decides — so the
+       admin here is put in exactly Amy's position first: Free plan,
+       trial expired. */
+    for (const a of F.db.accounts) if (a.owner_id === USERS['tok-admin'].id) { a.plan = 'free'; a.plan_until = null; }
+    expireTrial(USERS['tok-admin'].id, { role: 'admin' });
+    const ad = await newContext(browser, { tok: 'tok-admin' });
+    await ad.page.goto(BASE + 'index.html');
+    await ad.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().role === 'admin', null, { timeout: 12000 }).catch(() => {});
+    await ad.page.waitForTimeout(1200);
+    ok((await ad.page.evaluate(() => window.StudioCloud.getGateState().role)) === 'admin', 'the admin’s role comes back from studio_status()');
+    ok(!(await ad.page.$('.pg-lock.pg-wall')), 'and an administrator on an expired trial is not walled on index.html');
+    await ad.page.goto(BASE + 'breakdown.html');
+    await ad.page.waitForTimeout(1500);
+    ok(!(await ad.page.$('.pg-lock.pg-wall')), 'nor anywhere else');
+    allErrors.push(...ad.errors); await ad.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }
@@ -722,5 +857,5 @@ try {
 const real = allErrors.filter((e) => !/net::|ERR_|CERT|fetch/i.test(e));
 ok(real.length === 0, 'no page errors' + (real.length ? ': ' + real.slice(0, 3).join(' | ') : ''));
 await browser.close(); srv.kill();
-console.log(`${fail ? '✗' : '✓'} billing proof: ${pass} passed, ${fail} failed`);
+console.log(`${fail ? '✗' : '✓'} billing proof: ${pass} passed, ${fail} failed${skipped ? `, ${skipped} skipped` : ''}`);
 process.exit(fail ? 1 : 0);

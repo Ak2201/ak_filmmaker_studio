@@ -6,9 +6,12 @@
    features read — the site gate OFF (so the app pages load signed out,
    as verify loads them), VITE_SUPPORT_WHATSAPP set, VITE_PUBLIC_VIEW=on
    — and serves it with Supabase replaced by scripts/fake-supabase.mjs,
-   plus ONE extra RPC this script fakes itself: public_view_open(), the
-   proposal in the report (it is in no schema section). The shared fake
-   is not edited.
+   plus TWO RPCs this script answers itself: public_view_open(), the
+   proposal in the report (it is in no schema section), and §30's
+   price_notice(), which the shared fake does implement but which this
+   proof has to DRIVE — rising and not rising, two different answers
+   inside one run — without reaching into state the other proofs read.
+   The shared fake is not edited.
 
    Asserted:
      (a) WHATSAPP: the footer, Settings → Plan and invite.html carry a
@@ -36,6 +39,13 @@
          never survive snapshotCallSheet(), redaction of free text
      (j) FLAG OFF (when dist-verify/ exists — the open build verify
          uses): #view= is ignored and no public_view_open call is made
+     (l) THE PRICE RISE, AND THAT IT IS NOT A DARK PATTERN: with no rise
+         scheduled the offer band stays hidden and the build-stamped
+         price stands alone; with one scheduled the band appears, the
+         CURRENT price is still on the page, and the countdown is read
+         from the server's own instant — so it only ever decreases
+         across a reload. Also: the landing page fetches neither a
+         supabase-* nor a studio-* chunk
 
    Run:  node scripts/prove-growth.mjs     (SKIP_BUILD=1 to reuse dist-growth)
    ============================================================ */
@@ -55,8 +65,39 @@ const PORT = Number(process.env.PROVE_PORT) || 5887;
 const BASE = `http://localhost:${PORT}/`;
 const WA = '+91 98765-43210', WA_DIGITS = '919876543210';
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  ✓ ' + m); } else { fail++; console.log('  ✗ ' + m); } };
+/* Reported, never silently passed — block (j) already prints its own
+   skip line for the same reason, and the hue-coding assertion in
+   verify is where the rule comes from. A skip here always follows an
+   ok() that has already failed for the missing subject. */
+const skip = (m) => { skipped++; console.log('  – skipped: ' + m); };
+
+/* THE OFFER BAND'S ID is the contract from part 7's section order
+   (header · #hero · #offer · #short · …). It is the price-rise
+   announcement, and it is NOT #offers, which is the launch-offers
+   e-mail form further down the page. */
+const BAND = '#offer';
+async function bandState(page) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return { found: false, shown: false, text: '' };
+    const r = el.getBoundingClientRect();
+    return { found: true, text: (el.textContent || '').replace(/\s+/g, ' ').trim(),
+      shown: !el.hidden && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' };
+  }, BAND).catch(() => ({ found: false, shown: false, text: '' }));
+}
+/* "4d 11h left" / "11 hours 30 minutes" -> seconds, plus the size of
+   the smallest unit shown, which is the rounding the display imposes
+   and therefore the tolerance any comparison against the real
+   remaining time has to allow. */
+const UNIT = { d: 86400, h: 3600, m: 60, s: 1 };
+function parseLeft(text) {
+  const out = [...String(text || '').matchAll(/(\d+)\s*(days?|hours?|minutes?|seconds?|d|h|m|s)(?![a-z])/gi)]
+    .map(([, n, u]) => [Number(n), UNIT[u[0].toLowerCase()]]);
+  if (!out.length) return null;
+  return { seconds: out.reduce((t, [n, u]) => t + n * u, 0), unit: Math.min(...out.map(([, u]) => u)) };
+}
 
 /* ---- (i) the model, in Node, before anything is built ------------- */
 console.log('(i) the snapshot model');
@@ -108,6 +149,39 @@ function seedViews() {
   VIEWS.set(tok('p'), { kind: 'pitch', title: 'Dragon', payload: Model.snapshotPitch({ title: 'Dragon', genre: 'Drama', logline: 'A young man living on a forged degree is recognised.', synopsis: '', beats: [], characters: [{ name: 'RAGAVAN', role: 'Protagonist', line: 'Wants: status.' }], keyScenes: [], numbers: [['36', 'scenes']], framework: 'Three-act', theme: '', world: '' }), expires_at: null, branding: true, revoked: false });
 }
 let viewCalls = 0;
+
+/* ---- §30's price_notice(), driven from here ---------------------
+   THE FIGURES ARE THE SHIPPED ONES. LIST_PRICE in src/lib/plans.js is
+   what the build stamps into start.html, and price_notice() has to
+   agree with it or the page would show two prices and this proof
+   could not tell a bug from a fixture. 30.11's seeded rise is the
+   second column.
+
+   RISE.on = false is the state the site is in until somebody
+   schedules one: prices, rising:false, and NO buyer count at all —
+   30.7 withholds it deliberately, because a scarcity number with
+   nothing to be scarce about is the thing section 30 refuses to
+   ship. */
+const RISE = { on: false, at: null, seatsTotal: 100, seatsTaken: 61 };
+const NOW_PAISE  = { free: 0, starter: 59900, indie: 79900, pro: 99900 };
+const NEXT_PAISE = { starter: 99900, indie: 149900, pro: 199900 };
+const PLAN_NAMES = { free: 'Free', starter: 'Basic', indie: 'Intermediate', pro: 'Pro' };
+let noticeCalls = 0;
+function priceNoticeBody() {
+  const rising = (id) => RISE.on && NEXT_PAISE[id] != null;
+  const any = Object.keys(NOW_PAISE).some(rising);
+  return {
+    seats_total: any ? RISE.seatsTotal : null,
+    seats_taken: any ? RISE.seatsTaken : null,
+    plans: Object.keys(NOW_PAISE).map((id) => ({
+      id, name: PLAN_NAMES[id], price_paise: NOW_PAISE[id],
+      next_price_paise: rising(id) ? NEXT_PAISE[id] : null,
+      next_price_at: rising(id) ? RISE.at : null,
+      rising: rising(id)
+    }))
+  };
+}
+
 const LEADS = [], EVENTS = [];   // §29, faked here: add_lead / bump_event
 const json200 = (r, status = 204, body = '') => r.fulfill({ status, contentType: 'application/json', body });
 let refFor = {};   // user id -> referral code billing_status() reports
@@ -120,6 +194,10 @@ async function route(r) {
     const dead = !v || v.revoked || (v.expires_at && Date.parse(v.expires_at) <= Date.now());
     if (dead) return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '22023', message: 'That link has expired or is not valid', details: null, hint: null }) });
     return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ kind: v.kind, title: v.title, payload: v.payload, expires_at: v.expires_at, branding: v.branding, ref: v.ref || null }]) });
+  }
+  if (url.pathname === '/rest/v1/rpc/price_notice') {
+    noticeCalls++;
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(priceNoticeBody()) });
   }
   if (url.pathname === '/rest/v1/rpc/add_lead') {
     const a = JSON.parse(r.request().postData() || '{}');
@@ -356,7 +434,11 @@ try {
   console.log('(k) the start page: launch offers and the funnel');
   {
     const { ctx, page, errors } = await context(browser, { width: 390 });
-    const sdk = []; page.on('request', (q) => { if (/supabase-[\w-]+\.js/.test(q.url())) sdk.push(q.url()); });
+    const sdk = [], core = [];
+    page.on('request', (q) => {
+      if (/supabase-[\w-]+\.js/.test(q.url())) sdk.push(q.url());
+      if (/\/studio-[\w-]+\.js/.test(q.url())) core.push(q.url());
+    });
     LEADS.length = 0; EVENTS.length = 0;
     await page.goto(BASE + 'start.html'); await page.waitForLoadState('networkidle');
     ok(EVENTS.filter((e) => e === 'landing_view').length === 1, 'landing_view is counted once on load');
@@ -369,6 +451,16 @@ try {
     await page.waitForTimeout(300);   // and a second, wrong count would have arrived by now
     ok(EVENTS.filter((e) => e === 'pricing_view').length === 1, 'pricing_view is counted when #pricing scrolls into view');
     ok(sdk.length === 0, 'no Supabase SDK chunk is fetched on the start page');
+    /* AND NOT THE APP'S CORE EITHER, which it DID until the `startlib`
+       manualChunk landed: start.js reaching for a helper that lived in
+       gate.js (the invite code) or in cloud.js (the sign-in) pulled
+       the whole ~209 KB `studio` chunk — store, sitegate, gate,
+       cloud, billing — onto the one page that is meant to ship almost
+       no app code, on the one click that must be instant, on a phone.
+       The fix was src/lib/invite-code.js + auth-scope.js + start-auth.js
+       and the startlib entry in vite.config.js's manualChunks; this is
+       what stops the next import putting it back. */
+    ok(core.length === 0, 'and no studio-* core chunk either (the startlib split)' + (core.length ? ': ' + core.join(', ') : ''));
     ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /analytics|funnel|lead/.test(k))), 'no new localStorage key');
     await page.fill('#leadEmail', 'not-an-email'); await page.click('#leadForm button[type=submit]');
     ok(LEADS.length === 0 && /valid e-mail/.test(await page.textContent('#leadMsg')), 'a malformed address is refused before any request');
@@ -386,7 +478,17 @@ try {
     // opt-out and Do Not Track
     const o = await context(browser, { width: 390 });
     EVENTS.length = 0;
-    await o.page.goto(BASE + 'start.html'); await o.page.click('#noCount');
+    await o.page.goto(BASE + 'start.html');
+    /* Wait for the HANDLER, not for the element. The opt-out control
+       moved from the second section to the eleventh in the start-page
+       rewrite, and clicking it the instant `load` fires began landing
+       before start.js had bound it — a click with nothing listening,
+       reported as "the opt-out does not work". The button says so
+       itself when it has taken, so wait for that. */
+    await o.page.waitForLoadState('networkidle');
+    await o.page.click('#noCount');
+    await o.page.waitForFunction(() => /not counted/i.test(document.getElementById('noCount').textContent), null, { timeout: 5000 })
+      .then(() => ok(true, 'the opt-out control acknowledges the press'), () => ok(false, 'the opt-out control acknowledges the press'));
     await o.page.evaluate(() => sessionStorage.removeItem('fms_funnel_pricing_view'));
     await o.page.evaluate(() => document.getElementById('pricing').scrollIntoView()); await o.page.waitForTimeout(600);
     ok(EVENTS.filter((e) => e === 'pricing_view').length === 0, '"Don\'t count this visit" stops further counts');
@@ -397,6 +499,80 @@ try {
     await dp.goto(BASE + 'start.html'); await dp.waitForLoadState('networkidle'); await dp.waitForTimeout(500);
     ok(EVENTS.length === 0, 'Global Privacy Control: nothing is counted');
     await d.close();
+  }
+
+  console.log('(l) the price rise: the band, the standing price, the countdown');
+  {
+    /* ---- nothing is rising ---------------------------------------
+       The ordinary state of the site, and the one that is easiest to
+       get wrong: a band that renders an empty sentence, or a
+       struck-through price with nothing to replace it, is a claim
+       nobody made. */
+    RISE.on = false; RISE.at = null;
+    const quiet = await context(browser, { width: 390 });
+    await quiet.page.goto(BASE + 'start.html');
+    await quiet.page.waitForLoadState('networkidle');
+    await quiet.page.waitForTimeout(400);
+    const q = await bandState(quiet.page);
+    ok(q.found, `the offer band is in the markup (${BAND}) rather than built from nothing`);
+    ok(q.found && !q.shown, 'and stays hidden while no rise is scheduled: ' + JSON.stringify(q));
+    ok(/₹\s?599/.test(await quiet.page.textContent('#pricing')), 'the build-stamped price stands on its own');
+    ok(!/₹\s?999/.test(q.text), 'and no future price is quoted in the band: ' + JSON.stringify(q.text.slice(0, 120)));
+    allErrors.push(...quiet.errors); await quiet.ctx.close();
+
+    /* ---- a rise is scheduled ------------------------------------- */
+    RISE.on = true; RISE.at = new Date(Date.now() + 26 * 3600e3).toISOString();
+    const r = await context(browser, { width: 390 });
+    await r.page.goto(BASE + 'start.html');
+    const up = await r.page.waitForFunction((sel) => {
+      const el = document.querySelector(sel);
+      return !!el && !el.hidden && el.getBoundingClientRect().height > 0;
+    }, BAND, { timeout: 8000 }).then(() => true, () => false);
+    ok(up, 'a scheduled rise un-hides the band');
+    const b1 = await bandState(r.page);
+    /* The price being charged TODAY has to stay legible. A page that
+       shows only the coming figure is selling at a price nobody is
+       paying yet. */
+    ok(/₹\s?599/.test(await r.page.textContent('#pricing')), 'the CURRENT price is still in the DOM — that is what is being bought today');
+    ok(/₹\s?999/.test(b1.text), 'and the band names the one that is coming: ' + JSON.stringify(b1.text.slice(0, 160)));
+    ok(/\b61\b/.test(b1.text) && /\b100\b/.test(b1.text), 'with the real count of founding seats taken, from the server');
+
+    /* ---- THE DARK-PATTERN TEST -----------------------------------
+       "False urgency" is the first named practice in India's CCPA
+       Guidelines for the Prevention and Regulation of Dark Patterns,
+       2023, and this is an Indian seller charging through Razorpay. A
+       timer that resets on reload is exactly that practice; a timer
+       counting to an instant the SERVER supplies is a price
+       announcement, which is lawful because it is true.
+
+       So two things are asserted, and the first is what makes the
+       second mean anything. (1) the rendered time matches
+       next_price_at minus now, within the rounding the display
+       imposes — so it cannot be a fixed span the page chose for this
+       visitor. (2) it never goes UP across a reload, including when
+       the server's own instant moves closer. */
+    const left1 = parseLeft(b1.text);
+    ok(!!left1, 'the band carries a countdown: ' + JSON.stringify(b1.text.slice(0, 160)));
+    if (!left1) {
+      skip('the countdown is derived from next_price_at, and never increases across a reload');
+    } else {
+      const truth = (Date.parse(RISE.at) - Date.now()) / 1000;
+      ok(Math.abs(left1.seconds - truth) <= left1.unit + 5,
+        `the countdown is next_price_at minus now (${Math.round(left1.seconds)}s shown, ${Math.round(truth)}s real, ±${left1.unit}s of rounding) — not a span the page chose`);
+      await r.page.reload();
+      await r.page.waitForFunction((sel) => { const el = document.querySelector(sel); return !!el && !el.hidden && el.getBoundingClientRect().height > 0; }, BAND, { timeout: 8000 }).catch(() => {});
+      const left2 = parseLeft((await bandState(r.page)).text);
+      ok(!!left2 && left2.seconds <= left1.seconds, `it does not go back up on a reload (${left2 ? left2.seconds : 'none'}s after ${left1.seconds}s)`);
+      /* And it follows the server rather than its own memory: move
+         the deadline ten hours closer and the number must fall. */
+      RISE.at = new Date(Date.now() + 16 * 3600e3).toISOString();
+      await r.page.reload();
+      await r.page.waitForFunction((sel) => { const el = document.querySelector(sel); return !!el && !el.hidden && el.getBoundingClientRect().height > 0; }, BAND, { timeout: 8000 }).catch(() => {});
+      const left3 = parseLeft((await bandState(r.page)).text);
+      ok(!!left3 && left3.seconds < left1.seconds, `and falls when the server's instant comes closer (${left3 ? left3.seconds : 'none'}s after ${left1.seconds}s)`);
+    }
+    ok(noticeCalls > 0, `price_notice() is actually asked (${noticeCalls} calls)`);
+    allErrors.push(...r.errors); await r.ctx.close();
   }
 } finally {
   await browser.close();
@@ -424,5 +600,5 @@ if (fs.existsSync(path.join(ROOT, 'dist-verify', 'screening.html'))) {
 
 const real = allErrors.filter((e) => !/websocket|realtime/i.test(e));
 ok(real.length === 0, 'no page errors' + (real.length ? ': ' + real.slice(0, 3).join(' | ') : ''));
-console.log(`\ngrowth: ${pass} passed, ${fail} failed`);
+console.log(`\ngrowth: ${pass} passed, ${fail} failed${skipped ? `, ${skipped} skipped` : ''}`);
 process.exit(fail ? 1 : 0);

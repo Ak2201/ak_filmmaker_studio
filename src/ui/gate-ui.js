@@ -19,7 +19,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
-import { formatCode, normaliseCode, setCodePass, inviteLink, errorSentence } from '../lib/gate.js';
+import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
 import '../styles/gate.css';
 
 const cloud = () => window.StudioCloud || null;
@@ -315,8 +315,19 @@ export function adminSection(section, st) {
     if (admin.made.pass_type === 'standard') {
       /* The same code as a link. Whoever opens it is in, no sign-in —
          so this is the thing to send, and the code is the thing to read
-         aloud when a link cannot travel. */
-      form.append(h('p.gt-made', {}, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: inviteLink(admin.made.code) }),
+         aloud when a link cannot travel.
+
+         IT POINTS AT start.html NOW, not invite.html (§30). A code no
+         longer admits somebody outright — it buys a seven-day trial,
+         and a trial is counted against a person on the server, so the
+         code has to meet an account to be worth its seven days. The
+         landing page holds it across the Google round trip and
+         cloud.js's runGate() redeems it on the way back in.
+         inviteLink() still exists and still builds the invite.html
+         form, because every link already sent to somebody points
+         there and a code is a thing people paste into a group chat
+         months later. */
+      form.append(h('p.gt-made', {}, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: startInviteLink(admin.made.code) }),
         h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': admin.made.code, text: 'COPY LINK' })]));
     }
   }
@@ -489,8 +500,8 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       await navigator.clipboard.writeText(formatCode(el.dataset.code));
       toast('Code copied.');
     } else if (act === 'copy-link') {
-      await navigator.clipboard.writeText(inviteLink(el.dataset.code));
-      toast('Invite link copied — whoever opens it is in.');
+      await navigator.clipboard.writeText(startInviteLink(el.dataset.code));
+      toast('Invite link copied — it opens the landing page and starts a 7-day trial on sign-in.');
     }
   } catch (err) { toast(errorSentence(err, 'That did not work.'), 'error'); }
   finally { el.disabled = false; }

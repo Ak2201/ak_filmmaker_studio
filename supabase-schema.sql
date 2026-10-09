@@ -6832,3 +6832,1166 @@ notify pgrst, 'reload schema';
 --  5. events has no column but day, name, count.
 -- Test file: scripts/schema-tests/leads.sql (run by npm run test:schema).
 -- ============================================================
+
+-- ============================================================
+-- 30. THE TRIAL, AND A PRICE RISE THAT FIRES ITSELF   NOT RUN LIVE — owner approval
+-- ------------------------------------------------------------
+-- The owner's decision, 9 Oct 2026: THE FREE PLAN STOPS BEING A PLACE
+-- TO LIVE. Signing in buys thirty minutes with the Dragon sample; then
+-- a purchase, or a wall. An invite CODE buys seven days instead. One
+-- switch in the console turns the trial off altogether, and sign-in
+-- lands straight on the wall.
+--
+-- ENTITLEMENT IS A SECOND AXIS, ORTHOGONAL TO `plan`, and that is the
+-- whole design:
+--
+--     entitled     = user_plan(uid) <> 'free'  OR  trial_active
+--     trial_active = trial_started_at is not null
+--                AND now() < trial_started_at + trial_minutes
+--                AND billing_settings.trial_enabled
+--                AND disabled_at is null
+--
+-- A trial user's plan is literally 'free', and free's `features` map is
+-- ALREADY {"sample_only": true, "new_projects": false} from section 18.
+-- So the trial's scope needs no new gating anywhere: plan-gate.js,
+-- hub.js and hub/project-cards.js enforce it today. Nothing here
+-- touches plan, plan_until, plan_period, apply_plan(), accounts_guard
+-- or mark_payment_refunded(), and nothing widens a CHECK.
+--
+-- The first draft DID grant 'pro' for the trial's length. It is worth
+-- recording why that is wrong, because it looks neater: quote_for()
+-- raises `same_plan` / `downgrade` for anybody whose user_plan is not
+-- free, so a trial user on 'pro' COULD NOT BUY ANYTHING AT ALL for the
+-- length of their trial. The feature would have sold nothing.
+--
+-- WHY THE TRIAL LIVES ON studio_members AND NOT ON accounts. Two holes,
+-- either of them fatal:
+--   * acc_delete (section 6) is `for delete using (owner_id = auth.uid())`,
+--     so a user can DELETE their own accounts row through PostgREST.
+--     Delete it, call start_trial() again, and account_for_buyer() makes
+--     a fresh one. The "once" check would be erasable by the person it
+--     checks.
+--   * accounts_guard defends only the six columns it names. A new
+--     trial_started_at plus acc_update (owner_id = auth.uid()) means a
+--     PATCH from the devtools console restarts the trial.
+-- studio_members has select-only RLS and no write grants at all — the
+-- ABSENCE of a policy is the policy — and it is already the row that
+-- means "through the gate". One row, one lock.
+--
+-- WHAT THIS IS NOT. `entitled` is the owner's PRODUCT boundary, the same
+-- class of thing as plan-gate.js, NOT a data boundary. Every page, every
+-- script and every JSON file on this site is public and static; a lapsed
+-- visitor with devtools can delete the wall and read all of it, and can
+-- still sync one cloud project because the free plan's limits allow one.
+-- RLS and the P0402 limit triggers are the real boundary and section 30
+-- does not move them. Say so plainly rather than implying a lock that is
+-- not here.
+--
+-- THE PRICE RISE. The owner will raise prices once they see users, and
+-- wants to tell people first. That is a price announcement, not false
+-- urgency — PROVIDED IT ACTUALLY HAPPENS. So it is scheduled in the
+-- database and it fires itself:
+--
+--     effective_price(plan) = next_price_paise  when the date has passed
+--                                               OR the buyer cap is full
+--                             price_paise       otherwise
+--
+-- quote_for() reads effective_price() and nothing anywhere computes a
+-- price any other way, so no human has to remember to raise it. That is
+-- what makes the sentence on the landing page true, and the truth is
+-- the point: "false urgency" is the first named practice in India's
+-- CCPA Guidelines for the Prevention and Regulation of Dark Patterns,
+-- 2023, and this is an Indian seller charging through Razorpay.
+--
+--   30.1  billing_settings: the trial's knobs and the buyer cap
+--   30.2  plans: next_price_paise / next_price_at, and effective_price()
+--   30.3  studio_members: the trial columns, and the grandfather backfill
+--   30.4  the predicates: trial_active, is_entitled, paid_buyers
+--   30.5  start_trial()
+--   30.6  billing_status(), restated with the trial keys
+--   30.7  price_notice() — anon, for the signed-out landing page
+--   30.8  quote_for(), restated to read effective_price()
+--   30.9  the console: admin_set_billing_settings, admin_grant_trial
+--   30.10 grants
+--   30.11 CHECKS TO RUN
+-- ============================================================
+
+-- 30.1 THE SETTINGS -----------------------------------------------------
+alter table public.billing_settings
+  add column if not exists trial_enabled           boolean not null default true,
+  add column if not exists trial_minutes           int     not null default 30,
+  add column if not exists code_trial_days         int     not null default 7,
+  add column if not exists trial_scope             text    not null default 'sample',
+  add column if not exists trial_plan              text,
+  add column if not exists price_rises_after_buyers int;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'billing_settings_trial_minutes_check') then
+    alter table public.billing_settings add constraint billing_settings_trial_minutes_check
+      check (trial_minutes between 1 and 44640);           -- one minute .. thirty-one days
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'billing_settings_code_days_check') then
+    alter table public.billing_settings add constraint billing_settings_code_days_check
+      check (code_trial_days between 1 and 365);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'billing_settings_trial_scope_check') then
+    alter table public.billing_settings add constraint billing_settings_trial_scope_check
+      check (trial_scope in ('sample', 'full'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'billing_settings_trial_plan_fk') then
+    alter table public.billing_settings add constraint billing_settings_trial_plan_fk
+      foreign key (trial_plan) references public.plans(id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'billing_settings_buyer_cap_check') then
+    alter table public.billing_settings add constraint billing_settings_buyer_cap_check
+      check (price_rises_after_buyers is null or price_rises_after_buyers > 0);
+  end if;
+end $$;
+
+-- 30.2 THE SCHEDULED RISE, PER TIER -------------------------------------
+-- Per tier because the tiers do not rise by the same amount, and because
+-- a price belongs with the thing it prices.
+alter table public.plans
+  add column if not exists next_price_paise int,
+  add column if not exists next_price_at    timestamptz;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'plans_next_price_check') then
+    -- A "rise" that is not a rise is the dark pattern this section exists
+    -- to avoid, so the database refuses one: the new price must be higher
+    -- than the current one, and neither half of the pair is meaningful
+    -- without the other.
+    alter table public.plans add constraint plans_next_price_check check (
+      (next_price_paise is null and next_price_at is null)
+      or (next_price_paise is not null and next_price_at is not null
+          and next_price_paise > price_paise)
+    );
+  end if;
+end $$;
+
+/** Everyone who has bought something, which is what a founding-seat cap
+ *  counts. `paid` only: an order that exists but has not been paid for
+ *  has reserved nothing, and amount_paise > 0 keeps a 100%-off gift from
+ *  consuming a seat somebody else is being told about. */
+create or replace function public.paid_buyers()
+returns int
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select count(distinct p.user_id)::int
+    from public.payments p
+   where p.status = 'paid' and p.amount_paise > 0;
+$$;
+
+/** THE ONLY PRICER. Returns the plan's price as of this instant: the new
+ *  one once its date has passed or the buyer cap has filled, the current
+ *  one until then. Either trigger alone is enough; both are null-safe.
+ *
+ *  Nothing else in this file computes a price, which is the property that
+ *  makes the announcement on the landing page honest — the rise happens
+ *  by itself, with no cron, no job and nobody remembering. */
+create or replace function public.effective_price(p_plan text)
+returns int
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select case
+           when p.next_price_paise is null then p.price_paise
+           when p.next_price_at <= now()   then p.next_price_paise
+           when (select s.price_rises_after_buyers from public.billing_settings s where s.id) is not null
+            and public.paid_buyers() >= (select s.price_rises_after_buyers from public.billing_settings s where s.id)
+                                           then p.next_price_paise
+           else p.price_paise
+         end
+    from public.plans p where p.id = p_plan;
+$$;
+
+-- 30.3 THE TRIAL, ON studio_members -------------------------------------
+alter table public.studio_members
+  add column if not exists trial_started_at timestamptz,
+  add column if not exists trial_minutes    int,
+  add column if not exists trial_source     text,
+  add column if not exists trial_scope      text;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'studio_members_trial_source_check') then
+    alter table public.studio_members add constraint studio_members_trial_source_check
+      check (trial_source is null or trial_source in ('signup', 'code', 'admin'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'studio_members_trial_scope_check') then
+    alter table public.studio_members add constraint studio_members_trial_scope_check
+      check (trial_scope is null or trial_scope in ('sample', 'full'));
+  end if;
+end $$;
+
+-- trial_minutes is a SNAPSHOT, deliberately. Read live from
+-- billing_settings instead and an owner editing 30 -> 10 would end every
+-- running trial mid-sentence, and 30 -> 240 would resurrect expired ones.
+-- The setting decides what the NEXT trial gets; this column decides what
+-- THIS one got.
+
+-- THE GRANDFATHER BACKFILL, AND IT IS NOT OPTIONAL.
+-- trial_enabled defaults true and no existing member has a
+-- trial_started_at, so the instant the predicates below exist, every
+-- member who was invited under the old rules is entitled = false and
+-- meets the wall. They were let in on a promise of a free plan; taking
+-- it away retroactively is not what the owner asked for. So everybody
+-- already through the gate keeps what they had: a year, at full scope.
+-- A trial is for people arriving AFTER this line.
+--
+-- It MUST run in the same transaction as the rest of section 30. Between
+-- the predicates and this update, every existing member is locked out.
+update public.studio_members m
+   set trial_started_at = now(),
+       trial_minutes    = 525600,          -- a year, in minutes
+       trial_source     = 'admin',
+       trial_scope      = 'full'
+ where m.trial_started_at is null;
+
+-- 30.4 THE PREDICATES ---------------------------------------------------
+-- Internal: revoked from everybody. billing_status() and start_trial()
+-- are how a browser learns any of this.
+
+/** When this person's trial runs out, or null if they never started one.
+ *  The length is the snapshot on the row, falling back to the current
+ *  setting for a row written before the column existed. */
+create or replace function public.trial_ends_at(p_user uuid)
+returns timestamptz
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select m.trial_started_at
+       + make_interval(mins => coalesce(m.trial_minutes,
+                                        (select s.trial_minutes from public.billing_settings s where s.id),
+                                        30))
+    from public.studio_members m
+   where m.user_id = p_user and m.trial_started_at is not null;
+$$;
+
+create or replace function public.trial_active(p_user uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    (select s.trial_enabled from public.billing_settings s where s.id)
+    and exists (select 1 from public.studio_members m
+                 where m.user_id = p_user and m.disabled_at is null)
+    and public.trial_ends_at(p_user) > now(), false);
+$$;
+
+/** The question the wall asks. A bought plan, or a live trial. */
+create or replace function public.is_entitled(p_user uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select p_user is not null
+     and (public.user_plan(p_user) <> 'free' or public.trial_active(p_user));
+$$;
+
+-- 30.5 START A TRIAL ----------------------------------------------------
+/** Called once, on the first landing after a sign-in. Idempotent, and
+ *  the row lock is what makes "once" a limit rather than a suggestion.
+ *
+ *  IT RETURNS A VERDICT RATHER THAN RAISING for the ordinary refusals
+ *  (already used, already paid, switched off), because the sign-in path
+ *  calls this on every landing and a client that has to try/catch to
+ *  tell "wall" from "studio" will get it wrong once. It raises only for
+ *  the three genuinely exceptional cases: not signed in, disabled,
+ *  declined.
+ *
+ *  p_source IS IGNORED FOR AN ORDINARY CALLER. If the client could pass
+ *  it, anybody with a devtools console would call start_trial('code')
+ *  and take seven days instead of thirty minutes. The real source is
+ *  derived from studio_members.invite_code_id, which only redeem_invite()
+ *  ever writes and no browser can reach. An administrator may pass it.
+ *
+ *  INSERTING THE studio_members ROW IS WHAT ADMITS THEM. sitegate.js
+ *  allows only gate state 'open'/'lost', and cloud.js's runGate() reads
+ *  that from studio_status().registered, which is this row. Without it a
+ *  trial user never reaches a single page of the app. That also means
+ *  this function is the thing that ends invite-only, which is the
+ *  owner's decision — hence the two refusals below, or it would quietly
+ *  become a way around admin_decide_request(..., false). */
+create or replace function public.start_trial(p_source text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid  uuid := auth.uid();
+  s    public.billing_settings;
+  m    public.studio_members;
+  src  text;
+  mins int;
+begin
+  if uid is null then
+    raise exception 'Sign in first' using errcode = '42501';
+  end if;
+
+  select * into s from public.billing_settings x where x.id;
+  select * into m from public.studio_members x where x.user_id = uid for update;
+
+  if m.user_id is not null and m.disabled_at is not null then
+    raise exception 'This account has been disabled.' using errcode = '42501';
+  end if;
+  -- A declined request is an administrator's "no". There is no other row
+  -- that records it for somebody who was never a member.
+  if exists (select 1 from public.invite_requests r where r.user_id = uid and r.status = 'declined') then
+    raise exception 'This account was not approved.' using errcode = '42501';
+  end if;
+
+  if not coalesce(s.trial_enabled, false) then
+    return jsonb_build_object('started', false, 'reason', 'disabled');
+  end if;
+  if m.trial_started_at is not null then
+    return jsonb_build_object('started', false, 'reason', 'used');
+  end if;
+  -- paid_at, not status='paid': it catches a grant and a refunded buyer
+  -- too, so a refund is not a way back to a fresh trial. (Do NOT use
+  -- paid_credit_paise here — it filters period='lifetime' and misses
+  -- grants.)
+  if exists (select 1 from public.payments p where p.user_id = uid and p.paid_at is not null) then
+    return jsonb_build_object('started', false, 'reason', 'paid');
+  end if;
+
+  src := case
+           when p_source is not null and public.is_studio_admin() then p_source
+           when m.invite_code_id is not null                      then 'code'
+           else 'signup'
+         end;
+  mins := case when src = 'code' then coalesce(s.code_trial_days, 7) * 1440
+               else coalesce(s.trial_minutes, 30) end;
+
+  insert into public.studio_members (user_id, role, trial_started_at, trial_minutes, trial_source, trial_scope)
+  values (uid, 'user', now(), mins, src,
+          case when src = 'signup' then 'sample' else coalesce(s.trial_scope, 'sample') end)
+  on conflict (user_id) do update
+     set trial_started_at = now(),
+         trial_minutes    = excluded.trial_minutes,
+         trial_source     = excluded.trial_source,
+         trial_scope      = excluded.trial_scope
+   -- the WHERE closes the two-concurrent-calls race: the second finds
+   -- trial_started_at already set and does nothing
+   where public.studio_members.trial_started_at is null;
+
+  -- Parity with the two other paths that admit somebody
+  -- (activate_payment, admin_grant_plan). Inserts (name, owner_id) only,
+  -- which is how it passes accounts_guard's INSERT branch; see section 19.
+  perform public.account_for_buyer(uid, null);
+
+  return jsonb_build_object('started', true, 'status', public.billing_status());
+end;
+$fn$;
+
+-- 30.6 billing_status(), RESTATED ---------------------------------------
+-- The section 18 body at line ~4234 (the one that wins; there is an
+-- earlier one in section 16 and replacing THAT would do nothing and be
+-- very hard to notice), plus the trial keys. Every pre-existing key
+-- keeps its name, its type and its meaning.
+create or replace function public.billing_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid    uuid := auth.uid();
+  pl     text;
+  acc    public.accounts;
+  lim    jsonb;
+  s      public.billing_settings;
+  m      public.studio_members;
+  t_ends timestamptz;
+  t_on   boolean;
+  feat   jsonb;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  pl := public.user_plan(uid);
+  select * into acc from public.accounts a where a.owner_id = uid
+   order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last limit 1;
+  lim := public.user_limits(uid);
+  select * into s from public.billing_settings x where x.id;
+  select * into m from public.studio_members x where x.user_id = uid;
+  t_ends := public.trial_ends_at(uid);
+  t_on   := public.trial_active(uid);
+
+  -- A 'full' scope trial (what an invite code buys) shows the whole
+  -- studio by borrowing another plan's features. A 'sample' trial — what
+  -- signing up buys — uses the free plan's own map, which section 18
+  -- already seeded as {"sample_only": true, "new_projects": false}. That
+  -- is why the trial needed no new gating on the client.
+  feat := coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb);
+  if t_on and m.trial_scope = 'full' then
+    feat := coalesce((select p.features from public.plans p
+                       where p.id = coalesce(s.trial_plan, 'indie')), '{}'::jsonb);
+  end if;
+
+  return jsonb_build_object(
+    'plan',        pl,
+    'plan_name',   (select name from public.plans where id = pl),
+    'limits',      lim,
+    'features',    feat,
+    'account_id',  acc.id,
+    'account_name', acc.name,
+    'plan_until',  case when pl <> 'free' then acc.plan_until end,
+    'bought_plan', acc.plan,
+    'lapsed',      acc.plan is not null and acc.plan <> 'free' and acc.plan_until is not null and acc.plan_until <= now(),
+    'disabled',    exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is not null),
+    'member',      exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is null),
+    -- section 30
+    'trial_enabled', coalesce(s.trial_enabled, false),
+    'trial_active',  t_on,
+    'trial_ends_at', t_ends,
+    'trial_used',    m.trial_started_at is not null,
+    'trial_source',  m.trial_source,
+    'trial_scope',   case when t_on then m.trial_scope end,
+    'entitled',      (pl <> 'free') or t_on,
+    'usage', jsonb_build_object(
+      'projects',      (select count(*) from public.projects p where p.owner_id = uid),
+      'shares',        (select count(*) from public.shares sh join public.projects p on p.id = sh.project_id
+                         where p.owner_id = uid and (sh.expires_at is null or sh.expires_at > now())),
+      'collaborators', (select coalesce(max(c), 0) from (select count(*) c from public.project_collaborators pc
+                         join public.projects p on p.id = pc.project_id where p.owner_id = uid group by pc.project_id) t),
+      'seats',         (select count(*) from public.account_members am where am.account_id = acc.id and am.status in ('pending','active'))
+    ),
+    'payments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'plan_id', x.plan_id, 'period', x.period,
+                   'amount_paise', x.amount_paise, 'status', x.status, 'created_at', x.created_at, 'ends_at', x.ends_at)
+                   order by x.created_at desc)
+                  from (select * from public.payments q where q.user_id = uid order by q.created_at desc limit 12) x), '[]'::jsonb)
+  );
+end;
+$fn$;
+
+-- 30.7 price_notice() — THE SIGNED-OUT PAGE'S READ ----------------------
+/** Callable by anon, because start.html reads it with no session and no
+ *  Supabase SDK. One narrow fact per plan, the shape refund_requests_enabled()
+ *  established: what a plan costs now, what it will cost, when that
+ *  changes, and how many of the founding seats are gone.
+ *
+ *  WHEN NO RISE IS SCHEDULED it returns the prices and `rising: false`,
+ *  and OMITS the buyer count entirely — the number of paying customers is
+ *  published only while a countdown is actually on screen telling people
+ *  what it means. */
+create or replace function public.price_notice()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  with pending as (
+    select exists (select 1 from public.plans p
+                    where p.next_price_paise is not null
+                      and public.effective_price(p.id) = p.price_paise) as any_rising
+  )
+  select jsonb_build_object(
+    -- the seat cap, and how much of it is gone. Published ONLY while a
+    -- rise is still pending: once it has fired the count is nobody's
+    -- business, and a scarcity number with nothing to be scarce about is
+    -- the thing this section refuses to ship.
+    'seats_total', case when g.any_rising
+                        then (select s.price_rises_after_buyers from public.billing_settings s where s.id) end,
+    'seats_taken', case when g.any_rising then public.paid_buyers() end,
+    'plans', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'id',               p.id,
+               'name',             p.name,
+               -- what it costs RIGHT NOW. There is no second price here
+               -- on purpose: after a rise has fired, p.price_paise is the
+               -- lower, historical figure, and handing that to a client
+               -- is how a page ends up striking through the cheaper one.
+               'price_paise',      public.effective_price(p.id),
+               'next_price_paise', case when public.effective_price(p.id) = p.price_paise then p.next_price_paise end,
+               'next_price_at',    case when public.effective_price(p.id) = p.price_paise then p.next_price_at end,
+               'rising',           p.next_price_paise is not null
+                                   and public.effective_price(p.id) = p.price_paise)
+               order by p.sort)
+        from public.plans p where p.active), '[]'::jsonb)
+  ) from pending g;
+$$;
+
+-- 30.8 quote_for(), RESTATED to read effective_price() ------------------
+-- The section 25 body at line ~5244 (the one that wins), with
+-- pl.price_paise replaced by the scheduled price in all three places:
+-- the "not for sale" guard, the amount due, and the floor.
+--
+-- A promo code still applies on top of the current price, because a code
+-- is a deliberate gift rather than a competing public offer. Note though
+-- that payments_referral_after() computes the referrer's reward from the
+-- final amount_paise, so a deep code during a low launch price pays the
+-- referrer very little.
+create or replace function public.quote_for(p_user uuid, p_plan text, p_code text default null)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl     public.plans;
+  pc     public.promo_codes;
+  v_code text := nullif(upper(regexp_replace(coalesce(p_code, ''), '\s+', '', 'g')), '');
+  cur    text := 'free';
+  credit int  := 0;
+  price  int;
+  due    int;
+  amt    int;
+  reason text;
+  base   jsonb;
+begin
+  select * into pl from public.plans p where p.id = p_plan and p.active;
+  price := public.effective_price(p_plan);
+  if pl.id is null or coalesce(price, 0) <= 0 then
+    raise exception 'That plan is not for sale' using errcode = '22023';
+  end if;
+  if p_user is not null then
+    cur := public.user_plan(p_user);
+    if cur <> 'free' and public.plan_rank(pl.id) <= public.plan_rank(cur) then
+      if cur = pl.id then
+        raise exception 'You already have % — for good. There is nothing to pay.', pl.name using errcode = '22023', hint = 'same_plan';
+      end if;
+      raise exception 'You are on % already; % is a lower plan, and paying to have less is not something we sell.',
+        coalesce((select x.name from public.plans x where x.id = cur), initcap(cur)), pl.name using errcode = '22023', hint = 'downgrade';
+    end if;
+    credit := public.paid_credit_paise(p_user);
+  end if;
+  due := price - credit;
+  if due < 100 then due := least(price, 100); end if;
+  base := jsonb_build_object('plan_id', pl.id, 'list_paise', price, 'credit_paise', price - due,
+                             'due_paise', due, 'amount_paise', due, 'discount_paise', 0, 'code', v_code,
+                             'ok', true, 'reason', null, 'sentence', null,
+                             'upgrade_from', case when credit > 0 then cur end,
+                             'upgrade_from_name', case when credit > 0 then (select x.name from public.plans x where x.id = cur) end,
+                             'paid_paise', credit,
+                             -- section 30: what the card may say about a rise.
+                             -- Null once the rise has fired (price = the new
+                             -- one), so a card can never advertise a change
+                             -- that has already happened.
+                             'next_price_paise', case when price = pl.price_paise then pl.next_price_paise end,
+                             'next_price_at',    case when price = pl.price_paise then pl.next_price_at end);
+  if v_code is null then return base; end if;
+  select * into pc from public.promo_codes c where c.code = v_code;
+  reason := case
+    when pc.code is null                                                   then 'unknown'
+    when pc.kind = 'gift'                                                  then 'gift'
+    when not pc.active                                                     then 'inactive'
+    when pc.valid_from is not null and pc.valid_from > now()               then 'inactive'
+    when pc.valid_until is not null and pc.valid_until <= now()            then 'expired'
+    when pc.max_uses is not null and pc.uses >= pc.max_uses                then 'exhausted'
+    when pc.plan_ids is not null and not (pl.id = any (pc.plan_ids))       then 'not_for_plan'
+    when p_user is not null and pc.owner_user_id = p_user                  then 'own_code'
+  end;
+  if reason is not null then
+    return base || jsonb_build_object('ok', false, 'reason', reason, 'sentence', public.promo_reason_sentence(reason));
+  end if;
+  amt := public.promo_price(due, pc.percent_off, pc.amount_off_paise);
+  return base || jsonb_build_object('amount_paise', amt, 'discount_paise', due - amt, 'kind', pc.kind,
+                                    'percent_off', pc.percent_off, 'amount_off_paise', pc.amount_off_paise);
+end;
+$fn$;
+
+-- 30.9 THE CONSOLE ------------------------------------------------------
+/** The settings patch, with section 30's keys added to the allowlist.
+ *
+ *  THE TRAP THIS AVOIDS: the previous body ended with a single
+ *  `exception when check_violation` handler whose message talks about
+ *  referral percentages. Any CHECK added in 30.1 would have been
+ *  reported with that sentence — "A referral pays the friend 1-100%
+ *  off" for a bad trial length. So the new keys are validated
+ *  explicitly, before the UPDATE, each with its own sentence. */
+create or replace function public.admin_set_billing_settings(p_patch jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  k text;
+  v int;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  for k in select jsonb_object_keys(p_patch) loop
+    if k not in ('referral_friend_pct', 'referral_reward_pct', 'referral_reward_paise',
+                 'trial_enabled', 'trial_minutes', 'code_trial_days', 'trial_scope', 'trial_plan',
+                 'price_rises_after_buyers') then
+      raise exception 'Unknown setting "%"', k using errcode = '22023';
+    end if;
+  end loop;
+
+  if p_patch ? 'trial_minutes' then
+    v := (p_patch ->> 'trial_minutes')::int;
+    if v is null or v < 1 or v > 44640 then
+      raise exception 'A trial lasts between 1 minute and 31 days (44640 minutes).' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'code_trial_days' then
+    v := (p_patch ->> 'code_trial_days')::int;
+    if v is null or v < 1 or v > 365 then
+      raise exception 'An invite code buys between 1 and 365 days.' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'trial_scope' and (p_patch ->> 'trial_scope') not in ('sample', 'full') then
+    raise exception 'A trial shows either the sample alone ("sample") or the whole studio ("full").' using errcode = '22023';
+  end if;
+  if p_patch ? 'trial_plan' and (p_patch ->> 'trial_plan') is not null
+     and not exists (select 1 from public.plans p where p.id = p_patch ->> 'trial_plan') then
+    raise exception 'No such plan "%"', p_patch ->> 'trial_plan' using errcode = '22023';
+  end if;
+  if p_patch ? 'price_rises_after_buyers' and (p_patch ->> 'price_rises_after_buyers') is not null
+     and (p_patch ->> 'price_rises_after_buyers')::int < 1 then
+    raise exception 'A founding-seat cap is at least 1, or null for no cap.' using errcode = '22023';
+  end if;
+
+  update public.billing_settings s
+     set referral_friend_pct   = coalesce((p_patch ->> 'referral_friend_pct')::int, s.referral_friend_pct),
+         referral_reward_pct   = case when p_patch ? 'referral_reward_pct' then (p_patch ->> 'referral_reward_pct')::int
+                                      when p_patch ? 'referral_reward_paise' and p_patch ->> 'referral_reward_paise' is not null then null
+                                      else s.referral_reward_pct end,
+         referral_reward_paise = case when p_patch ? 'referral_reward_paise' then (p_patch ->> 'referral_reward_paise')::int
+                                      when p_patch ? 'referral_reward_pct' and p_patch ->> 'referral_reward_pct' is not null then null
+                                      else s.referral_reward_paise end,
+         trial_enabled         = coalesce((p_patch ->> 'trial_enabled')::boolean, s.trial_enabled),
+         trial_minutes         = coalesce((p_patch ->> 'trial_minutes')::int, s.trial_minutes),
+         code_trial_days       = coalesce((p_patch ->> 'code_trial_days')::int, s.code_trial_days),
+         trial_scope           = coalesce(p_patch ->> 'trial_scope', s.trial_scope),
+         -- these two CLEAR on an explicit JSON null, which is how "no
+         -- cap" and "no trial plan" are expressed
+         trial_plan            = case when p_patch ? 'trial_plan' then p_patch ->> 'trial_plan' else s.trial_plan end,
+         price_rises_after_buyers = case when p_patch ? 'price_rises_after_buyers'
+                                         then (p_patch ->> 'price_rises_after_buyers')::int
+                                         else s.price_rises_after_buyers end,
+         updated_at = now(), updated_by = auth.uid()
+   where s.id;
+  if p_patch ? 'referral_friend_pct' then
+    update public.promo_codes c set percent_off = (p_patch ->> 'referral_friend_pct')::int, updated_at = now() where c.kind = 'referral';
+  end if;
+  return public.admin_get_billing_settings();
+exception
+  when check_violation then
+    raise exception 'A referral pays the friend 1–100%% off, and the referrer EITHER a percentage (1–100) OR a fixed amount in paise' using errcode = '22023';
+end;
+$fn$;
+
+/** Schedule a plan's price rise, or clear one. The console's only way to
+ *  set it, and it refuses a "rise" that is not one — that refusal is the
+ *  whole legal basis for the countdown on the landing page. Pass a null
+ *  price to cancel. */
+create or replace function public.admin_set_next_price(p_plan text, p_paise int, p_at timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare pl public.plans;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  select * into pl from public.plans p where p.id = p_plan;
+  if pl.id is null then raise exception 'No such plan "%"', p_plan using errcode = '22023'; end if;
+
+  if p_paise is null then
+    update public.plans set next_price_paise = null, next_price_at = null, updated_at = now() where id = p_plan;
+    return public.price_notice();
+  end if;
+  if p_at is null then
+    raise exception 'A price rise needs a date. Without one nothing would ever change and the notice would be untrue.' using errcode = '22023';
+  end if;
+  if p_paise <= pl.price_paise then
+    raise exception 'The new price (%) must be ABOVE the current one (%). Telling people a price is about to rise and then not raising it is a prohibited practice, not a marketing choice.',
+      p_paise, pl.price_paise using errcode = '22023';
+  end if;
+  update public.plans set next_price_paise = p_paise, next_price_at = p_at, updated_at = now() where id = p_plan;
+  return public.price_notice();
+end;
+$fn$;
+
+/** Support's lever: give somebody more time. Unlike start_trial() this
+ *  does not refuse a second trial — an administrator asking for one has
+ *  already decided. */
+create or replace function public.admin_grant_trial(p_user uuid, p_minutes int, p_note text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_minutes is null or p_minutes < 1 or p_minutes > 525600 then
+    raise exception 'Between 1 minute and a year.' using errcode = '22023';
+  end if;
+  insert into public.studio_members (user_id, role, trial_started_at, trial_minutes, trial_source, trial_scope)
+  values (p_user, 'user', now(), p_minutes, 'admin', 'full')
+  on conflict (user_id) do update
+     set trial_started_at = now(), trial_minutes = excluded.trial_minutes,
+         trial_source = 'admin', trial_scope = excluded.trial_scope;
+  return jsonb_build_object('ok', true, 'user', p_user, 'minutes', p_minutes, 'note', p_note);
+end;
+$fn$;
+
+-- 30.10 GRANTS ----------------------------------------------------------
+revoke execute on function public.trial_ends_at(uuid)                       from public, anon, authenticated;
+revoke execute on function public.trial_active(uuid)                        from public, anon, authenticated;
+revoke execute on function public.paid_buyers()                             from public, anon, authenticated;
+revoke execute on function public.effective_price(text)                     from public, anon, authenticated;
+revoke execute on function public.is_entitled(uuid)                         from public, anon;
+revoke execute on function public.start_trial(text)                         from public, anon;
+revoke execute on function public.price_notice()                            from public;
+revoke execute on function public.admin_set_next_price(text, int, timestamptz) from public, anon;
+revoke execute on function public.admin_grant_trial(uuid, int, text)        from public, anon;
+revoke execute on function public.quote_for(uuid, text, text)               from public, anon, authenticated;
+revoke execute on function public.billing_status()                          from public, anon;
+revoke execute on function public.admin_set_billing_settings(jsonb)         from public, anon;
+
+grant  execute on function public.is_entitled(uuid)                         to authenticated;
+grant  execute on function public.start_trial(text)                         to authenticated;
+grant  execute on function public.price_notice()                            to anon, authenticated;
+grant  execute on function public.admin_set_next_price(text, int, timestamptz) to authenticated;
+grant  execute on function public.admin_grant_trial(uuid, int, text)        to authenticated;
+grant  execute on function public.billing_status()                          to authenticated;
+grant  execute on function public.admin_set_billing_settings(jsonb)         to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 30.11 THE SEEDED PRICE RISE -------------------------------------------
+-- The owner's figures, 9 Oct 2026, and theirs to change from the console
+-- afterwards (admin_set_next_price). Today's live prices stay as
+-- price_paise and become the launch prices; these are the ones that fire.
+--
+--   Basic        ₹599  ->  ₹999
+--   Intermediate ₹799  -> ₹1,499
+--   Pro          ₹999  -> ₹1,999
+--
+-- 31 Oct 2026, 23:59 IST = 18:29 UTC. With no users yet, the date is the
+-- trigger that will realistically fire first; the hundred-buyer cap is
+-- the second and binds only if the launch goes well. Both are true,
+-- which is all that is required.
+--
+-- TWO GUARDS ON EACH, AND BOTH MATTER:
+--   `next_price_at is null` so a re-run never overwrites a figure the
+--     owner has since set in the console;
+--   `price_paise < <new>` so a plan whose current price is NOT what was
+--     read on 9 Oct is SKIPPED rather than aborting the section. The
+--     plans_next_price_check refuses a next price at or below the
+--     current one, and a raised constraint here would roll back the
+--     whole of section 30 — the trial included — over a price edit
+--     somebody made in the console last week. Skipping leaves that tier
+--     with no scheduled rise, which the landing page renders as simply
+--     no notice for it. Set it from the console afterwards.
+update public.plans set next_price_paise =  99900, next_price_at = timestamptz '2026-10-31 18:29:00+00'
+ where id = 'starter' and next_price_at is null and price_paise <  99900;
+update public.plans set next_price_paise = 149900, next_price_at = timestamptz '2026-10-31 18:29:00+00'
+ where id = 'indie'   and next_price_at is null and price_paise < 149900;
+update public.plans set next_price_paise = 199900, next_price_at = timestamptz '2026-10-31 18:29:00+00'
+ where id = 'pro'     and next_price_at is null and price_paise < 199900;
+
+update public.billing_settings set price_rises_after_buyers = 100
+ where id and price_rises_after_buyers is null;
+
+-- 30.12 CHECKS TO RUN, none of which has been run live ------------------
+--  1. anon: start_trial() -> 42501 (no grant). anon: price_notice() -> a
+--     row. anon: select from billing_settings -> 42501.
+--  2. a fresh signed-in non-member: start_trial() -> started true; a
+--     studio_members row exists with trial_source 'signup',
+--     trial_minutes 30, trial_scope 'sample'; studio_status().registered
+--     is true.
+--  3. the same user again -> {started:false, reason:'used'} and
+--     trial_started_at is UNCHANGED (assert the timestamp equals the
+--     first one, not merely that it is set).
+--  4. THE ONE THAT PROVES THE DESIGN: after a trial, accounts.plan is
+--     'free', plan_until is null, plan_period is null, user_plan() is
+--     'free'.
+--  5. billing_status() carries entitled true, trial_active true,
+--     trial_ends_at = trial_started_at + 30 min, and features =
+--     {"sample_only": true, "new_projects": false}.
+--  6. EXPIRY WITHOUT A CLOCK: update studio_members set
+--     trial_started_at = now() - interval '2 hours' -> billing_status()
+--     has trial_active false, entitled false, trial_used true, and the
+--     plan is still 'free'.
+--  7. a declined requester -> start_trial() raises 42501.
+--  8. a disabled member -> start_trial() raises 42501.
+--  9. somebody who has paid -> {started:false, reason:'paid'}; and still
+--     refused after mark_payment_refunded() (the paid_at test).
+-- 10. THE SOURCE CANNOT BE FORGED: start_trial('code') as an ordinary
+--     user whose invite_code_id is null -> trial_minutes 30, not 10080.
+-- 11. a user who went through verify_invite + redeem_invite then
+--     start_trial() -> trial_source 'code', trial_minutes 7*1440.
+-- 12. admin_set_billing_settings('{"trial_enabled": false}') -> a new
+--     user's start_trial() returns reason 'disabled'. A bad key -> 22023.
+--     {"trial_minutes": 0} -> 22023 WITH A SENTENCE ABOUT TRIALS, NOT
+--     REFERRALS (assert SQLERRM does not contain 'referral' — that is
+--     the handler trap 30.9 exists to avoid).
+-- 13. admin_set_billing_settings as a non-admin -> 42501.
+-- 14. THE RISE FIRES ON A DATE: quote_order('indie') is 79900; move
+--     plans.next_price_at into the past; quote_order('indie') is 149900
+--     with nothing else touched.
+-- 15. THE RISE FIRES ON A COUNT: with next_price_at in the future, set
+--     price_rises_after_buyers to paid_buyers() -> quote_order is the
+--     new price. Set it back to 100 -> the old price returns.
+-- 16. A RISE MUST BE A RISE: admin_set_next_price('indie', 10000, now()
+--     + interval '1 day') -> 22023. admin_set_next_price('indie', NULL,
+--     NULL) clears it. A price with no date -> 22023.
+-- 17. price_notice() omits seats_taken when no plan has a next_price_at,
+--     and reports it when one does.
+-- 18. BACKWARDS COMPATIBILITY: billing_status() still carries every key
+--     it carried before section 30 (assert ?& against the section 18
+--     list) — plenty of client code reads it.
+-- 19. THE GRANDFATHER BACKFILL: a member who existed before section 30
+--     ran has entitled true, trial_scope 'full', and does not meet the
+--     wall.
+-- Test file: scripts/schema-tests/trial.sql (run by npm run test:schema).
+-- ============================================================
+
+-- ============================================================
+-- 31. REGION AND CURRENCY — one checkout, two price tags
+--                                                NOT RUN LIVE — owner approval
+-- ------------------------------------------------------------
+-- The owner's decision, 9 Oct 2026: ONE CHECKOUT FOR NOW. Razorpay,
+-- in rupees, for everybody. What this section builds is the half that
+-- does not touch money — a per-currency DISPLAY price, so an
+-- international visitor reads "$19" rather than a rupee figure they
+-- have to convert in their head. A second payment rail is a separate
+-- piece of work and this section deliberately stops short of it.
+--
+-- quote_for() IS NOT TOUCHED. It is the only pricer, it reads
+-- effective_price(), and effective_price() reads plans.price_paise.
+-- Nothing below changes what is charged. If a later session adds a
+-- second rail, THAT is where the currency enters the quote — not here.
+--
+-- THE DISCLOSURE THAT MAKES THIS LEGAL, and the reason price_notice()
+-- grows rather than switches. If a visitor is shown $19 and charged in
+-- rupees, the rupee amount has to be on screen BEFORE they click.
+-- Revealing a charge only at the end is "drip pricing", a named
+-- practice in India's CCPA Guidelines for the Prevention and
+-- Regulation of Dark Patterns, 2023 — the same document section 30
+-- cites for false urgency. So the currency-aware answer carries BOTH
+-- figures, always: the display currency, and the rupee amount that
+-- will actually leave the card. The card on the landing page reads
+-- "$19 — charged as ₹1,599". When a second rail lands, that
+-- parenthetical is the only thing that disappears.
+--
+-- A TABLE, NOT A jsonb COLUMN ON plans. A jsonb blob would have taken
+-- any shape at all: a currency called "dollars", a price of "19", a
+-- next price below the current one. Section 30's whole legal basis is
+-- a CHECK that refuses a rise that is not a rise, and a blob cannot
+-- carry that CHECK. One row per (plan, currency), with the rule
+-- written where the data is.
+--
+-- THERE IS ONE CLOCK PER PLAN AND EVERY CURRENCY FOLLOWS IT.
+-- plans.next_price_at is the single instant at which a tier's price
+-- changes; plan_prices.next_amount_minor is only "what this currency
+-- will say when that happens". A per-currency date would mean the
+-- dollar card and the rupee card counting down to different moments
+-- while one checkout charges one price, which is the kind of thing
+-- that reads as a bug and argues as a deception. admin_set_plan_price()
+-- refuses a next price when the plan has no rise scheduled, and
+-- refuses a date that is not the plan's own.
+--
+-- WHY price_notice() GAINS AN OVERLOAD AND IS NOT RESTATED WITH A
+-- DEFAULT. The obvious move is `price_notice(p_currency text default
+-- 'INR')`. It is a trap: PostgreSQL would then have two candidates for
+-- a no-argument call — section 30's price_notice() and this one
+-- reached through its default — and a no-argument call becomes
+-- ambiguous, "function price_notice() is not unique". The signed-out
+-- landing page calls it with no arguments and 30.10 grants exactly
+-- that signature to anon, so the breakage would land on the one page
+-- that has no session to retry with. Section 30's zero-argument
+-- function is therefore left EXACTLY as it is, and this is a separate
+-- one-argument overload with NO default: two functions, two
+-- unambiguous call shapes, nothing to redeploy. 31.6 check 1 asserts
+-- that both still resolve.
+--
+--   31.1  plan_prices
+--   31.2  the seed — INR mirrored from plans, USD as the owner's proposal
+--   31.3  price_notice(text) — the currency-aware overload
+--   31.4  admin_set_plan_price()
+--   31.5  grants
+--   31.6  CHECKS TO RUN
+-- ============================================================
+
+-- 31.1 THE TABLE --------------------------------------------------------
+create table if not exists public.plan_prices (
+  plan_id           text        not null references public.plans(id) on delete cascade,
+  currency          text        not null check (currency ~ '^[A-Z]{3}$'),   -- ISO 4217, upper case
+  amount_minor      int         not null check (amount_minor >= 0),         -- cents, paise, yen
+  next_amount_minor int         check (next_amount_minor is null or next_amount_minor > 0),
+  updated_at        timestamptz not null default now(),
+  updated_by        uuid        references auth.users(id) on delete set null,
+  primary key (plan_id, currency)
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'plan_prices_next_is_a_rise') then
+    -- The same rule as plans_next_price_check, in the other table,
+    -- because a dollar card announcing a fall dressed as a rise is the
+    -- same prohibited practice in a different currency.
+    alter table public.plan_prices add constraint plan_prices_next_is_a_rise
+      check (next_amount_minor is null or next_amount_minor > amount_minor);
+  end if;
+end $$;
+
+alter table public.plan_prices enable row level security;
+-- Prices are public by nature and are drawn for a signed-out visitor on
+-- start.html, exactly as section 18 argued for plans. Reads are open;
+-- there is no insert/update/delete policy, so the ABSENCE is the policy
+-- and admin_set_plan_price() below is the only way in.
+drop policy if exists pp_select on public.plan_prices;
+create policy pp_select on public.plan_prices for select to anon, authenticated using (true);
+
+-- 31.2 THE SEED ---------------------------------------------------------
+-- INR is a MIRROR of plans, refreshed on every run of this section. It
+-- exists so the table is the whole price list — the console shows it,
+-- and a second rail will read it — but NOTHING reads it for the rupee
+-- figure on a card: price_notice() below takes that from
+-- effective_price() every time. A mirror that is read is a second
+-- author for the number a buyer is charged, and section 30 exists to
+-- make sure there is exactly one.
+insert into public.plan_prices (plan_id, currency, amount_minor, next_amount_minor)
+select p.id, 'INR', p.price_paise, p.next_price_paise from public.plans p
+on conflict (plan_id, currency) do update
+   set amount_minor      = excluded.amount_minor,
+       next_amount_minor = excluded.next_amount_minor,
+       updated_at        = now();
+
+-- USD, as the owner's starting proposal of 9 Oct 2026 and theirs to
+-- change from the console (admin_set_plan_price). `do nothing`, not
+-- `do update`, so a re-run of this section never overwrites a figure
+-- somebody has since set — the same reasoning as 30.11.
+--
+--   Basic        $19 -> $29
+--   Intermediate $29 -> $39
+--   Pro          $39 -> $49
+--
+-- These are DISPLAY figures. Nobody is charged in dollars today, and
+-- the card says so.
+insert into public.plan_prices (plan_id, currency, amount_minor, next_amount_minor) values
+  ('starter', 'USD', 1900, 2900),
+  ('indie',   'USD', 2900, 3900),
+  ('pro',     'USD', 3900, 4900)
+on conflict (plan_id, currency) do nothing;
+
+-- 31.3 price_notice(text) — THE CURRENCY-AWARE OVERLOAD -----------------
+/** Everything section 30's price_notice() answers, in the same key
+ *  names, PLUS the display figures for one currency. Anon-callable for
+ *  the same reason: start.html reads it with no session and no SDK.
+ *
+ *  THE RUPEE KEYS ARE ALWAYS PRESENT AND ALWAYS MEAN WHAT WILL BE
+ *  CHARGED. price_paise / next_price_paise / next_price_at / rising are
+ *  byte-for-byte the section 30 answer, so a client can read one shape
+ *  whichever currency it asked for, and so the drip-pricing disclosure
+ *  is impossible to omit by accident — there is no call that returns
+ *  dollars alone.
+ *
+ *  An unknown currency, a malformed one, or a plan with no row for the
+ *  currency asked for all fall back to INR rather than answering null.
+ *  A price that renders blank is worse than a price in the wrong
+ *  currency, and this is the one function the landing page cannot do
+ *  without. */
+create or replace function public.price_notice(p_currency text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  with want as (
+    select case when upper(btrim(coalesce(p_currency, ''))) ~ '^[A-Z]{3}$'
+                then upper(btrim(p_currency)) else 'INR' end as cur
+  ),
+  pending as (
+    select exists (select 1 from public.plans p
+                    where p.next_price_paise is not null
+                      and public.effective_price(p.id) = p.price_paise) as any_rising
+  )
+  select jsonb_build_object(
+    'currency',         w.cur,
+    -- what Razorpay settles in, today and until a second rail exists.
+    -- The card quotes it beside the display price; see the header.
+    'charged_currency', 'INR',
+    'seats_total', case when g.any_rising
+                        then (select s.price_rises_after_buyers from public.billing_settings s where s.id) end,
+    'seats_taken', case when g.any_rising then public.paid_buyers() end,
+    'plans', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'id',               p.id,
+               'name',             p.name,
+               -- section 30's four keys, unchanged in name and meaning
+               'price_paise',      public.effective_price(p.id),
+               'next_price_paise', case when public.effective_price(p.id) = p.price_paise then p.next_price_paise end,
+               'next_price_at',    case when public.effective_price(p.id) = p.price_paise then p.next_price_at end,
+               'rising',           p.next_price_paise is not null
+                                   and public.effective_price(p.id) = p.price_paise,
+               -- and the display figures beside them. For INR, or for a
+               -- plan this currency has no row for, they ARE the rupee
+               -- figures, so the client needs no second code path.
+               'display_currency', case when pp.currency is null then 'INR' else pp.currency end,
+               'display_minor',    case
+                                     when pp.currency is null then public.effective_price(p.id)
+                                     when public.effective_price(p.id) = p.price_paise then pp.amount_minor
+                                     else coalesce(pp.next_amount_minor, pp.amount_minor)
+                                   end,
+               -- THREE CONDITIONS, AND THE MIDDLE ONE WAS MISSING.
+               -- `effective_price(id) = price_paise` is true in TWO
+               -- different situations: a rise is pending, and no rise
+               -- exists at all. 31.2 seeds a USD next_amount_minor for
+               -- every tier unconditionally, so without the
+               -- next_price_paise test a plan with nothing scheduled
+               -- was handed "$19 -> $29" — while `rising` said false and
+               -- `next_price_paise` was null in the same payload. The
+               -- rupee half was honest and the dollar half was not,
+               -- which is the exact false-urgency claim section 30
+               -- exists to refuse, wearing the other currency.
+               -- It must follow `rising`, never the row.
+               'display_next_minor', case when pp.currency is not null
+                                           and p.next_price_paise is not null
+                                           and public.effective_price(p.id) = p.price_paise
+                                          then pp.next_amount_minor end)
+               order by p.sort)
+        from public.plans p
+        left join public.plan_prices pp
+               on pp.plan_id = p.id and pp.currency = w.cur and w.cur <> 'INR'
+       where p.active), '[]'::jsonb)
+  ) from pending g, want w;
+$$;
+
+-- 31.4 THE CONSOLE ------------------------------------------------------
+/** Set one currency's display price for one plan, and optionally what
+ *  it will say after the plan's scheduled rise.
+ *
+ *  IT REFUSES INR. The rupee price is the price that is charged, it has
+ *  exactly two authors already — admin_set_plan() for the figure and
+ *  admin_set_next_price() for the rise — and a third would be a way to
+ *  move the number on the card without moving the number on the
+ *  invoice. The INR row in plan_prices is a mirror; 31.2 says so.
+ *
+ *  IT REFUSES A NEXT PRICE THAT IS NOT A RISE, and it refuses one at
+ *  all unless the PLAN has a rise scheduled, because there is one date
+ *  per plan and every currency follows it. p_at is therefore a
+ *  confirmation rather than a setting: pass the plan's own
+ *  next_price_at, or pass null. */
+create or replace function public.admin_set_plan_price(
+  p_plan        text,
+  p_currency    text,
+  p_amount_minor int,
+  p_next_minor  int         default null,
+  p_at          timestamptz default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  pl  public.plans;
+  cur text := upper(btrim(coalesce(p_currency, '')));
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if cur !~ '^[A-Z]{3}$' then
+    raise exception 'A currency is a three-letter ISO 4217 code, such as USD.' using errcode = '22023';
+  end if;
+  if cur = 'INR' then
+    raise exception 'The rupee price is the one that is charged. Set it with admin_set_plan() and schedule its rise with admin_set_next_price(); giving the card a second author is how a quote and an invoice come to disagree.'
+      using errcode = '22023';
+  end if;
+  select * into pl from public.plans p where p.id = p_plan;
+  if pl.id is null then raise exception 'No such plan "%"', p_plan using errcode = '22023'; end if;
+  if p_amount_minor is null or p_amount_minor < 0 then
+    raise exception 'A price is a whole number of minor units (cents), and not negative.' using errcode = '22023';
+  end if;
+
+  if p_next_minor is null then
+    if p_at is not null then
+      raise exception 'A date with no new price changes nothing. The date belongs to the plan, not to the currency.' using errcode = '22023';
+    end if;
+  else
+    if p_next_minor <= p_amount_minor then
+      raise exception 'The new price (%) must be ABOVE the current one (%). Telling people a price is about to rise and then not raising it is a prohibited practice, not a marketing choice.',
+        p_next_minor, p_amount_minor using errcode = '22023';
+    end if;
+    if pl.next_price_at is null then
+      raise exception 'No rise is scheduled for %. There is ONE date per plan and every currency follows it — schedule the rupee rise with admin_set_next_price() first.',
+        pl.name using errcode = '22023';
+    end if;
+    if p_at is not null and p_at <> pl.next_price_at then
+      raise exception 'A currency cannot rise on a date of its own. % rises at %; pass that instant, or null.',
+        pl.name, pl.next_price_at using errcode = '22023';
+    end if;
+  end if;
+
+  insert into public.plan_prices (plan_id, currency, amount_minor, next_amount_minor, updated_by)
+  values (pl.id, cur, p_amount_minor, p_next_minor, auth.uid())
+  on conflict (plan_id, currency) do update
+     set amount_minor      = excluded.amount_minor,
+         next_amount_minor = excluded.next_amount_minor,
+         updated_at        = now(),
+         updated_by        = auth.uid();
+
+  return public.price_notice(cur);
+end;
+$fn$;
+
+-- 31.5 GRANTS -----------------------------------------------------------
+revoke execute on function public.price_notice(text)                                      from public;
+revoke execute on function public.admin_set_plan_price(text, text, int, int, timestamptz) from public, anon;
+
+grant  execute on function public.price_notice(text)                                      to anon, authenticated;
+grant  execute on function public.admin_set_plan_price(text, text, int, int, timestamptz) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 31.6 CHECKS TO RUN, none of which has been run live -------------------
+--  1. BOTH functions still resolve: price_notice() answers (section 30's
+--     shape, no `currency` key) and price_notice('USD') answers — no
+--     "function price_notice() is not unique". That is the whole reason
+--     this is an overload and not a default argument.
+--  2. anon: price_notice('USD') -> a row. anon: select from plan_prices
+--     -> allowed (prices are public). anon: insert into plan_prices ->
+--     42501 (no policy).
+--  3. price_notice('USD') carries price_paise for every plan AND
+--     display_minor 1900 / 2900 / 3900, charged_currency 'INR'. THE
+--     DRIP-PRICING CHECK: there is no call that returns dollars without
+--     the rupee figure beside them.
+--  4. price_notice('INR'), price_notice('zzz'), price_notice(null) and
+--     price_notice('nonsense') all fall back to INR, and
+--     display_minor = price_paise for each plan. Nothing renders blank.
+--  5. quote_for / quote_order are UNCHANGED: quoting any plan in any
+--     session still returns the rupee figure effective_price() gives,
+--     with no currency key anywhere in the answer.
+--  6. the CHECKs hold: insert (plan, 'usd', ...) -> 23514 (lower case);
+--     insert with next_amount_minor <= amount_minor -> 23514; a second
+--     row for the same (plan, currency) -> 23505.
+--  7. admin_set_plan_price as a non-admin -> 42501.
+--  8. admin_set_plan_price('indie', 'INR', ...) -> 22023 naming
+--     admin_set_plan and admin_set_next_price.
+--  9. admin_set_plan_price('indie', 'USD', 2900, 1900, null) -> 22023
+--     (not a rise). ('indie', 'USD', 2900, null, now()) -> 22023 (a date
+--     with no price).
+-- 10. with plans.next_price_at null for indie:
+--     admin_set_plan_price('indie', 'USD', 2900, 3900, null) -> 22023
+--     naming the one-clock rule. Schedule the rupee rise with
+--     admin_set_next_price, and the same call then succeeds.
+-- 11. admin_set_plan_price('indie', 'USD', 2900, 3900, <a date that is
+--     not plans.next_price_at>) -> 22023.
+-- 12. after the plan's rise has fired (move next_price_at into the
+--     past), price_notice('USD') reports display_minor 3900 and
+--     display_next_minor null for indie — the dollar card follows the
+--     rupee clock and advertises nothing once it has turned.
+-- 13. re-running section 31 is a no-op: the INR mirror is refreshed
+--     from plans, and a USD figure edited in the console survives.
+-- ============================================================

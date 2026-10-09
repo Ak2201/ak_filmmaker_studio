@@ -940,6 +940,88 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   state. `verify` counts the themes rather than naming a number of them, so
   it asserts two distinct backgrounds now and would assert five without an
   edit.
+- **A stable position is not an arrival, and `behavior: 'auto'` does not
+  mean instant.** `fragments.js` re-lands a fragment after the page
+  renders, because the browser makes exactly one attempt at parse time.
+  It waited for `offsetTop` to stop moving and then declared success —
+  but `base.css` sets `scroll-behavior: smooth`, so every
+  `scrollIntoView` starts an ANIMATION, each re-render restarts it, and
+  when the page finally stopped moving the code counted its three stable
+  ticks and returned true with the viewport parked wherever the last
+  interrupted animation had died. Measured on `feature.html#glossary`,
+  an 86,000px page: the target settled at `offsetTop` 81,247 and the
+  reader was left **3,552px short of it**.
+
+  It was intermittent, which is worse than constant — sometimes the last
+  animation happened to finish, so it read as a flaky test rather than a
+  broken link, and it only began failing the gate when an unrelated 8KB
+  of first paint shifted the race. `settle()` now asks the second half of
+  the question: is the element's `getBoundingClientRect().top` actually
+  within 2px of `scroll-padding-top`? If not, scroll again.
+
+  And the scroll is **`behavior: 'instant'`, never `'auto'`**. Per spec
+  `'auto'` means "use the computed `scroll-behavior`" — which is
+  `smooth` here — so the obvious fix would have read correctly and
+  changed nothing at all. Only `'instant'` overrides the stylesheet.
+  Fragment landings are instant now on purpose: nobody watches 81,000px
+  of blur, and a jump that arrives beats a glide that does not.
+
+- **A PURE module shared with CORE is swallowed by CORE, and the page
+  that wanted it light pays for all of it.** `start.js` imports exactly
+  one JavaScript module, `funnel.js`, precisely so the landing page
+  ships almost nothing. But `gate.js` — which IS in the `studio` CORE
+  chunk — imports `bumpEvent` from it for one counter, so Rollup folded
+  `funnel.js` into `studio`, and start.html then STATICALLY imported a
+  209 KB app bundle to send a single daily count. Measured: the whole
+  page is 9 KB of JS now and was 215 KB.
+
+  Nothing caught it, and the near miss is the lesson. `prove:growth`
+  asserts *no `supabase-*` chunk is fetched on the start page* and that
+  was true the entire time — the assertion names the chunk somebody was
+  worried about rather than the property they wanted. `scripts/budget.json`
+  has no `start` row, because start.html is not in `baseline.json` at
+  all. A check that names one chunk cannot see the next one.
+
+  The fix is a `startlib` manualChunk holding `funnel.js`,
+  `invite-code.js` and `auth-scope.js`: each is imported by CORE *and*
+  by the landing page, each imports nothing itself. **They must stay
+  import-free.** The day one of them imports `store.js`, the rule
+  silently stops holding and the 209 KB comes back, with no test
+  failing. If you add a module the landing page shares, put it there and
+  keep it pure — and if you need a shared module that is NOT pure, the
+  landing page cannot have it.
+
+- **`entitlement()` fails OPEN, and that is the opposite of the site
+  gate on purpose.** `sitegate.js` fails closed: unknown means out.
+  `plan-gate.js`'s `entitlement()` returns `{entitled: true, reason:
+  'unknown'}` whenever it knows nothing — signed out, section 30 not
+  deployed, `billing_status()` unreachable, the key absent from an older
+  server's reply.
+
+  Both are right, because they protect different things. The site gate
+  guards who gets in and its failure costs a stranger an hour. The
+  paywall guards a sale, and ITS failure locks a paying customer out of
+  months of their own writing the moment a network request times out.
+  Neither guards the data; RLS and the P0402 triggers do that, and
+  section 30 does not touch them.
+
+  There is a second, duller reason it cannot fail closed: `npm run
+  verify` loads all 21 pages signed out. A wall that drew on an unknown
+  state would cover every one of them and the whole gate would go red.
+  The check reads `typeof st.entitled === 'boolean'` rather than
+  `st.entitled` — the key has to be PRESENT to be believed, or a build
+  shipped against a database without section 30 walls every existing
+  member.
+
+- **`location.pathname` has no `.html` in production.** `vercel.json`
+  sets `cleanUrls`, so the path is `/settings`, not `/settings.html`.
+  A page allowlist anchored to `\.html$` therefore matches in `npm run
+  dev`, matches in `preview`, matches in every proof — and matches
+  nothing on the live site. The paywall's exempt list was written that
+  way first, which would have walled the one page you can buy from, on
+  production and nowhere else. `plan-gate.js`'s `modulesHere()` already
+  strips the extension before comparing; do the same.
+
 - **`Element.append(null)` inserts the text "null".** It does not skip
   the argument. `settings.js` said it did, and that held only while every
   section happened to render something. `h()` skips null children, but
@@ -1138,6 +1220,30 @@ buying account's `accounts.plan` moved to `starter`. So order → checkout
 → verify → activation is exercised, not merely configured. **Still
 missing: a LIVE key** — everything so far is test mode — and a refund
 has never been exercised.
+**SECTIONS 26-30 ARE WRITTEN AND NONE OF THEM IS LIVE** (probed over
+PostgREST on 9 Oct 2026, not read from the file: `add_lead`,
+`bump_event`, `refund_requests_enabled`, `my_invoices` and
+`admin_funnel` all answer PGRST202, and `plans.name` is still
+`Starter`/`Indie` while the client says Basic/Intermediate). Two
+consequences worth knowing before trusting a page: **the start page's
+e-mail capture and funnel counters do nothing on the live site** — they
+fail silently by design — and `billing_status()` carries no `entitled`
+key, so the trial and the paywall are inert, which is exactly what the
+fail-open rule above is for.
+
+**THE FREE PLAN IS BEING WITHDRAWN (§30, owner 9 Oct 2026).** Signing in
+buys thirty minutes with the Dragon sample; an invite code buys seven
+days; then a wall. The trial is a SECOND AXIS and does not touch `plan`,
+`plan_until` or `plan_period` — a trial user's plan is literally `free`,
+whose `features` map is already `sample_only`, so the scope needed no new
+gating. The first draft granted `pro` for the trial's length, which looks
+neater and is wrong: `quote_for` raises `same_plan`/`downgrade` for
+anyone not on free, so a trial user on `pro` could not have bought
+anything at all. The trial columns live on `studio_members`, not
+`accounts`, because `acc_delete` lets a user delete their own accounts
+row and `accounts_guard` defends only the six columns it names — either
+would have made the once-only check erasable by the person it checks.
+
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
 paragraph said "§16–§24 have NOT been verified" and "the consent screen

@@ -144,7 +144,40 @@ export function resolveFragment(hash = location.hash) {
     if (top !== lastTop) {
       lastTop = top;
       stableTicks = 0;
-      el.scrollIntoView({ block: 'start', behavior: 'auto' });
+      el.scrollIntoView({ block: 'start', behavior: 'instant' });
+      return false;
+    }
+    /* A STABLE DOCUMENT POSITION IS NOT AN ARRIVAL, and conflating the
+       two is how this failed. `html` has scroll-behavior: smooth, so
+       every scrollIntoView above starts an ANIMATION; the next render
+       moves offsetTop, we call it again, and the animation restarts
+       from wherever it had got to. When the page finally stops moving
+       we counted three stable ticks and returned true — with the
+       viewport parked wherever the last interrupted animation died.
+
+       Measured on feature.html#glossary, an 86,000px page: the target
+       settled at offsetTop 81,247 and the reader was left 3,552px
+       short of it, every time, with no further attempt. It was
+       intermittent rather than constant — sometimes the last
+       animation happened to complete — which is worse, because it
+       reads as a flaky test rather than a broken link.
+
+       So the second half of the question: is the element actually
+       where it should be? The target is `scroll-padding-top`, which is
+       the measured chrome; anything within a couple of pixels of it
+       has arrived. If not, scroll again and keep waiting. */
+    const want = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    const now = el.getBoundingClientRect().top;
+    if (Math.abs(now - want) > 2) {
+      /* 'instant', NOT 'auto'. Per spec 'auto' means "use the computed
+         scroll-behavior", and base.css sets `scroll-behavior: smooth`
+         on html — so 'auto' here would start exactly the animation
+         that causes this, and the fix would have looked right and
+         changed nothing. Only 'instant' overrides the stylesheet.
+         A landing-on-load has nothing to animate for anyway: nobody
+         watches 81,000px of blur. */
+      el.scrollIntoView({ block: 'start', behavior: 'instant' });
+      stableTicks = 0;
       return false;
     }
     return ++stableTicks >= 3;

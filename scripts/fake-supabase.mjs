@@ -6,6 +6,30 @@
    lock, screening passes, a project with data) behind a Playwright
    route handler for the project's origin. `F.db` is the live state;
    `F.reset()` starts a scenario clean.
+
+   SECTION 30 (the trial, and the price rise that fires itself) is in
+   here too, and it is DRIVEN THE SAME WAY EVERYTHING ELSE IS: a proof
+   reaches into `F.db` and says what it wants to be true. The knobs:
+
+     F.db.settings.trial_enabled / trial_minutes / code_trial_days /
+                   trial_scope / trial_plan / price_rises_after_buyers
+     F.db.plans[n].next_price_paise / next_price_at   (the scheduled rise)
+     setTrial(uid, {...})  expireTrial(uid)  clearTrial(uid)
+
+   setTrial/expireTrial/clearTrial are exported for the same reason
+   webhookRefundProcessed() is: "this person is mid-trial" and "this
+   person's thirty minutes are up" are the two states every paywall
+   assertion needs, and spelling them out of member-row fields at each
+   call site is how two proofs end up disagreeing about what expired
+   means.
+
+   THE GRANDFATHER BACKFILL IS THE DEFAULT, exactly as 30.3's UPDATE
+   makes it live: a member row with no trial_started_at reads back as a
+   year-long 'full' trial begun when the database was created. That is
+   not a convenience for the proofs — it is the behaviour, and it is
+   what keeps every pre-section-30 scenario (a member on Free seeing the
+   hub) green without a line of editing. A proof that wants a REAL
+   thirty-minute trial says so with setTrial().
    ============================================================ */
 import { createHash, createHmac } from 'node:crypto';
 import { promoPrice, normalisePromo } from '../supabase/functions/_shared/razorpay.js';
@@ -30,6 +54,83 @@ function userPlan(uid) {
 }
 function userLimits(uid) { return (F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {}; }
 function cap(lim, k) { return Number.isInteger(lim[k]) ? lim[k] : null; }
+
+/* ---- section 30: the trial -----------------------------------------
+   The trial lives on the studio_members row, which here is the value in
+   F.db.members — so the fields hang off the same object the gate reads.
+
+   trialOf() is public.trial_ends_at() plus the 30.3 backfill folded
+   together: a member whose row carries no trial_started_at IS a
+   grandfathered member, and gets the year at full scope rather than
+   being locked out of a studio they were invited into. */
+const GRANDFATHER = { minutes: 525600, source: 'admin', scope: 'full' };
+function trialOf(uid) {
+  const m = uid && F.db.members.get(uid);
+  if (!m) return null;                                  // not a member: no row, no trial
+  /* THE KEY'S ABSENCE IS THE GRANDFATHER, ITS NULL IS "NEVER TOOK ONE".
+     A row written the old way — `{ role, disabled_at }`, which is how
+     every proof before section 30 makes a member — has no
+     trial_started_at key at all and reads as backfilled. clearTrial()
+     writes the key as null, which is the row redeem_invite leaves
+     behind before start_trial() has run. */
+  if (!('trial_started_at' in m)) {
+    return { startedAt: F.db.bornAt, minutes: GRANDFATHER.minutes, source: GRANDFATHER.source, scope: GRANDFATHER.scope,
+             ends: F.db.bornAt + GRANDFATHER.minutes * 60000 };
+  }
+  if (!m.trial_started_at) return null;
+  const started = Date.parse(m.trial_started_at);
+  const minutes = Number.isInteger(m.trial_minutes) ? m.trial_minutes : F.db.settings.trial_minutes;
+  return { startedAt: started, minutes, source: m.trial_source || 'signup', scope: m.trial_scope || 'sample', ends: started + minutes * 60000 };
+}
+function trialActive(uid) {
+  const t = trialOf(uid);
+  const m = uid && F.db.members.get(uid);
+  return !!(t && F.db.settings.trial_enabled && m && !m.disabled_at && t.ends > Date.now());
+}
+function isEntitled(uid) { return !!uid && (userPlan(uid) !== 'free' || trialActive(uid)); }
+
+/** "This person is mid-trial." Minutes and scope default to what
+ *  signing up buys; startedAt is a ms epoch so a proof can place the
+ *  trial in the past without a clock. */
+export function setTrial(uid, { minutes = 30, source = 'signup', scope = 'sample', startedAt = Date.now(), role = 'user' } = {}) {
+  const cur = F.db.members.get(uid) || { role, disabled_at: null };
+  const row = { ...cur, trial_started_at: new Date(startedAt).toISOString(), trial_minutes: minutes, trial_source: source, trial_scope: scope };
+  F.db.members.set(uid, row);
+  return row;
+}
+/** "Their thirty minutes are up." Keeps trial_used true, which is what
+ *  separates an expired trial from one never taken. */
+export function expireTrial(uid, opts = {}) {
+  const minutes = opts.minutes ?? 30;
+  return setTrial(uid, { ...opts, minutes, startedAt: Date.now() - (minutes + 5) * 60000 });
+}
+/** "They have never had one" — a member row with the trial columns
+ *  null, which is NOT the same as the grandfather default above. */
+export function clearTrial(uid) {
+  const cur = F.db.members.get(uid);
+  if (!cur) return null;
+  const row = { ...cur, trial_started_at: null, trial_minutes: null, trial_source: null, trial_scope: null };
+  F.db.members.set(uid, row);
+  return row;
+}
+
+/* ---- section 30: the price rise ------------------------------------
+   paid_buyers() and effective_price(), which is THE ONLY PRICER on this
+   side too — quoteOrder() and rzp-order both read it, so a proof that
+   moves next_price_at into the past sees the new figure everywhere at
+   once, the way the database arranges it. */
+export function paidBuyers() {
+  return new Set(F.db.payments.filter((p) => p.status === 'paid' && p.amount_paise > 0).map((p) => p.user_id)).size;
+}
+export function effectivePrice(planId) {
+  const p = F.db.plans.find((x) => x.id === planId);
+  if (!p) return null;
+  if (p.next_price_paise == null) return p.price_paise;
+  if (p.next_price_at && Date.parse(p.next_price_at) <= Date.now()) return p.next_price_paise;
+  const capN = F.db.settings.price_rises_after_buyers;
+  if (capN != null && paidBuyers() >= capN) return p.next_price_paise;
+  return p.price_paise;
+}
 function accountForBuyer(uid) {
   let a = F.db.accounts.filter((x) => x.owner_id === uid).sort((x, y) => Date.parse(y.created_at) - Date.parse(x.created_at))[0];
   if (a) return a;
@@ -111,7 +212,11 @@ export function paidCredit(uid) {
 /* section 21: public.quote_for(user, plan, code). `user` null = signed out. */
 export function quoteOrder(planId, rawCode, user = null) {
   const pl = F.db.plans.find((p) => p.id === planId && p.active);
-  if (!pl || !(pl.price_paise > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
+  /* section 30: the price is effective_price(), never plans.price_paise,
+     in all three places the database replaced it — the "not for sale"
+     guard, the amount due and the floor. */
+  const price = pl ? effectivePrice(pl.id) : null;
+  if (!pl || !(price > 0)) throw Object.assign(new Error('That plan is not for sale'), { code: '22023' });
   let credit = 0, cur = 'free';
   if (user) {
     cur = userPlan(user.id);
@@ -122,11 +227,15 @@ export function quoteOrder(planId, rawCode, user = null) {
     }
     credit = paidCredit(user.id);
   }
-  let due = pl.price_paise - credit;
-  if (due < 100) due = Math.min(pl.price_paise, 100);
+  let due = price - credit;
+  if (due < 100) due = Math.min(price, 100);
   const code = normalisePromo(rawCode) || null;
-  const base = { plan_id: pl.id, list_paise: pl.price_paise, credit_paise: pl.price_paise - due, due_paise: due, amount_paise: due, discount_paise: 0, code, ok: true, reason: null, sentence: null,
-    upgrade_from: credit > 0 ? cur : null, upgrade_from_name: credit > 0 ? (F.db.plans.find((p) => p.id === cur) || {}).name : null, paid_paise: credit };
+  const base = { plan_id: pl.id, list_paise: price, credit_paise: price - due, due_paise: due, amount_paise: due, discount_paise: 0, code, ok: true, reason: null, sentence: null,
+    upgrade_from: credit > 0 ? cur : null, upgrade_from_name: credit > 0 ? (F.db.plans.find((p) => p.id === cur) || {}).name : null, paid_paise: credit,
+    /* Null once the rise has fired, so a card can never advertise a
+       change that has already happened (30.8). */
+    next_price_paise: price === pl.price_paise ? pl.next_price_paise : null,
+    next_price_at: price === pl.price_paise ? pl.next_price_at : null };
   if (!code) return base;
   const c = F.db.promos.find((x) => x.code === code);
   const now = Date.now();
@@ -152,6 +261,10 @@ export function freshDb() {
   const now = Date.now();
   return {
     deployed: true,
+    /* When this database came into being, which is when section 30's
+       backfill ran: a member row with no trial of its own dates from
+       here. See trialOf(). */
+    bornAt: now,
     codes: [
       { id: 'c1', code: 'AMYCODE23456', pass_type: 'standard', target_project_id: null, max_redemptions: 1, redemptions_count: 0, expires_at: null, revoked_at: null, label: 'Amy', created_at: new Date(now).toISOString() },
       { id: 'c2', code: 'BENCODE23456', pass_type: 'standard', target_project_id: null, max_redemptions: 1, redemptions_count: 0, expires_at: null, revoked_at: null, label: 'Ben', created_at: new Date(now).toISOString() },
@@ -177,18 +290,24 @@ export function freshDb() {
       scenes: { scenes: [{ id: 's1', number: '1', intExt: 'INT', dayNight: 'DAY', location: 'College', synopsis: 'The rejection.', eighths: 8, elements: {} }] },
       contacts: { contacts: [{ name: 'SECRET PHONE 98400' }] }
     } },
-    // section 16
+    /* section 16, and section 30's two columns on every row:
+       next_price_paise / next_price_at, null until a proof (or the
+       console, through admin_set_next_price) schedules a rise. */
     plans: [
-      { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', features: { sample_only: true, new_projects: false }, price_paise: 0, monthly_paise: 0, yearly_paise: 0, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
-      { id: 'starter', name: 'Basic', blurb: 'One writer, a few films, a couple of readers.', features: {}, price_paise: 299900, monthly_paise: 29900, yearly_paise: 299900, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
-      { id: 'indie',   name: 'Intermediate', blurb: 'A small team taking a film through production.', features: {}, price_paise: 799900, monthly_paise: 79900, yearly_paise: 799900, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
-      { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
+      { id: 'free',    name: 'Free',    blurb: 'Admitted, unpaid. One film in the cloud.', features: { sample_only: true, new_projects: false }, price_paise: 0, monthly_paise: 0, yearly_paise: 0, next_price_paise: null, next_price_at: null, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: true },
+      { id: 'starter', name: 'Basic', blurb: 'One writer, a few films, a couple of readers.', features: {}, price_paise: 299900, monthly_paise: 29900, yearly_paise: 299900, next_price_paise: null, next_price_at: null, limits: { projects: 3, collaborators: 2, shares: 3, seats: 1, extension: true }, sort: 1, active: true },
+      { id: 'indie',   name: 'Intermediate', blurb: 'A small team taking a film through production.', features: {}, price_paise: 799900, monthly_paise: 79900, yearly_paise: 799900, next_price_paise: null, next_price_at: null, limits: { projects: 10, collaborators: 5, shares: 10, seats: 3, extension: true }, sort: 2, active: true },
+      { id: 'pro',     name: 'Pro',     blurb: 'A production house. No caps.', features: {}, price_paise: 1999900, monthly_paise: 199900, yearly_paise: 1999900, next_price_paise: null, next_price_at: null, limits: { projects: null, collaborators: null, shares: null, seats: 10, extension: true }, sort: 3, active: true }
     ],
     payments: [],
     // section 20: one live launch code; the proof adds and refuses others
     promos: [{ code: 'LAUNCH10', percent_off: 10, amount_off_paise: null, plan_ids: null, max_uses: null, uses: 0, valid_from: null, valid_until: null, active: true, note: 'launch week', created_at: new Date(now).toISOString() }],
-    // section 22
-    settings: { referral_friend_pct: 10, referral_reward_pct: 10, referral_reward_paise: null },
+    // section 22, and section 30's knobs (30.1). The seeded figures are
+    // the schema's defaults, not the console's: a proof that wants the
+    // trial off, or longer, says so.
+    settings: { referral_friend_pct: 10, referral_reward_pct: 10, referral_reward_paise: null,
+                trial_enabled: true, trial_minutes: 30, code_trial_days: 7, trial_scope: 'sample',
+                trial_plan: null, price_rises_after_buyers: null },
     credits: [],
     // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
     refunds: [], rreqs: [], rrEnabled: false, rzpRefunds: [],
@@ -219,9 +338,24 @@ function rpc(name, args, user, route) {
       const pl = userPlan(user.id);
       const acc = F.db.accounts.filter((a) => a.owner_id === user.id).sort((x, y) => PLAN_RANK[accountPlan(y)] - PLAN_RANK[accountPlan(x)])[0] || null;
       const lim = userLimits(user.id);
+      const t = trialOf(user.id);
+      const tOn = trialActive(user.id);
+      /* 30.6. A 'full' scope trial borrows another plan's features; a
+         'sample' one uses free's own map, which section 18 already
+         seeded as {sample_only, new_projects:false}. */
+      let feat = (F.db.plans.find((p) => p.id === pl) || {}).features || {};
+      if (tOn && t && t.scope === 'full') feat = (F.db.plans.find((p) => p.id === (F.db.settings.trial_plan || 'indie')) || {}).features || {};
       return json(route, 200, {
         plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
-        features: (F.db.plans.find((p) => p.id === pl) || {}).features || {},
+        features: feat,
+        // section 30
+        trial_enabled: !!F.db.settings.trial_enabled,
+        trial_active: tOn,
+        trial_ends_at: t ? new Date(t.ends).toISOString() : null,
+        trial_used: !!t,
+        trial_source: t ? t.source : null,
+        trial_scope: tOn && t ? t.scope : null,
+        entitled: isEntitled(user.id),
         account_id: acc ? acc.id : null, account_name: acc ? acc.name : null,
         plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
         lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),
@@ -230,6 +364,76 @@ function rpc(name, args, user, route) {
                  seats: acc ? F.db.accountMembers.filter((m) => m.account_id === acc.id).length : 0 },
         payments: F.db.payments.filter((x) => x.user_id === user.id).slice(-12).reverse()
       });
+    }
+    /* ---- section 30: the trial and the rise ---- */
+    case 'start_trial': {
+      /* 30.5. A VERDICT rather than a raise for the ordinary refusals,
+         because the sign-in path calls this on every landing: a client
+         that has to try/catch to tell "wall" from "studio" gets it
+         wrong once. Only the three exceptional cases raise. */
+      if (!user) return pgErr(route, '42501', 'Sign in first');
+      const m = F.db.members.get(user.id);
+      if (m && m.disabled_at) return pgErr(route, '42501', 'This account has been disabled.');
+      const req = F.db.requests.get(user.id);
+      if (req && req.status === 'declined') return pgErr(route, '42501', 'This account was not approved.');
+      if (!F.db.settings.trial_enabled) return json(route, 200, { started: false, reason: 'disabled' });
+      if (trialOf(user.id)) return json(route, 200, { started: false, reason: 'used' });
+      // paid_at, not status='paid': a grant counts, and a refund is not a way back to a fresh trial
+      if (F.db.payments.some((p) => p.user_id === user.id && p.paid_at)) return json(route, 200, { started: false, reason: 'paid' });
+      /* THE SOURCE CANNOT BE FORGED. p_source is honoured only for an
+         administrator; for everybody else it is derived from the
+         invite code on their row, which only redeem_invite writes. */
+      const src = (args.p_source && isAdmin(user)) ? args.p_source : (m && m.invite_code_id ? 'code' : 'signup');
+      const mins = src === 'code' ? (F.db.settings.code_trial_days || 7) * 1440 : (F.db.settings.trial_minutes || 30);
+      /* Inserting the row is what admits them (30.5), so the request
+         closes too — and admit() REPLACES the row, so it goes first or
+         it would wipe the trial that was just written. */
+      admit(user.id);
+      setTrial(user.id, { minutes: mins, source: src, startedAt: Date.now(),
+        scope: src === 'signup' ? 'sample' : (F.db.settings.trial_scope || 'sample'),
+        role: (F.db.members.get(user.id) || {}).role || 'user' });
+      accountForBuyer(user.id);
+      let status = null;
+      rpc('billing_status', {}, user, { fulfill: (o) => { status = JSON.parse(o.body); } });
+      F.db.calls.pop();   // the nested read is an implementation detail, not a call the client made
+      return json(route, 200, { started: true, status });
+    }
+    case 'price_notice': {
+      /* 30.7. Anon-callable; one narrow fact per plan. The buyer count
+         is published ONLY while a rise is still pending — a scarcity
+         number with nothing to be scarce about is the thing section 30
+         refuses to ship. */
+      const anyRising = F.db.plans.some((p) => p.next_price_paise != null && effectivePrice(p.id) === p.price_paise);
+      return json(route, 200, {
+        seats_total: anyRising ? (F.db.settings.price_rises_after_buyers ?? null) : null,
+        seats_taken: anyRising ? paidBuyers() : null,
+        plans: [...F.db.plans].filter((p) => p.active).sort((a, b) => a.sort - b.sort).map((p) => {
+          const now = effectivePrice(p.id);
+          const pending = p.next_price_paise != null && now === p.price_paise;
+          return { id: p.id, name: p.name, price_paise: now,
+            next_price_paise: pending ? p.next_price_paise : null,
+            next_price_at: pending ? p.next_price_at : null, rising: pending };
+        })
+      });
+    }
+    case 'admin_set_next_price': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const p = F.db.plans.find((x) => x.id === args.p_plan);
+      if (!p) return pgErr(route, '22023', `No such plan "${args.p_plan}"`);
+      if (args.p_paise == null) { p.next_price_paise = null; p.next_price_at = null; return rpc('price_notice', {}, user, route); }
+      if (args.p_at == null) return pgErr(route, '22023', 'A price rise needs a date. Without one nothing would ever change and the notice would be untrue.');
+      /* A "rise" that is not a rise is the dark pattern this whole
+         section exists to avoid, so the database refuses one. */
+      if (args.p_paise <= p.price_paise) return pgErr(route, '22023',
+        `The new price (${args.p_paise}) must be ABOVE the current one (${p.price_paise}). Telling people a price is about to rise and then not raising it is a prohibited practice, not a marketing choice.`);
+      p.next_price_paise = args.p_paise; p.next_price_at = args.p_at;
+      return rpc('price_notice', {}, user, route);
+    }
+    case 'admin_grant_trial': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      if (!Number.isInteger(args.p_minutes) || args.p_minutes < 1 || args.p_minutes > 525600) return pgErr(route, '22023', 'Between 1 minute and a year.');
+      setTrial(args.p_user, { minutes: args.p_minutes, source: 'admin', scope: 'full' });
+      return json(route, 200, { ok: true, user: args.p_user, minutes: args.p_minutes, note: args.p_note || null });
     }
     case 'admin_set_plan': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
@@ -317,6 +521,22 @@ function rpc(name, args, user, route) {
       const p = args.p_patch || {};
       const unknown = Object.keys(p).find((key) => !(key in F.db.settings));
       if (unknown) return pgErr(route, '22023', 'Unknown setting "' + unknown + '"');
+      /* Section 30's keys are validated HERE, each with its own
+         sentence, which is the trap 30.9 exists to avoid: the old body
+         ended in one check_violation handler that talks about referral
+         percentages, so a bad trial length would have been reported as
+         "A referral pays the friend 1-100% off". The proofs assert the
+         sentence does not say 'referral'. */
+      if ('trial_minutes' in p && !(Number.isInteger(p.trial_minutes) && p.trial_minutes >= 1 && p.trial_minutes <= 44640))
+        return pgErr(route, '22023', 'A trial lasts between 1 minute and 31 days (44640 minutes).');
+      if ('code_trial_days' in p && !(Number.isInteger(p.code_trial_days) && p.code_trial_days >= 1 && p.code_trial_days <= 365))
+        return pgErr(route, '22023', 'An invite code buys between 1 and 365 days.');
+      if ('trial_scope' in p && !['sample', 'full'].includes(p.trial_scope))
+        return pgErr(route, '22023', 'A trial shows either the sample alone ("sample") or the whole studio ("full").');
+      if ('trial_plan' in p && p.trial_plan != null && !F.db.plans.some((x) => x.id === p.trial_plan))
+        return pgErr(route, '22023', `No such plan "${p.trial_plan}"`);
+      if ('price_rises_after_buyers' in p && p.price_rises_after_buyers != null && !(p.price_rises_after_buyers >= 1))
+        return pgErr(route, '22023', 'A founding-seat cap is at least 1, or null for no cap.');
       if (p.referral_reward_pct != null) { F.db.settings.referral_reward_pct = p.referral_reward_pct; F.db.settings.referral_reward_paise = null; }
       if (p.referral_reward_paise != null) { F.db.settings.referral_reward_paise = p.referral_reward_paise; F.db.settings.referral_reward_pct = null; }
       for (const key of Object.keys(p)) if (!/^referral_reward/.test(key)) F.db.settings[key] = p[key];
@@ -600,7 +820,7 @@ export async function handle(route) {
     if (F.db.members.get(user.id)?.disabled_at) return json(route, 403, { error: 'This account has been disabled by an administrator' });
     if (!plan) return json(route, 400, { error: 'That plan is not for sale' });
     if (body.period === 'month' || body.period === 'year') return json(route, 400, { error: 'Plans are bought once, for good — not by the month or the year' });
-    if (!plan.price_paise) return json(route, 400, { error: 'That plan is not for sale' });
+    if (!effectivePrice(plan.id)) return json(route, 400, { error: 'That plan is not for sale' });
     // section 20: the code is re-quoted here, never priced by the client
     // section 21: priced for THIS buyer — the difference, and a downgrade refused
     let q;

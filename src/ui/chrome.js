@@ -29,6 +29,11 @@ import '../lib/sitegate.js';
 /* And the plan gate (src/lib/plan-gate.js): what a member's plan may
    SHOW, decided from billing_status() once the gate has answered. */
 import '../lib/plan-gate.js';
+/* §30. The trial countdown. Here rather than in each page because it
+   has to be on every page a trial user can reach, and because this
+   module is already the thing that is. It borrows .sh-plate when a
+   trial is live and gives it back when one is not — see its header. */
+import './trial-band.js';
 import { registerSW } from '../lib/pwa.js';
 import { actionMenu, wireActionBar } from './actionbar.js';
 import {

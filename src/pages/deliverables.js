@@ -32,6 +32,7 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { listScenes } from '../lib/scenes.js';
+import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
 import PDF from '../lib/pdf.js';
 import Cbfc from '../lib/cbfc.js';
@@ -314,6 +315,35 @@ const TYPE_LABEL = { dialogue: 'dialogue', action: 'action', heading: 'heading',
 function certificationPanel(build) {
   const sec = h('section#certification.dv-panel.dv-cert', { role: 'tabpanel', 'aria-labelledby': 'dv-tab-certification', 'data-tab-label': 'Certification' });
   if (!build) { sec.hidden = true; return sec; }
+
+  /* INDIA ONLY (§31 region mode). Every rule behind this tab is an
+     Indian statute — the CBFC's examining guidelines, COTPA's tobacco
+     warnings, the AWBI's animal permission, the Emblems Act. None of
+     it is advice anywhere else, and a certification checklist that
+     cites the wrong country's regulator is worse than no checklist.
+
+     The SECTION STAYS, with its id, its tab and a sentence saying why
+     it is empty, rather than vanishing: tabs.js builds the strip from
+     the sections present, a fragment target that disappears is the
+     trap CLAUDE.md already names, and "this tool is not for you" is
+     better said than implied by an absence.
+
+     There is no equivalent for other markets and none is invented
+     here. The MPA, the BBFC and Eirin are three different regimes with
+     three different procedures, and writing a plausible-looking
+     checklist for one of them from memory is exactly the kind of
+     confident wrongness this file's sources exist to prevent. */
+  if (!isIndia()) {
+    sec.append(h('h2.dv-h2', { text: 'Certification flags' }));
+    sec.append(h('p.dv-blurb', {
+      text: 'These checks read a script against Indian certification law — the CBFC\u2019s examining '
+          + 'guidelines, the COTPA tobacco warnings, the AWBI\u2019s animal permission. Your studio is '
+          + 'set to International, so they are off: they would cite a regulator that has no say over '
+          + 'your film. Nothing equivalent is offered for other countries yet, because getting it wrong '
+          + 'would be worse than leaving it out. Switch to India in Settings if you are certifying here.'
+    }));
+    return sec;
+  }
 
   sec.append(h('h2.dv-h2', { text: 'Certification flags' }));
   sec.append(h('p.dv-blurb', {

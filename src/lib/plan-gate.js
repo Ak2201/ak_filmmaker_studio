@@ -50,8 +50,11 @@
    ============================================================ */
 import Store from './store.js';
 import { BRAND } from './brand.js';
-import nav from '../data/navigation.json';
-import { moduleGroups, shelves } from './navmodel.js';
+/* navigation.json through navmodel.js only: phases() and
+   moduleGroups() apply the region filter, so a module that is not on
+   the map in this region is not in the console's Features matrix and
+   cannot lock a page it is no longer on. */
+import { moduleGroups, shelves, phases } from './navmodel.js';
 import { h } from './dom.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import '../styles/plan-gate.css';
@@ -69,6 +72,11 @@ export const CAPABILITIES = [
 let features = null;      // null = unknown / not gated; an object once a plan is known
 let plan = '';
 let planName = '';
+/* §30. The second axis: not WHAT the plan shows but WHETHER this person
+   may be here at all. null = unknown, and unknown means YES — see
+   entitlement() below, which is the single most dangerous line in this
+   module. */
+let ent = null;           // null | { entitled, reason, endsAt, used, trialEnabled }
 
 /** True unless the plan says false. Missing key = allowed. */
 export function allowed(key) {
@@ -77,7 +85,36 @@ export function allowed(key) {
 }
 /** The one capability that is OFF unless the plan says true. */
 export function sampleOnly() { return !!(features && features.sample_only === true); }
-export function currentPlan() { return { plan, planName, features: features ? { ...features } : null, gated: !!features }; }
+
+/** §30. Whether this person may use the studio: a bought plan, or a live
+ *  trial. `reason` is 'paid' | 'trial' | 'expired' | 'off' | 'unknown'.
+ *
+ *  UNKNOWN MEANS ENTITLED, and it is not a convenience. `npm run verify`
+ *  loads all 21 pages SIGNED OUT against the open build: there is no
+ *  session, billing_status() is never called, and nothing here can know
+ *  anything. If that read as "not entitled" the wall would cover every
+ *  page of the app and the entire gate would fail — and worse, the same
+ *  thing would happen to a real signed-in user the moment the network
+ *  hiccuped. A paywall that closes when it cannot reach the server locks
+ *  out the people who have paid.
+ *
+ *  That is the opposite choice from sitegate.js, which fails CLOSED on
+ *  purpose, and the difference is what each one protects. The site gate
+ *  guards who gets in; its failure costs a customer an hour. This guards
+ *  a sale; its failure costs a paying customer their work. The data is
+ *  guarded by neither — RLS and the limit triggers do that, and they are
+ *  untouched by section 30. See the banner at the top of this file. */
+export function entitlement() {
+  if (!ent) return { entitled: true, reason: 'unknown', endsAt: null, used: false, trialEnabled: true };
+  return { ...ent };
+}
+export const entitled = () => entitlement().entitled;
+/** When a running trial ends, as a Date, else null. */
+export function trialEndsAt() {
+  const e = entitlement();
+  return e.reason === 'trial' && e.endsAt ? new Date(e.endsAt) : null;
+}
+export function currentPlan() { return { plan, planName, features: features ? { ...features } : null, gated: !!features, ...entitlement() }; }
 
 /** The modules of navigation.json, by stage, for the console's matrix.
  *  `page` is the file a module lives on and `siblings` the other
@@ -88,7 +125,7 @@ export function moduleCatalogue() {
   /* Siblings are only ever PAGE siblings, which a shelf's tabs are not:
      each tab locks on its own (the tab lock below), so "the page locks
      when all are unticked" would be untrue of them. */
-  const pageMods = nav.phases.flatMap((p) => p.modules.filter((m) => m.status !== 'planned' && m.href));
+  const pageMods = phases().flatMap((p) => p.modules.filter((m) => m.status !== 'planned' && m.href));
   return moduleGroups().map((p) => ({
     id: p.id, label: p.label,
     modules: p.modules.filter((m) => m.status !== 'planned').map((m) => ({
@@ -104,21 +141,41 @@ let _refreshing = null;
 let _again = false;
 async function _refreshOnce() {
   const c = window.StudioCloud;
-  const prev = JSON.stringify(features);
+  /* Both axes are compared, so a trial expiring notifies even though the
+     features map has not moved — that transition is the whole feature. */
+  const prev = JSON.stringify([features, ent]);
   try {
-    if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; }
+    if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; ent = null; }
     else {
       const st = await Billing.status();
       features = (st && st.features && typeof st.features === 'object') ? st.features : {};
       plan = (st && st.plan) || 'free';
       planName = (st && st.plan_name) || Billing.planName(plan);
+      /* §30. A server that has not run section 30 returns no `entitled`
+         key at all, and undefined must not read as false — that would
+         wall every existing member the moment this build shipped against
+         an older database. So the key has to be PRESENT to be believed. */
+      if (st && typeof st.entitled === 'boolean') {
+        ent = {
+          entitled: st.entitled,
+          reason: st.entitled ? (st.trial_active ? 'trial' : 'paid')
+                              : (st.trial_enabled === false ? 'off' : 'expired'),
+          endsAt: st.trial_ends_at || null,
+          used: st.trial_used === true,
+          trialEnabled: st.trial_enabled !== false
+        };
+      } else {
+        ent = null;
+      }
     }
   } catch (e) {
     /* The table or the RPC missing (section 16/18 not run), or a
-       network failure: nothing is known, so nothing is locked. */
-    features = null; plan = ''; planName = '';
+       network failure: nothing is known, so nothing is locked — and
+       nothing is WALLED either. A paywall that closes when the network
+       blinks locks out the people who have paid. */
+    features = null; plan = ''; planName = ''; ent = null;
   }
-  if (JSON.stringify(features) !== prev) Store.notify('plan:changed', currentPlan());
+  if (JSON.stringify([features, ent]) !== prev) Store.notify('plan:changed', currentPlan());
   apply();
 }
 export function refresh() {
@@ -149,7 +206,7 @@ const file = () => (typeof location === 'undefined' ? '' : (location.pathname.sp
 export function modulesHere() {
   const here = file().replace(/\.html$/, '');
   const out = [];
-  for (const p of nav.phases) for (const m of p.modules) {
+  for (const p of phases()) for (const m of p.modules) {
     if (!m.href) continue;
     const f = m.href.split('#')[0].toLowerCase().replace(/\.html$/, '');
     if (f === here) out.push(m);
@@ -233,6 +290,99 @@ function lockPanel() {
   return h('div.pg-lock', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard(modulesHere())]);
 }
 
+/* ---- the wall (§30) ----------------------------------------------
+   The trial ran out and nothing was bought. This is NOT the module
+   lock above: that one says "this corner is on a higher tier" and
+   leaves the rest of the studio open. This says "the thirty minutes
+   are over".
+
+   It REUSES .pg-lock rather than introducing a second overlay — the
+   positioning, the backdrop, the `main` hiding and the responsive
+   rules are all in plan-gate.css already, and prove:billing reads
+   .pg-lock / .pg-lock-card / .pg-flag by name. The wall is a variant
+   (.pg-wall) of an existing thing, never a rename of it.
+
+   WHY A WALL AT ALL, when pageLocked() exists: pageLocked() asks
+   navigation.json which modules live on this file, and index.html,
+   dashboard.html and settings.html have NONE — so it is false on
+   exactly the three pages a lapsed visitor would sit on. */
+
+/* Pages the wall never covers, and why each one:
+     settings  — you cannot buy from behind a wall, and sign-out lives here
+     invite    — the doorway; plan cards are sold from it (prove:billing)
+     start     — the public landing page
+     screening — a guest's pass is its own credential
+     admin     — the owner must never be locked out of their own console
+   privacy/terms/refund load none of this module, so they need no entry. */
+/* Matched against the page name WITHOUT its extension, because
+   vercel.json sets cleanUrls: in production location.pathname is
+   `/settings`, not `/settings.html`, and a regex anchored to `.html`
+   would have walled the page you buy from on the live site and nowhere
+   else. modulesHere() strips the extension for the same reason. */
+const WALL_EXEMPT = /^(settings|invite|start|screening|admin)$/;
+const pageName = () => file().replace(/\.html$/, '');
+
+function wallPanel() {
+  const e = entitlement();
+  const off = e.reason === 'off';
+  const card = h('div.pg-lock-card.pg-wall-card', {}, [
+    h('p.bd-eyebrow', { text: off ? 'The studio' : 'Your trial' }),
+    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : 'Your thirty minutes are up.' }),
+    h('p.pg-lock-p', { text: off
+      ? 'A plan opens the whole desk: your script, your breakdown, your schedule, your budget, your call sheets.'
+      : 'You have been reading Dragon — a complete Tamil feature, scene by scene. A plan opens the same desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
+    /* The promise the owner made, kept where it is visible rather than
+       in a FAQ: nothing a person wrote is held hostage to a sale. */
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    h('div.pg-lock-actions', {}, [
+      h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
+      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' })
+    ])
+  ]);
+  return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': off ? 'Members only' : 'Your trial has ended' }, [card]);
+}
+
+/** The wall's own export. It calls backup.js DIRECTLY rather than the
+ *  hub's exportAll(), which needs hub.js's ALL_KEYS and its activity
+ *  logger — the wall appears on every page, so coupling it to the hub
+ *  would mean the one door that must stay open only opens on one page.
+ *  Dynamic, so backup.js is not in any page's first paint. */
+async function exportFromWall(btn) {
+  const was = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'PREPARING…'; }
+    const { downloadBackup } = await import('./backup.js');
+    await downloadBackup();
+    if (btn) btn.textContent = 'DOWNLOADED';
+  } catch (e) {
+    if (btn) btn.textContent = 'COULD NOT DOWNLOAD';
+    try { console.error('[paywall] export failed', e); } catch (_) { /* */ }
+  } finally {
+    if (btn) setTimeout(() => { btn.disabled = false; btn.textContent = was; }, 2400);
+  }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (ev) => {
+    const b = ev.target && ev.target.closest && ev.target.closest('[data-action="pg-export"]');
+    if (b) { ev.preventDefault(); exportFromWall(b); }
+  });
+}
+
+/** True when this page should be covered. */
+export function walled() {
+  if (typeof location === 'undefined') return false;
+  if (WALL_EXEMPT.test(pageName())) return false;
+  /* An administrator is never walled, anywhere. The owner locked out of
+     their own studio by their own paywall is a 2 a.m. incident, and the
+     role is the SERVER's answer (studio_status().role, carried on the
+     gate state) rather than anything the client decides. */
+  try {
+    const c = window.StudioCloud;
+    if (c && c.getGateState && c.getGateState().role === 'admin') return false;
+  } catch (e) { /* no cloud on this page: fall through */ }
+  return !entitled();
+}
+
 /** Shelf modules whose tab is on THIS page and in the document. */
 function tabsHere() {
   const here = file().replace(/\.html$/, '');
@@ -269,11 +419,21 @@ function apply() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const existing = document.querySelector('.pg-lock');
-  if (pageLocked()) {
+  /* The wall outranks the module lock: there is no point telling
+     somebody which tier a module is on when their trial has ended. */
+  const wall = walled();
+  const lock = !wall && pageLocked();
+  if (wall || lock) {
     root.dataset.planLock = '1';
-    if (!existing) document.body.append(lockPanel());
+    root.toggleAttribute('data-paywall', wall);
+    const want = wall ? 'pg-wall' : 'pg-lock';
+    /* Swap when the KIND changes, not just when one is missing — a
+       trial expiring while a module lock is on screen must replace it. */
+    if (existing && (wall !== existing.classList.contains('pg-wall'))) existing.remove();
+    if (!document.querySelector('.' + want)) document.body.append(wall ? wallPanel() : lockPanel());
   } else {
     delete root.dataset.planLock;
+    root.removeAttribute('data-paywall');
     if (existing) existing.remove();
   }
   lockTabs();
@@ -306,4 +466,4 @@ if (typeof window !== 'undefined') {
   setTimeout(() => clearInterval(hook), 20000);
 }
 
-export default { allowed, sampleOnly, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

@@ -237,9 +237,74 @@ export async function requestRefund(paymentId, category, message = '') {
   return data;
 }
 
+/* ---- the trial (§30) -------------------------------------------- */
+
+/** Claim this account's trial. Called once, on the first landing after a
+ *  sign-in, by whoever notices the user is a stranger.
+ *
+ *  IT DOES NOT THROW for the ordinary refusals. The server answers
+ *  { started: false, reason: 'used' | 'paid' | 'disabled' } for "you have
+ *  had one", "you have already bought" and "the owner switched trials
+ *  off", because this runs on every landing and a caller that had to
+ *  try/catch to tell the wall from the studio would get it wrong once.
+ *  It DOES throw for the three exceptional cases — not signed in,
+ *  disabled, declined — which are 42501s and deserve a sentence.
+ *
+ *  On a success the member row now exists, so the caller must run the
+ *  gate again (cloud.runGate()) before the app will open: that row is
+ *  what sitegate.js reads. Billing.buy() does the same two-step. */
+export async function startTrial() {
+  const sb = await client();
+  const { data, error } = await sb.rpc('start_trial');
+  if (error) throw error;
+  return data || { started: false, reason: 'unknown' };
+}
+
+/** price_notice() (§30.7): what every active plan costs RIGHT NOW, what
+ *  it will cost, when that changes, and how many founding seats are
+ *  gone. `{ seats_total, seats_taken, plans:[{id,name,price_paise,
+ *  next_price_paise,next_price_at,rising}] }`.
+ *
+ *  Anon-callable, because the signed-out landing page reads it — but it
+ *  is the CONSOLE's read as well, and deliberately the same one: an
+ *  owner about to make a public commitment should be looking at the
+ *  figures the public is looking at, not at a second query that could
+ *  disagree. `seats_total` and `seats_taken` are null when no rise is
+ *  pending; the server publishes the buyer count only while a countdown
+ *  is on screen explaining what it means. */
+export async function priceNotice() {
+  const sb = await client();
+  const { data, error } = await sb.rpc('price_notice');
+  if (error) throw error;
+  return data || null;
+}
+
 /* ---- admin ---------------------------------------------------- */
 
 export const admin = {
+  /** §30.9. Schedule a plan's price rise, or clear one (`paise` null).
+   *  The server REFUSES a new price at or below the current one and a
+   *  price with no date; the console refuses both before it gets here,
+   *  so the server's sentence is the backstop rather than the UI. `at`
+   *  is an ISO string. Resolves to a fresh price_notice(). */
+  async setNextPrice(planId, paise, at) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_set_next_price', {
+      p_plan: planId, p_paise: paise == null ? null : Math.round(paise), p_at: at || null
+    });
+    if (error) throw error;
+    _plans = null;
+    return data;
+  },
+  /** §30.9. Support's lever: give one person more time. Unlike
+   *  start_trial() this does not refuse a second trial — an
+   *  administrator asking for one has already decided. */
+  async grantTrial(userId, minutes, note) {
+    const sb = await client();
+    const { data, error } = await sb.rpc('admin_grant_trial', { p_user: userId, p_minutes: minutes, p_note: note || null });
+    if (error) throw error;
+    return data;
+  },
   async setPlan(id, patch) {
     const sb = await client();
     const { data, error } = await sb.rpc('admin_set_plan', { p_id: id, p_patch: patch });
@@ -317,4 +382,4 @@ export const admin = {
   }
 };
 
-export default { requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };
+export default { startTrial, priceNotice, requestRefund, myRefundStatus, refundRequestsEnabled, isRefundsMissing, REFUND_CATEGORIES, listPlans, refreshPlans, status, quote, buy, admin, cap, hasRoom, isUnlimited, limitSentence, planName, planRank, PLAN_ORDER, isPlanLimit, paymentsConfigured, fmtPaise, priceFor, parseRupees, PERIODS, normalisePromo, isPromoShaped, promoLabel };

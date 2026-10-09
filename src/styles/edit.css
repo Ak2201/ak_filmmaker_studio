@@ -121,7 +121,10 @@
 .el-got.is-dropped { color: var(--ink-muted); text-decoration: line-through; }
 .el-setups.is-open { border-color: var(--warn); color: var(--warn-deep); }
 .el-setups.is-none { color: var(--ink-muted); border-style: dashed; }
-.el-cut { margin-left: auto; }
+/* Doubled: base.css gives every select `width: 100%`, which threw the
+   cut picker onto a full-width line of its own under the two badges —
+   the "one line when it fits" above never fitted. */
+.el-facts .el-cut { flex: 0 1 auto; width: auto; max-width: 100%; min-height: 32px; margin-left: auto; }
 
 .el-verdict {
   margin: 0;

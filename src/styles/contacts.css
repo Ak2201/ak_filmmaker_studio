@@ -151,6 +151,11 @@
   box-shadow: var(--sk-card-shadow);
 }
 
+/* The editing half is a wrapper inside .ct-sheet, so the card's gap
+   only separates it from the (screen-hidden) paper — its own children
+   need the rhythm, or every section label sits on the block above. */
+.ct-edit { display: grid; gap: var(--s4); }
+
 .ct-sheet-bar {
   display: flex;
   flex-wrap: wrap;

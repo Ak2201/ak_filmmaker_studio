@@ -17,6 +17,12 @@ insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) value
 -- the prices this file reasons about (billing.sql left indie at ₹599)
 begin;
 select t.claims('00000000-0000-4000-8000-00000000000a');
+-- §30 seeds a scheduled rise on every plan (indie -> 149900), and
+-- plans_next_price_check refuses a price at or above it — so clear the
+-- rises first, as currency.sql does, before pricing above them.
+select public.admin_set_next_price('starter', null, null);
+select public.admin_set_next_price('indie',   null, null);
+select public.admin_set_next_price('pro',     null, null);
 select public.admin_set_plan('starter', '{"price_paise": 299900}');
 select public.admin_set_plan('indie',   '{"price_paise": 799900}');
 select public.admin_set_plan('pro',     '{"price_paise": 1999900}');

@@ -908,6 +908,7 @@
   font-size: var(--t-small);
   color: var(--sk-slab-accent);
   font-variant-numeric: tabular-nums;
+  border-radius: var(--sk-radius, var(--radius));   /* was the one square box in a row of rounded fields */
 }
 /* Each grid cell now stacks a label with its field — and the item
    cell stacks the preset <select> with the custom-name <input>

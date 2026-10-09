@@ -168,6 +168,14 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
+> **ONE THING TO RE-RUN (9 Oct 2026, after the UI/UX release):**
+> `billing_status()` (§30.6, the LAST `create or replace` of it in
+> `supabase-schema.sql`) gained one key, `trial_minutes`. Re-run just
+> that function definition and its two grant lines. Until then the
+> invite page's trial offer falls back to "30 minutes" whatever the
+> console sets; nothing breaks. Verify: `billing_status()` signed in
+> carries `trial_minutes`.
+
 > **NOTHING IS OUTSTANDING AS OF 9 Oct 2026.** §26, §27, §28, §29, §30 and
 > §31 were all run that day through the dashboard SQL editor, each verified
 > afterwards over PostgREST rather than from the screen: `plans.name` is

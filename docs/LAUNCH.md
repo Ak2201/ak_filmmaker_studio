@@ -170,10 +170,13 @@ that one.
 
 > **ONE THING TO RE-RUN (9 Oct 2026, after the UI/UX release):**
 > `billing_status()` (§30.6, the LAST `create or replace` of it in
-> `supabase-schema.sql`) gained one key, `trial_minutes`. Re-run just
-> that function definition and its two grant lines. Until then the
-> invite page's trial offer falls back to "30 minutes" whatever the
-> console sets; nothing breaks. Verify: `billing_status()` signed in
+> `supabase-schema.sql`) changed twice: it gained the key
+> `trial_minutes`, and a full-scope trial no longer swaps the trial
+> plan's features over a plan the person has BOUGHT (`and pl = 'free'`).
+> Re-run just that function definition and its two grant lines. Until
+> then the invite page's trial offer falls back to "30 minutes", and a
+> buyer who pays mid-trial sees the trial plan's features until the
+> trial ends; nothing breaks. Verify: `billing_status()` signed in
 > carries `trial_minutes`.
 
 > **NOTHING IS OUTSTANDING AS OF 9 Oct 2026.** §26, §27, §28, §29, §30 and

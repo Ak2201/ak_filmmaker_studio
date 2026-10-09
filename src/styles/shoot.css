@@ -76,7 +76,13 @@
 /* The open day, and a day already in the can. Told apart by weight
    and a rule as well as colour — the hue-coding assertion asks for
    more than one signal wherever a variant carries data. */
-.sd-day.is-on   { outline: 2px solid var(--accent); outline-offset: var(--focus-offset); }
+/* The chosen one is FILLED, as settings' choices are. An outline alone
+   was the keyboard focus ring exactly, so the selected filter read as
+   "focused" and a focused one as "selected". Doubled class: `:root .btn`
+   in chrome.css is 0,2,0 and declared later. */
+.sd-day.sd-day.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.sd-day.sd-day.is-on:hover,
+.sd-day.sd-day.is-on:focus-visible { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--accent-on); }
 .sd-day.is-done { border-color: var(--ok); color: var(--ink-muted); }
 
 /* ---- a scene ------------------------------------------------ */

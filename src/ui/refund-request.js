@@ -21,12 +21,19 @@ import Billing, { fmtPaise, planName } from '../lib/billing.js';
 import '../styles/refunds.css';
 
 let rerender = () => {};
-const S = { state: 'idle', data: null, busy: false, error: '' };
+const S = { state: 'idle', data: null, busy: false, error: '', draft: { category: '', message: '' } };
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '');
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
 
-/** Forget what was loaded, so the next draw asks again (after a purchase). */
-export function refreshRefundRequest() { S.state = 'idle'; S.data = null; S.error = ''; }
+/** Ask the server again on the next draw (after a purchase).
+ *  settings.js calls this after EVERY billing refresh, and one can land
+ *  at any moment (an auth event, the gate answering). It used to clear
+ *  the error and the data too, so a refresh arriving just after a
+ *  submit wiped the "tell us what happened" message, and the re-render
+ *  rebuilt the form empty under whatever the person had typed. The
+ *  last answer stays drawn while the new one loads; the draft and the
+ *  error are the person's, and only a send clears them. */
+export function refreshRefundRequest() { if (S.state !== 'loading') S.state = 'idle'; }
 
 function load() {
   if (S.state !== 'idle') return;
@@ -42,7 +49,7 @@ export function refundRequestPanel(opts = {}) {
   if (opts.rerender) rerender = opts.rerender;
   load();
   const d = S.data;
-  if (S.state !== 'ready' || !d || !d.enabled || !d.eligible || !d.payment) return null;
+  if (!d || !d.enabled || !d.eligible || !d.payment) return null;
   const box = h('div.rf-block', { 'data-rf-panel': 'request' });
   box.append(h('h3.gt-h3', { text: 'Request a refund' }));
   box.append(h('p.rf-state', { text: `Your ${planName(d.payment.plan_id)} plan, ${fmtPaise(d.payment.amount_paise)}${d.payment.paid_at ? ', paid ' + fmtDate(d.payment.paid_at) : ''}. Purchases are final, except a duplicate charge, a charge where you did not receive what you paid for, or where the law requires. This sends a request; the studio decides, and a refund ends the plan.` }));
@@ -56,6 +63,8 @@ export function refundRequestPanel(opts = {}) {
   if (d.can_request) {
     const cat = h('select', { id: 'rfCategory', name: 'category', required: true }, Billing.REFUND_CATEGORIES.map(([v, t]) => h('option', { value: v, text: t })));
     const msg = h('textarea', { id: 'rfMessage', name: 'message', maxlength: 1000, placeholder: 'What happened? Include the date and anything that helps us find it.' });
+    if (S.draft.category) cat.value = S.draft.category;
+    msg.value = S.draft.message;
     const form = h('form.rf-form', { 'data-rf-form': 'request', novalidate: true }, [
       h('label', { for: 'rfCategory', text: 'Reason' }), cat,
       h('label', { for: 'rfMessage', text: 'Tell us more' }), msg,
@@ -70,6 +79,12 @@ export function refundRequestPanel(opts = {}) {
   return box;
 }
 
+/* The draft survives a re-render (see refreshRefundRequest). */
+delegate(document, 'input', '[data-rf-form="request"] textarea, [data-rf-form="request"] select', (e, el) => {
+  S.draft[el.name] = el.value;
+});
+delegate(document, 'change', '[data-rf-form="request"] select', (e, el) => { S.draft[el.name] = el.value; });
+
 delegate(document, 'submit', '[data-rf-form="request"]', async (e, form) => {
   e.preventDefault();
   if (S.busy) return;
@@ -79,11 +94,14 @@ delegate(document, 'submit', '[data-rf-form="request"]', async (e, form) => {
   S.busy = true; S.error = ''; rerender();
   try {
     await Billing.requestRefund(form.dataset.payment, category, message);
+    S.draft = { category: '', message: '' };
+    // until the server's new answer lands, no second form to send twice from
+    if (S.data) S.data = { ...S.data, can_request: false };
     toast('Request sent. We will answer on this page.', 'success');
   } catch (err) {
     S.error = err.message || 'The request was not sent.';
   }
-  S.busy = false; S.state = 'idle'; S.data = null;   // read the server's word again
+  S.busy = false; S.state = 'idle';   // read the server's word again (the last answer stays drawn meanwhile)
   rerender();
 });
 

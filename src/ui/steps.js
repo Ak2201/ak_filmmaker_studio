@@ -16,6 +16,8 @@
    exist once, as data, and all three read from here.
    ============================================================ */
 
+import { videoSlot } from './video-slots.js';
+import { stepKey } from '../lib/video-keys.js';
 import { h, fromHTML, delegate } from '../lib/dom.js';
 import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
@@ -553,6 +555,9 @@ export function renderStep(step, extra, ns) {
     }
     section.append(el);
   }
+  // An empty slot; video-slots.js fills it only if an approved video joins
+  // this step (videos.json is never written into the step JSON).
+  if (ns && step.id) section.append(videoSlot(stepKey(ns, step.id)));
   return section;
 }
 

@@ -40,6 +40,8 @@
    ============================================================ */
 
 import '../lib/store.js';
+import { videoSlot } from '../ui/video-slots.js';
+import { libKey } from '../lib/video-keys.js';
 
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -428,7 +430,8 @@ function renderFilms() {
       h('div.tags', {}, (f.tags || []).map((t) => h('span.tag', { text: t }))),
       h('p.lesson', { html: f.lesson }, [
         f.tanglish ? h('span.tn', { html: f.tanglish }) : null
-      ])
+      ]),
+      videoSlot(libKey('film', f.title))
     ])))
   ]);
 }
@@ -452,7 +455,8 @@ function renderDirectors() {
         h('div.lab', { text: d.study.label }),
         h('p', { html: d.study.body })
       ]) : null,
-      d.tanglish ? h('span.tn', { html: d.tanglish }) : null
+      d.tanglish ? h('span.tn', { html: d.tanglish }) : null,
+      videoSlot(libKey('director', d.name))
     ]);
   }));
 }
@@ -468,7 +472,8 @@ function renderRules() {
   return h('section.section-body', {}, [
     h('div.rules-grid', {}, rules.map((r) => h('div.rule-card', { 'data-n': r.n }, [
       h('p.rule-text', { text: r.text }),
-      h('p.attrib', { text: r.attribution })
+      h('p.attrib', { text: r.attribution }),
+      videoSlot(libKey('rule', r.n))
     ])))
   ]);
 }
@@ -669,6 +674,7 @@ function renderCraftGlossary() {
     if ((t.aliases || []).length) dt.append(h('span.st-alias', { text: ' · ' + t.aliases.join(', ') }));
     const item = h('article.gloss-item', {}, [h('dl', {}, [dt, h('dd', { text: t.def || '' })])]);
     if (t.tanglish) item.append(h('span.tn', { text: t.tanglish }));
+    item.append(videoSlot(libKey('glossary', t.term)));
     const ex = (t.examples || []).filter((e) => e && e.note);
     if (ex.length) {
       item.append(h('ul.lib-gloss-ex', {}, ex.map((e) => h('li', {}, [

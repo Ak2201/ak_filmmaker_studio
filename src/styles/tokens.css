@@ -309,7 +309,7 @@
   /* Catamaran (owner, 10 Oct 2026: Puvi was asked for; it is Zoho's own
      typeface with no open licence, so an open one in its spirit). SIL
      OFL, on Google Fonts, Tamil AND Latin in one family, 100-900. The
-     screenplay keeps Courier (--f-script: page counts are arithmetic on
+     screenplay keeps Courier (the script stack below — page counts are arithmetic on
      a fixed-width grid) and code keeps JetBrains Mono. */
   --face-serif:   'Catamaran', ui-sans-serif, system-ui, sans-serif;
   --face-display: 'Catamaran', ui-sans-serif, system-ui, sans-serif;

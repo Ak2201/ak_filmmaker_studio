@@ -623,7 +623,21 @@ async function _createClient() {
       }
     });
     // Restore session
-    const { data } = await supabase.auth.getSession();
+    /* THE ERROR HALF WAS BEING THROWN AWAY, and it is the only place
+       auth-js reports why an OAuth return did not become a session.
+       `getSession()` resolves `{ data, error }`; destructuring only
+       `data` turns "the provider's token was rejected", "the stored
+       entry is corrupt" and "there was nothing to restore" into one
+       indistinguishable `null`. A real sign-in that failed on the live
+       site reported exactly nothing, and the sentence the app then
+       showed the user was a guess — a wrong one, as it happened: the
+       Supabase URL configuration it blamed was correct.
+       Kept, surfaced through the same stash the provider errors use. */
+    const { data, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      _sessionError = sessErr.message || String(sessErr);
+      try { console.error('[cloud] getSession:', _sessionError); } catch (e) {}
+    }
     session = data.session;
     // Listen for auth changes
     supabase.auth.onAuthStateChange((event, sess) => {
@@ -676,6 +690,14 @@ async function _createClient() {
     idleSync();
     return supabase;
   } catch (e) {
+    /* KEEP THE REASON. This catch swallowed the single most useful
+       sentence in the app: on 10 Oct 2026 an unrelated ReferenceError
+       in the motion layer (`HEADS is not defined`) landed here, the
+       client was never built, and the only symptom anyone could see
+       was Google sign-in returning people to the landing page. The
+       warning was in the console; nothing carried it to the user or
+       to the page they were bounced to. */
+    _sdkError = (e && e.message) ? e.message : String(e);
     console.warn('[StudioCloud] failed to load SDK', e);
     return null;
   }
@@ -834,6 +856,14 @@ const _redirect = (() => {
 
 /** What the provider said when it sent the browser back here, if anything. */
 export function readRedirect() { return _redirect; }
+
+/* Whatever auth-js said when it declined to produce a session, kept so
+   the failure branch can report the truth instead of a likely cause. */
+let _sessionError = null;
+/** Why the SDK never became a client, if it did not. */
+let _sdkError = null;
+export function sdkError() { return _sdkError; }
+export function sessionError() { return _sessionError; }
 
 /* WHY THE SIGN-IN DID NOT TAKE, WRITTEN SOMEWHERE THAT SURVIVES THE
    BOUNCE. Everything this file says about a failed sign-in it says in a
@@ -1822,7 +1852,7 @@ const StudioCloud = {
   ensureClient,
   signInWithGoogle, signOut,
   getSession, getUser, getUserEmail,
-  onAuth, isSigningIn, readRedirect, authRedirectTarget,
+  onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
   pullProjectList, pullProjectData, attachToCurrentProject,
   flushQueue: _flushQueue,
@@ -1938,16 +1968,24 @@ async function boot() {
                              redirect-URL mismatch. The runbook covers
                              it, and trying again is reasonable. */
       const codeFlow = _redirect.kind === 'code';
+      /* auth-js's own words first, when it gave any. */
+      /* The truth, in the order it is worth hearing. A client that
+         never got built is not a Supabase misconfiguration, and
+         saying so sent one investigation to the dashboard for
+         nothing. */
+      const said = _sdkError
+        ? ' The app could not start its connection to the server: ' + _sdkError
+        : (_sessionError ? ' auth-js said: ' + _sessionError : '');
       const why = codeFlow
         ? 'This project returned an authorisation code, which this build cannot exchange '
           + '(its Supabase client uses the implicit flow). Nothing you do differently will '
           + 'change that — see docs/GOOGLE-AUTH.md.'
-        : 'Google signed you in, but the session did not survive the return trip — usually '
+        : 'Google signed you in, but this browser could not turn that into a session.';
           + 'a Site URL or redirect-URL mismatch in the Supabase project.';
       setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
       notifyAuth('OAUTH_ERROR', null);
-      stashAuthError(why, codeFlow ? 'code_flow_mismatch' : 'no_session');
-      toast('Sign-in did not complete. ' + why, 'error', 6000);
+      stashAuthError(why + said, codeFlow ? 'code_flow_mismatch' : 'no_session');
+      toast('Sign-in did not complete. ' + why + said, 'error', 6000);
     }
   }
 

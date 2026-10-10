@@ -23,6 +23,14 @@ const T0 = Date.now();
 const WINDOW = 4000;
 const BACKSTOP = 8000;
 
+/* RESTORED 11 Oct 2026. Wave 3 (c7b0b2f) deleted this line and left its
+   only use at `pick(root, HEADS)` below, so scan() threw
+   `ReferenceError: HEADS is not defined` on every page in a real
+   browser — and took the Supabase SDK import down with it, which is
+   how it presented: Google sign-in bouncing people back to the
+   landing page, signed out. Nothing caught it because WANT above
+   switches this whole module off under `navigator.webdriver`. */
+const HEADS = 'main h2';
 const CARDS = '.door, .start-card, .tool-card, .project-card, .film-card, .director-card, .rule-card, .fest-card, .job-card, .db-tile, .db-card, .db-proj, .lx-mod, .ct-person';
 const ROWS = '.bd-scene, .sb-shot';
 const NUMS = '.hero-stat .num, .bd-stat strong, .db-num, .db-big-num, .rp-stat strong, .cx-stats .bd-stat strong';
@@ -80,7 +88,17 @@ function scan(root) {
     if (seen.has(h)) return;
     seen.add(h);
     if (!okHead(h)) return;
-    if (inView(h)) { splitWords(h); return; }
+    /* A heading already on screen is left alone. It used to be
+       `splitWords(h)`, and that call is why this file threw: Wave 3
+       pruned `splitWords` from the import above and the HEADS const
+       below, and left both uses behind. Removing the call rather than
+       restoring the import is deliberate — the same commit also
+       dropped `show()`'s `k === 'head'` branch, so a heading scrolled
+       into view already gets the plain veil/reveal and not a split.
+       Word-splitting was kept for the LANDING page, where
+       motion-landing.js still does it to the hero. Putting it back
+       here would be reviving something that was pruned on purpose. */
+    if (inView(h)) return;
     if (isNew) watch(h, 'head');
   });
 

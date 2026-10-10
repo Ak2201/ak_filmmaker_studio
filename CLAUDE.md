@@ -59,6 +59,8 @@ npm run og               # regenerate public/og.png from tokens (after a palette
 npm run build:extension   # the Chrome extension, into dist-extension/
 npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
+npm run test:undef        # an identifier used and never declared (no browser; see the
+#   motion-layer trap — Playwright cannot see that code at all)
 npm run test:schema       # the WHOLE schema on a real PostgreSQL + 430 checks.
 #   macOS: brew install postgresql@16, then
 #   export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH" LC_ALL=C LANG=C
@@ -1096,6 +1098,55 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   a `redirect_to` is not allow-listed, so the allow-list can no longer
   change the destination. `prove:gate` now asserts the value AND the
   absence of `.html`.
+
+- **THE MOTION LAYER IS INVISIBLE TO EVERY CHECK IN THIS REPO, AND IT
+  BROKE THE ONLY WAY IN.** `src/ui/motion-app.js` opens with
+
+  ```js
+  const WANT = … && !navigator.webdriver && …
+  ```
+
+  Playwright sets `navigator.webdriver`. So the whole module is inert
+  under `verify` and under every `prove:*` — by design, so animations
+  do not destabilise screenshots, and the cost is that **no browser
+  check in this repo can see a bug in it.**
+
+  On 10 Oct 2026 Wave 3 (`c7b0b2f`) deleted `const HEADS = 'main h2';`
+  and pruned `splitWords` from the import, and left BOTH uses behind.
+  `motion-app.js` is in the CORE chunk via `chrome.js`, so every page
+  in a real browser threw `ReferenceError: HEADS is not defined` — and
+  the throw landed inside `cloud.js`'s `await
+  import('@supabase/supabase-js')`, so the Supabase client was never
+  built. No client, no session; the site gate read that as signed out
+  and sent the visitor to the landing page. **Nobody could sign in to
+  the live site**, and it was reported as "Google login is not
+  working", which is where three hours went: the OAuth leg was
+  perfect the whole time — right client, right scopes, right
+  `redirect_to`, tokens present and complete in the fragment.
+
+  Meanwhile `verify` passed all 21 pages, `prove:gate` 120,
+  `prove:growth` 78 and `prove:billing` 186. All green. All blind.
+
+  Three things came out of it:
+
+  - **`npm run test:undef`** (`scripts/check-undeclared.mjs`) parses
+    every file in `src/` with acorn and fails on an identifier that is
+    used and never declared or imported. It needs no browser, so
+    `navigator.webdriver` cannot hide anything from it. It is the
+    first step of `test:all`. Run against `c7b0b2f` it names both
+    faults on the right lines.
+  - **A catch that swallows a reason is worse than a crash.**
+    `_createClient`'s `catch` logged to the console and returned null,
+    and the console is the one place nobody looks when the symptom is
+    a redirect. It keeps the message in `_sdkError` now and the
+    landing page says it.
+  - **Do not let a message GUESS.** The old failure text blamed "a
+    Site URL or redirect-URL mismatch in the Supabase project". The
+    Supabase configuration was correct — Site URL and a
+    `https://thefilmmakerstudio.vercel.app/**` wildcard both right —
+    and that sentence sent one investigation into the dashboard for
+    nothing. A message may report what it observed; it may not name a
+    likely cause it has not checked.
 
 - **A `return` in `boot()` starves the site gate, and the page just
   sits there.** `sitegate.js` decides nothing until `cloud:booted`

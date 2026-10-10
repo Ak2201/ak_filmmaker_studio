@@ -15,6 +15,7 @@
     "test:pdf": "node scripts/test-pdf-text.mjs",
     "test:story": "node scripts/test-story.mjs",
     "test:videos": "node scripts/test-videos.mjs",
+    "test:videos:online": "node scripts/check-videos-online.mjs",
     "test:screenplay": "node scripts/test-screenplay.mjs",
     "test:billing": "node scripts/test-billing.mjs",
     "test:invoice": "node scripts/test-invoice.mjs",

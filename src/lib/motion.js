@@ -47,18 +47,28 @@ export function reveal(root = document, { once = true } = {}) {
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0.02 });
   const t0 = target();
   for (const n of items) { if (onTarget(n, t0)) continue; n.classList.add('mo-veil'); io.observe(n); }
-  addEventListener('hashchange', () => {
+  const onHash = () => {
     const t = target();
     for (const n of items) if (onTarget(n, t) && n.classList.contains('mo-veil')) { n.classList.remove('mo-veil'); io.unobserve(n); }
-  });
-  setTimeout(() => { io.disconnect(); items.forEach(show); }, BACKSTOP);
+  };
+  addEventListener('hashchange', onHash);
+  /* Printing shows everything: a card never scrolled to is still veiled,
+     and a page printed from the top would come out blank below the fold.
+     motion.css says the same for print media; this covers the reveal
+     classes being removed so the screen agrees after the dialog. */
+  const all = () => { io.disconnect(); items.forEach(show); removeEventListener('hashchange', onHash); removeEventListener('beforeprint', all); };
+  addEventListener('beforeprint', all);
+  setTimeout(all, BACKSTOP);
 }
 
 /* ---- splitWords ------------------------------------------------ */
 export function splitWords(el, { onScroll = false } = {}) {
   if (!el || el.dataset.moSplit) return el;
   const wait = onScroll && !prefersReducedMotion() && 'IntersectionObserver' in window;
-  const label = el.textContent.replace(/\s+/g, ' ').trim();
+  /* The words stay READABLE: no aria-label on the heading and no
+     aria-hidden on the spans. A label fixed at split time went stale the
+     first time a page rewrote the heading (the hub's resume title, on
+     every project switch), so a screen reader announced the last film. */
   let i = 0;
   const walk = (node) => {
     for (const c of Array.from(node.childNodes)) {
@@ -72,7 +82,6 @@ export function splitWords(el, { onScroll = false } = {}) {
           const s = document.createElement('span');
           s.className = 'mo-w';
           s.style.setProperty('--i', Math.min(i++, 14));
-          s.setAttribute('aria-hidden', 'true');
           s.textContent = p;
           frag.append(s);
         }
@@ -81,7 +90,6 @@ export function splitWords(el, { onScroll = false } = {}) {
     }
   };
   walk(el);
-  el.setAttribute('aria-label', label);
   el.dataset.moSplit = '1';
   if (wait) {
     el.classList.add('mo-w-wait');
@@ -140,7 +148,11 @@ export function countUp(el, { duration = 1400 } = {}) {
     if (el.dataset.countTo != null) final();
     return;
   }
+  /* 0 is written when the count STARTS, never at registration: until
+     then the real figure stays in the DOM for screen readers, copy and
+     crawlers (it used to read "₹0" for every paid tier until scrolled). */
   const run = () => {
+    node.nodeValue = fmt(0);
     const t0 = performance.now();
     const tick = (t) => {
       const p = Math.min(1, (t - t0) / duration);
@@ -149,7 +161,6 @@ export function countUp(el, { duration = 1400 } = {}) {
     };
     requestAnimationFrame(tick);
   };
-  node.nodeValue = fmt(0);
   ensureCountIO();
   pending.set(el, { run, done: final });
   countIO.observe(el);

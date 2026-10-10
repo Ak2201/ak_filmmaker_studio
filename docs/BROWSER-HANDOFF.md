@@ -188,6 +188,16 @@ not trusted by the browser), so these were never seen live:
 5. **Google sign-in round trip on `thefilmakerlocal.vercel.app`**
    (still untested, see §6 below).
 
+### 0.4 Check the 65 explainer videos against YouTube (added 10 Oct)
+
+On a machine that reaches youtube.com: `npm run test:videos:online`. It
+asks YouTube's oEmbed for every approved video and prints DEAD (removed,
+private or not embeddable — exit 1) or the title and channel YouTube
+reports beside ours, flagging WARN where they barely match. It writes
+nothing. Fix or unapprove the DEAD rows in `src/data/videos.json`, look
+at the WARN rows, and set `verified: true` only on rows actually looked
+at. The cloud container cannot run it (ENOTFOUND).
+
 ### 0.3 Still owed, unchanged (needs the owner)
 
 - The live RLS checks with a second Google account (§3 below).

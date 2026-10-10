@@ -535,7 +535,9 @@ try { priceNotice().then(renderPriceRise, () => {}); } catch (e) { /* never brea
     qa('.st-card, .st-tiers li, .st-faq').forEach((n) => spotlight(n));
     const pick = q('.st-pick');
     if (pick) { pick.classList.add('mo-trail'); glow(pick); }
-    qa('b.st-price, .st-fact-n').forEach((n) => countUp(n));
+    /* The facts count; the PRICES never do — a price that reads ₹0 for
+       a second, or to a screen reader, is a price that misleads. */
+    qa('.st-fact-n').forEach((n) => countUp(n));
     qa('.st-faq').forEach(smoothFaq);
     stagesReady.then(() => {
       try {

@@ -14,7 +14,9 @@ export function facade(v) {
       h('span.vid-icon', { 'aria-hidden': 'true', text: '▶' }),
       h('span.vid-meta', {}, [
         h('span.vid-title', { text: v.title }),
-        h('span.vid-sub', { text: [v.channel, v.minutes ? v.minutes + ' min' : ''].filter(Boolean).join(' · ') || 'YouTube' })
+        /* "Plays from YouTube": pressing play loads YouTube's player, which
+           receives the visitor's address — said on the facade, before the click. */
+        h('span.vid-sub', { text: [v.channel, v.minutes ? v.minutes + ' min' : '', 'Plays from YouTube'].filter(Boolean).join(' · ') })
       ])
     ])
   ]);
@@ -37,6 +39,9 @@ function play(box) {
   });
   box.replaceChildren(frame);
   box.classList.add('is-live');
+  /* The focused button just left the DOM; without this, focus fell to
+     <body> and the next Tab on a 65,000px blueprint started at the top. */
+  try { frame.focus(); } catch (e) { /* older engines */ }
 }
 delegate(document, 'click', '[data-action="video-play"]', (e, el) => play(el.closest('.vid')));
 

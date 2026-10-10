@@ -47,7 +47,29 @@
 }
 .mo-marquee-set { display: flex; flex: none; padding-inline-end: var(--s3); }
 .mo-marquee:hover .mo-marquee-track,
-.mo-marquee:focus-within .mo-marquee-track { animation-play-state: paused; }
+.mo-marquee:focus-within .mo-marquee-track,
+.mo-marquee.mo-paused .mo-marquee-track { animation-play-state: paused; }
+/* The strip's stop control (WCAG 2.2.2). A quiet text button under the
+   strip, at the right; a 44px target under coarse pointers via base.css. */
+.mo-marquee-toggle {
+  display: block;
+  margin: var(--s2) 0 0 auto;
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  cursor: pointer;
+}
+.mo-marquee-toggle:hover { color: var(--ink); border-color: var(--ink-muted); }
+.mo-marquee-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Off screen, loops stop (pauseOffscreen in motion-landing.js). */
+.mo-idle, .mo-idle::before, .mo-idle::after,
+.mo-idle *, .mo-idle *::before, .mo-idle *::after { animation-play-state: paused !important; }
 @keyframes mo-marquee { to { transform: translateX(-50%); } }
 
 /* ---- glow (GlowEffect): a blurred conic gradient behind the host --- */
@@ -100,4 +122,9 @@
   .mo-progress, .mo-glow-fx { display: none; }
   .mo-marquee { overflow-x: auto; }
   .mo-marquee-set[aria-hidden="true"] { display: none; }
+  .mo-marquee-toggle { display: none; }
+}
+@media print {
+  .mo-up, .mo-pop, .mo-from-right { opacity: 1 !important; filter: none !important; transform: none !important; animation: none !important; }
+  .mo-progress, .mo-glow-fx, .mo-aurora, .mo-marquee-toggle { display: none !important; }
 }

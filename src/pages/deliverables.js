@@ -34,6 +34,7 @@ import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { listScenes } from '../lib/scenes.js';
 import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
+import { guideHref } from '../lib/blueprint-route.js';
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
    and dialogue tabs, so they load on demand, not in first paint. */
 let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
@@ -211,7 +212,7 @@ function festivalBlock(reqs, format) {
           + 'appears here with the format it asks for.'
     }));
     sec.append(h('a.btn', {
-      href: 'short.html#step-10',
+      href: guideHref('short', 'step-10') || 'edit.html#guide',
       text: feature ? 'OPEN THE SUBMISSION TRACKER (SHORT FILM BLUEPRINT)' : 'OPEN THE SUBMISSION TRACKER'
     }));
     return sec;
@@ -248,7 +249,7 @@ function blueprintBlock(says) {
     sec.append(h('p.dv-bp-lab', { text: 'First screening, and the date you are working towards' }));
     sec.append(h('blockquote.dv-bp-q', { text: says.plan }));
   }
-  sec.append(h('a.dv-bp-link', { href: 'feature.html#step-32', text: 'Edit on the blueprint' }));
+  sec.append(h('a.dv-bp-link', { href: guideHref('feature', 'step-32') || 'edit.html#guide', text: 'Edit on the blueprint' }));
   return sec;
 }
 

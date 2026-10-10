@@ -570,6 +570,9 @@ button.st-btn-primary {
   letter-spacing: normal;
 }
 
+.st-tier-buy { margin-top: auto; align-self: flex-start; }
+.st-door strong { color: var(--ink); }
+
 .st-pick {
   border-color: var(--accent-gold);
   border-top: var(--sk-hue-rule-w) solid var(--accent-gold);

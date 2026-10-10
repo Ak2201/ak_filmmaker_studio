@@ -1,6 +1,6 @@
 # FilmMakerStudio. The app is invite-only and renders nothing for a
 # visitor outside the gate, so the pages worth a crawler's time are the
-# five public ones listed in the sitemap. Nothing is disallowed: the
+# four public ones listed in the sitemap (start, privacy, terms, refund). Nothing is disallowed: the
 # other pages are static files that redirect to invite.html on load, and
 # a crawler finding them is a crawler finding the doorway.
 User-agent: *

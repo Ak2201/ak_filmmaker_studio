@@ -514,9 +514,8 @@ try { priceNotice().then(renderPriceRise, () => {}); } catch (e) { /* never brea
     if (!reduced) {
       enter(q('.st-hero .st-hook'), 'mo-up', 900);
       enter(q('.st-hero .st-lede'), 'mo-up', 1050);
-      qa('.st-hero .st-cta > .st-btn').forEach((b, i) => enter(b, 'mo-pop', 1250 + i * 120));
+      /* The hero CTA and screenshot are never delayed: the thing a visitor came to press and see is there at once. */
       enter(q('.st-hero .st-fine'), 'mo-up', 1500);
-      enter(q('.st-hero .st-shot-hero'), 'mo-from-right', 500);
     }
     aurora(q('.st-hero'));
     reveal(document);

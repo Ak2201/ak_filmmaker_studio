@@ -158,6 +158,16 @@ inside the studio** (it needs a CSP change, a privacy-policy paragraph and
 contradicts "your work stays in your browser"; if ever wanted, put it on
 `start.html` only); positioning lines are in `docs/FEATURE-IDEAS.md`.
 
+**10 Oct 2026 — HISTORY items 28–30.** The beginner pass on Story and
+Screenplay (favourite film, `learn()`, the Story Bible, a 15-fix script parser,
+one-click breakdown); the project-first hub (three doors, a five-stage
+dashboard, a project switcher in the band); and the blueprints folded into the
+five stage pages, with the old feature and short pages redirecting (`?stay=1`
+exempt). Owner follow-ups, none of which the container can do: run
+`npm run test:videos:online` on your own machine (it cannot reach YouTube); give
+the legal pages a support address that is not personal; and check the sync
+switch and the Pro card in a signed-in browser.
+
 ## 3. Decisions the owner made — do not re-ask
 
 - **The site gate stays the door** (invite-only). `start.html` is the public page.

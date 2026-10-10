@@ -1462,3 +1462,112 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       blockers that must be cleared first — the preview's Vercel
       Deployment Protection (Google cannot sign in to Vercel) and a
       Search Console verification of the preview domain.
+
+28. **Beginner pass: Story and Screenplay (10 Oct 2026).** Written for a
+    first-time filmmaker: the studio says what each stage is for, gives the
+    reason behind each step, and lets a beginner ask for help on the page
+    where they are stuck.
+
+    - **A favourite film per project.** A `fav` slug on the project entry
+      in `fms_studio_projects_v1` (`projectFav` / `setProjectFav` in
+      `store.js`). `studies.js` `favouriteSlug` falls back to the device
+      demo choice in `fms_studio_demo_v1`. The backup carries `fav`.
+      Settings has a Favourite film section; the Story empty state asks.
+    - **`learn()`.** `src/ui/learn.js` and `src/data/learn.json`: 34
+      topics, each pointing at glossary terms, step ids and `videos.json`
+      targets. The glossary grew from 21 to 45 terms, each with an example
+      from four films (dragon, 96, porthozhil, vikramvedha). The panel is a
+      closed `<details>`; its body is built on first open. Videos are
+      click-to-load `youtube-nocookie` facades. `test:learn`.
+    - **The Story path** is Idea › Logline › Story Bible › Scene order ›
+      Step outline › Synopsis › To the Screenplay. New id `bible`;
+      `structure` is relabelled Scene order; the old `#path-N` numbers map
+      to the same steps, and `#path-<id>` is supported. No step is
+      mandatory.
+    - **Story Bible** (`src/ui/story-bible.js`, `src/data/story-bible.json`):
+      Characters; Conflict, with a new `conflicts` array and `conflictLine`
+      in `fms_story_v1`; Stakes (`s3_ext` / `s3_int`); Theme (`s3_theme` /
+      `s3_phil`); World (`s7_*` on feature, `s5_*` on short).
+    - **The Character Bible** on `fms_characters_v1` gains role, look,
+      stakes, fear, lie, flaw, strength, wound, secret, arcStart, arcEnd and
+      relationships. The defaults live in `blankCharacter`, so there is no
+      migration. A protagonist's, antagonist's or ally's field that has a
+      blueprint key (`s4_*`, `s5_*`, `s6_*`; `s3_*` on short) is read and
+      written in the blueprint blob, never on the record: one representation
+      per field. One protagonist and one antagonist per project.
+    - **`blueprint-store.js` `readFields` / `writeFields`** merge-write into
+      the blueprint blobs. `feature.js` and `short.js` rebuild the whole blob
+      from their own page, so any other writer must merge.
+    - **Script parser: 15 fixes** (`script-import.js`, `pdf-text.js`, the
+      Fountain export in `script.js`). PDF page 1 is no longer always
+      dropped; transitions need caps; a Tamil short-line cue rule; a Fountain
+      title page needs a known key; `#`, `@` and `===` are syntax and are
+      escaped on export; `!` is stripped per line; `#12#` scene numbers;
+      trailing numbers stay in the location ("HIGHWAY 66"); EST. is exterior;
+      PDF vertical gaps become blank lines; dual dialogue in text and PDF;
+      revision headers and `CONTINUED: (2)` are dropped; `CONT'D` speeches
+      are rejoined; pastes with no blank lines are split; lowercase cue
+      extensions, Tamil headings, and LATER / SAME and the like read as times
+      of day. `test:import` 66, `test:pdf` 50.
+    - **One-click breakdown.** `src/lib/breakdown-run.js` (`runBreakdown`,
+      `summarize`); `script-commit.js` `commitImportedScript` is shared by
+      Write and Breakdown; `byLocation` moved to `locations.js`.
+      breakdown.html opens on Whole script (`#overview`): upload a script, or
+      break down the current one. Tabs are Scenes · Characters · Locations ·
+      Totals. Cast is tagged only from cues, with an undo toast; other
+      elements stay suggestions. `test:breakdown`.
+    - **Writer guide.** `beat-guide.js` lists the step outline grouped by
+      beat, highlights the current scene's step, and jumps to or starts the
+      scene. It is the default panel when an outline exists and no explicit
+      preference has been set.
+    - **Chrome and money surfaces.** The start page footer is a full-width
+      band without the e-mail address; the app footer is a hairline band.
+      Dark-theme buy surfaces use `--cta-fill`, `--cta-fill-hover`,
+      `--cta-glow` and `--glow-soft` (CTA text 4.58:1). Cloud sync can be
+      turned off: `cloudSync: 'off'` inside `fms_studio_prefs_v1`, behind a
+      confirm dialog; `setSyncEnabled` catches up both ways; backup strips
+      `cloudSync` on export and import. AI tools are gated by
+      `PlanGate.allowed('ai_tools')` with a calm Pro card, and fail open when
+      the plan is unknown.
+
+29. **Project-first studio (10 Oct 2026).** The hub stops being a menu of
+    blueprints and becomes the start of a project.
+
+    - **Three doors:** Feature film · Short film · Learning (library.html).
+      Feature and Short open `src/ui/project-setup.js` (name, favourite film,
+      "More formats"), which calls `createProject({title, format, fav,
+      adopt: true})` and then goes to the dashboard. The blueprint doors are
+      removed from the hub.
+    - **The dashboard** has five stage cards (`#stage-<id>`). Each is derived
+      and independent: a script with no story reads Pre-production in
+      progress and Story not started. A "Suggested next" is shown and is
+      never forced. A resume line comes from `story.updatedAt` and `shotAt`.
+      `journey.js` gains `stageStates`, `suggestNext`, `lastWorked` and
+      `stageHref`. `test:journey`.
+    - **Project switcher** in the band on every shell page
+      (`src/ui/project-switcher.js`, CORE), and the first group in the phone
+      Go-to sheet. Choosing a project goes to its dashboard.
+
+30. **Blueprints folded into the stages (10 Oct 2026).** The step-by-step
+    blueprints stop being pages of their own and become a guide inside each
+    stage.
+
+    - **`src/ui/stage-guide.js`**: `mountStageGuide(host, {stage})` appends
+      `section#guide` to story, write, breakdown, shoot and edit. It renders
+      that stage's blueprint steps for the project's format, derived from
+      `steps.stages.json`: feature 01–10 story, 11–13 screenplay, 14–24
+      pre-production, 25–28 production, 29–32 post; short 01–05, 06–08 and 11,
+      09 (pre-production and production), 10. Writes go only through
+      blueprint-store merge-write, on input, debounced. Widgets are ported in
+      `stage-guide-widgets.js`. Short step 08's tools and the festival tracker
+      link to the old page with `?stay=1`. `test:stage-guide` 111.
+    - **`src/lib/blueprint-route.js`** maps old blueprint anchors to stage
+      guides. `src/pages/blueprint-redirect.js` forwards feature.html and
+      short.html; `?stay=1` is exempt. `navigation.json` lost the Blueprints
+      shelf; each stage's guide entry points at `<page>#guide`. The blueprint
+      drawer is suppressed on the five guide pages.
+    - **verify**: a key-union check proves that the union of `[data-key]`s
+      across the five stage pages (a feature project and a short project)
+      covers every baselined feature and short key. `BLUEPRINT_PAGES_ARE_REDIRECTS`
+      drops the old per-page rows. Storage keys and data-keys are
+      byte-identical; there is no migration.

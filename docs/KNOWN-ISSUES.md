@@ -245,7 +245,32 @@ walk's `total > 100` floor was calibrated for 4x5 = 20 passes. All three
 now derive from what the app actually offers, per CLAUDE.md's own rule
 that a check counts what exists rather than naming a number.
 
-## feature.html at 390px: the STEPS tab covers the language toggle (10 Oct 2026)
+## ~~feature.html at 390px: the STEPS tab covers the language toggle~~ FIXED 10 Oct 2026
+
+> **Fixed the same day.** The inset was a CONSTANT and the constant was
+> wrong; it is measured now. `chrome.js` publishes `--step-tab-w` and
+> `chrome.css` insets `main` by it. Verified at a true 390x844: published
+> 44px agrees with the live width, `main` is inset 48px, "English" sits
+> at x 65 with a 21px gap from the tab, nothing covered, no overflow.
+>
+> **Two things worth keeping from the fix.** The tab's width DEPENDS ON
+> THE DEVICE — 23px with a mouse, 44px on a touch screen, because
+> base.css floors a tap target at 44px under `(pointer: coarse)`. No
+> single constant could ever have been right, which is why the original
+> 22px was wrong on exactly the devices that mattered.
+>
+> And the first attempt at the fix shipped the same class of bug it was
+> fixing: measuring once and again on `document.fonts.ready` published
+> 23px (the fallback face) while the button was really 44, so the inset
+> came out at 27 and "English" cleared the tab by nothing at all. A
+> ResizeObserver on the button cannot be early — but its callbacks ride
+> the rendering loop, so a tab that is not compositing never gets one.
+> Both are in place now, plus one delayed re-measure, because timers run
+> when the renderer does not.
+
+### The original report
+
+
 
 Found in the real-browser pass (`docs/BROWSER-HANDOFF.md` §0). At a true
 390x844 viewport the fixed vertical STEPS tab, `.step-rail-toggle`,
@@ -264,3 +289,34 @@ So the fix is only about the toggle: give `.steps-lang` a left inset at
 narrow widths (the tab's 44px plus a margin), or move the toggle out of
 the tab's band. Measured on a local open build, which is the same layout
 as production; the gate does not affect it.
+
+## prove:billing block (m) failed ~1 run in 3 — FIXED 10 Oct 2026
+
+Not a flake, and not caused by the STEPS-tab work (confirmed by stashing
+that change: 2 of 3 runs still failed without it). Two causes, one of
+them a real bug in the admin console.
+
+**The real one.** `billing-admin.js` rebuilds the "Add a code" form on
+every render, and `load()` calls `rerender()` twice — once on entry and
+once when its three calls return. A refresh landing while somebody is
+typing emptied the form, so the submit that followed sent a half-filled
+code: the affiliate code arrived with no commission and the row the
+proof waits for never appeared. **Exactly the bug already fixed for the
+refund-request form** ("a background billing refresh no longer wipes the
+form", 0c897a7), in the next form along. The promo form keeps its draft
+across a render now, and clears it on save so the next code is not
+edited on top of the last.
+
+**The other one was the proof's.** The section kicks off `load()` while
+it is being built, so the proof was typing into a page that was still
+loading — a race nobody runs in real life, since a person opens the
+page, watches it fill, then types. It waits for the promo table to have
+a row (earlier blocks create codes) before touching the form.
+
+Both were needed: the draft fix alone still failed 1 run in 4. Five
+consecutive clean runs after.
+
+**The shape to remember:** a form rebuilt by a background refresh loses
+what is being typed into it. It has now bitten three times in this
+codebase — the invite-request note, the refund request, and this. If you
+add a form to a page that re-renders from a data load, keep its draft.

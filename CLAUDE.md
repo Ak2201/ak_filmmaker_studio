@@ -926,6 +926,35 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   state. `verify` counts the themes rather than naming a number of them, so
   it asserts two distinct backgrounds now and would assert five without an
   edit.
+- **A MEASURED NUMBER THAT IS WRITTEN DOWN AS A CONSTANT STOPS BEING
+  MEASURED.** `chrome.css` insets `main` below 1100px so the fixed
+  vertical STEPS tab does not sit over the page's left-edge controls.
+  The inset was 8px, chosen from a comment reading *"the tab is fixed
+  over the page's left edge (22px wide)"*. It is not 22px. It is 23 with
+  a mouse and **44 on a touch screen**, because `base.css` floors a tap
+  target at 44px under `(pointer: coarse)` — so the number was wrong on
+  exactly the devices the rule exists for. The language toggle's
+  "English" button spans x 25–111 at 390px; nineteen pixels of it sat
+  behind the tab, and a thumb there opened the step rail instead of
+  switching language.
+
+  No constant could have been right. `chrome.js` measures the button and
+  publishes `--step-tab-w`; the stylesheet reads it. Same family as
+  `--sh-bar-h`, `--mab-h` and `--sh-plate-h`, and the same lesson from
+  the other side: those are measured because somebody once wrote the
+  number down.
+
+  **The first fix shipped the bug it was fixing.** Measure once, then
+  again on `document.fonts.ready` — the obvious shape — published 23px
+  while the button was really 44, because fonts.ready resolved before
+  the new metrics reached the element. The inset came out at 27 and the
+  button cleared the tab by nothing at all. A `ResizeObserver` on the
+  element itself cannot be early; it is the right mechanism, and writing
+  the property on `<html>` keeps it outside the observed subtree so
+  there is no loop. But **RO callbacks ride the rendering loop**, so a
+  tab that is not compositing never gets one — hence one delayed
+  re-measure as well, because timers run when the renderer does not.
+
 - **A baseline stores an INSTANT; a countdown needs a DAY, and the two
   are not the same across a timezone.** `COUNTDOWN` predicts which
   festival numbers moved by deriving them at the baseline's `capturedAt`

@@ -551,6 +551,21 @@ try {
     const A = await newContext(browser, { tok: 'tok-admin' });
     await A.page.goto(BASE + 'admin.html#billing');
     await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
+    /* WAIT FOR THE LOAD TO SETTLE BEFORE TYPING. The section kicks off
+       load() while it is being built, and load() calls rerender() twice
+       — once on entry, once when the three calls come back. Typing into
+       the form in that window is a race nobody runs in real life: a
+       person opens the page, watches it fill, and then types. The proof
+       was typing during the load and failing roughly one run in three,
+       which read as a flake and was not one.
+
+       The promo table is the tell: earlier blocks created codes, so a
+       row exists once the data has arrived. (billing-admin.js also
+       keeps the form's draft across a rerender now, so a refresh that
+       lands mid-typing no longer empties it — that was the other half,
+       and the same bug the refund form had.) */
+    await A.page.waitForSelector('#billing tr[data-promo]', { timeout: 15000 });
+    await A.page.waitForLoadState('networkidle');
     await A.page.fill('#baPromoCode', 'festdesk');
     await A.page.fill('#baPromoValue', '5');
     await A.page.fill('#baPromoComm', '20');

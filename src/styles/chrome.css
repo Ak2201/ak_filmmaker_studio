@@ -2541,12 +2541,27 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 /* Open, the tab hangs off the rail's outer edge rather than sitting on
    the rail's own "STEPS" heading. */
 body.rail-open .step-rail-toggle { left: var(--rail-w); }
-/* Below the desk the tab is fixed over the page's left edge (22px
-   wide) and the page's own gutter is 16-24px, so the controls nearest
-   the edge — the language toggle at 17px — sat under it. 8px more
-   clears it without giving up a column on a phone. */
+/* Below the desk the tab is fixed over the page's left edge, so the
+   controls nearest that edge sit underneath it unless `main` is inset
+   past it.
+
+   THIS WAS A CONSTANT AND THE CONSTANT WAS WRONG. The comment here read
+   "22px wide" and the inset was 8px. Measured at 390px the tab is
+   FORTY-FOUR: `writing-mode: vertical-rl` makes its width the line box
+   of the vertical text, so it follows the font and its size, and 22 was
+   either a different face or a guess. The language toggle's "English"
+   button spans x 25-111 — nineteen pixels of it were behind the tab,
+   and a thumb there opened the step rail instead of switching language.
+   `elementsFromPoint` put `step-rail-toggle` above `steps-lang`.
+
+   chrome.js measures the button and publishes --step-tab-w (twice: once
+   for layout and once after document.fonts.ready, exactly as shell.js
+   does for the band). It publishes 0 when the tab is not fixed, so the
+   desk gives up no column. The fallback keeps a phone correct if the
+   script has not run yet; the measurement is what keeps it correct when
+   the font changes. */
 @media (max-width: 1099px) {
-  body.has-step-rail main { padding-left: var(--s2); }
+  body.has-step-rail main { padding-left: calc(var(--step-tab-w, 44px) + var(--s1)); }
 }
 
 /* ---- narrow: off-canvas behind the burger ---- */

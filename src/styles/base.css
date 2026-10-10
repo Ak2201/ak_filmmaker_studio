@@ -224,6 +224,30 @@ label, summary, input, select, textarea {
             input:not([type="hidden"], [type="checkbox"], [type="radio"], [type="range"])):not(.sh-plate-dot) {
     min-height: 44px;
   }
+  /* A FIELD UNDER 16px MAKES iOS SAFARI ZOOM THE PAGE, AND IT DOES
+     NOT ZOOM BACK. Focus an input whose computed font-size is below
+     16px and mobile Safari scales the whole document up to make it
+     readable; blurring does not undo it, so the reader is left on a
+     page that no longer fits and has to pinch out by hand. In a tool
+     people fill in hundreds of fields in — 444 of them measured under
+     16px across these pages, the feature blueprint alone holding 312
+     — that is the single worst thing about this app on an iPhone.
+
+     `max(16px, 1em)`, not a flat 16px: `em` in a font-size resolves
+     against the PARENT, so a field that already sits in larger type
+     keeps it and only the small ones are lifted. Checkboxes, radios
+     and ranges are excluded — they have no text to zoom toward.
+
+     NOTHING IN THE GATE CAN SEE THIS RULE. Every browser check here
+     runs with a fine pointer (Playwright), so `(pointer: coarse)`
+     never matches and neither this fix nor a regression in it is
+     measured. It was checked by hand at 390px with touch emulation,
+     and that is the only way it can be checked. */
+  :root :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"]),
+            textarea, select) {
+    font-size: max(16px, 1em);
+  }
+
   /* WIDTH too, for the icon-sized controls -- a 14px x on a breakdown
      chip, a +/- in a row -- which no min-height reaches. Buttons only:
      a field is as wide as its column says. */

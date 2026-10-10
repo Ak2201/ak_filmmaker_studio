@@ -3732,3 +3732,50 @@ html {
 :root textarea::placeholder,
 :root .search-input::placeholder,
 :root .toolbar-search input::placeholder { color: var(--text-muted-aa); }
+
+/* ============================================================
+   THE EDGE FADE, FOR EVERY STRIP THAT SCROLLS SIDEWAYS
+   ------------------------------------------------------------
+   chrome.js's watchScrollEdges() puts `data-more` on anything with
+   content past its edge — the page tab strips and the wide tables —
+   using the same three values and the same name the stage strip has
+   used since the day it was found that "at 390px Production and
+   Post-Production simply were not there".
+
+   A MASK, not a gradient overlay, for the reason the stage strip's
+   note gives: it fades whatever is underneath and names no colour of
+   its own, so it is right on both themes and inside a slab without
+   knowing which ground it is sitting on.
+
+   Narrow widths only. On a desk these strips rarely overflow, and a
+   mask over a table that fits is just a dimmed column.
+   ============================================================ */
+@media (max-width: 1099px) {
+  [data-more="right"] {
+    mask-image: linear-gradient(to left, transparent, #000 var(--s6));
+  }
+  [data-more="left"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--s6));
+  }
+  [data-more="left right"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--s6),
+                                #000 calc(100% - var(--s6)), transparent);
+  }
+  /* The stage strip states its own above, against --chrome, and it is
+     declared earlier in this file. Specificity is equal, so without
+     this the rules above would win on it by source order and fade it
+     against the wrong stop. Naming it keeps that fix where it cannot
+     be ordered out — the trap this stylesheet already records three
+     times over. */
+  .sh-phases[data-more] { mask-image: none; }
+  .sh-phases[data-more="right"] {
+    mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
+  }
+  .sh-phases[data-more="left right"] {
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6),
+                                var(--chrome) calc(100% - var(--s6)), transparent);
+  }
+}

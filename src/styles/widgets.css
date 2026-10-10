@@ -1168,6 +1168,24 @@
   text-transform: uppercase;
 }
 .scene-block textarea.action { min-height: var(--s8); }
+/* The five screenplay fields set --t-small (14px) from a selector
+   more specific than base.css's coarse-pointer floor, so they were
+   the last two on the phone that still made iOS zoom on focus. Lifted
+   here rather than by loosening the rule in base.css, which would
+   have needed !important to reach them.
+
+   Size, not FAMILY: --f-script is untouched, so the fixed-width grid
+   `pageCount()` counts on is exactly as it was. The trap in CLAUDE.md
+   is about a proportional face sneaking into this stack, which is a
+   different thing from the same monospace face two points larger on
+   a touch screen. */
+@media (pointer: coarse) {
+  .scene-block input.slug,
+  .scene-block textarea.action,
+  .dialogue-block input.character,
+  .dialogue-block textarea.line,
+  .dialogue-block input.parenthetical { font-size: max(16px, var(--t-small)); }
+}
 .scene-block .action-label {
   display: block;
   margin: var(--s3) 0 var(--s1);
@@ -1706,6 +1724,29 @@
 
 /* --- 820px: single column ----------------------------------- */
 @media (max-width: 820px) {
+  /* THE TIMER IS A FIXED PILL OVER A FULL-WIDTH COLUMN. On a desk the
+     content is centred and the pill sits in the margin; at 390px
+     there is no margin, so it parked permanently over the page —
+     measured on the blueprint at 113x49 covering `input#fld-v1_title`
+     among others, a control you then cannot tap. Same family as the
+     STEPS-tab overlap, and the same answer: shrink it to a tap target
+     and give it back the column.
+
+     Idle, it is a 44x44 icon and nothing else. RUNNING, the clock
+     comes back, because then it is information rather than an
+     affordance and a reader wants to see it. `:not(.running)` rather
+     than a JS branch so there is no second place to keep correct. */
+  .focus-timer:not(.running):not(.paused):not(.done) {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+  .focus-timer:not(.running):not(.paused):not(.done) #ftTime,
+  .focus-timer:not(.running):not(.paused):not(.done) .ft-pomo { display: none; }
+  .focus-timer .ft-icon { font-size: var(--t-base); }
   .dept-grid,
   .dept-fields,
   .prod-grid,

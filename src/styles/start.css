@@ -839,3 +839,56 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
   .st-top, .st-bar, .st-cta { display: none !important; }
   .st-shot img { box-shadow: none; }
 }
+
+
+/* ============================================================
+   MOTION on the landing page (owner, 10 Oct 2026: "very less").
+   Everything here is decoration layered on content that is already
+   visible; distances are x --motion, loops are slow, colours are
+   tokens. Pointer effects are added by start.js on fine pointers only.
+   ============================================================ */
+
+.st-card, .st-tiers li, .st-stage, .st-faq { position: relative; }
+.st-card, .st-tiers li, .st-stage {
+  transition: box-shadow var(--speed-slow) var(--ease-out), transform var(--speed-slow) var(--ease-out), border-color var(--speed-slow);
+}
+.st-card:hover, .st-tiers li:hover, .st-stage:hover {
+  border-color: var(--brand-lift);
+  box-shadow: var(--sk-card-shadow-hover), 0 0 0 1px color-mix(in srgb, var(--brand-lift) 55%, transparent), 0 8px 32px color-mix(in srgb, var(--brand) 22%, transparent);
+  transform: translateY(calc(-4px * var(--motion)));
+}
+
+/* the hero's clipped wash gets a moving partner (.mo-aurora, in motion.css) */
+.st-shot-hero { will-change: transform; }
+
+/* module marquee */
+.st-marquee { margin: var(--s2) calc(-1 * var(--gutter)) 0; padding: var(--s3) 0; border-block: 1px solid var(--rule-hair); }
+.st-mq { display: flex; list-style: none; margin: 0; padding: 0; }
+.st-mq-item {
+  flex: none;
+  margin-inline-end: var(--s2);
+  padding: 0.35em 1em;
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius-pill);
+  background: var(--sk-card-bg);
+  color: var(--ink-body);
+  font-size: var(--t-small);
+  white-space: nowrap;
+}
+.st-marquee .mo-marquee-track { --mo-marquee-dur: 80s; }
+.st-marquee:not(.mo-marquee) .st-mq { overflow-x: auto; }
+
+/* FAQ: the plus turns while the box animates */
+.st-faq summary::after { transition: transform var(--speed-slow) var(--ease-out); }
+.st-faq[open] summary::after { transform: rotate(180deg); }
+
+/* a button's own shine needs a positioned host */
+.st-btn.mo-shine { position: relative; }
+.st-btn-primary.mo-glow { isolation: isolate; }
+
+/* the hero holds its CTAs while the headline plays: no layout shift,
+   only animation-fill (backwards) on .mo-pop / .mo-up */
+@media (prefers-reduced-motion: reduce) {
+  .st-card:hover, .st-tiers li:hover, .st-stage:hover { transform: none; }
+  .st-faq summary::after { transition: none; }
+}

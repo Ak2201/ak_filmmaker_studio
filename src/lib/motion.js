@@ -28,7 +28,7 @@ export function reveal(root = document, { once = true } = {}) {
   const add = (n) => { if (!n.hidden && !items.includes(n)) items.push(n); };
   root.querySelectorAll('[data-reveal]').forEach(add);
   root.querySelectorAll('[data-reveal-group]').forEach((g) => {
-    Array.from(g.children).forEach((c, i) => { c.style.setProperty('--i', Math.min(i, 8)); add(c); });
+    Array.from(g.children).forEach((c, i) => { c.style.setProperty('--i', Math.min(i, 10)); add(c); });
   });
   if (!items.length) return;
   const show = (n) => { n.classList.remove('mo-veil'); n.classList.add('mo-in'); };
@@ -42,8 +42,9 @@ export function reveal(root = document, { once = true } = {}) {
 }
 
 /* ---- splitWords ------------------------------------------------ */
-export function splitWords(el) {
+export function splitWords(el, { onScroll = false } = {}) {
   if (!el || el.dataset.moSplit) return el;
+  const wait = onScroll && !prefersReducedMotion() && 'IntersectionObserver' in window;
   const label = el.textContent.replace(/\s+/g, ' ').trim();
   let i = 0;
   const walk = (node) => {
@@ -69,6 +70,15 @@ export function splitWords(el) {
   walk(el);
   el.setAttribute('aria-label', label);
   el.dataset.moSplit = '1';
+  if (wait) {
+    el.classList.add('mo-w-wait');
+    const go = () => { el.classList.remove('mo-w-wait'); el.classList.add('mo-w-go'); };
+    const io = new IntersectionObserver((es) => {
+      if (es.some((x) => x.isIntersecting)) { io.disconnect(); go(); }
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+    io.observe(el);
+    setTimeout(() => { io.disconnect(); go(); }, BACKSTOP);
+  }
   return el;
 }
 
@@ -92,7 +102,7 @@ function ensureCountIO() {
   }, BACKSTOP);
 }
 
-export function countUp(el, { duration = 900 } = {}) {
+export function countUp(el, { duration = 1400 } = {}) {
   if (!el || el.dataset.moCount) return;
   let node = null;
   const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -121,7 +131,7 @@ export function countUp(el, { duration = 900 } = {}) {
     const t0 = performance.now();
     const tick = (t) => {
       const p = Math.min(1, (t - t0) / duration);
-      const e = 1 - Math.pow(1 - p, 3);
+      const e = 1 - Math.pow(1 - p, 4);
       if (p < 1) { node.nodeValue = fmt(target * e); requestAnimationFrame(tick); } else final();
     };
     requestAnimationFrame(tick);
@@ -179,4 +189,82 @@ export function tilt(el, { max = 4 } = {}) {
     const dy = ((e.clientY - r.top) / r.height - 0.5) * 2;
     el.style.transform = 'perspective(900px) rotateX(' + (-dy * k).toFixed(2) + 'deg) rotateY(' + (dx * k).toFixed(2) + 'deg)';
   }, () => { el.style.transform = ''; });
+}
+
+
+/* ---- scroll progress ------------------------------------------- */
+export function scrollProgress() {
+  if (document.querySelector('.mo-progress') || prefersReducedMotion()) return null;
+  const bar = document.createElement('div');
+  bar.className = 'mo-progress';
+  bar.setAttribute('aria-hidden', 'true');
+  document.body.append(bar);
+  let raf = 0;
+  const upd = () => {
+    raf = 0;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+    bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
+  };
+  const on = () => { if (!raf) raf = requestAnimationFrame(upd); };
+  addEventListener('scroll', on, { passive: true });
+  addEventListener('resize', on, { passive: true });
+  upd();
+  return bar;
+}
+
+/* ---- parallax: vertical only, capped at 40px x --motion --------- */
+export function parallax(el, { speed = 0.08 } = {}) {
+  if (!el || prefersReducedMotion()) return;
+  let raf = 0, vis = true;
+  const upd = () => {
+    raf = 0;
+    if (!vis) return;
+    const r = el.getBoundingClientRect();
+    const d = (r.top + r.height / 2 - innerHeight / 2) * speed * motionScale();
+    const cap = 40 * motionScale();
+    el.style.translate = '0 ' + Math.max(-cap, Math.min(cap, -d)).toFixed(1) + 'px';
+  };
+  const on = () => { if (!raf) raf = requestAnimationFrame(upd); };
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((es) => { for (const e of es) vis = e.isIntersecting; on(); }).observe(el);
+  }
+  addEventListener('scroll', on, { passive: true });
+  addEventListener('resize', on, { passive: true });
+  on();
+}
+
+/* ---- marquee: an infinite slider, clone is aria-hidden + inert -- */
+export function marquee(el) {
+  if (!el || el.dataset.moMarquee) return;
+  el.dataset.moMarquee = '1';
+  el.classList.add('mo-marquee');
+  const track = document.createElement('div');
+  track.className = 'mo-marquee-track';
+  const a = document.createElement('div');
+  a.className = 'mo-marquee-set';
+  while (el.firstChild) a.append(el.firstChild);
+  const b = a.cloneNode(true);
+  b.setAttribute('aria-hidden', 'true');
+  b.setAttribute('inert', '');
+  b.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+  b.querySelectorAll('a, button').forEach((n) => n.setAttribute('tabindex', '-1'));
+  track.append(a, b);
+  el.append(track);
+}
+
+/* ---- glow: a slow animated gradient behind an element ----------- */
+export function glow(el) {
+  if (!el) return;
+  el.classList.add('mo-glow');
+}
+
+/* ---- aurora: drifting brand gradients, for a clipped host ------- */
+export function aurora(el) {
+  if (!el || el.querySelector('.mo-aurora')) return;
+  const a = document.createElement('div');
+  a.className = 'mo-aurora';
+  a.setAttribute('aria-hidden', 'true');
+  a.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+  el.prepend(a);
 }

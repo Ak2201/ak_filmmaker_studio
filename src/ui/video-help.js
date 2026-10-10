@@ -41,9 +41,10 @@ export function mountHelp(bar, moduleIds) {
   }
   if (!videos.length) return;
   const host = bar.querySelector(':scope > .toolbar, :scope > .sh-tools') || bar;
-  host.prepend(h('button.btn.vid-help-btn', {
-    type: 'button', 'data-action': 'video-help-open', text: '▶ How this works'
-  }));
+  host.prepend(h('button.btn.vid-help-btn', { type: 'button', 'data-action': 'video-help-open' }, [
+    h('span', { 'aria-hidden': 'true', text: '▶ ' }),   // the glyph is not part of the name
+    'How this works'
+  ]));
   delegate(document, 'click', '[data-action="video-help-open"]', () => open(videos));
 }
 

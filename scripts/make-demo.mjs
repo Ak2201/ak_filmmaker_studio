@@ -2,11 +2,15 @@
    make-demo.mjs — the walkthrough film on start.html
    ------------------------------------------------------------
    Records a calm ~90 second tour of the built studio, on the
-   Dragon sample, and writes three files into public/media/:
+   Dragon sample, and writes two files into public/media/:
 
-     demo.webm          VP9, the default source
-     demo.mp4           H.264, the fallback source (no audio)
+     demo.mp4           H.264, the one source (no audio)
      demo-poster.webp   a still from early in the tour
+
+   There used to be a VP9 demo.webm too, listed second. A browser takes
+   the FIRST <source> it can play and every current one plays H.264, so
+   the webm (3.5 MB, larger than the mp4) was never downloaded by anyone
+   and only weighed down the deploy.
 
    Run AFTER a open build:   npm run build:open && npm run demo
 
@@ -138,19 +142,16 @@ function duration(file) {
 
 function encode(raw) {
   fs.mkdirSync(OUT, { recursive: true });
-  const webm = path.join(OUT, 'demo.webm');
   const mp4 = path.join(OUT, 'demo.mp4');
   const poster = path.join(OUT, 'demo-poster.webp');
 
-  ff(['-i', raw, '-an', '-c:v', 'libvpx-vp9', '-crf', '38', '-b:v', '0',
-      '-deadline', 'good', '-cpu-used', '4', '-row-mt', '1', webm]);
   ff(['-i', raw, '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '28',
       '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4]);
   ff(['-ss', '5', '-i', raw, '-frames:v', '1', '-q:v', '80', poster]);
 
-  const secs = duration(webm);
+  const secs = duration(mp4);
   console.log(`duration ${secs.toFixed(1)}s`);
-  for (const f of [webm, mp4, poster]) {
+  for (const f of [mp4, poster]) {
     const bytes = fs.statSync(f).size;
     console.log(`${path.relative(ROOT, f)}  ${(bytes / 1024 / 1024).toFixed(2)} MB`);
     if (bytes > MAX_BYTES) throw new Error(`${path.basename(f)} is over 8 MB`);

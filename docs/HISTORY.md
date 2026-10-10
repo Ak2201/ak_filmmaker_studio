@@ -1336,3 +1336,57 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - `public/shots/*.webp` recaptured. `make-shots.mjs` now fetches the
       Google fonts through Node, so a container whose proxy Chromium
       does not trust still shoots real faces — no TLS check relaxed.
+
+25. **Motion and video review fixes (10 Oct 2026).** A review of the
+    motion layer and the explainer videos, run with `navigator.webdriver`
+    hidden — `motion-app.js` switches itself off under webdriver, so
+    `verify` sees none of it. Each fix was re-checked in Chromium the
+    same way.
+
+    - **Printing came out blank.** Cards, rows, bars and split headings
+      not yet scrolled to kept their veil under print media (all 82
+      Library cards; 59 elements on start.html). `@media print` in
+      `motion.css`, `motion-app.css` and `motion-landing.css` shows them,
+      and both `reveal()` and `motion-app.js` reveal everything on
+      `beforeprint`.
+    - **Fragment links landed up to 16px high** (library.html#rules:
+      -1, -11, -16 px). The page enter translated `<main>` while
+      `fragments.js` settled it; it is opacity and blur only now (0, 0, 0).
+    - **The count-up wrote "0" at registration**, so the landing page's
+      facts read 0 to screen readers, copy and crawlers until scrolled.
+      0 is written when the count starts; PRICES are never counted.
+    - **A split heading kept a stale `aria-label`** (the hub's resume
+      title announced the previous film). The words stay readable; no
+      label, no `aria-hidden` spans.
+    - **`glow()` added a class and nothing else** — `.mo-glow-fx` was
+      styled and never created. It is created now.
+    - **The module strip could not be stopped** on touch or keyboard
+      (WCAG 2.2.2): a Pause/Play button under it. Looping effects pause
+      off screen (`pauseOffscreen()`, `.mo-idle`).
+    - **The motion observer rescanned the whole page on every change**
+      for the life of the page. After its 4s window it scans only the
+      added nodes.
+    - **Video focus** moves into the player on play (it fell to
+      `<body>`); the facade says "Plays from YouTube"; the help button's
+      ▶ is out of its accessible name.
+    - **No modal ever animated in**: overlays go `display:none → flex`
+      in one frame. `@starting-style` gives the fade and the spring a
+      "from"; this fixed every modal, not only the video one.
+    - **Closed rails rested at `-100% × --motion`**, so under reduced
+      motion they sat on screen hidden only by `visibility`. -100% is a
+      resting position, not a distance.
+    - Smaller: zoom scale and blur multiplied by `--motion`; the tilt's
+      permanent `will-change` removed; `reveal()` no longer leaks a
+      `hashchange` listener per call; the 3.5 MB `demo.webm` removed
+      (a browser takes the first playable `<source>`, so nobody ever
+      downloaded it) and `make-demo.mjs` encodes the mp4 alone.
+    - **privacy.html** names YouTube (played only on a click, from
+      `youtube-nocookie.com`, which receives the IP address).
+    - **`npm run test:videos:online`** (`scripts/check-videos-online.mjs`)
+      asks YouTube's oEmbed for every approved id; none of the 65 is
+      `verified`. The container cannot reach YouTube, so it runs on the
+      owner's machine (`docs/BROWSER-HANDOFF.md` §0.4).
+    - Checked and NOT a bug: under reduced motion the Library shows ~350
+      "running" 0.01ms `scrollbar-color` transitions for the first ~2s
+      (the theme applying at load); 0 thereafter; identical before
+      these changes.

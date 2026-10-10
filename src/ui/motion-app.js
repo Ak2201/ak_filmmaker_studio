@@ -59,6 +59,14 @@ function okHead(h) {
   return h.textContent.trim().length > 0 && h.textContent.length < 120;
 }
 
+/* root itself as well as its descendants: after the window only the
+   ADDED nodes are scanned, and an added node may be the card itself. */
+const pick = (root, sel) => {
+  const out = Array.from(root.querySelectorAll(sel));
+  if (root.matches && root.matches(sel)) out.unshift(root);
+  return out;
+};
+
 function scan(root) {
   const isNew = fresh();
   const counts = new Map();
@@ -69,7 +77,7 @@ function scan(root) {
     n.style.setProperty('--i', Math.min(c, 8));
   };
 
-  root.querySelectorAll(HEADS).forEach((h) => {
+  pick(root, HEADS).forEach((h) => {
     if (seen.has(h)) return;
     seen.add(h);
     if (!okHead(h)) return;
@@ -77,7 +85,7 @@ function scan(root) {
     if (isNew) watch(h, 'head');
   });
 
-  root.querySelectorAll(CARDS + ',' + ROWS).forEach((n) => {
+  pick(root, CARDS + ',' + ROWS).forEach((n) => {
     if (seen.has(n)) return;
     seen.add(n);
     const row = n.matches(ROWS);
@@ -90,20 +98,20 @@ function scan(root) {
     if (isNew) { stagger(n); watch(n, 'card', 'ma-veil'); }
   });
 
-  root.querySelectorAll(FILLS).forEach((n) => {
+  pick(root, FILLS).forEach((n) => {
     if (seen.has(n)) return;
     seen.add(n);
     if (isNew) watch(n, 'fill', 'ma-fill-veil');
   });
 
-  root.querySelectorAll(NUMS).forEach((n) => {
+  pick(root, NUMS).forEach((n) => {
     if (seen.has(n)) return;
     seen.add(n);
     if (isNew && !n.closest('input, textarea, [contenteditable]')) countUp(n);
   });
 
   let m = 0;
-  root.querySelectorAll(MAGNETS).forEach((n) => {
+  pick(root, MAGNETS).forEach((n) => {
     if (seen.has(n) || m++ > 5) return;
     seen.add(n);
     magnetic(n, { strength: 5 });
@@ -171,13 +179,33 @@ function boot() {
   io = new IntersectionObserver((entries) => {
     for (const en of entries) if (en.isIntersecting) show(en.target);
   }, { rootMargin: '0px 0px -6% 0px', threshold: 0.02 });
+  /* Inside the first WINDOW ms the whole page is scanned on each frame
+     with changes. After it only the ADDED elements are: five
+     document-wide queries per frame for the life of the page cost 2-3ms
+     on the feature blueprint, and the observer fires on every keystroke
+     in a field that re-renders (224 times in 2.5s of typing). */
   let queued = 0;
-  const tick = () => { queued = 0; scan(document.body); wireTabs(); band(); };
+  let added = new Set();
+  const tick = () => {
+    queued = 0;
+    if (fresh()) scan(document.body);
+    else for (const n of added) if (n.isConnected) scan(n);
+    added = new Set();
+    wireTabs(); band();
+  };
   tick();
-  new MutationObserver(() => { if (!queued) queued = requestAnimationFrame(tick); })
-    .observe(document.body, { childList: true, subtree: true });
+  new MutationObserver((records) => {
+    if (!fresh()) {
+      for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) added.add(n);
+      if (!added.size) return;
+    }
+    if (!queued) queued = requestAnimationFrame(tick);
+  }).observe(document.body, { childList: true, subtree: true });
   wireEvents();
   setTimeout(() => { pending.forEach((n) => { if (inView(n)) show(n); }); }, BACKSTOP);
+  /* Printing reveals everything still waiting (motion-app.css also
+     overrides the veils under print media). */
+  addEventListener('beforeprint', () => { Array.from(pending).forEach(show); });
   /* Whatever is still veiled and NOT on screen at the backstop keeps
      waiting for its scroll; the veil never outlives a reveal. */
 }

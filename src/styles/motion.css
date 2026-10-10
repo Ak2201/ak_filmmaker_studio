@@ -16,14 +16,14 @@
 :is(.mo-veil, .mo-in)[data-reveal="zoom"]  { --mo-y: 0px; --mo-b: 0px; --mo-s: 0.94; }
 .mo-veil {
   opacity: 0;
-  filter: blur(var(--mo-b));
-  transform: translateY(calc(var(--mo-y) * var(--motion))) scale(var(--mo-s));
+  filter: blur(calc(var(--mo-b) * var(--motion)));
+  transform: translateY(calc(var(--mo-y) * var(--motion))) scale(calc(1 - (1 - var(--mo-s)) * var(--motion)));
 }
 .mo-in {
   animation: mo-rise 0.8s var(--ease-out) calc(var(--i, 0) * 70ms) backwards;
 }
 @keyframes mo-rise {
-  from { opacity: 0; filter: blur(var(--mo-b)); transform: translateY(calc(var(--mo-y) * var(--motion))) scale(var(--mo-s)); }
+  from { opacity: 0; filter: blur(calc(var(--mo-b) * var(--motion))); transform: translateY(calc(var(--mo-y) * var(--motion))) scale(calc(1 - (1 - var(--mo-s)) * var(--motion))); }
   to   { opacity: 1; filter: blur(0); transform: none; }
 }
 
@@ -88,7 +88,7 @@
 
 /* ---- pointer-driven transforms and press ----------------------- */
 .mo-mag { transition: translate var(--speed-slow) var(--ease-out); }
-.mo-tilt { transition: transform var(--speed-slow) var(--ease-out); will-change: transform; }
+.mo-tilt { transition: transform var(--speed-slow) var(--ease-out); }
 .mo-press { transition: transform var(--speed-tap) var(--ease); }
 .mo-press:active { transform: scale(calc(1 - 0.03 * var(--motion))); }
 
@@ -98,4 +98,14 @@
   .mo-shimmer { background-position: 100% 0; }
   .mo-trail::before { --mo-a: 0deg; }
   .mo-mag, .mo-tilt, .mo-press:active { transform: none; translate: none; }
+}
+
+/* Paper shows everything. A card never scrolled into view is still
+   veiled, a heading still waiting for its words, and a printed page
+   came out blank below the fold (all 82 Library cards; 59 elements on
+   the landing page). */
+@media print {
+  .mo-veil, .mo-in, .mo-w, .mo-w-wait .mo-w {
+    opacity: 1 !important; filter: none !important; transform: none !important; animation: none !important;
+  }
 }

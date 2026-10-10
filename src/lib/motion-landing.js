@@ -54,7 +54,23 @@ export function parallax(el, { speed = 0.08 } = {}) {
   on();
 }
 
+/* ---- off-screen: loops stop while nobody can see them ------------ */
+/* `.mo-idle` pauses every animation on the host, its pseudo-elements
+   and its descendants (motion-landing.css). An infinite aurora, trail
+   or shine kept painting the whole time the page was scrolled past it. */
+export function pauseOffscreen(el) {
+  if (!el || el.dataset.moIdleWatch || !('IntersectionObserver' in window)) return;
+  el.dataset.moIdleWatch = '1';
+  new IntersectionObserver((es) => {
+    for (const e of es) el.classList.toggle('mo-idle', !e.isIntersecting);
+  }).observe(el);
+}
+
 /* ---- marquee: an infinite slider, clone is aria-hidden + inert -- */
+/* WCAG 2.2.2: motion that runs longer than five seconds needs a way to
+   stop it. Hover and focus-within paused it, but its items are not
+   focusable and a phone has no hover, so touch and keyboard users could
+   never stop it. A real button does, and it stays where it was put. */
 export function marquee(el) {
   if (!el || el.dataset.moMarquee) return;
   el.dataset.moMarquee = '1';
@@ -71,12 +87,31 @@ export function marquee(el) {
   b.querySelectorAll('a, button').forEach((n) => n.setAttribute('tabindex', '-1'));
   track.append(a, b);
   el.append(track);
+  pauseOffscreen(el);
+  if (prefersReducedMotion()) return;   // it does not move: nothing to stop
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'mo-marquee-toggle';
+  const sync = () => {
+    const paused = el.classList.contains('mo-paused');
+    btn.textContent = paused ? 'Play the module strip' : 'Pause the module strip';
+  };
+  btn.addEventListener('click', () => { el.classList.toggle('mo-paused'); sync(); });
+  sync();
+  el.after(btn);
 }
 
 /* ---- glow: a slow animated gradient behind an element ----------- */
 export function glow(el) {
-  if (!el) return;
+  if (!el || el.querySelector(':scope > .mo-glow-fx')) return;
   el.classList.add('mo-glow');
+  /* The visible half: the sheet styles .mo-glow-fx, and nothing used to
+     create one, so every glow on the page was a class with no effect. */
+  const fx = document.createElement('span');
+  fx.className = 'mo-glow-fx';
+  fx.setAttribute('aria-hidden', 'true');
+  el.prepend(fx);
+  pauseOffscreen(el);
 }
 
 /* ---- aurora: drifting brand gradients, for a clipped host ------- */
@@ -87,4 +122,5 @@ export function aurora(el) {
   a.setAttribute('aria-hidden', 'true');
   a.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
   el.prepend(a);
+  pauseOffscreen(el);
 }

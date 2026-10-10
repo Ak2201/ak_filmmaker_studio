@@ -198,6 +198,47 @@ nothing. Fix or unapprove the DEAD rows in `src/data/videos.json`, look
 at the WARN rows, and set `verified: true` only on rows actually looked
 at. The cloud container cannot run it (ENOTFOUND).
 
+### 0.5 Point the Google consent screen at the preview host (owner, 10 Oct)
+
+The owner's decision: the OAuth consent screen's links move from the
+production host `thefilmmakerstudio.vercel.app` to the PREVIEW host
+`thefilmakerlocal.vercel.app` (one "m" in *filmaker* — read twice). No
+code changes: the consent screen is Google Cloud configuration, and the
+app's own pages and links stay on production.
+
+**Two blockers to clear FIRST, or Google's check fails:**
+
+1. **Vercel Deployment Protection is ON for the preview** (§6 below:
+   "Vercel Authentication, Standard"). Google's reviewer and crawler
+   cannot sign in to Vercel, so the home page, `/privacy` and `/terms`
+   would answer with a Vercel login wall. In Vercel → project
+   `thefilmakerlocal` → Settings → Deployment Protection, turn it off
+   for production deployments of that project (ask the owner first: it
+   makes the develop preview public). Check signed out, in a private
+   window, that `/`, `/privacy` and `/terms` load.
+2. **The domain must be verified in Search Console for the owner's
+   Google account.** Add a URL-prefix property for
+   `https://thefilmakerlocal.vercel.app/`, choose the HTML-tag method,
+   and give the `content` token to a code session: it goes in a SECOND
+   `<meta name="google-site-verification">` in `index.html`, beside the
+   production one (never replace that one — CLAUDE.md, "deliberate").
+   Push to `develop` (the preview builds from it), then press Verify.
+
+**Then, in Google Cloud `filmstudio-495419` → Google Auth Platform →
+Branding** (ask before saving):
+
+- Application home page: `https://thefilmakerlocal.vercel.app/`
+- Privacy policy: `https://thefilmakerlocal.vercel.app/privacy`
+- Terms of service: `https://thefilmakerlocal.vercel.app/terms`
+- Authorised domains: add `thefilmakerlocal.vercel.app` (vercel.app is
+  a public suffix, so the full host is the domain). Keep the production
+  one until nothing points at it.
+
+The OAuth client's JavaScript origins and Supabase's redirect URLs
+already include the preview (§6), so sign-in needs no change. Expect the
+branding to go back to "verification in progress" after the edit; read
+back the saved values after a full reload, and record them here.
+
 ### 0.3 Still owed, unchanged (needs the owner)
 
 - The live RLS checks with a second Google account (§3 below).

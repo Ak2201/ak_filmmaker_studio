@@ -1438,3 +1438,27 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Checked in Chromium with phone emulation, both themes: no overflow,
     no page errors, Tab held inside, rotation to 844x390 closes the sheet
     and returns the toolbar, a same-page `#hash` link closes the sheet.
+
+27. **One typeface, a full-width landing page, and the consent screen's
+    new home (10 Oct 2026, owner).**
+
+    - **Catamaran everywhere.** The owner asked for Puvi; Puvi is Zoho's
+      own typeface (a Zoho trademark) with no open licence and no public
+      files, so the owner chose an open font instead. Catamaran is SIL
+      OFL, served by Google Fonts (already in the CSP), and covers Tamil
+      and Latin in one family, 100–900 — the closest open match. It
+      replaces Plus Jakarta Sans in `--face-serif`, `--face-display` and
+      `--f-mono` and in every page's Google Fonts link. **Two faces stay
+      on purpose:** Courier Prime for the screenplay (`--f-script`: page
+      counts are arithmetic on a fixed-width grid) and JetBrains Mono for
+      code. Checked in Chromium with the real font loaded: every page
+      renders in Catamaran, the script in Courier Prime, no overflow at
+      1280 or 390.
+    - **start.html is full width.** `.st`, `.st-top-in` and `.st-foot`
+      lost their 92ch cap; running text keeps its own measure.
+    - **The consent screen moves to the preview host**
+      (`thefilmakerlocal.vercel.app`). Google Cloud configuration, not
+      code: `docs/BROWSER-HANDOFF.md` §0.5 has the steps, and the two
+      blockers that must be cleared first — the preview's Vercel
+      Deployment Protection (Google cannot sign in to Vercel) and a
+      Search Console verification of the preview domain.

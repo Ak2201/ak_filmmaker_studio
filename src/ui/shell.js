@@ -1592,7 +1592,7 @@ export function mountShell() {
   setRail(initialRail());
   paintLocation(active);
   /* Two frames: one for layout, one for the web fonts to land. The
-     bar is measured, and measuring it before Plus Jakarta Sans and
+     bar is measured, and measuring it before the brand face (Catamaran) and
      JetBrains Mono arrive records the fallback's height. The spy runs on the
      same schedule because mountShell() is not always called after the
      page has rendered — dashboard.js mounts at import time, when #app

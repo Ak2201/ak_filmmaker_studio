@@ -53,6 +53,7 @@ import './motion-app.js';
    `import()` inside wireGlossaryPopovers(), and only on a page that has
    something to tag — see the note on that function. */
 import { openPalette, closePalette, togglePalette, isPaletteOpen } from './palette.js';
+import MobileNav from './mobile-nav.js';
 /* Side-effect import: fragments.js installs itself on load, which is
    deliberate. Every nav-bearing page already imports this file — all
    19 of them — so putting it here is what makes the phase menu work
@@ -1418,13 +1419,13 @@ function wireGlossaryNow() {
    ============================================================ */
 const MAB_QUERY = '(max-width: 720px)';
 
+/* 4. IT WAS NOT NAVIGATION. Search · Studio · Top · End (10 Oct 2026)
+      spent two of four slots on scrolling, while the stage menus were
+      clipped inside the band's sideways strip and could not open.
+      Home · Go to · Search · Tools now, and the band shrinks to its
+      breadcrumb: see src/ui/mobile-nav.js. */
 function mobileBarItems() {
-  return [
-    { icon: '⌕', label: 'SEARCH', onClick: () => openPalette() },
-    { icon: '←', label: 'STUDIO', href: 'index.html' },
-    { icon: '↑', label: 'TOP',    onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-    { icon: '↓', label: 'END',    onClick: () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }) }
-  ];
+  return MobileNav.barItems().map((it) => (it.id === 'search' ? { ...it, onClick: () => openPalette() } : it));
 }
 
 function measureMobileBar() {
@@ -1442,17 +1443,20 @@ StudioUI.attachMobileActionBar = function (config) {
   if (document.documentElement.hasAttribute('data-no-actionbar')) return;
   config = config || {};
   const items = config.items || mobileBarItems();
-  const bar = document.createElement('div');
+  /* <nav>, not role=toolbar: it is the phone's navigation now, and a
+     toolbar promises arrow-key movement nothing here implements. A
+     page's own `config.items` (none today) keeps the old role. */
+  const bar = document.createElement(config.items ? 'div' : 'nav');
   bar.id = 'mobileActionbar';
   bar.className = 'mobile-actionbar';
-  bar.setAttribute('role', 'toolbar');
-  /* A toolbar role with no name is "toolbar" and nothing else to a
-     screen reader, on a page that already has two other toolbars. */
-  bar.setAttribute('aria-label', 'Page actions');
+  if (config.items) bar.setAttribute('role', 'toolbar');
+  bar.setAttribute('aria-label', config.items ? 'Page actions' : 'Studio');
   items.forEach(it => {
     const el = document.createElement(it.href ? 'a' : 'button');
     if (it.href) el.href = it.href; else el.type = 'button';
-    el.setAttribute('aria-label', it.label);
+    if (config.items) el.setAttribute('aria-label', it.label);   // the visible label IS the name
+    if (it.id) el.dataset.mnItem = it.id;
+    if (it.controls) { el.setAttribute('aria-haspopup', 'dialog'); el.setAttribute('aria-expanded', 'false'); }
     const icon = document.createElement('span');
     icon.className = 'mab-icon';
     icon.setAttribute('aria-hidden', 'true');
@@ -1465,6 +1469,7 @@ StudioUI.attachMobileActionBar = function (config) {
   });
   document.body.appendChild(bar);
   document.body.classList.add('has-mobile-actionbar');
+  if (!config.items) MobileNav.onBar(true);   // a page's own items keep the old band
   /* MEASURE NOW, THEN AGAIN.
 
      requestAnimationFrame DOES NOT RUN IN A BACKGROUND TAB, and a
@@ -1489,6 +1494,7 @@ StudioUI.detachMobileActionBar = function () {
   const bar = document.getElementById('mobileActionbar');
   if (bar) bar.remove();
   document.body.classList.remove('has-mobile-actionbar');
+  MobileNav.onBar(false);
   document.documentElement.style.setProperty('--mab-h', '0px');
 };
 

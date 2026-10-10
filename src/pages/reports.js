@@ -39,7 +39,7 @@ import Scenes, {
 } from '../lib/scenes.js';
 import { loadScript } from '../lib/script.js';
 import Analysis, { formatDuration } from '../lib/screenplay-analysis.js';
-import Locations from '../lib/locations.js';
+import Locations, { byLocation } from '../lib/locations.js';
 import Shoot from '../lib/shootday.js';
 import DPR from '../lib/dpr.js';
 import { offlineSupported, offlineStatus, makeOffline, SHOOT_PACK } from '../lib/pwa.js';
@@ -82,24 +82,6 @@ function tally(scenes, field, order) {
     row.eighths += Number(s.eighths) || 0;
   }
   return [...rows.values()].filter((r) => r.count > 0);
-}
-
-/** One row per location, longest first — the order a schedule is built in. */
-function byLocation(scenes, numbers) {
-  const rows = new Map();
-  for (const s of scenes) {
-    const name = String(s.location || '').trim() || NO_LOCATION;
-    const key = name.toLowerCase();
-    if (!rows.has(key)) rows.set(key, { name, count: 0, eighths: 0, ie: {}, dn: {}, numbers: [] });
-    const row = rows.get(key);
-    row.count += 1;
-    row.eighths += Number(s.eighths) || 0;
-    row.ie[s.intExt] = (row.ie[s.intExt] || 0) + 1;
-    row.dn[s.dayNight] = (row.dn[s.dayNight] || 0) + 1;
-    row.numbers.push(numbers.get(s.id));
-  }
-  return [...rows.values()]
-    .sort((a, b) => b.eighths - a.eighths || b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /** The element index, folded into its categories. */
@@ -294,7 +276,7 @@ function renderReports(scenes, numbers) {
   ]));
 
   sec.append(h('h3.rp-h3', { text: 'By location' }));
-  sec.append(locationTable(byLocation(scenes, numbers), scenes));
+  sec.append(locationTable(byLocation(scenes, numbers, NO_LOCATION), scenes));
 
   const index = Scenes.elementIndex();
   sec.append(h('h3.rp-h3', { text: 'Elements' }));

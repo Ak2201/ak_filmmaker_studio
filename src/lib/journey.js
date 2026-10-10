@@ -75,7 +75,10 @@ import shortData from '../data/steps.short.json';
 import { harvestKeys, isFilled } from './blueprint-fields.js';
 import Scenes from './scenes.js';
 import { loadScript, pageCount, formatPages, hasTitlePage } from './script.js';
-import { loadStory } from './story.js';
+import * as StoryM from './story.js';
+import Locations from './locations.js';
+import * as StoreM from './store.js';
+const { loadStory } = StoryM;
 import { readiness } from './readiness.js';
 import { overall as shootOverall } from './shootday.js';
 import { coverage } from './editlog.js';
@@ -371,10 +374,11 @@ function pickCurrent(stages) {
   return { index: stages.length - 1, complete: true };
 }
 
-function guideNext(bp, g) {
-  const step = g.steps.find((s) => s.keys.size && !s.complete);
-  if (!step) return null;
-  return { label: 'Step ' + step.num + ' · ' + step.title, href: bp.href + '#' + step.id };
+/* The blueprint is a companion now, not a destination: nothing here
+   builds a feature.html#step-xx href as a "next" any more. When a
+   stage has no failing tool check the answer is the stage's own page. */
+function stageFallback(st) {
+  return { label: 'Continue in ' + st.label, href: stageHref(st.id) };
 }
 
 /**
@@ -420,8 +424,7 @@ export function journey(project) {
   const cur = stages[index];
   let next = null;
   if (!complete) {
-    next = (!cur.ok.tools && cur.tools.next) || (!cur.ok.guide && guideNext(bp, cur.guide))
-        || cur.tools.next || guideNext(bp, cur.guide);
+    next = cur.tools.next || stageFallback(cur);
   }
   if (!next) next = { label: 'Review the deliverables', href: 'deliverables.html#checklist' };
 
@@ -472,7 +475,190 @@ export function nextGuideStep(ns, data) {
   return null;
 }
 
+/* ============================================================
+   THE STAGE CARDS — state per stage, no gating
+   ------------------------------------------------------------
+   The dashboard's answer, and it is deliberately NOT journey()'s
+   "current stage" heuristic. Nothing is mandatory: somebody with a
+   script in hand starts in Pre-production and Story stays "Not
+   started" without that being a fault. So each stage reports ONLY on
+   its own models (status none | doing | done), and the suggestion is
+   a separate, derived nudge.
+
+   Stores nothing; reads the models through the proxy, so it is
+   correct for the OPEN project only.
+   ============================================================ */
+export const STATUS = {
+  none:  { id: 'none',  label: 'Not started' },
+  doing: { id: 'doing', label: 'In progress' },
+  done:  { id: 'done',  label: 'Done' }
+};
+
+/** A stage's main page, from navigation.json (the stage's first module). */
+export function stageHref(id) {
+  const ph = nav.phases.find((p) => p.id === id);
+  const m = ph && ph.modules && ph.modules[0];
+  return (m && m.href) || 'dashboard.html';
+}
+
+const plur = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+const status = (done, any) => (done ? STATUS.done : any ? STATUS.doing : STATUS.none);
+const tsOf = (v) => {
+  const n = typeof v === 'number' ? v : Date.parse(v || '');
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+function storyState() {
+  const s = loadStory();
+  const hasText = !!(String(s.logline || '').trim() || String(s.idea || '').trim()
+    || String(s.source || '').trim() || (s.outline || []).some((o) => String(o.text || '').trim())
+    || (s.marks || []).length);
+  let done = 0, total = 0, labelled = '';
+  /* pathProgress arrives from the Story lane; PATH may grow a step. Use
+     whatever length it returns, and fall back to four plain checks. */
+  if (typeof StoryM.pathProgress === 'function') {
+    try {
+      const path = StoryM.pathProgress(s, { scenes: Scenes.listScenes() });
+      if (Array.isArray(path) && path.length) {
+        total = path.length; done = path.filter((p) => p && p.done).length;
+        labelled = 'story path steps';
+      }
+    } catch (e) { /* fall through to the checks */ }
+  }
+  if (!total) {
+    const ok = [String(s.logline || '').trim(), (s.outline || []).some((o) => String(o.text || '').trim()),
+      String(s.source || '').trim(), (s.marks || []).length > 0];
+    total = ok.length; done = ok.filter(Boolean).length; labelled = 'story steps';
+  }
+  const facts = [done + ' of ' + total + ' ' + labelled + ' done'];
+  const words = String(s.source || '').trim().split(/\s+/).filter(Boolean).length;
+  if (words) facts.push(plur(words, 'word') + ' of synopsis');
+  return { status: status(total > 0 && done >= total, done > 0 || hasText), facts, at: tsOf(s.updatedAt) };
+}
+
+function screenplayState() {
+  const sc = loadScript();
+  const els = sc.elements || [];
+  const heads = els.filter((e) => e.type === 'scene').length;
+  const any = els.some((e) => String(e.text || '').trim());
+  const facts = any ? [formatPages(pageCount(els)) + ' pages', plur(heads, 'scene heading')] : ['No script yet'];
+  const done = any && heads > 0 && hasTitlePage(sc.titlePage);
+  return { status: status(done, any), facts, at: 0 };
+}
+
+function preprodState(scenes) {
+  const n = scenes.length;
+  if (!n) return { status: STATUS.none, facts: ['No scenes yet'], at: 0 };
+  const tagged = scenes.filter((s) => Object.values(s.elements || {})
+    .some((v) => Array.isArray(v) && v.length)).length;
+  const locs = new Set(scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)).size;
+  let days = 0;
+  try { days = Locations.calendarDays(scenes).length; } catch (e) { /* none */ }
+  let blockers = 0, gaps = 0, hasFilm = false;
+  try { const r = readiness(); hasFilm = r.hasFilm; blockers = r.blockers; gaps = r.gaps; } catch (e) { /* none */ }
+  const facts = [plur(n, 'scene') + ' · ' + tagged + ' broken down',
+    plur(locs, 'location') + ' · ' + plur(days, 'shoot day')];
+  return { status: status(hasFilm && !blockers && !gaps && tagged === n && days > 0, true), facts, at: 0 };
+}
+
+function productionState(scenes) {
+  const marked = scenes.filter((s) => s.shotState);
+  const shot = marked.filter((s) => s.shotState === 'shot').length;
+  const part = marked.filter((s) => s.shotState === 'part').length;
+  const dropped = marked.filter((s) => s.shotState === 'dropped').length;
+  const at = marked.reduce((m, s) => Math.max(m, tsOf(s.shotAt)), 0);
+  if (!scenes.length) return { status: STATUS.none, facts: ['No scenes to shoot yet'], at };
+  const facts = [shot + ' of ' + plur(scenes.length, 'scene') + ' shot'];
+  if (part) facts.push(part + ' part-shot');
+  if (dropped) facts.push(dropped + ' dropped');
+  return { status: status(shot + dropped === scenes.length, marked.length > 0), facts, at };
+}
+
+function postState(scenes, format) {
+  const cov = coverage(scenes);
+  const dl = deliverablesProgress(listItems(format));
+  const need = cov.counts.need;
+  const inCut = Math.min(cov.counts.inCut, need);
+  const any = cov.counts.inCut > 0 || cov.counts.out > 0 || dl.done > 0 || dl.doing > 0;
+  const facts = [need ? inCut + ' of ' + plur(need, 'scene') + ' in the cut' : 'No cut logged yet',
+    dl.done + ' of ' + dl.total + ' deliverables'];
+  return { status: status(need > 0 && inCut >= need && dl.complete, any), facts, at: 0 };
+}
+
+/** The favourite film as { slug, title } or null. Tolerant: the setter
+    lives in store.js on another lane's branch. `titleOf(slug)` is the
+    caller's lookup — studies.js carries four films' data, so this module
+    (in the first paint of the hub and the dashboard) must not import it. */
+export function favouriteOf(project, titleOf) {
+  try {
+    if (typeof StoreM.projectFav !== 'function') return null;
+    const v = StoreM.projectFav(project && project.id);
+    const slug = typeof v === 'string' ? v : v && v.slug;
+    if (!slug) return null;
+    return { slug, title: (typeof titleOf === 'function' && titleOf(slug)) || (v && v.title) || slug };
+  } catch (e) { return null; }
+}
+
+const START = {
+  screenplay: { label: 'Already have a script? Import it', href: 'write.html#wr-import' },
+  preprod:    { label: 'Have a script? Upload it and we’ll break it down', href: 'breakdown.html' }
+};
+
+/**
+ * Every stage's state for the OPEN project. No stage depends on another.
+ * @returns {Array<{id,label,hue,part,href,status,facts,at,start}>}
+ */
+export function stageStates(project) {
+  let scenes = [];
+  try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; }
+  const fmt = project && project.format;
+  const readers = {
+    story: () => storyState(), screenplay: () => screenplayState(),
+    preprod: () => preprodState(scenes), production: () => productionState(scenes),
+    post: () => postState(scenes, fmt)
+  };
+  return STAGES.map((st) => {
+    let r;
+    try { r = readers[st.id](); } catch (e) {
+      console.warn('[journey]', e);
+      r = { status: STATUS.none, facts: ['Could not be read'], at: 0 };
+    }
+    return { id: st.id, label: st.label, hue: st.hue, part: st.part, href: stageHref(st.id),
+      status: r.status, facts: r.facts, at: r.at || 0, start: START[st.id] || null };
+  });
+}
+
+/**
+ * The suggestion, never a gate. Nothing touched: the first stage.
+ * Otherwise the unfinished stage with work — the most recently worked
+ * where a timestamp exists, else the furthest along in film order. If
+ * every started stage is finished: the earliest stage not started.
+ * Null when all are done.
+ * @returns {null | {id, why}}
+ */
+export function suggestNext(states) {
+  const list = states || [];
+  if (!list.length) return null;
+  const started = list.filter((s) => s.status.id !== 'none');
+  if (!started.length) return { id: list[0].id, why: 'start' };
+  const open = started.filter((s) => s.status.id === 'doing');
+  if (open.length) {
+    const pick = open.reduce((best, s) => (!best || s.at > best.at
+      || (s.at === best.at && list.indexOf(s) > list.indexOf(best)) ? s : best), null);
+    return { id: pick.id, why: 'continue' };
+  }
+  const first = list.find((s) => s.status.id === 'none');
+  return first ? { id: first.id, why: 'next' } : null;
+}
+
+/** "Resume where you left off": the stage with the newest timestamp the
+    models carry (story.updatedAt, scene shotAt), or null. */
+export function lastWorked(states) {
+  return (states || []).filter((s) => s.at > 0).sort((a, b) => b.at - a.at)[0] || null;
+}
+
 export default {
   STAGES, stageById, stageHueClass, stageOfStep, guideSteps, guideProgress, nextGuideStep,
-  journey, guideJourney, blueprintFor, BLUEPRINT
+  journey, guideJourney, blueprintFor, BLUEPRINT,
+  stageStates, suggestNext, lastWorked, stageHref, favouriteOf
 };

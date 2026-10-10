@@ -94,6 +94,36 @@ Read-backs:
 5. **`prove:adoption`: PASS, 40/40** on a machine with internet (the
    container's 39/40 was Google Fonts unreachable).
 
+### RESULT — `npm run test:schema`: RUN, 430 checks, 0 failed
+
+Every session until now reported this as "cannot run here". It can: the
+harness wants a local PostgreSQL 16 and macOS has one a `brew install`
+away. The whole of `supabase-schema.sql` loads on PostgreSQL 16.15 and
+every check file passes — **including `trial.sql` (57) and
+`currency.sql` (48), which had never been executed at all**; §30 and
+§31 had been static-parsed with `pglast` and shipped on that.
+
+| file | checks | | file | checks |
+|---|---|---|---|---|
+| billing.sql | 54 | | refunds.sql | 48 |
+| accounts.sql | 17 | | invoice.sql | 36 |
+| promo.sql | 62 | | leads.sql | 14 |
+| upgrade.sql | 30 | | **trial.sql** | **57** |
+| referral.sql | 37 | | **currency.sql** | **48** |
+| affiliate.sql | 19 | | scopes.sql | 8 |
+
+The ones worth naming, all green: *"THE ONE THAT PROVES THE DESIGN:
+after a trial the plan is untouched — free, no plan_until, no
+plan_period"*; *"EXPIRY WITHOUT A CLOCK"*; *"THE SOURCE CANNOT BE
+FORGED: 30 minutes and source 'signup', not 10080 and 'code'"*; a
+refunded buyer *"STILL refused — paid_at, not status"*; and
+`{"trial_minutes": 0}` raising *"a sentence about TRIALS, not
+referrals"* — the catch-all handler trap §30.9 was written to avoid.
+
+The macOS recipe is in CLAUDE.md's command list. One trap: without
+`LC_ALL` the postmaster dies with *"became multithreaded during
+startup"*, and the hint names the cause.
+
 ### Still open after this pass
 
 The `feature.html` 390px overlap above, and everything in 0.3 below.

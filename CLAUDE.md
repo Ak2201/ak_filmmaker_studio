@@ -59,7 +59,14 @@ npm run og               # regenerate public/og.png from tokens (after a palette
 npm run build:extension   # the Chrome extension, into dist-extension/
 npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
-npm run test:schema       # the WHOLE schema on a real PostgreSQL + 225 checks (pg_ctlcluster 16 main start first)
+npm run test:schema       # the WHOLE schema on a real PostgreSQL + 430 checks.
+#   macOS: brew install postgresql@16, then
+#   export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH" LC_ALL=C LANG=C
+#   initdb -D /tmp/pgdata16 -U postgres --encoding=UTF8 --locale=C
+#   pg_ctl -D /tmp/pgdata16 -o "-k /tmp -p 5439 -c listen_addresses=''" -l /tmp/pg16.log start
+#   PGHOST=/tmp PGPORT=5439 PGUSER=postgres npm run test:schema
+#   LC_ALL matters: without it the postmaster dies with
+#   "became multithreaded during startup" and the hint names the cause.
 npm run test:sun / test:callsheet / test:costs / test:delivery / test:revisions / test:ai-coverage / test:testimonials  # item 20
 npm run prove:growth / prove:ai-coverage / prove:storage  # item 20 (ai-coverage reads dist-verify/)
 npm run prove:billing     # a purchase end to end against a faked Razorpay (item 12)

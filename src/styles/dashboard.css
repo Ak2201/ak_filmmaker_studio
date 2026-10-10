@@ -547,3 +547,87 @@
   color: var(--ink-muted);
 }
 .db-tick li.is-fail { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   THE FIVE STAGE CARDS
+   ------------------------------------------------------------
+   One auto-fit grid, min(…, 100%) tracks, so five become three, two
+   or one with no horizontal scroll at 390px. The phase hue FILLS the
+   top rule; every word is ink. Status is a glyph AND a word, so it is
+   never carried by colour alone.
+   ============================================================ */
+.st-fav {
+  margin: var(--s2) 0 var(--s4);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.st-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule));
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-suggest-body { display: grid; gap: var(--s1); min-width: 0; }
+.st-suggest-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-suggest-title { font-size: var(--t-h3, 1.2rem); color: var(--ink); }
+.st-suggest-why { font-size: var(--t-small); color: var(--ink-muted); }
+.st-resume { margin: 0 0 var(--s3); font-size: var(--t-small); color: var(--ink-muted); }
+.st-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+}
+.st-card {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--s4);
+  background: var(--sk-card-bg);
+  color: var(--ink);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule));
+  border-top: var(--sk-hue-rule-w, 3px) solid var(--hue, var(--accent));
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-card.is-suggested {
+  border-color: var(--hue, var(--accent));
+  box-shadow: 0 0 0 1px var(--hue, var(--accent));
+}
+.st-head { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: space-between; }
+.st-part, .st-sug {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.st-sug { color: var(--ink); font-weight: 700; }
+.st-name { margin: 0; font-size: var(--t-h3, 1.2rem); color: var(--ink); }
+.st-status { margin: 0; display: flex; gap: var(--s2); align-items: center; font-weight: 600; color: var(--ink); }
+.st-glyph { font-size: 1.1em; line-height: 1; }
+.st-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.st-acts { display: grid; gap: var(--s2); justify-items: start; margin-top: var(--s2); }
+.st-alt { font-size: var(--t-small); }

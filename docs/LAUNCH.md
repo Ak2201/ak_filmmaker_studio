@@ -173,7 +173,10 @@ that one.
 > `supabase-schema.sql`) changed twice: it gained the key
 > `trial_minutes`, and a full-scope trial no longer swaps the trial
 > plan's features over a plan the person has BOUGHT (`and pl = 'free'`).
-> Re-run just that function definition and its two grant lines. Until
+> Re-run just that function definition and its two grant lines — they
+> are extracted, with a SHA-256 to check the editor against, in
+> `docs/sql/2026-10-10-billing_status.sql`; the route is
+> `docs/BROWSER-HANDOFF.md` §0.1. Until
 > then the invite page's trial offer falls back to "30 minutes", and a
 > buyer who pays mid-trial sees the trial plan's features until the
 > trial ends; nothing breaks. Verify: `billing_status()` signed in

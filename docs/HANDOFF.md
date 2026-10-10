@@ -1,5 +1,11 @@
 # HANDOFF — read this first
 
+> **10 Oct 2026: the browser to-do list is `docs/BROWSER-HANDOFF.md` §0**
+> (re-run `billing_status()` from `docs/sql/2026-10-10-billing_status.sql`,
+> and the real-browser checks the container could not make). The code side
+> of the 9–10 Oct UI/UX releases is done and on `main` (`99ba52b`);
+> `docs/HISTORY.md` item 24 is the record.
+
 Written 8 Oct 2026 at the end of a very long session (7–8 Oct). A new
 session has no memory of it. This file is the single entry point: what was
 done, what was decided, where every piece of unfinished work sits, what is

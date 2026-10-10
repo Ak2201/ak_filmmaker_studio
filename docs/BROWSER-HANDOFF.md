@@ -1,7 +1,7 @@
 # BROWSER HANDOFF — the launch steps a cloud session cannot do
 
 Written 8 Oct 2026 by the cloud session that released the ten workstreams
-(`main` = `ad7ab02`). These steps need the owner's own browser (Claude in
+(`main` = `ad7ab02`); section 0 added 10 Oct 2026 after the UI/UX releases. These steps need the owner's own browser (Claude in
 Chrome, signed in as the owner) because the cloud container cannot reach
 Supabase, Google Cloud or Razorpay. **For a session running on the owner's
 computer with the Claude in Chrome extension connected.**
@@ -27,6 +27,73 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
   `supabase-schema.sql`, commit on a `feature/launch-steps` branch off
   `develop`, and promote per `docs/BRANCHING.md` (docs-only may go straight
   to `main`; then merge `main` into `develop`).
+
+## 0. OPEN NOW — after the 9–10 Oct UI/UX releases (`main` = `99ba52b`)
+
+Everything else in this file is history or still-owed owner input; **this
+section is the current to-do list.** Do the items in order and record each
+read-back here and in `docs/LAUNCH.md` §4 / `CLAUDE.md` "What is live".
+
+### 0.1 Re-run ONE function: `billing_status()` (Supabase SQL editor)
+
+Why: two server changes shipped in code and are not live yet — the key
+`trial_minutes` (so `invite.html` offers the trial length the console
+sets, not a hard-coded 30), and a buyer who pays during a full-scope trial
+keeps the plan they BOUGHT instead of the trial plan's features. Until it
+runs nothing breaks; both just behave the old way.
+
+- The exact statements are in **`docs/sql/2026-10-10-billing_status.sql`**
+  (the last `create or replace function public.billing_status()` in
+  `supabase-schema.sql`, lines 7207–7284, plus its revoke/grant lines).
+  Nothing else in the schema changed. It depends only on §30 functions,
+  which are live.
+- **SHA-256 of that file: `ddd159ab27093d9fc48d77c95b26de7d91af06c35c9db5540ec4510b7df5827d`.**
+- **Do not paste it through the clipboard as text** (CLAUDE.md: `pbcopy` →
+  Chrome turned every em-dash into `‚Äî`; this file's comments carry
+  em-dashes). Route that works: base64 the file, decode it in the page
+  into the Monaco model, SHA-256 the editor's contents against the hash
+  above, and only then press Run.
+- **Ask the owner before pressing Run.** Expected: "Success. No rows
+  returned".
+- Read back (signed in as any member, from the app's console or the SQL
+  editor with that user's claims): `billing_status()` carries a numeric
+  `trial_minutes`. And: open `invite.html` signed in as an account that
+  has not used its trial, with the console's trial length set to
+  something other than 30 — the button says that number.
+
+### 0.2 Real-browser checks this container could not make
+
+The cloud container's Chromium cannot reach Google Fonts (its proxy CA is
+not trusted by the browser), so these were never seen live:
+
+1. **Icons render, and never as words.** On the production host (or the
+   `thefilmakerlocal` preview), open `index.html`, `breakdown.html`,
+   `write.html`: the rail and breadcrumb show glyphs, and
+   `document.documentElement.classList.contains('sym-ready')` is `true`.
+   Then block `fonts.googleapis.com` in DevTools → Network request
+   blocking and reload: the icons are BLANK gaps (no "home",
+   "auto_stories" text) and the labels beside them still read.
+2. **`npm run prove:adoption` on a machine with internet.** In the
+   container it is 39/40, the one failure being Google Fonts
+   unreachable. Expect 40/40 locally.
+3. **Service worker, `.html` URL** (CLAUDE.md's redirected-response
+   trap): on the production host with the worker installed, type
+   `/settings.html` and `/dashboard.html` directly — both open (not
+   ERR_FAILED).
+4. **A phone at 390px** (real device or DevTools device mode, loaded at
+   that width, not resized into it): `feature.html` — the vertical
+   "STEPS" tab does not cover the language toggle or step titles;
+   `start.html` — pricing reads 1 column; `reports.html#dpr` — the
+   breadcrumb reads "Studio › DPR".
+5. **Google sign-in round trip on `thefilmakerlocal.vercel.app`**
+   (still untested, see §6 below).
+
+### 0.3 Still owed, unchanged (needs the owner)
+
+- The live RLS checks with a second Google account (§3 below).
+- A LIVE Razorpay key (everything so far is test mode) and one refund
+  exercised end to end (§4 below).
+- The legal placeholders and business identity (§5 below).
 
 ## 1. Supabase — run the missing schema sections (§16 → §24)
 

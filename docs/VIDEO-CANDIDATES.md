@@ -1,5 +1,7 @@
 # Video candidates
 
+**Status (10 Oct 2026): ALL APPROVED by the owner and live.** None was verified by oEmbed from the build sandbox. If one breaks or is wrong, set its `approved` to `false` in `src/data/videos.json` (or delete the entry) and rebuild.
+
 **To approve:** reply with the video ids you want (the first column), or "approve all". Approved ids get `approved: true` in `src/data/videos.json`; nothing renders until then.
 
 Status: every `yt` id was taken from a YouTube search-result URL. youtube.com was not reachable from the build sandbox, so **no entry is verified** (title, channel and length were not confirmed by oEmbed). Titles are as shown in search results. Channel is blank where the search result did not show one. Please open each link before approving. "Fit" is a 1-5 reviewer guess from title and snippet only.

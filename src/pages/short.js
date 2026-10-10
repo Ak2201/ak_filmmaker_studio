@@ -38,6 +38,11 @@
    localStorage read below is scoped to the current project. Read the
    load-order banner in src/lib/store.js before moving this line. */
 import Store from '../lib/store.js';
+/* The blueprint's questions live in each stage's Guide now (10 Oct
+   2026): an old link here forwards to the stage that owns the step.
+   ?stay=1 keeps this full page for the widgets the guide links to. */
+import { enableRedirect } from './blueprint-redirect.js';
+enableRedirect();
 
 import '../styles/base.css';
 import '../styles/chrome.css';

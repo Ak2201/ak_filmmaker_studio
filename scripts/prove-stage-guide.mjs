@@ -138,7 +138,7 @@ check('(1) ONLY the touched keys changed', changed, ['p3_ad', stepField, tickKey
 check('(1) every other answer is intact', Object.entries(KEEP).every(([k, v]) => b[k] === v), true);
 
 /* … and the blueprint shows them */
-await page.goto(url('feature.html'), { waitUntil: 'networkidle' });
+await page.goto(url('feature.html?stay=1'), { waitUntil: 'networkidle' });
 const onBlueprint = await page.evaluate(([c, s, t]) => ({
   c: document.querySelector(`[data-key="${c}"]`).value,
   s: document.querySelector(`[data-key="${s}"]`).value,
@@ -171,7 +171,7 @@ b = await blob(FKEY);
 check('(1) edit.html wrote the composer', b.p4_music, 'GUIDE-COMPOSER');
 check('(1) the blueprint’s own edit survived the guide’s write', b.p4_editor, 'BLUEPRINT-EDITOR');
 if (hod) check('(1) a sign-off checkbox is stored as boolean true', b[hod], true);
-await page.goto(url('feature.html'), { waitUntil: 'networkidle' });
+await page.goto(url('feature.html?stay=1'), { waitUntil: 'networkidle' });
 check('(1) feature.html shows the composer', await page.inputValue('[data-key="p4_music"]'), 'GUIDE-COMPOSER');
 if (hod) check('(1) feature.html shows the ticked sign-off', await page.isChecked(`[data-key="${hod}"]`), true);
 
@@ -179,7 +179,7 @@ if (hod) check('(1) feature.html shows the ticked sign-off', await page.isChecke
 await page.goto(url('shoot.html'), { waitUntil: 'networkidle' });
 await guideReady();
 const other = await ctx.newPage();
-await other.goto(url('feature.html'), { waitUntil: 'networkidle' });
+await other.goto(url('feature.html?stay=1'), { waitUntil: 'networkidle' });
 await other.fill('[data-key="p3_base"]', 'OTHER-TAB-BASE');
 await other.waitForTimeout(900);
 await page.waitForTimeout(500);
@@ -200,7 +200,7 @@ b = await blob(SKEY);
 check('(2) short: the guide wrote p_days to the short blob', b.p_days, '3 days');
 check('(2) short: the arrays and fields beside it are intact', [b.meta_title, b.b1_setup, b._sceneMap.length], ['Tiny', 'KEEP-SHORT', 1]);
 check('(2) short: the feature blob was not touched', await page.evaluate((k) => localStorage.getItem(k), FKEY), null);
-await page.goto(url('short.html'), { waitUntil: 'networkidle' });
+await page.goto(url('short.html?stay=1'), { waitUntil: 'networkidle' });
 check('(2) short.html shows the guide’s answer', await page.inputValue('[data-key="p_days"]'), '3 days');
 await page.fill('[data-key="p_crew"]', 'SHORT-CREW');
 await page.waitForTimeout(900);

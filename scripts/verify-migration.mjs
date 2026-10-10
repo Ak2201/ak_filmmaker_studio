@@ -264,7 +264,7 @@ const ALL_PAGES = [
    untouched rather than re-capturing a page that is no longer measured.
    The fragment sweep follows by itself — it only offers hrefs to pages in
    PAGES, so feature.html#step-NN targets stop being asked for. */
-const BLUEPRINT_PAGES_ARE_REDIRECTS = false;
+const BLUEPRINT_PAGES_ARE_REDIRECTS = true;
 const BLUEPRINT_NAMES = ['feature', 'short'];
 const STAGE_PAGES = ['story.html', 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
 const PAGES = BLUEPRINT_PAGES_ARE_REDIRECTS ? ALL_PAGES.filter((p) => !BLUEPRINT_NAMES.includes(p.name)) : ALL_PAGES;
@@ -392,30 +392,6 @@ const EXPECTED = {
   admin: {}
 };
 
-/* THE BLUEPRINTS SHELF LEFT THE MAP (navigation.json, this lane). Every
-   word below was printed ONLY by that shelf: its icon ligatures
-   (`map` — the shelf's glyph, in every page's nav; `menu_book` and
-   `article` — its two modules'), and the hub launcher's copy for it
-   ("32 questions that walk a feature … guided", and the derived
-   module count that dropped by two). They are deliberate removals, not
-   copy that went missing.
-
-   More than the two or three rows this file's own note allows, on
-   purpose: the word lists in scripts/baseline.json belong to whoever
-   re-baselines, and several lanes are changing pages at once, so a
-   recapture here would bake THEIR half-finished output in as known
-   good. The switch-over commit re-baselines once, after the stage
-   guides land, and DELETES THIS BLOCK — the anti-rot check below fails
-   the run for it the moment the words stop being missing, which is
-   the reminder. */
-const SHELF_WORDS = 'removed with the Blueprints shelf (navigation.json)';
-for (const [pg, ws] of Object.entries({
-  hub: ['34', 'article', 'book', 'guided', 'menu', 'questions', 'two', 'walk'],
-  feature: ['book', 'menu'],
-  short: ['article'],
-  ...Object.fromEntries(['breakdown', 'stripboard', 'reports', 'contacts', 'visualize', 'write', 'plan', 'dashboard',
-    'budget', 'settings', 'shoot', 'edit', 'deliverables', 'invite', 'admin'].map((n) => [n, ['map']]))
-})) for (const w of ws) EXPECTED[pg][w] = SHELF_WORDS;
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',

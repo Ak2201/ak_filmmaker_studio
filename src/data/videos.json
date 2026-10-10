@@ -1,7 +1,1024 @@
 {
-  "_comment": "FIXTURE written by the player agent; the real file replaces it. Keys in `for`: step:<ns>/<stepId> (ns = feature | production | short), lib:<film|director|rule|glossary>/<title|name|n|term>, id part trimmed/lower-cased, module:<navigation.json module id or phase id>, landing. Only approved:true entries render.",
+  "_comment": "Candidate videos. The owner approves by setting approved:true; only approved entries render. verified:false means the id came from a search result URL but youtube.com was unreachable from the build sandbox, so title/channel/length were not confirmed with oEmbed. channel null = not shown in the search result. Keys: step:feature/<id>, step:short/<id>, module:<navigation id>, lib:glossary/<term>, lib:director/<name>, lib:film/<title>, lib:rule/<n>. fit is the 1-5 reviewer score.",
   "videos": [
-    { "id": "fixture-step", "yt": "dQw4w9WgXcQ", "title": "Fixture step video", "channel": "Fixture Channel", "minutes": 5, "for": ["step:feature/step-01"], "why": "Fixture.", "approved": true, "checked": "2026-10-10" },
-    { "id": "fixture-write", "yt": "dQw4w9WgXcR", "title": "Fixture write video", "channel": "Fixture Channel", "minutes": 7, "for": ["module:screenplay"], "why": "Fixture.", "approved": true, "checked": "2026-10-10" }
+    {
+      "id": "how-to-write-a-logline-ep4",
+      "yt": "pMj8xUa1jOA",
+      "title": "How to Write a Logline — TV Writing & Development Course: Ep4",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-02",
+        "step:short/step-02",
+        "lib:glossary/logline"
+      ],
+      "why": "Builds a logline from character, goal, conflict and stakes.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "5-qualities-great-loglines",
+      "yt": "1ab5imz6VNA",
+      "title": "5 Qualities of Great Loglines",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-02",
+        "step:short/step-02"
+      ],
+      "why": "A checklist to test your own logline against.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "what-is-theme-5-ways",
+      "yt": "9ELleu9J05g",
+      "title": "What is Theme — 5 Ways to Layer Theme into a Screenplay",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-03",
+        "lib:glossary/theme"
+      ],
+      "why": "Five concrete ways to carry theme through a script.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "raise-your-stories-stakes",
+      "yt": "-25V1Ry4vcs",
+      "title": "8 Ways to Raise Your Story's Stakes",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-03",
+        "lib:glossary/stakes"
+      ],
+      "why": "Practical ways to make failure cost more.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "character-arcs-positive-change",
+      "yt": "CS1QkWSnP_o",
+      "title": "How to Write a Character Arc — \"Positive Change\" Character Arcs Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-04",
+        "step:short/step-03",
+        "lib:glossary/character arc"
+      ],
+      "why": "Lie, want, need and change for a protagonist.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "want-vs-need",
+      "yt": "Zci-54NbeMo",
+      "title": "Writing Strong Characters - The Important Distinction Between Want and Need",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-04",
+        "step:short/step-03",
+        "lib:glossary/want",
+        "lib:glossary/need"
+      ],
+      "why": "Separates what the hero chases from what they need.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "writing-great-antagonists",
+      "yt": "ml4nCtgUw6s",
+      "title": "How to Write a Great Antagonist — With Examples",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-05",
+        "lib:glossary/antagonist"
+      ],
+      "why": "Antagonist as someone who believes they are right.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "sorkin-how-to-write-a-villain",
+      "yt": "fKlQ7YGDcFk",
+      "title": "How to write a great VILLAIN - Aaron Sorkin",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-05"
+      ],
+      "why": "A working screenwriter on understanding the villain from inside.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "writing-side-characters",
+      "yt": "LkHUhcZIWlc",
+      "title": "Writing Character Arcs for SIDE CHARACTERS (Fiction Writing Advice)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-06"
+      ],
+      "why": "Gives supporting characters their own want and arc.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "save-the-cat-15-beats",
+      "yt": "vEh2ojLqxLI",
+      "title": "Save the Cat Beat Sheet: The 15 Beats Every Screenwriter Needs",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-08",
+        "step:short/step-04"
+      ],
+      "why": "Walks through all 15 beats; matches step 08 directly.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "save-the-cat-parasite",
+      "yt": "2kil95fwMVo",
+      "title": "3 Act Story Structure with Save the Cat's Beat Sheet — Parasite Movie Explained in 15 Beats",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-08"
+      ],
+      "why": "The 15 beats applied to one finished film.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "beat-sheet-save-time",
+      "yt": "N3Gx35U_gYI",
+      "title": "Create a Beat Sheet to SAVE screenwriting time",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-04"
+      ],
+      "why": "A quick beat sheet for a short.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "setup-payoff-chekhov-tips",
+      "yt": "QkZm9qPp2sA",
+      "title": "Chekhov's Gun: 3 Tips for Setups & Payoffs",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-10",
+        "lib:glossary/setup",
+        "lib:glossary/payoff"
+      ],
+      "why": "Three habits for planting and paying off.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "setup-payoff-knives-out",
+      "yt": "zQ1Feczm93A",
+      "title": "What is Chekhov's Gun — How Knives Out Perfects the Setup and Payoff",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-10"
+      ],
+      "why": "Setup and payoff traced through one film.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "five-plot-points",
+      "yt": "m2-E7pENfKE",
+      "title": "Screenplay Structure: The Five Plot Points",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-09",
+        "step:feature/step-11"
+      ],
+      "why": "Plot points that anchor a timeline and a scene list.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "write-a-short-film-script",
+      "yt": "nwf3WeEC1MA",
+      "title": "How to Write a Short Film Script: Tips for Beginners",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-06",
+        "step:short/step-07"
+      ],
+      "why": "Scoping and writing a short that can actually be shot.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "write-short-films-that-work",
+      "yt": "UDIYAfoqNSk",
+      "title": "How to Write Short Films that WORK.",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-01",
+        "step:short/step-04"
+      ],
+      "why": "Short-film story shapes; mentions a paid course.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "how-to-write-a-synopsis",
+      "yt": "0ROLsHhgfk4",
+      "title": "How to Write a Synopsis for a Movie",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-01",
+        "step:short/step-01"
+      ],
+      "why": "Turning a seed into a one-page story.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "screenplay-format-dialogue",
+      "yt": "rFRit6bBNNE",
+      "title": "How to Format Dialogue in a Screenplay",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-07",
+        "step:feature/step-13",
+        "module:screenplay"
+      ],
+      "why": "Dialogue formatting and common beginner mistakes.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "scene-headings-explained",
+      "yt": "hTT9NOl7RyM",
+      "title": "Screenplay Scene Headings Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:glossary/slugline",
+        "step:short/step-08",
+        "module:screenplay"
+      ],
+      "why": "INT/EXT, location and time in a slugline.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "screenplay-format-tamil",
+      "yt": "0iTC6ZnHXsQ",
+      "title": "Screenplay Basics - How to Format a Screenplay (Tamil)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:screenplay",
+        "step:short/step-08"
+      ],
+      "why": "Tamil-language walkthrough of screenplay layout.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "tamil-aaranya-kaandam-screenplay",
+      "yt": "BR5LWe5pPbk",
+      "title": "How to Learn Screenplay writing From Aaranya Kaandam in Tamil",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:film/Aaranya Kaandam"
+      ],
+      "why": "Screenplay lessons taken from Aaranya Kaandam, in Tamil.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "tamil-start-writing-screenplay",
+      "yt": "0GkBU78INA8",
+      "title": "How to Start Writing Your Screenplay",
+      "channel": "Akash Vijay (as named in search)",
+      "minutes": null,
+      "for": [
+        "step:feature/step-01"
+      ],
+      "why": "Tamil-scene starting point for a first screenplay.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "tamil-short-film-story",
+      "yt": "s9BTdVUn7Wg",
+      "title": "How to Start Writing a Story for Your Short Film?",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-01",
+        "step:short/step-02"
+      ],
+      "why": "First steps on a short film story.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "subtext-writing",
+      "yt": "wrR8ggeD4h4",
+      "title": "Writing Subtext — The Secret to Writing What's Under the Surface",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:glossary/subtext"
+      ],
+      "why": "Three ways to put meaning under the dialogue.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "exposition-4-keys",
+      "yt": "oEq2XjFCaps",
+      "title": "What is Exposition in Screenwriting — 4 Keys to Writing Film Exposition That Works",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:glossary/exposition",
+        "step:feature/step-07"
+      ],
+      "why": "Delivering world and backstory without info dumps.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "inciting-incident-how-to",
+      "yt": "gwimvaj2XqQ",
+      "title": "What is an Inciting Incident — And How to Write a Great One",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:glossary/inciting incident",
+        "step:short/step-04"
+      ],
+      "why": "What the inciting incident does and how to write one.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "show-dont-tell-in-film",
+      "yt": "A_4x8QSvAf0",
+      "title": "Show, Don't Tell in Film",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:rule/1",
+        "step:short/step-07"
+      ],
+      "why": "Visual storytelling over explanation (matches rule 1).",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "match-cut-examples",
+      "yt": "wVoOYCmhcsk",
+      "title": "Match Cut Examples in Film for Better Storytelling",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:glossary/match cut"
+      ],
+      "why": "Match cuts shown across several films.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "director-vision-lookbook-no-budget",
+      "yt": "0tu_VrKsXXs",
+      "title": "Ep.02 Director's Concept & Lookbook: No Budget Filmmaking (A-Z)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-14",
+        "step:feature/step-15",
+        "module:lookbook"
+      ],
+      "why": "Concept and lookbook for a no-budget film.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "how-to-create-a-film-lookbook",
+      "yt": "J0tF4ZZFmEk",
+      "title": "How to create a Film Lookbook. Detailed Breakdown.",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-15",
+        "module:lookbook"
+      ],
+      "why": "What goes into a lookbook and why.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "directors-statement",
+      "yt": "Q_W1HygVtAE",
+      "title": "Director's Statement (WHAT IT IS AND HOW TO WRITE ONE)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-14"
+      ],
+      "why": "Writing the director's note festivals and labs ask for.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "what-is-a-shot-list",
+      "yt": "BdyhNmVFXdw",
+      "title": "What is a Shot List? (and How to Make One)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-16",
+        "module:shot-list"
+      ],
+      "why": "Shot list format and a step-by-step method.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "how-to-make-a-storyboard",
+      "yt": "5lVHCyBbn4I",
+      "title": "How to Make a Storyboard in StudioBinder",
+      "channel": "StudioBinder (named in title)",
+      "minutes": null,
+      "for": [
+        "step:feature/step-16",
+        "module:storyboard"
+      ],
+      "why": "Storyboard process, tool-agnostic principles.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "cinematic-lighting-guide",
+      "yt": "r2nD_knsNrc",
+      "title": "Ultimate Guide to Cinematic Lighting — Types of Light & Gear Explained [Shot List Ep. 12]",
+      "channel": "StudioBinder (series label in title; unconfirmed)",
+      "minutes": null,
+      "for": [
+        "step:feature/step-17"
+      ],
+      "why": "Lighting types for a cinematography plan.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "camera-shot-sizes",
+      "yt": "53C4JPULu68",
+      "title": "All Camera SHOT SIZES Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-17",
+        "module:shot-list"
+      ],
+      "why": "Shot sizes from extreme wide to extreme close-up.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "camera-movements-explained",
+      "yt": "5ODCB1Ez5Zs",
+      "title": "Cinematic CAMERA MOVEMENTS Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-17"
+      ],
+      "why": "What each camera movement does for a scene.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "production-design-explained",
+      "yt": "Y4jdYhpHCW4",
+      "title": "Production Design Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-18"
+      ],
+      "why": "What production design covers, from sets to colour.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "production-design-cheap-iih",
+      "yt": "B6UjPJUOBBg",
+      "title": "How to Production Design Your Indie Film on the CHEAP!",
+      "channel": "Indie Film Hustle (named in title)",
+      "minutes": null,
+      "for": [
+        "step:feature/step-18"
+      ],
+      "why": "Low-budget production design tactics.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "costuming-and-makeup-film-school",
+      "yt": "VsmJnimjUng",
+      "title": "Film School: Costuming and Makeup",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-19"
+      ],
+      "why": "Why costume and makeup matter to the look.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "how-to-cast-your-indie-film",
+      "yt": "sPRXOEY1b3Y",
+      "title": "How to CAST your indie film",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-20"
+      ],
+      "why": "Casting process on an indie budget.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "audition-actors-low-budget",
+      "yt": "w3bxqnT7eCg",
+      "title": "How to Audition Actors (for Your Low-Budget Film)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-20"
+      ],
+      "why": "Running auditions with little money.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "location-scouting-tech-scout-checklist",
+      "yt": "0dfsxW0BrXQ",
+      "title": "Location Scouting Explained (with Tech Scout Checklist) — Pre-Production Process Series",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-21",
+        "step:feature/step-24",
+        "module:locations"
+      ],
+      "why": "Recce plus a tech scout checklist; fits both steps.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "10-location-scouting-tips",
+      "yt": "uJgjoyu3lU4",
+      "title": "10 Smart Location Scouting Tips for Filmmakers (FREE CHECKLIST)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-21",
+        "module:locations"
+      ],
+      "why": "Ten recce tips and a checklist.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "deakins-location-scouting",
+      "yt": "IX-gQSyXSU4",
+      "title": "Roger Deakins on Location Scouting for Film — Cinematography Techniques Ep. 5",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-21"
+      ],
+      "why": "A cinematographer's view of recceing for light.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "what-is-a-tech-scout",
+      "yt": "gJxY0n8xwOo",
+      "title": "What is a Director Scout or a Tech Scout?",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-24"
+      ],
+      "why": "What happens on a tech scout.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "sound-design-for-filmmaking",
+      "yt": "gZP5TeLyhxk",
+      "title": "How To SOUND DESIGN Like A Cinematic Filmmaker (BEGINNERS) !",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-22"
+      ],
+      "why": "Beginner sound design: dialogue, ambience, effects.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "film-scoring-101",
+      "yt": "RlUQuqXPrUY",
+      "title": "Film Scoring 101: Markers, Tempos & Hits",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-22"
+      ],
+      "why": "Spotting and syncing music to picture.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "production-schedule-film",
+      "yt": "-HGkzRuJHL0",
+      "title": "How to Make a Production Schedule for Film",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-23",
+        "module:stripboard"
+      ],
+      "why": "Building a production schedule; links a template.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "shooting-schedule-stripboards",
+      "yt": "9IyI1YAVBW8",
+      "title": "How to Create a Shooting Schedule Using Stripboards",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:feature/step-23",
+        "module:stripboard"
+      ],
+      "why": "Stripboard scheduling from first principles.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "script-breakdown-budget-schedule",
+      "yt": "XnjjDQUyZ2o",
+      "title": "How To Do a Script Breakdown: Creating Accurate Budgets and Shooting Schedules",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:breakdowns",
+        "step:feature/step-23"
+      ],
+      "why": "Breakdown feeds both budget and schedule.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "indie-film-budget-beginners",
+      "yt": "MTtSioqHUgo",
+      "title": "A Beginners Guide to Making a Feature Film Budget",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:budget",
+        "step:feature/step-23"
+      ],
+      "why": "First-time feature budget structure.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "indie-film-budget-spend-skip",
+      "yt": "mBQSXkl4DdA",
+      "title": "How to Budget an Indie Film: What to Spend On (and What to Skip)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:budget",
+        "step:short/step-09"
+      ],
+      "why": "Where indie money should go.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "how-to-make-a-call-sheet",
+      "yt": "ZWpHVgHjnTg",
+      "title": "How to Make a Call Sheet",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:call-sheets"
+      ],
+      "why": "Step-by-step call sheet.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "call-sheets-explained",
+      "yt": "c25ywq93i6s",
+      "title": "Call Sheets EXPLAINED",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:call-sheets"
+      ],
+      "why": "Contact info, location and the day's schedule.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "dood-what-is-it",
+      "yt": "L8lF9TxxhlM",
+      "title": "What is a Day Out of Days Report? (And Why You Need Them)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:dood"
+      ],
+      "why": "What a DOOD is and why schedule and budget need it.",
+      "fit": 5,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "shoot-day-shooting-schedule",
+      "yt": "_Wvczjxq5Qk",
+      "title": "How to Make a SHOOTING SCHEDULE for Film (saving TIME and MONEY)",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-09"
+      ],
+      "why": "Scheduling a short without waste.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "post-production-explained",
+      "yt": "qKPHNWEV5_o",
+      "title": "Post-Production Explained — Each Step of the Post-Production Process [Stages of Filmmaking, Ep 4]",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:post",
+        "module:edit-log"
+      ],
+      "why": "The stages of post from edit to delivery.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "post-basic-editing-workflow",
+      "yt": "88uui1brOCI",
+      "title": "Post-Production: Basic Editing Workflow",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:edit-log",
+        "module:post"
+      ],
+      "why": "Basic editing workflow for a first cut.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "film-deliverables-explained",
+      "yt": "VRwspaPk0LU",
+      "title": "Film Deliverables Explained: What You Need for Distribution",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:deliverables"
+      ],
+      "why": "The common deliverables and why they matter.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "festival-deliverables-media",
+      "yt": "ih26StPA5wk",
+      "title": "Film Festival Deliverables - 1 - Media",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "module:deliverables",
+        "step:short/step-11"
+      ],
+      "why": "Digital files festivals ask for; older upload.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "film-festival-guide",
+      "yt": "ZB2LV1wHHzM",
+      "title": "A Guide to Film Festivals — Where to Apply, Getting In, and Networking Explained",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-10"
+      ],
+      "why": "Choosing festivals and getting in.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "developing-festival-strategy",
+      "yt": "oKhN65DnOcc",
+      "title": "Developing a Film Festival Strategy",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "step:short/step-10"
+      ],
+      "why": "Plan before spending on fees.",
+      "fit": 4,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "vetrimaaran-style-decoded",
+      "yt": "_Fn6OBEoPLk",
+      "title": "The Ultimate Decoding Of Vetrimaran's Filmmaking Style!",
+      "channel": "Cinematics With Akash Vijay (as named in search)",
+      "minutes": null,
+      "for": [
+        "lib:director/Vetrimaaran"
+      ],
+      "why": "Style analysis of Vetrimaaran.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    },
+    {
+      "id": "mani-ratnam-nikkhil-advani",
+      "yt": "SHr0hpST_5I",
+      "title": "Exploring Mani Ratnam’s Unique Filmmaking with Nikkhil Advani",
+      "channel": null,
+      "minutes": null,
+      "for": [
+        "lib:director/Mani Ratnam"
+      ],
+      "why": "A filmmaker on what is distinctive in Mani Ratnam's work.",
+      "fit": 3,
+      "verified": false,
+      "approved": false,
+      "checked": "2026-10-10"
+    }
   ]
 }

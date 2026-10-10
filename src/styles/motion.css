@@ -1,0 +1,89 @@
+/* ============================================================
+   MOTION — the sheet half of src/lib/motion.js.
+   Subtle, play-once. Every distance is multiplied by --motion; every
+   colour is a token; under prefers-reduced-motion nothing moves.
+   Content is visible by default: .mo-veil is only ever added by JS.
+   ============================================================ */
+
+@property --mo-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+/* ---- reveal ---------------------------------------------------- */
+.mo-veil { opacity: 0; transform: translateY(calc(12px * var(--motion))); }
+.mo-in {
+  animation: mo-rise var(--speed-lazy) var(--ease-out) calc(var(--i, 0) * 60ms) backwards;
+}
+@keyframes mo-rise {
+  from { opacity: 0; transform: translateY(calc(12px * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---- per-word reveal ------------------------------------------- */
+.mo-w {
+  display: inline-block;
+  animation: mo-word var(--speed-lazy) var(--ease-out) calc(var(--i, 0) * 45ms) backwards;
+}
+@keyframes mo-word {
+  from { opacity: 0; transform: translateY(calc(0.35em * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---- shimmer: the text keeps its own colour at rest; one sweep of --ink
+   passes through it, so it stays readable on paper and on ink. ----- */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .mo-shimmer {
+    background-image: linear-gradient(100deg, currentColor 40%, var(--ink) 50%, currentColor 60%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: mo-shimmer 2.4s var(--ease) 0.6s 1 both;
+  }
+}
+@keyframes mo-shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+/* ---- spotlight: a glow that follows the pointer ---------------- */
+.mo-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(18rem circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--speed-slow) var(--ease);
+}
+.mo-spot:hover::after { opacity: 1; }
+
+/* ---- border trail: a slow conic sweep around the edge ---------- */
+.mo-trail { position: relative; }
+.mo-trail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--mo-a), transparent 0 72%, var(--brand-lift) 88%, transparent 100%);
+  -webkit-mask: linear-gradient(currentColor 0 0) content-box, linear-gradient(currentColor 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(currentColor 0 0) content-box, linear-gradient(currentColor 0 0);
+  mask-composite: exclude;
+  animation: mo-trail 6s linear infinite;
+}
+@keyframes mo-trail { to { --mo-a: 360deg; } }
+
+/* ---- pointer-driven transforms and press ----------------------- */
+.mo-mag { transition: translate var(--speed-slow) var(--ease-out); }
+.mo-tilt { transition: transform var(--speed-slow) var(--ease-out); will-change: transform; }
+.mo-press { transition: transform var(--speed-tap) var(--ease); }
+.mo-press:active { transform: scale(calc(1 - 0.03 * var(--motion))); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mo-veil, .mo-in, .mo-w, .mo-shimmer, .mo-trail::before { animation: none; }
+  .mo-veil { opacity: 1; transform: none; }
+  .mo-shimmer { background-position: 100% 0; }
+  .mo-trail::before { --mo-a: 0deg; }
+  .mo-mag, .mo-tilt, .mo-press:active { transform: none; translate: none; }
+}

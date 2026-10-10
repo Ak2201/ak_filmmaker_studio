@@ -8,9 +8,11 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import { fmtPaise } from '../lib/billing.js';
+import '../styles/motion.css';
 
 const S = { mine: { state: 'idle', rows: [] }, all: { state: 'idle', rows: [] } };
 let rerender = () => {};
+let faded = false;   // first draw only; settings redraws main often
 const rows = { mine: new Map(), all: new Map() };
 
 async function load(kind) {
@@ -55,6 +57,7 @@ export function memberInvoicePanel(st, { rerender: rr } = {}) {
   if (S.mine.state === 'idle') load('mine');
   if (S.mine.state !== 'ready') return null;
   const wrap = h('div.inv-panel', {}, [h('h3.gt-h3', { text: 'Invoices' })]);
+  if (!faded) { faded = true; wrap.classList.add('mo-in'); }
   if (!S.mine.rows.length) { wrap.append(h('p.gt-meta', { text: 'Your invoice appears here when a payment goes through.' })); return wrap; }
   wrap.append(table('mine', false));
   return wrap;

@@ -565,7 +565,7 @@ export default defineConfig({
              They must stay import-free for this to hold. The day one of them
              imports store.js, this line silently stops being enough and the
              209 KB comes back. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
           const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;

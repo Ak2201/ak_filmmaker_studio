@@ -288,6 +288,7 @@ button.st-btn-primary {
   gap: var(--s6);
   grid-template-columns: minmax(0, 1fr);
 }
+.st-hero.mo-spot::after { z-index: -1; }
 .st-hero::before {
   content: "";
   position: absolute;
@@ -805,14 +806,10 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
 }
 
 /* ---- reveal on scroll -------------------------------------------
-   .st-veil is added by start.js ONLY, and only when
-   prefers-reduced-motion is not set — so the default state of every
-   section is visible, and a crawler, a reader with scripts off or a
-   browser without IntersectionObserver never meets this rule. The
-   travel is multiplied by --motion like every other transform here,
-   which makes it belt and braces rather than the only guard. */
-.st-sec { transition: opacity 0.5s var(--ease), transform 0.5s var(--ease); }
-.st-sec.st-veil { opacity: 0; transform: translateY(calc(14px * var(--motion))); }
+   Moved to src/styles/motion.css (.mo-veil / .mo-in), driven by
+   src/lib/motion.js. The default state of every section is still
+   visible: the veil class is added by script only, and never under
+   prefers-reduced-motion. */
 
 /* ---- the 48px floor, on a touch screen --------------------------
    base.css raises every control to 44px under (pointer: coarse), and

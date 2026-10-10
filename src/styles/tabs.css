@@ -70,3 +70,18 @@
 @media (max-width: 719px) { .tabs { --tabs-gutter: var(--s4); } }
 [role="tabpanel"][hidden] { display: none; }
 @media print { .tabs { display: none; } [role="tabpanel"][hidden] { display: block; } }
+
+/* ENTER. The panel that a user's switch makes visible rises a few
+   pixels and fades in. tabs.js adds `.tabs-enter` only on a switch the
+   reader made (a click, an arrow key, an in-page link), never on the
+   first paint, and removes it on animationend. The distance is
+   multiplied by --motion, and reduced motion removes the animation. */
+[role="tabpanel"]:not([hidden]).tabs-enter {
+  animation: tabs-in var(--speed-slow) var(--ease-out);
+}
+@keyframes tabs-in {
+  from { opacity: 0; transform: translateY(calc(6px * var(--motion))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [role="tabpanel"].tabs-enter { animation: none; }
+}

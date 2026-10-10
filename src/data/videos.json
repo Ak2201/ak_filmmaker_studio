@@ -1,0 +1,7 @@
+{
+  "_comment": "FIXTURE written by the player agent; the real file replaces it. Keys in `for`: step:<ns>/<stepId> (ns = feature | production | short), lib:<film|director|rule|glossary>/<title|name|n|term>, id part trimmed/lower-cased, module:<navigation.json module id or phase id>, landing. Only approved:true entries render.",
+  "videos": [
+    { "id": "fixture-step", "yt": "dQw4w9WgXcQ", "title": "Fixture step video", "channel": "Fixture Channel", "minutes": 5, "for": ["step:feature/step-01"], "why": "Fixture.", "approved": true, "checked": "2026-10-10" },
+    { "id": "fixture-write", "yt": "dQw4w9WgXcR", "title": "Fixture write video", "channel": "Fixture Channel", "minutes": 7, "for": ["module:screenplay"], "why": "Fixture.", "approved": true, "checked": "2026-10-10" }
+  ]
+}

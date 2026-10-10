@@ -892,3 +892,22 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
   .st-card:hover, .st-tiers li:hover, .st-stage:hover { transform: none; }
   .st-faq summary::after { transition: none; }
 }
+
+/* ---- the walkthrough -------------------------------------------
+   The recording is a 16:9 surface like the screenshots above it, so
+   it takes the same radius and card edge (--sk-*, never a literal).
+   aspect-ratio reserves the frame before the poster or the metadata
+   arrives, so the section does not jump when the video loads. */
+
+.st-video { margin: var(--s5) 0 0; min-width: 0; }
+.st-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-tertiary);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius);
+  box-shadow: var(--sk-card-shadow);
+}
+.st-video figcaption { margin-top: var(--s2); font-size: var(--t-small); color: var(--ink-muted); max-width: var(--measure); }

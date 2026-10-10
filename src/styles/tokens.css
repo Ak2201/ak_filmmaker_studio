@@ -190,6 +190,15 @@
   --brand-deep:       #b69bfb;
   --brand-wash:       #241a3d;
   --brand-lift:       #b69bfb;
+  /* BUY SURFACES (10 Oct 2026). The call-to-action fill, its hover and
+     its glows are stated in EVERY theme block: dark gets a deeper,
+     quieter violet and a faint glow (the page is near-black, so the
+     full-strength brand fill glowed like a lamp); light keeps the
+     brand. --brand-on on the dark fill measures 4.59:1, hover 5.2:1. */
+  --cta-fill:        #8467e8;
+  --cta-fill-hover:  #9170f0;
+  --cta-glow:        color-mix(in srgb, var(--brand) 10%, transparent);
+  --glow-soft:       color-mix(in srgb, var(--brand) 9%, transparent);
   /* Routed through --on-fill like the six hues, NOT stated as white.
      White is right on the light theme's fill and wrong on the dark
      theme's, which is lighter — the gate measured the dark fill at
@@ -565,6 +574,10 @@
     --brand-deep:   #5b21b6;
     --brand-wash:   #ede9fe;
     --brand-lift:   #b69bfb;
+  --cta-fill:        var(--brand);
+  --cta-fill-hover:  var(--brand-deep);
+  --cta-glow:        color-mix(in srgb, var(--brand) 22%, transparent);
+  --glow-soft:       color-mix(in srgb, var(--brand) 22%, transparent);
 
     --chrome:             #ffffff;
     --chrome-ink:         #171233;
@@ -699,6 +712,15 @@
   --brand-deep:   #b69bfb;
   --brand-wash:   #241a3d;
   --brand-lift:   #b69bfb;
+  /* BUY SURFACES (10 Oct 2026). The call-to-action fill, its hover and
+     its glows are stated in EVERY theme block: dark gets a deeper,
+     quieter violet and a faint glow (the page is near-black, so the
+     full-strength brand fill glowed like a lamp); light keeps the
+     brand. --brand-on on the dark fill measures 4.59:1, hover 5.2:1. */
+  --cta-fill:        #8467e8;
+  --cta-fill-hover:  #9170f0;
+  --cta-glow:        color-mix(in srgb, var(--brand) 10%, transparent);
+  --glow-soft:       color-mix(in srgb, var(--brand) 9%, transparent);
 
   /* THE NAV BAND DIFFERS PER THEME, SO BOTH BLOCKS HAVE TO SAY SO.
      The chrome family used to be declared once, on bare :root, and
@@ -806,6 +828,10 @@
   --brand-deep:   #5b21b6;
   --brand-wash:   #ede9fe;
   --brand-lift:   #b69bfb;
+  --cta-fill:        var(--brand);
+  --cta-fill-hover:  var(--brand-deep);
+  --cta-glow:        color-mix(in srgb, var(--brand) 22%, transparent);
+  --glow-soft:       color-mix(in srgb, var(--brand) 22%, transparent);
 
   --chrome:             #ffffff;
   --chrome-ink:         #171233;
@@ -851,7 +877,7 @@
   --accent-gold-glow:   color-mix(in srgb, var(--brand) 22%, transparent);
   --accent-teal:        var(--brand-deep);
   --accent-teal-subtle: var(--brand-wash);
-  --shadow-cta:         0 4px 20px var(--accent-gold-glow);
+  --shadow-cta:         0 4px 20px var(--cta-glow);
   --hero-glow:          radial-gradient(ellipse at top, color-mix(in srgb, var(--brand) 6%, transparent), transparent 70%);
   --blur-glass:         blur(12px);
 }

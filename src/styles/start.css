@@ -256,12 +256,12 @@ button.st-btn {
 
 a.st-btn-primary,
 button.st-btn-primary {
-  background: var(--accent-gold);
-  border-color: var(--accent-gold);
+  background: var(--cta-fill);
+  border-color: var(--cta-fill);
   color: var(--brand-on);
   box-shadow: var(--shadow-cta);
 }
-.st-btn-primary:hover { background: var(--accent-gold-hover); border-color: var(--accent-gold-hover); }
+.st-btn-primary:hover { background: var(--cta-fill-hover); border-color: var(--cta-fill-hover); }
 
 .st a.st-btn-sm, a.st-btn-sm { min-height: 44px; padding: var(--s2) var(--s3); white-space: nowrap; }
 
@@ -302,7 +302,7 @@ button.st-btn-primary {
      section's edge. The old box hung 40% above and 20% either side and
      was then clipped by overflow on the section, which drew the glow
      as a lit rectangle with a hard top and left edge at both widths. */
-  background: radial-gradient(closest-side at 35% 30%, var(--accent-gold-glow), transparent);
+  background: radial-gradient(closest-side at 35% 30%, var(--glow-soft), transparent);
   pointer-events: none;
 }
 .st-hero-copy { min-width: 0; }
@@ -375,7 +375,7 @@ button.st-btn-primary {
    text colour, the mistake CLAUDE.md names, and invisible until 9 Oct
    because this page had only ever been rendered dark. The deep variant
    is the brand AS TEXT and is mixed for exactly this. */
-.st-chip-gold { background: var(--accent-gold-glow); color: var(--brand-deep); }
+.st-chip-gold { background: var(--glow-soft); color: var(--brand-deep); }
 
 /* ---- the invite band -------------------------------------------- */
 
@@ -578,8 +578,8 @@ button.st-btn-primary {
 .st-door strong { color: var(--ink); }
 
 .st-pick {
-  border-color: var(--accent-gold);
-  border-top: var(--sk-hue-rule-w) solid var(--accent-gold);
+  border-color: var(--cta-fill);
+  border-top: var(--sk-hue-rule-w) solid var(--cta-fill);
   box-shadow: var(--sk-card-shadow-hover);
 }
 /* Sentence case and normal tracking, like every other label in this
@@ -673,14 +673,38 @@ button.st-btn-primary {
 .st-close .st-lede { margin-left: auto; margin-right: auto; }
 .st-close .st-cta { justify-content: center; }
 
+/* The footer is a full-width band OUTSIDE <main>: a hairline on top,
+   its contents in a readable container. Links are --brand-deep (the
+   brand as TEXT), never the --accent-gold fill. */
 .st-foot {
-  max-width: none;
   margin: var(--s7) 0 0;
-  padding: var(--s4) 0 var(--s6);
-  border-top: 1px solid var(--rule-hair);
+  padding: var(--s5) var(--gutter) var(--s6);
+  border-top: 1px solid var(--chrome-hair);
+  background: var(--paper);
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+}
+.st-foot-in {
+  max-width: var(--measure-wide);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
 }
 .st-foot p { color: var(--ink-muted); font-size: var(--t-small); margin: 0; }
-.st-foot a { color: var(--accent-gold); }
+.st-foot-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s4); }
+.st-foot-label { color: var(--ink-muted); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: var(--t-small); }
+.st-foot a {
+  color: var(--brand-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: var(--s2) 0;
+}
+.st-foot a:hover { color: var(--ink); }
+.st-foot a:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 
 /* ---- #voices: testimonials and films (src/data/testimonials.json) --
    Hidden while the JSON is empty; these rules wait for the first
@@ -861,7 +885,7 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
 }
 .st-card:hover, .st-tiers li:hover, .st-stage:hover {
   border-color: var(--brand-lift);
-  box-shadow: var(--sk-card-shadow-hover), 0 0 0 1px color-mix(in srgb, var(--brand-lift) 55%, transparent), 0 8px 32px color-mix(in srgb, var(--brand) 22%, transparent);
+  box-shadow: var(--sk-card-shadow-hover), 0 0 0 1px color-mix(in srgb, var(--brand-lift) 55%, transparent), 0 8px 32px var(--glow-soft);
   transform: translateY(calc(-4px * var(--motion)));
 }
 

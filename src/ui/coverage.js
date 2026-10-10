@@ -440,6 +440,7 @@ function renderReport() {
 function renderVoicePanel() {
   const panel = h('div.ai-panel.cv-voice.cv-noprint');
   panel.append(h('div.ai-head', {}, [h('h3.ai-title', { text: 'A character’s voice' }), Panelm.aiMark('AI')]));
+  if (!Panelm.aiAllowed()) { panel.append(Panelm.proCard()); return panel; }
   if (!Panelm.hasKey()) {
     panel.append(Panelm.gate('No API key on this device.', 'Add one in the report panel above to check a voice.'));
     return panel;

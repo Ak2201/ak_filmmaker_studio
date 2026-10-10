@@ -3704,7 +3704,7 @@ async function breakIntoShots() {
     // 3. AI if there is a key AND the writer says send; rules otherwise.
     let result = null;
     let byAI = false;
-    if (await primeAI() && AIm.hasKey()) {
+    if (await primeAI() && AIm.hasKey() && (!Panelm || Panelm.aiAllowed())) {
       const go = confirm('Draft the shots for ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
         + ' with AI?\n\nOK sends the slug line, synopsis and script text of those scenes to '
         + apiHost() + ', using the key on this device.\n'

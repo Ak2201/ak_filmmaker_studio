@@ -46,6 +46,8 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import AI from '../lib/ai.js';
+import Store from '../lib/store.js';
+import PlanGate from '../lib/plan-gate.js';
 
 /* View state, and none of it is stored. Whether the key form is
    open is not the user's work, and a "replace your key" form that
@@ -64,7 +66,27 @@ function announce() {
   for (const fn of listeners) { try { fn(); } catch (e) { console.warn('[ai-panel]', e); } }
 }
 
-export function hasKey() { return AI.hasKey(); }
+/* PLAN GATE (Pro). allowed('ai_tools') is true whenever the plan is
+   unknown — signed out, unreachable, key missing — so this FAILS OPEN and
+   `npm run verify`, which loads every page signed out, sees no wall.
+   Only a plan that says ai_tools: false closes it, and then it closes
+   every AI entry point at once, because they all ask this module:
+   hasKey() reads false and keyGate() answers with the Pro card, which is
+   `blocking`. Saved AI output is never hidden: this draws a card INSTEAD
+   OF THE TOOL, not instead of anything you already hold. */
+export function aiAllowed() { return PlanGate.allowed('ai_tools'); }
+export function hasKey() { return AI.hasKey() && aiAllowed(); }
+
+/** The calm card shown where a tool would be. */
+export function proCard() {
+  const box = h('div.ai-gate.ai-pro');
+  box.append(h('p', {}, [h('strong', { text: 'AI tools come with Pro.' })]));
+  box.append(h('p', { text: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click.' }));
+  box.append(h('p', {}, [h('a', { href: 'settings.html#plan', text: 'See plans' })]));
+  box.append(h('p', { text: 'Nothing you\u2019ve written is affected.' }));
+  box.dataset.blocking = 'true';
+  return box;
+}
 
 /* ---- the key test --------------------------------------------
    In memory only: a test result is about this sitting, and a new
@@ -195,7 +217,8 @@ export function gate(lead, body, cta) {
    missing; the form's lead says where the key lives — unless the
    caller draws a disclosure that already does, which `lead: false`
    is for. */
-export function keyGate(what, { lead = true } = {}) {
+export function keyGate(what, { lead = true, ungated = false } = {}) {
+  if (!ungated && !aiAllowed()) return proCard();
   if (AI.hasKey() && !editingKey) return null;
   const wrap = h('div.ai-keygate');
   if (!AI.hasKey()) {
@@ -244,7 +267,7 @@ export function keySection(what, sends) {
      this page cannot get the "replacing a key that already works"
      case wrong either — the module decides, exactly as it does for
      the three panels. */
-  const kg = keyGate(what, { lead: false });   // the disclosure below says it
+  const kg = keyGate(what, { lead: false, ungated: true });   // the disclosure below says it; the key stays manageable on any plan
   if (kg) sec.append(kg);
   sec.append(disclose(sends));
   return sec;
@@ -286,6 +309,8 @@ let wired = false;
 export function wireAIPanel() {
   if (wired) return;
   wired = true;
+  // A plan that arrives after first paint re-draws the panels.
+  Store.subscribe('plan:changed', () => announce());
 
   delegate(document, 'click', '[data-action="ai-save-key"]', (e, btn) => {
     const box = btn.closest('.ai-key');
@@ -373,7 +398,7 @@ function setPanelNote(box, text) {
 }
 
 export default {
-  onAIChange, hasKey,
+  onAIChange, hasKey, aiAllowed, proCard,
   keyForm, keyBar, keyGate, keySection, gate, disclose,
   statusLine, errorLine, aiMark, wireAIPanel
 };

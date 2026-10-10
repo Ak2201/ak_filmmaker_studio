@@ -633,6 +633,30 @@ function versionList() {
   return wrap;
 }
 
+/* Cloud sync's own switch, for a signed-in member only (signed out there
+   is no sync to turn off). The choice is `cloudSync: 'off'` in the device
+   prefs blob, written by cloud.js's setSyncEnabled on a click and never on
+   load. Turning it OFF asks first, out loud, like every other consequential
+   control on this page; turning it ON just does it, and cloud.js catches up
+   both ways. */
+function cloudSyncSwitch() {
+  const c = window.StudioCloud;
+  if (!c || typeof c.setSyncEnabled !== 'function' || !c.getSession || !c.getSession()) return null;
+  const on = c.syncEnabled();
+  const box = h('p.st-note.st-cloud-sync', {}, [
+    h('label', {}, [
+      h('input', { type: 'checkbox', id: 'cloudSyncToggle', 'data-action': 'cloud-sync-toggle', ...(on ? { checked: '' } : {}) }),
+      ' Cloud sync'
+    ]),
+    h('span', { text: on
+      ? ' — your work goes up to your account a few seconds after you stop typing.'
+      : ' — off. Changes on this device are kept here and will reach your account when you turn it back on.' })
+  ]);
+  const input = box.querySelector('input');
+  input.checked = on;
+  return box;
+}
+
 function renderDrive() {
   const st = DriveSync.getDriveStatus();
   const sec = section('drive', 'This device · your own Drive',
@@ -640,6 +664,9 @@ function renderDrive() {
     'Keep a backup of every project on this browser in your own Google Drive. '
       + 'Drive keeps earlier versions, so you can go back. Your API key is never '
       + 'included.');
+
+  const cloudSwitch = cloudSyncSwitch();
+  if (cloudSwitch) sec.append(cloudSwitch);
 
   if (!st.configured) {
     sec.append(h('p.st-note', {
@@ -687,7 +714,7 @@ function renderDrive() {
     /* Supabase is signed in. Said plainly rather than left as a
        switch that quietly does nothing. */
     sec.append(h('p.st-note', {
-      text: 'You are signed in, so cloud sync keeps your work up to date. Drive '
+      text: 'You are signed in with cloud sync on, so it keeps your work up to date. Drive '
           + 'backup is manual while you are signed in: use the buttons below '
           + 'whenever you want a copy in Drive.'
     }));
@@ -1002,6 +1029,20 @@ delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
   }
   const fn = DRIVE_ACTIONS[act];
   if (fn) fn();
+});
+
+delegate(document, 'change', '[data-action="cloud-sync-toggle"]', (e, el) => {
+  const c = window.StudioCloud;
+  if (!c) return;
+  if (!el.checked) {
+    if (!confirm('Turn off cloud sync?\n\nChanges on this device won\u2019t reach your other devices until you turn it back on. Nothing is deleted.')) {
+      el.checked = true;
+      return;
+    }
+    c.setSyncEnabled(false).then(render);
+  } else {
+    c.setSyncEnabled(true).then(render);
+  }
 });
 
 /* Drive reports its own progress — a reconcile that finishes

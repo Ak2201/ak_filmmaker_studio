@@ -46,6 +46,7 @@
 import '../styles/base.css';
 import '../styles/start.css';
 import '../styles/motion.css';
+import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, scrollProgress, parallax, marquee, glow, aurora, prefersReducedMotion } from '../lib/motion.js';
 import { addLead, bumpOnce, bumpEvent, optOut, priceNotice } from '../lib/funnel.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';

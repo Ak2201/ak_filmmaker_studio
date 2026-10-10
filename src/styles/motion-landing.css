@@ -1,0 +1,103 @@
+/* ============================================================
+   motion-landing.css — the landing page's extra primitives (entrance
+   helpers, scroll progress, marquee, glow, aurora, shine). Split out of
+   motion.css so the app pages, which load motion.css through
+   motion-app.css, do not carry them in their first paint.
+   ============================================================ */
+/* ---- entrance helpers: --d is the delay ------------------------- */
+.mo-up   { animation: mo-up 0.8s var(--ease-out) var(--d, 0ms) backwards; }
+.mo-pop  { animation: mo-pop 0.7s var(--ease-spring) var(--d, 0ms) backwards; }
+.mo-from-right { animation: mo-from-right 1s var(--ease-out) var(--d, 0ms) backwards; }
+@keyframes mo-up {
+  from { opacity: 0; filter: blur(6px); transform: translateY(calc(18px * var(--motion))); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+@keyframes mo-pop {
+  from { opacity: 0; transform: scale(calc(1 - 0.06 * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes mo-from-right {
+  from { opacity: 0; filter: blur(10px); transform: translate(calc(7% * var(--motion)), calc(5% * var(--motion))) scale(calc(1 - 0.04 * var(--motion))); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* ---- scroll progress -------------------------------------------- */
+.mo-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 1000;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--brand), var(--brand-lift));
+}
+
+/* ---- marquee (InfiniteSlider) ----------------------------------- */
+.mo-marquee {
+  overflow: clip;
+  max-width: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent);
+}
+.mo-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: mo-marquee var(--mo-marquee-dur, 60s) linear infinite;
+}
+.mo-marquee-set { display: flex; flex: none; padding-inline-end: var(--s3); }
+.mo-marquee:hover .mo-marquee-track,
+.mo-marquee:focus-within .mo-marquee-track { animation-play-state: paused; }
+@keyframes mo-marquee { to { transform: translateX(-50%); } }
+
+/* ---- glow (GlowEffect): a blurred conic gradient behind the host --- */
+.mo-glow { position: relative; isolation: isolate; }
+.mo-glow-fx {
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--mo-a), var(--brand), var(--brand-lift), var(--brand-deep), var(--brand));
+  filter: blur(14px);
+  opacity: 0.5;
+  animation: mo-trail 10s linear infinite;
+}
+
+/* ---- aurora: slow drifting brand gradients in a clipped host ----- */
+.mo-aurora { position: absolute; inset: 0; z-index: -1; overflow: clip; pointer-events: none; }
+.mo-aurora i {
+  position: absolute;
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.6;
+}
+.mo-aurora i:nth-child(1) { left: -12%; top: -25%; background: radial-gradient(closest-side, color-mix(in srgb, var(--brand) 30%, transparent), transparent); animation: mo-drift-a 14s ease-in-out infinite alternate; }
+.mo-aurora i:nth-child(2) { right: -15%; top: 0; background: radial-gradient(closest-side, color-mix(in srgb, var(--brand-lift) 24%, transparent), transparent); animation: mo-drift-b 18s ease-in-out infinite alternate; }
+.mo-aurora i:nth-child(3) { left: 25%; bottom: -35%; background: radial-gradient(closest-side, color-mix(in srgb, var(--brand-deep) 22%, transparent), transparent); animation: mo-drift-a 22s ease-in-out infinite alternate-reverse; }
+@keyframes mo-drift-a { from { translate: 0 0; scale: 1; } to { translate: calc(24% * var(--motion)) calc(14% * var(--motion)); scale: 1.2; } }
+@keyframes mo-drift-b { from { translate: 0 0; scale: 1.1; } to { translate: calc(-22% * var(--motion)) calc(18% * var(--motion)); scale: 0.9; } }
+
+/* ---- shine sweep on a button ------------------------------------- */
+.mo-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 38%, color-mix(in srgb, var(--brand-on) 32%, transparent) 50%, transparent 62%) 160% 0 / 250% 100% no-repeat;
+}
+.mo-shine:hover::after { animation: mo-shine 0.9s var(--ease) 1; }
+.mo-shine-loop::after { animation: mo-shine-loop 7s var(--ease) 2.5s infinite; }
+@keyframes mo-shine { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+@keyframes mo-shine-loop { 0% { background-position: 160% 0; } 14%, 100% { background-position: -60% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mo-up, .mo-pop, .mo-from-right, .mo-glow-fx, .mo-aurora i,
+  .mo-shine::after, .mo-marquee-track { animation: none; }
+  .mo-progress, .mo-glow-fx { display: none; }
+  .mo-marquee { overflow-x: auto; }
+  .mo-marquee-set[aria-hidden="true"] { display: none; }
+}

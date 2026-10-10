@@ -47,7 +47,6 @@ import {
 } from './auth.js';
 import { listSkins, currentSkin, applySkin, loadSkin } from '../lib/skin.js';
 import '../styles/chrome-injected.css';
-import '../styles/motion.css';
 import '../styles/motion-app.css';
 import './motion-app.js';
 /* glossary.json is NOT imported statically here. It is read through

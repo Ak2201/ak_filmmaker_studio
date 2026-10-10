@@ -3673,8 +3673,8 @@ html {
 :root .studio-no-project-banner .btn.primary,
 :root .modal-actions .mbtn.primary,
 :root .cm-btn.primary {
-  background: var(--accent-gold);
-  border-color: var(--accent-gold);
+  background: var(--cta-fill);
+  border-color: var(--cta-fill);
   color: var(--brand-on);
   font-weight: 700;
   box-shadow: var(--shadow-cta);
@@ -3693,8 +3693,8 @@ html {
 :root .modal-actions .mbtn.primary:active,
 :root .cm-btn.primary:hover,
 :root .cm-btn.primary:active {
-  background: var(--accent-gold-hover);
-  border-color: var(--accent-gold-hover);
+  background: var(--cta-fill-hover);
+  border-color: var(--cta-fill-hover);
   color: var(--brand-on);
 }
 

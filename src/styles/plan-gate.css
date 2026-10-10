@@ -113,10 +113,10 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 /* --brand-on, not --bg-primary: on a brand fill the readable colour is
    the one the palette nominates, and in the light theme --bg-primary is
    pale-on-violet. That exact substitution is named in the 9 Oct revert. */
-.tb-flag { background: var(--brand); color: var(--brand-on); }
+.tb-flag { background: var(--cta-fill); color: var(--brand-on); }
 .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-cta { flex: none; }
-.sh-plate.is-urgent .tb-flag { background: var(--accent-gold); }
+.sh-plate.is-urgent .tb-flag { background: var(--cta-fill); }
 
 /* At 390px the plate is most of a line already. The sentence shortens
    itself (trial-band.js drops "with the sample film" under ten
@@ -126,3 +126,12 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
   .tb-body { gap: var(--s1); }
   .tb-cta { padding-inline: var(--s2); }
 }
+
+/* ---- the Pro card where an AI tool would be (ai-panel.js proCard) ----
+   Calm, not a warning: the .ai-gate base paints the warn wash, which
+   reads as a fault, and nothing is wrong. Neutral surface, ink text,
+   the link in the brand-as-text colour. */
+.ai-gate.ai-pro { background: var(--paper-sunk); border-color: var(--rule); }
+.ai-gate.ai-pro p, .ai-gate.ai-pro strong { color: var(--ink); }
+.ai-gate.ai-pro p + p { color: var(--ink-body); }
+.ai-gate.ai-pro a { color: var(--accent-deep); text-underline-offset: 2px; font-weight: 600; }

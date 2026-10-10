@@ -450,7 +450,7 @@
     </p>
     <p class="st-lead-consent">
       <input id="leadConsent" name="consent" type="checkbox" required>
-      <label for="leadConsent" id="leadConsentText">I agree that {{brand:name}} may e-mail me about offers and new steps at this address. I can withdraw this at any time by writing to {{brand:email}}. See the <a href="privacy.html">Privacy Policy</a>.</label>
+      <label for="leadConsent" id="leadConsentText">I agree that {{brand:name}} may e-mail me about offers and new steps at this address. I can withdraw this at any time &mdash; see the <a href="privacy.html">Privacy Policy</a> for how.</label>
     </p>
     <p class="st-fine" id="leadMsg" role="status" aria-live="polite"></p>
   </form>
@@ -468,11 +468,19 @@
   <p class="st-legal">Signing in means you accept the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
 </section>
 
-<footer class="st-foot" data-reveal="fade">
-  <p>{{brand:name}} &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a> &middot; <a href="refund.html">Refunds</a> &middot; <a href="mailto:{{brand:email}}">{{brand:email}}</a></p>
-</footer>
-
 </main>
+
+<footer class="st-foot" data-reveal="fade">
+  <div class="st-foot-in">
+    <p class="st-foot-brand">&copy; {{brand:name}}</p>
+    <nav class="st-foot-links" aria-label="Legal">
+      <span class="st-foot-label">Legal</span>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+      <a href="refund.html">Refunds</a>
+    </nav>
+  </div>
+</footer>
 
 <!-- The thumb rail. Hidden here and shown by start.js only below
      720px and only once the hero has scrolled past, because a bar

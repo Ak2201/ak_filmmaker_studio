@@ -8,7 +8,7 @@
    ============================================================ */
 .pl-wrap { display: grid; gap: var(--s4); margin-top: var(--s3); }
 .pl-period { display: inline-flex; gap: var(--s1); }
-.pl-period .btn.is-on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.pl-period .btn.is-on { background: var(--cta-fill, var(--accent)); color: var(--brand-on, var(--accent-on)); border-color: var(--cta-fill, var(--accent)); }
 .pl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--s4); align-items: stretch; }
 .pl-card {
   display: grid; align-content: start; gap: var(--s2);
@@ -18,7 +18,7 @@
   border-radius: var(--sk-radius, var(--radius));
   min-width: 0;
 }
-.pl-card.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.pl-card.is-current { border-color: var(--cta-fill, var(--accent)); box-shadow: 0 0 0 1px var(--cta-fill, var(--accent)); }
 .pl-card.is-free { background: var(--paper); }
 .pl-name { font-family: var(--f-display); font-size: var(--t-xl); line-height: var(--lh-tight); margin: 0; color: var(--ink); }
 .pl-blurb { margin: 0; color: var(--ink-body); font-size: var(--t-small); min-height: 2.6em; }
@@ -82,4 +82,4 @@
 .pl-success { display: grid; gap: var(--s2); padding: var(--s4); margin-bottom: var(--s4); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background: var(--sk-slab-fill); color: var(--sk-slab-ink); }
 .pl-success .pl-note { color: inherit; }
 .pl-success-h { margin: 0; }
-.pl-card.is-picked { outline: 2px solid var(--brand); outline-offset: 2px; }
+.pl-card.is-picked { outline: 2px solid var(--cta-fill, var(--brand)); outline-offset: 2px; }

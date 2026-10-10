@@ -19,8 +19,8 @@
       "files": 32
     },
     "library": {
-      "bytes": 922624,
-      "measured": 838221,
+      "bytes": 943104,
+      "measured": 923751,
       "files": 17
     },
     "breakdown": {
@@ -69,13 +69,13 @@
       "files": 21
     },
     "settings": {
-      "bytes": 685056,
-      "measured": 622373,
+      "bytes": 699392,
+      "measured": 685096,
       "files": 24
     },
     "shoot": {
-      "bytes": 566272,
-      "measured": 514335,
+      "bytes": 578560,
+      "measured": 566293,
       "files": 19
     },
     "story": {
@@ -99,8 +99,8 @@
       "files": 15
     },
     "invite": {
-      "bytes": 512000,
-      "measured": 507844,
+      "bytes": 523264,
+      "measured": 512086,
       "files": 15
     },
     "admin": {

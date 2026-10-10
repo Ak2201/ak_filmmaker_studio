@@ -65,6 +65,10 @@ jobs:
       # as a "browser closed" failure (CLAUDE.md).
       - run: npm run verify 2>&1 | tee verify.log; exit ${PIPESTATUS[0]}
         shell: bash
+      # prove:adoption needs the OPEN build (a signed-out visitor is
+      # bounced off the hub by the site gate), so it runs here, not
+      # after `npm run build` below.
+      - run: npm run prove:adoption
       - name: what failed
         if: failure()
         run: |
@@ -102,7 +106,6 @@ jobs:
       - run: npm run prove:storage
       - run: npm run prove:drive
       - run: npm run prove:sw
-      - run: npm run prove:adoption
       - run: npm run build:extension
       - run: npm run prove:extension
       - name: open build for the growth and AI proofs

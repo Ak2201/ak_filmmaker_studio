@@ -1,0 +1,228 @@
+/* ============================================================
+   MOBILE NAVIGATION — the sheet half of src/ui/mobile-nav.js.
+   Everything below keys off html.mn-on, which exists only while the
+   phone's bottom bar is attached (720px and below, and not on a page
+   that opts out with data-no-actionbar). The desktop band is untouched.
+   Tokens only; the sheets sit on the CHROME family, so every colour is
+   one the band itself already clears AA with.
+   ============================================================ */
+
+/* ---- the band: one slim row, the breadcrumb ----------------------
+   The stage strip, the page's toolbar, the account zone, the palette
+   handle and the burger move off the band: Go to, Tools and Search on
+   the bottom bar are the same things, one thumb away. The announcement
+   plate goes too — 30px of marketing above every page on a phone. */
+html.mn-on .sh-bar > .sh-phases,
+html.mn-on .sh-bar > .toolbar,
+html.mn-on .sh-bar > .sh-tools,
+html.mn-on .sh-bar > .sh-find,
+html.mn-on .sh-bar > .sh-rail-toggle,
+html.mn-on .sh-plate { display: none; }
+
+/* The crumb's stage segment comes back (the strip that said the same
+   thing is gone) and opens the Go-to sheet at that stage. */
+html.mn-on .sh-bar .sh-where-phase { display: inline-flex; }
+html.mn-on .sh-bar .sh-where-phase + .sh-where-sep { display: inline; }
+html.mn-on .sh-bar .sh-where { min-width: 0; flex: 1 1 auto; }
+html.mn-on .sh-bar .sh-where-here { min-width: 0; }
+html.mn-on .sh-bar .sh-where-here .sh-where-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the bottom bar: the open sheet's button reads as pressed */
+html.mn-on .mobile-actionbar [aria-expanded="true"],
+html.mn-on .mobile-actionbar [aria-current="page"] { background: var(--chrome-fill-strong); }
+
+/* ---- the sheets ------------------------------------------------- */
+html.mn-locked { overflow: hidden; }
+
+.mn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: flex-end;
+  background: var(--scrim);
+  opacity: 1;
+  transition: opacity var(--speed-slow) var(--ease-out);
+}
+.mn-sheet {
+  width: 100%;
+  max-height: calc(100dvh - var(--s7));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--s4) calc(var(--s5) + env(safe-area-inset-bottom, 0px));
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  border-top: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+  box-shadow: var(--shadow-modal);
+  transform: none;
+  transition: transform var(--speed-slow) var(--ease-out);
+}
+/* the sheet rises from the bar, a distance x --motion; a "from" for
+   the first frame, because the overlay is new to the document */
+@starting-style {
+  .mn-overlay { opacity: 0; }
+  .mn-sheet { transform: translateY(calc(32px * var(--motion))); }
+}
+
+.mn-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-hair);
+}
+.mn-title {
+  margin: 0;
+  font-size: var(--t-lg);
+  color: var(--chrome-ink);
+}
+.mn-close {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--radius-pill);
+  color: var(--chrome-ink);
+  font-size: var(--t-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.mn-close:focus-visible,
+.mn-global:focus-visible,
+.mn-mod:focus-visible { outline: 2px solid var(--chrome-accent); outline-offset: 2px; }
+
+.mn-body { padding-top: var(--s4); }
+
+/* the app-scope destinations: one row of tiles */
+.mn-globals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--s2);
+}
+.mn-global {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+  min-height: 64px;
+  padding: var(--s2);
+  border: 1px solid var(--chrome-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--chrome-ink);
+  font-size: var(--t-small);
+  text-decoration: none;
+  text-align: center;
+}
+.mn-global-icon { color: var(--chrome-muted); }
+.mn-global.is-here {
+  background: var(--chrome-fill-strong);
+  border-color: var(--chrome-accent);
+  font-weight: 600;
+}
+
+/* a stage (or a shelf) and its modules */
+.mn-group { margin-top: var(--s5); }
+.mn-group-h {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s2);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+}
+.mn-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hue, var(--chrome-accent));
+}
+.mn-sub {
+  margin: var(--s3) 0 var(--s1);
+  padding-left: var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+}
+.mn-mod {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 48px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--chrome-ink);
+  text-decoration: none;
+}
+/* hover only where there IS hover: a tapped row on a phone kept it */
+@media (hover: hover) { .mn-mod:hover { background: var(--chrome-fill); } }
+.mn-mod-icon { color: var(--chrome-muted); text-align: center; }
+.mn-mod-text { display: grid; gap: 2px; min-width: 0; }
+.mn-mod-label { font-weight: 600; }
+.mn-mod-purpose {
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--chrome-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "you are here": a filled row with the stage's hue down its edge
+   (a fill, not text — so --hue itself, as the rail does) */
+.mn-mod.is-here {
+  background: var(--chrome-fill-strong);
+  box-shadow: inset 3px 0 0 var(--hue, var(--chrome-accent));
+}
+.mn-mod.is-planned { opacity: .72; }
+.mn-mod-flag {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  border: 1px solid currentColor;
+  border-radius: var(--sk-radius, var(--radius));
+  padding: 0 var(--s1);
+  color: var(--chrome-muted);
+}
+
+/* ---- TOOLS: the page's real controls, borrowed for the sheet ----- */
+.mn-tools-group + .mn-tools-group { margin-top: var(--s5); }
+.mn-tools-group > .toolbar,
+.mn-tools-group > .sh-tools {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  width: auto;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+.mn-tools-group > .toolbar > *,
+.mn-tools-group > .sh-tools > * { flex: 0 1 auto; max-width: 100%; }
+.mn-empty { color: var(--chrome-muted); }
+
+@media print { .mn-overlay { display: none !important; } }

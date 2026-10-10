@@ -584,7 +584,7 @@ a:focus-visible { outline-offset: 3px; }
 }
 .step-rail::-webkit-scrollbar { width: 6px; }
 .step-rail::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--radius-pill); }
-.step-rail.collapsed { transform: translateX(-100%); }
+.step-rail.collapsed { transform: translateX(calc(-100% * var(--motion))); }
 /* A rail moved off-screen by a transform is still in the Tab order:
    32 invisible links between the toolbar and the page (UX audit M23).
    Closed means hidden, and hidden means out of the focus order and the
@@ -706,10 +706,17 @@ a:focus-visible { outline-offset: 3px; }
   line-height: var(--lh-snug);
   pointer-events: auto;
   opacity: 0;
-  transform: translateY(var(--s2));
+  transform: translateY(calc(var(--s2) * var(--motion)));
+  /* Exit is the shorter one (--speed-exit). The entrance is the
+     .show state's own transition, so it is the destination's that
+     runs when the toast arrives. */
+  transition: opacity var(--speed-exit) var(--ease-in), transform var(--speed-exit) var(--ease-in);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
   transition: opacity var(--speed-slow) var(--ease-out), transform var(--speed-slow) var(--ease-out);
 }
-.toast.show { opacity: 1; transform: translateY(0); }
 .toast.success { border-left-color: var(--ok-lift); }
 .toast.error   { border-left-color: var(--danger-lift); }
 .toast.info    { border-left-color: var(--shorts-lift); }
@@ -748,7 +755,7 @@ a:focus-visible { outline-offset: 3px; }
   letter-spacing: var(--track-label);
   font-weight: 600;
   opacity: 0;
-  transform: translateY(var(--s2));
+  transform: translateY(calc(var(--s2) * var(--motion)));
   pointer-events: none;
   transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
 }
@@ -802,7 +809,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   font-weight: 700;
   color: var(--ok-deep);
   opacity: 0;
-  transform: scale(.6);
+  transform: scale(calc(1 - (1 - .6) * var(--motion)));
   pointer-events: none;
   transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
 }
@@ -847,12 +854,15 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--shadow-modal);
-  transform: translateY(var(--s2));
+  /* The card rises and settles from 98%, so it reads as arriving
+     rather than sliding in. Both distances are multiplied by
+     --motion: under reduced motion the card simply appears. */
+  transform: translateY(calc(var(--s2) * var(--motion))) scale(calc(1 - (1 - .98) * var(--motion)));
   transition: transform var(--speed-slow) var(--ease-out);
 }
 .modal-overlay.show .modal,
 .shortcut-sheet-overlay.show .shortcut-sheet,
-.cm-overlay.show .cm-card { transform: translateY(0); }
+.cm-overlay.show .cm-card { transform: translateY(0) scale(1); }
 
 .modal h3,
 .shortcut-sheet h3,
@@ -1416,7 +1426,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   transition: transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out),
               border-color var(--speed-slow) var(--ease-out);
 }
-.project-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.project-card:hover { transform: translateY(calc(-2px * var(--motion))); box-shadow: var(--shadow-md); }
 .project-card.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .project-card > * { position: relative; z-index: 1; }
 .project-card .pc-cover {
@@ -1668,7 +1678,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%) translateY(calc(var(--s1) * -1));
+  transform: translateX(-50%) translateY(calc(var(--s1) * -1 * var(--motion)));
   z-index: var(--z-overlay);
   width: max-content;
   max-width: 260px;
@@ -1702,7 +1712,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   font-size: var(--t-small);
   line-height: var(--lh-snug);
   opacity: 0;
-  transform: translateY(var(--s1));
+  transform: translateY(calc(var(--s1) * var(--motion)));
   pointer-events: none;
   transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
 }
@@ -1788,7 +1798,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 /* --- 1100px: the side rails go away ------------------------ */
 @media (max-width: 1100px) {
   .step-rail {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% * var(--motion)));
     box-shadow: var(--shadow-lg);
   }
   .step-rail.show { transform: translateX(0); }
@@ -2038,7 +2048,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   background: var(--chrome);
   color: var(--chrome-ink);
   border-right: 1px solid var(--chrome-hair);
-  transform: translateX(-100%);
+  transform: translateX(calc(-100% * var(--motion)));
   /* Closed is HIDDEN, not just off-screen: a transform alone left
      every rail link in the Tab order at 390 (UX audit M23). The
      visibility change waits for the slide out and leads the slide in,
@@ -2890,7 +2900,7 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   color: var(--chrome-ink);
   border-color: var(--chrome-hair-strong);
 }
-.sh-find:active { transform: scale(var(--sk-press, 0.985)); }
+.sh-find:active { transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion))); }
 .sh-find-icon { font-size: var(--t-base); line-height: 1; }
 .sh-find-key {
   font-family: var(--f-mono);
@@ -3044,7 +3054,7 @@ html {
   line-height: 1.3;
 }
 .sh-plate-item:hover .sh-plate-text { text-decoration: underline; }
-.sh-plate-item:hover .sh-plate-arrow { transform: translateX(2px); }
+.sh-plate-item:hover .sh-plate-arrow { transform: translateX(calc(2px * var(--motion))); }
 .sh-plate-flag {
   flex: none;
   font-weight: 800;

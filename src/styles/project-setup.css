@@ -1,0 +1,39 @@
+/* The project setup sheet (src/ui/project-setup.js). Colours are tokens,
+   shapes are --sk-* with the fixed token as the fallback. */
+.ps-sheet { max-width: 40rem; }
+.ps-sheet .ps-films { border: 0; padding: 0; margin: var(--s3) 0 var(--s3); min-width: 0; }
+.ps-sheet legend {
+  padding: 0;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.ps-hint { margin: var(--s1) 0 var(--s3); font-size: var(--t-small); color: var(--ink-muted); line-height: var(--lh-snug); }
+.ps-error { margin: calc(var(--s2) * -1) 0 var(--s3); font-size: var(--t-small); color: var(--danger-deep, var(--danger)); }
+.ps-film-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.modal label.ps-film, .ps-film {
+  position: relative;
+  display: flex; flex-direction: column; gap: 2px;
+  margin: 0;
+  font-family: var(--f-body); letter-spacing: 0; color: var(--ink);
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--hue, var(--accent));
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: pointer;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+.ps-film input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ps-film:has(input:checked) { border-color: var(--hue, var(--accent)); background: var(--sk-slab-fill, var(--paper)); box-shadow: 0 0 0 1px var(--hue, var(--accent)); }
+.ps-film:has(input:focus-visible) { outline: var(--focus); outline-offset: var(--focus-offset); }
+.ps-film-title { font-family: var(--f-display); font-weight: 800; font-size: var(--t-lg); color: var(--ink); text-transform: none; letter-spacing: 0; }
+.ps-film-meta, .ps-film-genre { font-family: var(--f-body); font-size: var(--t-small); color: var(--ink-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.ps-more { margin: var(--s2) 0 var(--s3); }
+.ps-more summary { cursor: pointer; font-size: var(--t-small); color: var(--accent-deep); padding: var(--s2) 0; }
+@media (max-width: 480px) {
+  .ps-film-grid { grid-template-columns: 1fr; }
+}
+

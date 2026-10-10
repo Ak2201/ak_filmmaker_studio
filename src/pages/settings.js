@@ -108,6 +108,7 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
    (footer.js owns both; null when neither applies to this build/plan). */
 import { planExtras } from '../ui/footer.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
+import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
 
 const app = document.getElementById('app');
 
@@ -221,7 +222,7 @@ function renderPlan() {
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -285,6 +286,26 @@ function renderKey() {
 
   return sec;
 }
+
+/* ---- favourite film ------------------------------------------
+   The film every example and every "What is a …?" box is told in. It
+   is the OPEN PROJECT's choice (store.js projectFav, on the project
+   entry); with no project open it is the device's demo choice, which is
+   what favouriteSlug() falls back to. Writes on a click only. */
+function renderFavourite() {
+  const project = hasOpenProject();
+  const sec = section('favourite', project ? 'This film' : 'This device',
+    'Favourite film.',
+    'Pick the film we explain every step with: the examples on the Story page and the boxes that say what a logline, a want or a beat is.');
+  sec.append(renderFilmPicker({ label: 'Favourite film' }));
+  sec.append(h('p.st-note', {
+    text: project
+      ? 'Saved with this project. Another project keeps its own favourite.'
+      : 'No project is open, so this applies to this browser. Open a project and pick again to give that project its own.'
+  }));
+  return sec;
+}
+onFavChange(() => render());
 
 /* ---- appearance --------------------------------------------- */
 function renderAppearance() {
@@ -814,7 +835,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Your plan and billing, your AI key, storage and backups, and how the studio looks.'
+      text: 'Your plan and billing, your favourite film, your AI key, storage and backups, and how the studio looks.'
     })
   ]));
 
@@ -826,7 +847,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderPlan(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
+  body.append(...[renderPlan(), renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               accountSection(section), inviteSection(section, gateStatus),
               consolePointer(), renderAdmin()].filter(Boolean));
   main.append(body);

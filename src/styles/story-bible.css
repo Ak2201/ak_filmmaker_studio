@@ -1,0 +1,187 @@
+/* ============================================================
+   STORY BIBLE — the cards, the character sections, the film picker
+   ------------------------------------------------------------
+   Read by story.html (the Bible step, the favourite-film picker) and by
+   write.html (the Characters tab draws the same sections) and
+   settings.html (the picker). Tokens for every colour, --sk-* for every
+   shape, and a lift/slide is multiplied by --motion; a fill is never a
+   text colour (CLAUDE.md invariant 4).
+   ============================================================ */
+
+/* ---- the favourite-film picker and switcher ----------------- */
+.fav-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--s3);
+  margin-block: var(--s3);
+}
+.fav-card {
+  display: grid;
+  gap: var(--s1);
+  align-content: start;
+  min-width: 0;
+  text-align: left;
+  padding: var(--sk-card-pad, var(--s4));
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  font: inherit;
+  cursor: pointer;
+}
+.fav-card:hover { border-color: var(--accent); }
+.fav-card:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.fav-card.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.fav-title { font-family: var(--f-display); font-size: var(--t-lg); line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.fav-meta, .fav-genre { font-size: var(--t-small); color: var(--ink-muted); }
+
+.st-fav {
+  display: grid;
+  gap: var(--s2);
+  margin-block: var(--s4) var(--s2);
+  padding: var(--sk-card-pad, var(--s5));
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-modes-wrap { display: grid; gap: var(--s2); }
+
+.st-example-wrap { display: grid; gap: var(--s2); }
+.fav-switch { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.fav-switch-k { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.fav-pill {
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  color: var(--ink-body);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+.fav-pill:hover { border-color: var(--accent); }
+.fav-pill:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.fav-pill.is-on { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+
+/* ---- the Bible ---------------------------------------------- */
+.sb { display: grid; gap: var(--s4); min-width: 0; }
+.sb-top { display: grid; gap: var(--s3); }
+.sb-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: var(--s2);
+}
+.sb-tab {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "n l" "n s";
+  column-gap: var(--s2);
+  align-items: center;
+  min-width: 0;
+  text-align: left;
+  padding: var(--s2) var(--s3);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  font: inherit;
+  cursor: pointer;
+}
+.sb-tab:hover { border-color: var(--accent); }
+.sb-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.sb-tab.is-on { background: var(--accent-wash); border-color: var(--accent); }
+.sb-tab-n { grid-area: n; font-family: var(--f-mono); color: var(--ink-muted); }
+.sb-tab-l { grid-area: l; font-weight: 600; overflow-wrap: anywhere; }
+.sb-tab-s { grid-area: s; font-size: var(--t-tiny); color: var(--ink-muted); }
+.sb-tab.is-done .sb-tab-s { color: var(--ink-body); }
+.sb-view { display: inline-flex; flex-wrap: wrap; gap: var(--s1); }
+.sb-view .btn.is-on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+
+.sb-card {
+  display: grid;
+  gap: var(--s3);
+  min-width: 0;
+  padding: var(--sk-card-pad, var(--s5));
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sb-card-h { margin: 0; font-family: var(--f-display); font-size: var(--t-lg); line-height: var(--lh-tight); color: var(--ink); }
+.sb-card-lead { margin: 0; color: var(--ink-body); }
+.sb-card-body, .sb-fields { display: grid; gap: var(--s4); min-width: 0; }
+.sb-field, .cc-field { display: grid; gap: var(--s1); min-width: 0; }
+.sb-lab, .cc-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sb-input, .cc-input { width: 100%; min-width: 0; font: inherit; line-height: var(--lh-body); }
+textarea.sb-input, textarea.cc-input { resize: vertical; }
+.sb-note { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
+.sb-step-nav { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: space-between; }
+
+.sb-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--s2); }
+.sb-chip {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  font: inherit;
+  cursor: pointer;
+}
+.sb-chip:hover { border-color: var(--accent); }
+.sb-chip:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.sb-chip.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.sb-chip-l { font-weight: 600; }
+.sb-chip-m { font-size: var(--t-small); color: var(--ink-muted); }
+
+/* ---- characters ---------------------------------------------- */
+.sb-add-roles { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.sb-char-list { display: grid; gap: var(--s2); }
+.sb-char {
+  min-width: 0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.sb-char.is-derived { border-style: dashed; }
+.sb-char-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3);
+  cursor: pointer;
+}
+.sb-char-name { color: var(--ink); overflow-wrap: anywhere; }
+.sb-char-role, .cc-tag {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.sb-char-stat { font-size: var(--t-small); color: var(--ink-muted); }
+.sb-char > .cc-sections { padding: 0 var(--s3) var(--s3); }
+.sb-new { display: grid; gap: var(--s1); }
+.sb-new-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.sb-new-row .sb-input { flex: 1 1 12rem; width: auto; }
+
+/* the sections, shared with write.html's Characters tab */
+.cc-sections { display: grid; gap: var(--s3); min-width: 0; }
+.cc-linked { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.cc-sec { border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); min-width: 0; }
+.cc-sum { padding: var(--s2) var(--s3); cursor: pointer; font-weight: 600; color: var(--ink); }
+.cc-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--s3); padding: var(--s3); min-width: 0; }
+.cc-ties { grid-column: 1 / -1; }
+.cc-tie-rows { display: grid; gap: var(--s2); }
+.cc-tie { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: var(--s2); align-items: center; }
+@media (max-width: 560px) { .cc-tie { grid-template-columns: minmax(0, 1fr); } }
+.cc-add { justify-self: start; }

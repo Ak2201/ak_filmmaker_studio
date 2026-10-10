@@ -264,9 +264,45 @@ eq(S.sendOutlineToScenes(sendStory, api).length, 1, 'a step whose scene is gone 
 
 // The path, derived.
 const pp = S.pathProgress({ ...S.blankStory(), logline: 'x' }, { scenes: [] });
-eq(pp.map((p) => p.done), [false, true, false, false, false, false], 'the path reads what is filled');
-eq(S.defaultPathStep(S.blankStory()), 1, 'a new story opens on step 1');
-eq(S.defaultPathStep({ ...S.blankStory(), source: 'x' }), 5, 'a story with a synopsis opens on the synopsis');
+eq(pp.map((p) => p.id), ['idea', 'logline', 'bible', 'structure', 'outline', 'synopsis', 'screenplay'], 'the path: Idea, Logline, Story Bible, Scene order, Step outline, Synopsis, To the Screenplay');
+eq(pp.map((p) => p.label), ['Idea', 'Logline', 'Story Bible', 'Scene order', 'Step outline', 'Synopsis', 'To the Screenplay'], 'the path labels');
+eq(pp.map((p) => p.pos), [1, 2, 3, 4, 5, 6, 7], 'seven places in the line');
+eq(pp.map((p) => p.done), [false, true, false, false, false, false, false], 'the path reads what is filled');
+eq(S.defaultPathStep(S.blankStory()), 'idea', 'a new story opens on the idea');
+eq(S.defaultPathStep({ ...S.blankStory(), idea: 'i', logline: 'l' }), 'bible', 'idea and logline filled: the Bible is the first empty step');
+eq(S.defaultPathStep({ ...S.blankStory(), source: 'x' }), 'synopsis', 'a story with a synopsis opens on the synopsis');
+
+/* No step is mandatory; Next suggests the first EMPTY step after this one. */
+{
+  const base = S.pathProgress({ ...S.blankStory(), idea: 'i', logline: 'l', source: 's' }, { scenes: [] });
+  eq(S.suggestNext(base, 'logline').id, 'bible', 'Next from the logline offers the empty Bible');
+  eq(S.suggestNext(base, 'bible').id, 'structure', 'Next from the Bible offers Scene order');
+  const skip = base.map((p) => (p.id === 'structure' ? { ...p, done: true } : p));
+  eq(S.suggestNext(skip, 'bible').id, 'outline', 'a filled step after the current one is skipped');
+  const all = base.map((p) => ({ ...p, done: true }));
+  eq(S.suggestNext(all, 'idea').id, 'logline', 'every later step filled: simply the step after');
+  eq(S.suggestNext(base, 'screenplay'), null, 'nothing after the last step');
+}
+
+/* #path-N links written before the Bible keep their meaning. */
+eq(['1', '2', '3', '4', '5', '6'].map((n) => S.pathStepFromHash('#path-' + n)),
+  ['idea', 'logline', 'structure', 'outline', 'synopsis', 'screenplay'], 'old numeric hashes map to the same steps as before');
+eq(S.pathStepFromHash('path-bible'), 'bible', 'the new form: path-<id>');
+eq(S.pathStepFromHash('#path-structure'), 'structure', 'with or without the #');
+eq([S.pathStepFromHash('path-99'), S.pathStepFromHash('path-nope'), S.pathStepFromHash('vault')], ['', '', ''], 'anything else names no step');
+eq(S.PATH.find((p) => p.id === 'outline').n, 4, 'the stable number of the outline is still 4 (the blueprint drawer keys on it)');
+
+/* The Story Bible's two story-level fields. */
+eq([S.blankStory().conflicts, S.blankStory().conflictLine], [[], ''], 'a blank story has no conflicts');
+{
+  mem.set(S.STORY_KEY, JSON.stringify({ v: 1, source: 'x', marks: [], tension: {}, framework: 'three_act' }));
+  const old = S.loadStory();
+  eq([old.conflicts, old.conflictLine], [[], ''], 'a story saved before the Bible reads back conflicts [] and conflictLine ""');
+  mem.set(S.STORY_KEY, JSON.stringify({ v: 1, source: '', conflicts: ['self', 'time', 'self', 7], conflictLine: 'A cop v his past' }));
+  const withC = S.loadStory();
+  eq([withC.conflicts, withC.conflictLine], [['self', 'time'], 'A cop v his past'], 'conflicts round-trip, de-duplicated and strings only');
+  mem.delete(S.STORY_KEY);
+}
 const w = S.whereAt('save_the_cat', 0.38);
 eq([w.nearest.id, w.next.id], ['fun_and_games', 'midpoint'], 'where you are: 38% is Fun and Games, Midpoint next');
 

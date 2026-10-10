@@ -202,7 +202,7 @@ function panelStart() {
   for (const p of path) {
     ol.append(h('li.sk-path-step' + (p.done ? '.is-done' : ''), {}, [
       h('a.sk-path-link', { href: STORY_HREF + '#path-' + p.n }, [
-        h('span.sk-path-n', { text: String(p.n) }),
+        h('span.sk-path-n', { text: String(p.pos || p.n) }),
         h('span.sk-path-label', { text: p.label }),
         h('span.sk-path-state', { text: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do' })
       ])

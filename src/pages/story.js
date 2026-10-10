@@ -62,6 +62,7 @@ import { renderLoglineWorkshop } from '../ui/logline-workshop.js';   // AI logli
 import { learn } from '../ui/learn.js';
 import { renderFilmPicker, renderFilmSwitch, onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
 import { renderBibleBody, wireBible } from '../ui/story-bible.js';
+import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
 
@@ -894,6 +895,7 @@ function draw() {
 }
 
 function after() {
+  mountStageGuide(document.getElementById('main'), { stage: 'story' });   // the blueprint's questions for this stage
   mountShell();
   try {
     StudioUI.autoAriaLabels();

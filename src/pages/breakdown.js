@@ -10,6 +10,7 @@
    of decorating. The old pages put twelve small buttons in a strip and
    made the user read every one.
    ============================================================ */
+import { mountStageGuide } from '../ui/stage-guide.js';
 import '../lib/store.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -685,6 +686,7 @@ function render(focus) {
     const node = document.querySelector(focus);
     if (node) node.focus();
   }
+  mountStageGuide(document.getElementById('main'), { stage: 'preprod' });   // the blueprint's questions for this stage
   mountShell();
   mountLearn(main);
   try {

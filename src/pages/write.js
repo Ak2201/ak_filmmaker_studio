@@ -86,6 +86,7 @@ import { renderCharacters, wireCharacters, characterNames } from '../ui/characte
 /* The One-Pager, Treatment and Synopsis open on a starting draft from
    the Story page when they are empty (story.js docStarter, a read). */
 import { loadStory, docStarter, STARTER_KINDS } from '../lib/story.js';
+import { mountStageGuide } from '../ui/stage-guide.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, DOC_KINDS,
   revisionColour, typeLabel,
@@ -1869,6 +1870,7 @@ function render(focus) {
   autosizeAll();
   requestAnimationFrame(autosizeAll);   // again once layout has settled
 
+  mountStageGuide(document.getElementById('main'), { stage: 'screenplay' });   // the blueprint's questions for this stage
   mountShell();
   wireActionBar();
   try {

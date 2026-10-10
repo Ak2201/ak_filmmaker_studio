@@ -1,0 +1,8 @@
+/* The hub's three doors: the call to action is a button on two of them. */button.door-cta {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+}
+.index-grid.index-grid-single { grid-template-columns: minmax(0, 1fr); }

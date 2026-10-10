@@ -19,7 +19,12 @@
 <meta name="twitter:title" content="{{brand:name}} — learn to make your first film">
 <meta name="twitter:description" content="{{fms:short.steps}} guided steps from an idea to a finished short. Works offline; your script stays on your machine.">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
+<meta property="og:locale" content="en_IN">
+<meta name="theme-color" content="#16140f">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+{{fms:jsonld}}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
@@ -85,7 +90,7 @@
 <aside class="st-invite" id="inviteBand" hidden aria-labelledby="invite-h">
   <p class="st-eyebrow">Your invite</p>
   <h2 class="st-h3" id="invite-h">You arrived with an invite code.</h2>
-  <p>It is held in this browser and is worth a seven-day run of the whole studio. Sign in to claim it &mdash; the code is spent against your account, not against this device.</p>
+  <p>It is held in this browser and is worth a seven-day run of the whole studio, for your own films. Sign in to claim it &mdash; the code is spent against your account, not against this device.</p>
   <p class="st-invite-code"><code id="inviteCode"></code></p>
 </aside>
 
@@ -102,12 +107,30 @@
       <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-start-auth="google">Continue with Google</a>
       <a class="st-btn" href="#short">See the {{fms:short.steps}} steps</a>
     </p>
-    <p class="st-fine">Free for your first 30 minutes, with the complete <em>Dragon</em> sample film open and editable. No card, nothing to install.</p>
+    <p class="st-fine st-door"><strong>Invite-only during launch.</strong> Sign in and ask for an invite, or buy a plan and come straight in. The learning library and the complete <em>Dragon</em> sample film are free, always &mdash; no card, nothing to install.</p>
     <p class="st-legal">Signing in means you accept the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
     <p class="st-fine" id="authMsg" role="status" aria-live="polite"></p>
   </div>
   <figure class="st-shot st-shot-hero">
     <img src="shots/hub.webp" width="1280" height="800" fetchpriority="high" decoding="async" alt="The studio's home screen with the Dragon sample film open, showing where you left off in the feature blueprint.">
+  </figure>
+</section>
+
+<!-- The module marquee. Hidden and empty here; start.js fills it with
+     the built module labels from navigation.json (the same data as the
+     stage list below) and lib/motion.js turns it into a slider whose
+     duplicate is aria-hidden. Decoration only: the real list is #stageList. -->
+<div class="st-marquee" id="modMarquee" hidden><ul class="st-mq" aria-label="Modules in the studio"></ul></div>
+
+<section data-reveal="fade" class="st-sec st-demo" id="demo" aria-labelledby="demo-h">
+  <p class="st-eyebrow">The tour</p>
+  <h2 class="st-h2" id="demo-h">See it in 90 seconds</h2>
+  <figure class="st-video">
+    <video controls preload="none" playsinline poster="media/demo-poster.webp" width="1280" height="720" aria-describedby="demo-cap">
+      <source src="media/demo.mp4" type="video/mp4">
+      <p>This browser cannot play the walkthrough. The same film is on the <a href="invite.html">sample</a> once you are in.</p>
+    </video>
+    <figcaption id="demo-cap">A screen recording, no narration, of the Dragon sample: the story, the script, the breakdown, the schedule, the call sheets and the dashboard.</figcaption>
   </figure>
 </section>
 
@@ -125,7 +148,7 @@
      stamped at build time is a claim the server can contradict an
      hour later; the figures arrive at runtime or not at all, and the
      build-stamped list prices in #pricing stand either way. -->
-<section data-reveal class="st-sec st-offer" id="offer" hidden aria-labelledby="offer-h">
+<section data-reveal="fade" class="st-sec st-offer" id="offer" hidden aria-labelledby="offer-h">
   <p class="st-eyebrow st-eyebrow-gold">Launch price</p>
   <h2 class="st-h2" id="offer-h">The price goes up, and the date is already set.</h2>
   <p id="offerLine">Today&rsquo;s figure is the launch price. It rises on a date held by the server, or once the launch seats are taken &mdash; whichever comes first.</p>
@@ -141,7 +164,7 @@
      the opening of each step's own deck. Edit the blueprint and this
      section follows it. Never hand-write a step here.
      ============================================================ -->
-<section data-reveal class="st-sec st-short" id="short" aria-labelledby="short-h">
+<section data-reveal="fade" class="st-sec st-short" id="short" aria-labelledby="short-h">
   <p class="st-eyebrow">Start here</p>
   <h2 class="st-h2" id="short-h">A short film, in {{fms:short.steps}} steps</h2>
   <p class="st-lede">A short is the right first film: one location, one want, one obstacle, and a running time you can
@@ -152,7 +175,7 @@
   <p class="st-fine">Then the long one: the feature blueprint runs to {{fms:feature.steps}} steps, in the same shape, for when the short is behind you.</p>
 </section>
 
-<section data-reveal class="st-sec" id="learn" aria-labelledby="learn-h">
+<section data-reveal="fade" class="st-sec" id="learn" aria-labelledby="learn-h">
   <p class="st-eyebrow">What is actually taught</p>
   <h2 class="st-h2" id="learn-h">Every step explains itself</h2>
   <p class="st-lede">The thing missing from a blank page is not a text editor. It is somebody telling you what this step is for,
@@ -172,8 +195,8 @@
   </figure>
 </section>
 
-<section data-reveal class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
-  <p class="st-eyebrow">Your first 30 minutes</p>
+<section data-reveal="fade" class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
+  <p class="st-eyebrow">Free, always</p>
   <h2 class="st-h2" id="sample-h">Learn on a whole film that is already there</h2>
   <!-- Every fms:dragon placeholder figure is stamped at BUILD time by the
        fms-start-figures plugin in vite.config.js, from sampleFigures()
@@ -192,7 +215,7 @@
   <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html" data-start-auth="google">Open the sample film</a></p>
 </section>
 
-<section data-reveal class="st-sec" id="features" aria-labelledby="features-h">
+<section data-reveal="fade" class="st-sec" id="features" aria-labelledby="features-h">
   <p class="st-eyebrow">And then the film gets made</p>
   <h2 class="st-h2" id="features-h">Write &rarr; Plan &rarr; Shoot</h2>
   <p class="st-lede">Everything you write becomes the next thing you need. There is no second document to keep in step, because
@@ -233,7 +256,7 @@
   </ol>
 </section>
 
-<section data-reveal class="st-sec" id="india" aria-labelledby="india-h">
+<section data-reveal="fade" class="st-sec" id="india" aria-labelledby="india-h">
   <p class="st-eyebrow">Made here</p>
   <h2 class="st-h2" id="india-h">Made for a first film in Tamil Nadu</h2>
   <p class="st-lede">The craft is the same everywhere. The paperwork is not. These are the six things an imported tool makes you
@@ -248,7 +271,7 @@
   </div>
 </section>
 
-<section data-reveal class="st-sec" id="stages" aria-labelledby="stages-h">
+<section data-reveal="fade" class="st-sec" id="stages" aria-labelledby="stages-h">
   <p class="st-eyebrow">The whole desk</p>
   <h2 class="st-h2" id="stages-h">From the idea to the screening</h2>
   <p>The studio is arranged the way a film is made. Each stage is a set of modules, and
@@ -263,7 +286,7 @@
   </div>
 </section>
 
-<section data-reveal class="st-sec st-plans" id="pricing" aria-labelledby="pricing-h">
+<section data-reveal="fade" class="st-sec st-plans" id="pricing" aria-labelledby="pricing-h">
   <p class="st-eyebrow st-eyebrow-gold">Pricing</p>
   <h2 class="st-h2" id="pricing-h">One payment. Yours for good.</h2>
   <p>There is no subscription. A plan is bought once with full-time access, and never renews or lapses. Prices are in
@@ -276,10 +299,10 @@
        build fails. A scheduled rise is NEVER stamped — start.js adds the
        coming figure from price_notice() at runtime, or not at all. -->
   <ul class="st-tiers" data-reveal-group>
-    <li data-tier="free"><strong>{{fms:plan.free}}</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and every learning module.</span></li>
-    <li data-tier="starter" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>Your own films: the {{fms:short.steps}} steps, the screenplay, the breakdown and the exports.</span></li>
-    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>Adds stripboard, budget, call sheets, the shoot day and Drive backup.</span></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>Everything, including AI tools with your own key, the edit log and deliverables.</span></li>
+    <li data-tier="free"><strong>{{fms:plan.free}}</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and every learning module, for as long as you like.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google">Start free</a></li>
+    <li data-tier="starter" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>Your own films: the {{fms:short.steps}} steps, the screenplay, the breakdown and the exports.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html?plan=starter#buy" data-plan="starter">Buy {{fms:plan.starter}}</a></li>
+    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>Adds stripboard, budget, call sheets, the shoot day and Drive backup.</span><a class="st-btn st-tier-buy" href="invite.html?plan=indie#buy" data-plan="indie">Buy {{fms:plan.indie}}</a></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>Everything, including AI tools with your own key, the edit log and deliverables.</span><a class="st-btn st-tier-buy" href="invite.html?plan=pro#buy" data-plan="pro">Buy {{fms:plan.pro}}</a></li>
   </ul>
   <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
     <table class="st-table">
@@ -290,25 +313,7 @@
   <p class="st-note">Prices are one-time list prices, confirmed at checkout. Local work and the learning library are on every plan. A higher plan can be had later by paying the difference.</p>
   <p class="st-compare">Subscription tools charge every month for as long as you keep making films. Here you pay once and the desk is yours.</p>
   <p class="st-cta"><a class="st-btn st-btn-primary" href="invite.html" data-start-auth="google">Continue with Google</a></p>
-</section>
-
-<section data-reveal class="st-sec st-lead" id="offers" aria-labelledby="offers-h">
-  <h2 class="st-h2" id="offers-h">Not ready? Get launch offers.</h2>
-  <p class="st-lede">Leave your e-mail and we will write when the studio opens its doors, and when there is an offer worth knowing about. Nothing else.</p>
-  <form class="st-lead-form" id="leadForm" novalidate>
-    <p class="st-lead-row">
-      <label for="leadEmail">E-mail</label>
-      <input id="leadEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
-      <button class="st-btn st-btn-primary" type="submit">Get launch offers</button>
-    </p>
-    <p class="st-lead-consent">
-      <input id="leadConsent" name="consent" type="checkbox" required>
-      <label for="leadConsent" id="leadConsentText">I agree that {{brand:name}} may e-mail me about its launch and offers at this address. I can withdraw this at any time by writing to {{brand:email}}. See the <a href="privacy.html">Privacy Policy</a>.</label>
-    </p>
-    <p class="st-fine" id="leadMsg" role="status" aria-live="polite"></p>
-  </form>
-  <p class="st-fine">This page counts visits in aggregate (a number per day, nothing about you) and honours Do Not Track.
-  <button class="st-link" type="button" id="noCount">Don&rsquo;t count this visit</button></p>
+<p class="st-fine">Invite-only during launch: sign in to ask for an invite, or buy a plan above and come straight in.</p>
 </section>
 
 <!-- WHAT IS TRUE, IN PLACE OF WHAT PEOPLE SAID.
@@ -323,7 +328,7 @@
      #voices — scripts/check-testimonials.mjs asserts #voices holds
      exactly as many list items as the JSON has entries, which is
      zero. -->
-<section data-reveal class="st-sec st-proof" id="proof" aria-labelledby="proof-h">
+<section data-reveal="fade" class="st-sec st-proof" id="proof" aria-labelledby="proof-h">
   <p class="st-eyebrow">Checkable, not claimed</p>
   <h2 class="st-h2" id="proof-h">No testimonials yet. Here is what is true.</h2>
   <div class="st-grid st-grid-3" data-reveal-group>
@@ -359,14 +364,14 @@
          <strong>Film title</strong> <span>(year) · director · format</span>
        </li>
      ============================================================ -->
-<section data-reveal class="st-sec st-voices" id="voices" aria-labelledby="voices-h" hidden data-testimonials="0" data-films="0">
+<section data-reveal="fade" class="st-sec st-voices" id="voices" aria-labelledby="voices-h" hidden data-testimonials="0" data-films="0">
   <p class="st-eyebrow">Made with it</p>
   <h2 class="st-h2" id="voices-h">Films and filmmakers</h2>
   <ul class="st-voice-list" id="voiceList" hidden></ul>
   <ul class="st-film-list" id="filmList" hidden></ul>
 </section>
 
-<section data-reveal class="st-sec" id="faq" aria-labelledby="faq-h">
+<section data-reveal="fade" class="st-sec" id="faq" aria-labelledby="faq-h">
   <p class="st-eyebrow">Questions</p>
   <h2 class="st-h2" id="faq-h">Before you ask</h2>
   <details class="st-faq">
@@ -389,11 +394,11 @@
     count is the industry one. If you already have a script, import a <code>.fountain</code>, <code>.fdx</code> or PDF.</p>
   </details>
   <details class="st-faq">
-    <summary>What happens in the first 30 minutes?</summary>
-    <p>The studio opens on the <em>Dragon</em> sample &mdash; a complete feature with its script, schedule, budget and call
-    sheets &mdash; and you can open and change every part of it, plus the whole learning library, with no card and nothing
-    installed. It is a half hour to find out whether this is the tool you want before any money is discussed. If somebody gave
-    you an invite code, it is worth seven days instead.</p>
+    <summary>What is free, and how do I try my own film?</summary>
+    <p>Free, always: the whole learning library and the complete <em>Dragon</em> sample film, which you can open and change
+    with no card and nothing installed. Your own films need a plan. While the studio is invite-only you can sign in and ask for
+    an invite, which may come with a free trial; an invite code is worth seven days of the whole studio. Or buy a plan and come
+    straight in. Either way, everything you write stays yours and can be exported.</p>
   </details>
   <details class="st-faq">
     <summary>I am a student. Is this useful for a college film?</summary>
@@ -426,13 +431,34 @@
   </details>
   <details class="st-faq">
     <summary>What if I want my money back?</summary>
-    <p>Purchases are final. The exceptions are refunded in full to the card, UPI, net banking or wallet you paid with:
-    a duplicate or mistaken charge, a payment for a plan that was never delivered (or we activate it, your choice), and any refund
-    Indian law requires. The <a href="refund.html">Refund &amp; Cancellation Policy</a> has the detail and the address to write to.</p>
+    <p>You are covered, in full, to the card, UPI, net banking or wallet you paid with, if you were charged twice or by mistake,
+    if you paid and the plan was never delivered (or we activate it, your choice), or wherever Indian law requires a refund.
+    Otherwise a plan is final, which is why the learning library and the <em>Dragon</em> sample are free to try first &mdash; and on
+    any plan you can export all your work whenever you like. The <a href="refund.html">Refund &amp; Cancellation Policy</a>
+    has the detail and the address to write to.</p>
   </details>
 </section>
 
-<section data-reveal class="st-sec st-close" id="go" aria-labelledby="go-h">
+<section data-reveal="fade" class="st-sec st-lead" id="offers" aria-labelledby="offers-h">
+  <h2 class="st-h2" id="offers-h">Not ready to buy? Get offers and new steps by e-mail</h2>
+  <p class="st-lede">Leave your e-mail and we will write when there is an offer worth knowing about or a new step in the library. Nothing else.</p>
+  <form class="st-lead-form" id="leadForm" novalidate>
+    <p class="st-lead-row">
+      <label for="leadEmail">E-mail</label>
+      <input id="leadEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
+      <button class="st-btn st-btn-primary" type="submit">Get offers and new steps</button>
+    </p>
+    <p class="st-lead-consent">
+      <input id="leadConsent" name="consent" type="checkbox" required>
+      <label for="leadConsent" id="leadConsentText">I agree that {{brand:name}} may e-mail me about offers and new steps at this address. I can withdraw this at any time by writing to {{brand:email}}. See the <a href="privacy.html">Privacy Policy</a>.</label>
+    </p>
+    <p class="st-fine" id="leadMsg" role="status" aria-live="polite"></p>
+  </form>
+  <p class="st-fine">This page counts visits in aggregate (a number per day, nothing about you) and honours Do Not Track.
+  <button class="st-link" type="button" id="noCount">Don&rsquo;t count this visit</button></p>
+</section>
+
+<section data-reveal="fade" class="st-sec st-close" id="go" aria-labelledby="go-h">
   <h2 class="st-h2" id="go-h">Step one takes an evening.</h2>
   <p class="st-lede">Find the one thing your film is about. The studio asks you four questions and you are past it.</p>
   <p class="st-cta">
@@ -442,7 +468,7 @@
   <p class="st-legal">Signing in means you accept the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
 </section>
 
-<footer class="st-foot">
+<footer class="st-foot" data-reveal="fade">
   <p>{{brand:name}} &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a> &middot; <a href="refund.html">Refunds</a> &middot; <a href="mailto:{{brand:email}}">{{brand:email}}</a></p>
 </footer>
 

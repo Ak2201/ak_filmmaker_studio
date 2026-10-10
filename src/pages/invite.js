@@ -226,6 +226,10 @@ function render() {
         'A paid plan lets this account in without an invite. One payment, access for good — and it is the only thing that keeps the studio open once a trial has run out.');
       buy.append(planCards(plans, null, {
         onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { onStatus, code }),
+        /* Paying grants entry, so the gate has already flipped and this
+           block is about to disappear: the hub's welcome card (read from
+           ?welcome=plan, then removed) says what unlocked. */
+        onSuccess: () => { location.href = 'index.html?welcome=plan'; },
         rerender: render
       }));
       body.append(buy);
@@ -374,6 +378,12 @@ function readTrialOffer(st) {
 }
 wireGateUI(render);
 wireRequestUI(render);
+/* ?plan=<id> from a landing-page button: bring the buy section into view. */
+try {
+  if (new URLSearchParams(location.search).get('plan')) {
+    setTimeout(() => { const b = document.getElementById('buy'); if (b) b.scrollIntoView({ block: 'start' }); }, 600);
+  }
+} catch (e) { /* ignore */ }
 Store.subscribe('gate:changed', () => { if (!plans) loadPlans(); });
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(loadPlans, 0));
 loadPlans();

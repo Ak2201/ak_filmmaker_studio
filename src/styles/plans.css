@@ -77,3 +77,9 @@
 .ba-promo-plans { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); font-size: var(--t-small); color: var(--ink-body); }
 .ba-promo-plans label { display: inline-flex; gap: var(--s1); align-items: center; }
 .gt-table .is-off { color: var(--ink-muted); }
+
+/* Purchase success (plan-cards.js) */
+.pl-success { display: grid; gap: var(--s2); padding: var(--s4); margin-bottom: var(--s4); border: 1px solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background: var(--sk-slab-fill); color: var(--sk-slab-ink); }
+.pl-success .pl-note { color: inherit; }
+.pl-success-h { margin: 0; }
+.pl-card.is-picked { outline: 2px solid var(--brand); outline-offset: 2px; }

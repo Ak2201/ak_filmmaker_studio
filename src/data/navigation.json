@@ -10,6 +10,7 @@
       "sym": "home"
     },
     {
+      "id": "dashboard",
       "icon": "◴",
       "label": "Dashboard",
       "href": "dashboard.html",

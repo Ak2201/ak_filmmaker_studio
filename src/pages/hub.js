@@ -105,7 +105,7 @@ import {
 import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.json
 import { createResumeCards } from './hub/resume-cards.js';
 import { createBackupMenu } from './hub/backup-menu.js';
-import { sampleDays, samplePages } from './hub/first-run.js';
+import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
   setProjectFilter, setProjectSearch, setProjectSort,
@@ -1888,6 +1888,11 @@ function init() {
   renderActivity();
   openSampleFromURL();
   openSampleForTrial();
+  try {
+    const wc = welcomeCard();
+    const pj = document.getElementById('projects');
+    if (wc && pj && pj.parentNode) pj.before(wc);
+  } catch (e) { /* the welcome is a convenience */ }
 
   decorateMotion();
   document.querySelectorAll('.hero-stat .num').forEach((n) => countUp(n));

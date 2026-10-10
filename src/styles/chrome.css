@@ -584,7 +584,11 @@ a:focus-visible { outline-offset: 3px; }
 }
 .step-rail::-webkit-scrollbar { width: 6px; }
 .step-rail::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--radius-pill); }
-.step-rail.collapsed { transform: translateX(calc(-100% * var(--motion))); }
+/* -100%, not -100% x --motion: that is where a CLOSED rail rests, not a
+   distance it travels. Multiplied, reduced motion parked closed rails on
+   screen, hidden only by visibility. The slide itself is the transition,
+   which base.css already clamps under reduced motion. */
+.step-rail.collapsed { transform: translateX(-100%); }
 /* A rail moved off-screen by a transform is still in the Tab order:
    32 invisible links between the toolbar and the page (UX audit M23).
    Closed means hidden, and hidden means out of the focus order and the
@@ -839,6 +843,14 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .modal-overlay.show,
 .shortcut-sheet-overlay.show,
 .cm-overlay.show { display: flex; opacity: 1; }
+/* The fade had nothing to fade FROM: an overlay goes display:none ->
+   flex in the same frame its opacity changes, and a transition does not
+   run across that. @starting-style gives the first frame a "from". */
+@starting-style {
+  .modal-overlay.show,
+  .shortcut-sheet-overlay.show,
+  .cm-overlay.show { opacity: 0; }
+}
 
 .modal,
 .shortcut-sheet,
@@ -1798,7 +1810,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 /* --- 1100px: the side rails go away ------------------------ */
 @media (max-width: 1100px) {
   .step-rail {
-    transform: translateX(calc(-100% * var(--motion)));
+    transform: translateX(-100%);
     box-shadow: var(--shadow-lg);
   }
   .step-rail.show { transform: translateX(0); }
@@ -2048,7 +2060,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   background: var(--chrome);
   color: var(--chrome-ink);
   border-right: 1px solid var(--chrome-hair);
-  transform: translateX(calc(-100% * var(--motion)));
+  transform: translateX(-100%);
   /* Closed is HIDDEN, not just off-screen: a transform alone left
      every rail link in the Tab order at 390 (UX audit M23). The
      visibility change waits for the slide out and leads the slide in,

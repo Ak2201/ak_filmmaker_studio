@@ -46,7 +46,9 @@
 import '../styles/base.css';
 import '../styles/start.css';
 import '../styles/motion.css';
-import { reveal, splitWords, countUp, spotlight, magnetic, tilt } from '../lib/motion.js';
+import '../styles/motion-landing.css';
+import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
+import { scrollProgress, parallax, marquee, glow, aurora } from '../lib/motion-landing.js';
 import { addLead, bumpOnce, bumpEvent, optOut, priceNotice } from '../lib/funnel.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
@@ -262,6 +264,13 @@ async function renderStages(host) {
     ])
   );
   gateAppLinks(host);
+  const mq = byId('modMarquee');
+  if (mq) {
+    const ul = mq.querySelector('ul');
+    const labels = [...phases, ...shelves].flatMap((p) => (p.modules || []).filter(built).map((m) => m.label));
+    ul.replaceChildren(...labels.map((t) => el('li', { class: 'st-mq-item', text: t })));
+    mq.hidden = !labels.length;
+  }
 }
 
 /* ---- 7. testimonials ----------------------------------------------
@@ -310,7 +319,7 @@ async function renderVoices() {
 renderVoices();
 
 const stageHost = byId('stageList');
-if (stageHost) renderStages(stageHost);
+const stagesReady = stageHost ? renderStages(stageHost) : Promise.resolve();
 
 /* ---- 8. launch offers and the funnel -------------------------------
    Plain fetch through src/lib/funnel.js: the Supabase SDK stays out of
@@ -521,14 +530,70 @@ try { priceNotice().then(renderPriceRise, () => {}); } catch (e) { /* never brea
      is added by JS only, hidden sections are skipped, the 8s backstop
      shows anything still veiled, and nothing runs under reduced motion. */
   const q = (s) => document.querySelector(s);
+  const qa = (s) => document.querySelectorAll(s);
+  const enter = (n, cls, d) => { if (!n) return; n.style.setProperty('--d', d + 'ms'); n.classList.add(cls); };
+  const reduced = prefersReducedMotion();
   try {
+    /* hero sequence: eyebrow shimmer -> headline words -> hook -> lede ->
+       CTAs pop -> screenshot slides in */
+    if (!reduced) {
+      enter(q('.st-hero .st-hook'), 'mo-up', 900);
+      enter(q('.st-hero .st-lede'), 'mo-up', 1050);
+      /* The hero CTA and screenshot are never delayed: the thing a visitor came to press and see is there at once. */
+      enter(q('.st-hero .st-fine'), 'mo-up', 1500);
+    }
+    aurora(q('.st-hero'));
     reveal(document);
     splitWords(q('h1.st-title'));
-    document.querySelectorAll('.st-eyebrow').forEach((n) => n.classList.add('mo-shimmer'));
-    magnetic(q('#ctaOpen'));
+    qa('.st-h2').forEach((h) => splitWords(h, { onScroll: true }));
+    qa('.st-eyebrow').forEach((n) => n.classList.add('mo-shimmer'));
+    scrollProgress();
+
+    qa('.st-btn-primary').forEach((b) => { b.classList.add('mo-shine'); magnetic(b); });
+    const cta = q('#ctaOpen');
+    if (cta) { cta.classList.add('mo-shine-loop'); glow(cta); }
     tilt(q('.st-shot-hero img'));
+    parallax(q('.st-shot-hero'), { speed: 0.06 });
+    qa('.st-sec .st-shot').forEach((f) => parallax(f, { speed: 0.04 }));
     spotlight(q('.st-hero'));
-    const pick = q('.st-pick'); if (pick) pick.classList.add('mo-trail');
-    document.querySelectorAll('b.st-price').forEach((n) => countUp(n));
+    qa('.st-card, .st-tiers li, .st-faq').forEach((n) => spotlight(n));
+    const pick = q('.st-pick');
+    if (pick) { pick.classList.add('mo-trail'); glow(pick); }
+    /* The facts count; the PRICES never do — a price that reads ₹0 for
+       a second, or to a screen reader, is a price that misleads. */
+    qa('.st-fact-n').forEach((n) => countUp(n));
+    qa('.st-faq').forEach(smoothFaq);
+    stagesReady.then(() => {
+      try {
+        const g = q('.st-stage-grid');
+        if (g) { g.setAttribute('data-reveal-group', ''); reveal(g.parentElement); }
+        qa('.st-stage').forEach((n) => spotlight(n));
+        marquee(q('#modMarquee'));
+      } catch (e) { /* decoration */ }
+    });
   } catch (e) { /* motion is decoration; never let it break the page */ }
+
+  /* FAQ: animate the box height with WAAPI. The native toggle still does
+     the work; this only interpolates between the two heights. */
+  function smoothFaq(d) {
+    const s = d.querySelector('summary');
+    if (!s || !d.animate || reduced) return;
+    let anim = null;
+    s.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (anim) { anim.onfinish = null; anim.cancel(); anim = null; }
+      const from = d.offsetHeight;
+      let to, opening = !d.open;
+      if (opening) { d.open = true; to = d.offsetHeight; }
+      else { d.open = false; to = d.offsetHeight; d.open = true; }
+      d.style.overflow = 'hidden';
+      anim = d.animate({ height: [from + 'px', to + 'px'] }, { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+      const mine = anim;
+      mine.onfinish = () => {
+        if (anim === mine) anim = null;
+        d.style.overflow = '';
+        if (!opening) d.open = false;
+      };
+    });
+  }
 })();

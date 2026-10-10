@@ -426,7 +426,7 @@ cloud container session.
 | B2 | Gift a licence | pay for someone else → one-use gift code → recipient activates into their own org; refund rules per `refund.html` |
 | B3 | Film-school (edu) licence | an `edu` plan row, N seats via `accounts.seat_limit`, bulk student codes (§13) |
 | B4 | Landing-page e-mail capture | `leads` table, anon INSERT only, unique e-mail, explicit consent text on `start.html`, one paragraph in `privacy.html`; no third-party script |
-| B5 | First-party funnel counts | `events` table, fixed CHECK list of event names (`start_view sample_open plan_view buy_click buy_done`), no personal data stored, device opt-out `fms_no_analytics_v1` (register in `ALL_KEYS` + `GLOBAL_KEYS`) and Do-Not-Track | **Built (sell/b3, §29 NOT RUN LIVE):** counters via `bump_event`; opt-out is DNT, GPC or a sessionStorage flag (`fms_no_analytics_session`) — no new localStorage key, so none in ALL_KEYS; `src/lib/funnel.js` uses plain fetch.
+| B5 | First-party funnel counts | `events` table, fixed CHECK list of event names (`start_view sample_open plan_view buy_click buy_done`), no personal data stored, device opt-out `fms_no_analytics_v1` (register in `ALL_KEYS` + `GLOBAL_KEYS`) and Do-Not-Track | **Built (sell/b3, §29 RUN LIVE 9 Oct):** counters via `bump_event`; opt-out is DNT, GPC or a sessionStorage flag (`fms_no_analytics_session`) — no new localStorage key, so none in ALL_KEYS; `src/lib/funnel.js` uses plain fetch.
 | B6 | ~~**Fix the Growth heading**: it promised invoices and the funnel while only referrals and affiliates rendered~~ **DONE — struck 10 Oct 2026.** It became TRUE rather than being trimmed: the tab draws six blocks now — trial, price rise, referrals, affiliates, leads, funnel (`growth-admin.js:455-460`) — and the heading at `:451` describes exactly those. |
 | B7 | Public read-only call-sheet / deck links that do not hit the invite gate | design exists, flag `VITE_PUBLIC_VIEW` is OFF, **no SQL in the schema**. Needs a security review (token guessing, revocation, never expose contact phone/e-mail) before anything ships |
 
@@ -472,7 +472,7 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
 - **R3 Tiers.** Labels Free / Basic / Intermediate / Pro on the unchanged ids
   free / starter / indie / pro (`src/lib/plans.js`). Schema **§26** makes the
   limit messages read the stored plan name and renames the default seed
-  names. **§26 is NOT RUN LIVE.**
+  names. §26 RUN LIVE 9 Oct 2026.
 - **R4 Plan matrix.** `src/data/plan-matrix.json` + `matrixFeatures(id)`:
   what each tier includes. It drives the landing page's pricing table and does
   NOT gate anything until the owner seeds `plans.features` from it.
@@ -485,7 +485,7 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
   equipment links, KEEP WORKING loop, Loading-forever plan section, admin
   console CLEAR/aria/double-click, plan-gate grammar and upgrade target).
 
-**Also built 9 Oct (NOT RUN LIVE):** schema §27 refunds (admin REFUND
+**Also built 9 Oct (§26–§29 RUN LIVE 9 Oct):** schema §27 refunds (admin REFUND
 button through the new `rzp-refund` edge function; customer "Request a
 refund" in Settings, shown only when the console switch is on, off by
 default), §28 Bill of Supply invoices (gapless `FMS/YYYY-YY/NNNNNN`,
@@ -494,13 +494,12 @@ PDF in Settings, console tab), §29 leads + aggregate funnel counts
 G1–G6, quality T1/T2/T4/T8, icon generator fixed. Release and marketing
 plan: `docs/RELEASE-PLAN.md`.
 
-**Owner steps for those:** run §26, §27, §28, §29 in order in the SQL
-editor (ask the database first what is live); `supabase functions deploy
+**Owner steps for those:** §26–§29 have run (9 Oct); `supabase functions deploy
 rzp-refund`; redeploy `rzp-webhook` and add `refund.failed` to the
 Razorpay webhook events; then try one test-mode refund end to end.
 
-**Owner steps left from R:** run §26 live; rename starter→Basic and
-indie→Intermediate in the console if §26 is not run; seed `plans.features`
+**Owner steps left from R:** rename starter→Basic and
+indie→Intermediate in the console if the plan names differ; seed `plans.features`
 from `matrixFeatures()` when the tiers should actually differ; set
 `supportEmail` in `brand.json` to a dedicated inbox (it is still the
 personal Gmail); the list prices on `start.html` are stamped from

@@ -12,7 +12,10 @@
 
 const mm = (q) => { try { return matchMedia(q).matches; } catch (e) { return false; } };
 
-export function prefersReducedMotion() { return mm('(prefers-reduced-motion: reduce)'); }
+export function prefersReducedMotion() {
+  /* html.ma-off is the Settings > Appearance switch (motion-pref.js). */
+  return mm('(prefers-reduced-motion: reduce)') || (typeof document !== 'undefined' && document.documentElement.classList.contains('ma-off'));
+}
 
 const finePointer = () => mm('(hover: hover) and (pointer: fine)');
 const motionScale = () => {
@@ -28,23 +31,47 @@ export function reveal(root = document, { once = true } = {}) {
   const add = (n) => { if (!n.hidden && !items.includes(n)) items.push(n); };
   root.querySelectorAll('[data-reveal]').forEach(add);
   root.querySelectorAll('[data-reveal-group]').forEach((g) => {
-    Array.from(g.children).forEach((c, i) => { c.style.setProperty('--i', Math.min(i, 8)); add(c); });
+    Array.from(g.children).forEach((c, i) => { c.style.setProperty('--i', Math.min(i, 10)); add(c); });
   });
   if (!items.length) return;
   const show = (n) => { n.classList.remove('mo-veil'); n.classList.add('mo-in'); };
+  /* A fragment target (page.html#id) must not be veiled: a section still
+     rising from its offset is a jump that lands in the wrong place.
+     Anything that IS, holds or sits in the target appears at once. */
+  const target = () => {
+    try { return location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null; }
+    catch (e) { return null; }
+  };
+  const onTarget = (n, t) => !!t && (n === t || n.contains(t) || t.contains(n));
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) {
       if (en.isIntersecting) { show(en.target); if (once) io.unobserve(en.target); }
     }
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0.02 });
-  for (const n of items) { n.classList.add('mo-veil'); io.observe(n); }
-  setTimeout(() => { io.disconnect(); items.forEach(show); }, BACKSTOP);
+  const t0 = target();
+  for (const n of items) { if (onTarget(n, t0)) continue; n.classList.add('mo-veil'); io.observe(n); }
+  const onHash = () => {
+    const t = target();
+    for (const n of items) if (onTarget(n, t) && n.classList.contains('mo-veil')) { n.classList.remove('mo-veil'); io.unobserve(n); }
+  };
+  addEventListener('hashchange', onHash);
+  /* Printing shows everything: a card never scrolled to is still veiled,
+     and a page printed from the top would come out blank below the fold.
+     motion.css says the same for print media; this covers the reveal
+     classes being removed so the screen agrees after the dialog. */
+  const all = () => { io.disconnect(); items.forEach(show); removeEventListener('hashchange', onHash); removeEventListener('beforeprint', all); };
+  addEventListener('beforeprint', all);
+  setTimeout(all, BACKSTOP);
 }
 
 /* ---- splitWords ------------------------------------------------ */
-export function splitWords(el) {
+export function splitWords(el, { onScroll = false } = {}) {
   if (!el || el.dataset.moSplit) return el;
-  const label = el.textContent.replace(/\s+/g, ' ').trim();
+  const wait = onScroll && !prefersReducedMotion() && 'IntersectionObserver' in window;
+  /* The words stay READABLE: no aria-label on the heading and no
+     aria-hidden on the spans. A label fixed at split time went stale the
+     first time a page rewrote the heading (the hub's resume title, on
+     every project switch), so a screen reader announced the last film. */
   let i = 0;
   const walk = (node) => {
     for (const c of Array.from(node.childNodes)) {
@@ -58,7 +85,6 @@ export function splitWords(el) {
           const s = document.createElement('span');
           s.className = 'mo-w';
           s.style.setProperty('--i', Math.min(i++, 14));
-          s.setAttribute('aria-hidden', 'true');
           s.textContent = p;
           frag.append(s);
         }
@@ -67,8 +93,16 @@ export function splitWords(el) {
     }
   };
   walk(el);
-  el.setAttribute('aria-label', label);
   el.dataset.moSplit = '1';
+  if (wait) {
+    el.classList.add('mo-w-wait');
+    const go = () => { el.classList.remove('mo-w-wait'); el.classList.add('mo-w-go'); };
+    const io = new IntersectionObserver((es) => {
+      if (es.some((x) => x.isIntersecting)) { io.disconnect(); go(); }
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+    io.observe(el);
+    setTimeout(() => { io.disconnect(); go(); }, BACKSTOP);
+  }
   return el;
 }
 
@@ -92,7 +126,7 @@ function ensureCountIO() {
   }, BACKSTOP);
 }
 
-export function countUp(el, { duration = 900 } = {}) {
+export function countUp(el, { duration = 1400 } = {}) {
   if (!el || el.dataset.moCount) return;
   let node = null;
   const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -117,16 +151,19 @@ export function countUp(el, { duration = 900 } = {}) {
     if (el.dataset.countTo != null) final();
     return;
   }
+  /* 0 is written when the count STARTS, never at registration: until
+     then the real figure stays in the DOM for screen readers, copy and
+     crawlers (it used to read "₹0" for every paid tier until scrolled). */
   const run = () => {
+    node.nodeValue = fmt(0);
     const t0 = performance.now();
     const tick = (t) => {
       const p = Math.min(1, (t - t0) / duration);
-      const e = 1 - Math.pow(1 - p, 3);
+      const e = 1 - Math.pow(1 - p, 4);
       if (p < 1) { node.nodeValue = fmt(target * e); requestAnimationFrame(tick); } else final();
     };
     requestAnimationFrame(tick);
   };
-  node.nodeValue = fmt(0);
   ensureCountIO();
   pending.set(el, { run, done: final });
   countIO.observe(el);

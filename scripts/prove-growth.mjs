@@ -370,7 +370,9 @@ try {
     ok(JSON.stringify(await localWrites(page, t0)) === '["fms_tour_v1"]', 'starting writes fms_tour_v1 once, and only that');
     ok(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('tour-pop') && document.activeElement.getAttribute('role') === 'dialog'), 'focus is in the step, a labelled dialog');
     await page.click('[data-tour-act="sample"]'); await page.waitForTimeout(3000);
-    ok(await page.evaluate(() => document.querySelectorAll('#firstweek .tw-item.is-done').length === 6), 'with the sample open, six of seven tick — derived, not stored');
+    /* The list measures the user's OWN film: with the sample open only
+       the "open the sample" item may tick, and a hint says why. */
+    ok(await page.evaluate(() => document.querySelectorAll('#firstweek .tw-item.is-done').length <= 1 && !!document.querySelector('#firstweek .tw-hint')), 'with the sample open, its film does not tick the list, and the hint says so');
     ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /tour|week|check/i.test(k) && k !== 'fms_tour_v1')), 'no other key for the tour or the list');
     await page.click('.tour-pop [data-tour-act="next"]'); await page.waitForLoadState('load'); await page.waitForTimeout(1500);
     ok(/story\.html/.test(page.url()) && await page.$('.tour-pop') !== null, 'Next goes to Story, and the step is up there');

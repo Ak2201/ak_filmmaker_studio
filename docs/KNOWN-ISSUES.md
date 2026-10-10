@@ -320,3 +320,12 @@ consecutive clean runs after.
 what is being typed into it. It has now bitten three times in this
 codebase — the invite-request note, the refund request, and this. If you
 add a form to a page that re-renders from a data load, keep its draft.
+
+## Wave 3 notes (10 Oct 2026)
+
+- Settings > Appearance > Reduce motion stores `reduceMotion: true` in the existing
+  `fms_studio_prefs_v1` blob (no new key). It sets `html.ma-off` and `--motion:0`.
+  `prefersReducedMotion()` in `src/lib/motion.js` honours it.
+- `splitWords` now keeps a visually-hidden full-text copy (`.mo-sr`) instead of an
+  `aria-label`; `start.js` still splits its h2s, the app pages no longer do.
+- Tanglish blocks (`.tn`) are stamped `lang="ta-Latn"` by `lang.js`.

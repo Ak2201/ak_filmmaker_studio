@@ -248,11 +248,24 @@ async function lowestPlanWith(ids) {
     .sort((a, b) => (a.sort ?? Billing.planRank(a.id)) - (b.sort ?? Billing.planRank(b.id)));
   return open.find((p) => ids.every((id) => !p.features || p.features[id] !== false)) || null;
 }
-function includedLine(ids) {
+/* `cta` is the card's primary link: once the plan is known it deep-links
+   to settings.html?plan=<id>#plan, and for a signed-in buyer the server's
+   own quote says what the step costs. Every part falls back to the plain
+   sentence offline or signed out. */
+function includedLine(ids, cta) {
   const top = Billing.planRank(plan) >= Billing.PLAN_ORDER.length - 1;
   const line = h('p.pg-lock-plan', { text: top ? '' : PAID_FALLBACK });
   lowestPlanWith(ids).then((p) => {
-    if (p) line.textContent = 'Included in the ' + (p.name || Billing.planName(p.id)) + ' plan.';
+    if (!p) return;
+    const name = p.name || Billing.planName(p.id);
+    line.textContent = 'Included in the ' + name + ' plan.';
+    if (cta) cta.href = 'settings.html?plan=' + encodeURIComponent(p.id) + '#plan';
+    const c = window.StudioCloud;
+    if (!cta || !c || !c.getSession || !c.getSession()) return;
+    Billing.quote(p.id, null).then((q) => {
+      if (!q || !q.ok || !(q.amount_paise > 0)) return;
+      cta.textContent = 'UPGRADE FOR ' + Billing.fmtPaise(q.amount_paise) + (q.credit_paise > 0 ? ' MORE' : '');
+    }).catch(() => { /* the plain button stands */ });
   }).catch(() => { /* the fallback stands */ });
   return line;
 }
@@ -278,11 +291,12 @@ function lockCard(mods) {
     });
     card.append(ul);
   }
+  const cta = h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' });
   card.append(
     h('p.pg-lock-p', { text: (names ? names + (list.length > 1 ? ' are' : ' is') : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
-    includedLine(list.map((m) => m.id)),
+    includedLine(list.map((m) => m.id), cta),
     h('div.pg-lock-actions', {}, [
-      h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
+      cta,
       h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })
     ])
   );

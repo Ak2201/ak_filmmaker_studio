@@ -82,11 +82,13 @@ jobs:
           path: verify.log
           retention-days: 7
 
-      # In THIS job, not `proofs`, because it serves `dist/` and needs the
-      # GATE-OFF build that `build:open` above already left there. The
-      # proofs job's `dist/` is the gated one and the hub would redirect.
-      # Last on purpose: the two `if: failure()` steps above belong to
-      # `verify` and must not fire for an adoption failure.
+      # In THIS job, not `proofs`: it serves `dist/`, and a signed-out
+      # visitor needs the GATE-OFF build that `build:open` above left
+      # there — the proofs job's `dist/` is the gated one and the site
+      # gate would bounce the hub. Two sessions added this step on the
+      # same day; this is the surviving copy, kept LAST because the two
+      # `if: failure()` steps above belong to `verify` and should not
+      # fire, or upload a verify.log artifact, for an adoption failure.
       - run: npm run prove:adoption
 
   proofs:

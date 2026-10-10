@@ -41,7 +41,11 @@ import '../styles/growth.css';
 const period = 'lifetime';     // the only period there is
 let busyPlan = '';
 let statusText = '';
-let hooks = { onBuy: null, rerender: null };
+let hooks = { onBuy: null, rerender: null, onSuccess: null };
+/* The plan just bought, in this module's memory for the page. Set when
+   onBuy resolves; drawn above the row as "You're on <plan>". */
+let justBought = '';
+let pickedDone = false;
 /* The code as typed, the quotes it earned (plan id -> quote_order()
    answer), a sentence when it was refused, and whether the box is open. */
 const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false };
@@ -119,10 +123,11 @@ function limitList(limits, features) {
 let staggered = false;
 
 /** `st` is billing_status() or null (signed out / unknown). */
-export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) {
-  hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender };
+export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false } = {}) {
+  hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
   const wrap = h('div.pl-wrap' + (compact ? '.is-compact' : ''));
   const current = st ? st.plan : null;
+  if (justBought) wrap.append(successCard(justBought, plans));
 
   const row = h('div.pl-row');
   const buyable = [];
@@ -173,6 +178,20 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
     setTimeout(() => { if (row.isConnected) reveal(row); }, 0);
   }
   wrap.append(row);
+  /* ?plan=<id> (the landing page's buttons, a lock card's deep link):
+     mark that card, scroll it into view once, and — on request — open
+     its buy flow once the page has signed the buyer in. */
+  const want = wantedPlan();
+  if (want && !pickedDone) {
+    const target = row.querySelector(`.pl-card[data-plan="${CSS.escape(want)}"]`);
+    if (target) {
+      pickedDone = true;
+      target.classList.add('is-picked');
+      setTimeout(() => { if (target.isConnected) target.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 0);
+      const btn = target.querySelector('[data-plan-action="buy"]');
+      if (btn && st && !btn.disabled && hooks.onSuccess) setTimeout(() => { if (btn.isConnected) btn.click(); }, 400);
+    }
+  }
   loadUpgradeQuotes(st, buyable);
   if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
@@ -214,6 +233,44 @@ function promoBox(buyable) {
   return det;
 }
 
+function wantedPlan() {
+  try { return new URLSearchParams(location.search).get('plan') || ''; } catch (e) { return ''; }
+}
+
+/* PURCHASE SUCCESS. What unlocked is read from the same matrix the
+   pricing table uses (plan-matrix.json): the capabilities this plan
+   has that the one before it did not, falling back to the plan's own
+   list. The invoice lives in settings.html's Plan tab (invoice-panels). */
+function unlockedBy(matrix, planId) {
+  const ids = matrix.plans ? Object.keys(matrix.plans) : [];
+  const prev = ids[Math.max(0, ids.indexOf(planId) - 1)];
+  const has = (f, id) => f.inverted ? !(f.plans || []).includes(id) : (f.plans || []).includes(id);
+  const all = (matrix.features || []).filter((f) => !f.inverted && has(f, planId));
+  const fresh = all.filter((f) => prev === planId || !has(f, prev));
+  return (fresh.length ? fresh : all).map((f) => f.label).slice(0, 8);
+}
+function successCard(planId, plans) {
+  const p = (plans || []).find((x) => x.id === planId);
+  const name = (p && p.name) || planName(planId);
+  const card = h('section.pl-success', { role: 'status', 'aria-live': 'polite' });
+  card.append(h('p.bd-eyebrow', { text: 'Payment received' }), h('h3.pl-success-h', { text: `You’re on ${name}.` }));
+  /* plan-matrix.json is a lazy chunk (invite's first paint is budgeted),
+     so the unlock list fills in when it arrives. */
+  const slot = h('div.pl-unlocked');
+  card.append(slot);
+  import('../data/plan-matrix.json').then((m) => {
+    const items = unlockedBy(m.default, planId);
+    if (items.length) slot.append(h('p.pl-note', { text: 'Just unlocked:' }), h('ul.pl-what-list', {}, items.map((t) => h('li', { text: t }))));
+  }).catch(() => { /* the card still says what plan you are on */ });
+  const onSettings = /settings\.html$/.test(location.pathname);
+  card.append(h('p.pl-note', {}, [
+    'Your invoice is on its way from Razorpay by e-mail, and ',
+    h('a', { href: onSettings ? '#plan' : 'settings.html#plan', text: 'listed under Plan invoices in Settings' }), '.'
+  ]));
+  card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
+  return card;
+}
+
 /** Usage against the current plan, for the settings page. */
 export function usageList(st) {
   if (!st) return null;
@@ -240,6 +297,8 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     const q = appliedQuote(el.dataset.plan);
     await hooks.onBuy(el.dataset.plan, period, (t) => { statusText = t; if (hooks.rerender) hooks.rerender(); }, q ? q.code : null);
     statusText = '';
+    justBought = el.dataset.plan;
+    if (hooks.onSuccess) { try { hooks.onSuccess(justBought); } catch (e) { /* redirect is a convenience */ } }
   } catch (err) {
     statusText = err && err.message ? err.message : 'The payment did not complete.';
   } finally {

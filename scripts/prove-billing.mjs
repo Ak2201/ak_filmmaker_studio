@@ -210,7 +210,8 @@ try {
     ok(await waitGate(page, 'open'), 'after paying, the gate is OPEN with no code and no admin');
     ok(F.db.members.has(USERS['tok-ben'].id), 'Ben is a member');
     ok(F.db.accounts.some((a) => a.owner_id === USERS['tok-ben'].id && a.plan === 'starter'), 'with an organisation on Starter');
-    await page.waitForSelector('#through', { timeout: 8000 }).then(() => ok(true, 'the page says "You’re in"'), () => ok(false, 'the page says "You’re in"'));
+    /* A purchase on invite.html now lands on the hub's welcome card. */
+    await page.waitForURL(/index\.html\?welcome=plan|index\.html/, { timeout: 8000 }).then(() => ok(true, 'the page sends Ben on to the studio (welcome=plan)'), () => ok(false, 'the page sends Ben on to the studio (welcome=plan)'));
     allErrors.push(...errors); await ctx.close();
   }
 

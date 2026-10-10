@@ -231,6 +231,7 @@ function startFigures() {
            [row label, matrix key]; a missing key fails the build. */
         const MATRIX = JSON.parse(readFileSync(resolve(__dirname, 'src/data/plan-matrix.json'), 'utf8'));
         const ROWS = [
+          ['Learning library & blueprints', 'case-studies'],
           ['Your own films', 'new_projects'],
           ['Screenplay editor, revisions', 'screenplay'], ['Script import and exports', 'script_import'],
           ['Breakdown, scene list, shot list', 'breakdowns'], ['Stripboard, day out of days, calendar', 'stripboard'],
@@ -271,6 +272,33 @@ function startFigures() {
           fail('a bare ₹ in the markup, near "' + html.slice(Math.max(0, at - 50), at + 20).replace(/\s+/g, ' ').trim()
                + '". Prices come from {{fms:price.<tier>}} (src/lib/plans.js), never typed; a scheduled rise arrives at runtime from price_notice().');
         }
+
+        /* JSON-LD: Organization, Product with one Offer per plan (INR, from
+           the same LIST_PRICE as the visible prices) and FAQPage built from
+           the static FAQ markup after expansion, so it cannot drift. */
+        values.jsonld = '';
+        const expanded = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
+          if (!(key in values)) return all;
+          return fmt === 'word' ? (WORDS[values[key]] || String(values[key])) : String(values[key]);
+        });
+        const plain = (t) => t.replace(/<[^>]+>/g, '').replace(/&mdash;/g, '\u2014').replace(/&rsquo;/g, '\u2019')
+          .replace(/&lsquo;/g, '\u2018').replace(/&ldquo;/g, '\u201C').replace(/&rdquo;/g, '\u201D')
+          .replace(/&rarr;/g, '\u2192').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+        const BR = JSON.parse(readFileSync(resolve(__dirname, 'src/data/brand.json'), 'utf8'));
+        const ORIGIN = 'https://' + BR.host;
+        const faq = [...expanded.matchAll(/<details class="st-faq">\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>/g)]
+          .map((m) => ({ '@type': 'Question', name: plain(m[1]), acceptedAnswer: { '@type': 'Answer', text: plain(m[2]) } }));
+        if (!faq.length) fail('no FAQ markup found to build FAQPage JSON-LD from.');
+        const ld = [
+          { '@context': 'https://schema.org', '@type': 'Organization', name: BR.name, url: ORIGIN + '/', logo: ORIGIN + '/icons/icon-512.png' },
+          { '@context': 'https://schema.org', '@type': 'Product', name: BR.name, description: BR.tagline, image: ORIGIN + '/og.png',
+            brand: { '@type': 'Brand', name: BR.name },
+            offers: PLAN_ORDER.filter((id) => LIST_PRICE[id] > 0).map((id) => ({
+              '@type': 'Offer', name: planName(id), price: String(LIST_PRICE[id]), priceCurrency: 'INR',
+              availability: 'https://schema.org/InStock', url: ORIGIN + '/invite.html?plan=' + id + '#buy' })) },
+          { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq }
+        ];
+        values.jsonld = ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
 
         const out = html.replace(/\{\{fms:([a-zA-Z.]+)(?::(word))?\}\}/g, (all, key, fmt) => {
           if (!(key in values)) fail('unknown placeholder ' + all + '. Known: ' + Object.keys(values).join(', '));
@@ -319,11 +347,17 @@ export function brandReplace(text, brand, where = 'html') {
 export const BEAT_EXAMPLE_FILM = 'dragon';
 function studySlicePlugin() {
   const ID = 'virtual:beat-example-data', RID = '\0' + ID;
+  const COUNT = 'virtual:studies-count', RCOUNT = '\0' + COUNT;
   const file = resolve(__dirname, 'src/data/studies.json');
   return {
     name: 'fms-study-slice',
-    resolveId(id) { return id === ID ? RID : null; },
+    resolveId(id) { return id === ID ? RID : id === COUNT ? RCOUNT : null; },
     load(id) {
+      /* Just the NUMBER of case studies, for the hub's first-run tour line. */
+      if (id === RCOUNT) {
+        this.addWatchFile(file);
+        return 'export const filmCount = ' + (JSON.parse(readFileSync(file, 'utf8')).films || []).length + ';\n';
+      }
       if (id !== RID) return null;
       this.addWatchFile(file);
       const s = JSON.parse(readFileSync(file, 'utf8'));
@@ -420,6 +454,8 @@ export default defineConfig({
       injectManifest: {
         // The app shell, all four pages, the manifest and the icons.
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff2}'],
+        // Recorded media (public/media/**) is fetched on demand, never precached.
+        globIgnores: ['media/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }
     })
@@ -567,7 +603,7 @@ export default defineConfig({
              209 KB comes back. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

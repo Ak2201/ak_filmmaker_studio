@@ -1611,6 +1611,24 @@ export function mountShell() {
      strip reads it as a live custom property, so the order costs it
      nothing. */
   installTabs();
+  /* "How this works": one idle import decides whether this page's modules
+     have an approved video; nothing is added (or fetched) otherwise. */
+  /* module ids, plus the owning phase id (module:write covers write.html). */
+  const helpIds = [...new Set(hereModules().flatMap((m) => [m.module.id, m.phase && m.phase.id]).filter(Boolean))];
+  if (helpIds.length) {
+    /* Deferred to the first real interaction (or 8s): the chunk is first-paint
+       bytes otherwise, and a button arriving mid-load re-wraps the band under
+       a fragment jump that has already landed. */
+    const EV = ['pointerdown', 'pointermove', 'keydown', 'touchstart'];
+    let done = false;
+    const go = () => {
+      if (done) return; done = true;
+      EV.forEach((t) => window.removeEventListener(t, go, true));
+      import('./video-help.js').then((m) => m.mountHelp(document.querySelector('.sh-bar'), helpIds)).catch(() => {});
+    };
+    EV.forEach((t) => window.addEventListener(t, go, { capture: true, passive: true }));
+    setTimeout(go, 8000);
+  }
   measureBar();
   runSpy();
   requestAnimationFrame(() => {

@@ -6431,7 +6431,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 -- 28. BUYER INVOICES — Bill of Supply, gapless per financial year   RUN LIVE 9 Oct 2026
 -- ------------------------------------------------------------
--- NOT RUN LIVE — owner approval. Run after §16–§26 (needs payments,
+-- Ran live 9 Oct 2026. Needs §16–§26 (needs payments,
 -- is_studio_admin, plans). Idempotent.
 --
 -- The seller is an INDIVIDUAL not registered for GST, so the document
@@ -7664,7 +7664,6 @@ update public.billing_settings set price_rises_after_buyers = 100
 
 -- ============================================================
 -- 31. REGION AND CURRENCY — one checkout, two price tags   RUN LIVE 9 Oct 2026
---                                                NOT RUN LIVE — owner approval
 -- ------------------------------------------------------------
 -- The owner's decision, 9 Oct 2026: ONE CHECKOUT FOR NOW. Razorpay,
 -- in rupees, for everybody. What this section builds is the half that

@@ -1,4 +1,368 @@
 {
-  "_about": "Topics for src/ui/learn.js — the collapsed 'What is a …?' boxes. Each topic POINTS at existing content (glossary.json terms, step ids, videos.json targets) rather than copying it. Lane C fills this.",
-  "topics": []
+  "_about": "Learn-in-place topics (src/ui/learn.js). POINTERS, not copies: `glossary` is a term in glossary.json (the definition, the Tanglish line and a worked example in each of the four films live there), `steps` are blueprint steps as `<ns>/<step id>` (their approved videos and their 'why this matters' text are read from the step JSON at open time), `videos` are extra videos.json join keys. `term` is the display word in the summary; `question` overrides the generated 'What is a <term>?'.",
+  "topics": [
+    {
+      "id": "idea",
+      "term": "story idea",
+      "glossary": "story idea",
+      "steps": [
+        "feature/step-01",
+        "short/step-01"
+      ],
+      "videos": []
+    },
+    {
+      "id": "logline",
+      "term": "logline",
+      "glossary": "logline",
+      "steps": [
+        "feature/step-02",
+        "short/step-02"
+      ],
+      "videos": [
+        "lib:glossary/logline"
+      ]
+    },
+    {
+      "id": "story-bible",
+      "term": "story bible",
+      "glossary": "story bible",
+      "steps": [
+        "feature/step-12",
+        "short/step-11"
+      ],
+      "videos": []
+    },
+    {
+      "id": "character",
+      "term": "character profile",
+      "glossary": "character profile",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "protagonist",
+      "term": "protagonist",
+      "glossary": "protagonist",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "antagonist",
+      "term": "antagonist",
+      "glossary": "antagonist",
+      "steps": [
+        "feature/step-05"
+      ],
+      "videos": [
+        "lib:glossary/antagonist"
+      ]
+    },
+    {
+      "id": "supporting-cast",
+      "term": "supporting cast",
+      "glossary": "supporting cast",
+      "steps": [
+        "feature/step-06"
+      ],
+      "videos": []
+    },
+    {
+      "id": "want",
+      "term": "want",
+      "glossary": "want",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": [
+        "lib:glossary/want"
+      ]
+    },
+    {
+      "id": "need",
+      "term": "need",
+      "glossary": "need",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": [
+        "lib:glossary/need"
+      ]
+    },
+    {
+      "id": "stakes",
+      "term": "stakes",
+      "glossary": "stakes",
+      "steps": [
+        "feature/step-03"
+      ],
+      "videos": [
+        "lib:glossary/stakes"
+      ],
+      "question": "What are stakes?"
+    },
+    {
+      "id": "flaw",
+      "term": "character flaw",
+      "glossary": "character flaw",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "fear",
+      "term": "core fear",
+      "glossary": "core fear",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "lie",
+      "term": "lie",
+      "glossary": "the lie",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "wound",
+      "term": "emotional wound",
+      "glossary": "emotional wound",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "arc",
+      "term": "character arc",
+      "glossary": "character arc",
+      "steps": [
+        "feature/step-04",
+        "short/step-03"
+      ],
+      "videos": [
+        "lib:glossary/character arc"
+      ]
+    },
+    {
+      "id": "conflict",
+      "term": "conflict",
+      "glossary": "dramatic conflict",
+      "steps": [
+        "feature/step-05",
+        "short/step-03"
+      ],
+      "videos": []
+    },
+    {
+      "id": "theme",
+      "term": "theme",
+      "glossary": "theme",
+      "steps": [
+        "feature/step-03"
+      ],
+      "videos": [
+        "lib:glossary/theme"
+      ]
+    },
+    {
+      "id": "world",
+      "term": "story world",
+      "glossary": "story world",
+      "steps": [
+        "feature/step-07",
+        "short/step-05"
+      ],
+      "videos": []
+    },
+    {
+      "id": "beat-sheet",
+      "term": "beat sheet",
+      "glossary": "beat sheet",
+      "steps": [
+        "feature/step-08",
+        "short/step-04"
+      ],
+      "videos": [],
+      "question": "What is scene order?"
+    },
+    {
+      "id": "step-outline",
+      "term": "step outline",
+      "glossary": "step outline",
+      "steps": [
+        "feature/step-11",
+        "short/step-06"
+      ],
+      "videos": []
+    },
+    {
+      "id": "synopsis",
+      "term": "synopsis",
+      "glossary": "synopsis",
+      "steps": [
+        "feature/step-11",
+        "short/step-06"
+      ],
+      "videos": []
+    },
+    {
+      "id": "screenplay",
+      "term": "screenplay",
+      "glossary": "screenplay",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": [
+        "module:screenplay"
+      ]
+    },
+    {
+      "id": "scene-heading",
+      "term": "scene heading",
+      "glossary": "slugline",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": [
+        "lib:glossary/slugline"
+      ]
+    },
+    {
+      "id": "action",
+      "term": "action line",
+      "glossary": "action line",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": []
+    },
+    {
+      "id": "character-cue",
+      "term": "character cue",
+      "glossary": "character cue",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": []
+    },
+    {
+      "id": "dialogue",
+      "term": "dialogue",
+      "glossary": "dialogue",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": [],
+      "question": "What is dialogue?"
+    },
+    {
+      "id": "parenthetical",
+      "term": "parenthetical",
+      "glossary": "parenthetical",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": []
+    },
+    {
+      "id": "transition",
+      "term": "scene transition",
+      "glossary": "scene transition",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": []
+    },
+    {
+      "id": "contd",
+      "term": "CONT'D",
+      "glossary": "cont'd",
+      "steps": [
+        "short/step-07",
+        "feature/step-13"
+      ],
+      "videos": [],
+      "question": "What does CONT'D mean?"
+    },
+    {
+      "id": "breakdown",
+      "term": "script breakdown",
+      "glossary": "script breakdown",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [
+        "module:breakdowns"
+      ]
+    },
+    {
+      "id": "stripboard",
+      "term": "stripboard",
+      "glossary": "stripboard",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [
+        "module:stripboard"
+      ]
+    },
+    {
+      "id": "dood",
+      "term": "day out of days",
+      "glossary": "day out of days",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [
+        "module:dood"
+      ]
+    },
+    {
+      "id": "call-sheet",
+      "term": "call sheet",
+      "glossary": "call sheet",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [
+        "module:call-sheets"
+      ]
+    },
+    {
+      "id": "shot-list",
+      "term": "shot list",
+      "glossary": "shot list",
+      "steps": [
+        "feature/step-16"
+      ],
+      "videos": [
+        "module:shot-list"
+      ]
+    }
+  ]
 }

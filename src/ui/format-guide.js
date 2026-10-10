@@ -36,6 +36,7 @@
 import COPY from '../data/format-rules.json';
 import { checkScript, checkAround } from '../lib/format-rules.js';
 import { h, delegate } from '../lib/dom.js';
+import { learn } from './learn.js';
 import '../styles/format-guide.css';
 
 export const PREFS_KEY = 'fms_write_prefs_v1';
@@ -43,6 +44,9 @@ const DISMISS_KEY = 'fms_write_guide_dismissed';
 const LEVELS = COPY.levels.map((l) => l.id);
 const DEFAULT_LEVEL = 'coach';
 const SETTLE_MS = 550;
+/* One learn-in-place box per element type, inside the note's "why". */
+const LEARN_FOR = { scene: 'scene-heading', action: 'action', character: 'character-cue',
+  dialogue: 'dialogue', paren: 'parenthetical', transition: 'transition' };
 
 /* ---- prefs: read, merge, write ------------------------------ */
 export function readPrefs() {
@@ -143,8 +147,9 @@ function showNote(row, f) {
     h('p.fg-note-msg', { text: f.message }),
     h('details.fg-why', {}, [
       h('summary', { text: COPY.panel.whyLabel }),
-      h('p', { text: f.why })
-    ]),
+      h('p', { text: f.why }),
+      learn(LEARN_FOR[typeOf(row)])
+    ].filter(Boolean)),
     h('button.fg-got', { type: 'button', 'data-action': 'fg-dismiss', 'data-rule': f.ruleId, text: COPY.panel.gotIt })
   ]);
   row.append(note);

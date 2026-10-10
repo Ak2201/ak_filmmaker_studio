@@ -51,7 +51,8 @@
     "prove:adoption": "node scripts/prove-adoption.mjs",
     "prove:ai-coverage": "node scripts/prove-ai-coverage.mjs",
     "baseline": "node scripts/verify-migration.mjs --baseline",
-    "density": "node scripts/density.mjs"
+    "density": "node scripts/density.mjs",
+    "demo": "node scripts/make-demo.mjs"
   },
   "engines": {
     "node": ">=22.12"

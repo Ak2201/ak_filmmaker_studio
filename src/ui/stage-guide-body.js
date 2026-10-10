@@ -42,12 +42,14 @@ import { readAll, writeFields, blobKey } from '../lib/blueprint-store.js';
 import {
   classify, extraRenderers, interludeSection, drawDerived
 } from './stage-guide-widgets.js';
+import { mountComments, togglePanel, hasNote, paintBadges } from './comments.js';
 import '../styles/steps-stages.css';
 
 const SAVE_MS = 400;
 const FIELD = 'input[data-key], textarea[data-key], select[data-key]';
 const TABLE_IDS = Object.keys(ROW_BUILDERS);
-const MIN_ROWS = 3;
+/* feature.js loadData(): max(stored rows, 8) per table. */
+const MIN_ROWS = 8;
 
 const SPECS = {
   feature: {
@@ -171,6 +173,43 @@ export function renderGuide(body, { stage, format, items, fields }) {
 
   body.replaceChildren(root);
 
+  /* The private-note toggles, as feature.js attachCommentButtons() draws
+     them: same markup, same fms_note_ store. Feature only (short has none).
+     Drawing a button writes nothing. */
+  const attachComments = (scope) => {
+    scope.querySelectorAll('.ask-label').forEach((label) => {
+      if (label.querySelector('.comment-btn')) return;
+      const ask = label.closest('.ask, .pp-ask');
+      const field = ask && ask.querySelector('[data-key]');
+      if (!field) return;
+      const key = field.getAttribute('data-key');
+      const btn = h('button.comment-btn', {
+        type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+        'data-key': 'comment_for_' + key, 'data-action': 'toggleCommentPanel', 'data-note-key': key
+      });
+      label.appendChild(btn);
+      if (hasNote(key)) btn.classList.add('has-note');
+    });
+  };
+  if (format !== 'short') {
+    attachComments(root);
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest && e.target.closest('.comment-btn[data-note-key]');
+      if (!btn || !root.contains(btn)) return;
+      const ask = btn.closest('.ask, .pp-ask');
+      if (ask) togglePanel(btn.getAttribute('data-note-key'), ask);
+    });
+    mountComments({
+      scope: 'feature',
+      notePrefix: 'fms_note_',
+      onNoteChange: (key, has) => {
+        const b = root.querySelector('.comment-btn[data-note-key="' + CSS.escape(key) + '"]');
+        if (b) b.classList.toggle('has-note', has);
+      }
+    });
+    paintBadges();
+  }
+
   /* ---- reading ------------------------------------------------- */
   const getter = (blob) => (k) => {
     const el = root.querySelector('[data-key="' + k + '"]');
@@ -225,6 +264,10 @@ export function renderGuide(body, { stage, format, items, fields }) {
   function onField(el) {
     const k = el.getAttribute('data-key');
     queue(k, spec.read(el));
+    /* feature.js syncTitleAcrossCovers(): fill the other title if empty. */
+    const twin = k === 'meta_title' ? 'v1_title' : k === 'v1_title' ? 'meta_title' : null;
+    const t = twin && root.querySelector('[data-key="' + twin + '"]');
+    if (t && t.value === '' && el.value) { t.value = el.value; queue(twin, el.value); }
     const m = palette.exec(k);
     /* feature.js saves the hex mirrors with the colour; keep them in step. */
     if (m && root.querySelector('[data-key="palette_c' + m[1] + '_hex"]')) queue('palette_c' + m[1] + '_hex', el.value);

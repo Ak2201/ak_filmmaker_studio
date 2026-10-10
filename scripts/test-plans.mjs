@@ -1,10 +1,11 @@
 // plans.js: names, order and the matrix seed. Node, no browser.
 import { readFileSync } from 'node:fs';
-const src = readFileSync(new URL('../src/lib/plans.js', import.meta.url), 'utf8')
+const src = readFileSync(new URL('../src/lib/plans.js', import.meta.url), 'utf8');
+const msrc = readFileSync(new URL('../src/lib/plan-matrix.js', import.meta.url), 'utf8')
   .replace("import matrix from '../data/plan-matrix.json';", '');
 const matrix = JSON.parse(readFileSync(new URL('../src/data/plan-matrix.json', import.meta.url), 'utf8'));
-const mod = await import('data:text/javascript,' + encodeURIComponent('const matrix=' + JSON.stringify(matrix) + ';\n' + src));
-const { PLAN_NAMES, PLAN_ORDER, matrixFeatures, planName } = mod;
+const { PLAN_NAMES, PLAN_ORDER, planName } = await import('data:text/javascript,' + encodeURIComponent(src));
+const { matrixFeatures } = await import('data:text/javascript,' + encodeURIComponent('const matrix=' + JSON.stringify(matrix) + ';\n' + msrc));
 let bad = 0;
 const ok = (name, c) => { if (!c) { bad++; console.error('FAIL', name); } };
 ok('names', PLAN_NAMES.starter === 'Basic' && PLAN_NAMES.indie === 'Intermediate' && PLAN_NAMES.pro === 'Pro' && PLAN_NAMES.free === 'Free');

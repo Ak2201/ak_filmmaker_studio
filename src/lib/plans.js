@@ -34,20 +34,9 @@ export const LIST_PRICE = { free: 0, starter: 599, indie: 799, pro: 999 };
  *  mean "not for sale" check the number, not this string. */
 export const inr = (n) => '\u20B9' + Number(n || 0).toLocaleString('en-IN');
 
-import matrix from '../data/plan-matrix.json';
-
-/** The `features` object an admin would seed for a plan: {key:false,...} for
- *  every gated key the plan lacks (sample_only is true where it applies).
- *  Reference only — live gating reads the database. */
-export function matrixFeatures(planId) {
-  const out = {};
-  for (const r of matrix.features) {
-    if (r.kind === 'limit') continue;
-    const has = r.plans.includes(planId);
-    if (r.inverted) { if (has) out[r.key] = true; }
-    else if (!has) out[r.key] = false;
-  }
-  return out;
-}
+/* matrixFeatures() lives in src/lib/plan-matrix.js. This file is in the
+   CORE chunk (billing.js imports it), and importing the matrix JSON here
+   put the whole matrix into every page's first paint the moment anything
+   else imported it dynamically. */
 
 export const planName = (id) => PLAN_NAMES[id] || id;

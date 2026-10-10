@@ -45,9 +45,13 @@
    has been given a display of its own. */
 [hidden] { display: none !important; }
 
+/* Full width (owner, 10 Oct 2026): the page, its bar and its footer run
+   edge to edge inside the gutter instead of sitting in a 92ch column with
+   empty margins. Running text keeps its own measure (.st-lede, the
+   figcaptions, the close), so lines stay readable on a wide screen. */
 .st {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: var(--s4) var(--gutter) var(--s8);
 }
 
@@ -174,8 +178,8 @@
   }
 }
 .st-top-in {
-  max-width: var(--measure-wide);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: var(--s2) var(--gutter);
   display: flex;
   align-items: center;
@@ -670,8 +674,8 @@ button.st-btn-primary {
 .st-close .st-cta { justify-content: center; }
 
 .st-foot {
-  max-width: var(--measure-wide);
-  margin: var(--s7) auto 0;
+  max-width: none;
+  margin: var(--s7) 0 0;
   padding: var(--s4) 0 var(--s6);
   border-top: 1px solid var(--rule-hair);
 }

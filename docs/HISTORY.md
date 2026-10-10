@@ -1390,3 +1390,75 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       "running" 0.01ms `scrollbar-color` transitions for the first ~2s
       (the theme applying at load); 0 thereafter; identical before
       these changes.
+
+26. **Phone navigation rebuilt (10 Oct 2026; owner: "mobile navigation
+    is very bad").** Measured first, at 390x844 with touch, loaded at
+    that width:
+
+    - **The stage menus never appeared on a phone.** The five stage
+      pills became a sideways strip below 720px, and each menu opened
+      inside that strip's own scroll box — present in the DOM with 19
+      links, clipped to nothing on screen. So there was no route from
+      Breakdown to Stripboard except search.
+    - The burger's rail was a 75px icon column whose stage items jumped
+      straight to the stage's first page, with no module list.
+    - The chrome above the first word was 250px on module pages and
+      ~600px on the blueprints (plate, burger + crumb, stage strip, and
+      the page toolbar's Dragon / progress / Jump / search / Export /
+      More / theme / Sign in).
+    - The bottom bar was Search · Studio · Top · End: half of it scroll.
+
+    The owner chose, from two options, bottom tabs and a Go-to sheet.
+    `src/ui/mobile-nav.js` (CORE) + `src/styles/mobile-nav.css`:
+
+    - Below 720px the band is ONE row, the breadcrumb (content starts at
+      ~170px instead of 260–400). Its stage segment opens Go to at that
+      stage (a capture-phase listener, so shell.js's desktop menu does
+      not also open).
+    - The bottom bar is **Home · Go to · Search · Tools** (a `<nav>`,
+      not `role=toolbar`). Go to / Tools carry `aria-haspopup` and
+      `aria-expanded`.
+    - **Go to** lists the app-scope destinations, each stage with its
+      modules and sub-groups, then the shelves — from `navmodel.js`, so
+      a module added to `navigation.json` appears with no edit. The
+      current module is marked (read from the shell's own `.is-here`,
+      not decided twice) and scrolled into view with its stage heading.
+      Admin-only entries are hidden as the rail hides them.
+    - **Tools** BORROWS the real `.sh-bar > .toolbar` and `.sh-tools`
+      and puts them back on close (and on rotation), so every id,
+      listener and `.toolbar`-keyed rule survives — the reasoning of
+      `adoptPageTools()`.
+    - Everything keys off `html.mn-on`, set only while the bar is
+      attached, so a page that opts out (`data-no-actionbar`: the
+      extension panel, the screening room) keeps its band. Desktop is
+      untouched. Sheets: focus held (`modal-focus.js`), Escape and the
+      scrim close, focus returns to the opener, body scroll locked,
+      `@starting-style` rise × `--motion`, hidden in print.
+
+    Checked in Chromium with phone emulation, both themes: no overflow,
+    no page errors, Tab held inside, rotation to 844x390 closes the sheet
+    and returns the toolbar, a same-page `#hash` link closes the sheet.
+
+27. **One typeface, a full-width landing page, and the consent screen's
+    new home (10 Oct 2026, owner).**
+
+    - **Catamaran everywhere.** The owner asked for Puvi; Puvi is Zoho's
+      own typeface (a Zoho trademark) with no open licence and no public
+      files, so the owner chose an open font instead. Catamaran is SIL
+      OFL, served by Google Fonts (already in the CSP), and covers Tamil
+      and Latin in one family, 100–900 — the closest open match. It
+      replaces Plus Jakarta Sans in `--face-serif`, `--face-display` and
+      `--f-mono` and in every page's Google Fonts link. **Two faces stay
+      on purpose:** Courier Prime for the screenplay (`--f-script`: page
+      counts are arithmetic on a fixed-width grid) and JetBrains Mono for
+      code. Checked in Chromium with the real font loaded: every page
+      renders in Catamaran, the script in Courier Prime, no overflow at
+      1280 or 390.
+    - **start.html is full width.** `.st`, `.st-top-in` and `.st-foot`
+      lost their 92ch cap; running text keeps its own measure.
+    - **The consent screen moves to the preview host**
+      (`thefilmakerlocal.vercel.app`). Google Cloud configuration, not
+      code: `docs/BROWSER-HANDOFF.md` §0.5 has the steps, and the two
+      blockers that must be cleared first — the preview's Vercel
+      Deployment Protection (Google cannot sign in to Vercel) and a
+      Search Console verification of the preview domain.

@@ -139,6 +139,7 @@ src/
              tabs.js ← a page's sibling sections as tabs, on the twelve
                        pages it names; hash picks the tab, nothing is
                        removed from the DOM (the gate reads innerHTML)
+             mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
              gate-ui.js invite-request.js ← the gate's two faces: the
                        code box + admin console, and the request block
                        invite.html and the extension panel both draw
@@ -1290,6 +1291,7 @@ numbered as they are in the history.
 | 21 | Cinematic UI revamp (8 Oct 2026) — colours REVERTED 9 Oct | Component styling kept | The owner kept the revamp's components (glass nav band, outlined secondary buttons, card borders, the primary button's glow, teal-style chips) and reverted its obsidian/gold/teal colours and dark-only theme. The violet palette and both themes are back; the revamp's role names (`--bg-*`, `--accent-gold*`, `--accent-teal*`, `--border-*`, `--shadow-cta`, `--hero-glow`) survive as ALIASES of the violet tokens at the foot of `tokens.css`, so they follow the theme. Text on a brand fill is `--brand-on`, never `--bg-primary`. |
 | 22 | Pre-ship UI/UX pass (9 Oct 2026) | Done; re-baselined | A browser sweep of every page plus a per-page review; HISTORY item 24. `replaceChildren/append(null)` prints "null" (found three more); `solid var(--focus)` is invalid (`--focus` is a shorthand); `h('tag.cls#id')` drops the id; `.sym` stays a hidden 1em box until `html.sym-ready`; a non-module tab gets its own crumb. |
 | 23 | Motion and video review fixes (10 Oct 2026) | Done | HISTORY item 25. `motion-app.js` is OFF under webdriver, so verify sees no motion — check it with `navigator.webdriver` hidden. Veils need `@media print`; never translate `<main>` (fragment landings); count-up writes 0 only when it runs and never on prices; overlays need `@starting-style` to animate from `display:none`; a resting off-canvas position is not a distance (no `× --motion`). |
+| 24 | Phone navigation (10 Oct 2026) | Done | HISTORY item 26. `src/ui/mobile-nav.js` (CORE): below 720px the band is the breadcrumb only; bottom bar Home · Go to · Search · Tools; Go to is built from navmodel; Tools BORROWS the real `.toolbar` / `.sh-tools` and returns them. Keys off `html.mn-on` (only while the bar is attached), so desktop and `data-no-actionbar` pages are untouched. A menu inside a sideways-scrolling strip is clipped to nothing — that is what broke the stage menus on phones. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

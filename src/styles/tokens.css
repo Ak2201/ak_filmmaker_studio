@@ -306,8 +306,13 @@
      names the body sans. No Tamil webfont: Tanglish in this
      codebase is romanised Tamil in the Latin alphabet, so the Latin
      faces already cover it. */
-  --face-serif:   'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-  --face-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Catamaran (owner, 10 Oct 2026: Puvi was asked for; it is Zoho's own
+     typeface with no open licence, so an open one in its spirit). SIL
+     OFL, on Google Fonts, Tamil AND Latin in one family, 100-900. The
+     screenplay keeps Courier (the script stack below — page counts are arithmetic on
+     a fixed-width grid) and code keeps JetBrains Mono. */
+  --face-serif:   'Catamaran', ui-sans-serif, system-ui, sans-serif;
+  --face-display: 'Catamaran', ui-sans-serif, system-ui, sans-serif;
 
   --f-display: var(--sk-display, var(--face-serif));
   --f-body:    var(--sk-body, var(--face-serif));
@@ -331,7 +336,7 @@
      a budget column is the reason mono was chosen for those.
 
      Genuine code keeps a real monospace — see --f-code. */
-  --f-mono:    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --f-mono:    'Catamaran', ui-sans-serif, system-ui, sans-serif;
 
   /* CODE, and only code: the sync panel's snippets, a kbd cap, an
      equation chip. These are the places where character-for-character

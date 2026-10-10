@@ -58,11 +58,13 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
+import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, esc, delegate } from '../lib/dom.js';
+import { reveal, countUp, spotlight } from '../lib/motion.js';
 
 import featureData from '../data/steps.feature.json';
 import shortData   from '../data/steps.short.json';
@@ -659,7 +661,7 @@ function doorsMarkup() {
           <div class="right">3 BLUEPRINTS</div>
         </div>
 
-        <div class="doors">
+        <div class="doors" data-reveal-group>
           <div class="door">
             <div class="door-tag"><span class="door-num-circle">I</span> ${FEATURE_PARTS.length} PARTS · ${FEATURE_STEPS.length} STEPS</div>
             <h3>Feature Film<br><span class="light">Blueprint.</span></h3>
@@ -735,7 +737,7 @@ function startMarkup() {
           <div class="right">4 PATHS</div>
         </div>
 
-        <div class="start-grid">
+        <div class="start-grid" data-reveal-group>
           <a class="start-card f" href="${FEATURE_URL}#vol-1">
             <div class="question">PATH A · I want to make a feature</div>
             <h4>Feature Blueprint</h4>
@@ -778,7 +780,7 @@ function toolsMarkup() {
           <div class="right">10 TOOLS</div>
         </div>
 
-        <div class="tools-grid">
+        <div class="tools-grid" data-reveal-group>
           <button class="tool-card" data-action="export-all">
             <div class="tool-icon">↓</div><h5>Export everything</h5>
             <p>Every project, preference and comment in one backup file.</p>
@@ -1850,6 +1852,16 @@ function wireEvents() {
 // ============================================================
 // INIT
 // ============================================================
+/* Motion: once per element. The grid re-renders on every project change,
+   so each host is flagged and a re-render only decorates what is new. */
+function decorateMotion() {
+  document.querySelectorAll('.door, .start-card, .tool-card, .project-card').forEach((el) => {
+    if (el.dataset.moFx) return;
+    el.dataset.moFx = '1';
+    spotlight(el);
+  });
+}
+
 function init() {
   render();
   wireEvents();
@@ -1876,6 +1888,15 @@ function init() {
   renderActivity();
   openSampleFromURL();
   openSampleForTrial();
+
+  decorateMotion();
+  document.querySelectorAll('.hero-stat .num').forEach((n) => countUp(n));
+  reveal(document);
+  let fxRaf = 0;
+  new MutationObserver(() => {
+    if (fxRaf) return;
+    fxRaf = requestAnimationFrame(() => { fxRaf = 0; decorateMotion(); });
+  }).observe(document.getElementById('main') || document.body, { childList: true, subtree: true });
 
   // FIRST RUN. This used to open the new-project modal on a 300ms timer:
   // a stranger's first sight of the studio was a dialog demanding a title

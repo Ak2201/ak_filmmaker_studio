@@ -30,6 +30,8 @@
    [data-plan-action]; the host page passes `onBuy(planId, period,
    onStatus, code)`.
    ============================================================ */
+import { reveal } from '../lib/motion.js';
+import '../styles/motion.css';
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, priceFor, cap, planName, normalisePromo } from '../lib/billing.js';
 import PlanGate, { CAPABILITIES } from '../lib/plan-gate.js';
@@ -114,6 +116,8 @@ function limitList(limits, features) {
   return ul;
 }
 
+let staggered = false;
+
 /** `st` is billing_status() or null (signed out / unknown). */
 export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender };
@@ -122,6 +126,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
 
   const row = h('div.pl-row');
   const buyable = [];
+  let nextCard = null;
   for (const p of plans.filter((x) => x.active || x.id === current)) {
     const isCurrent = p.id === current;
     const price = priceFor(p, period);
@@ -146,6 +151,7 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
        — paying to have less is not a thing this page will sell. */
     const higher = !current || Billing.planRank(p.id) > Billing.planRank(current);
     if (p.id !== 'free' && price !== null && higher) {
+      if (!buyable.length) nextCard = card;
       buyable.push(p.id);
       const disabled = busyPlan !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
       const label = busyPlan === p.id ? 'OPENING…' : current && current !== 'free' ? 'UPGRADE' : 'BUY';
@@ -156,6 +162,15 @@ export function planCards(plans, st, { onBuy, rerender, compact = false } = {}) 
       card.append(h('p.pl-until', { text: 'Yours, for good. Nothing to renew.' }));
     }
     row.append(card);
+  }
+  /* The next step up wears the slow border trail (it is a class, so it
+     is there on every redraw), and the row staggers in ONCE: the settings
+     page redraws this block on every billing event. */
+  if (nextCard) nextCard.classList.add('mo-trail');
+  if (!staggered) {
+    staggered = true;
+    row.setAttribute('data-reveal-group', '');
+    setTimeout(() => { if (row.isConnected) reveal(row); }, 0);
   }
   wrap.append(row);
   loadUpgradeQuotes(st, buyable);

@@ -52,10 +52,12 @@ import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/dashboard.css';
+import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
+import { reveal } from '../lib/motion.js';
 
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -265,7 +267,7 @@ const stat = (value, label) =>
   h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
 
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.db-sec', { id });
+  const sec = h('section.db-sec', { id, 'data-reveal': '' });
   sec.append(h('p.bd-eyebrow', { text: eyebrow }), h('h2.bd-h2', { text: title }));
   if (deck) sec.append(h('p.bd-sub', { text: deck }));
   return sec;
@@ -526,7 +528,7 @@ function renderBackupTile() {
 }
 
 function renderDesk(snap, projects) {
-  const sec = h('section.db-desk', { id: 'desk', 'aria-label': 'Today\u2019s desk' });
+  const sec = h('section.db-desk', { id: 'desk', 'data-reveal-group': '', 'aria-label': 'Today\u2019s desk' });
   sec.append(renderContinue(snap, projects), renderProjectTile(snap), renderActions(snap),
     renderWeek(snap), renderPlanTile(projects), renderBackupTile());
   return sec;
@@ -927,6 +929,7 @@ function renderFirstRun(project) {
 /* ============================================================
    RENDER
    ============================================================ */
+let revealed = false;
 function render() {
   const project = Store.currentProject();
   const projects = Store.listProjects();
@@ -976,6 +979,9 @@ function render() {
 
   app.replaceChildren(main);
   mountShell();
+  /* Play once: render() runs on every store event, and a desk that
+     re-faded on each edit would be noise. */
+  if (!revealed) { revealed = true; reveal(main); }
   /* Chrome initialises at import time, when #app is still empty. Every
      page re-inits after its own render; this one has aria labels and
      glossary terms in its prose like the rest. */

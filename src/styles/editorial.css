@@ -1689,3 +1689,7 @@ body.reading-mode .how-to { padding-block: var(--s6); }
    on both blueprints. */
 .gloss-list > .gloss-item { margin: 0; }
 .gloss-list > .gloss-item dd { margin: 0; }
+
+/* Motion hosts (src/lib/motion.js spotlight): the glow is absolutely
+   positioned, so the card is its containing block and clips it. */
+.start-card, .tool-card { position: relative; overflow: hidden; }

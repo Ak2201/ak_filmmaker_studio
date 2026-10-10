@@ -19,8 +19,10 @@
 import { h, delegate } from '../lib/dom.js';
 import Billing, { fmtPaise, planName } from '../lib/billing.js';
 import '../styles/refunds.css';
+import '../styles/motion.css';
 
 let rerender = () => {};
+let faded = false;   // the panel fades in the first time it is drawn, never on a redraw
 const S = { state: 'idle', data: null, busy: false, error: '', draft: { category: '', message: '' } };
 const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '');
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
@@ -51,6 +53,7 @@ export function refundRequestPanel(opts = {}) {
   const d = S.data;
   if (!d || !d.enabled || !d.eligible || !d.payment) return null;
   const box = h('div.rf-block', { 'data-rf-panel': 'request' });
+  if (!faded) { faded = true; box.classList.add('mo-in'); }
   box.append(h('h3.gt-h3', { text: 'Request a refund' }));
   box.append(h('p.rf-state', { text: `Your ${planName(d.payment.plan_id)} plan, ${fmtPaise(d.payment.amount_paise)}${d.payment.paid_at ? ', paid ' + fmtDate(d.payment.paid_at) : ''}. Purchases are final, except a duplicate charge, a charge where you did not receive what you paid for, or where the law requires. This sends a request; the studio decides, and a refund ends the plan.` }));
   const l = d.latest;

@@ -732,6 +732,11 @@ export function wordCount(text) {
 const SLUG_START = /^(INT|EXT|EST|I\/E|INT\.?\/EXT)[.\s]/i;
 const PLAIN_CUE  = /^[A-Z0-9 .'’#()\-]+$/;
 const ENDS_IN_TO = /TO:$/;
+/* A line of Tamil the importer would take for a character cue: short, no
+   lowercase Latin, not ending like a sentence. Mirrors tamilCueOk() in
+   script-import.js, which this module cannot import (it imports us). */
+const TAMIL_CUE_SHAPE = (l) => /[஀-௿]/.test(l) && !/[a-z]/.test(l)
+  && l.split(/\s+/).filter(Boolean).length <= 3 && l.length <= 30 && !/[.!?।…]$/.test(l);
 
 function fountainBlock(type, text) {
   const t = text.trim();
@@ -762,14 +767,25 @@ function fountainBlock(type, text) {
          a shot word (CLOSE ON, ANGLE ON, POV, INSERT…). A shot that
          does not comes back as action, and keeps every word. */
       return [t.toUpperCase().replace(/\n+/g, ' ')];
-    default:
-      // Action that happens to be all caps would import as a character
-      // cue. `!` is the forcing character for action; it costs nothing
-      // on the lines that did not need it because we only add it there.
-      return t.split('\n').map((line) => {
+    default: {
+      /* Action the importer (src/lib/script-import.js) would misread is
+         FORCED with `!`: capitals (a cue), a short Tamil line (a Tamil
+         cue), or a first character that means something in Fountain —
+         # section, = synopsis or page break, @ cue, > transition,
+         . heading, ~ lyric, ! itself. The importer strips ONE leading
+         `!` from EVERY line of a forced block, so when any line needs it
+         every line gets one — a block half forced would leak the mark. */
+      const lines = t.split('\n');
+      const needs = (line) => {
         const l = line.trim();
-        return (l && l === l.toUpperCase() && /[A-Z]/.test(l)) ? '!' + line : line;
-      });
+        if (!l) return false;
+        if (l === l.toUpperCase() && /[A-Z]/.test(l)) return true;
+        if (TAMIL_CUE_SHAPE(l)) return true;
+        if (SLUG_START.test(l)) return true;
+        return /^(#|=|@|>|~|!)/.test(l) || (l[0] === '.' && l[1] !== '.');
+      };
+      return lines.some(needs) ? lines.map((line) => '!' + line) : lines;
+    }
   }
 }
 

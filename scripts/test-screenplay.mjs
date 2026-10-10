@@ -509,5 +509,29 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   mem.clear();
 }
 
+/* ---- importer / exporter round trips that used to leak (Lane A) ---- */
+{
+  const S = await import('../src/lib/script.js');
+  const X = await import('../src/lib/screenplay-export.js');
+  const e = (type, text, x) => S.blankElement({ type, text, ...(x || {}) });
+  const doc = [
+    e('scene', 'INT. HIGHWAY 66 DINER - DAY'),
+    e('action', 'Back to the car she runs.'),
+    e('action', 'THE DOOR OPENS\nA man enters.'),
+    e('action', '#1 on the list.'),
+    e('action', 'மழை பெய்கிறது'),
+    e('character', 'RAVI'), e('dialogue', 'Cut to the chase.'),
+    e('character', 'மணி'), e('dialogue', 'வணக்கம்.'),
+    e('character', 'MARY (WHISPERING)'), e('dialogue', 'Hello.'),
+    e('transition', 'CUT TO:')
+  ];
+  const shape = (els) => els.map((x) => [x.type, x.text]);
+  const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+  eq(shape(parseScript(f, 'x.fountain').elements), shape(doc), 'Fountain round trip: forcing marks neither leak nor drop anything');
+  eq(parseScript(f, 'x.fountain').scenes[0].location, 'HIGHWAY 66 DINER', 'the 66 stays in the location');
+  const t = parseScript(X.toText({ elements: doc.filter((x) => !/[஀-௿]/.test(x.text)) }, { title: 'T' }), 'x.txt').elements;
+  eq(shape(t).filter((r) => r[0] === 'character').map((r) => r[1]), ['RAVI', 'MARY (WHISPERING)'], 'text round trip keeps cues, extension included');
+}
+
 console.log(`${fail ? '✗' : '✓'} screenplay analysis: ${pass} passed, ${fail} failed (120 pages in ${ms}ms)`);
 process.exit(fail ? 1 : 0);

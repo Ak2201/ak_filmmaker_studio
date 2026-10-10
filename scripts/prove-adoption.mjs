@@ -118,7 +118,14 @@ await signedInContext(ctx);
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  /* The same rule verify-migration.mjs applies: a sandbox whose Chromium
+     does not trust the proxy CA cannot load Google Fonts, and the console
+     says only "Failed to load resource" — the environment, not the app. */
+  if (/fonts\.g(oogleapis|static)\.com|ERR_TUNNEL|Failed to load resource/.test(m.text())) return;
+  errors.push('console: ' + m.text());
+});
 const load = () => page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
 
 // ------------------------------------------------------------

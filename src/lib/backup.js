@@ -224,6 +224,7 @@ export function buildBackup() {
   });
 
   Object.keys(GLOBAL_KEYS).forEach((n) => { all.global[n] = parseStorage(GLOBAL_KEYS[n]); });
+  stripDeviceOnly(all.global);
 
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -326,13 +327,31 @@ function notABackup(all, shape) {
   return carries ? null : no;
 }
 
+/* `cloudSync` lives in the prefs blob but belongs to ONE device: a
+   backup carrying 'off' would silently stop another machine syncing
+   (the same shape of reason fms_drive_sync_v1 is kept out of
+   GLOBAL_KEYS). Stripped on the way out AND on the way in, so an old
+   file that carries it cannot switch anything either. */
+const DEVICE_ONLY_PREFS = ['cloudSync'];
+function stripDeviceOnly(global) {
+  const p = global && global.studio_prefs;
+  if (p && typeof p === 'object') DEVICE_ONLY_PREFS.forEach((f) => { delete p[f]; });
+}
+
 function applyGlobalsAndNotes(all) {
   // Globals and notes are studio-wide; last write wins, as before.
   if (all.global) {
+    stripDeviceOnly(all.global);
     Object.keys(GLOBAL_KEYS).forEach((n) => {
-      if (all.global[n] !== undefined) {
-        localStorage.setItem(GLOBAL_KEYS[n], JSON.stringify(all.global[n]));
+      if (all.global[n] === undefined) return;
+      let v = all.global[n];
+      if (n === 'studio_prefs' && v && typeof v === 'object') {
+        /* keep THIS device's own device-only prefs */
+        const mine = parseStorage(GLOBAL_KEYS[n]);
+        v = Object.assign({}, v);
+        DEVICE_ONLY_PREFS.forEach((f) => { if (mine && mine[f] !== undefined) v[f] = mine[f]; });
       }
+      localStorage.setItem(GLOBAL_KEYS[n], JSON.stringify(v));
     });
   }
   if (all.notes) {

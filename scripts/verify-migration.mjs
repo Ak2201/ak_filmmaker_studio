@@ -2348,9 +2348,16 @@ let keyUnion = { checked: false, skipped: true };
       const union = new Set();
       const perPage = {};
       for (const sp of STAGE_PAGES) {
-        await pg.goto(`${GUIDE_ORIGIN}/${sp}`, { waitUntil: 'networkidle' });
+        /* #guide: the guide's body is a lazy import that starts on that
+           hash (or when the section nears the screen, which a hidden
+           tab never does) — load it the way a reader reaching it would. */
+        await pg.goto(`${GUIDE_ORIGIN}/${sp}#guide`, { waitUntil: 'networkidle' });
         await pg.waitForSelector('section#guide', { state: 'attached', timeout: 4000 }).catch(() => {});
-        await pg.waitForTimeout(800);
+        await pg.waitForFunction(() => {
+          const n = document.querySelectorAll('section#guide [data-key]').length;
+          const w = window.__kuLast; window.__kuLast = n;
+          return n > 0 && n === w;
+        }, null, { timeout: 15000, polling: 500 }).catch(() => {});
         const keys = await pg.evaluate(() => [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key')));
         perPage[sp] = new Set(keys).size;
         keys.forEach((k) => union.add(k));

@@ -182,6 +182,16 @@ that one.
 > trial ends; nothing breaks. Verify: `billing_status()` signed in
 > carries `trial_minutes`.
 
+> **10 Oct 2026 — one more function re-run, and it is the last of them.**
+> `docs/sql/2026-10-10-billing_status.sql` (SHA-256 `ddd159ab…5827d`,
+> checked against the editor's own contents before Run) replaced
+> `billing_status()`: it carries a numeric `trial_minutes` now, and a
+> full-scope trial no longer overrides a plan somebody has PAID for — a
+> Pro buyer was held to Indie's features until the trial clock ran out.
+> "Success. No rows returned". Read back live: `trial_minutes: 30`, and
+> the function follows the console setting (30→30, 45→45, 7→7, proved in
+> a rolled-back transaction; the live value is still 30).
+>
 > **NOTHING IS OUTSTANDING AS OF 9 Oct 2026.** §26, §27, §28, §29, §30 and
 > §31 were all run that day through the dashboard SQL editor, each verified
 > afterwards over PostgREST rather than from the screen: `plans.name` is

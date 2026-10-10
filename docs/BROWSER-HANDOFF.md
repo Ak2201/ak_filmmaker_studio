@@ -28,7 +28,77 @@ Start phrase for the owner: *"read docs/BROWSER-HANDOFF.md and do it"*.
   `develop`, and promote per `docs/BRANCHING.md` (docs-only may go straight
   to `main`; then merge `main` into `develop`).
 
-## 0. OPEN NOW — after the 9–10 Oct UI/UX releases (`main` = `99ba52b`)
+## 0. DONE 10 Oct 2026 — one item failed, the rest passed
+
+Run from a real browser signed in as the owner, against the production
+host unless noted. **0.1 ran; of 0.2's five checks, four passed and one
+failed.** Each read-back is quoted below.
+
+### RESULT 0.1 — `billing_status()` re-run: DONE
+
+Loaded base64 → decoded in the page → SHA-256 of the editor's contents
+compared against `ddd159ab…5827d` **before** pressing Run: matched, 4,445
+bytes, em-dash intact, exactly three statements (`create or replace
+function`, `revoke`, `grant`). Supabase said **"Success. No rows
+returned"**.
+
+Read-backs:
+
+- From the signed-in app, `billing_status()` now carries
+  **`trial_minutes: 30`, type `number`**, 21 keys.
+- The deployed function READS THE SETTING rather than a constant, proved
+  inside a transaction that rolled back (the live value is still 30):
+
+  | setting | `billing_status().trial_minutes` | follows |
+  |---|---|---|
+  | 30 | 30 | true |
+  | 45 | 45 | true |
+  | 7 | 7 | true |
+
+- The client half is wired too: `src/pages/invite.js` reads
+  `st.trial_minutes` and falls back to 30 only when it is absent.
+- **NOT exercised:** the button's own text with a non-30 value. That
+  needs the console setting changed AND an account that has not used its
+  trial; both members are grandfathered, so the section does not draw.
+
+### RESULT 0.2 — the real-browser checks
+
+1. **Icons: PASS.** `index/breakdown/write` on production, signed in:
+   `sym-ready` is `true` on all three, 82 icon elements computing to
+   `Material Symbols Rounded`, zero rendering as words. Rail reads
+   Home / Dashboard / Library / Blueprints / Settings as glyphs.
+   *Font-blocked half: PASS, by contract rather than by a network block* —
+   the extension cannot block requests, so `sym-ready` was removed
+   instead, which is exactly the state a blocked font leaves (`chrome.js`
+   only adds it once the font loads). Every `.sym` went
+   `visibility: hidden`, clamped to ~15px, and the labels still read.
+2. **Service worker: PASS.** One active worker at the site scope;
+   `/settings.html` and `/dashboard.html` typed directly both opened with
+   their own titles and full content. No ERR_FAILED, no redirect bounce.
+3. **390px: ONE FAILURE of three.** Run at a true 390x844 emulated
+   viewport (Chrome clamps its own window width, so the first attempt
+   silently measured 1512 — the browser pane's device emulation is what
+   works).
+   - `feature.html` — **FAIL**. The fixed vertical STEPS tab
+     (`.step-rail-toggle`) occupies x 0–44; the language toggle's
+     **"English" button spans x 25–111**, so 19px of it sits behind the
+     tab, and `elementsFromPoint` confirms `step-rail-toggle` is topmost
+     over `steps-lang`. A tap there opens the step rail instead of
+     switching language. **Step titles are clear** — they start at x 99.
+   - `start.html` — PASS. Four tiers, all at left 16, four distinct tops:
+     one column, no horizontal overflow.
+   - `reports.html#dpr` — PASS. Breadcrumb reads "Studio › DPR".
+4. **Sign-in on the preview: PASS.** `thefilmakerlocal.vercel.app` →
+   Google → back signed in as `arun.aaron@zohocorp.com`, landed on the
+   hub. No `redirect_uri_mismatch`. This had never been exercised.
+5. **`prove:adoption`: PASS, 40/40** on a machine with internet (the
+   container's 39/40 was Google Fonts unreachable).
+
+### Still open after this pass
+
+The `feature.html` 390px overlap above, and everything in 0.3 below.
+
+## 0-OLD. The list as it stood before this pass (`main` = `99ba52b`)
 
 Everything else in this file is history or still-owed owner input; **this
 section is the current to-do list.** Do the items in order and record each

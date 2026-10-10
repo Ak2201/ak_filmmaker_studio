@@ -245,3 +245,22 @@ walk's `total > 100` floor was calibrated for 4x5 = 20 passes. All three
 now derive from what the app actually offers, per CLAUDE.md's own rule
 that a check counts what exists rather than naming a number.
 
+## feature.html at 390px: the STEPS tab covers the language toggle (10 Oct 2026)
+
+Found in the real-browser pass (`docs/BROWSER-HANDOFF.md` §0). At a true
+390x844 viewport the fixed vertical STEPS tab, `.step-rail-toggle`,
+occupies **x 0–44**. The language toggle's **"English" button spans
+x 25–111**, so 19px of it sits behind the tab whenever the toggle passes
+the tab's vertical band (the tab is pinned at viewport centre, y 392–452).
+`document.elementsFromPoint` at the tab's centre returns
+`step-rail-toggle` above `steps-lang`.
+
+The consequence is a mis-tap, not just a cosmetic overlap: a thumb landing
+on the left edge of "English" opens the step rail instead of switching
+language.
+
+**Step titles are NOT affected** — they start at x 99, clear of the tab.
+So the fix is only about the toggle: give `.steps-lang` a left inset at
+narrow widths (the tab's 44px plus a margin), or move the toggle out of
+the tab's band. Measured on a local open build, which is the same layout
+as production; the gate does not affect it.

@@ -812,7 +812,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Your plan, your AI key, storage and backups, and how the studio looks.'
+      text: 'Your plan and billing, your AI key, storage and backups, and how the studio looks.'
     })
   ]));
 
@@ -824,7 +824,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderKey(), renderPlan(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
+  body.append(...[renderPlan(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               accountSection(section), inviteSection(section, gateStatus),
               consolePointer(), renderAdmin()].filter(Boolean));
   main.append(body);

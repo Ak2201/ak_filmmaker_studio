@@ -347,11 +347,17 @@ export function brandReplace(text, brand, where = 'html') {
 export const BEAT_EXAMPLE_FILM = 'dragon';
 function studySlicePlugin() {
   const ID = 'virtual:beat-example-data', RID = '\0' + ID;
+  const COUNT = 'virtual:studies-count', RCOUNT = '\0' + COUNT;
   const file = resolve(__dirname, 'src/data/studies.json');
   return {
     name: 'fms-study-slice',
-    resolveId(id) { return id === ID ? RID : null; },
+    resolveId(id) { return id === ID ? RID : id === COUNT ? RCOUNT : null; },
     load(id) {
+      /* Just the NUMBER of case studies, for the hub's first-run tour line. */
+      if (id === RCOUNT) {
+        this.addWatchFile(file);
+        return 'export const filmCount = ' + (JSON.parse(readFileSync(file, 'utf8')).films || []).length + ';\n';
+      }
       if (id !== RID) return null;
       this.addWatchFile(file);
       const s = JSON.parse(readFileSync(file, 'utf8'));

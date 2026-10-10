@@ -96,7 +96,11 @@ export function firstWeekFacts({ title = sampleTitle } = {}) {
   const open = current();
   const facts = { sample: !!title && projects().some((p) => p.title === title) };
   let scenes = [], script = { elements: [] }, story = {}, sheets = [];
-  if (open) {
+  /* The sample ticks six of seven for free, which teaches nothing: the
+     list measures the user's OWN film, so while the sample is the open
+     project nothing but the sample item itself is read. */
+  facts.onSample = !!(open && title && open.title === title);
+  if (open && !facts.onSample) {
     try { scenes = listScenes(); } catch (e) { scenes = []; }
     try { script = loadScript() || script; } catch (e) { /* none */ }
     try { story = loadStory() || {}; } catch (e) { story = {}; }
@@ -291,6 +295,7 @@ function renderChecklist() {
   if (t.hideList) { if (listHost) { listHost.remove(); listHost = null; } return; }
   const facts = firstWeekFacts();
   const items = data.checklist.items;
+  const onSample = !!facts.onSample;
   const done = items.filter((it) => facts[it.id]).length;
 
   const sec = h('section#firstweek.section.tw-section', { 'aria-labelledby': 'twHeading', 'data-tour': 'checklist' });
@@ -310,8 +315,9 @@ function renderChecklist() {
       h('div.left', {}, [
         h('div.label', { text: data.checklist.label }),
         h('h2#twHeading', { text: data.checklist.title }),
-        h('p.deck', { text: data.checklist.deck })
-      ]),
+        h('p.deck', { text: data.checklist.deck }),
+        onSample ? h('p.deck.tw-hint', { text: 'You are in the sample film, so these stay unticked. Start your own film to tick them off.' }) : null
+      ].filter(Boolean)),
       h('div.right', { text: done + ' OF ' + items.length + ' DONE' })
     ]),
     h('div.tw-meter', { role: 'img', 'aria-label': done + ' of ' + items.length + ' first-week items done' }, [

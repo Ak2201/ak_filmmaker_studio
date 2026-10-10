@@ -14,6 +14,14 @@ import { h } from '../../lib/dom.js';
 import { BUILT_MODULE_COUNT } from '../../ui/launcher.js';
 import { sampleFigures } from '../../lib/sample-figures.js';
 import sample from '../../data/sample.dragon.json';
+import { filmCount } from 'virtual:studies-count';
+import shortData from '../../data/steps.short.json';
+import Store from '../../lib/store.js';
+import PlanGate from '../../lib/plan-gate.js';
+
+const SHORT_STEPS = shortData.steps.length;
+const WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const countWord = (n) => WORDS[n] || String(n);
 
 const SAMPLE_TITLE = sample.title;
 
@@ -39,7 +47,7 @@ function samplePages() { return sampleFigures(sample).pages; }
 
 const TOUR = [
   { href: 'library.html', label: 'Craft library',  note: 'Rules, directors, rates — no project needed' },
-  { href: 'library.html#case-studies', label: 'Case studies',   note: 'Four films, beat by beat' },
+  { href: 'library.html#case-studies', label: 'Case studies',   note: countWord(filmCount) + ' films, beat by beat' },
   { href: 'library.html#dissection', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
 ];
 
@@ -82,7 +90,8 @@ function renderFirstRun() {
      being asked to name a film. Every action that was here is still
      here — only the order and the emphasis moved. */
   panel.append(h('div.eps-actions', {}, [
-    h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' }),
+    h('button.btn.primary', { 'data-fr-action': 'start-short', text: 'START YOUR SHORT (STEP 1 OF ' + SHORT_STEPS + ')' }),
+    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' }),
     h('button.btn', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' })
   ]));
   panel.append(h('div.eps-fine', {
@@ -93,6 +102,50 @@ function renderFirstRun() {
   }));
   return panel;
 }
+
+/* START YOUR SHORT: one click makes a short-film project (the hub's own
+   createProject path, which makes it the open one) and lands on step 1
+   of the short blueprint. Wired here by its own attribute so the hub's
+   action table needs no entry. A plan without new_projects keeps the
+   old route: the project dialog says why. */
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-fr-action="start-short"]');
+  if (!b) return;
+  e.preventDefault();
+  if (!PlanGate.allowed('new_projects')) { const n = document.querySelector('[data-action="new-project"]'); if (n) n.click(); return; }
+  Store.createProject({ title: 'My short film', format: 'short', adopt: true });
+  location.href = 'short.html#step-01';
+});
+
+/* The welcome card after a purchase (?welcome=plan, from invite.html or
+   settings). The parameter is consumed; nothing is stored, so it shows
+   once per purchase by construction. */
+export function welcomeCard() {
+  let params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return null; }
+  if (params.get('welcome') !== 'plan') return null;
+  params.delete('welcome');
+  const q = params.toString();
+  try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
+  const cur = PlanGate.currentPlan();
+  const name = cur && cur.planName && cur.plan !== 'free' ? cur.planName : '';
+  const card = h('section.section.tw-section#welcomePlan', { role: 'status', 'aria-label': 'Welcome' }, [
+    h('div.section-inner', {}, [
+      h('h2', { text: name ? 'You’re on ' + name + '. Welcome in.' : 'Welcome in.' }),
+      h('p.deck', { text: 'Your plan is active — one payment, yours for good. Your invoice is under Plan invoices in Settings.' }),
+      h('div.eps-actions', {}, [
+        h('button.btn.primary', { 'data-action': 'new-project', text: 'START YOUR FILM' }),
+        h('a.btn', { href: 'settings.html#plan', text: 'SEE WHAT UNLOCKED' }),
+        h('button.btn', { type: 'button', 'data-fr-action': 'dismiss-welcome', text: 'DISMISS' })
+      ])
+    ])
+  ]);
+  return card;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-fr-action="dismiss-welcome"]');
+  if (b) { const c = document.getElementById('welcomePlan'); if (c) c.remove(); }
+});
 
 /* The free tier's hub: the sample, and the way up. */
 function renderSampleOnly() {

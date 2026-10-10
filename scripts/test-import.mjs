@@ -158,13 +158,13 @@ const EXPECTED = {
      no blank line between, is one BLOCK with it and reads as action —
      that is Fountain's own rule, so the highway scene swallows the
      RAVI HOUSE line as its synopsis and there are four scenes, not
-     five. "YARD - LATER" keeps LATER in the place and guesses DAY,
-     because LATER names no time of day. */
+     five. "YARD - LATER" reads LATER as the time (CONTINUOUS — the scene
+     runs on from the one before), so the place is just YARD. */
   'fountain': [
     ['1', 'INT', 'DAY', 'TEA STALL', 1, 'Steam off a kettle. RAVI, 30s, counts coins.'],
     ['2', 'EXT', 'NIGHT', 'HIGHWAY', 1, 'INT. RAVI HOUSE - CONTINUOUS'],
     ['12', 'INT', 'DAY', 'KITCHEN', 1, 'A pan.'],
-    ['4', 'EXT', 'DAY', 'YARD - LATER', 1, '']
+    ['4', 'EXT', 'CONTINUOUS', 'YARD', 1, '']
   ],
   /* The text route reads positions line by line, so the back-to-back
      heading IS a heading: an empty scene of one eighth. */
@@ -173,7 +173,7 @@ const EXPECTED = {
     ['2', 'EXT', 'NIGHT', 'HIGHWAY', 1, ''],
     ['3', 'INT', 'CONTINUOUS', 'RAVI HOUSE', 1, 'He drops the coins.'],
     ['12', 'INT', 'DAY', 'KITCHEN', 1, 'A pan.'],
-    ['5', 'EXT', 'DAY', 'YARD - LATER', 1, '']
+    ['5', 'EXT', 'CONTINUOUS', 'YARD', 1, '']
   ],
   /* .fdx: the file's Number= attributes win (1, 3, 12); the heading
      paragraph with no text was never a heading, so its Number="2" is
@@ -183,7 +183,7 @@ const EXPECTED = {
     ['3', 'EXT', 'NIGHT', 'HIGHWAY', 1, ''],
     ['4', 'INT', 'CONTINUOUS', 'RAVI HOUSE', 1, 'He drops the coins.'],
     ['12', 'INT', 'DAY', 'KITCHEN', 1, 'A pan.'],
-    ['5', 'EXT', 'DAY', 'YARD - LATER', 1, '']
+    ['5', 'EXT', 'CONTINUOUS', 'YARD', 1, '']
   ]
 };
 
@@ -257,6 +257,111 @@ eq(slices.map((s) => s.index), [0, 1], 'index is the heading position among the 
    editor's own sync would: two scenes, not three. */
 const rows = I.scenesFrom(raw).rows.map(pin);
 eq(rows.map((r) => r[3]), ['A', 'B'], 'scenesFrom() on a raw array: two scenes, the blank heading is not one');
+
+/* ---- 4. parser bug fixes (10 Oct 2026) ------------------------------ */
+function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
+{
+  const els = (raw, file) => I.parseScript(raw, file).elements;
+  const ty = (raw, file) => els(raw, file).map((e) => e.type).join(' ');
+  const tx = (raw, file) => els(raw, file).map((e) => e.text);
+  const pad = (n, s) => ' '.repeat(n) + s;
+  const S = await import('../src/lib/script.js');
+  const E = (type, text, x) => S.blankElement({ type, text, ...(x || {}) });
+  const shape = (arr) => arr.map((e) => [e.type, e.text]);
+
+  // 1. page 1 is only dropped when it is a title page
+  const p1 = ['INT. A - DAY', '', 'Rain falls.', '', pad(20, 'RAVI'), pad(10, 'Hello.'), '\f', 'INT. B - DAY', '', 'More.'].join('\n');
+  eq(ty(p1, 'x.txt'), 'scene action character dialogue scene action', '1: a first page with a heading is script, not a title page');
+  const tp1 = [pad(28, 'THE KETTLE'), '', pad(28, 'Written by'), '', pad(28, 'A. Writer'), '\f', 'INT. B - DAY', '', 'More.'].join('\n');
+  eq(tx(tp1, 'x.txt'), ['INT. B - DAY', 'More.'], '1: a real centred title page is still dropped');
+
+  // 2. transitions must be capitals
+  eq(ty('INT. A - DAY\n\nBack to the car she runs.\n\nCut to the chase scene begins.\n\nCUT TO BLACK.\n\nCUT TO:\n\n> FADE OUT.\n\nFADE OUT.', 'x.fountain'),
+    'scene action action transition transition transition transition', '2: only capitals (or forced >) are transitions (fountain)');
+  eq(ty('INT. A - DAY\n\nBack to the car she runs.\n\nCut to the chase.\n\n' + pad(40, 'CUT TO:'), 'x.txt'),
+    'scene action action transition', '2: and in screenplay text');
+
+  // 3. Tamil action is not a cue
+  const tamilLine = 'மழை பெய்து கொண்டிருந்தது, தெரு முழுவதும் தண்ணீர் நிறைந்து இருந்தது.';
+  eq(ty('INT. A - DAY\n\n' + tamilLine + '\nகாற்று வீசுகிறது.', 'x.fountain'), 'scene action', '3: a long Tamil action block stays action');
+  eq(ty('INT. A - DAY\n\n@மணி\nவணக்கம்.', 'x.fountain'), 'scene character dialogue', '3: a forced Tamil cue is still a cue');
+  eq(ty('INT. A - DAY\n\nமணி\nவணக்கம் எல்லோருக்கும்.', 'x.fountain'), 'scene character dialogue', '3: a short Tamil cue with dialogue under it is a cue');
+  eq(ty('INT. A - DAY\n\n' + pad(20, tamilLine) + '\n', 'x.txt').includes('character'), false, '3: long Tamil line at cue indent is not a cue (text)');
+  eq(ty('INT. A - DAY\n\nமழை பெய்கிறது.\nஇருள்.', 'x.fountain'), 'scene action', '3: a short Tamil sentence ending in a full stop is action');
+  {
+    const doc = [E('scene', 'INT. A - DAY'), E('action', 'மழை பெய்கிறது\nCut to the chase.'), E('action', 'மணி')];
+    const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+    eq(shape(parseScript2(f)), shape(doc), '3: the exporter forces short Tamil action with !');
+  }
+
+  // 4. FADE IN: is not a title page
+  eq(tx('FADE IN:\n\nINT. A - DAY\n\nHello.', 'x.fountain'), ['FADE IN:', 'INT. A - DAY', 'Hello.'], '4: FADE IN: opening a fountain file is a transition');
+  eq(I.parseScript('Title: X\nauthor: Y\n\nINT. A - DAY', 'x.fountain').meta.author, 'Y', '4: a real title page is still read');
+
+  // 5. # @ = at the start of action
+  eq(ty('INT. A - DAY\n\n#1 on the list is a bad idea.\n\n# Act One\n\n===\n\n@home is where the heart is, he says.', 'x.fountain'),
+    'scene action action', '5: #1 is action, "# Act" is a section, === a page break, @home… is action');
+  eq(tx('INT. A - DAY\n\n#1 on the list is a bad idea.\n\n===\n\n@home is where the heart is, he says.', 'x.fountain').slice(1),
+    ['#1 on the list is a bad idea.', '@home is where the heart is, he says.'], '5: the words survive');
+  {
+    const doc = [E('scene', 'INT. A - DAY'), E('action', '#1 on the list'), E('action', '@home alone'), E('action', '=== not a page break'), E('action', '= quiet')];
+    const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+    eq(shape(parseScript2(f)), shape(doc), '5: the exporter escapes # @ = at the start of action');
+  }
+
+  // 6. ! leaks
+  {
+    const doc = [E('scene', 'INT. A - DAY'), E('action', 'THE DOOR OPENS\nA man enters.\nBANG')];
+    const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+    eq(shape(parseScript2(f)), shape(doc), '6: no ! leaks on any line of a forced action block');
+    eq(tx('INT. A - DAY\n\n!ONE\n!TWO\nthree', 'x.fountain').slice(1), ['ONE\nTWO\nthree'], '6: every leading ! in a forced block is stripped');
+  }
+
+  // 7 / 8 / 9 / 15. slug lines
+  eq(pin(I.scenesFrom([E('scene', 'INT. KITCHEN - DAY #12#')]).rows[0]).slice(0, 4), ['12', 'INT', 'DAY', 'KITCHEN'], '7: Fountain #12# scene number');
+  eq(I.parseSlug('EXT. FIELD - NIGHT #12A#').number, '12A', '7: #12A#');
+  eq(I.parseSlug('EXT. HIGHWAY 66 - DAY').location, 'HIGHWAY 66', '8: a number in the place stays in it');
+  eq(I.parseSlug('INT. APARTMENT 4B - NIGHT').location, 'APARTMENT 4B', '8: 4B stays');
+  eq(I.parseSlug('INT. APARTMENT 4').number, '', '8: a trailing number with no time is not a scene number');
+  eq(I.parseSlug('INT. KITCHEN - DAY 12').number, '12', '8: a number after the time of day is a scene number');
+  eq(I.parseSlug('12 INT. KITCHEN - DAY 12').number + '|' + I.parseSlug('12 INT. KITCHEN - DAY 12').location, '12|KITCHEN', '8: both ends');
+  eq(I.parseSlug('12 INT. HIGHWAY 66 - DAY').location, 'HIGHWAY 66', '8: lead number, place keeps its 66');
+  eq(I.parseSlug('EST. SKYLINE - DAY').intExt, 'EXT', '9: EST is exterior');
+  eq(I.parseSlug('INT. CAR - LATER').dayNight + '|' + I.parseSlug('INT. CAR - LATER').location, 'CONTINUOUS|CAR', '15: LATER is a time, not part of the place');
+  eq(['MOMENTS LATER', 'SAME', 'EVENING', 'DAWN', 'DUSK', 'NOON', 'MIDNIGHT', 'MORNING'].map((w) => I.parseSlug('INT. X - ' + w).location), Array(8).fill('X'), '15: time words leave the location alone');
+  eq(I.parseSlug('உள். வீடு - இரவு'), { number: '', intExt: 'INT', dayNight: 'NIGHT', location: 'வீடு', guessedTime: false }, '15: Tamil heading');
+  eq(I.parseSlug('வெளி. தெரு - பகல்').intExt + I.parseSlug('வெளி. தெரு - பகல்').dayNight, 'EXTDAY', '15: வெளி / பகல்');
+  eq(ty('உள். வீடு - இரவு\n\nமணி\nவணக்கம்.', 'x.fountain'), 'scene character dialogue', '15: a Tamil heading is recognised unforced');
+
+  // 11. dual dialogue in text
+  {
+    const dual = ['INT. A - DAY', '', pad(20, 'JOHN') + pad(20, 'MARY'), pad(10, 'Hello there.') + pad(12, 'Hi back to you.'), pad(10, 'Again.'), '', 'The kettle screams.'].join('\n');
+    eq(els(dual, 'x.txt').map((e) => [e.type, e.text, !!e.dual]), [['scene', 'INT. A - DAY', false], ['character', 'JOHN', false], ['dialogue', 'Hello there. Again.', false],
+      ['character', 'MARY', true], ['dialogue', 'Hi back to you.', false], ['action', 'The kettle screams.', false]], '11: two cues on one line are a dual pair');
+  }
+
+  // 12. revision headers and CONTINUED furniture
+  {
+    const t = ['INT. A - DAY', '', pad(30, 'Blue Rev. 03/04/26'), 'Rain.', '', pad(30, 'Pink Revised 03/05/26'), '', pad(40, 'CONTINUED: (2)'), pad(40, '(CONTINUED)'), pad(40, 'CONTINUED:'), '', pad(20, 'RAVI'), pad(10, 'Hi.')].join('\n');
+    eq(ty(t, 'x.txt'), 'scene action character dialogue', '12: revision headers and every CONTINUED form are dropped, not cues');
+  }
+
+  // 13. a speech split by a page break
+  {
+    const t = ['INT. A - DAY', '', pad(20, 'JOHN'), pad(10, 'I have been thinking'), pad(20, '(MORE)'), '\f', pad(50, '2.'), '', pad(20, "JOHN (CONT'D)"), pad(10, 'about it all night.'), '', pad(20, "MARY (CONT'D)"), pad(10, 'x')].join('\n');
+    eq(shape(els(t, 'x.txt')), [['scene', 'INT. A - DAY'], ['character', 'JOHN'], ['dialogue', 'I have been thinking about it all night.'], ['character', 'MARY'], ['dialogue', 'x']],
+      "13: JOHN (CONT'D) after a page break rejoins JOHN's speech");
+    eq(tx(pad(10, "He said (CONT'D)"), 'x.txt'), ["He said (CONT'D)"], "13: (CONT'D) is stripped from cues only");
+  }
+
+  // 14. no blank lines
+  eq(shape(els('INT. KITCHEN - DAY\nRain falls.\nRAVI\nI am here.\nMEENA (whispering)\nMe too.\nHe sits.', 'x.fountain')),
+    [['scene', 'INT. KITCHEN - DAY'], ['action', 'Rain falls.'], ['character', 'RAVI'], ['dialogue', 'I am here.'],
+      ['character', 'MEENA (whispering)'], ['dialogue', 'Me too.\nHe sits.']], '14: cues are found inside a block (dialogue runs to the next cue)');
+
+  // 15. lowercase extension
+  eq(ty('INT. A - DAY\n\nMARY (whispering)\nHello.', 'x.fountain'), 'scene character dialogue', '15: MARY (whispering) is a cue');
+}
 
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

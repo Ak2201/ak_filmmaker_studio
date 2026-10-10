@@ -132,7 +132,44 @@ console.log('\n9. a shot, through the PDF reader and PARSER 2');
   ok('a shot opens no scene', plan.scenes.length === 1, 'got ' + plan.scenes.length);
 }
 
-await run('6. encrypted', buildPDF(ops, { encrypt: true }), true);
+console.log('\n10. page 1 is script, vertical gaps are paragraphs, two columns are a dual pair');
+{
+  await import('./node-seams.mjs');
+  const { parseScript } = await import('../src/lib/script-import.js');
+  const read = async (streams) => {
+    const b = buildPDF(streams, { compress: true });
+    const r = await extractLayoutText(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+    return { r, plan: parseScript(new String(r.text), 'script.pdf') };
+  };
+  // A two-page script with NO title page: page 1 must survive.
+  const a = await read([
+    screenplayOps([['action', 'INT. ONE - DAY'], ['blank'], ['action', 'First paragraph.'], ['blank'], ['action', 'Second paragraph.']]),
+    screenplayOps([['action', 'INT. TWO - DAY']])
+  ]);
+  ok('page 1 of a script is not thrown away as a title page', a.plan.scenes.length === 2, 'got ' + a.plan.scenes.length);
+  ok('a blank vertical gap separates two action paragraphs',
+    a.plan.elements.map((e) => e.text).join('|') === 'INT. ONE - DAY|First paragraph.|Second paragraph.|INT. TWO - DAY',
+    JSON.stringify(a.plan.elements.map((e) => e.text)));
+  // A genuine title page is still dropped.
+  const t = await read([
+    '/F1 12 Tf\nBT\n1 0 0 1 250 500 Tm (THE KETTLE) Tj\n1 0 0 1 250 450 Tm (Written by) Tj\n1 0 0 1 250 436 Tm (A. Writer) Tj\nET\n',
+    screenplayOps([['action', 'INT. ONE - DAY'], ['blank'], ['action', 'Rain.']])
+  ]);
+  ok('a real title page is still dropped', t.plan.elements.map((e) => e.text).join('|') === 'INT. ONE - DAY|Rain.', JSON.stringify(t.plan.elements.map((e) => e.text)));
+  // Dual dialogue: both columns share baselines.
+  const row = (y, parts) => parts.map(([x, s]) => `1 0 0 1 ${x} ${y} Tm (${s}) Tj\n`).join('');
+  const d = await read(['BT\n/F1 12 Tf\n'
+    + row(720, [[108, 'INT. ONE - DAY']])
+    + row(691, [[222, 'JOHN'], [440, 'MARY']])
+    + row(677, [[180, 'Hello there.'], [400, 'Hi back.']])
+    + row(648, [[108, 'He leaves.']]) + 'ET\n']);
+  ok('two cue columns become a dual pair',
+    JSON.stringify(d.plan.elements.map((e) => [e.type, e.text, !!e.dual]))
+      === JSON.stringify([['scene', 'INT. ONE - DAY', false], ['character', 'JOHN', false], ['dialogue', 'Hello there.', false], ['character', 'MARY', true], ['dialogue', 'Hi back.', false], ['action', 'He leaves.', false]]),
+    JSON.stringify(d.plan.elements.map((e) => [e.type, e.text, !!e.dual])));
+}
+
+await run('6. encrypted',buildPDF(ops, { encrypt: true }), true);
 await run('7. a scan — no text at all', buildPDF(ops, { noText: true }), true);
 await run('8. not a PDF', Buffer.from('this is a text file, not a pdf'), true);
 

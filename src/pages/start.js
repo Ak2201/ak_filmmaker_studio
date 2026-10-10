@@ -45,6 +45,8 @@
    ============================================================ */
 import '../styles/base.css';
 import '../styles/start.css';
+import '../styles/motion.css';
+import { reveal, splitWords, countUp, spotlight, magnetic, tilt } from '../lib/motion.js';
 import { addLead, bumpOnce, bumpEvent, optOut, priceNotice } from '../lib/funnel.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
@@ -488,37 +490,20 @@ try { priceNotice().then(renderPriceRise, () => {}); } catch (e) { /* never brea
    and would be observed as permanently not-intersecting, which also
    means the veil would still be on them if they were unhidden
    later. */
-(function reveal() {
-  if (!('IntersectionObserver' in window)) return;
-  try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { return; }
-  const items = Array.from(document.querySelectorAll('.st-sec')).filter((n) => !n.hidden);
-  if (!items.length) return;
-  const show = (n) => { n.classList.remove('st-veil'); };
-  const io = new IntersectionObserver((entries) => {
-    for (const en of entries) if (en.isIntersecting) { show(en.target); io.unobserve(en.target); }
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.02 });
-  for (const n of items) { n.classList.add('st-veil'); io.observe(n); }
-
-  /* THE BACKSTOP, AND THE THIRD ATTEMPT AT IT.
-     Attempt one revealed everything after three seconds, which ends
-     the effect a moment after the first scroll. Attempt two asked
-     whether the first section was still veiled, which is yes on a
-     healthy page at 1280 because the hero fills the viewport.
-     Attempt three asked whether the observer's callback had ever run
-     — and that is the one that reads as clever and is worthless,
-     because IntersectionObserver invokes its callback once per
-     observed element the moment it is observed, intersecting or not.
-     The flag was therefore true within a frame on every page that has
-     ever loaded, the early return always taken, and the backstop
-     dead code wearing a long comment about why it was correct.
-
-     An observer being ALIVE at t=0 says nothing about whether it will
-     ever reveal anything. So the question is dropped: after eight
-     seconds, anything still veiled is shown, full stop. A reader who
-     has scrolled has already revealed what they passed and loses
-     nothing; a reader who has not is looking at the hero, and the
-     sections below them quietly stop being invisible. There is no
-     state to get wrong, and the failure mode this exists to prevent —
-     a shop window whose text never appears — cannot survive it. */
-  setTimeout(() => { io.disconnect(); items.forEach(show); }, 8000);
+(function motionInit() {
+  /* The effects live in lib/motion.js (import-free, in the startlib
+     chunk). Reveal keeps the semantics described above: the hiding class
+     is added by JS only, hidden sections are skipped, the 8s backstop
+     shows anything still veiled, and nothing runs under reduced motion. */
+  const q = (s) => document.querySelector(s);
+  try {
+    reveal(document);
+    splitWords(q('h1.st-title'));
+    document.querySelectorAll('.st-eyebrow').forEach((n) => n.classList.add('mo-shimmer'));
+    magnetic(q('#ctaOpen'));
+    tilt(q('.st-shot-hero img'));
+    spotlight(q('.st-hero'));
+    const pick = q('.st-pick'); if (pick) pick.classList.add('mo-trail');
+    document.querySelectorAll('b.st-price').forEach((n) => countUp(n));
+  } catch (e) { /* motion is decoration; never let it break the page */ }
 })();

@@ -37,11 +37,14 @@
    comes back, and the user meets a second consent screen later for a
    permission they believe they already gave.
 
-   WHERE IT RETURNS TO: index.html, never back here. The flow is
+   WHERE IT RETURNS TO: the hub, never back here. The flow is
    implicit — the tokens come home in the URL fragment and only
    auth-js's detectSessionInUrl can store them. start.html does not load
    auth-js and must not, so a redirect back to start.html would strand
    the tokens in the address bar and sign the user in nowhere.
+
+   The hub is addressed as `/`, NOT as `/index.html`, and that
+   distinction shipped broken: see defaultRedirect() below.
    ============================================================ */
 import { DRIVE_SCOPE } from './auth-scope.js';
 
@@ -58,10 +61,41 @@ try { KEY_ = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim(); } catc
  *  gets. */
 export const configured = () => !!(URL_ && KEY_);
 
-/** Where Google sends them back. index.html boots cloud.js, which reads
- *  the fragment, stores the session and runs the gate. */
+/** Where Google sends them back: the hub, addressed as the DIRECTORY
+ *  rather than as `index.html`. It boots cloud.js, which reads the
+ *  fragment, stores the session and runs the gate.
+ *
+ *  NOT `index.html`, AND THAT IS THE WHOLE POINT — this returned
+ *  people to the landing page signed out, on the live site only.
+ *  `vercel.json` sets `cleanUrls`, so of the four spellings of this
+ *  page the production host serves exactly one without a redirect:
+ *
+ *      /index.html  308 → /          /            200
+ *      /start.html  308 → /start     /start       200
+ *
+ *  So `redirect_to=…/index.html` made the ONE navigation that carries
+ *  a session the ONE navigation this host answers with a 308 — a
+ *  redirect that has to survive a cross-origin bounce from Supabase,
+ *  carry a fragment Vercel never sees, and pass a service worker that
+ *  this repo has already lost a day to (CLAUDE.md: "a service worker
+ *  must never answer a navigation with a redirected response" →
+ *  ERR_FAILED, `.html` form only, browser only). None of that is worth
+ *  risking to name a file.
+ *
+ *  cloud.js never had the bug: `authRedirectTarget()` is
+ *  `location.origin + location.pathname`, which on a cleanUrls host is
+ *  always already clean. This file hand-built its target instead and
+ *  drifted — the same shape of mistake auth-scope.js exists to prevent,
+ *  one field along.
+ *
+ *  `new URL('.', href)` is the directory of the current page, which is
+ *  the origin root from `/start` and from `/start.html` alike, and
+ *  serves index.html under vite dev, vite preview and Vercel without a
+ *  redirect in any of them. It is also what Supabase falls back to when
+ *  a redirect_to is not allow-listed, so the allow-list can no longer
+ *  change the destination. */
 export function defaultRedirect() {
-  try { return new URL('index.html', location.href).href; } catch (e) { return '/index.html'; }
+  try { return new URL('.', location.href).href; } catch (e) { return '/'; }
 }
 
 /** The authorize URL, built rather than called — exported on its own so

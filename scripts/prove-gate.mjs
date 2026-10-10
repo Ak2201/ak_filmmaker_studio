@@ -649,10 +649,19 @@ try {
       const u = req ? new URL(req.url()) : null;
       ok(!!u && u.origin + u.pathname === SB + '/auth/v1/authorize', 'the button navigates to <project>/auth/v1/authorize: ' + (u ? u.origin + u.pathname : 'no request was made'));
       ok(!!u && u.searchParams.get('provider') === 'google', 'carrying provider=google');
-      /* index.html, never back here: the flow is implicit, the tokens
-         come home in the fragment, and only auth-js's
-         detectSessionInUrl can store them. */
-      ok(!!u && u.searchParams.get('redirect_to') === BASE + 'index.html', 'redirect_to is index.html, where auth-js can store the tokens: ' + (u ? u.searchParams.get('redirect_to') : '—'));
+      /* THE HUB AS A DIRECTORY, AND NEVER WITH `.html` ON IT.
+         Never back here: the flow is implicit, the tokens come home
+         in the fragment, and only auth-js's detectSessionInUrl can
+         store them. But WHICH spelling of the hub is the half that
+         shipped broken: `redirect_to=.../index.html` is a 308 on a
+         cleanUrls host, so the one navigation that carries a session
+         was the one navigation production answered with a redirect,
+         and the live site returned people to the landing page signed
+         out. Anchored on the ABSENCE of `.html` as well as on the
+         value, so a target that merely changes path still fails. */
+      const rt = u ? u.searchParams.get('redirect_to') : null;
+      ok(rt === BASE, 'redirect_to is the hub as a directory, where auth-js can store the tokens: ' + (rt || '-'));
+      ok(!!rt && !/\.html(\?|#|$)/.test(rt), 'and carries no .html, which a cleanUrls host serves with a 308: ' + (rt || '-'));
       /* One consent covers Drive: ask for less here and drive-sync.js
          finds no provider_token later and the user meets a second
          consent screen for a permission they believe they gave. */

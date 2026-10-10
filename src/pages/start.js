@@ -50,6 +50,7 @@ import { reveal, splitWords, countUp, spotlight, magnetic, tilt } from '../lib/m
 import { addLead, bumpOnce, bumpEvent, optOut, priceNotice } from '../lib/funnel.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
+import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
 
 /* navigation.json is FETCHED, not imported. vite.config.js folds every
    `import` of src/data/*.json into one shared `data` chunk — 450KB that
@@ -154,6 +155,30 @@ function says(text, bad) {
   authMsg.textContent = text;
   authMsg.classList.toggle('st-bad', !!bad);
 }
+
+/* WHY THEY ARE BACK HERE. A Google return that does not produce a
+   session lands on the hub, where the site gate reads "signed out" and
+   replaces the document with this page — so the sign-in's own error
+   message is destroyed before anyone can read it, and the whole
+   failure presents as "I pressed Continue with Google and ended up
+   where I started". That was the owner's bug report, word for word.
+
+   cloud.js leaves the reason in sessionStorage on its way out
+   (AUTH_ERROR_KEY); this reads it once and says it. Read-and-clear, so
+   a later ordinary visit to this page is not haunted by it.
+
+   Deliberately NOT an import of cloud.js — see auth-scope.js. The key
+   is shared; the code is not. */
+(function showWhyTheyCameBack() {
+  if (!authMsg) return;
+  let info = null;
+  try {
+    const raw = sessionStorage.getItem(AUTH_ERROR_KEY);
+    if (raw) { sessionStorage.removeItem(AUTH_ERROR_KEY); info = JSON.parse(raw); }
+  } catch (e) { return; }           // private mode, or something unparseable
+  if (!info || !info.message) return;
+  says('Sign-in did not complete. ' + info.message, true);
+})();
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('[data-start-auth="google"]');
   if (!a || e.defaultPrevented) return;

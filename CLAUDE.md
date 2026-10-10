@@ -1071,6 +1071,54 @@ These were real bugs. Re-introducing one is easy, so they are named here.
   production and nowhere else. `plan-gate.js`'s `modulesHere()` already
   strips the extension before comparing; do the same.
 
+  **IT FIRED AGAIN ON 10 OCT 2026, AND THIS TIME IT SHIPPED**, which
+  is why the entry is kept rather than trimmed: the trap is not only
+  about READING `location.pathname`, it is about WRITING any URL for
+  this host. `start-auth.js`'s `defaultRedirect()` returned
+  `new URL('index.html', location.href).href`, so Google's return trip
+  was aimed at `/index.html` — the one spelling production answers with
+  a **308**:
+
+  ```
+  /index.html  308 → /        /       200
+  /start.html  308 → /start   /start  200
+  ```
+
+  So the single navigation in the whole app that carries a session was
+  also the single navigation that had to survive a redirect, and
+  `cloud.js` never had the bug because `authRedirectTarget()` is
+  `location.origin + location.pathname`, which is already clean. The
+  hand-built copy drifted — the same failure `auth-scope.js` exists to
+  prevent, one field along. **`new URL('.', location.href)`** is the
+  directory, which serves index.html under dev, preview and Vercel
+  alike with no redirect, and is also what Supabase falls back to when
+  a `redirect_to` is not allow-listed, so the allow-list can no longer
+  change the destination. `prove:gate` now asserts the value AND the
+  absence of `.html`.
+
+- **A `return` in `boot()` starves the site gate, and the page just
+  sits there.** `sitegate.js` decides nothing until `cloud:booted`
+  arrives; `cloud.js`'s boot() `return`ed early on a provider error,
+  before `_booted = true`, so that event never came. Measured on the
+  live site: **20,471ms** of blank veiled page — `base.css` hides the
+  document while the gate is pending — and then `deny('timeout')`,
+  which sends the visitor to `invite.html` under the one verdict that
+  means *the gate broke*, not *you are not allowed in*. The toast
+  explaining the real reason died with the document a fifth of a second
+  into that wait.
+
+  Two rules out of it. **Every path through `boot()` must reach
+  `_booted = true`**, including the ones that have nothing to restore —
+  falling through costs nothing, because "no session" is exactly what
+  the error already said. And **a message about why someone cannot get
+  in cannot live in a toast**, because the gate is about to replace the
+  document it is painted on: `cloud.js` stashes the reason in
+  sessionStorage under `AUTH_ERROR_KEY` and `start.js` reads it once
+  and says it. Without that, a refused sign-in, a misconfigured project
+  and a dead network are the same event from the outside — "I pressed
+  Continue with Google and came back to where I started", which is
+  precisely how it was reported.
+
 - **`Element.append(null)` inserts the text "null".** It does not skip
   the argument. `settings.js` said it did, and that held only while every
   section happened to render something. `h()` skips null children, but

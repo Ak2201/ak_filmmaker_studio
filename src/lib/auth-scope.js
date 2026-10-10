@@ -23,3 +23,22 @@
    there has to change.
    ============================================================ */
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+/* THE SECOND THING THE TWO SIGN-IN PATHS SHARE, here for the same
+   reason as the first: it is a name that must be identical in two
+   files which may not import each other.
+
+   cloud.js WRITES it (sessionStorage) when a Google return fails;
+   start.js READS it, and start.js must not touch cloud.js — cloud.js
+   is in the `studio` CORE chunk and importing it would put a megabyte
+   of app code on the landing page. So the key crosses between them as
+   a constant, through this leaf, which imports nothing and must stay
+   that way (CLAUDE.md, "A PURE module shared with CORE is swallowed by
+   CORE").
+
+   Why a stash at all: a failed sign-in used to be reported only in a
+   toast, and the page that raised it is immediately replaced by the
+   site gate, so the sentence died with the document. Every failure
+   looked the same from the outside — "I signed in and came back to the
+   landing page". This is the channel that outlives the redirect. */
+export const AUTH_ERROR_KEY = 'fms_auth_error';

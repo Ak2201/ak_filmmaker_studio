@@ -25,6 +25,10 @@ import Store from './store.js';
    nothing from here, so this is not a cycle, and vite.config folds
    every src/lib module into one chunk anyway. */
 import { DRIVE_SCOPE } from './drive.js';
+/* The key only; the stash and its reader are below. Shared with
+   start.js, which cannot import this file. */
+import { AUTH_ERROR_KEY } from './auth-scope.js';
+export { AUTH_ERROR_KEY };
 import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
@@ -816,12 +820,54 @@ const _redirect = (() => {
       description: (pick('error_description') || '').replace(/\+/g, ' ')
     };
   }
-  if (hash.get('access_token') || qs.get('code')) return { pending: true };
+  /* `kind` matters because the two are NOT interchangeable here. The
+     client is implicit (see the note above), and auth-js refuses a
+     `?code=` outright in that mode — GoTrueClient: `if (flowType ===
+     'implicit' && !_isImplicitGrantFlow()) return`. It returns
+     quietly, so a code arriving at an implicit client produces no
+     session, no error and no log line: exactly the silent bounce this
+     block now exists to name. */
+  if (hash.get('access_token')) return { pending: true, kind: 'implicit' };
+  if (qs.get('code')) return { pending: true, kind: 'code' };
   return null;
 })();
 
 /** What the provider said when it sent the browser back here, if anything. */
 export function readRedirect() { return _redirect; }
+
+/* WHY THE SIGN-IN DID NOT TAKE, WRITTEN SOMEWHERE THAT SURVIVES THE
+   BOUNCE. Everything this file says about a failed sign-in it says in a
+   toast — and a toast cannot outlive its document. The page a failed
+   Google return lands on is a page the SITE GATE immediately replaces
+   (`location.replace('start.html')` for a visitor with no session), so
+   the explanation was destroyed, every time, a few hundred
+   milliseconds after being written. The owner's report was "I sign in
+   with Google and come back to the landing page" — which is precisely
+   what a correct refusal and a total failure both look like when
+   neither can say anything.
+   sessionStorage, this tab, read-once: the same shape sitegate.js
+   already uses for `fms_sitegate_why`, and for the same reason. Not
+   localStorage — `npm run verify` asserts zero localStorage writes
+   while idle, and a diagnostic has no business in a store that holds
+   people's work. */
+function stashAuthError(message, code) {
+  try {
+    sessionStorage.setItem(AUTH_ERROR_KEY, JSON.stringify({
+      message: String(message || '').slice(0, 300),
+      code: code || null,
+      at: new Date().toISOString()
+    }));
+  } catch (e) { /* private mode: the toast is all there is */ }
+}
+/** Read and clear. A reason is shown once, by whoever lands first. */
+export function takeAuthError() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_ERROR_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(AUTH_ERROR_KEY);
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
 
 /* Strip anything the provider appended, without adding a history entry.
    auth-js sets `location.hash = ''`, which leaves a bare trailing '#'
@@ -1834,8 +1880,18 @@ async function boot() {
     setSync(SYNC_STATES.ERROR, 'Sign-in was not completed');
     notifyAuth('OAUTH_ERROR', null);
     toast('Google sign-in did not complete: ' + why, 'error', 5000);
+    stashAuthError(why, _redirect.error);
     Store.notify('cloud:auth-error', { message: why, code: _redirect.error });
-    return;
+    /* AND STILL BOOT. This used to `return` here, which read as
+       tidy and was not: sitegate.js waits for `cloud:booted` before it
+       decides anything, so a provider error left the gate waiting for
+       an event that would never come. The page stayed behind the
+       veil — blank — for the full GIVE_UP_MS of twenty seconds, and
+       was then thrown out on `timeout`, which is the one verdict that
+       means "the gate broke", not "you are not allowed in".
+       Falling through costs nothing: there is no session to restore
+       (that is what the error says), so boot does its ordinary
+       signed-out work and the gate decides in milliseconds. */
   }
   if (_redirect && _redirect.pending) _signingIn = true;
 
@@ -1867,11 +1923,31 @@ async function boot() {
       notifyAuth('SIGNED_IN', session);
       toast('Signed in as ' + (getUserEmail() || 'your account') + '.', 'success', 2400);
     } else {
-      // Tokens came back but no session survived — almost always a
-      // Site URL / redirect-URL mismatch. Say so; the runbook covers it.
+      /* Back from Google, and nothing survived. Two different faults
+         land here and they used to share one sentence, which is why
+         neither was ever diagnosed from a user's report:
+
+           kind 'code'     — the provider returned `?code=`, and this
+                             client is implicit, so auth-js declined to
+                             exchange it and said nothing. That is a
+                             configuration mismatch between the project
+                             and this build, not a user error, and no
+                             amount of trying again will fix it.
+           kind 'implicit' — real tokens arrived and did not become a
+                             session: almost always a Site URL /
+                             redirect-URL mismatch. The runbook covers
+                             it, and trying again is reasonable. */
+      const codeFlow = _redirect.kind === 'code';
+      const why = codeFlow
+        ? 'This project returned an authorisation code, which this build cannot exchange '
+          + '(its Supabase client uses the implicit flow). Nothing you do differently will '
+          + 'change that — see docs/GOOGLE-AUTH.md.'
+        : 'Google signed you in, but the session did not survive the return trip — usually '
+          + 'a Site URL or redirect-URL mismatch in the Supabase project.';
       setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
       notifyAuth('OAUTH_ERROR', null);
-      toast('Signed in with Google, but the sign-in did not complete. Please try again.', 'error', 6000);
+      stashAuthError(why, codeFlow ? 'code_flow_mismatch' : 'no_session');
+      toast('Sign-in did not complete. ' + why, 'error', 6000);
     }
   }
 

@@ -52,12 +52,22 @@ export function currentLang() {
   return current;
 }
 
+/* Tanglish is Tamil in Latin letters: tell screen readers and translators,
+   so they do not read it as English or try to translate it. Tanglish
+   blocks carry data-lang-block / .tn (the `fooTanglish` renderers). */
+const TL_BLOCKS = '.tn, [data-tanglish], [data-lang-block="tl"]';
+export function setLangAttr() {
+  if (typeof document === 'undefined') return;
+  document.querySelectorAll(TL_BLOCKS).forEach((n) => { if (!n.hasAttribute('lang')) n.setAttribute('lang', 'ta-Latn'); });
+}
+
 export function setLang(next) {
   const v = next === 'tl' ? 'tl' : 'en';
   if (v === currentLang()) return v;
   current = v;
   try { localStorage.setItem(LANG_KEY, v); } catch (e) { /* private mode */ }
   document.documentElement.setAttribute('data-lang', v);
+  setLangAttr();
   listeners.forEach((cb) => { try { cb(v); } catch (e) { console.warn('[lang]', e); } });
   return v;
 }
@@ -115,6 +125,10 @@ export function langToggle(opts) {
 /** Stamp the attribute early so CSS can key off it before first paint. */
 export function initLang() {
   document.documentElement.setAttribute('data-lang', currentLang());
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    new MutationObserver(() => setLangAttr()).observe(document.body, { childList: true, subtree: true });
+  }
+  setLangAttr();
   return currentLang();
 }
 

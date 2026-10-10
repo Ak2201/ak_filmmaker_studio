@@ -14,10 +14,11 @@
      since load, so a list that re-renders on each edit stays still.
    - Distances live in motion-app.css, multiplied by --motion.
    ============================================================ */
-import { prefersReducedMotion, splitWords, countUp, spotlight, magnetic } from '../lib/motion.js';
+import { lowEndDevice } from './motion-pref.js';
+import { prefersReducedMotion, countUp, spotlight, magnetic } from '../lib/motion.js';
 
 const doc = typeof document !== 'undefined' ? document : null;
-const WANT = !!doc && !prefersReducedMotion() && !navigator.webdriver && 'IntersectionObserver' in window;
+const WANT = !!doc && !prefersReducedMotion() && !lowEndDevice() && !navigator.webdriver && 'IntersectionObserver' in window;
 const T0 = Date.now();
 const WINDOW = 4000;
 const BACKSTOP = 8000;
@@ -26,7 +27,6 @@ const CARDS = '.door, .start-card, .tool-card, .project-card, .film-card, .direc
 const ROWS = '.bd-scene, .sb-shot';
 const NUMS = '.hero-stat .num, .bd-stat strong, .db-num, .db-big-num, .rp-stat strong, .cx-stats .bd-stat strong';
 const FILLS = '.progress-fill-bar, .db-bar-fill, .rp-meter-fill, .st-bar-fill, .tw-fill, .js-fill, .bb-bar-fill, .fm-bar-fill';
-const HEADS = 'main h2';
 const MAGNETS = 'main .btn.primary.db-big, main .hero .btn.primary';
 
 const seen = new WeakSet();
@@ -41,7 +41,6 @@ function show(n) {
   pending.delete(n);
   if (io) io.unobserve(n);
   const k = kinds.get(n);
-  if (k === 'head') { if (!n.closest('[hidden]')) splitWords(n); return; }
   if (k === 'fill') { n.classList.remove('ma-fill-veil'); n.classList.add('ma-fill-in'); return; }
   n.classList.remove('ma-veil'); n.classList.add('ma-in');
 }
@@ -175,6 +174,15 @@ function wireEvents() {
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(replaceInk);
 }
 
+/* Infinite animations only run while their element is on screen. */
+const LOOPS = '.mo-marquee, .mo-aurora, .mo-trail, .mo-shine-loop, .save-indicator.saving';
+const looped = new WeakSet();
+let loopIO = null;
+function pauseOffscreen(root) {
+  loopIO = loopIO || new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('ma-paused', !e.isIntersecting)));
+  root.querySelectorAll(LOOPS).forEach((n) => { if (!looped.has(n)) { looped.add(n); loopIO.observe(n); } });
+}
+
 function boot() {
   io = new IntersectionObserver((entries) => {
     for (const en of entries) if (en.isIntersecting) show(en.target);
@@ -190,6 +198,7 @@ function boot() {
     queued = 0;
     if (fresh()) scan(document.body);
     else for (const n of added) if (n.isConnected) scan(n);
+    if (fresh()) pauseOffscreen(document.body); else for (const n of added) if (n.isConnected && n.querySelectorAll) pauseOffscreen(n);
     added = new Set();
     wireTabs(); band();
   };

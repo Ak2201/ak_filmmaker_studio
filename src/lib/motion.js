@@ -12,7 +12,10 @@
 
 const mm = (q) => { try { return matchMedia(q).matches; } catch (e) { return false; } };
 
-export function prefersReducedMotion() { return mm('(prefers-reduced-motion: reduce)'); }
+export function prefersReducedMotion() {
+  /* html.ma-off is the Settings > Appearance switch (motion-pref.js). */
+  return mm('(prefers-reduced-motion: reduce)') || (typeof document !== 'undefined' && document.documentElement.classList.contains('ma-off'));
+}
 
 const finePointer = () => mm('(hover: hover) and (pointer: fine)');
 const motionScale = () => {

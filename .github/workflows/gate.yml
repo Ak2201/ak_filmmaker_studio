@@ -102,6 +102,7 @@ jobs:
       - run: npm run prove:storage
       - run: npm run prove:drive
       - run: npm run prove:sw
+      - run: npm run prove:adoption
       - run: npm run build:extension
       - run: npm run prove:extension
       - name: open build for the growth and AI proofs

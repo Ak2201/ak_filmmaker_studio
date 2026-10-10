@@ -34,9 +34,15 @@ import Deliverables, { STATES, WHEN } from '../lib/deliverables.js';
 import { listScenes } from '../lib/scenes.js';
 import { isIndia } from '../lib/region.js';
 import { loadScript } from '../lib/script.js';
-import PDF from '../lib/pdf.js';
-import Cbfc from '../lib/cbfc.js';
-import CBFC_RULES from '../data/cbfc-rules.json';
+/* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
+   and dialogue tabs, so they load on demand, not in first paint. */
+let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
+const needsLazy = () => tab === 'certification' || tab === 'dialogue-list';
+function loadLazy() {
+  return lazyP || (lazyP = Promise.all([
+    import('../lib/pdf.js'), import('../lib/cbfc.js'), import('../data/cbfc-rules.json')
+  ]).then(([p, c, r]) => { PDF = p.default; Cbfc = c.default; CBFC_RULES = r.default; }));
+}
 import { dialogueRows, toCSV, toSRT, REEL_MINUTES } from '../lib/dialogue-list.js';
 
 const app = document.getElementById('app');
@@ -561,6 +567,10 @@ function download(name, body, type) {
 /* `focus` is a selector for the control to hand focus back to after
    the full render replaces it (UX audit M1; visualize.js's pattern). */
 function render(focus) {
+  if (needsLazy() && !PDF) { loadLazy().then(() => renderNow(focus)); return; }
+  renderNow(focus);
+}
+function renderNow(focus) {
   const format = projectFormat();
   const data = Deliverables.loadDeliverables();
   const all = Deliverables.listItems(format, data);

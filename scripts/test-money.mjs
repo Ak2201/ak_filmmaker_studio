@@ -1,0 +1,23 @@
+// parseNum / fmtINR: the cases CLAUDE.md names. Node, no browser.
+import { parseNum, fmtINR } from '../src/lib/money.js';
+let bad = 0;
+const eq = (name, got, want) => { if (got !== want) { bad++; console.error('FAIL', name, 'got', got, 'want', want); } };
+eq('1500 per roll', parseNum('1500 per roll'), 1500);
+eq('3 days', parseNum('3 days'), 3);
+eq('crew 500', parseNum('crew 500'), 0);
+eq('1 lens day', parseNum('1 lens day'), 1);
+eq('1.5 lakh', parseNum('1.5 lakh'), 150000);
+eq('3L', parseNum('₹3L'), 300000);
+eq('2 cr', parseNum('2 cr'), 20000000);
+eq('25k', parseNum('25k'), 25000);
+eq('25,000', parseNum('25,000'), 25000);
+eq('Rs. 25000', parseNum('Rs. 25000'), 25000);
+eq('5 thousand', parseNum('5 thousand'), 5000);
+eq('bank', parseNum('bank'), 0);
+eq('empty', parseNum(''), 0);
+eq('fmt 0', fmtINR(0), '₹ 0');
+eq('fmt 4600', fmtINR(4600), '₹ 5k');
+eq('fmt lakh', fmtINR(150000), '₹ 1.5 L');
+eq('fmt cr', fmtINR(20000000), '₹ 2 Cr');
+if (bad) process.exit(1);
+console.log('test-money: all passed');

@@ -172,3 +172,19 @@
     opacity: 1 !important; filter: none !important; transform: none !important; animation: none !important;
   }
 }
+
+/* ---- lighter motion ------------------------------------------------
+   List rows fade and slide only: a blur filter on dozens of rows is the
+   expensive part of the entrance. Cards keep theirs. */
+.ma-on .ma-row.ma-row.ma-veil { filter: none; transform: translateY(calc(10px * var(--motion))); }
+.ma-row.ma-row.ma-in { animation-name: ma-row-rise; }
+@keyframes ma-row-rise {
+  from { opacity: 0; transform: translateY(calc(10px * var(--motion))); }
+  to   { opacity: 1; transform: none; }
+}
+/* infinite animations are paused while their element is off screen
+   (motion-app.js toggles the class from an IntersectionObserver) */
+.ma-paused, .ma-paused * { animation-play-state: paused !important; }
+
+/* Settings > Appearance > Reduce motion: html.ma-off */
+html.ma-off *, html.ma-off ::before, html.ma-off ::after { animation: none !important; transition: none !important; }

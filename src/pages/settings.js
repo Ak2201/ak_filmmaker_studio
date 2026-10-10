@@ -107,6 +107,7 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
 /* The branding switch and the WhatsApp help line under the plan cards
    (footer.js owns both; null when neither applies to this build/plan). */
 import { planExtras } from '../ui/footer.js';
+import { mountMotionChoice } from '../ui/motion-choice.js';
 
 const app = document.getElementById('app');
 
@@ -311,6 +312,7 @@ function renderAppearance() {
     }));
   }
 
+  mountMotionChoice(sec);
   return sec;
 }
 

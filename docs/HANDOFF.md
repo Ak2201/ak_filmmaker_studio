@@ -408,10 +408,10 @@ cloud container session.
 | T1 | **No assertion for the revised-page tint** | `scripts/test-revisions.mjs` has no `tint` | add one (tint class present when chosen, absent otherwise) | **DONE 8 Oct 2026**: `test:revisions` section 5 asserts the tint is on exactly when chosen (tint on: revised sheets carry `wr-pg-tint c-<swatch>`, unrevised do not; tint off: none, revised sheets still marked). 104 passed. |
 | T2 | **`ai.js` is not in the first-paint guard.** The `LAZY_CHUNKS` regex names only `supabase`, `pptxgen`, `sample.dragon.script`. **NOT a one-line change, re-checked 8 Oct 2026:** `vite.config.js` `manualChunks` (352-374) defines no `ai` chunk, so there is no stable name to match; and `ai.js` is statically imported by `src/ui/ai-panel.js:48`, which `src/pages/settings.js:83` imports statically — so adding the pattern would fail settings' first paint until `scripts/budget.json` `knownLazyFetches` (currently `{}`) allows it. Decide the chunk first, then the guard | `scripts/verify-migration.mjs:138`, `vite.config.js:352-374` | `ai` has its own chunk, the guard names it, and `verify` passes on settings | `verify` | **DONE 8 Oct 2026, by content not by name** (no `ai` chunk exists, and vite.config is outside this lane): `scripts/check-ai-lazy.mjs` (`npm run test:ai-lazy`, in `ship` after `build`) reads each budget page's modulepreload graph and fails if one carries ai.js's Anthropic-header marker. 21 pages pass; `settings` is a named EXCEPT with its reason and is itself checked, so the exception must keep being true. Removing the exception needs an `ai` chunk in `vite.config.js` first. |
 | T3 | **Tamil typing is only regex-read, never executed** | `scripts/test-tanglish.mjs` lines 67–70 read the source | a browser proof that typing "vanakkam" in a dialogue line yields Tamil and writes the pref only on toggle |
-| T4 | **`scripts/prove-adoption.mjs` has no npm entry** | `package.json` | add `prove:adoption`, run it, record the result | **DONE 8 Oct 2026, proof RED**: `prove:adoption` added and it honours `PW_CHROMIUM`. Run result: (a) and (b) pass; (c) fails 7 checks and (d) times out. Cause: `cloud.js` (~line 1905) clears `fms_studio_account_v1` on load when Supabase is configured and there is no session, so the simulated signed-in state never holds. (b) passes vacuously for the same reason. Fixing the proof needs a real session shape, not a raw key. Left OUT of `ship` until green. |
-| T8 | **`npm run ship` runs only `build:open`, `verify`, `build`, `prove:gate`** — none of the `test:*` suites, nor `prove:billing/sw/storage/drive/extension` | `package.json:36` | make `ship` (or a new `gate`) run the full release gate from `docs/BRANCHING.md`; this is also the seed of CI | **DONE 8 Oct 2026 (composition), but `ship` is RED at `verify`**: `verify` fails 6 word-coverage checks (unexplained missing words: `arunak`, `reset`, `curated`, `filmmaker`, `calculator`) on the branch as it stood at `105f9aa`, before this lane; the lane changed no `src/`, no `verify-migration.mjs` and no baseline, and the baseline is not to be recaptured to make it pass. Every step after `verify` was run by hand and passed. `test:all` runs all 22 `test:*` suites (brand first). `ship` = `test:all` → `build:open` → `verify` → `build` → `test:ai-lazy` → `prove:gate` `prove:billing` `prove:storage` `prove:drive` `prove:sw` → `build:extension` `prove:extension` → `build:verify` (new, gate-off `dist-verify`) → `prove:growth` `prove:ai-coverage`. `prove:adoption` is deliberately absent (red, see T4). T10 still needs CI. |
+| T4 | **`scripts/prove-adoption.mjs` has no npm entry** | `package.json` | add `prove:adoption`, run it, record the result | **DONE 8 Oct 2026, proof RED**: `prove:adoption` added and it honours `PW_CHROMIUM`. Run result: (a) and (b) pass; (c) fails 7 checks and (d) times out. Cause: `cloud.js` (~line 1905) clears `fms_studio_account_v1` on load when Supabase is configured and there is no session, so the simulated signed-in state never holds. (b) passes vacuously for the same reason. Fixing the proof needs a real session shape, not a raw key. **UPDATE 10 Oct 2026: green, and now in `ship` and `gate.yml`.** |
+| T8 | **`npm run ship` runs only `build:open`, `verify`, `build`, `prove:gate`** — none of the `test:*` suites, nor `prove:billing/sw/storage/drive/extension` | `package.json:36` | make `ship` (or a new `gate`) run the full release gate from `docs/BRANCHING.md`; this is also the seed of CI | **DONE 8 Oct 2026 (composition), but `ship` is RED at `verify`**: `verify` fails 6 word-coverage checks (unexplained missing words: `arunak`, `reset`, `curated`, `filmmaker`, `calculator`) on the branch as it stood at `105f9aa`, before this lane; the lane changed no `src/`, no `verify-migration.mjs` and no baseline, and the baseline is not to be recaptured to make it pass. Every step after `verify` was run by hand and passed. `test:all` runs all 22 `test:*` suites (brand first). `ship` = `test:all` → `build:open` → `verify` → `build` → `test:ai-lazy` → `prove:gate` `prove:billing` `prove:storage` `prove:drive` `prove:sw` → `build:extension` `prove:extension` → `build:verify` (new, gate-off `dist-verify`) → `prove:growth` `prove:ai-coverage`. `prove:adoption` was absent while red; it is green and in `ship` (10 Oct). CI exists (T10). |
 | T9 | **Browser walk of the revisions, coverage and costs UIs** on the Dragon sample, 390 and 1280, both themes. The `Element.append(null)` fix at `write-revisions.js:175` was never exercised in a browser | — | no console error; revision compare opens; coverage renders; each cost tab loads |
-| T10 | **CI does not exist** (`.github/` is absent). Branch protection on `main` is also unset (owner, GitHub settings) | repo root | a workflow running the T8 gate on every PR to `main` (needs Playwright's Chromium + PostgreSQL 16) |
+| T10 | **CI exists** (`.github/workflows/gate.yml`: tests, verify, proofs incl. `prove:adoption`). **DONE 10 Oct 2026.** Branch protection on `main` is still unset (owner, GitHub settings) | repo root | a workflow running the T8 gate on every PR to `main` (needs Playwright's Chromium + PostgreSQL 16) |
 
 ### B — Billing and growth (lane 1; owns schema §25 onward; ONE session at a time)
 
@@ -421,7 +421,7 @@ cloud container session.
 | B2 | Gift a licence | pay for someone else → one-use gift code → recipient activates into their own org; refund rules per `refund.html` |
 | B3 | Film-school (edu) licence | an `edu` plan row, N seats via `accounts.seat_limit`, bulk student codes (§13) |
 | B4 | Landing-page e-mail capture | `leads` table, anon INSERT only, unique e-mail, explicit consent text on `start.html`, one paragraph in `privacy.html`; no third-party script |
-| B5 | First-party funnel counts | `events` table, fixed CHECK list of event names (`start_view sample_open plan_view buy_click buy_done`), no personal data stored, device opt-out `fms_no_analytics_v1` (register in `ALL_KEYS` + `GLOBAL_KEYS`) and Do-Not-Track | **Built (sell/b3, §29 NOT RUN LIVE):** counters via `bump_event`; opt-out is DNT, GPC or a sessionStorage flag (`fms_no_analytics_session`) — no new localStorage key, so none in ALL_KEYS; `src/lib/funnel.js` uses plain fetch.
+| B5 | First-party funnel counts | `events` table, fixed CHECK list of event names (`start_view sample_open plan_view buy_click buy_done`), no personal data stored, device opt-out `fms_no_analytics_v1` (register in `ALL_KEYS` + `GLOBAL_KEYS`) and Do-Not-Track | **Built (sell/b3, §29 RUN LIVE 9 Oct):** counters via `bump_event`; opt-out is DNT, GPC or a sessionStorage flag (`fms_no_analytics_session`) — no new localStorage key, so none in ALL_KEYS; `src/lib/funnel.js` uses plain fetch.
 | B6 | **Fix `growth-admin.js:136-137`**: the Growth section's heading promises "Referrals, affiliates, invoices and the funnel" and "the invoice settings, the leads … and how many people reach each step", but only referrals and affiliates render. Fix the copy now; it becomes true when B1/B4/B5 land |
 | B7 | Public read-only call-sheet / deck links that do not hit the invite gate | design exists, flag `VITE_PUBLIC_VIEW` is OFF, **no SQL in the schema**. Needs a security review (token guessing, revocation, never expose contact phone/e-mail) before anything ships |
 
@@ -467,7 +467,7 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
 - **R3 Tiers.** Labels Free / Basic / Intermediate / Pro on the unchanged ids
   free / starter / indie / pro (`src/lib/plans.js`). Schema **§26** makes the
   limit messages read the stored plan name and renames the default seed
-  names. **§26 is NOT RUN LIVE.**
+  names. §26 RUN LIVE 9 Oct 2026.
 - **R4 Plan matrix.** `src/data/plan-matrix.json` + `matrixFeatures(id)`:
   what each tier includes. It drives the landing page's pricing table and does
   NOT gate anything until the owner seeds `plans.features` from it.
@@ -480,7 +480,7 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
   equipment links, KEEP WORKING loop, Loading-forever plan section, admin
   console CLEAR/aria/double-click, plan-gate grammar and upgrade target).
 
-**Also built 9 Oct (NOT RUN LIVE):** schema §27 refunds (admin REFUND
+**Also built 9 Oct (§26–§29 RUN LIVE 9 Oct):** schema §27 refunds (admin REFUND
 button through the new `rzp-refund` edge function; customer "Request a
 refund" in Settings, shown only when the console switch is on, off by
 default), §28 Bill of Supply invoices (gapless `FMS/YYYY-YY/NNNNNN`,
@@ -489,13 +489,12 @@ PDF in Settings, console tab), §29 leads + aggregate funnel counts
 G1–G6, quality T1/T2/T4/T8, icon generator fixed. Release and marketing
 plan: `docs/RELEASE-PLAN.md`.
 
-**Owner steps for those:** run §26, §27, §28, §29 in order in the SQL
-editor (ask the database first what is live); `supabase functions deploy
+**Owner steps for those:** §26–§29 have run (9 Oct); `supabase functions deploy
 rzp-refund`; redeploy `rzp-webhook` and add `refund.failed` to the
 Razorpay webhook events; then try one test-mode refund end to end.
 
-**Owner steps left from R:** run §26 live; rename starter→Basic and
-indie→Intermediate in the console if §26 is not run; seed `plans.features`
+**Owner steps left from R:** rename starter→Basic and
+indie→Intermediate in the console if the plan names differ; seed `plans.features`
 from `matrixFeatures()` when the tiers should actually differ; set
 `supportEmail` in `brand.json` to a dedicated inbox (it is still the
 personal Gmail); the list prices on `start.html` are stamped from

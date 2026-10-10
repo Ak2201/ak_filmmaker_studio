@@ -45,3 +45,5 @@
 .vid-modal .modal { max-width: 720px; }
 .vid-help-btn { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .vid-play { transition: none; } }
+.vid-modal .modal-close { font-size: var(--t-sm, .9rem); color: var(--ink); border: 1px solid var(--rule); }
+.vid-modal .modal-close:hover { background: var(--sk-slab-fill, var(--paper-raised)); }

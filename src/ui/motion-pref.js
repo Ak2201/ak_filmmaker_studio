@@ -34,7 +34,3 @@ export function applyMotionPref() {
 }
 
 applyMotionPref();
-  return mode === 'reduced' ? 'reduced' : 'auto';
-}
-
-applyMotionPref();

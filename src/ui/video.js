@@ -9,12 +9,12 @@ export function facade(v) {
   return h('div.vid', { 'data-yt': v.yt, 'data-title': v.title }, [
     h('button.vid-play', {
       type: 'button', 'data-action': 'video-play',
-      'aria-label': 'Play: ' + v.title + ' (' + v.channel + ')'
+      'aria-label': 'Play: ' + v.title + (v.channel ? ' (' + v.channel + ')' : '')
     }, [
       h('span.vid-icon', { 'aria-hidden': 'true', text: '▶' }),
       h('span.vid-meta', {}, [
         h('span.vid-title', { text: v.title }),
-        h('span.vid-sub', { text: v.channel + (v.minutes ? ' · ' + v.minutes + ' min' : '') })
+        h('span.vid-sub', { text: [v.channel, v.minutes ? v.minutes + ' min' : ''].filter(Boolean).join(' · ') || 'YouTube' })
       ])
     ])
   ]);

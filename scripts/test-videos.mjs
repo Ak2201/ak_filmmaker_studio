@@ -29,8 +29,11 @@ for (const v of data.videos || []) {
   if (!v.id || ids.has(v.id)) fail(w + ': missing or duplicate id');
   ids.add(v.id);
   if (!/^[A-Za-z0-9_-]{11}$/.test(v.yt || '')) fail(w + ': yt must be 11 chars [A-Za-z0-9_-]');
-  for (const k of ['title', 'channel']) if (!v[k] || typeof v[k] !== 'string') fail(w + ': ' + k);
-  if (!(v.minutes > 0)) fail(w + ': minutes');
+  if (!v.title || typeof v.title !== 'string') fail(w + ': title');
+  /* channel and minutes are optional: research could not always read them,
+     and the player omits what is missing. When present they must be sane. */
+  if (v.channel != null && (typeof v.channel !== 'string' || !v.channel)) fail(w + ': channel');
+  if (v.minutes != null && !(v.minutes > 0)) fail(w + ': minutes');
   if (typeof v.approved !== 'boolean') fail(w + ': approved must be boolean');
   if (!Array.isArray(v.for) || !v.for.length) fail(w + ': for[]');
   for (const k of v.for || []) if (!valid.has(normKey(k))) fail(w + ': unresolved key ' + k);

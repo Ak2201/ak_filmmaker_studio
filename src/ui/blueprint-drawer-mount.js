@@ -66,6 +66,10 @@ function toolFile(entry, mods) {
  *  navigation.json; touches no DOM and no storage. */
 export function stepsMayLandOn(page) {
   if (!page || page === 'feature.html' || page === 'short.html') return false;
+  /* The five stage pages carry the questions in their own Guide
+     section (src/ui/stage-guide.js); a drawer there would show the
+     same steps twice. */
+  if (GUIDE_PAGES.has(page)) return false;
   const steps = (STAGES && STAGES.steps) || {};
   const mods = allModules();
   for (const raw of Object.values(steps)) {
@@ -74,6 +78,8 @@ export function stepsMayLandOn(page) {
   }
   return false;
 }
+
+const GUIDE_PAGES = new Set(['story.html', 'write.html', 'breakdown.html', 'shoot.html', 'edit.html']);
 
 let loading = null;
 /** Fetch and mount the drawer once; a no-op where no step lands. */

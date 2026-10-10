@@ -112,7 +112,13 @@ function submit() {
   if (!PlanGate.allowed('new_projects')) { close(); return; }
   const fav = selectedFilm();
   const p = Store.createProject({ title: name, format: state.format, fav: fav || undefined, adopt: true });
-  if (p) location.href = DASHBOARD_URL;
+  if (!p) return;
+  /* Signed in, the new project's cloud push is in flight: give it a
+     moment so a plan-limit refusal is heard (cloud.js carries it to
+     the dashboard), then go. Signed out, settle() resolves at once. */
+  const C = window.StudioCloud;
+  const wait = C && typeof C.settle === 'function' ? C.settle(3000) : Promise.resolve();
+  wait.then(() => { location.href = DASHBOARD_URL; }, () => { location.href = DASHBOARD_URL; });
 }
 
 /** Open the sheet. `format` is the door that was chosen. */

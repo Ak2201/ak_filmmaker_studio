@@ -262,14 +262,20 @@ check('the page is controlled by the worker',
   await page.evaluate(() => !!navigator.serviceWorker.controller));
 
 // (b) typed .html URLs, through the worker
-const TYPED = ['index.html', 'dashboard.html', 'breakdown.html', 'feature.html', 'settings.html', 'write.html', 'story.html'];
+const TYPED = ['index.html', 'dashboard.html', 'breakdown.html', 'feature.html', 'feature.html?stay=1', 'settings.html', 'write.html', 'story.html'];
+/* feature.html / short.html forward to their stage guide (10 Oct 2026,
+   src/pages/blueprint-redirect.js); with no #step the guide is Story's.
+   ?stay=1 is the full old page, and has to resolve through the worker
+   in its own right. */
+const FORWARDS = { 'feature.html': 'story.html', 'short.html': 'story.html' };
+const landsOn = (f) => FORWARDS[f] || f.split('?')[0];
 for (const file of TYPED) {
   const before = errors.length;
   let failed = null;
   const resp = await page.goto(`${ORIGIN}/${file}`, { waitUntil: 'networkidle' }).catch((e) => { failed = e.message; return null; });
   await page.waitForTimeout(300);
   const title = failed ? null : await page.title();
-  const want = titleOf(file);
+  const want = titleOf(landsOn(file));
   const url = page.url();
   check(`(b) /${file} resolves through the worker`,
     !failed && resp && title === want && errors.length === before,
@@ -285,7 +291,7 @@ for (const r of vercel.redirects || []) {
   let failed = null;
   await page.goto(ORIGIN + r.source, { waitUntil: 'networkidle' }).catch((e) => { failed = e.message; });
   const title = failed ? null : await page.title();
-  const want = titleOf(r.destination.replace(/^\//, ''));
+  const want = titleOf(landsOn(r.destination.replace(/^\//, '')));
   check(`(c) ${r.source} still redirects to ${r.destination}`,
     !failed && title === want,
     failed ? failed.split('\n')[0] : `landed on ${new URL(page.url()).pathname}, title "${title}"`);

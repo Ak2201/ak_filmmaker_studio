@@ -1405,8 +1405,41 @@ async function _pushProjectMeta(project) {
   }
 }
 
+/* A page that creates a project and then navigates (the hub's setup
+   sheet opens the dashboard) would lose the answer to the push: the
+   refusal arrives after unload, and the cap toast with it. settle()
+   lets such a caller wait a moment for the in-flight meta pushes, and
+   a refusal is carried to the next page in SESSION storage (the same
+   tier as fms_gate_landing — it is about this tab, not the studio). */
+const _inflight = new Set();
+function track(p) {
+  if (!p || typeof p.then !== 'function') return p;
+  _inflight.add(p);
+  p.finally(() => _inflight.delete(p)).catch(() => {});
+  return p;
+}
+export function settle(ms = 3000) {
+  if (!_inflight.size) return Promise.resolve();
+  return Promise.race([
+    Promise.allSettled([..._inflight]),
+    new Promise((r) => setTimeout(r, ms))
+  ]).then(() => {});
+}
+const PLAN_NOTICE_KEY = 'fms_plan_limit_notice';
+function replayPlanLimitNotice() {
+  let n = null;
+  try { n = JSON.parse(sessionStorage.getItem(PLAN_NOTICE_KEY) || 'null'); sessionStorage.removeItem(PLAN_NOTICE_KEY); } catch (e) { return; }
+  if (!n || !n.m || Date.now() - (n.at || 0) > 5 * 60000) return;
+  setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
+  _planToastAt = 0;
+  setTimeout(() => planLimitToast(n.m, { carry: false }), 0);
+}
+
 let _planToastAt = 0;
-function planLimitToast(message) {
+function planLimitToast(message, opts) {
+  if (!(opts && opts.carry === false)) {
+    try { sessionStorage.setItem(PLAN_NOTICE_KEY, JSON.stringify({ m: message, at: Date.now() })); } catch (e) { /* no session tier: the toast below still shows */ }
+  }
   if (Date.now() - _planToastAt < 60000) return;   // once a minute, not once a keystroke
   _planToastAt = Date.now();
   if (window.StudioUI && StudioUI.toast) {
@@ -1786,7 +1819,7 @@ Store.subscribe('projects:changed', (info) => {
   if (!session || !syncAllowed()) return;
   if (!info) return;
   if (info.reason === 'create' || info.reason === 'update') {
-    if (info.project) _pushProjectMeta(info.project);
+    if (info.project) track(_pushProjectMeta(info.project));
   } else if (info.reason === 'adopt') {
     /* Adoption from the hub control is the same operation as the
        first-sign-in prompt, performed later — so it runs the same
@@ -1897,7 +1930,7 @@ const StudioCloud = {
   // sync
   pullProjectList, pullProjectData, attachToCurrentProject,
   flushQueue: _flushQueue,
-  onSyncStatus, getSyncStatus, SYNC_STATES,
+  onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,
   // sharing
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
@@ -1943,6 +1976,7 @@ function hasStoredSession() {
 }
 
 async function boot() {
+  replayPlanLimitNotice();
   // A provider bounce we can explain before the client even exists.
   if (_redirect && _redirect.error) {
     const why = _redirect.description || _redirect.error;

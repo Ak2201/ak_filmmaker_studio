@@ -36,6 +36,7 @@
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { phases, globals, shelves } from '../lib/navmodel.js';
+import { projectRows, projectList, formatLabel } from './project-switcher.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import '../styles/mobile-nav.css';
 
@@ -151,6 +152,15 @@ export function openGoTo(phaseId) {
     top.append(a);
   }
   body.append(top);
+  /* the open project first, and every other one to switch to */
+  const { list, current } = projectList();
+  const proj = h('section.mn-group.mn-project', { 'aria-labelledby': 'mn-g-project' });
+  proj.append(h('h3.mn-group-h', { id: 'mn-g-project' }, [
+    h('span', { text: 'Project: ' + (current ? (current.title || 'Untitled') + ' · ' + formatLabel(current.format) : 'none open') + ' · Switch' })
+  ]));
+  if (list.length) proj.append(...projectRows());
+  proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'No project — start one' }));
+  body.append(proj);
   for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));
   // shelves carry CATEGORY hues (.hue-*), never a phase class — the hue-class trap
   for (const s of shelves()) body.append(group(s, here, s.hue ? '.hue-' + s.hue : ''));

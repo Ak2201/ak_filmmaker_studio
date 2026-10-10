@@ -376,7 +376,8 @@ function applyV2(all, shape, opts) {
          rather than arriving beside it as a duplicate. */
       Store.updateProject(meta.id, {
         title:  meta.title || undefined,
-        format: meta.format || undefined
+        format: meta.format || undefined,
+        fav:    meta.fav || undefined
       });
       writeBucket(meta.id, bucket);
       replaced++;
@@ -385,7 +386,8 @@ function applyV2(all, shape, opts) {
     const created = Store.createProject({
       id:     clash ? undefined : meta.id,
       title:  (meta.title || 'Imported Project') + (clash ? ' (imported)' : ''),
-      format: meta.format
+      format: meta.format,
+      fav:    meta.fav
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);

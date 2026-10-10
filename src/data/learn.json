@@ -1,0 +1,4 @@
+{
+  "_about": "Topics for src/ui/learn.js — the collapsed 'What is a …?' boxes. Each topic POINTS at existing content (glossary.json terms, step ids, videos.json targets) rather than copying it. Lane C fills this.",
+  "topics": []
+}

@@ -640,6 +640,11 @@ export function createProject(meta) {
     updatedAt:  now,
     ns:         ns
   };
+  /* The favourite film rides on the project entry, beside format: an
+     existing key, so nothing new to register, and an entry written
+     before the field existed simply has none (projectFav() answers ''
+     and the caller falls back to the device's choice). */
+  if (isFavSlug(meta.fav)) project.fav = meta.fav;
   arr0.push(project);
   saveAllProjects(arr0);
   _invalidateCurrent();
@@ -755,6 +760,27 @@ function adoptUnfiled(projectId) {
   }
   if (moved.length || kept.length) notify('unfiled:adopted', { projectId, moved, kept });
   return { moved, kept };
+}
+
+/* ---- the favourite film, per project ------------------------
+   A slug from studies.json (dragon, 96, porthozhil, vikramvedha). The
+   shape is checked here and the MEANING by studies.js, which owns the
+   list — this module imports no data. */
+const FAV_RE = /^[a-z0-9-]{1,40}$/;
+function isFavSlug(v) { return typeof v === 'string' && FAV_RE.test(v); }
+
+/** The open (or named) project's favourite film slug, or ''. */
+export function projectFav(id) {
+  const p = id ? getProject(id) : currentProject();
+  return p && isFavSlug(p.fav) ? p.fav : '';
+}
+
+/** Set the open project's favourite film. '' clears it. */
+export function setProjectFav(slug, id) {
+  const pid = id || currentProjectId();
+  if (!pid) return null;
+  if (slug !== '' && !isFavSlug(slug)) return null;
+  return updateProject(pid, { fav: slug || undefined });
 }
 
 export function updateProject(id, patch) {

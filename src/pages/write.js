@@ -57,7 +57,8 @@ import BeatBoard from '../ui/beat-board.js';
 import { apiHost, providerLabel } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
-import { binScene, unaddScenes } from '../lib/scene-bin.js';
+import { unaddScenes } from '../lib/scene-bin.js';
+import { commitImportedScript } from '../lib/script-commit.js';
 import * as Scriptgen from '../lib/scriptgen.js';
 import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Revision compare, revised-page marks and locked scene numbers: the
@@ -3153,47 +3154,10 @@ delegate(document, 'click', '[data-action="import-commit"]', () => {
 
   importBusy = true;
 
-  // 1. the screenplay
-  if (replaceScript && doc.elements.length) {
-    doc.revisions.push(Script.makeRevision(doc.elements, 'Before importing ' + (importName || 'a script')));
-  }
-  /* Type, text and the dual-dialogue flag — the three things an
-     element is. Anything else a parser hung on it (a scene number)
-     belongs to the scene model, below. */
-  const incoming = plan.elements.map((el) => blankElement(el.dual === true
-    ? { type: el.type, text: el.text, dual: true }
-    : { type: el.type, text: el.text }));
-  doc.elements = replaceScript ? incoming : doc.elements.concat(incoming);
-  /* The file's title page is taken when it had one and this script
-     does not — or when the script is being replaced. A title page the
-     writer already filled in is theirs and an import does not
-     overwrite it. */
-  if (plan.titlePage && (replaceScript || !hasTitlePage(doc.titlePage))) {
-    doc.titlePage = normaliseTitlePage(plan.titlePage);
-  }
-  persistNow();
-
-  // 2. the scene list
-  let renumbered = 0;
-  const taken = new Set(replaceScenes ? [] : existingScenes.map((s) => String(s.number)));
-  const base = replaceScenes ? 0 : existingScenes.length;
-  const rows = plan.scenes.map((s, i) => {
-    let number = String(s.number || '');
-    if (!number || taken.has(number)) { number = String(base + i + 1); renumbered++; }
-    taken.add(number);
-    return { ...s, number };
-  });
-  /* Replacing the scene list sends the old rows to the bin WITH their
-     shots, frames, call-sheet rows and edit-log state, rather than
-     dropping the rows and stranding everything that pointed at them
-     (BLUEPRINT-REALIGN-PLAN §1d). They come back from the Breakdown's
-     "Removed from script" list. */
-  if (replaceScenes) {
-    for (const s of Scenes.listScenes()) {
-      binScene(s.id, { reason: 'hand', heading: [s.intExt, s.location, s.dayNight].filter(Boolean).join(' ') });
-    }
-  }
-  Scenes.saveScenes(replaceScenes ? rows : Scenes.listScenes().concat(rows));
+  const done = commitImportedScript(plan, { replaceScript, replaceScenes, doc, persist: persistNow, importName });
+  const incoming = { length: done.elements };
+  const rows = { length: done.scenes };
+  const renumbered = done.renumbered;
 
   importOpen = false;
   resetImport();
@@ -3794,4 +3758,4 @@ BeatBoard.wireBeatBoard({
 
 render(wantsImporter ? '#wr-import-paste' : null);
 mountFocusMode(() => doc);   // Phase 4: src/ui/focus-mode.js
-mountBeatGuide({ getDoc: () => doc });   // plan rev. 3 §1b: src/ui/beat-guide.js
+mountBeatGuide({ getDoc: () => doc, addScene: (text) => addElement(null, 'scene', text) });   // plan rev. 3 §1b: src/ui/beat-guide.js

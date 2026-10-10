@@ -1,0 +1,88 @@
+/* ============================================================
+   BREAKDOWN — the whole-script overview (src/ui/breakdown-overview.js)
+   ------------------------------------------------------------
+   The first tab. Tokens and --sk-* only: no literal colour, radius or
+   border width (invariants 4 and 7). The tables scroll INSIDE their
+   own wrapper, never the page — the gate measures overflow at 390px.
+   ============================================================ */
+.bd-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4);
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s6) var(--s5);
+  min-width: 0;
+}
+.bd-overview .bd-h2,
+.bd-overview .bd-sub { margin: 0; }
+.bdo-learn:empty { display: none; }
+.bdo-learn { display: inline-flex; align-items: center; }
+.bdo-start { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.bdo-upload { position: relative; cursor: pointer; }
+/* The real input stays in the label, visually hidden but focusable, so
+   the label is the button and the keyboard still reaches the file
+   picker. */
+.bdo-file {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.bdo-upload:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
+.bdo-status { margin: 0; min-height: 1.25em; color: var(--ink-muted); font-size: var(--t-small); }
+
+/* the segmented control */
+.bdo-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  padding: var(--s1);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-sunk, var(--paper));
+  justify-self: start;
+  max-width: 100%;
+}
+.bdo-seg-btn {
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  background: transparent;
+  border: var(--sk-card-line-w, 1px) solid transparent;
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  padding: var(--s2) var(--s4);
+  min-height: 44px;
+  cursor: pointer;
+}
+.bdo-seg-btn:hover { background: var(--paper-raised); }
+.bdo-seg-btn[aria-selected="true"] { color: var(--accent-on); background: var(--accent); border-color: var(--accent); }
+.bdo-seg-btn:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.bdo-panel[hidden] { display: none; }
+.bdo-pane { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--s3); }
+
+/* the tables */
+.bdo-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-raised);
+}
+.bdo-scroll:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.bdo-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.bdo-table th,
+.bdo-table td {
+  text-align: start;
+  vertical-align: top;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--rule-hair, var(--rule));
+}
+.bdo-table th { color: var(--ink-muted); font-weight: 600; white-space: nowrap; }
+.bdo-table tbody tr:last-child td { border-bottom: 0; }
+.bdo-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bdo-name { font-weight: 600; }
+.bdo-totals { margin: 0; }
+.bdo-onward { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: 0; color: var(--ink-muted); }

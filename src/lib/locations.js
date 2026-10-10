@@ -567,6 +567,30 @@ export function locationIndex(scenes) {
       || a.name.localeCompare(b.name));
 }
 
+/**
+ * One row per location, longest first — the order a schedule is built
+ * in. { name, count, eighths, ie: {INT: n}, dn: {DAY: n}, numbers: [] }.
+ * `numbers` is a Map(scene id -> printed number); `noName` labels a
+ * scene with no location typed. (Moved here from reports.js so the
+ * Breakdown's summary reads the same rows.)
+ */
+export function byLocation(scenes, numbers, noName = 'Unassigned') {
+  const rows = new Map();
+  for (const s of scenes) {
+    const name = String(s.location || '').trim() || noName;
+    const key = name.toLowerCase();
+    if (!rows.has(key)) rows.set(key, { name, count: 0, eighths: 0, ie: {}, dn: {}, numbers: [] });
+    const row = rows.get(key);
+    row.count += 1;
+    row.eighths += Number(s.eighths) || 0;
+    row.ie[s.intExt] = (row.ie[s.intExt] || 0) + 1;
+    row.dn[s.dayNight] = (row.dn[s.dayNight] || 0) + 1;
+    row.numbers.push(numbers ? numbers.get(s.id) : s.number);
+  }
+  return [...rows.values()]
+    .sort((a, b) => b.eighths - a.eighths || b.count - a.count || a.name.localeCompare(b.name));
+}
+
 /** Scenes with no location typed on them yet. */
 export function unplacedScenes(scenes) {
   return (scenes || listScenes()).filter((s) => !locationName(s));
@@ -649,7 +673,7 @@ export default {
   listDayOrder, dayOrder, setDayOrder, clearDayOrders, orderByList, orderedDayScenes,
   placeScene, undoPlace, nudgeScene,
   DAY_RECORDS, listDayRecords, dayRecord, setDayRecord, schedulePrefs, setSchedulePrefs,
-  getRecce, setRecce, removeRecce, locationIndex, unplacedScenes, orphanRecces,
+  getRecce, setRecce, removeRecce, locationIndex, byLocation, unplacedScenes, orphanRecces,
   listMedia, saveMedia, addMedia, updateMedia, removeMedia,
   LINK_NONE, locationLink, dayLink, linkLabel
 };

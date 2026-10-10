@@ -1,0 +1,71 @@
+/* Learn in place (src/ui/learn.js). Quiet closed, readable open.
+   Tokens only; shape from the skin; every transform times --motion. */
+.learn {
+  margin: var(--s2) 0;
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.learn > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 1.5rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+.learn > summary::-webkit-details-marker { display: none; }
+.learn > summary::before {
+  content: '';
+  flex: none;
+  width: .4rem;
+  height: .4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--speed) var(--ease-out, ease-out);
+}
+.learn[open] > summary::before { transform: rotate(45deg); }
+.learn > summary:hover { color: var(--ink); }
+.learn > summary:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
+.learn-q { text-decoration: underline dotted; text-underline-offset: 3px; }
+
+.learn-body {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  padding: var(--s3) var(--s4);
+  max-width: var(--sk-deck-measure, 60ch);
+  background: var(--sk-slab-fill, var(--paper-raised));
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.learn-def { color: var(--ink); }
+.learn-tn { color: var(--ink-muted); font-style: italic; }
+.learn-ex-film { color: var(--ink); }
+.learn-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  margin-bottom: var(--s1);
+}
+.learn-why-text { color: var(--ink-body); }
+.learn-wait { color: var(--ink-muted); }
+.learn-more {
+  width: fit-content;
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.learn-more:hover { color: var(--ink); }
+.learn-body .vid-block { margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .learn > summary::before { transition: none; }
+}
+@media print {
+  .learn { display: none !important; }
+}

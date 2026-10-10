@@ -163,17 +163,37 @@ export function billingAdminSection(section, st) {
       table.append(tb);
       sec.append(h('div.gt-scroll', {}, [table]));
     }
+    /* THE DRAFT SURVIVES A REFRESH. load() calls rerender() twice —
+       once when it starts and once when the three network calls come
+       back — and either can land while somebody is part-way through
+       typing a code. The inputs below are rebuilt on every render, so
+       without this the typed values are simply gone, and the submit
+       that follows sends a half-filled form.
+
+       Exactly the bug already fixed for the refund-request form in
+       settings.js ("a background billing refresh no longer wipes the
+       form"), which prove:billing caught then as two failures in three
+       runs. This one it caught the same way, in block (m): the
+       affiliate code came out with no commission and the row the proof
+       waited for never appeared. */
+    const d = S.promoDraft || (S.promoDraft = {});
+    const keep = (name, extra) => Object.assign(
+      { name, value: d[name] != null ? d[name] : '' }, extra || {});
     const pf = h('form.ba-promo', { 'data-ba-form': 'promo', autocomplete: 'off' });
+    pf.addEventListener('input', (ev) => {
+      const t = ev.target;
+      if (t && t.name && t.type !== 'checkbox') d[t.name] = t.value;
+    });
     pf.append(h('strong', { text: 'Add a code' }));
-    const kind = h('select', { id: 'baPromoKind', name: 'kind' }, [h('option', { value: 'percent', text: '% off' }), h('option', { value: 'amount', text: '₹ off' })]);
+    const kind = h('select', { id: 'baPromoKind', name: 'kind', value: d.kind || 'percent' }, [h('option', { value: 'percent', text: '% off' }), h('option', { value: 'amount', text: '₹ off' })]);
     pf.append(h('div.ba-fields', {}, [
-      h('div.ba-field', {}, [h('label', { for: 'baPromoCode', text: 'Code' }), h('input', { id: 'baPromoCode', name: 'code', type: 'text', maxlength: 32, autocapitalize: 'characters', spellcheck: 'false', placeholder: 'LAUNCH10', required: true })]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoCode', text: 'Code' }), h('input', keep('code', { id: 'baPromoCode', type: 'text', maxlength: 32, autocapitalize: 'characters', spellcheck: 'false', placeholder: 'LAUNCH10', required: true }))]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoKind', text: 'Discount' }), kind]),
-      h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', { id: 'baPromoValue', name: 'value', type: 'text', inputmode: 'decimal', placeholder: '10', required: true })]),
-      h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', { id: 'baPromoMax', name: 'max_uses', type: 'number', min: 1, step: 1, placeholder: 'unlimited' })]),
-      h('div.ba-field', {}, [h('label', { for: 'baPromoUntil', text: 'Valid until' }), h('input', { id: 'baPromoUntil', name: 'valid_until', type: 'date' })]),
-      h('div.ba-field', {}, [h('label', { for: 'baPromoComm', text: 'Commission % (affiliate)' }), h('input', { id: 'baPromoComm', name: 'commission', type: 'text', inputmode: 'decimal', placeholder: 'none' })]),
-      h('div.ba-field.is-wide', {}, [h('label', { for: 'baPromoNote', text: 'Note (who it is for, where it was printed)' }), h('input', { id: 'baPromoNote', name: 'note', type: 'text', maxlength: 300 })])
+      h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', keep('value', { id: 'baPromoValue', type: 'text', inputmode: 'decimal', placeholder: '10', required: true }))]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', keep('max_uses', { id: 'baPromoMax', type: 'number', min: 1, step: 1, placeholder: 'unlimited' }))]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoUntil', text: 'Valid until' }), h('input', keep('valid_until', { id: 'baPromoUntil', type: 'date' }))]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoComm', text: 'Commission % (affiliate)' }), h('input', keep('commission', { id: 'baPromoComm', type: 'text', inputmode: 'decimal', placeholder: 'none' }))]),
+      h('div.ba-field.is-wide', {}, [h('label', { for: 'baPromoNote', text: 'Note (who it is for, where it was printed)' }), h('input', keep('note', { id: 'baPromoNote', type: 'text', maxlength: 300 }))])
     ]));
     const paid = S.plans.filter((p) => p.id !== 'free');
     pf.append(h('div.ba-promo-plans', {}, [h('span.gt-meta', { text: 'Applies to:' }), ...paid.map((p) => h('label', {}, [
@@ -348,6 +368,10 @@ delegate(document, 'submit', '[data-ba-form="promo"]', async (e, form) => {
   try {
     const row = await Billing.admin.setPromoCode(code, patch);
     S.promoMade = `Added ${row && row.code ? row.code : code}.`;
+    /* The draft is kept across a REFRESH, not across a SAVE: clear it
+       here or the form comes back still carrying the code that was just
+       added, and the next one is edited on top of the last. */
+    S.promoDraft = {};
     await load();
     { const made = S.promoMade; setTimeout(() => { if (S.promoMade === made) S.promoMade = ''; clearNote(made); }, 2500); }
   } catch (err) { toast(err.message || 'The code was not saved.', 'error'); }

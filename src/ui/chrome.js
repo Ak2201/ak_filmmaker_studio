@@ -858,6 +858,77 @@ function buildStepRail() {
   }
   document.body.classList.add('has-step-rail');
 
+  /* THE TAB'S WIDTH, MEASURED AND PUBLISHED — because the number was
+     guessed once and went stale.
+
+     Below 1100px this button is `position: fixed` over the page's left
+     edge, and chrome.css insets `main` so the controls nearest that
+     edge are not underneath it. That inset was a constant chosen from a
+     comment reading "the tab is fixed over the page's left edge (22px
+     wide)". Measured at 390px it is FORTY-FOUR, so the 8px inset
+     cleared less than half of it: the language toggle's "English"
+     button spans x 25-111 and nineteen pixels of it sat behind the tab.
+     A thumb landing there opened the step rail instead of switching
+     language.
+
+     It is 44 because of `writing-mode: vertical-rl` — the width is the
+     line box of the vertical text, so it follows the font, its size and
+     the padding, none of which this file should be re-deriving. So it
+     is measured, like --sh-bar-h and --mab-h, and the stylesheet reads
+     the measurement.
+
+     A ResizeObserver ON THE BUTTON, and measuring twice is not enough.
+     The obvious shape — measure now, measure again on
+     document.fonts.ready — was tried and SHIPPED THE SAME STALE NUMBER
+     this is meant to fix: fonts.ready resolved before the new metrics
+     reached this element, so 23px (the fallback face) was published
+     while the button was really 44. The inset came out at 27 and the
+     "English" button cleared the tab by nothing at all.
+
+     Observing the element itself cannot be early: whenever its width
+     changes — the webfont arriving, a resize, the 1100px boundary
+     turning `position: fixed` on or off — the callback runs with the
+     width it now has. The property is written on <html>, OUTSIDE the
+     observed element, so there is no notification loop; that is the
+     distinction shell.js's note about ResizeObserver is drawing. */
+  const tabWidth = () => {
+    const el = document.getElementById('stepRailToggle');
+    if (!el) return;
+    const fixed = getComputedStyle(el).position === 'fixed';
+    const w = fixed ? Math.ceil(el.getBoundingClientRect().width) : 0;
+    document.documentElement.style.setProperty('--step-tab-w', w + 'px');
+  };
+  tabWidth();
+  /* The observer below is the right mechanism and it is not enough on
+     its own: ResizeObserver callbacks ride the rendering loop, so a tab
+     that is not compositing never gets one. That is only ever a
+     background tab — where the inset does not matter — but the first
+     measure CAN still land in the fallback face, and then nothing else
+     would correct it until something resized. Two cheap re-measures
+     close that: timers run whether or not the page is painting.
+
+     Note the width legitimately DIFFERS BY DEVICE and this is why the
+     constant could never have worked: measured 23px with a mouse and
+     44px on a touch screen, because base.css floors a tap target at
+     44px under (pointer: coarse). Both are correct. */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(tabWidth).catch(() => {});
+  setTimeout(tabWidth, 600);
+  if (typeof ResizeObserver === 'function') {
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; tabWidth(); });
+    });
+    ro.observe(document.getElementById('stepRailToggle'));
+  }
+  /* The boundary crossing can leave the width unchanged while
+     `position` flips, and a ResizeObserver says nothing about that. */
+  let tabRaf = 0;
+  window.addEventListener('resize', () => {
+    if (tabRaf) return;
+    tabRaf = requestAnimationFrame(() => { tabRaf = 0; tabWidth(); });
+  });
+
   // Open by default on wide screens
   if (window.innerWidth > 1100) {
     rail.classList.remove('collapsed');

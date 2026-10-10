@@ -1,8 +1,8 @@
 /* ============================================================
    STORY — the Story stage's workspace (PRD 2.0 §4.5, plan rev. 3 §1)
    ------------------------------------------------------------
-   A story begins on a PATH: 1 Idea → 2 Logline → 3 Structure →
-   4 Step outline → 5 Synopsis → 6 To the Screenplay. The step outline
+   A story begins on a PATH: Idea → Logline → Story Bible → Scene order →
+   Step outline → Synopsis → To the Screenplay. The step outline
    is the centre of it — a numbered list of story events under each
    beat of the chosen format — and the synopsis can be assembled from
    it, tagged as it is built. The synopsis editor, the beat matrix and
@@ -12,8 +12,10 @@
 
    GUIDED, NOT GATED. Every stepper tab is clickable at any time, and
    the old ways in stay: the sample, a synopsis you already have, or a
-   file. Which step is on screen is in memory (and in the address bar
-   as #path-N); what is DONE is derived from the story, never stored.
+   file. NO STEP IS MANDATORY: a tick only means "has something in it".
+   Which step is on screen is in memory (and in the address bar as
+   #path-<id>; the old #path-N numbers still open the step they always
+   did); what is DONE is derived from the story, never stored.
 
    WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: the path step, the
    tab under the editor, whether the synopsis is being edited or
@@ -49,7 +51,6 @@ import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
 import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
-import sample from '../data/sample.dragon.json';
 import Pitch from '../lib/pitch-deck.js';
 /* The import, the sample, the exports, the blueprint's beat fields and
    the curve are shared with the blueprints' Part I panels, so they live
@@ -58,6 +59,9 @@ import Pitch from '../lib/pitch-deck.js';
 import IO from '../lib/story-io.js';
 import { renderHeat as kitHeat, renderFlags as kitFlags, importSynopsis } from '../ui/story-kit.js';
 import { renderLoglineWorkshop } from '../ui/logline-workshop.js';   // AI logline check + variants
+import { learn } from '../ui/learn.js';
+import { renderFilmPicker, renderFilmSwitch, onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
+import { renderBibleBody, wireBible } from '../ui/story-bible.js';
 
 const app = document.getElementById('app');
 
@@ -69,7 +73,7 @@ const app = document.getElementById('app');
 let mode = null;          // 'edit' | 'tag' — null means "decide from the data"
 let litBeat = '';         // the beat card whose passages are illuminated
 let flashMark = '';       // a mark to scroll to after the next render
-let pathStep = null;      // 1..6, or null = derive from the story
+let pathStep = null;      // a Story.PATH id, or null = derive from the story
 let started = false;      // the start cards were answered this visit
 let tab = 'pacing';       // the panel under the editor
 let undoBuild = null;     // one level: the synopsis before the last build
@@ -144,8 +148,22 @@ function renderModes() {
   ]);
   sec.append(card('Import', 'Bring a file.',
     'A synopsis or treatment from Word, a PDF or plain text. Nothing is changed until you see it here.', drop));
-  return sec;
+  return h('div.st-modes-wrap', {}, [renderFavourite(), sec]);
 }
+
+/* The favourite film. Every example on the path is told in it, and the
+   boxes that explain a word use it too. Kept on the project (store.js
+   projectFav), else on the device. */
+function renderFavourite() {
+  return h('section.st-fav', { 'aria-label': 'Your favourite film' }, [
+    h('p.bd-eyebrow', { text: 'Your favourite film' }),
+    h('h2.st-mode-title', { text: 'Which of these films have you watched? Pick your favourite — we’ll explain every step with it.' }),
+    renderFilmPicker({ label: 'Pick your favourite film' })
+  ]);
+}
+/* A pick redraws the page (the picker, the boxes, the examples); the films
+   arriving ('' — nothing was picked) only fill the examples in. */
+onFavChange((slug) => (slug ? render() : fillExamples()));
 
 /* ---- the path stepper ---------------------------------------- */
 
@@ -157,11 +175,14 @@ function renderStepper(s, cur) {
   const nav = h('nav.st-path', { 'aria-label': 'Story path' });
   const ol = h('ol.st-path-list');
   for (const p of Story.pathProgress(s, { scenes: scenes() })) {
-    const on = p.n === cur;
+    const on = p.id === cur;
     const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
-      type: 'button', 'data-st': 'path', 'data-step': p.n, 'aria-current': on ? 'step' : null
+      /* data-step is the step's STABLE NUMBER (story.js PATH `n`): the
+         blueprint drawer reads it from the current tab to know which
+         blueprint steps this path step answers. data-path is the id. */
+      type: 'button', 'data-st': 'path', 'data-path': p.id, 'data-step': p.n, 'aria-current': on ? 'step' : null
     }, [
-      h('span.st-path-n', { text: String(p.n) }),
+      h('span.st-path-n', { text: String(p.pos) }),
       h('span.st-path-label', { text: p.label }),
       h('span.st-path-state', { text: p.done ? (p.detail ? 'Done · ' + p.detail : 'Done') : 'To do' })
     ]);
@@ -171,14 +192,60 @@ function renderStepper(s, cur) {
   return nav;
 }
 
-const stepHead = (n, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + n + ' of 6' }),
+/* The words under every step's title are explained with the favourite
+   film, in a closed box (src/ui/learn.js — null for a topic with no
+   content yet, so it is filtered before append). */
+const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', structure: 'beat-sheet', outline: 'step-outline', synopsis: 'synopsis', screenplay: 'screenplay' };
+const learnBox = (topic) => {
+  let el = null;
+  try { el = learn(topic); } catch (e) { el = null; }   // no film given: the project's favourite
+  return el;
+};
+/* A Bible write changes which steps have something in them, and the page
+   is not redrawn for a card (that would cost the caret): the stepper's
+   ticks are replaced in place instead. */
+function refreshStepper() {
+  const old = document.querySelector('nav.st-path');
+  if (!old) return;
+  const s = story();
+  old.replaceWith(renderStepper(s, currentStep(s)));
+}
+wireBible({ getStory: story, saved: refreshStepper, film: favSlug, rerender: render });
+
+const stepHead = (id, title, lead) => [
+  h('p.bd-eyebrow', { text: 'Step ' + Story.pathStepById(id).pos + ' of ' + Story.PATH.length }),
   h('h2.bd-h2', { text: title }),
-  lead ? h('p.bd-sub', { text: lead }) : null
-];
-const nextBtn = (n, label) => h('div.st-step-nav', {}, [
-  h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-step': n, text: 'NEXT: ' + label.toUpperCase() })
-]);
+  lead ? h('p.bd-sub', { text: lead }) : null,
+  learnBox(LEARN_TOPIC[id])
+].filter(Boolean);
+/* Next suggests the first step AFTER this one with nothing in it; it is
+   a suggestion and never a gate (the stepper reaches any step). */
+const nextBtn = (s, id) => {
+  const nx = Story.suggestNext(Story.pathProgress(s, { scenes: scenes() }), id);
+  if (!nx) return null;
+  return h('div.st-step-nav', {}, [
+    h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-path': nx.id, text: 'NEXT: ' + nx.label.toUpperCase() })
+  ]);
+};
+/* A film's own words for a step, with a switcher to see another film's.
+   The films are imported a moment after first paint (fav-film.js), so the
+   box is drawn empty and FILLED IN PLACE when they land: a redraw of the
+   whole page would re-mount the shell, which writes its rail state, and a
+   page that writes while idle fails the gate's save-loop check. */
+const EXAMPLE_OF = { idea: (st) => st.concept && st.concept.premise, logline: (st) => st.logline && st.logline.line };
+function exampleParts(kind) {
+  const st = favStudy();
+  const text = st && EXAMPLE_OF[kind](st);
+  if (!text) return [];
+  return [
+    h('p.st-example', {}, [h('span.st-example-k', { text: st.meta.title + ': ' }), '“' + text + '”']),
+    renderFilmSwitch({ label: 'Example from' })
+  ];
+}
+const exampleBox = (kind) => h('div.st-example-wrap', { 'data-example': kind }, exampleParts(kind));
+function fillExamples() {
+  document.querySelectorAll('[data-example]').forEach((el) => el.replaceChildren(...exampleParts(el.getAttribute('data-example'))));
+}
 
 /* A blank project's first step, once the start cards have been
    answered or skipped (a #path-1 link, ?start=new, the stepper): the
@@ -205,7 +272,7 @@ function renderWaysIn() {
 }
 
 function renderIdea(s) {
-  const sec = h('section#path-1.st-step', { 'aria-label': 'The idea' }, stepHead(1, 'The idea',
+  const sec = h('section#path-1.st-step.glossary-scope', { 'data-path': 'idea', 'aria-label': 'The idea' }, stepHead('idea', 'The idea',
     'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
   // Only when the start cards are NOT on the page: two copies of the same offer is noise.
   if (isEmpty(s) && started) sec.append(renderWaysIn());
@@ -215,13 +282,13 @@ function renderIdea(s) {
   sec.append(ta);
   const bp = bpIdea();
   if (!s.idea.trim() && bp) sec.append(offerBlueprint('idea', 'Feature blueprint, step 01', bp));
-  sec.append(h('p.st-example', {}, [h('span.st-example-k', { text: 'Dragon: ' }), '“' + sample.blueprint.s1_whatif + '”']));
-  sec.append(nextBtn(2, 'Logline'));
+  sec.append(exampleBox('idea'));
+  sec.append(nextBtn(s, 'idea'));
   return sec;
 }
 
 function renderLogline(s) {
-  const sec = h('section#path-2.st-step', { 'aria-label': 'The logline' }, stepHead(2, 'The logline',
+  const sec = h('section#path-2.st-step.glossary-scope', { 'data-path': 'logline', 'aria-label': 'The logline' }, stepHead('logline', 'The logline',
     'One sentence: who the story is about, what they want, what stands in the way, and what it costs if they fail.'));
   sec.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
   const ta = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
@@ -229,9 +296,9 @@ function renderLogline(s) {
   sec.append(ta);
   const bp = bpLogline();
   if (!s.logline.trim() && bp) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bp));
-  sec.append(h('p.st-example', {}, [h('span.st-example-k', { text: 'Dragon: ' }), '“' + sample.blueprint.s2_log_final + '”']));
+  sec.append(exampleBox('logline'));
   sec.append(renderLoglineWorkshop(s, { AI, Panelm, getStory: story, rerender: render, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }));
-  sec.append(nextBtn(3, 'Structure'));
+  sec.append(nextBtn(s, 'logline'));
   return sec;
 }
 
@@ -271,8 +338,11 @@ function miniCurve(fw) {
 }
 
 function renderStructure(s) {
-  const sec = h('section#path-3.st-step', { 'aria-label': 'Structure' }, stepHead(3, 'Pick a beat sheet format',
-    'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'));
+  const sec = h('section#path-3.st-step.glossary-scope', { 'data-path': 'structure', 'aria-label': 'Scene order' }, stepHead('structure', 'Scene order',
+    'The order your story’s big moments come in — pick a beat sheet to lay them out.'));
+  sec.append(h('p.st-muted', {
+    text: 'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'
+  }));
   const grid = h('div.st-fw-grid');
   const sug = suggestedFw();
   for (const f of Story.frameworks()) {
@@ -292,7 +362,17 @@ function renderStructure(s) {
     ]));
   }
   sec.append(grid);
-  sec.append(nextBtn(4, 'Step outline'));
+  sec.append(nextBtn(s, 'structure'));
+  return sec;
+}
+
+/* ---- 3 · the Story Bible (src/ui/story-bible.js) -------------- */
+
+function renderBible(s) {
+  const sec = h('section#path-7.st-step.glossary-scope', { 'data-path': 'bible', 'aria-label': 'Story Bible' }, stepHead('bible', 'Story Bible',
+    'The facts of your film in one place: who is in it, what it is fought over, what is at stake, what it is about and where it happens. Fill what you know; none of it is required.'));
+  sec.append(renderBibleBody());
+  sec.append(nextBtn(s, 'bible'));
   return sec;
 }
 
@@ -301,7 +381,7 @@ function renderStructure(s) {
 function renderOutline(s) {
   const o = Story.outlineByBeat(s, s.framework);
   const fw = o.fw;
-  const sec = h('section#path-4.st-step', { 'aria-label': 'Step outline' }, stepHead(4, 'Step outline · ' + fw.label,
+  const sec = h('section#path-4.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Step outline' }, stepHead('outline', 'Step outline · ' + fw.label,
     'A numbered list of what happens, beat by beat. One or two lines a step. Add, reorder and move steps between beats as the story finds its shape.'));
   sec.append(h('p.st-coverage', { role: 'status' }, [
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
@@ -380,7 +460,7 @@ function renderOutline(s) {
     un.append(ol);
     sec.append(un);
   }
-  sec.append(nextBtn(5, 'Synopsis'));
+  sec.append(nextBtn(s, 'outline'));
   return sec;
 }
 
@@ -423,7 +503,7 @@ function renderSuggestGate(s) {
 /* ---- 5 · the synopsis ---------------------------------------- */
 
 function renderSynopsisStep(s) {
-  const sec = h('section#path-5.st-step', { 'aria-label': 'Synopsis' }, stepHead(5, 'Synopsis',
+  const sec = h('section#path-5.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', 'Synopsis',
     'The story as prose. Build it from the outline — one paragraph per act, every step tagged with its beat — or write and tag your own.'));
   const o = Story.outlineByBeat(s, s.framework);
   const row = h('div.st-build');
@@ -437,13 +517,14 @@ function renderSynopsisStep(s) {
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
+  sec.append(nextBtn(s, 'synopsis'));
   return sec;
 }
 
 /* ---- 6 · to the Screenplay ----------------------------------- */
 
 function renderScreenplay(s) {
-  const sec = h('section#path-6.st-step', { 'aria-label': 'To the Screenplay' }, stepHead(6, 'To the Screenplay',
+  const sec = h('section#path-6.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'To the Screenplay' }, stepHead('screenplay', 'To the Screenplay',
     'One placeholder scene per step, each linked to its beat, so Write’s Outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
   const live = new Set(scenes().map((x) => x.id));
   const written = s.outline.filter((x) => x.text.trim());
@@ -805,7 +886,7 @@ function draw() {
   main.append(bar);
 
   main.append(renderStepper(s, cur));
-  const panels = { 1: renderIdea, 2: renderLogline, 3: renderStructure, 4: renderOutline, 5: renderSynopsisStep, 6: renderScreenplay };
+  const panels = { idea: renderIdea, logline: renderLogline, bible: renderBible, structure: renderStructure, outline: renderOutline, synopsis: renderSynopsisStep, screenplay: renderScreenplay };
   main.append(panels[cur](s));
   main.append(renderTabs(s));
   app.replaceChildren(main);
@@ -831,8 +912,16 @@ function after() {
   }
 }
 
-function goStep(n, { scroll = true } = {}) {
-  pathStep = Math.min(6, Math.max(1, Number(n) || 1));
+/* A path step id, from an id or (for any caller that still holds one)
+   an old step number. */
+function stepId(x) {
+  if (Story.pathStepById(x)) return x;
+  const p = Story.PATH.find((q) => q.n === Number(x));
+  return p ? p.id : 'idea';
+}
+
+function goStep(x, { scroll = true } = {}) {
+  pathStep = stepId(x);
   started = true;
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
   render();
@@ -881,7 +970,7 @@ async function importFile(file) {
   if (!r) return;
   mode = 'tag';
   started = true;
-  pathStep = 5;
+  pathStep = 'synopsis';
   render();
   StudioUI.toast(IO.importedSentence(r));
 }
@@ -896,7 +985,7 @@ async function useSample() {
   if (!isEmpty(cur) && !window.confirm('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
   const s = await sampleStory();
   mode = 'tag'; started = true; litBeat = '';
-  pathStep = s.outline.length ? 4 : 5;
+  pathStep = s.outline.length ? 'outline' : 'synopsis';
   undoBuild = null; lastSend = null; sugg = {};
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
   commit(s);
@@ -954,16 +1043,16 @@ delegate(document, 'click', '[data-st]', (e, el) => {
   } else if (act === 'new') {
     started = true;
     if (isEmpty(s) && s.framework !== suggestedFw()) { s.framework = suggestedFw(); Story.saveStory(s); }
-    goStep(1);
+    goStep('idea');
     const ta = document.getElementById('stIdea'); if (ta) ta.focus();
   } else if (act === 'ways-idea') {
     const ta = document.getElementById('stIdea'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); }
   } else if (act === 'have-synopsis') {
     started = true; mode = 'edit';
-    goStep(5);
+    goStep('synopsis');
     const ta = document.getElementById('stSource'); if (ta) ta.focus();
   } else if (act === 'path') {
-    goStep(el.getAttribute('data-step'));
+    goStep(el.getAttribute('data-path') || el.getAttribute('data-step'));
   } else if (act === 'tab') {
     tab = el.getAttribute('data-tab');
     render();
@@ -1061,7 +1150,7 @@ delegate(document, 'click', '[data-st]', (e, el) => {
   } else if (act === 'goto' || act === 'heat') {
     const from = Number(el.getAttribute('data-from'));
     if (mode !== 'tag') mode = 'tag';
-    if (currentStep(s) !== 5) { pathStep = 5; started = true; }
+    if (currentStep(s) !== 'synopsis') { pathStep = 'synopsis'; started = true; }
     render();
     scrollToOffset(from);
   } else if (act === 'unmark') {
@@ -1205,12 +1294,14 @@ const drain = () => drainClipQueue().then((n) => {
 drain();
 onClipQueued(drain);
 
-/* The address bar: #path-N opens a path step; #pacing, #ai-map,
+/* The address bar: #path-<id> opens a path step (#path-N, the form every
+   link before the Story Bible used, opens the step it always did);
+   #pacing, #ai-map,
    #pitch and #vault open their tab under the editor and land on it. */
 function readHash({ land = false } = {}) {
   const hash = (location.hash || '').replace(/^#/, '');
-  const m = /^path-([1-6])$/.exec(hash);
-  if (m) { pathStep = Number(m[1]); started = true; return false; }
+  const stepFromHash = Story.pathStepFromHash(hash);
+  if (stepFromHash) { pathStep = stepFromHash; started = true; return false; }
   if (TABS.some((t) => t.id === hash)) { tab = hash; return land; }
   return false;
 }
@@ -1228,8 +1319,9 @@ if (START) history.replaceState(null, '', location.pathname + location.hash);
 const LAND = readHash({ land: true });
 
 render();
+loadFavStudiesSoon();   // the examples' films, once the page has settled
 primeAI();
 if (START === 'sample' && !story().source.trim() && !story().outline.length) useSample();
-else if (START === 'new') { started = true; goStep(1); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
+else if (START === 'new') { started = true; goStep('idea'); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
 if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }
 if (LAND) landOnTab();

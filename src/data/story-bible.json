@@ -1,0 +1,158 @@
+{
+  "_about": "The Story Bible's content, read by src/ui/story-bible.js, src/ui/character-card.js, src/lib/characters.js and src/lib/story.js. Nothing here is stored. `map` says WHICH BLUEPRINT KEYS each card reads and writes (through src/lib/blueprint-store.js — the answer lives in the blueprint blob and nowhere else); `fields` is the wording for each key (taken from steps.feature.json / steps.short.json, minus the A/B/C lettering); `fallback` names feature keys a SHORT project shows after its own. Key strings are a contract with saved work (CLAUDE.md invariant 1): never rename one here.",
+
+  "films": [
+    { "slug": "96", "title": "96", "year": "2018", "director": "C. Prem Kumar", "genre": "Romance · Memory" },
+    { "slug": "porthozhil", "title": "Por Thozhil", "year": "2023", "director": "Vignesh Raja", "genre": "Investigative Crime Thriller" },
+    { "slug": "dragon", "title": "Dragon", "year": "2025", "director": "Ashwath Marimuthu", "genre": "Drama · Character study" },
+    { "slug": "vikramvedha", "title": "Vikram Vedha", "year": "2017", "director": "Pushkar–Gayathri", "genre": "Neo-noir · Moral thriller" }
+  ],
+  "films_about": "A COPY of the four films' identity lines from studies.json (which stays the source: scripts/test-bible.mjs fails if they drift). It exists so the favourite-film picker can draw on Story and Settings without importing the ~100 KB of case studies before first paint (src/ui/fav-film.js).",
+
+  "cards": [
+    { "id": "characters", "label": "Characters", "learn": "character",
+      "lead": "Who is this about, and who stands in their way? Start with the protagonist and the antagonist; add the rest as they turn up." },
+    { "id": "conflict", "label": "Conflict", "learn": "conflict",
+      "lead": "What the story is fought over, and against what. Pick every kind that applies, then say it in one line." },
+    { "id": "stakes", "label": "Stakes", "learn": "stakes",
+      "lead": "What is lost if the hero fails: in the world, and inside them." },
+    { "id": "theme", "label": "Theme", "learn": "theme",
+      "lead": "What the film is about underneath what happens in it." },
+    { "id": "world", "label": "World", "learn": "world",
+      "lead": "Where and when it happens, and the rules of the place." }
+  ],
+
+  "map": {
+    "stakes": { "feature": ["s3_ext", "s3_int"], "short": [] },
+    "theme":  { "feature": ["s3_theme", "s3_phil"], "short": [] },
+    "world":  { "feature": ["s7_era", "s7_location", "s7_duration", "s7_rules", "s7_sensory"],
+                "short":   ["s5_loc", "s5_time", "s5_anchors", "s5_rules"] }
+  },
+  "fallback": { "world": ["s7_era", "s7_duration"] },
+
+  "fields": {
+    "s3_ext":      { "label": "Outer stakes — what happens in the world", "placeholder": "What does the hero stand to lose in the world?", "learn": "stakes" },
+    "s3_int":      { "label": "Inner stakes — what dies inside the hero", "placeholder": "What part of the hero will die if they fail?", "learn": "stakes" },
+    "s3_theme":    { "label": "Your theme, as a sentence with a verb", "placeholder": "Your thesis. Something the film is willing to defend.", "rows": 3, "learn": "theme" },
+    "s3_phil":     { "label": "Philosophical stakes — the idea on trial", "placeholder": "What idea gets disproven if they fail?", "learn": "theme" },
+    "s7_era":      { "label": "Era / time period", "placeholder": "Year, season, time-frame…" },
+    "s7_location": { "label": "Specific location", "placeholder": "Country, city, neighbourhood…" },
+    "s7_duration": { "label": "How long the story lasts", "placeholder": "24 hours? A summer? A decade?" },
+    "s7_rules":    { "label": "3–5 unbreakable rules of your world", "placeholder": "What is allowed, what is forbidden, what is normal here.", "rows": 3 },
+    "s7_sensory":  { "label": "Sensory signature — palette, sound, texture, a recurring object", "placeholder": "What does this world look, sound and feel like?", "rows": 3 },
+    "s5_loc":      { "label": "Primary location — describe it like a character", "placeholder": "What does the space look like? What is it for? Who has been in it before? What does it smell like?", "rows": 3 },
+    "s5_time":     { "label": "Time of day and weather", "placeholder": "Pick the one that loads the scene with the most meaning. Dawn is not noon; rain is not heat.", "rows": 2 },
+    "s5_anchors":  { "label": "Three sensory anchors — sound, texture, recurring object", "placeholder": "e.g. SOUND: a ceiling fan one notch slower than it should be. TEXTURE: plastic tablecloth. OBJECT: a glass of water nobody drinks.", "rows": 3 },
+    "s5_rules":    { "label": "Rules the world establishes (3–5)", "placeholder": "What is allowed, what is forbidden, what is normal here. Even a realist short has rules.", "rows": 4 }
+  },
+
+  "conflicts": [
+    { "id": "person",     "label": "Person vs Person",              "meaning": "Someone with their own goal stands in the hero's way." },
+    { "id": "self",       "label": "Person vs Self",                "meaning": "The hero's own fear, flaw or habit is the obstacle." },
+    { "id": "society",    "label": "Person vs Society",             "meaning": "A community, system, law or tradition pushes back." },
+    { "id": "nature",     "label": "Person vs Nature",              "meaning": "Weather, wilderness, an animal or a body that will not obey." },
+    { "id": "fate",       "label": "Person vs Fate / the supernatural", "meaning": "Destiny, a curse, a god or a ghost decides what is possible." },
+    { "id": "technology", "label": "Person vs Technology",          "meaning": "A machine, a network or an invention turns on its user." },
+    { "id": "family",     "label": "Family",                        "meaning": "Loyalty, duty or blood pulls two ways." },
+    { "id": "time",       "label": "Time / a deadline",             "meaning": "The clock is the opponent: it must be done before it is too late." }
+  ],
+  "conflictLine": {
+    "label": "The central conflict in one line",
+    "placeholder": "e.g. A cop who cannot forgive himself must stop the one man who knows why."
+  },
+
+  "characterRoles": [
+    { "id": "protagonist", "label": "Protagonist", "learn": "protagonist" },
+    { "id": "antagonist",  "label": "Antagonist",  "learn": "antagonist" },
+    { "id": "ally",        "label": "Ally / confidant", "learn": "supporting-cast" },
+    { "id": "mentor",      "label": "Mentor", "learn": "supporting-cast" },
+    { "id": "love",        "label": "Love interest / mirror", "learn": "supporting-cast" },
+    { "id": "family",      "label": "Family", "learn": "supporting-cast" },
+    { "id": "other",       "label": "Other", "learn": "supporting-cast" }
+  ],
+
+  "characterCard": [
+    { "id": "who", "label": "Who", "fields": [
+      { "key": "name",    "label": "Name", "kind": "line", "placeholder": "RAVI" },
+      { "key": "aliases", "label": "Also written as", "kind": "line", "placeholder": "Other cue names, separated by commas" },
+      { "key": "role",    "label": "Role in the story", "kind": "role", "learn": "character" },
+      { "key": "age",     "label": "Age / role / context", "kind": "line", "placeholder": "30s" },
+      { "key": "look",    "label": "Look", "kind": "area", "placeholder": "What we see first: build, clothes, the thing people notice." },
+      { "key": "voice",   "label": "Voice notes — how they talk", "kind": "area", "placeholder": "Fast, Chennai college slang, English when he is bluffing" }
+    ] },
+    { "id": "drive", "label": "Drive", "fields": [
+      { "key": "want",   "label": "Want — what they are after", "kind": "area", "placeholder": "The job, the girl, the respect of his father…", "learn": "want" },
+      { "key": "need",   "label": "Need — what they lack", "kind": "area", "placeholder": "To stop lying to the people who love him", "learn": "need" },
+      { "key": "stakes", "label": "Stakes — what they lose if they fail", "kind": "area", "placeholder": "Their home, their name, the one person who believes in them", "learn": "stakes" },
+      { "key": "fear",   "label": "Fear", "kind": "area", "placeholder": "What they would do anything to avoid", "learn": "fear" },
+      { "key": "lie",    "label": "The lie they believe", "kind": "area", "placeholder": "The false idea they live by", "learn": "lie" }
+    ] },
+    { "id": "makeup", "label": "Make-up", "fields": [
+      { "key": "flaw",     "label": "Weakness / flaw", "kind": "area", "placeholder": "The habit that keeps getting them hurt", "learn": "flaw" },
+      { "key": "strength", "label": "Strength / skill", "kind": "area", "placeholder": "What they are genuinely good at" },
+      { "key": "wound",    "label": "Wound — the past event behind it", "kind": "area", "placeholder": "The thing that happened before page one", "learn": "wound" },
+      { "key": "secret",   "label": "Secret", "kind": "area", "placeholder": "What they hide, and from whom" }
+    ] },
+    { "id": "change", "label": "Change", "fields": [
+      { "key": "arcStart", "label": "Who they are at the start", "kind": "area", "placeholder": "At the start, they are…" },
+      { "key": "arcEnd",   "label": "Who they are at the end", "kind": "area", "placeholder": "By the final scene, they have become…" },
+      { "key": "arc",      "label": "Arc — how they change", "kind": "area", "placeholder": "From charming liar to a man who owns what he did", "learn": "arc" }
+    ] },
+    { "id": "ties", "label": "Ties", "fields": [
+      { "key": "relationships", "label": "Relationships", "kind": "ties" },
+      { "key": "contactId",     "label": "Cast as", "kind": "cast" }
+    ] }
+  ],
+
+  "slots": {
+    "_about": "A character whose role is one of these is the blueprint's own answer for that part: the fields named here are READ AND WRITTEN IN THE BLUEPRINT BLOB, not copied into fms_characters_v1 (no field is stored twice). `fields` is character-field → blueprint key; `short` overrides them for a short-film project, where it names a key. `extras` are further prompts of the same blueprint step, shown on the card and not part of the character record.",
+    "protagonist": {
+      "fields": { "name": "s4_name", "age": "s4_age", "want": "s4_want", "need": "s4_need", "lie": "s4_lie", "wound": "s4_wound", "strength": "s4_skill", "flaw": "s4_flaw", "arc": "s4_arc" },
+      "short":  { "name": "s3_name", "want": "s3_want" },
+      "extras": {
+        "feature": [],
+        "short": [
+          { "key": "s3_obstacle", "label": "The one obstacle", "placeholder": "Internal (their own flaw, fear, history) or external (someone, something, time). Pick one." },
+          { "key": "s3_show",     "label": "What we learn about them without dialogue", "placeholder": "Three details an actor and director can show: body language, an object they carry, how they enter a room." },
+          { "key": "s3_turn",     "label": "The turn — the moment that changes everything", "placeholder": "What pivots in this character?" }
+        ]
+      }
+    },
+    "antagonist": {
+      "fields": { "name": "s5_name", "want": "s5_want" },
+      "short": {},
+      "extras": { "feature": [
+        { "key": "s5_philosophy", "label": "What they believe", "placeholder": "Their philosophy, their argument against the hero." },
+        { "key": "s5_hero",       "label": "Why they are the hero of their own story", "placeholder": "From where they stand, they are right." },
+        { "key": "s5_mirror",     "label": "The mirror they hold to the protagonist", "placeholder": "What do they show the hero about themselves?" },
+        { "key": "s5_humanity",   "label": "Their one moment of humanity", "placeholder": "The beat that makes them a person." }
+      ], "short": [] }
+    },
+    "ally": {
+      "fields": { "name": "s6_ally_name" },
+      "short": {},
+      "extras": { "feature": [
+        { "key": "s6_ally_reflect", "label": "What they reflect about the hero", "placeholder": "" },
+        { "key": "s6_ally_subplot", "label": "Their independent subplot", "placeholder": "" },
+        { "key": "s6_ally_exit",    "label": "The moment they leave, betray or die", "placeholder": "" }
+      ], "short": [] }
+    },
+    "love": {
+      "fields": { "name": "s6_lover_name" },
+      "short": {},
+      "extras": { "feature": [
+        { "key": "s6_lover_sees",     "label": "What they see that the hero cannot", "placeholder": "" },
+        { "key": "s6_lover_goal",     "label": "Their independent goal", "placeholder": "" },
+        { "key": "s6_lover_decision", "label": "The decision they force", "placeholder": "" }
+      ], "short": [] }
+    },
+    "mentor": {
+      "fields": { "name": "s6_mentor_name" },
+      "short": {},
+      "extras": { "feature": [
+        { "key": "s6_mentor_tool",    "label": "The lesson they hand over", "placeholder": "" },
+        { "key": "s6_mentor_failure", "label": "Their own failure that informs the hero", "placeholder": "" }
+      ], "short": [] }
+    }
+  }
+}

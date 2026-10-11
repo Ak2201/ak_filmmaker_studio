@@ -142,3 +142,19 @@
   .tour-pop, .tour-chip, .tw-section { display: none !important; }
   [data-tour-on] { outline: none !important; }
 }
+
+/* The home invitation: one quiet line and two buttons, above the project list. */
+.tour-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s5);
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+  background: var(--accent-wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.tour-invite-line { margin: 0; flex: 1 1 18rem; color: var(--ink); }
+.tour-invite-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+@media print { .tour-invite { display: none !important; } }

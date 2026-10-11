@@ -421,3 +421,26 @@
   margin: 0 0 var(--s4);
   font-size: var(--t-small);
 }
+
+/* Plan link, activity log, danger zone (11 Oct 2026). */
+.st-plan-link { margin: 0; }
+.st-activity { display: grid; gap: var(--s3); }
+.st-activity .al-count {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-wide);
+  color: var(--ink-muted);
+}
+.st-activity .activity-list { max-height: 28rem; overflow: auto; }
+.st-danger-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
+  padding: var(--s4);
+  border: 1px solid var(--danger);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-danger-row p { margin: 0; flex: 1 1 18rem; color: var(--ink); }
+#danger > .bd-eyebrow { color: var(--danger-deep, var(--danger)); }

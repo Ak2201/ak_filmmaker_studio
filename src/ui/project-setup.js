@@ -25,10 +25,7 @@ const DASHBOARD_URL = 'dashboard.html';
 
 const FORMATS = {
   feature:     { label: 'Feature film', title: 'My feature film' },
-  short:       { label: 'Short film',   title: 'My short film' },
-  documentary: { label: 'Documentary',  title: 'My documentary' },
-  musicvideo:  { label: 'Music video',  title: 'My music video' },
-  adfilm:      { label: 'Ad film',      title: 'My ad film' }
+  short:       { label: 'Short film',   title: 'My short film' }
 };
 
 let overlay = null;
@@ -45,7 +42,6 @@ function build() {
       h('span.ps-film-genre', { text: m.genre || '' })
     ]);
   });
-  const formatOpts = Object.keys(FORMATS).map((k) => h('option', { value: k, text: FORMATS[k].label }));
 
   overlay = h('div#projectSetup.modal-overlay', {
     role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'psHeading'
@@ -65,13 +61,6 @@ function build() {
         h('div.ps-film-grid', { role: 'radiogroup', 'aria-label': 'Your favourite film' }, cards)
       ]),
 
-      h('details.ps-more', { id: 'psMore' }, [
-        h('summary', { text: 'More formats' }),
-        h('p.ps-hint', { text: 'Making a documentary, a music video or an ad film? Choose it here.' }),
-        h('label', { for: 'psFormat', text: 'FORMAT' }),
-        h('select', { id: 'psFormat' }, formatOpts)
-      ]),
-
       h('div.modal-actions', {}, [
         h('button.mbtn', { type: 'button', 'data-ps-close': '', text: 'CANCEL' }),
         h('button.mbtn.primary', { id: 'psSubmit', type: 'submit', text: 'CREATE & OPEN' })
@@ -82,13 +71,8 @@ function build() {
 
   const form = overlay.querySelector('form');
   const title = overlay.querySelector('#psTitle');
-  const fmt = overlay.querySelector('#psFormat');
 
   title.addEventListener('input', () => { state.dirty = true; overlay.querySelector('#psError').hidden = true; });
-  fmt.addEventListener('change', () => {
-    state.format = fmt.value;
-    if (!state.dirty) title.value = FORMATS[state.format].title;
-  });
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || (e.target.closest && e.target.closest('[data-ps-close]'))) close();
   });
@@ -127,11 +111,9 @@ export function openProjectSetup(opts) {
   if (!PlanGate.allowed('new_projects')) return false;
   if (!overlay) build();
   state = { format: FORMATS[opts.format] ? opts.format : 'feature', dirty: false };
-  overlay.querySelector('#psFormat').value = state.format;
   overlay.querySelector('#psTitle').value = FORMATS[state.format].title;
+  overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';
   overlay.querySelector('#psError').hidden = true;
-  // A door is feature or short; anything else came from the disclosure.
-  overlay.querySelector('#psMore').open = !(state.format === 'feature' || state.format === 'short') ? true : false;
   let fav = '';
   try { fav = favouriteSlug(); } catch (e) { /* the first film below */ }
   const radios = Array.from(overlay.querySelectorAll('input[name="psFilm"]'));

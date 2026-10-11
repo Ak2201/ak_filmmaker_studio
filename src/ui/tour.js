@@ -231,6 +231,7 @@ function showChip(i) {
 function go(i) {
   const n = clampStep(i);
   writeTour({ active: true, step: n, dismissed: false });
+  renderInvite();
   const step = STEPS[n];
   if (step.page === pageId()) { showStep(n); return; }
   location.href = step.href;
@@ -243,7 +244,14 @@ function end({ finished = false } = {}) {
   returnFocus = null;
   if (back && back.isConnected && typeof back.focus === 'function') { try { back.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
   renderChecklist();
+  renderInvite();
   if (finished && window.StudioUI && window.StudioUI.toast) window.StudioUI.toast('Tour finished. The first-week list on the hub keeps count.');
+}
+
+/** "Skip" on the home invitation: the tour's own dismissed state, nothing new. */
+export function dismissTour() {
+  writeTour({ active: false, step: 0, dismissed: true });
+  renderInvite();
 }
 
 export function startTour() {
@@ -262,6 +270,7 @@ function wire() {
     if (act === 'next') go(t.step + 1);
     else if (act === 'back') go(t.step - 1);
     else if (act === 'end') end();
+    else if (act === 'skip') dismissTour();
     else if (act === 'finish') end({ finished: true });
     else if (act === 'start') startTour();
     else if (act === 'resume') go(t.step);
@@ -283,6 +292,27 @@ function wire() {
     e.preventDefault();
     end();
   });
+}
+
+/* ---- the hub's invitation: shown until the tour is started, skipped or
+   finished. It never starts anything by itself and never writes on load. */
+let inviteHost = null;
+function renderInvite() {
+  if (pageId() !== 'index') return;
+  const t = readTour();
+  const show = !t.active && !t.dismissed && !t.finished;
+  if (!show) { if (inviteHost) { inviteHost.remove(); inviteHost = null; } return; }
+  if (inviteHost && inviteHost.isConnected) return;
+  const inv = data.invite;
+  inviteHost = h('div#tourInvite.tour-invite', { role: 'region', 'aria-label': 'Take the tour', 'data-tour': 'invite' }, [
+    h('p.tour-invite-line', { text: inv.line }),
+    h('div.tour-invite-actions', {}, [
+      h('button.btn.primary', { type: 'button', 'data-tour-act': 'start', text: inv.start }),
+      h('button.btn', { type: 'button', 'data-tour-act': 'skip', text: inv.skip })
+    ])
+  ]);
+  const host = document.getElementById('tourInviteHost');
+  if (host) host.replaceChildren(inviteHost);
 }
 
 /* ---- the hub's checklist ------------------------------------------- */
@@ -332,7 +362,7 @@ function renderChecklist() {
 
   if (listHost && listHost.isConnected) { listHost.replaceWith(sec); listHost = sec; return; }
   const before = document.getElementById('journey');
-  const after = document.getElementById('projects');
+  const after = document.getElementById('top') || document.getElementById('projects');
   if (before && before.parentNode) before.before(sec);
   else if (after && after.parentNode) after.after(sec);
   else main.append(sec);
@@ -348,7 +378,7 @@ export async function boot() {
   const here = pageId();
   if (here === 'index') {
     await loadSampleTitle();
-    const draw = () => renderChecklist();
+    const draw = () => { renderInvite(); renderChecklist(); };
     /* The hub renders synchronously after its imports; this chunk lands
        after that, but wait for #main in case it does not. */
     const ready = (fn, n = 50) => (document.getElementById('main') ? fn() : n > 0 && setTimeout(() => ready(fn, n - 1), 100));
@@ -369,4 +399,4 @@ function refreshStep() {
   if (t.active && pop && STEPS[t.step].id === 'sample') showStep(t.step, { focus: false });
 }
 
-export default { boot, startTour, readTour, firstWeekFacts, pageId, TOUR_KEY };
+export default { boot, startTour, dismissTour, readTour, firstWeekFacts, pageId, TOUR_KEY };

@@ -11,14 +11,12 @@
    because the hand-written number was wrong twice.
    ============================================================ */
 import { h } from '../../lib/dom.js';
-import { BUILT_MODULE_COUNT } from '../../ui/launcher.js';
 import { sampleFigures } from '../../lib/sample-figures.js';
 import sample from '../../data/sample.dragon.json';
-import { filmCount } from 'virtual:studies-count';
+import films from '../../data/films.json';
+import directors from '../../data/directors.json';
+import rules from '../../data/rules.json';
 import PlanGate from '../../lib/plan-gate.js';
-
-const WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
-const countWord = (n) => WORDS[n] || String(n);
 
 const SAMPLE_TITLE = sample.title;
 
@@ -42,59 +40,45 @@ function samplePages() { return sampleFigures(sample).pages; }
    thing on the screen.
    ------------------------------------------------------------ */
 
-const TOUR = [
-  { href: 'library.html', label: 'Craft library',  note: 'Rules, directors, rates — no project needed' },
-  { href: 'library.html#case-studies', label: 'Case studies',   note: countWord(filmCount) + ' films, beat by beat' },
-  { href: 'library.html#dissection', label: 'Dissection',     note: 'A feature taken apart sequence by sequence' }
-];
-
+/* THE THREE DOORS, in the hero, when there is no project. Moved here
+   from hub.js's old #doors section (owner, 11 Oct 2026: "if there is no
+   project let have three doors, pick a path"). Same classes, same
+   data-actions, so hub-doors.css and the delegate need no change. */
 function renderFirstRun() {
-  const panel = h('div.empty-projects-state', {}, [
-    h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
-    h('div.eps-title', { text: 'A blank desk. Pick a door above to start.' }),
-    // DERIVED, not written. This sentence said "Twenty-two" while
-    // navigation.json held twenty-four, one line away from the launcher's
-    // own correct reduce over the same file — the hand-written list
-    // invariant 2 exists to stop. A digit rather than a spelled word on
-    // purpose: the alternative is a number-to-words helper for one
-    // caller, and this panel already prints a derived digit further
-    // down ("a feature, 36 scenes").
-    //
-    // The BUILT count, not the total. This is a promise, made to
-    // somebody who has not committed anything yet, with no qualifier
-    // beside it — so it has to be what they can open today, not what
-    // the map lists. The launcher may quote the total because it
-    // prints "N OF M BUILT" right next to it; this cannot.
-    h('div.eps-deck', {
-      text: BUILT_MODULE_COUNT + ' modules for writing, planning and shooting a film — '
-          + 'script to call sheet. Everything you write stays in this browser '
-          + 'unless you sign in.'
-    })
-  ]);
-
-  const tour = h('div.eps-tour');
-  tour.append(h('div.eps-tour-head', { text: 'Have a look around first' }));
-  TOUR.forEach((t) => {
-    const a = h('a.eps-tour-item', { href: t.href });
-    a.append(h('span.eps-tour-label', { text: t.label }),
-             h('span.eps-tour-note', { text: t.note }));
-    tour.append(a);
-  });
-  panel.append(tour);
-
-  /* The sample FIRST, and primary. A first-time filmmaker cannot judge
-     an empty studio; the filled one is the thing to look at before
-     being asked to name a film. Every action that was here is still
-     here — only the order and the emphasis moved. */
+  const panel = h('div#doors.first-run-doors');
+  panel.append(h('div.fr-pick', {}, [
+    h('div.lab', { text: 'PICK A PATH' }),
+    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your project dashboard, where you can always see how far you have got.' })
+  ]));
+  panel.append(h('div.doors', {}, [
+    h('div.door', {}, [
+      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'I' }), ' A FULL-LENGTH STORY']),
+      h('h3', {}, ['Feature', h('br'), h('span.light', { text: 'film.' })]),
+      h('p.door-sub', { text: 'A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.' }),
+      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'START A FEATURE' }), h('span.arrow', { text: '→' })])
+    ]),
+    h('div.door.shorts', {}, [
+      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'II' }), ' UNDER 30 MINUTES']),
+      h('h3', {}, ['Short', h('br'), h('span.light', { text: 'film.' })]),
+      h('p.door-sub', { text: 'The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.' }),
+      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'START A SHORT' }), h('span.arrow', { text: '→' })])
+    ]),
+    h('div.door.library', {}, [
+      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'III' }), ' LEARN FIRST']),
+      h('h3', {}, ['Learning', h('br'), h('span.light', { text: 'library.' })]),
+      h('p.door-sub', { text: 'Not ready to start? Read how films you know were built: ' + films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.' }),
+      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'OPEN THE LIBRARY' }), h('span.arrow', { text: '→' })])
+    ])
+  ]));
+  /* The sample is the secondary way in: a filled studio to look at
+     before being asked to name a film. */
   panel.append(h('div.eps-actions', {}, [
-    h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' }),
-    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' })
+    h('button.btn', { 'data-action': 'sample-project', text: 'OR OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' })
   ]));
   panel.append(h('div.eps-fine', {
-    text: 'The sample is a real project you can edit or delete — it just arrives with a few '
-        + 'hundred fields filled in: a feature, ' + samplePages() + ' pages of script, the '
-        + sample.scenes.length + ' scenes broken down from them, a crew and a budget, '
-        + 'so every module has something to show.'
+    text: 'The sample is a real project you can edit or delete: a feature, ' + samplePages()
+        + ' pages of script, the ' + sample.scenes.length + ' scenes broken down from them, a crew and a budget. '
+        + 'Everything you write stays in this browser unless you sign in.'
   }));
   return panel;
 }

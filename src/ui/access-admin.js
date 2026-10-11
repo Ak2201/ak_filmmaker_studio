@@ -108,7 +108,7 @@ export function giveAccessBlock() {
   ]));
   f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'GIVE ACCESS', disabled: S.busy ? true : null }),
     S.note ? h('span.ba-saved', { role: 'status', text: S.note }) : null].filter(Boolean)));
-  f.append(h('p.gr-meta', { text: 'If the address already has an account the access applies now; otherwise the first time it signs in with Google. It passes the invite gate without a code. The length bounds the plan; membership and the admin role last until you revoke.' }));
+  f.append(h('p.gr-meta', { text: 'Applies now, or at the first Google sign-in. No invite code needed.' }));
   wrap.append(f);
 
   const rows = S.grants || [];
@@ -132,6 +132,12 @@ export function giveAccessBlock() {
 }
 
 export function wireAccessAdmin(render) { rerender = render || (() => {}); }
+/** The switch's position for the console's Overview: true / false, or
+ *  null while unknown or where section 32 has not run. */
+export function purchasesRequiredNow() {
+  if (S.state !== 'ready' || S.missing.settings || !S.settings || !('purchase_required' in S.settings)) return null;
+  return S.settings.purchase_required === true;
+}
 /** For a page that wants both blocks under one heading. */
 export function accessAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;

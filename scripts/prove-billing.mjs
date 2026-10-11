@@ -254,7 +254,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'purchases.html#tiers');   // the Tiers & grants tab
+    await page.goto(BASE + 'admin.html#tiers');   // inside the console's Purchases tab
     await page.waitForSelector('#tiers .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#tiers .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
@@ -283,9 +283,11 @@ try {
     allErrors.push(...errors); await ctx.close();
 
     const amy = await newContext(browser, { tok: 'tok-amy' });
-    // purchases.html is for administrators: a member who is not one gets the denied state and no tabs.
-    await amy.page.goto(BASE + 'purchases.html');
-    await amy.page.waitForSelector('#denied', { timeout: 15000 }).then(() => ok(true, 'a non-admin sees the denied state on purchases.html'), () => ok(false, 'a non-admin sees the denied state on purchases.html'));
+    // purchases.html is a stub now: it forwards to the console's Purchases tab, fragment kept.
+    await amy.page.goto(BASE + 'purchases.html#promos');
+    await amy.page.waitForURL(/admin(\.html)?\?tab=purchases#promos$/, { timeout: 10000 }).then(() => ok(true, 'purchases.html#promos forwards to admin.html#promos'), () => ok(false, 'purchases.html#promos forwards to admin.html#promos: ' + amy.page.url()));
+    // and the console is for administrators: a member who is not one gets the denied state and no tabs.
+    await amy.page.waitForSelector('#denied', { timeout: 15000 }).then(() => ok(true, 'a non-admin sees the denied state on the console'), () => ok(false, 'a non-admin sees the denied state on the console'));
     ok(!(await amy.page.$('#billing')) && !(await amy.page.$('#promos')), 'and none of the money sections are on the page');
     await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
@@ -424,7 +426,7 @@ try {
 
     // the console: list, add, deactivate — and the card obeys
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#promos');
+    await A.page.goto(BASE + 'admin.html#promos');
     await A.page.waitForSelector('#promos tr[data-promo="LAUNCH10"]', { timeout: 15000 }).then(() => ok(true, 'the console lists LAUNCH10'), () => ok(false, 'the console lists LAUNCH10'));
     ok(/10% off/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"]')) && /\b1\b/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"] td:nth-child(4)')), 'with its discount and one use');
     ok(/LAUNCH10 \(₹799\.90 off\)/.test(await A.page.textContent('#billing .ba-ledger')), 'the payments ledger shows the code on the discounted row');
@@ -540,7 +542,7 @@ try {
 
     // the console lists it and records the payout
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#growth');
+    await A.page.goto(BASE + 'admin.html#growth');
     await A.page.waitForSelector('#growth tr[data-credit]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists the credit'), () => ok(false, 'the Growth tab lists the credit'));
     ok(/amy@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')) && /ben@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')), 'naming referrer and friend');
     await A.page.check('#growth input[name="credit"]');
@@ -563,7 +565,7 @@ try {
   F.db.sessions.clear();
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#promos');
+    await A.page.goto(BASE + 'admin.html#promos');
     await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
     /* WAIT FOR THE LOAD TO SETTLE BEFORE TYPING. The section kicks off
        load() while it is being built, and load() calls rerender() twice
@@ -604,7 +606,7 @@ try {
 
     F.db.sessions.clear();
     const A2 = await newContext(browser, { tok: 'tok-admin' });
-    await A2.page.goto(BASE + 'purchases.html#growth');
+    await A2.page.goto(BASE + 'admin.html#growth');
     await A2.page.waitForSelector('#growth tr[data-affiliate="FESTDESK"]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists FESTDESK under Affiliates'), () => ok(false, 'the Growth tab lists FESTDESK under Affiliates'));
     const cells = await A2.page.$$eval('#growth tr[data-affiliate="FESTDESK"] td', (tds) => tds.map((t) => t.textContent));
     ok(cells[3] === '1' && cells[4] === '₹7,599.05' && cells[6] === '₹1,519.81', `one order, revenue net of the 5% (₹7,599.05), commission due ₹1,519.81: ${cells.slice(3, 7).join(' / ')}`);
@@ -640,7 +642,7 @@ try {
     // 2. the admin turns it on
     F.db.sessions.clear();
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#billing');
+    await A.page.goto(BASE + 'admin.html#billing');
     await A.page.waitForSelector('#baRefundSwitch', { timeout: 15000 });
     ok(!(await A.page.isChecked('#baRefundSwitch')), 'the console switch "Let customers request refunds from the Purchase page" reads OFF by default');
     await A.page.check('#baRefundSwitch');

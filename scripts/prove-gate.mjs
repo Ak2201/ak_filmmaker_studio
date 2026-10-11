@@ -263,7 +263,7 @@ try {
     allErrors.push(...errors);
 
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#admin-console');   // the Access tab (src/ui/tabs.js)
+    await A.page.goto(BASE + 'admin.html#admin-console');   // inside the Requests tab (src/ui/tabs.js)
     await A.page.waitForSelector('#admin-console .gt-requests', { timeout: 10000 });
     const con = await A.page.textContent('#admin-console');
     ok(/Invite requests \(1 waiting\)/.test(con) && con.includes('cal@example.com') && con.includes('Amy sent me'), 'the console lists the request with who, the note and when');
@@ -358,13 +358,16 @@ try {
     });
     const text = await A.page.textContent('#main');
     const d = { users: Object.keys(USERS).length, members: [...F.db.members.values()].filter((m) => !m.disabled_at).length };
-    ok(new RegExp(`${d.users}\\s*Signed in, ever`).test(text.replace(/\s+/g, ' ')), `"Signed in, ever" counts ${d.users} (auth.users)`);
-    ok(new RegExp(`${d.members}\\s*Through the gate`).test(text.replace(/\s+/g, ' ')), `"Through the gate" counts ${d.members} members`);
-    ok(/1\s*Organisations/.test(text.replace(/\s+/g, ' ')) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is listed with its owner, seats and films');
+    const flat = text.replace(/\s+/g, ' ');
+    ok(new RegExp(`${d.users} signed in`).test(flat), `the meta line counts ${d.users} signed in (auth.users)`);
+    ok(new RegExp(`${d.members}\\s*Members`).test(flat), `the Members tile counts ${d.members} members`);
+    ok((await A.page.$$('#overview .ad-stats .ad-stat')).length === 6, 'Overview is one row of six tiles');
+    ok(/1 organisation\b/.test(flat) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is counted, and listed with its owner, seats and films');
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-    ok(tabs.join(',') === 'Overview*,Organisations,People,Give access,Access,Purchases,Features', 'the console is seven tabs (money moved to purchases.html; Give access is §32), Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,People,Requests,Purchases,Growth', 'the console is five tabs, Overview selected: ' + tabs.join(', '));
+    ok(!!(await A.page.$('#purchases #billing')) && !!(await A.page.$('#purchases #promos')) && !!(await A.page.$('#people #giveAccess')) && !!(await A.page.$('#requests #admin-console')), 'each block sits in its tab (payments and promos under Purchases, Give access under People, the queue under Requests)');
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
     ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');
@@ -384,7 +387,7 @@ try {
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
     const dlgButton = (primary) => A.page.click(primary ? '.dlg .mbtn.primary' : '.dlg .mbtn:not(.primary)');
-    await A.page.goto(BASE + 'admin.html#give-access');
+    await A.page.goto(BASE + 'admin.html#give-access');   // inside the People tab
     await A.page.waitForSelector('#giveAccess form[data-acc-form="grant"]', { timeout: 10000 })
       .then(() => ok(true, 'the Give access tab draws the form'), () => ok(false, 'the Give access tab draws the form'));
     const planOpts = await A.page.$$eval('#accPlan option', (o) => o.map((x) => x.value));
@@ -442,7 +445,7 @@ try {
     ok(calAcc() && calAcc().plan !== 'pro', 'and the plan it gave');
 
     // The switch, on the Purchases tab. The fake starts ON (see fake-supabase.mjs).
-    await A.page.goto(BASE + 'admin.html#purchases-link');
+    await A.page.goto(BASE + 'admin.html#purchases');
     await A.page.waitForSelector('#accPurchasesOn', { timeout: 10000 })
       .then(() => ok(true, 'the Purchases tab carries the "Purchases required" switch'), () => ok(false, 'the Purchases tab carries the "Purchases required" switch'));
     ok(await A.page.isChecked('#accPurchasesOn'), 'reading the server’s position (on)');

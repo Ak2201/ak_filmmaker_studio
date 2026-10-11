@@ -77,17 +77,8 @@
       "label": "Console",
       "icon": "⚙",
       "href": "admin.html",
-      "purpose": "The application console: people, organisations, access, billing",
+      "purpose": "The application console: people, requests, purchases, growth",
       "sym": "admin_panel_settings",
-      "adminOnly": true
-    },
-    {
-      "id": "purchases",
-      "label": "Purchases",
-      "icon": "₹",
-      "href": "purchases.html",
-      "purpose": "Every payment, refund, invoice, promo code and tier, for administrators",
-      "sym": "receipt_long",
       "adminOnly": true
     }
   ],

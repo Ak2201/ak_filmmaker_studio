@@ -101,7 +101,7 @@ function referralBlock(sec) {
       value: Number.isInteger(st.referral_reward_paise) ? String(st.referral_reward_paise / 100) : String(st.referral_reward_pct ?? 10) })])
   ]));
   f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE REFERRAL TERMS' }), S.saved === 'referral' ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null].filter(Boolean)));
-  f.append(h('p.gr-meta', { text: 'Every member who has paid for a plan gets a REF- code. A friend’s purchase with it is discounted by the first number; once that payment is confirmed the referrer is owed the second. A new friend percentage applies to every existing referral code. Self-referral is refused by the server.' }));
+  f.append(h('p.gr-meta', { text: 'Every paying member has a REF- code; the referrer is owed once the friend’s payment confirms.' }));
   sec.append(f);
 
   const rows = S.credits || [];
@@ -162,7 +162,7 @@ function trialBlock(sec) {
      straight on the paywall" is the decision being made. */
   f.append(h('p.gr-meta', { text: on
     ? `On: somebody who signs in gets ${mins} minute${mins === 1 ? '' : 's'} with the Dragon sample before the wall. An invite code gets ${days} day${days === 1 ? '' : 's'} instead.`
-    : 'Off: signing in lands straight on the paywall. Nobody new looks around first, and nobody already inside is affected — a trial already running keeps running until its own clock ends.' }));
+    : 'Off: signing in lands on the paywall. A trial already running keeps its clock.' }));
 
   const scope = h('select', { id: 'graTrialScope', name: 'scope' }, [
     h('option', { value: 'sample', text: 'The Dragon sample only' }),
@@ -190,7 +190,7 @@ function trialBlock(sec) {
      has not just cut everybody off mid-sentence — and an owner who
      lengthens it has not resurrected anybody. Without this line the
      obvious reading of the field is the frightening one. */
-  f.append(h('p.gr-meta', { text: 'A new length applies to trials that START after you save. Everyone already in one keeps the length they were given — the clock is written on their row, not read from this field — so shortening it here cannot end a trial that is running, and lengthening it cannot bring an expired one back. To change it for ONE person, use Grant more time below.' }));
+  f.append(h('p.gr-meta', { text: 'A new length applies to trials that start after you save; running trials keep theirs.' }));
   sec.append(f);
 
   /* ONE PERSON, MORE TIME. The only lever that reaches somebody whose
@@ -208,7 +208,7 @@ function trialBlock(sec) {
   ]));
   g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT MORE TIME' }),
     S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
-  g.append(h('p.gr-meta', { text: 'Grant more time starts a FRESH trial from now, at the whole studio’s scope, however many trials this person has had. It does not grant a plan and it is not a payment — to put somebody on a tier for good, use Grant a plan under Billing. 10080 minutes is a week.' }));
+  g.append(h('p.gr-meta', { text: 'A fresh whole-studio trial from now; not a plan. 10080 minutes is a week.' }));
   sec.append(h('h3.gt-h3', { text: 'Grant more time' }), g);
 }
 
@@ -261,7 +261,7 @@ function priceRiseBlock(sec) {
   const cap = Number.isInteger(st.price_rises_after_buyers) ? st.price_rises_after_buyers : null;
   const taken = S.prices && Number.isInteger(S.prices.seats_taken) ? S.prices.seats_taken : null;
 
-  sec.append(h('p.gt-meta', { text: 'A rise set here FIRES BY ITSELF — the moment the date passes, or the moment the cap fills, the checkout charges the new price with nobody pressing anything. That is what makes the notice on the landing page a price announcement rather than false urgency, which is a prohibited practice. Say it only if you mean it; the date and the cap are both real and both enforced by the same function that charges the card.' }));
+  sec.append(h('p.gt-meta', { text: 'A rise fires by itself on the date or when the cap fills, and the landing page announces it. Schedule only what you mean.' }));
 
   const f = h('form.gr-panel', { 'data-gra-form': 'pricerise', autocomplete: 'off' });
   const dates = Array.from(new Set(plans.map((p) => p.next_price_at).filter(Boolean)));
@@ -294,7 +294,7 @@ function priceRiseBlock(sec) {
      refuses to publish — and this says which of the two it is. */
   f.append(h('p.gr-seats', {
     text: taken == null
-      ? 'The number of people who have bought is published only while a rise is actually scheduled, so it is not shown here yet. Save a rise and it appears.'
+      ? 'Buyers are counted only while a rise is scheduled.'
       : `${taken} ${taken === 1 ? 'person has' : 'people have'} bought${cap == null ? '' : ` of the ${cap} the cap allows`}.`
   }));
 
@@ -322,7 +322,7 @@ function priceRiseBlock(sec) {
     }
     sec.append(h('p.gt-meta', { text: 'Scheduled now:' }), ul);
   } else {
-    sec.append(h('p.gt-meta', { text: 'No rise is scheduled, so the landing page shows the plain price and no countdown.' }));
+    sec.append(h('p.gt-meta', { text: 'No rise is scheduled.' }));
   }
   /* Draw the preview once from the values already in the fields, so a
      block that opens with a rise already scheduled shows the promise
@@ -380,7 +380,7 @@ function affiliateBlock(sec) {
   sec.append(h('h3.gt-h3', { text: 'Affiliates' }));
   if (S.missing.affiliates) { sec.append(h('p.gt-meta', { text: 'Affiliate reports are not available on this database yet (schema section 23 has not run).' })); return; }
   const rows = S.affiliates || [];
-  sec.append(h('p.gt-meta', { text: 'An affiliate code is a promo code with a commission — add one under Billing → Promo codes with “Commission %” filled in. Revenue is what buyers actually paid through the code (after its discount and any upgrade credit); commission is that times the rate, rounded down. Refunded orders drop out on their own. Pay affiliates by hand.' }));
+  sec.append(h('p.gt-meta', { text: 'A promo code with a commission (Purchases → Promo codes). Revenue is net; refunds drop out.' }));
   if (!rows.length) { sec.append(h('p.gt-meta', { text: 'No affiliate codes yet.' })); return; }
   const table = h('table.gt-table');
   table.append(h('thead', {}, [h('tr', {}, ['Code', 'Gives', 'Rate', 'Orders', 'Revenue (net)', 'Discount given', 'Commission due', 'Refunded', 'Last order', ''].map((t) => h('th', { scope: 'col', text: t })))]));
@@ -421,7 +421,7 @@ function leadsBlock(sec) {
   sec.append(h('h3.gt-h3', { text: 'Leads' }));
   if (S.missing.leads) { sec.append(h('p.gt-meta', { text: 'Leads are not available on this database yet (schema section 29 has not run).' })); return; }
   const rows = S.leads || [];
-  sec.append(h('p.gt-meta', { text: `${rows.length} e-mail address${rows.length === 1 ? '' : 'es'} left through “Get launch offers” on the start page, each stored with the consent sentence the visitor saw. Only administrators can read this list.` }));
+  sec.append(h('p.gt-meta', { text: `${rows.length} address${rows.length === 1 ? '' : 'es'} from “Get launch offers”, each with its consent.` }));
   if (!rows.length) return;
   sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'leads-csv', text: 'EXPORT CSV' }));
   const table = h('table.gt-table');
@@ -434,7 +434,7 @@ function leadsBlock(sec) {
 function funnelBlock(sec) {
   sec.append(h('h3.gt-h3', { text: 'Funnel' }));
   if (S.missing.funnel) { sec.append(h('p.gt-meta', { text: 'Funnel counts are not available on this database yet (schema section 29 has not run).' })); return; }
-  sec.append(h('p.gt-meta', { text: 'Daily totals per step, counted by this site itself with no identifier attached. Visitors who send Do Not Track or press “Don’t count this visit” are not in it, so read these as a floor.' }));
+  sec.append(h('p.gt-meta', { text: 'Anonymous daily totals; Do Not Track visits are left out, so a floor.' }));
   const rows = S.funnel || [];
   const top = Number((rows[0] || {}).total) || 0;
   const table = h('table.gt-table');
@@ -448,8 +448,7 @@ function funnelBlock(sec) {
 
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('growth', 'Growth', 'The trial, the price, referrals, affiliates, leads and the funnel.',
-    'Everything around a purchase: who gets to look around before paying, what a plan will cost and when, what referrers are owed, what affiliates have earned, the e-mail addresses left on the start page and how many people reach each step. Money is computed by the database; this tab only shows it and records what you did about it.');
+  const sec = section('growth', 'Growth', 'The trial, the price, referrals, affiliates, leads and the funnel.', '');
   if (S.state === 'idle') load();
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (S.state !== 'ready') { sec.append(h('p.gt-meta', { text: S.state === 'loading' ? 'Loading…' : '' })); return sec; }
@@ -459,11 +458,13 @@ export function growthAdminSection(section, st) {
   affiliateBlock(sec);
   leadsBlock(sec);
   funnelBlock(sec);
-  sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
+  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
 
 export function wireGrowthAdmin(render) { rerender = render || (() => {}); }
+/** The trial's settings for the console's Overview; null until loaded. */
+export function growthSnapshot() { return S.state === 'ready' && !S.missing.settings ? (S.settings || {}) : null; }
 
 delegate(document, 'submit', '[data-gra-form="referral"]', async (e, form) => {
   e.preventDefault();

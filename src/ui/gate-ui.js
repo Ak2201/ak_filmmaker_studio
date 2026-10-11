@@ -237,13 +237,28 @@ async function loadAdmin({ quiet = false } = {}) {
   }
 }
 
-export function adminSection(section, st) {
+/* `part` splits the console in two for admin.html's tabs: 'requests'
+   (the queue, codes, the demo link, redemptions — id #admin-console, so
+   every selector that named it still lands) and 'members' (#members,
+   the People tab). With no `part` it is the whole section as before.
+   Both read the one shared state `admin`. */
+export function adminSection(section, st, { part } = {}) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('admin-console', 'Administrator', 'Invite requests, codes and sessions.',
-    'Approve or decline the people who asked, issue codes, hand out time-limited screening passes, see who redeemed what, and end a session that should not be running. Every button here is re-checked by the database, not by this page.');
+  const want = (k) => !part || part === k;
+  const sec = part === 'members'
+    ? section('members', 'Members', 'Members.', '')
+    : section('admin-console', 'Administrator', 'Invite requests, codes and sessions.', '');
   if (!admin.loaded && !admin.busy && !admin.error) { loadAdmin(); }
   if (admin.error) sec.append(h('p.gt-error', { role: 'alert', text: admin.error }));
   if (!admin.loaded) { sec.append(h('p.gt-meta', { text: admin.busy ? 'Loading…' : '' })); return sec; }
+  if (want('requests')) requestsPart(sec);
+  if (want('members')) membersPart(sec);
+  if (want('requests')) redemptionsPart(sec);
+  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gate-action': 'reload', text: 'REFRESH' }));
+  return sec;
+}
+
+function requestsPart(sec) {
 
   /* -- requests (section 14) -- The queue first, because it is the
      part with people waiting on it. Pending rows get the two buttons;
@@ -251,7 +266,7 @@ export function adminSection(section, st) {
   const pending = admin.requests.filter((r) => r.status === 'pending');
   const decided = admin.requests.filter((r) => r.status !== 'pending');
   sec.append(h('h3.gt-h3', { id: 'gtRequests', text: `Invite requests (${pending.length} waiting)` }));
-  if (!pending.length) sec.append(h('p.gt-meta', { text: 'Nobody is waiting. A request appears here when somebody signs in with Google and asks on invite.html.' }));
+  if (!pending.length) sec.append(h('p.gt-meta', { text: 'Nobody is waiting.' }));
   else {
     const table = h('table.gt-table.gt-requests');
     table.append(h('thead', {}, [h('tr', {}, ['Who', 'Asked', 'Their note', 'From', ''].map((t) => h('th', { scope: 'col', text: t })))]));
@@ -335,7 +350,7 @@ export function adminSection(section, st) {
   /* docs/BILLING.md §8: a visitor who enters on a code alone is not
      signed in, has no organisation and so no plan — the plan gate does
      not apply to them. Say so where the code is made. */
-  form.append(h('p.gt-meta', { text: 'A standard code grants full access to every module: a code-only visitor has no account to carry a plan, so the plan tiers and their feature locks do not apply until they sign in.' }));
+  form.append(h('p.gt-meta', { text: 'A code-only visitor has no plan; tier locks apply once they sign in.' }));
   if (admin.made) {
     form.append(h('p.gt-made', {}, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
       h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));
@@ -363,7 +378,7 @@ export function adminSection(section, st) {
   /* -- the demo link -- */
   const demo = h('div.gt-create.gt-demo', { 'data-gate-form': 'demo' });
   demo.append(h('h3.gt-h3', { text: 'Demo link' }));
-  demo.append(h('p.gt-meta', { text: 'For pitching: whoever opens the link is in with no sign-in and lands on the Dragon sample. They can still sign in later from Settings. Anything they make stays on their own device.' }));
+  demo.append(h('p.gt-meta', { text: 'Opens the Dragon sample with no sign-in; work stays on their device.' }));
   const dUses = h('input#gtDemoUses', { type: 'number', min: 1, max: 1000, value: admin.demoUses, 'data-gate-field': 'demo-uses' });
   const dDur = h('select#gtDemoDur', { 'data-gate-field': 'demo-dur' }, DURATIONS.map(([v, l]) => h('option', { value: v, text: l })));
   dDur.value = admin.demoDur;
@@ -405,6 +420,9 @@ export function adminSection(section, st) {
     sec.append(h('div.gt-scroll', {}, [table]));
   }
 
+}
+
+function membersPart(sec) {
   /* -- members and live sessions -- */
   sec.append(h('h3.gt-h3', { text: `Members (${admin.members.length})` }));
   const live = (m) => m.last_heartbeat && Date.now() - Date.parse(m.last_heartbeat) < 90000;
@@ -433,6 +451,9 @@ export function adminSection(section, st) {
     sec.append(h('div.gt-scroll', {}, [table]));
   }
 
+}
+
+function redemptionsPart(sec) {
   /* -- redemptions -- */
   sec.append(h('h3.gt-h3', { text: 'Recent redemptions and screening opens' }));
   if (!admin.redemptions.length) sec.append(h('p.gt-meta', { text: 'Nothing redeemed yet.' }));
@@ -448,8 +469,6 @@ export function adminSection(section, st) {
     });
     sec.append(ul);
   }
-  sec.append(h('button.btn', { type: 'button', 'data-gate-action': 'reload', text: 'REFRESH' }));
-  return sec;
 }
 
 async function createCode(form) {

@@ -69,7 +69,7 @@ const CURRENT = (() => {
    constant is the ONE hard-coded list: the purchase pages are created
    by another lane and have no navigation entry, and invite.html is the
    doorway, so they cannot be derived. Add a page here, nowhere else. */
-const EXTRA_GLOBAL_PAGES = ['index.html', 'purchase.html', 'purchases.html', 'invite.html'];
+const EXTRA_GLOBAL_PAGES = ['index.html', 'purchase.html', 'invite.html'];
 function shellMode() {
   if (EXTRA_GLOBAL_PAGES.includes(CURRENT)) return 'global';
   const g = globalHere();

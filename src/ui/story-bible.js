@@ -388,7 +388,7 @@ export function wireBible(opts = {}) {
 
   /* A character card's own fields. */
   delegate(document, 'input', '.sb [data-ch-field], .sb [data-ch-extra], .sb [data-ch-rel]', (e, el) => { onCardInput(el, cardCtx); });
-  delegate(document, 'change', '.sb [data-ch-field], .sb [data-ch-extra], .sb [data-ch-rel]', (e, el) => { onCardChange(el, cardCtx); hooks.saved(); });
+  delegate(document, 'change', '.sb [data-ch-field], .sb [data-ch-extra], .sb [data-ch-rel]', async (e, el) => { await onCardChange(el, cardCtx); hooks.saved(); });
   delegate(document, 'click', '.sb [data-ch-action]', (e, el) => { onCardClick(el, cardCtx); });
 
   /* A blueprint field: one key, merged into the blob. */

@@ -164,7 +164,13 @@ async function session({ width, theme, provider }) {
   });
   await page.route(/^https:\/\/(api\.anthropic\.com|generativelanguage\.googleapis\.com)\//, route);
   await page.route((u) => !u.href.startsWith(BASE) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
-  page.on('dialog', (d) => d.accept());
+  /* The "run it again?" questions are asked in the app now: press the
+     in-app confirm button the way a person would, and fail on a native box. */
+  page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
+  await page.addInitScript(() => {
+    const press = () => { const b = document.querySelector('.dlg .mbtn.primary:not([disabled])'); if (b) setTimeout(() => b.click(), 50); };
+    new MutationObserver(press).observe(document, { childList: true, subtree: true });
+  });
   return { ctx, page, errors };
 }
 

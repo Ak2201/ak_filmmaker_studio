@@ -39,6 +39,7 @@ import {
   AREAS, ACTS, listShipped, loadMine, saveMine,
   blankSequence, blankMotif, coverage, danglingMotifs
 } from '../lib/dissect.js';
+import { askDanger } from './dialog.js';
 
 /* The element the dissection renders into, handed over by
    mountDissection(). */
@@ -572,11 +573,11 @@ delegate(document, 'click', '[data-action="seq-add"]', () => {
   mutate(() => { mine.sequences.push(blankSequence()); });
   document.querySelector('.ds-row-seq:last-of-type .ds-row-title')?.focus();
 });
-delegate(document, 'click', '[data-action="seq-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="seq-del"]', async (e, el) => {
   const s = seqOf(el);
   if (!s) return;
   const name = (s.label || '').trim();
-  if (!confirm(name ? 'Remove the sequence "' + name + '"?' : 'Remove this sequence?')) return;
+  if (!await askDanger(name ? 'Remove the sequence "' + name + '"?' : 'Remove this sequence?')) return;
   mutate(() => { mine.sequences = mine.sequences.filter((x) => x !== s); });
 });
 delegate(document, 'click', '[data-action="seq-up"]', (e, el) => moveSeq(el, -1));
@@ -593,11 +594,11 @@ delegate(document, 'click', '[data-action="motif-add"]', () => {
   mutate(() => { mine.motifs.push(blankMotif()); });
   document.querySelector('.ds-row-motif:last-of-type .ds-row-title')?.focus();
 });
-delegate(document, 'click', '[data-action="motif-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="motif-del"]', async (e, el) => {
   const m = motifOf(el);
   if (!m) return;
   const name = (m.name || '').trim();
-  if (!confirm(name ? 'Remove the motif "' + name + '"?' : 'Remove this motif?')) return;
+  if (!await askDanger(name ? 'Remove the motif "' + name + '"?' : 'Remove this motif?')) return;
   mutate(() => { mine.motifs = mine.motifs.filter((x) => x !== m); });
 });
 

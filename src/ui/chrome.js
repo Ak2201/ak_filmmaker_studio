@@ -1825,7 +1825,7 @@ function openShareDialog(projectId) {
     }).join('');
     list.querySelectorAll('.si-revoke').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Revoke this link? Anyone using it will lose access.')) return;
+        if (!await Dialog.askDanger('Revoke this link? Anyone using it will lose access.')) return;
         try { await StudioCloud.revokeShare(btn.dataset.id); renderShareList(); StudioUI.toastSuccess('Link revoked.'); }
         catch (e) { StudioUI.toastError(e.message || String(e)); }
       });

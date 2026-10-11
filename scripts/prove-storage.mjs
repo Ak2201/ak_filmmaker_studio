@@ -285,9 +285,13 @@ async function openPage(opts) {
      A person takes a moment to press OK; so does this. The window
      itself is a real finding and is asserted on its own terms in the
      first block ("the stub lands after the write returns"). */
-  page.on('dialog', async (d) => {
-    await new Promise((r) => setTimeout(r, 600));
-    d.accept().catch(() => {});
+  page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
+  /* The import's result is told in the app's own dialog now. A person
+     takes a moment to press OK; so does this (600 ms), by pressing the
+     in-app button. */
+  await ctx.addInitScript(() => {
+    const press = () => { const b = document.querySelector('.dlg .mbtn.primary:not([disabled])'); if (b && !b.__p) { b.__p = 1; setTimeout(() => b.click(), 600); } };
+    new MutationObserver(press).observe(document, { childList: true, subtree: true });
   });
   await page.goto(`http://localhost:${PORT}/${opts.at || 'index.html'}`);
   await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });

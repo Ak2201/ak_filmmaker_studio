@@ -22,6 +22,7 @@ import { BRAND } from '../lib/brand.js';
 import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
 import Store from '../lib/store.js';
 import '../styles/gate.css';
+import { askDanger, askText } from './dialog.js';
 
 /* ---- the DEMO link: a pitch without a sign-in ----------------------
    An admin makes one standard invite code labelled "Demo" and copies
@@ -514,21 +515,21 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   el.disabled = true;   // one click, one RPC
   try {
     if (act === 'revoke') {
-      if (!window.confirm('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.')) return;
+      if (!await askDanger('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.')) return;
       await g.admin.revokeCode(el.dataset.id); await loadAdmin();
     } else if (act === 'terminate') {
       await g.admin.terminate(el.dataset.id, false); await loadAdmin();
       toast('Session ended. If that device is still open it can take the session back.');
     } else if (act === 'disable') {
-      if (!window.confirm(`Disable ${el.dataset.email}? Their session ends and their cloud sync stops. Nothing on their own device is touched.`)) return;
+      if (!await askDanger(`Disable ${el.dataset.email}? Their session ends and their cloud sync stops. Nothing on their own device is touched.`)) return;
       await g.admin.terminate(el.dataset.id, true); await loadAdmin();
     } else if (act === 'approve') {
       await g.admin.decideRequest(el.dataset.id, true); await loadAdmin();
       toast(`${el.dataset.email} is in. They are through the gate on their next visit.`, 'success');
     } else if (act === 'decline') {
-      /* window.prompt, like the confirms beside it: null is Cancel, an
+      /* askText, like the asks beside it: null is Cancel, an
          empty string is "decline, no note". The note is shown to them. */
-      const note = window.prompt(`Decline ${el.dataset.email}? They can ask again after seven days.\n\nA line for them (optional):`, '');
+      const note = await askText(`Decline ${el.dataset.email}? They can ask again after seven days.\n\nA line for them (optional):`, { confirm: 'Decline', placeholder: 'Optional note' });
       if (note === null) return;
       await g.admin.decideRequest(el.dataset.id, false, note); await loadAdmin();
     } else if (act === 'recover') {
@@ -543,7 +544,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
          an administrator is most afraid of here is losing somebody's
          films. Schema section 25 keeps that promise; this sentence is
          the one the person clicking actually reads. */
-      if (!window.confirm(`Clear ${el.dataset.email}?\n\nThis removes their membership, their invite request, the invite code they used (freeing it) and their session — so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.`)) return;
+      if (!await askDanger(`Clear ${el.dataset.email}?\n\nThis removes their membership, their invite request, the invite code they used (freeing it) and their session — so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.`)) return;
       const out = await g.admin.resetUser(el.dataset.id);
       await loadAdmin();
       const bits = [];

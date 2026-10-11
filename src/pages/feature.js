@@ -116,6 +116,7 @@ import { mountStoryKit } from '../ui/story-kit.js';
 import { buildSceneRow, buildShotRow, buildCastRow, buildLocRow } from '../ui/blueprint-rows.js';
 import { mountHandoffs } from '../ui/blueprint-handoffs.js';
 import { mountWraps } from '../ui/blueprint-wrap.js';
+import { ask, askDanger, tell } from '../ui/dialog.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -956,11 +957,11 @@ function tagVol1Bridge() {
 /* Row markup (rowCtrls and the four row builders) lives in
  * src/ui/blueprint-rows.js, shared with the guide drawer. */
 
-function deleteRow(btn) {
+async function deleteRow(btn) {
   const tr = btn.closest('tr');
   const inputs = tr.querySelectorAll('input, textarea, select');
   const filled = [...inputs].some(i => i.value);
-  if (filled && !confirm('Delete this row? Its content will be lost.')) return;
+  if (filled && !await askDanger('Delete this row? Its content will be lost.')) return;
   tr.remove();
   debouncedSave();
 }
@@ -1667,14 +1668,14 @@ const FEATURE_ROW_KEY = /^(sl|shot|cast|loc)_\d+_/;
 
 function importNotice(msg, type) {
   if (StudioUI && StudioUI.toast) StudioUI.toast(msg, { type: type || 'error', duration: 8000 });
-  else alert(msg);
+  else tell(msg);
 }
 
 function handleImport(e) {
   const input = e.target;
   const file = input.files[0]; if (!file) return;
   const r = new FileReader();
-  r.onload = (ev) => {
+  r.onload = async (ev) => {
     input.value = '';      // the same file can be chosen again
     const keys = new Set(Array.from(document.querySelectorAll('[data-key]'), (el) => el.getAttribute('data-key')));
     const res = readBlueprintFile(String(ev.target.result || ''), {
@@ -1685,7 +1686,7 @@ function handleImport(e) {
       looksOther: (d) => Array.isArray(d._sceneMap) || Array.isArray(d._script)
     });
     if (!res.ok) { flashStatus('●  import refused'); importNotice(res.error, 'error'); return; }
-    if (!confirm('Replace everything in this Feature Blueprint with "' + file.name + '"?\n\n' +
+    if (!await askDanger('Replace everything in this Feature Blueprint with "' + file.name + '"?\n\n' +
                  'Fields the file does not contain will be emptied. Export first if you want to keep what is here now.')) return;
     try {
       const clean = {};
@@ -1703,8 +1704,8 @@ function handleImport(e) {
    field the (absent) blob does not mention, so the screen matches
    storage and the next keystroke saves an empty blueprint rather than
    the old one. */
-function resetData() {
-  if (!confirm('Clear all your work in BOTH volumes? Export first if you want a backup.')) return;
+async function resetData() {
+  if (!await askDanger('Clear all your work in BOTH volumes? Export first if you want a backup.')) return;
   clearTimeout(saveTimer);   // a pending autosave must not write the old fields back
   localStorage.removeItem(STORAGE_KEY);
   loadData();
@@ -2287,8 +2288,8 @@ function toggleZinePrint() {
   const on = document.body.classList.contains('zine-print-mode');
   if (on) {
     // Trigger print preview after small delay
-    setTimeout(() => {
-      if (confirm('Zine mode active. Open print preview now?')) window.print();
+    setTimeout(async () => {
+      if (await ask('Zine mode active. Open print preview now?')) window.print();
     }, 200);
   }
 }
@@ -2359,8 +2360,8 @@ function computeProgress() {
         blueprints depending on how the page was served. There is no
         fetch now; the data is a build-time import.
    ============================================================ */
-function loadSamplePack() {
-  if (!confirm('This will REPLACE your current data with the ' + SAMPLE.title
+async function loadSamplePack() {
+  if (!await askDanger('This will REPLACE your current data with the ' + SAMPLE.title
     + ' sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
   try {
     const fields = { ...SAMPLE.blueprint, meta_title: SAMPLE.title, v1_title: SAMPLE.title };
@@ -2385,9 +2386,9 @@ function loadSamplePack() {
     });
     saveData();
     updateProgress();
-    alert('✓ ' + SAMPLE.title + ' sample loaded. Scroll through to see what a complete blueprint looks like.');
+    tell('✓ ' + SAMPLE.title + ' sample loaded. Scroll through to see what a complete blueprint looks like.');
   } catch (err) {
-    alert('Could not load sample: ' + err.message);
+    tell('Could not load sample: ' + err.message);
   }
 }
 
@@ -2933,7 +2934,7 @@ async function exportPitchPPTX() {
     const filename = (data.meta_title || 'pitch') + '-deck.pptx';
     pres.writeFile({ fileName: filename });
   } catch (err) {
-    alert('PPTX export failed: ' + err.message);
+    tell('PPTX export failed: ' + err.message);
   }
 }
 

@@ -489,7 +489,7 @@ async function askTakeover(info) {
     const { takeoverDialog } = await import('../ui/gate-ui.js');
     return await takeoverDialog(info);
   } catch (e) {
-    return window.confirm('Your account is currently active in another Chrome window. '
+    return await ask('Your account is currently active in another Chrome window. '
       + 'Would you like to terminate that session and continue here?');
   }
 }
@@ -1211,7 +1211,7 @@ async function askMigratePrompt(count) {
   if (window.StudioUI && StudioUI.openMigrationModal) {
     return await StudioUI.openMigrationModal(count);
   }
-  return confirm('Found ' + count + ' local project(s). Upload to your cloud account?');
+  return await ask('Found ' + count + ' local project(s). Upload to your cloud account?');
 }
 
 async function uploadAllLocalProjects(localProjects) {

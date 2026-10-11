@@ -157,14 +157,24 @@ function handleImportAll(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   const r = new FileReader();
-  r.onload = (ev) => {
+  r.onload = async (ev) => {
     try {
       const all = JSON.parse(ev.target.result);
       if (!backupShape(all).looksOurs) {
-        if (!confirm('This file does not look like a Studio backup. Try anyway?')) return;
+        if (!await ask('This file does not look like a Studio backup. Try anyway?')) return;
       }
-      const res = applyBackup(all, { mode: 'merge', confirm: (q) => confirm(q) });
-      if (!res.ok) { if (res.message) alert(res.message); return; }
+      /* applyBackup asks synchronously, and asks before it writes
+         anything: a refusal leaves the studio untouched. So the first
+         call records the question and says no; the question is put in
+         the app's own dialog; on yes the call is made again for real.
+         When nothing needed asking, the first call was the real one. */
+      let question = '';
+      let res = applyBackup(all, { mode: 'merge', confirm: (q) => { question = q; return false; } });
+      if (question) {
+        if (!await ask(question)) return;
+        res = applyBackup(all, { mode: 'merge', confirm: () => true });
+      }
+      if (!res.ok) { if (res.message) await tell(res.message); return; }
       if (res.added || res.replaced) {
         logActivity('studio', 'Imported ' + res.added + ' project' + (res.added === 1 ? '' : 's'));
       }
@@ -177,12 +187,11 @@ function handleImportAll(e) {
          is gone — proved, through this exact path. Both halves have
          to wait: holding the dialog longer made it worse, not better,
          so moving the flush after it would not have been enough. */
-      Store.flushStorage().then(() => {
-        alert('✓ ' + res.message + ' Refreshing…');
-        location.reload();
-      });
+      await Store.flushStorage();
+      await tell('✓ ' + res.message + ' Refreshing…');
+      location.reload();
     } catch (err) {
-      alert('Import failed: ' + err.message);
+      await tell('Import failed: ' + err.message);
     }
   };
   r.readAsText(file);

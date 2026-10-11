@@ -792,8 +792,13 @@ function paintLocation(loc) {
 function goTo(loc) {
   if (!loc) return;
   const partOf = (l) => (l && l.part ? l.part.frag : '');
-  if (current && current.module === loc.module && current.global === loc.global
-      && partOf(current) === partOf(loc)) {
+  /* Compared by IDENTITY OF PLACE, not of object: globals() and the tab
+     fallback build fresh objects on every call, so `===` on them never
+     matched on the Library — every rAF repainted the crumb, the repaint
+     fed the #app/.sh-bar observers, and scrolling stuttered at 30fps. */
+  const key = (x) => (x ? (x.id || x.href || x.label || '') : '');
+  if (current && key(current.module) === key(loc.module) && key(current.global) === key(loc.global)
+      && key(current.phase) === key(loc.phase) && partOf(current) === partOf(loc)) {
     current = loc;   // the same place; only how sure we are of it changed
     return;
   }

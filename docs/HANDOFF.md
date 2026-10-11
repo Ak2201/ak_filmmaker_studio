@@ -193,7 +193,10 @@ switch and the Pro card in a signed-in browser.
 - **The site gate stays the door** (invite-only). `start.html` is the public page.
 - **Seller is an individual** — the legal name is now filled on the legal
   pages; only the GSTIN line is left (supply it or delete the sentence).
-  **Production host `thefilmmakerstudio.vercel.app` is confirmed.**
+  **Production host is `filmmakerstudio.in`** (owner, 11 Oct 2026;
+  `thefilmmakerstudio.vercel.app` stays an alias). The support address is
+  `support@filmmakerstudio.in` at last, not a personal Gmail — the
+  mailbox is Hostinger's. Cutover steps: `docs/LAUNCH.md` section 7a.
 - **No refunds**, except three exceptions every processor needs: duplicate
   charge; charged but plan not delivered; where Indian law requires. The
   webhook's refund *handling* stays for those.

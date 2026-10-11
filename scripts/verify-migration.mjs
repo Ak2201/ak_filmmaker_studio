@@ -443,10 +443,7 @@ const EXPECTED = {
      that happens again this row stops firing, the anti-rot check
      fails the run, and the answer is to delete it, not to re-add the
      words. */
-  story: {
-    qualities: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated',
-    loglines: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated'
-  },
+  story: {},
   edit: {},
   deliverables: {},
   screening: {},

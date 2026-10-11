@@ -45,10 +45,13 @@ once and not yet looked at.
   and in synchronous render paths (the master index, the step counts, the
   sample's blueprint), so neither is a lazy win without making those paths
   async — not an obvious change, so left.
-- **The production host is confirmed**, not a placeholder:
-  `thefilmmakerstudio.vercel.app` (owner, 7 Oct 2026). A custom domain later
-  needs the ten files in `docs/LAUNCH.md` section 7, Vercel, and the Google
-  authorised origins.
+- **The production host is `filmmakerstudio.in`** (owner, 11 Oct 2026),
+  registered at Hostinger and paid to 2028-10-11.
+  `thefilmmakerstudio.vercel.app` stays a Vercel alias and keeps serving,
+  so links already shared still resolve. The host lives in
+  `src/data/brand.json` alone; the off-repo half (Vercel, Hostinger DNS,
+  Google origins, the Supabase allow-list, Search Console, Razorpay) is
+  `docs/LAUNCH.md` section 7a.
 
 ## Left over from the 8 Oct 2026 release (the ten workstreams)
 

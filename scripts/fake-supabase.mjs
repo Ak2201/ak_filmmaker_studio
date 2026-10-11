@@ -52,7 +52,15 @@ function userPlan(uid) {
   const owned = F.db.accounts.filter((a) => a.owner_id === uid);
   return owned.map(accountPlan).sort((x, y) => PLAN_RANK[y] - PLAN_RANK[x])[0] || 'free';
 }
-function userLimits(uid) { return (F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {}; }
+/* section 32: while purchases are not required, user_limits() is {} —
+   the P0402 triggers stand down — and billing_status() is entitled with
+   the top paid plan's features. */
+export const purchasesRequired = () => F.db.settings.purchase_required !== false;
+function userLimits(uid) { return purchasesRequired() ? ((F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {}) : {}; }
+function openFeatures() {
+  const top = F.db.plans.filter((p) => p.id !== 'free').sort((a, b) => (PLAN_RANK[b.id] ?? 0) - (PLAN_RANK[a.id] ?? 0))[0];
+  return (top && top.features) || {};
+}
 function cap(lim, k) { return Number.isInteger(lim[k]) ? lim[k] : null; }
 
 /* ---- section 30: the trial -----------------------------------------
@@ -87,7 +95,7 @@ function trialActive(uid) {
   const m = uid && F.db.members.get(uid);
   return !!(t && F.db.settings.trial_enabled && m && !m.disabled_at && t.ends > Date.now());
 }
-function isEntitled(uid) { return !!uid && (userPlan(uid) !== 'free' || trialActive(uid)); }
+function isEntitled(uid) { return !!uid && (!purchasesRequired() || userPlan(uid) !== 'free' || trialActive(uid)); }
 
 /** "This person is mid-trial." Minutes and scope default to what
  *  signing up buys; startedAt is a ms epoch so a proof can place the
@@ -159,6 +167,39 @@ function activate(orderId, paymentId, raw) {
   afterPaid(pay);
   if (!F.db.members.has(pay.user_id)) F.db.members.set(pay.user_id, { role: 'user', disabled_at: null });
   return { already: false, pay };
+}
+
+/* section 32: apply_email_grant() / undo_email_grant(), as the
+   database does them — membership, the role, the plan through
+   accountForBuyer/applyPlan, and what it changed so revoke undoes it. */
+function applyGrant(u) {
+  const g = u && F.db.emailGrants.get(String(u.email || '').toLowerCase());
+  if (!g || g.applied_user) return false;
+  const mem = F.db.members.get(u.id);
+  F.db.members.set(u.id, { ...(mem || {}), role: g.role === 'admin' ? 'admin' : (mem ? mem.role : 'user'), disabled_at: null });
+  let put = null, acc = null, prior = null;
+  if (g.plan) {
+    acc = accountForBuyer(u.id);
+    prior = { plan: acc.plan, plan_until: acc.plan_until ?? null, plan_period: acc.plan_period ?? null, seat_limit: acc.seat_limit };
+    const cur = accountPlan(acc);
+    if ((PLAN_RANK[cur] ?? 0) < (PLAN_RANK[g.plan] ?? 0) && !(g.until && cur !== 'free')) {
+      put = g.plan; applyPlan(acc, g.plan);
+      if (g.until) { acc.plan_until = g.until; acc.plan_period = 'grant'; }
+    }
+  }
+  Object.assign(g, { applied_user: u.id, applied_at: new Date().toISOString(), applied_account: acc ? acc.id : null, applied_plan: put,
+    created_member: !mem, prior_role: mem ? mem.role : null, prior });
+  return true;
+}
+function undoGrant(mail) {
+  const g = F.db.emailGrants.get(mail);
+  if (!g || !g.applied_user) return;
+  const a = g.applied_account && F.db.accounts.find((x) => x.id === g.applied_account);
+  if (a && g.applied_plan && a.plan === g.applied_plan && g.prior) Object.assign(a, g.prior);
+  const m = F.db.members.get(g.applied_user);
+  if (m && g.role === 'admin' && g.prior_role !== 'admin' && m.role === 'admin') m.role = 'user';
+  if (m && g.created_member && !m.disabled_at) m.disabled_at = new Date().toISOString();
+  Object.assign(g, { applied_user: null, applied_at: null, applied_account: null, applied_plan: null, created_member: null, prior_role: null, prior: null });
 }
 
 /* section 27: mark_payment_refunded() — idempotent, ends the plan it bought */
@@ -307,7 +348,17 @@ export function freshDb() {
     // trial off, or longer, says so.
     settings: { referral_friend_pct: 10, referral_reward_pct: 10, referral_reward_paise: null,
                 trial_enabled: true, trial_minutes: 30, code_trial_days: 7, trial_scope: 'sample',
-                trial_plan: null, price_rises_after_buyers: null },
+                trial_plan: null, price_rises_after_buyers: null,
+                /* section 32. The LIVE default is false (the studio is
+                   free). The fake defaults to TRUE because every proof
+                   written before §32 asserts the switched-on studio —
+                   the wall, the sample-only hub, the P0402 cap — and a
+                   proof about the free studio says so by setting false.
+                   `delete F.db.settings.purchase_required` is a database
+                   that has not run §32: billing_status() then carries
+                   no key at all. */
+                purchase_required: true },
+    emailGrants: new Map(),   // section 32: email -> grant row
     credits: [],
     // section 27: refunds, customer requests, the switch (off by default), and what the fake Razorpay was asked
     refunds: [], rreqs: [], rrEnabled: false, rzpRefunds: [],
@@ -345,7 +396,9 @@ function rpc(name, args, user, route) {
          seeded as {sample_only, new_projects:false}. */
       let feat = (F.db.plans.find((p) => p.id === pl) || {}).features || {};
       if (tOn && t && t.scope === 'full') feat = (F.db.plans.find((p) => p.id === (F.db.settings.trial_plan || 'indie')) || {}).features || {};
+      if (!purchasesRequired()) feat = openFeatures();
       return json(route, 200, {
+        ...('purchase_required' in F.db.settings ? { purchase_required: purchasesRequired() } : {}),
         plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
         features: feat,
         // section 30
@@ -513,6 +566,41 @@ function rpc(name, args, user, route) {
         reward_pct: F.db.settings.referral_reward_pct, reward_paise: F.db.settings.referral_reward_paise, owed_paise: sum('owed'), paid_paise: sum('paid'),
         credits: mine.slice().reverse().map(({ amount_paise, status, created_at, paid_at }) => ({ amount_paise, status, created_at, paid_at })) });
     }
+    /* ---- section 32 ---- */
+    case 'purchases_required':
+      if (!('purchase_required' in F.db.settings)) return pgErr(route, 'PGRST202', 'Could not find the function public.purchases_required in the schema cache', 404);
+      return json(route, 200, purchasesRequired());
+    case 'admin_grant_email': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const mail = String(args.p_email || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return pgErr(route, '22023', 'That does not look like an e-mail address.');
+      if (!['member', 'admin'].includes(args.p_role)) return pgErr(route, '22023', 'Access is as a member or as an admin.');
+      const pl = args.p_plan && args.p_plan !== 'free' ? args.p_plan : null;
+      if (pl && !F.db.plans.some((p) => p.id === pl)) return pgErr(route, '22023', `No such plan "${args.p_plan}"`);
+      if (args.p_days != null && !(args.p_days >= 1 && args.p_days <= 3650)) return pgErr(route, '22023', 'A grant lasts 1 to 3650 days, or until you remove it.');
+      undoGrant(mail);
+      F.db.emailGrants.set(mail, { email: mail, role: args.p_role, plan: pl, until: args.p_days == null ? null : new Date(Date.now() + args.p_days * DAY).toISOString(),
+        note: args.p_note || null, created_by: user.id, created_at: new Date().toISOString(), applied_user: null, applied_at: null });
+      const u = Object.values(USERS).find((x) => x.email === mail);
+      if (u) applyGrant(u);
+      const g = F.db.emailGrants.get(mail);
+      return json(route, 200, { email: g.email, role: g.role, plan: g.plan, until: g.until, applied: !!g.applied_user, applied_at: g.applied_at, applied_plan: g.applied_plan || null });
+    }
+    case 'admin_revoke_email_grant': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      const mail = String(args.p_email || '').trim().toLowerCase();
+      if (!F.db.emailGrants.has(mail)) return pgErr(route, '22023', 'No access was given to that address.');
+      undoGrant(mail); F.db.emailGrants.delete(mail);
+      return json(route, 200, null);
+    }
+    case 'admin_list_email_grants': {
+      if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
+      return json(route, 200, [...F.db.emailGrants.values()].reverse().map((g) => ({
+        email: g.email, role: g.role, plan: g.plan, plan_name: g.plan ? (F.db.plans.find((p) => p.id === g.plan) || {}).name : null,
+        until: g.until, note: g.note, created_at: g.created_at, created_by_email: (Object.values(USERS).find((x) => x.id === g.created_by) || {}).email || null,
+        applied: !!g.applied_user, applied_at: g.applied_at, applied_plan: g.applied_plan || null,
+        account_exists: Object.values(USERS).some((x) => x.email === g.email) })));
+    }
     case 'admin_get_billing_settings':
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       return json(route, 200, { ...F.db.settings });
@@ -521,6 +609,7 @@ function rpc(name, args, user, route) {
       const p = args.p_patch || {};
       const unknown = Object.keys(p).find((key) => !(key in F.db.settings));
       if (unknown) return pgErr(route, '22023', 'Unknown setting "' + unknown + '"');
+      if ('purchase_required' in p && typeof p.purchase_required !== 'boolean') return pgErr(route, '22023', 'Purchases required is on (true) or off (false).');
       /* Section 30's keys are validated HERE, each with its own
          sentence, which is the trap 30.9 exists to avoid: the old body
          ended in one check_violation handler that talks about referral
@@ -632,6 +721,7 @@ function rpc(name, args, user, route) {
       return json(route, 200, [...F.db.refunds].reverse());
     }
     case 'studio_status': {
+      if (user) applyGrant(user);   // section 32: the gate's own check claims a pending grant
       const m = user && F.db.members.get(user.id);
       const r = user && F.db.requests.get(user.id);
       const pend = isAdmin(user) ? [...F.db.requests.values()].filter((x) => x.status === 'pending').length : 0;

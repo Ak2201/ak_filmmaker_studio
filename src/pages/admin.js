@@ -40,6 +40,9 @@ import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
+/* §32: the "Purchases required" switch and access by e-mail. Two
+   self-contained blocks, placed here until the console's re-layout. */
+import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin } from '../ui/access-admin.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -48,7 +51,7 @@ const gate = () => (cloud() && cloud().gate) || null;
 /* THE CATEGORIES are the shell's tabs now (src/ui/tabs.js): every
    section below is one tab, named by data-tab-label, one on screen at
    a time, picked by the hash. Billing, invoices and growth moved to purchases.html. */
-const TAB_LABELS = { overview: 'Overview', organisations: 'Organisations', people: 'People', 'admin-console': 'Access', 'purchases-link': 'Purchases', features: 'Features' };
+const TAB_LABELS = { overview: 'Overview', organisations: 'Organisations', people: 'People', 'give-access': 'Give access', 'admin-console': 'Access', 'purchases-link': 'Purchases', features: 'Features' };
 
 function section(id, eyebrow, title, deck) {
   const sec = h('section.ad-sec.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
@@ -178,6 +181,7 @@ function usersSection() {
 function purchasesLink() {
   const sec = section('purchases-link', 'Purchases', 'Payments have their own page.',
     'Every payment and refund, invoices, promo codes, tiers and grants, and growth (trial, price rise, referrals, affiliates, leads).');
+  sec.append(purchasesSwitchBlock());
   sec.append(h('div.ad-actions', {}, [h('a.btn.primary', { href: 'purchases.html', text: 'PURCHASES \u2192' })]));
   return sec;
 }
@@ -230,6 +234,8 @@ function render() {
   } else {
     if (ov.phase === 'idle') loadOverview();
     body.append(overviewSection(), accountsSection(), usersSection());
+    const grants = accessAdminSection(section, st);
+    if (grants) body.append(grants);
     const console_ = adminSection(section, st);
     if (console_) body.append(console_);
     const feats = planFeaturesSection(section, st);
@@ -254,6 +260,7 @@ document.addEventListener('click', (e) => {
 
 wireGateUI(render);
 wirePlanFeatures(render);
+wireAccessAdmin(render);
 Store.subscribe('gate:changed', refreshStatus);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshStatus, 0));
 refreshStatus();

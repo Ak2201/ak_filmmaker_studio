@@ -49,7 +49,7 @@ import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
 import { scrollProgress, parallax, marquee, glow, aurora } from '../lib/motion-landing.js';
-import { addLead, bumpOnce, bumpEvent, optOut, priceNotice } from '../lib/funnel.js';
+import { addLead, bumpOnce, bumpEvent, optOut, priceNotice, purchasesRequired } from '../lib/funnel.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
@@ -439,7 +439,39 @@ function renderPriceRise(notice) {
 
   band.hidden = false;
 }
-try { priceNotice().then(renderPriceRise, () => {}); } catch (e) { /* never breaks the page */ }
+/* ---- 9b. purchases not required (§32) ------------------------------
+   The owner can switch purchasing off, and has: the studio is free to
+   use. The prices are in the markup (crawlers and a failed request both
+   see a correct page), so this only ever REMOVES them, and only on an
+   explicit `false` from the anon purchases_required() — no SDK, the
+   same plain fetch as price_notice(). Hidden, not deleted. */
+const FREE_NOW = 'The studio is free to use right now \u2014 nothing to buy.';
+function showFreeNow() {
+  document.documentElement.dataset.purchases = 'off';
+  const sec = byId('pricing');
+  if (sec) {
+    for (const c of Array.from(sec.children)) {
+      if (c.matches('.st-eyebrow, h2, .st-cta')) continue;
+      c.hidden = true;
+    }
+    const hh = sec.querySelector('h2');
+    if (hh) hh.textContent = 'Free to use, right now.';
+    if (!sec.querySelector('.st-free-now')) {
+      const p = el('p', { class: 'st-free-now', text: FREE_NOW });
+      if (hh) hh.after(p); else sec.prepend(p);
+    }
+  }
+  const band = byId('offer');
+  if (band) band.hidden = true;
+  /* Every link INTO the price list, and every "Buy <plan>" button. */
+  document.querySelectorAll('a[href="#pricing"], a[data-plan]').forEach((a) => { a.hidden = true; });
+}
+try {
+  Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
+    if (req === false) { showFreeNow(); return; }
+    renderPriceRise(notice);
+  }, () => {});
+} catch (e) { /* never breaks the page */ }
 
 /* ---- 10. the thumb rail --------------------------------------------
    One gold button, one thumb away, below 720px and only once the hero

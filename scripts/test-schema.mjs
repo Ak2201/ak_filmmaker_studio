@@ -75,7 +75,17 @@ const lines = full.split('\n');
 const at = lines.findIndex((l) => /^-- 21\. /.test(l));
 if (at < 1) fail('could not find the §21 header to split the schema at');
 const phase1 = lines.slice(0, at - 1).join('\n') + '\n';
-const phase2 = lines.slice(at - 1).join('\n');
+/* A THIRD PHASE, for the same reason as the second: section 32 turns
+   purchasing OFF by default, which makes billing_status() entitled for
+   everybody and stands the P0402 triggers down — so every check written
+   for §30 and earlier (a wall after expiry, a cap that fires) would be
+   asserting the switched-off database. §21–§31 load, their files run
+   against what they describe, then §32 loads on top and purchases.sql
+   proves both positions of the switch. */
+const at32 = lines.findIndex((l) => /^-- 32\. /.test(l));
+if (at32 < at) fail('could not find the §32 header to split the schema at');
+const phase2 = lines.slice(at - 1, at32 - 1).join('\n') + '\n';
+const phase3 = lines.slice(at32 - 1).join('\n');
 
 console.log('supabase-schema.sql §1–§20 …');
 const t0 = Date.now();
@@ -96,15 +106,25 @@ function runChecks(file) {
 // In order: later files use the people and prices the earlier ones left.
 for (const file of ['billing.sql', 'accounts.sql', 'promo.sql']) runChecks(file);
 
-console.log('supabase-schema.sql §21 onward …');
+console.log('supabase-schema.sql §21–§31 …');
 r = psql(['-f', '-'], { input: phase2 });
-if (r.status !== 0) fail('supabase-schema.sql (§21 onward) did not load cleanly on top of §1–§20', r);
-console.log('✓ the whole schema loads');
+if (r.status !== 0) fail('supabase-schema.sql (§21–§31) did not load cleanly on top of §1–§20', r);
+console.log('✓ §21–§31 load');
 /* §21 onward: each growth file seeds its own people (fresh uuids), so
    what promo.sql left behind cannot make a check pass for the wrong
    reason. The list is explicit, like the first one: a file that exists
    and is not named here is not run, and nothing would say so. */
 for (const file of GROWTH_FILES) runChecks(file);
+
+console.log('supabase-schema.sql §32 onward …');
+r = psql(['-f', '-'], { input: phase3 });
+if (r.status !== 0) fail('supabase-schema.sql (§32 onward) did not load cleanly on top of §1–§31', r);
+/* Twice: every section claims to be idempotent, and this one ALTERs a
+   table, replaces a trigger on auth.users and restates five functions. */
+r = psql(['-f', '-'], { input: phase3 });
+if (r.status !== 0) fail('supabase-schema.sql (§32 onward) is not re-runnable', r);
+console.log('✓ the whole schema loads (and §32 re-runs cleanly)');
+for (const file of ['purchases.sql']) runChecks(file);
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

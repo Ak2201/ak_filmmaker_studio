@@ -1698,3 +1698,19 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `write-presets.json`, toggled as `hints` in `fms_write_prefs_v1`.
     - Redundancy sweep: duplicate vault heading, dashboard/admin repeated
       decks, the tour offered twice. Open owner decisions are in HANDOFF.
+
+33. **Receipt and refund e-mails; a clearer invoice; the owner's name off the site (11 Oct 2026).**
+    - The owner asked for a mail after purchase from `support@filmmakerstudio.in`.
+      Resend, server-side only (`supabase/functions/_shared/mail.js`), sent by
+      `rzp-verify` and `rzp-webhook`; schema §35 CLAIMS each mail with an
+      UPDATE only one caller wins, and a failed send releases the claim.
+      Hostinger SMTP was ruled out: Supabase Edge Functions block 25/587.
+      Console: Receipt sent/not sent + RESEND RECEIPT. `docs/BILLING.md` §16.
+    - Invoice PDF: PAID mark, payment ids and dates, Qty/Rate/Amount, amount in
+      words, a refund-policy box. The sentence is `_shared/terms.js`, worded as
+      refund.html (final, three exceptions) — not a flat "no refunds", which
+      would contradict the published policy.
+    - "I don't want my name to be displayed": `brand.json` `seller` is EMPTY;
+      refund/privacy/terms say "a sole proprietor", the invoice names the
+      trading name. The name stays in git history; rewriting `main` is not on
+      the table.

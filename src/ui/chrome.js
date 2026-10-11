@@ -1217,6 +1217,7 @@ const GLOSSARY = {};   // term -> { def, tanglish, examples }
 /** Every term and alias, longest first so "the lie" wins over "lie".
  *  Filled by loadGlossary(); empty until the JSON has arrived. */
 let GLOSSARY_KEYS = [];
+const NOTAG = new Set();
 let glossaryLoading = null;
 /* The JSON is fetched on demand rather than imported at the top: it is
    23 KB that every one of the module pages used to download on first
@@ -1240,9 +1241,13 @@ function loadGlossary() {
       };
       for (const key of [entry.term, ...(entry.aliases || [])]) {
         GLOSSARY[key.toLowerCase()] = record;
+        /* `notag` terms (take, wrap, scene…) are everyday words: they live
+           in the library's Film terminology and its search, but are not
+           auto-wrapped in step prose (the popover would speckle it). */
+        if (entry.notag) NOTAG.add(key.toLowerCase());
       }
     }
-    GLOSSARY_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    GLOSSARY_KEYS = Object.keys(GLOSSARY).filter((k) => !NOTAG.has(k)).sort((a, b) => b.length - a.length);
   }).catch((e) => { console.warn('[glossary] could not load', e); });
   return glossaryLoading;
 }

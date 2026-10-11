@@ -94,6 +94,7 @@ jobs:
       - run: npm run prove:story-path
       # No native confirm/alert/prompt: the in-app dialog appears, Cancel keeps data.
       - run: npm run prove:dialogs
+      - run: npm run prove:script
 
   proofs:
     name: proofs

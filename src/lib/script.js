@@ -316,12 +316,19 @@ export function loadScript() {
 
 function normaliseRevision(rev) {
   const r = rev && typeof rev === 'object' ? rev : {};
-  return {
+  const out = {
     id: r.id || uid(),
     name: String(r.name ?? '').trim() || 'Untitled revision',
     date: r.date || nowISO(),
     elements: Array.isArray(r.elements) ? r.elements.map((e) => blankElement(e)) : []
   };
+  /* Optional, written by src/lib/drafts.js: the draft's number and note,
+     and the title page as it was. Absent on an older revision, which
+     therefore round-trips byte-identical. */
+  if (Number.isFinite(Number(r.number)) && Number(r.number) > 0) out.number = Math.floor(Number(r.number));
+  if (typeof r.note === 'string' && r.note.trim()) out.note = r.note;
+  if (r.titlePage && typeof r.titlePage === 'object') out.titlePage = normaliseTitlePage(r.titlePage);
+  return out;
 }
 
 export function saveScript(doc) {

@@ -1,0 +1,22 @@
+/* The leave prompt's dialog (src/ui/leave-prompt.js). The card and the
+   scrim are chrome.css's .modal / .modal-overlay; this is the row of
+   choices and the optional note field. Tokens and --sk-* only. */
+.lp-card { display: grid; gap: var(--s3); }
+.lp-card h3 { margin: 0; }
+.lp-card .deck { margin: 0; color: var(--ink-muted); }
+.lp-field {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+}
+.lp-actions { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; margin-top: var(--s2); }
+.lp-actions .btn { min-width: 0; }
+@media (max-width: 480px) {
+  .lp-actions { flex-direction: column-reverse; }
+  .lp-actions .btn { width: 100%; }
+}

@@ -913,7 +913,7 @@ console.log('\n--- the screenplay editor: text typed just before leaving the pag
   await page.waitForTimeout(2500);
   let kept = 0;
   for (let i = 0; i < 2; i++) {
-    await page.goto(`http://localhost:${PORT}/write.html`);
+    await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
     await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
     await page.waitForTimeout(1500);
     const ta = page.locator('.wr-text[data-el-field="text"]').nth(5);
@@ -922,7 +922,7 @@ console.log('\n--- the screenplay editor: text typed just before leaving the pag
     await page.keyboard.type(mark, { delay: 10 });
     await (i ? page.reload() : page.goto(`http://localhost:${PORT}/index.html`));
     await page.waitForTimeout(1200);
-    await page.goto(`http://localhost:${PORT}/write.html`);
+    await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
     await page.waitForSelector('.wr-text[data-el-field="text"]', { timeout: 15000 });
     await page.waitForTimeout(1500);
     if (await page.evaluate((m) => [...document.querySelectorAll('.wr-text[data-el-field="text"]')].some((t) => t.value.includes(m)), mark)) kept++;
@@ -962,7 +962,7 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
   const bBefore = await bKeys();
   const rawJSON = (k) => page.evaluate((key) => { try { return JSON.parse(window.__raw(key) || 'null'); } catch (e) { return null; } }, k);
 
-  await page.goto(`http://localhost:${PORT}/write.html`);
+  await page.goto(`http://localhost:${PORT}/write.html?stay=1`);
   await page.waitForSelector('[data-action="el-first"]', { timeout: 15000 });
   await page.click('[data-action="el-first"]');
   await page.waitForSelector('.t-scene .wr-text', { timeout: 5000 });

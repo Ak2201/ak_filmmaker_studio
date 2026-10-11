@@ -345,4 +345,15 @@ export function mountRevisionTools(opts = {}) {
   wire();
 }
 
-export default { mountRevisionTools, renderRevisionTools };
+/** The Compare panel on its own, for the Drafts page (src/pages/drafts.js).
+    Null until there is a draft to compare. */
+export function renderCompareTool() {
+  const doc = ctx.getDoc();
+  return doc && doc.revisions.length ? renderCompare(doc) : null;
+}
+/** Preselect the two sides (a draft id, or 'live') and forget the last result. */
+export function presetCompare(from, to = LIVE) {
+  cmpFrom = from; cmpTo = to; lastResult = null;
+}
+
+export default { mountRevisionTools, renderRevisionTools, renderCompareTool, presetCompare };

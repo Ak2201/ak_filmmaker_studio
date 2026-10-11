@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" data-volume="feature" data-phase="write">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Script · {{brand:name}}</title>
+<meta name="description" content="Write your screenplay on a real page.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Tamil glyphs for generated scripts. Its own stylesheet rather than
+     an addition to the four-page font link, so Latin rendering on this
+     page is unchanged. Costs nothing until Tamil appears: the @font-face
+     carries a unicode-range, so the Tamil woff2 is fetched only when a
+     Tamil codepoint is actually on the page. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Catamaran:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Courier+Prime:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/src/pages/script.js"></script>
+</body>
+</html>

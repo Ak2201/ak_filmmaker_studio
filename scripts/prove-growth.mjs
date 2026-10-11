@@ -381,7 +381,7 @@ try {
     ok((await localWrites(page, t0)).length === 0, 'a page mid-tour writes nothing while idle');
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     ok(await page.$('.tour-pop') === null && await page.evaluate(() => JSON.parse(localStorage.getItem('fms_tour_v1')).dismissed === true), 'Esc ends the tour and records it');
-    await page.goto(BASE + 'write.html'); await page.waitForTimeout(1000);
+    await page.goto(BASE + 'write.html?stay=1'); await page.waitForTimeout(1000);
     ok(await page.evaluate(() => ![...document.querySelectorAll('script[src], link[rel="modulepreload"]')].some((s) => /tour-/.test(s.src || s.href)) && !document.querySelector('.tour-pop, .tour-chip')), 'an ended tour loads nothing off the hub');
     allErrors.push(...errors); await ctx.close();
   }

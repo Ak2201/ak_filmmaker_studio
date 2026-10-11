@@ -194,7 +194,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
   }, { els: makeScript(40), theme, provider, key: KEY[provider] });
 
   /* ---- write.html#coverage, before any click ---------------------- */
-  await page.goto(BASE + '/write.html#coverage', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/write.html?stay=1#coverage', { waitUntil: 'networkidle' });
   await page.waitForSelector('#coverage .cv-run', { timeout: 15000 });
   check(tag + 'the Coverage tab is a tab', await page.locator('.tabs [role="tab"]', { hasText: 'Coverage' }).count() === 1);
   const cost = await page.locator('#coverage .cv-cost').textContent();

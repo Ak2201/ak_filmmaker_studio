@@ -86,3 +86,16 @@
 .bdo-name { font-weight: 600; }
 .bdo-totals { margin: 0; }
 .bdo-onward { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: 0; color: var(--ink-muted); }
+
+/* Script Breakdown tab (src/ui/script-overview.js) */
+.bd-script {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: var(--s6) var(--s5);
+  min-width: 0;
+}
+@media (max-width: 719px) { .bd-script { padding-inline: var(--s4); } }
+.bd-script .so-part { margin-block: var(--space-6, 2rem); }
+.bd-script .bd-h3 { font-size: 1.15rem; margin-block: 1.25rem .5rem; }
+.bd-script .bd-h4 { font-size: 1rem; margin-block: 1rem .4rem; }
+.bd-script .so-hint { padding: .6rem .8rem; border: 1px solid var(--border-subtle, currentColor); border-radius: var(--sk-radius, var(--radius)); }

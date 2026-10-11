@@ -274,9 +274,9 @@ function screenplayTools(ctx) {
   const els = script.elements || [];
   const headings = els.filter((e) => e.type === 'scene').length;
   const checks = [
-    check('Screenplay started', els.length > 0, 'write.html#screenplay', 'Start the screenplay'),
-    check('Scene headings', headings > 0, 'write.html#screenplay', 'Add scene headings to the script'),
-    check('Title page', hasTitlePage(script.titlePage), 'write.html#screenplay', 'Fill in the title page'),
+    check('Screenplay started', els.length > 0, 'script.html', 'Start the screenplay'),
+    check('Scene headings', headings > 0, 'script.html', 'Add scene headings to the script'),
+    check('Title page', hasTitlePage(script.titlePage), 'drafts.html#title', 'Fill in the title page'),
     check('Scene list', ctx.scenes.length > 0, 'breakdown.html#scenes', 'Build the scene list')
   ];
   const bits = [];
@@ -600,7 +600,7 @@ export function favouriteOf(project, titleOf) {
 }
 
 const START = {
-  screenplay: { label: 'Already have a script? Import it', href: 'write.html#wr-import' },
+  screenplay: { label: 'Already have a script? Import it', href: 'script.html#import' },
   preprod:    { label: 'Have a script? Upload it and we’ll break it down', href: 'breakdown.html' }
 };
 

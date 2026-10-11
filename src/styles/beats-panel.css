@@ -1,0 +1,47 @@
+/* THE BEATS PANEL — src/ui/beats-panel.js. Tokens for colour, --sk-* for
+   shape. Text takes --ink / --ink-muted / --accent-deep, never a fill.
+   Wide: a column. Under 720px: a drawer pinned above the bottom bar. */
+.bp {
+  background: var(--surface, var(--paper));
+  border: 1px solid var(--line, var(--hairline));
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+  font: inherit;
+  max-width: 100%;
+}
+.bp-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  min-height: 44px; padding: 8px 12px;
+  background: none; border: 0; color: var(--ink); font: inherit; font-weight: 600;
+  cursor: pointer; text-align: left;
+}
+.bp-fw { color: var(--ink-muted); font-weight: 400; font-size: .85em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-caret { color: var(--ink-muted); }
+.bp-body { max-height: 60vh; overflow: auto; padding: 0 6px 8px; }
+.bp-list { list-style: none; margin: 0; padding: 0; }
+.bp-beat {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  min-height: 36px; padding: 6px 8px;
+  background: none; border: 0; border-left: 3px solid transparent;
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.bp-beat:hover { background: var(--sk-slab-fill, var(--surface-2, transparent)); }
+.bp-beat:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.is-current > .bp-beat { border-left-color: var(--brand); background: var(--sk-slab-fill, transparent); font-weight: 600; color: var(--accent-deep); }
+.bp-name { flex: 1; min-width: 0; }
+.bp-marks { color: var(--ink-muted); font-size: .8em; }
+.bp-page { color: var(--ink-muted); font-size: .85em; font-variant-numeric: tabular-nums; }
+.bp-hint { margin: 0; padding: 0 12px 8px; color: var(--ink-muted); font-size: .85em; }
+.bp-hint:empty { display: none; }
+
+@media (max-width: 719.98px) {
+  .bp.is-open {
+    position: fixed; left: 8px; right: 8px;
+    bottom: calc(var(--mab-h, 0px) + 8px);
+    z-index: 40;
+    box-shadow: var(--shadow-cta);
+  }
+  .bp-body { max-height: 50vh; }
+}
+@media print { .bp { display: none; } }

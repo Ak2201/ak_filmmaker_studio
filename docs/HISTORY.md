@@ -1572,7 +1572,51 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       drops the old per-page rows. Storage keys and data-keys are
       byte-identical; there is no migration.
 
-31. **Project-first navigation and the Story path, end to end (11 Oct 2026).**
+31. **The screenplay space, conventional (11 Oct 2026).** The owner found the
+    Write page hard to understand and set the direction: the Script page is
+    for writing only, analysis belongs to Pre-Production, drafts are numbered.
+
+    - **`script.html`** (`src/pages/script.js`, `script.css`): a US-Letter page
+      in Courier 12pt; one top bar (title · draft · saved, the current line
+      type, Beats, Focus, ⋯). No per-row controls (`mountEditor(…,
+      {rowChrome:false})`), no stats. The line ⋯ / right-click menu appears on
+      the focused line only. Phone: one column and a sticky chip bar. The
+      stage guide is mounted but `hidden` unless `#guide` (verify's key-union
+      loads `script.html#guide`). `#import` opens the importer INLINE above the
+      page — a fixed modal there counts as chrome to the fragment sweep and
+      lands the target "behind" it; the ⋯ menu still opens the modal.
+    - **The editor core** moved out of `write.js` into
+      `src/ui/script-editor/` (`rows.js`, `keys.js`, `editor.js`,
+      `inference.js`). Inference: INT./EXT./I/E. and Fountain `.`/`@` on input,
+      `>`, ALL CAPS and `TO:` on Return — all through `setElementType`, and a
+      line the user typed explicitly is never re-inferred (in memory only).
+    - **Beats** (`src/ui/beats-panel.js`): the Story framework's beats with
+      ~page targets (110 for a feature, 15 for a short), the beat being
+      written marked (the first beat until a later one begins), click to
+      jump. Writes nothing.
+    - **Drafts** (`drafts.html`, `src/lib/drafts.js`): drafts are
+      `doc.revisions` entries with optional `number`/`note`/`titlePage` — NO
+      new key; `normaliseRevision` keeps them. "Changed since the last draft"
+      is a hash, derived. PDF goes through the one print path from the
+      draft's snapshot (no numbering: snapshot ids are not live ids).
+      **`src/ui/leave-prompt.js`**: a same-origin link or project switch
+      with changes since the last draft asks Save as Draft N+1 / Update
+      Draft N / Not now; Ctrl/⌘+S asks the same; `beforeunload` only gets
+      the browser's own warning. It never blocks typing.
+    - **Script Breakdown** (`breakdown.html#script`, `src/ui/script-overview.js`)
+      is Pre-Production's first module: overview, screen time, cast matrix,
+      outline + beat board, characters. The beat board and characters panel
+      are LAZY and only rendered when there is a script — statically they
+      put breakdown 95 KB over budget on an empty first paint.
+    - **write.html is retired** (`src/lib/write-route.js`, `?stay=1` exempt).
+      The AI coverage report and synopsis→script still live in `write.js`
+      and are reached through the escape, linked from Script Breakdown and
+      the Script ⋯ menu.
+    - `prove:script` (in CI after `prove:adoption`), `test:inference`,
+      `test:drafts`, `test:write-route`. Deliberate re-baseline: two new
+      pages, zero data-key movement.
+
+32. **Project-first navigation and the Story path, end to end (11 Oct 2026).**
     The studio stops presenting every page as the same kind of page: global
     pages and project pages are now different shells, and Story becomes an
     ordered path rather than a guide beside the work.

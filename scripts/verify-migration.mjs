@@ -200,6 +200,10 @@ const ALL_PAGES = [
   { page: 'contacts.html',   legacy: null, name: 'contacts' },
   { page: 'visualize.html',  legacy: null, name: 'visualize' },
   { page: 'write.html',      legacy: null, name: 'write' },
+  /* The writing page and its drafts took write.html's jobs (11 Oct 2026);
+     both rows arrive with the pages, as the settings note below demands. */
+  { page: 'script.html',     legacy: null, name: 'script' },
+  { page: 'drafts.html',     legacy: null, name: 'drafts' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
   /* study.html and dissect.html left this list on 6 Oct 2026: they are
      redirect stubs now, and their content is the Library's Case Studies

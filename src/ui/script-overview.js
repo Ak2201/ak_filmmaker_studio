@@ -123,7 +123,7 @@ function outlinePart(d) {
       cell(s.n, 'bdo-num'), cell(s.heading), cell(formatPages(Math.round(s.pages * 8) / 8) + ' pp')
     ])), 'Scene outline'));
   }
-  wrap.append(h('div.so-lazy', { 'data-so-lazy': 'outline' }));
+  if (d.scenes.length) wrap.append(h('div.so-lazy', { 'data-so-lazy': 'outline' }));
   return wrap;
 }
 
@@ -152,7 +152,7 @@ export function renderScriptOverview(scenes, opts = {}) {
   if (!hasScript) {
     wrap.append(h('p.bd-none', { text: 'No script yet. Write one on the Script page or import a file there, and this fills in.' }));
   }
-  wrap.append(overviewPart(d, scenes, els), outlinePart(d), h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), h('div.so-lazy', { 'data-so-lazy': 'characters' })]));
+  wrap.append(...[overviewPart(d, scenes, els), outlinePart(d), hasScript ? h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), h('div.so-lazy', { 'data-so-lazy': 'characters' })]) : null].filter(Boolean));   // append(null) prints "null"
   return wrap;
 }
 

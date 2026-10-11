@@ -235,6 +235,9 @@
   font-family: var(--f-script);
   font-size: min(12pt, calc(100cqw / 51));
   color: var(--print-muted);
+  /* It overlays the white page but is not inside it; say the ground
+     out loud so nothing (the AA walk included) reads it off the sheet. */
+  background: var(--print-paper);
   pointer-events: none;
 }
 .sc-hint[hidden] { display: none; }
@@ -292,6 +295,8 @@
   border-radius: var(--sk-radius, var(--radius));
   box-shadow: var(--sk-card-shadow);
 }
+.sc-imp.is-inline { position: static; inset: auto; z-index: auto; padding: var(--s4) var(--s4) 0; background: none; }
+.sc-imp.is-inline .sc-imp-card { margin-inline: auto; max-height: none; }
 .sc-imp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
 .sc-imp-head h2 { margin: 0; font-size: var(--t-body); }
 .sc-imp-row, .sc-imp-modes { display: flex; flex-wrap: wrap; gap: var(--s2); margin-block: var(--s3); }
@@ -306,7 +311,9 @@
   .sc-sheet { padding: var(--s3) var(--s3) var(--s5); }
   .sc-sheet .wr-page { --wr-em: 16px; padding: var(--s3); border-radius: var(--sk-radius, var(--radius)); }
   .sc-sheet .wr-text { line-height: 1.35; }
-  .sc-hint { top: calc(var(--s6) + 2.2rem); padding: 0 var(--s5); font-size: 0.95rem; }
+  /* The page follows the theme here (no white sheet), so the hint does too. */
+  .sc-hint { top: calc(var(--s6) + 2.2rem); padding: 0 var(--s5); font-size: 0.95rem; color: var(--ink-muted); background: transparent; }
+  .sc-hint a { color: var(--accent-deep); }
   .sc-chips {
     position: sticky;
     bottom: var(--mab-h, 0px);

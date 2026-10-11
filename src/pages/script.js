@@ -507,6 +507,7 @@ delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
 /* ---- import (a dialog; script-import.js and script-commit.js) --- */
 let imp = null;      // { plan, name, replace }
 let impDialog = null;
+let impInline = false;   // arrived by #import: an in-page panel, not a modal
 
 function closeImport() {
   if (impDialog) { impDialog.remove(); impDialog = null; }
@@ -550,7 +551,9 @@ function drawImport() {
       h('button.btn', { type: 'button', 'data-action': 'sc-imp-back', text: 'Back' })
     ]));
   }
-  const dlg = h('div#scImport.sc-imp', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import a script' }, [
+  const dlg = h(impInline ? 'section#import.sc-imp.is-inline' : 'div#scImport.sc-imp', impInline
+    ? { 'aria-label': 'Import a script' }
+    : { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import a script' }, [
     h('div.sc-imp-card', {}, [
       h('div.sc-imp-head', {}, [
         h('h2', { text: 'Import a script' }),
@@ -559,11 +562,13 @@ function drawImport() {
       body
     ])
   ]);
-  if (impDialog) impDialog.replaceWith(dlg); else document.body.append(dlg);
+  if (impDialog) impDialog.replaceWith(dlg);
+  else if (impInline) { const m = document.getElementById('main'); const sh = document.getElementById('screenplay'); if (m && sh) m.insertBefore(dlg, sh); else document.body.append(dlg); }
+  else document.body.append(dlg);
   impDialog = dlg;
   (dlg.querySelector('textarea, button.primary') || dlg).focus?.();
 }
-function openImport() { if (!impDialog) { imp = null; drawImport(); } }
+function openImport(inline = false) { if (!impDialog) { imp = null; impInline = inline; drawImport(); } }
 
 async function takeScript(text, name) {
   if (!String(text || '').trim()) { say('That file was empty.'); return; }
@@ -628,7 +633,7 @@ mountFocusMode(() => doc);
   if (slot && btn) slot.append(btn);
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
-if (location.hash === '#import') openImport();
+if (location.hash === '#import') openImport(true);
 function syncGuide() {
   const g = document.getElementById('guide');
   if (!g) return;
@@ -636,7 +641,7 @@ function syncGuide() {
   if (g.hidden === show) g.hidden = !show;
   if (show) g.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
-addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); syncGuide(); });
+addEventListener('hashchange', () => { if (location.hash === '#import') openImport(true); syncGuide(); });
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
 delegate(document, 'click', '[data-action="sc-guide"]', () => {
   if (location.hash === '#guide') syncGuide(); else location.hash = '#guide';

@@ -94,7 +94,7 @@ function titlePageBlock() {
     el.value = tp[f];
     return h('label.dr-field', {}, [h('span', { text: TITLE_LABELS[f] }), el]);
   };
-  return h('section.dr-card#dr-title-page', { 'aria-labelledby': 'dr-tp-h' }, [
+  return h('section#title.dr-card', { 'aria-labelledby': 'dr-tp-h' }, [
     h('h2.dr-h', { id: 'dr-tp-h', text: 'Title page' }),
     h('p.dr-sub', {
       'data-tp-state': '',
@@ -169,10 +169,12 @@ function render() {
     })
   ]));
   if (!hasProject) {
-    main.append(h('p.dr-sub', {}, [
+    /* #title is a nav target: it renders in every state (CLAUDE.md,
+       "a nav target must not depend on data existing"). */
+    main.append(h('section#title.dr-card', {}, [h('p.dr-sub', {}, [
       document.createTextNode('Open a project first. '),
       h('a', { href: 'index.html', text: 'Go to the studio' })
-    ]));
+    ])]));
     app.replaceChildren(main);
     mountShell();
     return;

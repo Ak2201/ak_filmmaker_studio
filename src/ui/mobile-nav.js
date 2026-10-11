@@ -38,6 +38,7 @@ import { iconSpan } from './icon.js';
 import { phases, globals, shelves } from '../lib/navmodel.js';
 import { projectRows, projectList, formatLabel } from './project-switcher.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { isGlobalMode } from './shell.js';
 import '../styles/mobile-nav.css';
 
 const CURRENT = (() => {
@@ -49,13 +50,13 @@ const fileOf = (href) => String(href || '').split('#')[0].toLowerCase();
 let sheet = null;          // { overlay, kind, borrowed: [{ node, parent, next }] }
 
 /* ---- where am I ----------------------------------------------
-   The shell already keeps this true (it marks the phase menu's row
-   `.is-here` as the hash and the scroll spy move), so the sheet reads
+   The shell already keeps this true (it publishes the module as
+   `data-sh-module` on <html> as the hash and the scroll spy move), so the sheet reads
    that answer rather than deciding a second time. Fallback: the first
    module whose file is this page. */
 function hereModuleId() {
-  const row = document.querySelector('.sh-phase-menu .sh-mod.is-here');
-  if (row && row.dataset.moduleId) return row.dataset.moduleId;
+  const at = document.documentElement.getAttribute('data-sh-module');
+  if (at) return at;
   for (const p of [...phases(), ...shelves()]) for (const m of p.modules || []) if (fileOf(m.href) === CURRENT) return m.id;
   return null;
 }
@@ -212,6 +213,18 @@ export function openTools() {
 
 /* ---- the bottom bar's items, for chrome.js -------------------- */
 export function barItems() {
+  /* A global page (library, settings, admin, purchase, home) carries no
+     project chrome, so its bar has no studio-wide Search either: the
+     library has its own scoped search, and the rest have nothing to
+     search. Settings takes the slot. The mode is shell.js's, derived once. */
+  if (isGlobalMode()) {
+    return [
+      { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
+      { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
+      { icon: '⚙', label: 'Settings', href: 'settings.html', id: 'settings' },
+      { icon: '⋯', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
+    ];
+  }
   return [
     { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
     { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },

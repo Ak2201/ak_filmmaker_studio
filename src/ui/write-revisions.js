@@ -33,6 +33,7 @@ import { applyNumbers } from '../lib/scene-sync.js';
 import {
   revisionColour, sceneNumbers, lockNumbering, isNumberingLocked, typeLabel
 } from '../lib/script.js';
+import { askDanger } from './dialog.js';
 
 const differ = () => import('../lib/script-diff.js');
 
@@ -317,11 +318,11 @@ function wire() {
       + (moved ? ' ' + plural(moved, 'Breakdown row') + ' renumbered to match.' : ''), 'success');
   });
 
-  delegate(document, 'click', '[data-action="numbers-unlock"]', () => {
+  delegate(document, 'click', '[data-action="numbers-unlock"]', async () => {
     const doc = ctx.getDoc();
     if (!doc || !isNumberingLocked(doc.numbering)) return;
     const res = sceneNumbers(doc.elements, doc.numbering);
-    const ok = confirm('Unlock the scene numbers?\n\n'
+    const ok = await askDanger('Unlock the scene numbers?\n\n'
       + 'Every scene is renumbered by its position, 1 to ' + res.byId.size + ' — lettered inserts '
       + 'like 12A become whole numbers'
       + (res.omitted.length ? ', and the ' + plural(res.omitted.length, 'OMITTED placeholder') + ' go' : '')

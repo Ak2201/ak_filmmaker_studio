@@ -41,7 +41,7 @@
    about the others — so that one section goes through
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
-import Store, { rawGet } from '../lib/store.js';
+import Store from '../lib/store.js';
 import { BLUEPRINT, guideProgress, stageHueClass, journey, stageStates, suggestNext, lastWorked, favouriteOf } from '../lib/journey.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import '../styles/base.css';
@@ -55,8 +55,10 @@ import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, delegate } from '../lib/dom.js';
+import { h } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
+import { renderJourneyStrip } from '../ui/journey-strip.js';
+import { renderLauncher } from '../ui/launcher.js';
 
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations from '../lib/locations.js';
@@ -125,17 +127,6 @@ function readBlob(key) {
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch (e) { return {}; }
 }
-
-/** A named project's copy, bypassing the proxy. See the header note. */
-function readBlobFor(key, projectId) {
-  const raw = rawGet(key + '__' + projectId);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (e) { return {}; }
-}
-
 
 /* parseNum / INR / the short rupee format all come from
    src/lib/money.js now. This file used to carry its own copy with a
@@ -385,21 +376,11 @@ function continueTarget(snap) {
   return { href: pick.href, what: pick.label, ts: snap.resume ? snap.resume.at : null };
 }
 
-function renderContinue(snap, projects) {
-  const latest = projects.slice().sort((a, b) => Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0))[0];
+function renderContinue(snap) {
+  /* THIS PROJECT ONLY (owner, 11 Oct 2026): it used to suggest the most
+     recently edited OTHER film. Switching films is the home page's job. */
   const tl = tile('continue', 'Continue', 'Pick up where you left off');
   tl.classList.add('db-tile-wide');
-  if (latest && latest.id !== snap.project.id) {
-    tl.append(
-      h('p.db-tile-line', { text: 'You last edited \u201c' + latest.title + '\u201d, ' + relTime(latest.updatedAt)
-        + '. \u201c' + snap.project.title + '\u201d is the one open now.' }),
-      h('button.btn.primary.db-big', {
-        type: 'button', 'data-action': 'open-project', 'data-project': latest.id,
-        'aria-label': 'Open ' + latest.title, text: 'Open \u201c' + latest.title + '\u201d  \u2192'
-      })
-    );
-    return tl;
-  }
   const t = continueTarget(snap);
   tl.append(
     h('p.db-tile-line', { text: t.what + (t.ts ? ' \u00b7 ' + relTime(t.ts) : '') }),
@@ -489,15 +470,13 @@ function renderWeek(snap) {
   return tl;
 }
 
-function renderPlanTile(projects) {
-  const tl = tile('plan', 'Plan & usage', 'Your plan');
+function renderPlanTile() {
+  const tl = tile('plan', 'Plan', 'Your plan');
   const cp = PlanGate.currentPlan();
   const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
   tl.append(
     h('p.db-tile-line', { text: name ? name + ' plan' : 'Not signed in \u2014 working locally on this device' }),
-    h('p.db-tile-line', { text: projects.length + ' project' + (projects.length === 1 ? '' : 's')
-      + ' here. The plan sets how many you can keep; Settings shows what yours allows.' }),
-    h('a.btn.db-tile-go', { href: 'settings.html#plan', 'aria-label': 'Plans and upgrade, in Settings',
+    h('a.btn.db-tile-go', { href: 'purchase.html', 'aria-label': 'Plans and upgrade',
       text: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans' })
   );
   return tl;
@@ -516,10 +495,10 @@ function renderBackupTile() {
   return tl;
 }
 
-function renderDesk(snap, projects) {
+function renderDesk(snap) {
   const sec = h('section.db-desk', { id: 'desk', 'data-reveal-group': '', 'aria-label': 'Today\u2019s desk' });
-  sec.append(renderContinue(snap, projects), renderProjectTile(snap), renderActions(snap),
-    renderWeek(snap), renderPlanTile(projects), renderBackupTile());
+  sec.append(renderContinue(snap), renderProjectTile(snap), renderActions(snap),
+    renderWeek(snap), renderPlanTile(), renderBackupTile());
   return sec;
 }
 
@@ -691,46 +670,15 @@ function renderChain(snap) {
   return sec;
 }
 
-/* ---- projects ----------------------------------------------------
-   The one section that is studio-wide, and therefore the one section
-   that must not read through the storage proxy. Each row's progress
-   comes from rawGet(key + '__' + id). */
-function renderProjects(projects, current) {
-  const sec = section('projects', 'The studio',
-    projects.length === 1 ? 'One project on the desk.' : projects.length + ' projects on the desk.',
-    'Switching here changes what every other page in the studio is looking at.');
-
-  const list = h('div.db-projects');
-  for (const p of projects) {
-    const bp = BLUEPRINTS[p.format === 'short' ? 'short' : 'feature'];
-    const prog = blueprintProgress(bp, readBlobFor(bp.storeKey, p.id));
-    const isOpen = current && p.id === current.id;
-    const row = h('div.db-proj' + (isOpen ? '.is-open' : ''));
-    row.append(
-      h('div.db-proj-body', {}, [
-        h('strong.db-proj-title', { text: p.title }),
-        h('span.db-proj-meta', {
-          text: (FORMAT_LABEL[p.format] || p.format) + ' · ' + prog.pct + '% of '
-              + bp.label.toLowerCase() + ' · edited ' + relTime(p.updatedAt)
-        })
-      ]),
-      isOpen
-        /* A status, not a control (UX audit L25): the bordered pill
-           beside the OPEN buttons of the other rows read as one more. */
-        ? h('span.db-proj-flag', { text: 'Open now' })
-        : h('button.btn.db-proj-open', {
-            type: 'button', 'data-action': 'open-project', 'data-project': p.id,
-            text: 'Open'
-          })
-    );
-    list.append(row);
-  }
-  sec.append(list);
-  sec.append(h('p.db-foot', {}, [
-    document.createTextNode('New projects, backups and the reset live on the '),
-    h('a.db-link', { href: 'index.html', text: 'studio home page' }),
-    document.createTextNode('.')
-  ]));
+/* ---- where the film is -------------------------------------------
+   The journey strip, for THIS project: it reads, it never writes. It
+   always renders in the project branch, so #journey resolves. */
+function renderWhere(snap, project) {
+  const sec = section('journey', 'The journey', 'Where this film is.',
+    'Each stage has a part of the blueprint (Guide) and the modules that do the work (Tools). '
+    + 'Both are read from what you have already written \u2014 nothing here is stored.');
+  const strip = renderJourneyStrip(project, { heading: false, journey: snap.journey });
+  if (strip) sec.append(strip);
   return sec;
 }
 
@@ -807,7 +755,6 @@ function renderNoProject() {
 let revealed = false;
 function render() {
   const project = Store.currentProject();
-  const projects = Store.listProjects();
   const main = h('main', { id: 'main' });
 
   if (!project) {
@@ -821,7 +768,6 @@ function render() {
         })
       ]),
       renderNoProject(),
-      ...(projects.length ? [renderProjects(projects, null)] : []),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
@@ -831,7 +777,7 @@ function render() {
     const snap = snapshot(project);
     /* Stage-first: the five stages lead, with the suggestion; the desk
        tiles, the chain and the readiness checks sit below them. */
-    main.append(renderHead(snap), renderStages(snap), renderDesk(snap, projects));
+    main.append(renderHead(snap), renderStages(snap), renderWhere(snap, project), renderDesk(snap), renderLauncher());
     if (!snap.isEmpty) main.append(renderChain(snap));
     /* OUTSIDE the isEmpty branch on purpose. `isEmpty` asks whether
        the BLUEPRINT has been filled in, and readiness asks about the
@@ -842,7 +788,6 @@ function render() {
        governs it. */
     const ready = renderReadiness();
     if (ready) main.append(ready);
-    main.append(renderProjects(projects, project));
     const activity = renderActivity(snap.scenes);
     if (activity) main.append(activity);
   }
@@ -866,13 +811,6 @@ function render() {
 /* setCurrentProject notifies 'current:changed', and the subscriber
    below is what re-renders. Calling render() here as well would draw
    the page twice for one click. */
-delegate(document, 'click', '[data-action="open-project"]', (e, el) => {
-  const id = el.dataset.project;
-  if (!id) return;
-  Store.setCurrentProject(id);
-  const heading = document.querySelector('.bd-title');
-  if (heading) heading.scrollIntoView({ block: 'start' });
-});
 
 /* The project changed under us — switched here, or renamed on the hub. */
 Store.subscribe('current:changed', () => render());

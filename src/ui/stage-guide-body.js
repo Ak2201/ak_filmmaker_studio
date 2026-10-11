@@ -91,14 +91,40 @@ function coverBlock(fields) {
   }));
 }
 
+/* A path step on the Story page asks only PART of a blueprint step
+   inline (src/data/story-paths.json `absorbs`). `item.only === 'rest'`
+   draws the step WITHOUT its questions — the formula, craft, examples,
+   derived views and the "before moving on" checklist stay, the fields
+   go — because the Story Bible's own cards ask them (a question is on
+   the page once). `item.rungs` keeps just those treatment-ladder rungs.
+   Everything is drawn by the same renderers, so every control still
+   carries the data-key the blueprint reads back. */
+function trimmed(sec, item) {
+  if (item.only === 'rest') {
+    sec.querySelectorAll('.ask, .char-block').forEach((el) => el.remove());
+  }
+  if (Array.isArray(item.rungs)) {
+    sec.removeAttribute('id');   // three path steps each draw their own rungs: one id per page
+    sec.querySelectorAll('.step-header, .step-deck').forEach((el) => el.remove());
+    sec.querySelectorAll('.ladder-rung').forEach((r) => {
+      const f = r.querySelector('[data-key]');
+      if (!f || !item.rungs.includes(f.getAttribute('data-key'))) r.remove();
+    });
+  }
+  return sec;
+}
+
 function stepSection(item, ctx, extra) {
-  if (item.kind === 'interlude') return interludeSection(item);
+  if (item.kind === 'interlude') {
+    const sec = interludeSection(item);
+    return sec ? trimmed(sec, item) : sec;
+  }
   const rec = fullStep(item.ns, item.id);
   if (!rec) return null;
   const step = classify({ ...rec, badge: null }, item.ns);
   const sec = renderStep(step, extra, item.ns);
   sec.querySelectorAll('.st-stage-row, .st-why, .row-actions, .step-badge').forEach((el) => el.remove());
-  return sec;
+  return trimmed(sec, item);
 }
 
 /** Four tables: rows from the shared builders, as many as are saved. */

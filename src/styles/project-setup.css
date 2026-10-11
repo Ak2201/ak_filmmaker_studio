@@ -31,8 +31,6 @@
 .ps-film:has(input:focus-visible) { outline: var(--focus); outline-offset: var(--focus-offset); }
 .ps-film-title { font-family: var(--f-display); font-weight: 800; font-size: var(--t-lg); color: var(--ink); text-transform: none; letter-spacing: 0; }
 .ps-film-meta, .ps-film-genre { font-family: var(--f-body); font-size: var(--t-small); color: var(--ink-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
-.ps-more { margin: var(--s2) 0 var(--s3); }
-.ps-more summary { cursor: pointer; font-size: var(--t-small); color: var(--accent-deep); padding: var(--s2) 0; }
 @media (max-width: 480px) {
   .ps-film-grid { grid-template-columns: 1fr; }
 }

@@ -30,6 +30,7 @@ import { DRIVE_SCOPE } from './drive.js';
 import { AUTH_ERROR_KEY } from './auth-scope.js';
 export { AUTH_ERROR_KEY };
 import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
+import { ask } from '../ui/dialog.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -488,7 +489,7 @@ async function askTakeover(info) {
     const { takeoverDialog } = await import('../ui/gate-ui.js');
     return await takeoverDialog(info);
   } catch (e) {
-    return window.confirm('Your account is currently active in another Chrome window. '
+    return await ask('Your account is currently active in another Chrome window. '
       + 'Would you like to terminate that session and continue here?');
   }
 }
@@ -1058,6 +1059,44 @@ export function isSigningIn() { return _signingIn; }
    their own namespace, untouched, waiting for the next sign-in — sign
    out is not a delete. This is a deliberate click, so it takes the
    reload that makes the switch visible immediately. */
+/* SAVE FIRST (11 Oct 2026). Before the session goes, push what has not
+   reached the account — the offline queue, and the Drive backup when
+   one is connected — with a 10 s cap so a dead network cannot hold the
+   button hostage. Returns true to go ahead. If anything is still
+   outstanding the person is asked: the queue is local and survives
+   either answer, so "Sign out anyway" loses nothing from this device;
+   it only means those edits reach the cloud after the next sign-in. */
+const SAVE_CAP_MS = 10000;
+async function saveBeforeSignOut() {
+  if (!supabase || !session) return true;
+  const flush = (syncAllowed() && _readQueue().length) ? _flushQueue() : Promise.resolve();
+  const drive = import('./drive-sync.js').then(async (D) => {
+    if (!D.isConnected()) return { ok: true };
+    return D.push();
+  }).catch(() => ({ ok: true }));
+  let progress = null;
+  try { progress = toast('Saving your projects before signing out…', 'info', SAVE_CAP_MS); } catch (e) { /* ignore */ }
+  let timedOut = false;
+  const cap = new Promise((r) => setTimeout(() => { timedOut = true; r(); }, SAVE_CAP_MS));
+  let driveFailed = false;
+  try {
+    const out = await Promise.race([Promise.all([flush, drive]), cap]);
+    const d = out && out[1];
+    if (d && d.ok === false && d.reason === 'error') driveFailed = true;
+  } catch (e) { driveFailed = true; }
+  try { if (progress && progress.dismiss) progress.dismiss(); } catch (e) { /* ignore */ }
+  const left = syncAllowed() ? _readQueue().length : 0;
+  if (!left && !driveFailed) return true;   // (a timeout with nothing queued is fine too)
+  return !!(await ask({
+    title: 'Some changes have not reached the cloud',
+    body: 'We could not finish saving your latest changes to your account'
+      + (left ? ' (' + left + ' waiting)' : '')
+      + '. They are safe on this device and will go up the next time you sign in. Sign out now, or stay signed in and try again?',
+    confirm: 'Sign out anyway',
+    cancel: 'Stay signed in'
+  }));
+}
+
 export async function signOut() {
   if (!supabase) {
     session = null;
@@ -1065,6 +1104,7 @@ export async function signOut() {
     idleSync();
     return;
   }
+  if (!(await saveBeforeSignOut())) return false;
   if (_heartbeat) { _heartbeat.stop(); _heartbeat = null; }
   // Free the device lock now rather than in 90 seconds. Best effort,
   // and BEFORE the session goes: the RPC needs the JWT to say whose.
@@ -1171,7 +1211,7 @@ async function askMigratePrompt(count) {
   if (window.StudioUI && StudioUI.openMigrationModal) {
     return await StudioUI.openMigrationModal(count);
   }
-  return confirm('Found ' + count + ' local project(s). Upload to your cloud account?');
+  return await ask('Found ' + count + ' local project(s). Upload to your cloud account?');
 }
 
 async function uploadAllLocalProjects(localProjects) {
@@ -1444,7 +1484,7 @@ function planLimitToast(message, opts) {
   _planToastAt = Date.now();
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(message + ' This film is saved on this device.', {
-      type: 'error', action: 'See plans', onAction: () => { location.href = 'settings.html#plan'; }
+      type: 'error', action: 'See plans', onAction: () => { location.href = 'purchase.html'; }
     });
   }
 }
@@ -1908,6 +1948,40 @@ function toast(msg, type, duration) {
   console.log('[StudioCloud]', msg);
 }
 
+/* DELETE THE CLOUD COPIES OF EVERY PROJECT THIS ACCOUNT OWNS.
+   ------------------------------------------------------------
+   Owner-chosen (11 Oct 2026). Account, plan, purchases and invoices
+   stay; projects the user merely collaborates on are not theirs to
+   delete and are never selected (owner_id filter, on top of RLS
+   proj_delete = owner only). project_data cascades from projects, but
+   its rows are deleted first and explicitly so a failure is reported
+   per project rather than hidden in a cascade. Local copies are NOT
+   touched. Sync is paused FIRST: otherwise the next keystroke would
+   re-create the rows that were just deleted. No schema change needed:
+   pd_write is FOR ALL (covers DELETE) for anyone with edit access,
+   proj_delete allows the owner, and project_data.project_id is
+   ON DELETE CASCADE.
+   @returns {Promise<{ok:boolean, deleted:number, failed:{id:string,error:string}[]}>} */
+export async function deleteOwnedCloudProjects() {
+  const sb = await ensureClient();
+  if (!sb || !session) throw new Error('Sign in to delete your cloud projects.');
+  const uid = session.user.id;
+  await setSyncEnabled(false);
+  const { data, error } = await sb.from('projects').select('id').eq('owner_id', uid);
+  if (error) return { ok: false, deleted: 0, failed: [{ id: '*', error: error.message || String(error) }] };
+  let deleted = 0;
+  const failed = [];
+  for (const row of data || []) {
+    const d1 = await sb.from('project_data').delete().eq('project_id', row.id);
+    if (d1.error) { failed.push({ id: row.id, error: d1.error.message || String(d1.error) }); continue; }
+    const d2 = await sb.from('projects').delete().eq('id', row.id).eq('owner_id', uid);
+    if (d2.error) failed.push({ id: row.id, error: d2.error.message || String(d2.error) });
+    else deleted++;
+  }
+  Store.notify('projects:changed', { reason: 'cloud-delete' });
+  return { ok: failed.length === 0, deleted, failed };
+}
+
 // ============================================================
 // PUBLIC API
 // ============================================================
@@ -1928,7 +2002,7 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject,
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,

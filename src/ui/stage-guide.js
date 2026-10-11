@@ -35,6 +35,7 @@
    ============================================================ */
 import Store from '../lib/store.js';
 import STAGES from '../data/steps.stages.json';
+import PATHS from '../data/story-paths.json';
 import { h } from '../lib/dom.js';
 import '../styles/stage-guide.css';
 
@@ -83,6 +84,28 @@ export function guideSteps(stage, format) {
       const id = k.slice(k.indexOf(':') + 1);
       return { ns, id, kind: STEP_ID.test(id) ? 'step' : 'interlude', format: fmt };
     });
+}
+
+/* ---- what the Story page already asks ------------------------------
+   The Story stage's path (src/data/story-paths.json) draws the
+   blueprint's questions INLINE, step by step, so the Guide under it
+   leaves those out — a question is on the page once. Only the Story
+   stage is filtered; every other stage's Guide is whole. */
+const absorbedBy = (format) => {
+  const out = new Set();
+  for (const p of PATHS[formatKey(format)] || []) {
+    for (const a of p.absorbs || []) { const m = /^([a-z]+:[a-z0-9-]+)(?:#.*)?$/.exec(a); if (m) out.add(m[1]); }
+  }
+  return out;
+};
+
+/** guideSteps(), minus the steps the Story path asks inline (Story stage
+ *  only). What the Guide section draws. */
+export function guideStepsLeft(stage, format) {
+  const all = guideSteps(stage, format);
+  if (stage !== 'story') return all;
+  const gone = absorbedBy(format);
+  return all.filter((it) => !gone.has(it.ns + ':' + it.id));
 }
 
 /* ---- the part covers' fields --------------------------------------
@@ -175,7 +198,7 @@ export function mountStageGuide(host, { stage } = {}) {
   const section = h('section#guide.sg', { 'data-tab-label': 'Guide', 'data-stage': stage }, [
     h('header.sg-head', {}, [
       h('p.sg-eyebrow', { text: 'Guide · ' + TITLES[stage] }),
-      h('h2.sg-title', { text: 'The questions for this stage.' })
+      h('h2.sg-title', { text: stage === 'story' ? 'The cover sheet.' : 'The questions for this stage.' })
     ])
   ]);
   host.append(section);
@@ -188,14 +211,17 @@ export function mountStageGuide(host, { stage } = {}) {
     return section;
   }
 
-  const items = guideSteps(stage, fmt);
-  if (!items.length) {
+  const items = guideStepsLeft(stage, fmt);
+  const cover = coverFields(stage, fmt);
+  if (!items.length && !cover.length) {
     section.append(h('p.sg-empty', { text: 'This stage has no blueprint questions.' }));
     return section;
   }
 
   section.append(h('p.sg-deck', {
-    text: 'These are the ' + (fmt === 'short' ? 'Short Film' : 'Feature') + ' Blueprint’s questions for '
+    text: stage === 'story'
+      ? 'Every question the ' + (fmt === 'short' ? 'Short Film' : 'Feature') + ' Blueprint asks for the story is answered in the path above, once. What is left here is the film’s cover sheet for “' + (project.title || 'this film') + '”: its title, writer and draft.'
+      : 'These are the ' + (fmt === 'short' ? 'Short Film' : 'Feature') + ' Blueprint’s questions for '
       + TITLES[stage].toLowerCase() + ', answered here for “' + (project.title || 'this film')
       + '”. Your answers are the blueprint’s own — the same ones, saved in the same place.'
   }));
@@ -210,7 +236,7 @@ export function mountStageGuide(host, { stage } = {}) {
     started = true;
     import('./stage-guide-body.js').then((m) => {
       if (!body.isConnected) return;
-      const inst = m.renderGuide(body, { stage, format: fmt, items, fields: coverFields(stage, fmt) });
+      const inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover });
       flushLast = inst && inst.flush;
     }).catch((e) => {
       started = false;
@@ -234,4 +260,4 @@ export function mountStageGuide(host, { stage } = {}) {
   return section;
 }
 
-export default { STAGE_IDS, guideSteps, coverFields, mountStageGuide, formatKey };
+export default { STAGE_IDS, guideSteps, guideStepsLeft, coverFields, mountStageGuide, formatKey };

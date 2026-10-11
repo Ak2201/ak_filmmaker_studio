@@ -363,6 +363,64 @@
       "videos": [
         "module:shot-list"
       ]
+    },
+    {
+      "id": "premise",
+      "term": "premise",
+      "glossary": "premise",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "motif",
+      "term": "motif",
+      "glossary": "motif",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "foreshadowing",
+      "term": "foreshadowing",
+      "glossary": "foreshadowing",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "subtext",
+      "term": "subtext",
+      "glossary": "subtext",
+      "steps": [],
+      "videos": [
+        "lib:glossary/subtext"
+      ]
+    },
+    {
+      "id": "montage",
+      "term": "montage",
+      "glossary": "montage",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "coverage",
+      "term": "coverage",
+      "glossary": "coverage",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "picture-lock",
+      "term": "picture lock",
+      "glossary": "picture lock",
+      "steps": [],
+      "videos": []
+    },
+    {
+      "id": "edit-sheet",
+      "term": "edit sheet",
+      "glossary": "edit decision list",
+      "steps": [],
+      "videos": []
     }
   ]
 }

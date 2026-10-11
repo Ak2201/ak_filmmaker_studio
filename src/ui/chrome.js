@@ -31,8 +31,8 @@ import '../lib/sitegate.js';
 import '../lib/plan-gate.js';
 /* §30. The trial countdown. Here rather than in each page because it
    has to be on every page a trial user can reach, and because this
-   module is already the thing that is. It borrows .sh-plate when a
-   trial is live and gives it back when one is not — see its header. */
+   module is already the thing that is. It builds its own .sh-trial strip when a
+   trial is live and removes it when one is not — see its header. */
 import './trial-band.js';
 import { registerSW } from '../lib/pwa.js';
 import { actionMenu, wireActionBar } from './actionbar.js';
@@ -86,6 +86,10 @@ import './no-project.js';
    fetches the drawer — with both blueprints' step JSON behind it —
    only on a page some step actually lands on. Side effect only. */
 import './blueprint-drawer-mount.js';
+/* The app's own confirm / alert / prompt (src/ui/dialog.js), also on
+   window for the few callers outside the module graph. */
+import Dialog from './dialog.js';
+if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -1213,6 +1217,7 @@ const GLOSSARY = {};   // term -> { def, tanglish, examples }
 /** Every term and alias, longest first so "the lie" wins over "lie".
  *  Filled by loadGlossary(); empty until the JSON has arrived. */
 let GLOSSARY_KEYS = [];
+const NOTAG = new Set();
 let glossaryLoading = null;
 /* The JSON is fetched on demand rather than imported at the top: it is
    23 KB that every one of the module pages used to download on first
@@ -1236,9 +1241,13 @@ function loadGlossary() {
       };
       for (const key of [entry.term, ...(entry.aliases || [])]) {
         GLOSSARY[key.toLowerCase()] = record;
+        /* `notag` terms (take, wrap, scene…) are everyday words: they live
+           in the library's Film terminology and its search, but are not
+           auto-wrapped in step prose (the popover would speckle it). */
+        if (entry.notag) NOTAG.add(key.toLowerCase());
       }
     }
-    GLOSSARY_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    GLOSSARY_KEYS = Object.keys(GLOSSARY).filter((k) => !NOTAG.has(k)).sort((a, b) => b.length - a.length);
   }).catch((e) => { console.warn('[glossary] could not load', e); });
   return glossaryLoading;
 }
@@ -1816,7 +1825,7 @@ function openShareDialog(projectId) {
     }).join('');
     list.querySelectorAll('.si-revoke').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Revoke this link? Anyone using it will lose access.')) return;
+        if (!await Dialog.askDanger('Revoke this link? Anyone using it will lose access.')) return;
         try { await StudioCloud.revokeShare(btn.dataset.id); renderShareList(); StudioUI.toastSuccess('Link revoked.'); }
         catch (e) { StudioUI.toastError(e.message || String(e)); }
       });

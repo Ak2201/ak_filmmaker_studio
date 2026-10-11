@@ -23,6 +23,7 @@ import StudioUI from './chrome.js';
 import { apiHost } from '../lib/ai-providers.js';
 import { flushAutosave } from '../lib/autosave.js';
 import '../styles/coverage.css';
+import { askDanger } from './dialog.js';
 
 const ws = { running: false, abort: null, status: '', error: '', result: null, forText: '' };
 let api = null;     // { AI, Panelm, getStory, setLogline, rerender, format }
@@ -146,11 +147,11 @@ function wire() {
   delegate(document, 'click', '[data-action="lw-clear"]', () => {
     ws.result = null; ws.status = ''; ws.error = ''; if (api) api.rerender();
   });
-  delegate(document, 'click', '[data-action="lw-use"]', (e, btn) => {
+  delegate(document, 'click', '[data-action="lw-use"]', async (e, btn) => {
     const v = ws.result && ws.result.variants[Number(btn.dataset.i)];
     if (!v || !api) return;
     const before = liveLogline();
-    if (!window.confirm('Replace your logline with this variant?\n\n“' + v.text + '”\n\nYour current logline is kept in an Undo.')) return;
+    if (!await askDanger('Replace your logline with this variant?\n\n“' + v.text + '”\n\nYour current logline is kept in an Undo.')) return;
     flushAutosave();   // a debounced keystroke must not land on top of the variant
     api.setLogline(v.text);
     StudioUI.toast('Logline replaced with variant ' + (Number(btn.dataset.i) + 1) + '.', {

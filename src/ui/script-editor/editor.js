@@ -29,6 +29,7 @@
    Tab, Shift+Tab and Return on an empty line all arrive there.
    ============================================================ */
 import { delegate } from '../../lib/dom.js';
+import { askDanger } from '../dialog.js';
 import { typeLabel, blankElement, canPairDual, withContd, contdOffer } from '../../lib/script.js';
 import Keys from '../../lib/write-keys.js';
 import {
@@ -389,15 +390,17 @@ export function mountEditor(host, opts) {
   });
   on('click', '[data-action="el-up"]', (e, btn) => moveElement(idOf(btn, 'el'), -1));
   on('click', '[data-action="el-down"]', (e, btn) => moveElement(idOf(btn, 'el'), 1));
-  on('click', '[data-action="el-del"]', (e, btn) => {
+  on('click', '[data-action="el-del"]', async (e, btn) => {
     const id = idOf(btn, 'el');
-    const i = indexOfEl(id);
+    let i = indexOfEl(id);
     if (i < 0) return;
     const el = els()[i];
     // Only ask when there is something to lose. A confirm on an empty
     // element is the dialog people learn to click through.
     if (el.text.trim()
-        && !confirm(`Delete this ${typeLabel(el.type).toLowerCase()}?\n\n“${el.text.trim().slice(0, 80)}”`)) return;
+        && !(await askDanger({ title: `Delete this ${typeLabel(el.type).toLowerCase()}?`, body: '“' + el.text.trim().slice(0, 80) + '”', confirm: 'Delete' }))) return;
+    i = indexOfEl(id);   // the document may have moved while the dialog was open
+    if (i < 0) return;
     removeElement(i, (k) => els()[k] || els()[k - 1]);
   });
 

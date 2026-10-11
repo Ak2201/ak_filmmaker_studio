@@ -102,11 +102,11 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 :root[data-paywall] .mab { display: none; }
 
 /* ---- the trial band (§30) ----
-   Rules for the countdown while it is borrowing .sh-plate. The plate
+   Rules for the countdown in its own .sh-trial host. The host
    supplies the pinning, the ground and the hairline; this only lays
    out what is inside it, so nothing here can change the measured
    height the sticky arithmetic depends on. */
-.sh-plate.tb-on { gap: var(--s3); }
+.sh-trial { gap: var(--s3); }
 .tb-body { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 /* Teal, because gold on this page belongs to the thing you buy, and
    the SEE PLANS button beside it is the gold thing. */
@@ -116,7 +116,7 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .tb-flag { background: var(--cta-fill); color: var(--brand-on); }
 .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-cta { flex: none; }
-.sh-plate.is-urgent .tb-flag { background: var(--cta-fill); }
+.sh-trial.is-urgent .tb-flag { background: var(--cta-fill); }
 
 /* At 390px the plate is most of a line already. The sentence shortens
    itself (trial-band.js drops "with the sample film" under ten

@@ -208,6 +208,26 @@ function renderAdoptNotice() {
   host.append(panel);
 }
 
+/* Feature and Short are the studio's two formats (owner, 11 Oct 2026).
+   A project made in an older build can still be a documentary, music
+   video or ad film, so its filter button appears only while one exists. */
+const EXTRA_FORMATS = [['documentary', 'DOC'], ['musicvideo', 'MV'], ['adfilm', 'AD']];
+function syncFormatFilters(projects) {
+  const bar = $('#projectsFilter');
+  if (!bar) return;
+  EXTRA_FORMATS.forEach(([fmt, label]) => {
+    const has = projects.some((p) => p.format === fmt);
+    const btn = bar.querySelector('[data-fmt="' + fmt + '"]');
+    if (has && !btn) {
+      const b = h('button', { 'data-fmt': fmt, 'data-action': 'set-filter', text: label });
+      bar.append(b);
+    } else if (!has && btn) {
+      if (btn.classList.contains('active')) { projectFilter = 'all'; bar.querySelector('[data-fmt="all"]').classList.add('active'); }
+      btn.remove();
+    }
+  });
+}
+
 function renderProjects() {
   const grid = $('#projectsGrid');
   const toolbar = $('#projectsToolbar');
@@ -222,6 +242,11 @@ function renderProjects() {
   const currentId = Store.currentProjectId();
 
   if (toolbar) toolbar.hidden = projects.length < 2;
+  syncFormatFilters(projects);
+  const heading = $('#projectsHeading');
+  if (heading) {
+    heading.innerHTML = projects.length ? 'Continue <em>where you left off.</em>' : 'Pick <em>a path.</em>';
+  }
 
   grid.textContent = '';
   applyPlanToControls();

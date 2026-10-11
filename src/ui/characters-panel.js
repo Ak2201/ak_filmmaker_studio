@@ -44,6 +44,7 @@ import C, {
   renamePlan, applyPlan, renameCharacter, tableRead, tableReadCSV, speakingMinutes, normName
 } from '../lib/characters.js';
 import { renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, displayName, statsText } from './character-card.js';
+import { askDanger } from './dialog.js';
 
 let hooks = {
   getDoc: () => ({ elements: [] }),
@@ -381,12 +382,12 @@ function doRename(btn) {
   });
 }
 
-function forget(btn) {
+async function forget(btn) {
   const box = btn.closest('details.wr-ch');
   const c = box && charOfCard(box);
   if (!c) return;
   const filled = CHARACTER_FIELDS.some((f) => c[f].trim()) || c.aliases.length || c.contactId || c.relationships.length;
-  if (filled && !confirm(`Remove your notes on ${c.name}?\n\nThe script is not touched — if ${c.name} has cues, they stay on the list without notes.`)) return;
+  if (filled && !await askDanger(`Remove your notes on ${c.name}?\n\nThe script is not touched — if ${c.name} has cues, they stay on the list without notes.`)) return;
   const all = list();
   const at = all.indexOf(c);
   all.splice(at, 1);
@@ -406,7 +407,7 @@ export function wireCharacters(opts = {}) {
   delegate(document, 'input', '#characters [data-ch-field], #characters [data-ch-extra], #characters [data-ch-rel]',
     (e, el) => { onCardInput(el, cardCtx); });
   delegate(document, 'change', '#characters [data-ch-field], #characters [data-ch-extra], #characters [data-ch-rel]',
-    (e, el) => { onCardChange(el, cardCtx); });
+    async (e, el) => { await onCardChange(el, cardCtx); });
   delegate(document, 'click', '#characters [data-ch-action]', (e, el) => { onCardClick(el, cardCtx); });
   delegate(document, 'input', '#characters [data-ch-rename]', (e, input) => previewRename(input));
   delegate(document, 'keydown', '#characters [data-ch-rename]', (e, input) => {

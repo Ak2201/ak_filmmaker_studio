@@ -98,6 +98,10 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
    says where it goes. It returns null when signed out, like
    renderAdmin(), so append stays branchless. */
 import { accountSection } from '../ui/account-panel.js';
+import * as AuthUI from '../ui/auth.js';
+import { ask, tell } from '../ui/dialog.js';
+import { renderActivityLog } from '../ui/activity-log.js';
+import { ALL_KEYS } from './hub/all-keys.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import Billing from '../lib/billing.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
@@ -140,7 +144,19 @@ async function refreshBilling() {
   }
   if (!busy) render();
 }
+/* The purchase flow lives on purchase.html (owner, 11 Oct 2026); every
+   state of this section links to it, above whatever else it shows. */
 function renderPlan() {
+  const sec = renderPlanBody();
+  if (!sec) return sec;
+  const first = sec.querySelector('.bd-sub');
+  const link = h('p.st-plan-link', {}, [
+    h('a.btn.primary', { href: 'purchase.html', text: 'Plans & purchase \u2192' })
+  ]);
+  if (first) first.after(link); else sec.append(link);
+  return sec;
+}
+function renderPlanBody() {
   const c = window.StudioCloud;
   /* SIGNED OUT, THE TAB STILL EXISTS. plan-gate.js's upgrade panel, the
      account menu and the billing toasts all link to settings.html#plan;
@@ -222,7 +238,7 @@ function renderPlan() {
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -851,6 +867,119 @@ function consolePointer() {
   return sec;
 }
 
+
+/* ---- Account, Activity, Tour, Danger zone (11 Oct 2026) ------------
+   Account is the sign-in block (src/ui/auth.js renderAccountBlock()
+   when that lane's export is present, a plain sign-in button until
+   then). The people-you-share-with panel keeps its own section. */
+function renderAccountMine() {
+  const c = window.StudioCloud;
+  const signedIn = !!(c && c.getSession && c.getSession());
+  const sec = section('account', 'You', signedIn ? 'Your account.' : 'Sign in.',
+    signedIn
+      ? 'You are signed in. Signing in is what lets your films sync between devices and be shared.'
+      : 'Everything works without an account. Signing in adds sync between devices and sharing.');
+  const slot = h('div#accountBlockHost');
+  const make = AuthUI['renderAccountBlock'];   // not a named import: that export belongs to another lane and may not exist yet
+  let block = null;
+  if (typeof make === 'function') { try { block = make(); } catch (e) { block = null; } }
+  if (block) slot.append(block);
+  else if (signedIn) slot.append(h('p', { text: 'Signed in as ' + ((c.getUserEmail && c.getUserEmail()) || 'your Google account') + '.' }));
+  else if (c && c.isConfigured && c.isConfigured()) {
+    slot.append(h('p', {}, [h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+  } else {
+    slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
+  }
+  sec.append(slot);
+  return sec;
+}
+
+function renderActivitySection() {
+  const sec = section('activity', 'This studio', 'Activity log.',
+    'A timeline of your recent edits. Updates whenever you save. Click an entry to jump back.');
+  const host = h('div.st-activity');
+  renderActivityLog(host);
+  sec.append(host);
+  return sec;
+}
+
+function renderTourSection() {
+  const sec = section('tour', 'Help', 'Take the tour.',
+    'A two-minute walk through the studio. It never starts by itself; this is the button for it.');
+  sec.append(h('p', {}, [h('button.btn', { type: 'button', 'data-action': 'tour-start', text: 'Take the tour again' })]));
+  return sec;
+}
+
+function renderDanger() {
+  const c = window.StudioCloud;
+  const signedIn = !!(c && c.getSession && c.getSession());
+  const sec = section('danger', 'Danger zone', 'Erase what you have written.',
+    'These cannot be undone. Download a backup from Storage first if you want to keep anything.');
+  sec.append(h('div.st-danger-row', {}, [
+    h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
+    h('button.btn.danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
+  ]));
+  if (signedIn) {
+    sec.append(h('div.st-danger-row', {}, [
+      h('p', { text: 'Deletes the cloud copy of every project you own. The copies on this device stay.' }),
+      h('button.btn.danger', { type: 'button', 'data-action': 'delete-cloud', text: 'Delete my cloud projects' })
+    ]));
+  }
+  return sec;
+}
+
+delegate(document, 'click', '[data-action="tour-start"]', () => {
+  import('../ui/tour.js').then((m) => m.startTour()).catch(() => StudioUI.toastError('The tour did not load.'));
+});
+
+delegate(document, 'click', '[data-action="erase-all"]', async () => {
+  const r = await ask({
+    title: 'Erase everything on this device?',
+    body: 'Every project, setting and saved key in this browser is erased. You stay signed in; the cloud copies of your projects are not touched, and cloud sync is paused so the empty device does not upload over them. This cannot be undone.',
+    typeToConfirm: 'ERASE',
+    checkbox: { label: 'Also delete my Google Drive backup file', checked: false },
+    confirm: 'ERASE EVERYTHING', danger: true
+  });
+  if (!r || !r.ok) return;
+  const alsoDrive = !!r.checked;
+  try {
+    const m = await import('./hub/backup-menu.js');
+    const res = typeof m.resetAll === 'function'
+      ? await m.resetAll({ confirmed: true, alsoDrive })
+      : await m.createBackupMenu({ allKeys: ALL_KEYS, logActivity: () => {} }).resetAll({ confirmed: true, alsoDrive });
+    if (res && res.cancelled) return;
+    await tell({ title: res && res.ok === false ? 'Not everything was erased' : 'Erased', body: (res && res.message) || 'This device has been erased.' });
+    location.reload();
+  } catch (e) {
+    StudioUI.toastError('The erase did not finish. ' + ((e && e.message) || ''), { duration: 6000 });
+  }
+});
+
+delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
+  const ok = await ask({
+    title: 'Delete my cloud projects?',
+    body: 'Deletes the cloud copy of every project you own. The copies on this device stay. Cloud sync will be paused so nothing re-uploads.',
+    typeToConfirm: 'DELETE', confirm: 'DELETE CLOUD COPIES', danger: true
+  });
+  if (!ok) return;
+  const c = window.StudioCloud;
+  if (!c || typeof c.deleteOwnedCloudProjects !== 'function') {
+    await tell({ title: 'Not available yet', body: 'Deleting cloud projects is not available in this build.' });
+    return;
+  }
+  try {
+    const res = await c.deleteOwnedCloudProjects();
+    const failed = (res && res.failed) || [];
+    await tell({
+      title: failed.length ? 'Some cloud projects were not deleted' : 'Cloud projects deleted',
+      body: 'Deleted ' + ((res && res.deleted) || 0) + ' cloud project(s)' + (failed.length ? '; ' + failed.length + ' failed.' : '.') + ' Cloud sync is paused.'
+    });
+    render();
+  } catch (e) {
+    StudioUI.toastError('The cloud projects were not deleted. ' + ((e && e.message) || ''), { duration: 6000 });
+  }
+});
+
 function render() {
   const main = h('main#main');
 
@@ -862,7 +991,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Your plan and billing, your favourite film, your AI key, storage and backups, and how the studio looks.'
+      text: 'Your account, plan and billing, your favourite film, your AI key, storage and backups, how the studio looks, your activity log, and the danger zone.'
     })
   ]));
 
@@ -875,8 +1004,11 @@ function render() {
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
   body.append(...[renderPlan(), renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
-              accountSection(section), inviteSection(section, gateStatus),
-              consolePointer(), renderAdmin()].filter(Boolean));
+              renderAccountMine(),
+              accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck)),
+              renderActivitySection(), renderTourSection(),
+              inviteSection(section, gateStatus),
+              consolePointer(), renderAdmin(), renderDanger()].filter(Boolean));
   main.append(body);
 
   app.replaceChildren(main);
@@ -952,9 +1084,11 @@ const DRIVE_ACTIONS = {
     /* A restore REPLACES the projects this browser shares with the
        file. Asked out loud, every time, because the one thing this
        app refuses is deciding that silently. */
-    if (!confirm('Replace this browser’s copy of every project that is also in the ' +
-                 'Drive backup?\n\nProjects the backup has never heard of are left ' +
-                 'alone. Drive keeps the current version either way.')) return;
+    if (!await ask({
+      title: 'Replace this browser’s copy?',
+      body: 'Every project that is also in the Drive backup is replaced. Projects the backup has never heard of are left alone. Drive keeps the current version either way.',
+      confirm: 'REPLACE', danger: true
+    })) return;
     const r = await DriveSync.pull();
     if (r && r.ok) location.reload();
   }),
@@ -962,9 +1096,12 @@ const DRIVE_ACTIONS = {
     if (versions) { versions = null; return; }
     versions = await DriveSync.listVersions();
   }),
-  'drive-disconnect': () => {
-    if (!confirm('Stop syncing to Drive from this browser?\n\nThe file in your Drive ' +
-                 'is not deleted and nothing you have written is touched.')) return;
+  'drive-disconnect': async () => {
+    if (!await ask({
+      title: 'Stop syncing to Drive from this browser?',
+      body: 'The file in your Drive is not deleted and nothing you have written is touched.',
+      confirm: 'STOP SYNCING'
+    })) return;
     DriveSync.disconnect();
     versions = null;
     render();
@@ -1021,12 +1158,14 @@ delegate(document, 'click', '[data-action="admin-configure"]', () => {
   openCloudAuthModal({ mode: 'settings' });
 });
 
-delegate(document, 'click', '[data-action="admin-use-built-in"]', () => {
+delegate(document, 'click', '[data-action="admin-use-built-in"]', async () => {
   const c = window.StudioCloud;
   if (!c || !c.setCfg) return;
-  if (!confirm('Drop this browser\u2019s own Supabase project and go back to the one '
-             + 'this build ships with?\n\nNothing you have written is touched. You '
-             + 'will be signed out of the current project.')) return;
+  if (!await ask({
+    title: 'Use the build\u2019s own Supabase project?',
+    body: 'Drops this browser\u2019s own Supabase project and goes back to the one this build ships with. Nothing you have written is touched. You will be signed out of the current project.',
+    confirm: 'USE BUILT-IN'
+  })) return;
   /* setCfg(null) CLEARS THE OVERRIDE, it does not un-configure the app
      — getCfg() falls through to the build's own. That is only true
      since the build carries one; before, this call was how you broke
@@ -1035,14 +1174,16 @@ delegate(document, 'click', '[data-action="admin-use-built-in"]', () => {
   location.reload();
 });
 
-delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
+delegate(document, 'click', '[data-action^="drive-"]', async (e, el) => {
   const act = el.getAttribute('data-action');
   if (act === 'drive-restore-version') {
     const rev = el.getAttribute('data-rev');
-    if (!confirm('Restore the studio from the version saved ' +
-                 'on ' + when((versions || []).find((v) => v.id === rev)?.modifiedTime) +
-                 '?\n\nThis replaces the projects that version contains. Drive keeps ' +
-                 'the current version too, so this is reversible.')) return;
+    if (!await ask({
+      title: 'Restore this version?',
+      body: 'Restore the studio from the version saved on ' + when((versions || []).find((v) => v.id === rev)?.modifiedTime)
+          + '. This replaces the projects that version contains. Drive keeps the current version too, so this is reversible.',
+      confirm: 'RESTORE'
+    })) return;
     return run('drive-restore-version', async () => {
       const r = await DriveSync.restoreVersion(rev);
       if (r && r.ok) location.reload();
@@ -1052,14 +1193,16 @@ delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
   if (fn) fn();
 });
 
-delegate(document, 'change', '[data-action="cloud-sync-toggle"]', (e, el) => {
+delegate(document, 'change', '[data-action="cloud-sync-toggle"]', async (e, el) => {
   const c = window.StudioCloud;
   if (!c) return;
   if (!el.checked) {
-    if (!confirm('Turn off cloud sync?\n\nChanges on this device won\u2019t reach your other devices until you turn it back on. Nothing is deleted.')) {
-      el.checked = true;
-      return;
-    }
+    const yes = await ask({
+      title: 'Turn off cloud sync?',
+      body: 'Changes on this device won\u2019t reach your other devices until you turn it back on. Nothing is deleted.',
+      confirm: 'TURN OFF'
+    });
+    if (!yes) { el.checked = true; return; }
     c.setSyncEnabled(false).then(render);
   } else {
     c.setSyncEnabled(true).then(render);

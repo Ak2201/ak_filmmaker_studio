@@ -76,9 +76,9 @@ try {
   ok(q1 === 1, 'the clipping is queued in chrome.storage.local');
   const story = await ctx.newPage();
   story.on('pageerror', (e) => errors.push(e.message));
-  await story.goto(X('story.html'));
-  // The vault is a tab under the editor: the arrival toast is the way there.
-  await story.click('.toast-action', { timeout: 10000 });
+  /* The Idea Vault is its own page now (vault.html, 11 Oct 2026), and
+     it is the one page that drains the clip queue. */
+  await story.goto(X('vault.html'));
   await story.waitForSelector('.st-clip-text', { timeout: 10000 });
   ok((await story.textContent('.st-clip-text')).includes('forged degree'), 'it arrives in the Idea Vault');
   ok((await story.textContent('.st-clip-src')).includes('news.example'), 'with the page it came from');
@@ -120,7 +120,7 @@ try {
   ok((await panel.$$eval('.pn-mode strong', (e) => e.map((x) => x.textContent))).join() === 'Sample,New,Import', 'Story offers Sample, New, Import');
   /* KNOWN-ISSUES #2 (fixed): the shelves' modules are in the panel too. */
   await panel.click('[data-stage="library"]');
-  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Case Studies,Dissection,Craft Glossary', 'the Library shelf lists Case Studies, Dissection, Craft Glossary');
+  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Case Studies,Dissection,Film Terminology', 'the Library shelf lists Case Studies, Dissection, Film Terminology');
   await panel.setViewportSize({ width: 360, height: 800 });
   ok(await panel.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the panel fits a 360px side panel');
   if (process.env.SHOT_DIR) await panel.screenshot({ path: path.join(process.env.SHOT_DIR, 'panel.png'), fullPage: true });

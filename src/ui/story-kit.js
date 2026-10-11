@@ -43,6 +43,7 @@ import IO from '../lib/story-io.js';
 import Scenes from '../lib/scenes.js';
 import Pitch from '../lib/pitch-deck.js';
 import StudioUI from './chrome.js';
+import { ask, askDanger } from './dialog.js';
 
 const pct = (x) => Math.round(x * 100) + '%';
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
@@ -170,7 +171,7 @@ export async function importSynopsis(file) {
   try { r = await IO.readSynopsisFile(file); }
   catch (e) { StudioUI.toast(e.message, { type: 'error' }); return null; }
   const s = Story.loadStory();
-  if (s.source.trim() && !window.confirm(IO.replaceQuestion(r.name))) return null;
+  if (s.source.trim() && !await ask(IO.replaceQuestion(r.name))) return null;
   s.source = r.text;
   s.sourceName = r.name;
   Story.saveStory(s);
@@ -253,7 +254,7 @@ function panelVault(card) {
   card.append(add);
   card.append(h('div.sk-actions', {}, [
     h('button.btn', { type: 'button', 'data-sk': 'clip-add', text: 'ADD TO VAULT' }),
-    link(STORY_HREF + '#vault', 'OPEN THE IDEA VAULT →')
+    link('vault.html#vault', 'OPEN THE IDEA VAULT →')
   ]));
 }
 
@@ -477,11 +478,11 @@ function copyBeats(ns) {
   });
 }
 
-function undoCopyBeats() {
+async function undoCopyBeats() {
   if (!undoCopy) return;
   const now = Story.loadStory();
   if (now.updatedAt !== undoCopy.wrote &&
-      !window.confirm('The story has changed since the copy. Undo anyway? Those later changes go too.')) return;
+      !await askDanger('The story has changed since the copy. Undo anyway? Those later changes go too.')) return;
   Story.saveStory(undoCopy.before);
   undoCopy = null;
   refreshStoryKit();
@@ -490,7 +491,7 @@ function undoCopyBeats() {
 
 async function useSample() {
   const cur = Story.loadStory();
-  if (!IO.isEmptyStory(cur) && !window.confirm('Replace the story on the Story page with the Dragon sample? Your idea, logline, outline and synopsis there are replaced. The Idea Vault is kept.')) return;
+  if (!IO.isEmptyStory(cur) && !await askDanger('Replace the story on the Story page with the Dragon sample? Your idea, logline, outline and synopsis there are replaced. The Idea Vault is kept.')) return;
   const s = await IO.sampleStory();
   Story.saveStory(s);
   refreshStoryKit();

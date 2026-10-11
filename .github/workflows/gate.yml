@@ -90,6 +90,10 @@ jobs:
       # `if: failure()` steps above belong to `verify` and should not
       # fire, or upload a verify.log artifact, for an adoption failure.
       - run: npm run prove:adoption
+      # The Story path per format, against the same gate-off build.
+      - run: npm run prove:story-path
+      # No native confirm/alert/prompt: the in-app dialog appears, Cancel keeps data.
+      - run: npm run prove:dialogs
       - run: npm run prove:script
 
   proofs:
@@ -110,6 +114,7 @@ jobs:
       - run: npm run prove:gate
       - run: npm run prove:billing
       - run: npm run prove:storage
+      - run: npm run prove:cloud-delete
       - run: npm run prove:drive
       - run: npm run prove:sw
       - run: npm run build:extension

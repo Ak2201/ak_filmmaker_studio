@@ -49,7 +49,6 @@ import '../styles/editorial.css';
 import '../styles/widgets.css';
 import '../styles/modules.css';
 import '../styles/rates.css';
-import '../styles/print.css';
 import '../styles/library-shelf.css';
 
 import StudioUI from '../ui/chrome.js';
@@ -59,7 +58,7 @@ import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
 import { mountDissection } from '../ui/dissection.js';
-import { listStudies } from '../lib/studies.js';
+import { listStudies, favouriteSlug, getStudy } from '../lib/studies.js';
 import { listShipped } from '../lib/dissect.js';
 
 import films from '../data/films.json';
@@ -77,8 +76,19 @@ import rates from '../data/rates.chennai.2024.json';
    The base file's name is still true — it is the 2024-25 card. What
    is 2026 is in the overlay and is labelled as such, per figure. */
 import rateChecks from '../data/rates.chennai.checks.json';
-import glossary from '../data/glossary.json';
 import { guideHref } from '../lib/blueprint-route.js';
+import {
+  buildIndex, searchLibrary, libraryContents, GROUPS, STAGES, stageLabel,
+  filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId
+} from '../lib/library-search.js';
+import { termBody } from '../ui/learn.js';
+
+/* The glossary is a 150 KB source and the library's only heavy one, so the
+   page does not import it: Film terminology and the search both ask for it
+   here, once, the first time either needs it. (chrome.js and the case-study
+   tab read the same chunk; this is the shared promise for THIS file.) */
+let glossaryP = null;
+const loadGlossary = () => glossaryP || (glossaryP = import('../data/glossary.json').then((m) => m.default || m));
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -108,8 +118,6 @@ const N_WATCHFILMS = watchlist.reduce((n, s) => n + s.films.length, 0);
 const N_TABLES     = rates.sections.length;
 const N_STUDIES    = listStudies().length;
 const N_DISSECTED  = listShipped().length;
-const N_TERMS      = (glossary.terms || []).length;
-const N_GLOSS_FILMS = Object.keys(glossary.films || {}).length;
 /* Films-per-step is a fact about the data, not a constant: if a
    step ever carried four, the deck would say four. */
 const FILMS_PER_STEP = Math.round(N_WATCHFILMS / Math.max(1, N_STEPS));
@@ -312,15 +320,17 @@ const SECTIONS = [
   },
   {
     id: 'glossary',
-    nav: 'GLOSSARY',
-    title: 'Craft <em>Glossary.</em>',
-    tocTitle: 'Craft Glossary',
-    tocDesc: `${N_TERMS} terms, each in ${numWord(N_GLOSS_FILMS)} films`,
-    count: `${N_TERMS} TERMS · ${N_GLOSS_FILMS} FILMS`,
-    deck: `${cap(numWord(N_TERMS))} craft terms the studio uses, each defined once ` +
-          `and then shown at work in ${numWord(N_GLOSS_FILMS)} Tamil films. The same ` +
-          `definitions open as popovers wherever a term appears in the blueprints.`,
-    body: renderCraftGlossary
+    nav: 'TERMINOLOGY',
+    tab: 'Film terminology',
+    title: 'Film <em>Terminology.</em>',
+    tocTitle: 'Film Terminology',
+    tocDesc: 'From logline to edit sheet: every term, with examples',
+    count: 'FILM TERMINOLOGY',
+    deck: 'Every term a filmmaker meets, from logline to edit sheet, grouped by the ' +
+          'stage where it matters. Each opens with a plain definition, a Tanglish line, ' +
+          'an example in your favourite film and, where there is one, a short video. ' +
+          'The same definitions open as popovers wherever a term appears in the blueprints.',
+    body: renderTerminology
   }
 ];
 
@@ -364,8 +374,9 @@ function renderToolbar() {
       title: themeTitle(),
       'aria-label': 'Cycle theme',
       text: '◐'
-    }),
-    h('button.btn', { type: 'button', 'data-action': 'print', text: 'PRINT' })
+    })
+    /* No print button: the Library is a page for reading, not a document
+       to export (owner, 11 Oct 2026). */
   ]);
 }
 
@@ -398,12 +409,144 @@ function renderCover() {
 
 /* One section per tab: the id, the head and the body together. */
 function renderSection(section, i) {
+  /* The tab says what the owner asked it to say ("Film terminology");
+     the module label only names the shelf tabs with no label of their own. */
   const sec = h('section.lib-sec', {
     id: section.id,
-    'data-tab-label': shelfLabel(section.id) || section.tab || section.nav
+    'data-tab-label': section.tab || shelfLabel(section.id) || section.nav
   });
-  sec.append(renderSectionHead(section, i), section.body());
+  const body = section.body();
+  const rail = railFor(section);
+  sec.append(renderSectionHead(section, i));
+  if (rail) sec.append(h('div.lib-split', {}, [rail, body]));
+  else sec.append(body);
   return sec;
+}
+
+/* ---- the sticky section index (≥1100px) -------------------------
+   Films, directors, rate tables, watch-list steps and the five stages
+   of Film terminology are long; a rail beside them lists what is in
+   the tab. Every href is an id this page draws (library-search.js
+   builds them), and the rail is simply not shown below 1100px. */
+function railItems(section) {
+  switch (section.id) {
+    case 'films': return films.map((f) => ({ id: filmId(f.title), label: f.title }));
+    case 'directors': return directors.map((d) => ({ id: directorId(d.name), label: d.name }));
+    case 'equipment': return rates.sections.map((s) => ({ id: rateTableId(s.id), label: s.heading }));
+    case 'watch': return watchlist.map((w) => ({ id: watchId(w.step), label: w.label }));
+    case 'glossary': return STAGES.map((s) => ({ id: 'terms-' + s.id, label: s.label }));
+    default: return [];
+  }
+}
+function railFor(section) {
+  const items = railItems(section);
+  if (!items.length) return null;
+  return h('nav.lib-rail', { 'aria-label': `In ${section.tocTitle}` }, [
+    h('div.lib-rail-label', { text: 'IN THIS TAB' }),
+    ...items.map((it) => h('a', { href: `#${it.id}`, text: it.label }))
+  ]);
+}
+
+/* ---- search: this page's own, and only this page's ------------- */
+let SEARCH_INDEX = [];          // grows when the glossary arrives
+let SEARCH_BASE = null;
+
+function searchSource() {
+  return {
+    films, directors, rules, rates, watchlist,
+    studies: listStudies(), dissections: listShipped()
+  };
+}
+function renderSearch() {
+  const input = h('input#libSearch.lib-search-input', {
+    type: 'search', autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'search',
+    placeholder: 'logline, Vikram Vedha, lens kits, rule 12…',
+    'aria-controls': 'libResults', 'aria-label': 'Search the library',
+    'data-action': 'lib-search'
+  });
+  return h('div.lib-search', { role: 'search' }, [
+    h('label.lib-search-label', { for: 'libSearch', text: 'SEARCH THE LIBRARY' }),
+    h('div.lib-search-row', {}, [
+      input,
+      h('button.btn.lib-search-clear', { type: 'button', 'data-action': 'lib-search-clear', hidden: true, text: 'CLEAR' })
+    ]),
+    h('p.lib-search-hint', {}, [
+      'Films, directors, rules, equipment, the watch list, case studies, dissection and film terminology. Press ',
+      h('kbd', { text: '/' }), ' to start typing.'
+    ]),
+    h('div#libResults.lib-results', { role: 'region', 'aria-label': 'Library search results', 'aria-live': 'polite', hidden: true })
+  ]);
+}
+
+function runSearch(q) {
+  const box = document.getElementById('libResults');
+  const clear = document.querySelector('.lib-search-clear');
+  if (!box) return;
+  const query = String(q || '').trim();
+  if (clear) clear.hidden = !query;
+  if (query.length < 2) { box.hidden = true; box.replaceChildren(); return; }
+  if (!SEARCH_BASE) SEARCH_BASE = buildIndex(searchSource());
+  if (!SEARCH_INDEX.length) SEARCH_INDEX = SEARCH_BASE;
+  const groups = searchLibrary(SEARCH_INDEX, query, { limit: 6 });
+  box.hidden = false;
+  if (!groups.length) {
+    box.replaceChildren(h('p.lib-results-none', { text: `Nothing in the library matches “${query}”. Try a shorter word.` }));
+    return;
+  }
+  box.replaceChildren(...groups.map((g) => h('div.lib-results-group', {}, [
+    h('h3.lib-results-head', {}, [g.label, h('span.lib-results-n', { text: ` ${g.total}` })]),
+    h('ul', {}, g.items.map((it) => h('li', {}, [
+      h('a', { href: it.href }, [
+        h('span.lib-hit-title', { text: it.title }),
+        it.sub ? h('span.lib-hit-sub', { text: it.sub }) : null
+      ])
+    ]))),
+    g.total > g.items.length ? h('p.lib-results-more', { text: `and ${g.total - g.items.length} more in ${g.label}` }) : null
+  ])));
+}
+/* The terminology half of the index needs the glossary; it is added the
+   first time the reader types (or the terminology tab draws), then every
+   later query already includes it. */
+function ensureTermIndex() {
+  return loadGlossary().then((g) => {
+    if (!SEARCH_BASE) SEARCH_BASE = buildIndex(searchSource());
+    if (SEARCH_INDEX === SEARCH_BASE || !SEARCH_INDEX.length) {
+      SEARCH_INDEX = SEARCH_BASE.concat(buildIndex({ terms: g.terms }));
+    }
+    const input = document.getElementById('libSearch');
+    if (input && input.value) runSearch(input.value);
+  }).catch(() => { /* search still covers every other shelf */ });
+}
+
+/* ---- the Library index: every shelf and what is on it ----------
+   The hub's master index listed the library's sections, films and
+   directors; it lives here now, derived from the same arrays. */
+function renderContents() {
+  const secs = libraryContents(SECTIONS.map((s) => ({ id: s.id, title: s.tocTitle, desc: s.tocDesc })), searchSource());
+  return h('div#library-index.lib-contents', {}, [
+    h('div.section-head', {}, [
+      h('div.left', {}, [
+        h('div.label', { text: 'THE LIBRARY · INDEX' }),
+        h('h2', { html: 'The library <em>index.</em>' }),
+        h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
+      ]),
+      h('div.right', { text: `${SECTIONS.length} SHELVES` })
+    ]),
+    h('div.lib-contents-grid', {}, secs.map((s) => {
+      const head = h('a.lib-contents-head', { href: `#${s.id}` }, [
+        h('span.lib-contents-title', { text: s.title }),
+        h('span.lib-contents-desc', { text: s.desc })
+      ]);
+      if (!s.items.length) return h('div.lib-contents-card', {}, [head]);
+      return h('div.lib-contents-card', {}, [
+        head,
+        h('details', {}, [
+          h('summary', { text: `${s.items.length} on this shelf` }),
+          h('ul', {}, s.items.map((it) => h('li', {}, [h('a', { href: `#${it.id}`, text: it.title })])))
+        ])
+      ]);
+    }))
+  ]);
 }
 
 function renderSectionHead(section, i) {
@@ -424,7 +567,7 @@ function renderSectionHead(section, i) {
    ============================================================ */
 function renderFilms() {
   return h('section.section-body', {}, [
-    h('div.films-grid', {}, films.map((f) => h('article.film-card', {}, [
+    h('div.films-grid', {}, films.map((f) => h('article.film-card', { id: filmId(f.title) }, [
       h('div.meta', { text: f.meta }),
       h('h3', { text: f.title }),
       h('div.director', { text: f.director }),
@@ -446,7 +589,7 @@ function renderDirectors() {
     for (const t of d.traits || []) {
       traits.append(h('dt', { text: t.term }), h('dd', { text: t.value }));
     }
-    return h('article.director-card', {}, [
+    return h('article.director-card', { id: directorId(d.name) }, [
       h('div.name-row', {}, [
         h('h3', { text: d.name }),
         h('span.era', { text: d.era })
@@ -471,7 +614,7 @@ function renderDirectors() {
    ============================================================ */
 function renderRules() {
   return h('section.section-body', {}, [
-    h('div.rules-grid', {}, rules.map((r) => h('div.rule-card', { 'data-n': r.n }, [
+    h('div.rules-grid', {}, rules.map((r) => h('div.rule-card', { id: ruleId(r.n), 'data-n': r.n }, [
       h('p.rule-text', { text: r.text }),
       h('p.attrib', { text: r.attribution }),
       videoSlot(libKey('rule', r.n))
@@ -495,7 +638,7 @@ function renderEquipment() {
   ]));
 
   for (const sec of rates.sections) {
-    const block = h('div.equip-block', { id: `rates-${sec.id}` }, [
+    const block = h('div.equip-block', { id: rateTableId(sec.id) }, [
       h('h3', { text: sec.heading })
     ]);
     if (sec.note) block.append(h('p.hint', { text: sec.note }));
@@ -544,7 +687,7 @@ function renderEquipment() {
           h('span.rate-base', { text: r.raw })
         ]);
         found.forEach((c) => rate.append(renderCheck(c)));
-        return [h('tr', {}, [
+        return [h('tr', { id: rateRowId(sec.id, r.item) }, [
           h('td.item', { text: r.item }),
           rate,
           h('td.note', { text: r.note || '' })
@@ -604,6 +747,7 @@ function renderEquipment() {
    ============================================================ */
 function renderWatchlist() {
   return h('section.section-body', {}, watchlist.map((step) => h('div.watch-step', {
+    id: watchId(step.step),
     'data-vol': step.vol
   }, [
     // Was a <div class="step-tag"> inside an <a> carrying four
@@ -644,77 +788,161 @@ function mountShelf() {
 }
 
 /* ============================================================
-   SECTION VIII — CRAFT GLOSSARY
+   SECTION VIII — FILM TERMINOLOGY
    ------------------------------------------------------------
    src/data/glossary.json, the file the popovers already read, shown
-   whole: every term with every film's example. The case studies show
-   one film's example per term; this is the reference shape, all four
-   at once. The feature blueprint keeps its own department glossary
-   (camera, coverage, production, budget, sound) at
-   feature.html#glossary and this links to it rather than copying it.
-   ============================================================ */
-function renderCraftGlossary() {
-  const films = glossary.films || {};
-  const body = h('div.section-body.lib-gloss');
+   whole and grouped by the stage where each term matters: Story,
+   Screenplay, Pre-production, Production, Post. A card is the term
+   and its definition; opening it builds, with the same code a learn()
+   box uses (ui/learn.js termBody), the Tanglish line, the example in
+   the reader's favourite film with the other films under it, and the
+   click-to-load video. Every card has the id `term-<slug>`
+   (library-search.js), which is what the search, the popovers'
+   "go deeper" links and the rail point at.
 
-  body.append(h('div.st-gloss-filter', {}, [
-    h('label.st-gloss-label', { for: 'libGlossFilter', text: 'Filter terms' }),
-    h('input#libGlossFilter.st-gloss-input', {
+   Drawn after the glossary chunk arrives — the page does not import
+   it — and it is NOT a `section.section-body`, because the glossary
+   tagger walks those and would wrap terms inside other terms'
+   definitions in popovers. Nothing here writes storage.
+   The feature blueprint keeps its own department glossary (camera,
+   coverage, production, budget, sound); it is only reachable with
+   ?stay=1, because feature.html#glossary is routed here.
+   ============================================================ */
+function sortKey(t) { return String(t.term).toLowerCase().replace(/^[^a-z0-9]+/, ''); }
+
+function renderTerminology() {
+  const body = h('div.lib-terms');
+
+  body.append(h('div.lib-terms-filter', {}, [
+    h('label.lib-terms-label', { for: 'libGlossFilter', text: 'Filter terms' }),
+    h('input#libGlossFilter.lib-terms-input', {
       type: 'search', autocomplete: 'off', spellcheck: 'false',
-      placeholder: 'subtext, setup, payoff…',
-      'data-action': 'lib-gloss-filter', 'aria-controls': 'libGlossList'
+      placeholder: 'subtext, dolly, picture lock…',
+      'data-action': 'lib-gloss-filter', 'aria-controls': 'libTerms'
     }),
-    h('span#libGlossCount.st-gloss-count', {
-      role: 'status', 'aria-live': 'polite', text: `${N_TERMS} terms`
-    })
+    h('span#libGlossCount.lib-terms-count', { role: 'status', 'aria-live': 'polite', text: '' })
   ]));
 
-  const list = h('div#libGlossList.gloss-list.st-gloss.lib-gloss-list');
-  for (const t of (glossary.terms || [])) {
-    const dt = h('dt', { text: t.term });
-    if ((t.aliases || []).length) dt.append(h('span.st-alias', { text: ' · ' + t.aliases.join(', ') }));
-    const item = h('article.gloss-item', {}, [h('dl', {}, [dt, h('dd', { text: t.def || '' })])]);
-    if (t.tanglish) item.append(h('span.tn', { text: t.tanglish }));
-    item.append(videoSlot(libKey('glossary', t.term)));
-    const ex = (t.examples || []).filter((e) => e && e.note);
-    if (ex.length) {
-      item.append(h('ul.lib-gloss-ex', {}, ex.map((e) => h('li', {}, [
-        h('span.lib-gloss-film', { text: films[e.film] || e.film }),
-        ' ' + e.note
-      ]))));
-    }
-    item.setAttribute('data-search', [
-      t.term, (t.aliases || []).join(' '), t.def, t.tanglish, ...ex.map((e) => e.note)
-    ].filter(Boolean).join(' ').toLowerCase());
-    list.append(item);
-  }
-  body.append(list);
-  body.append(h('p#libGlossNone.st-gloss-none', {
+  body.append(h('div#libTerms.lib-terms-host', { 'aria-busy': 'true' }, [
+    h('p.lib-terms-wait', { text: 'Loading film terminology…' })
+  ]));
+  body.append(h('p#libGlossNone.lib-terms-none', {
     hidden: true,
     text: 'No term matches that. Try a shorter word — the definitions are searched too.'
   }));
   body.append(h('p.hint.lib-gloss-more', {}, [
-    'Camera, coverage, production, budget and sound terms are in the ',
-    h('a', { href: 'library.html#glossary', text: 'feature blueprint’s glossary' }),
+    'Department terms for the camera, lighting, production and sound crews are in the ',
+    h('a', { href: 'feature.html?stay=1#glossary', text: 'feature blueprint’s glossary' }),
     '.'
   ]));
+
+  loadGlossary().then((g) => drawTerms(g)).catch(() => {
+    const host = document.getElementById('libTerms');
+    if (host) host.replaceChildren(h('p.lib-terms-wait', { text: 'Film terminology could not be loaded. Reload the page to try again.' }));
+  });
   return body;
 }
 
-function filterGlossary(input) {
+function termCard(t, g, byName) {
+  const slugOf = (n) => termId(n);
+  const card = h('article.lib-term', {
+    id: termId(t.term), 'data-stage': t.stage || ''
+  });
+  const head = h('h4.lib-term-name', { text: t.term });
+  if ((t.aliases || []).length) head.append(h('span.lib-term-alias', { text: ' · ' + t.aliases.slice(0, 3).join(', ') }));
+  const more = h('details.lib-term-more', {}, [
+    h('summary', {}, [h('span', { text: 'Tanglish, example, video' })]),
+    h('div.lib-term-body', { 'aria-busy': 'true' }, [h('div.learn-wait', { text: 'Loading…' })])
+  ]);
+  let built = false;
+  more.addEventListener('toggle', () => {
+    if (!more.open || built) return;
+    built = true;
+    const slot = more.querySelector('.lib-term-body');
+    termBody(t, { glossary: g }).then((el) => {
+      slot.replaceChildren(el);
+      slot.removeAttribute('aria-busy');
+    }).catch(() => {
+      slot.replaceChildren(h('div.learn-wait', { text: 'Could not load the examples.' }));
+    });
+  });
+  card.append(head, h('div.lib-term-def', { text: t.def || '' }), more);
+  const see = (t.seeAlso || []).filter((n) => byName.has(String(n).toLowerCase()));
+  if (see.length) {
+    card.append(h('div.lib-term-see', {}, [
+      h('span.lib-term-see-label', { text: 'SEE ALSO ' }),
+      ...see.map((n) => h('a', { href: '#' + slugOf(byName.get(String(n).toLowerCase()).term), text: byName.get(String(n).toLowerCase()).term }))
+    ]));
+  }
+  card.setAttribute('data-search', [
+    t.term, (t.aliases || []).join(' '), t.def, t.tanglish,
+    ...(t.examples || []).map((e) => e.note), stageLabel(t.stage)
+  ].filter(Boolean).join(' ').toLowerCase());
+  return card;
+}
+
+function drawTerms(g) {
+  const host = document.getElementById('libTerms');
+  if (!host) return;
+  const terms = (g.terms || []).slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  const byName = new Map();
+  for (const t of terms) {
+    byName.set(String(t.term).toLowerCase(), t);
+    for (const a of t.aliases || []) if (!byName.has(String(a).toLowerCase())) byName.set(String(a).toLowerCase(), t);
+  }
+  const nodes = [];
+  for (const st of STAGES) {
+    const list = terms.filter((t) => t.stage === st.id);
+    if (!list.length) continue;
+    nodes.push(h('div.lib-stage', { id: 'terms-' + st.id }, [
+      h('h3.lib-stage-title', {}, [st.label, h('span.lib-stage-n', { text: ` ${list.length}` })]),
+      h('div.lib-term-grid', {}, list.map((t) => termCard(t, g, byName)))
+    ]));
+  }
+  host.replaceChildren(...nodes);
+  host.removeAttribute('aria-busy');
+
+  // the counts, now that they are known
+  const nFilms = Object.keys(g.films || {}).length;
+  const right = document.querySelector('#glossary .section-head .right');
+  if (right) right.textContent = `${terms.length} TERMS · ${nFilms} FILMS`;
+  const toc = document.querySelector('.toc-item[href="#glossary"] .desc');
+  if (toc) toc.textContent = `${terms.length} terms, logline to edit sheet, each in ${numWord(nFilms)} films`;
+  const count = document.getElementById('libGlossCount');
+  if (count) count.textContent = `${terms.length} terms`;
+
+  ensureTermIndex();
+  openTermFromHash();
+}
+
+/* A term's card is closed; arriving at its id (a search hit, a "go
+   deeper" link, a pasted address) opens it so the example is there. */
+function openTermFromHash(id) {
+  const want = id || (location.hash || '').replace(/^#/, '');
+  if (!want || want.indexOf('term-') !== 0) return;
+  const el = document.getElementById(want);
+  const d = el && el.querySelector('details.lib-term-more');
+  if (d && !d.open) d.open = true;
+}
+
+function filterTerms(input) {
   const q = String(input.value || '').trim().toLowerCase();
-  const items = document.querySelectorAll('#libGlossList .gloss-item');
+  const cards = document.querySelectorAll('#libTerms .lib-term');
   let shown = 0;
-  items.forEach((el) => {
+  cards.forEach((el) => {
     const hit = !q || (el.getAttribute('data-search') || '').includes(q);
     el.hidden = !hit;
     if (hit) shown++;
   });
+  document.querySelectorAll('#libTerms .lib-stage').forEach((st) => {
+    st.hidden = !st.querySelector('.lib-term:not([hidden])');
+  });
   const count = document.getElementById('libGlossCount');
-  if (count) count.textContent = q ? `${shown} of ${items.length} terms` : `${items.length} terms`;
+  if (count) count.textContent = q ? `${shown} of ${cards.length} terms` : `${cards.length} terms`;
   const none = document.getElementById('libGlossNone');
-  if (none) none.hidden = shown !== 0;
+  if (none) none.hidden = shown !== 0 || !cards.length;
 }
+
 
 /* ============================================================
    FINAL PAGE
@@ -743,7 +971,11 @@ function toggleDark() {
    page's own chrome. */
 const ACTIONS = {
   theme: toggleDark,
-  print: () => window.print()
+  'lib-search-clear': () => {
+    const input = document.getElementById('libSearch');
+    if (input) { input.value = ''; input.focus(); }
+    runSearch('');
+  }
 };
 
 function wireActions(root) {
@@ -760,7 +992,48 @@ function wireActions(root) {
 
   // The glossary filter: DOM-only, so typing never re-renders and
   // never writes.
-  delegate(root, 'input', '[data-action="lib-gloss-filter"]', (e, el) => filterGlossary(el));
+  delegate(root, 'input', '[data-action="lib-gloss-filter"]', (e, el) => filterTerms(el));
+
+  // The library's own search: DOM-only too, and it reads only this page's data.
+  delegate(root, 'input', '[data-action="lib-search"]', (e, el) => {
+    runSearch(el.value);
+    ensureTermIndex();
+  });
+  delegate(root, 'focusin', '[data-action="lib-search"]', () => { ensureTermIndex(); });
+  delegate(root, 'keydown', '[data-action="lib-search"]', (e, el) => {
+    if (e.key === 'Escape' && el.value) { e.preventDefault(); e.stopPropagation(); el.value = ''; runSearch(''); }
+    if (e.key === 'ArrowDown') {
+      const first = document.querySelector('#libResults a');
+      if (first) { e.preventDefault(); first.focus(); }
+    }
+  });
+  // A hit that lands on a term opens its card first, so the example is there.
+  delegate(root, 'click', 'a[href*="#term-"]', (e, el) => {
+    openTermFromHash((el.getAttribute('href') || '').split('#')[1]);
+  });
+  window.addEventListener('hashchange', () => openTermFromHash());
+}
+
+/* "/" and ⌘K / Ctrl-K focus THIS page's search. The palette (palette.js)
+   and chrome.js bind the same keys on `document`; this listener is on
+   `window` in the capture phase, so it runs first and ends the event, and
+   neither of those files has to change. Not with Shift, as chrome.js. */
+function wireSearchKeys() {
+  window.addEventListener('keydown', (e) => {
+    const input = document.getElementById('libSearch');
+    if (!input) return;
+    const k = String(e.key).toLowerCase();
+    const mod = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && k === 'k';
+    const tag = (e.target && e.target.tagName || '').toLowerCase();
+    const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+    const slash = e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey;
+    if (!mod && !slash) return;
+    e.preventDefault();
+    e.stopPropagation();
+    input.scrollIntoView({ block: 'center' });
+    input.focus();
+    input.select();
+  }, true);
 }
 
 /* ============================================================
@@ -792,13 +1065,16 @@ function render() {
   // moves it into .sh-bar, which is also before <main>, so that stays
   // true after the adoption.
   const main = h('main#main', { role: 'main' });
+  main.append(renderSearch());
   main.append(renderCover());
+  main.append(renderContents());
   SECTIONS.forEach((s, i) => main.append(renderSection(s, i)));
   main.append(renderFinal());
 
   app.replaceChildren(toolbar, main);
 
   wireActions(app);
+  wireSearchKeys();
   mountShelf();
   syncThemeButton();
 

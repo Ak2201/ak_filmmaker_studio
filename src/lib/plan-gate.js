@@ -235,7 +235,7 @@ export function pageLocked() {
 /* ---- which plan has it ------------------------------------------
    "Included in the Indie plan": the LOWEST plan whose `features` map
    allows every module on the card, read from the plans table through
-   Billing.listPlans() — the same rows the cards on settings.html#plan
+   Billing.listPlans() — the same rows the cards on purchase.html
    draw, so a console edit is live here on the next load. No price is
    typed anywhere in this file; the plans page quotes those. Until the
    table has answered, or if it cannot (signed out, section 18 not run,
@@ -249,7 +249,7 @@ async function lowestPlanWith(ids) {
   return open.find((p) => ids.every((id) => !p.features || p.features[id] !== false)) || null;
 }
 /* `cta` is the card's primary link: once the plan is known it deep-links
-   to settings.html?plan=<id>#plan, and for a signed-in buyer the server's
+   to purchase.html?plan=<id>, and for a signed-in buyer the server's
    own quote says what the step costs. Every part falls back to the plain
    sentence offline or signed out. */
 function includedLine(ids, cta) {
@@ -259,7 +259,7 @@ function includedLine(ids, cta) {
     if (!p) return;
     const name = p.name || Billing.planName(p.id);
     line.textContent = 'Included in the ' + name + ' plan.';
-    if (cta) cta.href = 'settings.html?plan=' + encodeURIComponent(p.id) + '#plan';
+    if (cta) cta.href = 'purchase.html?plan=' + encodeURIComponent(p.id);
     const c = window.StudioCloud;
     if (!cta || !c || !c.getSession || !c.getSession()) return;
     Billing.quote(p.id, null).then((q) => {
@@ -291,7 +291,7 @@ function lockCard(mods) {
     });
     card.append(ul);
   }
-  const cta = h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' });
+  const cta = h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' });
   card.append(
     h('p.pg-lock-p', { text: (names ? names + (list.length > 1 ? ' are' : ' is') : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
     includedLine(list.map((m) => m.id), cta),
@@ -326,6 +326,7 @@ function lockPanel() {
 
 /* Pages the wall never covers, and why each one:
      settings  — you cannot buy from behind a wall, and sign-out lives here
+     purchase / purchases — where a plan is bought; the admin's money page
      invite    — the doorway; plan cards are sold from it (prove:billing)
      start     — the public landing page
      screening — a guest's pass is its own credential
@@ -336,7 +337,7 @@ function lockPanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|invite|start|screening|admin)$/;
+const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 function wallPanel() {
@@ -352,7 +353,7 @@ function wallPanel() {
        in a FAQ: nothing a person wrote is held hostage to a sale. */
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
     h('div.pg-lock-actions', {}, [
-      h('a.btn.primary', { href: 'settings.html#plan', text: 'SEE PLANS' }),
+      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' }),
       h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' })
     ])
   ]);

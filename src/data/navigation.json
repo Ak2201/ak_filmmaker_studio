@@ -47,7 +47,7 @@
         },
         {
           "id": "glossary",
-          "label": "Craft Glossary",
+          "label": "Film Terminology",
           "purpose": "Film terms explained in plain words, with examples from four Tamil films",
           "status": "built",
           "href": "library.html#glossary",
@@ -65,12 +65,29 @@
       "sym": "settings"
     },
     {
+      "id": "purchase",
+      "label": "Purchase",
+      "icon": "◇",
+      "href": "purchase.html",
+      "purpose": "Plans, checkout, your invoices and refund requests",
+      "sym": "shopping_cart"
+    },
+    {
       "id": "admin",
       "label": "Console",
       "icon": "⚙",
       "href": "admin.html",
       "purpose": "The application console: people, organisations, access, billing",
       "sym": "admin_panel_settings",
+      "adminOnly": true
+    },
+    {
+      "id": "purchases",
+      "label": "Purchases",
+      "icon": "₹",
+      "href": "purchases.html",
+      "purpose": "Every payment, refund, invoice, promo code and tier, for administrators",
+      "sym": "receipt_long",
       "adminOnly": true
     }
   ],
@@ -96,7 +113,7 @@
           "label": "Idea Vault",
           "purpose": "Links, pictures and notes you collect for this film, kept in one place",
           "status": "built",
-          "href": "story.html#vault",
+          "href": "vault.html#vault",
           "icon": "✦",
           "sym": "lightbulb"
         },
@@ -113,7 +130,7 @@
       "sym": "auto_stories",
       "guide": [
         {
-          "label": "Feature steps 01–10 · Short steps 1–5",
+          "label": "Guided questions",
           "href": "story.html#guide",
           "part": "I"
         }
@@ -157,7 +174,7 @@
       "sym": "edit_note",
       "guide": [
         {
-          "label": "Feature steps 11–13 · Short steps 6–8",
+          "label": "Guided questions",
           "href": "script.html#guide",
           "part": "II"
         }
@@ -385,7 +402,7 @@
       "sym": "checklist",
       "guide": [
         {
-          "label": "Feature steps 14–24 · Short step 9",
+          "label": "Guided questions",
           "href": "breakdown.html#guide",
           "part": "III"
         }
@@ -420,7 +437,7 @@
       "sym": "videocam",
       "guide": [
         {
-          "label": "Feature steps 25–28 · Short step 9",
+          "label": "Guided questions",
           "href": "shoot.html#guide",
           "part": "IV"
         }
@@ -455,7 +472,7 @@
       "sym": "tune",
       "guide": [
         {
-          "label": "Feature steps 29–32 · Short step 10",
+          "label": "Guided questions",
           "href": "edit.html#guide",
           "part": "V"
         }

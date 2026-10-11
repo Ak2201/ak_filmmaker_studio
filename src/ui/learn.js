@@ -31,6 +31,7 @@
    ============================================================ */
 import TOPICS from '../data/learn.json';
 import { h } from '../lib/dom.js';
+import { termId } from '../lib/library-search.js';
 import '../styles/learn.css';
 
 const LIST = Array.isArray(TOPICS && TOPICS.topics) ? TOPICS.topics : [];
@@ -136,7 +137,10 @@ function linkFor(t) {
       return { href: ns + '.html#' + id, text: 'Go deeper: the blueprint step' };
     }
   }
-  return { href: 'library.html#glossary', text: 'Go deeper: the glossary' };
+  /* No blueprint step to point at: the term's own card in the library's
+     Film terminology space (ids come from library-search.js). */
+  if (t.glossary) return { href: 'library.html#' + termId(t.glossary), text: 'Go deeper: film terminology' };
+  return { href: 'library.html#glossary', text: 'Go deeper: film terminology' };
 }
 
 async function fill(box, t, opts) {
@@ -179,6 +183,46 @@ async function fill(box, t, opts) {
   body.removeAttribute('aria-busy');
 }
 
+/* ---- the same body for a whole term, for the library ----------
+   termBody(term, { film, glossary }) → Promise<HTMLElement>
+   The library's Film terminology space shows every term with what a
+   learn() box shows when it opens: the Tanglish line, the example in
+   the reader's favourite film (the other films listed under it), the
+   click-to-load video. `term` is a glossary record the caller already
+   holds, so nothing here imports the glossary; nothing is written. */
+export async function termBody(term, opts = {}) {
+  const o = opts || {};
+  const S = await loadStudies();
+  const films = (o.glossary && o.glossary.films) || {};
+  const all = ((term && term.examples) || []).filter((e) => e && e.note);
+  const slot = h('div.learn-example');
+  const draw = (slug) => {
+    slot.replaceChildren();
+    const pick = all.find((e) => e.film === slug) || all[0];
+    const ex = exampleBlock(term, o.glossary, S, slug);
+    if (ex) slot.append(ex);
+    const rest = all.filter((e) => e !== pick);
+    if (rest.length) {
+      slot.append(h('ul.learn-ex-more', {}, rest.map((e) => h('li', {}, [
+        h('span.learn-ex-film', { text: (films[e.film] || e.film) + ': ' }), e.note
+      ]))));
+    }
+  };
+  draw(o.film || favourite(S));
+  if (S && S.onDemoChange && !o.film) {
+    const off = S.onDemoChange(() => {
+      if (!slot.isConnected) { if (typeof off === 'function') off(); return; }
+      draw(favourite(S));
+    });
+  }
+  const vids = await videosFor({ videos: ['lib:glossary/' + term.term], steps: [] }).catch(() => null);
+  return h('div.learn-term', {}, [
+    term.tanglish ? h('div.learn-tn', { lang: 'ta-Latn', text: term.tanglish }) : null,
+    slot,
+    vids
+  ].filter(Boolean));
+}
+
 /** @returns {HTMLDetailsElement|null} a closed box, or null for an unknown topic */
 export function learn(topicId, opts = {}) {
   const t = topic(topicId);
@@ -194,10 +238,10 @@ export function learn(topicId, opts = {}) {
     built = true;
     fill(box, t, o).catch(() => {
       const body = box.querySelector('.learn-body');
-      if (body) body.replaceChildren(h('p', {}, [h('a.learn-more', { href: 'library.html#glossary', text: 'Open the glossary' })]));
+      if (body) body.replaceChildren(h('p', {}, [h('a.learn-more', { href: 'library.html#glossary', text: 'Open film terminology' })]));
     });
   });
   return box;
 }
 
-export default { learn, topic };
+export default { learn, topic, termBody };

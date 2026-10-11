@@ -265,7 +265,7 @@ function successCard(planId, plans) {
   const onSettings = /settings\.html$/.test(location.pathname);
   card.append(h('p.pl-note', {}, [
     'Your invoice is on its way from Razorpay by e-mail, and ',
-    h('a', { href: onSettings ? '#plan' : 'settings.html#plan', text: 'listed under Plan invoices in Settings' }), '.'
+    h('a', { href: onSettings ? '#plan' : 'purchase.html', text: 'listed under Plan invoices in Settings' }), '.'
   ]));
   card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
   return card;

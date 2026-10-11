@@ -15,6 +15,7 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject } from '../lib/store.js';
+import { ask, askDanger } from '../ui/dialog.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -425,9 +426,12 @@ delegate(document, 'click', '[data-action="sc-contd"]', () => lineAction((i, el)
 }));
 delegate(document, 'click', '[data-action="sc-up"]', () => lineAction((i, el) => editor.moveElement(el.id, -1)));
 delegate(document, 'click', '[data-action="sc-down"]', () => lineAction((i, el) => editor.moveElement(el.id, 1)));
-delegate(document, 'click', '[data-action="sc-del"]', () => lineAction((i, el) => {
+delegate(document, 'click', '[data-action="sc-del"]', () => lineAction(async (i0, el) => {
   if (el.text.trim()
-      && !confirm(`Delete this ${typeLabel(el.type).toLowerCase()}?\n\n“${el.text.trim().slice(0, 80)}”`)) return;
+      && !(await askDanger({ title: `Delete this ${typeLabel(el.type).toLowerCase()}?`, body: '“' + el.text.trim().slice(0, 80) + '”', confirm: 'Delete' }))) return;
+  // The document may have moved while the dialog was open: find the line again.
+  const i = doc.elements.indexOf(el);
+  if (i < 0) return;
   if (doc.elements.length === 1) { el.text = ''; editor.patchRow(el.id); persistNow(); refreshDerivedUi(); return; }
   editor.removeElement(i, (k) => doc.elements[k] || doc.elements[k - 1]);
 }));
@@ -602,10 +606,11 @@ delegate(document, 'click', '[data-action="sc-imp-paste"]', () => {
   if (!box || !box.value.trim()) { say('Paste a script into the box first.'); return; }
   takeScript(box.value, '');
 });
-delegate(document, 'click', '[data-action="sc-imp-commit"]', () => {
+delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   if (!imp) return;
   const blank = isBlankDoc();
-  if (imp.replace && !blank && !confirm('Replace the script? A draft of the current one is saved first, so it can be restored.')) return;
+  if (imp.replace && !blank && !(await ask({ title: 'Replace the script?', body: 'A draft of the current one is saved first, so it can be restored.', confirm: 'Replace' }))) return;
+  if (!imp) return;
   if (blank) doc.elements = [];
   const done = commitImportedScript(imp.plan, {
     replaceScript: blank || imp.replace, replaceScenes: blank || imp.replace,

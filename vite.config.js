@@ -506,6 +506,13 @@ export default defineConfig({
         // The application console: the whole studio in numbers, plus
         // the gate's queue, codes and sessions. Administrators only.
         admin:      resolve(__dirname, 'admin.html'),
+        // The money, out of the console: a user-side Purchase page (plans,
+        // checkout, invoices, refund request) and an admin-only Purchases
+        // page (payments, refunds, invoices, promo codes, tiers, growth).
+        purchase:   resolve(__dirname, 'purchase.html'),
+        purchases:  resolve(__dirname, 'purchases.html'),
+        // The Idea Vault, a section of its own rather than a Story tab.
+        vault:      resolve(__dirname, 'vault.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),
@@ -605,7 +612,7 @@ export default defineConfig({
              209 KB comes back. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

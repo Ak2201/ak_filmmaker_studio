@@ -40,12 +40,9 @@
 // before this line would read the wrong (unscoped) keys.
 import { fmtINR } from '../lib/money.js';
 import Store from '../lib/store.js';
-import { DRIVE_STATE_KEY } from '../lib/drive-sync.js';
 import { mountShell } from '../ui/shell.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import { wireActionBar } from '../ui/actionbar.js';
-import { renderLauncher } from '../ui/launcher.js';
-import { jobs } from '../lib/navmodel.js';
 /* The five stages and where the open film is in them — derived, stored
    nowhere. See src/lib/journey.js. */
 import { STAGES, stageOfStep, journey } from '../lib/journey.js';
@@ -65,7 +62,7 @@ import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
 import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, esc, delegate } from '../lib/dom.js';
-import { reveal, countUp, spotlight } from '../lib/motion.js';
+import { reveal, spotlight } from '../lib/motion.js';
 
 import featureData from '../data/steps.feature.json';
 import shortData   from '../data/steps.short.json';
@@ -104,6 +101,8 @@ import {
   FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
 } from './hub/util.js';
 import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.json
+import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
+import { ask, tell } from '../ui/dialog.js';
 import { createResumeCards } from './hub/resume-cards.js';
 import { createBackupMenu } from './hub/backup-menu.js';
 import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
@@ -129,88 +128,6 @@ function themeTitle() {
   const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
   return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
 }
-// ============================================================
-// STORAGE KEYS — byte-identical to the legacy hub. Do not touch.
-// ============================================================
-const PREF_KEY     = 'fms_studio_prefs_v1';
-/* Writer prefs (src/ui/format-guide.js): per device, in GLOBAL_KEYS
-   too, so a backup carries them like the theme. */
-const WRITE_PREFS  = 'fms_write_prefs_v1';
-const FEAT_PREFS   = 'fms_filmmaker_prefs_v1';
-const SHORT_PREFS  = 'fms_shortfilm_prefs_v1';
-const LIB_PREFS    = 'fms_library_prefs_v1';
-/* Named here but deliberately in no list on this page: see the note
-   at the end of ALL_KEYS for why reset must not wipe it. */
-const SYNC_CFG     = 'fms_supabase_cfg_v1';  // eslint-disable-line no-unused-vars
-/* NOTE_PREFIX is imported from lib/backup.js rather than restated:
-   a note's key is the one thing a backup file stores raw, so the
-   prefix the exporter walks and the prefix reset sweeps have to be
-   the same string by construction. */
-const ACTIVITY_KEY = 'fms_studio_activity_v1';
-const SCENES_KEY   = 'fms_scenes_v1';
-const CONTACTS_KEY = 'fms_contacts_v1';
-const SHOTS_KEY    = 'fms_shots_v1';
-const SCRIPT_KEY   = 'fms_script_v1';
-const LOCS_KEY     = 'fms_locations_v1';
-const BENCH_KEY    = 'fms_workbench_v1';
-const DISSECT_KEY  = 'fms_dissect_v1';
-const FESTIVALS_KEY = 'fms_festivals_v1';
-const SCRIPTGEN_KEY = 'fms_scriptgen_v1';
-const SONGS_KEY     = 'fms_songs_v1';
-const STORY_KEY     = 'fms_story_v1';
-const VAULT_KEY     = 'fms_idea_vault_v1';
-const EDIT_KEY      = 'fms_edit_v1';
-const DELIVER_KEY   = 'fms_deliverables_v1';
-const GOALS_KEY     = 'fms_write_goals_v1';   // focus mode, src/lib/write-goals.js
-const SCENE_BIN_KEY = 'fms_scene_bin_v1';     // the scene bin, src/lib/scene-bin.js
-const CHARACTERS_KEY = 'fms_characters_v1';   // characters as data, src/lib/characters.js
-const COSTS_KEY     = 'fms_costs_v1';         // the budget's actuals, src/lib/costs.js
-/* The device-lock handle (src/lib/gate.js). In this reset list so a
-   wiped studio forgets which session it held; deliberately NOT in
-   GLOBAL_KEYS, for the reason the Drive pointer is not. */
-const DEVICE_SESSION_KEY = 'fms_device_session_v1';
-/* The invite code this browser entered with (src/lib/gate.js), same
-   treatment and same reasons: a wiped studio forgets it, a backup
-   never carries it. */
-const CODE_PASS_KEY = 'fms_invite_code_v1';
-/* The onboarding tour's place (src/ui/tour.js) — also in GLOBAL_KEYS.
-   Reset forgets it, so a wiped studio offers the tour again. */
-const TOUR_KEY = 'fms_tour_v1';
-
-const ALL_KEYS = [
-  FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
-  FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
-  PREF_KEY, WRITE_PREFS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
-  SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, CHARACTERS_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY, TOUR_KEY,
-  /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
-     Without it a wiped studio stays connected to a file full of
-     work, and the next keystroke pushes the empty studio over it.
-     The Drive FILE is not touched by anything here — reconnecting
-     finds it again and offers it back. Not the same decision as
-     fms_ai_key_v1, which stays out of this list on purpose: that
-     one is a credential, this one is a pointer at the work. */
-  DRIVE_STATE_KEY
-  /* SYNC_CFG (fms_supabase_cfg_v1) WAS in this list and deliberately
-     is not any more. It holds {url, key} — WHICH Supabase project this
-     browser talks to — and that is a DESTINATION, not work and not a
-     pointer at work the way the Drive key above is. Wiping it never
-     protected anything: reset is local-only, purgeProjectEverywhere()
-     makes no cloud call, so the account's own copy survived either
-     way. All the wipe achieved was making somebody re-fetch a project
-     URL and a long anon key from a dashboard to reach work that had
-     never gone anywhere.
-
-     Keeping it is only safe BECAUSE reset now signs out — see
-     resetAll(). Keeping the config and leaving the session alone
-     would have been worse than either: the supabase-js session lives
-     under `sb-<ref>-auth-token`, which is not an `fms_` key and
-     nothing in this file has ever touched, so the next load would
-     have pulled every account project straight back down and refilled
-     a studio the user had just been told twice could not be
-     recovered. */
-];
-
 /* PROJECT_KEYS and GLOBAL_KEYS used to be declared here. They are the
    BACKUP FORMAT'S schema — the map from a field name in the file to a
    storage key on disk — and the file now has a second reader (Drive
@@ -263,14 +180,7 @@ const SHORT_STEPS   = shortData.steps;
 
 const WATCH_FILMS = watchlist.reduce((n, w) => n + (w.films ? w.films.length : 0), 0);
 
-const STATS = [
-  { num: FEATURE_STEPS.length, lab: 'Feature steps', cls: ''  },
-  { num: SHORT_STEPS.length,   lab: 'Short steps',   cls: 's' },
-  { num: films.length,         lab: 'Films analyzed', cls: 'l' },
-  { num: directors.length,     lab: 'Directors',     cls: 'l' },
-  { num: rules.length,         lab: 'Craft rules',   cls: 'l' },
-  { num: WATCH_FILMS,          lab: 'Watch list',    cls: 'g' }
-];
+
 
 // ------------------------------------------------------------
 // ANCHORS — the only hand-kept links left. These are page
@@ -379,11 +289,6 @@ function stageParts(ns, steps) {
 const FEATURE_PARTS = stageParts('feature', FEATURE_STEPS);
 const SHORT_PARTS = stageParts('short', SHORT_STEPS);
 
-function chunk(arr, n) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
-  return out;
-}
 
 
 // ============================================================
@@ -402,11 +307,7 @@ function toolbarMarkup() {
      why they are discovered there rather than declared. */
   return h('div.toolbar', {
     html: `
-      <a class="nav-link" href="#doors">Start</a>
       <a class="nav-link" href="#projects">Projects</a>
-      <a class="nav-link" href="#tools">Tools</a>
-      <a class="nav-link" href="#index">Index</a>
-      <a class="nav-link" href="#activity">Activity</a>
       <div class="switcher-wrap">
         <button class="project-switcher empty" id="projectSwitcherBtn"
                 data-action="toggle-switcher" title="Switch project" aria-haspopup="true" aria-expanded="false">
@@ -419,7 +320,7 @@ function toolbarMarkup() {
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
       <div class="tb-menu align-right" data-tb-backup>
         <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"
-                title="Backup — export, import or erase the studio"
+                title="Backup — export or import the studio"
                 aria-expanded="false" aria-haspopup="true" aria-controls="tbm-backup">
           <span>Backup</span><span class="tb-caret" aria-hidden="true">▾</span>
         </button>
@@ -435,10 +336,6 @@ function toolbarMarkup() {
                   title="The studio overview as a paginated A4 document">
             <span class="tb-item-label">Studio overview</span><span class="tb-item-hint">.pdf</span>
           </button>
-          <div class="tb-sep" role="separator"></div>
-          <button class="tb-item is-danger" type="button" data-action="reset-all" role="menuitem">
-            <span class="tb-item-label">Erase everything</span>
-          </button>
         </div>
       </div>
       <input type="file" id="importAllFile" accept=".json" class="visually-hidden" data-action="import-file" aria-label="Import a studio backup">
@@ -447,9 +344,10 @@ function toolbarMarkup() {
 }
 
 function heroMarkup() {
-  const stats = STATS.map(s =>
-    `<div class="hero-stat${s.cls ? ' ' + s.cls : ''}"><div class="num">${s.num}</div><div class="lab">${esc(s.lab)}</div></div>`
-  ).join('');
+  /* THE HERO IS THE PROJECT LIST (owner, 11 Oct 2026). With projects it
+     is the Continue cards and "+ New project"; with none, renderProjects()
+     draws the three doors in the same place. Everything about a film —
+     where it is, the stages, the modules — lives on its dashboard. */
   return h('section#top.hero', {
     html: `
       <div class="hero-inner">
@@ -462,40 +360,10 @@ function heroMarkup() {
 
         <p class="hero-deck">Make a <em>feature</em>, make a <em class="s">short</em>, or learn the <em class="g">craft</em> first — all from one desk, with a film you love to explain every step.</p>
 
-        <!-- Two destinations, one of them filled. Both are sections of
-             this page that the toolbar already links to, so this adds a
-             pair of buttons rather than a pair of pages: the hub's own
-             nav is a row of six quiet links and nothing in the hero
-             said what to do first. One CTA per view is the rule in
-             modules.css, which is why only the first is .primary. -->
-        <div class="hero-cta">
-          <a class="btn primary" href="#doors">Start a film<span class="arrow" aria-hidden="true">→</span></a>
-          <a class="btn" href="#projects">Your projects</a>
-        </div>
-
-        <div class="resume-card" id="resumeCard">
-          <div class="lab">PICK UP WHERE YOU LEFT OFF</div>
-          <!-- No inline colour here. This element carried an inline
-               "color: var(--panel-ink)" as a stopgap until editorial.css
-               grew a rule for .resume-card h2. That rule now exists and
-               reads the SKIN's slab ink, and an inline style beats every
-               stylesheet, so the stopgap had quietly become the bug:
-               light panel ink on a light slab, under every skin whose
-               slab is light. (No backticks in this comment — the markup
-               around it is a JS template literal, and a stray one ends
-               the string. That mistake cost a silent build failure and
-               four phantom findings measured against a stale dist.) -->
-          <h2 id="resumeTitle">—</h2>
-          <p class="resume-meta" id="resumeBody">—</p>
-          <div class="resume-actions" id="resumeActions"></div>
-        </div>
+        <div id="tourInviteHost"></div>
 
         <div class="search-wrap">
-          <!-- .search-field exists so the dropdown anchors to the INPUT.
-               Anchored to .search-wrap, top:100% put the results below
-               the whole block INCLUDING the hint line underneath, so a
-               floating panel with a shadow rendered as a flat list a
-               row further down than it should be. -->
+          <!-- .search-field exists so the dropdown anchors to the INPUT. -->
           <div class="search-field">
           <input type="search" class="search-input" id="searchInput"
                  placeholder="Search steps, films, directors, glossary terms…"
@@ -508,51 +376,9 @@ function heroMarkup() {
           <p class="search-tip">Try <kbd>logline</kbd> · <kbd>vetrimaaran</kbd> · <kbd>fountain</kbd> · <kbd>festival</kbd> · <kbd>budget</kbd></p>
         </div>
 
-        <div class="hero-stats">${stats}</div>
+        <div id="heroProjects"></div>
       </div>`
   });
-}
-
-/* ------------------------------------------------------------
-   THE THREE JOBS — write the script, plan the shoot, run the set.
-
-   The first thing above the project grid, in both states of the hub:
-   a stranger with no project and a filmmaker with six both need the
-   same three doors, and the first-run panel below is about the
-   PROJECT, not about what the studio does. Everything here is read
-   from navigation.json's `jobs` through navmodel.jobs(): the label and
-   the sentence are content, the href is the first built module of the
-   first stage the job names, the eyebrow is the stages' own labels and
-   the hue is the first stage's. Nothing is a hand-written link.
-   ------------------------------------------------------------ */
-/* Is there a story in the open project? Read-only, scoped by the
-   storage proxy to the open project; any failure answers "no". */
-function storyExists() {
-  try {
-    const s = JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || {};
-    return !!(String(s.logline || '').trim() || String(s.source || '').trim()
-      || (Array.isArray(s.outline) && s.outline.some((o) => o && String(o.text || '').trim())));
-  } catch (e) { return false; }
-}
-
-function jobsMarkup() {
-  const list = jobs();
-  if (!list.length) return null;
-  const wrap = h('div.hub-jobs', { role: 'list', 'aria-label': 'Three things the studio does' });
-  list.forEach((j) => {
-    // "Write the script" opens the Script once a story exists, Story before that.
-    const href = j.id === 'write' && storyExists() ? 'script.html' : j.href;
-    const card = h('a.job-card' + (j.hueClass ? '.' + j.hueClass : ''), { href, role: 'listitem' });
-    card.dataset.job = j.id;
-    card.append(
-      h('span.job-eyebrow', { text: j.stages.map((s) => s.label).join(' · ') }),
-      h('span.job-label', { text: j.label }),
-      h('span.job-line', { text: j.line }),
-      h('span.job-go', { text: 'Start in ' + j.module.label + ' →' })
-    );
-    wrap.append(card);
-  });
-  return wrap;
 }
 
 function projectsMarkup() {
@@ -562,7 +388,7 @@ function projectsMarkup() {
         <div class="projects-head">
           <div>
             <div class="lab">PROJECTS · ONE PER FILM</div>
-            <h2>Continue <em>where you left off.</em></h2>
+            <h2 id="projectsHeading">Continue <em>where you left off.</em></h2>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
             <p class="deck">Every script, every plan lives under a project. Pick one to continue where you left off, or switch to another film — short or feature — whenever you like.</p>
           </div>
@@ -582,9 +408,7 @@ function projectsMarkup() {
             <button data-fmt="all" class="active" data-action="set-filter">ALL</button>
             <button data-fmt="feature" data-action="set-filter">FEATURE</button>
             <button data-fmt="short" data-action="set-filter">SHORT</button>
-            <button data-fmt="documentary" data-action="set-filter">DOC</button>
-            <button data-fmt="musicvideo" data-action="set-filter">MV</button>
-            <button data-fmt="adfilm" data-action="set-filter">AD</button>
+            <!-- DOC / MV / AD buttons are added by renderProjects() only when such projects exist. -->
           </div>
           <select class="projects-sort" id="projectsSort" data-action="sort-projects" aria-label="Sort projects by">
             <option value="recent">↻ RECENT</option>
@@ -596,217 +420,17 @@ function projectsMarkup() {
         <div class="projects-grid" id="projectsGrid"></div>
       </div>`
   });
-  const doors = jobsMarkup();
-  const notice = sec.querySelector('#adoptNotice');
-  if (doors && notice) notice.before(doors);
-  return sec;
-}
-
-/* ------------------------------------------------------------
-   THE JOURNEY — five stages for the open project, from journey.js.
-   The section always renders (so #journey resolves and nothing below
-   it moves when a project opens) and is hidden until one is open;
-   renderJourney() fills it. It READS and never writes: the hub runs it
-   on load and on focus, and verify watches four idle seconds.
-   ------------------------------------------------------------ */
-function journeyMarkup() {
-  const sec = h('section#journey.section.journey-section', { hidden: true, 'aria-labelledby': 'journeyHeading' });
-  const inner = h('div.section-inner');
-  inner.append(
-    h('div.section-head', {}, [
-      h('div.left', {}, [
-        h('div.label', { text: 'THE JOURNEY · ' + STAGES.length + ' STAGES' }),
-        h('h2#journeyHeading', {}, [document.createTextNode('Where this film '), h('em.f', { text: 'is.' })]),
-        h('p.deck', {
-          text: 'Each stage has a part of the blueprint (Guide) and the modules that do the work '
-              + '(Tools). Both are read from what you have already written — nothing here is stored.'
-        })
-      ]),
-      h('div#journeyHere.right', { text: '' })
-    ]),
-    h('div#journeyStrip')
-  );
-  sec.append(inner);
   return sec;
 }
 
 let lastJourney = null;
+/* The hub no longer DRAWS the journey (it is the dashboard's), but the
+   project cards and the resume helpers still read the open project's
+   journey, so it is computed here and cached. Reads only. */
 function renderJourney() {
-  const sec = $('#journey');
-  const host = $('#journeyStrip');
-  if (!sec || !host) return null;
   const project = Store.currentProject();
-  const j = project ? journey(project) : null;
-  lastJourney = j;
-  host.textContent = '';
-  sec.hidden = !j;
-  if (!j) return null;
-  const strip = renderJourneyStrip(project, { heading: false, journey: j });
-  if (strip) host.append(strip);
-  const here = $('#journeyHere');
-  if (here) here.textContent = j.complete ? 'ALL STAGES DONE' : 'NOW · ' + j.currentLabel.toUpperCase();
-  return j;
-}
-
-function doorsMarkup() {
-  return h('section#doors.section', {
-    html: `
-      <div class="section-inner">
-        <div class="section-head">
-          <div class="left">
-            <div class="label">START HERE</div>
-            <h2>Three <em class="f">doors.</em> <em class="s">Pick</em> a <em class="g">path.</em></h2>
-            <p class="deck">New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your project dashboard, where you can always see how far you have got.</p>
-          </div>
-          <div class="right">3 DOORS</div>
-        </div>
-
-        <div class="doors" data-reveal-group>
-          <div class="door">
-            <div class="door-tag"><span class="door-num-circle">I</span> A FULL-LENGTH STORY</div>
-            <h3>Feature<br><span class="light">film.</span></h3>
-            <p class="door-sub">A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.</p>
-            <button type="button" class="door-cta" data-action="start-feature"><span>START A FEATURE</span><span class="arrow">→</span></button>
-          </div>
-
-          <div class="door shorts">
-            <div class="door-tag"><span class="door-num-circle">II</span> UNDER 30 MINUTES</div>
-            <h3>Short<br><span class="light">film.</span></h3>
-            <p class="door-sub">The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.</p>
-            <button type="button" class="door-cta" data-action="start-short"><span>START A SHORT</span><span class="arrow">→</span></button>
-          </div>
-
-          <div class="door library">
-            <div class="door-tag"><span class="door-num-circle">III</span> LEARN FIRST</div>
-            <h3>Learning<br><span class="light">library.</span></h3>
-            <p class="door-sub">Not ready to start? Read how films you know were built: ${films.length} films, ${directors.length} directors and ${rules.length} rules of thumb. No project needed.</p>
-            <a class="door-cta" href="${LIBRARY_URL}"><span>OPEN THE LIBRARY</span><span class="arrow">→</span></a>
-          </div>
-        </div>
-      </div>`
-  });
-}
-
-function toolsMarkup() {
-  return h('section#tools.section', {
-    html: `
-      <div class="section-inner">
-        <div class="section-head">
-          <div class="left">
-            <div class="label">SECTION III · TOOLS &amp; UTILITIES</div>
-            <h2>Studio <em class="g">tools.</em></h2>
-            <p class="deck">Studio-wide utilities and quick-jumps. Backup, restore, print, or jump straight to a tool.</p>
-          </div>
-          <div class="right">6 TOOLS</div>
-        </div>
-
-        <div class="tools-grid" data-reveal-group>
-          <button class="tool-card" data-action="export-all">
-            <div class="tool-icon">↓</div><h5>Export everything</h5>
-            <p>Every project, preference and comment in one backup file.</p>
-          </button>
-          <button class="tool-card" data-action="import-all">
-            <div class="tool-icon">↑</div><h5>Import a backup</h5>
-            <p>Add the projects in a backup file to this studio. Nothing you already have is replaced.</p>
-          </button>
-          <button class="tool-card" data-action="print-hub">
-            <div class="tool-icon">⎙</div><h5>Print this hub</h5>
-            <p>Snapshot of the studio overview.</p>
-          </button>
-          <button class="tool-card" data-action="reset-all">
-            <div class="tool-icon">⌫</div><h5>Erase everything</h5>
-            <p>Erase all studio data. Export first if you want to keep anything.</p>
-          </button>
-          <a class="tool-card" href="budget.html#estimate">
-            <div class="tool-icon">₹</div><h5>Equipment Calculator</h5>
-            <p>On the Budget page: build a kit from Chennai 2024-25 rate ranges and get a daily-rate total.</p>
-          </a>
-          <a class="tool-card" href="${LIBRARY_URL}#watch">
-            <div class="tool-icon">▶</div><h5>Watch List by Step</h5>
-            <p>Films to study, matched to each step. ${WATCH_FILMS} films total.</p>
-          </a>
-        </div>
-
-        <div class="data-card">
-          <div class="left">
-            <div class="lab">YOUR DATA</div>
-            <p id="storageBytes">Computing storage…</p>
-          </div>
-          <div class="right">
-            <button class="mb" data-action="export-all">DOWNLOAD BACKUP</button>
-            <button class="mb" data-action="privacy-note">PRIVACY NOTE</button>
-          </div>
-        </div>
-      </div>`
-  });
-}
-
-// ---- master index, built from the same JSON the pages render ----
-function tocItem(base, hash, num, label, check) {
-  return `<li><a href="${base}${hash}"><span class="num">${esc(num)}</span>${esc(label)}` +
-         (check ? `<span class="check" data-tcheck="${esc(check)}">✓</span>` : '') +
-         `</a></li>`;
-}
-function tocGroup(label, items) {
-  return `<div class="toc-group"><div class="toc-group-label">${esc(label)}</div><ul class="toc-list">${items.join('')}</ul></div>`;
-}
-
-function indexMarkup() {
-  /* All five parts. This listed Vol I and Vol II only, so steps 25–32
-     (Production and Post) had no entry in the "full" index. */
-  const libSections = tocGroup('SECTIONS', ANCHORS.library.map(a =>
-    tocItem(a.href || LIBRARY_URL, a.href ? '' : a.hash, a.num, a.label)));
-  const libFilms = tocGroup('FILMS ANALYZED', chunk(films.map(f => f.title), 3).map(row =>
-    tocItem(LIBRARY_URL, '#films', '··', row.join(' · '))));
-  const libDirectors = tocGroup('DIRECTORS', chunk(directors.map(d => d.name), 2).map(row =>
-    tocItem(LIBRARY_URL, '#directors', '··', row.join(' · '))));
-
-  return h('section#index.section.dark-bg', {
-    html: `
-      <div class="section-inner">
-        <div class="section-head">
-          <div class="left">
-            <div class="label">THE LIBRARY · INDEX</div>
-            <h2>The library <em class="g">index.</em></h2>
-            <p class="deck">Every section, film and director in the reference library, in one place. Click any to jump straight in.</p>
-          </div>
-          <div class="right">${ANCHORS.library.length} LIBRARY SECTIONS</div>
-        </div>
-
-        <div class="index-grid index-grid-single">
-          <div class="index-col library">
-            <h4>The Library</h4>
-            <p class="sub">Reference companion · ${ANCHORS.library.length} sections</p>
-            ${libSections}${libFilms}${libDirectors}
-          </div>
-        </div>
-      </div>`
-  });
-}
-
-function activityMarkup() {
-  return h('section#activity.section.alt', {
-    html: `
-      <div class="section-inner">
-        <div class="section-head">
-          <div class="left">
-            <div class="label">SECTION V · ACTIVITY LOG</div>
-            <h2>What you've <em class="f">touched.</em></h2>
-            <p class="deck">A timeline of your recent edits. Updates whenever you save. Click an entry to jump back.</p>
-          </div>
-          <div class="right" id="activityCount">0 ENTRIES</div>
-        </div>
-
-        <div class="activity-list" id="activityList">
-          <div class="activity-empty">No activity yet. Start a film and begin filling things in. Activity updates whenever you save.</div>
-        </div>
-
-        <div class="activity-actions">
-          <button class="mini-btn" data-action="refresh-activity">↻ REFRESH</button>
-          <button class="mini-btn danger" data-action="clear-activity">CLEAR LOG</button>
-        </div>
-      </div>`
-  });
+  lastJourney = project ? journey(project) : null;
+  return lastJourney;
 }
 
 function finalMarkup() {
@@ -835,9 +459,6 @@ function modalMarkup() {
         <select id="pmFormat">
           <option value="feature">Feature film</option>
           <option value="short">Short film</option>
-          <option value="documentary">Documentary</option>
-          <option value="musicvideo">Music video</option>
-          <option value="adfilm">Ad film</option>
         </select>
 
         <div class="modal-actions">
@@ -852,20 +473,10 @@ function render() {
   const app = document.getElementById('app');
   if (!app) throw new Error('#app not found');
   const main = h('main#main');
-  main.append(
-    heroMarkup(), doorsMarkup(), projectsMarkup(),
-    // The journey sits right under the projects: once a film is open,
-    // "where is it, and what next" is the question the rest of the
-    // page answers in detail. Hidden with no project open.
-    journeyMarkup(),
-    // The map before the detail: the launcher answers "what is in here
-    // and where do I go", the doors that follow answer "how far am I in
-    // the three I actually use". Different questions, and the map is
-    // the one a new arrival needs first.
-    renderLauncher(),
-    toolsMarkup(), indexMarkup(),
-    activityMarkup(), finalMarkup()
-  );
+  const hero = heroMarkup();
+  // The project list IS the hero: the section nests inside it.
+  hero.querySelector('#heroProjects').replaceWith(projectsMarkup());
+  main.append(hero, finalMarkup());
   app.append(toolbarMarkup(), main, modalMarkup());
 }
 
@@ -1001,7 +612,7 @@ function highlightActiveResult() {
 // ============================================================
 // EXPORT / IMPORT / RESET — src/pages/hub/backup-menu.js
 // ============================================================
-const { exportOverviewPDF, exportAll, importAll, handleImportAll, resetAll } = createBackupMenu({ allKeys: ALL_KEYS, logActivity });
+const { exportOverviewPDF, exportAll, importAll, handleImportAll } = createBackupMenu({ allKeys: ALL_KEYS, logActivity });
 
 // ============================================================
 // ACTIVITY LOG
@@ -1014,7 +625,6 @@ function logActivity(where, what, url) {
   arr.unshift({ ts: Date.now(), where, what, url });
   log.entries = arr.slice(0, ACTIVITY_LIMIT);
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
-  renderActivity();
 }
 
 function detectActivity() {
@@ -1056,44 +666,6 @@ function detectActivity() {
   log.entries = arr.slice(0, ACTIVITY_LIMIT);
   log.lastSnap = now;
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
-}
-
-const WHERE_CLASS = { feat: 'feat', short: 'short', lib: 'lib' };
-const WHERE_LABEL = { feat: 'FEATURE', short: 'SHORT', lib: 'LIBRARY' };
-
-function renderActivity() {
-  const log = parseStorage(ACTIVITY_KEY);
-  const arr = Array.isArray(log.entries) ? log.entries : [];
-  const container = $('#activityList');
-  $('#activityCount').textContent = arr.length + ' ENTR' + (arr.length === 1 ? 'Y' : 'IES');
-  container.textContent = '';
-
-  if (!arr.length) {
-    container.append(h('div.activity-empty', {
-      text: 'No activity yet. Start a film and begin filling things in. Activity updates whenever you save.'
-    }));
-    return;
-  }
-
-  arr.forEach(e => {
-    const inner = [
-      h('span.when', { text: relTime(e.ts) }),
-      h('span', { class: 'where ' + (WHERE_CLASS[e.where] || 'studio'), text: WHERE_LABEL[e.where] || 'STUDIO' }),
-      h('span.what', { text: e.what })
-    ];
-    const url = rewriteUrl(e.url);
-    container.append(h('div.activity-row', {}, url ? [h('a', { href: url }, inner)] : inner));
-  });
-}
-
-function refreshActivity() { updateStatus(); detectActivity(); renderActivity(); }
-
-function clearActivity() {
-  if (!confirm('Clear the activity log? (Your blueprint data is not affected.)')) return;
-  const log = parseStorage(ACTIVITY_KEY);
-  log.entries = [];
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
-  renderActivity();
 }
 
 // ============================================================
@@ -1445,7 +1017,7 @@ function adoptDeviceProjectsNow() {
 
 function shareProject(id) {
   if (StudioUI && StudioUI.openShareDialog) StudioUI.openShareDialog(id);
-  else alert('Sharing requires the cloud module — please configure it from Settings.');
+  else tell({ body: 'Sharing requires the cloud module — please configure it from Settings.' });
 }
 
 function duplicateProject(id) {
@@ -1555,7 +1127,7 @@ function submitProjectModal(e) {
   if (e) e.preventDefault();
   const titleValue = $('#pmTitle').value.trim();
   const format = $('#pmFormat').value;
-  if (!titleValue) { alert('Give your project a title.'); return; }
+  if (!titleValue) { tell({ body: 'Give your project a title.' }); return; }
   const submit = $('#pmSubmit');
   const editId = submit.dataset.editId;
   if (editId) {
@@ -1587,14 +1159,19 @@ function switchToProject(id) {
   renderProjects();
   renderProjectSwitcher();
   updateStatus();
-  refreshActivity();
+  detectActivity();
   renderGreeting();
 }
 
-function deleteProjectConfirm(id) {
+async function deleteProjectConfirm(id) {
   const p = Store.getProject(id);
   if (!p) return;
-  if (!confirm('Delete project "' + p.title + '"?\n\nAll blueprint data inside it will also be deleted. This cannot be undone.')) return;
+  const ok = await ask({
+    title: 'Delete project "' + p.title + '"?',
+    body: 'All blueprint data inside it will also be deleted. This cannot be undone.',
+    confirm: 'DELETE', danger: true
+  });
+  if (!ok) return;
   Store.deleteProject(id);
   logActivity('studio', 'Project deleted: "' + p.title + '"', '#projects');
   renderProjects();
@@ -1611,15 +1188,7 @@ const CLICK_ACTIONS = {
   'install-app':           () => promptInstall(),
   'export-all':            () => exportAll(),
   'import-all':            () => importAll(),
-  'print-hub':             () => window.print(),
   'pdf-overview':          () => exportOverviewPDF(),
-  'reset-all':             () => resetAll(),
-  'privacy-note':          () => alert(
-    'Your work is saved in this browser, on this device.\n\n' +
-    'To move to a new browser: EXPORT here, then IMPORT in the new browser.\n\n' +
-    'Incognito mode does NOT save data between sessions.'),
-  'refresh-activity':      () => refreshActivity(),
-  'clear-activity':        () => clearActivity(),
   'new-project':           () => openProjectModal(),
   'start-feature':         () => openProjectModal(null, 'feature'),
   'start-short':           () => openProjectModal(null, 'short'),
@@ -1772,7 +1341,6 @@ function init() {
   renderProjectSwitcher();
   updateStatus();
   detectActivity();
-  renderActivity();
   openSampleFromURL();
   openSampleForTrial();
   try {
@@ -1782,7 +1350,6 @@ function init() {
   } catch (e) { /* the welcome is a convenience */ }
 
   decorateMotion();
-  document.querySelectorAll('.hero-stat .num').forEach((n) => countUp(n));
   reveal(document);
   let fxRaf = 0;
   new MutationObserver(() => {
@@ -1806,15 +1373,15 @@ function init() {
 Store.subscribe('plan:changed', () => { renderProjects(); renderProjectSwitcher(); });
   Store.subscribe('current:changed',  () => { renderProjects(); renderProjectSwitcher(); updateStatus(); renderGreeting(); });
 
-  window.addEventListener('focus', () => { updateStatus(); detectActivity(); renderActivity(); });
+  window.addEventListener('focus', () => { updateStatus(); detectActivity(); });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { updateStatus(); detectActivity(); renderActivity(); }
+    if (!document.hidden) { updateStatus(); detectActivity(); }
   });
   window.addEventListener('storage', (e) => {
     if (!e.key) return;
     const baseKey = e.key.split('__')[0];
     if ([FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY].includes(baseKey)) {
-      setTimeout(() => { updateStatus(); detectActivity(); renderActivity(); }, 200);
+      setTimeout(() => { updateStatus(); detectActivity(); }, 200);
     }
     // The open-project pointer is per namespace: bare on the device,
     // `…@<uid>` inside an account. Matching only the bare name meant a

@@ -104,6 +104,7 @@ import Script, {
   pageCount, formatPages, formatRuntime, wordCount, totalLines,
   TITLE_FIELDS, hasTitlePage, normaliseTitlePage
 } from '../lib/script.js';
+import { ask, askDanger } from '../ui/dialog.js';
 
 /* The typesetter and the parser are both lazy chunks. Neither is
    needed to read or write a page, both are a few kilobytes of
@@ -2396,7 +2397,7 @@ delegate(document, 'click', '[data-action="import-scenes-mode"]', (e, btn) => {
   render();
 });
 
-delegate(document, 'click', '[data-action="import-commit"]', () => {
+delegate(document, 'click', '[data-action="import-commit"]', async () => {
   const plan = importPlan;
   if (!plan || importBusy) return;
 
@@ -2412,7 +2413,7 @@ delegate(document, 'click', '[data-action="import-commit"]', () => {
   if (replaceScenes && existingScenes.length) {
     losing.push(existingScenes.length + (existingScenes.length === 1 ? ' scene' : ' scenes'));
   }
-  if (losing.length && !confirm(
+  if (losing.length && !await askDanger(
     'Replace ' + losing.join(' and ') + '?\n\n'
     + (replaceScript && doc.elements.length
       ? 'A revision of the current screenplay is taken first, so it can be restored.\n\n'
@@ -2496,7 +2497,7 @@ delegate(document, 'click', '[data-action="rev-snap"]', () => {
   render();
 });
 
-delegate(document, 'click', '[data-action="rev-restore"]', (e, btn) => {
+delegate(document, 'click', '[data-action="rev-restore"]', async (e, btn) => {
   const id = idOf(btn, 'rev');
   const i = doc.revisions.findIndex((r) => r.id === id);
   if (i < 0) return;
@@ -2505,7 +2506,7 @@ delegate(document, 'click', '[data-action="rev-restore"]', (e, btn) => {
   // Restoring overwrites work that is on screen right now, so it asks —
   // and it says what it is about to throw away, in elements, because
   // "are you sure?" on its own tells nobody anything.
-  const ok = confirm(
+  const ok = await ask(
     `Restore the ${colour.name} revision — “${rev.name}”?\n\n`
     + `The screenplay on screen (${doc.elements.length} `
     + `${doc.elements.length === 1 ? 'element' : 'elements'}) is replaced by this `
@@ -2518,12 +2519,12 @@ delegate(document, 'click', '[data-action="rev-restore"]', (e, btn) => {
   render();
 });
 
-delegate(document, 'click', '[data-action="rev-del"]', (e, btn) => {
+delegate(document, 'click', '[data-action="rev-del"]', async (e, btn) => {
   const id = idOf(btn, 'rev');
   const i = doc.revisions.findIndex((r) => r.id === id);
   if (i < 0 || i !== doc.revisions.length - 1) return;
   const colour = revisionColour(i);
-  if (!confirm(`Withdraw the ${colour.name} revision — “${doc.revisions[i].name}”?\n\n`
+  if (!await askDanger(`Withdraw the ${colour.name} revision — “${doc.revisions[i].name}”?\n\n`
     + 'The snapshot is deleted. The screenplay on screen is not touched.')) return;
   doc.revisions.splice(i, 1);
   persistNow();
@@ -2545,10 +2546,10 @@ delegate(document, 'click', '[data-action="doc-open"]', (e, card) => {
   render(openDocId ? '.wr-editor input[data-doc-field="title"]' : null);
 });
 
-delegate(document, 'click', '[data-action="doc-del"]', () => {
+delegate(document, 'click', '[data-action="doc-del"]', async () => {
   const d = doc.documents.find((x) => x.id === openDocId);
   if (!d) return;
-  if (!confirm(`Delete “${d.title || 'Untitled document'}”?\n\n`
+  if (!await askDanger(`Delete “${d.title || 'Untitled document'}”?\n\n`
     + `${wordCount(d.body)} words. This cannot be undone.`)) return;
   doc.documents = doc.documents.filter((x) => x.id !== openDocId);
   openDocId = null;
@@ -2939,7 +2940,7 @@ async function breakIntoShots() {
     let result = null;
     let byAI = false;
     if (await primeAI() && AIm.hasKey() && (!Panelm || Panelm.aiAllowed())) {
-      const go = confirm('Draft the shots for ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
+      const go = await ask('Draft the shots for ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
         + ' with AI?\n\nOK sends the slug line, synopsis and script text of those scenes to '
         + apiHost() + ', using the key on this device.\n'
         + 'Cancel uses the basic breakdown instead, which reads the pages here and sends nothing.');

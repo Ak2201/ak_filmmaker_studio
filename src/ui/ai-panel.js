@@ -48,6 +48,7 @@ import { h, delegate } from '../lib/dom.js';
 import AI from '../lib/ai.js';
 import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
+import { askDanger } from './dialog.js';
 
 /* View state, and none of it is stored. Whether the key form is
    open is not the user's work, and a "replace your key" form that
@@ -82,7 +83,7 @@ export function proCard() {
   const box = h('div.ai-gate.ai-pro');
   box.append(h('p', {}, [h('strong', { text: 'AI tools come with Pro.' })]));
   box.append(h('p', { text: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click.' }));
-  box.append(h('p', {}, [h('a', { href: 'settings.html#plan', text: 'See plans' })]));
+  box.append(h('p', {}, [h('a', { href: 'purchase.html', text: 'See plans' })]));
   box.append(h('p', { text: 'Nothing you\u2019ve written is affected.' }));
   box.dataset.blocking = 'true';
   return box;
@@ -357,11 +358,11 @@ export function wireAIPanel() {
     announce();
   });
 
-  delegate(document, 'click', '[data-action="ai-forget-key"]', () => {
+  delegate(document, 'click', '[data-action="ai-forget-key"]', async () => {
     /* Named, because there can be two keys saved and a confirm that
        says "the API key" would not say which one is about to go. */
     const prov = AI.provider();
-    if (!confirm('Forget the ' + prov.label + ' API key on this device?\n\n'
+    if (!await askDanger('Forget the ' + prov.label + ' API key on this device?\n\n'
       + 'Nothing you have written is touched. You will need to paste the key again '
       + 'to use any of the model-backed tools.')) return;
     AI.clearKey();

@@ -29,6 +29,11 @@
    structure"); only a restore, an import and the panels rebuild.
    ============================================================ */
 import { flushStorage } from '../lib/store.js';
+/* write.html is retired: the Script, Drafts and the Script Breakdown
+   own its jobs. An old link forwards by its fragment (write-route.js);
+   ?stay=1 keeps this page. */
+import { redirectIfWrite } from '../lib/write-route.js';
+redirectIfWrite();
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';

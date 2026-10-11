@@ -525,12 +525,24 @@ function heroMarkup() {
    first stage the job names, the eyebrow is the stages' own labels and
    the hue is the first stage's. Nothing is a hand-written link.
    ------------------------------------------------------------ */
+/* Is there a story in the open project? Read-only, scoped by the
+   storage proxy to the open project; any failure answers "no". */
+function storyExists() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || {};
+    return !!(String(s.logline || '').trim() || String(s.source || '').trim()
+      || (Array.isArray(s.outline) && s.outline.some((o) => o && String(o.text || '').trim())));
+  } catch (e) { return false; }
+}
+
 function jobsMarkup() {
   const list = jobs();
   if (!list.length) return null;
   const wrap = h('div.hub-jobs', { role: 'list', 'aria-label': 'Three things the studio does' });
   list.forEach((j) => {
-    const card = h('a.job-card' + (j.hueClass ? '.' + j.hueClass : ''), { href: j.href, role: 'listitem' });
+    // "Write the script" opens the Script once a story exists, Story before that.
+    const href = j.id === 'write' && storyExists() ? 'script.html' : j.href;
+    const card = h('a.job-card' + (j.hueClass ? '.' + j.hueClass : ''), { href, role: 'listitem' });
     card.dataset.job = j.id;
     card.append(
       h('span.job-eyebrow', { text: j.stages.map((s) => s.label).join(' · ') }),

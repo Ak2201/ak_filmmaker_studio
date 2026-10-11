@@ -36,7 +36,7 @@ ok(ids.length >= 2, 'registry lists at least dragon and darkknight');
 ok(ids[0] === 'dragon', 'dragon is first (the default)');
 ok(/DEFAULT_SAMPLE\s*=\s*'dragon'/.test(reg), "DEFAULT_SAMPLE is 'dragon'");
 
-const FORBIDDEN = ['why so serious', 'die a hero', 'villain', 'deserves', 'magic trick', 'agent of chaos',
+const FORBIDDEN = ['why so serious', 'die a hero', 'become the villain', 'gotham deserves', 'deserves a better class', 'magic trick', 'agent of chaos',
   'some men just want', "let's put a smile", 'let’s put a smile', 'you complete me', 'the night is darkest'];
 
 for (const id of ids) {

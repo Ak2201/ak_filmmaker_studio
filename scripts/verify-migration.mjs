@@ -1098,6 +1098,15 @@ for (const spec of PAGES) {
     text: (() => {
       const clone = document.body.cloneNode(true);
       clone.querySelectorAll('script, style, noscript').forEach((n) => n.remove());
+      /* A third clock: text chosen PER USER. The Story path's examples
+         are told in the project's favourite film (Settings), and they
+         arrive when the case studies load, a few seconds after the page
+         settles — so which film's sentence is on the page, and whether
+         one is there yet, varies with the user and with the race, never
+         with the copy. Both sides drop these boxes, as CLOCK and
+         COUNTDOWN drop their words. Mark anything else of that kind
+         with [data-verify-varies]. */
+      clone.querySelectorAll('[data-example], [data-verify-varies]').forEach((n) => n.remove());
       return clone.innerHTML;
     })(),
     inlineHandlers: document.querySelectorAll(

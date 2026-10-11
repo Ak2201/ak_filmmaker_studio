@@ -48,6 +48,11 @@
          is where a plan is bought; DOWNLOAD MY WORK produces a real
          file from behind the wall, because nothing a person wrote is
          held hostage to a sale; and an administrator is never walled
+     (p) PURCHASES REQUIRED (schema section 32): switched OFF, an expired
+         free member is not walled, the rail's Purchase entry and every
+         buy link are hidden and purchase.html says there is nothing to
+         buy; switched ON while a page is open, a focus walls it with no
+         reload; and with the key ABSENT (§32 not run) nothing changes
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -59,6 +64,9 @@ import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProce
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
+/* READ, never typed — billing.js builds the checkout logo url from
+   this same field, so a domain move must not need two edits. */
+const BRAND_HOST = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8')).host;
 
 /* ---- build, with a public Razorpay key id, into our own directory.
    The committed .env carries no key id until the owner has one, and a
@@ -108,6 +116,19 @@ async function newContext(browser, { tok = null } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
   await ctx.route(SB + '/**', handle);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
+  /* THE CHECKOUT LOGO. billing.js passes Razorpay an absolute
+     `image` on the brand host, because checkout is their iframe on
+     their origin and a relative path would resolve to nothing. This
+     proof fakes every other external origin — Supabase, the fonts,
+     checkout.js — and the moment the logo was added and this route
+     was not, the (f) project-cap assertion began failing
+     deterministically: an unrouted request to the real brand host
+     goes out over the real network, and the 10s wait for the sync
+     status no longer fits around it. The failure surfaced three
+     sections away from its cause, which is what cost the time.
+     Fulfil it like the fonts: the bytes do not matter, only that
+     nothing leaves the machine. */
+  await ctx.route(new RegExp('https://' + BRAND_HOST.replace(/\./g, '\\.') + '/.*'), (r) => r.fulfill({ status: 200, contentType: 'image/png', body: '' }));
   await ctx.route('https://checkout.razorpay.com/v1/checkout.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: CHECKOUT_STUB }));
   await ctx.route(/https:\/\/checkout\.razorpay\.com\/__sign/, async (r) => {
     const order = new URL(r.request().url()).searchParams.get('order');
@@ -249,7 +270,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'purchases.html#tiers');   // the Tiers & grants tab
+    await page.goto(BASE + 'admin.html#tiers');   // inside the console's Purchases tab
     await page.waitForSelector('#tiers .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#tiers .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
@@ -278,9 +299,11 @@ try {
     allErrors.push(...errors); await ctx.close();
 
     const amy = await newContext(browser, { tok: 'tok-amy' });
-    // purchases.html is for administrators: a member who is not one gets the denied state and no tabs.
-    await amy.page.goto(BASE + 'purchases.html');
-    await amy.page.waitForSelector('#denied', { timeout: 15000 }).then(() => ok(true, 'a non-admin sees the denied state on purchases.html'), () => ok(false, 'a non-admin sees the denied state on purchases.html'));
+    // purchases.html is a stub now: it forwards to the console's Purchases tab, fragment kept.
+    await amy.page.goto(BASE + 'purchases.html#promos');
+    await amy.page.waitForURL(/admin(\.html)?\?tab=purchases#promos$/, { timeout: 10000 }).then(() => ok(true, 'purchases.html#promos forwards to admin.html#promos'), () => ok(false, 'purchases.html#promos forwards to admin.html#promos: ' + amy.page.url()));
+    // and the console is for administrators: a member who is not one gets the denied state and no tabs.
+    await amy.page.waitForSelector('#denied', { timeout: 15000 }).then(() => ok(true, 'a non-admin sees the denied state on the console'), () => ok(false, 'a non-admin sees the denied state on the console'));
     ok(!(await amy.page.$('#billing')) && !(await amy.page.$('#promos')), 'and none of the money sections are on the page');
     await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
@@ -419,7 +442,7 @@ try {
 
     // the console: list, add, deactivate — and the card obeys
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#promos');
+    await A.page.goto(BASE + 'admin.html#promos');
     await A.page.waitForSelector('#promos tr[data-promo="LAUNCH10"]', { timeout: 15000 }).then(() => ok(true, 'the console lists LAUNCH10'), () => ok(false, 'the console lists LAUNCH10'));
     ok(/10% off/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"]')) && /\b1\b/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"] td:nth-child(4)')), 'with its discount and one use');
     ok(/LAUNCH10 \(₹799\.90 off\)/.test(await A.page.textContent('#billing .ba-ledger')), 'the payments ledger shows the code on the discounted row');
@@ -535,7 +558,7 @@ try {
 
     // the console lists it and records the payout
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#growth');
+    await A.page.goto(BASE + 'admin.html#growth');
     await A.page.waitForSelector('#growth tr[data-credit]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists the credit'), () => ok(false, 'the Growth tab lists the credit'));
     ok(/amy@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')) && /ben@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')), 'naming referrer and friend');
     await A.page.check('#growth input[name="credit"]');
@@ -558,7 +581,7 @@ try {
   F.db.sessions.clear();
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#promos');
+    await A.page.goto(BASE + 'admin.html#promos');
     await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
     /* WAIT FOR THE LOAD TO SETTLE BEFORE TYPING. The section kicks off
        load() while it is being built, and load() calls rerender() twice
@@ -599,7 +622,7 @@ try {
 
     F.db.sessions.clear();
     const A2 = await newContext(browser, { tok: 'tok-admin' });
-    await A2.page.goto(BASE + 'purchases.html#growth');
+    await A2.page.goto(BASE + 'admin.html#growth');
     await A2.page.waitForSelector('#growth tr[data-affiliate="FESTDESK"]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists FESTDESK under Affiliates'), () => ok(false, 'the Growth tab lists FESTDESK under Affiliates'));
     const cells = await A2.page.$$eval('#growth tr[data-affiliate="FESTDESK"] td', (tds) => tds.map((t) => t.textContent));
     ok(cells[3] === '1' && cells[4] === '₹7,599.05' && cells[6] === '₹1,519.81', `one order, revenue net of the 5% (₹7,599.05), commission due ₹1,519.81: ${cells.slice(3, 7).join(' / ')}`);
@@ -635,7 +658,7 @@ try {
     // 2. the admin turns it on
     F.db.sessions.clear();
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'purchases.html#billing');
+    await A.page.goto(BASE + 'admin.html#billing');
     await A.page.waitForSelector('#baRefundSwitch', { timeout: 15000 });
     ok(!(await A.page.isChecked('#baRefundSwitch')), 'the console switch "Let customers request refunds from the Purchase page" reads OFF by default');
     await A.page.check('#baRefundSwitch');
@@ -872,6 +895,67 @@ try {
     await ad.page.waitForTimeout(1500);
     ok(!(await ad.page.$('.pg-lock.pg-wall')), 'nor anywhere else');
     allErrors.push(...ad.errors); await ad.ctx.close();
+  }
+
+  console.log('(p) purchases required: the switch (schema section 32)');
+  F.reset();
+  {
+    /* Amy is exactly the person the wall is for: a member on Free whose
+       trial ran out. With the switch OFF she is not walled, nothing on
+       screen offers to sell her anything, and purchase.html says there
+       is nothing to buy. */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    expireTrial(USERS['tok-amy'].id);
+    F.db.settings.purchase_required = false;
+    const purchaseRailHidden = (page) => page.evaluate(() => {
+      const a = document.querySelector('.sh-rail a.sh-rail-item[href="purchase.html"]');
+      return !a ? null : getComputedStyle(a).display === 'none';
+    });
+    const amy = await newContext(browser, { tok: 'tok-amy' });
+    await amy.page.goto(BASE + 'index.html');
+    ok(await waitGate(amy.page, 'open'), 'OFF: Amy is through the gate');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 })
+      .then(() => ok(true, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'), () => ok(false, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'));
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'OFF: an expired free member is NOT walled');
+    ok(!(await amy.page.$('.sh-trial')), 'OFF: no trial band');
+    const railOff = await purchaseRailHidden(amy.page);
+    if (railOff === null) skip('the rail has no Purchase entry on this page'); else ok(railOff, 'OFF: the rail’s Purchase entry is hidden');
+    await amy.page.goto(BASE + 'purchase.html');
+    await amy.page.waitForFunction(() => /free to use right now/.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
+    ok((await amy.page.textContent('#plan').catch(() => '')).includes('The studio is free to use right now \u2014 nothing to buy.'), 'OFF: purchase.html says "The studio is free to use right now — nothing to buy."');
+    ok(!(await amy.page.$('#plan .pl-card')), 'OFF: and shows no plan cards, so no checkout');
+    await amy.page.goto(BASE + 'settings.html');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 }).catch(() => {});
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('a[href="purchase.html"]')].every((a) => !a.offsetParent)),
+      'OFF: no visible link to purchase.html on Settings (the "Plan & purchases" row included)');
+
+    /* THE SWITCH REACHES AN OPEN TAB. The owner turns it on; Amy's
+       index.html has been open all along. Focus is what re-reads
+       billing_status() — no reload, no navigation. */
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 }).catch(() => {});
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), '(control) the open page is not walled before the switch');
+    F.db.settings.purchase_required = true;
+    await amy.page.waitForTimeout(5500);   // past plan-gate's focus throttle
+    await amy.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 })
+      .then(() => ok(true, 'ON + focus: the open page walls itself, with no reload'), () => ok(false, 'ON + focus: the open page walls itself, with no reload'));
+    ok(!(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-purchases'))), 'ON: data-purchases is gone, so buying is back on screen');
+    const railOn = await purchaseRailHidden(amy.page);
+    if (railOn === null) skip('the rail has no Purchase entry on this page'); else ok(!railOn, 'ON: the rail’s Purchase entry is visible again');
+    await amy.page.goto(BASE + 'purchase.html');
+    await amy.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
+    ok(!!(await amy.page.$('#plan .pl-card')), 'ON: purchase.html has the plan cards back');
+
+    /* AN OLDER DATABASE: no §32, so billing_status() carries no key.
+       The key has to be PRESENT to be believed — the studio is exactly
+       what it was before this section existed. */
+    delete F.db.settings.purchase_required;
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 })
+      .then(() => ok(true, 'NO KEY (§32 not run): the wall stands, as before'), () => ok(false, 'NO KEY (§32 not run): the wall stands, as before'));
+    ok(!(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-purchases'))), 'NO KEY: nothing is hidden');
+    allErrors.push(...amy.errors); await amy.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

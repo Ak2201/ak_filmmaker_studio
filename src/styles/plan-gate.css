@@ -135,3 +135,16 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .ai-gate.ai-pro p, .ai-gate.ai-pro strong { color: var(--ink); }
 .ai-gate.ai-pro p + p { color: var(--ink-body); }
 .ai-gate.ai-pro a { color: var(--accent-deep); text-underline-offset: 2px; font-weight: 600; }
+
+/* §32 — PURCHASES NOT REQUIRED. plan-gate.js sets data-purchases="off"
+   only when billing_status() said so; every control that offers to sell
+   something goes, wherever it was drawn: the rail's Purchase entry, the
+   lock card's SEE PLANS, the hub's and the dashboard's plan links,
+   Settings' "Plan & purchases" row. Hidden, not removed, so the switch
+   coming back on restores them on the next refresh with no re-render.
+   purchases.html (the administrators' money page) is a different file
+   and is not matched. */
+:root[data-purchases="off"] a[href^="purchase.html"],
+:root[data-purchases="off"] a[href^="../purchase.html"],
+:root[data-purchases="off"] .st-plan-link:has(> a[href^="purchase.html"]),
+:root[data-purchases="off"] .db-tile:has(> a.db-tile-go[href^="purchase.html"]) { display: none !important; }

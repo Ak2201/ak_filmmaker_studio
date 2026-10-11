@@ -71,7 +71,7 @@ export function planFeaturesSection(section, st) {
     h('button.btn.primary', { type: 'submit', text: 'SAVE FEATURES' }),
     S.saved ? h('span.ba-saved', { role: 'status', text: S.saved }) : null
   ].filter(Boolean)));
-  form.append(h('p.gt-meta', { text: 'Sample only is off unless ticked; everything else is on unless unticked. Saved per plan, live for everyone on it at their next page load.' }));
+  form.append(h('p.gt-meta', { text: 'Live for everyone on the plan at their next page load.' }));
   sec.append(form);
   return sec;
 }

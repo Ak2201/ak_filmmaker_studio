@@ -94,4 +94,13 @@ export async function priceNotice() {
   try { return await rpc('price_notice', {}); } catch (e) { return null; }
 }
 
-export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice };
+/** §32's purchases_required(): true, false, or null when it is not
+ *  known (unconfigured, offline, or a database that has not run §32).
+ *  NEVER THROWS, and null means "as before": the page's pricing, which
+ *  is in the markup, stands. Only an explicit false hides it. */
+export async function purchasesRequired() {
+  if (!configured()) return null;
+  try { const v = await rpc('purchases_required', {}); return typeof v === 'boolean' ? v : null; } catch (e) { return null; }
+}
+
+export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired };

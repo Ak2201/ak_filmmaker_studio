@@ -78,7 +78,7 @@ async function load() {
   }
 }
 
-/* `part` splits the one section into the three tabs purchases.html shows:
+/* `part` splits the one section into three blocks of the console's Purchases tab:
    'payments' (the money, refund requests, the ledger — id #billing, so
    every selector that named it still lands), 'promos' (#promos) and
    'tiers' (the tiers and the grant form, #tiers). With no `part` it is
@@ -100,12 +100,13 @@ export function billingAdminSection(section, st, { part } = {}) {
   if (want('payments')) {
   const o = S.overview;
   const by = o.active_by_plan || {};
-  const grid = h('div.ba-grid');
-  const stat = (v, l) => grid.append(h('div.ba-stat', {}, [h('strong', { text: v }), h('span', { text: l })]));
+  /* The console's one stat tile (admin.css .ad-stat), not a second kind. */
+  const grid = h('div.ad-stats.ba-grid');
+  const stat = (v, l, sub) => grid.append(h('div.ad-stat', {}, [h('span.ad-stat-n', { text: v }), h('span.ad-stat-l', { text: l }), sub ? h('span.ad-stat-sub', { text: sub }) : null].filter(Boolean)));
   stat(fmtPaise(o.paid_30d_paise || 0), 'paid, last 30 days');
   stat(fmtPaise(o.paid_total_paise || 0), 'paid, all time');
   stat(String(o.payments_30d || 0), 'payments, 30 days');
-  stat(['starter', 'indie', 'pro'].map((p) => `${by[p] || 0} ${planName(p)}`).join(' · '), 'organisations on a paid plan');
+  stat(String(['starter', 'indie', 'pro'].reduce((t, p) => t + (by[p] || 0), 0)), 'on a paid plan', ['starter', 'indie', 'pro'].map((p) => `${by[p] || 0} ${planName(p)}`).join(' · '));
   stat(String(S.payments.filter((p) => p.status === 'granted').length), 'granted by hand');
   stat(String(o.refunds || 0), 'refunds');
   sec.append(grid);
@@ -113,7 +114,7 @@ export function billingAdminSection(section, st, { part } = {}) {
 
   // The plans
   if (want('tiers')) {
-  sec.append(h('h3.gt-h3', { text: 'Tiers' }));
+  sec.append(h('h3.gt-h3', { text: 'Plans & prices' }));
   const list = h('div.ba-plans');
   for (const p of S.plans) {
     const form = h('form.ba-plan', { 'data-ba-form': 'plan', 'data-plan': p.id });
@@ -149,7 +150,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     list.append(form);
   }
   sec.append(list);
-  sec.append(h('p.gt-meta', { text: 'A blank limit means unlimited. The price is paid once and buys the tier for good; it is in rupees, stored to the paisa, and the free tier has none by rule.' }));
+  sec.append(h('p.gt-meta', { text: 'Price in ₹, paid once, for good. A blank limit is unlimited.' }));
   }
 
   // Promo codes (section 20)
@@ -214,7 +215,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     pf.append(h('div.ba-promo-plans', {}, [h('span.gt-meta', { text: 'Applies to:' }), ...paid.map((p) => h('label', {}, [
       h('input', { type: 'checkbox', name: 'plan', value: p.id, checked: true }), h('span', { text: p.name || planName(p.id) })]))]));
     pf.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'ADD CODE' }), S.promoMade ? h('span.ba-saved', { role: 'status', text: S.promoMade }) : null].filter(Boolean)));
-    pf.append(h('p.gt-meta', { text: 'A code is counted as used when a payment with it is confirmed, not when a checkout is opened. The discounted price never drops below ₹1, which is Razorpay’s minimum — a 100% code costs the buyer ₹1; to give a plan away, use a grant below. Codes are checked by the server on every quote and every order.' }));
+    pf.append(h('p.gt-meta', { text: 'Counted when a payment confirms. Never below ₹1 — to give a plan away, grant it.' }));
     sec.append(pf);
   }
   }
@@ -232,12 +233,9 @@ export function billingAdminSection(section, st, { part } = {}) {
     h('div.ba-field.is-wide', {}, [h('label', { for: 'baGrantNote', text: 'Why (bank transfer, comp…)' }), h('input', { id: 'baGrantNote', name: 'note', type: 'text', maxlength: 300 })])
   ]));
   g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT' }), S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
-  g.append(h('p.gt-meta', { text: 'A grant puts the member’s organisation on that plan for good and admits a non-member. It is recorded as a ₹0 payment.' }));
+  g.append(h('p.gt-meta', { text: 'For good; admits a non-member; recorded as a ₹0 payment.' }));
   sec.append(g);
   }
-
-  // Refund requests (schema section 27)
-  if (want('payments') && S.rreqs) sec.append(refundBlock());
 
   // Ledger
   if (want('payments')) {
@@ -268,7 +266,9 @@ export function billingAdminSection(section, st, { part } = {}) {
     sec.append(h('div.gt-scroll', {}, [table]));
   }
   }
-  sec.append(h('button.btn', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
+  // Refund requests (schema section 27), after the ledger they refer to
+  if (want('payments') && S.rreqs) sec.append(refundBlock());
+  if (want('payments')) sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
 
@@ -281,7 +281,7 @@ function refundBlock() {
     h('input', { id: 'baRefundSwitch', type: 'checkbox', 'data-ba-action': 'refund-switch', checked: S.rrEnabled, disabled: S.rrBusy }),
     h('span', { text: 'Let customers request refunds from the Purchase page' })
   ]));
-  box.append(h('p.gt-meta', { text: 'Off by default. When on, a member with a captured, unrefunded payment sees “Request a refund” under their plan. It only files a request; nothing is refunded until you approve it here. refund.html is the policy: purchases are final except a duplicate charge, a charge not delivered, or where the law requires.' }));
+  box.append(h('p.gt-meta', { text: 'A request refunds nothing until you approve it. Policy: refund.html.' }));
   if (!S.rreqs.length) { box.append(h('p.gt-meta', { text: 'No requests yet.' })); return box; }
   const table = h('table.gt-table.rf-requests');
   table.append(h('thead', {}, [h('tr', {}, ['When', 'Who', 'Payment', 'Why', 'State', ''].map((t) => h('th', { scope: 'col', text: t })))]));
@@ -310,6 +310,8 @@ const refundToast = (out) => toast(out.status === 'processed'
   : `Refund of ${fmtPaise(out.amount_paise)} sent to Razorpay for ${out.email || 'the customer'}. It is pending; their plan ends when Razorpay confirms.`, 'success');
 
 export function wireBillingAdmin(render) { rerender = render || (() => {}); }
+/** What the console's Overview reads: the money, once loaded. Null until then. */
+export function billingSnapshot() { return S.loaded ? { overview: S.overview || {}, payments: S.payments } : null; }
 
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
 

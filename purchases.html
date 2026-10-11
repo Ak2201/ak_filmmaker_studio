@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-volume="studio">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Purchases · {{brand:name}}</title>
-<meta name="description" content="Every payment, refund, invoice, promo code and tier, for administrators.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moved — {{brand:name}}</title>
+<meta name="description" content="Moved: purchases are now the Purchases tab of the console.">
 <meta name="robots" content="noindex, nofollow">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Catamaran:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<!-- The administrators' purchases page is the Purchases tab of the
+     console now. src/pages/moved.js keeps the fragment, so
+     purchases.html#promos lands on admin.html#promos, inside that tab;
+     without scripts the refresh below lands on the tab. -->
+<meta name="fms-moved" content="admin.html#purchases">
+<link vite-ignore rel="canonical" href="./admin.html#purchases">
+<noscript><meta http-equiv="refresh" content="0; url=./admin.html#purchases"></noscript>
+<script type="module" src="/src/pages/moved.js"></script>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 </head>
 <body>
-<div id="app"></div>
-<script type="module" src="/src/pages/purchases.js"></script>
+<p>Purchases moved into the <a href="./admin.html#purchases">console</a>.</p>
 </body>
 </html>

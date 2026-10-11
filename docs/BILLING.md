@@ -689,7 +689,76 @@ server locks out the people who have paid, and `npm run verify` loads all
 §26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
 each verified afterwards over PostgREST rather than from the screen.
 
+**§32 is NOT run live** — see §13 below; it is the next owner step.
+
 **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
 §30's refusal sentences carry em-dashes and `₹`, so that mojibake would
 have reached buyers. Base64 the section, decode it in the page, set the
 Monaco model, then SHA-256 the editor against the file before Run.
+
+## 13. Purchases required, and access by e-mail (schema §32, 11 Oct 2026). NOT RUN LIVE.
+
+**The owner's decisions.** The studio is free to use right now: nothing to
+buy, nothing walled, nothing capped. One console switch, **Purchases
+required** (admin.html → Purchases tab), turns buying on; from then on
+everyone who has neither paid nor a running trial meets the §30 wall —
+people mid-session too, because `plan-gate.js` re-reads `billing_status()`
+on window focus / visibility (throttled to 5s) and every 4 minutes. And the
+console can **give access by e-mail** (admin.html → Give access): Member or
+Admin, a plan from the plans table or none, "Until I remove it" (default) or
+N days; applied at once if the address has a confirmed account, otherwise at
+its first sign-in; a granted address passes the invite gate with no code.
+
+**What §32 contains.**
+
+| Object | What it does |
+| --- | --- |
+| `billing_settings.purchase_required` | boolean, **default false** — running §32 turns purchasing OFF on the live project. That is the decision. |
+| `purchases_required()` | anon + authenticated; the landing page reads it with plain `fetch` (no SDK) |
+| `user_limits()` (restated) | `'{}'` while off, so the three P0402 triggers stand down |
+| `open_features()` | internal; the top paid plan's `features`, chosen by `plan_rank()` |
+| `billing_status()` (restated in full from §30.6) | every key kept, plus `purchase_required`; off ⇒ `entitled` true and `features` = `open_features()` |
+| `admin_set_billing_settings()` (restated from §30.9) | accepts `purchase_required`, JSON boolean only |
+| `email_grants` | one row per address, RLS on, no policy, no client grants |
+| `apply_email_grant()` / `undo_email_grant()` | internal; membership + role + the plan via `account_for_buyer()` → `apply_plan()` (the `admin_grant_plan` path); records what it changed |
+| trigger `email_grants_on_user` on `auth.users` | applies a pending grant at sign-up / confirmation; never fails a sign-up |
+| `studio_status()` (restated, now plpgsql/volatile) | claims a pending grant first, then the §14.2 answer unchanged |
+| `admin_grant_email(email, role, plan, days, note)`, `admin_revoke_email_grant(email)`, `admin_list_email_grants()` | admin-only (`is_studio_admin()`, 42501 otherwise) |
+
+**Rules worth holding.** A grant writes no `payments` row (that would make
+`start_trial()` answer `paid`). Matching needs a CONFIRMED address. A timed
+grant is not laid over a plan the person bought (its lapse would end the
+purchase too). Revoke restores the prior plan only if nothing was paid
+since, demotes an admin it made, and DISABLES a membership the grant itself
+created (not deleted — a deleted row would hand out a fresh trial).
+
+**The client.** `plan-gate.js` publishes the flag only when the key is
+PRESENT; while it is `false`, `html[data-purchases="off"]` hides every
+`a[href^="purchase.html"]` (the rail's Purchase entry, Settings' "Plan &
+purchases", the dashboard's plan tile, lock-card and hub links), the trial
+band does not draw (reason `free`), and purchase.html says *"The studio is
+free to use right now — nothing to buy."* start.html hides its price list
+on an explicit `false` from the anon call. A database without §32 sends no
+key and nothing changes. Signed-out purchase.html does NOT ask (verify
+loads it signed out; its words must not depend on a live database).
+
+**Proved.** `test:schema` (`scripts/schema-tests/purchases.sql`, run after
+§32 loads — the schema test now loads in three phases so the §30 checks
+still describe the switched-on database), `prove:billing` (p),
+`prove:gate` (m2), `prove:growth` (start.html off). The fake defaults the
+switch ON so every older proof still asserts the wall.
+
+### Deploy (owner)
+
+1. Run **§32** (from `-- 32. PURCHASES REQUIRED` to the end of
+   `supabase-schema.sql`) in the dashboard SQL editor, the documented way:
+   base64 the section → decode in the page → set the Monaco model →
+   SHA-256 the editor's contents against the file → Run.
+2. Confirm over PostgREST: `rpc/purchases_required` with the anon key
+   returns `false`; `rpc/admin_list_email_grants` with the anon key returns
+   42501 (exists, refuses).
+3. If the trigger on `auth.users` is refused (owner privileges), the grant
+   still applies at first sign-in through `studio_status()`; record it.
+4. Until §32 runs the site behaves exactly as today, because the key is
+   absent and the client keeps its current rules.
+

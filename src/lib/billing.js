@@ -164,6 +164,19 @@ export async function buy(planId, period = 'lifetime', { accountId = null, onSta
       currency: order.currency || 'INR',
       order_id: order.order_id,
       name: BRAND.name,
+      /* THE MARK ON THE PAYMENT FORM. Checkout is Razorpay's own
+         iframe on THEIR origin, so this has to be an absolute,
+         publicly reachable URL — a relative path or a localhost one
+         resolves to nothing and the form just draws without a logo,
+         silently. That silence is why it was missing: nothing errors,
+         the payment works, and the only symptom is a buyer handing
+         over money to a form with no name on it.
+
+         Built from BRAND.host rather than written out, so it follows
+         a domain move with everything else instead of becoming one
+         more place the old address survives. 192px square is what
+         Razorpay draws it at. */
+      image: `https://${BRAND.host}/icons/icon-192.png`,
       description: `${order.plan_name || planName(planId)} · full access, one payment${order.promo_code ? ' · code ' + order.promo_code : ''}`,
       prefill: order.prefill || {},
       notes: { plan: planId, period, promo_code: order.promo_code || '' },

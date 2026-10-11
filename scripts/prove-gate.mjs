@@ -263,7 +263,7 @@ try {
     allErrors.push(...errors);
 
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#admin-console');   // the Access tab (src/ui/tabs.js)
+    await A.page.goto(BASE + 'admin.html#admin-console');   // inside the Requests tab (src/ui/tabs.js)
     await A.page.waitForSelector('#admin-console .gt-requests', { timeout: 10000 });
     const con = await A.page.textContent('#admin-console');
     ok(/Invite requests \(1 waiting\)/.test(con) && con.includes('cal@example.com') && con.includes('Amy sent me'), 'the console lists the request with who, the note and when');
@@ -358,13 +358,16 @@ try {
     });
     const text = await A.page.textContent('#main');
     const d = { users: Object.keys(USERS).length, members: [...F.db.members.values()].filter((m) => !m.disabled_at).length };
-    ok(new RegExp(`${d.users}\\s*Signed in, ever`).test(text.replace(/\s+/g, ' ')), `"Signed in, ever" counts ${d.users} (auth.users)`);
-    ok(new RegExp(`${d.members}\\s*Through the gate`).test(text.replace(/\s+/g, ' ')), `"Through the gate" counts ${d.members} members`);
-    ok(/1\s*Organisations/.test(text.replace(/\s+/g, ' ')) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is listed with its owner, seats and films');
+    const flat = text.replace(/\s+/g, ' ');
+    ok(new RegExp(`${d.users} signed in`).test(flat), `the meta line counts ${d.users} signed in (auth.users)`);
+    ok(new RegExp(`${d.members}\\s*Members`).test(flat), `the Members tile counts ${d.members} members`);
+    ok((await A.page.$$('#overview .ad-stats .ad-stat')).length === 6, 'Overview is one row of six tiles');
+    ok(/1 organisation\b/.test(flat) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is counted, and listed with its owner, seats and films');
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Purchases,Features', 'the console is six tabs (money moved to purchases.html), Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,People,Requests,Purchases,Growth', 'the console is five tabs, Overview selected: ' + tabs.join(', '));
+    ok(!!(await A.page.$('#purchases #billing')) && !!(await A.page.$('#purchases #promos')) && !!(await A.page.$('#people #giveAccess')) && !!(await A.page.$('#requests #admin-console')), 'each block sits in its tab (payments and promos under Purchases, Give access under People, the queue under Requests)');
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
     ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');
@@ -376,6 +379,98 @@ try {
     await N.page.goto(BASE + 'admin.html');
     await N.page.waitForSelector('#denied', { timeout: 10000 }).then(() => ok(true, 'a member who is not an admin gets "Administrators only"'), () => ok(false, 'a member who is not an admin gets "Administrators only"'));
     ok(!(await N.page.$('#overview')), 'and no numbers');
+    allErrors.push(...N.errors); await N.ctx.close();
+  }
+
+  console.log('(m2) give access by e-mail, and the purchases switch (schema section 32)');
+  F.db.sessions.clear();
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    const dlgButton = (primary) => A.page.click(primary ? '.dlg .mbtn.primary' : '.dlg .mbtn:not(.primary)');
+    await A.page.goto(BASE + 'admin.html#give-access');   // inside the People tab
+    await A.page.waitForSelector('#giveAccess form[data-acc-form="grant"]', { timeout: 10000 })
+      .then(() => ok(true, 'the Give access tab draws the form'), () => ok(false, 'the Give access tab draws the form'));
+    const planOpts = await A.page.$$eval('#accPlan option', (o) => o.map((x) => x.value));
+    ok(planOpts.join() === ',starter,indie,pro', 'the plan list is the plans table (paid tiers) plus "no plan": ' + planOpts.join());
+    ok((await A.page.$$eval('#accRole option', (o) => o.map((x) => x.textContent))).join() === 'Member,Admin', 'the role is Member or Admin');
+    ok((await A.page.$$eval('#accLength option', (o) => o.map((x) => x.textContent))).join() === 'Until I remove it,For a number of days', 'the length: until removed (first, the default) or N days');
+
+    // An EXISTING account: Cal. As an admin, on Pro, until removed — applied now.
+    const cal = USERS['tok-cal'];
+    const calWas = F.db.members.get(cal.id) ? { ...F.db.members.get(cal.id) } : null;
+    await A.page.fill('#accEmail', cal.email);
+    await A.page.selectOption('#accRole', 'admin');
+    await A.page.selectOption('#accPlan', 'pro');
+    await A.page.click('#giveAccess button[type="submit"]');
+    await A.page.waitForSelector(`#giveAccess tr[data-grant="${cal.email}"]`, { timeout: 8000 }).catch(() => {});
+    const row = await A.page.textContent(`#giveAccess tr[data-grant="${cal.email}"]`).catch(() => '');
+    ok(/Admin/.test(row) && /Pro/.test(row) && /Until removed/.test(row) && /Yes/.test(row), 'the grant is listed: Admin · Pro · Until removed · applied: ' + row.replace(/\s+/g, ' ').trim());
+    ok(F.db.members.get(cal.id)?.role === 'admin' && !F.db.members.get(cal.id)?.disabled_at, 'and applied at once: Cal is an admin member');
+    const calAcc = () => F.db.accounts.find((a) => a.owner_id === cal.id);
+    ok(calAcc() && calAcc().plan === 'pro', 'with Pro on Cal’s organisation');
+
+    // An address with no account yet, for 30 days: it waits for the first sign-in.
+    await A.page.fill('#accEmail', 'new.person@example.com');
+    await A.page.selectOption('#accRole', 'member');
+    await A.page.selectOption('#accPlan', 'starter');
+    await A.page.selectOption('#accLength', 'days');
+    await A.page.fill('#accDays', '30');
+    await A.page.click('#giveAccess button[type="submit"]');
+    await A.page.waitForSelector('#giveAccess tr[data-grant="new.person@example.com"]', { timeout: 8000 }).catch(() => {});
+    const row2 = await A.page.textContent('#giveAccess tr[data-grant="new.person@example.com"]').catch(() => '');
+    ok(/Member/.test(row2) && /Basic/.test(row2) && /At first sign-in/.test(row2) && !/Until removed/.test(row2), 'a grant for an address with no account waits, with an end date: ' + row2.replace(/\s+/g, ' ').trim());
+    const g2 = F.db.emailGrants.get('new.person@example.com');
+    ok(!!g2 && Math.abs(Date.parse(g2.until) - (Date.now() + 30 * 86400e3)) < 120e3, 'the length went to the server as 30 days');
+
+    // A bad address is refused before it is sent.
+    const before = F.db.calls.filter((c) => c === 'admin_grant_email').length;
+    await A.page.fill('#accEmail', 'not-an-address');
+    await A.page.evaluate(() => document.querySelector('#giveAccess form').requestSubmit());
+    await A.page.waitForTimeout(300);
+    ok(F.db.calls.filter((c) => c === 'admin_grant_email').length === before, 'a malformed address is refused in the browser, nothing sent');
+
+    // Revoke goes through dialog.js. Cancel first: nothing changes.
+    await A.page.click(`#giveAccess button[data-acc-action="revoke"][data-email="${cal.email}"]`);
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    ok(/Revoke access for cal@example\.com\?/.test(await A.page.textContent('.dlg').catch(() => '')), 'REVOKE asks first, in the app’s own dialog');
+    await dlgButton(false);
+    await A.page.waitForTimeout(300);
+    ok(F.db.emailGrants.has(cal.email) && F.db.members.get(cal.id)?.role === 'admin', 'Cancel revokes nothing');
+    await A.page.click(`#giveAccess button[data-acc-action="revoke"][data-email="${cal.email}"]`);
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    await dlgButton(true);
+    await A.page.waitForFunction((e) => !document.querySelector(`#giveAccess tr[data-grant="${e}"]`), cal.email, { timeout: 8000 }).catch(() => {});
+    ok(!(await A.page.$(`#giveAccess tr[data-grant="${cal.email}"]`)) && !F.db.emailGrants.has(cal.email), 'Revoke removes the grant from the list and the server');
+    ok(F.db.members.get(cal.id)?.role === (calWas ? calWas.role : 'user'), 'and the admin role it gave is taken back');
+    ok(calAcc() && calAcc().plan !== 'pro', 'and the plan it gave');
+
+    // The switch, on the Purchases tab. The fake starts ON (see fake-supabase.mjs).
+    await A.page.goto(BASE + 'admin.html#purchases');
+    await A.page.waitForSelector('#accPurchasesOn', { timeout: 10000 })
+      .then(() => ok(true, 'the Purchases tab carries the "Purchases required" switch'), () => ok(false, 'the Purchases tab carries the "Purchases required" switch'));
+    ok(await A.page.isChecked('#accPurchasesOn'), 'reading the server’s position (on)');
+    await A.page.click('#accPurchasesOn');
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    const dtext = await A.page.textContent('.dlg').catch(() => '');
+    ok(/On: everyone who has not bought a plan is blocked until they buy, including people using the studio now\./.test(dtext)
+       && /Off: the studio is free; nothing is walled or capped\./.test(dtext), 'the confirm says what EACH position means');
+    await dlgButton(false);
+    await A.page.waitForTimeout(300);
+    ok(F.db.settings.purchase_required === true && await A.page.isChecked('#accPurchasesOn'), 'Cancel: nothing saved, the box springs back');
+    await A.page.click('#accPurchasesOn');
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    await dlgButton(true);
+    await A.page.waitForFunction(() => /^Off:/.test((document.querySelector('[data-acc-state]') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.purchase_required === false, 'Confirm: purchase_required is saved false through admin_set_billing_settings');
+    ok(!(await A.page.isChecked('#accPurchasesOn')) && (await A.page.getAttribute('[data-acc-state]', 'data-acc-state')) === 'off', 'and the block now reads Off');
+    F.db.settings.purchase_required = true;   // the later sections assume the fake's default
+    F.db.emailGrants.clear();
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    const N = await newContext(browser, { tok: 'tok-amy' });   // not an admin: the RPCs refuse
+    await N.page.goto(BASE + 'admin.html');
+    await N.page.waitForSelector('#denied', { timeout: 10000 }).catch(() => {});
+    ok(!(await N.page.$('#giveAccess')) && !(await N.page.$('#accPurchasesOn')), 'a non-admin sees neither block');
     allErrors.push(...N.errors); await N.ctx.close();
   }
 
@@ -729,6 +824,92 @@ try {
     });
     ok(!!band && band.shown, 'the invite band is shown ([data-invite-band] or #inviteBand): ' + JSON.stringify(band));
     allErrors.push(...errs, ...perrs); await ctx.close();
+  }
+
+  console.log('(p) optimistic admission: a passed tab paints at once');
+  F.reset(); F.db.sessions.clear();
+  {
+    /* The Supabase origin answers SLOWLY here (1.2s a call), which is what
+       a real network does and what makes "waited for cloud:booted"
+       measurable. A recorder in the page notes, against navigation start,
+       when the veil lifted and when main first had content. */
+    const DELAY = 1200;
+    const slowCtx = async (tok, seedPass) => {
+      const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
+      await ctx.route(SB + '/**', async (r) => { await new Promise((x) => setTimeout(x, DELAY)); return handle(r); });
+      await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
+      await ctx.addInitScript(([k, v, uid, pass]) => {
+        if (k && !sessionStorage.getItem('__seeded')) {
+          localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid);
+          sessionStorage.setItem('__seeded', '1');
+        }
+        if (pass && !sessionStorage.getItem('__passSeeded')) { sessionStorage.setItem('fms_sitegate_pass', '1'); sessionStorage.setItem('__passSeeded', '1'); }
+        window.__t = { veil: null, content: null, boot: null };
+        const tick = () => {
+          const de = document.documentElement; if (!de) return requestAnimationFrame(tick);
+          const t = performance.now();
+          if (window.__t.veil == null && de.dataset.sitegate !== 'pending' && (window.__t.seen || window.StudioCloud)) window.__t.veil = t;
+          if (de.dataset.sitegate === 'pending') window.__t.seen = true;
+          const m = document.querySelector('main');
+          { const mm = document.querySelector('main'); if (window.StudioCloud && !/start|invite/.test(location.pathname) && de.dataset.sitegate == null && mm && (mm.textContent || '').trim().length > 20) { try { sessionStorage.setItem('__leak', '1'); } catch (e) { /* ignore */ } } }
+          if (window.__t.content == null && de.dataset.sitegate == null && m && (m.textContent || '').trim().length > 20) window.__t.content = t;
+          if (window.__t.boot == null && window.StudioCloud && window.StudioCloud.isBooted && window.StudioCloud.isBooted()) window.__t.boot = t;
+          if (window.__t.content == null) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, [tok ? `sb-${REF}-auth-token` : null, tok ? sessionFor(tok) : null, tok ? USERS[tok].id : null, seedPass]);
+      const page = await ctx.newPage();
+      return { ctx, page };
+    };
+    const times = (page) => page.evaluate(() => ({ ...window.__t, now: performance.now(), sg: document.documentElement.dataset.sitegate || '' }));
+
+    // 1. a member whose tab has not passed yet: the first page waits for the gate (veil up, > the network delay)
+    const M = await slowCtx('tok-admin', false);
+    await M.page.goto(BASE + 'index.html');
+    await M.page.waitForTimeout(300);
+    ok((await times(M.page)).sg === 'pending', 'a tab that has not passed yet is still veiled while the gate is unanswered');
+    await M.page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 15000 });
+    const t0 = await times(M.page);
+    ok(t0.veil > DELAY * 0.8, `first page: the veil lifts only after the gate answers (${Math.round(t0.veil)}ms)`);
+    console.log(`    timing index.html (first, not passed): veil ${Math.round(t0.veil)}ms, content ${Math.round(t0.content || -1)}ms`);
+    // 2. later pages in the same, now passed, tab
+    for (const p of ['admin.html', 'purchase.html', 'story.html']) {
+      await M.page.goto(BASE + p);
+      await M.page.waitForFunction(() => window.__t && window.__t.content != null, null, { timeout: 15000 }).catch(() => {});
+      const t = await times(M.page);
+      console.log(`    timing ${p} (passed tab): veil ${Math.round(t.veil)}ms, content ${Math.round(t.content || -1)}ms, booted ${t.boot == null ? 'not yet' : Math.round(t.boot) + 'ms'}`);
+      ok(t.veil != null && t.veil < 1000, `${p} in a passed tab: veil lifted in ${Math.round(t.veil)}ms, under 1000ms (the network answers in ${DELAY}ms)`);
+      ok(t.boot == null || t.veil < t.boot, `${p}: and before cloud:booted (did not wait for it)`);
+      ok(M.page.url().endsWith('/' + p), `${p}: and stays on it`);
+    }
+    await M.ctx.close();
+
+    // 3. a fresh tab (nothing passed): veiled, and a stranger is still redirected
+    const S = await slowCtx(null, false);
+    await S.page.goto(BASE + 'breakdown.html');
+    await S.page.waitForTimeout(200);
+    ok(await urlBecomes(S.page, /start\.html/, 15000), 'a stranger (nothing passed, no session) is still sent to start.html');
+    ok(await S.page.evaluate(() => sessionStorage.getItem('__leak')) == null, 'and never saw the page content first');
+    await S.ctx.close();
+
+    // 4. a pass flag alone is not enough: no stored session and no code means no optimism
+    const P = await slowCtx(null, true);
+    await P.page.goto(BASE + 'breakdown.html');
+    await P.page.waitForTimeout(200);
+    ok(await urlBecomes(P.page, /start\.html/, 15000), 'a pass flag with no stored session and no code is still sent away');
+    ok(await P.page.evaluate(() => sessionStorage.getItem('__leak')) == null, 'and never saw the page content first (no optimism on a flag alone)');
+    await P.ctx.close();
+
+    // 5. a background deny after optimistic admission still redirects
+    F.db.sessions.clear();
+    const D = await slowCtx('tok-dan', true);   // dan is not a member; the tab claims a pass
+    await D.page.goto(BASE + 'breakdown.html');
+    await D.page.waitForTimeout(250);
+    const td = await times(D.page);
+    ok(td.sg === '' && /breakdown\.html/.test(D.page.url()), 'a passed tab with a stored session is admitted before the verdict');
+    ok(await urlBecomes(D.page, /invite\.html|start\.html/, 15000), 'and the verdict, a deny, still redirects it: ' + D.page.url());
+    ok(await D.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'and the pass is cleared');
+    await D.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

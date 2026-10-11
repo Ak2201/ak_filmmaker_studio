@@ -82,6 +82,10 @@
 }
 .bdo-table th { color: var(--ink-muted); font-weight: 600; white-space: nowrap; }
 .bdo-table tbody tr:last-child td { border-bottom: 0; }
+/* A scroll box, not a squeeze: without a floor the cast and location
+   cells broke "Engineering" mid-word and made every row tall. */
+.bdo-table td { min-width: 7.5rem; }
+.bdo-table td.bdo-num { min-width: 0; }
 .bdo-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bdo-name { font-weight: 600; }
 .bdo-totals { margin: 0; }

@@ -1525,6 +1525,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   position: absolute;
   top: var(--s3);
   right: var(--s3);
+  z-index: 2;   /* above .pc-format, which paints later at z 1 and covered the buttons */
   display: flex;
   gap: var(--s1);
   opacity: 0;

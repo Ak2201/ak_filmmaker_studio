@@ -304,13 +304,21 @@ function preprodTools() {
 /* Production and post are COUNTS rather than checklists: one row per
    scene is the honest unit, and twelve checks of "scene 4 is shot"
    would say the same thing less readably. */
+function noteShot(scenes, total) {
+  const shot = scenes.filter((s) => s.shotState === 'shot').length;
+  const dropped = scenes.filter((s) => s.shotState === 'dropped').length;
+  return shot + ' of ' + plural(total, 'scene') + ' shot' + (dropped ? ' · ' + dropped + ' dropped' : '');
+}
 function productionTools(ctx) {
   const o = shootOverall(ctx.scenes);
   return {
     done: o.done, total: o.scenes,
     next: o.scenes ? { label: 'Mark today’s scenes on the shoot day', href: 'shoot.html' }
                    : { label: 'Add scenes to shoot', href: 'breakdown.html#scenes' },
-    note: o.scenes ? o.done + ' of ' + plural(o.scenes, 'scene') + ' shot' : 'No scenes yet'
+    /* `done` is settled (shot or dropped) — the right meter — but the note
+       says what was SHOT, and dropped scenes separately, as the stage card
+       does; a dropped scene is not a shot one. */
+    note: o.scenes ? noteShot(ctx.scenes, o.scenes) : 'No scenes yet'
   };
 }
 

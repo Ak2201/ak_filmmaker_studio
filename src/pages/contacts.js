@@ -800,6 +800,10 @@ function factsOf(sheet, scenes) {
     wrap: sheet.wrap,
     location: sheet.location || (places[0] ? places[0].name : ''),
     mapUrl,
+    /* The pin can belong to a LATER place on the sheet (the first with
+       coordinates or an address); name it when it is not the place the
+       Location line gives, or the crew is sent to the wrong set. */
+    mapPlace: first && !sheet.location && places[0] && first.name !== places[0].name ? first.name : '',
     light: lit ? { ...lit.light, fallback: lit.place.fallback } : null,
     scenes: onSheet.map((s) => ({ number: s.number, slug: slugOf(s), pages: formatEighths(s.eighths) })),
     pagesTotal: formatEighths(eighths),

@@ -209,69 +209,6 @@ const ANCHORS = {
 };
 
 // ------------------------------------------------------------
-// SEARCH INDEX — derived, never hand-written.
-// ------------------------------------------------------------
-const SEARCH_INDEX = [
-  ...FEATURE_STEPS.map(s => ({
-    kind: 'feature',
-    label: `${s.num} · ${title(s.titlePlain || s.title)}`,
-    snippet: `${stageName('feature', s)} · ${clip(s.deck)}`,
-    url: `${FEATURE_URL}#${s.id}`
-  })),
-  ...ANCHORS.feature.map(a => ({
-    kind: 'feature', label: a.label, snippet: a.snippet, url: FEATURE_URL + a.hash
-  })),
-  ...SHORT_STEPS.map(s => ({
-    kind: 'shorts',
-    label: `${s.num} · ${title(s.titlePlain || s.title)}`,
-    snippet: `${stageName('short', s)} · ${clip(s.deck)}`,
-    url: `${SHORT_URL}#${s.id}`
-  })),
-  ...(shortData.beats || []).map(b => ({
-    kind: 'shorts',
-    label: `Beat ${b.num} · ${b.name}`,
-    snippet: `${b.positionLabel || ''} ${clip(b.description || b.summary)}`.trim(),
-    url: `${SHORT_URL}#step-04`
-  })),
-  ...ANCHORS.shorts.map(a => ({
-    kind: 'shorts', label: a.label, snippet: a.snippet, url: SHORT_URL + a.hash
-  })),
-  ...films.map(f => ({
-    kind: 'library',
-    label: `${f.title} (${f.year})`,
-    snippet: `${f.director} · ${clip(f.lesson)}`,
-    url: `${LIBRARY_URL}#films`
-  })),
-  ...directors.map(d => ({
-    kind: 'library',
-    label: d.name,
-    snippet: `${d.archetype} · ${clip(d.signature)}`,
-    url: `${LIBRARY_URL}#directors`
-  })),
-  ...rules.map(r => ({
-    kind: 'library',
-    label: `Rule ${r.n} · ${clip(r.text, 48)}`,
-    snippet: `${plain(r.text)} — ${r.attribution}`,
-    url: `${LIBRARY_URL}#rules`
-  })),
-  ...watchlist.map(w => ({
-    kind: 'library',
-    label: `Watch list · ${plain(w.heading)}`,
-    snippet: `${w.label} · ${w.films.map(f => f.title).join(' · ')}`,
-    url: `${LIBRARY_URL}#watch`
-  })),
-  ...(festivals.festivals || []).map(f => ({
-    kind: 'shorts',
-    label: f.name,
-    snippet: `Tier ${f.tier} · ${f.country} · ${clip(f.description)}`,
-    url: `${SHORT_URL}#step-10`
-  })),
-  ...ANCHORS.library.map(a => ({
-    kind: 'library', label: a.label, snippet: a.snippet, url: a.href || LIBRARY_URL + a.hash
-  }))
-];
-
-// ------------------------------------------------------------
 // MASTER INDEX — same source, grouped for the page.
 // Both blueprints are grouped by the five STAGES, one part each,
 // with the step → stage mapping read from journey.js (which reads
@@ -361,20 +298,6 @@ function heroMarkup() {
         <p class="hero-deck">Make a <em>feature</em>, make a <em class="s">short</em>, or learn the <em class="g">craft</em> first — all from one desk, with a film you love to explain every step.</p>
 
         <div id="tourInviteHost"></div>
-
-        <div class="search-wrap">
-          <!-- .search-field exists so the dropdown anchors to the INPUT. -->
-          <div class="search-field">
-          <input type="search" class="search-input" id="searchInput"
-                 placeholder="Search steps, films, directors, glossary terms…"
-                 autocomplete="off" spellcheck="false"
-                 aria-label="Search the studio" role="combobox" aria-expanded="false"
-                 aria-controls="searchResults" data-action="search">
-          <span class="search-icon" aria-hidden="true">/</span>
-          <div class="search-results" id="searchResults" role="listbox" aria-label="Search results"></div>
-          </div>
-          <p class="search-tip">Try <kbd>logline</kbd> · <kbd>vetrimaaran</kbd> · <kbd>fountain</kbd> · <kbd>festival</kbd> · <kbd>budget</kbd></p>
-        </div>
 
         <div id="heroProjects"></div>
       </div>`
@@ -525,89 +448,6 @@ const resume = createResumeCards({
   shortSteps: SHORT_STEPS
 });
 const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibraryStatus } = resume;
-
-// ============================================================
-// GLOBAL SEARCH
-// ============================================================
-let activeSearchIdx = -1;
-let visibleResults = [];
-
-const KIND_LABEL = { feature: 'FEATURE BLUEPRINT', shorts: 'SHORT BLUEPRINT', library: 'LIBRARY' };
-
-function performSearch(raw) {
-  const results = $('#searchResults');
-  const input = $('#searchInput');
-  const q = String(raw || '').trim().toLowerCase();
-  activeSearchIdx = -1;
-  if (!q) {
-    results.classList.remove('open');
-    results.textContent = '';
-    visibleResults = [];
-    if (input) input.setAttribute('aria-expanded', 'false');
-    return;
-  }
-  const tokens = q.split(/\s+/);
-  const matches = SEARCH_INDEX.map(item => {
-    const text = (item.label + ' ' + item.snippet + ' ' + item.kind).toLowerCase();
-    let score = 0;
-    tokens.forEach(t => {
-      if (text.includes(t)) score++;
-      if (item.label.toLowerCase().includes(t)) score += 2;
-    });
-    return { item, score };
-  }).filter(r => r.score >= tokens.length).sort((a, b) => b.score - a.score).slice(0, 12);
-
-  visibleResults = matches.map(m => m.item);
-  if (input) input.setAttribute('aria-expanded', 'true');
-
-  if (!matches.length) {
-    results.innerHTML = '<div class="search-empty">No results. Try simpler words — "logline", "vetrimaaran", "fountain".</div>';
-    results.classList.add('open');
-    return;
-  }
-  const re = new RegExp('(' + tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
-  results.innerHTML = matches.map((m, i) => {
-    const it = m.item;
-    const labelHL = esc(it.label).replace(re, '<mark>$1</mark>');
-    const snipHL  = esc(it.snippet).replace(re, '<mark>$1</mark>');
-    return '<a href="' + esc(it.url) + '" class="search-result r-' + esc(it.kind) + '" role="option" data-idx="' + i + '">' +
-      '<div class="kind">' + (KIND_LABEL[it.kind] || 'STUDIO') + '</div>' +
-      '<h5>' + labelHL + '</h5>' +
-      '<p>' + snipHL + '</p>' +
-    '</a>';
-  }).join('');
-  results.classList.add('open');
-}
-
-function searchKey(e) {
-  const results = $('#searchResults');
-  if (!results || !results.classList.contains('open')) return;
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    activeSearchIdx = Math.min(activeSearchIdx + 1, visibleResults.length - 1);
-    highlightActiveResult();
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    activeSearchIdx = Math.max(activeSearchIdx - 1, 0);
-    highlightActiveResult();
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    const target = visibleResults[activeSearchIdx >= 0 ? activeSearchIdx : 0];
-    if (target) window.location.href = target.url;
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    e.target.value = '';
-    performSearch('');
-    e.target.blur();
-  }
-}
-function highlightActiveResult() {
-  const els = document.querySelectorAll('.search-result');
-  els.forEach((el, i) => el.classList.toggle('active', i === activeSearchIdx));
-  if (activeSearchIdx >= 0 && els[activeSearchIdx]) {
-    els[activeSearchIdx].scrollIntoView({ block: 'nearest' });
-  }
-}
 
 // ============================================================
 // EXPORT / IMPORT / RESET — src/pages/hub/backup-menu.js
@@ -1028,6 +868,18 @@ function shareProject(id) {
   else tell({ body: 'Sharing requires the cloud module — please configure it from Settings.' });
 }
 
+/* renderProjects() rebuilds the cards, so the control that opened a
+   dialog or acted is gone by the time the action lands; focus would fall
+   to <body>. Put it on the same control on the new card (or, if the card
+   is gone, the first card / the new-project card). */
+function refocusProjectControl(action, id) {
+  const sel = id ? '[data-action="' + action + '"][data-id="' + id + '"]' : '';
+  const el = (sel && document.querySelector(sel))
+    || document.querySelector('.project-card[data-action="switch-project"]')
+    || document.querySelector('.pc-new[data-action="new-project"], [data-action="new-project"]');
+  if (el && typeof el.focus === 'function') el.focus();
+}
+
 function duplicateProject(id) {
   const p = Store.getProject(id);
   if (!p) return;
@@ -1041,6 +893,7 @@ function duplicateProject(id) {
   renderProjects();
   renderProjectSwitcher();
   updateStatus();
+  refocusProjectControl('duplicate-project', id);
 }
 
 function renderProjectSwitcher() {
@@ -1152,6 +1005,7 @@ function submitProjectModal(e) {
   renderProjectSwitcher();
   updateStatus();
   renderGreeting();
+  if (editId) refocusProjectControl('rename-project', editId);
 }
 
 function switchToProject(id) {
@@ -1185,6 +1039,7 @@ async function deleteProjectConfirm(id) {
   renderProjects();
   renderProjectSwitcher();
   updateStatus();
+  refocusProjectControl('delete-project', null);
 }
 
 // ============================================================
@@ -1235,12 +1090,18 @@ function wireEvents() {
   // `delegate` resolves to the INNERMOST matching element, so the
   // rename/duplicate/delete buttons inside a project card win over
   // the card's own switch-project action without any stopPropagation.
-  delegate(app, 'click', '[data-action]', (e, el) => {
+  const onAction = (e, el) => {
     const fn = CLICK_ACTIONS[el.dataset.action];
     if (!fn) return;
     e.preventDefault();
     fn(el, e);
-  });
+  };
+  delegate(app, 'click', '[data-action]', onAction);
+  /* On a phone the band's tools (project switcher, Backup menu) are
+     BORROWED into the Tools sheet, which is a child of <body>, outside
+     #app — so the delegate above never saw them and the switcher did
+     nothing. The sheet answers to the same actions. */
+  delegate(document.body, 'click', '.mn-overlay [data-action]', onAction);
 
   delegate(app, 'keydown', '[data-action][role="button"], [data-action][tabindex]', (e, el) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1262,8 +1123,6 @@ function wireEvents() {
     openProjectModal(el.dataset.id);
   });
 
-  delegate(app, 'input', '#searchInput', (e) => performSearch(e.target.value));
-  delegate(app, 'keydown', '#searchInput', (e) => searchKey(e));
   delegate(app, 'input', '#projectsSearch', (e) => {
     setProjectSearch((e.target.value || '').toLowerCase());
     renderProjects();
@@ -1280,10 +1139,6 @@ function wireEvents() {
 
   // Click-away closes the search results and the switcher dropdown.
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-wrap')) {
-      const r = $('#searchResults');
-      if (r) r.classList.remove('open');
-    }
     if (!e.target.closest('.switcher-wrap')) closeProjectSwitcher();
   });
 

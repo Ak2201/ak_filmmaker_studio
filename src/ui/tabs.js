@@ -63,6 +63,26 @@ function labelFor(sec) {
   return t || sec.id;
 }
 
+/* The tab already says what the panel is, so a first eyebrow or heading
+   that only repeats the label is hidden (aria-hidden + display:none via
+   .tabs-dup, nothing deleted). One that says something different, or
+   that carries an id, stays. */
+const norm = (t) => String(t || '').replace(/\s+/g, ' ').trim().replace(/[.:]+$/, '').toLowerCase();
+function dedupeHeads(sections) {
+  for (const sec of sections) {
+    const want = norm(labelFor(sec));
+    if (!want) continue;
+    for (const sel of ['.label, .eyebrow, .kicker', 'h2, .bd-h2']) {
+      const el = sec.querySelector(sel);
+      if (!el || el.classList.contains('tabs-dup')) continue;
+      if (norm(el.textContent) !== want) continue;
+      if (el.id || el.querySelector('[id]')) continue;
+      el.classList.add('tabs-dup');
+      el.setAttribute('aria-hidden', 'true');
+    }
+  }
+}
+
 /** The sections that are tabs: `section[id]` children of ONE container
  *  (the first parent that holds two or more), so a header above them
  *  and a note below them stay where they are. */
@@ -204,6 +224,7 @@ export function apply() {
     parent.insertBefore(buildStrip(sections), sections[0]);
     signature = sig;
   }
+  dedupeHeads(sections);
   const fromHash = currentFromHash(sections);
   const keep = sections.some((s) => s.id === active) ? active : '';
   show(sections, fromHash || keep || sections[0].id, { setHash: false });

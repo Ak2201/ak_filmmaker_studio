@@ -183,6 +183,9 @@ p.cx-hint { margin: 0; }
   white-space: nowrap;
 }
 .cx-table tbody th { font-weight: 500; }
+/* The line name keeps a readable width; the report scrolls instead
+   of breaking "Crane 16ft" a letter at a time at 390px. */
+.cx-report tbody th[scope="row"] { min-width: 9rem; }
 .cx-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cx-table .cx-dept-row th,
 .cx-table .cx-dept-row td { padding-top: var(--s4); font-weight: 700; border-bottom-color: var(--rule); }

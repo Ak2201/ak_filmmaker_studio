@@ -55,6 +55,15 @@ function build() {
       h('input', { id: 'psTitle', type: 'text', maxlength: '120', required: 'required', autocomplete: 'off' }),
       h('p.ps-error', { id: 'psError', role: 'alert', hidden: 'hidden', text: 'Give your project a name.' }),
 
+      h('fieldset.ps-format', {}, [
+        h('legend', { text: 'FORMAT' }),
+        h('div.ps-format-row', { role: 'radiogroup', 'aria-label': 'Format' }, Object.keys(FORMATS).map((k) =>
+          h('label.ps-format-opt', { for: 'psFormat_' + k }, [
+            h('input', { type: 'radio', name: 'psFormat', id: 'psFormat_' + k, value: k }),
+            h('span', { text: FORMATS[k].label })
+          ])))
+      ]),
+
       h('fieldset.ps-films', {}, [
         h('legend', { text: 'YOUR FAVOURITE FILM' }),
         h('p.ps-hint', { text: 'Pick one. We’ll explain every step with it, so the ideas land on a film you already know.' }),
@@ -78,6 +87,13 @@ function build() {
   });
   overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+  form.addEventListener('change', (e) => {
+    if (!e.target || e.target.name !== 'psFormat') return;
+    const prev = state.format;
+    state.format = e.target.value;
+    overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';
+    if (!state.dirty || title.value.trim() === FORMATS[prev].title) title.value = FORMATS[state.format].title;
+  });
 }
 
 function selectedFilm() {
@@ -114,6 +130,8 @@ export function openProjectSetup(opts) {
   overlay.querySelector('#psTitle').value = FORMATS[state.format].title;
   overlay.querySelector('#psHeading').innerHTML = 'Start your <em>' + FORMATS[state.format].label.toLowerCase() + '.</em>';
   overlay.querySelector('#psError').hidden = true;
+  const fr = overlay.querySelector('#psFormat_' + state.format);
+  if (fr) fr.checked = true;
   let fav = '';
   try { fav = favouriteSlug(); } catch (e) { /* the first film below */ }
   const radios = Array.from(overlay.querySelectorAll('input[name="psFilm"]'));

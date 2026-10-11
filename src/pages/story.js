@@ -1134,7 +1134,14 @@ function applyView() {
   panels.forEach((p) => {
     const old = p.el.querySelector(':scope > .stp-nav');
     if (old) old.remove();
-    if (p.id === shown) { const f = stepFooter(panels, p.id); if (f) p.el.append(f); }
+    /* The count is the PATH's, the same "of N" the step bar says; the
+       sections after it (Beats & pacing, Pitch deck, Cover sheet) are
+       the bar's "Then" row and say so rather than taking a number. */
+    if (p.id === shown) {
+      const n = pathNow().length;
+      const f = stepFooter(panels, p.id, { countText: (i) => (i < n ? 'Step ' + (i + 1) + ' of ' + n : 'After the path') });
+      if (f) p.el.append(f);
+    }
   });
   const bar = main.querySelector('nav.st-path');
   if (bar) {

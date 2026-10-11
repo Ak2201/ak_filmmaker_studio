@@ -1,117 +1,122 @@
 {
   "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
-  "capturedAt": "2026-10-11T06:21:01.039Z",
+  "capturedAt": "2026-10-11T06:59:21.685Z",
   "capturedDay": "2026-10-11",
   "knownLazyFetches": {},
   "pages": {
     "hub": {
       "bytes": 1118208,
-      "measured": 1015767,
+      "measured": 1016427,
       "files": 40
     },
     "library": {
       "bytes": 1143808,
-      "measured": 1039079,
+      "measured": 1039537,
       "files": 24
     },
     "breakdown": {
-      "bytes": 746496,
-      "measured": 677785,
+      "bytes": 754688,
+      "measured": 685727,
       "files": 31
     },
     "stripboard": {
       "bytes": 712704,
-      "measured": 646992,
+      "measured": 647678,
       "files": 23
     },
     "reports": {
-      "bytes": 827392,
-      "measured": 751963,
+      "bytes": 828416,
+      "measured": 752649,
       "files": 29
     },
     "contacts": {
-      "bytes": 718848,
-      "measured": 653026,
+      "bytes": 719872,
+      "measured": 653712,
       "files": 24
     },
     "visualize": {
       "bytes": 813056,
-      "measured": 738236,
+      "measured": 738912,
       "files": 31
     },
-    "write": {
-      "bytes": 1125376,
-      "measured": 1022208,
-      "files": 38
+    "script": {
+      "bytes": 991232,
+      "measured": 900222,
+      "files": 40
+    },
+    "drafts": {
+      "bytes": 759808,
+      "measured": 690221,
+      "files": 28
     },
     "plan": {
-      "bytes": 662528,
-      "measured": 601769,
+      "bytes": 663552,
+      "measured": 602455,
       "files": 21
     },
     "dashboard": {
-      "bytes": 984064,
-      "measured": 894494,
+      "bytes": 985088,
+      "measured": 895155,
       "files": 34
     },
     "budget": {
       "bytes": 732160,
-      "measured": 664834,
+      "measured": 665520,
       "files": 22
     },
     "settings": {
-      "bytes": 822272,
-      "measured": 747039,
+      "bytes": 823296,
+      "measured": 747725,
       "files": 35
     },
     "shoot": {
       "bytes": 627712,
-      "measured": 569823,
+      "measured": 570281,
       "files": 20
     },
     "story": {
-      "bytes": 1399808,
-      "measured": 1271898,
-      "files": 60
+      "bytes": 1424384,
+      "measured": 1294869,
+      "files": 64
     },
     "edit": {
       "bytes": 604160,
-      "measured": 548334,
+      "measured": 548792,
       "files": 17
     },
     "deliverables": {
-      "bytes": 734208,
-      "measured": 666846,
+      "bytes": 735232,
+      "measured": 667532,
       "files": 26
     },
     "screening": {
-      "bytes": 616448,
-      "measured": 560288,
+      "bytes": 617472,
+      "measured": 560974,
       "files": 19
     },
     "invite": {
       "bytes": 596992,
-      "measured": 542244,
+      "measured": 542702,
       "files": 16
     },
     "admin": {
       "bytes": 576512,
-      "measured": 523563,
+      "measured": 524021,
       "files": 13
     },
     "vault": {
-      "bytes": 706560,
-      "measured": 641961,
+      "bytes": 707584,
+      "measured": 642647,
       "files": 24
     },
     "purchase": {
       "bytes": 576512,
-      "measured": 523611,
+      "measured": 524069,
       "files": 19
     },
     "purchases": {
       "bytes": 609280,
-      "measured": 553388,
+      "measured": 553846,
       "files": 17
     }
   }

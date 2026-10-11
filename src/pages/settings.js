@@ -103,16 +103,16 @@ import { ask, tell } from '../ui/dialog.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
-import Billing from '../lib/billing.js';
-import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
-import { planCards, usageList } from '../ui/plan-cards.js';
-import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
-import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
-/* The branding switch and the WhatsApp help line under the plan cards
-   (footer.js owns both; null when neither applies to this build/plan). */
-import { planExtras } from '../ui/footer.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
+
+/* Old billing anchors: settings.html#plan etc. now live on purchase.html. */
+{
+  const OLD = { plan: 'purchase.html#plan', billing: 'purchase.html#plan', invoices: 'purchase.html#plan', refund: 'purchase.html#plan',
+                promo: 'purchase.html#plan', gift: 'purchase.html#plan', trial: 'purchase.html#plan', referral: 'purchase.html#plan' };
+  const dest = OLD[String(location.hash || '').replace(/^#/, '')];
+  if (dest) location.replace(dest);
+}
 
 const app = document.getElementById('app');
 
@@ -121,124 +121,10 @@ const app = document.getElementById('app');
    listed, so dropping or adding a theme needs no edit here. */
 const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 
-/* ---- the plan (schema section 16) ----------------------------
-   The organisation's tier, its usage against the caps, and the cards
-   to buy or change. Everything shown is read from the server each time
-   (billing_status and the plans table); nothing about a plan is
-   remembered in this browser. Rendered for a signed-in account only —
-   a signed-out visitor has no organisation to put a plan on. */
-let billing = { plans: null, st: null, error: '', missing: false, loading: false };
-async function refreshBilling() {
-  const c = window.StudioCloud;
-  if (!c || !c.isConfigured() || !c.getSession()) { billing = { plans: null, st: null, error: '', missing: false, loading: false }; if (!busy) render(); return; }
-  billing = { ...billing, error: '', missing: false, loading: true };
-  if (!busy) render();
-  try {
-    const [plans, st] = await Promise.all([Billing.listPlans(), Billing.status()]);
-    billing = { plans, st, error: '', missing: false, loading: false };
-    refreshRefundRequest();   // a purchase or a refund changes what the server says
-  } catch (e) {
-    // The table or the RPC missing means section 16 has not run: say so, plainly, instead of a spinner.
-    const missing = /does not exist|Could not find|PGRST/i.test(e.message || '');
-    billing = { plans: null, st: null, error: missing ? '' : (e.message || 'The plans did not load.'), missing, loading: false };
-  }
-  if (!busy) render();
-}
-/* The purchase flow lives on purchase.html (owner, 11 Oct 2026); every
-   state of this section links to it, above whatever else it shows. */
-function renderPlan() {
-  const sec = renderPlanBody();
-  if (!sec) return sec;
-  const first = sec.querySelector('.bd-sub');
-  const link = h('p.st-plan-link', {}, [
-    h('a.btn.primary', { href: 'purchase.html', text: 'Plans & purchase \u2192' })
-  ]);
-  if (first) first.after(link); else sec.append(link);
-  return sec;
-}
-function renderPlanBody() {
-  const c = window.StudioCloud;
-  /* SIGNED OUT, THE TAB STILL EXISTS. plan-gate.js's upgrade panel, the
-     account menu and the billing toasts all link to settings.html#plan;
-     with no section by that id the tab strip fell back to its first
-     tab, so "See the plans" opened the AI-key form (UX audit M21). A
-     plan sits on an account, so signed out there is nothing to show
-     but the way in — said here, at the address everything links to. */
-  if (!c || !c.getSession()) {
-    const configured = !!(c && c.isConfigured && c.isConfigured());
-    const sec = section('plan', 'Plan', 'Sign in to see the plans.',
-      'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. It belongs to an account, so the plans and your usage show here once you are signed in. Work on this device is never limited.');
-    if (configured) {
-      sec.append(h('p', {}, [
-        h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })
-      ]));
-    } else {
-      sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
-    }
-    const extras = planExtras(null);
-    if (extras) sec.append(extras);
-    return sec;
-  }
-  /* THE PLAN SECTION MUST NEVER VANISH SILENTLY, and it used to.
-     This line was `if (!c.isConfigured() || !billing.plans) return null;`
-     — so whenever refreshBilling() came back empty-handed the whole
-     section disappeared, while AI key, Storage, Drive and Appearance
-     all rendered beside it. The page reads as broken rather than as a
-     fetch that failed, and the `billing.error` line below could never
-     be reached to say otherwise: the bail was ABOVE it. Signed out it
-     was fine, which is what made it look like a settings bug rather
-     than a billing one. Found 8 Oct 2026 by rendering the page signed
-     out and seeing the section appear.
-
-     No cloud in the build is still nothing to show — a plan needs an
-     account. But "signed in and the plans did not load" is a state the
-     reader is entitled to see, and to retry. */
-  if (!c.isConfigured()) return null;
-  if (!billing.plans) {
-    const sec = section('plan', 'Plan',
-      billing.missing ? 'Plans are not set up on this project yet.' : billing.error ? 'The plans did not load.' : 'Loading the plans…',
-      'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.');
-    if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
-    if (billing.missing) sec.append(h('p.hint', { text: 'Plans are not set up on this project yet. Everything else here works, and work on this device is never limited.' }));
-    sec.append(h('p', {}, [
-      h('button.btn', { type: 'button', 'data-action': 'plan-retry', 'data-plan-retry': '1', disabled: billing.loading ? true : null, text: billing.loading ? 'LOADING…' : 'TRY AGAIN' })
-    ]));
-    const extras0 = planExtras(null);
-    if (extras0) sec.append(extras0);
-    return sec;
-  }
-  const st = billing.st;
-  const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' \u00b7 ' + st.account_name : ''}` : 'Choose a plan.',
-    'A plan sets how much you can do in the cloud \u2014 synced projects, share links, collaborators and team seats \u2014 and unlocks the Chrome extension. Work on this device is never limited.');
-  if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
-  if (st) {
-    const u = usageList(st);
-    if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
-    /* A refund is the one way a bought plan ends (section 18): say so
-       rather than "lapsed", which implied a clock that no longer runs. */
-    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan\u2019s limits now.` }));
-  }
-  sec.append(planCards(billing.plans, st, {
-    onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
-    rerender: () => { if (!busy) render(); }
-  }));
-  // Referral code, gifts, invoices (schema §22 onward): src/ui/growth-panels.js.
-  const growth = memberGrowthPanels(st, { rerender: () => { if (!busy) render(); } });
-  if (growth) sec.append(growth);
-  // A request for a refund (schema §27): only when the admin has it on and there is a payment to refund.
-  const refundBlock = refundRequestPanel({ rerender: () => { if (!busy) render(); } });
-  if (refundBlock) sec.append(refundBlock);
-  const invs = memberInvoicePanel(st, { rerender: () => { if (!busy) render(); } });   // schema §28
-  if (invs) sec.append(invs);
-  const extras = planExtras(st);
-  if (extras) sec.append(extras);
-  return sec;
-}
-
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -891,6 +777,9 @@ function renderAccountMine() {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
   sec.append(slot);
+  /* Buying and billing live on their own page (owner, 11 Oct 2026): one
+     plain link, no prices here. */
+  sec.append(h('p.st-plan-link', {}, [h('a.btn', { href: 'purchase.html', text: 'Plan & purchases \u2192' })]));
   return sec;
 }
 
@@ -991,7 +880,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Your account, plan and billing, your favourite film, your AI key, storage and backups, how the studio looks, your activity log, and the danger zone.'
+      text: 'Your account, your favourite film, your AI key, storage and backups, how the studio looks, your activity log, and the danger zone.'
     })
   ]));
 
@@ -1003,7 +892,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderPlan(), renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
+  body.append(...[renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               renderAccountMine(),
               accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck)),
               renderActivitySection(), renderTourSection(),
@@ -1135,21 +1024,6 @@ delegate(document, 'click', '[data-action="storage-backup"]', () => {
   }
 });
 
-delegate(document, 'click', '[data-action="plan-retry"]', async (e, el) => {
-  el.disabled = true;
-  el.textContent = 'LOADING…';
-  try { await refreshBilling(); } catch (err) { /* refreshBilling catches its own */ }
-  if (billing.loading) billing.loading = false;
-  render();   // never leave the section on LOADING
-  const again = document.querySelector('[data-plan-retry]');
-  const target = again || document.getElementById('plan');
-  if (target) {
-    const heading = !again && target.querySelector('h2');
-    const f = again || heading || target;
-    if (!again) f.setAttribute('tabindex', '-1');
-    try { f.focus({ preventScroll: true }); } catch (err2) { /* ignore */ }
-  }
-});
 delegate(document, 'click', '[data-action="plan-sign-in"]', () => {
   openCloudAuthModal();
 });
@@ -1247,22 +1121,6 @@ async function refreshGate() {
   if (!busy) render();
 }
 wireGateUI(() => { if (!busy) render(); });
-Store.subscribe('billing:changed', () => refreshBilling());
-if (window.StudioCloud && window.StudioCloud.onAuth) window.StudioCloud.onAuth(() => setTimeout(refreshBilling, 0));
-/* AND ON BOOT, WHICH IS THE ONLY SIGNAL A RESTORED SESSION GIVES.
-   refreshBilling() returns empty-handed when getSession() is null, and
-   the call below runs at module evaluation — before cloud.js has
-   finished restoring a stored session. The onAuth hook above does not
-   cover it: ensureClient() reads the stored session synchronously
-   BEFORE registering the auth listener, so a restored session fires no
-   SIGNED_IN event (cloud.js says so in as many words). The result was a
-   Plan section that rendered EMPTY on every ordinary load — renderPlan()
-   returns null while `billing.plans` is null — while AI key, Storage,
-   Drive and Appearance all filled in, which makes it read as a broken
-   page rather than a missing fetch. src/lib/sitegate.js subscribes to
-   this same event for the same reason. 8 Oct 2026. */
-Store.subscribe('cloud:booted', () => refreshBilling());   // re-renders at once, with the loading state when a session exists
-refreshBilling();
 Store.subscribe('gate:changed', () => refreshGate());
 refreshGate();
 

@@ -1,7 +1,7 @@
 /* ============================================================
    GROWTH PANELS — what a member sees under the plan cards
    ------------------------------------------------------------
-   Drawn on settings.html#plan, under the cards, for a signed-in
+   Drawn on purchase.html#plan, under the cards, for a signed-in
    account (the host passes billing_status() and a rerender):
 
      Your referral code   (schema §22) the member's REF- code with a

@@ -72,6 +72,7 @@ function planSection() {
   if (!c || !c.isConfigured()) {
     const sec = section('plan', 'Plan', 'No cloud, no plan.', DECK);
     sec.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to put a plan on.' }));
+    const x0 = planExtras(null); if (x0) sec.append(x0);
     return sec;
   }
   if (!signedIn) {
@@ -81,6 +82,7 @@ function planSection() {
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
       h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
     ]));
+    const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;
   }
   if (!billing.plans) {
@@ -90,6 +92,7 @@ function planSection() {
     sec.append(h('div.pu-actions', {}, [
       h('button.btn', { type: 'button', 'data-pu-action': 'retry', disabled: billing.loading ? true : null, text: billing.loading ? 'LOADING…' : 'TRY AGAIN' })
     ]));
+    const x2 = planExtras(null); if (x2) sec.append(x2);
     return sec;
   }
   const st = billing.st;

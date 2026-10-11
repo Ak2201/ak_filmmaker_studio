@@ -1,7 +1,7 @@
 /* ============================================================
    PLAN CARDS — the three tiers, one price each, and a BUY button
    ------------------------------------------------------------
-   One component, drawn on settings.html (a member choosing or
+   One component, drawn on purchase.html (a member choosing or
    renewing) and on invite.html (a signed-in stranger buying their way
    in — PAYING GRANTS ENTRY). The prices and limits come from the plans
    table, so what the console saves is what this shows; nothing here
@@ -240,7 +240,7 @@ function wantedPlan() {
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the
    pricing table uses (plan-matrix.json): the capabilities this plan
    has that the one before it did not, falling back to the plan's own
-   list. The invoice lives in settings.html's Plan tab (invoice-panels). */
+   list. The invoice lives on purchase.html (invoice-panels). */
 function unlockedBy(matrix, planId) {
   const ids = matrix.plans ? Object.keys(matrix.plans) : [];
   const prev = ids[Math.max(0, ids.indexOf(planId) - 1)];
@@ -262,10 +262,10 @@ function successCard(planId, plans) {
     const items = unlockedBy(m.default, planId);
     if (items.length) slot.append(h('p.pl-note', { text: 'Just unlocked:' }), h('ul.pl-what-list', {}, items.map((t) => h('li', { text: t }))));
   }).catch(() => { /* the card still says what plan you are on */ });
-  const onSettings = /settings\.html$/.test(location.pathname);
+  
   card.append(h('p.pl-note', {}, [
     'Your invoice is on its way from Razorpay by e-mail, and ',
-    h('a', { href: onSettings ? '#plan' : 'purchase.html', text: 'listed under Plan invoices in Settings' }), '.'
+    h('a', { href: 'purchase.html#plan', text: 'listed under Invoices on the Purchase page' }), '.'
   ]));
   card.append(h('div.iv-actions', {}, [h('a.btn.primary', { href: 'index.html?welcome=plan', text: 'START YOUR FILM' })]));
   return card;

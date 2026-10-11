@@ -1,5 +1,5 @@
 /* ============================================================
-   REQUEST A REFUND — the customer's side, on settings.html#plan
+   REQUEST A REFUND — the customer's side, on purchase.html#plan
    ------------------------------------------------------------
    Drawn under the plan cards for a signed-in account, and ONLY when
      (1) the administrator has switched refund requests on, and

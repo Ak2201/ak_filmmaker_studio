@@ -14,12 +14,12 @@
    The shared fake is not edited.
 
    Asserted:
-     (a) WHATSAPP: the footer, Settings → Plan and invite.html carry a
+     (a) WHATSAPP: the footer, Purchase → Plan and invite.html carry a
          wa.me link with the cleaned digits
      (b) THE CALL SHEET: the footer's line is hidden on screen, hidden in
          print, and shown in print only while a call sheet prints
      (c) THE PITCH DECK: the PDF's last slide carries the line
-     (d) A PAID MEMBER: Settings → Plan offers the switch; unticking it
+     (d) A PAID MEMBER: Purchase → Plan offers the switch; unticking it
          writes `branding: 'off'` into fms_studio_prefs_v1 (and nothing
          else), the line leaves the call sheet, and the member's ?ref=
          code from billing_status() is on it before that
@@ -272,8 +272,8 @@ try {
     await page.goto(BASE + 'index.html'); await page.waitForTimeout(800);
     const href = await page.getAttribute('footer.site-foot a.wa-link', 'href').catch(() => null);
     ok(href && href.startsWith('https://wa.me/' + WA_DIGITS + '?text='), 'the footer links to wa.me with the cleaned digits');
-    await page.goto(BASE + 'settings.html#plan'); await page.waitForTimeout(800);
-    ok(await page.$('#plan .plan-extras a.wa-link') !== null, 'Settings → Plan carries the help line');
+    await page.goto(BASE + 'purchase.html#plan'); await page.waitForTimeout(800);
+    ok(await page.$('#plan .plan-extras a.wa-link') !== null, 'Purchase → Plan carries the help line');
     await page.goto(BASE + 'invite.html'); await page.waitForTimeout(800);
     ok(await page.$('a.wa-link[href^="https://wa.me/"]') !== null, 'invite.html carries it');
     allErrors.push(...errors); await ctx.close();
@@ -308,11 +308,11 @@ try {
     await page.goto(BASE + 'contacts.html#call-sheets'); await page.waitForTimeout(2500);
     const line = await printedSheetLine(page);
     ok(line === MADE + '?ref=DRAGON7', 'the line carries the member\'s ?ref= code: ' + JSON.stringify(line));
-    await page.goto(BASE + 'settings.html#plan');
+    await page.goto(BASE + 'purchase.html#plan');
     const found = await page.waitForSelector('#brandingToggle', { timeout: 8000 }).then(() => true, () => false);
-    await page.waitForLoadState('networkidle'); await page.waitForTimeout(800);   // settings redraws as billing answers
+    await page.waitForLoadState('networkidle'); await page.waitForTimeout(800);   // the page redraws as billing answers
     const box = page.locator('#brandingToggle');
-    ok(found && await box.isChecked(), 'Settings → Plan offers the switch, on');
+    ok(found && await box.isChecked(), 'Purchase → Plan offers the switch, on');
     const t0 = await now(page);
     if (found) await box.click();
     await page.waitForTimeout(300);
@@ -328,7 +328,7 @@ try {
   {
     const { ctx, page, errors } = await context(browser, { user: 'tok-amy' });
     F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
-    await page.goto(BASE + 'settings.html#plan'); await page.waitForTimeout(2500);
+    await page.goto(BASE + 'purchase.html#plan'); await page.waitForTimeout(2500);
     await page.evaluate(() => localStorage.setItem('fms_studio_prefs_v1', JSON.stringify({ branding: 'off' })));
     await page.reload(); await page.waitForTimeout(2500);
     ok(await page.$('#brandingToggle') === null, 'Free: no switch');
@@ -339,7 +339,7 @@ try {
 
     F.db.plans.find((p) => p.id === 'indie').features = { remove_branding: false };
     const b = await context(browser, { user: 'tok-admin' });
-    await b.page.goto(BASE + 'settings.html#plan'); await b.page.waitForTimeout(2500);
+    await b.page.goto(BASE + 'purchase.html#plan'); await b.page.waitForTimeout(2500);
     ok(await b.page.$('#plan') !== null && await b.page.$('#brandingToggle') === null, 'Indie with remove_branding unticked: no switch');
     allErrors.push(...b.errors); await b.ctx.close();
     F.db.plans.find((p) => p.id === 'indie').features = {};

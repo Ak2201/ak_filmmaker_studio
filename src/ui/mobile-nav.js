@@ -49,13 +49,13 @@ const fileOf = (href) => String(href || '').split('#')[0].toLowerCase();
 let sheet = null;          // { overlay, kind, borrowed: [{ node, parent, next }] }
 
 /* ---- where am I ----------------------------------------------
-   The shell already keeps this true (it marks the phase menu's row
-   `.is-here` as the hash and the scroll spy move), so the sheet reads
+   The shell already keeps this true (it publishes the module as
+   `data-sh-module` on <html> as the hash and the scroll spy move), so the sheet reads
    that answer rather than deciding a second time. Fallback: the first
    module whose file is this page. */
 function hereModuleId() {
-  const row = document.querySelector('.sh-phase-menu .sh-mod.is-here');
-  if (row && row.dataset.moduleId) return row.dataset.moduleId;
+  const at = document.documentElement.getAttribute('data-sh-module');
+  if (at) return at;
   for (const p of [...phases(), ...shelves()]) for (const m of p.modules || []) if (fileOf(m.href) === CURRENT) return m.id;
   return null;
 }

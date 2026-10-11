@@ -1,0 +1,757 @@
+{
+  "_about": "THE DARK KNIGHT SAMPLE’S STORY, for the Story page (story.html) and the hub’s sample project. A RECONSTRUCTION FOR PRACTICE, like every other piece of the sample’s paperwork: the idea and the logline are the sample blueprint’s own answers, and the step outline is written from the sample’s 40 scene synopses in src/data/sample.darkknight.json (plus a few steps for beats the scene list skips), each filed under a Save the Cat! beat. None of it is the film’s writing. The synopsis and its marks are GENERATED from the outline by buildSynopsisFromOutline() in src/lib/story.js, so every mark’s offsets are what the app itself produces; edit the steps and regenerate rather than editing `source` by hand. `sceneId` on a step names the hub’s sample scene id (darkknight-sc-<number>). A DYNAMIC IMPORT: vite.config.js keeps it out of the shared `data` chunk, the same exception as sample.darkknight.script.json.",
+  "story": {
+    "v": 1,
+    "source": "A school bus idles outside a bank at opening time, and four men in clown masks step down from it as if arriving at their own stop. On a rooftop at night a tired captain tells the vigilante that people do not want a legend, they want a standard. The robbery runs to a plan in which every man is needed only until the next job is done, and the last one standing leaves with the money. The city has a guardian nobody can name, a captain who cannot guard anyone, and a mob whose money moves faster than the law. At a depot Batman breaks up a handover where two imitators in homemade armour are about to be killed for pretending to be him. Fox shows Bruce a depositor list that does not add up, and a panel of new armour he would rather Bruce did not test on himself. Dent takes a mob defence apart in a packed court and Maroni smiles at him on the way out. Over dinner Bruce, Rachel and Dent size each other up, and Bruce starts to think the city might do without him. The mob gathers in a disused mill and decides that the only answer to a frozen account is a man across the sea who can move it. Gordon, Dent and Ramirez agree a one-night sweep of every account, and Dent finds the judge to sign it. In the workshop Bruce, Fox and Alfred work out what it would cost to bring the accountant back. Bruce visits the accountant in his glass tower and makes sure everybody sees him do it. That night a rented crane lifts Batman and Lau off the roof before the guards reach the edge.\n\nAlfred pours tea and tells Bruce the truth about daylight, and who might carry it for him. In custody Lau understands he is safer with the police than at home, and Dent starts a list of names. A man in smeared make-up interrupts the mob meeting with a bag of their own money and an offer they cannot afford to refuse. The Joker sets a deadline, a name every night until the mask comes off, and the commissioner and the mayor argue over who should be afraid. Bruce hosts a fundraiser for Dent, steering donors with a smile and avoiding Rachel's questions. The Joker arrives at the after-party with his own idea of a toast, Rachel is thrown clear, and somebody has to catch her. The commissioner is carried through the city in a long parade, and Gordon takes a bullet meant for the mayor. Dent stands up in court and says he is the masked man: a false victory, because the killing stops and the lie begins. Rachel leaves Bruce a letter she wants Alfred to hold, and Bruce decides to give himself up. The Joker's lorry meets Dent's convoy on an elevated road, and the road becomes a series of increasingly bad ideas. At the mouth of a tunnel the chase ends in a collision, and the Joker steps out of the wreck and into police hands. Batman and the Joker are alone in the interview room, and the Joker tells him what he has hidden and where. Rachel wakes tied to a drum in a mill, with a phone line open to Dent's voice in another building. Dent sits in a chair in an empty office while the line stays open, and Batman reaches him a second too late. The depot goes up, and Batman carries Dent out of the fire and what is left of the face the city believed in. Dent lies bandaged in a ward bed, and a man in an orderly coat offers him a different way of explaining the night. The evacuated hospital wing comes down, and the Joker walks out through the evacuees as if there were no hurry.\n\nBruce asks Fox for a machine that can listen to the whole city, and Fox builds it on the promise that it is used only once. Gordon and the mayor must decide how to move half a million people before a threat they cannot locate. Two ferries wait at the berth, one for the public and one for prisoners, each wired by someone who wants to see what happens. On the passenger deck a detonator and a deadline split the room, until the nurse stops the one man who would press it. On the prisoner ferry the warden hands the detonator to the convict he has been afraid of for years, and the convict drops it out of a porthole. In an unfinished tower the Joker has dressed his own men as hostages and the hostages as his men, and Batman sorts them out in the dark. On the unfinished roof Batman and the Joker finish their argument: nobody pressed it, and one of them falls and is caught. In a quiet house in Besant Nagar the family sits up for Gordon, and the evening changes when he comes through the door. Dent holds Gordon's family in the half-finished building where Rachel died, and a coin decides who keeps a future, until it does not. After the fall Batman and Gordon decide who will carry the blame, and a boy is told a smaller, kinder version of the night. On a river road at dawn Batman takes the blame and Gordon takes a vow, and a bike's engine fades into traffic.",
+    "sourceName": "The Dark Knight (sample)",
+    "framework": "save_the_cat",
+    "marks": [
+      {
+        "id": "darkknight-mk-01",
+        "start": 0,
+        "end": 130,
+        "text": "A school bus idles outside a bank at opening time, and four men in clown masks step down from it as if arriving at their own stop.",
+        "tags": {
+          "save_the_cat": "opening_image"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-01"
+      },
+      {
+        "id": "darkknight-mk-02",
+        "start": 131,
+        "end": 244,
+        "text": "On a rooftop at night a tired captain tells the vigilante that people do not want a legend, they want a standard.",
+        "tags": {
+          "save_the_cat": "theme_stated"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-03"
+      },
+      {
+        "id": "darkknight-mk-03",
+        "start": 245,
+        "end": 382,
+        "text": "The robbery runs to a plan in which every man is needed only until the next job is done, and the last one standing leaves with the money.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-02"
+      },
+      {
+        "id": "darkknight-mk-04",
+        "start": 383,
+        "end": 507,
+        "text": "The city has a guardian nobody can name, a captain who cannot guard anyone, and a mob whose money moves faster than the law.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-04"
+      },
+      {
+        "id": "darkknight-mk-05",
+        "start": 508,
+        "end": 634,
+        "text": "At a depot Batman breaks up a handover where two imitators in homemade armour are about to be killed for pretending to be him.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-05"
+      },
+      {
+        "id": "darkknight-mk-06",
+        "start": 635,
+        "end": 762,
+        "text": "Fox shows Bruce a depositor list that does not add up, and a panel of new armour he would rather Bruce did not test on himself.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-06"
+      },
+      {
+        "id": "darkknight-mk-07",
+        "start": 763,
+        "end": 852,
+        "text": "Dent takes a mob defence apart in a packed court and Maroni smiles at him on the way out.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-07"
+      },
+      {
+        "id": "darkknight-mk-08",
+        "start": 853,
+        "end": 964,
+        "text": "Over dinner Bruce, Rachel and Dent size each other up, and Bruce starts to think the city might do without him.",
+        "tags": {
+          "save_the_cat": "setup"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-08"
+      },
+      {
+        "id": "darkknight-mk-09",
+        "start": 965,
+        "end": 1092,
+        "text": "The mob gathers in a disused mill and decides that the only answer to a frozen account is a man across the sea who can move it.",
+        "tags": {
+          "save_the_cat": "catalyst"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-09"
+      },
+      {
+        "id": "darkknight-mk-10",
+        "start": 1093,
+        "end": 1196,
+        "text": "Gordon, Dent and Ramirez agree a one-night sweep of every account, and Dent finds the judge to sign it.",
+        "tags": {
+          "save_the_cat": "debate"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-10"
+      },
+      {
+        "id": "darkknight-mk-11",
+        "start": 1197,
+        "end": 1292,
+        "text": "In the workshop Bruce, Fox and Alfred work out what it would cost to bring the accountant back.",
+        "tags": {
+          "save_the_cat": "debate"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-11"
+      },
+      {
+        "id": "darkknight-mk-12",
+        "start": 1293,
+        "end": 1380,
+        "text": "Bruce visits the accountant in his glass tower and makes sure everybody sees him do it.",
+        "tags": {
+          "save_the_cat": "break_into_two"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-12"
+      },
+      {
+        "id": "darkknight-mk-13",
+        "start": 1381,
+        "end": 1474,
+        "text": "That night a rented crane lifts Batman and Lau off the roof before the guards reach the edge.",
+        "tags": {
+          "save_the_cat": "break_into_two"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-13"
+      },
+      {
+        "id": "darkknight-mk-14",
+        "start": 1476,
+        "end": 1566,
+        "text": "Alfred pours tea and tells Bruce the truth about daylight, and who might carry it for him.",
+        "tags": {
+          "save_the_cat": "b_story"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-16"
+      },
+      {
+        "id": "darkknight-mk-15",
+        "start": 1567,
+        "end": 1668,
+        "text": "In custody Lau understands he is safer with the police than at home, and Dent starts a list of names.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-14"
+      },
+      {
+        "id": "darkknight-mk-16",
+        "start": 1669,
+        "end": 1793,
+        "text": "A man in smeared make-up interrupts the mob meeting with a bag of their own money and an offer they cannot afford to refuse.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-15"
+      },
+      {
+        "id": "darkknight-mk-17",
+        "start": 1794,
+        "end": 1933,
+        "text": "The Joker sets a deadline, a name every night until the mask comes off, and the commissioner and the mayor argue over who should be afraid.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-17"
+      },
+      {
+        "id": "darkknight-mk-18",
+        "start": 1934,
+        "end": 2030,
+        "text": "Bruce hosts a fundraiser for Dent, steering donors with a smile and avoiding Rachel's questions.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-18"
+      },
+      {
+        "id": "darkknight-mk-19",
+        "start": 2031,
+        "end": 2152,
+        "text": "The Joker arrives at the after-party with his own idea of a toast, Rachel is thrown clear, and somebody has to catch her.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-19"
+      },
+      {
+        "id": "darkknight-mk-20",
+        "start": 2153,
+        "end": 2262,
+        "text": "The commissioner is carried through the city in a long parade, and Gordon takes a bullet meant for the mayor.",
+        "tags": {
+          "save_the_cat": "fun_and_games"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-20"
+      },
+      {
+        "id": "darkknight-mk-21",
+        "start": 2263,
+        "end": 2380,
+        "text": "Dent stands up in court and says he is the masked man: a false victory, because the killing stops and the lie begins.",
+        "tags": {
+          "save_the_cat": "midpoint"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-21"
+      },
+      {
+        "id": "darkknight-mk-22",
+        "start": 2381,
+        "end": 2473,
+        "text": "Rachel leaves Bruce a letter she wants Alfred to hold, and Bruce decides to give himself up.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-22"
+      },
+      {
+        "id": "darkknight-mk-23",
+        "start": 2474,
+        "end": 2589,
+        "text": "The Joker's lorry meets Dent's convoy on an elevated road, and the road becomes a series of increasingly bad ideas.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-23"
+      },
+      {
+        "id": "darkknight-mk-24",
+        "start": 2590,
+        "end": 2705,
+        "text": "At the mouth of a tunnel the chase ends in a collision, and the Joker steps out of the wreck and into police hands.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-24"
+      },
+      {
+        "id": "darkknight-mk-25",
+        "start": 2706,
+        "end": 2813,
+        "text": "Batman and the Joker are alone in the interview room, and the Joker tells him what he has hidden and where.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-25"
+      },
+      {
+        "id": "darkknight-mk-26",
+        "start": 2814,
+        "end": 2912,
+        "text": "Rachel wakes tied to a drum in a mill, with a phone line open to Dent's voice in another building.",
+        "tags": {
+          "save_the_cat": "bad_guys_close_in"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-26"
+      },
+      {
+        "id": "darkknight-mk-27",
+        "start": 2913,
+        "end": 3021,
+        "text": "Dent sits in a chair in an empty office while the line stays open, and Batman reaches him a second too late.",
+        "tags": {
+          "save_the_cat": "all_is_lost"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-27"
+      },
+      {
+        "id": "darkknight-mk-28",
+        "start": 3022,
+        "end": 3131,
+        "text": "The depot goes up, and Batman carries Dent out of the fire and what is left of the face the city believed in.",
+        "tags": {
+          "save_the_cat": "all_is_lost"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-28"
+      },
+      {
+        "id": "darkknight-mk-29",
+        "start": 3132,
+        "end": 3246,
+        "text": "Dent lies bandaged in a ward bed, and a man in an orderly coat offers him a different way of explaining the night.",
+        "tags": {
+          "save_the_cat": "dark_night"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-29"
+      },
+      {
+        "id": "darkknight-mk-30",
+        "start": 3247,
+        "end": 3358,
+        "text": "The evacuated hospital wing comes down, and the Joker walks out through the evacuees as if there were no hurry.",
+        "tags": {
+          "save_the_cat": "dark_night"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-30"
+      },
+      {
+        "id": "darkknight-mk-31",
+        "start": 3360,
+        "end": 3483,
+        "text": "Bruce asks Fox for a machine that can listen to the whole city, and Fox builds it on the promise that it is used only once.",
+        "tags": {
+          "save_the_cat": "break_into_three"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-31"
+      },
+      {
+        "id": "darkknight-mk-32",
+        "start": 3484,
+        "end": 3586,
+        "text": "Gordon and the mayor must decide how to move half a million people before a threat they cannot locate.",
+        "tags": {
+          "save_the_cat": "break_into_three"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-32"
+      },
+      {
+        "id": "darkknight-mk-33",
+        "start": 3587,
+        "end": 3712,
+        "text": "Two ferries wait at the berth, one for the public and one for prisoners, each wired by someone who wants to see what happens.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-33"
+      },
+      {
+        "id": "darkknight-mk-34",
+        "start": 3713,
+        "end": 3831,
+        "text": "On the passenger deck a detonator and a deadline split the room, until the nurse stops the one man who would press it.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-34"
+      },
+      {
+        "id": "darkknight-mk-35",
+        "start": 3832,
+        "end": 3976,
+        "text": "On the prisoner ferry the warden hands the detonator to the convict he has been afraid of for years, and the convict drops it out of a porthole.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-35"
+      },
+      {
+        "id": "darkknight-mk-36",
+        "start": 3977,
+        "end": 4113,
+        "text": "In an unfinished tower the Joker has dressed his own men as hostages and the hostages as his men, and Batman sorts them out in the dark.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-36"
+      },
+      {
+        "id": "darkknight-mk-37",
+        "start": 4114,
+        "end": 4236,
+        "text": "On the unfinished roof Batman and the Joker finish their argument: nobody pressed it, and one of them falls and is caught.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-37"
+      },
+      {
+        "id": "darkknight-mk-38",
+        "start": 4237,
+        "end": 4356,
+        "text": "In a quiet house in Besant Nagar the family sits up for Gordon, and the evening changes when he comes through the door.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-38"
+      },
+      {
+        "id": "darkknight-mk-39",
+        "start": 4357,
+        "end": 4490,
+        "text": "Dent holds Gordon's family in the half-finished building where Rachel died, and a coin decides who keeps a future, until it does not.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-39"
+      },
+      {
+        "id": "darkknight-mk-40",
+        "start": 4491,
+        "end": 4614,
+        "text": "After the fall Batman and Gordon decide who will carry the blame, and a boy is told a smaller, kinder version of the night.",
+        "tags": {
+          "save_the_cat": "finale"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-40"
+      },
+      {
+        "id": "darkknight-mk-41",
+        "start": 4615,
+        "end": 4725,
+        "text": "On a river road at dawn Batman takes the blame and Gordon takes a vow, and a bike's engine fades into traffic.",
+        "tags": {
+          "save_the_cat": "final_image"
+        },
+        "origin": "outline",
+        "rationale": "",
+        "step": "darkknight-st-41"
+      }
+    ],
+    "tension": {},
+    "logline": "When a painted stranger robs the mob's banks and sets a city's decent people against one another, a masked vigilante, a police captain and a young prosecutor must decide how much of the truth the city can survive.",
+    "idea": "What if the one man who keeps a city safe discovers that the thing it fears most is not a person with a plan but a person who wants to prove it has none?",
+    "outline": [
+      {
+        "id": "darkknight-st-01",
+        "beat": "save_the_cat:opening_image",
+        "text": "A school bus idles outside a bank at opening time, and four men in clown masks step down from it as if arriving at their own stop.",
+        "sceneId": "darkknight-sc-1"
+      },
+      {
+        "id": "darkknight-st-02",
+        "beat": "save_the_cat:setup",
+        "text": "The robbery runs to a plan in which every man is needed only until the next job is done, and the last one standing leaves with the money.",
+        "sceneId": "darkknight-sc-2"
+      },
+      {
+        "id": "darkknight-st-03",
+        "beat": "save_the_cat:theme_stated",
+        "text": "On a rooftop at night a tired captain tells the vigilante that people do not want a legend, they want a standard.",
+        "sceneId": "darkknight-sc-3"
+      },
+      {
+        "id": "darkknight-st-04",
+        "beat": "save_the_cat:setup",
+        "text": "The city has a guardian nobody can name, a captain who cannot guard anyone, and a mob whose money moves faster than the law."
+      },
+      {
+        "id": "darkknight-st-05",
+        "beat": "save_the_cat:setup",
+        "text": "At a depot Batman breaks up a handover where two imitators in homemade armour are about to be killed for pretending to be him.",
+        "sceneId": "darkknight-sc-4"
+      },
+      {
+        "id": "darkknight-st-06",
+        "beat": "save_the_cat:setup",
+        "text": "Fox shows Bruce a depositor list that does not add up, and a panel of new armour he would rather Bruce did not test on himself.",
+        "sceneId": "darkknight-sc-5"
+      },
+      {
+        "id": "darkknight-st-07",
+        "beat": "save_the_cat:setup",
+        "text": "Dent takes a mob defence apart in a packed court and Maroni smiles at him on the way out.",
+        "sceneId": "darkknight-sc-6"
+      },
+      {
+        "id": "darkknight-st-08",
+        "beat": "save_the_cat:setup",
+        "text": "Over dinner Bruce, Rachel and Dent size each other up, and Bruce starts to think the city might do without him.",
+        "sceneId": "darkknight-sc-7"
+      },
+      {
+        "id": "darkknight-st-09",
+        "beat": "save_the_cat:catalyst",
+        "text": "The mob gathers in a disused mill and decides that the only answer to a frozen account is a man across the sea who can move it.",
+        "sceneId": "darkknight-sc-8"
+      },
+      {
+        "id": "darkknight-st-10",
+        "beat": "save_the_cat:debate",
+        "text": "Gordon, Dent and Ramirez agree a one-night sweep of every account, and Dent finds the judge to sign it.",
+        "sceneId": "darkknight-sc-9"
+      },
+      {
+        "id": "darkknight-st-11",
+        "beat": "save_the_cat:debate",
+        "text": "In the workshop Bruce, Fox and Alfred work out what it would cost to bring the accountant back.",
+        "sceneId": "darkknight-sc-10"
+      },
+      {
+        "id": "darkknight-st-12",
+        "beat": "save_the_cat:break_into_two",
+        "text": "Bruce visits the accountant in his glass tower and makes sure everybody sees him do it.",
+        "sceneId": "darkknight-sc-11"
+      },
+      {
+        "id": "darkknight-st-13",
+        "beat": "save_the_cat:break_into_two",
+        "text": "That night a rented crane lifts Batman and Lau off the roof before the guards reach the edge.",
+        "sceneId": "darkknight-sc-12"
+      },
+      {
+        "id": "darkknight-st-14",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "In custody Lau understands he is safer with the police than at home, and Dent starts a list of names.",
+        "sceneId": "darkknight-sc-13"
+      },
+      {
+        "id": "darkknight-st-15",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "A man in smeared make-up interrupts the mob meeting with a bag of their own money and an offer they cannot afford to refuse.",
+        "sceneId": "darkknight-sc-14"
+      },
+      {
+        "id": "darkknight-st-16",
+        "beat": "save_the_cat:b_story",
+        "text": "Alfred pours tea and tells Bruce the truth about daylight, and who might carry it for him.",
+        "sceneId": "darkknight-sc-15"
+      },
+      {
+        "id": "darkknight-st-17",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "The Joker sets a deadline, a name every night until the mask comes off, and the commissioner and the mayor argue over who should be afraid.",
+        "sceneId": "darkknight-sc-16"
+      },
+      {
+        "id": "darkknight-st-18",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "Bruce hosts a fundraiser for Dent, steering donors with a smile and avoiding Rachel's questions.",
+        "sceneId": "darkknight-sc-17"
+      },
+      {
+        "id": "darkknight-st-19",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "The Joker arrives at the after-party with his own idea of a toast, Rachel is thrown clear, and somebody has to catch her.",
+        "sceneId": "darkknight-sc-18"
+      },
+      {
+        "id": "darkknight-st-20",
+        "beat": "save_the_cat:fun_and_games",
+        "text": "The commissioner is carried through the city in a long parade, and Gordon takes a bullet meant for the mayor.",
+        "sceneId": "darkknight-sc-19"
+      },
+      {
+        "id": "darkknight-st-21",
+        "beat": "save_the_cat:midpoint",
+        "text": "Dent stands up in court and says he is the masked man: a false victory, because the killing stops and the lie begins.",
+        "sceneId": "darkknight-sc-20"
+      },
+      {
+        "id": "darkknight-st-22",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "Rachel leaves Bruce a letter she wants Alfred to hold, and Bruce decides to give himself up.",
+        "sceneId": "darkknight-sc-21"
+      },
+      {
+        "id": "darkknight-st-23",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "The Joker's lorry meets Dent's convoy on an elevated road, and the road becomes a series of increasingly bad ideas.",
+        "sceneId": "darkknight-sc-22"
+      },
+      {
+        "id": "darkknight-st-24",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "At the mouth of a tunnel the chase ends in a collision, and the Joker steps out of the wreck and into police hands.",
+        "sceneId": "darkknight-sc-23"
+      },
+      {
+        "id": "darkknight-st-25",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "Batman and the Joker are alone in the interview room, and the Joker tells him what he has hidden and where.",
+        "sceneId": "darkknight-sc-24"
+      },
+      {
+        "id": "darkknight-st-26",
+        "beat": "save_the_cat:bad_guys_close_in",
+        "text": "Rachel wakes tied to a drum in a mill, with a phone line open to Dent's voice in another building.",
+        "sceneId": "darkknight-sc-25"
+      },
+      {
+        "id": "darkknight-st-27",
+        "beat": "save_the_cat:all_is_lost",
+        "text": "Dent sits in a chair in an empty office while the line stays open, and Batman reaches him a second too late.",
+        "sceneId": "darkknight-sc-26"
+      },
+      {
+        "id": "darkknight-st-28",
+        "beat": "save_the_cat:all_is_lost",
+        "text": "The depot goes up, and Batman carries Dent out of the fire and what is left of the face the city believed in.",
+        "sceneId": "darkknight-sc-27"
+      },
+      {
+        "id": "darkknight-st-29",
+        "beat": "save_the_cat:dark_night",
+        "text": "Dent lies bandaged in a ward bed, and a man in an orderly coat offers him a different way of explaining the night.",
+        "sceneId": "darkknight-sc-28"
+      },
+      {
+        "id": "darkknight-st-30",
+        "beat": "save_the_cat:dark_night",
+        "text": "The evacuated hospital wing comes down, and the Joker walks out through the evacuees as if there were no hurry.",
+        "sceneId": "darkknight-sc-29"
+      },
+      {
+        "id": "darkknight-st-31",
+        "beat": "save_the_cat:break_into_three",
+        "text": "Bruce asks Fox for a machine that can listen to the whole city, and Fox builds it on the promise that it is used only once.",
+        "sceneId": "darkknight-sc-30"
+      },
+      {
+        "id": "darkknight-st-32",
+        "beat": "save_the_cat:break_into_three",
+        "text": "Gordon and the mayor must decide how to move half a million people before a threat they cannot locate.",
+        "sceneId": "darkknight-sc-31"
+      },
+      {
+        "id": "darkknight-st-33",
+        "beat": "save_the_cat:finale",
+        "text": "Two ferries wait at the berth, one for the public and one for prisoners, each wired by someone who wants to see what happens.",
+        "sceneId": "darkknight-sc-32"
+      },
+      {
+        "id": "darkknight-st-34",
+        "beat": "save_the_cat:finale",
+        "text": "On the passenger deck a detonator and a deadline split the room, until the nurse stops the one man who would press it.",
+        "sceneId": "darkknight-sc-33"
+      },
+      {
+        "id": "darkknight-st-35",
+        "beat": "save_the_cat:finale",
+        "text": "On the prisoner ferry the warden hands the detonator to the convict he has been afraid of for years, and the convict drops it out of a porthole.",
+        "sceneId": "darkknight-sc-34"
+      },
+      {
+        "id": "darkknight-st-36",
+        "beat": "save_the_cat:finale",
+        "text": "In an unfinished tower the Joker has dressed his own men as hostages and the hostages as his men, and Batman sorts them out in the dark.",
+        "sceneId": "darkknight-sc-35"
+      },
+      {
+        "id": "darkknight-st-37",
+        "beat": "save_the_cat:finale",
+        "text": "On the unfinished roof Batman and the Joker finish their argument: nobody pressed it, and one of them falls and is caught.",
+        "sceneId": "darkknight-sc-36"
+      },
+      {
+        "id": "darkknight-st-38",
+        "beat": "save_the_cat:finale",
+        "text": "In a quiet house in Besant Nagar the family sits up for Gordon, and the evening changes when he comes through the door.",
+        "sceneId": "darkknight-sc-37"
+      },
+      {
+        "id": "darkknight-st-39",
+        "beat": "save_the_cat:finale",
+        "text": "Dent holds Gordon's family in the half-finished building where Rachel died, and a coin decides who keeps a future, until it does not.",
+        "sceneId": "darkknight-sc-38"
+      },
+      {
+        "id": "darkknight-st-40",
+        "beat": "save_the_cat:finale",
+        "text": "After the fall Batman and Gordon decide who will carry the blame, and a boy is told a smaller, kinder version of the night.",
+        "sceneId": "darkknight-sc-39"
+      },
+      {
+        "id": "darkknight-st-41",
+        "beat": "save_the_cat:final_image",
+        "text": "On a river road at dawn Batman takes the blame and Gordon takes a vow, and a bike's engine fades into traffic.",
+        "sceneId": "darkknight-sc-40"
+      }
+    ],
+    "conflicts": [],
+    "conflictLine": "",
+    "frameworkChosen": false,
+    "outlineLockedAt": ""
+  }
+}

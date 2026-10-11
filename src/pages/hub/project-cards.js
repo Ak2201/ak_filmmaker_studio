@@ -13,11 +13,10 @@ import Store from '../../lib/store.js';
 import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
-import sample from '../../data/sample.dragon.json';
+import { isSampleTitle } from '../../lib/samples.js';
 import { FEATURE_KEY, SHORT_KEY, DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
 
-const SAMPLE_TITLE = sample.title;
 
 let projectFilter = 'all';
 let projectSort = 'recent';
@@ -238,7 +237,7 @@ function renderProjects() {
   renderAdoptNotice();
   if (!grid) return;
   const sampleOnly = PlanGate.sampleOnly();
-  const projects  = sampleOnly ? Store.listProjects().filter((p) => p.title === SAMPLE_TITLE) : Store.listProjects();
+  const projects  = sampleOnly ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
   const currentId = Store.currentProjectId();
 
   if (toolbar) toolbar.hidden = projects.length < 2;

@@ -12,13 +12,13 @@
    ============================================================ */
 import { h } from '../../lib/dom.js';
 import { sampleFigures } from '../../lib/sample-figures.js';
-import sample from '../../data/sample.dragon.json';
+import { SAMPLES } from '../../lib/samples.js';
+import dragonData from '../../data/sample.dragon.json';
 import films from '../../data/films.json';
 import directors from '../../data/directors.json';
 import rules from '../../data/rules.json';
 import PlanGate from '../../lib/plan-gate.js';
 
-const SAMPLE_TITLE = sample.title;
 
 /* The figures the hub quotes about the sample, derived from the scene
    rows so the prose cannot drift from the board. ONE derivation,
@@ -26,9 +26,17 @@ const SAMPLE_TITLE = sample.title;
    uses to stamp start.html's copy of the same numbers. Function
    declarations, because the "where to start" markup is built before
    this section in source order and reads them. */
-function sampleDays() { return sampleFigures(sample).days; }
+function sampleDays(data = dragonData) { return sampleFigures(data).days; }
 
-function samplePages() { return sampleFigures(sample).pages; }
+function samplePages(data = dragonData) { return sampleFigures(data).pages; }
+
+/* One button per registered sample; labels come from the registry. */
+function sampleButtons(prefix, primary) {
+  return SAMPLES.map((sm, i) => h('button.btn' + (primary && i === 0 ? '.primary' : ''), {
+    type: 'button', 'data-action': 'sample-project', 'data-sample': sm.id,
+    title: sm.blurb, text: prefix + sm.label.toUpperCase()
+  }));
+}
 
 /* ------------------------------------------------------------
    FIRST RUN — what a stranger sees before anything is saved.
@@ -72,12 +80,10 @@ function renderFirstRun() {
   ]));
   /* The sample is the secondary way in: a filled studio to look at
      before being asked to name a film. */
-  panel.append(h('div.eps-actions', {}, [
-    h('button.btn', { 'data-action': 'sample-project', text: 'OR OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' })
-  ]));
+  panel.append(h('div.eps-actions', {}, sampleButtons('OR OPEN A SAMPLE FILM: ', false)));
   panel.append(h('div.eps-fine', {
-    text: 'The sample is a real project you can edit or delete: a feature, ' + samplePages()
-        + ' pages of script, the ' + sample.scenes.length + ' scenes broken down from them, a crew and a budget. '
+    text: 'A sample is a real project you can edit or delete: a feature, its pages of script (Dragon has ' + samplePages()
+        + '), the ' + dragonData.scenes.length + ' scenes broken down from them, a crew and a budget. '
         + 'Everything you write stays in this browser unless you sign in.'
   }));
   return panel;
@@ -116,10 +122,10 @@ document.addEventListener('click', (e) => {
 /* The free tier's hub: the sample, and the way up. */
 function renderSampleOnly() {
   return h('div.empty-projects-state', {}, [
-    h('div.eps-title', { text: 'Open the ' + SAMPLE_TITLE + ' sample.' }),
-    h('div.eps-deck', { text: 'Your plan opens the sample project — ' + sample.scenes.length + ' scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
+    h('div.eps-title', { text: 'Open a sample film.' }),
+    h('div.eps-deck', { text: 'Your plan opens the sample projects — scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
     h('div.iv-actions', {}, [
-      h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE' }),
+      ...sampleButtons('OPEN ', true),
       h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })
     ])
   ]);

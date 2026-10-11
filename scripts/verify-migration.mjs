@@ -135,7 +135,7 @@ const BASELINE_FILE = path.join(ROOT, 'scripts', 'baseline.json');
 const WRITE_BUDGET = process.argv.includes('--budget');
 const BUDGET_FILE = path.join(ROOT, 'scripts', 'budget.json');
 const BUDGET = fs.existsSync(BUDGET_FILE) ? JSON.parse(fs.readFileSync(BUDGET_FILE, 'utf8')) : { pages: {} };
-const LAZY_CHUNKS = /\/(supabase|pptxgen|sample\.dragon\.script)-[^/]*\.js$/;
+const LAZY_CHUNKS = /\/(supabase|pptxgen|sample\.[a-z]+\.(?:script|story))-[^/]*\.js$/;
 const measuredBudget = {};
 const knownLeaksSeen = new Set();   // which knownLazyFetches entries actually fired
 

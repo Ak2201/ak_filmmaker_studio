@@ -50,9 +50,25 @@
 
 /* ---- the poster -------------------------------------------------
    The still fills the facade and the existing play row sits over it.
-   A scrim rather than a flat darkening: the title has to stay legible
-   over a frame that might be any colour, and the gate's AA walk never
-   sees this surface because the image is not a token. */
+
+   THE SURFACE GOES DARK WITH IT, and that is the whole point rather
+   than decoration. The first version set `color: #fff` on the title
+   and left `.vid` on its ordinary card background: in the paper theme
+   that is white text on a white surface, contrast 1.00, which
+   verify's AA walk caught and I had wrongly predicted it could not —
+   the walk reads the computed background COLOUR behind a text node,
+   and an image and a ::before scrim are neither. It was a real defect
+   too, not only a failed check: a still that is slow or missing
+   leaves the title unreadable.
+
+   `--panel` is the one family this codebase keeps dark in BOTH
+   themes (the floating family: toast, tooltip, glossary popover), so
+   light ink on it is correct whether or not the image ever arrives,
+   and it is a token rather than a hard-coded hex. */
+.vid:has(.vid-poster) {
+  background: var(--panel);
+  color: var(--panel-ink);
+}
 .vid-poster {
   position: absolute;
   inset: 0;
@@ -73,9 +89,6 @@
 /* The row's own children have to clear the scrim. */
 .vid:has(.vid-poster) .vid-icon,
 .vid:has(.vid-poster) .vid-meta { position: relative; }
-/* Fixed light ink ON TOP OF A PHOTOGRAPH, not theme ink: the scrim is
-   dark in both themes because the frame underneath it is, so paper's
-   near-black text would vanish here. */
-.vid:has(.vid-poster) .vid-title { color: #fff; }
-.vid:has(.vid-poster) .vid-sub { color: rgba(255, 255, 255, .82); }
-.vid:has(.vid-poster) .vid-play { color: #fff; }
+.vid:has(.vid-poster) .vid-play  { color: var(--panel-ink); }
+.vid:has(.vid-poster) .vid-title { color: var(--panel-ink); }
+.vid:has(.vid-poster) .vid-sub   { color: var(--panel-muted); }

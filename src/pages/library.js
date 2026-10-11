@@ -78,7 +78,7 @@ import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 import { guideHref } from '../lib/blueprint-route.js';
 import {
-  buildIndex, searchLibrary, libraryContents, GROUPS, STAGES, stageLabel,
+  libraryContents, GROUPS, STAGES, stageLabel,
   filmId, directorId, ruleId, rateTableId, rateRowId, watchId, termId
 } from '../lib/library-search.js';
 import { termBody } from '../ui/learn.js';
@@ -447,9 +447,7 @@ function railFor(section) {
   ]);
 }
 
-/* ---- search: this page's own, and only this page's ------------- */
-let SEARCH_INDEX = [];          // grows when the glossary arrives
-let SEARCH_BASE = null;
+/* ---- the data the contents index reads (search is the palette's now) ---- */
 
 function searchSource() {
   return {
@@ -457,67 +455,6 @@ function searchSource() {
     studies: listStudies(), dissections: listShipped()
   };
 }
-function renderSearch() {
-  const input = h('input#libSearch.lib-search-input', {
-    type: 'search', autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'search',
-    placeholder: 'logline, Vikram Vedha, lens kits, rule 12…',
-    'aria-controls': 'libResults', 'aria-label': 'Search the library',
-    'data-action': 'lib-search'
-  });
-  return h('div.lib-search', { role: 'search' }, [
-    h('label.lib-search-label', { for: 'libSearch', text: 'SEARCH THE LIBRARY' }),
-    h('div.lib-search-row', {}, [
-      input,
-      h('button.btn.lib-search-clear', { type: 'button', 'data-action': 'lib-search-clear', hidden: true, text: 'CLEAR' })
-    ]),
-    h('p.lib-search-hint', {}, [
-      'Films, directors, rules, equipment, the watch list, case studies, dissection and film terminology. Press ',
-      h('kbd', { text: '/' }), ' to start typing.'
-    ]),
-    h('div#libResults.lib-results', { role: 'region', 'aria-label': 'Library search results', 'aria-live': 'polite', hidden: true })
-  ]);
-}
-
-function runSearch(q) {
-  const box = document.getElementById('libResults');
-  const clear = document.querySelector('.lib-search-clear');
-  if (!box) return;
-  const query = String(q || '').trim();
-  if (clear) clear.hidden = !query;
-  if (query.length < 2) { box.hidden = true; box.replaceChildren(); return; }
-  if (!SEARCH_BASE) SEARCH_BASE = buildIndex(searchSource());
-  if (!SEARCH_INDEX.length) SEARCH_INDEX = SEARCH_BASE;
-  const groups = searchLibrary(SEARCH_INDEX, query, { limit: 6 });
-  box.hidden = false;
-  if (!groups.length) {
-    box.replaceChildren(h('p.lib-results-none', { text: `Nothing in the library matches “${query}”. Try a shorter word.` }));
-    return;
-  }
-  box.replaceChildren(...groups.map((g) => h('div.lib-results-group', {}, [
-    h('h3.lib-results-head', {}, [g.label, h('span.lib-results-n', { text: ` ${g.total}` })]),
-    h('ul', {}, g.items.map((it) => h('li', {}, [
-      h('a', { href: it.href }, [
-        h('span.lib-hit-title', { text: it.title }),
-        it.sub ? h('span.lib-hit-sub', { text: it.sub }) : null
-      ])
-    ]))),
-    g.total > g.items.length ? h('p.lib-results-more', { text: `and ${g.total - g.items.length} more in ${g.label}` }) : null
-  ])));
-}
-/* The terminology half of the index needs the glossary; it is added the
-   first time the reader types (or the terminology tab draws), then every
-   later query already includes it. */
-function ensureTermIndex() {
-  return loadGlossary().then((g) => {
-    if (!SEARCH_BASE) SEARCH_BASE = buildIndex(searchSource());
-    if (SEARCH_INDEX === SEARCH_BASE || !SEARCH_INDEX.length) {
-      SEARCH_INDEX = SEARCH_BASE.concat(buildIndex({ terms: g.terms }));
-    }
-    const input = document.getElementById('libSearch');
-    if (input && input.value) runSearch(input.value);
-  }).catch(() => { /* search still covers every other shelf */ });
-}
-
 /* ---- the Library index: every shelf and what is on it ----------
    The hub's master index listed the library's sections, films and
    directors; it lives here now, derived from the same arrays. */
@@ -911,7 +848,6 @@ function drawTerms(g) {
   const count = document.getElementById('libGlossCount');
   if (count) count.textContent = `${terms.length} terms`;
 
-  ensureTermIndex();
   openTermFromHash();
 }
 
@@ -971,11 +907,6 @@ function toggleDark() {
    page's own chrome. */
 const ACTIONS = {
   theme: toggleDark,
-  'lib-search-clear': () => {
-    const input = document.getElementById('libSearch');
-    if (input) { input.value = ''; input.focus(); }
-    runSearch('');
-  }
 };
 
 function wireActions(root) {
@@ -994,46 +925,11 @@ function wireActions(root) {
   // never writes.
   delegate(root, 'input', '[data-action="lib-gloss-filter"]', (e, el) => filterTerms(el));
 
-  // The library's own search: DOM-only too, and it reads only this page's data.
-  delegate(root, 'input', '[data-action="lib-search"]', (e, el) => {
-    runSearch(el.value);
-    ensureTermIndex();
-  });
-  delegate(root, 'focusin', '[data-action="lib-search"]', () => { ensureTermIndex(); });
-  delegate(root, 'keydown', '[data-action="lib-search"]', (e, el) => {
-    if (e.key === 'Escape' && el.value) { e.preventDefault(); e.stopPropagation(); el.value = ''; runSearch(''); }
-    if (e.key === 'ArrowDown') {
-      const first = document.querySelector('#libResults a');
-      if (first) { e.preventDefault(); first.focus(); }
-    }
-  });
   // A hit that lands on a term opens its card first, so the example is there.
   delegate(root, 'click', 'a[href*="#term-"]', (e, el) => {
     openTermFromHash((el.getAttribute('href') || '').split('#')[1]);
   });
   window.addEventListener('hashchange', () => openTermFromHash());
-}
-
-/* "/" and ⌘K / Ctrl-K focus THIS page's search. The palette (palette.js)
-   and chrome.js bind the same keys on `document`; this listener is on
-   `window` in the capture phase, so it runs first and ends the event, and
-   neither of those files has to change. Not with Shift, as chrome.js. */
-function wireSearchKeys() {
-  window.addEventListener('keydown', (e) => {
-    const input = document.getElementById('libSearch');
-    if (!input) return;
-    const k = String(e.key).toLowerCase();
-    const mod = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && k === 'k';
-    const tag = (e.target && e.target.tagName || '').toLowerCase();
-    const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
-    const slash = e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey;
-    if (!mod && !slash) return;
-    e.preventDefault();
-    e.stopPropagation();
-    input.scrollIntoView({ block: 'center' });
-    input.focus();
-    input.select();
-  }, true);
 }
 
 /* ============================================================
@@ -1065,7 +961,6 @@ function render() {
   // moves it into .sh-bar, which is also before <main>, so that stays
   // true after the adoption.
   const main = h('main#main', { role: 'main' });
-  main.append(renderSearch());
   main.append(renderCover());
   main.append(renderContents());
   SECTIONS.forEach((s, i) => main.append(renderSection(s, i)));
@@ -1074,7 +969,6 @@ function render() {
   app.replaceChildren(toolbar, main);
 
   wireActions(app);
-  wireSearchKeys();
   mountShelf();
   syncThemeButton();
 

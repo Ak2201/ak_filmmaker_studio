@@ -407,31 +407,27 @@ const EXPECTED = {
   dashboard: {},
   settings: {},
   shoot: {},
-  /* Two videos left the Idea step on 11 Oct 2026, at the owner's
-     request: the step is for making an idea, and on a feature the
-     only two videos pinned to `step:feature/step-01` were about the
-     SYNOPSIS and about starting a SCREENPLAY. They moved to
-     module:story and module:screenplay (src/data/videos.json); their
-     words went with them.
+  /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 
-     `akash` and `vijay` are the channel "Akash Vijay"; `tamil-scene`
-     and `starting` are its why line, "Tamil-scene starting point for
-     a first screenplay"; `seed` is the other's, "Turning a seed into
-     a one-page story". Five words, one deliberate content change, one
-     page.
+     Two videos left the Idea step on 11 Oct 2026 (the step is for
+     making an idea; on a feature the only two pinned to
+     step:feature/step-01 were about the SYNOPSIS and about starting a
+     SCREENPLAY). Their words went with them — `akash` and `vijay`
+     from the channel "Akash Vijay", `tamil-scene` and `starting` from
+     its why line, `seed` from the other's — and they were allowed
+     here with that reason, which is what this list is for.
 
-     An allowance rather than a recapture because it is the first row
-     since the last one and it is content, not a derived number —
-     re-baselining to absorb five words would bake in whatever else
-     was on screen that minute. The anti-rot check fails the run if it
-     ever stops firing, which is what stops it becoming permanent. */
-  story: {
-    akash: 'channel "Akash Vijay" — video moved off the Idea step',
-    vijay: 'channel "Akash Vijay" — video moved off the Idea step',
-    'tamil-scene': 'its why line, "Tamil-scene starting point"',
-    starting: 'its why line, "Tamil-scene starting point"',
-    seed: 'the synopsis video\'s why, "Turning a seed into a one-page story"'
-  },
+     A parallel session then re-baselined for the same change
+     (`0be3674`). The oracle now records the page as it actually
+     reads, so those five words are not missing from anything, the
+     allowance never fires, and the anti-rot check would fail the run
+     for a stale allowance. Removing it is that mechanism working.
+
+     This is the third time the note above has been proved right in
+     the same way, and it is worth one more line: an allowance is
+     valid only until the next recapture, and you do not control who
+     makes that or when. */
+  story: {},
   edit: {},
   deliverables: {},
   screening: {},

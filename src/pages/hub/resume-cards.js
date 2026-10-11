@@ -228,7 +228,7 @@ function updateStatus() {
   const summary = parts.length
     ? 'Tracked: ' + parts.join(', ') + '. '
     : 'No projects yet — pick a door above to start a film. ';
-  $('#storageBytes').textContent = summary + 'Total local storage: ' + kb + ' KB.';
+  { const sb = $('#storageBytes'); if (sb) sb.textContent = summary + 'Total local storage: ' + kb + ' KB.'; }
 
   updateResume(f, s);
   updateIndexChecks(f, s);
@@ -264,6 +264,7 @@ function updateResume() {
   const heading = $('#resumeTitle');
   const body    = $('#resumeBody');
   const actions = $('#resumeActions');
+  if (!card || !heading || !body || !actions) return;   // the hub no longer draws the resume card
   actions.textContent = '';
   const cur = Store.currentProject();
   if (!cur) { card.classList.remove('has-data'); return; }

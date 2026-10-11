@@ -253,7 +253,7 @@ function panelVault(card) {
   card.append(add);
   card.append(h('div.sk-actions', {}, [
     h('button.btn', { type: 'button', 'data-sk': 'clip-add', text: 'ADD TO VAULT' }),
-    link(STORY_HREF + '#vault', 'OPEN THE IDEA VAULT →')
+    link('vault.html#vault', 'OPEN THE IDEA VAULT →')
   ]));
 }
 

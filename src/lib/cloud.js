@@ -1444,7 +1444,7 @@ function planLimitToast(message, opts) {
   _planToastAt = Date.now();
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(message + ' This film is saved on this device.', {
-      type: 'error', action: 'See plans', onAction: () => { location.href = 'settings.html#plan'; }
+      type: 'error', action: 'See plans', onAction: () => { location.href = 'purchase.html'; }
     });
   }
 }

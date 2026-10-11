@@ -504,6 +504,13 @@ export default defineConfig({
         // The application console: the whole studio in numbers, plus
         // the gate's queue, codes and sessions. Administrators only.
         admin:      resolve(__dirname, 'admin.html'),
+        // The money, out of the console: a user-side Purchase page (plans,
+        // checkout, invoices, refund request) and an admin-only Purchases
+        // page (payments, refunds, invoices, promo codes, tiers, growth).
+        purchase:   resolve(__dirname, 'purchase.html'),
+        purchases:  resolve(__dirname, 'purchases.html'),
+        // The Idea Vault, a section of its own rather than a Story tab.
+        vault:      resolve(__dirname, 'vault.html'),
         // The two documents Google will not publish an OAuth consent
         // screen without. They carry no app code — see src/pages/legal.js.
         privacy:    resolve(__dirname, 'privacy.html'),

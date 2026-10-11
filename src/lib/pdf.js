@@ -56,6 +56,11 @@
 import Store from './store.js';
 import { h } from './dom.js';
 import { BRAND } from './brand.js';
+/* The plan's `exports` capability (src/data/plan-matrix.json). Every PDF
+   in the studio goes through exportPDF(), so this is the one check;
+   an invoice is a receipt, not an export of somebody's work, and is
+   never held back. Fails open, like every plan check. */
+import PlanGate from './plan-gate.js';
 
 /* ------------------------------------------------------------
    PAGE SETUPS
@@ -230,6 +235,7 @@ export function unstage() {
    ------------------------------------------------------------ */
 export function exportPDF(opts = {}) {
   if (active) return false;             // one job at a time
+  if (opts.scope !== 'invoice' && !PlanGate.guard('exports')) return false;
   try {
     stage(opts);
   } catch (e) {

@@ -7,6 +7,11 @@
    admin_set_plan({ features }), which REPLACES the map (so an untick
    is stored as false, and false is the only thing that locks).
 
+   THE STARTING POINT is src/data/plan-matrix.json: schema section 35
+   writes its maps into these same rows (the owner's three-plan split,
+   11 Oct 2026), and the plan cards and start.html derive what each
+   plan adds from them. A change saved here is a fine-tune on top.
+
    The module rows come from navigation.json through plan-gate.js's
    catalogue, so a module added there appears here with no edit — the
    same rule that keeps the steps in JSON. A key the catalogue no
@@ -66,7 +71,7 @@ export function planFeaturesSection(section, st) {
   for (const [key, label, hint] of CAPABILITIES) row(key, label, hint, key !== 'sample_only');
   for (const stage of PlanGate.moduleCatalogue()) {
     group(stage.label);
-    for (const m of stage.modules) row(m.id, m.label, m.siblings.length ? 'shares a page with ' + m.siblings.join(', ') + '; the page locks when all are unticked' : '', true);
+    for (const m of stage.modules) row(m.id, m.label, m.siblings.length ? 'shares a page with ' + m.siblings.join(', ') + '; unticked, its own section locks, and the whole page once all are unticked' : '', true);
   }
   table.append(tb);
   form.append(h('div.gt-scroll', {}, [table]));

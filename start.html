@@ -296,7 +296,8 @@
   <!-- The tier NAMES and ORDER are stamped at build time from
        PLAN_ORDER / planName in src/lib/plans.js, the list PRICES and the
        table rows from startFigures() in vite.config.js (fms-start-figures,
-       rows from src/data/plan-matrix.json): each <li data-tier> must be one
+       rows from src/data/plan-matrix.json, as is each tier's "adds" line,
+       fms:tier.adds.ID — never type a feature list here): each <li data-tier> must be one
        PAID PLAN_ORDER id, in order, printing its fms:plan.ID placeholder,
        and there must be one <li data-trial>, or the build fails. There is
        NO free tier (owner, 11 Oct 2026): 'free' is the "no plan" state, and
@@ -306,9 +307,9 @@
        price_notice() at runtime, or not at all. -->
   <ul class="st-tiers" data-reveal-group>
     <li data-trial><strong>Free trial</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and every learning module for <span data-trial-length>a limited time</span>, then choose a plan. No card.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google">Start the free trial</a></li>
-    <li data-tier="starter" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>Your own films: the {{fms:short.steps}} steps, the screenplay, the breakdown and the exports.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html?plan=starter#buy" data-plan="starter">Buy {{fms:plan.starter}}</a></li>
-    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>Adds stripboard, budget, call sheets, the shoot day and Drive backup.</span><a class="st-btn st-tier-buy" href="invite.html?plan=indie#buy" data-plan="indie">Buy {{fms:plan.indie}}</a></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>Everything, including AI tools with your own key, the edit log and deliverables.</span><a class="st-btn st-tier-buy" href="invite.html?plan=pro#buy" data-plan="pro">Buy {{fms:plan.pro}}</a></li>
+    <li data-tier="starter" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>{{fms:tier.adds.starter}}</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html?plan=starter#buy" data-plan="starter">Buy {{fms:plan.starter}}</a></li>
+    <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>{{fms:tier.adds.indie}}</span><a class="st-btn st-tier-buy" href="invite.html?plan=indie#buy" data-plan="indie">Buy {{fms:plan.indie}}</a></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>{{fms:tier.adds.pro}}</span><a class="st-btn st-tier-buy" href="invite.html?plan=pro#buy" data-plan="pro">Buy {{fms:plan.pro}}</a></li>
   </ul>
   <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
     <table class="st-table">

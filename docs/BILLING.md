@@ -46,9 +46,10 @@ owner's product boundary; the data boundary stays RLS and the triggers.
 > `plan_rank` and `PLAN_ORDER` are unchanged. The prices are the live
 > ones, read from the `plans` table on 8 Oct 2026; the server reads the
 > price from the table on every order. The seeded figures §18 wrote
-> (₹2,999 / ₹7,999 / ₹19,999) are history. The feature matrix proposed
-> for the pricing table is `src/data/plan-matrix.json`
-> (`matrixFeatures(planId)` in `plans.js`); it does not gate anything.
+> (₹2,999 / ₹7,999 / ₹19,999) are history. **What each plan includes**
+> is `src/data/plan-matrix.json` (owner, 11 Oct 2026; §16 below):
+> schema §35 writes it into `plans.features`, and start.html, the plan
+> cards and the console all read from it or from those rows.
 
 | Live share links | 0 | 3 | 10 | unlimited |
 | Organisation seats | 1 | 1 | 3 | 10 |
@@ -689,8 +690,9 @@ server locks out the people who have paid, and `npm run verify` loads all
 §26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
 each verified afterwards over PostgREST rather than from the screen.
 
-**§32, §33 and §34 are NOT run live** — see §13, §14 and §15 below; they
-are the next owner steps, in that order.
+**§32, §33, §34 and §35 are NOT run live** — see §13, §14, §15 and §16
+below; they are the next owner steps, in that order:
+**§32 → §33 → §34 → §35**.
 
 **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
 §30's refusal sentences carry em-dashes and `₹`, so that mojibake would
@@ -884,3 +886,56 @@ row untouched; a failure inside is a WARNING, never a lost refund.
    `pg_get_constraintdef` of `studio_members_trial_source_check` names
    `refund`.
 3. No edge function changes and no redeploy are needed.
+
+## 16. Three plans, each including everything below it (schema §35, 11 Oct 2026). NOT RUN LIVE.
+
+The owner's decision: **Basic writes the film, Intermediate prepares it,
+Pro is everything** — and the matrix REPLACES the live features map (the
+console's Features table can fine-tune it afterwards).
+
+| Plan | Adds |
+| --- | --- |
+| Basic | Story (Beats & Pacing, Idea Vault, the Story Bible on story.html), Screenplay (Script, Drafts & revisions, Import a script), Script Breakdown, Scene List, Screen Time, Title page & documents, the whole Library, PDF exports, script import, new projects |
+| Intermediate | Scene Breakdowns, Elements, Auto-Tagging, Cast Matrix, Shot List, Storyboard, Lookbook, Pitch Deck, Media, Budget, Contacts, Stripboard, Songs, Calendar, Locations, Day Out of Days, Sides, Reports, Google Drive backup, the Chrome extension |
+| Pro | Shoot Day, Call Sheets, Edit Log, Deliverables, AI tools (own key), Remove branding |
+
+(`docs`, "Title page & documents" on drafts.html, was not named by the
+owner; it is Basic, beside Drafts. One edit to the JSON moves it.)
+
+**One source.** `src/data/plan-matrix.json` covers every module id in
+`navigation.json` and every capability; `npm run test:plans` fails on a
+module missing from it, on a plan that is not a superset of the one
+below, and on §35 differing from what
+`node scripts/make-plan-features-sql.mjs` generates. To change the split:
+edit the JSON, run the script with `--write`, commit both, and run the
+new §35. The 'free' row (the trial / no-plan state) is not touched.
+
+**What enforces it (client; fails open like everything in plan-gate.js).**
+A page whose every module is off shows the plan lock; a module that is
+one SECTION of a page shared with a lower plan's modules locks that
+section in place (`[data-tab-lock]`) — Cast Matrix / Sides / Reports on
+reports.html for Basic, Call Sheets on contacts.html for Intermediate. A
+target nested inside an allowed module's (breakdown.html `#breakdown`,
+the cards inside the Scene List) is not hidden. Capabilities:
+`exports` in `pdf.js` exportPDF (an invoice is never held back; the
+backup download never is either), `script_import` in the importers of
+script.html, write.html and breakdown.html, `drive_backup` in
+drive-sync.js connect()/push and on Settings, `ai_tools` in ai-panel.js,
+`remove_branding` in footer.js, `new_projects` on the hub, and
+`limits.extension` (which §35 also sets: off on Basic) in the panel.
+
+**What §35 writes.** `plans.features` for starter / indie / pro, replaced
+whole, every key true or false (no `sample_only` on a paid plan), and
+`limits.extension` merged into `limits`. While purchases are not
+required, or for a plan-less e-mail grant, `billing_status()` serves
+`open_features()` — now Pro's map. Proved on a real PostgreSQL by
+`scripts/schema-tests/plan-features.sql` and in the browser by
+`prove:billing` (t).
+
+### Deploy (owner) — after §34
+
+1. Run **§35** (from `-- 35. PLAN FEATURES FROM THE MATRIX` to the end of
+   `supabase-schema.sql`) the same checksummed way.
+2. Confirm: `select id, features, limits->'extension' from plans` — the
+   three paid rows match `matrixFeatures(id)`; free is unchanged.
+3. Open admin.html#features: the ticks are the split above.

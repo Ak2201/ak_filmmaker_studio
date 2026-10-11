@@ -36,6 +36,7 @@ import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/bre
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
+import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -950,6 +951,7 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   const file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
+  if (!PlanGate.guard('script_import')) return;
   let Parser;
   try { Parser = await import('../lib/script-import.js'); }
   catch (err) { sayStatus('The script reader could not be loaded. Check the connection and try again.'); return; }

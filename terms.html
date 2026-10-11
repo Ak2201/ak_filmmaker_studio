@@ -80,7 +80,17 @@ withdraw a code or a membership that is misused.</p>
   subscription: nothing renews automatically and you will not be charged again unless you
   choose to upgrade.</li>
   <li><strong>Prices and taxes.</strong> Prices are in Indian Rupees (INR) and include any
-  applicable taxes unless stated otherwise. GSTIN: <span class="legal-ph">[OWNER: GSTIN, if registered]</span>.
+  applicable taxes unless stated otherwise.
+  <!-- NO GSTIN SENTENCE, DELIBERATELY. src/data/brand.json carries gstin: "" and
+       says why: the seller is an individual not registered for GST, so what buyers
+       receive is a Bill of Supply rather than a tax invoice (schema section 28).
+       An unfilled owner placeholder was live on this page until 12 Oct 2026 —
+       the page a buyer reads before paying, and one Razorpay checks during
+       website verification. (Not quoted here: the literal string would then ship
+       in the page source and trip the very grep that found it.)
+       If registration ever happens, put the number back HERE and in brand.json in
+       the SAME change, and switch the invoice to tax-invoice mode. A GSTIN on the
+       terms but not on the invoice is worse than neither. -->
   We may change prices for future purchases; a change never affects a plan you have
   already bought.</li>
   <li><strong>Payment processing.</strong> Payments are processed by Razorpay under its

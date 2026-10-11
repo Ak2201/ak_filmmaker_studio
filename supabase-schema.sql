@@ -8657,3 +8657,194 @@ notify pgrst, 'reload schema';
 -- 11. anon / authenticated: select from email_grants -> nothing / 42501.
 -- Test file: scripts/schema-tests/purchases.sql (run by npm run test:schema).
 -- ============================================================
+
+-- ============================================================
+-- 33. A FREE TRIAL, NOT A FREE PLAN — set in hours   RUN LIVE: not yet
+-- ------------------------------------------------------------
+-- The owner's decisions, 11 Oct 2026:
+--
+--   "Let's not have a free version; it can be a free TRIAL version that
+--    lasts for configured HOURS."
+--
+-- NOTHING IS STORED DIFFERENTLY. The trial's length stays in MINUTES —
+-- billing_settings.trial_minutes for the next trial, the snapshot on
+-- studio_members.trial_minutes for a running one (section 30) — so every
+-- row already written stays valid and no running trial moves. The console
+-- takes and shows the number in hours (hours × 60 is what it saves; 30
+-- minutes reads back as 0.5). A new column would have been a second copy
+-- of one fact, and CLAUDE.md is plain about what that costs.
+--
+-- The 'free' plans row STAYS. It is what user_plan() answers for somebody
+-- who has bought nothing — the "no plan" state that billing_status(),
+-- the limit triggers and quote_for() all read — and quote_for() already
+-- refuses to sell it (price 0, "not for sale"). It is simply never drawn
+-- as a choice: not on purchase.html, not on invite.html, not on the
+-- landing page, not in the console's grant lists. That is client work.
+--
+-- What the server adds is two reads:
+--
+--   33.1  trial_offer() — anon. The landing page's first card is the free
+--         TRIAL now, and it says how long the trial is; start.html has no
+--         session and no SDK, so it needs the refund_requests_enabled()
+--         shape: one narrow, public fact. The length of a trial is not a
+--         secret — it is printed on the card.
+--   33.2  billing_status(), restated IN FULL (the §32.3 body, the one that
+--         wins), plus two keys:
+--           trial_hours  the next trial's length in hours, for the pages
+--                        that say it (minutes / 60, two places)
+--           server_now   the server's clock. The trial band counted down
+--                        against the BROWSER's, so a laptop ten minutes
+--                        fast took the band away ten minutes early and
+--                        one ten minutes slow kept it after the server had
+--                        walled. plan-gate.js keeps the difference.
+--         Every key §32 returned keeps its name, its type and its meaning.
+--   33.3  admin_get_billing_settings(), restated: the console's read gains
+--         trial_hours beside trial_minutes. The section 22 body otherwise.
+--
+-- Idempotent: CREATE OR REPLACE throughout, no ALTER, no data change.
+--
+--   33.4  grants
+--   33.5  CHECKS TO RUN
+-- ============================================================
+
+-- 33.1 trial_offer() — THE LANDING PAGE'S READ ------------------------------
+create or replace function public.trial_offer()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'trial_enabled',     coalesce(s.trial_enabled, false),
+    'trial_minutes',     coalesce(s.trial_minutes, 30),
+    'trial_hours',       round(coalesce(s.trial_minutes, 30) / 60.0, 2),
+    'purchase_required', coalesce(s.purchase_required, false))
+    from (select 1) one
+    left join public.billing_settings s on s.id;
+$$;
+
+-- 33.2 billing_status(), RESTATED -------------------------------------------
+create or replace function public.billing_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid    uuid := auth.uid();
+  pl     text;
+  acc    public.accounts;
+  lim    jsonb;
+  s      public.billing_settings;
+  m      public.studio_members;
+  t_ends timestamptz;
+  t_on   boolean;
+  feat   jsonb;
+  req    boolean;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  pl := public.user_plan(uid);
+  select * into acc from public.accounts a where a.owner_id = uid
+   order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last limit 1;
+  lim := public.user_limits(uid);
+  select * into s from public.billing_settings x where x.id;
+  select * into m from public.studio_members x where x.user_id = uid;
+  t_ends := public.trial_ends_at(uid);
+  t_on   := public.trial_active(uid);
+  req    := coalesce(s.purchase_required, false);
+
+  feat := coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb);
+  if t_on and m.trial_scope = 'full' and pl = 'free' then
+    feat := coalesce((select p.features from public.plans p
+                       where p.id = coalesce(s.trial_plan, 'indie')), '{}'::jsonb);
+  end if;
+  -- section 32: nothing to buy, so nothing held back
+  if not req then
+    feat := public.open_features();
+  end if;
+
+  return jsonb_build_object(
+    'plan',        pl,
+    'plan_name',   (select name from public.plans where id = pl),
+    'limits',      lim,
+    'features',    feat,
+    'account_id',  acc.id,
+    'account_name', acc.name,
+    'plan_until',  case when pl <> 'free' then acc.plan_until end,
+    'bought_plan', acc.plan,
+    'lapsed',      acc.plan is not null and acc.plan <> 'free' and acc.plan_until is not null and acc.plan_until <= now(),
+    'disabled',    exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is not null),
+    'member',      exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is null),
+    -- section 30
+    'trial_enabled', coalesce(s.trial_enabled, false),
+    'trial_active',  t_on,
+    'trial_ends_at', t_ends,
+    'trial_minutes', coalesce(s.trial_minutes, 30),
+    'trial_used',    m.trial_started_at is not null,
+    'trial_source',  m.trial_source,
+    'trial_scope',   case when t_on then m.trial_scope end,
+    'entitled',      (not req) or (pl <> 'free') or t_on,
+    -- section 32
+    'purchase_required', req,
+    -- section 33
+    'trial_hours',   round(coalesce(s.trial_minutes, 30) / 60.0, 2),
+    'server_now',    now(),
+    'usage', jsonb_build_object(
+      'projects',      (select count(*) from public.projects p where p.owner_id = uid),
+      'shares',        (select count(*) from public.shares sh join public.projects p on p.id = sh.project_id
+                         where p.owner_id = uid and (sh.expires_at is null or sh.expires_at > now())),
+      'collaborators', (select coalesce(max(c), 0) from (select count(*) c from public.project_collaborators pc
+                         join public.projects p on p.id = pc.project_id where p.owner_id = uid group by pc.project_id) t),
+      'seats',         (select count(*) from public.account_members am where am.account_id = acc.id and am.status in ('pending','active'))
+    ),
+    'payments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'plan_id', x.plan_id, 'period', x.period,
+                   'amount_paise', x.amount_paise, 'status', x.status, 'created_at', x.created_at, 'ends_at', x.ends_at)
+                   order by x.created_at desc)
+                  from (select * from public.payments q where q.user_id = uid order by q.created_at desc limit 12) x), '[]'::jsonb)
+  );
+end;
+$fn$;
+
+-- 33.3 admin_get_billing_settings(), RESTATED -------------------------------
+create or replace function public.admin_get_billing_settings()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return (select (to_jsonb(s) - 'id')
+                 || jsonb_build_object('trial_hours', round(coalesce(s.trial_minutes, 30) / 60.0, 2))
+            from public.billing_settings s where s.id);
+end;
+$fn$;
+
+-- 33.4 GRANTS -----------------------------------------------------------
+revoke execute on function public.trial_offer()                from public;
+revoke execute on function public.billing_status()             from public, anon;
+revoke execute on function public.admin_get_billing_settings() from public, anon;
+grant  execute on function public.trial_offer()                to anon, authenticated;
+grant  execute on function public.billing_status()             to authenticated;
+grant  execute on function public.admin_get_billing_settings() to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 33.5 CHECKS TO RUN, none of which has been run live -------------------
+--  1. anon: trial_offer() -> trial_enabled, trial_minutes, trial_hours
+--     (= minutes / 60) and purchase_required; nothing about any person.
+--  2. admin_set_billing_settings('{"trial_minutes": 180}') -> trial_offer()
+--     says 3 hours, admin_get_billing_settings() trial_hours 3, and a
+--     trial started after it gets 180 minutes on its row.
+--  3. a trial ALREADY RUNNING keeps its snapshot when the setting moves.
+--  4. billing_status() carries every key §32 returned, plus trial_hours
+--     and server_now (within a second of now()).
+--  5. ON: an expired member is entitled false; OFF: true — §32 unchanged.
+--  6. quote_for(<anyone>, 'free') -> 22023 "not for sale": the Free row
+--     cannot be bought, whatever a client draws.
+--  7. re-running the section is a no-op.
+-- Test file: scripts/schema-tests/trial-hours.sql (run by npm run test:schema).
+-- ============================================================

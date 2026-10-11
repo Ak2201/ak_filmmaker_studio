@@ -35,6 +35,8 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
 import { planExtras } from '../ui/footer.js';
+import PlanGate from '../lib/plan-gate.js';
+import { timeLeft } from '../lib/trial-time.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -66,6 +68,32 @@ async function refreshBilling() {
 
 const FREE_LINE = 'The studio is free to use right now \u2014 nothing to buy.';
 const purchasesOff = (st) => !!(st && st.purchase_required === false);
+
+/* §33 — WHERE THE TRIAL STANDS, said on the page that sells the way
+   past it. A trial user arrives here from the band's SEE PLANS; a
+   lapsed one from the wall's. Both used to find "Choose a plan." over a
+   Free card marked "Your plan" — the wall said the trial was over and
+   this page said they were on a plan. The line reads billing_status()
+   (this page's own copy) and the server's clock through plan-gate. */
+function trialLine(st) {
+  if (!st || st.plan !== 'free' || st.purchase_required === false) return null;
+  const ends = st.trial_ends_at ? Date.parse(st.trial_ends_at) : NaN;
+  if (st.trial_active === true && Number.isFinite(ends)) {
+    const left = timeLeft(ends - (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
+    return h('p.pl-status.pu-trial', { text: 'Your free trial has ' + left + ' left. A plan keeps the studio open after it ends.' });
+  }
+  if (st.entitled === false) {
+    const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    return h('div.pu-trial.pu-trial-over', {}, [
+      h('p.pl-status', { text: (st.trial_used ? 'Your free trial ended' + when + '. ' : '') + 'Choose a plan to keep using the studio. Everything you wrote is still saved on this device.' }),
+      /* The way out sits beside the way through: this is the one page
+         a lapsed trial can reach, and the band's account pill is a
+         link to Settings, two steps from here. */
+      h('div.pu-actions', {}, [h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })])
+    ]);
+  }
+  return null;
+}
 
 const DECK = 'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.';
 
@@ -113,9 +141,14 @@ function planSection() {
   const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' · ' + st.account_name : ''}` : 'Choose a plan.', DECK);
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
   if (st) {
-    const u = usageList(st);
+    const tl = trialLine(st);
+    if (tl) sec.append(tl);
+    /* Usage is measured against a PLAN's caps. With no plan there is no
+       free tier to be "0 of 1" against (owner, 11 Oct 2026), so it is
+       drawn for a buyer only. */
+    const u = st.plan !== 'free' ? usageList(st) : null;
     if (u) sec.append(h('h3.gt-h3', { text: 'Your usage' }), u);
-    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). You are on the free plan’s limits now.` }));
+    if (st.lapsed) sec.append(h('p.pl-status', { text: `Your ${Billing.planName(st.bought_plan)} plan ended on ${new Date(st.plan_until).toLocaleDateString(undefined, { dateStyle: 'medium' })} (refunded). Choose a plan to keep using the studio.` }));
   }
   sec.append(planCards(billing.plans, st, {
     onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code }).then(() => { refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),

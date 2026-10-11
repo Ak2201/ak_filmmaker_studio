@@ -59,6 +59,10 @@
          /auth/v1/authorize carrying provider=google, the right
          redirect_to and the Drive scope; and start.html#code= holds
          the code for this browser, scrubs the fragment and says so
+     (q) A LAPSED TRIAL (§33): one stable wall after expiry (navigations
+         counted over ten seconds), a SIGN OUT on the wall itself at
+         390px, which lands on start.html and stays out with no session
+         and no gate pass; invite.html says the trial is over
 
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
@@ -66,7 +70,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { F, USERS, SB, REF, handle, sessionFor, freshDb } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, freshDb, expireTrial } from './fake-supabase.mjs';
 /* invite-code.js has NO imports, deliberately (that is the whole reason
    it was split out of gate.js), so Node can load the shipped source
    itself and this proof can check the link builders directly. */
@@ -910,6 +914,48 @@ try {
     ok(await urlBecomes(D.page, /invite\.html|start\.html/, 15000), 'and the verdict, a deny, still redirects it: ' + D.page.url());
     ok(await D.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'and the pass is cleared');
     await D.ctx.close();
+  }
+
+  console.log('(q) a lapsed trial: one stable wall, and a way out that stays out (schema section 33)');
+  {
+    /* THE PRODUCTION BUILD (dist/), the gate ON, purchases required: Amy
+       is a member whose trial has run out. Before §33 the wall hid the
+       band and the phone bar (the only route to sign-out), offered only
+       SEE PLANS, and every road back — invite.html's "You're in", the
+       landing page's sign-in — led to the same wall. */
+    F.reset();
+    const amyId = USERS['tok-amy'].id;
+    F.db.members.set(amyId, { role: 'user', disabled_at: null });
+    expireTrial(amyId);
+    const navs = (page) => { const n = []; page.on('framenavigated', (f) => { if (f === page.mainFrame()) n.push(f.url().replace(BASE, '/')); }); return n; };
+
+    const A = await newContext(browser, { tok: 'tok-amy' });
+    await A.page.setViewportSize({ width: 390, height: 844 });
+    const n1 = navs(A.page);
+    await A.page.goto(BASE + 'dashboard.html');
+    await A.page.waitForTimeout(10000);
+    ok(n1.length <= 1 && !!(await A.page.$('.pg-wall')), 'a fresh load after expiry: ' + n1.length + ' navigation in ten seconds and a wall that stays (no loop)');
+    const out = await A.page.$('.pg-wall [data-auth-action="signout"]');
+    ok(!!out && await out.isVisible(), 'at 390px, with the phone bar hidden under the wall, the wall itself offers SIGN OUT');
+    if (out) {
+      await out.click();
+      ok(await urlBecomes(A.page, /start\.html/, 15000), 'SIGN OUT lands on start.html');
+      ok(!(await A.page.evaluate((k) => localStorage.getItem(k), `sb-${REF}-auth-token`)), 'and the stored session is gone');
+      await A.page.goto(BASE + 'dashboard.html');
+      ok(await urlBecomes(A.page, /start\.html/, 15000), 'it stays out: the app sends the signed-out visitor back to start.html');
+      ok(await A.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'with no site-gate pass left behind to admit it optimistically');
+    } else {
+      skip('signing out from the wall (no button)');
+    }
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    F.db.sessions.clear();
+    const I = await newContext(browser, { tok: 'tok-amy' });
+    await I.page.goto(BASE + 'invite.html');
+    await I.page.waitForFunction(() => /free trial is over/i.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
+    const t = await I.page.textContent('main').catch(() => '');
+    ok(/free trial is over/i.test(t) && !/GO TO THE STUDIO/.test(t), 'invite.html says the trial is over and does not send a lapsed member to the studio (the wall)');
+    allErrors.push(...I.errors); await I.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

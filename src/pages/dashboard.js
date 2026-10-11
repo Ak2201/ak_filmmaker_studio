@@ -474,8 +474,15 @@ function renderPlanTile() {
   const tl = tile('plan', 'Plan', 'Your plan');
   const cp = PlanGate.currentPlan();
   const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
+  /* 'free' is the "no plan" state, never a plan to name (owner, 11 Oct
+     2026): it is the free trial, or nothing bought yet. */
+  const line = !name ? 'Not signed in \u2014 working locally on this device'
+    : cp.plan !== 'free' ? name + ' plan'
+    : cp.reason === 'trial' ? 'Free trial'
+    : cp.reason === 'free' ? 'Free to use right now'
+    : 'No plan yet';
   tl.append(
-    h('p.db-tile-line', { text: name ? name + ' plan' : 'Not signed in \u2014 working locally on this device' }),
+    h('p.db-tile-line', { text: line }),
     h('a.btn.db-tile-go', { href: 'purchase.html', 'aria-label': 'Plans and upgrade',
       text: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans' })
   );

@@ -43,6 +43,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
+import { trialLength } from '../lib/trial-time.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
@@ -174,12 +175,29 @@ function render() {
     }
   } else if (g.state === 'unknown') {
     body.append(section('checking', 'One moment', 'Checking your invite…', 'Checking the invite for ' + (email || 'this account') + '.'));
+  } else if (g.state === 'open' && lastStatus && lastStatus.entitled === false) {
+    /* §33. THROUGH THE GATE, BUT NOT ENTITLED: a member whose trial has
+       run out (or who never had one, while purchases are required).
+       This page used to say "You're in — GO TO THE STUDIO", and the
+       studio was the wall, whose only door led back here: the loop the
+       owner reported. It says what is true now, and offers the two
+       real ways on — buy, or sign out. */
+    const used = lastStatus.trial_used === true;
+    const sec = section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
+      'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for good.');
+    sec.append(h('div.iv-actions', {}, [
+      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' }),
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+    ]));
+    body.append(sec);
   } else if (g.state === 'open') {
     const sec = section('through', 'Through', 'You’re in.',
       'Signed in as ' + email + '. Projects you open sync to this account, and the Chrome extension signs in with it too.');
     sec.append(h('div.iv-actions', {}, [
       h('a.btn.primary', { href: 'index.html', text: 'GO TO THE STUDIO' }),
-      h('a.btn', { href: 'settings.html#account', text: 'ACCOUNT SETTINGS' })
+      h('a.btn', { href: 'settings.html#account', text: 'ACCOUNT SETTINGS' }),
+      /* Every state of this page that has a session has a way out of it. */
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
     ]));
     body.append(sec);
   } else if (g.state === 'lost') {
@@ -206,10 +224,10 @@ function render() {
        and in every one of those cases the page reads exactly as it did
        before, which is why nothing here is conditional on a version. */
     if (trialOffer) {
-      const t = section('trial', 'Step two', 'Start your ' + trialOffer.minutes + ' minutes.',
+      const t = section('trial', 'Step two', 'Start your ' + trialLength(trialOffer.minutes) + ' free trial.',
         'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside. No card, nothing to fill in.');
       t.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + trialOffer.minutes + ' MINUTES' })
+        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + trialLength(trialOffer.minutes).toUpperCase() })
       ]));
       t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
       body.append(t);
@@ -224,7 +242,11 @@ function render() {
     if (plans) {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
         'A paid plan lets this account in without an invite. One payment, access for good — and it is the only thing that keeps the studio open once a trial has run out.');
-      buy.append(planCards(plans, null, {
+      /* The status, not null (§33): planCards() disables BUY and says
+         why for a DISABLED account, and with null it could not know —
+         a disabled visitor pressed BUY, waited for Checkout, and was
+         refused by rzp-order. */
+      buy.append(planCards(plans, lastStatus, {
         onBuy: (planId, period, onStatus, code) => Billing.buy(planId, period, { onStatus, code }),
         /* Paying grants entry, so the gate has already flipped and this
            block is about to disappear: the hub's welcome card (read from
@@ -352,6 +374,9 @@ let plans = null;
    paid — and the page is identical in all four, which is what lets the
    same build run against a database that has never heard of a trial. */
 let trialOffer = null;
+/* The last billing_status() this page read, for the 'open' state: a
+   member who is not entitled is not "in" (§33). */
+let lastStatus = null;
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
@@ -377,6 +402,7 @@ async function loadPlans() {
 }
 
 function readTrialOffer(st) {
+  lastStatus = st || null;
   try {
     /* The key has to be PRESENT to be believed: an older database
        returns no `trial_enabled` at all, and undefined must not read as

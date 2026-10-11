@@ -107,7 +107,7 @@
       <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-start-auth="google">Continue with Google</a>
       <a class="st-btn" href="#short">See the {{fms:short.steps}} steps</a>
     </p>
-    <p class="st-fine st-door"><strong>Invite-only during launch.</strong> Sign in and ask for an invite, or buy a plan and come straight in. The learning library and the complete <em>Dragon</em> sample film are free, always &mdash; no card, nothing to install.</p>
+    <p class="st-fine st-door"><strong>Invite-only during launch.</strong> Sign in and ask for an invite, or buy a plan and come straight in. Try it free first: the complete <em>Dragon</em> sample film and the learning library, with no card and nothing to install.</p>
     <p class="st-legal">Signing in means you accept the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
     <p class="st-fine" id="authMsg" role="status" aria-live="polite"></p>
   </div>
@@ -196,7 +196,7 @@
 </section>
 
 <section data-reveal="fade" class="st-sec st-sample" id="sample" aria-labelledby="sample-h">
-  <p class="st-eyebrow">Free, always</p>
+  <p class="st-eyebrow">Try it free</p>
   <h2 class="st-h2" id="sample-h">Learn on a whole film that is already there</h2>
   <!-- Every fms:dragon placeholder figure is stamped at BUILD time by the
        fms-start-figures plugin in vite.config.js, from sampleFigures()
@@ -297,18 +297,22 @@
        PLAN_ORDER / planName in src/lib/plans.js, the list PRICES and the
        table rows from startFigures() in vite.config.js (fms-start-figures,
        rows from src/data/plan-matrix.json): each <li data-tier> must be one
-       PLAN_ORDER id, in order, printing its fms:plan.ID placeholder, or the
-       build fails. A scheduled rise is NEVER stamped — start.js adds the
-       coming figure from price_notice() at runtime, or not at all. -->
+       PAID PLAN_ORDER id, in order, printing its fms:plan.ID placeholder,
+       and there must be one <li data-trial>, or the build fails. There is
+       NO free tier (owner, 11 Oct 2026): 'free' is the "no plan" state, and
+       the first card is the free TRIAL, whose length start.js reads from
+       the anon trial_offer() (§33) into [data-trial-length]. A scheduled
+       rise is NEVER stamped — start.js adds the coming figure from
+       price_notice() at runtime, or not at all. -->
   <ul class="st-tiers" data-reveal-group>
-    <li data-tier="free"><strong>{{fms:plan.free}}</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and every learning module, for as long as you like.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google">Start free</a></li>
+    <li data-trial><strong>Free trial</strong><b class="st-price">{{fms:price.free}}</b><span>Open and edit the <em>Dragon</em> sample and every learning module for <span data-trial-length>a limited time</span>, then choose a plan. No card.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google">Start the free trial</a></li>
     <li data-tier="starter" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.starter}}</strong><b class="st-price">{{fms:price.starter}}</b><span>Your own films: the {{fms:short.steps}} steps, the screenplay, the breakdown and the exports.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html?plan=starter#buy" data-plan="starter">Buy {{fms:plan.starter}}</a></li>
     <li data-tier="indie"><strong>{{fms:plan.indie}}</strong><b class="st-price">{{fms:price.indie}}</b><span>Adds stripboard, budget, call sheets, the shoot day and Drive backup.</span><a class="st-btn st-tier-buy" href="invite.html?plan=indie#buy" data-plan="indie">Buy {{fms:plan.indie}}</a></li>
     <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><b class="st-price">{{fms:price.pro}}</b><span>Everything, including AI tools with your own key, the edit log and deliverables.</span><a class="st-btn st-tier-buy" href="invite.html?plan=pro#buy" data-plan="pro">Buy {{fms:plan.pro}}</a></li>
   </ul>
   <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
     <table class="st-table">
-      <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.free}}</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
+      <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
       <tbody>{{fms:matrix.rows}}</tbody>
     </table>
   </div>
@@ -338,7 +342,7 @@
     <article class="st-card st-fact"><p class="st-fact-n">{{fms:feature.steps}}</p><h3 class="st-h3">steps in the feature blueprint</h3><p>The same shape at feature length, for the film after this one.</p></article>
     <article class="st-card st-fact"><p class="st-fact-n">{{fms:studies.count}}</p><h3 class="st-h3">films taken apart, beat by beat</h3><p>Case studies you can read against your own structure, not summaries.</p></article>
     <article class="st-card st-fact"><p class="st-fact-n">{{fms:glossary.count}}</p><h3 class="st-h3">craft terms in plain words</h3><p>What a unit actually means by them on the day, not a dictionary.</p></article>
-    <article class="st-card st-fact"><p class="st-fact-n">{{fms:dragon.scenes}}</p><h3 class="st-h3">scenes in the sample film</h3><p>A complete reconstructed production &mdash; script, schedule, budget, call sheets &mdash; free to open and edit.</p></article>
+    <article class="st-card st-fact"><p class="st-fact-n">{{fms:dragon.scenes}}</p><h3 class="st-h3">scenes in the sample film</h3><p>A complete reconstructed production &mdash; script, schedule, budget, call sheets &mdash; yours to open and edit.</p></article>
     <article class="st-card st-fact"><p class="st-fact-n">{{fms:films.count}}</p><h3 class="st-h3">films on the reference shelf</h3><p>What to watch next, and what to watch it for.</p></article>
   </div>
   <p class="st-note">When there are real users with real films, their words will appear below this &mdash; with their written
@@ -396,11 +400,11 @@
     count is the industry one. If you already have a script, import a <code>.fountain</code>, <code>.fdx</code> or PDF.</p>
   </details>
   <details class="st-faq">
-    <summary>What is free, and how do I try my own film?</summary>
-    <p>Free, always: the whole learning library and the complete <em>Dragon</em> sample film, which you can open and change
-    with no card and nothing installed. Your own films need a plan. While the studio is invite-only you can sign in and ask for
-    an invite, which may come with a free trial; an invite code is worth seven days of the whole studio. Or buy a plan and come
-    straight in. Either way, everything you write stays yours and can be exported.</p>
+    <summary>Is there a free version?</summary>
+    <p>There is a free trial rather than a free plan. Sign in and the complete <em>Dragon</em> sample film and the learning
+    library are yours to open and change for <span data-trial-length>a limited time</span>, with no card and nothing installed.
+    After that, a plan keeps the studio open &mdash; one payment, for good. An invite code is worth seven days of the whole
+    studio. Either way, everything you write stays yours and can be exported.</p>
   </details>
   <details class="st-faq">
     <summary>I am a student. Is this useful for a college film?</summary>

@@ -9,8 +9,13 @@
 
    Limits are written as sentences, not icons, and every card says the
    same five things in the same order so the eye can compare down the
-   row. A number that is null is "unlimited". The free row is shown
-   too, as the baseline, with no button.
+   row. A number that is null is "unlimited".
+
+   NO FREE CARD (owner, 11 Oct 2026): "Let's not have a free version;
+   it can be a free TRIAL." The plans table keeps its 'free' row — it is
+   what user_plan() answers for somebody who has bought nothing, the
+   "no plan" state — but it is never drawn here as a choice, on
+   purchase.html or invite.html. A trial is not a plan and is not sold.
 
    FULL-TIME ACCESS (schema section 18). A plan is bought once and kept
    for good, so there is no period switch, no "until", no renew and no
@@ -132,14 +137,14 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   const row = h('div.pl-row');
   const buyable = [];
   let nextCard = null;
-  for (const p of plans.filter((x) => x.active || x.id === current)) {
+  for (const p of plans.filter((x) => x.id !== 'free' && (x.active || x.id === current))) {
     const isCurrent = p.id === current;
     const price = priceFor(p, period);
     const pq = appliedQuote(p.id);
     const uq = upgradeQuote(p.id);
     const q = pq || uq;
     const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (p.id === 'free' ? '.is-free' : '') + (pq ? '.has-promo' : '') + (q && q.credit_paise > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id });
-    card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : p.id === 'free' ? 'Baseline' : ' ' }));
+    card.append(h('p.bd-eyebrow', { text: isCurrent ? 'Your plan' : ' ' }));
     card.append(h('h3.pl-name', { text: p.name || planName(p.id) }));
     card.append(h('p.pl-blurb', { text: p.blurb || '' }));
     card.append(h('p.pl-price', {}, [

@@ -57,6 +57,7 @@ import { BRAND } from './brand.js';
 import { moduleGroups, shelves, phases } from './navmodel.js';
 import { h } from './dom.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
+import { trialLength } from './trial-time.js';
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
@@ -83,6 +84,14 @@ let ent = null;           // null | { entitled, reason, endsAt, used, trialEnabl
    its §30 rules. Only an explicit `false` from billing_status() hides
    the buying UI. */
 let purchaseReq = null;
+/* §33. The server's clock minus this browser's, from billing_status()'s
+   `server_now`. The trial band counts down against serverNow(), so a
+   laptop whose clock is ten minutes fast does not take the band away
+   ten minutes early (and a slow one does not keep it up after the
+   server has ended the trial). 0 when the key is absent. */
+let skew = 0;
+/** Date.now(), corrected to the server's clock when it has said. */
+export const serverNow = () => Date.now() + skew;
 
 /** §32. True only when the server SAID purchases are not required.
  *  Every "buy" control in the studio hides while this is true
@@ -168,6 +177,7 @@ async function _refreshOnce() {
          an older database. So the key has to be PRESENT to be believed. */
       /* §32, the same rule: PRESENT to be believed. */
       purchaseReq = (st && typeof st.purchase_required === 'boolean') ? st.purchase_required : null;
+      { const t = st && st.server_now ? Date.parse(st.server_now) : NaN; skew = Number.isFinite(t) ? t - Date.now() : 0; }
       if (st && typeof st.entitled === 'boolean') {
         ent = {
           entitled: st.entitled,
@@ -181,7 +191,14 @@ async function _refreshOnce() {
                               : (st.trial_enabled === false ? 'off' : 'expired'),
           endsAt: st.trial_ends_at || null,
           used: st.trial_used === true,
-          trialEnabled: st.trial_enabled !== false
+          trialEnabled: st.trial_enabled !== false,
+          /* §33: the length a trial started NOW would get, for the
+             wall's offer to somebody who never had one. */
+          trialMinutes: Number(st.trial_minutes) > 0 ? Number(st.trial_minutes) : null,
+          /* Anything paid, granted or refunded: start_trial() answers
+             'paid' for these, so the wall does not offer a trial it
+             would refuse. */
+          paidBefore: Array.isArray(st.payments) && st.payments.some((p) => p && /^(paid|granted|refunded)$/.test(p.status))
         };
       } else {
         ent = null;
@@ -295,7 +312,9 @@ function lockCard(mods) {
   const names = list.map((m) => m.label).join(' · ');
   const card = h('div.pg-lock-card', {}, [
     h('p.bd-eyebrow', { text: 'Your plan' }),
-    h('h2.pg-lock-h', { text: 'Not on the ' + (planName || 'current') + ' plan.' })
+    /* No free PLAN (owner, 11 Oct 2026): somebody on 'free' is on the
+       trial, or on nothing at all, and the card says so in those words. */
+    h('h2.pg-lock-h', { text: plan === 'free' ? 'Not part of the free trial.' : 'Not on the ' + (planName || 'current') + ' plan.' })
   ]);
   if (list.length) {
     const ul = h('ul.pg-lock-mods', { 'aria-label': 'What this part of the studio does' });
@@ -359,21 +378,68 @@ const pageName = () => file().replace(/\.html$/, '');
 function wallPanel() {
   const e = entitlement();
   const off = e.reason === 'off';
+  /* §33. Somebody who is a member but never had a trial — a membership
+     given by e-mail with no plan, while purchases are required — meets
+     the wall on their first page. They are offered the trial everybody
+     else gets rather than told one is "over". start_trial() decides; a
+     refusal ('used', 'paid', 'disabled') is printed, never guessed. */
+  const fresh = !off && !e.used && e.trialEnabled && !e.paidBefore;
+  const len = trialLength(e.trialMinutes);
   const card = h('div.pg-lock-card.pg-wall-card', {}, [
     h('p.bd-eyebrow', { text: off ? 'The studio' : 'Your trial' }),
-    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : 'Your free trial is over.' }),
+    h('h2.pg-lock-h', { text: off ? 'The studio is open to members.' : fresh ? 'Start your free trial.' : e.used ? 'Your free trial is over.' : 'Choose a plan to come in.' }),
     h('p.pg-lock-p', { text: off
       ? 'A plan opens the whole desk: your script, your breakdown, your schedule, your budget, your call sheets.'
-      : 'You have been reading Dragon — a complete Tamil feature, scene by scene. A plan opens the same desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
+      : fresh
+        ? 'Read Dragon — a complete Tamil feature — from the inside' + (len ? ' for ' + len : '') + ', free, then choose a plan for your own film.'
+        : 'You have been reading Dragon — a complete Tamil feature, scene by scene. A plan opens the same desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
     /* The promise the owner made, kept where it is visible rather than
        in a FAQ: nothing a person wrote is held hostage to a sale. */
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
     h('div.pg-lock-actions', {}, [
-      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' }),
-      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' })
-    ])
+      fresh ? h('button.btn.primary', { type: 'button', 'data-action': 'pg-start-trial', text: len ? 'START MY ' + len.toUpperCase() : 'START MY FREE TRIAL' }) : null,
+      h('a.btn' + (fresh ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS' }),
+      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
+      /* THE WAY OUT. The wall hides the band (.sh-bar) and the phone's
+         bar (.mab) — plan-gate.css, [data-paywall] — and those held the
+         only sign-out route there was (the account pill, then
+         Settings). Without this a lapsed trial could reach exactly one
+         page, purchase.html, and every road back led to this wall:
+         invite.html said "You're in", start.html's sign-in came straight
+         back here. It is the ordinary sign-out (auth.js's delegated
+         [data-auth-action] handler), not a second implementation. */
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+    ].filter(Boolean)),
+    h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' })
   ]);
-  return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': off ? 'Members only' : 'Your trial has ended' }, [card]);
+  return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': off ? 'Members only' : fresh ? 'Start your free trial' : 'Your trial has ended' }, [card]);
+}
+
+/** The wall's own trial start (§33): the same two steps invite.html
+ *  takes — start_trial(), then the gate asked again — and then this
+ *  module re-reads billing_status(), which takes the wall down. */
+async function startTrialFromWall(btn) {
+  const card = btn && btn.closest('.pg-wall-card');
+  const msg = card && card.querySelector('.pg-wall-msg');
+  const say = (t) => { if (msg) msg.textContent = t; };
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = 'STARTING…';
+  try {
+    const r = await Billing.startTrial();
+    if (!r || !r.started) {
+      say({ used: 'You have already had your trial on this account. A plan opens the studio for good.',
+            paid: 'You have already bought a plan — try reloading the page.',
+            disabled: 'Trials are not open at the moment. A plan opens the studio for good.' }[r && r.reason] || 'That did not start. Please try again.');
+      btn.disabled = false; btn.textContent = was;
+      return;
+    }
+    const c = window.StudioCloud;
+    if (c && c.runGate) await c.runGate();
+    await refresh();
+  } catch (e) {
+    say((e && e.message) || 'That did not start. Please try again.');
+    btn.disabled = false; btn.textContent = was;
+  }
 }
 
 /** The wall's own export. It calls backup.js DIRECTLY rather than the
@@ -399,7 +465,14 @@ if (typeof document !== 'undefined') {
   document.addEventListener('click', (ev) => {
     const b = ev.target && ev.target.closest && ev.target.closest('[data-action="pg-export"]');
     if (b) { ev.preventDefault(); exportFromWall(b); }
+    const t = ev.target && ev.target.closest && ev.target.closest('[data-action="pg-start-trial"]');
+    if (t && !t.disabled) { ev.preventDefault(); startTrialFromWall(t); }
   });
+}
+
+function wallKind() {
+  const e = entitlement();
+  return e.reason === 'off' ? 'off' : (!e.used && e.trialEnabled && !e.paidBefore) ? 'fresh' : 'over';
 }
 
 /** True when this page should be covered. */
@@ -467,7 +540,17 @@ function apply() {
     /* Swap when the KIND changes, not just when one is missing — a
        trial expiring while a module lock is on screen must replace it. */
     if (existing && (wall !== existing.classList.contains('pg-wall'))) existing.remove();
-    if (!document.querySelector('.' + want)) document.body.append(wall ? wallPanel() : lockPanel());
+    /* The wall's words follow the entitlement (a trial offered, or one
+       that is over), so a wall drawn for the other case is redrawn —
+       only when that changes, never on every refresh. */
+    const kind = wall ? wallKind() : '';
+    const cur = document.querySelector('.pg-wall');
+    if (cur && cur.dataset.kind !== kind) cur.remove();
+    if (!document.querySelector('.' + want)) {
+      const panel = wall ? wallPanel() : lockPanel();
+      if (wall) panel.dataset.kind = kind;
+      document.body.append(panel);
+    }
   } else {
     delete root.dataset.planLock;
     root.removeAttribute('data-paywall');
@@ -519,8 +602,24 @@ if (typeof window !== 'undefined') {
     refresh();
   };
   window.addEventListener('focus', again);
+  /* §33. TWO TABS. A plan bought (or a trial started) in one tab used to
+     reach the other only on its next focus — and not even then inside
+     FOCUS_GAP — so a buyer switching back found the wall still up. A
+     BroadcastChannel carries the bare fact "billing changed" to every
+     tab of this origin; each re-reads billing_status() itself. Nothing
+     is written to storage (verify's idle-write assertion), and the
+     message carries no plan, order or payment. */
+  try {
+    if (typeof BroadcastChannel === 'function') {
+      const ch = new BroadcastChannel('fms-billing');
+      ch.onmessage = () => { lastFocusRefresh = Date.now(); refresh(); };
+      /* A received message refreshes; it does not re-notify, so it is
+         never posted back — two tabs cannot echo each other. */
+      Store.subscribe('billing:changed', () => { try { ch.postMessage('changed'); } catch (e) { /* closed */ } });
+    }
+  } catch (e) { /* no channel: focus and the poll still reach the tab */ }
   document.addEventListener('visibilitychange', again);
   setInterval(() => { if (!document.hidden) { lastFocusRefresh = Date.now(); refresh(); } }, POLL);
 }
 
-export default { purchasesOff, allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { serverNow, purchasesOff, allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

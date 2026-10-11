@@ -107,8 +107,10 @@ function looksIndented(text) {
    keeps "5 EXTREMELY LOUD" out: EXT there is followed by R. */
 const SCENE_NO  = String.raw`[A-Za-z]?\d+[A-Za-z]?`;
 const SLUG_RE   = new RegExp(
-  '^(?:' + SCENE_NO + '[.)]?\\s+)?(INT|EXT|EST|I\\/E|INT\\.?\\s*\\/\\s*EXT|EXT\\.?\\s*\\/\\s*INT)[.\\s]', 'i');
-const TRANS_RE  = /^(FADE (IN|OUT|TO)|CUT TO|SMASH CUT|MATCH CUT|DISSOLVE TO|WIPE TO|IRIS (IN|OUT)|TIME CUT|INTERCUT|BACK TO|JUMP CUT|FADE TO BLACK)\b/i;
+  '^(?:' + SCENE_NO + '[.)]?\\s+)?(INT|EXT|EST|I\\/E|INT\\.?\\s*\\/\\s*EXT|EXT\\.?\\s*\\/\\s*INT|உள்|வெளி)[.\\s]', 'i');
+/* Case-SENSITIVE on purpose: "Back to the car she runs." and "Cut to the
+   chase…" are action. A transition is capitals — see isTransitionLine. */
+const TRANS_RE  = /^(FADE (IN|OUT|TO)|CUT TO|SMASH CUT|MATCH CUT|DISSOLVE TO|WIPE TO|IRIS (IN|OUT)|TIME CUT|INTERCUT|BACK TO|JUMP CUT|FADE TO BLACK)\b/;
 /* A shot, recognised by the words it opens with. Neither Fountain nor
    a plain text file has a shot element, so a one-line, flush-left,
    all-capitals line that STARTS with one of these is read as a shot
@@ -119,7 +121,9 @@ const SHOT_RE   = /^(CLOSE ON|CLOSE UP|CLOSE-UP|CLOSER ON|EXTREME CLOSE|ECU\b|AN
 const isShotLine = (t) => SHOT_RE.test(t) && isUpperish(t) && !ENDS_TO.test(t) && !/^\(/.test(t);
 const ENDS_TO   = /\bTO:\s*$/;
 const CUE_OK    = /^[^a-z]*$/;                       // no lowercase letters at all
-const CUE_TAIL  = /\s*\((V\.?O\.?|O\.?S\.?|O\.?C\.?|CONT'?D|CONTINUED|SUBTITLED|FILTERED|PRE-?LAP)\)\s*$/i;
+/* Any parenthetical extension on a cue — (V.O.), (O.S.), (whispering),
+   and several in a row. The extension is the writer's, so its case is too. */
+const EXT_TAIL  = /(?:\s*\([^()]*\))+\s*$/;
 const PAGE_NO   = /^\s*\d+[.)]?\s*$/;
 const MORE_LINE = /^\s*\(\s*MORE\s*\)\s*$/i;
 /* Page furniture, in the forms it actually appears in: CONTINUED,
@@ -127,12 +131,43 @@ const MORE_LINE = /^\s*\(\s*MORE\s*\)\s*$/i;
    what Final Draft's own text export writes at the foot of a page
    and it was not matched, so one line of furniture per page came
    through as an action line. */
-const CONTINUED = /^\s*\(?\s*CONTINUED\s*:?\s*\)?\s*:?\s*$/i;
+const CONTINUED = /^\s*\(?\s*(?:CONTINUED|CONT['’]?D)\s*:?\s*(?:\(\s*\d+\s*\)|\d+)?\s*\)?\s*:?\s*$/i;
+/* A revision header at the top of a revised page: "Blue Rev. 03/04/26",
+   "Pink Revised 03/05/26", or a bare "Rev. 03/04/26". It is page
+   furniture, never a character. A bare "Revised plans lie on the
+   table." is NOT matched — the colour or a date has to be there. */
+const REV_HEADER = /^(?:(?:white|blue|pink|yellow|green|goldenrod|buff|salmon|cherry|tan|gray|grey|ivory)\s+rev(?:\.|ision|ised)?\b.{0,30}|rev(?:\.|ision|ised)\s+\d[\d/.\-\s]*|revised\s{0,4}(?:\d+[.)]?)?)$/i;
+
+const TAMIL = /[஀-௿]/;
+/* A Tamil cue is not uppercase Latin, so "no lowercase letters" proves
+   nothing about it — every Tamil sentence passes. The shape has to
+   stand in: a name is short and does not end like a sentence. */
+const tamilCueOk = (t) => t.split(/\s+/).filter(Boolean).length <= 3
+  && t.length <= 30 && !/[.!?।…]$/.test(t);
 
 const isUpperish = (s) => {
-  const t = String(s).replace(CUE_TAIL, '').trim();
-  return !!t && CUE_OK.test(t) && /[A-Z஀-௿]/.test(t);
+  const t = String(s).replace(EXT_TAIL, '').trim();
+  if (!t || !CUE_OK.test(t) || !/[A-Z஀-௿]/.test(t)) return false;
+  return TAMIL.test(t) ? tamilCueOk(t) : true;
 };
+
+/** A transition is CAPITALS, and either ends in TO: or opens with a
+    known one (FADE OUT., CUT TO BLACK.) and stays short. */
+const isTransitionLine = (t) => {
+  const s = String(t).trim();
+  return !/[a-z]/.test(s) && s.split(/\s+/).length <= 6
+    && (ENDS_TO.test(s) || TRANS_RE.test(s));
+};
+
+/** Could this line be a cue on its own — capitals, an optional
+    extension and `^`, not a heading, transition or sentence? */
+function isCueLine(line) {
+  const t = String(line).trim().replace(/\s*\^\s*$/, '');
+  const base = t.replace(EXT_TAIL, '').trim();
+  if (!base || base.length > 40 || SLUG_RE.test(t) || isTransitionLine(t)) return false;
+  if (/[.!?:]$/.test(base) && !/^(MR|MRS|MS|DR|ST|JR|SR)\.$/.test(base.split(' ').pop())) return false;
+  return isUpperish(t);
+}
 
 /* A Tamil cue is not uppercase Latin and never will be —
    `CUE_OK` passes it because it contains no lowercase letters,
@@ -147,9 +182,12 @@ const isUpperish = (s) => {
    `.` `!` `@` `>` are the forcing characters and are checked
    before any heuristic, because that is what forcing means.
    ------------------------------------------------------------ */
+const TITLE_KEYS = new Set(['title', 'credit', 'author', 'authors', 'source', 'draft date',
+  'date', 'contact', 'copyright', 'notes', 'revision', 'draft', 'written by']);
+
 function parseFountain(raw) {
   const warnings = [];
-  const skipped = { notes: 0, sections: 0, titlePage: 0 };
+  const skipped = { notes: 0, sections: 0, titlePage: 0, pageBreaks: 0 };
 
   let text = String(raw || '').replace(/\r\n?/g, '\n');
   // Boneyard and notes are comments, not script.
@@ -163,7 +201,10 @@ function parseFountain(raw) {
      and reported, never silently eaten. */
   const meta = {};
   let i = 0;
-  if (lines.length && /^[A-Za-z][A-Za-z ]*:/.test(lines[0])) {
+  /* Only a KNOWN title key opens a title page. "FADE IN:" matches the
+     shape of `Key: value` and used to be eaten as one. */
+  const firstKey = (lines[0] || '').match(/^([A-Za-z][A-Za-z ]*):/);
+  if (firstKey && TITLE_KEYS.has(firstKey[1].trim().toLowerCase())) {
     let last = null;
     for (; i < lines.length; i++) {
       const line = lines[i];
@@ -206,8 +247,11 @@ function parseFountain(raw) {
   for (const b of blocks) {
     const first = b[0].trim();
 
-    if (first.startsWith('#')) { skipped.sections += b.length; continue; }   // section heading
-    if (first.startsWith('=') && !first.startsWith('==')) { skipped.sections += b.length; continue; } // synopsis
+    /* A section is `#` followed by a space or more `#`; "#1 on the list"
+       is action. `===` alone is a page break; `= text` a synopsis. */
+    if (/^#+(\s|$)/.test(first)) { skipped.sections += b.length; continue; }
+    if (/^={3,}\s*$/.test(first)) { skipped.pageBreaks += b.length; continue; }
+    if (/^=(\s|$)/.test(first)) { skipped.sections += b.length; continue; }
 
     // --- forced ---
     if (first.startsWith('.') && !first.startsWith('..')) {
@@ -215,7 +259,8 @@ function parseFountain(raw) {
       restAsAction(b.slice(1), push, warnings);
       continue;
     }
-    if (first.startsWith('!')) { push('action', b.map((l) => l.replace(/^!/, '')).join('\n')); continue; }
+    // Every `!` is one line's forcing mark, not just the block's first.
+    if (first.startsWith('!')) { push('action', b.map((l) => l.trim().replace(/^!/, '')).join('\n')); continue; }
     if (first.startsWith('>')) {
       const centred = /<\s*$/.test(first);
       const body = first.replace(/^>\s*/, '').replace(/\s*<\s*$/, '');
@@ -223,7 +268,10 @@ function parseFountain(raw) {
       restAsAction(b.slice(1), push, warnings);
       continue;
     }
-    if (first.startsWith('@')) { speech(b, first.replace(/^@/, ''), push); continue; }
+    if (first.startsWith('@') && nameLike(first.slice(1)) && (b.length > 1 || first.length <= 40)) {
+      emitSpeech(b, first.slice(1), push);
+      continue;
+    }
 
     // --- inferred ---
     if (SLUG_RE.test(first)) {
@@ -231,12 +279,12 @@ function parseFountain(raw) {
       restAsAction(b.slice(1), push, warnings);
       continue;
     }
-    if (b.length === 1 && (TRANS_RE.test(first) || (isUpperish(first) && ENDS_TO.test(first)))) {
+    if (b.length === 1 && isTransitionLine(first)) {
       push('transition', first);
       continue;
     }
     if (b.length > 1 && isUpperish(first) && !ENDS_TO.test(first)) {
-      speech(b, first, push);
+      emitSpeech(b, first, push);
       continue;
     }
     if (b.length === 1 && isShotLine(first)) { push('shot', first); continue; }
@@ -249,6 +297,7 @@ function parseFountain(raw) {
       warnings.push('“' + first.slice(0, 48) + '” was read as action, not a character cue — nothing followed it.');
       continue;
     }
+    if (emitMixed(b, push, warnings)) continue;
     push('action', b.join('\n'));
   }
 
@@ -256,12 +305,85 @@ function parseFountain(raw) {
 }
 
 /** The lines under a forced slug or transition in the same block.
-    Rare, and always action. */
+    Rare, and always action — unless they are a pasted script with no
+    blank lines in it, in which case the cues are found in them. */
 function restAsAction(rest, push, warnings) {
-  const body = rest.map((l) => l.trim()).filter(Boolean).join('\n');
-  if (!body) return;
-  push('action', body);
+  const lines = rest.map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+  if (emitMixed(lines, push, warnings)) return;
+  push('action', lines.join('\n'));
   warnings.push('Lines under a scene heading with no blank line between them were read as action.');
+}
+
+/** "@name" is a cue only when it looks like a name: a letter first,
+    short, no sentence ending. "@home is where the heart is, he says." is
+    a line of action that happens to begin with an @. */
+function nameLike(s) {
+  const t = String(s).trim().replace(/\s*\^\s*$/, '').replace(EXT_TAIL, '').trim();
+  return t.length > 0 && t.length <= 40 && /^[\p{L}\p{N}]/u.test(t)
+    && !/[.!?।]$/.test(t) && t.split(/\s+/).length <= 5;
+}
+
+/** Does line j of a block open a speech? A cue-shaped line with a
+    mixed-case (or parenthetical) line under it, or a forced @ one. */
+function cueAt(lines, j) {
+  const t = lines[j].trim();
+  const next = (lines[j + 1] || '').trim();
+  if (!next) return false;
+  if (t.startsWith('@')) return nameLike(t.slice(1));
+  return isCueLine(t) && !TAMIL.test(t) && (/[a-z]/.test(next) || /^\(.*\)$/.test(next));
+}
+
+/** A block with cue-shaped lines INSIDE it — a script pasted with no
+    blank lines — is walked line by line: before a cue is action, a cue
+    opens speech, speech runs to the next cue or heading. Returns false
+    (and emits nothing) when the block has none, so every ordinary block
+    keeps the rules it had. */
+function emitMixed(lines, push, warnings) {
+  let any = false;
+  for (let j = 0; j < lines.length; j++) if (cueAt(lines, j)) { any = true; break; }
+  if (!any) return false;
+  let mode = 'action';
+  let buf = [];
+  const flush = () => {
+    if (buf.length) push(mode === 'speech' ? 'dialogue' : 'action', buf.join('\n'));
+    buf = [];
+  };
+  for (let j = 0; j < lines.length; j++) {
+    const t = lines[j].trim();
+    if (cueAt(lines, j)) {
+      flush();
+      const raw = t.replace(/^@/, '');
+      const dual = /\^\s*$/.test(raw);
+      push('character', raw.replace(/\s*\^\s*$/, ''), dual ? { dual: true } : null);
+      mode = 'speech';
+      continue;
+    }
+    if (SLUG_RE.test(t)) { flush(); push('scene', t); mode = 'action'; continue; }
+    if (mode === 'speech' && /^\(.*\)$/.test(t)) { flush(); push('paren', t); continue; }
+    buf.push(t);
+  }
+  flush();
+  warnings.push('A block with no blank lines in it held cues and dialogue; they were split apart by their shape.');
+  return true;
+}
+
+/** A speech block, or — when it holds a second cue or a heading with no
+    blank line before it — the mixed walk. */
+function emitSpeech(b, cueLine, push) {
+  const lines = b.map((l, k) => (k === 0 ? cueLine : l));
+  let inner = false;
+  for (let j = 1; j < lines.length; j++) {
+    if (cueAt(lines, j) || SLUG_RE.test(lines[j].trim())) { inner = true; break; }
+  }
+  if (inner) {
+    const w = [];
+    // Force the first line to be read as a cue: emitMixed tests it like any other.
+    const first = lines[0].trim();
+    lines[0] = '@' + first;
+    if (emitMixed(lines, push, w)) return;
+  }
+  speech(b, cueLine, push);
 }
 
 /** A speech block: the cue, then parentheticals and dialogue. */
@@ -324,7 +446,7 @@ function speech(b, cueLine, push) {
    ------------------------------------------------------------ */
 function parseText(raw) {
   const warnings = [];
-  const skipped = { pageNumbers: 0, more: 0, continued: 0, titlePage: 0 };
+  const skipped = { pageNumbers: 0, more: 0, continued: 0, titlePage: 0, revisions: 0 };
   let text = String(raw || '').replace(/\r\n?/g, '\n');
 
   /* A title page is centred, which to an indent-based parser looks
@@ -339,22 +461,29 @@ function parseText(raw) {
      have one is how the first line of somebody's script disappears. */
   const ff = text.indexOf('\f');
   if (ff >= 0) {
-    skipped.titlePage = text.slice(0, ff).split('\n').filter((l) => l.trim()).length;
-    text = text.slice(ff);
-    if (skipped.titlePage) {
-      warnings.push(skipped.titlePage + ' title-page line(s) before the first page break '
-        + 'were read as front matter, not as script.');
+    const front = text.slice(0, ff);
+    if (looksLikeTitlePage(front)) {
+      skipped.titlePage = front.split('\n').filter((l) => l.trim()).length;
+      text = text.slice(ff);
+      if (skipped.titlePage) {
+        warnings.push(skipped.titlePage + ' title-page line(s) before the first page break '
+          + 'were read as front matter, not as script.');
+      }
     }
   }
-  const lines = text.replace(/\f/g, '\n').split('\n');
 
+  /* A page break, a page number, (MORE), CONTINUED and a revision header
+     are all furniture. They are dropped, but each leaves a `pb` marker so
+     a speech the break cut in two can be put back together. */
   const rows = [];
-  for (const line of lines) {
+  for (let line of text.split('\n')) {
+    if (line.includes('\f')) { rows.push({ pb: true }); line = line.replace(/\f/g, ''); if (!line.trim()) { rows.push(null); continue; } }
     const t = line.trim();
     if (!t) { rows.push(null); continue; }              // a blank is a separator
-    if (PAGE_NO.test(line)) { skipped.pageNumbers++; continue; }
-    if (MORE_LINE.test(line)) { skipped.more++; continue; }
-    if (CONTINUED.test(line)) { skipped.continued++; continue; }
+    if (PAGE_NO.test(line)) { skipped.pageNumbers++; rows.push({ pb: true }); continue; }
+    if (MORE_LINE.test(line)) { skipped.more++; rows.push({ pb: true }); continue; }
+    if (CONTINUED.test(line)) { skipped.continued++; rows.push({ pb: true }); continue; }
+    if (REV_HEADER.test(t)) { skipped.revisions++; rows.push({ pb: true }); continue; }
     const indent = line.match(/^ */)[0].length;
     rows.push({ indent, text: t });
   }
@@ -363,7 +492,7 @@ function parseText(raw) {
      from the page's own left margin rather than from the file's. */
   const margin = leftMargin(rows);
   if (margin) {
-    for (const row of rows) { if (row) row.indent = Math.max(0, row.indent - margin); }
+    for (const row of rows) { if (row && !row.pb) row.indent = Math.max(0, row.indent - margin); }
     warnings.push('Every line in that file sits ' + margin + ' spaces in from the left. '
       + 'The scene headings were taken as the left margin and the other indents read from there.');
   }
@@ -371,7 +500,7 @@ function parseText(raw) {
   const classify = (row, prev) => {
     const { indent, text } = row;
     if (SLUG_RE.test(text)) return 'scene';
-    if (TRANS_RE.test(text) && indent < 6) return 'transition';
+    if (isTransitionLine(text) && indent < 6) return 'transition';
     if (isUpperish(text) && (ENDS_TO.test(text) || indent >= 40)) return 'transition';
     if (indent < 6 && isShotLine(text)) return 'shot';
     if (/^\(.*\)$/.test(text) && indent >= 8) return 'paren';
@@ -379,33 +508,62 @@ function parseText(raw) {
     if (indent >= 6) {
       // Under a cue or a parenthetical, an indented line is speech.
       if (prev === 'character' || prev === 'paren' || prev === 'dialogue') return 'dialogue';
-      return indent >= 18 ? 'character' : 'dialogue';
+      /* Only a short, name-shaped Tamil line can be a cue; a sentence at
+         cue indent is a centred line of something, never a speaker. */
+      return indent >= 18 && !TAMIL.test(text) ? 'character' : 'dialogue';
     }
     return 'action';
   };
 
   const elements = [];
-  let open = null;                                       // { type, lines[] }
+  let open = null;                                       // { type, lines[], dual, contd, breakBefore }
+  let rejoin = false;
+  const speakerOf = (t) => String(t).replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  /* Is the last thing said, before a page break, by this speaker? */
+  const sameSpeakerAsLast = (name) => {
+    let k = elements.length - 1;
+    if (k < 0 || (elements[k].type !== 'dialogue' && elements[k].type !== 'paren')) return false;
+    while (k >= 0 && (elements[k].type === 'dialogue' || elements[k].type === 'paren')) k--;
+    return k >= 0 && elements[k].type === 'character' && speakerOf(elements[k].text) === speakerOf(name);
+  };
   const close = () => {
     if (!open) return;
-    const joined = (open.type === 'scene' || open.type === 'character' || open.type === 'transition')
-      ? open.lines.join(' ')
-      : open.lines.join(' ');
-    elements.push(blankElement({ type: open.type, text: joined.replace(/\s+/g, ' ').trim() }));
+    const text = open.lines.join(' ').replace(/\s+/g, ' ').trim();
+    const o = open;
     open = null;
+    /* (CONT'D) is the page break's own mark on a cue. When the same
+       speaker was talking just before the break, this is the rest of
+       THAT speech: the cue is dropped and the dialogue rejoined. */
+    if (o.type === 'character' && o.contd && o.breakBefore && sameSpeakerAsLast(text)) {
+      rejoin = true;
+      return;
+    }
+    const merge = rejoin && o.type === 'dialogue' && elements.length && elements[elements.length - 1].type === 'dialogue';
+    rejoin = false;
+    if (merge) {
+      const last = elements[elements.length - 1];
+      elements[elements.length - 1] = blankElement({ type: 'dialogue', text: last.text + ' ' + text });
+      return;
+    }
+    elements.push(blankElement(o.type === 'character' && o.dual ? { type: o.type, text, dual: true } : { type: o.type, text }));
   };
 
   let prevType = null;
-  for (const row of rows) {
+  let pendingBreak = false;
+  for (const row of pairDual(rows)) {
     if (!row) { close(); prevType = null; continue; }
+    if (row.pb) { pendingBreak = true; continue; }
     const type = classify(row, prevType);
     /* A cue and its parenthetical and its dialogue sit under each
        other with no blank line, so a change of kind ends the
        element even mid-block. Same kind continues it, which is
        how a wrapped paragraph comes back as one paragraph. */
-    if (open && open.type !== type) close();
-    if (!open) open = { type, lines: [] };
-    open.lines.push(row.text.replace(CUE_TAIL_ONLY_CONTD, ''));
+    if (open && (open.type !== type || row.dual)) close();
+    if (!open) open = { type, lines: [], dual: !!row.dual, contd: false, breakBefore: pendingBreak };
+    pendingBreak = false;
+    // (CONT'D) belongs to a cue; on any other line it is the writer's words.
+    if (type === 'character' && CUE_TAIL_ONLY_CONTD.test(row.text)) open.contd = true;
+    open.lines.push(type === 'character' ? row.text.replace(CUE_TAIL_ONLY_CONTD, '') : row.text);
     prevType = type;
     /* A cue is always one line. Anything after it is the speech. */
     if (type === 'scene' || type === 'character' || type === 'transition' || type === 'paren' || type === 'shot') close();
@@ -420,6 +578,64 @@ function parseText(raw) {
       + 'were recognised and skipped; the speeches they interrupted were rejoined.');
   }
   return { elements, meta: {}, warnings, skipped };
+}
+
+/** Is what precedes the first form feed a title page? Only when it has
+    no scene heading, no cue with speech under it, and is mostly short
+    centred lines or the words a title page uses. Page 1 of a script that
+    simply has a form feed after it is script. */
+function looksLikeTitlePage(front) {
+  const lines = front.split('\n').filter((l) => l.trim());
+  if (!lines.length) return false;
+  if (lines.some((l) => SLUG_RE.test(l.trim()) || isTransitionLine(l.trim()))) return false;
+  const ind = (l) => l.match(/^ */)[0].length;
+  for (let i = 0; i < lines.length - 1; i++) {
+    const t = lines[i].trim();
+    if (isUpperish(t) && ind(lines[i]) >= 18 && ind(lines[i + 1]) >= 6 && ind(lines[i + 1]) < ind(lines[i])
+      && /[a-z]/.test(lines[i + 1]) && /[.,!?]\s*$/.test(lines[i + 1])) return false;
+  }
+  const TITLEISH = /\b(written by|screenplay|teleplay|story by|based on|draft|copyright|contact|revision|rev\.|by)\b|©|\d{4}|@/i;
+  const titleish = lines.filter((l) => ind(l) >= 10 || TITLEISH.test(l) || /^[^a-z]+$/.test(l.trim())).length;
+  return lines.length <= 30 && titleish / lines.length >= 0.5
+    && lines.every((l) => l.trim().length <= 70);
+}
+
+/** Two cues side by side on one line — "JOHN        MARY", three or more
+    spaces between — are a dual-dialogue pair, and the speech under them
+    is two columns on the same lines. Rewrites that group of rows as the
+    two speeches it is: left first, right second with `dual` set.
+    Everything else passes through untouched. */
+function pairDual(rows) {
+  const out = [];
+  const cols = (row) => {
+    const parts = [];
+    const re = /\S+(?:\s{1,2}\S+)*/g;
+    let m;
+    while ((m = re.exec(row.text))) parts.push({ col: row.indent + m.index, text: m[0] });
+    return parts;
+  };
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const head = row && !row.pb && row.indent >= 6 ? cols(row) : null;
+    if (!head || head.length !== 2 || !head.every((p) => p.text.length <= 36 && !SLUG_RE.test(p.text) && !isTransitionLine(p.text) && isUpperish(p.text))) {
+      out.push(row);
+      continue;
+    }
+    const mid = (head[0].col + head[1].col) / 2 - 12;
+    const left = [{ indent: 20, text: head[0].text }];
+    const right = [{ indent: 20, text: head[1].text, dual: true }];
+    let j = i + 1;
+    for (; j < rows.length && rows[j] && !rows[j].pb; j++) {
+      const parts = cols(rows[j]);
+      if (parts.length < 2 && rows[j].indent < 6) break;
+      const put = (side, p) => side.push({ indent: /^\(.*\)$/.test(p.text) ? 16 : 10, text: p.text });
+      if (parts.length >= 2) { put(left, parts[0]); put(right, parts[parts.length - 1]); }
+      else put(parts[0].col >= mid ? right : left, parts[0]);
+    }
+    out.push(...left, ...right);
+    i = j - 1;
+  }
+  return out;
 }
 
 /** Where the page's left margin is, in columns, measured from the
@@ -438,7 +654,7 @@ const MAX_MARGIN = 30;
 function leftMargin(rows) {
   const counts = new Map();
   for (const row of rows) {
-    if (!row || !SLUG_RE.test(row.text)) continue;
+    if (!row || row.pb || !SLUG_RE.test(row.text)) continue;
     counts.set(row.indent, (counts.get(row.indent) || 0) + 1);
   }
   if (!counts.size) return 0;
@@ -672,11 +888,31 @@ export function titlePageFromMeta(meta) {
                 the same sentence; the preview says where it came
                 from so nobody mistakes it for their own.
    ------------------------------------------------------------ */
+/* What follows the last dash, mapped to the scene model's own
+   vocabulary (scenes.js DAY_NIGHT: DAY NIGHT DAWN DUSK CONTINUOUS).
+   LATER / SAME / MOMENTS LATER say the scene runs on from the one
+   before, which is what CONTINUOUS means here. A word on this list is
+   a TIME and never part of the place. */
 const TIME_SYNONYM = {
-  MORNING: 'DAY', AFTERNOON: 'DAY', NOON: 'DAY', 'LATE DAY': 'DAY',
-  EVENING: 'NIGHT', 'LATE NIGHT': 'NIGHT', MIDNIGHT: 'NIGHT',
-  SUNRISE: 'DAWN', SUNSET: 'DUSK', MAGIC_HOUR: 'DUSK', CONTINUOUS: 'CONTINUOUS'
+  MORNING: 'DAY', AFTERNOON: 'DAY', NOON: 'DAY', 'LATE DAY': 'DAY', DAYTIME: 'DAY', 'EARLY MORNING': 'DAWN',
+  EVENING: 'NIGHT', 'LATE NIGHT': 'NIGHT', MIDNIGHT: 'NIGHT', NIGHTTIME: 'NIGHT',
+  SUNRISE: 'DAWN', SUNSET: 'DUSK', 'MAGIC HOUR': 'DUSK', MAGIC_HOUR: 'DUSK', TWILIGHT: 'DUSK',
+  CONTINUOUS: 'CONTINUOUS', LATER: 'CONTINUOUS', SAME: 'CONTINUOUS', 'SAME TIME': 'CONTINUOUS',
+  'MOMENTS LATER': 'CONTINUOUS', 'A MOMENT LATER': 'CONTINUOUS', 'LATER THAT DAY': 'CONTINUOUS',
+  'LATER THAT NIGHT': 'CONTINUOUS', 'MOMENTS EARLIER': 'CONTINUOUS',
+  // Tamil
+  'பகல்': 'DAY', 'காலை': 'DAY', 'மதியம்': 'DAY', 'மாலை': 'DUSK', 'இரவு': 'NIGHT', 'அதிகாலை': 'DAWN'
 };
+const timeOf = (w) => {
+  const k = String(w || '').trim().toUpperCase().replace(/[.]+$/, '');
+  return DAY_NIGHT.includes(k) ? k : (TIME_SYNONYM[k] || '');
+};
+const TIME_WORDS = [...DAY_NIGHT, ...Object.keys(TIME_SYNONYM)]
+  .sort((a, b) => b.length - a.length)
+  .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|');
+// "… - DAY 12": a scene number after the time of day.
+const TAIL_AFTER_TIME = new RegExp('^(.*\\s[-—–]\\s*(?:' + TIME_WORDS + '))\\s+(\\d+[A-Za-z]?)\\s*$', 'i');
 
 export function parseSlug(slug) {
   let text = String(slug || '').trim().replace(/\s+/g, ' ');
@@ -686,19 +922,34 @@ export function parseSlug(slug) {
      The leading form is anchored by the INT/EXT that has to follow
      it, so it can safely take the lettered numbers a production
      office uses — 12A for an insert, A12 for one that came before
-     12. The trailing form has no such anchor, so it stays digits
-     with at most one letter after them: widening it would eat the
-     A12 out of "INT. LOADING BAY A12". */
-  const lead = text.match(new RegExp('^(' + SCENE_NO + ')[.)]?[\\s]+(?=(INT|EXT|EST|I\\/E))', 'i'));
+     12. */
+  const lead = text.match(new RegExp('^(' + SCENE_NO + ')[.)]?[\\s]+(?=(INT|EXT|EST|I\\/E|உள்|வெளி))', 'i'));
   if (lead) { out.number = lead[1]; text = text.slice(lead[0].length).trim(); }
-  const tail = text.match(/\s+(\d+[A-Za-z]?)\s*$/);
-  if (tail && !out.number) { out.number = tail[1]; text = text.slice(0, tail.index).trim(); }
 
-  const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INT|EXT|EST)\b\.?/i);
+  /* Fountain's own number: "INT. KITCHEN - DAY #12#" / "#12A#". */
+  const fnt = text.match(/\s*#([A-Za-z0-9.\-]+)#\s*$/);
+  if (fnt) { if (!out.number) out.number = fnt[1]; text = text.slice(0, fnt.index).trim(); }
+
+  /* A bare trailing number is a scene number only where it cannot be part
+     of the place: after the time of day ("… - DAY 12"), or when the same
+     number also leads the heading ("12 INT. KITCHEN - DAY 12"). "EXT.
+     HIGHWAY 66 - DAY" and "INT. APARTMENT 4B - NIGHT" keep their numbers
+     — they are the address, and the old rule ate them. */
+  const after = text.match(TAIL_AFTER_TIME);
+  if (after) {
+    if (!out.number) out.number = after[2];
+    text = after[1].trim();
+  } else if (out.number) {
+    const same = text.match(/\s+(\d+[A-Za-z]?)\s*$/);
+    if (same && same[1].toUpperCase() === out.number.toUpperCase()) text = text.slice(0, same.index).trim();
+  }
+
+  const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
   if (ie) {
     const token = ie[1].toUpperCase().replace(/\s|\./g, '');
-    out.intExt = (token === 'INT' || token === 'EST') ? 'INT'
-      : token === 'EXT' ? 'EXT' : 'INT/EXT';
+    // EST. is an establishing shot — of the OUTSIDE.
+    out.intExt = (token === 'INT' || token === 'உள்') ? 'INT'
+      : (token === 'EXT' || token === 'EST' || token === 'வெளி') ? 'EXT' : 'INT/EXT';
     if (!INT_EXT.includes(out.intExt)) out.intExt = 'INT';
     text = text.slice(ie[0].length).trim();
   }
@@ -708,7 +959,7 @@ export function parseSlug(slug) {
     : Math.max(text.lastIndexOf(' — '), text.lastIndexOf(' – '));
   if (dash >= 0) {
     const tail2 = text.slice(dash + 3).trim().toUpperCase().replace(/[.]+$/, '');
-    const mapped = DAY_NIGHT.includes(tail2) ? tail2 : TIME_SYNONYM[tail2];
+    const mapped = timeOf(tail2);
     if (mapped) out.dayNight = mapped;
     else out.guessedTime = true;
     out.location = text.slice(0, dash).trim();

@@ -630,7 +630,21 @@ function layoutPage(items) {
   for (const [s, n] of sizes) if (n > best && s > 1) { best = n; size = s; }
   const cell = size * 0.6;
 
-  return lines.map((line) => {
+  /* Vertical gaps are paragraph breaks. The typical line height is the
+     smallest gap that is a real line step on this page (a page of
+     single-spaced paragraphs separated by blank lines has no gap
+     smaller than the paragraph break itself, so it is capped at 1.25x
+     the font size); a gap over 1.5x that is a blank line. Without this
+     two action paragraphs came back as one. */
+  let step = Infinity;
+  for (let k = 1; k < lines.length; k++) {
+    const gap = lines[k - 1].y - lines[k].y;
+    if (gap > size * 0.5 && gap < step) step = gap;
+  }
+  step = Math.min(step, size * 1.25);
+
+  const out = [];
+  lines.forEach((line, k) => {
     const parts = line.parts.slice().sort((a, b) => a.x - b.x);
     let text = '';
     let col = 0;
@@ -645,8 +659,12 @@ function layoutPage(items) {
       text += p.str;
       col += p.str.length;
     }
-    return { indent: first, text: text.replace(/\s+$/, '') };
-  }).filter((l) => l.text.trim());
+    text = text.replace(/\s+$/, '');
+    if (!text.trim()) return;
+    if (out.length && k > 0 && lines[k - 1].y - line.y > step * 1.5) out.push({ indent: 0, text: '' });
+    out.push({ indent: first, text });
+  });
+  return out;
 }
 
 /* ------------------------------------------------------------
@@ -702,7 +720,7 @@ export async function extractLayoutText(buffer) {
       for (const ch of it.str) if (ch === '�') undecoded++;
     }
     const lines = layoutPage(items);
-    out.push(lines.map((l) => ' '.repeat(Math.max(0, l.indent)) + l.text).join('\n'));
+    out.push(lines.map((l) => (l.text ? ' '.repeat(Math.max(0, l.indent)) + l.text : '')).join('\n'));
   }
 
   if (!total) {

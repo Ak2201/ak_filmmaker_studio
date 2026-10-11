@@ -15,7 +15,7 @@ import { parseNum, fmtINR } from '../../lib/money.js';
 import { NOTE_PREFIX } from '../../lib/backup.js';
 import { STAGES, guideJourney, nextGuideStep } from '../../lib/journey.js';
 import { h, esc } from '../../lib/dom.js';
-import { FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY, FEATURE_URL, SHORT_URL, parseStorage, title, $ } from './util.js';
+import { FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY, DASHBOARD_URL, FORMAT_LABELS, fmtRelDate, parseStorage, title, $ } from './util.js';
 
 /**
  * @param {object} o
@@ -186,24 +186,26 @@ function computeLibraryStatus() {
 // ============================================================
 let lastFeatStatus, lastShortStatus, lastLibStatus;
 
+const setText = (sel, v) => { const el = $(sel); if (el) el.textContent = v; };
+
 function updateStatus() {
   // First: the door's "Stage" and the resume card read lastJourney.
   renderJourney();
   const f = computeFeatureStatus(); lastFeatStatus = f;
-  $('#feat-title').textContent    = f.title || '—';
-  $('#feat-stage').textContent    = f.stage || '—';
-  $('#feat-progress').textContent = f.pct + '%';
-  $('#feat-bar').style.width      = f.pct + '%';
+  setText('#feat-title', f.title || '—');
+  setText('#feat-stage', f.stage || '—');
+  setText('#feat-progress', f.pct + '%');
+  { const b = $('#feat-bar'); if (b) b.style.width = f.pct + '%'; }
 
   const s = computeShortStatus(); lastShortStatus = s;
-  $('#short-title').textContent    = s.title || '—';
-  $('#short-runtime').textContent  = s.runtime || '—';
-  $('#short-progress').textContent = s.pct + '%';
-  $('#short-bar').style.width      = s.pct + '%';
+  setText('#short-title', s.title || '—');
+  setText('#short-runtime', s.runtime || '—');
+  setText('#short-progress', s.pct + '%');
+  { const b = $('#short-bar'); if (b) b.style.width = s.pct + '%'; }
 
   const l = computeLibraryStatus(); lastLibStatus = l;
-  $('#lib-calc').textContent  = l.count > 0 ? (l.count + ' items') : 'empty';
-  $('#lib-total').textContent = l.total > 0 ? fmtINR(l.total) : '—';
+  setText('#lib-calc', l.count > 0 ? (l.count + ' items') : 'empty');
+  setText('#lib-total', l.total > 0 ? fmtINR(l.total) : '—');
 
   let bytes = 0, noteCount = 0;
   ALL_KEYS.forEach(k => {
@@ -225,7 +227,7 @@ function updateStatus() {
   if (noteCount > 0) parts.push(noteCount + ' private notes');
   const summary = parts.length
     ? 'Tracked: ' + parts.join(', ') + '. '
-    : 'No projects yet — open a blueprint to start. ';
+    : 'No projects yet — pick a door above to start a film. ';
   $('#storageBytes').textContent = summary + 'Total local storage: ' + kb + ' KB.';
 
   updateResume(f, s);
@@ -255,37 +257,20 @@ function stepName(steps, id) {
   return st ? st.num + ' · ' + title(st.titlePlain || st.title) : id;
 }
 
-function updateResume(f, s) {
+function updateResume() {
+  /* The blueprints are not destinations any more: the card names the
+     open project and continues to ITS dashboard. */
   const card    = $('#resumeCard');
   const heading = $('#resumeTitle');
   const body    = $('#resumeBody');
   const actions = $('#resumeActions');
   actions.textContent = '';
-
-  const featActive  = f.pct > 0 || f.title;
-  const shortActive = s.pct > 0 || s.title;
-  if (!featActive && !shortActive) { card.classList.remove('has-data'); return; }
+  const cur = Store.currentProject();
+  if (!cur) { card.classList.remove('has-data'); return; }
   card.classList.add('has-data');
-
-  const primary = ((f.pct >= s.pct && featActive) || !shortActive) ? 'feature' : 'short';
-
-  if (primary === 'feature') {
-    heading.textContent = f.title || 'Untitled feature';
-    body.innerHTML = '<strong>' + esc(f.stage) + '</strong> · ' + f.pct + '% complete' +
-      (f.lastEditedStep ? ' · next up <strong>' + esc(stepName(FEATURE_STEPS, f.lastEditedStep)) + '</strong>' : '');
-    actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), 'CONTINUE FEATURE  →'));
-    if (shortActive) {
-      actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), '→ Switch to Short', true));
-    }
-  } else {
-    heading.textContent = s.title || 'Untitled short';
-    body.innerHTML = (s.runtime ? '<strong>' + esc(s.runtime) + '</strong> · ' : '') + s.pct + '% complete' +
-      (s.lastEditedStep ? ' · next up <strong>' + esc(stepName(SHORT_STEPS, s.lastEditedStep)) + '</strong>' : '');
-    actions.append(resumeBtn(SHORT_URL + (s.lastEditedStep ? '#' + s.lastEditedStep : ''), 'CONTINUE SHORT  →'));
-    if (featActive) {
-      actions.append(resumeBtn(FEATURE_URL + (f.lastEditedStep ? '#' + f.lastEditedStep : ''), '→ Switch to Feature', true));
-    }
-  }
+  heading.textContent = cur.title || 'Untitled project';
+  body.textContent = (FORMAT_LABELS[cur.format] || cur.format) + ' · edited ' + fmtRelDate(cur.updatedAt);
+  actions.append(resumeBtn(DASHBOARD_URL, 'CONTINUE  →'));
 }
 
 function updateIndexChecks(f, s) {

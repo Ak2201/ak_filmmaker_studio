@@ -64,6 +64,11 @@ import '../styles/steps-stages.css';
    order; as ES modules it is guaranteed by import order. Do not
    move this below the chrome/cloud imports. */
 import Store from '../lib/store.js';
+/* The blueprint's questions live in each stage's Guide now (10 Oct
+   2026): an old link here forwards to the stage that owns the step.
+   ?stay=1 keeps this full page for the widgets the guide links to. */
+import { enableRedirect } from './blueprint-redirect.js';
+enableRedirect();
 import StudioUI, {
   buildStepRail, buildBeatVisualizer, refreshBeatFills,
   wireGlossaryPopovers, wireFieldSavedFlash, autoAriaLabels,

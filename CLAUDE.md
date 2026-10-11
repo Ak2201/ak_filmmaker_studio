@@ -135,6 +135,11 @@ src/
              sitegate.js ← the website-wide gate; see §0 of docs/GATE.md
              extension-bridge.js ← the app's half of the extension
              docx-text.js pitch-deck.js watermark.js
+             blueprint-store.js ← readFields / writeFields: the merge-write
+                           into the blueprint blobs; any new writer merges
+             breakdown-run.js ← runBreakdown / summarize: the one-click
+                           breakdown shared with Write's import
+             blueprint-route.js ← old blueprint anchors → their stage guides
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -142,6 +147,11 @@ src/
                        pages it names; hash picks the tab, nothing is
                        removed from the DOM (the gate reads innerHTML)
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
+             learn.js ← learn(): the topic panel, built on first open
+             story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
+             stage-guide.js ← mountStageGuide(): a stage's blueprint steps, in the stage
+             project-switcher.js ← the band's project switcher (CORE)
+             project-setup.js ← the Feature / Short doors: name, favourite, format
              gate-ui.js invite-request.js ← the gate's two faces: the
                        code box + admin console, and the request block
                        invite.html and the extension panel both draw
@@ -1343,6 +1353,9 @@ numbered as they are in the history.
 | 22 | Pre-ship UI/UX pass (9 Oct 2026) | Done; re-baselined | A browser sweep of every page plus a per-page review; HISTORY item 24. `replaceChildren/append(null)` prints "null" (found three more); `solid var(--focus)` is invalid (`--focus` is a shorthand); `h('tag.cls#id')` drops the id; `.sym` stays a hidden 1em box until `html.sym-ready`; a non-module tab gets its own crumb. |
 | 23 | Motion and video review fixes (10 Oct 2026) | Done | HISTORY item 25. `motion-app.js` is OFF under webdriver, so verify sees no motion — check it with `navigator.webdriver` hidden. Veils need `@media print`; never translate `<main>` (fragment landings); count-up writes 0 only when it runs and never on prices; overlays need `@starting-style` to animate from `display:none`; a resting off-canvas position is not a distance (no `× --motion`). |
 | 24 | Phone navigation (10 Oct 2026) | Done | HISTORY item 26. `src/ui/mobile-nav.js` (CORE): below 720px the band is the breadcrumb only; bottom bar Home · Go to · Search · Tools; Go to is built from navmodel; Tools BORROWS the real `.toolbar` / `.sh-tools` and returns them. Keys off `html.mn-on` (only while the bar is attached), so desktop and `data-no-actionbar` pages are untouched. A menu inside a sideways-scrolling strip is clipped to nothing — that is what broke the stage menus on phones. |
+| 25 | Beginner pass: Story and Screenplay (10 Oct 2026) | Done | HISTORY item 28. Fields with a blueprint key are written in the blueprint blob via `blueprint-store` merge-write, never on the character record; `learn()` returns null for unknown ids — filter before append. |
+| 26 | Project-first studio (10 Oct 2026) | Done | HISTORY item 29. The hub opens on three doors and the dashboard's five stage cards are derived in `journey.js`, never stored; "Suggested next" is advice and is never forced. The project switcher is CORE, so it runs on every shell page. |
+| 27 | Blueprints folded into the stages (10 Oct 2026) | Done | HISTORY item 30. Stage guides write only through `blueprint-store`; the redirect is exempt with `?stay=1`; verify's key-union is what protects saved answers now. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

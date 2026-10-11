@@ -22,6 +22,7 @@
    store.js's project-scoped keys and deliberately not synced.
    ============================================================ */
 import studies from '../data/studies.json';
+import { projectFav } from './store.js';
 
 /**
  * @typedef {Object} FilmMeta
@@ -156,6 +157,17 @@ export function currentSlug() {
   try { v = localStorage.getItem(DEMO_KEY); } catch (e) {}
   return getStudy(v) ? v : defaultSlug();
 }
+
+/** The film this PROJECT is taught with: the project's own choice
+ *  (store.js projectFav, on the project entry), else the device's demo
+ *  choice. Every "In {your favourite film}" example reads this. */
+export function favouriteSlug() {
+  let v = '';
+  try { v = projectFav(); } catch (e) {}
+  return getStudy(v) ? v : currentSlug();
+}
+
+export function favouriteStudy() { return getStudy(favouriteSlug()); }
 
 export function currentStudy() {
   return getStudy(currentSlug());

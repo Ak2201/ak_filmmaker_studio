@@ -47,9 +47,11 @@ const MODES = [
 const DEFAULT_MODE = 'margin';
 const PREF = 'beatGuide';
 const STORY_LINK = 'story.html#path-4';
+const OUTLINE_LINK = 'story.html#path-outline';
 
 const root = document.documentElement;
 let getDoc = () => ({ elements: [] });
+let addScene = null;       // ctx.addScene(text): the page's own way to put a heading at the end
 let mode = DEFAULT_MODE;
 let caretId = '';          // the row the caret was last in
 /* Collapsed or not: view state, in memory only. Starts closed on a
@@ -59,9 +61,15 @@ let lastSig = '';
 let idleHandle = 0;
 let typeTimer = 0;
 
+/* An explicit choice always wins. With none stored, a story that HAS a
+   step outline opens in Panel (the outline is what the panel is for);
+   without one the default stays Margin. Reading only: nothing is
+   written until somebody changes the select. */
 function readMode() {
   const m = readPrefs()[PREF];
-  return MODES.some((x) => x.id === m) ? m : DEFAULT_MODE;
+  if (MODES.some((x) => x.id === m)) return m;
+  try { if (outlineByBeat(loadStory()).withText > 0) return 'panel'; } catch (e) { /* no story */ }
+  return DEFAULT_MODE;
 }
 
 function applyMode() {
@@ -145,6 +153,9 @@ export function derive(els, rowId) {
     : ordered.find((b) => b.at > beat.at) || null;
 
   const ob = outlineByBeat(story, fw.id);
+  const live = new Set(Scenes.listScenes().map((x) => x.id));
+  const spansAll = Outline.sceneSpans(Scenes.listScenes(), els);
+  const headOf = new Map(spansAll.filter((x) => x.start >= 0 && els[x.start]).map((x) => [x.scene.id, els[x.start].id]));
   const row = ob.beats.find((r) => r.beat.id === beat.id);
   const steps = row ? row.steps.filter((s) => String(s.text || '').trim()) : [];
 
@@ -152,6 +163,7 @@ export function derive(els, rowId) {
   return {
     fw, known, beat, how, from, next, steps,
     hasOutline: ob.withText > 0,
+    outline: ob, live, headOf,
     scene, heading: head >= 0 ? String(els[head].text || '').trim() : '',
     page, totalPages, pos,
     expectedPage: pageOf(beat.at),
@@ -200,17 +212,63 @@ function body(d) {
     out.push(h('p.bg-link', {}, [h('a', { href: STORY_LINK, text: 'Open in Story' })]));
   }
 
+  out.push(...outlineList(d));
   out.push(h('p.bg-next', {}, d.next
     ? [h('span.bg-next-lab', { text: 'Next beat' }), ' ' + d.next.label + ' · around p. ' + d.nextPage]
     : [h('span.bg-next-lab', { text: 'Next beat' }), ' none — this is the last beat of ' + d.fw.short + '.']));
   return out;
 }
 
+/* ---- the whole step outline, in order ---------------------------
+   Read-only over the story. A step whose scene exists is marked
+   written and jumps to its heading; the step for the scene under the
+   caret is highlighted; a step with no scene offers to start one. */
+const clip = (t, n) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t);
+function outlineList(d) {
+  const ob = d.outline;
+  if (!ob || !ob.withText) {
+    return [h('h4.bg-sub', { text: 'Step outline' }), h('p.bg-note', {}, [
+      'No step outline yet — ', h('a', { href: OUTLINE_LINK, text: 'build one in Story' })
+    ])];
+  }
+  const wrap = h('div.bg-outline', { 'data-bg': 'outline' });
+  wrap.append(h('h4.bg-sub', { text: 'Step outline' }));
+  const group = (label, steps) => {
+    const written = steps.filter((s) => String(s.text || '').trim());
+    if (!written.length) return;
+    wrap.append(h('h5.bg-beat-h', { text: label }));
+    wrap.append(h('ol.bg-ostep-list', {}, written.map((s) => {
+      const has = !!(s.sceneId && d.live.has(s.sceneId));
+      const here = has && d.scene && d.scene.id === s.sceneId;
+      const text = clip(String(s.text).trim(), 140);
+      const li = h('li.bg-ostep' + (has ? '.is-written' : '') + (here ? '.is-here' : ''), { 'data-step': s.id });
+      if (here) li.setAttribute('aria-current', 'location');
+      if (has) {
+        li.append(h('button.bg-ostep-go', {
+          type: 'button', 'data-bg': 'goto', 'data-sceneid': s.sceneId, 'data-el': d.headOf.get(s.sceneId) || '',
+          title: 'Go to this scene in the script'
+        }, [h('span.bg-tick', { 'aria-hidden': 'true', text: '✓' }), h('span.visually-hidden', { text: 'Written. ' }), text]));
+      } else {
+        li.append(h('span.bg-ostep-text', { text }));
+        li.append(addScene
+          ? h('button.bg-ostep-start', { type: 'button', 'data-bg': 'start', text: 'Start this scene' })
+          : h('a.bg-ostep-start', { href: OUTLINE_LINK, text: 'Plan in Story' }));
+      }
+      return li;
+    })));
+  };
+  for (const r of ob.beats) group(r.beat.label, r.steps);
+  group('Other steps', ob.unplaced);
+  return [wrap];
+}
+
 function signature(d) {
   if (!d) return 'none';
   return [d.fw.id, d.known, d.beat.id, d.how, d.from && d.from.beat.id, d.next && d.next.id,
     d.page, d.expectedPage, d.nextPage, Math.ceil(d.totalPages), Math.round(d.pos * 100),
-    d.hasOutline, d.steps.map((s) => s.id + ':' + s.text.length).join(',')].join('|');
+    d.hasOutline, d.scene && d.scene.id,
+    d.outline.beats.map((r) => r.steps.map((s) => s.id + ':' + String(s.text || '').length + ':' + (s.sceneId && d.live.has(s.sceneId) ? 1 : 0)).join(',')).join(';'),
+    d.steps.map((s) => s.id + ':' + s.text.length).join(',')].join('|');
 }
 
 function ensurePanel() {
@@ -377,10 +435,31 @@ function setMode(m) {
 /** Called once by write.js. ctx = { getDoc }. */
 export function mountBeatGuide(ctx) {
   if (ctx && typeof ctx.getDoc === 'function') getDoc = ctx.getDoc;
+  if (ctx && typeof ctx.addScene === 'function') addScene = ctx.addScene;
   mode = readMode();
   applyMode();
 
   delegate(document, 'change', 'select[data-bg="mode"]', (e, sel) => setMode(sel.value));
+  delegate(document, 'click', '[data-bg="goto"]', (e, btn) => {
+    const els = (getDoc() || {}).elements || [];
+    let id = btn.dataset.el;
+    if (!id || !els.some((x) => x.id === id)) {
+      const sp = Outline.sceneSpans(Scenes.listScenes(), els).find((x) => x.scene.id === btn.dataset.sceneid && x.start >= 0);
+      id = sp && els[sp.start] ? els[sp.start].id : '';
+    }
+    const node = id && document.querySelector('#wr-page [data-el="' + CSS.escape(id) + '"] .wr-text');
+    if (!node) return;
+    /* A row in a run the browser is skipping has placeholder height:
+       bring it into view instantly first, as write.js's applyFocus does. */
+    node.scrollIntoView({ block: 'center', behavior: 'instant' });
+    node.focus();
+    caretId = id;
+    schedule();
+  });
+  delegate(document, 'click', '[data-bg="start"]', () => {
+    if (typeof addScene !== 'function') return;
+    addScene(Outline.HEADING_PROMPT);
+  });
   delegate(document, 'toggle', '#bg-panel', (e, card) => { openCard = card.open; }, true);
 
   document.addEventListener('focusin', (e) => {

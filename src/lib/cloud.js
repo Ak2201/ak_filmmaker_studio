@@ -195,6 +195,7 @@ export function gateDetail(reason) {
 function idleSync() {
   const q = _readQueue().length;
   if (!session)  return setSync(SYNC_STATES.OFF, isConfigured() ? 'Signed out — local only' : 'Local only');
+  if (!syncEnabled()) return setSync(SYNC_STATES.OFF, 'Cloud sync is off on this device');
   if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
   if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
   if (q)         return setSync(SYNC_STATES.OFFLINE, q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload');
@@ -404,7 +405,47 @@ let _gateReason = '';
 let _gateStatus = null;
 let _heartbeat = null;
 let _gateRole = '';
-function syncAllowed() { return _gateState !== 'closed' && _gateState !== 'lost'; }
+function syncAllowed() { return _gateState !== 'closed' && _gateState !== 'lost' && syncEnabled(); }
+
+/* THE USER'S OWN OFF SWITCH (Settings → Account → Cloud sync).
+   ------------------------------------------------------------
+   `cloudSync: 'off'` inside the existing device prefs blob
+   fms_studio_prefs_v1 — no new key, the same read/write shape footer.js
+   uses for `branding`. Written only when the switch is clicked. It rides
+   syncAllowed(), so one predicate stops every push, pull, queue flush and
+   Drive hand-off (ownsSync() reads it). Local writes still stamp their
+   sync clock (markLocalWrite runs before the syncAllowed check in the
+   `saved` subscriber), so work done while it is off wins its argument
+   when the switch comes back on. Nothing is deleted either way. */
+const SYNC_PREFS_KEY = 'fms_studio_prefs_v1';
+function _readSyncPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(SYNC_PREFS_KEY) || '{}');
+    return p && typeof p === 'object' && !Array.isArray(p) ? p : {};
+  } catch (e) { return {}; }
+}
+export function syncEnabled() { return _readSyncPrefs().cloudSync !== 'off'; }
+export async function setSyncEnabled(on) {
+  const p = _readSyncPrefs();
+  if (on) delete p.cloudSync; else p.cloudSync = 'off';
+  try { localStorage.setItem(SYNC_PREFS_KEY, JSON.stringify(p)); } catch (e) { /* private mode: the switch does not stick */ }
+  if (!on) {
+    try { tearDownChannels(); } catch (e) { /* none attached */ }
+    idleSync();
+    Store.notify('sync:pref', { enabled: false });
+    return;
+  }
+  idleSync();
+  Store.notify('sync:pref', { enabled: true });
+  /* Catch up BOTH ways through the path sign-in already uses: attach
+     pulls the server's rows (a scope whose local clock is later is kept
+     and pushed by that same pass), then the queue flushes. */
+  if (session && supabase && syncAllowed()) {
+    try { await maybeMigrateLocalToCloud(); await attachToCurrentProject(); } catch (e) { /* idleSync below reports */ }
+    _flushQueue();
+  }
+  idleSync();
+}
 function setGate(state, reason) {
   _gateState = state;
   _gateReason = state === 'closed' ? (reason || _gateReason || 'noinvite') : (reason || '');
@@ -1069,7 +1110,7 @@ export async function signOut() {
    film. Copying a film between accounts is what the backup file is
    for. */
 async function maybeMigrateLocalToCloud() {
-  if (!session) return;
+  if (!session || !syncAllowed()) return;
   const userId = session.user.id;
   /* The page still belongs to a different namespace and a reload is
      inbound — see the setAccount() note in ensureClient(). */
@@ -1364,8 +1405,41 @@ async function _pushProjectMeta(project) {
   }
 }
 
+/* A page that creates a project and then navigates (the hub's setup
+   sheet opens the dashboard) would lose the answer to the push: the
+   refusal arrives after unload, and the cap toast with it. settle()
+   lets such a caller wait a moment for the in-flight meta pushes, and
+   a refusal is carried to the next page in SESSION storage (the same
+   tier as fms_gate_landing — it is about this tab, not the studio). */
+const _inflight = new Set();
+function track(p) {
+  if (!p || typeof p.then !== 'function') return p;
+  _inflight.add(p);
+  p.finally(() => _inflight.delete(p)).catch(() => {});
+  return p;
+}
+export function settle(ms = 3000) {
+  if (!_inflight.size) return Promise.resolve();
+  return Promise.race([
+    Promise.allSettled([..._inflight]),
+    new Promise((r) => setTimeout(r, ms))
+  ]).then(() => {});
+}
+const PLAN_NOTICE_KEY = 'fms_plan_limit_notice';
+function replayPlanLimitNotice() {
+  let n = null;
+  try { n = JSON.parse(sessionStorage.getItem(PLAN_NOTICE_KEY) || 'null'); sessionStorage.removeItem(PLAN_NOTICE_KEY); } catch (e) { return; }
+  if (!n || !n.m || Date.now() - (n.at || 0) > 5 * 60000) return;
+  setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
+  _planToastAt = 0;
+  setTimeout(() => planLimitToast(n.m, { carry: false }), 0);
+}
+
 let _planToastAt = 0;
-function planLimitToast(message) {
+function planLimitToast(message, opts) {
+  if (!(opts && opts.carry === false)) {
+    try { sessionStorage.setItem(PLAN_NOTICE_KEY, JSON.stringify({ m: message, at: Date.now() })); } catch (e) { /* no session tier: the toast below still shows */ }
+  }
   if (Date.now() - _planToastAt < 60000) return;   // once a minute, not once a keystroke
   _planToastAt = Date.now();
   if (window.StudioUI && StudioUI.toast) {
@@ -1435,7 +1509,7 @@ function tearDownChannels() {
   _activeChannels = [];
 }
 export async function attachToCurrentProject() {
-  if (!supabase || !session) return;
+  if (!supabase || !session || !syncEnabled()) return;
   tearDownChannels();
   const pid = Store.currentProjectId();
   if (!pid) return;
@@ -1745,7 +1819,7 @@ Store.subscribe('projects:changed', (info) => {
   if (!session || !syncAllowed()) return;
   if (!info) return;
   if (info.reason === 'create' || info.reason === 'update') {
-    if (info.project) _pushProjectMeta(info.project);
+    if (info.project) track(_pushProjectMeta(info.project));
   } else if (info.reason === 'adopt') {
     /* Adoption from the hub control is the same operation as the
        first-sign-in prompt, performed later — so it runs the same
@@ -1847,7 +1921,7 @@ const StudioCloud = {
   /* Read through this global by drive-sync.js, the way src/ui/auth.js
      reaches this module — importing it there would put cloud.js on
      all sixteen page entries. See ownsSync() above. */
-  ownsSync,
+  ownsSync, syncEnabled, setSyncEnabled,
   // auth — Google only; nothing else belongs on this line
   ensureClient,
   signInWithGoogle, signOut,
@@ -1856,7 +1930,7 @@ const StudioCloud = {
   // sync
   pullProjectList, pullProjectData, attachToCurrentProject,
   flushQueue: _flushQueue,
-  onSyncStatus, getSyncStatus, SYNC_STATES,
+  onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,
   // sharing
   createShare, listShares, revokeShare, resolveShareToken, claimShare,
@@ -1902,6 +1976,7 @@ function hasStoredSession() {
 }
 
 async function boot() {
+  replayPlanLimitNotice();
   // A provider bounce we can explain before the client even exists.
   if (_redirect && _redirect.error) {
     const why = _redirect.description || _redirect.error;

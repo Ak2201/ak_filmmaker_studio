@@ -42,6 +42,7 @@ import Contacts from '../lib/contacts.js';
 import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
+import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
 
@@ -301,6 +302,8 @@ function after(focus) {
     const node = document.querySelector(focus);
     if (node) node.focus();
   }
+  /* The blueprint's production questions, answered here (src/ui/stage-guide.js). */
+  mountStageGuide(document.getElementById('main'), { stage: 'production' });
   mountShell();
   /* Chrome initialises at import time when #app is still empty, so
      every page re-inits after its own render — the omission that

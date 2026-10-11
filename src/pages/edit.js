@@ -34,6 +34,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import { listShots } from '../lib/shots.js';
 import Edit, { CUT_STATES } from '../lib/editlog.js';
+import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
 
@@ -320,6 +321,8 @@ function after(focus) {
     const node = document.querySelector(focus);
     if (node) node.focus();
   }
+  /* The blueprint's post-production questions, answered here (src/ui/stage-guide.js). */
+  mountStageGuide(document.getElementById('main'), { stage: 'post' });
   mountShell();
   try {
     StudioUI.autoAriaLabels();

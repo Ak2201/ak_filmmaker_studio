@@ -15,11 +15,8 @@ import { BUILT_MODULE_COUNT } from '../../ui/launcher.js';
 import { sampleFigures } from '../../lib/sample-figures.js';
 import sample from '../../data/sample.dragon.json';
 import { filmCount } from 'virtual:studies-count';
-import shortData from '../../data/steps.short.json';
-import Store from '../../lib/store.js';
 import PlanGate from '../../lib/plan-gate.js';
 
-const SHORT_STEPS = shortData.steps.length;
 const WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 const countWord = (n) => WORDS[n] || String(n);
 
@@ -54,7 +51,7 @@ const TOUR = [
 function renderFirstRun() {
   const panel = h('div.empty-projects-state', {}, [
     h('div.eps-icon', { text: '🎬', 'aria-hidden': 'true' }),
-    h('div.eps-title', { text: 'A blank desk.' }),
+    h('div.eps-title', { text: 'A blank desk. Pick a door above to start.' }),
     // DERIVED, not written. This sentence said "Twenty-two" while
     // navigation.json held twenty-four, one line away from the launcher's
     // own correct reduce over the same file — the hand-written list
@@ -90,9 +87,8 @@ function renderFirstRun() {
      being asked to name a film. Every action that was here is still
      here — only the order and the emphasis moved. */
   panel.append(h('div.eps-actions', {}, [
-    h('button.btn.primary', { 'data-fr-action': 'start-short', text: 'START YOUR SHORT (STEP 1 OF ' + SHORT_STEPS + ')' }),
-    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' }),
-    h('button.btn', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' })
+    h('button.btn.primary', { 'data-action': 'new-project', text: '+ CREATE FIRST PROJECT' }),
+    h('button.btn', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE FILM (' + SAMPLE_TITLE + ')' })
   ]));
   panel.append(h('div.eps-fine', {
     text: 'The sample is a real project you can edit or delete — it just arrives with a few '
@@ -102,20 +98,6 @@ function renderFirstRun() {
   }));
   return panel;
 }
-
-/* START YOUR SHORT: one click makes a short-film project (the hub's own
-   createProject path, which makes it the open one) and lands on step 1
-   of the short blueprint. Wired here by its own attribute so the hub's
-   action table needs no entry. A plan without new_projects keeps the
-   old route: the project dialog says why. */
-document.addEventListener('click', (e) => {
-  const b = e.target.closest && e.target.closest('[data-fr-action="start-short"]');
-  if (!b) return;
-  e.preventDefault();
-  if (!PlanGate.allowed('new_projects')) { const n = document.querySelector('[data-action="new-project"]'); if (n) n.click(); return; }
-  Store.createProject({ title: 'My short film', format: 'short', adopt: true });
-  location.href = 'short.html#step-01';
-});
 
 /* The welcome card after a purchase (?welcome=plan, from invite.html or
    settings). The parameter is consumed; nothing is stored, so it shows

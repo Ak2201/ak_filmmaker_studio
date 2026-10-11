@@ -1,0 +1,42 @@
+/* ============================================================
+   THE STAGE GUIDE — src/ui/stage-guide.js
+   ------------------------------------------------------------
+   The frame around a blueprint's steps on a stage page. The steps
+   themselves are drawn by steps.js and wear editorial.css /
+   widgets.css like the blueprint does; only the section, its
+   header and the few controls the guide adds are styled here.
+   Colours are tokens, shapes are --sk-* (invariants 4 and 7).
+   ============================================================ */
+.sg {
+  margin: var(--s7, 48px) 0 var(--s6, 32px);
+  padding-top: var(--s5, 24px);
+  border-top: var(--sk-card-line-w, 1px) solid var(--rule);
+  scroll-margin-top: var(--scroll-offset, 0px);
+}
+.sg-eyebrow {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--brand-deep);
+}
+.sg-title { margin: 0 0 var(--s3); }
+.sg-deck, .sg-empty, .sg-loading, .sg-note, .sg-note-inline {
+  color: var(--ink-muted);
+  max-width: 62ch;
+}
+.sg-note { margin: var(--s3) 0; }
+.sg-note-inline { font-size: var(--t-small); }
+.sg-note a, .sg-empty a { color: var(--brand-deep); }
+.sg-steps > .step { margin-top: var(--s6, 32px); }
+.sg-cover { margin: var(--s4) 0; }
+.sg-table { overflow-x: auto; max-width: 100%; }
+.sg-table-actions {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--s3); margin: var(--s2) 0 var(--s4);
+}
+.sg-interlude .ladder-rungs { display: grid; gap: var(--s4); margin-top: var(--s4); }
+.sg-interlude .ladder-rung textarea { width: 100%; }
+@media print { .sg-table-actions { display: none; } }

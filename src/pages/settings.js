@@ -108,6 +108,7 @@ import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js'
    (footer.js owns both; null when neither applies to this build/plan). */
 import { planExtras } from '../ui/footer.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
+import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
 
 const app = document.getElementById('app');
 
@@ -221,7 +222,7 @@ function renderPlan() {
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', plan: 'Plan', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -285,6 +286,26 @@ function renderKey() {
 
   return sec;
 }
+
+/* ---- favourite film ------------------------------------------
+   The film every example and every "What is a …?" box is told in. It
+   is the OPEN PROJECT's choice (store.js projectFav, on the project
+   entry); with no project open it is the device's demo choice, which is
+   what favouriteSlug() falls back to. Writes on a click only. */
+function renderFavourite() {
+  const project = hasOpenProject();
+  const sec = section('favourite', project ? 'This film' : 'This device',
+    'Favourite film.',
+    'Pick the film we explain every step with: the examples on the Story page and the boxes that say what a logline, a want or a beat is.');
+  sec.append(renderFilmPicker({ label: 'Favourite film' }));
+  sec.append(h('p.st-note', {
+    text: project
+      ? 'Saved with this project. Another project keeps its own favourite.'
+      : 'No project is open, so this applies to this browser. Open a project and pick again to give that project its own.'
+  }));
+  return sec;
+}
+onFavChange(() => render());
 
 /* ---- appearance --------------------------------------------- */
 function renderAppearance() {
@@ -633,6 +654,30 @@ function versionList() {
   return wrap;
 }
 
+/* Cloud sync's own switch, for a signed-in member only (signed out there
+   is no sync to turn off). The choice is `cloudSync: 'off'` in the device
+   prefs blob, written by cloud.js's setSyncEnabled on a click and never on
+   load. Turning it OFF asks first, out loud, like every other consequential
+   control on this page; turning it ON just does it, and cloud.js catches up
+   both ways. */
+function cloudSyncSwitch() {
+  const c = window.StudioCloud;
+  if (!c || typeof c.setSyncEnabled !== 'function' || !c.getSession || !c.getSession()) return null;
+  const on = c.syncEnabled();
+  const box = h('p.st-note.st-cloud-sync', {}, [
+    h('label', {}, [
+      h('input', { type: 'checkbox', id: 'cloudSyncToggle', 'data-action': 'cloud-sync-toggle', ...(on ? { checked: '' } : {}) }),
+      ' Cloud sync'
+    ]),
+    h('span', { text: on
+      ? ' — your work goes up to your account a few seconds after you stop typing.'
+      : ' — off. Changes on this device are kept here and will reach your account when you turn it back on.' })
+  ]);
+  const input = box.querySelector('input');
+  input.checked = on;
+  return box;
+}
+
 function renderDrive() {
   const st = DriveSync.getDriveStatus();
   const sec = section('drive', 'This device · your own Drive',
@@ -640,6 +685,9 @@ function renderDrive() {
     'Keep a backup of every project on this browser in your own Google Drive. '
       + 'Drive keeps earlier versions, so you can go back. Your API key is never '
       + 'included.');
+
+  const cloudSwitch = cloudSyncSwitch();
+  if (cloudSwitch) sec.append(cloudSwitch);
 
   if (!st.configured) {
     sec.append(h('p.st-note', {
@@ -687,7 +735,7 @@ function renderDrive() {
     /* Supabase is signed in. Said plainly rather than left as a
        switch that quietly does nothing. */
     sec.append(h('p.st-note', {
-      text: 'You are signed in, so cloud sync keeps your work up to date. Drive '
+      text: 'You are signed in with cloud sync on, so it keeps your work up to date. Drive '
           + 'backup is manual while you are signed in: use the buttons below '
           + 'whenever you want a copy in Drive.'
     }));
@@ -814,7 +862,7 @@ function render() {
          header that says three above four sections is the same fault
          as the first-run panel that said twenty-two modules over
          twenty-four, and the gate cannot see either. */
-      text: 'Your plan and billing, your AI key, storage and backups, and how the studio looks.'
+      text: 'Your plan and billing, your favourite film, your AI key, storage and backups, and how the studio looks.'
     })
   ]));
 
@@ -826,7 +874,7 @@ function render() {
      happened to render something on the pages anybody checked. The
      storage section is one of the ones that always renders, which is
      exactly why it would not have caught it either.) */
-  body.append(...[renderPlan(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
+  body.append(...[renderPlan(), renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               accountSection(section), inviteSection(section, gateStatus),
               consolePointer(), renderAdmin()].filter(Boolean));
   main.append(body);
@@ -1002,6 +1050,20 @@ delegate(document, 'click', '[data-action^="drive-"]', (e, el) => {
   }
   const fn = DRIVE_ACTIONS[act];
   if (fn) fn();
+});
+
+delegate(document, 'change', '[data-action="cloud-sync-toggle"]', (e, el) => {
+  const c = window.StudioCloud;
+  if (!c) return;
+  if (!el.checked) {
+    if (!confirm('Turn off cloud sync?\n\nChanges on this device won\u2019t reach your other devices until you turn it back on. Nothing is deleted.')) {
+      el.checked = true;
+      return;
+    }
+    c.setSyncEnabled(false).then(render);
+  } else {
+    c.setSyncEnabled(true).then(render);
+  }
 });
 
 /* Drive reports its own progress — a reconcile that finishes

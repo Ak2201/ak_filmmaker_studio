@@ -13,11 +13,12 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s2) var(--s4);
-  max-width: var(--measure-wide);
-  margin: var(--s7) auto 0;
-  padding: var(--s4) var(--gutter) var(--s5);
-  border-top: 1px solid var(--rule);
+  gap: var(--s3) var(--s5);
+  width: 100%;
+  box-sizing: border-box;
+  margin: var(--s7) 0 0;
+  padding: var(--s5) max(var(--gutter), calc((100% - var(--measure-wide)) / 2)) var(--s6);
+  border-top: 1px solid var(--chrome-hair);
   background: var(--paper);
   color: var(--ink-muted);
   font-size: var(--t-small);
@@ -28,15 +29,23 @@
 .site-foot-links {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--s1) var(--s4);
   min-width: 0;
+}
+.site-foot-links::before {
+  content: "Legal";
+  color: var(--ink-muted);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 .site-foot a {
   color: var(--brand-deep);
   text-decoration: underline;
   text-underline-offset: 2px;
-  padding: var(--s1) 0;
+  padding: var(--s2) 0;
 }
 .site-foot a:hover { color: var(--ink); }
 .site-foot a:focus-visible {

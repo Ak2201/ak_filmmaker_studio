@@ -45,6 +45,7 @@ import { iconSpan } from './icon.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
+import { mountProjectSwitcher } from './project-switcher.js';
 import { moduleGroups, guideStops, phases, globals } from '../lib/navmodel.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
@@ -1586,6 +1587,7 @@ export function mountShell() {
      #signInPill. */
   if (!adoptPageTools(bar) && !bar.querySelector(':scope > .toolbar')) buildStudioTools(bar);
 
+  mountProjectSwitcher(bar);   // the hub draws its own and gets none
   crumbEl = bar.querySelector('#studioWhere');
   document.body.classList.add('has-sh-shell');
   wire();

@@ -184,7 +184,7 @@ const DIST = path.join(ROOT, process.env.VERIFY_DIST || 'dist');
    killing someone else's run. */
 const PORT = Number(process.env.VERIFY_PORT) || 5321;
 
-const PAGES = [
+const ALL_PAGES = [
   { page: 'index.html',   legacy: 'index.html',                        name: 'hub' },
   { page: 'feature.html', legacy: 'arunak-filmmaker-blueprint.html',   name: 'feature' },
   { page: 'short.html',   legacy: 'arunak-shortfilm-blueprint.html',   name: 'short' },
@@ -248,6 +248,26 @@ const PAGES = [
   // scripts/prove-gate.mjs against a fake Supabase.
   { page: 'admin.html',      legacy: null, name: 'admin' }
 ];
+
+/* ---- THE BLUEPRINTS ARE BEING FOLDED INTO THE STAGE PAGES ----------
+   feature.html and short.html become redirects to `<stage>.html#guide`
+   (src/pages/blueprint-redirect.js). The day they do, a page that only
+   redirects has no words, no keys and no overflow of its own to measure,
+   so the per-page rows for it come out of PAGES by flipping ONE constant:
+
+     BLUEPRINT_PAGES_ARE_REDIRECTS = true
+
+   Nothing else is edited. In particular scripts/baseline.json KEEPS its
+   `feature` and `short` rows: they are the reference the KEY-UNION check
+   below reads (every data-key those two pages ever held must still be
+   rendered by the five stage pages), and `--baseline` carries them over
+   untouched rather than re-capturing a page that is no longer measured.
+   The fragment sweep follows by itself — it only offers hrefs to pages in
+   PAGES, so feature.html#step-NN targets stop being asked for. */
+const BLUEPRINT_PAGES_ARE_REDIRECTS = true;
+const BLUEPRINT_NAMES = ['feature', 'short'];
+const STAGE_PAGES = ['story.html', 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
+const PAGES = BLUEPRINT_PAGES_ARE_REDIRECTS ? ALL_PAGES.filter((p) => !BLUEPRINT_NAMES.includes(p.name)) : ALL_PAGES;
 
 /* THE BUILD HAS TO BE THE OPEN ONE. src/lib/sitegate.js makes the
    website invite-only: every page a signed-out visitor loads becomes a
@@ -371,6 +391,7 @@ const EXPECTED = {
   invite: {},
   admin: {}
 };
+
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -2079,6 +2100,12 @@ if (WRITE_BASELINE) {
       return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
     } catch (e) { return 'unknown'; }
   })();
+  if (BLUEPRINT_PAGES_ARE_REDIRECTS && fs.existsSync(BASELINE_FILE)) {
+    /* The redirected blueprints are not measured, but their rows are the
+       key-union reference: carry them over, never drop them. */
+    const prev = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).pages || {};
+    for (const n of BLUEPRINT_NAMES) if (!captured[n] && prev[n]) captured[n] = prev[n];
+  }
   fs.writeFileSync(BASELINE_FILE, JSON.stringify({
     _about:
       'Reference for npm run verify. Regenerate ONLY with `npm run build && npm run baseline`, ' +
@@ -2225,6 +2252,105 @@ let scriptsOff = { checked: false };
       `(default ${defaultTheme} = ${defaultPaper}; prefers-${otherScheme} = ${otherPaper}; color-scheme and --sk-radius set)`);
 }
 
+/* ---- STAGE GUIDES + KEY-UNION ------------------------------------
+   The blueprints are being folded into the five stage pages: each
+   mounts `<section id="guide">` (src/ui/stage-guide.js) rendering that
+   stage's blueprint steps. This block answers two questions the
+   per-page rows cannot:
+
+   1. ARE THE GUIDES THERE? Probed in the browser, because the guide is
+      drawn by script. GUIDES_LIVE is true when any of the five stage
+      pages has `section#guide`; if only SOME do, that is a failure — a
+      stage whose steps have nowhere to live. It also feeds the fragment
+      sweep below: `<stage>.html#guide` is offered as a target by
+      navigation.json from the day the guide is a destination, and until
+      the guide exists that anchor cannot resolve, so the sweep skips it
+      AND SAYS SO rather than failing on a page nobody has finished.
+
+   2. KEY-UNION. Every data-key feature.html and short.html ever held
+      (scripts/baseline.json, rows `feature` and `short`) must be
+      rendered by the union of the five stage pages, loaded once with a
+      FEATURE project and once with a SHORT project. A saved field whose
+      key no page renders is a field that saves and never comes back —
+      the thing invariant 1 exists to stop. The per-page checks cannot
+      see it: no one page owns the keys any more.
+
+   A check that can skip must say that it skipped (CLAUDE.md, "Checks
+   that can skip themselves"): it prints `key-union: skipped (no stage
+   guides yet)`, and puts `skipped: true` in the report. Force it with
+   KEY_UNION=1 (fails when the guides are absent) or silence the probe
+   with KEY_UNION=0. */
+const GUIDE_ORIGIN = `http://localhost:${PORT}`;
+let GUIDES_LIVE = false;
+let keyUnion = { checked: false, skipped: true };
+{
+  const force = process.env.KEY_UNION;
+  const probeCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await PIN_REGION(probeCtx);
+  const probe = await probeCtx.newPage();
+  await probe.goto(`${GUIDE_ORIGIN}/index.html`, { waitUntil: 'networkidle' });
+  await probe.evaluate(() => { if (window.StudioStore && !StudioStore.currentProject()) StudioStore.createProject({ title: 'Verification', format: 'feature' }); });
+  const have = {};
+  for (const pg of STAGE_PAGES) {
+    await probe.goto(`${GUIDE_ORIGIN}/${pg}`, { waitUntil: 'networkidle' });
+    have[pg] = await probe.waitForSelector('section#guide', { state: 'attached', timeout: 1500 }).then(() => true, () => false);
+  }
+  await probeCtx.close();
+  const present = STAGE_PAGES.filter((pg) => have[pg]);
+  GUIDES_LIVE = present.length > 0;
+  const bad = [];
+  if (present.length && present.length < STAGE_PAGES.length) {
+    bad.push('section#guide is on ' + present.join(', ') + ' but missing from ' + STAGE_PAGES.filter((pg) => !have[pg]).join(', '));
+  }
+  if (force === '1' && !GUIDES_LIVE) bad.push('KEY_UNION=1 but no stage page has section#guide');
+
+  if (!GUIDES_LIVE || force === '0' || WRITE_BASELINE) {
+    keyUnion = { checked: false, skipped: true, reason: force === '0' ? 'KEY_UNION=0' : WRITE_BASELINE ? 'baseline capture' : 'no stage guides yet' };
+    console.log(force === '0' ? 'key-union: skipped (KEY_UNION=0)' : WRITE_BASELINE ? 'key-union: skipped (capturing a baseline)' : 'key-union: skipped (no stage guides yet)');
+  } else {
+    const base = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).pages;
+    const rows = [];
+    for (const fmt of BLUEPRINT_NAMES) {
+      const want = new Set((base[fmt] && base[fmt].keys) || []);
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      await PIN_REGION(ctx);
+      const pg = await ctx.newPage();
+      await pg.goto(`${GUIDE_ORIGIN}/index.html`, { waitUntil: 'networkidle' });
+      await pg.evaluate((f) => {
+        const S = window.StudioStore;
+        S.listProjects().forEach((p) => S.deleteProject(p.id));
+        S.createProject({ title: 'Verification ' + f, format: f });
+      }, fmt);
+      const union = new Set();
+      const perPage = {};
+      for (const sp of STAGE_PAGES) {
+        /* #guide: the guide's body is a lazy import that starts on that
+           hash (or when the section nears the screen, which a hidden
+           tab never does) — load it the way a reader reaching it would. */
+        await pg.goto(`${GUIDE_ORIGIN}/${sp}#guide`, { waitUntil: 'networkidle' });
+        await pg.waitForSelector('section#guide', { state: 'attached', timeout: 4000 }).catch(() => {});
+        await pg.waitForFunction(() => {
+          const n = document.querySelectorAll('section#guide [data-key]').length;
+          const w = window.__kuLast; window.__kuLast = n;
+          return n > 0 && n === w;
+        }, null, { timeout: 15000, polling: 500 }).catch(() => {});
+        const keys = await pg.evaluate(() => [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key')));
+        perPage[sp] = new Set(keys).size;
+        keys.forEach((k) => union.add(k));
+      }
+      await ctx.close();
+      const missing = [...want].filter((k) => !union.has(k));
+      rows.push({ format: fmt, baselined: want.size, union: union.size, missing: missing.length, perPage });
+      if (!want.size) bad.push(`baseline has no keys for "${fmt}" — nothing to compare`);
+      if (missing.length) bad.push(`${fmt} project: ${missing.length} of ${want.size} baselined data-keys are rendered by no stage page: ${missing.slice(0, 12).join(', ')}`);
+    }
+    keyUnion = { checked: true, skipped: false, rows };
+    console.log((bad.length ? '✗' : '✓') + ' key-union: ' + rows.map((r) => `${r.format} ${r.baselined - r.missing}/${r.baselined} keys`).join('; '));
+  }
+  if (bad.length) { failures++; keyUnion.FAIL = bad; bad.forEach((b) => console.log('  ' + b)); }
+  report.push({ page: 'key-union', ...keyUnion });
+}
+
 /* ---- fragment-target sweep ---------------------------------------
    "A nav target must not depend on data existing" (CLAUDE.md): six of
    the eighteen fragment hrefs in navigation.json once lived only on
@@ -2259,12 +2385,14 @@ let fragments = { checked: false };
   const stages = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'steps.stages.json'), 'utf8'));
   const known = new Set(PAGES.map((p) => p.page));
   const targets = new Map();   // "page.html#frag" -> [sources]
+  const guideSkipped = new Set();   // `<stage>.html#guide` while no stage guide exists
   const add = (href, source) => {
     if (!href || !href.includes('#')) return;
     const [file, frag] = href.split('#');
     if (!frag) return;
     const page = (file || 'index.html').replace(/^\.\//, '');
     if (!known.has(page)) return;
+    if (frag === 'guide' && !GUIDES_LIVE) { guideSkipped.add(page + '#guide'); return; }   // announced below
     const key = page + '#' + frag;
     if (!targets.has(key)) targets.set(key, new Set());
     targets.get(key).add(source);
@@ -2393,6 +2521,7 @@ let fragments = { checked: false };
     if (s.errs.length) bad.push(`${s.label}: ${s.errs.length} page error(s): ${s.errs.slice(0, 3).join(' | ')}`);
     return { state: s.label, prepared: s.prepared, targets: s.rows.length, missing: missing.length, hidden: hidden.length, obscured: obscured.length, pageErrors: s.errs.length };
   });
+  if (guideSkipped.size) console.log(`fragment targets: ${guideSkipped.size} #guide target(s) skipped (no stage guides yet): ${[...guideSkipped].sort().join(', ')}`);
   fragments = { checked: true, targets: targets.size, states: summary };
   if (bad.length) { failures++; fragments.FAIL = bad; }
   report.push({ page: 'fragment targets', ...fragments });

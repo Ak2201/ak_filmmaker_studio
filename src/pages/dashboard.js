@@ -42,8 +42,7 @@
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
 import Store, { rawGet } from '../lib/store.js';
-import { BLUEPRINT, guideProgress, stageHueClass, journey } from '../lib/journey.js';
-import { renderJourneyStrip } from '../ui/journey-strip.js';
+import { BLUEPRINT, guideProgress, stageHueClass, journey, stageStates, suggestNext, lastWorked, favouriteOf } from '../lib/journey.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -137,16 +136,6 @@ function readBlobFor(key, projectId) {
   } catch (e) { return {}; }
 }
 
-
-/** The first step that is not finished. Null when every field is in. */
-function firstUnfinished(progress) {
-  for (const phase of progress.phases) {
-    for (const step of phase.steps) {
-      if (step.total && step.done < step.total) return { phase, step };
-    }
-  }
-  return null;
-}
 
 /* parseNum / INR / the short rupee format all come from
    src/lib/money.js now. This file used to carry its own copy with a
@@ -247,8 +236,11 @@ function snapshot(project) {
     revisions: (script.revisions || []).length,
     boards: Shots.listBoards().length,
     /* Derived like everything else here — journey.js stores nothing. */
-    journey: journey(project)
+    journey: journey(project),
+    states: stageStates(project)
   };
+  snap.suggest = suggestNext(snap.states);
+  snap.resume = lastWorked(snap.states);
 
   /* "Nothing here yet" has to mean nothing ANYWHERE, or a project with
      four scenes and no prose gets told it is empty. */
@@ -386,14 +378,11 @@ function tile(id, eyebrow, title) {
 
 function continueTarget(snap) {
   const log = recentActivity(1)[0];
-  if (log && log.url) return { href: log.url, what: String(log.what || 'where you left off'), ts: log.ts };
-  const next = firstUnfinished(snap.main);
-  if (next) {
-    return { href: snap.main.blueprint.href + '#' + next.step.id,
-      what: 'Step ' + next.step.num + ' · ' + next.step.title, ts: null };
+  if (log && log.url && !/^(feature|short)\.html/.test(log.url)) {
+    return { href: log.url, what: String(log.what || 'where you left off'), ts: log.ts };
   }
-  if (snap.journey && snap.journey.next) return { href: snap.journey.next.href, what: snap.journey.next.label, ts: null };
-  return { href: snap.main.blueprint.href, what: snap.main.blueprint.label, ts: null };
+  const pick = snap.resume || snap.states.find((x) => snap.suggest && x.id === snap.suggest.id) || snap.states[0];
+  return { href: pick.href, what: pick.label, ts: snap.resume ? snap.resume.at : null };
 }
 
 function renderContinue(snap, projects) {
@@ -535,22 +524,46 @@ function renderDesk(snap, projects) {
 }
 
 /* ---- header ----------------------------------------------------- */
+const txt = (t) => document.createTextNode(t);
+
+/* studies.js is four films' worth of data, so it is fetched only when a
+   favourite is set, and the page redraws once it arrives. */
+let studiesMod = null;
+let studiesAsked = false;
+function favTitle(slug) {
+  if (!studiesMod) return '';
+  const st = studiesMod.getStudy(slug);
+  return (st && st.meta && st.meta.title) || '';
+}
+
 function renderHead(snap) {
+  const p = snap.project;
+  const fav = favouriteOf(p, favTitle);
+  if (fav && !studiesMod && !studiesAsked) {
+    studiesAsked = true;
+    import('../lib/studies.js').then((m) => { studiesMod = m; render(); }).catch(() => { /* the slug stands in */ });
+  }
   const head = h('header.bd-head');
   head.append(
-    h('p.bd-eyebrow', {
-      text: 'Today\u2019s desk \u00b7 ' + (FORMAT_LABEL[snap.project.format] || 'Project')
-    }),
-    h('h1.bd-title', { text: snap.project.title }),
+    h('p.bd-eyebrow', { text: (FORMAT_LABEL[p.format] || 'Project') + ' · Project dashboard' }),
+    h('h1.bd-title', { text: p.title }),
     h('p.bd-deck', {
-      text: 'Where this project stands today. Every figure below is read from what '
-          + 'you have already written — nothing on this page is typed, and nothing '
-          + 'on it is stored.'
+      text: 'Five stages, in any order. Each card shows where that part of the film stands, '
+          + 'read from what you have already made. Nothing is mandatory: with a script in '
+          + 'hand, start straight in Pre-production.'
     })
   );
+  const favLine = h('p.st-fav', { id: 'favourite' });
+  if (fav) {
+    favLine.append(txt('Favourite film: '), h('strong', { text: fav.title }), txt(' · '),
+      h('a.db-link', { href: 'settings.html#favourite', text: 'change' }));
+  } else {
+    favLine.append(txt('No favourite film chosen yet · '),
+      h('a.db-link', { href: 'settings.html#favourite', text: 'choose one' }));
+  }
+  head.append(favLine);
   if (!snap.isEmpty) {
     head.append(h('div.bd-stats', {}, [
-      stat(snap.main.pct + '%', snap.main.blueprint.label),
       stat(String(snap.scenes.length), snap.scenes.length === 1 ? 'scene' : 'scenes'),
       stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages'),
       stat(String(snap.days.length), snap.days.length === 1 ? 'shoot day' : 'shoot days'),
@@ -560,190 +573,83 @@ function renderHead(snap) {
   return head;
 }
 
-/* ---- what's next -------------------------------------------------
-   One primary move, then the honest list of gaps. A gap is only shown
-   when it is real: a project with no scenes is not nagged about
-   unscheduled ones. */
-function renderNext(snap) {
-  const sec = section('next', 'What is next', 'The next thing to do.',
-    'One step, then whatever else is genuinely missing.');
+/* ---- the five stage cards ----------------------------------------
+   State is derived by journey.js stageStates(); this only arranges it.
+   Status is a WORD plus a glyph, never colour alone. The ids always
+   render: #stages and #stage-<id> exist with no data behind them. */
+const STATUS_GLYPH = { none: '○', doing: '◐', done: '●' };
+const GO = { none: 'Start', doing: 'Continue', done: 'Open' };
 
-  const next = firstUnfinished(snap.main);
-  if (next) {
-    const { phase, step } = next;
-    sec.append(h('div.db-next', {}, [
-      h('span.db-next-num', { text: step.num }),
-      h('div.db-next-body', {}, [
-        h('p.db-next-where', { text: snap.main.blueprint.label + ' · ' + phase.label }),
-        h('strong.db-next-title', { text: step.title }),
-        h('p.db-next-deck', { text: step.deck }),
-        h('p.db-next-count', {
-          text: step.done + ' of ' + step.total + ' field' + (step.total === 1 ? '' : 's')
-              + ' filled on this step'
-        })
-      ]),
-      h('a.btn.primary.db-next-go', {
-        href: snap.main.blueprint.href + '#' + step.id,
-        text: 'Open step ' + step.num + '  →'
-      })
-    ]));
-  } else if (snap.journey && !snap.journey.complete) {
-    /* The blueprint is written; the journey still has a move. Its
-       next is the stage's first missing tool check — the work the
-       blueprint cannot do for you. */
-    const j = snap.journey;
-    sec.append(h('div.db-next', {}, [
-      h('span.db-next-num', { text: '✓' }),
-      h('div.db-next-body', {}, [
-        h('p.db-next-where', { text: 'Every blueprint field is filled · ' + j.currentLabel }),
-        h('strong.db-next-title', { text: j.next.label }),
-        h('p.db-next-deck', {
-          text: 'All ' + snap.main.total + ' fields of the blueprint have something in '
-              + 'them. What is left is the work the blueprint cannot do for you.'
-        })
-      ]),
-      h('a.btn.primary.db-next-go', { href: j.next.href, text: 'Go  →' })
-    ]));
-  } else {
-    sec.append(h('div.db-next', {}, [
-      h('span.db-next-num', { text: '✓' }),
-      h('div.db-next-body', {}, [
-        h('p.db-next-where', { text: snap.main.blueprint.label }),
-        h('strong.db-next-title', { text: 'Every field is filled' }),
-        h('p.db-next-deck', {
-          text: 'All ' + snap.main.total + ' fields of the blueprint have something in '
-              + 'them. What is left is the work the blueprint cannot do for you.'
-        })
-      ]),
-      h('a.btn.primary.db-next-go', { href: snap.main.blueprint.href, text: 'Reread it  →' })
-    ]));
-  }
-
-  const gaps = [];
-  if (!snap.scenes.length) {
-    gaps.push(['No scenes yet', 'The breakdown is where the stripboard, the reports and the call sheets come from.', 'breakdown.html']);
-  }
-  if (snap.scenes.length && snap.unscheduled.length) {
-    gaps.push([
-      snap.unscheduled.length + ' scene' + (snap.unscheduled.length === 1 ? '' : 's') + ' with no shoot day',
-      'Put them on the stripboard and the day out of days builds itself.',
-      'stripboard.html'
-    ]);
-  }
-  if (snap.days.length && snap.datedDays < snap.days.length) {
-    gaps.push([
-      (snap.days.length - snap.datedDays) + ' shoot day' + (snap.days.length - snap.datedDays === 1 ? '' : 's') + ' with no date',
-      'A day without a date cannot appear on a call sheet.',
-      'plan.html#calendar'
-    ]);
-  }
-  if (snap.scenes.length && !snap.contacts.length) {
-    gaps.push(['Nobody in the contacts book', 'Cast and crew, by department — the call sheet reads from it.', 'contacts.html']);
-  }
-  if (snap.scenes.length && !snap.shots.length) {
-    gaps.push(['No shots listed', 'The shot list hangs off the scenes you already have.', 'visualize.html']);
-  }
-  if (snap.days.length && !snap.budget.lines) {
-    gaps.push([
-      'The budget is empty',
-      'You have ' + snap.days.length + ' shoot day' + (snap.days.length === 1 ? '' : 's') + '; the estimator can start from them.',
-      'budget.html'
-    ]);
-  }
-
-  /* Nothing on the list above is missing, but the journey may still
-     know the stage's next move (a logline, a title page, the cut). It
-     is the fallback, never an addition to a real list of gaps. */
-  if (!gaps.length && snap.journey && !snap.journey.complete && next) {
-    const j = snap.journey;
-    gaps.push([j.next.label, 'The next move in ' + j.currentLabel + ', from the journey above.', j.next.href]);
-  }
-
-  if (gaps.length) {
-    const list = h('ul.db-gaps');
-    for (const [title, why, href] of gaps) {
-      list.append(h('li.db-gap', {}, [
-        h('a.db-gap-link', { href, text: title }),
-        h('span.db-gap-why', { text: why })
-      ]));
-    }
-    sec.append(list);
-  } else {
-    sec.append(h('p.db-none', {
-      text: 'Nothing else is obviously missing — scenes, days, dates, people, '
-          + 'shots and a budget are all in place.'
-    }));
-  }
-  return sec;
-}
-
-/* ---- the journey -------------------------------------------------
-   Five stages, the guide beside the tools, one next move. The strip
-   is src/ui/journey-strip.js, shared with the hub. */
-function renderJourney(project, j) {
-  const sec = section('journey', 'The journey', 'Where the film is.',
-    'Each stage shows two things: how much of its blueprint part is written '
-    + '(Guide) and how much of the real work is in place (Tools).');
-  const strip = renderJourneyStrip(project, { heading: false, journey: j });
-  if (strip) sec.append(strip);
-  return sec;
-}
-
-/* ---- blueprint progress ------------------------------------------ */
-function phaseRow(phase) {
-  const row = h('div.db-phase.' + stageHueClass(phase.id));
-  const remaining = phase.steps.filter((s) => s.total && s.done < s.total).length;
-  row.append(
-    h('div.db-phase-head', {}, [
-      h('strong.db-phase-label', { text: phase.label }),
-      h('span.db-phase-pct', { text: phase.pct + '%' })
-    ]),
-    h('div.db-bar', {
-      role: 'img',
-      'aria-label': phase.label + ': ' + phase.pct + ' per cent of '
-        + phase.total + ' fields filled'
-    }, [h('span.db-bar-fill', { style: 'width:' + phase.pct + '%' })]),
-    h('p.db-phase-meta', {
-      text: phase.done + ' of ' + phase.total + ' fields · '
-          + (remaining
-            ? remaining + ' of ' + phase.steps.length + ' steps still open'
-            : 'all ' + phase.steps.length + ' steps complete')
-    })
-  );
-  return row;
-}
-
-function renderBlueprint(snap) {
-  /* The scope is stated rather than implied. The blueprint page counts
-     its own cover fields and scores the scene, shot, cast and location
-     tables by the row; this page counts the fields the STEPS declare,
-     because those are the ones src/data knows about and a hand-written
-     list of the rest would be wrong by the second change. Same rule for
-     what "filled" means, different denominator — so say which. */
-  const sec = section('blueprint', 'The blueprint', 'Written so far.',
-    'A field counts when it has something in it, which is the rule the '
-    + 'blueprint uses for its own step badges. Counted across the fields the '
-    + 'steps declare — not the cover, and not the scene, shot, cast and '
-    + 'location tables, which the blueprint scores by the row.');
-  const grid = h('div.db-phases');
-  snap.main.phases.forEach((p) => grid.append(phaseRow(p)));
-  sec.append(grid);
-
-  sec.append(h('p.db-foot', {
-    text: snap.main.done + ' of ' + snap.main.total + ' fields across '
-        + snap.main.phases.reduce((n, p) => n + p.steps.length, 0) + ' steps.'
+function stageCard(s, suggested) {
+  const li = h('li.st-card.' + stageHueClass(s.hue) + '.st-' + s.status.id + (suggested ? '.is-suggested' : ''),
+    { id: 'stage-' + s.id });
+  li.append(h('div.st-head', {}, [
+    h('span.st-part', { text: 'Part ' + s.part }),
+    suggested ? h('span.st-sug', { text: 'Suggested next' }) : null
+  ]));
+  li.append(h('h3.st-name', { text: s.label }));
+  li.append(h('p.st-status', {}, [
+    h('span.st-glyph', { text: STATUS_GLYPH[s.status.id], 'aria-hidden': 'true' }),
+    h('span', { text: s.status.label })
+  ]));
+  const facts = h('ul.st-facts');
+  s.facts.forEach((f) => facts.append(h('li', { text: f })));
+  li.append(facts);
+  const acts = h('div.st-acts');
+  acts.append(h('a.btn.primary.st-go', {
+    href: s.href,
+    'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label,
+    text: GO[s.status.id] + '  →'
   }));
+  if (s.start && s.status.id === 'none') {
+    acts.append(h('a.db-link.st-alt', { href: s.start.href, text: s.start.label }));
+  }
+  li.append(acts);
+  return li;
+}
 
-  /* The other blueprint is mentioned only when it holds something. A
-     feature project does not need an empty short-film row. */
-  if (snap.other.done > 0) {
-    sec.append(h('p.db-foot', {}, [
-      document.createTextNode('This project also has work in the '),
-      h('a.db-link', { href: snap.other.blueprint.href, text: snap.other.blueprint.label }),
-      document.createTextNode(' — ' + snap.other.done + ' of ' + snap.other.total
-        + ' fields, ' + snap.other.pct + '%.')
+function renderStages(snap) {
+  const sec = section('stages', 'The five stages', 'Where the film stands.',
+    'Story, screenplay, pre-production, production and post. Move between them freely; '
+    + 'no stage waits on another.');
+  const sug = snap.suggest;
+  const sugState = sug && snap.states.find((s) => s.id === sug.id);
+
+  const panel = h('div.st-suggest', { id: 'suggested' });
+  if (sugState) {
+    const why = sug.why === 'start' ? 'Nothing started yet, so the story is a natural first step.'
+      : sug.why === 'continue' ? 'Work is under way here.'
+      : 'Everything started is finished; this is the earliest stage not started.';
+    panel.append(h('div.st-suggest-body', {}, [
+      h('span.st-suggest-lab', { text: 'Suggested next · only a suggestion' }),
+      h('strong.st-suggest-title', { text: sugState.label }),
+      h('span.st-suggest-why', { text: why })
+    ]), h('a.btn.primary', {
+      href: sugState.href, 'aria-label': 'Go to ' + sugState.label, text: 'Go  →'
+    }));
+  } else {
+    panel.append(h('p.db-none', { text: 'Every stage is done. Open any card to review it.' }));
+  }
+  sec.append(panel);
+
+  const r = snap.resume;
+  if (r) {
+    sec.append(h('p.st-resume', { id: 'resume' }, [
+      txt('Resume where you left off: '),
+      h('a.db-link', { href: r.href, text: r.label }),
+      txt(' · edited ' + relTime(r.at))
     ]));
   }
+
+  const list = h('ol.st-list', { 'aria-label': 'The five stages of this film' });
+  snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id)));
+  sec.append(list);
+
+  sec.append(h('p.db-foot', {}, [
+    txt('Prefer to be asked questions? '),
+    h('a.db-link', { href: snap.main.blueprint.href, text: 'Guided questions' }),
+    txt(' (' + snap.main.pct + '% answered) are a companion, not a step.')
+  ]));
   return sec;
 }
 
@@ -878,52 +784,21 @@ function renderActivity(scenes) {
    Two different emptinesses, and conflating them was the old first-run
    bug: "no project at all" needs the hub, "a project with nothing in
    it" needs a first step. A wall of zeros answers neither. */
-function how(n, title, body, href, cta) {
-  return h('div.bd-how-step', {}, [
-    h('span.bd-how-num', { text: n }),
-    h('strong', { text: title }),
-    h('p', { text: body }),
-    h('a.db-link', { href, text: cta + ' →' })
-  ]);
-}
-
 function renderNoProject() {
-  return h('div.bd-empty', {}, [
+  const wrap = h('section.db-sec', { id: 'stages', 'data-reveal': '' });
+  wrap.append(h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '◴', 'aria-hidden': 'true' }),
-    h('h2', { text: 'No project is open' }),
+    h('h2', { text: 'Pick or start a project' }),
     h('p', {
-      text: 'The dashboard reports on one film at a time. Start a project, or '
-          + 'open one, and its progress appears here.'
+      text: 'The dashboard reports on one film at a time. Start a new project or open one '
+          + 'of yours, and its five stages appear here.'
     }),
-    h('div.bd-how', {}, [
-      how('1', 'Start a film', 'Name it and pick a format. It takes one line, and you can rename it later.', 'index.html', 'Studio home'),
-      how('2', 'Or look around first', 'The library needs no project at all — four films taken apart, the craft rules, the Chennai rates.', 'library.html', 'Open the library'),
-      how('3', 'Or read the blueprint', 'Thirty-two steps from the spark to delivery. Reading costs nothing.', 'feature.html', 'Open the blueprint')
-    ]),
     h('div.db-cta-row', {}, [
-      h('a.btn.primary.bd-cta', { href: 'index.html', text: 'Go to the studio  →' })
+      h('a.btn.primary.bd-cta', { href: 'index.html', text: 'Pick or start a project  →' }),
+      h('a.btn', { href: 'library.html', text: 'Look around the library first' })
     ])
-  ]);
-}
-
-function renderFirstRun(project) {
-  return h('div.bd-empty', {}, [
-    h('div.bd-empty-mark', { text: '◴', 'aria-hidden': 'true' }),
-    h('h2', { text: 'Nothing written yet' }),
-    h('p', {
-      text: '“' + project.title + '” exists and that is all it does so far. There '
-          + 'is no honest progress to report, so here is where the first hour '
-          + 'usually goes instead.'
-    }),
-    h('div.bd-how', {}, [
-      how('1', 'The spark', 'One "what if", in your own words. It is the only step that cannot be derived from another.', 'feature.html#step-01', 'Open step 01'),
-      how('2', 'The scenes', 'If the story is already in your head, list the scenes — the stripboard, the reports and the call sheets all read from that one list.', 'breakdown.html', 'Open the breakdown'),
-      how('3', 'The rates', 'What things actually cost in Chennai, and an estimator that reads your shoot days.', 'budget.html', 'Open the budget')
-    ]),
-    h('div.db-cta-row', {}, [
-      h('a.btn.primary.bd-cta', { href: 'feature.html#step-01', text: 'Start at the spark  →' })
-    ])
-  ]);
+  ]));
+  return wrap;
 }
 
 /* ============================================================
@@ -939,13 +814,14 @@ function render() {
     main.append(
       h('header.bd-head', {}, [
         h('p.bd-eyebrow', { text: 'Studio' }),
-        h('h1.bd-title', { text: 'Dashboard.' }),
+        h('h1.bd-title', { text: 'Project dashboard' }),
         h('p.bd-deck', {
-          text: 'Where a film stands: its blueprint, its scenes, its schedule and '
-              + 'what is still missing — read from the project you have open.'
+          text: 'Where a film stands across story, screenplay, pre-production, production '
+              + 'and post — read from the project you have open.'
         })
       ]),
       renderNoProject(),
+      ...(projects.length ? [renderProjects(projects, null)] : []),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
@@ -953,16 +829,10 @@ function render() {
     );
   } else {
     const snap = snapshot(project);
-    main.append(renderHead(snap), renderDesk(snap, projects));
-    /* After the stat tiles and before everything else, empty project
-       included: "you are in Story, write the logline" is the most
-       useful thing this page can say to a film with nothing in it. */
-    main.append(renderJourney(project, snap.journey));
-    if (snap.isEmpty) {
-      main.append(renderFirstRun(project));
-    } else {
-      main.append(renderNext(snap), renderBlueprint(snap), renderChain(snap));
-    }
+    /* Stage-first: the five stages lead, with the suggestion; the desk
+       tiles, the chain and the readiness checks sit below them. */
+    main.append(renderHead(snap), renderStages(snap), renderDesk(snap, projects));
+    if (!snap.isEmpty) main.append(renderChain(snap));
     /* OUTSIDE the isEmpty branch on purpose. `isEmpty` asks whether
        the BLUEPRINT has been filled in, and readiness asks about the
        SCENES — a producer who imported a script and has not answered

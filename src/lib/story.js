@@ -35,7 +35,10 @@
    ============================================================ */
 
 import './store.js';   // must evaluate before anything reads localStorage
+import Store from './store.js';
 import FRAMEWORKS from '../data/frameworks.json';
+import BIBLE from '../data/story-bible.json';
+import { readFields } from './blueprint-store.js';
 
 export const STORY_KEY = 'fms_story_v1';
 export const VAULT_KEY = 'fms_idea_vault_v1';
@@ -52,7 +55,11 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 
 export function blankStory() {
   return { v: 1, source: '', sourceName: '', framework: FRAMEWORKS.default,
-           marks: [], tension: {}, logline: '', idea: '', outline: [], updatedAt: 0 };
+           marks: [], tension: {}, logline: '', idea: '', outline: [], updatedAt: 0,
+           /* the Story Bible's two story-level fields: which kinds of conflict
+              (ids from story-bible.json `conflicts`) and the one-line version.
+              A story written before they existed reads back [] and ''. */
+           conflicts: [], conflictLine: '' };
 }
 
 /** A framework's own act split (frameworks.json `pacing.regions`), else
@@ -89,6 +96,8 @@ export function loadStory() {
         .map((x) => ({ ...x, text: typeof x.text === 'string' ? x.text : '' }))
     : [];
   out.idea = typeof s.idea === 'string' ? s.idea : '';
+  out.conflicts = Array.isArray(s.conflicts) ? [...new Set(s.conflicts.filter((x) => typeof x === 'string'))] : [];
+  out.conflictLine = typeof s.conflictLine === 'string' ? s.conflictLine : '';
   return out;
 }
 
@@ -718,14 +727,105 @@ export function undoSendOutline(story, ids, api) {
 
 /* ---- the path (derived, never stored) ------------------------ */
 
-export const PATH = [
+/* NO STEP IS MANDATORY. The order is a suggestion: the stepper goes to
+   any step at any time, a tick only means "this has something in it",
+   and Next offers the first EMPTY step after the one you are on.
+
+   `n` is the step's STABLE NUMBER — what `#path-N` links and the
+   blueprint drawer's `steps.stages.json` mapping were written against
+   before the Story Bible joined (1 idea, 2 logline, 3 structure, 4
+   outline, 5 synopsis, 6 screenplay). It is not the step's place in
+   the line any more: that is `pos`. The Bible is 7 so no old link
+   changes meaning. */
+const PATH_ROWS = [
   { n: 1, id: 'idea', label: 'Idea' },
   { n: 2, id: 'logline', label: 'Logline' },
-  { n: 3, id: 'structure', label: 'Structure' },
+  { n: 7, id: 'bible', label: 'Story Bible' },
+  { n: 3, id: 'structure', label: 'Scene order' },
   { n: 4, id: 'outline', label: 'Step outline' },
   { n: 5, id: 'synopsis', label: 'Synopsis' },
   { n: 6, id: 'screenplay', label: 'To the Screenplay' }
 ];
+export const PATH = PATH_ROWS.map((p, i) => ({ ...p, pos: i + 1 }));
+export const pathStepById = (id) => PATH.find((p) => p.id === id) || null;
+
+/** A path step id from whatever a link carries: `path-<id>` (the form
+    the page writes now) or `path-<N>` (every link written before the
+    Bible, which keeps meaning what it meant). '' when it names none. */
+export function pathStepFromHash(hash) {
+  const m = /^#?path-([a-z]+|\d+)$/.exec(String(hash || ''));
+  if (!m) return '';
+  if (/^\d+$/.test(m[1])) { const p = PATH.find((x) => x.n === Number(m[1])); return p ? p.id : ''; }
+  return pathStepById(m[1]) ? m[1] : '';
+}
+
+/* ---- the Story Bible, as far as the path needs to know -------- */
+
+const projectIsShort = () => {
+  try { const p = Store && Store.currentProject && Store.currentProject(); return !!(p && p.format === 'short'); }
+  catch (e) { return false; }
+};
+const nonBlank = (v) => typeof v === 'string' && v.trim() !== '';
+
+/** The blueprint fields a card shows, in order: [{ ns, key, label,
+    placeholder, rows, learn }]. A short film uses the short blueprint's
+    key where there is one and falls back to the feature blueprint's for
+    the rest (story-bible.json `map` and `fallback`). */
+export function bibleFields(cardId, format = 'feature') {
+  const m = BIBLE.map[cardId];
+  if (!m) return [];
+  const out = [];
+  const add = (ns, key) => out.push({ ns, key, ...(BIBLE.fields[key] || { label: key }) });
+  if (format === 'short' && (m.short || []).length) {
+    m.short.forEach((k) => add('short', k));
+    (BIBLE.fallback[cardId] || []).forEach((k) => add('feature', k));
+  } else {
+    m.feature.forEach((k) => add('feature', k));
+  }
+  return out;
+}
+
+/** Which Bible cards hold something. Derived from what is stored where
+    it is stored — the story model (conflict), the blueprint blobs
+    (stakes, theme, world and the protagonist/antagonist/ally answers)
+    and the characters list — never from a flag. */
+export function bibleStatus(story) {
+  const s = story || blankStory();
+  const format = projectIsShort() ? 'short' : 'feature';
+  const anyIn = (pairs) => {
+    const by = { feature: [], short: [] };
+    pairs.forEach(({ ns, key }) => by[ns].push(key));
+    return ['feature', 'short'].some((ns) => by[ns].length && Object.values(readFields(ns, by[ns])).some(nonBlank));
+  };
+  // every key the character slots read, in this project's format
+  const slotPairs = [];
+  for (const [role, sl] of Object.entries(BIBLE.slots)) {
+    if (role.startsWith('_')) continue;
+    const fields = Object.fromEntries(Object.entries(sl.fields).map(([f, k]) => [f, { ns: 'feature', key: k }]));
+    if (format === 'short') for (const [f, k] of Object.entries(sl.short || {})) fields[f] = { ns: 'short', key: k };
+    slotPairs.push(...Object.values(fields));
+    for (const x of sl.extras.feature || []) slotPairs.push({ ns: 'feature', key: x.key });
+    if (format === 'short') for (const x of sl.extras.short || []) slotPairs.push({ ns: 'short', key: x.key });
+  }
+  let stored = false;
+  try {
+    const raw = JSON.parse(localStorage.getItem('fms_characters_v1') || 'null');
+    const list = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.characters) ? raw.characters : []);
+    const textual = ['name', 'age', 'want', 'need', 'arc', 'voice', 'look', 'stakes', 'fear', 'lie', 'flaw', 'strength',
+      'wound', 'secret', 'arcStart', 'arcEnd'];
+    stored = list.some((c) => c && typeof c === 'object' && (textual.some((f) => nonBlank(c[f]))
+      || (Array.isArray(c.relationships) && c.relationships.some((r) => r && (nonBlank(r.who) || nonBlank(r.how))))));
+  } catch (e) { /* unreadable: not filled */ }
+  const cards = {
+    characters: stored || anyIn(slotPairs),
+    conflict: (s.conflicts || []).length > 0 || nonBlank(s.conflictLine),
+    stakes: anyIn(bibleFields('stakes', format)),
+    theme: anyIn(bibleFields('theme', format)),
+    world: anyIn(bibleFields('world', format))
+  };
+  const count = Object.values(cards).filter(Boolean).length;
+  return { cards, count, total: Object.keys(cards).length, any: count > 0 };
+}
 
 /** Which path steps are filled, from the story and the scene rows. */
 export function pathProgress(story, { scenes = [] } = {}) {
@@ -734,9 +834,11 @@ export function pathProgress(story, { scenes = [] } = {}) {
   const live = new Set((scenes || []).map((x) => x.id));
   const sent = (s.outline || []).filter((x) => x.sceneId && live.has(x.sceneId)).length;
   const beatScenes = (scenes || []).filter((x) => x.beatId).length;
+  const bible = bibleStatus(s);
   const done = {
     idea: !!String(s.idea || '').trim(),
     logline: !!String(s.logline || '').trim(),
+    bible: bible.any,
     structure: (s.outline || []).length > 0 || (s.marks || []).length > 0,
     outline: o.withText > 0,
     synopsis: !!String(s.source || '').trim(),
@@ -744,6 +846,7 @@ export function pathProgress(story, { scenes = [] } = {}) {
   };
   const detail = {
     idea: '', logline: '',
+    bible: bible.any ? `${bible.count} of ${bible.total} cards` : '',
     structure: frameworkById(s.framework).short,
     outline: o.withText ? `${o.withText} step${o.withText === 1 ? '' : 's'} · ${o.covered} of ${o.beatsTotal} beats` : '',
     synopsis: s.source ? `${(String(s.source).match(/\S+/g) || []).length} words` : '',
@@ -752,16 +855,25 @@ export function pathProgress(story, { scenes = [] } = {}) {
   return PATH.map((p) => ({ ...p, done: done[p.id], detail: detail[p.id] }));
 }
 
-/** The step a story should open on when nothing asked for one: the
- *  synopsis once there is one, so a returning writer lands on their
- *  editor; else the first step not yet filled. */
+/** What "Next" offers from `cur`: the first step AFTER it with nothing
+    in it yet; when every later step has something, simply the step
+    after. null at the end of the line. A suggestion, never a gate. */
+export function suggestNext(progress, cur) {
+  const i = progress.findIndex((p) => p.id === cur);
+  const after = progress.slice(i + 1);
+  return after.find((p) => !p.done) || after[0] || null;
+}
+
+/** The step a story should open on when nothing asked for one (an id):
+    the synopsis once there is one, so a returning writer lands on their
+    editor; else the first early step not yet filled. */
 export function defaultPathStep(story, opts) {
   const s = story || blankStory();
-  if (String(s.source || '').trim()) return 5;
+  if (String(s.source || '').trim()) return 'synopsis';
   const p = pathProgress(s, opts);
-  if (p[3].done) return 4;
-  const first = p.slice(0, 3).find((x) => !x.done);
-  return first ? first.n : 4;
+  if (p.find((x) => x.id === 'outline').done) return 'outline';
+  const first = p.filter((x) => ['idea', 'logline', 'bible', 'structure'].includes(x.id)).find((x) => !x.done);
+  return first ? first.id : 'outline';
 }
 
 /** "Where am I" for a position in the synopsis (0..1): the nearest

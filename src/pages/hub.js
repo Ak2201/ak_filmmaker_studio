@@ -59,6 +59,7 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/pdf.css';
 import '../styles/motion.css';
+import '../styles/hub-doors.css';
 
 import StudioUI from '../ui/chrome.js';
 import '../lib/cloud.js';
@@ -401,9 +402,8 @@ function toolbarMarkup() {
      why they are discovered there rather than declared. */
   return h('div.toolbar', {
     html: `
+      <a class="nav-link" href="#doors">Start</a>
       <a class="nav-link" href="#projects">Projects</a>
-      <a class="nav-link" href="#doors">Blueprints</a>
-      <a class="nav-link" href="#start">Start</a>
       <a class="nav-link" href="#tools">Tools</a>
       <a class="nav-link" href="#index">Index</a>
       <a class="nav-link" href="#activity">Activity</a>
@@ -460,7 +460,7 @@ function heroMarkup() {
 
         <h1><span class="light">FilmMaker</span><br>Studio.</h1>
 
-        <p class="hero-deck">Three companion blueprints, one reference library. Build a <em>feature</em>, draft a <em class="s">short</em>, study the <em class="g">craft</em> — all from one desk.</p>
+        <p class="hero-deck">Make a <em>feature</em>, make a <em class="s">short</em>, or learn the <em class="g">craft</em> first — all from one desk, with a film you love to explain every step.</p>
 
         <!-- Two destinations, one of them filled. Both are sections of
              this page that the toolbar already links to, so this adds a
@@ -469,8 +469,8 @@ function heroMarkup() {
              said what to do first. One CTA per view is the rule in
              modules.css, which is why only the first is .primary. -->
         <div class="hero-cta">
-          <a class="btn primary" href="#doors">Explore the blueprints<span class="arrow" aria-hidden="true">→</span></a>
-          <a class="btn" href="#start">How it works</a>
+          <a class="btn primary" href="#doors">Start a film<span class="arrow" aria-hidden="true">→</span></a>
+          <a class="btn" href="#projects">Your projects</a>
         </div>
 
         <div class="resume-card" id="resumeCard">
@@ -550,9 +550,9 @@ function projectsMarkup() {
         <div class="projects-head">
           <div>
             <div class="lab">PROJECTS · ONE PER FILM</div>
-            <h2>Your <em>projects.</em></h2>
+            <h2>Continue <em>where you left off.</em></h2>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
-            <p class="deck">Every script, every blueprint lives under a project. Create one, then everything you fill in across all three blueprints saves under it. Switch between them anytime.</p>
+            <p class="deck">Every script, every plan lives under a project. Pick one to continue where you left off, or switch to another film — short or feature — whenever you like.</p>
           </div>
           <button class="btn primary" data-action="new-project">+ NEW PROJECT</button>
         </div>
@@ -637,131 +637,39 @@ function renderJourney() {
 }
 
 function doorsMarkup() {
-  const featQl = [
-    ['SPARK', '#step-01'], ['TREATMENT', '#treatment-ladder'],
-    ['PITCH', '#pitch-deck'], ['SYNC', '#sync-section'], ['GLOSSARY', '#glossary']
-  ];
-  const shortQl = [
-    ['SEED', '#step-01'], ['5 BEATS', '#step-04'],
-    ['SCRIPT', '#step-07'], ['FESTIVALS', '#step-10'], ['GLOSSARY', '#glossary']
-  ];
-  const libQl = ANCHORS.library.map(a => a.href ? ['BUDGET', null] : [a.hash.slice(1).toUpperCase(), a.hash]);
-  const ql = (base, pairs) =>
-    pairs.map(([t, hash]) => `<a class="ql" href="${hash === null ? 'budget.html#estimate' : base + hash}">${esc(t)}</a>`).join('');
-
   return h('section#doors.section', {
     html: `
       <div class="section-inner">
         <div class="section-head">
           <div class="left">
-            <div class="label">SECTION I · THE BLUEPRINTS</div>
+            <div class="label">START HERE</div>
             <h2>Three <em class="f">doors.</em> <em class="s">Pick</em> a <em class="g">path.</em></h2>
-            <p class="deck">Each blueprint is a self-contained working tool. Open one, work in it, save (data lives in your browser). Cross-link freely. Use EXPORT in the toolbar to back everything up at once.</p>
+            <p class="deck">New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your project dashboard, where you can always see how far you have got.</p>
           </div>
-          <div class="right">3 BLUEPRINTS</div>
+          <div class="right">3 DOORS</div>
         </div>
 
         <div class="doors" data-reveal-group>
           <div class="door">
-            <div class="door-tag"><span class="door-num-circle">I</span> ${FEATURE_PARTS.length} PARTS · ${FEATURE_STEPS.length} STEPS</div>
-            <h3>Feature Film<br><span class="light">Blueprint.</span></h3>
-            <p class="door-sub">From the first "what if?" to the last deliverable. ${esc(FEATURE_PARTS.map((p) => 'Part ' + p.stage.part + ' ' + p.stage.label).join(', '))} — one part per stage, in one continuous tool.</p>
-            <ul class="door-contents">
-              ${FEATURE_PARTS.map((p) => `<li>${esc(p.stage.label)}: ${p.steps.length} step${p.steps.length === 1 ? '' : 's'}, ${esc(p.steps[0].num)}–${esc(p.steps[p.steps.length - 1].num)}</li>`).join('')}
-              <li>Treatment Ladder, Pitch Deck, Sync</li>
-              <li>HOD sign-off, Tanglish glosses</li>
-            </ul>
-            <div class="door-status">
-              <div class="status-row"><span class="status-label">Project</span><span class="status-value" id="feat-title">—</span></div>
-              <div class="status-row"><span class="status-label">Stage</span><span class="status-value" id="feat-stage">—</span></div>
-              <div class="status-row"><span class="status-label">Progress</span><span class="status-value" id="feat-progress">0%</span></div>
-              <div class="progress-track"><div class="progress-fill-bar" id="feat-bar" style="width:0%"></div></div>
-            </div>
-            <div class="door-quicklinks">${ql(FEATURE_URL, featQl)}</div>
-            <a class="door-cta" href="${FEATURE_URL}"><span>OPEN BLUEPRINT</span><span class="arrow">→</span></a>
+            <div class="door-tag"><span class="door-num-circle">I</span> A FULL-LENGTH STORY</div>
+            <h3>Feature<br><span class="light">film.</span></h3>
+            <p class="door-sub">A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.</p>
+            <button type="button" class="door-cta" data-action="start-feature"><span>START A FEATURE</span><span class="arrow">→</span></button>
           </div>
 
           <div class="door shorts">
-            <div class="door-tag"><span class="door-num-circle">II</span> ${SHORT_STEPS.length} STEPS · WITH SCRIPT EDITOR</div>
-            <h3>Short Film<br><span class="light">Blueprint.</span></h3>
-            <p class="door-sub">For films under 30 minutes. Compressed structure, structured script editor, Fountain export, festival strategy.</p>
-            <ul class="door-contents">
-              <li>${(shortData.beats || []).length}-Beat structure: Setup → Image</li>
-              <li>Live screenplay editor with page count</li>
-              <li>Fountain export (Final Draft, Highland)</li>
-              <li>AI prompt generator + ${(festivals.festivals || []).length} festivals</li>
-            </ul>
-            <div class="door-status">
-              <div class="status-row"><span class="status-label">Project</span><span class="status-value" id="short-title">—</span></div>
-              <div class="status-row"><span class="status-label">Runtime</span><span class="status-value" id="short-runtime">—</span></div>
-              <div class="status-row"><span class="status-label">Progress</span><span class="status-value" id="short-progress">0%</span></div>
-              <div class="progress-track"><div class="progress-fill-bar" id="short-bar" style="width:0%"></div></div>
-            </div>
-            <div class="door-quicklinks">${ql(SHORT_URL, shortQl)}</div>
-            <a class="door-cta" href="${SHORT_URL}"><span>OPEN BLUEPRINT</span><span class="arrow">→</span></a>
+            <div class="door-tag"><span class="door-num-circle">II</span> UNDER 30 MINUTES</div>
+            <h3>Short<br><span class="light">film.</span></h3>
+            <p class="door-sub">The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.</p>
+            <button type="button" class="door-cta" data-action="start-short"><span>START A SHORT</span><span class="arrow">→</span></button>
           </div>
 
           <div class="door library">
-            <div class="door-tag"><span class="door-num-circle">III</span> REFERENCE COMPANION</div>
-            <h3>The Filmmaker's<br><span class="light">Library.</span></h3>
-            <p class="door-sub">A curated reference: Tamil &amp; Indian films analyzed for craft, director archetypes, rules of thumb, equipment costs, watch list.</p>
-            <ul class="door-contents">
-              <li>${films.length} films, one extractable lesson each</li>
-              <li>${directors.length} director archetypes</li>
-              <li>${rules.length} craft rules + equipment rate tables</li>
-              <li>${WATCH_FILMS}-film watch list, mapped to each step</li>
-            </ul>
-            <div class="door-status">
-              <div class="status-row"><span class="status-label">Equipment</span><span class="status-value" id="lib-calc">empty</span></div>
-              <div class="status-row"><span class="status-label">Total / day</span><span class="status-value" id="lib-total">—</span></div>
-              <div class="status-row"><span class="status-label">Type</span><span class="status-value">read-only ref</span></div>
-            </div>
-            <div class="door-quicklinks">${ql(LIBRARY_URL, libQl)}</div>
-            <a class="door-cta" href="${LIBRARY_URL}"><span>OPEN LIBRARY</span><span class="arrow">→</span></a>
+            <div class="door-tag"><span class="door-num-circle">III</span> LEARN FIRST</div>
+            <h3>Learning<br><span class="light">library.</span></h3>
+            <p class="door-sub">Not ready to start? Read how films you know were built: ${films.length} films, ${directors.length} directors and ${rules.length} rules of thumb. No project needed.</p>
+            <a class="door-cta" href="${LIBRARY_URL}"><span>OPEN THE LIBRARY</span><span class="arrow">→</span></a>
           </div>
-        </div>
-      </div>`
-  });
-}
-
-function startMarkup() {
-  return h('section#start.section.alt', {
-    html: `
-      <div class="section-inner">
-        <div class="section-head">
-          <div class="left">
-            <div class="label">SECTION II · WHERE TO START</div>
-            <h2>What are you <em class="f">trying to make?</em></h2>
-            <p class="deck">If this is your first time here, pick the path that matches what's ahead. The blueprints are designed to be standalone — no order required.</p>
-          </div>
-          <div class="right">4 PATHS</div>
-        </div>
-
-        <div class="start-grid" data-reveal-group>
-          <a class="start-card f" href="${FEATURE_URL}#vol-1">
-            <div class="question">PATH A · I want to make a feature</div>
-            <h4>Feature Blueprint</h4>
-            <p>Begin at Step 01: The Spark. Work through Part I (Story) to a step outline and Part II (Screenplay) to a locked script, then on through ${esc(FEATURE_PARTS.slice(2).map((p) => 'Part ' + p.stage.part + ' (' + p.stage.label + ')').join(', ').replace(/, ([^,]*)$/, ' and $1'))} — ${FEATURE_STEPS.length} steps in ${FEATURE_PARTS.length} parts, one per stage.</p>
-            <span class="arrow">OPEN  →</span>
-          </a>
-          <a class="start-card s" href="${SHORT_URL}#step-01">
-            <div class="question">PATH B · I want to make a short</div>
-            <h4>Short Film Blueprint</h4>
-            <p>${SHORT_STEPS.length} steps for films under 30 minutes. Includes structured script editor and Fountain export. 4–8 weeks from idea to lock.</p>
-            <span class="arrow">OPEN  →</span>
-          </a>
-          <a class="start-card l" href="${LIBRARY_URL}">
-            <div class="question">PATH C · I want to study craft</div>
-            <h4>Open the Library</h4>
-            <p>${films.length} films analyzed for craft, ${directors.length} director archetypes, ${rules.length} rules of thumb, ${WATCH_FILMS}-film watch list. Read in any order.</p>
-            <span class="arrow">OPEN  →</span>
-          </a>
-          <a class="start-card" href="${FEATURE_URL}">
-            <div class="question">PATH D · I want a complete example</div>
-            <h4>Load the ${esc(sample.title)} sample</h4>
-            <p>Open the Feature Blueprint, open <strong>More ▾</strong> in the toolbar and choose <strong>Load sample</strong>. Loads a fully filled blueprint for a ${sampleDays()}-day feature — or take the whole project, ${sample.scenes.length} scenes and a unit list included, from the projects panel. The worked examples inside the steps are still based on <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> and the 2023 Tamil thriller <em>Por Thozhil</em>.</p>
-            <span class="arrow">OPEN  →</span>
-          </a>
         </div>
       </div>`
   });
@@ -775,9 +683,9 @@ function toolsMarkup() {
           <div class="left">
             <div class="label">SECTION III · TOOLS &amp; UTILITIES</div>
             <h2>Studio <em class="g">tools.</em></h2>
-            <p class="deck">Cross-blueprint utilities and quick-jumps to commonly used features. Backup, restore, print, or jump straight to a tool.</p>
+            <p class="deck">Studio-wide utilities and quick-jumps. Backup, restore, print, or jump straight to a tool.</p>
           </div>
-          <div class="right">10 TOOLS</div>
+          <div class="right">6 TOOLS</div>
         </div>
 
         <div class="tools-grid" data-reveal-group>
@@ -791,35 +699,19 @@ function toolsMarkup() {
           </button>
           <button class="tool-card" data-action="print-hub">
             <div class="tool-icon">⎙</div><h5>Print this hub</h5>
-            <p>Snapshot of the studio overview. Each blueprint has its own print mode.</p>
+            <p>Snapshot of the studio overview.</p>
           </button>
           <button class="tool-card" data-action="reset-all">
             <div class="tool-icon">⌫</div><h5>Erase everything</h5>
             <p>Erase all studio data. Export first if you want to keep anything.</p>
           </button>
-          <a class="tool-card f" href="${FEATURE_URL}#pitch-deck">
-            <div class="tool-icon">▦</div><h5>Auto Pitch Deck</h5>
-            <p>10 slides built from your filled fields. Inside the Feature Blueprint. Exports as .pptx.</p>
-          </a>
           <a class="tool-card" href="budget.html#estimate">
             <div class="tool-icon">₹</div><h5>Equipment Calculator</h5>
             <p>On the Budget page: build a kit from Chennai 2024-25 rate ranges and get a daily-rate total.</p>
           </a>
-          <a class="tool-card s" href="${SHORT_URL}#step-08">
-            <div class="tool-icon">.fnt</div><h5>Fountain Export</h5>
-            <p>Export your short as Fountain — opens in Final Draft, Highland.</p>
-          </a>
-          <a class="tool-card f" href="${FEATURE_URL}#sync-section">
-            <div class="tool-icon">↻</div><h5>Sync &amp; backup</h5>
-            <p>Sign in to keep your projects in step across devices.</p>
-          </a>
-          <a class="tool-card s" href="${SHORT_URL}#step-08">
-            <div class="tool-icon">AI</div><h5>AI Prompt Generator</h5>
-            <p>Build prompts for Claude / ChatGPT from your blueprint data.</p>
-          </a>
           <a class="tool-card" href="${LIBRARY_URL}#watch">
             <div class="tool-icon">▶</div><h5>Watch List by Step</h5>
-            <p>Three films to study per blueprint step. ${WATCH_FILMS} films total.</p>
+            <p>Films to study, matched to each step. ${WATCH_FILMS} films total.</p>
           </a>
         </div>
 
@@ -850,16 +742,6 @@ function tocGroup(label, items) {
 function indexMarkup() {
   /* All five parts. This listed Vol I and Vol II only, so steps 25–32
      (Production and Post) had no entry in the "full" index. */
-  const featParts = FEATURE_PARTS.map(p => tocGroup(p.label, p.steps.map(s =>
-    tocItem(FEATURE_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'feat-' + s.num)))).join('');
-  const featExtras = tocGroup('EXTRAS', ANCHORS.feature.map(a =>
-    tocItem(FEATURE_URL, a.hash, '··', a.label)));
-
-  const shortGroups = SHORT_PARTS.map(p => tocGroup(p.label, p.steps.map(s =>
-    tocItem(SHORT_URL, '#' + s.id, s.num, title(s.titlePlain || s.title), 'short-' + s.num)))).join('');
-  const shortExtras = tocGroup('EXTRAS', ANCHORS.shorts.map(a =>
-    tocItem(SHORT_URL, a.hash, '··', a.label)));
-
   const libSections = tocGroup('SECTIONS', ANCHORS.library.map(a =>
     tocItem(a.href || LIBRARY_URL, a.href ? '' : a.hash, a.num, a.label)));
   const libFilms = tocGroup('FILMS ANALYZED', chunk(films.map(f => f.title), 3).map(row =>
@@ -867,31 +749,19 @@ function indexMarkup() {
   const libDirectors = tocGroup('DIRECTORS', chunk(directors.map(d => d.name), 2).map(row =>
     tocItem(LIBRARY_URL, '#directors', '··', row.join(' · '))));
 
-  const stepCount = FEATURE_STEPS.length + SHORT_STEPS.length;
-
   return h('section#index.section.dark-bg', {
     html: `
       <div class="section-inner">
         <div class="section-head">
           <div class="left">
-            <div class="label">SECTION IV · MASTER INDEX</div>
-            <h2>The full <em class="g">index.</em></h2>
-            <p class="deck">Every step and section across all three documents, in one place. Items with a <strong>✓</strong> are complete in your data, <strong>◐</strong> means started. Click any to jump straight in.</p>
+            <div class="label">THE LIBRARY · INDEX</div>
+            <h2>The library <em class="g">index.</em></h2>
+            <p class="deck">Every section, film and director in the reference library, in one place. Click any to jump straight in.</p>
           </div>
-          <div class="right">${stepCount} STEPS · ${ANCHORS.library.length} LIBRARY SECTIONS</div>
+          <div class="right">${ANCHORS.library.length} LIBRARY SECTIONS</div>
         </div>
 
-        <div class="index-grid">
-          <div class="index-col">
-            <h4>Feature Blueprint</h4>
-            <p class="sub">${FEATURE_PARTS.length} parts · ${FEATURE_STEPS.length} steps</p>
-            ${featParts}${featExtras}
-          </div>
-          <div class="index-col shorts">
-            <h4>Short Blueprint</h4>
-            <p class="sub">${SHORT_STEPS.length} steps · with script editor</p>
-            ${shortGroups}${shortExtras}
-          </div>
+        <div class="index-grid index-grid-single">
           <div class="index-col library">
             <h4>The Library</h4>
             <p class="sub">Reference companion · ${ANCHORS.library.length} sections</p>
@@ -910,13 +780,13 @@ function activityMarkup() {
           <div class="left">
             <div class="label">SECTION V · ACTIVITY LOG</div>
             <h2>What you've <em class="f">touched.</em></h2>
-            <p class="deck">A timeline of your recent edits across all three blueprints. Updates whenever you save in any blueprint. Click an entry to jump back.</p>
+            <p class="deck">A timeline of your recent edits. Updates whenever you save. Click an entry to jump back.</p>
           </div>
           <div class="right" id="activityCount">0 ENTRIES</div>
         </div>
 
         <div class="activity-list" id="activityList">
-          <div class="activity-empty">No activity yet. Open a blueprint and start filling things in. Activity updates whenever you save.</div>
+          <div class="activity-empty">No activity yet. Start a film and begin filling things in. Activity updates whenever you save.</div>
         </div>
 
         <div class="activity-actions">
@@ -971,7 +841,7 @@ function render() {
   if (!app) throw new Error('#app not found');
   const main = h('main#main');
   main.append(
-    heroMarkup(), projectsMarkup(),
+    heroMarkup(), doorsMarkup(), projectsMarkup(),
     // The journey sits right under the projects: once a film is open,
     // "where is it, and what next" is the question the rest of the
     // page answers in detail. Hidden with no project open.
@@ -980,8 +850,8 @@ function render() {
     // and where do I go", the doors that follow answer "how far am I in
     // the three I actually use". Different questions, and the map is
     // the one a new arrival needs first.
-    renderLauncher(), doorsMarkup(),
-    startMarkup(), toolsMarkup(), indexMarkup(),
+    renderLauncher(),
+    toolsMarkup(), indexMarkup(),
     activityMarkup(), finalMarkup()
   );
   app.append(toolbarMarkup(), main, modalMarkup());
@@ -1150,20 +1020,20 @@ function detectActivity() {
 
   if (last.fp !== undefined) {
     if (now.ft && now.ft !== last.ft) {
-      arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: FEATURE_URL });
+      arr.unshift({ ts: Date.now(), where: 'feat', what: 'Feature title set: "' + now.ft + '"', url: DASHBOARD_URL });
     }
     if (now.fp > (last.fp || 0)) {
       arr.unshift({ ts: Date.now(), where: 'feat',
         what: 'Feature progress: ' + (last.fp || 0) + '% → ' + now.fp + '%' + (now.fs ? ' (' + now.fs + ')' : ''),
-        url: FEATURE_URL + (now.fs ? '#' + now.fs : '') });
+        url: DASHBOARD_URL });
     }
     if (now.st && now.st !== last.st) {
-      arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: SHORT_URL });
+      arr.unshift({ ts: Date.now(), where: 'short', what: 'Short title set: "' + now.st + '"', url: DASHBOARD_URL });
     }
     if (now.sp > (last.sp || 0)) {
       arr.unshift({ ts: Date.now(), where: 'short',
         what: 'Short progress: ' + (last.sp || 0) + '% → ' + now.sp + '%' + (now.ss ? ' (' + now.ss + ')' : ''),
-        url: SHORT_URL + (now.ss ? '#' + now.ss : '') });
+        url: DASHBOARD_URL });
     }
     if (now.lc > (last.lc || 0)) {
       arr.unshift({ ts: Date.now(), where: 'lib',
@@ -1188,7 +1058,7 @@ function renderActivity() {
 
   if (!arr.length) {
     container.append(h('div.activity-empty', {
-      text: 'No activity yet. Open a blueprint and start filling things in. Activity updates whenever you save.'
+      text: 'No activity yet. Start a film and begin filling things in. Activity updates whenever you save.'
     }));
     return;
   }
@@ -1627,12 +1497,15 @@ function closeProjectSwitcher() {
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
-function openProjectModal(editId) {
+function openProjectModal(editId, format) {
   if (!editId && !PlanGate.allowed('new_projects')) {
     StudioUI.toastInfo('Your plan does not add new projects. See plans on Settings.');
     return;
   }
   closeProjectSwitcher();
+  // One creation path: a new project is the setup sheet. This modal is
+  // the rename dialog now.
+  if (!editId) { import('../ui/project-setup.js').then((m) => m.openProjectSetup({ format: format || 'feature' })); return; }
   const overlay     = $('#projectModal');
   const titleInput  = $('#pmTitle');
   const formatInput = $('#pmFormat');
@@ -1736,6 +1609,8 @@ const CLICK_ACTIONS = {
   'refresh-activity':      () => refreshActivity(),
   'clear-activity':        () => clearActivity(),
   'new-project':           () => openProjectModal(),
+  'start-feature':         () => openProjectModal(null, 'feature'),
+  'start-short':           () => openProjectModal(null, 'short'),
   /* openSampleProject() is async now, so a throw here would be an
      unhandled rejection rather than an error the click surfaces —
      and `verify` asserts zero console errors, which is the wrong

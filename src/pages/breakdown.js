@@ -10,6 +10,7 @@
    of decorating. The old pages put twelve small buttons in a strip and
    made the user read every one.
    ============================================================ */
+import { mountStageGuide } from '../ui/stage-guide.js';
 import '../lib/store.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -27,6 +28,11 @@ import Scenes, {
 import * as Songs from '../lib/songs.js';
 import * as Bin from '../lib/scene-bin.js';
 import '../styles/scene-bin.css';
+import '../styles/breakdown-run.css';
+import { flushStorage } from '../lib/store.js';
+import { runBreakdown } from '../lib/breakdown-run.js';
+import { commitImportedScript } from '../lib/script-commit.js';
+import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, isNumberingLocked, sceneNumbers } from '../lib/script.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
@@ -81,7 +87,12 @@ function renderEmpty() {
             + 'is a new scene, a new line here, and eventually a different shoot day.'
       })
     ]),
-    h('button.btn.primary.bd-cta', { type: 'button', 'data-action': 'scene-add', text: '+  Add the first scene' })
+    h('p.bd-sub', {}, [
+      'Have a script already? ',
+      h('a', { href: '#overview', text: 'Upload it or break it down on the Whole script tab' }),
+      ' and every scene, character and location is filled in for you.'
+    ]),
+    h('button.btn.bd-cta', { type: 'button', 'data-action': 'scene-add', text: '+  Add a scene by hand' })
   ]);
 }
 const how = (n, title, body) =>
@@ -611,6 +622,7 @@ function renderBin() {
 /* `focus` is a selector for the control to hand focus back to: a
    full render replaces the one the reader was using, and without it
    focus falls to <body> (UX audit M1; visualize.js's pattern). */
+let STATUS = '';
 function render(focus) {
   const scenes = Scenes.listScenes();
   const main = h('main', { id: 'main' });
@@ -667,14 +679,16 @@ function render(focus) {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+  main.append(renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   if (focus) {
     const node = document.querySelector(focus);
     if (node) node.focus();
   }
+  mountStageGuide(document.getElementById('main'), { stage: 'preprod' });   // the blueprint's questions for this stage
   mountShell();
+  mountLearn(main);
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -891,6 +905,69 @@ delegate(document, 'change', '[data-song-field]', (e, el) => {
   // These three change what the card reports about itself — the day
   // disagreement, the playback block, the header totals.
   if (key === 'days' || key === 'dancers' || key === 'playback') render();
+});
+
+/* ---- the whole-script breakdown ------------------------------ */
+function toastRun(res) {
+  const a = res.applied, t = res.totals;
+  const said = a.empty
+    ? 'The script has no scene headings yet, so there was nothing to break down.'
+    : 'Broke down ' + t.scenes + (t.scenes === 1 ? ' scene' : ' scenes') + ', '
+      + res.characters.length + (res.characters.length === 1 ? ' character' : ' characters') + ' and '
+      + t.locations + (t.locations === 1 ? ' location' : ' locations') + '.'
+      + (a.castTagged ? ' Tagged ' + a.castTagged + ' cast from the dialogue cues.' : '');
+  STATUS = said;
+  if (a.castTagged) {
+    StudioUI.toast(said, {
+      action: 'Undo cast tagging',
+      onAction: () => {
+        const back = a.undo();
+        STATUS = 'Removed the ' + back + ' cast tag' + (back === 1 ? '' : 's') + ' just added.';
+        render();
+        StudioUI.toast(STATUS);
+      }
+    });
+  } else StudioUI.toast(said);
+}
+delegate(document, 'click', '[data-action=run-breakdown]', async () => {
+  let res;
+  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
+  await flushStorage().catch(() => {});
+  toastRun(res);
+  render('#overview');
+});
+delegate(document, 'click', '[data-action=sum-view]', (e, btn) => {
+  setView(btn.dataset.view);
+  render('#' + btn.id);
+});
+delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) => {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  let Parser;
+  try { Parser = await import('../lib/script-import.js'); }
+  catch (err) { sayStatus('The script reader could not be loaded. Check the connection and try again.'); return; }
+  let plan;
+  try {
+    const text = await Parser.readFile(file);
+    if (!String(text || '').trim()) { sayStatus('That file was empty.'); return; }
+    plan = Parser.parseScript(text, file.name);
+  } catch (err) { sayStatus((err && err.message) || 'That file could not be read as a screenplay.'); return; }
+  if (plan.fatal || !plan.elements.length) {
+    sayStatus((plan.warnings && plan.warnings[0]) || 'Nothing in that file looked like a screenplay.');
+    return;
+  }
+  const have = loadScript().elements.length;
+  const scenesHave = Scenes.listScenes().length;
+  if ((have || scenesHave) && !confirm('Replace the script' + (scenesHave ? ' and the ' + scenesHave + ' scenes' : '') + ' with this file?\n\n'
+    + (have ? 'A revision of the current script is kept first. ' : '')
+    + (scenesHave ? 'The old scenes go to the bin, with everything attached, and can be restored.' : ''))) return;
+  commitImportedScript(plan, { mode: 'replace', importName: file.name });
+  let res;
+  try { res = runBreakdown(); } catch (err) { console.warn('[breakdown] run', err); StudioUI.toast('The script was imported, but the breakdown could not run.', { type: 'error' }); render(); return; }
+  await flushStorage().catch(() => {});
+  toastRun(res);
+  render('#overview');
 });
 
 render();

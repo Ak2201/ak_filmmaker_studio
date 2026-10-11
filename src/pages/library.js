@@ -78,6 +78,7 @@ import rates from '../data/rates.chennai.2024.json';
    is 2026 is in the overlay and is labelled as such, per figure. */
 import rateChecks from '../data/rates.chennai.checks.json';
 import glossary from '../data/glossary.json';
+import { guideHref } from '../lib/blueprint-route.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -608,7 +609,7 @@ function renderWatchlist() {
     // Was a <div class="step-tag"> inside an <a> carrying four
     // inline styles. One element, no inline style, still a link.
     h('a.step-tag', {
-      href: `feature.html#${step.step}`,
+      href: guideHref('feature', step.step) || 'story.html#guide',
       title: 'Jump to this step in the blueprint',
       text: `${step.label} ↗`
     }),
@@ -694,7 +695,7 @@ function renderCraftGlossary() {
   }));
   body.append(h('p.hint.lib-gloss-more', {}, [
     'Camera, coverage, production, budget and sound terms are in the ',
-    h('a', { href: 'feature.html#glossary', text: 'feature blueprint’s glossary' }),
+    h('a', { href: 'library.html#glossary', text: 'feature blueprint’s glossary' }),
     '.'
   ]));
   return body;

@@ -214,7 +214,7 @@ export function modulesHere() {
     const f = m.href.split('#')[0].toLowerCase().replace(/\.html$/, '');
     if (f === here) out.push(m);
   }
-  /* A shelf module that IS a whole page (the Blueprints: feature.html,
+  /* A shelf module that IS a whole page (the Blueprints shelf, REMOVED when the guides moved into the stages; feature.html,
      short.html — no fragment) locks the page the way a stage's module
      does. A shelf module with a fragment is a tab, and locks as one
      (lockTabs below). They locked as Story modules until the

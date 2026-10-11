@@ -1,5 +1,5 @@
 {
-  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists. The Blueprints are a second such shelf (feature.html, short.html): a guide that walks all five stages cannot be filed inside one of them, so each stage carries a `guide` list instead, linking to the blueprint part that covers it (`part` is the feature blueprint's Part number, one part per stage). `group` on a module is a sub-heading in its stage's menu (Pre-Production's four). `projectPages: true` on a shelf says its pages write a film, so src/ui/no-project.js gives them the no-project banner as it does a stage's pages. `jobs` is the hub’s three doors: each names the stages it covers and the hub derives its link from the first built module of the first stage listed, so nothing there is a hand-written href. `region` on a MODULE or on a `global` shelf is the market it belongs to — today only 'IN' — and src/lib/navmodel.js drops it everywhere the map is derived when the browser is in International mode (src/lib/region.js). An entry with no `region` belongs everywhere, which is why nothing carries one today: no module here is India-only. The India-specific material is finer-grained than a module — the certification tab of deliverables.html (CBFC, with the COTPA and AWBI rules in src/data/cbfc-rules.json), the Indian OTT delivery templates in deliverables.json, the Chennai rate card, the FEFSI figures and the Indian festival list — and tagging a whole module would hide a page people need in order to hide a tab they do not. A STAGE is never region-tagged: the five stages are the shape of making a film and that shape is the same everywhere.",
+  "_about": "The app's information architecture, in one file. src/ui/shell.js renders the rail and the phase bar from this and nothing else, so adding a module is a JSON edit. `status` is honest on purpose: 'built' links somewhere real, 'partial' links to the step that half-covers it today, 'planned' renders a stub that says what it will do. Never let a module claim 'built' before it is. A `global` entry may carry `modules` of its own: the Library's reference tools (case studies, dissection, the craft glossary) are tabs of library.html, not steps of a stage, so they hang off the Library rather than off a phase. Their module ids are unchanged, because plans key features by them; src/lib/navmodel.js is the one place that joins the two lists. The Blueprints are NOT a shelf any more: the feature and short blueprints are folded into the five stage pages, each of which mounts a `#guide` section (src/ui/stage-guide.js) rendering that stage's steps, so each stage carries ONE `guide` entry linking to `<stage page>#guide` (`part` is the feature blueprint's Part number). The old feature.html / short.html redirect there (src/pages/blueprint-redirect.js, src/lib/blueprint-route.js). `group` on a module is a sub-heading in its stage's menu (Pre-Production's four). `projectPages: true` on a shelf says its pages write a film, so src/ui/no-project.js gives them the no-project banner as it does a stage's pages. `jobs` is the hub’s three doors: each names the stages it covers and the hub derives its link from the first built module of the first stage listed, so nothing there is a hand-written href. `region` on a MODULE or on a `global` shelf is the market it belongs to — today only 'IN' — and src/lib/navmodel.js drops it everywhere the map is derived when the browser is in International mode (src/lib/region.js). An entry with no `region` belongs everywhere, which is why nothing carries one today: no module here is India-only. The India-specific material is finer-grained than a module — the certification tab of deliverables.html (CBFC, with the COTPA and AWBI rules in src/data/cbfc-rules.json), the Indian OTT delivery templates in deliverables.json, the Chennai rate card, the FEFSI figures and the Indian festival list — and tagging a whole module would hide a page people need in order to hide a tab they do not. A STAGE is never region-tagged: the five stages are the shape of making a film and that shape is the same everywhere.",
   "global": [
     {
       "id": "home",
@@ -53,37 +53,6 @@
           "href": "library.html#glossary",
           "icon": "¶",
           "sym": "local_library"
-        }
-      ]
-    },
-    {
-      "id": "blueprints",
-      "label": "Blueprints",
-      "icon": "▤",
-      "href": "index.html#doors",
-      "purpose": "The feature and short blueprints: every question, in order, idea to delivery",
-      "sym": "map",
-      "hue": "feature",
-      "projectPages": true,
-      "blurb": "Two guided paths, one part per stage",
-      "modules": [
-        {
-          "id": "feature-blueprint",
-          "label": "Feature Blueprint",
-          "purpose": "32 questions that walk a feature from idea to delivery, in order",
-          "status": "built",
-          "href": "feature.html",
-          "icon": "▤",
-          "sym": "menu_book"
-        },
-        {
-          "id": "short-blueprint",
-          "label": "Short Blueprint",
-          "purpose": "11 steps for a film under 30 minutes, from idea to festival",
-          "status": "built",
-          "href": "short.html",
-          "icon": "▥",
-          "sym": "article"
         }
       ]
     },
@@ -144,13 +113,9 @@
       "sym": "auto_stories",
       "guide": [
         {
-          "label": "Feature steps 01–10",
-          "href": "feature.html#vol-1",
+          "label": "Feature steps 01–10 · Short steps 1–5",
+          "href": "story.html#guide",
           "part": "I"
-        },
-        {
-          "label": "Short steps 1–5",
-          "href": "short.html#step-01"
         }
       ]
     },
@@ -210,13 +175,9 @@
       "sym": "edit_note",
       "guide": [
         {
-          "label": "Feature steps 11–13",
-          "href": "feature.html#part-2",
+          "label": "Feature steps 11–13 · Short steps 6–8",
+          "href": "write.html#guide",
           "part": "II"
-        },
-        {
-          "label": "Short steps 6–8",
-          "href": "short.html#step-06"
         }
       ],
       "purpose": "Write the script; the formatting is done for you"
@@ -402,13 +363,9 @@
       "sym": "checklist",
       "guide": [
         {
-          "label": "Feature steps 14–24",
-          "href": "feature.html#vol-2",
+          "label": "Feature steps 14–24 · Short step 9",
+          "href": "breakdown.html#guide",
           "part": "III"
-        },
-        {
-          "label": "Short step 9",
-          "href": "short.html#step-09"
         }
       ]
     },
@@ -441,13 +398,9 @@
       "sym": "videocam",
       "guide": [
         {
-          "label": "Feature steps 25–28",
-          "href": "feature.html#phase-3",
+          "label": "Feature steps 25–28 · Short step 9",
+          "href": "shoot.html#guide",
           "part": "IV"
-        },
-        {
-          "label": "Short step 9",
-          "href": "short.html#step-09"
         }
       ]
     },
@@ -480,13 +433,9 @@
       "sym": "tune",
       "guide": [
         {
-          "label": "Feature steps 29–32",
-          "href": "feature.html#phase-4",
+          "label": "Feature steps 29–32 · Short step 10",
+          "href": "edit.html#guide",
           "part": "V"
-        },
-        {
-          "label": "Short step 10",
-          "href": "short.html#step-10"
         }
       ]
     }

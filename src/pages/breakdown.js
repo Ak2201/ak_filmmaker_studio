@@ -831,7 +831,9 @@ delegate(document, 'change', '[data-scene-field]', (e, el) => {
      and nothing else on the page. `change` fires as focus LEAVES the
      field, usually on Tab, so a full render here threw away the field
      the reader was tabbing into (UX audit M1). Patch the two in place. */
-  if (key === 'eighths') {
+  /* The location count in the header and the song cards' scene lists
+     read these two as well, so they are patched on the same terms. */
+  if (key === 'eighths' || key === 'location' || key === 'songId') {
     const scenes = Scenes.listScenes();
     const scene = scenes.find((s) => s.id === id);
     const pages = document.querySelector(inScene(id, '.bd-pages'));

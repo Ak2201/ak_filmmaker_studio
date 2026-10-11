@@ -67,7 +67,7 @@ function factLines(f) {
   lines.push('General call: ' + (clean(f.generalCall) || 'not set'));
   if (clean(f.wrap)) lines.push('Planned wrap: ' + clean(f.wrap));
   if (clean(f.location)) lines.push('Location: ' + clean(f.location));
-  if (f.mapUrl) lines.push('Map: ' + f.mapUrl);
+  if (f.mapUrl) lines.push('Map' + (clean(f.mapPlace) ? ' (' + clean(f.mapPlace) + ')' : '') + ': ' + f.mapUrl);
   if (f.light && f.light.sunrise) {
     lines.push('Sunrise ' + f.light.sunrise + ' · Sunset ' + f.light.sunset
       + (f.light.zone ? ' (' + f.light.zone + ')' : '')

@@ -1678,3 +1678,23 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       terms grouped by stage. Each term has its stage, `seeAlso`, a Tanglish
       gloss and four film examples (`learn.js` `termBody`). Everyday words
       carry `notag`, so they are not auto-wrapped as terms.
+
+32. **UX pass: scroll, steps, purchase, redundancy (11 Oct 2026).**
+    - **Library stutter** was the shell's crumb repainting every frame:
+      `goTo()` compared locations by object identity, `globals()` builds
+      fresh objects, so each rAF repainted, which fed the `#app` and
+      `.sh-bar` observers (1,600 mutations and 30fps per scroll). Compare
+      by place (`id`/`href`), never by object.
+    - **One step at a time** (`src/ui/stepper.js`): Story and every stage
+      guide show one step with a step bar and Back/Next; the rest are
+      `hidden`, never removed (data-keys stay in the DOM). Story lands every
+      step through `landStepView()` — under the pinned bar, and again after
+      the blueprint questions load, because they grow above the landing.
+    - **Purchase out of Settings**: Settings keeps one link to
+      `purchase.html`; old `settings.html#plan|billing|…` forward there.
+    - **Script page**: the beats column is pinned and scrolls on its own (its
+      list is rebuilt only when the beats change, so the scroll is kept); a
+      hint strip names the line type and the Enter/Tab targets from
+      `write-presets.json`, toggled as `hints` in `fms_write_prefs_v1`.
+    - Redundancy sweep: duplicate vault heading, dashboard/admin repeated
+      decks, the tour offered twice. Open owner decisions are in HANDOFF.

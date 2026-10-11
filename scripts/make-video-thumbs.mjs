@@ -79,6 +79,24 @@ for (const v of videos) {
   made++;
 }
 
+/* THE DATA CARRIES WHICH ONES EXIST, so the facade can ask before it
+   requests. Without this the app emitted an <img> for every approved
+   video, and the two with no still answered 404 — harmless to look at
+   (the onerror drops the image) but a real console error, which
+   `prove:ai-coverage`'s "no page errors" check fails on, in every
+   context it runs. Derived from the DISK on every run rather than
+   from what this run fetched, so deleting a file or adding a video
+   keeps the flag honest. */
+let flagged = 0;
+for (const v of (data.videos || [])) {
+  const has = !!(v.yt && existsSync(path.join(OUT, v.yt + '.webp')));
+  if (v.thumb !== has) { if (has) v.thumb = true; else delete v.thumb; flagged++; }
+}
+if (flagged) {
+  writeFileSync(DATA, JSON.stringify(data, null, 2) + '\n');
+  console.log(`videos.json: ${flagged} thumb flag(s) updated`);
+}
+
 /* A thumbnail whose video has left the catalogue is dead weight in the
    repo and in the precache; name it rather than silently keeping it. */
 const want = new Set(videos.map((v) => v.yt + '.webp'));

@@ -23,8 +23,14 @@ const poster = (yt) => h('img.vid-poster', {
 });
 
 export function facade(v) {
-  const img = poster(v.yt);
-  img.addEventListener('error', () => img.remove(), { once: true });
+  /* Only when the still is actually on disk. `v.thumb` is written by
+     scripts/make-video-thumbs.mjs from the files it finds, so a video
+     with no still asks for nothing and the facade falls back to the
+     plain play row it has always had. Guessing and catching the error
+     instead still costs a 404 in the console, which is a page error
+     the proofs fail on. */
+  const img = v.thumb ? poster(v.yt) : null;
+  if (img) img.addEventListener('error', () => img.remove(), { once: true });
   return h('div.vid', { 'data-yt': v.yt, 'data-title': v.title }, [
     img,
     h('button.vid-play', {

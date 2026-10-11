@@ -246,6 +246,19 @@ function startFigures() {
           if (!adds.length) fail('plan-matrix.json: ' + id + ' adds nothing to the plan below it');
           const line = (M.MATRIX.lines && M.MATRIX.lines[id]) || '';
           values['tier.adds.' + id] = esc((line ? line + ' ' : '') + (i === 0 ? '' : 'Everything in ' + planName(PAID[i - 1]) + ', plus ') + list(adds) + '.');
+          /* The card's own bullets: the plan's line, then what it ADDS
+             (the first six, the rest counted and left to the table). */
+          values['tier.line.' + id] = esc(line);
+          const own = M.addedBy(id);
+          const pick = ((M.MATRIX.card && M.MATRIX.card[id]) || []).map((k) => {
+            const row = own.find((r) => r.key === k);
+            if (!row) fail('plan-matrix.json card.' + id + ' names "' + k + '", which ' + id + ' does not add.');
+            return M.labelOf(row);
+          });
+          const shown = pick.length ? pick : adds.slice(0, 6);
+          values['tier.list.' + id] = (i === 0 ? '' : '<li class="st-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
+            + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
+            + (adds.length > shown.length ? '<li class="st-inc-more">+ ' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
         }
         const cell = (yes) => yes ? '<td class="st-yes"><span aria-hidden="true">\u2713</span><span class="st-vh">Included</span></td>'
                                   : '<td class="st-no"><span aria-hidden="true">\u2014</span><span class="st-vh">Not included</span></td>';

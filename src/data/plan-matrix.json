@@ -12,6 +12,33 @@
     "indie": "Prepare it.",
     "pro": "Shoot it and finish it: everything."
   },
+  "card": {
+    "_about": "Which of each plan's OWN additions its card on start.html lists first, in order (keys from features). The rest are counted and left to the comparison table. A key the plan does not add fails the build.",
+    "starter": [
+      "screenplay",
+      "story-beats",
+      "revisions",
+      "import-script",
+      "exports",
+      "case-studies"
+    ],
+    "indie": [
+      "breakdowns",
+      "stripboard",
+      "budget",
+      "locations",
+      "storyboard",
+      "drive_backup"
+    ],
+    "pro": [
+      "shoot-day",
+      "call-sheets",
+      "edit-log",
+      "deliverables",
+      "ai_tools",
+      "remove_branding"
+    ]
+  },
   "features": [
     {
       "key": "sample_only",

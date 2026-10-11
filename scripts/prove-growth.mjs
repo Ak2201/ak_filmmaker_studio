@@ -556,19 +556,20 @@ try {
     allErrors.push(...quiet.errors); await quiet.ctx.close();
 
     /* ---- purchases not required (§32) ----------------------------
-       The anon purchases_required() says false: the price list goes,
-       one line says there is nothing to buy, and no "Buy" or "See the
-       plans" link is left pointing at it. The prices stay in the
-       markup (hidden, not deleted) for a crawler and a failed call. */
+       The anon purchases_required() says false. The plans STAY — this
+       page is the purchase page whatever the switch says (owner,
+       12 Oct 2026) — the page is only marked, and no price-rise band
+       is drawn, because a countdown on a studio that is not selling is
+       urgency nobody enforces. */
     F.db.settings.purchase_required = false;
     RISE.on = true; RISE.at = new Date(Date.now() + 26 * 3600e3).toISOString();
     const free = await context(browser, { width: 390 });
     await free.page.goto(BASE + 'start.html');
-    const freeNow = await free.page.waitForSelector('#pricing .st-free-now', { timeout: 8000 }).then(() => true, () => false);
-    ok(freeNow && (await free.page.textContent('#pricing .st-free-now')) === 'The studio is free to use right now \u2014 nothing to buy.', 'OFF: start.html says the studio is free to use right now — nothing to buy');
-    ok(await free.page.isHidden('#pricing .st-tiers') && await free.page.isHidden('#pricing .st-table-wrap'), 'OFF: the tiers and the comparison table are hidden');
-    ok(/₹\s?599/.test(await free.page.evaluate(() => document.getElementById('pricing').textContent)), 'OFF: the prices are hidden, not deleted');
-    ok(await free.page.evaluate(() => [...document.querySelectorAll('a[href="#pricing"], a[data-plan]')].every((a) => !a.offsetParent)), 'OFF: no visible link into the price list and no Buy button');
+    const marked = await free.page.waitForSelector('html[data-purchases="off"]', { state: 'attached', timeout: 8000 }).then(() => true, () => false);
+    ok(marked, 'OFF: start.html is marked data-purchases=off');
+    ok(await free.page.isVisible('#pricing .st-tiers li[data-tier="indie"]'), 'OFF: the plans still show');
+    ok(/₹\s?599/.test(await free.page.evaluate(() => document.getElementById('pricing').textContent)), 'OFF: and so do the prices');
+    ok(await free.page.evaluate(() => [...document.querySelectorAll('a[data-plan]')].length === 3 && [...document.querySelectorAll('a[data-plan]')].every((a) => a.offsetParent)), 'OFF: every plan keeps its buy link');
     ok(!(await bandState(free.page)).shown, 'OFF: and no price-rise band, even with a rise scheduled');
     allErrors.push(...free.errors); await free.ctx.close();
     F.db.settings.purchase_required = true;

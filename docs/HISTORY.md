@@ -1714,3 +1714,31 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       refund/privacy/terms say "a sole proprietor", the invoice names the
       trading name. The name stays in git history; rewriting `main` is not on
       the table.
+
+34. **The entry page becomes the purchase page (12 Oct 2026).** The owner:
+    "let that be the best space for purchasing", with fewer items. Owner's
+    answers: the plans show ALWAYS, whatever the purchases switch says;
+    each plan's main button is the free trial (Google sign-in), with
+    "or buy now" second; five blocks only.
+    - `start.html` went from 15 sections to five: a short hero (one promise,
+      one button, a trust row), the plans (`#pricing`, with the `#offer`
+      price-rise band inside it and the comparison table behind a
+      `<details>`), What you get (`#features`, six stage tiles), proof
+      (`#proof`: both sample films, the tour video, four counted facts;
+      `#voices` untouched), then FAQ + close + the compact e-mail line.
+      `#short`, `#learn`, `#india`, `#stages`, `#demo` and the module
+      marquee are gone, with their JS and CSS.
+    - Borrowed from other pricing pages: one payment as the headline
+      against the subscription tools (Final Draft sells a perpetual
+      licence; Celtx and StudioBinder bill monthly); three tiers with the
+      MIDDLE one recommended (the flag moved from Basic to Intermediate);
+      the trial on every card; outcome bullets; stacked cards on a phone.
+      No "most popular" badge — there are no sales to make it true.
+    - Each card's bullets are DERIVED: `plan-matrix.json` gained `card`,
+      naming which of a plan's own additions its card lists first; the
+      build fails if a key names something that plan does not add. The
+      rest are counted ("+ N more in the comparison").
+    - `showFreeNow()` now only marks `html[data-purchases=off]` and skips
+      the rise band; `prove:growth` asserts the plans and buy links stay.
+    - `.st-tiers li` matched the bullet lists inside each card, giving every
+      bullet a card's padding and border — the tier rules are `> li` now.

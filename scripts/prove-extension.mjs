@@ -120,7 +120,7 @@ try {
   ok((await panel.$$eval('.pn-mode strong', (e) => e.map((x) => x.textContent))).join() === 'Sample,New,Import', 'Story offers Sample, New, Import');
   /* KNOWN-ISSUES #2 (fixed): the shelves' modules are in the panel too. */
   await panel.click('[data-stage="library"]');
-  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Case Studies,Dissection,Craft Glossary', 'the Library shelf lists Case Studies, Dissection, Craft Glossary');
+  ok((await panel.$$eval('.pn-mod a', (e) => e.map((x) => x.textContent))).join() === 'Case Studies,Dissection,Film Terminology', 'the Library shelf lists Case Studies, Dissection, Film Terminology');
   await panel.setViewportSize({ width: 360, height: 800 });
   ok(await panel.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the panel fits a 360px side panel');
   if (process.env.SHOT_DIR) await panel.screenshot({ path: path.join(process.env.SHOT_DIR, 'panel.png'), fullPage: true });

@@ -409,9 +409,8 @@ function renderCover() {
 
 /* One section per tab: the id, the head and the body together. */
 function renderSection(section, i) {
-  /* The tab says what the owner asked it to say: navigation.json still
-     calls the terminology module "Craft Glossary", so the module label
-     only names the two shelf tabs that have no label of their own. */
+  /* The tab says what the owner asked it to say ("Film terminology");
+     the module label only names the shelf tabs with no label of their own. */
   const sec = h('section.lib-sec', {
     id: section.id,
     'data-tab-label': section.tab || shelfLabel(section.id) || section.nav

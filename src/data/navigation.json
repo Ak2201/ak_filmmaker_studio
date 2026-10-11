@@ -47,7 +47,7 @@
         },
         {
           "id": "glossary",
-          "label": "Craft Glossary",
+          "label": "Film Terminology",
           "purpose": "Film terms explained in plain words, with examples from four Tamil films",
           "status": "built",
           "href": "library.html#glossary",

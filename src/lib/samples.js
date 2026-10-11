@@ -7,9 +7,10 @@
    labels, ids and titles, so a third is one entry here and no page
    edit.
 
-   `data` is a STATIC import of the small main JSON (it sits in the
-   `data-sample` chunk, vite.config.js). The script and the story are
-   the big files and stay lazy: `loadScript` / `loadStory` are dynamic
+   The static part is tiny literals (id, title, label, blurb, format) so
+   a page that only draws a picker pays nothing for the data. The main
+   JSON, the script and the story are all lazy: `loadData` / `loadScript`
+   / `loadStory` are dynamic
    imports with literal paths, which is the only form Vite follows.
    Both are in vite.config.js's lazy exception and are checked by
    scripts/check-ai-lazy.mjs; neither may land in CORE.
@@ -19,27 +20,25 @@
 
    PURE: imports only JSON. No store.js, no DOM.
    ============================================================ */
-import dragon from '../data/sample.dragon.json';
-import darkknight from '../data/sample.darkknight.json';
 
 export const SAMPLES = [
   {
     id: 'dragon',
-    title: dragon.title,
+    title: 'Dragon',
     label: 'Dragon (2025)',
     blurb: 'A Tamil campus-to-corporate drama, scene by scene.',
     format: 'feature',
-    data: dragon,
+    loadData:   () => import('../data/sample.dragon.json'),
     loadScript: () => import('../data/sample.dragon.script.json'),
     loadStory:  () => import('../data/sample.dragon.story.json')
   },
   {
     id: 'darkknight',
-    title: darkknight.title,
+    title: 'The Dark Knight',
     label: 'The Dark Knight (2008)',
     blurb: 'A crime epic, imagined as a Chennai unit’s production, in rupees.',
     format: 'feature',
-    data: darkknight,
+    loadData:   () => import('../data/sample.darkknight.json'),
     loadScript: () => import('../data/sample.darkknight.script.json'),
     loadStory:  () => import('../data/sample.darkknight.story.json')
   }

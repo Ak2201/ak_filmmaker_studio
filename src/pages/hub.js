@@ -955,7 +955,10 @@ function sampleFailed(err) {
 }
 
 async function openSampleProject(id = DEFAULT_SAMPLE) {
-  const sample = sampleById(id) || sampleById(DEFAULT_SAMPLE);
+  const meta = sampleById(id) || sampleById(DEFAULT_SAMPLE);
+  /* The registry holds no data at first paint; the builders below take
+     the entry with its main JSON attached as `data`. */
+  const sample = { ...meta, data: (await meta.loadData()).default };
   let pages = [];
   try {
     pages = (await sample.loadScript()).default.elements || [];

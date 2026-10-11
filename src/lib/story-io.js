@@ -120,11 +120,11 @@ export const importedSentence = (r) =>
    sample blueprint's synopsis is the fallback, as it always was. */
 export async function sampleStory(id = DEFAULT_SAMPLE) {
   const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
-  const sample = sm.data;
   try {
     const st = (await sm.loadStory()).default.story;
     return { ...Story.blankStory(), ...JSON.parse(JSON.stringify(st)) };
   } catch (e) {
+    const sample = (await sm.loadData()).default;
     const s = Story.blankStory();
     s.source = String(sample.blueprint && sample.blueprint.lad_2_synopsis || '').trim();
     s.sourceName = sample.title + ' (sample)';

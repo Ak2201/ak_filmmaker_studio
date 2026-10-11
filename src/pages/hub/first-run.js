@@ -12,7 +12,8 @@
    ============================================================ */
 import { h } from '../../lib/dom.js';
 import { sampleFigures } from '../../lib/sample-figures.js';
-import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../../lib/samples.js';
+import { SAMPLES } from '../../lib/samples.js';
+import dragonData from '../../data/sample.dragon.json';
 import films from '../../data/films.json';
 import directors from '../../data/directors.json';
 import rules from '../../data/rules.json';
@@ -25,9 +26,9 @@ import PlanGate from '../../lib/plan-gate.js';
    uses to stamp start.html's copy of the same numbers. Function
    declarations, because the "where to start" markup is built before
    this section in source order and reads them. */
-function sampleDays(data = sampleById(DEFAULT_SAMPLE).data) { return sampleFigures(data).days; }
+function sampleDays(data = dragonData) { return sampleFigures(data).days; }
 
-function samplePages(data = sampleById(DEFAULT_SAMPLE).data) { return sampleFigures(data).pages; }
+function samplePages(data = dragonData) { return sampleFigures(data).pages; }
 
 /* One button per registered sample; labels come from the registry. */
 function sampleButtons(prefix, primary) {
@@ -79,11 +80,10 @@ function renderFirstRun() {
   ]));
   /* The sample is the secondary way in: a filled studio to look at
      before being asked to name a film. */
-  const dragon = sampleById(DEFAULT_SAMPLE);
   panel.append(h('div.eps-actions', {}, sampleButtons('OR OPEN A SAMPLE FILM: ', false)));
   panel.append(h('div.eps-fine', {
-    text: 'A sample is a real project you can edit or delete: a feature, its pages of script (' + dragon.title + ' has ' + samplePages()
-        + '), the ' + dragon.data.scenes.length + ' scenes broken down from them, a crew and a budget. '
+    text: 'A sample is a real project you can edit or delete: a feature, its pages of script (Dragon has ' + samplePages()
+        + '), the ' + dragonData.scenes.length + ' scenes broken down from them, a crew and a budget. '
         + 'Everything you write stays in this browser unless you sign in.'
   }));
   return panel;

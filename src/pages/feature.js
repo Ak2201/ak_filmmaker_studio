@@ -2361,7 +2361,7 @@ function computeProgress() {
         fetch now; the data is a build-time import.
    ============================================================ */
 async function loadSamplePack(id = DEFAULT_SAMPLE) {
-  const SAMPLE = (sampleById(id) || sampleById(DEFAULT_SAMPLE)).data;
+  const SAMPLE = (await (sampleById(id) || sampleById(DEFAULT_SAMPLE)).loadData()).default;
   if (!await askDanger('This will REPLACE your current data with the ' + SAMPLE.title
     + ' sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
   try {

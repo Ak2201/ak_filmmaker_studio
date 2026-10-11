@@ -73,6 +73,19 @@ const guideReady = async () => {
 };
 const guideFields = () => page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')]
   .map((el) => el.getAttribute('data-key') + ':' + el.tagName));
+/* ONE STEP AT A TIME: a guide shows one blueprint step, so a proof that
+   types into a field first opens the step that holds it (the step bar's own tab). */
+const reveal = (sel) => page.evaluate((q) => {
+  const el = document.querySelector(q);
+  const root = el && el.closest('.sg-steps');
+  const panel = el && [...root.children].find((c) => c.contains(el));
+  if (!panel || !panel.hidden) return;
+  const panels = [...root.children].filter((c) => c.matches('.sg-cover, section'));
+  const tabs = root.querySelectorAll('.stp-tab');
+  if (tabs[panels.indexOf(panel)]) tabs[panels.indexOf(panel)].click();
+}, sel);
+const gfill = async (sel, v) => { await reveal(sel); await page.fill(sel, v); };
+const gclick = async (sel) => { await reveal(sel); await page.click(sel); };
 const settle = () => page.waitForTimeout(700);
 
 /* a project, set up the way adoption's proof does it */
@@ -116,12 +129,12 @@ check('(1) production guide shows steps 25–28 only', await page.evaluate(() =>
   [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id') || s.id)), ['sg-step-25', 'sg-step-26', 'sg-step-27', 'sg-step-28'].map((x) => x.replace('sg-', '')));
 
 /* answer a cover field and a step field in the guide */
-await page.fill('#guide [data-key="p3_ad"]', 'GUIDE-1ST-AD');
+await gfill('#guide [data-key="p3_ad"]', 'GUIDE-1ST-AD');
 const stepField = await page.evaluate(() => {
   const el = document.querySelector('#guide .step textarea[data-key], #guide .step input[type="text"][data-key]');
   return el && el.getAttribute('data-key');
 });
-await page.fill(`#guide [data-key="${stepField}"]`, 'GUIDE-ANSWER');
+await gfill(`#guide [data-key="${stepField}"]`, 'GUIDE-ANSWER');
 /* a checklist tick */
 const tickKey = await page.evaluate(() => {
   const li = document.querySelector('#guide .step-check li[data-key]');
@@ -159,13 +172,13 @@ check('(1) edit.html’s guide shows what the blueprint saved',
   await page.inputValue('#guide [data-key="p4_editor"]'), 'BLUEPRINT-EDITOR');
 check('(1) edit.html’s guide is steps 29–32', await page.evaluate(() =>
   [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id'))), ['step-29', 'step-30', 'step-31', 'step-32']);
-await page.fill('#guide [data-key="p4_music"]', 'GUIDE-COMPOSER');
+await gfill('#guide [data-key="p4_music"]', 'GUIDE-COMPOSER');
 /* a production-ns checkbox (the HOD sign-off) is a boolean */
 const hod = await page.evaluate(() => {
   const el = document.querySelector('#guide input[type="checkbox"][data-key]');
   return el ? el.getAttribute('data-key') : null;
 });
-if (hod) { await page.check(`#guide [data-key="${hod}"]`); }
+if (hod) { await reveal(`#guide [data-key="${hod}"]`); await page.check(`#guide [data-key="${hod}"]`); }
 await settle();
 b = await blob(FKEY);
 check('(1) edit.html wrote the composer', b.p4_music, 'GUIDE-COMPOSER');
@@ -194,7 +207,7 @@ await settle();
 check('(2) short: the guide reads the short blueprint (step 09 only)', await page.evaluate(() =>
   [...document.querySelectorAll('#guide .step')].map((s) => s.getAttribute('data-sg-id'))), ['step-09']);
 check('(2) short: no feature cover fields', (await guideFields()).some((f) => /^p3_/.test(f)), false);
-await page.fill('#guide [data-key="p_days"]', '3 days');
+await gfill('#guide [data-key="p_days"]', '3 days');
 await settle();
 b = await blob(SKEY);
 check('(2) short: the guide wrote p_days to the short blob', b.p_days, '3 days');
@@ -262,23 +275,23 @@ check('(3) the script shows its scenes and dialogues', await page.evaluate(() =>
 check('(3) the page counter was drawn', await page.evaluate(() => document.querySelector('#guide [data-sg-id="totalWords"]').textContent !== '0'), true);
 
 /* edit one scene-map cell: the array is written whole, same shape */
-await page.fill('#guide .sg-scenemap tbody tr:first-child [data-field="what"]', 'He waits, then leaves.');
+await gfill('#guide .sg-scenemap tbody tr:first-child [data-field="what"]', 'He waits, then leaves.');
 await settle();
 b = await blob(SKEY);
 const expectMap = sceneMap.map((r, i) => (i === 0 ? { ...r, what: 'He waits, then leaves.' } : r));
 check('(3) _sceneMap is byte-identical in shape after an edit', JSON.stringify(b._sceneMap), JSON.stringify(expectMap));
 check('(3) _script and the fields were not touched by it', [JSON.stringify(b._script), b.b1_setup, b.meta_title], [JSON.stringify(script), 'BEAT-ONE', 'Tiny']);
 /* edit the script */
-await page.fill('#guide .scene-block:first-child .dialogue-block:first-child textarea.line', 'Hello again.');
+await gfill('#guide .scene-block:first-child .dialogue-block:first-child textarea.line', 'Hello again.');
 await settle();
 b = await blob(SKEY);
 const expectScript = JSON.parse(JSON.stringify(script)); expectScript[0].dialogues[0].line = 'Hello again.';
 check('(3) _script keeps short.js’s shape after an edit', JSON.stringify(b._script), JSON.stringify(expectScript));
 /* add a scene-map row, then type in it */
-await page.click('#guide [data-sg="map-add"][data-n="1"]');
+await gclick('#guide [data-sg="map-add"][data-n="1"]');
 await settle();
 check('(3) adding a blank row alone writes nothing', JSON.stringify((await blob(SKEY))._sceneMap), JSON.stringify(expectMap));
-await page.fill('#guide .sg-scenemap tbody tr:last-child [data-field="slug"]', 'INT. NEW - DAY');
+await gfill('#guide .sg-scenemap tbody tr:last-child [data-field="slug"]', 'INT. NEW - DAY');
 await settle();
 b = await blob(SKEY);
 check('(3) typing in the new row saves the whole array', [b._sceneMap.length, b._sceneMap[2]], [3, { slug: 'INT. NEW - DAY', who: '', what: '', beat: '', pages: '' }]);
@@ -316,7 +329,7 @@ check('(3) feature story: the Guide is the cover sheet (title, writer, genre…)
 
 /* the Story page itself: every blueprint question is on it ONCE, drawn inline in its path step */
 await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000 });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000, state: 'attached' });
 await page.waitForSelector('[data-bp="bible:ladder"], [data-bp="logline:ladder"]', { state: 'attached', timeout: 30000 });
 await settle();
 check('(3) story.html feature: the path steps are on the page, in order', await page.evaluate(() =>
@@ -342,6 +355,8 @@ check('(3) story.html feature: the Bible shows the saved answers', await page.ev
   [document.querySelector('.sb [data-key="s4_name"]').value, document.querySelector('.sb [data-key="s5_name"]').value]), ['Kavin', 'Rana']);
 check('(3) the Story page wrote nothing', Object.keys(await blob(FKEY)).sort(), ['b01', 'b02', 's4_name', 's5_name', 'v2s11_atl', 'v2s11_btl', 'lad_1_logline'].sort());
 /* an answer typed in the Bible card is the blueprint's own key, in the blueprint's blob */
+await page.evaluate(() => { location.hash = '#path-bible'; });   // one step at a time: open the Story Bible step first
+await page.waitForTimeout(500);
 await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
 await settle();
 check('(3) a Bible card answer is stored under the blueprint’s key', (await blob(FKEY)).s3_theme, 'THEME-ONCE');
@@ -355,7 +370,7 @@ check('(3) the budget total is derived from the fields', await page.evaluate(() 
 check('(3) the shot, cast and location tables each show rows', await page.evaluate(() =>
   ['shotListBody', 'castListBody', 'locListBody']
     .map((id) => document.querySelectorAll(`#guide [data-sg-id="${id}"] tr`).length >= 3)), [true, true, true]);
-await page.fill('#guide [data-sg-id="shotListBody"] tr:nth-child(2) [data-key$="_desc"]', 'WIDE');
+await gfill('#guide [data-sg-id="shotListBody"] tr:nth-child(2) [data-key$="_desc"]', 'WIDE');
 await settle();
 b = await blob(FKEY);
 check('(3) a table row writes its flat key', b.shot_2_desc, 'WIDE');
@@ -367,7 +382,7 @@ check('(3) the scene-list table shows rows', await page.evaluate(() =>
 /* the SHORT road: its own steps, and none of the feature's */
 await devSeed('short', SKEY, { meta_title: 'Tiny', b1_setup: 'BEAT-ONE', s3_name: 'Ravi' });
 await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000 });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000, state: 'attached' });
 await settle();
 check('(3) story.html short: its own path', await page.evaluate(() =>
   [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path'))),

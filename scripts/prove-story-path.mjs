@@ -59,6 +59,9 @@ const FKEY = 'fms_filmmaker_combined_v1';
 const SKEY = 'fms_shortfilm_blueprint_v1';
 const blob = (key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), key);
 const story = () => page.evaluate(() => JSON.parse(localStorage.getItem('fms_story_v1') || '{}'));
+/* ONE STEP AT A TIME: only the current step is shown, so a proof that types
+   into a step opens it first (the address bar is how a link does it). */
+const step = async (id) => { await page.evaluate((i) => { location.hash = '#path-' + i; }, id); await page.waitForTimeout(500); };
 const settle = () => page.waitForTimeout(900);
 
 async function project(format, title) {
@@ -73,8 +76,8 @@ async function project(format, title) {
 }
 async function open(hash = '', search = '') {
   await page.goto(url('story.html' + search + hash), { waitUntil: 'networkidle' });
-  await page.waitForSelector('main > section.st-step', { timeout: 15000 });
-  await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 20000 });
+  await page.waitForSelector('main > section.st-step', { timeout: 15000, state: 'attached' });
+  await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 20000, state: 'attached' });
   await page.waitForTimeout(400);
 }
 const pathIds = () => page.evaluate(() => [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path')));
@@ -104,35 +107,40 @@ check('feature: the format is not chosen first — the outline says what it is u
   document.querySelector('#path-outline .st-using').textContent.replace(/\s+/g, ' ').trim().startsWith('Using Save the Cat! until you choose a scene order')), true);
 
 /* the idea step asks the blueprint's questions inline and writes the blueprint's own key */
+await step('idea');
 await page.fill('#stIdea', 'A dragon who is afraid of fire.');
 await page.fill('#path-idea [data-key="s1_whatif"]', 'WHATIF-ONCE');
 await settle();
 check('feature: the blueprint answer typed in the Idea step is in the blueprint blob', (await blob(FKEY)).s1_whatif, 'WHATIF-ONCE');
 check('feature: …and nowhere in the story model', (await story()).s1_whatif, undefined);
-await page.click('#path-idea .st-step-nav .btn');   // NEXT
-check('feature: Next goes to the first empty step after this one (the Logline) and lands on it', [await page.evaluate(() => location.hash), await inView('logline')], ['#path-logline', true]);
+await page.click('#path-idea .stp-nav .btn.primary');   // NEXT
+check('feature: Next goes to the following step (the Logline) and lands on it', [await page.evaluate(() => location.hash), await inView('logline')], ['#path-logline', true]);
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('[data-bp="idea"] .sg-steps', { timeout: 15000 });
+await page.waitForSelector('[data-bp="idea"] .sg-steps', { timeout: 15000, state: 'attached' });
 check('feature: the idea survives a reload', await page.inputValue('#stIdea'), 'A dragon who is afraid of fire.');
 check('feature: …and so does the blueprint answer', await page.inputValue('#path-idea [data-key="s1_whatif"]'), 'WHATIF-ONCE');
 check('feature: the Idea step is ticked', await page.evaluate(() => document.querySelector('.st-path-tab[data-path="idea"]').classList.contains('is-done')), true);
 
 /* a Bible card writes the blueprint's key too, once */
+await step('bible');
 await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
 await settle();
 check('feature: a Story Bible answer is stored under the blueprint’s key', (await blob(FKEY)).s3_theme, 'THEME-ONCE');
 
 /* choosing the scene order in Scene order, and only there */
+await step('structure');
 await page.click('.st-fw[data-fw="three_act"]');
 await page.waitForTimeout(300);
 check('feature: picking a scene order stores the choice', [(await story()).framework, (await story()).frameworkChosen], ['three_act', true]);
 check('feature: the "Using … until you choose" line is gone', await page.evaluate(() => document.querySelectorAll('.st-using').length), 0);
 
 /* the outline, the lock */
+await step('outline');
 await page.click('#path-outline [data-st="step-add"]');
 await page.waitForTimeout(300);
 await page.fill('#path-outline .st-ol-text', 'A dragon hatches.');
 await page.waitForTimeout(900);
+await step('lock');
 await page.click('#path-lock [data-st="lock"]');
 await page.waitForTimeout(400);
 let st = await story();
@@ -145,14 +153,15 @@ check('feature: the Lock step shows it, and the path step is done', await page.e
   document.querySelector('#path-lock .st-coverage').textContent.startsWith('Locked'),
   document.querySelector('.st-path-tab[data-path="lock"]').classList.contains('is-done')]), [true, true]);
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 15000 });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 15000, state: 'attached' });
 check('feature: the lock survives a reload', (await story()).outlineLockedAt, st.outlineLockedAt);
 check('feature: …and the page still shows it locked', await page.evaluate(() => !!document.querySelector('#path-lock [data-st="unlock"]')), true);
+await step('lock');
 await page.click('#path-lock [data-st="unlock"]');
 await page.waitForTimeout(400);
 check('feature: Unlock clears it', (await story()).outlineLockedAt, '');
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 15000 });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 15000, state: 'attached' });
 check('feature: …and it stays cleared after a reload', await page.evaluate(() => [!!document.querySelector('#path-lock [data-st="lock"]'), document.querySelector('#path-outline .st-ol-text').hasAttribute('readonly')]), [true, false]);
 
 /* old links */
@@ -184,6 +193,7 @@ check('short: no feature-only card, no feature-only key', await page.evaluate(()
 }), [['characters', 'world', 'conflict'], []]);
 check('short: the outline defaults to the Short Five until a scene order is chosen', await page.evaluate(() =>
   document.querySelector('#path-outline .st-using').textContent.includes('Short Film Five-Beat')), true);
+await step('idea');
 await page.fill('#path-idea [data-key="s1_seed"]', 'SEED-ONCE');
 await settle();
 check('short: a Seed answer is stored in the SHORT blueprint blob', [(await blob(SKEY)).s1_seed, await page.evaluate((k) => localStorage.getItem(k), FKEY)], ['SEED-ONCE', null]);
@@ -195,6 +205,24 @@ await open();
 check('short: a feature-only card appears once its feature key holds an answer', await page.evaluate(() =>
   [[...document.querySelectorAll('[data-sb-card]')].map((c) => c.getAttribute('data-sb-card')), document.querySelector('.sb [data-key="s3_theme"]') ? document.querySelector('.sb [data-key="s3_theme"]').value : null]),
 [['characters', 'world', 'conflict', 'theme'], 'OLD-THEME']);
+
+/* the owner's rule: one step at a time, and scrolling never runs into the next */
+await project('feature', 'Proof Stepper');
+await open('#path-idea');
+const shown = () => page.evaluate(() => [...document.querySelectorAll('main > section')].filter((s) => !s.hidden).map((s) => s.id));
+check('one step shown at a time', await shown(), ['path-idea']);
+check('every data-key stays in the DOM while hidden', await page.evaluate(() => document.querySelectorAll('section[hidden] [data-key]').length > 0), true);
+await page.evaluate(() => { for (let i = 0; i < 20; i++) window.scrollBy(0, 3000); });
+await page.waitForTimeout(300);
+check('scrolling to the end of a step reveals no other step', await shown(), ['path-idea']);
+await page.click('#path-idea .stp-nav .btn.primary');
+check('Next shows the next step only and lands at its top', [await shown(), await inView('logline')], [['path-logline'], true]);
+await page.click('#path-logline .stp-nav .btn:not(.primary)');
+check('Back returns', [await shown(), await page.evaluate(() => location.hash)], [['path-idea'], '#path-idea']);
+await open('#pitch');
+check('#pitch opens the Pitch deck step alone', await shown(), ['pitch']);
+await open('#logline');
+check('#logline opens the Logline step', await shown(), ['path-logline']);
 
 check('no page errors', errors, []);
 await browser.close();

@@ -236,7 +236,7 @@ export function mountStageGuide(host, { stage } = {}) {
     started = true;
     import('./stage-guide-body.js').then((m) => {
       if (!body.isConnected) return;
-      const inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover });
+      const inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
       flushLast = inst && inst.flush;
     }).catch((e) => {
       started = false;

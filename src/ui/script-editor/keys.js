@@ -75,6 +75,12 @@ export function wireKeys(root, ed, o) {
         if (act.type !== el.type) o.setElementTypeAt(i, act.type);
         break;
       case 'return':
+        /* ALL CAPS + Return in an action line, or a ">" forced
+           transition: the line was a character or a transition. */
+        if (act.op !== 'change' && o.inference && el.type === 'action' && ta.value.trim() && splitAt(ta) === null) {
+          const became = o.inference.onReturn(i, ta);
+          if (became) { ed.addElement(i, Keys.returnNext(became, prefs, o.known())); break; }
+        }
         /* Return with the caret INSIDE the text splits the line there
            (UX audit L26): the text after the caret becomes the next
            element, in the SAME type — half a speech is still dialogue —

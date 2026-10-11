@@ -37,6 +37,7 @@ import {
   NATIVE_SIZING, autosizeMany, autosize
 } from './rows.js';
 import { wireKeys, splitAt } from './keys.js';
+import { createInference } from './inference.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
@@ -59,6 +60,11 @@ export function mountEditor(host, opts) {
   const smart = o.smart;
   /* false on the writing-only page: no per-row select or icon buttons. */
   const rowChrome = o.rowChrome !== false;
+  // INT./EXT., ALL CAPS + Return and the Fountain marks; see inference.js.
+  const inference = createInference({
+    getElements: () => els(),
+    setElementType: (i, t) => setElementType(i, t)
+  });
 
   /* Which dual-dialogue pairs the page was last BUILT with. A patch that
      changes the pairing (a line inserted inside a pair, a flag whose
@@ -284,6 +290,7 @@ export function mountEditor(host, opts) {
     if (i < 0 || !list[i]) return;
     const row = rowOf(list[i].id);
     const el = list[i];
+    inference.noteTypeChange(el.id);
     el.type = type;
     // Only a cue can be the second half of a dual pair (Phase 1).
     if (type !== 'character') delete el.dual;
@@ -401,6 +408,7 @@ export function mountEditor(host, opts) {
     if (i < 0) return;
     const el = els()[i];
     el.text = ta.value;
+    inference.onInput(i, ta);
     autosize(ta);
     o.refreshCounters();
     persist();
@@ -497,6 +505,7 @@ export function mountEditor(host, opts) {
     ...o,
     persistNow,
     idOf,
+    inference,
     setElementTypeAt: setElementType,
     signal
   });

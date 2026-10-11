@@ -3779,3 +3779,20 @@ html {
                                 var(--chrome) calc(100% - var(--s6)), transparent);
   }
 }
+
+/* ---- src/ui/dialog.js: the app's own confirm / alert / prompt ---- */
+.dlg .dlg-field {
+  width: 100%;
+  margin: var(--s2) 0 var(--s4);
+  padding: var(--s2) var(--s3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+}
+.dlg .dlg-field:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.dlg .dlg-hint { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.dlg .dlg-check { display: flex; gap: var(--s2); align-items: center; margin: 0 0 var(--s4); font-size: var(--t-small); color: var(--ink); }
+.dlg .modal-actions .mbtn.primary.danger { background: var(--danger); border-color: var(--danger); color: var(--danger-on, var(--brand-on)); }
+.dlg .modal-actions .mbtn[disabled] { opacity: .5; cursor: not-allowed; }

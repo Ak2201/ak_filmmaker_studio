@@ -86,6 +86,10 @@ import './no-project.js';
    fetches the drawer — with both blueprints' step JSON behind it —
    only on a page some step actually lands on. Side effect only. */
 import './blueprint-drawer-mount.js';
+/* The app's own confirm / alert / prompt (src/ui/dialog.js), also on
+   window for the few callers outside the module graph. */
+import Dialog from './dialog.js';
+if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 

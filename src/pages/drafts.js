@@ -171,10 +171,8 @@ function render() {
   if (!hasProject) {
     /* #title is a nav target: it renders in every state (CLAUDE.md,
        "a nav target must not depend on data existing"). */
-    main.append(h('section#title.dr-card', {}, [h('p.dr-sub', {}, [
-      document.createTextNode('Open a project first. '),
-      h('a', { href: 'index.html', text: 'Go to the studio' })
-    ])]));
+    /* Heading only: the NO PROJECT OPEN banner says the rest, once. */
+    main.append(h('section#title.dr-card', {}, [h('h2.dr-h', { text: 'Title page' })]));
     app.replaceChildren(main);
     mountShell();
     return;

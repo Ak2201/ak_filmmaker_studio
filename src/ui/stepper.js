@@ -33,7 +33,9 @@ export function showOnly(panels, id) {
   for (const p of panels) { if (p.el) p.el.hidden = p.id !== id; }
 }
 
-export function stepFooter(panels, id) {
+/* `countText(i, panels)` overrides "Step N of M" (Story counts only its
+   path; the sections after it say so instead of taking a number). */
+export function stepFooter(panels, id, { countText = null } = {}) {
   const i = idx(panels, id);
   if (i < 0) return null;
   const prev = panels[i - 1], next = panels[i + 1];
@@ -41,7 +43,7 @@ export function stepFooter(panels, id) {
   const go = (p, text, cls) => h('button.btn' + cls, { type: 'button', 'data-stepper-go': p.id, text });
   return h('div.st-step-nav.stp-nav', {}, [
     prev ? go(prev, '← BACK: ' + String(prev.label).toUpperCase(), '') : null,
-    h('span.stp-count', { text: 'Step ' + (i + 1) + ' of ' + panels.length }),
+    h('span.stp-count', { text: countText ? countText(i, panels) : 'Step ' + (i + 1) + ' of ' + panels.length }),
     next ? go(next, 'NEXT: ' + String(next.label).toUpperCase() + ' →', '.primary') : null
   ].filter(Boolean));
 }

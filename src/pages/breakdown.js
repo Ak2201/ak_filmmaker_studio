@@ -33,7 +33,10 @@ import { flushStorage } from '../lib/store.js';
 import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
-import { loadScript, isNumberingLocked, sceneNumbers } from '../lib/script.js';
+import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
+import { renderScriptOverview } from '../ui/script-overview.js';
+import { wireBeatBoard } from '../ui/beat-board.js';
+import { wireCharacters } from '../ui/characters-panel.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
@@ -624,6 +627,7 @@ function renderBin() {
    focus falls to <body> (UX audit M1; visualize.js's pattern). */
 let STATUS = '';
 function render(focus) {
+  scriptDoc = null;   // the Script Breakdown tab re-reads the script on every render
   const scenes = Scenes.listScenes();
   const main = h('main', { id: 'main' });
   main.append(renderHeader(scenes));
@@ -679,7 +683,7 @@ function render(focus) {
      a song list is decided before the scenes are, so hiding it until a
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
-  main.append(renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+  main.append(renderScriptOverview(scenes, { from: new URLSearchParams(location.search).get('from') }), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
   if (focus) {
@@ -968,6 +972,30 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   await flushStorage().catch(() => {});
   toastRun(res);
   render('#overview');
+});
+
+/* The Script Breakdown tab hosts the beat board and the characters
+   panel (moved from write.html). Both edit the script through this
+   page's own doc and save path; a script doc is read fresh per action. */
+let scriptDoc = null;
+const getScriptDoc = () => (scriptDoc || (scriptDoc = loadScript()));
+wireCharacters({
+  getDoc: getScriptDoc,
+  scriptChanged: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } }
+});
+wireBeatBoard({
+  getDoc: getScriptDoc,
+  saveDoc: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } },
+  rerender: () => { scriptDoc = null; render('#script'); },
+  blankElement
+});
+delegate(document, 'click', '[data-action=run-breakdown-script]', async () => {
+  let res;
+  try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }
+  await flushStorage().catch(() => {});
+  scriptDoc = null;
+  toastRun(res);
+  render('#script');
 });
 
 render();

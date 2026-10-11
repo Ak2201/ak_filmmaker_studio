@@ -392,7 +392,7 @@ function renderCover() {
 
   return h('section.cover', {}, [
     h('div', {}, [
-      h('div.cover-mark', { text: 'A reference companion to The Filmmaker\'s Blueprint' }),
+      h('div.cover-mark', { text: 'A reference companion to every stage of the studio' }),
       h('h1.cover-title', {}, [
         'The ', h('span.light', { text: 'Filmmaker\'s' }), h('br'), 'Library.'
       ]),

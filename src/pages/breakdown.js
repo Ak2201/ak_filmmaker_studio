@@ -45,7 +45,7 @@ function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   return h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Breakdown · one scene model, three views' }),
-    h('h1.bd-title', { text: 'Scene Breakdown.' }),
+    h('h1.bd-title', { text: 'Breakdown.' }),
     h('p.bd-deck', {
       text: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
           + 'the sides, the shot list and the call sheet all read from this, so it '

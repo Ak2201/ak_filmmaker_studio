@@ -337,7 +337,10 @@ function renderChecklist() {
       h('a.tw-link', { href: it.href }, [it.label, h('span.visually-hidden', { text: ok ? ' — done' : ' — not yet' })])
     ]));
   });
-  const tourBtn = t.active
+  /* While the invitation above is on screen it is the one offer of the
+     tour; the list would only say it a second time. */
+  const inviting = !t.active && !t.dismissed && !t.finished;
+  const tourBtn = inviting ? null : t.active
     ? h('button.btn.primary', { type: 'button', 'data-tour-act': 'resume', text: 'Resume the tour' })
     : h('button.btn.primary', { type: 'button', 'data-tour-act': 'start', text: t.finished ? 'Take the tour again' : 'Take the tour' });
   sec.append(h('div.section-inner', {}, [
@@ -357,7 +360,7 @@ function renderChecklist() {
     h('div.tw-actions', {}, [
       tourBtn,
       h('button.btn', { type: 'button', 'data-tour-act': 'hide-list', text: 'Hide this list' })
-    ])
+    ].filter(Boolean))
   ]));
 
   if (listHost && listHost.isConnected) { listHost.replaceWith(sec); listHost = sec; return; }

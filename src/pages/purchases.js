@@ -83,7 +83,7 @@ function render() {
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'No cloud, no purchases.', 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time.'));
   } else if (!signedIn) {
-    const sec = section('signin', 'Administrators', 'Sign in.', 'Only the studio’s administrators can open this page. Sign in with an administrator’s Google account to see it.');
+    const sec = section('signin', 'Administrators', 'Sign in.', 'Use an administrator’s Google account.');
     sec.append(h('div.ad-actions', {}, [h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })]));
     body.append(sec);
   } else if (!st) {

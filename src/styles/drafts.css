@@ -9,7 +9,7 @@
   gap: var(--s4);
   min-width: 0;
 }
-.dr-main .bd-head { padding-inline: 0; }
+.dr-main .bd-head { padding-inline: 0; max-width: none; margin-inline: 0; }
 .dr-bar {
   display: flex;
   flex-wrap: wrap;

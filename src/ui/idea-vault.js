@@ -12,8 +12,7 @@ import * as Story from '../lib/story.js';
 
 export function renderVault(s) {
   const sec = h('div.st-vault');
-  sec.append(h('h2.bd-h2', { text: 'Idea Vault' }));
-  sec.append(h('p.bd-sub', { text: 'Clippings for this film — a headline, a line from an article, a reference. The Chrome extension’s “Send to ' + BRAND.name + '” lands here with the page it came from; you can also add one by hand.' }));
+  sec.append(h('p.bd-sub', { text: 'The Chrome extension’s “Send to ' + BRAND.name + '” lands here with the page it came from; you can also add one by hand.' }));
   const add = h('div.st-vault-add');
   add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
   add.append(h('textarea#stClip.st-text', { rows: 2 }));

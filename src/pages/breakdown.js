@@ -34,9 +34,7 @@ import { runBreakdown } from '../lib/breakdown-run.js';
 import { commitImportedScript } from '../lib/script-commit.js';
 import { renderOverview, setView, mountLearn, say as sayStatus } from '../ui/breakdown-overview.js';
 import { loadScript, saveScript, blankElement, isNumberingLocked, sceneNumbers } from '../lib/script.js';
-import { renderScriptOverview } from '../ui/script-overview.js';
-import { wireBeatBoard } from '../ui/beat-board.js';
-import { wireCharacters } from '../ui/characters-panel.js';
+import { renderScriptOverview, hydrateScriptParts } from '../ui/script-overview.js';
 import { suggestAll, suggestReport, describeMatch, isConfident } from '../lib/screenplay-analysis.js';
 
 const app = document.getElementById('app');
@@ -686,6 +684,7 @@ function render(focus) {
   main.append(renderScriptOverview(scenes, { from: new URLSearchParams(location.search).get('from') }), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
 
   app.replaceChildren(main);
+  hydrateScriptParts(wireScriptParts);
   if (focus) {
     const node = document.querySelector(focus);
     if (node) node.focus();
@@ -979,16 +978,18 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
    page's own doc and save path; a script doc is read fresh per action. */
 let scriptDoc = null;
 const getScriptDoc = () => (scriptDoc || (scriptDoc = loadScript()));
-wireCharacters({
-  getDoc: getScriptDoc,
-  scriptChanged: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } }
-});
-wireBeatBoard({
-  getDoc: getScriptDoc,
-  saveDoc: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } },
-  rerender: () => { scriptDoc = null; render('#script'); },
-  blankElement
-});
+function wireScriptParts(bb, ch) {
+  ch.wireCharacters({
+    getDoc: getScriptDoc,
+    scriptChanged: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } }
+  });
+  bb.wireBeatBoard({
+    getDoc: getScriptDoc,
+    saveDoc: () => { try { saveScript(getScriptDoc()); } catch (e) { console.warn('[breakdown] save script', e); } },
+    rerender: () => { scriptDoc = null; render('#script'); },
+    blankElement
+  });
+}
 delegate(document, 'click', '[data-action=run-breakdown-script]', async () => {
   let res;
   try { res = runBreakdown(); } catch (e) { console.warn('[breakdown] run', e); StudioUI.toast('The breakdown could not run on this script.', { type: 'error' }); return; }

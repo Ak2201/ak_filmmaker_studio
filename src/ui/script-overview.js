@@ -21,8 +21,9 @@ import {
   sliceScript, headingParts, castMatrix, cueName, formatDuration, titleCase,
   DIALOGUE_WPS, SPEAKER_BEAT, HEADING_SECONDS
 } from '../lib/screenplay-analysis.js';
-import { renderOutline } from './beat-board.js';
-import { renderCharacters } from './characters-panel.js';
+/* The beat board and the characters panel are lazy: they are most of
+   this tab's weight and breakdown.html's first paint should not carry
+   them. Placeholders render now; hydrateScriptParts() fills them. */
 
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many || one + 's');
 const words = (t) => String(t || '').split(/\s+/).filter(Boolean).length;
@@ -122,7 +123,7 @@ function outlinePart(d) {
       cell(s.n, 'bdo-num'), cell(s.heading), cell(formatPages(Math.round(s.pages * 8) / 8) + ' pp')
     ])), 'Scene outline'));
   }
-  wrap.append(renderOutline());
+  wrap.append(h('div.so-lazy', { 'data-so-lazy': 'outline' }));
   return wrap;
 }
 
@@ -150,8 +151,23 @@ export function renderScriptOverview(scenes, opts = {}) {
   if (!hasScript) {
     wrap.append(h('p.bd-none', { text: 'No script yet. Write one on the Script page or import a file there, and this fills in.' }));
   }
-  wrap.append(overviewPart(d, scenes, els), outlinePart(d), h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), renderCharacters()]));
+  wrap.append(overviewPart(d, scenes, els), outlinePart(d), h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), h('div.so-lazy', { 'data-so-lazy': 'characters' })]));
   return wrap;
 }
 
-export default { renderScriptOverview, deriveScript };
+let wired = null;
+/** Fills the lazy parts of #script. `wire(bb, ch)` runs once, with the two
+    modules, so the page can hand them its doc and save path. */
+export function hydrateScriptParts(wire) {
+  if (!document.querySelector('[data-so-lazy]')) return Promise.resolve();
+  wired = wired || Promise.all([import('./beat-board.js'), import('./characters-panel.js')])
+    .then(([bb, ch]) => { try { wire(bb, ch); } catch (e) { console.warn('[script-overview] wire', e); } return [bb, ch]; });
+  return wired.then(([bb, ch]) => {
+    const o = document.querySelector('[data-so-lazy="outline"]');
+    if (o) o.replaceWith(bb.renderOutline());
+    const c = document.querySelector('[data-so-lazy="characters"]');
+    if (c) c.replaceWith(ch.renderCharacters());
+  }).catch((e) => console.warn('[script-overview] lazy parts', e));
+}
+
+export default { renderScriptOverview, deriveScript, hydrateScriptParts };

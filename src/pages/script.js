@@ -43,6 +43,7 @@ import '../styles/smarttype.css';
 import { mountEditor } from '../ui/script-editor/editor.js';
 import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
+import { mountStageGuide } from '../ui/stage-guide.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
   pageCount, formatPages
@@ -173,7 +174,9 @@ function buildTop() {
     { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T' },
     { label: 'Dictation', action: 'sc-dictate' },
     { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
-    { label: 'Format check', action: 'sc-check' }
+    { label: 'Format check', action: 'sc-check' },
+    '---',
+    { label: 'Stage guide', action: 'sc-guide', hint: 'questions' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
@@ -215,6 +218,11 @@ function render() {
   const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true });
   main.append(buildTop(), sheet, after, aside, buildChips());
   app.replaceChildren(main);
+  /* The blueprint's screenplay questions keep their saved answers here
+     (verify's key-union needs section#guide on a stage page). The page
+     is for writing, so the guide stays hidden until #guide asks for it. */
+  const guide = mountStageGuide(main, { stage: 'screenplay' });
+  if (guide) guide.hidden = location.hash !== '#guide';
 
   mountShell();
   wireActionBar();
@@ -604,4 +612,14 @@ mountFocusMode(() => doc);
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
 if (location.hash === '#import') openImport();
-addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); });
+function syncGuide() {
+  const g = document.getElementById('guide');
+  if (!g) return;
+  const show = location.hash === '#guide';
+  if (g.hidden === show) g.hidden = !show;
+  if (show) g.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); syncGuide(); });
+delegate(document, 'click', '[data-action="sc-guide"]', () => {
+  if (location.hash === '#guide') syncGuide(); else location.hash = '#guide';
+});

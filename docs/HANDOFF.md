@@ -158,6 +158,12 @@ inside the studio** (it needs a CSP change, a privacy-policy paragraph and
 contradicts "your work stays in your browser"; if ever wanted, put it on
 `start.html` only); positioning lines are in `docs/FEATURE-IDEAS.md`.
 
+**11 Oct 2026 — HISTORY item 31.** The screenplay space rebuilt the
+conventional way: `script.html` (writing only, beats beside it), `drafts.html`
+(numbered drafts in the script blob, PDF on demand, the leave prompt), and
+Script Breakdown as Pre-Production's first module. `write.html` redirects
+(`?stay=1` exempt; AI coverage and synopsis→script still live there).
+
 **10 Oct 2026 — HISTORY items 28–30.** The beginner pass on Story and
 Screenplay (favourite film, `learn()`, the Story Bible, a 15-fix script parser,
 one-click breakdown); the project-first hub (three doors, a five-stage

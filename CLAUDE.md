@@ -95,6 +95,9 @@ admin.html                                        the application console
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
+script.html drafts.html                           the Screenplay stage: writing
+                                                  only, and numbered drafts
+                                                  (write.html redirects there)
 edit.html deliverables.html                       Post-Production: the suite's
                                                   view of the shoot, and the
                                                   checklist of what leaves
@@ -1356,6 +1359,7 @@ numbered as they are in the history.
 | 25 | Beginner pass: Story and Screenplay (10 Oct 2026) | Done | HISTORY item 28. Fields with a blueprint key are written in the blueprint blob via `blueprint-store` merge-write, never on the character record; `learn()` returns null for unknown ids — filter before append. |
 | 26 | Project-first studio (10 Oct 2026) | Done | HISTORY item 29. The hub opens on three doors and the dashboard's five stage cards are derived in `journey.js`, never stored; "Suggested next" is advice and is never forced. The project switcher is CORE, so it runs on every shell page. |
 | 27 | Blueprints folded into the stages (10 Oct 2026) | Done | HISTORY item 30. Stage guides write only through `blueprint-store`; the redirect is exempt with `?stay=1`; verify's key-union is what protects saved answers now. |
+| 28 | The screenplay space, conventional (11 Oct 2026) | Done | HISTORY item 31. `script.html` writes, `breakdown.html#script` analyses, `drafts.html` versions. Drafts are `revisions` entries (no new key); "changed" is a hash. The editor core is `src/ui/script-editor/`; every type change still goes through `setElementType`. The stage guide sits hidden behind `#guide` on script.html. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

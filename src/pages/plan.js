@@ -265,7 +265,7 @@ function dayTable(entry) {
     tr.append(
       h('td.num', { text: scene.number || String(i + 1) }),
       h('td.pl-ie', { text: scene.intExt }),
-      h('td', { text: Locations.locationName(scene) || 'Location TBC' }),
+      h('td.pl-where', { text: Locations.locationName(scene) || 'Location TBC' }),
       h('td.pl-tod', { text: scene.dayNight }),
       h('td.pl-pages', { text: formatEighths(scene.eighths) }),
       h('td.pl-what', { text: scene.synopsis || '—' })

@@ -203,13 +203,10 @@ export function mountStageGuide(host, { stage } = {}) {
   ]);
   host.append(section);
 
-  if (!project) {
-    section.append(h('p.sg-empty', {}, [
-      'Open a project to answer these. ',
-      h('a', { href: 'index.html', text: 'Choose or start one on the hub →' })
-    ]));
-    return section;
-  }
+  /* No project: the section stays (it is a nav target) with its heading
+     only. The red NO PROJECT OPEN banner above the page already says so
+     and links to the hub (owner, 11 Oct 2026: say it once). */
+  if (!project) return section;
 
   const items = guideStepsLeft(stage, fmt);
   const cover = coverFields(stage, fmt);

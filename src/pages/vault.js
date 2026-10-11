@@ -57,8 +57,21 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     Story.saveStory(s);
     StudioUI.toast('Added to the end of the synopsis.');
   } else if (act === 'clip-del') {
-    Story.removeFromVault(el.getAttribute('data-clip'));
+    const id = el.getAttribute('data-clip');
+    const gone = Story.listVault().find((x) => x.id === id);
+    Story.removeFromVault(id);
     render();
+    if (gone) {
+      StudioUI.toast('Clipping removed.', {
+        action: 'UNDO',
+        onAction: () => {
+          if (Story.addToVault({ snippet: gone.snippet, url: gone.url, title: gone.title, at: gone.at, id: gone.id })) {
+            if (gone.beat) Story.updateVault(gone.id, { beat: gone.beat });
+            render();
+          }
+        }
+      });
+    }
   }
 });
 delegate(document, 'change', '[data-st-field="clip-beat"]', (e, el) => {

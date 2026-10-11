@@ -106,10 +106,12 @@ await page.goto(url('index.html'), { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.goto(url('shoot.html'), { waitUntil: 'networkidle' });
 check('(0) no project: the Guide section is still there', await page.evaluate(() => !!document.getElementById('guide')), true);
-check('(0) no project: it asks for a project and links to the hub', await page.evaluate(() => {
+/* Said once, by the page's NO PROJECT OPEN banner (owner, 11 Oct 2026),
+   not again inside the guide. */
+check('(0) no project: the banner asks for a project and links to the hub; the guide does not repeat it', await page.evaluate(() => {
+  const b = document.getElementById('studioNoProjectBanner');
   const s = document.getElementById('guide');
-  const a = s && s.querySelector('a[href="index.html"]');
-  return !!a && /Open a project/.test(s.textContent);
+  return !!b && !!b.querySelector('a[href="index.html"]') && !/Open a project/.test(s.textContent);
 }), true);
 check('(0) no project: it carries its tab label', await page.evaluate(() => document.getElementById('guide').getAttribute('data-tab-label')), 'Guide');
 

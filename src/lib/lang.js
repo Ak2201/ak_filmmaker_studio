@@ -67,6 +67,14 @@ export function setLang(next) {
   current = v;
   try { localStorage.setItem(LANG_KEY, v); } catch (e) { /* private mode */ }
   document.documentElement.setAttribute('data-lang', v);
+  /* Every toggle on the page follows the change. Only the study page
+     re-rendered its own, so on the blueprints the pressed button stayed
+     "English" after choosing Tanglish until the next load. */
+  document.querySelectorAll('.lang-btn[data-lang]').forEach((b) => {
+    const on = b.dataset.lang === v;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
   setLangAttr();
   listeners.forEach((cb) => { try { cb(v); } catch (e) { console.warn('[lang]', e); } });
   return v;
@@ -131,6 +139,12 @@ export function initLang() {
   setLangAttr();
   return currentLang();
 }
+
+/* The chosen language is on <html> from the first script, as the
+   * stylesheet that keys off it expects (initLang only ran on the study
+   * page, so a reload on any other page left the attribute unset). Reads
+   * storage, writes nothing. */
+if (typeof document !== 'undefined') document.documentElement.setAttribute('data-lang', currentLang());
 
 if (typeof window !== 'undefined') {
   window.StudioLang = { currentLang, setLang, onLangChange, t, langToggle, initLang, LANGS };

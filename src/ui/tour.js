@@ -205,7 +205,11 @@ async function showStep(i, { focus = true } = {}) {
     if (el) {
       ring = el;
       el.setAttribute('data-tour-on', '');
-      try { el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) { /* old engine */ }
+      /* Centre a small anchor; a tall one (the whole screenplay, the
+         breakdown) is shown from its TOP — centring a 100,000px section
+         parked the reader in the middle of the script. */
+      const tall = el.getBoundingClientRect().height > window.innerHeight * 0.6;
+      try { el.scrollIntoView({ block: tall ? 'start' : 'center', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) { /* old engine */ }
     }
     pop = stepCard(i, opts);
     document.body.append(pop);

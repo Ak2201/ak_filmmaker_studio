@@ -85,3 +85,6 @@
 @media (prefers-reduced-motion: reduce) {
   [role="tabpanel"].tabs-enter { animation: none; }
 }
+
+/* a heading that only repeats its tab's label (tabs.js dedupeHeads) */
+.tabs-dup { display: none !important; }

@@ -443,10 +443,13 @@ const EXPECTED = {
      that happens again this row stops firing, the anti-rot check
      fails the run, and the answer is to delete it, not to re-add the
      words. */
-  story: {
-    qualities: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated',
-    loglines: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated'
-  },
+  /* Emptied 11 Oct 2026: the deliberate re-baseline after the full-app
+     sweep recaptured the oracle without that video's title, so the row
+     stopped firing — the case the note above says to delete it in. The
+     host move to filmmakerstudio.in recaptured it again the same day,
+     for the footer's printed address; neither recapture moved a
+     data-key. */
+  story: {},
   edit: {},
   deliverables: {},
   screening: {},

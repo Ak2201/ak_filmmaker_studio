@@ -140,7 +140,7 @@
   line-height: var(--lh-snug);
   color: var(--ink-muted);
 }
-.rp-table td.loc { font-weight: 600; color: var(--ink); }
+.rp-table td.loc { font-weight: 600; color: var(--ink); min-width: 12rem; }
 .rp-table td.numeric {
   width: 1%;
   font-family: var(--f-mono);
@@ -467,6 +467,12 @@
 /* one-liner */
 .rp-ol { min-width: 42rem; }
 .rp-ol td, .rp-ol th { padding-block: var(--s1); }
+/* Below the desk the table is a scroll container (widgets.css), so its
+   cells shrink-wrap to the column: the Set name broke letter by letter
+   and "EXT" to "EX / T". The short cells stay on one line and the set
+   keeps a readable width; the table scrolls sideways instead. The last
+   column (the cast list) is free to wrap. */
+.rp-ol td.mono:not(:last-child) { white-space: nowrap; }
 .rp-ol .rp-ol-head th {
   padding: var(--s2) var(--s3);
   background: var(--paper-sunk);

@@ -10,6 +10,11 @@ import { h } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
 import * as Story from '../lib/story.js';
 
+/* "11 Oct 2026": the same unambiguous form the Drafts page prints, never
+   the locale's 10/11/2026, which reads two ways. */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayLabel = (at) => { const d = new Date(at); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); };
+
 export function renderVault(s) {
   const sec = h('div.st-vault');
   sec.append(h('p.bd-sub', { text: 'The Chrome extension’s “Send to ' + BRAND.name + '” lands here with the page it came from; you can also add one by hand.' }));
@@ -29,7 +34,7 @@ export function renderVault(s) {
     let host = '';
     try { host = it.url ? new URL(it.url).hostname : ''; } catch (e) { host = ''; }
     if (host) meta.append(h('a.st-clip-src', { href: it.url, target: '_blank', rel: 'noopener noreferrer', text: host }));
-    meta.append(h('span.st-muted', { text: new Date(it.at).toLocaleDateString() }));
+    meta.append(h('span.st-muted', { text: dayLabel(it.at) }));
     const ps = h('select', { 'data-st-field': 'clip-beat', 'data-clip': it.id, 'aria-label': 'Pin this clipping to a beat' });
     ps.append(h('option', { value: '', text: 'Pin to a beat…' }));
     fw.beats.forEach((b) => ps.append(h('option', { value: fw.id + ':' + b.id, text: b.label })));

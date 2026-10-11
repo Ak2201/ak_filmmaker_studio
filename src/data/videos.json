@@ -280,10 +280,9 @@
       "channel": null,
       "minutes": null,
       "for": [
-        "step:feature/step-01",
-        "step:short/step-01"
+        "module:story"
       ],
-      "why": "Turning a seed into a one-page story.",
+      "why": "Turning a seed into a one-page story. On the Story module, not the Idea step: it is about the synopsis.",
       "fit": 3,
       "verified": false,
       "approved": true,
@@ -361,7 +360,7 @@
       "channel": "Akash Vijay",
       "minutes": null,
       "for": [
-        "step:feature/step-01"
+        "module:screenplay"
       ],
       "why": "Tamil-scene starting point for a first screenplay.",
       "fit": 3,

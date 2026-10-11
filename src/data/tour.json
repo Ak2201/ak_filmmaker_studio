@@ -30,8 +30,8 @@
     },
     {
       "id": "write",
-      "page": "write",
-      "href": "write.html#screenplay",
+      "page": "script",
+      "href": "script.html#screenplay",
       "anchor": [
         "[data-tour=\"write\"]",
         "#screenplay",
@@ -66,6 +66,19 @@
       "body": "Drag the strips into days. The day out of days, the calendar and the call sheets follow the board."
     },
     {
+      "id": "budget",
+      "page": "budget",
+      "href": "budget.html#estimate",
+      "anchor": [
+        "[data-tour=\"budget\"]",
+        "#estimate",
+        "#main"
+      ],
+      "title": "Budget: what the schedule costs",
+      "body": "The estimate reads the days off your stripboard and the rates off the Chennai tables, and every figure stays editable. Change a shoot day and the number here follows it.",
+      "doneBody": "That is the plan priced. Next, the people it needs."
+    },
+    {
       "id": "callsheet",
       "page": "contacts",
       "href": "contacts.html#call-sheets",
@@ -89,6 +102,34 @@
       ],
       "title": "Shoot day: on the phone, on the set",
       "body": "Today's scenes, biggest first, with who is called. Mark each one shot, part or dropped; the edit log reads those marks to say what is in the can and what is still owed.",
+      "doneBody": "Marked. The edit log reads those marks next."
+    },
+    {
+      "id": "edit",
+      "page": "edit",
+      "href": "edit.html#guide",
+      "anchor": [
+        "[data-tour=\"edit\"]",
+        "#guide",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Edit log: what is in the can",
+      "body": "The cut’s word on each scene, read from the marks you made on the floor. The set’s answer is final here — this page never writes back to a shoot day.",
+      "doneBody": "Now the last question: what actually leaves."
+    },
+    {
+      "id": "deliverables",
+      "page": "deliverables",
+      "href": "deliverables.html#festivals",
+      "anchor": [
+        "[data-tour=\"deliverables\"]",
+        "#festivals",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Deliverables: what leaves, and where it goes",
+      "body": "Picture, sound, text and legal, each with what a festival or a streamer asks for. The festival list carries the date each entry was last checked, so you can see what is stale.",
       "action": "Finish the tour"
     }
   ],

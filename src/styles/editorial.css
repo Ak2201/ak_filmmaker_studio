@@ -971,9 +971,25 @@ select.field-input {
   font-variant-numeric: tabular-nums;
 }
 /* Both children placed explicitly. Left to auto-placement they would
-   fill column 1 under the tile on any card whose attribution wraps. */
+   fill column 1 under the tile on any card whose attribution wraps.
+
+   AND THERE IS A THIRD CHILD NOW, which is how that came true anyway.
+   `library.js` appends a videoSlot to every rule card; rule 01 is the
+   one rule with an approved video, so exactly one card of fifty grew a
+   305px auto-placed item in column 1. Column 1 is the `auto` track
+   holding a 32px numeral tile, so it stretched to 305px and the text
+   column collapsed from 317px to 44px — the rule rendered one
+   character per line, about 3,000px tall.
+
+   Nothing could see it: the slot is `hidden` until video.js fills it
+   on idle, so it has no size at first paint; it is one card in fifty
+   on a page the gate opens at a tab that is not this one; and a column
+   collapsing INSIDE a card never widens the document, so the 390px
+   overflow check reads zero. The same blind spot the switcher panel
+   has, one component along. */
 .rule-card .rule-text { grid-column: 2; grid-row: 1; }
 .rule-card .attrib    { grid-column: 2; grid-row: 2; }
+.rule-card .vid-slot  { grid-column: 1 / -1; grid-row: 3; }
 .rule-card .rule-text { font-style: var(--sk-deck-style); margin-bottom: 0; }
 .rule-card .attrib::before { content: "— "; }
 .rules-grid { counter-reset: rule; }

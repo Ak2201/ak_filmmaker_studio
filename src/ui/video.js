@@ -5,8 +5,28 @@ import { approvedFor } from '../lib/videos.js';
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
 
+/* The video's own still, served from OUR origin (scripts/make-video-thumbs.mjs
+   fetched it once into public/media/vid/). NOT hotlinked from
+   i.ytimg.com: this block is a click-to-load facade, and an <img> on
+   Google's CDN would hand them every reader's IP on page load —
+   exactly what the facade exists to prevent, and what the "Plays from
+   YouTube" line promises has not happened yet.
+
+   `loading="lazy"` with explicit dimensions, like every other image
+   below the fold here, and `onerror` drops it so the two videos with
+   no still (and anything added before `npm run thumbs` is re-run)
+   degrade to the plain play button rather than a broken frame. */
+const poster = (yt) => h('img.vid-poster', {
+  src: '/media/vid/' + yt + '.webp',
+  alt: '', 'aria-hidden': 'true', loading: 'lazy', decoding: 'async',
+  width: 640, height: 360
+});
+
 export function facade(v) {
+  const img = poster(v.yt);
+  img.addEventListener('error', () => img.remove(), { once: true });
   return h('div.vid', { 'data-yt': v.yt, 'data-title': v.title }, [
+    img,
     h('button.vid-play', {
       type: 'button', 'data-action': 'video-play',
       'aria-label': 'Play: ' + v.title + (v.channel ? ' (' + v.channel + ')' : '')

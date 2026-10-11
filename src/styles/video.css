@@ -47,3 +47,35 @@
 @media (prefers-reduced-motion: reduce) { .vid-play { transition: none; } }
 .vid-modal .modal-close { font-size: var(--t-sm, .9rem); color: var(--ink); border: 1px solid var(--rule); }
 .vid-modal .modal-close:hover { background: var(--sk-slab-fill, var(--paper-raised)); }
+
+/* ---- the poster -------------------------------------------------
+   The still fills the facade and the existing play row sits over it.
+   A scrim rather than a flat darkening: the title has to stay legible
+   over a frame that might be any colour, and the gate's AA walk never
+   sees this surface because the image is not a token. */
+.vid-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
+}
+.vid:has(.vid-poster) .vid-play::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right,
+    color-mix(in srgb, #000 78%, transparent),
+    color-mix(in srgb, #000 42%, transparent) 70%,
+    color-mix(in srgb, #000 24%, transparent));
+}
+/* The row's own children have to clear the scrim. */
+.vid:has(.vid-poster) .vid-icon,
+.vid:has(.vid-poster) .vid-meta { position: relative; }
+/* Fixed light ink ON TOP OF A PHOTOGRAPH, not theme ink: the scrim is
+   dark in both themes because the frame underneath it is, so paper's
+   near-black text would vanish here. */
+.vid:has(.vid-poster) .vid-title { color: #fff; }
+.vid:has(.vid-poster) .vid-sub { color: rgba(255, 255, 255, .82); }
+.vid:has(.vid-poster) .vid-play { color: #fff; }

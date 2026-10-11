@@ -1293,6 +1293,29 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   min-width: 280px;
   padding: 0;
 }
+/* AND THE SAME BUG LIVES AT THE OTHER END OF THE RANGE. The note below
+   fixed the phone and stopped there; measured again on 11 Oct 2026, a
+   desktop is worse. From 1100px the studio rail is open by default, so
+   the switcher sits at x=92 — just right of the 76px rail — and a
+   280px panel hanging off its RIGHT edge starts at **-110**: a third of
+   it off the screen and 186px of it behind the rail. The rail wins the
+   paint even though the panel asks for a higher z-index, because the
+   rule below overrides the shared `position: fixed` with `absolute`,
+   which scopes that z-index to a parent stacking context sitting under
+   the rail. So the panel is both off-screen and underneath.
+
+   Anchored to the wrapper's LEFT at these widths instead: the panel
+   opens rightward into the page, away from the rail, and the only edge
+   it could ever reach is the right one — which scrolls the document
+   and therefore IS visible to verify's overflow check. The failure
+   mode moves from invisible to caught, which is the half that matters.
+
+   Between 720 and 1100 the wrapper is already far right (measured 529
+   at 820px, 709 at 1000px) and `right: 0` is correct there, so this is
+   deliberately scoped and not a global flip. */
+@media (min-width: 1100px) {
+  .switcher-dropdown { left: 0; right: auto; }
+}
 /* On a phone it pins to the BAR, not to the control — the same remedy
    the phase menus and the toolbar menus already have, for the same
    reason and one control along. `right: 0` on its own wrapper is

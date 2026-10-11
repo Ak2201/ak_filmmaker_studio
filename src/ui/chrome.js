@@ -1878,6 +1878,81 @@ try { loadSkin(); } catch (e) {}
    Two measurements of overlapping things, feeding two offsets that
    ADD, is worse than either. */
 
+/* ============================================================
+   A STRIP THAT SCROLLS SIDEWAYS HAS TO SAY SO
+   ------------------------------------------------------------
+   `shell.js` already does this for the stage strip: it flags which
+   edges have content past them and `chrome.css` fades that edge, "the
+   way a cut-off line of type reads as keep going". The same problem
+   existed in two other places and neither had the answer.
+
+     - THE PAGE TAB STRIPS (`.tabs`, the twelve pages tabs.js owns).
+       Measured at 390px: the Library hides 492px of its eight tabs,
+       the budget 418, reports 309, settings 217. A phone shows about
+       two and a half tabs and nothing suggests the rest exist.
+     - THE WIDE TABLES. visualize.js carries a worded hint — "Swipe
+       the table sideways for every column" — and it is the only one.
+       reports hides 142px, plan 101px across eighteen day tables, and
+       the blueprint's own pp-tables hide between 315 and 555.
+
+   Deriving it beats copying visualize's paragraph into three more
+   page modules: one mechanism, no per-page markup, and a table that
+   stops overflowing stops being flagged on its own.
+
+   `data-more` is the same attribute name and the same three values
+   shell.js uses, so chrome.css states the fade once for all of them.
+   The stage strip keeps its own implementation — it is wired into the
+   band's measuring and is not worth disturbing to save ten lines. */
+const EDGY = '.tabs, table.scene-table, table.pp-table, .equip-table, .beat-table';
+function markScrollEdges(el) {
+  if (!el) return;
+  const slack = el.scrollWidth - el.clientWidth;
+  if (slack <= 1) { el.removeAttribute('data-more'); return; }
+  const x = el.scrollLeft;
+  const left = x > 1, right = x < slack - 1;
+  const v = left && right ? 'left right' : left ? 'left' : right ? 'right' : '';
+  if (v) el.setAttribute('data-more', v); else el.removeAttribute('data-more');
+}
+function wireScrollEdges(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  for (const el of scope.querySelectorAll(EDGY)) {
+    if (el.dataset.edgeWired) continue;
+    el.dataset.edgeWired = '1';
+    let raf = 0;
+    const tick = () => { raf = 0; markScrollEdges(el); };
+    el.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
+    markScrollEdges(el);
+    /* The width that matters is the strip's own, and it changes
+       without a window resize: a tab panel swapping, a table gaining
+       a column, a font landing. RO rides the rendering loop, so the
+       one delayed re-measure covers a tab that is not compositing
+       yet — the same pair chrome's own tabWidth() needs. */
+    if (typeof ResizeObserver === 'function') {
+      let rRaf = 0;
+      new ResizeObserver(() => {
+        if (rRaf) return;
+        rRaf = requestAnimationFrame(() => { rRaf = 0; markScrollEdges(el); });
+      }).observe(el);
+    }
+    setTimeout(() => markScrollEdges(el), 600);
+  }
+}
+/* settings and admin replace `main` on every render, and the module
+   pages build their tables after data loads, so a one-shot pass at
+   init would wire the empty state and nothing else. */
+function watchScrollEdges() {
+  wireScrollEdges(document);
+  if (typeof MutationObserver !== 'function') return;
+  let raf = 0;
+  new MutationObserver(() => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = 0; wireScrollEdges(document); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => wireScrollEdges(document)).catch(() => {});
+  }
+}
+
 function autoInit() {
   try {
     // Offline support for EVERY page, not just the hub. This lives here
@@ -1921,6 +1996,7 @@ function autoInit() {
     if (document.querySelector('section.step, main, #app, .wrap')) {
       syncMobileActionBar();
     }
+    watchScrollEdges();
   } catch (e) {
     console.warn('[StudioUI] init error', e);
   }

@@ -1,0 +1,17 @@
+/* purchase.html — the user-side plan page. Plan cards, growth panels,
+   refund request and invoices bring their own sheets (plans, growth,
+   refunds); this one is only the page's measure, the same one the
+   console uses. Tokens and --sk-* only. */
+.pu-body {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: 0 var(--s7);
+  display: grid;
+  gap: var(--sk-grid-gap);
+}
+.pu-sec { display: grid; gap: var(--s4); }
+.pu-sec > .bd-eyebrow,
+.pu-sec > .bd-h2,
+.pu-sec > .bd-sub { margin-bottom: 0; }
+.pu-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }

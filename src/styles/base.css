@@ -221,7 +221,7 @@ label, summary, input, select, textarea {
             input[type="checkbox"], input[type="radio"],
             [role="menuitem"], [role="menuitemradio"], [role="option"], [role="tab"],
             summary, select,
-            input:not([type="hidden"], [type="checkbox"], [type="radio"], [type="range"])):not(.sh-plate-dot) {
+            input:not([type="hidden"], [type="checkbox"], [type="radio"], [type="range"])) {
     min-height: 44px;
   }
   /* A FIELD UNDER 16px MAKES iOS SAFARI ZOOM THE PAGE, AND IT DOES
@@ -251,7 +251,7 @@ label, summary, input, select, textarea {
   /* WIDTH too, for the icon-sized controls -- a 14px x on a breakdown
      chip, a +/- in a row -- which no min-height reaches. Buttons only:
      a field is as wide as its column says. */
-  :root :is(button, [role="button"], a.btn, .btn):not(.sh-plate-dot) {
+  :root :is(button, [role="button"], a.btn, .btn) {
     min-width: 44px;
   }
   button, [role="button"], a.btn, .btn {

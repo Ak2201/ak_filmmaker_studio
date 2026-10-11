@@ -101,7 +101,7 @@ export function welcomeCard() {
       h('p.deck', { text: 'Your plan is active — one payment, yours for good. Your invoice is under Plan invoices in Settings.' }),
       h('div.eps-actions', {}, [
         h('button.btn.primary', { 'data-action': 'new-project', text: 'START YOUR FILM' }),
-        h('a.btn', { href: 'settings.html#plan', text: 'SEE WHAT UNLOCKED' }),
+        h('a.btn', { href: 'purchase.html', text: 'SEE WHAT UNLOCKED' }),
         h('button.btn', { type: 'button', 'data-fr-action': 'dismiss-welcome', text: 'DISMISS' })
       ])
     ])
@@ -120,7 +120,7 @@ function renderSampleOnly() {
     h('div.eps-deck', { text: 'Your plan opens the sample project — ' + sample.scenes.length + ' scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
     h('div.iv-actions', {}, [
       h('button.btn.primary', { 'data-action': 'sample-project', text: 'OPEN THE SAMPLE' }),
-      h('a.btn', { href: 'settings.html#plan', text: 'SEE PLANS' })
+      h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })
     ])
   ]);
 }

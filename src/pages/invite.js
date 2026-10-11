@@ -43,7 +43,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
-import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
+import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
 
@@ -311,6 +311,19 @@ async function startTrial(btn) {
 function adoptLinkCode() {
   const code = codeFromLocation();
   if (!code) return;
+  /* `&demo=1` (the console's "Create demo link"): after the code lets
+     them in, land on the Dragon sample rather than the bare hub. Read
+     BEFORE the fragment is stripped. A browser that already holds a
+     code pass has nothing to submit, so it goes straight in. */
+  const demo = /(?:^#|&)demo=1(?:&|$)/.test(String(location.hash || ''));
+  if (demo) {
+    const c0 = cloud();
+    if (c0 && c0.getSession && c0.getSession()) { /* a signed-in visitor has no code to submit; the flag would only linger */ }
+    else {
+      markDemoPending();
+      if (getCodePass()) { location.replace(enterAddress()); return; }
+    }
+  }
   try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* ignore */ }
   const fill = () => {
     const box = document.getElementById('gtCode');

@@ -20,7 +20,33 @@
 import { h, delegate } from '../lib/dom.js';
 import { BRAND } from '../lib/brand.js';
 import { formatCode, normaliseCode, setCodePass, startInviteLink, errorSentence } from '../lib/gate.js';
+import Store from '../lib/store.js';
 import '../styles/gate.css';
+
+/* ---- the DEMO link: a pitch without a sign-in ----------------------
+   An admin makes one standard invite code labelled "Demo" and copies
+   invite.html#code=CODE&demo=1. Whoever opens it is let in on the code
+   alone (the code pass, as ever), and `demo=1` says where to take them:
+   the Dragon sample, opened on a device that has no film yet, and then
+   the dashboard — or straight to the dashboard when the device already
+   has films, which are never touched. Signing in later from Settings
+   works as for any code: cloud.js redeems the remembered code then.
+   sessionStorage only; nothing here is a stored key. */
+export const DEMO_PENDING_KEY = 'fms_demo_pending';
+export const DEMO_LAND_KEY = 'fms_demo_land';
+export const demoLink = (code) => new URL('invite.html#code=' + formatCode(code) + '&demo=1', location.href).href;
+export function demoPending() { try { return sessionStorage.getItem(DEMO_PENDING_KEY) === '1'; } catch (e) { return false; } }
+export function markDemoPending() { try { sessionStorage.setItem(DEMO_PENDING_KEY, '1'); } catch (e) { /* ignore */ } }
+/** Where a code-only visitor goes next. Returns the address. */
+export function enterAddress() {
+  if (!demoPending()) return 'index.html';
+  try { sessionStorage.removeItem(DEMO_PENDING_KEY); } catch (e) { /* ignore */ }
+  let n = 0;
+  try { n = Store.listProjects().length; } catch (e) { n = 0; }
+  if (n > 0) return 'dashboard.html';
+  try { sessionStorage.setItem(DEMO_LAND_KEY, '1'); } catch (e) { /* ignore */ }
+  return 'index.html?sample=1';
+}
 
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
@@ -160,7 +186,7 @@ async function submitCode(form) {
          itself on the first sign-in. */
       setCodePass(raw);
       try { sessionStorage.setItem('fms_sitegate_pass', '1'); } catch (e) { /* re-verified on arrival */ }
-      location.assign('index.html');
+      location.assign(enterAddress());
       return;
     }
   } catch (e) {
@@ -174,7 +200,7 @@ async function submitCode(form) {
 
 /* ---- FR-102 / FR-103: the admin console ------------------------- */
 
-const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null, showAllDecided: false,
+const admin = { codes: [], members: [], redemptions: [], projects: [], requests: [], loaded: false, busy: false, error: '', made: null, demo: null, demoUses: '50', demoDur: '168', showAllDecided: false,
   /* What the admin has typed into "Issue a code" but not submitted. The
      console redraws on every load — twice after each code it issues —
      and a redraw rebuilt the form from defaults, so a second code begun
@@ -333,6 +359,24 @@ export function adminSection(section, st) {
   }
   sec.append(form);
 
+  /* -- the demo link -- */
+  const demo = h('div.gt-create.gt-demo', { 'data-gate-form': 'demo' });
+  demo.append(h('h3.gt-h3', { text: 'Demo link' }));
+  demo.append(h('p.gt-meta', { text: 'For pitching: whoever opens the link is in with no sign-in and lands on the Dragon sample. They can still sign in later from Settings. Anything they make stays on their own device.' }));
+  const dUses = h('input#gtDemoUses', { type: 'number', min: 1, max: 1000, value: admin.demoUses, 'data-gate-field': 'demo-uses' });
+  const dDur = h('select#gtDemoDur', { 'data-gate-field': 'demo-dur' }, DURATIONS.map(([v, l]) => h('option', { value: v, text: l })));
+  dDur.value = admin.demoDur;
+  demo.append(h('div.gt-grid', {}, [
+    h('div.gt-field', {}, [h('label', { for: 'gtDemoUses', text: 'Uses' }), dUses]),
+    h('div.gt-field', {}, [h('label', { for: 'gtDemoDur', text: 'Expires after' }), dDur])
+  ]));
+  demo.append(h('button.btn.primary', { type: 'button', 'data-gate-action': 'create-demo', text: 'CREATE DEMO LINK' }));
+  if (admin.demo) {
+    demo.append(h('p.gt-made', {}, [h('span', { text: 'Demo link: ' }), h('code.gt-codeval.gt-link', { text: demoLink(admin.demo.code) }),
+      h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-demo', 'data-code': admin.demo.code, text: 'COPY DEMO LINK' })]));
+  }
+  sec.append(demo);
+
   /* -- codes -- */
   sec.append(h('h3.gt-h3', { text: `Codes (${admin.codes.length})` }));
   if (!admin.codes.length) sec.append(h('p.gt-meta', { text: 'None issued yet.' }));
@@ -426,6 +470,21 @@ async function createCode(form) {
   } catch (e) { toast(errorSentence(e, 'The code was not created.'), 'error'); }
 }
 
+async function createDemo() {
+  const g = gate();
+  const uses = Math.max(1, parseInt(document.getElementById('gtDemoUses').value, 10) || 1);
+  const hours = document.getElementById('gtDemoDur').value;
+  admin.demoUses = String(uses); admin.demoDur = hours;
+  try {
+    admin.demo = await g.admin.createCode({
+      passType: 'standard', maxRedemptions: uses, projectId: null, label: 'Demo',
+      expiresAt: hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null
+    });
+    await loadAdmin({ quiet: true });
+    rerender();
+  } catch (e) { toast(errorSentence(e, 'The demo link was not created.'), 'error'); }
+}
+
 /* ---- wiring ------------------------------------------------------ */
 
 let rerender = () => {};
@@ -499,6 +558,11 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
     } else if (act === 'copy') {
       await navigator.clipboard.writeText(formatCode(el.dataset.code));
       toast('Code copied.');
+    } else if (act === 'create-demo') {
+      await createDemo();
+    } else if (act === 'copy-demo') {
+      await navigator.clipboard.writeText(demoLink(el.dataset.code));
+      toast('Demo link copied — it opens the invite page, lets them in with no sign-in and lands on the Dragon sample.');
     } else if (act === 'copy-link') {
       await navigator.clipboard.writeText(startInviteLink(el.dataset.code));
       toast('Invite link copied — it opens the landing page and starts a 7-day trial on sign-in.');

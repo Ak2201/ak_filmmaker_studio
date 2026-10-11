@@ -253,3 +253,20 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
 }
 
 export default { SITE_GATE, isExempt, evaluate };
+
+/* THE DEMO LINK'S LANDING (src/ui/gate-ui.js, enterAddress). A visitor
+   who came in on a demo code with no film on the device is sent to
+   index.html?sample=1; the hub seeds the Dragon sample and announces it
+   as 'projects:changed' with reason 'sample'. That announcement, and
+   only while the one-shot session flag is set, takes them on to the
+   dashboard. The flag lives in sessionStorage, is cleared when it fires
+   and after 30 seconds, and a page that is not the hub never listens. */
+try {
+  if (sessionStorage.getItem('fms_demo_land') === '1' && /\/(index(\.html)?)?$/.test(location.pathname)) {
+    const done = () => { try { sessionStorage.removeItem('fms_demo_land'); } catch (e) { /* ignore */ } };
+    const off = Store.subscribe('projects:changed', (d) => {
+      if (d && d.reason === 'sample') { off(); done(); location.replace('dashboard.html'); }
+    });
+    setTimeout(() => { if (typeof off === 'function') off(); done(); }, 30000);
+  }
+} catch (e) { /* the demo landing is a courtesy, never a gate */ }

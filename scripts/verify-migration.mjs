@@ -246,7 +246,16 @@ const ALL_PAGES = [
   // The application console. Signed out here, so the capture is the
   // "sign in" state; the numbers and the queue are proved by
   // scripts/prove-gate.mjs against a fake Supabase.
-  { page: 'admin.html',      legacy: null, name: 'admin' }
+  { page: 'admin.html',      legacy: null, name: 'admin' },
+  // The Idea Vault's own page (it was a tab under story.html), the
+  // user-side Purchase page and the admin-only Purchases page. The last
+  // two are signed out here: the sign-in-first state is what is captured;
+  // the plans, the invoices and the five admin tabs are proved by
+  // scripts/prove-billing.mjs. BASELINE ROWS DO NOT EXIST YET: run
+  // `npm run baseline` once, deliberately, and say so in the commit.
+  { page: 'vault.html',      legacy: null, name: 'vault' },
+  { page: 'purchase.html',   legacy: null, name: 'purchase' },
+  { page: 'purchases.html',  legacy: null, name: 'purchases' }
 ];
 
 /* ---- THE BLUEPRINTS ARE BEING FOLDED INTO THE STAGE PAGES ----------
@@ -389,7 +398,10 @@ const EXPECTED = {
   deliverables: {},
   screening: {},
   invite: {},
-  admin: {}
+  admin: {},
+  vault: {},
+  purchase: {},
+  purchases: {}
 };
 
 
@@ -1471,13 +1483,11 @@ for (const spec of PAGES) {
        difference is that this one was in the thing whose job is to
        notice.
 
-       `.sh-plate` is in too — it is the one surface whose colours are
-       deliberately constant across themes, so it is the one most
-       likely to be wrong in exactly one of them.
+       `.sh-trial` (the trial strip, present only during a trial) is in too.
 
        Anything with text in it is measured, whether or not somebody
        thought of it. That is the whole difference. */
-    const ROOTS = 'main, .modal, .shortcut-sheet, .sh-bar, .sh-plate, .toolbar';
+    const ROOTS = 'main, .modal, .shortcut-sheet, .sh-bar, .sh-trial, .toolbar';
 
     /* A per-element name, built from the element and its two nearest
        classed ancestors. The old version printed the matched SURFACE

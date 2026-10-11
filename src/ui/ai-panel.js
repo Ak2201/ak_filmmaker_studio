@@ -82,7 +82,7 @@ export function proCard() {
   const box = h('div.ai-gate.ai-pro');
   box.append(h('p', {}, [h('strong', { text: 'AI tools come with Pro.' })]));
   box.append(h('p', { text: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click.' }));
-  box.append(h('p', {}, [h('a', { href: 'settings.html#plan', text: 'See plans' })]));
+  box.append(h('p', {}, [h('a', { href: 'purchase.html', text: 'See plans' })]));
   box.append(h('p', { text: 'Nothing you\u2019ve written is affected.' }));
   box.dataset.blocking = 'true';
   return box;

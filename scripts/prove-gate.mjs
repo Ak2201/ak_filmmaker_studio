@@ -360,7 +360,7 @@ try {
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Billing,Bills of Supply,Growth,Features', 'the console is eight tabs (Growth since schema §22–§23, Bills of Supply since §28), Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Purchases,Features', 'the console is six tabs (money moved to purchases.html), Overview selected: ' + tabs.join(', '));
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
     ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');
@@ -431,6 +431,29 @@ try {
     ok(await waitGate(p4, 'open'), 'a code-only browser that signs in has the code redeemed for the account');
     ok(F.db.members.has(USERS['tok-dan'].id) && F.db.codes.find((c) => c.code === 'LINKCODE2345').redemptions_count === 1, 'Dan is a member and the code is spent once');
     allErrors.push(...errs); await ctx4.ctx.close();
+  }
+
+  console.log('(n2) the demo link: in on a code, the Dragon sample, no sign-in');
+  F.db.sessions.clear();
+  {
+    const ctx = await browser.newContext({ serviceWorkers: 'block' });
+    await ctx.route(SB + '/**', handle);
+    await ctx.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(BASE + 'invite.html#code=LINK-CODE-2345&demo=1');
+    await page.waitForURL(/dashboard/, { timeout: 25000 }).then(() => ok(true, 'a demo link lets a signed-out visitor in and lands on the dashboard'), () => ok(false, 'a demo link lets a signed-out visitor in and lands on the dashboard (at ' + page.url() + ')'));
+    ok(!/code=|demo=/.test(page.url()), 'the code and the demo flag are gone from the address bar');
+    const projects = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]').length; } catch (e) { return -1; } });
+    ok(projects === 1, 'an empty device is given exactly one project, the Dragon sample (found ' + projects + ')');
+    ok(!!(await page.evaluate(() => localStorage.getItem('fms_invite_code_v1'))), 'the code is remembered in this browser, with no sign-in');
+    ok(!(await page.evaluate(() => sessionStorage.getItem('fms_demo_land'))), 'and the one-shot landing flag is spent');
+    // A device that already has a film is never given the sample: straight to the dashboard.
+    await page.goto(BASE + 'invite.html#code=LINK-CODE-2345&demo=1');
+    await page.waitForURL(/dashboard/, { timeout: 15000 }).catch(() => {});
+    const again = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]').length; } catch (e) { return -1; } });
+    ok(again === 1, 'a second visit does not add a second sample (' + again + ')');
+    allErrors.push(...errs); await ctx.close();
   }
 
   console.log('(c) signed out: code, Google, redeemed on return');
@@ -516,6 +539,13 @@ try {
        has to meet a sign-in to be worth its week, and the sign-in
        lives on start.html. The old form is not dead; see below. */
     ok(new RegExp('^' + BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'start\\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').test(link), 'a new code is shown as a LANDING link, code in the fragment: ' + link);
+    // The demo link (admin console, Access): one standard code labelled Demo, copied as invite.html#code=..&demo=1.
+    await page.fill('#gtDemoUses', '25');
+    await page.click('#admin-console [data-gate-action="create-demo"]');
+    await page.waitForSelector('.gt-demo .gt-link', { timeout: 8000 });
+    const demoLink = await page.textContent('.gt-demo .gt-link');
+    ok(/invite\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}&demo=1$/.test(demoLink) && demoLink.startsWith(BASE), 'Create demo link shows invite.html#code=…&demo=1: ' + demoLink);
+    ok(F.db.codes.some((c) => c.label === 'Demo' && c.pass_type === 'standard' && c.max_redemptions === 25), 'it issued a standard code labelled Demo with the uses asked for');
     /* And the old shape still builds, because every link already sent
        to somebody points at invite.html and a code is a thing people
        paste into a group chat months later. Read from the module

@@ -94,6 +94,21 @@
       "measured": 534320,
       "files": 15
     },
+    "vault": {
+      "bytes": 701440,
+      "measured": 637293,
+      "files": 23
+    },
+    "purchase": {
+      "bytes": 579584,
+      "measured": 526167,
+      "files": 19
+    },
+    "purchases": {
+      "bytes": 612352,
+      "measured": 555928,
+      "files": 17
+    },
     "admin": {
       "bytes": 629760,
       "measured": 572076,

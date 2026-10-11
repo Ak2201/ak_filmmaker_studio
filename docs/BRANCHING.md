@@ -34,6 +34,46 @@ git checkout develop && git merge --no-ff feature/<name> && git push origin deve
 Work in a worktree, never in the main checkout directory (it may have another
 branch checked out). Retry a push 5/10/20/30 s on an HTTP 500.
 
+## Production is PROMOTED, not pushed (owner, 11 Oct 2026)
+
+**A push to `main` no longer changes `filmmakerstudio.in`.** Vercel →
+Settings → Environments → Production → **Auto-assign Custom Production
+Domains is OFF**, so the owner holds the release.
+
+What a push to `main` now does: Vercel builds it and creates a
+Production Deployment with its own URL, which you can open and check.
+The custom domains — `filmmakerstudio.in`,
+`thefilmmakerstudio.vercel.app`, `ak-filmmaker-studio.vercel.app` —
+stay on whatever deployment they are on.
+
+To ship: Vercel → **Deployments** → the one you want → **Promote to
+Production**. That is the moment the public site changes, and it is a
+deliberate click rather than a side effect of a merge.
+
+The same screen is the rollback: promote an older deployment and the
+site is back, in seconds, without a revert commit or a rebuild. That
+is faster than git and should be the first move in an incident — fix
+forward afterwards.
+
+### The one interaction to know
+
+**`smoke.yml` fires on BUILD success, not on promotion.** Vercel emits
+`deployment_status` when the deployment finishes building; promoting
+emits nothing. So an automatic smoke run now tests the deployment that
+is still live — the OLD one — and passes for the wrong reason.
+
+That is a known limit, not a bug to chase. After promoting, smoke it
+yourself:
+
+```bash
+npm run smoke
+```
+
+or use the **Run workflow** button on the Smoke action, which takes an
+optional `base`. Treat the automatic run as a check that production is
+still healthy, and the manual run as the check that the thing you just
+promoted is good.
+
 ## What runs, and where (11 Oct 2026)
 
 Three layers, and they answer three different questions. The third

@@ -1571,3 +1571,66 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       covers every baselined feature and short key. `BLUEPRINT_PAGES_ARE_REDIRECTS`
       drops the old per-page rows. Storage keys and data-keys are
       byte-identical; there is no migration.
+
+31. **Project-first navigation and the Story path, end to end (11 Oct 2026).**
+    The studio stops presenting every page as the same kind of page: global
+    pages and project pages are now different shells, and Story becomes an
+    ordered path rather than a guide beside the work.
+
+    - **Two shell modes** (`src/ui/shell.js`). Global pages — home
+      (`index.html`), library, settings, admin, purchase, purchases and
+      invite — are `EXTRA_GLOBAL_PAGES` plus `navigation.json` `global[]`
+      minus the dashboard. They show no stage strip, no search handle and no
+      project switcher. Project pages keep the band; stage tabs animate in
+      when arriving from the dashboard. `<html data-shell-mode>` carries the
+      mode. The announcement plate is removed; the trial band has its own
+      `.sh-trial` host. There is no stage dropdown: a stage tab links to that
+      stage's first module. The account pill goes to `settings.html#account`
+      (`auth.js` `renderAccountBlock()`). Sign out flushes the sync queue and
+      Drive first, capped at 10s, and asks before signing out with unsynced
+      work. The phone bar on global pages is Home · Go to · Settings · Tools.
+    - **`src/ui/dialog.js`** (`ask` / `tell` / `askText`) replaces every
+      browser `confirm`, `alert` and `prompt`. `test:dialogs` fails on any
+      native call; `prove:dialogs` drives the dialogs in a browser.
+    - **Home** is the project list. With no project it shows three doors
+      (Feature · Short · Learning) and the Dragon sample. A skippable tour
+      card (`src/ui/tour.js`, `dismissTour`) sits beside them. Journey,
+      launcher, index, activity and tools are removed from home.
+      **Dashboard** shows this project only, with "Where this film is" and
+      the launcher. **Settings** has Account, Activity
+      (`src/ui/activity-log.js`), Tour and a Danger zone. New projects are
+      Feature or Short only; `FORMATS` in `store.js` is unchanged.
+    - **Story path** (`src/data/story-paths.json`, `PATH` per format in
+      `src/lib/story.js`). Feature: Idea › Logline › Story Bible › Scene
+      order › Step outline › Setups & payoffs › Timeline › Synopsis &
+      treatment › Lock the outline › To the Screenplay. Short: Seed › Logline
+      › Character › World › Conflict › Scene order › Step outline › Synopsis
+      › Lock the outline › To the Screenplay. Every blueprint question is
+      asked exactly once, inline in the path step that absorbs it; the Story
+      guide is now only the cover sheet. The framework is chosen only in
+      Scene order (`frameworkChosen`). `outlineLockedAt` locks the outline.
+      There is no favourite picker on Story; it reads "Examples from <film>
+      · change in Settings". Short projects see feature-only cards only if
+      they already hold an answer to one. `prove:story-path`. The key union
+      is unchanged: 594/594 feature keys and 106/106 short keys.
+    - **Idea Vault** is its own page, `vault.html` (`src/pages/vault.js`,
+      `src/ui/idea-vault.js`), on the same key `fms_idea_vault_v1`.
+    - **Purchase and admin split.** `purchase.html` (`src/pages/purchase.js`)
+      holds plans, checkout, invoices and refund for the user and replaces
+      the `settings.html#plan` links. `purchases.html`
+      (`src/pages/purchases.js`) is admin-only: payments and refunds,
+      invoices, promo codes, tiers and grants, growth. `admin.html` keeps
+      overview, organisations, people, access and features. Access has a
+      demo link, `invite.html#code=…&demo=1`, which enters without sign-in and
+      opens the Dragon sample dashboard. Only sessionStorage flags are set.
+    - **Erase this device.** `backup-menu.js` `resetAll({alsoDrive,
+      confirmed})` no longer signs out. It optionally deletes the Drive file
+      (`drive.js` `deleteFile`) and pauses cloud sync after the erase.
+      `deleteOwnedCloudProjects()` in `cloud.js` deletes the cloud copies of
+      owned projects (`project_data` cascades) and pauses sync. `prove:cloud-delete`.
+    - **Library.** Print is removed. Search is library-only
+      (`src/lib/library-search.js`, opened by "/" and ⌘K). There is a library
+      index. The **Film Terminology** tab (section id `glossary`) holds 122
+      terms grouped by stage. Each term has its stage, `seeAlso`, a Tanglish
+      gloss and four film examples (`learn.js` `termBody`). Everyday words
+      carry `notag`, so they are not auto-wrapped as terms.

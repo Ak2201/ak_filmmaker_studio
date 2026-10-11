@@ -110,6 +110,7 @@ src/
              OVERWRITTEN by `npm run extract`; steps.production.json is
              hand-written and will not, because phases 03 and 04 never
              existed in the 2023 pages.
+             story-paths.json ← the Story path: the ordered steps per format
   lib/       readiness.js  ← what is missing before this film can shoot,
                            derived at render time and stored nowhere
              shootday.js   ← the one view that WRITES BACK to a scene
@@ -140,9 +141,14 @@ src/
              breakdown-run.js ← runBreakdown / summarize: the one-click
                            breakdown shared with Write's import
              blueprint-route.js ← old blueprint anchors → their stage guides
+             library-search.js ← the library's own search; not the studio index
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
+             dialog.js ← ask / tell / askText: the only confirm, alert and
+                       prompt; a native one fails test:dialogs
+             idea-vault.js ← the Idea Vault (vault.html)
+             activity-log.js ← Settings → Activity
              tabs.js ← a page's sibling sections as tabs, on the twelve
                        pages it names; hash picks the tab, nothing is
                        removed from the DOM (the gate reads innerHTML)
@@ -163,6 +169,7 @@ src/
   pages/     hub.js feature.js short.js library.js breakdown.js
              stripboard.js reports.js contacts.js visualize.js
              write.js plan.js start.js
+             vault.js purchase.js purchases.js
              hub/  ← util, first-run, project-cards, backup-menu,
                      resume-cards: hub.js is the composition
   sw.js      service worker (vite-plugin-pwa injectManifest)
@@ -1356,6 +1363,7 @@ numbered as they are in the history.
 | 25 | Beginner pass: Story and Screenplay (10 Oct 2026) | Done | HISTORY item 28. Fields with a blueprint key are written in the blueprint blob via `blueprint-store` merge-write, never on the character record; `learn()` returns null for unknown ids — filter before append. |
 | 26 | Project-first studio (10 Oct 2026) | Done | HISTORY item 29. The hub opens on three doors and the dashboard's five stage cards are derived in `journey.js`, never stored; "Suggested next" is advice and is never forced. The project switcher is CORE, so it runs on every shell page. |
 | 27 | Blueprints folded into the stages (10 Oct 2026) | Done | HISTORY item 30. Stage guides write only through `blueprint-store`; the redirect is exempt with `?stay=1`; verify's key-union is what protects saved answers now. |
+| 28 | Project-first navigation and the Story path (11 Oct 2026) | Done | HISTORY item 31. Global pages carry no project chrome (`shell.js` `EXTRA_GLOBAL_PAGES` + `navigation.json` `global[]`); never call native confirm/alert/prompt — use `dialog.js` (`test:dialogs`); each blueprint question is asked once, in the Story path step `story-paths.json` says absorbs it; erase never signs out. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

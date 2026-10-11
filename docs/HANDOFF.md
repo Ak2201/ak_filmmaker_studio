@@ -6,6 +6,20 @@
 > of the 9–10 Oct UI/UX releases is done and on `main` (`99ba52b`);
 > `docs/HISTORY.md` item 24 is the record.
 
+**11 Oct 2026 — project-first navigation and the Story path (`docs/HISTORY.md`
+item 31; CLAUDE.md row 28).** Global pages (home, library, settings, admin,
+purchase, purchases, invite) now have no project chrome; project pages keep
+the band. Home is the project list or three doors; the dashboard is this
+project only. Story is an ordered path per format (`src/data/story-paths.json`),
+each blueprint question asked once in the step that absorbs it. Native
+confirm/alert/prompt are gone in favour of `src/ui/dialog.js` (`test:dialogs`).
+Idea Vault is `vault.html`; user billing is `purchase.html`, admin billing is
+`purchases.html`. Erase this device no longer signs out. Owner follow-ups, not
+checked in a browser from here: (1) re-check sign-out's "save first" prompt and
+the account block while signed in; (2) try a demo link (`invite.html#code=…&demo=1`)
+end to end on the live site; (3) the library's glossary chunk is about 115KB,
+so making the case studies lazy is a follow-up.
+
 Written 8 Oct 2026 at the end of a very long session (7–8 Oct). A new
 session has no memory of it. This file is the single entry point: what was
 done, what was decided, where every piece of unfinished work sits, what is

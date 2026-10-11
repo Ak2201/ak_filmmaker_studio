@@ -118,7 +118,7 @@ check('short: Cancel leaves the stored data byte-identical', await page.evaluate
 
 /* 4. write.html: delete a document — danger dialog, Cancel keeps it */
 await seed();
-await page.goto(url('write.html#documents'), { waitUntil: 'networkidle' });
+await page.goto(url('write.html?stay=1#documents'), { waitUntil: 'networkidle' });
 await page.waitForSelector('[data-action="doc-add"]', { state: 'attached', timeout: 15000 });
 await page.evaluate(() => document.querySelector('[data-action="doc-add"]').click());
 await page.waitForSelector('[data-action="doc-del"]', { state: 'attached', timeout: 8000 });

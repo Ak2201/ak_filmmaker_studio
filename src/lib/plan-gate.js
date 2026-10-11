@@ -37,7 +37,7 @@
 
    Capabilities, beside the module ids (which come from navigation.json
    and are not repeated here):
-     sample_only     the hub shows the Dragon sample project and no other
+     sample_only     the hub shows the registered sample projects (src/lib/samples.js) and no other
      new_projects    create / import / duplicate a project
      script_import   the Fountain / FDX / PDF importers
      ai_tools        every model-backed tool
@@ -60,7 +60,7 @@ import Billing from './billing.js';   // same chunk on every page; a dynamic imp
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
-  ['sample_only',   'Sample project only',    'The hub shows the Dragon sample and nothing else'],
+  ['sample_only',   'Sample project only',    'The hub shows the sample projects and nothing else'],
   ['new_projects',  'New projects',           'Create, import or duplicate a project'],
   ['script_import', 'Script import',          'Fountain, FDX and PDF importers'],
   ['ai_tools',      'AI tools',               'Every model-backed tool, on the user’s own key'],

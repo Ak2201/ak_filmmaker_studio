@@ -1,0 +1,203 @@
+{
+ "_about": [
+  "PLACEHOLDER — THE DARK KNIGHT SAMPLE.",
+  "A reconstruction. Every piece of paperwork is invented; no line of the real screenplay appears. The integrator replaces this file with the real content."
+ ],
+ "title": "The Dark Knight",
+ "format": "feature",
+ "blueprint": {
+  "meta_writer": "Sample reconstruction · PLACEHOLDER",
+  "meta_started": "Sample data · invented paperwork",
+  "meta_stage": "All five stages",
+  "v1_genre": "Crime · Thriller",
+  "lad_2_synopsis": "PLACEHOLDER synopsis."
+ },
+ "blueprintChecks": [
+  "ck_s1_a",
+  "ck_s1_b"
+ ],
+ "scenes": [
+  {
+   "number": "1",
+   "intExt": "INT",
+   "dayNight": "DAY",
+   "location": "Private bank — main hall",
+   "eighths": 8,
+   "pageNumber": "1",
+   "shootDay": 1,
+   "synopsis": "PLACEHOLDER scene one.",
+   "elements": {
+    "cast": [
+     "BATMAN"
+    ],
+    "extras": [],
+    "props": [
+     "Placeholder prop"
+    ],
+    "wardrobe": [],
+    "makeup": [],
+    "sound": [],
+    "special": []
+   }
+  },
+  {
+   "number": "2",
+   "intExt": "EXT",
+   "dayNight": "NIGHT",
+   "location": "Port ferry terminal, Chennai",
+   "eighths": 8,
+   "pageNumber": "2",
+   "shootDay": 1,
+   "synopsis": "PLACEHOLDER scene two.",
+   "elements": {
+    "cast": [
+     "BATMAN"
+    ],
+    "extras": [],
+    "props": [
+     "Placeholder prop"
+    ],
+    "wardrobe": [],
+    "makeup": [],
+    "sound": [],
+    "special": []
+   }
+  },
+  {
+   "number": "3",
+   "intExt": "INT",
+   "dayNight": "NIGHT",
+   "location": "Disused mill, Ennore",
+   "eighths": 8,
+   "pageNumber": "3",
+   "shootDay": 2,
+   "synopsis": "PLACEHOLDER scene three.",
+   "elements": {
+    "cast": [
+     "BATMAN"
+    ],
+    "extras": [],
+    "props": [
+     "Placeholder prop"
+    ],
+    "wardrobe": [],
+    "makeup": [],
+    "sound": [],
+    "special": []
+   }
+  }
+ ],
+ "days": {
+  "1": "2025-03-03",
+  "2": "2025-03-04"
+ },
+ "recces": {
+  "port ferry terminal, chennai": {
+   "address": "PLACEHOLDER",
+   "contact": "Invented",
+   "permission": "approved",
+   "power": "",
+   "parking": "",
+   "toilets": "",
+   "bestTime": "",
+   "cost": "",
+   "notes": "PLACEHOLDER"
+  }
+ },
+ "media": [
+  {
+   "title": "PLACEHOLDER lookbook",
+   "url": "https://example.com/darkknight/lookbook",
+   "kind": "Reference image",
+   "notes": "",
+   "linkedTo": "Port ferry terminal, Chennai"
+  }
+ ],
+ "contacts": [
+  {
+   "name": "Placeholder Lead",
+   "role": "BATMAN",
+   "department": "Cast",
+   "phone": "+91 90000 20001",
+   "email": "lead@darkknight.example",
+   "notes": "PLACEHOLDER contact."
+  },
+  {
+   "name": "Placeholder Director",
+   "role": "Director",
+   "department": "Direction",
+   "phone": "+91 90000 20002",
+   "email": "director@darkknight.example",
+   "notes": "PLACEHOLDER contact."
+  }
+ ],
+ "callSheets": [
+  {
+   "title": "The Dark Knight — Day 1",
+   "day": 1,
+   "generalCall": "06:00",
+   "location": "Private bank — main hall",
+   "notes": "SAMPLE CALL SHEET. PLACEHOLDER. A reconstruction; the paperwork is invented.",
+   "sceneNumbers": [
+    "1"
+   ],
+   "calls": {
+    "Placeholder Lead": "06:30",
+    "Placeholder Director": "06:00"
+   }
+  }
+ ],
+ "shots": [
+  {
+   "scene": "1",
+   "number": "1",
+   "size": "WS",
+   "angle": "eye level",
+   "movement": "static",
+   "lens": "35mm",
+   "description": "PLACEHOLDER shot."
+  }
+ ],
+ "frames": [
+  {
+   "scene": "1",
+   "shotNumber": "1",
+   "caption": "PLACEHOLDER frame",
+   "ref": "https://example.com/darkknight/board/1"
+  }
+ ],
+ "boards": [
+  {
+   "name": "Palette",
+   "note": "PLACEHOLDER",
+   "entries": [
+    {
+     "title": "PLACEHOLDER",
+     "ref": "https://example.com/darkknight/palette/1",
+     "why": "PLACEHOLDER"
+    }
+   ]
+  }
+ ],
+ "script": {
+  "documents": [
+   {
+    "title": "The Dark Knight — sample treatment (reconstruction)",
+    "kind": "Treatment",
+    "body": "SAMPLE DOCUMENT. PLACEHOLDER. A reconstruction written for the sample project."
+   }
+  ]
+ },
+ "calc": [
+  {
+   "item": "Camera package",
+   "days": "2",
+   "rate": "30000"
+  },
+  {
+   "item": "Lighting package",
+   "days": "2",
+   "rate": "20000"
+  }
+ ]
+}

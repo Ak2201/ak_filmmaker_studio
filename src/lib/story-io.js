@@ -18,7 +18,7 @@
 import Store from './store.js';   // must evaluate before anything reads localStorage
 import { h } from './dom.js';
 import * as Story from './story.js';
-import sample from '../data/sample.dragon.json';
+import { sampleById, DEFAULT_SAMPLE } from './samples.js';
 
 /* The two blueprint blobs, READ ONLY here. The same strings the
    pages, the launcher and the backup format use; they are storage
@@ -118,9 +118,11 @@ export const importedSentence = (r) =>
 /* The sample's story is a lazy chunk (vite.config.js), read on the
    click. If it cannot load — offline before it was ever cached — the
    sample blueprint's synopsis is the fallback, as it always was. */
-export async function sampleStory() {
+export async function sampleStory(id = DEFAULT_SAMPLE) {
+  const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
+  const sample = sm.data;
   try {
-    const st = (await import('../data/sample.dragon.story.json')).default.story;
+    const st = (await sm.loadStory()).default.story;
     return { ...Story.blankStory(), ...JSON.parse(JSON.stringify(st)) };
   } catch (e) {
     const s = Story.blankStory();

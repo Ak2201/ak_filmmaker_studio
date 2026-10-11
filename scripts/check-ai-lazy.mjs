@@ -77,5 +77,27 @@ for (const page of pages) {
   }
 }
 
+/* The sample screenplays and stories are lazy too: a registered sample's
+   script/story chunk (sample.<id>.script-*, sample.<id>.story-*) must
+   exist in dist and be in NO page's first-paint graph. Dragon's and
+   The Dark Knight's, by name. */
+const assets = path.join(DIST, 'assets');
+const built = fs.existsSync(assets) ? fs.readdirSync(assets) : [];
+for (const id of ['dragon', 'darkknight']) {
+  for (const kind of ['script', 'story']) {
+    const re = new RegExp('^sample\\.' + id + '\\.' + kind + '-.*\\.js$');
+    ok(built.some((f) => re.test(f)), `sample.${id}.${kind} chunk exists in dist/assets`);
+  }
+}
+const LAZY_SAMPLE = /(^|\/)sample\.[a-z]+\.(script|story)-[^/]*\.js$/;
+for (const page of pages) {
+  const html = path.join(DIST, (page === 'hub' ? 'index' : page) + '.html');
+  if (!fs.existsSync(html)) continue;
+  const doc = fs.readFileSync(html, 'utf8');
+  const first = [...doc.matchAll(/(?:src|href)="([^"]+\.js)"/g)].map((m) => m[1]);
+  const bad = first.filter((f) => LAZY_SAMPLE.test(f));
+  ok(bad.length === 0, `${page}: first paint fetches a lazy sample chunk (${bad.join(', ')})`);
+}
+
 console.log(`check-ai-lazy — ${pass} passed, ${fail} failed (${pages.length} pages)`);
 if (fail) process.exit(1);

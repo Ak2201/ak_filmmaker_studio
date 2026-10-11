@@ -82,24 +82,26 @@ const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce
 /* The sample's title, for "is the sample open". The hub already holds
    the sample JSON in its own chunk, so this import costs nothing there;
    it is only ever asked on the hub. */
-let sampleTitle = null;
+/* ANY registered sample counts (src/lib/samples.js), so opening The
+   Dark Knight ticks the step as Dragon does. */
+let sampleMatch = null;
 async function loadSampleTitle() {
-  if (sampleTitle !== null) return sampleTitle;
-  try { sampleTitle = String((await import('../data/sample.dragon.json')).default.title || ''); } catch (e) { sampleTitle = ''; }
-  return sampleTitle;
+  if (sampleMatch !== null) return sampleMatch;
+  try { sampleMatch = (await import('../lib/samples.js')).isSampleTitle; } catch (e) { sampleMatch = () => false; }
+  return sampleMatch;
 }
 const projects = () => { try { return Store.listProjects() || []; } catch (e) { return []; } };
 const current = () => { try { return Store.currentProject() || null; } catch (e) { return null; } };
 
 /* ---- the checklist's facts, derived -------------------------------- */
-export function firstWeekFacts({ title = sampleTitle } = {}) {
+export function firstWeekFacts({ match = sampleMatch } = {}) {
   const open = current();
-  const facts = { sample: !!title && projects().some((p) => p.title === title) };
+  const facts = { sample: !!match && projects().some((p) => match(p.title)) };
   let scenes = [], script = { elements: [] }, story = {}, sheets = [];
   /* The sample ticks six of seven for free, which teaches nothing: the
      list measures the user's OWN film, so while the sample is the open
      project nothing but the sample item itself is read. */
-  facts.onSample = !!(open && title && open.title === title);
+  facts.onSample = !!(open && match && match(open.title));
   if (open && !facts.onSample) {
     try { scenes = listScenes(); } catch (e) { scenes = []; }
     try { script = loadScript() || script; } catch (e) { /* none */ }
@@ -194,9 +196,9 @@ async function showStep(i, { focus = true } = {}) {
   const step = STEPS[i];
   let opts = {};
   if (step.id === 'sample') {
-    const title = await loadSampleTitle();
+    const match = await loadSampleTitle();
     const open = current();
-    const sampleOpen = !!(open && title && open.title === title);
+    const sampleOpen = !!(open && match(open.title));
     opts = sampleOpen ? { done: true } : { primary: { act: 'sample', text: step.action || 'Open the sample' } };
   }
   whenAnchor(step, (el) => {

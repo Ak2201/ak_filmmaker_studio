@@ -1,0 +1,59 @@
+{
+ "_about": [
+  "PLACEHOLDER — THE DARK KNIGHT SAMPLE SCRIPT. A reconstruction; the integrator replaces this."
+ ],
+ "elements": [
+  {
+   "type": "action",
+   "text": "PLACEHOLDER SAMPLE PAGES. A reconstruction written for this app; not the film's screenplay."
+  },
+  {
+   "type": "scene",
+   "text": "INT. PRIVATE BANK — MAIN HALL - DAY"
+  },
+  {
+   "type": "action",
+   "text": "PLACEHOLDER action line."
+  },
+  {
+   "type": "character",
+   "text": "BATMAN"
+  },
+  {
+   "type": "dialogue",
+   "text": "Placeholder line."
+  },
+  {
+   "type": "scene",
+   "text": "EXT. PORT FERRY TERMINAL, CHENNAI - NIGHT"
+  },
+  {
+   "type": "action",
+   "text": "PLACEHOLDER action line."
+  },
+  {
+   "type": "character",
+   "text": "BATMAN"
+  },
+  {
+   "type": "dialogue",
+   "text": "Placeholder line."
+  },
+  {
+   "type": "scene",
+   "text": "INT. DISUSED MILL, ENNORE - NIGHT"
+  },
+  {
+   "type": "action",
+   "text": "PLACEHOLDER action line."
+  },
+  {
+   "type": "character",
+   "text": "BATMAN"
+  },
+  {
+   "type": "dialogue",
+   "text": "Placeholder line."
+  }
+ ]
+}

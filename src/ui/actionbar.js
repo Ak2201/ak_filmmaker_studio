@@ -68,7 +68,8 @@ export function actionMenu(label, items, opts = {}) {
       el = h('a.tb-item' + (item.danger ? '.is-danger' : ''), { ...props, href: item.href });
     } else {
       el = h('button.tb-item' + (item.danger ? '.is-danger' : ''), {
-        ...props, type: 'button', 'data-action': item.action
+        ...props, type: 'button', 'data-action': item.action,
+        ...(item.args ? { 'data-args': JSON.stringify(item.args) } : {})
       });
     }
     el.append(h('span.tb-item-label', { text: item.label }));

@@ -300,6 +300,40 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
+  console.log('(b2) the two samples: ?sample=1 is Dragon, ?sample=darkknight is The Dark Knight, a second visit does not duplicate');
+  {
+    const { ctx, page, errors } = await context(browser);
+    const read = () => page.evaluate(() => {
+      let list = []; try { list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]'); } catch (e) { /* none */ }
+      if (!Array.isArray(list)) list = list.projects || [];
+      const out = {};
+      for (const p of list) {
+        const sc = JSON.parse(localStorage.getItem('fms_scenes_v1__' + p.id) || '{}').scenes || [];
+        const sr = JSON.parse(localStorage.getItem('fms_script_v1__' + p.id) || '{}').elements || [];
+        const sy = JSON.parse(localStorage.getItem('fms_story_v1__' + p.id) || '{}');
+        (out[p.title] = out[p.title] || []).push({ scenes: sc.length, script: sr.length, outline: (sy.outline || []).length, id0: sc[0] && sc[0].id });
+      }
+      return out;
+    });
+    await page.goto(BASE + 'index.html?sample=darkknight'); await page.waitForTimeout(3000);
+    let r = await read();
+    ok(r['The Dark Knight'] && r['The Dark Knight'].length === 1, '?sample=darkknight opens one project titled The Dark Knight');
+    const dk = (r['The Dark Knight'] || [])[0] || {};
+    ok(dk.scenes > 0 && dk.script > 0 && dk.outline > 0 && /^darkknight-sc-/.test(dk.id0 || ''), 'it has scenes, a script and a story: ' + JSON.stringify(dk));
+    ok(!r['Dragon'], 'Dragon was not created by it');
+    ok(!/sample=/.test(await page.evaluate(() => location.search)), 'the parameter is consumed');
+    await page.goto(BASE + 'index.html?sample=darkknight'); await page.waitForTimeout(2000);
+    r = await read();
+    ok(r['The Dark Knight'].length === 1, 'a second visit opens it, it does not duplicate');
+    await page.goto(BASE + 'index.html?sample=1'); await page.waitForTimeout(3000);
+    r = await read();
+    ok(r['Dragon'] && r['Dragon'].length === 1 && /^dragon-sc-/.test(r['Dragon'][0].id0 || '') && r['Dragon'][0].script > 0, '?sample=1 still opens Dragon, with dragon-sc- ids and a script');
+    await page.goto(BASE + 'index.html?sample=1'); await page.waitForTimeout(1500);
+    r = await read();
+    ok(r['Dragon'].length === 1 && r['The Dark Knight'].length === 1, 'both samples coexist, once each');
+    allErrors.push(...errors); await ctx.close();
+  }
+
   console.log('(d) a paid member (Indie)');
   {
     refFor = { [USERS['tok-admin'].id]: 'DRAGON7' };

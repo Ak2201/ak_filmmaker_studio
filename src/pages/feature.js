@@ -95,7 +95,7 @@ import PROD from '../data/steps.production.json';
    It used to be a second sample — a Por Thozhil field dump embedded
    below and fetched from a root JSON file — which is the "one fact,
    two sources" fault CLAUDE.md keeps paying for. */
-import SAMPLE from '../data/sample.dragon.json';
+import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import PDF from '../lib/pdf.js';
@@ -601,7 +601,7 @@ function renderToolbar() {
     { label: 'Sync & backup',    href: '#sync-section' },
     '---',
     { label: 'Import JSON',      action: 'importData' },
-    { label: 'Load sample',      action: 'loadSamplePack',    title: 'Load the ' + SAMPLE.title + ' pre-filled sample blueprint' },
+    ...SAMPLES.map((sm) => ({ label: 'Load sample: ' + sm.label, action: 'loadSamplePack', args: [sm.id], title: 'Load the ' + sm.title + ' pre-filled sample blueprint' })),
     '---',
     { label: 'Reset this blueprint', action: 'resetData', danger: true }
   ], { align: 'right' });
@@ -2360,7 +2360,8 @@ function computeProgress() {
         blueprints depending on how the page was served. There is no
         fetch now; the data is a build-time import.
    ============================================================ */
-async function loadSamplePack() {
+async function loadSamplePack(id = DEFAULT_SAMPLE) {
+  const SAMPLE = (sampleById(id) || sampleById(DEFAULT_SAMPLE)).data;
   if (!await askDanger('This will REPLACE your current data with the ' + SAMPLE.title
     + ' sample. Your current work will be lost (unless you exported JSON first).\n\nContinue?')) return;
   try {

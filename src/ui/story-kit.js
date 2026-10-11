@@ -44,6 +44,7 @@ import Scenes from '../lib/scenes.js';
 import Pitch from '../lib/pitch-deck.js';
 import StudioUI from './chrome.js';
 import { ask, askDanger } from './dialog.js';
+import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 
 const pct = (x) => Math.round(x * 100) + '%';
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
@@ -213,7 +214,7 @@ function panelStart() {
   const acts = h('div.sk-actions');
   acts.append(link(STORY_HREF + '#path-' + next.n,
     (any ? 'CONTINUE THE STORY PATH: ' : 'START THE STORY PATH: ') + next.label.toUpperCase() + ' →', '.primary'));
-  if (IO.isEmptyStory(s)) acts.append(h('button.btn', { type: 'button', 'data-sk': 'sample', text: 'USE THE DRAGON SAMPLE' }));
+  if (IO.isEmptyStory(s)) for (const sm of SAMPLES) acts.append(h('button.btn', { type: 'button', 'data-sk': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'USE ' + sm.label.toUpperCase() }));
   acts.append(h('label.btn.sk-file', {}, [
     h('span', { text: 'IMPORT A SYNOPSIS FILE' }),
     h('input', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-sk-file': 'synopsis', 'aria-label': 'Import a synopsis file into the Story page' })
@@ -489,13 +490,14 @@ async function undoCopyBeats() {
   StudioUI.toast('Copy undone. The Story page is as it was.');
 }
 
-async function useSample() {
+async function useSample(id) {
+  const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   const cur = Story.loadStory();
-  if (!IO.isEmptyStory(cur) && !await askDanger('Replace the story on the Story page with the Dragon sample? Your idea, logline, outline and synopsis there are replaced. The Idea Vault is kept.')) return;
-  const s = await IO.sampleStory();
+  if (!IO.isEmptyStory(cur) && !await askDanger('Replace the story on the Story page with the ' + sm.title + ' sample? Your idea, logline, outline and synopsis there are replaced. The Idea Vault is kept.')) return;
+  const s = await IO.sampleStory(sm.id);
   Story.saveStory(s);
   refreshStoryKit();
-  StudioUI.toast('The Dragon sample story is on the Story page.');
+  StudioUI.toast('The ' + sm.title + ' sample story is on the Story page.');
 }
 
 let bound = false;
@@ -504,7 +506,7 @@ function bind() {
   bound = true;
   delegate(document, 'click', '[data-sk]', (e, el) => {
     const act = el.getAttribute('data-sk');
-    if (act === 'sample') useSample();
+    if (act === 'sample') useSample(el.getAttribute('data-sample'));
     else if (act === 'copy-beats') copyBeats(el.getAttribute('data-ns'));
     else if (act === 'copy-undo') undoCopyBeats();
     else if (act === 'clip-add') {

@@ -619,8 +619,8 @@ export default defineConfig({
           if (id.includes('/supabase/functions/_shared/')) return 'studio';
 
           /* ---- the data, by file ---- */
-          if (/\/src\/data\/sample\.dragon\.(script|story)\.json$/.test(id)) return;   // lazy, see above
-          if (/\/src\/data\/sample\.dragon\.json$/.test(id)) return 'data-sample';
+          if (/\/src\/data\/sample\.[a-z]+\.(script|story)\.json$/.test(id)) return;   // lazy, see above
+          if (/\/src\/data\/sample\.[a-z]+\.json$/.test(id)) return 'data-sample';
           if (/\/src\/data\/steps\.(feature|short|production|tanglish|priority|copy)\.json$/.test(id)) return 'data-steps';
           if (/\/src\/data\/(studies|dissections)\.json$/.test(id)) return 'data-studies';
           if (/\/src\/data\/(films|directors|rules|watchlist)\.json$/.test(id)) return 'data-library';

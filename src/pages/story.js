@@ -80,6 +80,7 @@ import { onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-fi
 import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/story-bible.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
+import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper } from '../ui/stepper.js';
 
 const app = document.getElementById('app');
@@ -155,9 +156,9 @@ function renderModes() {
   const card = (eyebrow, title, body, control) =>
     h('div.st-mode', {}, [h('p.bd-eyebrow', { text: eyebrow }), h('h2.st-mode-title', { text: title }),
       h('p.st-mode-body', { text: body }), control]);
-  sec.append(card('Sample', 'Start from Dragon.',
-    'The sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
-    h('button.btn', { type: 'button', 'data-st': 'sample', text: 'USE THE SAMPLE' })));
+  sec.append(card('Sample', 'Start from a sample.',
+    'A sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
+    h('div.st-sample-picks', {}, SAMPLES.map((sm) => h('button.btn', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'USE ' + sm.label.toUpperCase() })))));
   sec.append(card('New', 'Start with the idea.',
     'A guided path: the idea, a logline, the people and the world, a scene order, then a step outline. Every step is on this page; start anywhere. The synopsis can be built from the outline when you get there.',
     h('button.btn.primary', { type: 'button', 'data-st': 'new', text: 'START THE PATH' })));
@@ -286,7 +287,7 @@ function renderWaysIn() {
       h('span', { text: 'IMPORT A .DOCX OR .TXT' }),
       h('input.st-file', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-st-field': 'file', 'aria-label': 'Import a synopsis from a .docx, .txt or .pdf file' })
     ]),
-    h('button.btn', { type: 'button', 'data-st': 'sample', text: 'OPEN THE SAMPLE FILM' })
+    ...SAMPLES.map((sm) => h('button.btn', { type: 'button', 'data-st': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'OPEN ' + sm.label.toUpperCase() }))
   ]);
 }
 
@@ -1243,10 +1244,11 @@ async function importFile(file) {
 /* The sample's story: IO.sampleStory() (src/lib/story-io.js). */
 const sampleStory = IO.sampleStory;
 
-async function useSample() {
+async function useSample(id) {
+  const sm = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   const cur = story();
-  if (!isEmpty(cur) && !await askDanger('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
-  const s = await sampleStory();
+  if (!isEmpty(cur) && !await askDanger('Replace the story on this page with the ' + sm.title + ' sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
+  const s = await sampleStory(sm.id);
   s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';
@@ -1304,7 +1306,7 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
   const act = el.getAttribute('data-st');
   const s = story();
   if (act === 'sample') {
-    useSample();
+    useSample(el.getAttribute('data-sample'));
   } else if (act === 'new') {
     started = true;
     goStep('idea');
@@ -1566,7 +1568,9 @@ readHash();
 render();
 loadFavStudiesSoon();   // the examples' films, once the page has settled
 primeAI();
-if (START === 'sample' && !story().source.trim() && !story().outline.length) useSample();
+/* ?start=sample is Dragon; ?start=sample-<id> is that sample. */
+const START_SAMPLE = /^sample(?:-([a-z]+))?$/.exec(START || '');
+if (START_SAMPLE && !story().source.trim() && !story().outline.length) useSample(START_SAMPLE[1]);
 else if (START === 'new') { started = true; goStep('idea'); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
 if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }
 /* A fragment that names a plain section (#pitch, #pacing, #ai-map): the

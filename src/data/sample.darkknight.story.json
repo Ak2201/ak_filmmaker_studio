@@ -1,0 +1,70 @@
+{
+ "_about": "PLACEHOLDER — THE DARK KNIGHT SAMPLE'S STORY. A reconstruction; the integrator replaces this.",
+ "story": {
+  "v": 1,
+  "source": "PLACEHOLDER step 1. PLACEHOLDER step 2. PLACEHOLDER step 3.",
+  "sourceName": "The Dark Knight (sample)",
+  "framework": "save_the_cat",
+  "marks": [
+   {
+    "id": "darkknight-mk-01",
+    "start": 0,
+    "end": 19,
+    "text": "PLACEHOLDER step 1.",
+    "tags": {
+     "save_the_cat": "opening_image"
+    },
+    "origin": "outline",
+    "rationale": "",
+    "step": "darkknight-st-01"
+   },
+   {
+    "id": "darkknight-mk-02",
+    "start": 20,
+    "end": 39,
+    "text": "PLACEHOLDER step 2.",
+    "tags": {
+     "save_the_cat": "catalyst"
+    },
+    "origin": "outline",
+    "rationale": "",
+    "step": "darkknight-st-02"
+   },
+   {
+    "id": "darkknight-mk-03",
+    "start": 40,
+    "end": 59,
+    "text": "PLACEHOLDER step 3.",
+    "tags": {
+     "save_the_cat": "finale"
+    },
+    "origin": "outline",
+    "rationale": "",
+    "step": "darkknight-st-03"
+   }
+  ],
+  "tension": {},
+  "logline": "PLACEHOLDER logline.",
+  "idea": "PLACEHOLDER idea.",
+  "outline": [
+   {
+    "id": "darkknight-st-01",
+    "beat": "save_the_cat:opening_image",
+    "text": "PLACEHOLDER step 1.",
+    "sceneId": "darkknight-sc-1"
+   },
+   {
+    "id": "darkknight-st-02",
+    "beat": "save_the_cat:catalyst",
+    "text": "PLACEHOLDER step 2.",
+    "sceneId": "darkknight-sc-2"
+   },
+   {
+    "id": "darkknight-st-03",
+    "beat": "save_the_cat:finale",
+    "text": "PLACEHOLDER step 3.",
+    "sceneId": "darkknight-sc-3"
+   }
+  ]
+ }
+}

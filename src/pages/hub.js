@@ -72,7 +72,7 @@ import rules       from '../data/rules.json';
 import watchlist   from '../data/watchlist.json';
 import festivals   from '../data/festivals.json';
 import prodData    from '../data/steps.production.json';
-import sample      from '../data/sample.dragon.json';
+import { DEFAULT_SAMPLE, sampleById, isSampleTitle } from '../lib/samples.js';
 /* The plan's say over the hub (schema section 18 `features`, read by
    src/lib/plan-gate.js): `sample_only` shows the Dragon sample and no
    other project; `new_projects` off hides every way of making one.
@@ -719,11 +719,12 @@ function detectActivity() {
    is the stranded-key trap by another name.
    ------------------------------------------------------------ */
 
-const SAMPLE_TITLE = sample.title;
-
-const sampleSceneId   = (number) => 'dragon-sc-' + String(number);
-const sampleContactId = (i)      => 'dragon-c-' + (i + 1);
-const sampleShotId    = (scene, number) => 'dragon-sh-' + scene + '-' + number;
+/* Every builder below takes the sample object from src/lib/samples.js
+   and prefixes its ids with the sample's own id, so Dragon's stay
+   dragon-sc-<n> byte for byte and a second sample cannot collide. */
+const sampleSceneId   = (sample, number) => sample.id + '-sc-' + String(number);
+const sampleContactId = (sample, i)      => sample.id + '-c-' + (i + 1);
+const sampleShotId    = (sample, scene, number) => sample.id + '-sh-' + scene + '-' + number;
 
 /** Pages per day as the schedule step's <select> words it. Assigning a
     value that is not one of its options silently blanks the field —
@@ -737,19 +738,19 @@ const PAGES_PER_DAY_BANDS = [
   [Infinity, '~5+ pages (indie / low-budget)']
 ];
 
-function sampleScenes() {
-  return sample.scenes.map((s) => ({ ...s, id: sampleSceneId(s.number) }));
+function sampleScenes(sample) {
+  return sample.data.scenes.map((s) => ({ ...s, id: sampleSceneId(sample, s.number) }));
 }
 
 /** The blueprint blob: the written answers, the ticked checklists, and
     the four figures that are DERIVED from the schedule rather than
     typed beside it, so the paperwork cannot disagree with the board. */
-function sampleBlueprint(scenes) {
-  const fields = { ...sample.blueprint };
+function sampleBlueprint(sample, scenes) {
+  const fields = { ...sample.data.blueprint };
   fields.meta_title = sample.title;
   fields.v1_title   = sample.title;
 
-  const days = sampleDays();
+  const days = sampleDays(sample.data);
   const eighths = scenes.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
   const perDay = days ? (eighths / 8) / days : 0;
 
@@ -758,27 +759,27 @@ function sampleBlueprint(scenes) {
   fields.v2s11_pages = (PAGES_PER_DAY_BANDS.find(([max]) => perDay < max) || [])[1] || '';
   fields.v2_shoot    = days + ' days · ' + formatEighths(eighths) + ' pages';
 
-  for (const key of sample.blueprintChecks) fields[key] = true;
+  for (const key of sample.data.blueprintChecks) fields[key] = true;
   return fields;
 }
 
-function sampleContacts() {
-  return sample.contacts.map((c, i) => ({ ...c, id: sampleContactId(i) }));
+function sampleContacts(sample) {
+  return sample.data.contacts.map((c, i) => ({ ...c, id: sampleContactId(sample, i) }));
 }
 
 /** A call sheet holds ids, never copies — contacts.js is explicit
     about it — and its date comes off the shoot-day calendar rather
     than being written down a second time. */
-function sampleCallSheets(contacts) {
+function sampleCallSheets(sample, contacts) {
   const idByName = new Map(contacts.map((c) => [c.name, c.id]));
-  return sample.callSheets.map((cs, i) => ({
-    id: 'dragon-cs-' + (i + 1),
+  return sample.data.callSheets.map((cs, i) => ({
+    id: sample.id + '-cs-' + (i + 1),
     title: cs.title,
-    date: sample.days[String(cs.day)] || '',
+    date: sample.data.days[String(cs.day)] || '',
     generalCall: cs.generalCall,
     location: cs.location,
     notes: cs.notes,
-    sceneIds: (cs.sceneNumbers || []).map(sampleSceneId),
+    sceneIds: (cs.sceneNumbers || []).map((n) => sampleSceneId(sample, n)),
     calls: Object.fromEntries(Object.entries(cs.calls || {})
       .map(([name, time]) => [idByName.get(name), time])
       .filter(([id]) => Boolean(id)))
@@ -788,14 +789,14 @@ function sampleCallSheets(contacts) {
 /** Recces are filed under locations.js's normalised key and media
     under its `loc:` link token, both derived from the location name a
     scene already carries. */
-function sampleLocations() {
+function sampleLocations(sample) {
   const recces = {};
-  for (const [name, rec] of Object.entries(sample.recces)) recces[locationKey(name)] = rec;
+  for (const [name, rec] of Object.entries(sample.data.recces)) recces[locationKey(name)] = rec;
   return {
-    days: { ...sample.days },
+    days: { ...sample.data.days },
     recces,
-    media: sample.media.map((m, i) => ({
-      id: 'dragon-md-' + (i + 1),
+    media: sample.data.media.map((m, i) => ({
+      id: sample.id + '-md-' + (i + 1),
       title: m.title,
       url: m.url || '',
       kind: m.kind,
@@ -805,10 +806,10 @@ function sampleLocations() {
   };
 }
 
-function sampleShots() {
-  const shots = sample.shots.map((s) => ({
-    id: sampleShotId(s.scene, s.number),
-    sceneId: sampleSceneId(s.scene),
+function sampleShots(sample) {
+  const shots = sample.data.shots.map((s) => ({
+    id: sampleShotId(sample, s.scene, s.number),
+    sceneId: sampleSceneId(sample, s.scene),
     number: s.number,
     size: s.size,
     angle: s.angle,
@@ -818,18 +819,18 @@ function sampleShots() {
     done: false,
     ai: false
   }));
-  const frames = sample.frames.map((f, i) => ({
-    id: 'dragon-fr-' + (i + 1),
-    shotId: sampleShotId(f.scene, f.shotNumber),
+  const frames = sample.data.frames.map((f, i) => ({
+    id: sample.id + '-fr-' + (i + 1),
+    shotId: sampleShotId(sample, f.scene, f.shotNumber),
     caption: f.caption,
     ref: f.ref
   }));
-  const boards = sample.boards.map((b, i) => ({
-    id: 'dragon-bd-' + (i + 1),
+  const boards = sample.data.boards.map((b, i) => ({
+    id: sample.id + '-bd-' + (i + 1),
     name: b.name,
     note: b.note || '',
     entries: (b.entries || []).map((e, j) => ({
-      id: 'dragon-bd-' + (i + 1) + '-en-' + (j + 1),
+      id: sample.id + '-bd-' + (i + 1) + '-en-' + (j + 1),
       title: e.title, ref: e.ref || '', why: e.why || ''
     }))
   }));
@@ -840,17 +841,17 @@ function sampleShots() {
    105 pages live in their own file and arrive by dynamic import — see
    openSampleProject(). An empty array is a legitimate argument: the
    project is still worth having without the screenplay. */
-function sampleScript(elements) {
+function sampleScript(sample, elements) {
   const now = new Date().toISOString();
   return {
     elements: (elements || []).map((e, i) => ({
-      id: 'dragon-el-' + (i + 1), type: e.type, text: e.text
+      id: sample.id + '-el-' + (i + 1), type: e.type, text: e.text
     })),
     // No revision history: a snapshot the user did not take is a
     // fiction, and restoring one would silently replace their draft.
     revisions: [],
-    documents: sample.script.documents.map((d, i) => ({
-      id: 'dragon-doc-' + (i + 1),
+    documents: sample.data.script.documents.map((d, i) => ({
+      id: sample.id + '-doc-' + (i + 1),
       title: d.title, kind: d.kind, body: d.body, updated: now
     }))
   };
@@ -858,9 +859,9 @@ function sampleScript(elements) {
 
 /** The estimator stores one flat field per cell, `ci_<n>_item|days|rate`,
     1-indexed. Unchanged shape on purpose — invariant 1. */
-function sampleCalc() {
+function sampleCalc(sample) {
   const data = {};
-  sample.calc.forEach((row, i) => {
+  sample.data.calc.forEach((row, i) => {
     const n = i + 1;
     data['ci_' + n + '_item']   = row.item;
     data['ci_' + n + '_custom'] = '';
@@ -894,16 +895,19 @@ function sampleCalc() {
 function openSampleFromURL() {
   let params;
   try { params = new URLSearchParams(location.search); } catch (e) { return; }
-  if (params.get('sample') !== '1') return;
+  /* ?sample=1 is Dragon (start.html's link); ?sample=<id> is that one. */
+  const want = params.get('sample');
+  const sample = want === '1' ? sampleById(DEFAULT_SAMPLE) : sampleById(want);
+  if (!sample) return;
   params.delete('sample');
   const q = params.toString();
   try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
-  const existing = Store.listProjects().find((p) => p.title === SAMPLE_TITLE);
+  const existing = Store.listProjects().find((p) => p.title === sample.title);
   if (existing) {
     if (Store.currentProjectId() !== existing.id) Store.setCurrentProject(existing.id);
     return;
   }
-  openSampleProject().catch(sampleFailed);
+  openSampleProject(sample.id).catch(sampleFailed);
 }
 
 /* §30. A TRIAL IS THIRTY MINUTES; NONE OF THEM SHOULD GO ON FINDING
@@ -932,7 +936,7 @@ function openSampleForTrial() {
     if (e.reason !== 'trial') return;          // 'unknown' included: never guess
     if (Store.listAllProjects().length) return;
     sampleAutoTried = true;
-    openSampleProject().then(() => {
+    openSampleProject(DEFAULT_SAMPLE).then(() => {
       renderProjects();
       renderProjectSwitcher();
     }).catch(sampleFailed);
@@ -950,40 +954,41 @@ function sampleFailed(err) {
   }
 }
 
-async function openSampleProject() {
+async function openSampleProject(id = DEFAULT_SAMPLE) {
+  const sample = sampleById(id) || sampleById(DEFAULT_SAMPLE);
   let pages = [];
   try {
-    pages = (await import('../data/sample.dragon.script.json')).default.elements || [];
+    pages = (await sample.loadScript()).default.elements || [];
   } catch (e) { /* no pages; every other model below still seeds */ }
   // The sample's story (idea, logline, step outline, synopsis): the same
   // lazy shape, and its steps name the sample's scene ids.
   let story = null;
-  try { story = (await import('../data/sample.dragon.story.json')).default.story; } catch (e) { /* no story */ }
+  try { story = (await sample.loadStory()).default.story; } catch (e) { /* no story */ }
 
-  const project = Store.createProject({ title: SAMPLE_TITLE, format: 'feature' });
+  const project = Store.createProject({ title: sample.title, format: sample.format });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
-  const scenes   = sampleScenes();
+  const scenes   = sampleScenes(sample);
   // Each scene takes the beat of the outline step written for it.
   if (story) for (const st of story.outline) { const sc = scenes.find((x) => x.id === st.sceneId); if (sc && !sc.beatId) sc.beatId = st.beat; }
-  const contacts = sampleContacts();
+  const contacts = sampleContacts(sample);
   try {
-    localStorage.setItem(FEATURE_KEY,  JSON.stringify(sampleBlueprint(scenes)));
+    localStorage.setItem(FEATURE_KEY,  JSON.stringify(sampleBlueprint(sample, scenes)));
     localStorage.setItem(SCENES_KEY,   JSON.stringify({ scenes }));
     localStorage.setItem(CONTACTS_KEY, JSON.stringify({
-      contacts, callSheets: sampleCallSheets(contacts)
+      contacts, callSheets: sampleCallSheets(sample, contacts)
     }));
-    localStorage.setItem(LOCS_KEY,     JSON.stringify(sampleLocations()));
-    localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots()));
-    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript(pages)));
-    localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc()));
+    localStorage.setItem(LOCS_KEY,     JSON.stringify(sampleLocations(sample)));
+    localStorage.setItem(SHOTS_KEY,    JSON.stringify(sampleShots(sample)));
+    localStorage.setItem(SCRIPT_KEY,   JSON.stringify(sampleScript(sample, pages)));
+    localStorage.setItem(LIB_CALC_KEY, JSON.stringify(sampleCalc(sample)));
     if (story) localStorage.setItem('fms_story_v1', JSON.stringify(story));
   } catch (e) { /* private mode — the project itself still exists */ }
   Store.notify('projects:changed', { reason: 'sample', project });
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(
-      sample.title + ' is open — ' + scenes.length + ' scenes, ' + samplePages()
-      + ' pages, ' + sampleDays() + ' shoot days, ' + contacts.length
+      sample.title + ' is open — ' + scenes.length + ' scenes, ' + samplePages(sample.data)
+      + ' pages, ' + sampleDays(sample.data) + ' shoot days, ' + contacts.length
       + ' on the unit list'
       + (pages.length ? ', and the script they were broken down from' : '')
       + '. Edit or delete any of it.',
@@ -1036,7 +1041,7 @@ function duplicateProject(id) {
 }
 
 function renderProjectSwitcher() {
-  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter((p) => p.title === SAMPLE_TITLE) : Store.listProjects();
+  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
   const current  = Store.currentProject();
   const btn   = $('#projectSwitcherBtn');
   const label = $('#projectSwitcherLabel');
@@ -1196,7 +1201,7 @@ const CLICK_ACTIONS = {
      unhandled rejection rather than an error the click surfaces —
      and `verify` asserts zero console errors, which is the wrong
      place to find out. */
-  'sample-project':        () => { openSampleProject().catch(sampleFailed); },
+  'sample-project':        (el) => { openSampleProject(el && el.dataset && el.dataset.sample).catch(sampleFailed); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
   'toggle-switcher':       () => toggleProjectSwitcher(),

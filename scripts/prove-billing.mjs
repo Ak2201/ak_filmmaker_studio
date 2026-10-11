@@ -10,7 +10,7 @@
    Asserted (and, since section 18, (i): the Features matrix on the
    console, the free tier seeing the Dragon sample alone, a module
    unticked for a plan showing its lock panel and its PLAN flag):
-     (a) a member sees the four tiers on settings.html with the prices
+     (a) a member sees the four tiers on purchase.html with the prices
          the plans table holds; the period switch reprices them
      (b) BUY: rzp-order is asked for the plan and period, Checkout opens,
          rzp-verify receives a GENUINE signature, the plan activates,

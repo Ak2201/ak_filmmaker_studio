@@ -1,6 +1,6 @@
 /* ============================================================
    REFUNDS — the console's REFUND dialog and request list, and the
-   customer's "Request a refund" block on settings.html#plan
+   customer's "Request a refund" block on purchase.html#plan
    ------------------------------------------------------------
    Tokens for every colour, --sk-* for every shape. The dialog is the
    shared .cm-overlay / .cm-card; this file only adds what is inside it.

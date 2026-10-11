@@ -34,6 +34,57 @@ git checkout develop && git merge --no-ff feature/<name> && git push origin deve
 Work in a worktree, never in the main checkout directory (it may have another
 branch checked out). Retry a push 5/10/20/30 s on an HTTP 500.
 
+## What runs, and where (11 Oct 2026)
+
+Three layers, and they answer three different questions. The third
+did not exist until 11 Oct, and its absence is why two incidents
+shipped past a fully green pipeline.
+
+| Layer | Question it answers | Where |
+|---|---|---|
+| `gate.yml` | **is this build correct?** `tests`, `verify`, `proofs` in parallel | PR into `main`/`develop`; push to `develop` or `main` |
+| Vercel | — | builds `main` → production, `develop` → the preview host |
+| `smoke.yml` | **is the thing now SERVED the thing we think is served?** | Vercel's `deployment_status`, Production + success only |
+
+**Vercel does not wait for `gate.yml`.** They are parallel, not
+sequential. A red gate and a green deploy coexist happily, and the
+only thing that couples them is branch protection requiring the
+three checks on a PR. Until that is on, `main` is protected by
+discipline rather than by the repo.
+
+### Why the smoke layer exists
+
+Every other check in this repo serves `dist/` and tests that. So:
+
+- **10 Oct.** `motion-app.js` threw `ReferenceError: HEADS is not
+  defined` in every real browser; nobody could sign in for three
+  hours. `verify` passed 21 pages, `prove:gate` 120, `prove:growth`
+  78, `prove:billing` 186. All green, all blind — the module is off
+  under `navigator.webdriver` by design, so no Playwright check in
+  this repo can ever see a fault in it.
+- **11 Oct.** The host moved. A local build and a local baseline
+  will agree perfectly while production serves last week's bundle;
+  nothing could tell the difference.
+
+`npm run smoke` hits the real origin over the real network and
+answers only that narrower question. It is deliberately small —
+pages answer, the deployed markup names the brand host, robots and
+sitemap agree, www redirects to the apex, and a real browser reports
+zero console errors on `/start` and `/`.
+
+**The host is DERIVED from `src/data/brand.json`, never typed.** A
+smoke test with the host written into it passes on the day the host
+changes and fails for a week afterwards — the exact rot that left
+the old address in ten documentation files.
+
+**It is proved to fail.** Pointed at a copy that serves unbuilt
+source it reports 5 failures and exits 1, naming the literal
+`{{brand:name}}` placeholders. A check that has never been seen to
+fail is not a check.
+
+Run it by hand any time: `npm run smoke`, or
+`SMOKE_BASE=https://… SMOKE_BROWSER=0 npm run smoke`.
+
 ## The release gate (develop → main)
 
 Run on a clean checkout of `develop`, **uncapped**, with distinct

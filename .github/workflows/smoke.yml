@@ -1,0 +1,63 @@
+# Production smoke — the layer the build gates cannot provide.
+#
+# gate.yml proves a BUILD is good. Nothing proved that the thing
+# actually SERVED is that build, and twice that gap cost real time:
+# the 10 Oct sign-in outage (green everywhere, broken in every real
+# browser, because motion-app.js is off under navigator.webdriver)
+# and the 11 Oct host move (a local build and a local baseline will
+# happily agree while production serves last week's bundle).
+#
+# It fires on Vercel's own deployment_status, not on push, because
+# push is not the moment the site changed — the deploy is, and
+# Vercel reports it (creator vercel[bot], environment
+# "Production – ak-filmmaker-studio"). Running on push would race
+# the build and report on the PREVIOUS bundle.
+name: Smoke
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Origin to smoke (default: the host in src/data/brand.json)'
+        required: false
+        type: string
+
+concurrency:
+  group: smoke-${{ github.event.deployment_status.environment || 'manual' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only a SUCCESSFUL PRODUCTION deploy. A preview deployment is not
+    # the public site and does not serve the brand host, so smoking it
+    # would fail on the canonical check every single time — and a test
+    # that cries wolf on every preview gets muted within a week.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(github.event.deployment_status.environment, 'Production'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # brand.json is the source of the expected host, so it must be
+          # read from the commit that was DEPLOYED, not from the default
+          # branch — otherwise a host change smokes itself against the
+          # old value and passes for the wrong reason.
+          ref: ${{ github.event.deployment_status.deployment.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: smoke the live site
+        env:
+          SMOKE_BASE: ${{ inputs.base }}
+        run: npm run smoke

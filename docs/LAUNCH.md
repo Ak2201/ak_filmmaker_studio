@@ -168,6 +168,15 @@ that one.
 
 ## 4. Run the schema sections that have never run
 
+> **OUTSTANDING AS OF 11 Oct 2026 — run in this order, each checksummed:**
+> §32 (purchases required, access by e-mail; `docs/BILLING.md` §13),
+> §33 (trial in hours; §14), §34 (a refund gives a fresh trial; §15),
+> §35 (receipt and refund e-mails; §16 — needs the Resend domain and the
+> `RESEND_API_KEY` / `MAIL_FROM` secrets, then a redeploy of `rzp-verify`
+> and `rzp-webhook`). Until §35 runs, nothing is mailed and nothing breaks:
+> the functions only warn. The new invoice PDF prints without §35's
+> columns, leaving the Razorpay ids out.
+
 > **ONE THING TO RE-RUN (9 Oct 2026, after the UI/UX release):**
 > `billing_status()` (§30.6, the LAST `create or replace` of it in
 > `supabase-schema.sql`) changed twice: it gained the key

@@ -1,0 +1,340 @@
+/* ============================================================
+   SCRIPT — the writing-only page (script.html)
+   ------------------------------------------------------------
+   One top bar, one page, nothing else. The rows are write.css's
+   (`.wr-el`, `.wr-text`); this sheet turns them into a US-Letter page
+   with no per-row controls. Colours are tokens (the page itself reads
+   the --print-* family, white in both themes), shapes are --sk-*.
+
+   THE PAGE SCALES BY ONE NUMBER. Everything on the sheet is in `em`
+   or `ch`, and its font-size is 12pt at full size and shrinks with the
+   container below that, so 8.5in of paper is always 51em wide and the
+   indents stay the format's own. At 720–1099 that is a scaled page; at
+   <720 the sheet gives way to a single readable column.
+   ============================================================ */
+.sc-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "top" "page" "after" "beats" "chips";
+  padding: 0;
+  max-width: none;
+}
+.sc-main.has-beats { grid-template-areas: "top top" "page beats" "after beats" "chips chips"; grid-template-columns: minmax(0, 1fr) minmax(0, 20rem); }
+.sc-main > #scTop { grid-area: top; }
+.sc-main > #screenplay { grid-area: page; }
+.sc-main > .sc-done { grid-area: after; }
+.sc-main > #beatsPanel { grid-area: beats; }
+.sc-main > #scChips { grid-area: chips; }
+
+/* ---- the one top bar ------------------------------------------ */
+.sc-top {
+  position: sticky;
+  top: var(--sh-chrome-h, 0px);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+  padding: var(--s2) var(--s4);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule-hair);
+}
+.sc-crumb {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 12rem;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.sc-crumb strong { color: var(--ink); }
+.sc-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; color: var(--ink); }
+.sc-status { color: var(--ink-muted); }
+.sc-tools { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.sc-type {
+  width: auto;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));
+  font-size: var(--t-small);
+}
+.sc-focus-slot { display: contents; }
+.sc-beats-btn.is-on { background: var(--accent-wash); color: var(--accent-deep); }
+
+/* Hosts other modules look for inside #screenplay; the ⋯ menu drives
+   them. Hidden, and so is the format dock's own bar and the dictation
+   bar — not removed, because their scripts find them by selector. */
+.sc-hostbar,
+.sc-sheet > .wr-xa,
+.sc-sheet .fg-dock .fg-bar { display: none; }
+
+/* ---- the sheet -------------------------------------------------- */
+.sc-sheet {
+  position: relative;
+  container-type: inline-size;
+  padding: var(--s5) var(--s4) var(--s6);
+}
+.sc-sheet .wr-page {
+  --wr-em: min(12pt, calc(100cqw / 51));
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 8.5in;
+  margin-inline: auto;
+  gap: 0;
+  font-family: var(--f-script);
+  font-size: var(--wr-em);
+}
+.sc-sheet .wr-chunk,
+.sc-sheet .wr-dual-col { gap: 0; }
+.sc-sheet .wr-chunk { overflow-clip-margin: 8em; }
+.sc-sheet .wr-el {
+  display: block;
+  position: relative;
+  margin-top: 1em;
+}
+.sc-sheet .wr-el.t-scene { margin-top: 2em; }
+.sc-sheet .wr-el.t-paren,
+.sc-sheet .wr-el.t-dialogue { margin-top: 0; }
+.sc-sheet .wr-chunk:first-child > .wr-el:first-child { margin-top: 0; }
+.sc-sheet .wr-text {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font-size: 1em;
+  line-height: 1;
+  background: transparent;
+}
+.sc-sheet .wr-text:focus { outline: none; background: var(--print-wash); }
+
+@media (min-width: 720px) {
+  .sc-sheet .wr-page.is-pageview {
+    min-height: 66em;                       /* 11in of paper */
+    padding: 6em 6em 6em 9em;               /* 1in, 1in, 1in, 1.5in */
+    box-shadow: var(--sk-card-shadow);
+    border-radius: 2px;
+  }
+  /* The format's own measures, in characters — the PDF's numbers. */
+  .sc-sheet .wr-el.t-scene,
+  .sc-sheet .wr-el.t-action,
+  .sc-sheet .wr-el.t-shot,
+  .sc-sheet .wr-el.t-transition { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .sc-sheet .wr-el.t-character  { --wr-indent: 22ch; --wr-measure: 38ch; }
+  .sc-sheet .wr-el.t-paren      { --wr-indent: 16ch; --wr-measure: 28ch; }
+  .sc-sheet .wr-el.t-dialogue   { --wr-indent: 10ch; --wr-measure: 35ch; }
+  .sc-sheet .wr-el.t-transition .wr-text { text-align: right; }
+  .sc-sheet .wr-dual .wr-el.t-character { --wr-indent: 6ch; --wr-measure: 22ch; }
+  .sc-sheet .wr-dual .wr-el.t-paren     { --wr-indent: 2ch; --wr-measure: 24ch; }
+  .sc-sheet .wr-dual .wr-el.t-dialogue  { --wr-indent: 0ch; --wr-measure: 27ch; }
+
+  /* The type of the focused line, faint, in the left margin. */
+  .sc-sheet .wr-el:focus-within::before {
+    position: absolute;
+    top: 0;
+    right: calc(100% + 1.5em);
+    font-family: var(--f-mono);
+    font-size: 0.6em;
+    line-height: 2;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--print-muted);
+  }
+  .sc-sheet .wr-el.t-scene:focus-within::before      { content: 'Scene heading'; }
+  .sc-sheet .wr-el.t-action:focus-within::before     { content: 'Action'; }
+  .sc-sheet .wr-el.t-character:focus-within::before  { content: 'Character'; }
+  .sc-sheet .wr-el.t-paren:focus-within::before      { content: 'Parenthetical'; }
+  .sc-sheet .wr-el.t-dialogue:focus-within::before   { content: 'Dialogue'; }
+  .sc-sheet .wr-el.t-transition:focus-within::before { content: 'Transition'; }
+  .sc-sheet .wr-el.t-shot:focus-within::before       { content: 'Shot'; }
+}
+
+/* Page edges. */
+.sc-sheet .wr-pbreak {
+  margin-block: 2em;
+  margin-inline: -9em -6em;
+  padding-top: 0.5em;
+  border-top: 1px dashed var(--print-rule);
+  font-family: var(--f-mono);
+  font-size: 0.6em;
+  letter-spacing: var(--track-label);
+  text-align: right;
+  color: var(--print-muted);
+}
+.sc-sheet .wr-pbreak { padding-right: 10em; }
+
+/* ---- the ⋯ on the focused line --------------------------------- */
+.sc-line-more {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 0.5em);
+  min-width: 0;
+  min-height: 0;
+  padding: 0 0.5em;
+  font: inherit;
+  font-size: 0.9em;
+  line-height: 1.2;
+  background: var(--paper);
+  color: var(--ink-muted);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: pointer;
+  opacity: 0;
+}
+.wr-el:focus-within > .sc-line-more,
+.wr-el:hover > .sc-line-more { opacity: 1; }
+.sc-line-more:focus-visible { opacity: 1; }
+@media (max-width: 719px) { .sc-line-more { display: none; } }
+
+.sc-line-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: var(--s1);
+  background: var(--panel);
+  color: var(--panel-ink);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+}
+.sc-line-menu[hidden] { display: none; }
+.sc-line-item {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: var(--s2) var(--s3);
+  text-align: left;
+  font: inherit;
+  font-size: var(--t-small);
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: pointer;
+}
+.sc-line-item:hover,
+.sc-line-item:focus-visible { background: color-mix(in srgb, var(--panel-ink) 14%, transparent); outline: none; }
+.sc-line-item.is-danger { color: var(--panel-gilt); }
+
+/* ---- the empty hint -------------------------------------------- */
+.sc-hint {
+  position: absolute;
+  top: calc(var(--s5) + 9em);
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 8.5in;
+  margin: 0 auto;
+  padding: 0 6em 0 9em;
+  font-family: var(--f-script);
+  font-size: min(12pt, calc(100cqw / 51));
+  color: var(--print-muted);
+  pointer-events: none;
+}
+.sc-hint[hidden] { display: none; }
+.sc-hint a { pointer-events: auto; color: var(--print-ink); text-decoration: underline; }
+
+/* ---- below the page, and the beats panel ----------------------- */
+.sc-done {
+  margin: 0;
+  padding: var(--s4) var(--s4) var(--s7);
+  text-align: center;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.sc-done a { color: var(--accent-deep); }
+
+.sc-beats {
+  padding: var(--s4);
+  border-left: 1px solid var(--rule-hair);
+  background: var(--paper);
+  overflow-y: auto;
+}
+.sc-beats[hidden] { display: none; }
+.sc-beats-h { margin: 0 0 var(--s3); font-size: var(--t-body); }
+@media (max-width: 1099px) {
+  /* A drawer, not a column. */
+  .sc-main.has-beats { grid-template-areas: "top" "page" "after" "chips"; grid-template-columns: minmax(0, 1fr); }
+  .sc-beats {
+    position: fixed;
+    z-index: 40;
+    top: 0; right: 0; bottom: 0;
+    width: min(20rem, 90vw);
+    box-shadow: var(--sk-card-shadow);
+    transition: transform calc(0.2s * var(--motion, 1));
+  }
+}
+
+/* ---- the import dialog ------------------------------------------ */
+.sc-imp {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: var(--s4);
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.sc-imp-card {
+  box-sizing: border-box;
+  width: min(34rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: var(--s4);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+}
+.sc-imp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.sc-imp-head h2 { margin: 0; font-size: var(--t-body); }
+.sc-imp-row, .sc-imp-modes { display: flex; flex-wrap: wrap; gap: var(--s2); margin-block: var(--s3); }
+.sc-imp-file { max-width: 100%; }
+.sc-imp-paste-l { display: grid; gap: var(--s1); margin-block: var(--s3); font-size: var(--t-small); }
+.sc-imp-paste { width: 100%; box-sizing: border-box; font-family: var(--f-script); }
+
+/* ---- the phone: one column, and a chip bar above the keyboard --- */
+.sc-chips { display: none; }
+@media (max-width: 719px) {
+  .sc-top { padding-inline: var(--s3); }
+  .sc-sheet { padding: var(--s3) var(--s3) var(--s5); }
+  .sc-sheet .wr-page { --wr-em: 16px; padding: var(--s3); border-radius: var(--sk-radius, var(--radius)); }
+  .sc-sheet .wr-text { line-height: 1.35; }
+  .sc-hint { top: calc(var(--s6) + 2.2rem); padding: 0 var(--s5); font-size: 0.95rem; }
+  .sc-chips {
+    position: sticky;
+    bottom: var(--mab-h, 0px);
+    z-index: 6;
+    display: flex;
+    gap: var(--s1);
+    padding: var(--s2) var(--s3);
+    overflow-x: auto;
+    background: var(--paper);
+    border-top: 1px solid var(--rule-hair);
+  }
+  .sc-chip {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 var(--s3);
+    font: inherit;
+    font-size: var(--t-small);
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule-hair);
+    border-radius: var(--radius-pill, 999px);
+    cursor: pointer;
+  }
+  .sc-chip.is-on { background: var(--accent-wash); color: var(--accent-deep); border-color: var(--accent-deep); }
+  .sc-crumb .sc-draft, .sc-crumb .sc-draft + .sc-sep { display: none; }
+}
+
+/* ---- focus mode: only the page --------------------------------- */
+html.fm-on .sc-sheet { padding-block: 0; }
+html.fm-on .sc-sheet .wr-page { box-shadow: none; }
+html.fm-on .sc-line-more { display: none; }

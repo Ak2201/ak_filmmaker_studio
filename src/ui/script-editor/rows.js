@@ -52,7 +52,7 @@ export function setAttr(node, name, value) {
 
 /** One element's row. `elements` is the whole list (the cue buttons
     read the speech before this one). */
-export function renderElement(el, i, total, elements) {
+export function renderElement(el, i, total, elements, rowChrome = true) {
   const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id });
 
   const sel = h('select.wr-type', {
@@ -93,7 +93,10 @@ export function renderElement(el, i, total, elements) {
     ]));
   }
 
-  row.append(sel, ta, rowActs(el, i, total, elements));
+  // rowChrome:false is the writing-only page: the line is the whole row;
+  // its type lives in the page's one dropdown, its actions in a menu.
+  if (rowChrome) row.append(sel, ta, rowActs(el, i, total, elements));
+  else row.append(ta);
   return row;
 }
 
@@ -159,7 +162,7 @@ export function dualSignature(elements) {
 
    `afterRow(el, i)` may return a node to sit straight after a row (the
    page's pass panel); null for none. */
-export function buildPage(elements, { pageView = false, afterRow } = {}) {
+export function buildPage(elements, { pageView = false, afterRow, rowChrome = true } = {}) {
   const page = h('div.wr-page' + (pageView ? '.is-pageview' : ''), { id: 'wr-page' });
   const pairs = new Map(dualPairs(elements).map((p) => [p.left[0], p]));
   let run = null;
@@ -175,7 +178,7 @@ export function buildPage(elements, { pageView = false, afterRow } = {}) {
       pair.cols = [left, right];
     }
     const box = pair ? pair.cols[i >= pair.right[0] ? 1 : 0] : run;
-    box.append(renderElement(el, i, elements.length, elements));
+    box.append(renderElement(el, i, elements.length, elements, rowChrome));
     inRun++;
     // The panel is a sibling of the row it belongs to, so it opens
     // where the speech is rather than somewhere else on the page.

@@ -57,6 +57,8 @@ export function mountEditor(host, opts) {
   const persistNow = () => { o.persistNow(); emit('change', { kind: 'structure' }); };
   const render = (focus) => o.render(focus);
   const smart = o.smart;
+  /* false on the writing-only page: no per-row select or icon buttons. */
+  const rowChrome = o.rowChrome !== false;
 
   /* Which dual-dialogue pairs the page was last BUILT with. A patch that
      changes the pairing (a line inserted inside a pair, a flag whose
@@ -70,7 +72,7 @@ export function mountEditor(host, opts) {
   /* ---- the page ------------------------------------------------ */
   function renderPage({ pageView = false, afterRow } = {}) {
     dualRendered = dualSignature(els());
-    return buildPage(els(), { pageView, afterRow });
+    return buildPage(els(), { pageView, afterRow, rowChrome });
   }
 
   /* A structural edit PATCHES the page rather than rebuilding it. On a
@@ -186,7 +188,7 @@ export function mountEditor(host, opts) {
     persistNow();
     if (!patchable(lenBefore, list.length)) { render(elFocus(el.id)); return; }
 
-    const row = renderElement(el, at, list.length, list);
+    const row = renderElement(el, at, list.length, list, rowChrome);
     const prev = at > 0 ? rowOf(list[at - 1].id) : null;
     const next = list[at + 1] ? rowOf(list[at + 1].id) : null;
     if (!prev && !next) { render(elFocus(el.id)); return; }

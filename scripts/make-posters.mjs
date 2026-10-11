@@ -292,3 +292,130 @@ await sharp({ create: { width: x, height: 400, channels: 4, background: { r: 255
   .composite(tiles).png().toFile(join(OUT, 'instagram-dp-preview.png'));
 console.log(`  instagram-dp-preview.png   the circle crop at ${PREVIEW.join('px, ')}px, on white`);
 console.log('  (svg beside each png, so a wording change needs no redraw by hand)');
+
+/* ============================================================
+   THE FIFTEEN FEATURE POSTERS
+   ------------------------------------------------------------
+   One per thing the app actually does, drawn from the SAME
+   navigation.json the app's own menus are built from — each
+   poster's eyebrow is a real phase label and each body line is
+   the module's real `purpose` string, lightly broken for the
+   line width. Nothing here describes a feature that does not
+   exist, because the list is read rather than remembered.
+
+   THE ACCENT IS THE PHASE'S OWN HUE, resolved through the same
+   mapping tokens.css uses (.sh-ph-story -> --feature, and so on).
+   That is what makes fifteen cards look different without any of
+   them going off-brand: the colour is not decoration, it is the
+   stage the feature belongs to, exactly as it is in the product.
+   ============================================================ */
+const PHASE_HUE = { story: 'feature', screenplay: 'library', preprod: 'plan', production: 'shoot', post: 'visualize' };
+const navPhases = Object.fromEntries(nav.phases.map((p) => [p.id, p]));
+const moduleBy = {};
+for (const ph of nav.phases) for (const m of (ph.modules || [])) moduleBy[m.id] = { ...m, phase: ph.id };
+
+/* every id a poster cites must exist, or the draw stops */
+const cite = (id) => {
+  const m = moduleBy[id];
+  if (!m) throw new Error(`poster cites module "${id}", which is not in navigation.json`);
+  return m;
+};
+
+const FEATURES = [
+  { phase: 'story', cites: ['story-beats'], title: ['Write it.', 'Then see its shape.'],
+    lede: ['Where the story rises. Where it sags.', 'Shown back to you, scene by scene.'],
+    rows: ['Beats and pacing', 'Logline and synopsis', 'Story bible: character, conflict, stakes'] },
+
+  { phase: 'story', cites: ['idea-vault'], title: ['Everything you', 'saved, in one place.'],
+    lede: ['The links, the pictures, the half-thoughts.', 'Clip them while you browse; find them later.'],
+    rows: ['Idea Vault', 'A browser side-panel clipper', 'Kept with the film, not in ten tabs'] },
+
+  { phase: 'screenplay', cites: ['screenplay'], title: ['Just write.', 'The format is', 'handled.'],
+    lede: ['Slug lines, action, character, dialogue —', 'the layout is done for you as you type.'],
+    rows: ['Industry-standard screenplay format', 'Tamil dialogue, English slug lines', 'Export to PDF, Fountain or Final Draft'] },
+
+  { phase: 'screenplay', cites: ['revisions'], title: ['Every draft,', 'kept.'],
+    lede: ['Numbered drafts you can compare, restore', 'and print — nothing is ever written over.'],
+    rows: ['Draft 1 to whatever you are on now', 'See exactly what changed between them', 'Restore any one of them'] },
+
+  { phase: 'screenplay', cites: ['import-script'], title: ['Already have', 'a script?'],
+    lede: ['Bring it in and the whole studio opens up', 'around it. No retyping.'],
+    rows: ['Fountain', 'Final Draft (.fdx)', 'PDF and plain text'] },
+
+  { phase: 'preprod', cites: ['auto-tag'], title: ['It reads your', 'script for you.'],
+    lede: ['Auto-tagging goes through each scene and', 'suggests what it needs. You confirm.'],
+    rows: ['Actors, props and vehicles', 'Stunts and effects', 'Sounds and set dressing'] },
+
+  { phase: 'preprod', cites: ['breakdowns', 'elements'], title: ['What every', 'scene needs.'],
+    lede: ['Mark it once per scene, and the film-wide', 'list builds itself underneath you.'],
+    rows: ['Actors, props, costumes, vehicles, effects', 'Every element, with the scenes that need it', 'Nothing counted twice'] },
+
+  { phase: 'preprod', cites: ['cast-matrix', 'screen-time'], title: ['Who is in what.', 'How long it runs.'],
+    lede: ['The cast matrix shows which character is in', 'which scene, and who shares the most.'],
+    rows: ['Screen time worked out from the pages', 'Scene list, in order, day or night', 'Page count and runtime that agree'] },
+
+  { phase: 'preprod', cites: ['shot-list', 'storyboard', 'lookbook'], title: ['See it before', 'you shoot it.'],
+    lede: ['Plan the shots, draw the frames, collect the', 'look — all against the scene they belong to.'],
+    rows: ['Shot list: how close, how it moves', 'Storyboard: a frame per shot', 'Lookbook: costume, set, colour, light'] },
+
+  { phase: 'preprod', cites: ['budget'], title: ['What it costs,', 'line by line.'],
+    lede: ['Starts from Chennai rates instead of a blank', 'page, and every figure shows its source.'],
+    rows: ['Crew, cast, equipment, locations, post', 'Sourced rates with the date they were checked', 'No invented numbers, no inflation guesses'] },
+
+  { phase: 'preprod', cites: ['stripboard', 'dood', 'calendar'], title: ['Scenes into', 'shoot days.'],
+    lede: ['Drag the strips into the order you will', 'actually shoot, and the rest follows.'],
+    rows: ['Stripboard, grouped into days', 'Day Out of Days: nobody called for nothing', 'Calendar: prep, shoot, delivery'] },
+
+  { phase: 'preprod', cites: ['contacts', 'sides', 'reports'], title: ['Where to be.', 'At what time.'],
+    lede: ['The unit list, the pages each actor needs,', 'and the reports that get printed.'],
+    rows: ['Contacts by department, with phone and e-mail', 'Sides: the day’s pages, ready to print', 'Printable reports per scene and per day'] },
+
+  { phase: 'production', cites: ['shoot-day', 'call-sheets'], title: ['The day,', 'on one screen.'],
+    lede: ['Today’s scenes, big enough to read on set,', 'with a mark for what you actually got.'],
+    rows: ['Shot · part · dropped — not just a tick', 'Call sheets that tell everyone where to be', 'Designed for a phone first, then widened'] },
+
+  { phase: 'post', cites: ['edit-log', 'deliverables'], title: ['What the cut', 'still needs.'],
+    lede: ['The edit’s word on each scene, against what', 'the shoot said it got.'],
+    rows: ['Edit log, scene by scene', 'Deliverables: censor, subtitles, cinema copy', 'Festival formats, with their deadlines'] }
+];
+
+const LIBRARY_POSTER = {
+  phase: 'story', hueOverride: 'library', title: ['Read a film.', 'Then take', 'one apart.'],
+  eyebrowOverride: 'THE LIBRARY',
+  lede: ['The reference shelf, open from every page', 'of the studio while you work.'],
+  rows: [`${F.terms} terms in plain words`, `${F.films} films worth studying`, 'A real feature, dissected scene by scene', 'Fifty rules of thumb, with the reasons'] };
+
+function featurePoster(spec) {
+  spec.cites?.forEach(cite);
+  const hue = C[spec.hueOverride || PHASE_HUE[spec.phase]];
+  const eyebrow = spec.eyebrowOverride || navPhases[spec.phase].label.toUpperCase();
+  const titleSize = spec.title.length >= 3 ? 82 : 92;
+  let y = 262;
+  const titleSvg = spec.title.map((l, i) => text(80, y + i * (titleSize + 8), l,
+    { size: titleSize, weight: 800, fill: i === spec.title.length - 1 ? hue : FG })).join('');
+  y += spec.title.length * (titleSize + 8) + 26;
+  const ledeSvg = spec.lede.map((l, i) => text(80, y + i * 48, l, { size: 36, weight: 500, fill: BODY })).join('');
+  y += spec.lede.length * 48 + 70;
+  const rowsSvg = spec.rows.map((r, i) => {
+    const ry = y + i * 86;
+    return `<rect x="80" y="${ry - 26}" width="8" height="36" rx="4" fill="${hue}"/>`
+      + text(118, ry, r, { size: 34, weight: 600, fill: FG, op: 0.92 });
+  }).join('');
+  return frame(`
+    ${text(80, 150, eyebrow, { size: 30, weight: 800, fill: hue, spacing: 7 })}
+    ${titleSvg}${ledeSvg}${rowsSvg}
+    ${text(80, 1206, 'Works offline · Pay once · Nothing to install', { size: 30, weight: 600, fill: MUTED })}
+    ${footer(1278)}`);
+}
+
+const ALL = [...FEATURES, LIBRARY_POSTER];
+if (ALL.length !== 15) throw new Error(`expected 15 feature posters, built ${ALL.length}`);
+console.log(`\nfeature posters -> social/feature-01..15.png`);
+await Promise.all(ALL.map((spec, i) => {
+  const svg = featurePoster(spec);
+  if (/undefined|NaN/.test(svg)) throw new Error(`feature-${i + 1} contains undefined/NaN`);
+  const n = String(i + 1).padStart(2, '0');
+  writeFileSync(join(OUT, `feature-${n}.svg`), svg);
+  return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(join(OUT, `feature-${n}.png`))
+    .then((r) => console.log(`  feature-${n}.png  ${(r.size / 1024).toFixed(0)} KB  ${spec.eyebrowOverride || navPhases[spec.phase].label}`));
+}));

@@ -132,7 +132,7 @@ const MODES = {
     ['Import', '.docx, .pdf or .txt — or drag it onto the page.', 'story.html?start=import']
   ],
   screenplay: [
-    ['Sample', 'Open the sample project, a whole feature filled in.', 'index.html#modules'],
+    ['Sample', 'Open the sample project, a whole feature filled in.', 'index.html?sample=1'],
     ['New', 'A blank screenplay.', 'write.html#screenplay'],
     ['Import', 'Fountain, Final Draft (.fdx), PDF or plain text.', 'write.html#screenplay']
   ]

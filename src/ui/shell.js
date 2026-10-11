@@ -76,7 +76,7 @@ function shellMode() {
   return g && g.id !== 'dashboard' ? 'global' : 'project';
 }
 const GLOBAL_MODE = shellMode();
-const isGlobalMode = () => GLOBAL_MODE === 'global';
+export const isGlobalMode = () => GLOBAL_MODE === 'global';
 
 /* The stage strip animates in when you arrive from the dashboard (a
    stage card was clicked): the referrer is the only signal, because

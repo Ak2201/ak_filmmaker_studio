@@ -38,6 +38,7 @@ import { iconSpan } from './icon.js';
 import { phases, globals, shelves } from '../lib/navmodel.js';
 import { projectRows, projectList, formatLabel } from './project-switcher.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { isGlobalMode } from './shell.js';
 import '../styles/mobile-nav.css';
 
 const CURRENT = (() => {
@@ -212,6 +213,18 @@ export function openTools() {
 
 /* ---- the bottom bar's items, for chrome.js -------------------- */
 export function barItems() {
+  /* A global page (library, settings, admin, purchase, home) carries no
+     project chrome, so its bar has no studio-wide Search either: the
+     library has its own scoped search, and the rest have nothing to
+     search. Settings takes the slot. The mode is shell.js's, derived once. */
+  if (isGlobalMode()) {
+    return [
+      { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
+      { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },
+      { icon: '⚙', label: 'Settings', href: 'settings.html', id: 'settings' },
+      { icon: '⋯', label: 'Tools', onClick: () => openTools(), id: 'tools', controls: true }
+    ];
+  }
   return [
     { icon: '⌂', label: 'Home', href: 'index.html', id: 'home' },
     { icon: '☰', label: 'Go to', onClick: () => openGoTo(), id: 'goto', controls: true },

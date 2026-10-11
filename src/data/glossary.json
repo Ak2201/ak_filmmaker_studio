@@ -1,5 +1,5 @@
 {
-  "_about": "Craft terms explained, each anchored in four Tamil films the Studio already teaches from. Definitions and examples are original analysis — no plot text or dialogue is reproduced from the films. `tanglish` mirrors the English gloss the way the blueprints already do. Terms are matched case-insensitively against step prose by autoTagGlossary() in src/ui/chrome.js; `aliases` catch the inflections that appear in the copy.",
+  "_about": "Craft terms explained, each anchored in four Tamil films the Studio already teaches from. Definitions and examples are original analysis — no plot text or dialogue is reproduced from the films. `tanglish` mirrors the English gloss the way the blueprints already do. Terms are matched case-insensitively against step prose by autoTagGlossary() in src/ui/chrome.js; `aliases` catch the inflections that appear in the copy. `stage` files each term under Story, Screenplay, Pre-production, Production or Post (story|screenplay|preprod|production|post) for the library's Film terminology space. `seeAlso` names other terms. `notag: true` keeps an everyday word (take, wrap, scene) out of the automatic popover tagging while leaving it in the library and in search.",
   "films": {
     "96": "96 (2018, dir. C. Prem Kumar)",
     "dragon": "Dragon (2025, dir. Ashwath Marimuthu)",
@@ -9,6 +9,7 @@
   "terms": [
     {
       "term": "logline",
+      "stage": "story",
       "aliases": [
         "loglines"
       ],
@@ -31,10 +32,15 @@
           "film": "vikramvedha",
           "note": "An encounter cop hunting a gangster is handed three stories that make his own certainty unusable."
         }
+      ],
+      "seeAlso": [
+        "premise",
+        "story idea"
       ]
     },
     {
       "term": "stakes",
+      "stage": "story",
       "aliases": [
         "stake"
       ],
@@ -57,10 +63,15 @@
           "film": "vikramvedha",
           "note": "What is at risk is not the cop's life but his right to believe he is the good one."
         }
+      ],
+      "seeAlso": [
+        "want",
+        "need"
       ]
     },
     {
       "term": "theme",
+      "stage": "story",
       "aliases": [
         "thematic"
       ],
@@ -83,10 +94,14 @@
           "film": "vikramvedha",
           "note": "Good and evil are positions, and position depends on where you are standing."
         }
+      ],
+      "seeAlso": [
+        "motif"
       ]
     },
     {
       "term": "want",
+      "stage": "story",
       "aliases": [
         "wants"
       ],
@@ -109,10 +124,15 @@
           "film": "vikramvedha",
           "note": "To find and finish Vedha, cleanly, the way the previous encounters went."
         }
+      ],
+      "seeAlso": [
+        "need",
+        "the lie"
       ]
     },
     {
       "term": "need",
+      "stage": "story",
       "aliases": [
         "needs"
       ],
@@ -135,10 +155,15 @@
           "film": "vikramvedha",
           "note": "To admit that his certainty was a convenience, not a moral position."
         }
+      ],
+      "seeAlso": [
+        "want",
+        "character arc"
       ]
     },
     {
       "term": "the lie",
+      "stage": "story",
       "aliases": [
         "the lie the character believes",
         "character lie"
@@ -162,10 +187,15 @@
           "film": "vikramvedha",
           "note": "'I only shoot the guilty, so I am clean.'"
         }
+      ],
+      "seeAlso": [
+        "character flaw",
+        "emotional wound"
       ]
     },
     {
       "term": "inciting incident",
+      "stage": "story",
       "aliases": [
         "disturbance",
         "catalyst"
@@ -189,10 +219,15 @@
           "film": "vikramvedha",
           "note": "Vedha walks into the station and surrenders, choosing the terms of his own capture."
         }
+      ],
+      "seeAlso": [
+        "act break",
+        "three-act structure"
       ]
     },
     {
       "term": "character arc",
+      "stage": "story",
       "aliases": [
         "arc",
         "arcs"
@@ -216,10 +251,15 @@
           "film": "vikramvedha",
           "note": "The cop's certainty erodes in three stages, one per story told to him."
         }
+      ],
+      "seeAlso": [
+        "the lie",
+        "denouement"
       ]
     },
     {
       "term": "setup",
+      "stage": "story",
       "aliases": [
         "setups",
         "planting"
@@ -243,10 +283,16 @@
           "film": "vikramvedha",
           "note": "The folk-tale frame is stated up front, so the structure itself is the setup."
         }
+      ],
+      "seeAlso": [
+        "payoff",
+        "plant",
+        "foreshadowing"
       ]
     },
     {
       "term": "payoff",
+      "stage": "story",
       "aliases": [
         "payoffs"
       ],
@@ -269,10 +315,15 @@
           "film": "96",
           "note": "The song withheld for most of the film finally arrives, and carries everything unspoken with it."
         }
+      ],
+      "seeAlso": [
+        "setup",
+        "plant"
       ]
     },
     {
       "term": "midpoint",
+      "stage": "story",
       "aliases": [],
       "def": "The centre turn where the protagonist stops reacting and starts acting, usually on new information that reframes the problem.",
       "tanglish": "Nadu-la varura thirupam. Ithu varaikkum react panninavan, ippo thaane move edukka aarambikaraan.",
@@ -293,10 +344,15 @@
           "film": "96",
           "note": "The reunion ends and the night becomes private. The film changes from group nostalgia to two people."
         }
+      ],
+      "seeAlso": [
+        "turning point",
+        "act break"
       ]
     },
     {
       "term": "obstacle",
+      "stage": "story",
       "aliases": [
         "obstacles"
       ],
@@ -319,10 +375,15 @@
           "film": "vikramvedha",
           "note": "The obstacle is an argument, not a man — Vedha's questions, which cannot be shot."
         }
+      ],
+      "seeAlso": [
+        "dramatic conflict",
+        "antagonist"
       ]
     },
     {
       "term": "subtext",
+      "stage": "screenplay",
       "aliases": [],
       "def": "What the scene is about while the characters discuss something else. If the dialogue states the feeling, the subtext has been deleted.",
       "tanglish": "Pesaradhu onnu, scene-oda artham innonnu. Feeling-a dialogue-la nerada sonna, subtext poidum.",
@@ -343,10 +404,15 @@
           "film": "porthozhil",
           "note": "The senior officer's instruction is always procedural on the surface and always about the junior's nerve underneath."
         }
+      ],
+      "seeAlso": [
+        "dialogue",
+        "dramatic irony"
       ]
     },
     {
       "term": "exposition",
+      "stage": "screenplay",
       "aliases": [],
       "def": "Information the audience needs. The craft is not avoiding it but hiding it inside conflict, so it arrives while attention is elsewhere.",
       "tanglish": "Paarvaiyaalarukku theriya vendiya thagaval. Thavirkuradhu illa — conflict-ukkulla olichu kudukkuradhu thaan vidhai.",
@@ -367,10 +433,15 @@
           "film": "96",
           "note": "Twenty-two missing years are conveyed by what the two avoid asking."
         }
+      ],
+      "seeAlso": [
+        "subtext",
+        "flashback"
       ]
     },
     {
       "term": "climax",
+      "stage": "story",
       "aliases": [],
       "def": "The moment the protagonist makes the choice the whole film has been arranging. It answers the theme, not just the plot.",
       "tanglish": "Padam muzhusaa thayaar panna andha choice-a hero edukkura edam. Plot-ukku mattum illa, theme-ukkum badhil.",
@@ -391,10 +462,15 @@
           "film": "vikramvedha",
           "note": "The cop has to answer the last question himself, with no third story coming to save him."
         }
+      ],
+      "seeAlso": [
+        "denouement",
+        "set piece"
       ]
     },
     {
       "term": "reveal",
+      "stage": "story",
       "aliases": [
         "twist"
       ],
@@ -417,10 +493,15 @@
           "film": "96",
           "note": "The film withholds almost nothing factually, and still reveals — what changes is what the audience understands the silence to mean."
         }
+      ],
+      "seeAlso": [
+        "red herring",
+        "dramatic irony"
       ]
     },
     {
       "term": "protagonist",
+      "stage": "story",
       "aliases": [],
       "def": "The character whose choices drive the story and whose belief is tested. Not necessarily the most screen time — the one who changes, or refuses to.",
       "tanglish": "Yaaroda choice kadhaiya nagarthudho, yaaroda nambikkai test aagudho avan thaan. Screen time mukkiyam illa.",
@@ -441,10 +522,15 @@
           "film": "vikramvedha",
           "note": "The cop, even though the gangster has the better lines and controls the telling."
         }
+      ],
+      "seeAlso": [
+        "antagonist",
+        "character arc"
       ]
     },
     {
       "term": "antagonist",
+      "stage": "story",
       "aliases": [],
       "def": "The force opposing the want. Strongest when it is a person with a coherent philosophy rather than a person with bad intentions.",
       "tanglish": "Hero-oda aasaiku ethiraana sakthi. Ketta ennam ulla aal illa — sariyaana logic vechirukkuravan thaan strong antagonist.",
@@ -465,10 +551,15 @@
           "film": "96",
           "note": "No antagonist at all — time is the opposition. Worth studying for how a film holds without one."
         }
+      ],
+      "seeAlso": [
+        "protagonist",
+        "obstacle"
       ]
     },
     {
       "term": "slugline",
+      "stage": "screenplay",
       "aliases": [
         "scene heading",
         "slug"
@@ -492,10 +583,15 @@
           "film": "vikramvedha",
           "note": "Headings alternate between two worlds on a rhythm. Read the slug list alone and the film's structure is already legible."
         }
+      ],
+      "seeAlso": [
+        "scene",
+        "establishing shot"
       ]
     },
     {
       "term": "match cut",
+      "stage": "post",
       "aliases": [
         "graphic match"
       ],
@@ -518,10 +614,15 @@
           "film": "vikramvedha",
           "note": "The film rhymes its two protagonists by cutting on matched actions, arguing they are the same man before the script says so."
         }
+      ],
+      "seeAlso": [
+        "J-cut and L-cut",
+        "montage"
       ]
     },
     {
       "term": "beat",
+      "stage": "story",
       "aliases": [
         "dramatic beat"
       ],
@@ -544,10 +645,15 @@
           "film": "vikramvedha",
           "note": "The beats are staged as questions put to the other man, so each turn advances the argument and the plot in the same line."
         }
+      ],
+      "seeAlso": [
+        "sequence",
+        "turning point"
       ]
     },
     {
       "term": "story idea",
+      "stage": "story",
       "aliases": [],
       "def": "The first spark of a film: a situation, a person or a question you cannot stop thinking about. It is not yet a story; it becomes one when you can say who wants what and what stands in the way.",
       "tanglish": "Padam-oda modhal porigai. Oru situation, oru aal, illa oru kelvi. Yaar-ku enna venum, edhu thadukkudhu-nu sollum bodhu thaan adhu kadhai aagum.",
@@ -568,10 +674,15 @@
           "film": "vikramvedha",
           "note": "A cop hunts a gangster who answers only with stories. The idea is a hunt that turns into an argument."
         }
+      ],
+      "seeAlso": [
+        "premise",
+        "logline"
       ]
     },
     {
       "term": "story bible",
+      "stage": "story",
       "aliases": [],
       "def": "One working document that holds the decisions of your story: premise, characters, world, rules and arc. You read it before writing so every scene stays consistent with the rest.",
       "tanglish": "Kadhai-oda ella mudivum oru idathula: premise, characters, ulagam, rules. Ezhudhum bodhu ithaye paarthu ezhudhanum.",
@@ -592,10 +703,15 @@
           "film": "vikramvedha",
           "note": "It would list the three stories and how each shifts the cop's certainty, because the structure is announced in advance and must hold."
         }
+      ],
+      "seeAlso": [
+        "story world",
+        "character profile"
       ]
     },
     {
       "term": "character profile",
+      "stage": "story",
       "aliases": [],
       "def": "A short portrait of a person in your story: who they are, what they want, what they fear and what flaw holds them back. Enough to predict what they would do in a scene you have not written.",
       "tanglish": "Oru character yaaru-nu sinnadhaa ezhudhi vaikkradhu: enna venum, edhukku bayam, enna kuraai. Ezhudhaadha scene-la avan enna pannuvaan-nu sollidanum.",
@@ -616,10 +732,15 @@
           "film": "vikramvedha",
           "note": "Vikram trusts a clean record as proof of a clean conscience. His profile is exactly what the film puts to the test."
         }
+      ],
+      "seeAlso": [
+        "story bible",
+        "character arc"
       ]
     },
     {
       "term": "supporting cast",
+      "stage": "story",
       "aliases": [],
       "def": "The characters around the protagonist who each press on one side of them: a mirror, an ally, an obstacle. Each should exist for a reason the story needs.",
       "tanglish": "Hero-va sutthi irukkura characters. Ovvoruthar-um hero-oda oru pakkatha test pannanum, summa irukka koodaadhu.",
@@ -640,10 +761,15 @@
           "film": "vikramvedha",
           "note": "Priya is the control group: she already holds the position the protagonist claims to hold, and the gap is the argument."
         }
+      ],
+      "seeAlso": [
+        "B-story",
+        "casting"
       ]
     },
     {
       "term": "character flaw",
+      "stage": "story",
       "aliases": [
         "flaw",
         "flaws"
@@ -667,10 +793,15 @@
           "film": "vikramvedha",
           "note": "Vikram confuses a clean record with a clean conscience."
         }
+      ],
+      "seeAlso": [
+        "the lie",
+        "character arc"
       ]
     },
     {
       "term": "core fear",
+      "stage": "story",
       "aliases": [],
       "def": "What a character most dreads facing or losing. It drives their choices, usually in ways they would not admit out loud.",
       "tanglish": "Character edhukku romba payapadraan. Adhu thaan avan mudivugalai odikkum, aana avan othukka maattaan.",
@@ -691,10 +822,15 @@
           "film": "vikramvedha",
           "note": "Vikram fears finding out his certainty was a convenience rather than a moral position."
         }
+      ],
+      "seeAlso": [
+        "emotional wound",
+        "character flaw"
       ]
     },
     {
       "term": "emotional wound",
+      "stage": "story",
       "aliases": [
         "the wound"
       ],
@@ -717,10 +853,15 @@
           "film": "vikramvedha",
           "note": "The pressure here comes from outside: three stories erode his certainty in stages instead of one old injury."
         }
+      ],
+      "seeAlso": [
+        "core fear",
+        "the lie"
       ]
     },
     {
       "term": "dramatic conflict",
+      "stage": "story",
       "aliases": [
         "conflict"
       ],
@@ -743,10 +884,15 @@
           "film": "vikramvedha",
           "note": "The antagonist opposes him with an argument rather than force, and an argument cannot be shot."
         }
+      ],
+      "seeAlso": [
+        "obstacle",
+        "stakes"
       ]
     },
     {
       "term": "story world",
+      "stage": "story",
       "aliases": [],
       "def": "Where and when the story happens and the rules that hold there: its places, customs and limits. A clear world makes choices feel real.",
       "tanglish": "Kadhai nadakkura idam, kaalam, adhula irukkura rules. Ulagam theliva irundha choice nijamaa theriyum.",
@@ -767,10 +913,15 @@
           "film": "vikramvedha",
           "note": "An encounter cop's world where his method is routine and sanctioned, which the film then puts on trial."
         }
+      ],
+      "seeAlso": [
+        "production design",
+        "lookbook"
       ]
     },
     {
       "term": "beat sheet",
+      "stage": "story",
       "aliases": [
         "beat sheets"
       ],
@@ -793,10 +944,15 @@
           "film": "vikramvedha",
           "note": "The first story declares the form, the second reverses the investigation, and the climax withholds the device the audience expects."
         }
+      ],
+      "seeAlso": [
+        "three-act structure",
+        "act break"
       ]
     },
     {
       "term": "step outline",
+      "stage": "story",
       "aliases": [],
       "def": "A scene-by-scene list of the story in plain sentences, one line per scene, written before any dialogue. It shows whether the order of scenes works.",
       "tanglish": "Dialogue ezhudhurathukku munnaadi, oru scene-ku oru vari-nu kadhaiya varisaiyaa ezhudhuradhu. Order work aagudha-nu theriyum.",
@@ -817,10 +973,15 @@
           "film": "vikramvedha",
           "note": "\"The second story lands and the search turns on the cop's own record.\" The outline shows the structure before dialogue exists."
         }
+      ],
+      "seeAlso": [
+        "treatment",
+        "beat sheet"
       ]
     },
     {
       "term": "synopsis",
+      "stage": "story",
       "aliases": [
         "synopses"
       ],
@@ -843,10 +1004,15 @@
           "film": "vikramvedha",
           "note": "An encounter cop, a gangster who tells stories, and a final question the cop has to answer for himself."
         }
+      ],
+      "seeAlso": [
+        "treatment",
+        "step outline"
       ]
     },
     {
       "term": "screenplay",
+      "stage": "screenplay",
       "aliases": [
         "screenplays"
       ],
@@ -869,10 +1035,15 @@
           "film": "vikramvedha",
           "note": "Stories told in dialogue become scenes of their own, and the page has to give the telling to the person who profits from it."
         }
+      ],
+      "seeAlso": [
+        "treatment",
+        "scene"
       ]
     },
     {
       "term": "action line",
+      "stage": "screenplay",
       "aliases": [
         "action lines"
       ],
@@ -895,10 +1066,15 @@
           "film": "vikramvedha",
           "note": "A look across a table between the cop and the gangster is action. The page shows it and does not explain it."
         }
+      ],
+      "seeAlso": [
+        "scene",
+        "V.O."
       ]
     },
     {
       "term": "character cue",
+      "stage": "screenplay",
       "aliases": [
         "character cues"
       ],
@@ -921,10 +1097,15 @@
           "film": "vikramvedha",
           "note": "VIKRAM and VEDHA: two cues in an argument. Consistent names keep the screen-time count right."
         }
+      ],
+      "seeAlso": [
+        "V.O.",
+        "O.S."
       ]
     },
     {
       "term": "dialogue",
+      "stage": "screenplay",
       "aliases": [
         "dialogues"
       ],
@@ -947,10 +1128,15 @@
           "film": "vikramvedha",
           "note": "Told as stories: each is a deliberate choice by the speaker, which makes dialogue an act of aggression."
         }
+      ],
+      "seeAlso": [
+        "subtext",
+        "V.O."
       ]
     },
     {
       "term": "parenthetical",
+      "stage": "screenplay",
       "aliases": [
         "parentheticals"
       ],
@@ -973,10 +1159,15 @@
           "film": "vikramvedha",
           "note": "When the gangster answers a question with a question, a parenthetical is rarely needed. The structure tells the actor."
         }
+      ],
+      "seeAlso": [
+        "dialogue",
+        "(MORE)"
       ]
     },
     {
       "term": "scene transition",
+      "stage": "screenplay",
       "aliases": [
         "transition",
         "transitions"
@@ -1000,10 +1191,15 @@
           "film": "vikramvedha",
           "note": "A cut from one story back to the interrogation is a real change, one of the few places a marked transition could earn its line."
         }
+      ],
+      "seeAlso": [
+        "match cut",
+        "J-cut and L-cut"
       ]
     },
     {
       "term": "cont'd",
+      "stage": "screenplay",
       "aliases": [
         "contd",
         "(cont'd)"
@@ -1027,10 +1223,14 @@
           "film": "vikramvedha",
           "note": "Vedha begins a story, a beat of action interrupts, and the telling resumes under VEDHA (CONT'D)."
         }
+      ],
+      "seeAlso": [
+        "(MORE)"
       ]
     },
     {
       "term": "script breakdown",
+      "stage": "preprod",
       "aliases": [
         "breakdown",
         "breakdowns"
@@ -1054,10 +1254,15 @@
           "film": "vikramvedha",
           "note": "Interrogation scenes repeat a setting, and the breakdown groups them so the shoot can combine them."
         }
+      ],
+      "seeAlso": [
+        "stripboard",
+        "day out of days"
       ]
     },
     {
       "term": "stripboard",
+      "stage": "preprod",
       "aliases": [
         "stripboards"
       ],
@@ -1080,10 +1285,15 @@
           "film": "vikramvedha",
           "note": "Scenes with both leads in the same room can be clustered into the days both actors are available."
         }
+      ],
+      "seeAlso": [
+        "shooting schedule",
+        "script breakdown"
       ]
     },
     {
       "term": "day out of days",
+      "stage": "preprod",
       "aliases": [
         "dood",
         "day-out-of-days"
@@ -1107,10 +1317,15 @@
           "film": "vikramvedha",
           "note": "Three principal roles overlap in different ways, and the chart shows how that sets the booking."
         }
+      ],
+      "seeAlso": [
+        "shooting schedule",
+        "casting"
       ]
     },
     {
       "term": "call sheet",
+      "stage": "production",
       "aliases": [
         "call sheets"
       ],
@@ -1133,10 +1348,15 @@
           "film": "vikramvedha",
           "note": "An interrogation day lists both leads and the location, with times set by when the room is free."
         }
+      ],
+      "seeAlso": [
+        "call time",
+        "assistant director"
       ]
     },
     {
       "term": "shot list",
+      "stage": "preprod",
       "aliases": [
         "shot lists"
       ],
@@ -1159,7 +1379,2574 @@
           "film": "vikramvedha",
           "note": "A face-to-face argument is planned as shot and reverse shot, and the list says which speaker each set-up favours."
         }
+      ],
+      "seeAlso": [
+        "storyboard",
+        "coverage"
       ]
+    },
+    {
+      "term": "premise",
+      "stage": "story",
+      "aliases": [
+        "premises"
+      ],
+      "def": "The situation the story starts from, stated as 'what if': a character, a circumstance and the pressure that makes it a story rather than a situation.",
+      "tanglish": "Kadhai edhula aarambikkudhu-nu 'what if' kelvi. Yaaru, entha nilaimai, edhu pressure.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "What if a man who forged his way into a career is recognised by the one person who can prove it? The 'what if' already contains the pressure."
+        },
+        {
+          "film": "96",
+          "note": "What if two people get exactly one evening, twenty-two years late? The constraint of a single night is what turns a situation into a story."
+        },
+        {
+          "film": "porthozhil",
+          "note": "What if the trainee is the least steady person in a room that demands steadiness? The premise puts the weakness and the job in the same frame."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "What if the hunted man arranges his own capture and then only answers in stories? The inversion is the premise."
+        }
+      ],
+      "seeAlso": [
+        "logline",
+        "story idea"
+      ],
+      "notag": true
+    },
+    {
+      "term": "three-act structure",
+      "stage": "story",
+      "aliases": [
+        "three act structure",
+        "three acts",
+        "act structure"
+      ],
+      "def": "A way of dividing a story into setup, confrontation and resolution, with a turning point at each boundary. It is a map of where pressure changes, not a formula to fill in.",
+      "tanglish": "Kadhaiya moonu paagam: aarambam, mothal, mudivu. Rendu idathula thirupam. Idhu map, formula illa.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Act one is the comic con, the recognition ends it, act two is the repayment, and the choice to take the loss opens the last act."
+        },
+        {
+          "film": "96",
+          "note": "A quiet film still has the shape: the reunion arranged, the night they are finally alone together, and a short plain exchange that does the work of a climax."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The posting and the partner open the film, the narrowing method locks act two in place, and the lone deduction belongs to act three."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The declared three stories give the film an unusually visible skeleton: each telling is a stage, and the last decision is the resolution."
+        }
+      ],
+      "seeAlso": [
+        "act break",
+        "midpoint",
+        "beat sheet"
+      ]
+    },
+    {
+      "term": "act break",
+      "stage": "story",
+      "aliases": [
+        "act breaks",
+        "plot point"
+      ],
+      "def": "The moment a story's direction changes so completely that the audience feels a new part begin. Characters commit to something they cannot take back.",
+      "tanglish": "Kadhai thirumbura idam. Hero thirumba mudiyaadha mudivu edukkura nimisham.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "He accepts the dean's terms and re-enters the life he ran from. It is a humiliating decision, not a heroic one, and that is why it works as a break."
+        },
+        {
+          "film": "96",
+          "note": "When the two are finally in the same room, the film stops being about arranging the meeting and becomes about whether either will speak plainly."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The search narrows from a general hunt to one specific method. After that the team is committed to patience, which is the thing the protagonist lacks."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The first story is told and the film's rules are declared: this will be settled by argument, not pursuit. The cop commits to listening."
+        }
+      ],
+      "seeAlso": [
+        "three-act structure",
+        "inciting incident",
+        "midpoint"
+      ]
+    },
+    {
+      "term": "turning point",
+      "stage": "story",
+      "aliases": [
+        "turning points"
+      ],
+      "def": "A moment inside a scene or sequence where what a character wants, knows or risks changes direction. Without one, a scene only continues.",
+      "tanglish": "Scene-kulla edhachum thirumbanum. Thirumbaama irundha adhu scene illa, sumaa nadakkudhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The moment he stops hiding from the dean and begins counting what he owes turns the film from dodging to doing."
+        },
+        {
+          "film": "96",
+          "note": "The conversation shifts from the group to the two of them, and the talk stops being about the past in general and starts being about this pair."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The investigation stops being about the shape the team believed and the protagonist begins to generate theories himself."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "When the second story lands, the cop starts auditing his own record instead of his target's. The direction of the search reverses without a change of location."
+        }
+      ],
+      "seeAlso": [
+        "act break",
+        "midpoint"
+      ]
+    },
+    {
+      "term": "motif",
+      "stage": "story",
+      "aliases": [
+        "motifs",
+        "recurring motif"
+      ],
+      "def": "An image, sound, object or phrase that returns through the film and gathers meaning each time. A motif is how a theme gets said without being spoken.",
+      "tanglish": "Padam muzhukka thirumba thirumba varra image / sound / porul. Theme-a pesaama solla vazhi.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The running number joke returns as a workload with a deadline. Same object, changed meaning, and the repetition is what carries the theme."
+        },
+        {
+          "film": "96",
+          "note": "Kept objects and the music that marks memory return across the night. Each reappearance means a little more than the last."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Sound recurs as information the dialogue refuses to state. By the end the audience listens the way the investigators do."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The story-within-a-story form is itself a motif: each telling repeats the shape, so a change in the shape is felt immediately."
+        }
+      ],
+      "seeAlso": [
+        "theme",
+        "foreshadowing",
+        "setup"
+      ]
+    },
+    {
+      "term": "MacGuffin",
+      "stage": "story",
+      "aliases": [
+        "macguffin"
+      ],
+      "def": "An object or goal that everyone in the story chases, which matters because of what the chase does to the people, not for what it is.",
+      "tanglish": "Ellarum thedura oru porul. Adhu enna-nu mukkiyam illa, thedurathula aal enna aaraanga-nu thaan mukkiyam.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The degree is the chase object. What it is barely matters; what matters is what keeping it costs the people around him."
+        },
+        {
+          "film": "96",
+          "note": "There is hardly a chase object at all; the nearest is the evening itself, which shows a story can run on a human wish with nothing to carry."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The case is the nominal object. The real story is whether the trainee can hold his nerve, and the case only gives that test a reason to happen."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Whoever is caught, and for whatever, is a pretext. The film is about what the stories do to the one who listens."
+        }
+      ],
+      "seeAlso": [
+        "stakes",
+        "want"
+      ]
+    },
+    {
+      "term": "foreshadowing",
+      "stage": "story",
+      "aliases": [
+        "foreshadow",
+        "foreshadows"
+      ],
+      "def": "Hints early in a story that prepare the audience for what comes later. Done well, it is only visible on the second viewing.",
+      "tanglish": "Pinnaadi varadhu pathi munnaadiye chinna hint. Rendaavadhu paakumbodhu thaan theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The number used as a joke early is quietly a preview of the load he must clear later. The comic setup is also a warning."
+        },
+        {
+          "film": "96",
+          "note": "The film shows how ordinary his life is before the reunion, which foreshadows what the reunion will interrupt."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A habit of the trainee, shown as a quirk, hints at the quality that will eventually decide the case."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The film announces its own folk-tale structure at the start, which foreshadows the pattern its final choice will break."
+        }
+      ],
+      "seeAlso": [
+        "setup",
+        "payoff",
+        "plant"
+      ]
+    },
+    {
+      "term": "dramatic irony",
+      "stage": "story",
+      "def": "When the audience knows something a character does not, so every scene is read with a second layer of tension.",
+      "tanglish": "Audience-kku theriyum, character-kku theriyaadhu. Adhaala ovvoru dialogue-um rendu artham.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "While the protagonist performs a fluency he lacks, the audience already holds the secret, and every confident line becomes funny and dangerous at once."
+        },
+        {
+          "film": "96",
+          "note": "The audience feels how much each of them leaves unsaid, even where the two pretend the evening is only logistics."
+        },
+        {
+          "film": "porthozhil",
+          "note": "When the trainee misses a detail the audience has noticed, the scene is read as tension because the viewer is ahead of him."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Because the film tells us the form up front, we know a story is coming that will cost the listener, and we watch him walk into it."
+        }
+      ],
+      "seeAlso": [
+        "subtext",
+        "reveal",
+        "exposition"
+      ]
+    },
+    {
+      "term": "plant",
+      "stage": "story",
+      "aliases": [
+        "plants"
+      ],
+      "def": "A fact, object or line placed early so that a later event feels earned instead of convenient. The cousin of a setup, seen from the writer's side.",
+      "tanglish": "Munnaadiye vechu vidura vishayam. Appuram vandhaa 'convenient'-a illa, 'earned'-a theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The comic number is planted as a joke, so its later return as a deadline needs no explanation."
+        },
+        {
+          "film": "96",
+          "note": "A kept object is planted as evidence of years, so the audience trusts what it says about the characters without a line of dialogue."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The decisive observation is hidden inside characterisation so it slips past the audience's relevance filter and returns as the solution."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Each story plants something the next picks up, so the final question can only be answered with what the film has already placed."
+        }
+      ],
+      "seeAlso": [
+        "setup",
+        "payoff",
+        "foreshadowing"
+      ],
+      "notag": true
+    },
+    {
+      "term": "red herring",
+      "stage": "story",
+      "aliases": [
+        "red herrings"
+      ],
+      "def": "A clue that looks important and points the wrong way. It keeps the audience guessing without cheating, as long as it can be explained afterwards.",
+      "tanglish": "Thappa vazhi kaattura clue. Padam mudinjadhum 'adhu ippadi dhaan'-nu explain panna mudiyanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A character who looks like danger turns out to be principle. The audience braces for a villain and meets a rule."
+        },
+        {
+          "film": "96",
+          "note": "The film tempts us towards the usual romance reversal and then declines it, so the genre's promise works as a red herring."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Early theories about the killer's method fall apart at the midpoint, and the film lets the team, and the audience, chase the wrong pattern."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The audience is invited to take sides between cop and gangster, and the film uses that expectation as the thing it later withdraws."
+        }
+      ],
+      "seeAlso": [
+        "reveal",
+        "midpoint"
+      ]
+    },
+    {
+      "term": "B-story",
+      "stage": "story",
+      "aliases": [
+        "b story",
+        "b-plot"
+      ],
+      "def": "A secondary storyline running alongside the main one, usually a relationship, that lets the theme be seen from a second side.",
+      "tanglish": "Main kadhaiyoda koodave oru chinna kadhai. Theme-a vera kodhalil kaattum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The classmate who pays for the shortcut is the film's second line. Through that story the cost of the con is shown in human terms."
+        },
+        {
+          "film": "96",
+          "note": "With almost no plot, the second line is the lives each will carry back at the end, which is the pressure beneath the single night."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The partner relationship, senior against junior, is a story of its own and is where the theme of nerve is actually argued."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A character who holds the principle the cop claims to hold lives inside his own house, and her line is the second argument on the same theme."
+        }
+      ],
+      "seeAlso": [
+        "theme",
+        "supporting cast"
+      ]
+    },
+    {
+      "term": "denouement",
+      "stage": "story",
+      "aliases": [
+        "falling action"
+      ],
+      "def": "The closing movement after the climax: the new normal. It shows what the climax changed and lets the audience leave the world.",
+      "tanglish": "Climax-ku appuram: ippo vazhkai eppadi maariduchu-nu kaattura paagam.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The life that remains is smaller than the invented one and better founded. The ending presents the reduction as enough, not as punishment."
+        },
+        {
+          "film": "96",
+          "note": "The lives resume. The film declines to reward the audience with a reversal, and the refusal is the ending's argument."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The closing movement treats the work as continuing, with the protagonist changed but marked."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The ending declines to arbitrate. Both positions stay arguable and the film closes on the protagonist's choice, not on a verdict."
+        }
+      ],
+      "seeAlso": [
+        "climax"
+      ]
+    },
+    {
+      "term": "set piece",
+      "stage": "story",
+      "aliases": [
+        "set pieces"
+      ],
+      "def": "A big, planned scene built to be remembered: a chase, a confrontation, a performance. It still has to move the story, not pause it.",
+      "tanglish": "Padathulayae oru perusa, plan panni vecha scene. Kadhaiyum munnaadi poganum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The recognition scene is the film's biggest turn, and it is a conversation, not a stunt. A set piece can be a room and a decision."
+        },
+        {
+          "film": "96",
+          "note": "The reunion night is the set piece: one occasion, held to carry the whole film."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The lone deduction at the climax is staged as the film's set piece, with the arc completing first and the case closing as a consequence."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Each telling of a story is a small set piece built on the same shape, so the difference between them can be felt."
+        }
+      ],
+      "seeAlso": [
+        "sequence",
+        "climax"
+      ]
+    },
+    {
+      "term": "sequence",
+      "stage": "story",
+      "aliases": [
+        "sequences"
+      ],
+      "def": "A run of scenes that together do one job in the story, with a beginning, a middle and a result. A film is a chain of them.",
+      "tanglish": "Onnu rendu scene illa, oru velaya seyyura scene-gal thodar. Padam = sequence-gal.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The stretch where he starts clearing his papers is one sequence: a goal, setbacks and a result that shifts his position with the dean."
+        },
+        {
+          "film": "96",
+          "note": "The long evening, from the group to the two of them alone, is a sequence even though nothing external happens."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The narrowing of the search, from the general hunt to the specific method, is one sequence with a clear start and result."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Each of the three tellings is a sequence with a set structure, which is why a change in the structure is noticed at once."
+        }
+      ],
+      "seeAlso": [
+        "set piece",
+        "beat"
+      ],
+      "notag": true
+    },
+    {
+      "term": "flashback",
+      "stage": "story",
+      "aliases": [
+        "flashbacks"
+      ],
+      "def": "A scene set earlier than the main story, used to show something the present needs. It earns its place only if it changes how we read the present.",
+      "tanglish": "Pazhaya kaalathu scene. Ippo nadakkura vishayatha purinjukka udhavanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The forged past is the film's engine; showing it once would give the present its weight, but the comedy works because the audience gets the facts without it."
+        },
+        {
+          "film": "96",
+          "note": "Memory is the film's subject, so time past arrives where the present cannot say it, cued by music rather than explained."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A flash to an earlier case would only earn its place if it changed how the audience reads the trainee's present fear."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Each story the gangster tells plays like a flashback, shaped by the teller to push the listener towards an answer."
+        }
+      ],
+      "seeAlso": [
+        "exposition",
+        "story world"
+      ]
+    },
+    {
+      "term": "treatment",
+      "stage": "screenplay",
+      "aliases": [
+        "treatments"
+      ],
+      "def": "A prose telling of the whole film, scene by scene, in the present tense and without dialogue. It lets you test the story before the expensive work of formatting a script.",
+      "tanglish": "Padathoda muzhu kadhaiya present tense-la, dialogue illama, prose-a ezhudhuradhu. Script ezhudhumunnaadi kadhai odudha-nu paakka.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A treatment would let you check that the comic setup and the later reckoning really line up before a single scene is formatted."
+        },
+        {
+          "film": "96",
+          "note": "A treatment of the reunion night would quickly show whether an evening with almost no plot still builds, scene by scene."
+        },
+        {
+          "film": "porthozhil",
+          "note": "In prose the investigation's order of discovery can be audited: does each step narrow the case, and when does the trainee finally act alone?"
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A treatment makes the three-story architecture checkable on one page: what each telling costs the cop, and whether the last question is answered by him."
+        }
+      ],
+      "seeAlso": [
+        "synopsis",
+        "step outline"
+      ],
+      "notag": true
+    },
+    {
+      "term": "scene",
+      "stage": "screenplay",
+      "aliases": [
+        "scenes"
+      ],
+      "def": "A unit of story set in one place and time, in which someone wants something and something changes. If nothing changes, cut it or combine it.",
+      "tanglish": "Oru idam, oru neram, oru velai. Edhavadhu maaranum, illa-na cut pannidunga.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A scene between the protagonist and the dean is one place and one goal: the first changes what each can demand of the other."
+        },
+        {
+          "film": "96",
+          "note": "Even the quietest scene changes something: who looks away first, who says what they came to say, who leaves it unsaid."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A scene of procedure is a character test as well, so the briefing changes the relationship between trainee and veteran."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A scene of one story being told is a contest: by its end the listener has been moved to a position he did not hold before."
+        }
+      ],
+      "seeAlso": [
+        "beat",
+        "sequence",
+        "slugline"
+      ],
+      "notag": true
+    },
+    {
+      "term": "V.O.",
+      "stage": "screenplay",
+      "aliases": [
+        "voice-over",
+        "voice over",
+        "vo",
+        "(v.o.)"
+      ],
+      "def": "Voice-over: a voice heard on the soundtrack but not from a person on screen in the scene, such as narration or a remembered line. Written as (V.O.) beside the character's name.",
+      "tanglish": "Screen-la aal illa, aana kural ketkum: narration, ninaivu. Cue pakkathula (V.O.)-nu ezhudhuvom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A confident narration over the con in act one would sell the lie to the audience, and then its later silence would cost the character."
+        },
+        {
+          "film": "96",
+          "note": "A remembered line over an image of the past is a way to carry memory without leaving the present scene."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A report read in voice-over could bridge a gap in the investigation, but it hands the audience the facts, so it should be used sparingly."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A teller's voice over the image of his story is the film's natural device, since the narration is itself a move in the contest."
+        }
+      ],
+      "seeAlso": [
+        "O.S.",
+        "dialogue",
+        "character cue"
+      ],
+      "notag": true
+    },
+    {
+      "term": "O.S.",
+      "stage": "screenplay",
+      "aliases": [
+        "off-screen",
+        "off screen",
+        "o.c.",
+        "(o.s.)",
+        "off-camera"
+      ],
+      "def": "Off-screen: the speaker is in the scene but out of frame. Written (O.S.) beside the name. It keeps a character present without showing them.",
+      "tanglish": "Character scene-la irukkaanga, aana frame-ku veliya. Cue pakkathula (O.S.).",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The dean's voice from beyond the frame keeps his pressure present in a scene even when the camera stays on the protagonist."
+        },
+        {
+          "film": "96",
+          "note": "A voice calling across a room can place the second person in the scene, and the camera can stay with the one who will not look."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A veteran's instruction heard off-screen lets the camera hold the trainee's face while the partner's authority is still in the scene."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "An off-screen line from the gangster can keep him in the room while the camera is on the cop's reaction."
+        }
+      ],
+      "seeAlso": [
+        "V.O.",
+        "character cue",
+        "dialogue"
+      ],
+      "notag": true
+    },
+    {
+      "term": "(MORE)",
+      "stage": "screenplay",
+      "aliases": [
+        "(more)",
+        "continued dialogue"
+      ],
+      "def": "Printed at the bottom of a page when a character's speech runs on to the next page, with (CONT'D) after the name on the new page. Software adds it; you do not type it.",
+      "tanglish": "Oru speech adutha page-ku poidhuna, kizhe (MORE), adutha page-la (CONT'D). Software thaanaave podum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A long argument by the dean that spans a page break carries (MORE) and then (CONT'D), so the actor and the reader know it is one speech."
+        },
+        {
+          "film": "96",
+          "note": "A long speech in a dialogue-led, quiet film stands out on the page because it needs a (MORE)."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A veteran's long explanation of procedure may split across pages, and (MORE) tells the reader he is not done."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A long story told by the gangster routinely breaks across pages and is marked (MORE) and (CONT'D)."
+        }
+      ],
+      "seeAlso": [
+        "cont'd",
+        "dialogue",
+        "parenthetical"
+      ],
+      "notag": true
+    },
+    {
+      "term": "montage",
+      "stage": "screenplay",
+      "aliases": [
+        "montages"
+      ],
+      "def": "A run of short shots, often with music, that compresses time or shows a change without scenes in between. Write it as a list of images that adds up to one idea.",
+      "tanglish": "Neraiya chinna shot, music-oda, neram-a surukki kaattum. Oru list-a ezhudhi, mothama oru artham varanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "His rushed attempt to clear his papers is an obvious montage: a pile of work shown through brief images of effort and the shrinking calendar."
+        },
+        {
+          "film": "96",
+          "note": "A film this still has little need for montage, which makes the occasional run of images stand out as memory rather than action."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The slow narrowing of the case can be written as a montage of repeated checking, to show time passing without a scene for each step."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A montage would work against the form here, since each telling is a full scene and the film depends on its not being compressed."
+        }
+      ],
+      "seeAlso": [
+        "intercut",
+        "scene transition"
+      ],
+      "notag": true
+    },
+    {
+      "term": "intercut",
+      "stage": "screenplay",
+      "aliases": [
+        "intercutting",
+        "cross-cut",
+        "crosscut",
+        "cross cut"
+      ],
+      "def": "Switching back and forth between two places or two actions that are happening at the same time, so each comments on the other. Written INTERCUT in the script.",
+      "tanglish": "Rendu idathula nadakkuradha maari maari kaatturadhu. Onnu innoru onnukku artham kodukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Cutting between his exam hall and the person who is paying for his mistake lets the comedy of one place bear the cost of the other."
+        },
+        {
+          "film": "96",
+          "note": "Cutting between the two of them in separate places lets the film put their silences next to each other."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Cutting between the trainee alone and the veteran far away lets the audience see how much he is relying on someone who is not there."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Cutting between the telling and what the listener is doing with it puts the cost of a story in the same moment as the story."
+        }
+      ],
+      "seeAlso": [
+        "montage",
+        "match cut"
+      ],
+      "notag": true
+    },
+    {
+      "term": "cold open",
+      "stage": "screenplay",
+      "aliases": [
+        "cold opens"
+      ],
+      "def": "A scene before the title that starts the story straight away, with no introduction. It establishes tone and a question the audience wants answered.",
+      "tanglish": "Title-ku munnaadiye kadhai aarambam. Tone-um oru kelviyum kudukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "An opening in a comic register shows him performing a fluency he does not have, which establishes tone and a question before anything else."
+        },
+        {
+          "film": "96",
+          "note": "An opening on the protagonist alone at work sets the baseline the rest of the film will be measured against."
+        },
+        {
+          "film": "porthozhil",
+          "note": "An opening that shows the investigation's machinery as routine sets the standard against which the trainee's unsteadiness will read."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "An opening that announces the folk-tale form states the rules of the game up front."
+        }
+      ],
+      "seeAlso": [
+        "premise"
+      ]
+    },
+    {
+      "term": "storyboard",
+      "stage": "preprod",
+      "aliases": [
+        "storyboards",
+        "story board"
+      ],
+      "def": "A set of drawings, one per planned shot, showing framing and action before the shoot. It does not need to be good art; it needs to be clear.",
+      "tanglish": "Ovvoru shot-kum oru chinna drawing. Artist-a irukkanum-nu avasiyam illa, purinjaa podhum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A frame for the comic setup, a frame for the same object when it returns as a deadline: the board shows the audience's memory being used."
+        },
+        {
+          "film": "96",
+          "note": "Two frames, a wide that shows the distance between them and a close that shows who looks away, can carry the whole logic of the reunion's first recognition."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A frame of the trainee in the corner of a room and the veteran in the foreground says more about their relationship than a line of dialogue."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Panels of a listener's face in each telling show that the camera should stay with him while the voice does the work."
+        }
+      ],
+      "seeAlso": [
+        "shot list",
+        "coverage"
+      ],
+      "notag": true
+    },
+    {
+      "term": "lookbook",
+      "stage": "preprod",
+      "aliases": [
+        "look book",
+        "mood board",
+        "moodboard",
+        "look-book"
+      ],
+      "def": "A short collection of images, colours and references that fixes the film's look and tone, shared with the cinematographer, designer and costume team before the shoot.",
+      "tanglish": "Padathoda look-ku reference images thokuppu. Camera, art, costume ellarum ore kodhal-la irukka.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A lookbook would pair the corporate polish of his fake life with the worn corridors of the college, so the cost of the con is visible in the look."
+        },
+        {
+          "film": "96",
+          "note": "References for a school reunion and a long evening would fix a soft, lived-in look in which restraint reads as warmth, not coldness."
+        },
+        {
+          "film": "porthozhil",
+          "note": "References for a patient, procedural thriller would fix a cold and controlled look in which waiting is the dominant image."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "References for a folk-tale told in a city of noir would fix a look in which the stories can feel different from the frame story."
+        }
+      ],
+      "seeAlso": [
+        "production design",
+        "shot list"
+      ]
+    },
+    {
+      "term": "location recce",
+      "stage": "preprod",
+      "aliases": [
+        "recce",
+        "location scout",
+        "scouting",
+        "tech recce",
+        "recces"
+      ],
+      "def": "A visit to a possible location to check light, sound, space, power, access and permission before committing to it. Recce comes from 'reconnaissance'.",
+      "tanglish": "Shoot pannum idatha munnaadiye poi paakurathu: velicham, sound, space, current, permission.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A college corridor needs a recce for quiet at the hour you want to shoot and for whether the dean's office can hold a camera and two actors."
+        },
+        {
+          "film": "96",
+          "note": "A reunion night needs a venue that can be dark enough for the evening and quiet enough to record a plain conversation."
+        },
+        {
+          "film": "porthozhil",
+          "note": "An interrogation or investigation room needs checking for space to move a camera and for outside noise that would intrude on the quiet the film depends on."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A room for a long two-person contest needs a recce for room tone and for how many angles it can really give."
+        }
+      ],
+      "seeAlso": [
+        "location permit",
+        "call sheet"
+      ]
+    },
+    {
+      "term": "casting",
+      "stage": "preprod",
+      "def": "Choosing the actors for each role, through auditions, screen tests and conversation. Good casting is half of direction.",
+      "tanglish": "Yaaru entha role-nu theduradhu: audition, screen test. Nalla casting-eh paadhi direction.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A comic con-man who can turn into a man paying a real price needs an actor who can play both without a join, and a dean who can be correct without being cruel."
+        },
+        {
+          "film": "96",
+          "note": "The film asks two leads to hold a long night mostly through restraint, so casting is about whether they can say the unsaid with their faces."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The trainee must read as unsteady and the veteran as the standard of composure, so the pairing has to be tested together."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The cop and the gangster must be matched in presence for a contest of stories to feel even, so the pair is cast as a pair."
+        }
+      ],
+      "seeAlso": [
+        "rehearsal",
+        "blocking"
+      ],
+      "notag": true
+    },
+    {
+      "term": "shooting schedule",
+      "stage": "preprod",
+      "aliases": [
+        "shoot schedule"
+      ],
+      "def": "The plan of which scenes are shot on which days. It groups by location, cast availability and light, not by story order.",
+      "tanglish": "Entha naal entha scene-nu plan. Kadhai order illa, location / cast / velicham paathu group pannuvom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "College scenes can be grouped together even if they fall at the start and the end of the story."
+        },
+        {
+          "film": "96",
+          "note": "The reunion venue is shot as one block, even though the evening moves through the film in order."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Scenes that share one location, such as the investigation room, are shot together across story time."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The scenes of a single room can be grouped, but the cop's changing state across them needs to be tracked for continuity."
+        }
+      ],
+      "seeAlso": [
+        "stripboard",
+        "script breakdown",
+        "call sheet"
+      ]
+    },
+    {
+      "term": "assistant director",
+      "stage": "preprod",
+      "aliases": [
+        "AD",
+        "1st AD",
+        "first AD",
+        "assistant directors"
+      ],
+      "def": "The person who runs the set and the schedule so the director can direct. The AD keeps the day on time and issues the call sheet.",
+      "tanglish": "Director direct panna, set-um schedule-um AD paakkuvaar. Call sheet-um avar thaan.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A comic day full of crowds and a quiet drama day need very different handling; the AD plans the order so the cast and extras are used well."
+        },
+        {
+          "film": "96",
+          "note": "A night shoot with two leads needs the AD to protect the time and quiet the scene depends on."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A day of repeated procedural scenes needs an AD to keep the order straight and the rooms free."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A day with two leads and long takes needs an AD to protect the actors' time and the room's."
+        }
+      ],
+      "seeAlso": [
+        "call sheet",
+        "shooting schedule",
+        "call time"
+      ]
+    },
+    {
+      "term": "production design",
+      "stage": "preprod",
+      "aliases": [
+        "art direction",
+        "art department",
+        "production designer"
+      ],
+      "def": "Everything the camera sees that was designed: sets, locations dressed, colour, props and the overall visual world. It tells the audience who lives here.",
+      "tanglish": "Camera-la theriyura ellaam design: set, color, props. 'Idhu yaaroda idam'-nu solla vendiya.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A fake life in a corporate setting against the worn college of his past is told by dressing alone: polish on one side and wear on the other."
+        },
+        {
+          "film": "96",
+          "note": "Kept things, worn things: what has been preserved and what has been replaced does the work of exposition about two decades."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The investigative rooms are set up as routine and competent first so the trainee's unsteadiness reads against them."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The settings of each telling can be given their own look so that the audience feels the move between stories without being told."
+        }
+      ],
+      "seeAlso": [
+        "lookbook"
+      ]
+    },
+    {
+      "term": "location permit",
+      "stage": "preprod",
+      "aliases": [
+        "permit",
+        "permits",
+        "shooting permission"
+      ],
+      "def": "Written permission from the owner or authority to film at a place. Without it, a shoot can be stopped at its worst moment.",
+      "tanglish": "Antha idathula shoot panna ezhuthu-la anumathi. Illa-na nadunthula niruthiduvaanga.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A college or office location needs permission from its authority, and the person who recognises him on camera is not the one you want to ask on the day."
+        },
+        {
+          "film": "96",
+          "note": "A public place or venue for an evening needs permission for the hours and crowd it will bring."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A police or institutional setting would need clear permission and rules about what may be shown."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A public street or building used for a chase or a capture needs permission and often a plan for crowds."
+        }
+      ],
+      "seeAlso": [
+        "location recce",
+        "call sheet"
+      ]
+    },
+    {
+      "term": "contingency",
+      "stage": "preprod",
+      "aliases": [
+        "contingencies",
+        "weather cover"
+      ],
+      "def": "Money and time set aside for the things that will go wrong: weather, illness, a lost day. Producers add a percentage to the budget for it.",
+      "tanglish": "Thappaa poga vaaippulla vishayatukku munnaadiye vecha panam / neram. Budget-la oru percent.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A film with crowds and outdoor days needs a margin for the day it rains, not just a plan for when it does not."
+        },
+        {
+          "film": "96",
+          "note": "A night shoot across one venue has little room to recover a lost evening, so a reserve of time is the safeguard."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A procedural built on long, tense scenes cannot be rushed, so time reserved for a bad day protects the performances."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A film built on two-hander scenes depends on both actors being present, so a day lost to illness needs a plan."
+        }
+      ],
+      "seeAlso": [
+        "shooting schedule",
+        "cover set"
+      ],
+      "notag": true
+    },
+    {
+      "term": "cover set",
+      "stage": "preprod",
+      "aliases": [
+        "cover sets",
+        "weather cover set"
+      ],
+      "def": "An indoor or alternative location lined up in advance so the crew can still shoot something useful if weather or access ruins the planned scene.",
+      "tanglish": "Mazhai-na plan A poidum. Indoor-la shoot panna plan B location. Adhuthaan cover set.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "If rain stops a campus exterior, a corridor or classroom scene gives the day something useful to shoot."
+        },
+        {
+          "film": "96",
+          "note": "If a night exterior is lost, an interior scene from the same evening can be shot in its place."
+        },
+        {
+          "film": "porthozhil",
+          "note": "If an outdoor scene is rained off, an interior investigative scene can fill the day."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "If an exterior chase cannot be shot, a one-room telling can replace it, since its needs are small."
+        }
+      ],
+      "seeAlso": [
+        "contingency",
+        "shooting schedule"
+      ],
+      "notag": true
+    },
+    {
+      "term": "rehearsal",
+      "stage": "preprod",
+      "aliases": [
+        "rehearsals",
+        "rehearse"
+      ],
+      "def": "Working through scenes with the actors before the camera rolls, to find the blocking, the rhythm and the problems while they are cheap to fix.",
+      "tanglish": "Camera odaradhukku munnaadi actor-oda scene-a pannipaakkuradhu. Prechana mudhale theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A scene where he must lie fluently and the dean must stay calm is worth rehearsing so that the comedy lands and the threat stays real."
+        },
+        {
+          "film": "96",
+          "note": "A film that lives on what is not said needs rehearsal to find where the pauses and looks go."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Rehearsal lets the veteran's cold instruction and the trainee's hesitation find a rhythm that reads as truth."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The contest of questions between the two leads rewards rehearsal, since the timing of each reply is the scene."
+        }
+      ],
+      "seeAlso": [
+        "blocking",
+        "casting"
+      ],
+      "notag": true
+    },
+    {
+      "term": "blocking",
+      "stage": "preprod",
+      "def": "Deciding where the actors stand and move within a scene, and where the camera is in relation to them. It tells the story with positions.",
+      "tanglish": "Actor enga nikkaraanga, eppadi nagarraanga, camera enga-nu mudivu. Position-aaley kadhai solrom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Putting the dean seated and the protagonist standing in the same room says who holds the power before a word is spoken."
+        },
+        {
+          "film": "96",
+          "note": "Distance across a room and who is the first to look away is the entire content of the scene, so the blocking is the writing."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The veteran at the front of the frame and the trainee behind him can show reliance on a partner without a line of dialogue."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Who sits and who stands across the table, and who rises first, tells the audience where the contest stands."
+        }
+      ],
+      "seeAlso": [
+        "rehearsal",
+        "storyboard",
+        "two-shot"
+      ],
+      "notag": true
+    },
+    {
+      "term": "call time",
+      "stage": "production",
+      "aliases": [
+        "call times"
+      ],
+      "def": "The time a person must arrive on set. It differs by role: makeup and camera often come before the actors, who are called when the scene needs them.",
+      "tanglish": "Set-ku varanum-nu sollura neram. Ovvoru role-kum vera neram.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A scene with the dean and the lead calls both of them together, while an extra for a crowd shot may be called hours later."
+        },
+        {
+          "film": "96",
+          "note": "A night scene means a late call for everyone, with the lights and camera set before the actors arrive."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A day of two-hander scenes calls both leads at the same time, and the crew a good while before."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A day in one room calls the leads when the room is ready, and the crew earlier to build the light."
+        }
+      ],
+      "seeAlso": [
+        "call sheet",
+        "assistant director",
+        "wrap"
+      ],
+      "notag": true
+    },
+    {
+      "term": "slate",
+      "stage": "production",
+      "aliases": [
+        "clapper",
+        "clapperboard",
+        "clapper board",
+        "slate and clap"
+      ],
+      "def": "The board shown at the start of a take, with scene, shot and take numbers, and the clap that lets sound and picture be matched later. Called out as 'scene 12, shot 3, take 2'.",
+      "tanglish": "Take aarambathula board: scene, shot, take number. Clap sound-um picture-um match panna.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A day of comic set-ups with many repeats needs a clear slate so the editor can find the take where the timing worked."
+        },
+        {
+          "film": "96",
+          "note": "A scene played with one or two long takes still needs the slate, because the edit will choose between them on performance alone."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A procedural with many angles on the same room needs exact slates to keep the shots straight in the edit."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Long, back-to-back takes of a two-person scene are easily mixed up in the edit unless the slate is clear."
+        }
+      ],
+      "seeAlso": [
+        "take",
+        "dailies",
+        "script supervisor"
+      ],
+      "notag": true
+    },
+    {
+      "term": "take",
+      "stage": "production",
+      "aliases": [
+        "takes",
+        "retake"
+      ],
+      "def": "One recording of a shot, from 'action' to 'cut'. A shot usually takes several until the director has the performance and the camera has the move.",
+      "tanglish": "Oru shot-ku 'action'-la irundhu 'cut' varaikkum oru take. Sariyaa varra varaikkum thirumba edukkuvom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A joke needs several takes to find the exact pause that makes it funny, and the film's later seriousness depends on that timing."
+        },
+        {
+          "film": "96",
+          "note": "A scene of restraint may need many takes to find the one in which the silence is neither too much nor too little."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A scene of the trainee's reaction needs enough takes that the director can choose the one that reads as fear, not acting."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A scene of a story told across a table may need many takes to find the rhythm of question and answer."
+        }
+      ],
+      "seeAlso": [
+        "slate",
+        "coverage",
+        "dailies"
+      ],
+      "notag": true
+    },
+    {
+      "term": "continuity",
+      "stage": "production",
+      "aliases": [
+        "continuity error",
+        "continuity errors"
+      ],
+      "def": "Keeping everything that should match from shot to shot actually matching: costume, props, hair, position, what is in the glass. Breaks are noticed in the edit.",
+      "tanglish": "Shot-ku shot ottanum: dress, prop, hair, position. Maari irundha edit-la theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A scene shot over two days must keep the dean's papers and the protagonist's tie the same so the cut feels like one conversation."
+        },
+        {
+          "film": "96",
+          "note": "A long evening shot out of order must keep drinks, light and hair consistent so it reads as one night."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A case built from clues needs exact continuity of the objects the audience is asked to remember."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A long argument shot across angles needs the cop's state and the objects on the table to match from cut to cut."
+        }
+      ],
+      "seeAlso": [
+        "script supervisor",
+        "coverage"
+      ]
+    },
+    {
+      "term": "script supervisor",
+      "stage": "production",
+      "aliases": [
+        "continuity supervisor",
+        "script sup",
+        "scripty"
+      ],
+      "def": "The crew member who watches every take against the script, noting continuity, what was shot, what was said and which takes the director liked.",
+      "tanglish": "Script paathukittu ovvoru take-la enna nadandhadhu note panni, continuity paakkura aal.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A scene with a running number joke needs the supervisor to make sure the wording and counts match between shots."
+        },
+        {
+          "film": "96",
+          "note": "A long evening with small gestures needs the supervisor to log every drink and glance so that cuts are clean."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A procedural built on clues needs a supervisor to confirm that the audience is shown exactly what the script says."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A scene of repeated questions and answers needs the supervisor to track which lines were covered in each angle."
+        }
+      ],
+      "seeAlso": [
+        "continuity",
+        "slate",
+        "take"
+      ]
+    },
+    {
+      "term": "DIT",
+      "stage": "production",
+      "aliases": [
+        "digital imaging technician",
+        "data wrangler",
+        "DIT/data wrangler"
+      ],
+      "def": "Digital imaging technician: the person who checks the camera's picture, copies and backs up the footage safely and prepares it for the edit. A lost card is a lost day.",
+      "tanglish": "Camera-la irundhu footage-a safe-a copy panni, backup vechu, picture-a check pannuravar.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "On a long college shoot with many cards a day, the DIT keeps every copy verified so none of the day's takes are lost."
+        },
+        {
+          "film": "96",
+          "note": "A night shoot means every card matters; the DIT checks the dark images are exposed properly and saved twice."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A procedural shot in dark rooms needs the DIT to check the picture and the backups before the crew moves on."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A film built on long performances cannot afford a lost card, so the DIT copies and checks twice."
+        }
+      ],
+      "seeAlso": [
+        "dailies",
+        "LUT",
+        "wrap"
+      ],
+      "notag": true
+    },
+    {
+      "term": "wrap",
+      "stage": "production",
+      "aliases": [
+        "wrapped",
+        "that's a wrap",
+        "wrap up"
+      ],
+      "def": "The end of shooting for a scene, a day or the whole film. 'That's a wrap' means the crew is done. After wrap the gear is returned and the paperwork closed.",
+      "tanglish": "Shoot mudinjadhu: scene, naal, illa mothama padam. Appuram gear thirumba kudukkanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "At the end of a day in the college, wrap means the dean's scene is done and the location can be released."
+        },
+        {
+          "film": "96",
+          "note": "At the end of the night, wrap means the venue is returned as it was found."
+        },
+        {
+          "film": "porthozhil",
+          "note": "At the end of a day of procedural scenes, wrap means the rooms are cleared and the footage backed up."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "At the end of a day in one room, wrap means the set can be struck and the day's cards verified."
+        }
+      ],
+      "seeAlso": [
+        "call time",
+        "DIT"
+      ],
+      "notag": true
+    },
+    {
+      "term": "coverage",
+      "stage": "production",
+      "aliases": [
+        "covering the scene"
+      ],
+      "def": "Shooting a scene from enough angles and distances that the editor has choices. The standard set is master, close-ups of each speaker, and inserts.",
+      "tanglish": "Oru scene-a pala angle, pala distance-la edukkuradhu. Editor-kku choice irukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A conversation between the lead and the dean is covered wide for power, then in close-ups for each reaction, so the cut can choose whose face carries the line."
+        },
+        {
+          "film": "96",
+          "note": "Where a scene lives on distance and who looks away, coverage needs the wide that shows the gap and the close that shows the glance."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A scene of the trainee reacting needs a close of his face as well as the shot of what he sees, so the cut can hold on fear."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A scene of question and answer is covered as shot and reverse shot, with enough extra to vary the rhythm."
+        }
+      ],
+      "seeAlso": [
+        "master shot",
+        "close-up",
+        "shot list"
+      ]
+    },
+    {
+      "term": "master shot",
+      "stage": "production",
+      "aliases": [
+        "master shots"
+      ],
+      "def": "One wide shot that plays the whole scene from start to end, so the editor always has something to fall back on. The other angles are then shot to match it.",
+      "tanglish": "Mothama scene-a wide-la oru thadavai oda vitta shot. Matha angle ellam adhoda match aagum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A conversation with the dean played in one wide shows the whole space and the distance between the two before the film moves in."
+        },
+        {
+          "film": "96",
+          "note": "A master of the reunion's first meeting holds the group and the two of them in one frame, showing how the distance between them is the content."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A master of the investigation room shows how the team works as a machine before the film narrows to the trainee."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A master of the two leads across a table holds the whole contest at once and lets the audience judge who is winning."
+        }
+      ],
+      "seeAlso": [
+        "coverage",
+        "close-up",
+        "two-shot"
+      ]
+    },
+    {
+      "term": "establishing shot",
+      "stage": "production",
+      "aliases": [
+        "establishing shots"
+      ],
+      "def": "A wide shot, often an exterior, that tells the audience where and when a scene is. It lets the following scene skip the explaining.",
+      "tanglish": "Idhu enga, eppo-nu kaattura wide shot. Adhukku appuram scene-la explain pannanum-nu avasiyam illa.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A shot of the college gate places the audience in the past he ran from, so the next scene needs no explaining."
+        },
+        {
+          "film": "96",
+          "note": "A shot of the venue at night tells us where the evening happens and what time it is."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A shot of the station or building the team works from tells us what kind of world this is before a single line is spoken."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A shot of the city or the interrogation building places each telling and marks the shift between them."
+        }
+      ],
+      "seeAlso": [
+        "slugline",
+        "master shot"
+      ],
+      "notag": true
+    },
+    {
+      "term": "close-up",
+      "stage": "production",
+      "aliases": [
+        "close up",
+        "CU",
+        "close-ups",
+        "extreme close-up",
+        "ECU"
+      ],
+      "def": "A shot framing a face or a detail so closely that it fills the screen. It tells the audience what a character feels, or what to look at.",
+      "tanglish": "Mugam illa oru porul-a screen muzhuka kaattura shot. Character enna feel pannraanga-nu theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A close on his face when the dean recognises him tells the audience the whole con is about to end without a word."
+        },
+        {
+          "film": "96",
+          "note": "A close on a face that does not say what it feels holds the scene's tension in a silence."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A close on the trainee's face during the first hard moment tells the audience what the work costs him."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A close on the listener's face as the story ends shows what the telling has done to him."
+        }
+      ],
+      "seeAlso": [
+        "coverage",
+        "insert",
+        "two-shot"
+      ]
+    },
+    {
+      "term": "insert",
+      "stage": "production",
+      "aliases": [
+        "insert shot",
+        "inserts"
+      ],
+      "def": "A close shot of an object or detail, such as a letter, a phone screen or a key, cut into a scene to give information or emphasis.",
+      "tanglish": "Kaiyila irukkura letter, phone, key maadhiri oru porul-oda close shot. Thagaval kudukka.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "An insert of a page with a count on it gives the audience the number before the dialogue names it, and later returns as a deadline."
+        },
+        {
+          "film": "96",
+          "note": "An insert of a kept object tells us what has been held on to without a line of explanation."
+        },
+        {
+          "film": "porthozhil",
+          "note": "An insert of the small detail that turns out to matter has to be planted so ordinarily that it is easy to miss."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "An insert of a notebook or a file lets the audience read what the cop would rather not say aloud."
+        }
+      ],
+      "seeAlso": [
+        "cutaway",
+        "close-up",
+        "plant"
+      ],
+      "notag": true
+    },
+    {
+      "term": "cutaway",
+      "stage": "production",
+      "aliases": [
+        "cutaways",
+        "cut-away",
+        "cut away"
+      ],
+      "def": "A shot of something other than the main action, cut in briefly: a reaction, a clock, a crowd. It hides a join or adds a second meaning.",
+      "tanglish": "Main action-ku vera ondrukku oru short cut. Reaction, clock, crowd. Join-a maraikkum, artham sollum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A cutaway to a classmate's face during the dean's reckoning shows the cost to the person who did not take the shortcut."
+        },
+        {
+          "film": "96",
+          "note": "A cutaway to a small object or someone watching from across a room can carry what the dialogue refuses to say."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A cutaway to a colleague during the trainee's hesitation lets the audience see what the room thinks of him."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A cutaway to a witness while the story is being told shows the audience how it is landing."
+        }
+      ],
+      "seeAlso": [
+        "insert",
+        "coverage",
+        "intercut"
+      ]
+    },
+    {
+      "term": "POV shot",
+      "stage": "production",
+      "aliases": [
+        "point of view",
+        "POV",
+        "point-of-view shot",
+        "p.o.v."
+      ],
+      "def": "A shot from a character's position, showing what they see. It places the audience inside their head, so use it where their view matters.",
+      "tanglish": "Oru character paakkura maari camera. Audience avanga thalaikkulla poidum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A shot from his eyes of a hall of waiting students puts the audience inside the fear of being found out."
+        },
+        {
+          "film": "96",
+          "note": "A shot from one person's eyes across the room is how the film can say what neither will say aloud."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A shot from the trainee's eyes at a scene he cannot bear to look at makes the audience look away with him."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A shot from the listener's side as the gangster speaks puts the audience in the chair the cop is in."
+        }
+      ],
+      "seeAlso": [
+        "over-the-shoulder",
+        "close-up"
+      ]
+    },
+    {
+      "term": "two-shot",
+      "stage": "production",
+      "aliases": [
+        "two shot",
+        "2-shot",
+        "two-shots"
+      ],
+      "def": "A shot with two people in the frame. It shows their relationship, who is close, who is turned away, better than separate close-ups can.",
+      "tanglish": "Rendu per oru frame-la. Rendu perukkum ulla uravu theriyum: yaaru kitta, yaaru vilagi.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A two-shot of the protagonist and the dean shows how far apart they are, which a cut between them would hide."
+        },
+        {
+          "film": "96",
+          "note": "A two-shot of the pair keeps the distance between them on screen, which is the content of the scene."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A two-shot of the trainee beside the veteran shows how much he leans on someone he cannot match."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A two-shot of the cop and the gangster across a table shows them as equals in the room."
+        }
+      ],
+      "seeAlso": [
+        "over-the-shoulder",
+        "master shot"
+      ]
+    },
+    {
+      "term": "over-the-shoulder",
+      "stage": "production",
+      "aliases": [
+        "OTS",
+        "over the shoulder",
+        "over-the-shoulder shot"
+      ],
+      "def": "A shot of one person seen past the shoulder of another. It keeps the listener in the frame and is the standard way to shoot a conversation.",
+      "tanglish": "Oruthar-oda thozhukku pinnaadi irundhu innoruthar-a paakkura shot. Pesura scene-ku standard.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Over the dean's shoulder to the protagonist, the audience sees his bluff land on a man who knows better."
+        },
+        {
+          "film": "96",
+          "note": "Over one shoulder to the other face, the audience sees what is said and who is listening at once."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Over the veteran's shoulder to the trainee, the audience sees the instruction and the trainee's face in one frame."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Over the gangster's shoulder to the cop, the audience sees the story land on the listener."
+        }
+      ],
+      "seeAlso": [
+        "two-shot",
+        "POV shot",
+        "coverage"
+      ]
+    },
+    {
+      "term": "180-degree rule",
+      "stage": "production",
+      "aliases": [
+        "180 degree rule",
+        "180 rule",
+        "crossing the line"
+      ],
+      "def": "Keep the camera on one side of an imaginary line between two characters, so left and right stay consistent from shot to shot. Crossing it confuses the audience.",
+      "tanglish": "Rendu per naduvula oru kaarpanai kodu. Camera adhu oru pakkam mattum iruntha, left-right maaraadhu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "In a scene between lead and dean, keeping the camera on one side means he stays on the same side of the frame in every cut."
+        },
+        {
+          "film": "96",
+          "note": "In a long conversation of two people, a stable line means we never lose track of who is where in the room."
+        },
+        {
+          "film": "porthozhil",
+          "note": "In an interview room, keeping the line stable makes the geography of the room clear, so the audience can focus on the performance."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "In a long two-hander, crossing the line on purpose is a tool: it can say that the positions have swapped."
+        }
+      ],
+      "seeAlso": [
+        "coverage",
+        "two-shot",
+        "blocking"
+      ]
+    },
+    {
+      "term": "dolly",
+      "stage": "production",
+      "aliases": [
+        "dolly shot",
+        "dolly in",
+        "dolly out",
+        "tracking shot",
+        "tracking"
+      ],
+      "def": "A camera mounted on wheels or a track so it can move smoothly toward, away from or alongside the action. A slow dolly in can say a character is being cornered.",
+      "tanglish": "Camera-va wheel / track-la vechu nagarththura. Nidhaanamaa munnaadi poona, character-a ottikitta maari irukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A slow move in on the protagonist as the dean says the number would turn the comic moment into a threat."
+        },
+        {
+          "film": "96",
+          "note": "A very slow move across the room would breach the film's stillness, so a still camera is the wiser choice."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A slow move in on the trainee as the case turns would tighten the pressure without a line of dialogue."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A slow move in on the listener during a telling would show how deeply it has taken hold."
+        }
+      ],
+      "seeAlso": [
+        "crane",
+        "Steadicam",
+        "coverage"
+      ],
+      "notag": true
+    },
+    {
+      "term": "crane",
+      "stage": "production",
+      "aliases": [
+        "jib",
+        "crane shot",
+        "jib arm"
+      ],
+      "def": "A camera on a long arm that can rise, fall and swing across a scene. Used for a grand reveal or to pull away from a character and make them small.",
+      "tanglish": "Neenda arm-la camera. Mela kezha, pakka-vaa swing aagum. Perusaa kaatta illa, character-a sirusaa kaatta.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Pulling up and away from the protagonist after his world has changed would make the character small beside the life he invented."
+        },
+        {
+          "film": "96",
+          "note": "A rising shot at the end of the night could show the two of them as small against the city, but the film favours stillness."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A rise above the investigation room would show the team as a machine and the trainee as one part of it."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A pull-away from the room at the end of a telling would shrink both men against the world they argue about."
+        }
+      ],
+      "seeAlso": [
+        "dolly",
+        "Steadicam"
+      ],
+      "notag": true
+    },
+    {
+      "term": "Steadicam",
+      "stage": "production",
+      "aliases": [
+        "steadicam",
+        "gimbal",
+        "stabiliser",
+        "stabilizer"
+      ],
+      "def": "A body-worn or motorised stabiliser that lets the camera move smoothly through space while the operator walks. Gives a floating, continuous feel.",
+      "tanglish": "Camera-va udambula maatti nadandhaalum asaiyaama irukkura stabiliser. Mithakkura maari smooth-a irukkum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A walk with the protagonist through the college, uncut, would put the audience inside the corridor he fled, step by step."
+        },
+        {
+          "film": "96",
+          "note": "A film this still would use a floating camera only where memory is meant to feel loose, so the movement itself becomes a signal."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A walk behind the trainee through the building, in one move, keeps the audience with him as he decides to act."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A walk with the cop as he leaves a room could stay unbroken to show he cannot get out of the story's reach."
+        }
+      ],
+      "seeAlso": [
+        "dolly",
+        "crane"
+      ]
+    },
+    {
+      "term": "focal length",
+      "stage": "production",
+      "aliases": [
+        "lens",
+        "lenses",
+        "wide angle",
+        "telephoto",
+        "focal-length"
+      ],
+      "def": "How wide or narrow a lens sees, in millimetres. A wide lens takes in space and exaggerates distance; a long lens flattens it and isolates a face.",
+      "tanglish": "Lens evvalavu wide-a paakkum-nu mm-la. Wide: idam perusa theriyum. Long: mugam mattum, thookki kaattum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A wide lens in the college corridor can make the space feel large and the protagonist small, while a long lens on the dean isolates his certainty."
+        },
+        {
+          "film": "96",
+          "note": "A longer lens across the room compresses the distance between the two and makes it feel closer than it is."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A wide lens in the investigation room exaggerates space around a trainee who does not know where to stand."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A long lens on the listener's face during a telling makes the room fall away and leaves only the story."
+        }
+      ],
+      "seeAlso": [
+        "depth of field",
+        "aspect ratio",
+        "shot list"
+      ]
+    },
+    {
+      "term": "depth of field",
+      "stage": "production",
+      "aliases": [
+        "DoF",
+        "shallow focus",
+        "deep focus",
+        "shallow depth of field"
+      ],
+      "def": "How much of the picture, from near to far, is in sharp focus. Shallow depth isolates one thing; deep depth keeps the whole scene readable.",
+      "tanglish": "Munnaadi pinnaadi evvalavu sharp-a irukku. Shallow: oru vishayam mattum, deep: ellaamey theriyum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Shallow focus on the dean in a crowded hall isolates his certainty, while deep focus lets the protagonist's panic play in the background."
+        },
+        {
+          "film": "96",
+          "note": "Shallow focus isolates a face from the room's chatter, so the unsaid is the only thing the audience can read."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Deep focus keeps both the veteran and the trainee sharp in one frame, so their relationship is visible without a cut."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Shallow focus on the listener makes the world outside his chair vanish for the length of the story."
+        }
+      ],
+      "seeAlso": [
+        "focal length",
+        "close-up"
+      ]
+    },
+    {
+      "term": "aspect ratio",
+      "stage": "production",
+      "aliases": [
+        "2.39",
+        "1.85",
+        "widescreen",
+        "anamorphic"
+      ],
+      "def": "The shape of the frame: width compared with height. 1.85:1 is a standard wide frame; 2.39:1 is a very wide one. The choice affects composition and how the film is delivered.",
+      "tanglish": "Frame-oda agalam : ayaram. 1.85 normal wide, 2.39 romba wide. Composition-yum delivery-yum maarum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A wide frame leaves room for a hall of people around the lead, while a narrower one would press in on him."
+        },
+        {
+          "film": "96",
+          "note": "A wider frame gives the distance between two people more room to mean something."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A wide frame gives the investigation room space and makes a lone figure in it look exposed."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A wide frame holds two men across a table and the air between them equally."
+        }
+      ],
+      "seeAlso": [
+        "focal length",
+        "shot list",
+        "deliverables"
+      ],
+      "notag": true
+    },
+    {
+      "term": "LUT",
+      "stage": "production",
+      "aliases": [
+        "look-up table",
+        "LUTs",
+        "show LUT",
+        "viewing LUT"
+      ],
+      "def": "Look-up table: a preset that maps the camera's flat, wide-range picture to a finished-looking one. Used on set to preview the look, and later as a starting point for the grade.",
+      "tanglish": "Camera-oda flat picture-a, mudindha look-a maathura preset. Set-la preview-ku, appuram grade-ku starting point.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A LUT lets the crew see the warm polish of his fake life against the cooler college from the first day, not after the edit."
+        },
+        {
+          "film": "96",
+          "note": "A LUT that holds soft, warm colour lets the crew judge whether a night scene looks lived-in on the monitor."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A LUT with cold, controlled colour lets the director check that the investigative look holds from scene to scene."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A LUT can give each of the stories its own tint on set so the cut between them is felt."
+        }
+      ],
+      "seeAlso": [
+        "colour grade",
+        "DIT"
+      ],
+      "notag": true
+    },
+    {
+      "term": "dailies",
+      "stage": "post",
+      "def": "The footage from the previous shooting day, copied and viewed by the director and key crew. Also called rushes. It is where problems are found while a reshoot is still cheap.",
+      "tanglish": "Mundhaiya naal edutha footage, maraanaal paakkuradhu. Prechana irundhaa reshoot panna innum easy.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Watching the comic scenes the next morning shows whether the timing that sells the lie is really there, while the sets are still standing."
+        },
+        {
+          "film": "96",
+          "note": "Watching the night's footage the next day shows whether the restraint reads or whether the performance has gone flat."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Watching the previous day's procedural scenes shows whether the information the audience must see actually made it into frame."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Watching the two-person scenes shows whether the rhythm of question and answer holds across the angles."
+        }
+      ],
+      "seeAlso": [
+        "DIT",
+        "assembly",
+        "take"
+      ]
+    },
+    {
+      "term": "assembly",
+      "stage": "post",
+      "aliases": [
+        "assembly cut",
+        "first assembly",
+        "editor's cut"
+      ],
+      "def": "The first joining of all the shot scenes in script order, uncut and long. Its job is to show what you have, not to look good.",
+      "tanglish": "Ellaa scene-um script order-la ottina mudhal pass. Neelama irukkum. Enna irukku-nu paakkura step.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The first assembly of the film shows how much of the comic setup survives and how long the reckoning really needs."
+        },
+        {
+          "film": "96",
+          "note": "The assembly of a film made of long scenes shows at once whether the evening holds together or drags."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The assembly of the investigation shows whether each step narrows the case, and where the film waits too long."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The assembly of three tellings shows whether the form is clear and the last decision lands."
+        }
+      ],
+      "seeAlso": [
+        "rough cut",
+        "dailies"
+      ],
+      "notag": true
+    },
+    {
+      "term": "rough cut",
+      "stage": "post",
+      "aliases": [
+        "rough cuts"
+      ],
+      "def": "A first edit with structure and rhythm but unfinished: scenes trimmed, music and sound placeholder. Used to find what the film is, not to polish it.",
+      "tanglish": "Mudhal edit: structure irukku, aana mudiyala. Padam enna-nu kandupidikka.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The rough cut shows whether the shift from comedy to reckoning arrives at the right moment, before any polish hides the problem."
+        },
+        {
+          "film": "96",
+          "note": "The rough cut shows whether the single night builds or only passes, and which looks and silences can be shortened."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The rough cut shows whether the investigation's waiting is tension or drag, and whether the midpoint turn is clear."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The rough cut shows whether the declared structure carries the audience through the three stories."
+        }
+      ],
+      "seeAlso": [
+        "assembly",
+        "fine cut",
+        "picture lock"
+      ]
+    },
+    {
+      "term": "fine cut",
+      "stage": "post",
+      "aliases": [
+        "fine cuts",
+        "polish cut"
+      ],
+      "def": "A refined edit in which pacing, performance choices and transitions are settled and only small changes remain. The step before picture lock.",
+      "tanglish": "Pacing, performance ellam thaan mudivu aagiduchu; chinna maatram mattum. Picture lock-ku munnaadi.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A fine cut of the film trims the comic setup to its sharpest so that the later payoff costs nothing to remember."
+        },
+        {
+          "film": "96",
+          "note": "A fine cut is where the length of a look or a silence is chosen, which in this film is most of what the edit does."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A fine cut tightens the investigation so that every step moves the case and the waiting stays tense."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A fine cut balances the three tellings so that none outstays its place and the final choice lands."
+        }
+      ],
+      "seeAlso": [
+        "rough cut",
+        "picture lock"
+      ]
+    },
+    {
+      "term": "picture lock",
+      "stage": "post",
+      "aliases": [
+        "locked picture",
+        "picture-lock"
+      ],
+      "def": "The point at which the edit is final and no more frames may be added or removed. Sound, music, colour and effects work depend on it, so changes afterwards are costly.",
+      "tanglish": "Edit final. Inimey frame kootta kuraikka koodaadhu. Sound, music, colour ellaam idhukku appuram thaan.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Once locked, the dean's reckoning cannot be shortened by a few seconds without breaking every cue laid against it."
+        },
+        {
+          "film": "96",
+          "note": "Once locked, the length of the final silence is fixed, and the music laid against it must fit."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Once locked, the placement of each clue is fixed, and sound design can be built around it."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Once locked, each telling's length is fixed, so the music and sound for each can be made to measure."
+        }
+      ],
+      "seeAlso": [
+        "fine cut",
+        "conform",
+        "sound mix"
+      ],
+      "notag": true
+    },
+    {
+      "term": "edit decision list",
+      "stage": "post",
+      "aliases": [
+        "EDL",
+        "edit sheet",
+        "edit decision lists",
+        "edit list"
+      ],
+      "def": "A list of every clip in the edit with its source, in and out points and place in the timeline, so the same cut can be rebuilt in another system. Sometimes called the edit sheet.",
+      "tanglish": "Edit-la ovvoru clip-um enga irundhu, evvalavu, timeline-la enga-nu list. Vera software-la adhey cut-a thirumba seiyya.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The list of every clip lets the colour and sound teams rebuild the exact cut of the comic and reckoning scenes in their own systems."
+        },
+        {
+          "film": "96",
+          "note": "A long film built on long shots has a short list, which makes the edit easy to hand over without a mistake."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A film with many cut-ins and inserts has a long list, so an accurate EDL is what keeps the investigation rebuilt correctly."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A film with three similar tellings needs a clean list so the right takes of each are conformed to the right scenes."
+        }
+      ],
+      "seeAlso": [
+        "conform",
+        "picture lock",
+        "deliverables"
+      ]
+    },
+    {
+      "term": "conform",
+      "stage": "post",
+      "aliases": [
+        "conforming"
+      ],
+      "def": "Rebuilding the locked edit from the original, highest-quality camera files rather than the small working copies used in the edit, ready for colour and finishing.",
+      "tanglish": "Lock aana edit-a, original camera files-la thirumba pannuradhu, colour-ku munnaadi.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The cut is rebuilt from the original camera files so the fine grade of the corporate life against the college is done on the best picture."
+        },
+        {
+          "film": "96",
+          "note": "The cut is rebuilt on the best files so the soft night images are graded with their full range."
+        },
+        {
+          "film": "porthozhil",
+          "note": "The cut is rebuilt on the originals so dark rooms keep their detail through the grade."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "The cut is rebuilt on the originals so the look of each telling can be set properly."
+        }
+      ],
+      "seeAlso": [
+        "edit decision list",
+        "colour grade",
+        "picture lock"
+      ],
+      "notag": true
+    },
+    {
+      "term": "colour grade",
+      "stage": "post",
+      "aliases": [
+        "color grade",
+        "colour grading",
+        "color grading",
+        "colour correction",
+        "color correction",
+        "grading"
+      ],
+      "def": "Setting the final colour and contrast of every shot: first making shots match, then giving the film its look. The grade shapes mood as much as lighting does.",
+      "tanglish": "Ovvoru shot-oda colour / contrast set panradhu: mudhalla ellaam match aaganum, appuram film-oda look.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "Grade can separate the polish of his invented life from the worn colour of the college, so the film's two worlds are visible at a glance."
+        },
+        {
+          "film": "96",
+          "note": "Grade can hold a soft, warm look across a night shot over many hours, so the evening feels like one."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Grade can hold a cold, controlled look through every investigation room, so tension is never undone by a colour mismatch."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "Grade can give each telling its own tint so that the audience feels the move between stories before the dialogue says so."
+        }
+      ],
+      "seeAlso": [
+        "LUT",
+        "conform"
+      ],
+      "notag": true
+    },
+    {
+      "term": "ADR",
+      "stage": "post",
+      "aliases": [
+        "automated dialogue replacement",
+        "dubbing",
+        "looping",
+        "ADR session"
+      ],
+      "def": "Automated dialogue replacement: re-recording an actor's lines in a studio to replace noisy or unusable on-set sound. Also called dubbing or looping.",
+      "tanglish": "Set-la sound sari illa-na, studio-la actor thirumba pesi record pannuradhu. Dubbing-nu solluvom.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A crowded campus scene where the dean's voice is lost in noise can be re-recorded so every word of the reckoning is clear."
+        },
+        {
+          "film": "96",
+          "note": "A quiet scene whose whisper was spoiled by a passing sound can be recorded again with matching breath."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A scene in a noisy location may need replaced lines to keep the veteran's calm instructions clean."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A long story told across a table must be pristine, so any line spoiled on set is replaced."
+        }
+      ],
+      "seeAlso": [
+        "Foley",
+        "sound mix"
+      ]
+    },
+    {
+      "term": "Foley",
+      "stage": "post",
+      "aliases": [
+        "foley",
+        "foley artist"
+      ],
+      "def": "Sounds made in a studio, in sync with the picture, to replace or add the small noises of action: footsteps, cloth, a door, a cup set down.",
+      "tanglish": "Footsteps, dress rustle, door, cup: studio-la picture paathu, adhey neram-la sound ottirathu.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "The sound of paper moved across a desk during the reckoning is a Foley job, and it can say more than the music."
+        },
+        {
+          "film": "96",
+          "note": "A cup set down and a chair moved are Foley sounds that fill a quiet film and make its silences audible."
+        },
+        {
+          "film": "porthozhil",
+          "note": "Footsteps and the small sounds of procedure are Foley work, which carries information the dialogue refuses to state."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A glass set on a table during a telling is a Foley sound that gives each story its rhythm."
+        }
+      ],
+      "seeAlso": [
+        "ADR",
+        "sound mix"
+      ]
+    },
+    {
+      "term": "sound mix",
+      "stage": "post",
+      "aliases": [
+        "final mix",
+        "re-recording mix",
+        "sound design",
+        "sound designer"
+      ],
+      "def": "Balancing dialogue, music, effects and ambience into one soundtrack so each is clear and the story is heard as intended. The final mix is done after picture lock.",
+      "tanglish": "Dialogue, music, effects, ambience ellaam balance panni oru soundtrack aakkuradhu. Picture lock-ku appuram.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "In the mix, the dean's calm line must sit above the room's noise so that the reckoning is heard before it is felt."
+        },
+        {
+          "film": "96",
+          "note": "In the mix, music marks memory and then steps back, so the plain exchange at the end is heard alone."
+        },
+        {
+          "film": "porthozhil",
+          "note": "In the mix, the sound design carries information the dialogue refuses to state, so its balance is part of the story."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "In the mix, the voice of the teller must stay in front, because each story is told, not shown."
+        }
+      ],
+      "seeAlso": [
+        "Foley",
+        "ADR",
+        "M&E"
+      ],
+      "notag": true
+    },
+    {
+      "term": "M&E",
+      "stage": "post",
+      "aliases": [
+        "music and effects",
+        "international sound track",
+        "M and E",
+        "M&E track"
+      ],
+      "def": "Music and effects: a soundtrack with everything except dialogue, so that the film can be dubbed into other languages without redoing the sound.",
+      "tanglish": "Dialogue illama music + effects mattum thaniya oru track. Vera mozhi dubbing-ku.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A clean M&E of a film that is largely spoken lets the comedy be re-voiced in another language without losing its sound world."
+        },
+        {
+          "film": "96",
+          "note": "A film this quiet depends heavily on its small effects, so a good M&E carries most of its feeling into any dubbed version."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A film whose sound carries information needs its effects kept clean so a dubbed version still holds the same tension."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A film built on spoken stories will depend on the dubbing, with the M&E keeping its sound world constant under new voices."
+        }
+      ],
+      "seeAlso": [
+        "sound mix",
+        "deliverables"
+      ]
+    },
+    {
+      "term": "DCP",
+      "stage": "post",
+      "aliases": [
+        "digital cinema package",
+        "digital cinema"
+      ],
+      "def": "Digital Cinema Package: the standard folder of files that cinemas use to play a film, with the picture, sound and subtitles in an agreed format. Made at the end, from the finished film.",
+      "tanglish": "Cinema-la odaradhukku standard file package: picture, sound, subtitle. Padam mudinja piraku seiyyuvaanga.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A cinema release needs a DCP made from the finished film, with the comic and reckoning scenes in exact picture and sound."
+        },
+        {
+          "film": "96",
+          "note": "A cinema screening of a film that depends on silence needs a DCP made with care for the quietest sounds."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A theatrical release needs the film packaged for projection, with its dark rooms preserved on the big screen."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A theatrical release needs a DCP that keeps the voice of each story clear in a large room."
+        }
+      ],
+      "seeAlso": [
+        "deliverables",
+        "festival premiere status"
+      ],
+      "notag": true
+    },
+    {
+      "term": "deliverables",
+      "stage": "post",
+      "aliases": [
+        "deliverable"
+      ],
+      "def": "Everything a distributor, festival or platform requires you to hand over when the film is finished: picture and sound masters, subtitles, trailer, posters, music and legal papers.",
+      "tanglish": "Padam mudinja piraku distributor / festival / platform kettaa kudukka vendiya ellaam: master, subtitle, trailer, poster, papers.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A buyer for the film would ask for the finished picture and sound masters, subtitles, a trailer and the papers that prove the rights are clear."
+        },
+        {
+          "film": "96",
+          "note": "A festival would ask for a screening copy, subtitles for any language not understood by the audience and stills for the programme."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A platform would ask for technical masters in an exact format, with subtitle files and the cleared music list."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A distributor would ask for a clean M&E and subtitles so the film can be sold in other languages."
+        }
+      ],
+      "seeAlso": [
+        "DCP",
+        "M&E",
+        "festival premiere status"
+      ]
+    },
+    {
+      "term": "festival premiere status",
+      "stage": "post",
+      "aliases": [
+        "premiere status",
+        "world premiere",
+        "international premiere",
+        "national premiere",
+        "regional premiere"
+      ],
+      "def": "Whether a festival counts your film as new to its audience: world (first anywhere), international (first outside its home country), national or regional. Many festivals prefer or require a high status, so where it plays first matters.",
+      "tanglish": "Padam ippo thaan mudhal thadavai kaattura-nu festival eppadi eduthukkum: world / international / national / regional. Mudhal screening enga-nu mukkiyam.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A film aimed at several festivals must decide where its first screening is, because an early local screening can cost it a higher status at a larger festival."
+        },
+        {
+          "film": "96",
+          "note": "A small, personal film may hold out for a major festival's world premiere rather than spend it at a local one."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A genre film for a wider audience may start at a festival that welcomes thrillers, and then travel."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A film that expects a theatrical run needs to plan its festival dates around the release, because the order of screenings decides the status."
+        }
+      ],
+      "seeAlso": [
+        "deliverables",
+        "DCP"
+      ]
+    },
+    {
+      "term": "J-cut and L-cut",
+      "stage": "post",
+      "aliases": [
+        "J-cut",
+        "L-cut",
+        "j cut",
+        "l cut",
+        "split edit"
+      ],
+      "def": "Edits in which the sound and picture change at different moments. In a J-cut the next scene's sound starts before its picture; in an L-cut the previous scene's sound continues over the next picture.",
+      "tanglish": "Picture-um sound-um orey neram-la maaraadhu. J-cut: adutha scene sound munnaadi. L-cut: pazhaya scene sound adutha picture mela.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A J-cut brings the sound of the next place in before the picture, so a comic scene can bleed into a consequence."
+        },
+        {
+          "film": "96",
+          "note": "An L-cut lets a line from one scene carry over a close on the person who hears it in the next, binding the two moments."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A J-cut lets the sound of the next scene arrive early, building suspense without adding a shot."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "An L-cut lets the teller's voice continue over the cop's face, putting the effect of the story in the same breath as the story."
+        }
+      ],
+      "seeAlso": [
+        "match cut",
+        "intercut",
+        "scene transition"
+      ],
+      "notag": true
+    },
+    {
+      "term": "temp track",
+      "stage": "post",
+      "aliases": [
+        "temp music",
+        "temp score"
+      ],
+      "def": "Existing music laid under a rough cut as a placeholder, to judge rhythm and mood. It is replaced by the real score, but it can mislead if you fall in love with it.",
+      "tanglish": "Rough cut-ku vera padam music podurathu, rhythm / mood paakka. Appuram original score vaarum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A temp track under the comic setup shows how much the scenes depend on music to sell the lie, before anyone writes a note."
+        },
+        {
+          "film": "96",
+          "note": "A temp track under the reunion shows how far the film's restraint is helped or harmed by music, which is the main question of its score."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A temp track under the investigation shows whether the pace holds on its own or leans on music for tension."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A temp track under the tellings shows whether each story needs music or is stronger told plain."
+        }
+      ],
+      "seeAlso": [
+        "rough cut",
+        "score"
+      ],
+      "notag": true
+    },
+    {
+      "term": "score",
+      "stage": "post",
+      "aliases": [
+        "film score",
+        "background score",
+        "BGM",
+        "background music"
+      ],
+      "def": "The original music composed for the film, laid to picture after the edit is locked. It tells the audience how to feel, so the best scores choose when not to.",
+      "tanglish": "Padathukkunnu compose panna music: edit lock aana piraku picture-kku match panni. Edhukku silent-aa irukkanum-nu therinjirukkanum.",
+      "examples": [
+        {
+          "film": "dragon",
+          "note": "A score can sell the con in the early comic scenes, and then drop away so the reckoning is heard unaided."
+        },
+        {
+          "film": "96",
+          "note": "A score here marks memory rather than instructing the audience how to feel about the present."
+        },
+        {
+          "film": "porthozhil",
+          "note": "A score that stays out of the way lets sound design and silence carry the investigation's tension."
+        },
+        {
+          "film": "vikramvedha",
+          "note": "A score can give the stories a recurring sound, so a change in the tune signals a change in the form."
+        }
+      ],
+      "seeAlso": [
+        "temp track",
+        "sound mix"
+      ],
+      "notag": true
     }
   ]
 }

@@ -76,9 +76,9 @@ try {
   ok(q1 === 1, 'the clipping is queued in chrome.storage.local');
   const story = await ctx.newPage();
   story.on('pageerror', (e) => errors.push(e.message));
-  await story.goto(X('story.html'));
-  // The vault is a tab under the editor: the arrival toast is the way there.
-  await story.click('.toast-action', { timeout: 10000 });
+  /* The Idea Vault is its own page now (vault.html, 11 Oct 2026), and
+     it is the one page that drains the clip queue. */
+  await story.goto(X('vault.html'));
   await story.waitForSelector('.st-clip-text', { timeout: 10000 });
   ok((await story.textContent('.st-clip-text')).includes('forged degree'), 'it arrives in the Idea Vault');
   ok((await story.textContent('.st-clip-src')).includes('news.example'), 'with the page it came from');

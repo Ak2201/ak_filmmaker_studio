@@ -63,6 +63,23 @@
   font-size: var(--t-small);
 }
 .sc-focus-slot { display: contents; }
+.sc-tip {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule-hair);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+.sc-tip[hidden] { display: none; }
+.sc-tip-type { color: var(--accent-deep); }
+.sc-tip-what { flex: 1 1 18rem; min-width: 0; }
+.sc-tip-keys { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc-tip .learn { flex: 1 1 100%; }
+@media (max-width: 719px) { .sc-tip-keys { white-space: normal; } }
 .sc-beats-btn.is-on { background: var(--accent-wash); color: var(--accent-deep); }
 
 /* Hosts other modules look for inside #screenplay; the ⋯ menu drives
@@ -259,6 +276,20 @@
   background: var(--paper);
   overflow-y: auto;
 }
+/* Wide: the panel stays pinned beside the page and scrolls on its own,
+   so reading down the beats never moves the script and vice versa. */
+@media (min-width: 1100px) {
+  .sc-main > #beatsPanel {
+    position: sticky;
+    top: calc(var(--sh-chrome-h, 0px) + var(--sc-top-h, 0px));
+    align-self: start;
+    max-height: calc(100vh - var(--sh-chrome-h, 0px) - var(--sc-top-h, 0px));
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+  }
+  .sc-main > #beatsPanel .bp-body { max-height: none; overflow: visible; }
+}
+.sc-beats .bp-body { overscroll-behavior: contain; }
 .sc-beats[hidden] { display: none; }
 .sc-beats-h { margin: 0 0 var(--s3); font-size: var(--t-body); }
 @media (max-width: 1099px) {

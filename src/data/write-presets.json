@@ -5,12 +5,29 @@
     {
       "id": "finaldraft",
       "label": "Final Draft",
-      "digits": ["scene", "action", "character", "paren", "dialogue", "transition", "shot"]
+      "digits": [
+        "scene",
+        "action",
+        "character",
+        "paren",
+        "dialogue",
+        "transition",
+        "shot"
+      ]
     },
     {
       "id": "celtx",
       "label": "Celtx",
-      "digits": ["scene", "action", "character", "dialogue", "paren", "transition", "shot", "general"]
+      "digits": [
+        "scene",
+        "action",
+        "character",
+        "dialogue",
+        "paren",
+        "transition",
+        "shot",
+        "general"
+      ]
     }
   ],
   "aliases": {
@@ -53,10 +70,55 @@
     "dialogue": "paren"
   },
   "smarttype": {
-    "intros": ["INT. ", "EXT. ", "INT./EXT. ", "EST. "],
+    "intros": [
+      "INT. ",
+      "EXT. ",
+      "INT./EXT. ",
+      "EST. "
+    ],
     "separator": " - ",
-    "times": ["DAY", "NIGHT", "CONTINUOUS", "LATER", "MORNING", "EVENING", "MOMENTS LATER"],
-    "extensions": ["(V.O.)", "(O.S.)", "(O.C.)", "(CONT'D)"],
-    "transitions": ["CUT TO:", "DISSOLVE TO:", "SMASH CUT TO:", "MATCH CUT TO:", "FADE OUT.", "FADE IN:"]
+    "times": [
+      "DAY",
+      "NIGHT",
+      "CONTINUOUS",
+      "LATER",
+      "MORNING",
+      "EVENING",
+      "MOMENTS LATER"
+    ],
+    "extensions": [
+      "(V.O.)",
+      "(O.S.)",
+      "(O.C.)",
+      "(CONT'D)"
+    ],
+    "transitions": [
+      "CUT TO:",
+      "DISSOLVE TO:",
+      "SMASH CUT TO:",
+      "MATCH CUT TO:",
+      "FADE OUT.",
+      "FADE IN:"
+    ]
+  },
+  "hints": {
+    "_about": "The Script page's hint strip: one line per element type, what it is for. Enter / Tab targets are derived from returnNext and tab above, never written here.",
+    "scene": "Where and when: INT. or EXT., the place, then DAY or NIGHT.",
+    "action": "What we see and hear, in the present tense. Keep it to what a camera can show.",
+    "character": "The speaker’s name in CAPS. Add (V.O.) or (O.S.) when they are heard but not seen.",
+    "paren": "A short direction for how a line is said — use sparingly.",
+    "dialogue": "What the character says, as they would say it.",
+    "transition": "How we leave the scene — CUT TO:, DISSOLVE TO:. Most scripts need very few.",
+    "shot": "A specific camera angle, only when the story needs it.",
+    "general": "Free text that is not one of the standard elements."
+  },
+  "learnTopics": {
+    "_about": "Element type → src/data/learn.json topic id for the hint strip's 'What is…?' box.",
+    "scene": "scene-heading",
+    "action": "action",
+    "character": "character-cue",
+    "paren": "parenthetical",
+    "dialogue": "dialogue",
+    "transition": "transition"
   }
 }

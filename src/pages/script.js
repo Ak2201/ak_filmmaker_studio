@@ -46,6 +46,7 @@ import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+import { learn } from '../ui/learn.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
   pageCount, formatPages
@@ -154,6 +155,8 @@ document.addEventListener('fms:drafts-changed', refreshDraftLabel);
 /* ---- chrome ----------------------------------------------------- */
 let typeSel = null;
 let hintNode = null;
+let tipNode = null;
+let tipKey = '';
 let sheet = null;
 let beatsOpen = false;
 
@@ -185,6 +188,7 @@ function buildTop() {
     { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
     { label: 'Format check', action: 'sc-check' },
     '---',
+    { label: 'Show or hide hints', action: 'sc-hints' },
     { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
     { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
@@ -192,9 +196,11 @@ function buildTop() {
   /* The shell's `.toolbar` convention is not used: this bar is the
      page's own, and a focus button is moved in once focus-mode has
      injected it (see mountFocus). */
+  tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() });
   return h('div#scTop.sc-top', {}, [
     crumb,
-    h('div.sc-tools', {}, [typeSel, beatsBtn, h('span#scFocusSlot.sc-focus-slot'), menu])
+    h('div.sc-tools', {}, [typeSel, beatsBtn, h('span#scFocusSlot.sc-focus-slot'), menu]),
+    tipNode
   ]);
 }
 
@@ -234,6 +240,7 @@ function render() {
   const guide = mountStageGuide(main, { stage: 'screenplay' });
   if (guide) guide.hidden = location.hash !== '#guide';
 
+  watchTopBar();
   mountShell();
   wireActionBar();
   try { StudioUI.autoAriaLabels(); } catch (e) { console.warn('[script] chrome', e); }
@@ -271,12 +278,87 @@ function refreshDerivedUi() {
     if (c.classList.contains('is-on') !== on) c.classList.toggle('is-on', on);
     if (c.getAttribute('aria-pressed') !== String(on)) c.setAttribute('aria-pressed', String(on));
   });
+  paintTip(el);
   if (hintNode) {
     const empty = doc.elements.length <= 1 && doc.elements.every((e) => !String(e.text || '').trim());
     if (hintNode.hidden === empty) hintNode.hidden = !empty;
   }
 }
 editor.on('type', refreshDerivedUi);
+
+/* The top bar's height, MEASURED (it wraps, and the hint row comes
+   and goes), so the pinned beats column can sit under it instead of
+   behind it. Written on <html>, outside the observed element. */
+let topRO = null;
+function watchTopBar() {
+  const bar = document.getElementById('scTop');
+  if (!bar) return;
+  const publish = () => {
+    const px = Math.round(bar.getBoundingClientRect().height) + 'px';
+    const de = document.documentElement;
+    if (de.style.getPropertyValue('--sc-top-h') !== px) de.style.setProperty('--sc-top-h', px);
+  };
+  publish();
+  if (typeof ResizeObserver === 'function') {
+    if (topRO) topRO.disconnect();
+    topRO = new ResizeObserver(publish);
+    topRO.observe(bar);
+  }
+  setTimeout(publish, 300);   // RO rides the render loop; a timer does not
+}
+
+/* ---- the hint strip ----------------------------------------------
+   What the current line is for and where Enter and Tab go from it.
+   The copy is write-presets.json's `hints`; the targets come from the
+   same returnNext / tab tables the keys obey, so the hint can never
+   promise a key the editor does not keep. DOM only, rebuilt only when
+   the line's type or emptiness changes. Hidden or shown per device,
+   stored as `hints` beside `keys` in the existing fms_write_prefs_v1
+   (a read-merge-write, and only when the writer toggles it). */
+function hintsOn() {
+  try { return (JSON.parse(localStorage.getItem(Keys.WRITE_PREFS_KEY) || '{}') || {}).hints !== false; } catch (e) { return true; }
+}
+function setHints(on) {
+  try {
+    const raw = localStorage.getItem(Keys.WRITE_PREFS_KEY);
+    let all = {};
+    try { all = raw ? JSON.parse(raw) : {}; } catch (e) { all = {}; }
+    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+    if (on) delete all.hints; else all.hints = false;
+    localStorage.setItem(Keys.WRITE_PREFS_KEY, JSON.stringify(all));
+  } catch (e) { /* private mode: holds for this visit */ }
+}
+const typeName = (t) => (Keys.TYPE_NAMES && Keys.TYPE_NAMES[t]) || t;
+function paintTip(el) {
+  if (!tipNode || tipNode.hidden || !el) return;
+  const empty = !String(el.text || '').trim();
+  const key = el.type + (empty ? ':0' : ':1');
+  if (key === tipKey) return;
+  tipKey = key;
+  const ret = Keys.returnNext(el.type, keyPrefs, knownTypes());
+  const tab = Keys.tabAction(el.type, empty, false, knownTypes());
+  const keysLine = [
+    ret ? 'Enter → ' + typeName(ret) : null,
+    tab ? 'Tab → ' + typeName(tab.type) : null,
+    'Alt+1–7 any type'
+  ].filter(Boolean).join(' · ');
+  const topic = Keys.LEARN_TOPICS && Keys.LEARN_TOPICS[el.type];
+  let box = null;
+  try { box = topic ? learn(topic) : null; } catch (e) { box = null; }
+  tipNode.replaceChildren(...[
+    h('strong.sc-tip-type', { text: typeName(el.type) }),
+    h('span.sc-tip-what', { text: (Keys.HINTS && Keys.HINTS[el.type]) || '' }),
+    h('span.sc-tip-keys', { text: keysLine }),
+    box
+  ].filter(Boolean));   // append(null) would print "null"
+}
+delegate(document, 'click', '[data-action="sc-hints"]', () => {
+  const on = !hintsOn();
+  setHints(on);
+  if (tipNode) { tipNode.hidden = !on; tipKey = ''; }
+  refreshDerivedUi();
+  say(on ? 'Hints on.' : 'Hints off. Turn them back on from the ⋯ menu.');
+});
 
 /* The line the caret is in. focusin sees every way into a row. */
 delegate(document, 'focusin', '#wr-page .wr-text', (e, ta) => {

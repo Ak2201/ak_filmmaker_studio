@@ -78,22 +78,60 @@ export function mountBeats(host, opts = {}) {
   root.append(toggle, body, hint);
   host.append(root);
 
+  /* Rebuilding the list on every keystroke reset its scroll to the
+     top — the panel "jumped" while you read further down it. Now the
+     rows are rebuilt only when the beats themselves change; a new
+     current line only moves the highlight, and the list's own scroll
+     position is kept either way. */
+  let lastSig = '';
+  let rowsNow = [];
+  /* The list's own scroll box: the body in a drawer, the page's
+     pinned column on a wide screen. Never the document. */
+  function scroller() {
+    for (let el = body; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      const o = getComputedStyle(el).overflowY;
+      if ((o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight + 1) return el;
+    }
+    return null;
+  }
+  function paintCurrent() {
+    body.querySelectorAll('li').forEach((li, i) => {
+      const r = rowsNow[i];
+      const on = !!(r && r.current);
+      if (li.classList.contains('is-current') !== on) li.classList.toggle('is-current', on);
+      const b = li.firstElementChild;
+      if (b) { if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }
+    });
+    // Keep the current beat in view INSIDE the list; never scroll the page.
+    const cur = body.querySelector('li.is-current');
+    const sc = cur && isOpen ? scroller() : null;
+    if (sc) {
+      const box = sc.getBoundingClientRect();
+      const r = cur.getBoundingClientRect();
+      if (r.top < box.top || r.bottom > box.bottom) sc.scrollTop += r.top - box.top - box.height / 3;
+    }
+  }
   function draw() {
     const d = deriveBeats(getElements ? getElements() : [], currentId, {
       targetPages: getTargetPages ? getTargetPages() : 0
     });
+    rowsNow = d.rows;
     toggle.textContent = '';
     toggle.append(h('span.bp-title', { text: 'Beats' }), h('span.bp-fw', { text: d.fw.name || d.fw.label || '' }),
       h('span.bp-caret', { 'aria-hidden': 'true', text: isOpen ? '▾' : '▸' }));
     toggle.setAttribute('aria-expanded', String(isOpen));
     root.classList.toggle('is-open', isOpen);
     body.hidden = !isOpen;
+    const sig = d.fw.id + '|' + d.rows.map((r) => r.beat.id + ':' + r.page + ':' + r.marks + ':' + r.written + ':' + r.targetId).join(',');
+    if (sig === lastSig) { paintCurrent(); return; }
+    lastSig = sig;
+    const sc0 = scroller();
+    const keep = sc0 ? sc0.scrollTop : 0;
     body.textContent = '';
     const ol = h('ol.bp-list');
-    d.rows.forEach((r) => {
+    d.rows.forEach((r, i) => {
       const btn = h('button.bp-beat', {
         type: 'button',
-        'aria-current': r.current ? 'true' : null,
         dataset: { beat: r.beat.id }
       }, [
         h('span.bp-name', { text: r.beat.label || r.beat.id }),
@@ -101,15 +139,18 @@ export function mountBeats(host, opts = {}) {
         h('span.bp-page', { text: '~p.' + r.page })
       ].filter(Boolean));
       btn.addEventListener('click', () => {
-        if (r.targetId && scrollToEl) scrollToEl(r.targetId);
-        hint.textContent = r.written ? '' : (r.targetId
-          ? 'Not written yet. Around page ' + r.page + '. Taking you to the end.'
-          : 'Nothing written yet. This beat sits around page ' + r.page + '.');
-        if (onJump) onJump({ beat: r.beat, page: r.page, id: r.targetId, written: r.written });
+        const row = rowsNow[i] || r;
+        if (row.targetId && scrollToEl) scrollToEl(row.targetId);
+        hint.textContent = row.written ? '' : (row.targetId
+          ? 'Not written yet. Around page ' + row.page + '. Taking you to the end.'
+          : 'Nothing written yet. This beat sits around page ' + row.page + '.');
+        if (onJump) onJump({ beat: row.beat, page: row.page, id: row.targetId, written: row.written });
       });
-      ol.append(h('li', { class: r.current ? 'is-current' : '' }, [btn]));
+      ol.append(h('li', {}, [btn]));
     });
     body.append(ol);
+    if (sc0) sc0.scrollTop = keep;
+    paintCurrent();
   }
 
   const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };

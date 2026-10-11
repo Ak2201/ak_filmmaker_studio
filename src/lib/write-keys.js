@@ -54,6 +54,8 @@ export const DEFAULT_PRESET = DATA.defaultPreset;
 export const SMARTTYPE = DATA.smarttype;
 export const DEFAULT_RETURN = DATA.returnNext;
 export const TYPE_NAMES = DATA.typeNames;
+export const HINTS = DATA.hints || {};
+export const LEARN_TOPICS = DATA.learnTopics || {};
 
 export function getPreset(id) {
   return PRESETS.find((p) => p.id === id) || PRESETS.find((p) => p.id === DEFAULT_PRESET);
@@ -261,5 +263,5 @@ export function shortcutRows(prefs, known, ctrlDigits) {
 export default {
   WRITE_PREFS_KEY, PRESETS, DEFAULT_PRESET, SMARTTYPE, getPreset, resolveType, digitMap,
   cycleOrder, cycleNext, returnNext, returnTable, tabAction, parsePrefs, mergePrefs,
-  loadWritePrefs, saveWritePrefs, resolveKey, digitOf, shortcutRows
+  loadWritePrefs, saveWritePrefs, resolveKey, digitOf, shortcutRows, HINTS, LEARN_TOPICS, TYPE_NAMES
 };

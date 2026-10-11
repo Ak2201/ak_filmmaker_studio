@@ -43,6 +43,7 @@ import '../styles/smarttype.css';
 import { mountEditor } from '../ui/script-editor/editor.js';
 import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
+import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
@@ -82,6 +83,7 @@ function persistNow() {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
     setStatus('Saved ✓');
+    refreshDraftLabel();
   };
   flushStorage().then(settle, settle);
 }
@@ -136,11 +138,17 @@ const editor = mountEditor(document, {
 
 /* ---- draft label ------------------------------------------------ */
 function draftLabel() {
-  const revs = doc.revisions || [];
-  if (!revs.length) return 'No draft saved yet';
-  const r = revs[revs.length - 1];
-  return 'Draft ' + (r.number || revs.length);
+  const last = latestDraft(doc);
+  if (!last) return 'No draft saved yet';
+  return last.name + (changedSinceDraft(doc) ? ' · unsaved draft changes' : '');
 }
+/* DOM only: the label after a save settles or a draft is written. */
+function refreshDraftLabel() {
+  const d = document.querySelector('[data-sc="draft"]');
+  const t = draftLabel();
+  if (d && d.textContent !== t) d.textContent = t;
+}
+document.addEventListener('fms:drafts-changed', refreshDraftLabel);
 
 /* ---- chrome ----------------------------------------------------- */
 let typeSel = null;

@@ -197,6 +197,30 @@
    number, so state is never carried by colour alone: each tab also
    SAYS "Done" or "To do". */
 .st-path { margin-block: var(--s4) var(--s2); }
+/* Wide: the step bar stays pinned under the band, so where you are and
+   the way to every step never scroll away; a step lands just under it. */
+@media (min-width: 720px) {
+  .st-path {
+    position: sticky;
+    top: var(--sh-chrome-h, 0px);
+    z-index: 4;
+    background: var(--paper);
+    padding-block: var(--s2);
+  }
+  main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st-bar-h, 0px); }
+  /* One compact row while pinned: a bar that covers a third of the
+     screen is a bar in the way. The state line moves to the tooltip. */
+  .st-path .st-path-list { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: var(--s1); }
+  .st-path .st-path-list > li { flex: 0 0 auto; }
+  .st-path .st-path-tab { width: auto; min-height: 36px; padding: var(--s1) var(--s3); grid-template-rows: auto; }
+  .st-path .st-path-tab .st-path-n { grid-row: auto; width: 1.4rem; height: 1.4rem; }
+  .st-path .st-path-state { display: none; }
+  .st-path .st-path-label { white-space: nowrap; overflow-wrap: normal; }
+  .st-path { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); }
+  .st-path .st-path-list { flex: 1 1 28rem; min-width: 0; }
+  .st-path .st-path-count, .st-path .st-extras { margin: 0; }
+  .st-path .st-extras .st-extra { min-height: 36px; padding: var(--s1) var(--s3); }
+}
 .st-path-list {
   list-style: none;
   margin: 0;

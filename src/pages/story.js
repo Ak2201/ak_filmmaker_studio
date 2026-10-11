@@ -333,8 +333,7 @@ function startBlueprintHosts() {
     rewireNotes();      // the Bible's pencils point at the whole document again
     refreshStepper();   // the answers read from the blueprint tick their steps
     if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
-      const el = document.getElementById('path-' + reland);
-      if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+      landStepView(document.getElementById('path-' + reland));
     }
   }).catch((e) => {
     todo.forEach((r) => { r.started = false; });
@@ -1073,8 +1072,30 @@ function after() {
   if (landStep) {
     const el = document.getElementById('path-' + landStep);
     landStep = '';
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+    landStepView(el);
   }
+}
+
+
+/* Landing on a step. The step bar stays in view: on a wide screen it is
+   pinned (story.css) and the step lands just under it; on a phone it
+   scrolls with the page, so the landing is the bar itself. Re-landed
+   once the step has laid out (learn boxes, examples and fonts arrive
+   after the first scroll and pushed a phone landing mid-step), unless
+   the reader has taken over in the meantime. */
+let stepLandLive = 0;
+['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { stepLandLive = 0; }, { passive: true, capture: true }));
+function landStepView(el, { exact = false } = {}) {
+  if (!el) return;
+  const bar = document.querySelector('#main nav.st-path:not([hidden])');
+  const pinned = !!bar && getComputedStyle(bar).position === 'sticky';
+  if (pinned) document.documentElement.style.setProperty('--st-bar-h', Math.round(bar.getBoundingClientRect().height) + 'px');
+  const target = exact || pinned || !bar ? el : bar;
+  const go = () => target.scrollIntoView({ block: 'start', behavior: 'instant' });
+  const mine = ++stepLandLive;
+  go();
+  requestAnimationFrame(() => { if (stepLandLive === mine) go(); });
+  setTimeout(() => { if (stepLandLive === mine) go(); }, 450);
 }
 
 /* A path step id, from an id or (for any caller that still holds one)
@@ -1098,8 +1119,7 @@ function goStep(x, { scroll = true } = {}) {
   refreshStepper();
   applyView();
   if (scroll) {
-    const el = document.getElementById('path-' + pathStep);
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+    landStepView(document.getElementById('path-' + pathStep));
   }
 }
 
@@ -1147,8 +1167,7 @@ function goView(id) {
     history.replaceState(null, '', location.pathname + location.search + '#' + id);
     refreshStepper();
     applyView();
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+    landStepView(document.getElementById(id));
   } else goStep(id);
 }
 wireStepper(document, goView);
@@ -1166,7 +1185,11 @@ function openFragment(frag) {
   started = true;
   refreshStepper();
   applyView();
-  el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  /* A step's own id lands on the step (under the bar); an id inside a
+     step lands on that element. Either way it is landed again once the
+     blueprint questions above it have loaded (reland, in the host loader). */
+  if (direct || el === host) { if (pid) reland = pid; landStepView(host); }
+  else landStepView(el, { exact: true });
   return true;
 }
 

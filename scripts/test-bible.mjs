@@ -284,5 +284,46 @@ reset();
   ok(/npm run test:bible/.test(pkg.scripts['test:all']), 'and is in test:all');
 }
 
+/* ---- the Bible on the Story page: per format, every card on the page ---- */
+{
+  const PATHS = JSON.parse(src('../src/data/story-paths.json'));
+  const feat = JSON.parse(src('../src/data/steps.feature.json'));
+  const featKeys = new Set();
+  for (const st of [...feat.vol1, ...feat.vol2]) for (const b of st.blocks || []) {
+    for (const it of b.items || []) if (it.key) featKeys.add(it.key);
+    for (const m of String(b.html || '').matchAll(/data-key="([^"]+)"/g)) featKeys.add(m[1]);
+  }
+  /* the private-note pencils the Bible draws are keys the feature blueprint really has */
+  ok(Array.isArray(BIBLE.notes) && BIBLE.notes.length === 10, 'story-bible.json names ten private-note keys');
+  eq(BIBLE.notes.filter((k) => !featKeys.has(k)), [], 'every note key is a feature blueprint key');
+  /* a short film's feature-only list names real cards and roles */
+  const cardIds = BIBLE.cards.map((c) => c.id);
+  eq(BIBLE.shortFeatureOnly.cards.filter((c) => !cardIds.includes(c)), [], 'shortFeatureOnly.cards are real cards');
+  eq(BIBLE.shortFeatureOnly.roles.filter((r) => !BIBLE.slots[r]), [], 'shortFeatureOnly.roles are real slots');
+  eq(BIBLE.shortFeatureOnly.cards, ['stakes', 'theme'], 'a short film’s path hides Stakes and Theme until their feature keys hold something');
+  eq(BIBLE.shortFeatureOnly.roles, ['antagonist', 'ally', 'love', 'mentor'], '…and the antagonist, ally, love and mentor slots');
+  /* the short film's own slots: protagonist and world are asked from the SHORT blueprint */
+  const shortProt = C.slotSpec('protagonist', 'short');
+  eq(Object.values(shortProt.fields).filter((f) => f.ns === 'short').map((f) => f.key).sort(), ['s3_name', 's3_want'], 'a short protagonist’s own fields are the short blueprint’s s3_name / s3_want');
+  eq(shortProt.extras.filter((x) => x.ns === 'short').map((x) => x.key), ['s3_obstacle', 's3_show', 's3_turn'], '…and its extras');
+  eq(S.bibleFields('world', 'short').filter((f) => f.ns === 'short').map((f) => f.key), ['s5_loc', 's5_time', 's5_anchors', 's5_rules'], 'a short world is the short blueprint’s four');
+  eq(S.bibleFields('world', 'short').filter((f) => f.ns === 'feature').map((f) => f.key), ['s7_era', 's7_duration'], '…with the feature’s era and duration behind it (shown only once they hold an answer)');
+  ok(S.bibleFields('stakes', 'short').every((f) => f.ns === 'feature'), 'a short film’s stakes are feature keys — hidden until filled');
+  /* the path steps name real cards, and the three short steps split the Bible */
+  for (const fmt of ['feature', 'short']) for (const p of PATHS[fmt]) {
+    eq((p.cards || []).filter((c) => !cardIds.includes(c)), [], `${fmt}/${p.id}: its cards are real`);
+  }
+  eq(PATHS.feature.find((p) => p.id === 'bible').cards, cardIds, 'the feature’s Story Bible step shows all five cards, on the page at once');
+  eq(PATHS.short.flatMap((p) => p.cards || []), ['characters', 'world', 'conflict'], 'a short film’s Character, World and Conflict steps show only those three cards');
+  /* the source: no one-card-at-a-time state, a data-key on every blueprint-backed field */
+  const bibleSrc = src('../src/ui/story-bible.js');
+  ok(!/seeAll|card-next|card-back/.test(bibleSrc), 'the Bible no longer hides cards behind a toggle (every card is on the page)');
+  ok(/'data-sb-key': f\.key, 'data-sb-ns': f\.ns, 'data-key': f\.key/.test(bibleSrc), 'a Bible blueprint field carries the blueprint’s data-key');
+  ok(/dataKeys: true/.test(bibleSrc), 'the character cards on the Story page carry theirs');
+  ok(/keyAttr\(view\.backed/.test(src('../src/ui/character-card.js')), 'and a card elsewhere (Write) draws none unless asked');
+  ok(!/renderFilmPicker|renderFilmSwitch/.test(src('../src/pages/story.js')), 'the favourite-film picker and switcher are not on the Story page (Settings only)');
+  ok(/settings\.html#favourite/.test(src('../src/pages/story.js')), 'an example links to the favourite film’s setting');
+}
+
 console.log(`${fail ? '✗' : '✓'} story bible: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

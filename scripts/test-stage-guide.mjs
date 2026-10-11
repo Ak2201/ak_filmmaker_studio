@@ -173,5 +173,102 @@ eq(JSON.stringify(s._sceneMap), JSON.stringify(edited), '_sceneMap round-trips b
 eq(s._script, script, 'and leaves _script alone');
 eq(s.meta_title, 'T2', 'and the fields');
 
+/* ---- the Story path absorbs the blueprint's questions: each ONCE ---- */
+/* (src/data/story-paths.json; the DOM-free half of the browser check that
+   no data-key appears twice on story.html.) The Guide leaves out every
+   step a path step asks, so a question is on the page in exactly one of:
+   an absorbed step / checklist / ladder rung, a Story Bible card's field,
+   the Guide's remaining steps, or the cover sheet. */
+{
+  const PATHS = json('story-paths.json');
+  const BIBLE = json('story-bible.json');
+  const Story = await import('../src/lib/story.js');
+  const Chars = await import('../src/lib/characters.js');
+  const keysOf = (rec) => {
+    const out = new Set();
+    for (const b of rec.blocks || []) {
+      for (const it of b.items || []) if (it.key) out.add(it.key);
+      for (const m of String(b.html || '').matchAll(/data-key="([^"]+)"/g)) out.add(m[1]);
+    }
+    return out;
+  };
+  const stepRec = { feature: Object.fromEntries([...feat.vol1, ...feat.vol2].map((s) => [s.id, s])), short: Object.fromEntries(short.steps.map((s) => [s.id, s])) };
+  const ladderKeys = W.LADDER.map((r) => r.key);
+
+  for (const fmt of ['feature', 'short']) {
+    const counts = new Map();
+    const add = (k, who) => { counts.set(k, (counts.get(k) || []).concat(who)); };
+    /* what the story stage's steps ask, before anything is absorbed */
+    const stageItems = G.guideSteps('story', fmt);
+    const want = new Set();
+    for (const it of stageItems) {
+      if (it.kind === 'interlude') ladderKeys.forEach((k) => want.add(k));
+      else keysOf(stepRec[fmt][it.id]).forEach((k) => want.add(k));
+    }
+    G.coverFields('story', fmt).forEach((f) => want.add(f.key));
+
+    /* the path's own absorbs */
+    for (const p of PATHS[fmt]) {
+      for (const a of p.absorbs) {
+        const x = Story.parseAbsorb(a);
+        ok(!!x, `${fmt}/${p.id}: absorbs "${a}" parses`);
+        if (!x) continue;
+        if (x.id === 'treatment-ladder') { ok(ladderKeys.includes(x.part), `${fmt}/${p.id}: ${x.part} is a ladder rung`); add(x.part, p.id + ' (rung)'); continue; }
+        const rec = stepRec[fmt][x.id];
+        ok(!!rec, `${fmt}/${p.id}: ${a} is a step the ${fmt} blueprint has`);
+        if (!rec) continue;
+        for (const k of keysOf(rec)) if (!x.part || (x.part === 'rest' && /^ck_/.test(k))) add(k, p.id + (x.part ? ' (rest)' : ''));
+      }
+    }
+    /* the Story Bible's cards, as the path steps list them */
+    const cardIds = new Set(PATHS[fmt].flatMap((p) => p.cards || []));
+    for (const c of cardIds) {
+      if (c === 'characters') {
+        const roles = fmt === 'short' ? ['protagonist'] : ['protagonist', 'antagonist', 'ally', 'love', 'mentor'];
+        for (const r of roles) {
+          const spec = Chars.slotSpec(r, fmt);
+          Object.values(spec.fields).filter((f) => fmt === 'feature' || f.ns === 'short').forEach((f) => add(f.key, 'bible:characters'));
+          spec.extras.filter((x) => fmt === 'feature' || x.ns === 'short').forEach((x) => add(x.key, 'bible:characters'));
+        }
+      } else if (c !== 'conflict') {
+        Story.bibleFields(c, fmt).filter((f) => fmt === 'feature' || f.ns === 'short').forEach((f) => add(f.key, 'bible:' + c));
+      }
+    }
+    /* what the Guide still draws */
+    for (const it of G.guideStepsLeft('story', fmt)) {
+      if (it.kind === 'interlude') ladderKeys.forEach((k) => add(k, 'guide'));
+      else keysOf(stepRec[fmt][it.id]).forEach((k) => add(k, 'guide:' + it.id));
+    }
+    G.coverFields('story', fmt).forEach((f) => add(f.key, 'cover'));
+
+    const twice = [...counts].filter(([, who]) => who.length > 1).map(([k, who]) => k + ' ← ' + who.join(' + '));
+    eq(twice, [], `${fmt}: no blueprint question is asked twice on the Story page`);
+    const lost = [...want].filter((k) => !counts.has(k));
+    eq(lost, [], `${fmt}: every key the Story stage's blueprint steps carry is on the page`);
+    const alien = [...counts.keys()].filter((k) => !want.has(k) && !(fmt === 'short' && /^s[3-5]_|^s4_/.test(k)));
+    eq(alien, [], `${fmt}: the path draws no key the Story stage does not own`);
+  }
+
+  /* the Guide is left with the cover sheet only — nothing the path asks */
+  eq(G.guideStepsLeft('story', 'feature'), [], 'feature: the Story Guide has no blueprint step left (every one is in the path)');
+  eq(G.guideStepsLeft('story', 'short'), [], 'short: the Story Guide has no blueprint step left');
+  eq(G.guideStepsLeft('screenplay', 'feature').map((i) => i.id), G.guideSteps('screenplay', 'feature').map((i) => i.id), 'other stages’ Guides are whole');
+  eq(G.guideStepsLeft('preprod', 'short').map((i) => i.id), G.guideSteps('preprod', 'short').map((i) => i.id), '…short too');
+  /* every ladder rung is taken by exactly one path step, so the interlude can leave the Guide */
+  const rungs = PATHS.feature.flatMap((p) => p.absorbs).map(Story.parseAbsorb).filter((x) => x.id === 'treatment-ladder').map((x) => x.part);
+  eq([...rungs].sort(), [...ladderKeys].sort(), 'the five ladder rungs are each taken once');
+  /* a short film's path carries no feature-only step id */
+  ok(PATHS.short.every((p) => (p.absorbs || []).every((a) => a.startsWith('short:'))), 'the short path absorbs only short blueprint steps');
+  ok(PATHS.feature.every((p) => (p.absorbs || []).every((a) => a.startsWith('feature:'))), 'the feature path absorbs only feature blueprint steps');
+  /* items for the renderer */
+  const synop = Story.absorbItems(PATHS.feature.find((p) => p.id === 'synopsis').absorbs, 'feature');
+  eq(synop.ladder.rungs, ['lad_2_synopsis', 'lad_3_onepager', 'lad_4_treatment'], 'the synopsis step takes rungs 2-4');
+  eq(Story.absorbItems(PATHS.feature.find((p) => p.id === 'bible').absorbs, 'feature').steps.map((i) => i.id + ':' + i.only), ['step-03:rest', 'step-04:rest', 'step-05:rest', 'step-06:rest', 'step-07:rest'], 'the Bible takes the five steps’ notes and checklists');
+  eq(Story.pathStepForBlueprint('feature', 'step-07'), 'bible', 'an old ?step=feature/step-07 link lands on the Bible');
+  eq(Story.pathStepForBlueprint('feature', 'treatment-ladder'), 'logline', 'the ladder link lands on its first rung’s step');
+  eq(Story.pathStepForBlueprint('short', 'step-05'), 'world', 'short step 05 is the World step');
+  eq(Story.pathStepForBlueprint('short', 'step-09'), '', 'a step the Story path does not ask has no step');
+}
+
 console.log(`stage guide: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

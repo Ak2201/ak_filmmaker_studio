@@ -1,28 +1,46 @@
 /* ============================================================
    STORY — the Story stage's workspace (PRD 2.0 §4.5, plan rev. 3 §1)
    ------------------------------------------------------------
-   A story begins on a PATH: Idea → Logline → Story Bible → Scene order →
-   Step outline → Synopsis → To the Screenplay. The step outline
-   is the centre of it — a numbered list of story events under each
-   beat of the chosen format — and the synopsis can be assembled from
-   it, tagged as it is built. The synopsis editor, the beat matrix and
-   the tension curve then work exactly as they did. The model is
-   src/lib/story.js; this file only draws it and turns gestures into
-   calls on it.
+   A story is written along a PATH, and the path is on the PAGE: every
+   step is a section, one under another, with a row of links above them
+   (no tabs, no drop-downs — the owner's rule). There are TWO paths,
+   one per project format, in src/data/story-paths.json:
 
-   GUIDED, NOT GATED. Every stepper tab is clickable at any time, and
-   the old ways in stay: the sample, a synopsis you already have, or a
-   file. NO STEP IS MANDATORY: a tick only means "has something in it".
-   Which step is on screen is in memory (and in the address bar as
-   #path-<id>; the old #path-N numbers still open the step they always
-   did); what is DONE is derived from the story, never stored.
+     feature  Idea · Logline · Story Bible · Scene order · Step outline ·
+              Setups & payoffs · Timeline · Synopsis & treatment ·
+              Lock the outline · To the Screenplay
+     short    Seed · Logline · Character · World · Conflict · Scene order ·
+              Step outline · Synopsis · Lock the outline · To the Screenplay
 
-   WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: the path step, the
-   tab under the editor, whether the synopsis is being edited or
-   tagged, which beat card is lit, the one-level Undo of a synopsis
-   build, the last send to the Screenplay, AI suggestions not yet
-   added, and the AI job in flight. None of that is a fact about the
-   film, and `verify` asserts zero idle localStorage writes.
+   so a short film never meets the feature's road with steps missing.
+   Beats & Pacing and the Pitch deck follow as ordinary sections, then
+   the Guide (the film's cover sheet).
+
+   EACH QUESTION IS ASKED ONCE. The blueprint's steps are drawn INLINE
+   inside the path step that owns them (the story-paths.json `absorbs`
+   lists), through the same renderer and the same merge-write the Stage
+   Guide uses, so an answer is the blueprint's own and the Guide no
+   longer repeats them. The Story Bible's cards draw the blueprint's
+   character / stakes / theme / world fields (src/ui/story-bible.js).
+
+   NO FORMAT IS CHOSEN FIRST. The outline is laid out against the
+   format's suggestion until the writer picks a beat sheet in Scene
+   order — and the script can be written without ever doing so.
+
+   GUIDED, NOT GATED. Every step is reachable at any time, and the old
+   ways in stay: the sample, a synopsis you already have, or a file. NO
+   STEP IS MANDATORY: a tick only means "has something in it". Which
+   step is lit is in memory (and in the address bar as #path-<id>; the
+   old #path-N numbers still land on the step they always did); what is
+   DONE is derived from the story, never stored. The one thing stored
+   about the path itself is the outline lock (`outlineLockedAt`).
+
+   WHAT THE PAGE HOLDS IN MEMORY AND NOTHING ELSE: the lit path step,
+   whether the synopsis is being edited or tagged, which beat card is
+   lit, the one-level Undo of a synopsis build, the last send to the
+   Screenplay, AI suggestions not yet added, and the AI job in flight.
+   None of that is a fact about the film, and `verify` asserts zero idle
+   localStorage writes.
 
    OFFSETS. The tagging pane renders the synopsis as text nodes and
    <mark> elements and nothing else, under `white-space: pre-wrap`, so
@@ -46,11 +64,9 @@ import Store from '../lib/store.js';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { BRAND } from '../lib/brand.js';
 import { saveOnInput, preservingFocus } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import Scenes from '../lib/scenes.js';
-import { drainClipQueue, onClipQueued } from '../lib/extension-bridge.js';
 import Pitch from '../lib/pitch-deck.js';
 /* The import, the sample, the exports, the blueprint's beat fields and
    the curve are shared with the blueprints' Part I panels, so they live
@@ -60,8 +76,8 @@ import IO from '../lib/story-io.js';
 import { renderHeat as kitHeat, renderFlags as kitFlags, importSynopsis } from '../ui/story-kit.js';
 import { renderLoglineWorkshop } from '../ui/logline-workshop.js';   // AI logline check + variants
 import { learn } from '../ui/learn.js';
-import { renderFilmPicker, renderFilmSwitch, onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
-import { renderBibleBody, wireBible } from '../ui/story-bible.js';
+import { onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
+import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/story-bible.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 
 const app = document.getElementById('app');
@@ -74,9 +90,10 @@ const app = document.getElementById('app');
 let mode = null;          // 'edit' | 'tag' — null means "decide from the data"
 let litBeat = '';         // the beat card whose passages are illuminated
 let flashMark = '';       // a mark to scroll to after the next render
-let pathStep = null;      // a Story.PATH id, or null = derive from the story
+let pathStep = null;      // the lit path step's id, or null = derive from the story
+let landStep = '';        // a step to scroll to after the next draw (a link, a hash)
+let reland = '';          // the step a link landed on: the blueprint hosts above it grow when they load, so land again then
 let started = false;      // the start cards were answered this visit
-let tab = 'pacing';       // the panel under the editor
 let undoBuild = null;     // one level: the synopsis before the last build
 let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
@@ -85,23 +102,24 @@ let sugg = {};            // beat key → [suggested text]
 let suggJob = null;       // { key, ctrl, status } — one at a time
 let suggFail = null;      // { key, error } — shown on that beat until the next try
 
-const TABS = [
-  { id: 'pacing', label: 'Pacing' },
-  { id: 'ai-map', label: 'Map with AI' },
-  { id: 'pitch', label: 'Pitch deck' },
-  { id: 'vault', label: 'Idea Vault' }
-];
-
-const story = () => Story.loadStory();
+/* The story as the page sees it: the framework in force is the writer's
+   choice once made, else the format's suggestion — never a toolbar
+   select. (A save writes that value back, which changes nothing the
+   writer chose: `frameworkChosen` is what says whether they did.) */
+const story = () => { const s = Story.loadStory(); s.framework = Story.effectiveFramework(s, fmt()); return s; };
 const pct = (x) => Math.round(x * 100) + '%';
 const scenes = () => { try { return Scenes.listScenes(); } catch (e) { return []; } };
 const isEmpty = IO.isEmptyStory;
 const projectFormat = () => { try { const p = Store.currentProject && Store.currentProject(); return (p && p.format) || ''; } catch (e) { return ''; } };
-const suggestedFw = () => (projectFormat() === 'short' ? 'short_five' : 'save_the_cat');
+const fmt = () => (projectFormat() === 'short' ? 'short' : 'feature');
+const pathNow = () => Story.pathFor(fmt());
+const stepNow = (id) => Story.pathStepById(id, fmt());
+const suggestedFw = () => Story.suggestedFramework(fmt());
+const progress = (s) => Story.pathProgress(s, { scenes: scenes(), format: fmt() });
 const blueprint = () => IO.readBlueprint('feature');
 const bpText = (v) => (typeof v === 'string' ? v.trim() : '');
-const bpIdea = () => bpText(blueprint().s1_whatif);
-const bpLogline = () => { const b = blueprint(); return bpText(b.s2_log_final) || bpText(b.s2_log2) || bpText(b.s2_log1); };
+const bpIdea = () => (fmt() === 'feature' ? bpText(blueprint().s1_whatif) : '');
+const bpLogline = () => { if (fmt() !== 'feature') return ''; const b = blueprint(); return bpText(b.s2_log_final) || bpText(b.s2_log2) || bpText(b.s2_log1); };
 
 /* ---- persistence ---------------------------------------------- */
 
@@ -138,7 +156,7 @@ function renderModes() {
     'The sample project’s story: its idea, logline, a Save the Cat! step outline and the synopsis built from it, ready to tag. A quick way to see what the path, the matrix and the curve do.',
     h('button.btn', { type: 'button', 'data-st': 'sample', text: 'USE THE SAMPLE' })));
   sec.append(card('New', 'Start with the idea.',
-    'A guided path: the idea, a logline, a beat sheet format, then a step outline under each beat. The synopsis can be built from the outline when you get there.',
+    'A guided path: the idea, a logline, the people and the world, a scene order, then a step outline. Every step is on this page; start anywhere. The synopsis can be built from the outline when you get there.',
     h('button.btn.primary', { type: 'button', 'data-st': 'new', text: 'START THE PATH' })));
   sec.append(card('Skip ahead', 'I already have a synopsis.',
     'Paste it and go straight to tagging it against a structure. Every step of the path stays a click away above.',
@@ -149,36 +167,31 @@ function renderModes() {
   ]);
   sec.append(card('Import', 'Bring a file.',
     'A synopsis or treatment from Word, a PDF or plain text. Nothing is changed until you see it here.', drop));
-  return h('div.st-modes-wrap', {}, [renderFavourite(), sec]);
+  return sec;
 }
 
-/* The favourite film. Every example on the path is told in it, and the
-   boxes that explain a word use it too. Kept on the project (store.js
-   projectFav), else on the device. */
-function renderFavourite() {
-  return h('section.st-fav', { 'aria-label': 'Your favourite film' }, [
-    h('p.bd-eyebrow', { text: 'Your favourite film' }),
-    h('h2.st-mode-title', { text: 'Which of these films have you watched? Pick your favourite — we’ll explain every step with it.' }),
-    renderFilmPicker({ label: 'Pick your favourite film' })
-  ]);
-}
-/* A pick redraws the page (the picker, the boxes, the examples); the films
-   arriving ('' — nothing was picked) only fill the examples in. */
+/* The favourite film is chosen in Settings (and shown here only as the
+   film the examples are told in, with a link). A change made there
+   reaches this page on its next load; the films arriving here ('' —
+   nothing was picked) only fill the examples in. */
 onFavChange((slug) => (slug ? render() : fillExamples()));
 
 /* ---- the path stepper ---------------------------------------- */
 
 function currentStep(s) {
-  return pathStep || Story.defaultPathStep(s, { scenes: scenes() });
+  return pathStep || Story.defaultPathStep(s, { scenes: scenes(), format: fmt() });
 }
 
+/* The row of links above the steps. Every step is on the page below;
+   a link scrolls to its step. The lit one is where you last went (or
+   where the story is up to). */
 function renderStepper(s, cur) {
   const nav = h('nav.st-path', { 'aria-label': 'Story path' });
   const ol = h('ol.st-path-list');
-  for (const p of Story.pathProgress(s, { scenes: scenes() })) {
+  for (const p of progress(s)) {
     const on = p.id === cur;
     const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
-      /* data-step is the step's STABLE NUMBER (story.js PATH `n`): the
+      /* data-step is the step's STABLE NUMBER (story-paths.json `n`): the
          blueprint drawer reads it from the current tab to know which
          blueprint steps this path step answers. data-path is the id. */
       type: 'button', 'data-st': 'path', 'data-path': p.id, 'data-step': p.n, 'aria-current': on ? 'step' : null
@@ -196,25 +209,27 @@ function renderStepper(s, cur) {
 /* The words under every step's title are explained with the favourite
    film, in a closed box (src/ui/learn.js — null for a topic with no
    content yet, so it is filtered before append). */
-const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', structure: 'beat-sheet', outline: 'step-outline', synopsis: 'synopsis', screenplay: 'screenplay' };
+const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', character: 'character', world: 'world', conflict: 'conflict', structure: 'beat-sheet', outline: 'step-outline', synopsis: 'synopsis', screenplay: 'screenplay' };
 const learnBox = (topic) => {
   let el = null;
   try { el = learn(topic); } catch (e) { el = null; }   // no film given: the project's favourite
   return el;
 };
-/* A Bible write changes which steps have something in them, and the page
-   is not redrawn for a card (that would cost the caret): the stepper's
-   ticks are replaced in place instead. */
+/* A Bible or blueprint write changes which steps have something in
+   them, and the page is not redrawn for a field (that would cost the
+   caret): the stepper's ticks are replaced in place instead. */
 function refreshStepper() {
   const old = document.querySelector('nav.st-path');
   if (!old) return;
   const s = story();
   old.replaceWith(renderStepper(s, currentStep(s)));
 }
-wireBible({ getStory: story, saved: refreshStepper, film: favSlug, rerender: render });
+/* A Bible write changes what the blueprint's derived views (the relationship
+   map) and the stepper's ticks read: refresh both, in place. */
+wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + Story.pathStepById(id).pos + ' of ' + Story.PATH.length }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
@@ -222,13 +237,13 @@ const stepHead = (id, title, lead) => [
 /* Next suggests the first step AFTER this one with nothing in it; it is
    a suggestion and never a gate (the stepper reaches any step). */
 const nextBtn = (s, id) => {
-  const nx = Story.suggestNext(Story.pathProgress(s, { scenes: scenes() }), id);
+  const nx = Story.suggestNext(progress(s), id);
   if (!nx) return null;
   return h('div.st-step-nav', {}, [
     h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-path': nx.id, text: 'NEXT: ' + nx.label.toUpperCase() })
   ]);
 };
-/* A film's own words for a step, with a switcher to see another film's.
+/* A film's own words for a step (the favourite film, chosen in Settings).
    The films are imported a moment after first paint (fav-film.js), so the
    box is drawn empty and FILLED IN PLACE when they land: a redraw of the
    whole page would re-mount the shell, which writes its rail state, and a
@@ -240,7 +255,8 @@ function exampleParts(kind) {
   if (!text) return [];
   return [
     h('p.st-example', {}, [h('span.st-example-k', { text: st.meta.title + ': ' }), '“' + text + '”']),
-    renderFilmSwitch({ label: 'Example from' })
+    /* The favourite film is a Settings choice, not a control on this page. */
+    h('p.st-example-from', {}, ['Examples from ' + st.meta.title + ' · ', h('a', { href: 'settings.html#favourite', text: 'change in Settings' })])
   ];
 }
 const exampleBox = (kind) => h('div.st-example-wrap', { 'data-example': kind }, exampleParts(kind));
@@ -272,35 +288,134 @@ function renderWaysIn() {
   ]);
 }
 
+/* ---- the blueprint's questions, drawn inline -----------------------
+   A path step that absorbs blueprint questions (story-paths.json) gets a
+   HOST: one element per block of questions, drawn once by the stage
+   guide's own renderer (src/ui/stage-guide-body.js — same fields, same
+   data-keys, same merge-write into the blueprint's blob) and kept for
+   the life of the page. The page redraws often (a framework pick, a step
+   added); a host is re-attached, never rebuilt, so a half-typed answer
+   and the caret survive, and a pending write is never dropped. The
+   renderer is fetched once, right after the first draw — it is the same
+   chunk the Guide would fetch, and it is the only way these keys reach
+   the page. */
+const bpHosts = new Map();   // key -> { items, el, node, started, inst }
+function bpBlock(key, items, wrap) {
+  if (!items || !items.length) return null;
+  let r = bpHosts.get(key);
+  if (!r) {
+    const el = h('div.st-bp', { 'data-bp': key }, [h('p.sg-loading', { text: 'Loading the questions…' })]);
+    r = { items, el, node: wrap ? wrap(el) : el, started: false, inst: null };
+    bpHosts.set(key, r);
+  }
+  return r.node;
+}
+const stepItems = (id) => Story.absorbItems(stepNow(id).absorbs, fmt());
+const bpSteps = (id, wrap) => bpBlock(id, stepItems(id).steps, wrap);
+const sub = (title, lead) => [h('h3.st-sub', { text: title }), lead ? h('p.st-muted', { text: lead }) : null].filter(Boolean);
+/* Element.append(null) inserts the text "null" (CLAUDE.md): filter first. */
+const put = (el, ...kids) => { el.append(...kids.flat().filter(Boolean)); return el; };
+
+let bpSaveTimer = 0;
+function startBlueprintHosts() {
+  const todo = [...bpHosts.values()].filter((r) => !r.started);
+  if (!todo.length) return;
+  todo.forEach((r) => { r.started = true; });
+  import('../ui/stage-guide-body.js').then((m) => {
+    for (const r of todo) {
+      try {
+        const inst = m.renderGuide(r.el, { stage: 'story', format: fmt(), items: r.items, fields: [] });
+        r.inst = inst;
+      } catch (e) { console.warn('[story] blueprint step failed', r.items, e); }
+    }
+    rewireNotes();      // the Bible's pencils point at the whole document again
+    refreshStepper();   // the answers read from the blueprint tick their steps
+    if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
+      const el = document.getElementById('path-' + reland);
+      if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }).catch((e) => {
+    todo.forEach((r) => { r.started = false; });
+    console.warn('[story] the blueprint questions could not load', e);
+  });
+}
+/* Re-read the blueprint into every host (a write made by the Bible cards
+   changes what a derived view in a host draws). A host with a write
+   waiting is left alone: its own answer is the newer. */
+let pullTimer = 0;
+function pullBlueprintHosts() {
+  clearTimeout(pullTimer);
+  pullTimer = setTimeout(() => { for (const r of bpHosts.values()) { if (r.inst && r.inst.pull) { try { r.inst.pull(); } catch (e) { /* not drawn yet */ } } } }, 500);
+}
+
+/* A blueprint answer typed in a host: its steps' ticks, a moment after. */
+function watchBlueprintInput() {
+  const note = (e) => {
+    if (!e.target.closest || !e.target.closest('.st-bp')) return;
+    clearTimeout(bpSaveTimer);
+    bpSaveTimer = setTimeout(refreshStepper, 700);
+  };
+  document.addEventListener('input', note);
+  document.addEventListener('change', note);
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.st-bp .step-check li')) note(e); });
+}
+watchBlueprintInput();
+
+/* ---- 1 · the idea ------------------------------------------------ */
+
 function renderIdea(s) {
-  const sec = h('section#path-1.st-step.glossary-scope', { 'data-path': 'idea', 'aria-label': 'The idea' }, stepHead('idea', 'The idea',
-    'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
+  const short = fmt() === 'short';
+  const sec = h('section#path-idea.st-step.glossary-scope', { 'data-path': 'idea', 'aria-label': short ? 'The seed' : 'The idea' }, stepHead('idea', short ? 'The seed' : 'The idea',
+    short
+      ? 'What is the film, in a sentence or two? A single image, a moment, a question. A short film is one thing; nothing here is final.'
+      : 'What is the film, in a sentence or two? A “what if”, an image, a question that will not leave you alone. Nothing here is final.'));
   // Only when the start cards are NOT on the page: two copies of the same offer is noise.
   if (isEmpty(s) && started) sec.append(renderWaysIn());
-  sec.append(h('label.st-label', { for: 'stIdea', text: 'Your idea' }));
+  sec.append(h('label.st-label', { for: 'stIdea', text: short ? 'Your seed' : 'Your idea' }));
   const ta = h('textarea#stIdea.st-text', { rows: 3, 'data-st-field': 'idea', spellcheck: 'true' });
   ta.value = s.idea;
   sec.append(ta);
-  const bp = bpIdea();
-  if (!s.idea.trim() && bp) sec.append(offerBlueprint('idea', 'Feature blueprint, step 01', bp));
-  sec.append(exampleBox('idea'));
-  sec.append(nextBtn(s, 'idea'));
+  const bpi = bpIdea();
+  if (!s.idea.trim() && bpi) sec.append(offerBlueprint('idea', 'Feature blueprint, step 01', bpi));
+  put(sec, exampleBox('idea'),
+    sub(short ? 'The seed, the image, why you' : 'Your spark', short
+      ? 'The blueprint’s own questions for a seed. Answer what you can.'
+      : 'The blueprint’s own questions for an idea: the what-if, the image and why it has to be you.'),
+    bpSteps('idea'), nextBtn(s, 'idea'));
   return sec;
 }
 
+/* ---- 2 · the logline ---------------------------------------------- */
+
 function renderLogline(s) {
-  const sec = h('section#path-2.st-step.glossary-scope', { 'data-path': 'logline', 'aria-label': 'The logline' }, stepHead('logline', 'The logline',
+  const sec = h('section#path-logline.st-step.glossary-scope', { 'data-path': 'logline', 'aria-label': 'The logline' }, stepHead('logline', 'The logline',
     'One sentence: who the story is about, what they want, what stands in the way, and what it costs if they fail.'));
   sec.append(h('label.st-label', { for: 'stLogline', text: 'Your logline' }));
   const ta = h('textarea#stLogline.st-text', { rows: 3, 'data-st-field': 'logline', spellcheck: 'true' });
   ta.value = s.logline;
   sec.append(ta);
-  const bp = bpLogline();
-  if (!s.logline.trim() && bp) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bp));
-  sec.append(exampleBox('logline'));
-  sec.append(renderLoglineWorkshop(s, { AI, Panelm, getStory: story, rerender: render, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }));
-  sec.append(nextBtn(s, 'logline'));
+  const bpl = bpLogline();
+  if (!s.logline.trim() && bpl) sec.append(offerBlueprint('logline', 'Feature blueprint, step 02', bpl));
+  put(sec, exampleBox('logline'),
+    renderLoglineWorkshop(s, { AI, Panelm, getStory: story, rerender: render, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
+    sub('Drafts, then the final one', 'Write it three ways — a first go, a sharper one, the one you will use — then keep the best as your logline above.'),
+    bpSteps('logline'),
+    earlierLadder('logline', 'Earlier version of your logline (treatment ladder, rung 1)',
+      [h('button.btn', { type: 'button', 'data-st': 'use-lad1', text: 'USE THIS AS MY LOGLINE' })]),
+    nextBtn(s, 'logline'));
   return sec;
+}
+
+/* The treatment ladder's rungs a step takes, in a closed "earlier answers"
+   box (an answer a person wrote in the blueprint stays one click away,
+   in the one place it is asked) — or open, under its own heading. */
+function earlierLadder(id, title, extra = [], { open = false } = {}) {
+  const g = stepItems(id);
+  if (!g.ladder) return null;
+  return bpBlock(id + ':ladder', [g.ladder], (el) => {
+    if (open) return h('div.st-ladder', {}, [h('h3.st-sub', { text: title }), el, ...extra]);
+    return h('details.st-earlier', {}, [h('summary', { text: title }), el, ...extra]);
+  });
 }
 
 function offerBlueprint(field, where, text) {
@@ -339,15 +454,16 @@ function miniCurve(fw) {
 }
 
 function renderStructure(s) {
-  const sec = h('section#path-3.st-step.glossary-scope', { 'data-path': 'structure', 'aria-label': 'Scene order' }, stepHead('structure', 'Scene order',
-    'The order your story’s big moments come in — pick a beat sheet to lay them out.'));
+  const short = fmt() === 'short';
+  const sec = h('section#path-structure.st-step.glossary-scope', { 'data-path': 'structure', 'aria-label': 'Scene order' }, stepHead('structure', 'Scene order',
+    'The order your story’s big moments come in — pick a beat sheet to lay them out. You do not have to: the outline and the script work without one.'));
   sec.append(h('p.st-muted', {
     text: 'Every format is here. The suggestion is only a suggestion, and switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new format is listed rather than lost.'
   }));
   const grid = h('div.st-fw-grid');
   const sug = suggestedFw();
   for (const f of Story.frameworks()) {
-    const on = f.id === s.framework;
+    const on = s.frameworkChosen && f.id === s.framework;
     const peak = [...f.beats].sort((a, b) => b.tension - a.tension)[0];
     grid.append(h('button.st-fw' + (on ? '.is-on' : ''), {
       type: 'button', 'data-st': 'pick-fw', 'data-fw': f.id, 'aria-pressed': String(on)
@@ -363,17 +479,41 @@ function renderStructure(s) {
     ]));
   }
   sec.append(grid);
-  sec.append(nextBtn(s, 'structure'));
+  if (!s.frameworkChosen) {
+    sec.append(h('p.st-using', { role: 'status', text: 'Using ' + Story.frameworkById(s.framework).label + ' until you choose a scene order.' }));
+  }
+  put(sec,
+    sub(short ? 'Your five beats' : 'Your beat notes', short
+      ? 'One line for each of the short film’s five beats, and the test it has to pass.'
+      : 'The fifteen beats, in your own words. They show beside the matching beat in the step outline.'),
+    bpSteps('structure'), nextBtn(s, 'structure'));
   return sec;
 }
 
 /* ---- 3 · the Story Bible (src/ui/story-bible.js) -------------- */
 
-function renderBible(s) {
-  const sec = h('section#path-7.st-step.glossary-scope', { 'data-path': 'bible', 'aria-label': 'Story Bible' }, stepHead('bible', 'Story Bible',
-    'The facts of your film in one place: who is in it, what it is fought over, what is at stake, what it is about and where it happens. Fill what you know; none of it is required.'));
-  sec.append(renderBibleBody());
-  sec.append(nextBtn(s, 'bible'));
+const BIBLE_STEP = {
+  bible: ['Story Bible', 'The facts of your film in one place: who is in it, what it is fought over, what is at stake, what it is about and where it happens. Fill what you know; none of it is required.'],
+  character: ['Character', 'Who is the film about? Their name, what they want, what stands in their way, and the turn that changes everything. Add anyone else who matters.'],
+  world: ['World', 'Where and when it happens, and the few rules of the place. A short film has room for one location done well.'],
+  conflict: ['Conflict', 'What the film is fought over, and against what. Pick every kind that applies, then say it in one line.']
+};
+function renderBible(s, id = 'bible') {
+  const [title, lead] = BIBLE_STEP[id];
+  const sec = h('section#path-' + id + '.st-step.glossary-scope', { 'data-path': id, 'aria-label': title }, stepHead(id, title, lead));
+  let cards = stepNow(id).cards.slice();
+  /* A short film never sees a feature-only card (stakes, theme) — unless
+     the feature keys behind it already hold an answer, so nothing written
+     is hidden. */
+  if (fmt() === 'short' && id === 'conflict') cards = cards.concat(['stakes', 'theme'].filter(shortShowsCard));
+  sec.append(renderBibleBody({ cards, format: fmt() }));
+  /* The blueprint's own notes for these steps (formula, craft, examples, the
+     relationship map) and its "before moving on" checklists — everything
+     but the questions, which the cards above ask. */
+  put(sec, bpSteps(id, (el) => {
+    el.classList.add('st-bp-notes');
+    return h('details.st-earlier', {}, [h('summary', { text: 'The blueprint’s notes and checklist for this step' }), el]);
+  }), nextBtn(s, id));
   return sec;
 }
 
@@ -382,15 +522,29 @@ function renderBible(s) {
 function renderOutline(s) {
   const o = Story.outlineByBeat(s, s.framework);
   const fw = o.fw;
-  const sec = h('section#path-4.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Step outline' }, stepHead('outline', 'Step outline · ' + fw.label,
+  const locked = !!s.outlineLockedAt;
+  const sec = h('section#path-outline.st-step.glossary-scope', { 'data-path': 'outline', 'aria-label': 'Step outline' }, stepHead('outline', 'Step outline · ' + fw.label,
     'A numbered list of what happens, beat by beat. One or two lines a step. Add, reorder and move steps between beats as the story finds its shape.'));
+  if (!s.frameworkChosen) {
+    sec.append(h('p.st-using', {}, [
+      'Using ' + fw.label + ' until you choose a scene order. ',
+      h('button.st-link', { type: 'button', 'data-st': 'path', 'data-path': 'structure', text: 'Choose one' })
+    ]));
+  }
+  if (locked) {
+    sec.append(h('p.st-locked', { role: 'status' }, [
+      h('strong', { text: 'Locked ' + lockedWhen(s.outlineLockedAt) + '. ' }),
+      'The outline is read-only. ',
+      h('button.st-link', { type: 'button', 'data-st': 'unlock', text: 'Unlock to edit' })
+    ]));
+  }
   sec.append(h('p.st-coverage', { role: 'status' }, [
     h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
     ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} not placed in this format` : '')
   ]));
-  sec.append(renderSuggestGate(s));
-  const bp = fw.id === 'save_the_cat' ? blueprint() : null;
-  const canSuggest = !!(Panelm && Panelm.hasKey());
+  if (!locked) sec.append(renderSuggestGate(s));
+  const bp = fw.id === 'save_the_cat' && fmt() === 'feature' ? blueprint() : null;
+  const canSuggest = !!(Panelm && Panelm.hasKey()) && !locked;
   const beatOpts = (sel) => {
     const opts = [h('option', { value: '', text: 'Move to beat…' })];
     fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
@@ -413,18 +567,18 @@ function renderOutline(s) {
     }
     if (r.steps.length) {
       const ol = h('ol.st-ol-steps', { start: String(r.steps[0].n) });
-      r.steps.forEach((st, i) => ol.append(renderStepRow(st, beatOpts(st.beat), i === 0, i === r.steps.length - 1)));
+      r.steps.forEach((st, i) => ol.append(renderStepRow(st, beatOpts(st.beat), i === 0, i === r.steps.length - 1, false, locked)));
       li.append(ol);
     }
     const acts = h('div.st-ol-actions');
-    acts.append(h('button.btn', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'ADD A STEP' }));
+    if (!locked) acts.append(h('button.btn', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, text: 'ADD A STEP' }));
     if (canSuggest) {
       const busy = suggJob && suggJob.key === r.key;
       acts.append(busy
         ? h('button.btn', { type: 'button', 'data-st': 'sugg-stop', text: 'STOP' })
         : h('button.btn', { type: 'button', 'data-st': 'sugg-run', 'data-beat': r.key, disabled: !!suggJob, text: 'SUGGEST STEPS FOR THIS BEAT' }));
     }
-    li.append(acts);
+    if (acts.children.length) li.append(acts);
     if (suggJob && suggJob.key === r.key && Panelm) li.append(Panelm.statusLine(suggJob.status || 'Starting…'));
     if (suggFail && suggFail.key === r.key && Panelm) li.append(Panelm.errorLine(suggFail.error));
     const got = sugg[r.key];
@@ -445,15 +599,15 @@ function renderOutline(s) {
     const un = h('section.st-unplaced', { 'aria-label': 'Not placed in this format' });
     un.append(h('h3.st-ol-name', { text: 'Not placed in ' + fw.short }));
     un.append(h('p.st-muted', { text: 'These steps were written under another format. They are kept as they are; file them under a beat here, or switch the format back to see them where they were.' }));
-    if (o.unplaced.some((u) => u.suggest)) {
+    if (o.unplaced.some((u) => u.suggest) && !locked) {
       un.append(h('button.btn', { type: 'button', 'data-st': 'file-all', text: 'FILE ALL BY POSITION' }));
     }
     const ol = h('ol.st-ol-steps', { start: String(o.unplaced[0].n) });
     o.unplaced.forEach((st) => {
-      const row = renderStepRow(st, beatOpts(''), true, true, true);
+      const row = renderStepRow(st, beatOpts(''), true, true, true, locked);
       const meta = h('p.st-ol-from', { text: st.from ? 'Written under ' + st.from.fw.short + ': ' + st.from.beat.label : 'Written under a beat that no longer exists' });
       row.insertBefore(meta, row.children[1] || null);
-      if (st.suggest) {
+      if (st.suggest && !locked) {
         row.querySelector('.st-ol-ctl').prepend(h('button.btn', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'FILE UNDER ' + st.suggest.label.toUpperCase() }));
       }
       ol.append(row);
@@ -461,17 +615,25 @@ function renderOutline(s) {
     un.append(ol);
     sec.append(un);
   }
-  sec.append(nextBtn(s, 'outline'));
+  put(sec, earlierLadder('outline', 'Earlier step outline (free text, treatment ladder rung 5)',
+    [h('p.st-muted', { text: 'The numbered outline above is the one the synopsis and the screenplay read. This is the free-text version from the blueprint, kept as you wrote it.' })]),
+    nextBtn(s, 'outline'));
   return sec;
 }
 
-function renderStepRow(st, opts, first, last, unplaced = false) {
+const lockedWhen = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : 'on ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+};
+
+function renderStepRow(st, opts, first, last, unplaced = false, locked = false) {
   const li = h('li.st-ol-step', { 'data-step-row': st.id });
   const fid = 'stStep_' + st.id;
   li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
-  const ta = h('textarea#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?' });
+  const ta = h('textarea#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null });
   ta.value = st.text;
   li.append(ta);
+  if (locked) return li;
   const ctl = h('div.st-ol-ctl');
   if (!unplaced) {
     ctl.append(h('button.btn.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'UP' }));
@@ -503,8 +665,41 @@ function renderSuggestGate(s) {
 
 /* ---- 5 · the synopsis ---------------------------------------- */
 
+function renderBlueprintStep(s, id, title, lead, subTitle) {
+  const sec = h('section#path-' + id + '.st-step.glossary-scope', { 'data-path': id, 'aria-label': title }, stepHead(id, title, lead));
+  put(sec, bpSteps(id), nextBtn(s, id));
+  return sec;
+}
+
+/* ---- the lock ----------------------------------------------------- */
+
+function renderLock(s) {
+  const locked = !!s.outlineLockedAt;
+  const o = Story.outlineByBeat(s, s.framework);
+  const sec = h('section#path-lock.st-step.glossary-scope', { 'data-path': 'lock', 'aria-label': 'Lock the outline' }, stepHead('lock', 'Lock the outline',
+    'When the step outline says what you mean, lock it. A lock is a promise to yourself that the outline is finished: it stops taking edits until you unlock it, and the path counts as done. Nothing else changes, and you can unlock at any time.'));
+  sec.append(h('p.st-coverage', { role: 'status' }, [
+    h('strong', { text: locked ? 'Locked ' + lockedWhen(s.outlineLockedAt) : 'Not locked' }),
+    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written · ${o.covered} of ${o.beatsTotal} beats have a step`
+  ]));
+  const row = h('div.st-build');
+  if (locked) {
+    row.append(h('button.btn', { type: 'button', 'data-st': 'unlock', text: 'UNLOCK THE OUTLINE' }));
+  } else {
+    /* Never disabled: this section is drawn before the step typed a moment ago
+       is saved and redrawn, and a button that is disabled at pointer-down
+       cannot be clicked. The click checks. */
+    row.append(h('button.btn.primary', { type: 'button', 'data-st': 'lock', text: 'LOCK THE OUTLINE' }));
+    if (!o.withText) row.append(h('span.st-muted', { text: 'Write a step or two in the step outline first.' }));
+  }
+  sec.append(row);
+  put(sec, nextBtn(s, 'lock'));
+  return sec;
+}
+
 function renderSynopsisStep(s) {
-  const sec = h('section#path-5.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', 'Synopsis',
+  const short = fmt() === 'short';
+  const sec = h('section#path-synopsis.st-step.glossary-scope', { 'data-path': 'synopsis', 'aria-label': 'Synopsis' }, stepHead('synopsis', short ? 'Synopsis' : 'Synopsis & treatment',
     'The story as prose. Build it from the outline — one paragraph per act, every step tagged with its beat — or write and tag your own.'));
   const o = Story.outlineByBeat(s, s.framework);
   const row = h('div.st-build');
@@ -518,15 +713,16 @@ function renderSynopsisStep(s) {
     ? 'Place the caret or select a passage to see where you are against ' + Story.frameworkById(s.framework).short + '.'
     : '' }));
   sec.append(h('div.st-panes', {}, [renderSource(s), renderMatrix(s)]));
-  sec.append(nextBtn(s, 'synopsis'));
+  put(sec, earlierLadder('synopsis', 'From synopsis to treatment', [], { open: true }), nextBtn(s, 'synopsis'));
   return sec;
 }
 
 /* ---- 6 · to the Screenplay ----------------------------------- */
 
 function renderScreenplay(s) {
-  const sec = h('section#path-6.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'To the Screenplay' }, stepHead('screenplay', 'To the Screenplay',
+  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'To the Screenplay' }, stepHead('screenplay', 'To the Screenplay',
     'One placeholder scene per step, each linked to its beat, so Write’s Outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
+  sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open Write whenever you like and start on the first page.' }));
   const live = new Set(scenes().map((x) => x.id));
   const written = s.outline.filter((x) => x.text.trim());
   const sent = written.filter((x) => x.sceneId && live.has(x.sceneId)).length;
@@ -739,7 +935,7 @@ async function runSuggest(key) {
    models the deck reads, so nobody prints a deck to find out what is
    in it. */
 function renderPitch() {
-  const sec = h('div.st-pitch');
+  const sec = h('section#pitch.st-section.st-pitch', { 'aria-label': 'Pitch deck' });
   sec.append(h('h2.bd-h2', { text: 'Pitch deck' }));
   sec.append(h('p.bd-sub', { text: 'A landscape PDF compiled from this project: the logline, this synopsis, the tagged beats, the characters, key scenes and the numbers. A slide with nothing to say is left out.' }));
   let d = null;
@@ -754,70 +950,18 @@ function renderPitch() {
   return sec;
 }
 
-/* ---- the Idea Vault (FR-302) ---------------------------------- */
-
-function renderVault(s) {
-  const sec = h('div.st-vault');
-  sec.append(h('h2.bd-h2', { text: 'Idea Vault' }));
-  sec.append(h('p.bd-sub', { text: 'Clippings for this film — a headline, a line from an article, a reference. The Chrome extension’s “Send to ' + BRAND.name + '” lands here with the page it came from; you can also add one by hand.' }));
-  const add = h('div.st-vault-add');
-  add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
-  add.append(h('textarea#stClip.st-text', { rows: 2 }));
-  add.append(h('button.btn', { type: 'button', 'data-st': 'clip-add', text: 'ADD TO VAULT' }));
-  sec.append(add);
-  const items = Story.listVault();
-  if (!items.length) { sec.append(h('p.st-muted', { text: 'Nothing clipped yet.' })); return sec; }
-  const fw = Story.frameworkById(s.framework);
-  const ul = h('ul.st-clips');
-  for (const it of items) {
-    const li = h('li.st-clip');
-    li.append(h('p.st-clip-text', { text: it.snippet }));
-    const meta = h('div.st-clip-meta');
-    let host = '';
-    try { host = it.url ? new URL(it.url).hostname : ''; } catch (e) { host = ''; }
-    if (host) meta.append(h('a.st-clip-src', { href: it.url, target: '_blank', rel: 'noopener noreferrer', text: host }));
-    meta.append(h('span.st-muted', { text: new Date(it.at).toLocaleDateString() }));
-    const ps = h('select', { 'data-st-field': 'clip-beat', 'data-clip': it.id, 'aria-label': 'Pin this clipping to a beat' });
-    ps.append(h('option', { value: '', text: 'Pin to a beat…' }));
-    fw.beats.forEach((b) => ps.append(h('option', { value: fw.id + ':' + b.id, text: b.label })));
-    ps.value = it.beat && it.beat.startsWith(fw.id + ':') ? it.beat : '';
-    meta.append(ps);
-    meta.append(h('button.btn', { type: 'button', 'data-st': 'clip-use', 'data-clip': it.id, text: 'ADD TO SYNOPSIS' }));
-    meta.append(h('button.btn.st-x', { type: 'button', 'data-st': 'clip-del', 'data-clip': it.id, text: 'REMOVE' }));
-    li.append(meta);
-    ul.append(li);
-  }
-  sec.append(ul);
+/* ---- Beats & Pacing -------------------------------------------
+   A section of the page like any other (it used to be a tab). Map-with-AI
+   sits inside it: it tags the synopsis against the beats, which is what
+   the curve above it reads. The Idea Vault is not on this page any more
+   (vault.html). */
+function renderPacing(s) {
+  const sec = h('section#pacing.st-section.st-pacing', { 'aria-label': 'Beats and pacing' });
+  sec.append(h('h2.bd-h2', { text: 'Beats & pacing' }));
+  if (s.source.trim()) { const heat = renderHeat(s); if (heat) sec.append(heat); sec.append(renderFlags(s)); }
+  else sec.append(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
+  sec.append(h('div#ai-map.st-ai-panel', {}, [renderAI(s)]));
   return sec;
-}
-
-/* ---- the tabs under the editor --------------------------------
-   Page-local, not src/ui/tabs.js: story.html is deliberately off that
-   list, because the path and the editor above are one flow. Every
-   panel is in the DOM; the hidden ones carry `hidden`. Each panel's
-   section keeps its old id, so story.html#pitch and #vault (the
-   navigation's own links) still land, and pick their tab. */
-function renderTabs(s) {
-  const wrap = h('div.st-tabs-wrap');
-  const strip = h('div.st-tabs', { role: 'tablist', 'aria-label': 'More for this story' });
-  TABS.forEach((t) => strip.append(h('button.st-tab' + (tab === t.id ? '.is-on' : ''), {
-    type: 'button', role: 'tab', id: 'stTab-' + t.id, 'aria-controls': t.id,
-    'aria-selected': String(tab === t.id), tabindex: tab === t.id ? '0' : '-1', 'data-st': 'tab', 'data-tab': t.id, text: t.label
-  })));
-  wrap.append(strip);
-  const panel = (id, cls, content) => {
-    const sec = h('section#' + id + '.st-panel.' + cls, { role: 'tabpanel', 'aria-labelledby': 'stTab-' + id, hidden: tab !== id });
-    sec.append(...[].concat(content).filter(Boolean));
-    return sec;
-  };
-  const pacing = [h('h2.bd-h2', { text: 'Pacing' })];
-  if (s.source.trim()) { const heat = renderHeat(s); if (heat) pacing.push(heat); pacing.push(renderFlags(s)); }
-  else pacing.push(h('p.st-muted', { text: 'The tension curve draws once there is a synopsis — build one from the outline, or write your own.' }));
-  wrap.append(panel('pacing', 'st-pacing', pacing));
-  wrap.append(panel('ai-map', 'st-ai-panel', renderAI(s)));
-  wrap.append(panel('pitch', 'st-pitch-panel', renderPitch()));
-  wrap.append(panel('vault', 'st-vault-panel', renderVault(s)));
-  return wrap;
 }
 
 /* ---- the page ------------------------------------------------- */
@@ -861,17 +1005,14 @@ function draw() {
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Story · beats & pacing' }),
     h('h1.bd-title', { text: 'Story.' }),
-    h('p.bd-deck', { text: 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Tag the passages that turn the story, switch formats to see the same story another way, and watch where the tension sags.' })
+    h('p.bd-deck', { text: fmt() === 'short'
+      ? 'From a seed to a step outline to a synopsis. Everything a short film needs is on this page: the character, the world, the conflict, the order of the beats.'
+      : 'From an idea to a step outline to a synopsis, against the beat sheet of your choice. Everything is on this page, in order; tag the passages that turn the story and watch where the tension sags.' })
   ]));
 
   if (cards) main.append(renderModes());
 
   const bar = h('div.st-bar');
-  bar.append(h('label', { for: 'stFw', text: 'Format' }));
-  const fsel = h('select#stFw', { 'data-st-field': 'framework' });
-  Story.frameworks().forEach((f) => fsel.append(h('option', { value: f.id, text: f.label })));
-  fsel.value = s.framework;
-  bar.append(fsel);
   // One import control on screen at a time: the card's, while it shows.
   if (!cards) {
     bar.append(h('label.btn.st-import', {}, [
@@ -887,15 +1028,27 @@ function draw() {
   main.append(bar);
 
   main.append(renderStepper(s, cur));
-  const panels = { idea: renderIdea, logline: renderLogline, bible: renderBible, structure: renderStructure, outline: renderOutline, synopsis: renderSynopsisStep, screenplay: renderScreenplay };
-  main.append(panels[cur](s));
-  main.append(renderTabs(s));
+  /* EVERY STEP IS ON THE PAGE, in the project's own path. */
+  const panels = {
+    idea: renderIdea, logline: renderLogline, structure: renderStructure, outline: renderOutline,
+    synopsis: renderSynopsisStep, screenplay: renderScreenplay, lock: renderLock,
+    bible: (x) => renderBible(x, 'bible'), character: (x) => renderBible(x, 'character'),
+    world: (x) => renderBible(x, 'world'), conflict: (x) => renderBible(x, 'conflict'),
+    setups: (x) => renderBlueprintStep(x, 'setups', 'Setups & payoffs',
+      'What you plant early and pay off late. A setup nobody notices is the best kind; list the ones you know about.'),
+    timeline: (x) => renderBlueprintStep(x, 'timeline', 'Timeline',
+      'The order things happen in the world, against the order the audience sees them. Only needed if the film jumps around.')
+  };
+  for (const p of pathNow()) { const draw1 = panels[p.id]; if (draw1) main.append(draw1(s)); }
+  main.append(renderPacing(s));
+  main.append(renderPitch());
   app.replaceChildren(main);
   after();
 }
 
 function after() {
-  mountStageGuide(document.getElementById('main'), { stage: 'story' });   // the blueprint's questions for this stage
+  mountStageGuide(document.getElementById('main'), { stage: 'story' });   // what the path leaves: the cover sheet
+  startBlueprintHosts();   // the blueprint's questions, inline in the steps that own them
   mountShell();
   try {
     StudioUI.autoAriaLabels();
@@ -912,24 +1065,34 @@ function after() {
     focusStep = '';
     if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
   }
+  if (landStep) {
+    const el = document.getElementById('path-' + landStep);
+    landStep = '';
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
 }
 
 /* A path step id, from an id or (for any caller that still holds one)
-   an old step number. */
+   an old step number; a step this project's path does not have (a link
+   to the feature's Setups on a short film) lands on the path's first. */
 function stepId(x) {
-  if (Story.pathStepById(x)) return x;
-  const p = Story.PATH.find((q) => q.n === Number(x));
-  return p ? p.id : 'idea';
+  const path = pathNow();
+  if (path.some((p) => p.id === x)) return x;
+  const byN = path.find((p) => p.n === Number(x));
+  return byN ? byN.id : path[0].id;
 }
 
+/* Going to a step: light it, put it in the address bar and scroll to it.
+   Every step is already on the page, so nothing is redrawn — except the
+   start cards, which this answers. */
 function goStep(x, { scroll = true } = {}) {
   pathStep = stepId(x);
-  started = true;
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
-  render();
+  if (!started) { started = true; landStep = scroll ? pathStep : ''; render(); return; }
+  refreshStepper();
   if (scroll) {
-    const nav = document.querySelector('.st-path');
-    if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start' });
+    const el = document.getElementById('path-' + pathStep);
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
   }
 }
 
@@ -973,6 +1136,7 @@ async function importFile(file) {
   mode = 'tag';
   started = true;
   pathStep = 'synopsis';
+  landStep = 'synopsis';
   render();
   StudioUI.toast(IO.importedSentence(r));
 }
@@ -986,8 +1150,10 @@ async function useSample() {
   const cur = story();
   if (!isEmpty(cur) && !window.confirm('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
   const s = await sampleStory();
+  s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';
+  landStep = pathStep;
   undoBuild = null; lastSend = null; sugg = {};
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
   commit(s);
@@ -1044,29 +1210,39 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     useSample();
   } else if (act === 'new') {
     started = true;
-    if (isEmpty(s) && s.framework !== suggestedFw()) { s.framework = suggestedFw(); Story.saveStory(s); }
     goStep('idea');
     const ta = document.getElementById('stIdea'); if (ta) ta.focus();
   } else if (act === 'ways-idea') {
     const ta = document.getElementById('stIdea'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); }
   } else if (act === 'have-synopsis') {
     started = true; mode = 'edit';
+    pathStep = 'synopsis';
     goStep('synopsis');
     const ta = document.getElementById('stSource'); if (ta) ta.focus();
   } else if (act === 'path') {
     goStep(el.getAttribute('data-path') || el.getAttribute('data-step'));
-  } else if (act === 'tab') {
-    tab = el.getAttribute('data-tab');
-    render();
-    const b = document.getElementById('stTab-' + tab); if (b) b.focus();
+  } else if (act === 'use-lad1') {
+    const f = document.querySelector('[data-key="lad_1_logline"]');
+    const v = f ? String(f.value || '').trim() : '';
+    if (!v) { StudioUI.toast('Nothing written in that earlier version yet.'); return; }
+    s.logline = v;
+    commit(s);
+  } else if (act === 'lock' || act === 'unlock') {
+    if (act === 'lock' && !Story.outlineByBeat(s, s.framework).withText) {
+      StudioUI.toast('Write a step or two in the step outline first, then lock it.');
+      return;
+    }
+    Story.setOutlineLock(s, act === 'lock');
+    commit(s);
+    StudioUI.toast(act === 'lock' ? 'Outline locked. The path is finalised; unlock any time to edit.' : 'Outline unlocked.');
   } else if (act === 'use-bp') {
     const f = el.getAttribute('data-field');
     if (f === 'idea') s.idea = bpIdea(); else if (f === 'logline') s.logline = bpLogline();
     commit(s);
   } else if (act === 'pick-fw') {
-    s.framework = el.getAttribute('data-fw'); litBeat = '';
+    s.framework = el.getAttribute('data-fw'); s.frameworkChosen = true; litBeat = '';
     commit(s);
-    StudioUI.toast(`Format: ${Story.frameworkById(s.framework).label}.`);
+    StudioUI.toast(`Scene order: ${Story.frameworkById(s.framework).label}.`);
   } else if (act === 'step-add') {
     const st = Story.addOutlineStep(s, { beat: el.getAttribute('data-beat') });
     if (st) { focusStep = st.id; commit(s); }
@@ -1169,32 +1345,10 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     if (AI) runAI();
   } else if (act === 'ai-stop') {
     if (aiJob) aiJob.abort();
-  } else if (act === 'clip-add') {
-    const ta = document.getElementById('stClip');
-    if (Story.addToVault({ snippet: ta && ta.value })) render();
-  } else if (act === 'clip-use') {
-    const it = Story.listVault().find((x) => x.id === el.getAttribute('data-clip'));
-    if (!it) return;
-    s.source = (s.source.trim() ? s.source.replace(/\s+$/, '') + '\n\n' : '') + it.snippet;
-    commit(s);
-    StudioUI.toast('Added to the end of the synopsis.');
-  } else if (act === 'clip-del') {
-    Story.removeFromVault(el.getAttribute('data-clip'));
-    render();
   }
 });
 
-// Arrow keys move between the tabs under the editor (the tab pattern).
-delegate(document, 'keydown', '.st-tab', (e, el) => {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-  e.preventDefault();
-  const i = TABS.findIndex((t) => t.id === el.getAttribute('data-tab'));
-  const j = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
-  tab = TABS[j].id;
-  render();
-  const b = document.getElementById('stTab-' + tab); if (b) b.focus();
-});
-
+// (the tabs under the editor are gone: every section is on the page)
 function scrollToOffset(from) {
   const root = document.getElementById('stSrc');
   if (!root || !Number.isFinite(from)) return;
@@ -1217,10 +1371,7 @@ function scrollToOffset(from) {
 delegate(document, 'change', '[data-st-field]', (e, el) => {
   const f = el.getAttribute('data-st-field');
   const s = story();
-  if (f === 'framework') {
-    s.framework = el.value; litBeat = '';
-    commit(s);   // the framework in view is remembered; the mapping is derived
-  } else if (f === 'file') {
+  if (f === 'file') {
     const file = el.files && el.files[0];
     el.value = '';
     importFile(file);
@@ -1241,8 +1392,6 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
   } else if (f === 'retag') {
     Story.tagMark(s, el.getAttribute('data-mark'), s.framework, el.value);
     commit(s);
-  } else if (f === 'clip-beat') {
-    Story.updateVault(el.getAttribute('data-clip'), { beat: el.value });
   }
 });
 
@@ -1279,46 +1428,44 @@ document.addEventListener('drop', (e) => {
   importFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
 });
 
-// Clips sent from the extension — those queued while this page was
-// closed, and any that arrive while it is open (the side panel).
-const drain = () => drainClipQueue().then((n) => {
-  /* The vault is a tab under the editor now, so a clipping that
-     arrives must say where it went AND take the writer there; a toast
-     that only reported it left the clipping in a hidden panel. */
-  if (n) {
-    render();
-    StudioUI.toast(`${n} clipping${n === 1 ? '' : 's'} arrived in the Idea Vault.`, {
-      type: 'success', action: 'Open the Idea Vault',
-      onAction: () => { location.hash = '#vault'; }
-    });
-  }
-});
-drain();
-onClipQueued(drain);
 
-/* The address bar: #path-<id> opens a path step (#path-N, the form every
-   link before the Story Bible used, opens the step it always did);
-   #pacing, #ai-map,
-   #pitch and #vault open their tab under the editor and land on it. */
-function readHash({ land = false } = {}) {
+/* The address bar: #path-<id> lights a path step and lands on it (#path-N,
+   the form every link before the Story Bible used, lands on the step it
+   always did; a step this project's path does not have lands on its first).
+   Every other fragment (#pacing, #ai-map, #pitch, #guide) is a plain
+   section of the page. */
+function readHash() {
   const hash = (location.hash || '').replace(/^#/, '');
-  const stepFromHash = Story.pathStepFromHash(hash);
-  if (stepFromHash) { pathStep = stepFromHash; started = true; return false; }
-  if (TABS.some((t) => t.id === hash)) { tab = hash; return land; }
+  const id = Story.pathStepFromHash(hash, fmt());
+  if (id) { pathStep = id; started = true; landStep = id; reland = id; return true; }
   return false;
 }
-function landOnTab() {
-  const el = document.getElementById(tab);
-  if (el) el.scrollIntoView({ block: 'start' });
-}
-addEventListener('hashchange', () => { const land = readHash({ land: true }); render(); if (land) landOnTab(); });
+/* The reader taking over ends the second landing. */
+['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { reland = ''; }, { passive: true, capture: true }));
+addEventListener('hashchange', () => {
+  if (readHash()) { render(); return; }
+  const el = document.getElementById((location.hash || '').replace(/^#/, ''));
+  if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
 
 /* ?start= from the extension panel's ways in (FR-402). Read once and
    stripped, so a reload does not repeat it. A file picker cannot be
    opened without a click, so "import" scrolls to the drop card instead. */
 const START = new URLSearchParams(location.search).get('start');
 if (START) history.replaceState(null, '', location.pathname + location.hash);
-const LAND = readHash({ land: true });
+/* An old blueprint link — story.html?step=feature/step-07#guide — lands on
+   the path step that asks that step now, not on the Guide's cover. */
+{
+  const m = /^(feature|short)\/(step-\d+|treatment-ladder)$/.exec(new URLSearchParams(location.search).get('step') || '');
+  const id = m && m[1] === fmt() ? Story.pathStepForBlueprint(fmt(), m[2]) : '';
+  if (id) {
+    /* A real navigation to the clean address, not a replaceState: the
+       shell lands on the fragment it was loaded with (#guide, which this
+       page draws at the bottom), and only a fresh load lands on this one. */
+    location.replace(location.pathname + '#path-' + id);
+  }
+}
+readHash();
 
 render();
 loadFavStudiesSoon();   // the examples' films, once the page has settled
@@ -1326,4 +1473,12 @@ primeAI();
 if (START === 'sample' && !story().source.trim() && !story().outline.length) useSample();
 else if (START === 'new') { started = true; goStep('idea'); const ta = document.getElementById('stIdea'); if (ta) ta.focus(); }
 if (START === 'import') { const d = document.querySelector('.st-drop, .st-import'); if (d) d.scrollIntoView({ block: 'center' }); }
-if (LAND) landOnTab();
+/* A fragment that names a plain section (#pitch, #pacing, #ai-map): the
+   page is drawn by script, so the browser's own landing found nothing. */
+{
+  const frag = (location.hash || '').replace(/^#/, '');
+  if (frag && frag !== 'guide' && !Story.pathStepFromHash(frag, fmt())) {
+    const el = document.getElementById(frag);
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
+}

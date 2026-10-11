@@ -1,0 +1,34 @@
+{
+  "_about": "The Story page's two PATHS, one per project format (a feature and a short film are not the same road, and the page never mixes them). Read by src/lib/story.js (PATH, pathProgress, hash mapping), src/pages/story.js (which draws every step on the page, in this order) and src/ui/stage-guide.js (which leaves out of the Story Guide every blueprint step a path step already asks). Nothing here is stored. A step is { id, label, n, absorbs }. `n` is the step's STABLE NUMBER for old #path-N links (1 idea, 2 logline, 3 structure, 4 outline, 5 synopsis, 6 screenplay, 7 bible; steps added later take 8 and up) — never renumber one. `absorbs` lists the blueprint questions the step asks INLINE, so each question is on the page once: \"<ns>:<step id>\" is the whole step; \"<ns>:<step id>#rest\" is the step WITHOUT its questions (its formula, craft, examples, relationship map and 'before moving on' checklist stay) because the Story Bible's own cards — see `cards` — ask them; \"<ns>:treatment-ladder#<key>\" is one rung of the ladder. `cards` names the Story Bible cards a step shows (src/data/story-bible.json). Every data-key of the blueprint steps that sit in the Story stage must be reachable here or in the Guide's cover; scripts/test-story.mjs asserts it.",
+
+  "feature": [
+    { "id": "idea", "label": "Idea", "n": 1, "absorbs": ["feature:step-01"] },
+    { "id": "logline", "label": "Logline", "n": 2, "absorbs": ["feature:step-02", "feature:treatment-ladder#lad_1_logline"] },
+    { "id": "bible", "label": "Story Bible", "n": 7,
+      "cards": ["characters", "conflict", "stakes", "theme", "world"],
+      "absorbs": ["feature:step-03#rest", "feature:step-04#rest", "feature:step-05#rest", "feature:step-06#rest", "feature:step-07#rest"] },
+    { "id": "structure", "label": "Scene order", "n": 3, "absorbs": ["feature:step-08"] },
+    { "id": "outline", "label": "Step outline", "n": 4, "absorbs": ["feature:treatment-ladder#lad_5_outline"] },
+    { "id": "setups", "label": "Setups & payoffs", "n": 8, "absorbs": ["feature:step-10"] },
+    { "id": "timeline", "label": "Timeline", "n": 9, "absorbs": ["feature:step-09"] },
+    { "id": "synopsis", "label": "Synopsis & treatment", "n": 5,
+      "absorbs": ["feature:treatment-ladder#lad_2_synopsis", "feature:treatment-ladder#lad_3_onepager", "feature:treatment-ladder#lad_4_treatment"] },
+    { "id": "lock", "label": "Lock the outline", "n": 10, "absorbs": [] },
+    { "id": "screenplay", "label": "To the Screenplay", "n": 6, "absorbs": [] }
+  ],
+
+  "short": [
+    { "id": "idea", "label": "Seed", "n": 1, "absorbs": ["short:step-01"] },
+    { "id": "logline", "label": "Logline", "n": 2, "absorbs": ["short:step-02"] },
+    { "id": "character", "label": "Character", "n": 11, "cards": ["characters"], "absorbs": ["short:step-03#rest"] },
+    { "id": "world", "label": "World", "n": 12, "cards": ["world"], "absorbs": ["short:step-05#rest"] },
+    { "id": "conflict", "label": "Conflict", "n": 13, "cards": ["conflict"], "absorbs": [] },
+    { "id": "structure", "label": "Scene order", "n": 3, "absorbs": ["short:step-04"] },
+    { "id": "outline", "label": "Step outline", "n": 4, "absorbs": [] },
+    { "id": "synopsis", "label": "Synopsis", "n": 5, "absorbs": [] },
+    { "id": "lock", "label": "Lock the outline", "n": 10, "absorbs": [] },
+    { "id": "screenplay", "label": "To the Screenplay", "n": 6, "absorbs": [] }
+  ],
+
+  "aliases": { "short": { "bible": "character" } }
+}

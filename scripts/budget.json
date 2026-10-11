@@ -1,122 +1,117 @@
 {
   "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
-  "capturedAt": "2026-10-11T09:07:48.893Z",
+  "capturedAt": "2026-10-11T17:42:03.959Z",
   "capturedDay": "2026-10-11",
   "knownLazyFetches": {},
   "pages": {
     "hub": {
-      "bytes": 1119232,
-      "measured": 1016558,
-      "files": 40
+      "bytes": 1195008,
+      "measured": 1085671,
+      "files": 41
     },
     "library": {
-      "bytes": 1121280,
-      "measured": 1018930,
+      "bytes": 1120256,
+      "measured": 1017590,
       "files": 21
     },
     "breakdown": {
-      "bytes": 754688,
-      "measured": 685860,
+      "bytes": 756736,
+      "measured": 687126,
       "files": 31
     },
     "stripboard": {
-      "bytes": 712704,
-      "measured": 647751,
+      "bytes": 717824,
+      "measured": 652018,
       "files": 23
     },
     "reports": {
-      "bytes": 828416,
-      "measured": 752722,
+      "bytes": 833536,
+      "measured": 757056,
       "files": 29
     },
     "contacts": {
-      "bytes": 719872,
-      "measured": 653785,
+      "bytes": 724992,
+      "measured": 658157,
       "files": 24
     },
     "visualize": {
-      "bytes": 813056,
-      "measured": 738985,
+      "bytes": 818176,
+      "measured": 743252,
       "files": 31
     },
     "script": {
-      "bytes": 995328,
-      "measured": 904767,
+      "bytes": 997376,
+      "measured": 906168,
       "files": 40
     },
     "drafts": {
-      "bytes": 759808,
-      "measured": 690325,
+      "bytes": 764928,
+      "measured": 694505,
       "files": 28
     },
     "plan": {
-      "bytes": 663552,
-      "measured": 602528,
+      "bytes": 667648,
+      "measured": 606842,
       "files": 21
     },
     "dashboard": {
-      "bytes": 985088,
-      "measured": 895117,
+      "bytes": 990208,
+      "measured": 899538,
       "files": 34
     },
     "budget": {
-      "bytes": 732160,
-      "measured": 665593,
+      "bytes": 737280,
+      "measured": 669906,
       "files": 22
     },
     "settings": {
-      "bytes": 782336,
-      "measured": 710511,
+      "bytes": 785408,
+      "measured": 713824,
       "files": 27
     },
     "shoot": {
-      "bytes": 627712,
-      "measured": 570420,
+      "bytes": 632832,
+      "measured": 574572,
       "files": 20
     },
     "story": {
-      "bytes": 1409024,
-      "measured": 1280491,
-      "files": 62
+      "bytes": 1487872,
+      "measured": 1351833,
+      "files": 69
     },
     "edit": {
-      "bytes": 604160,
-      "measured": 548931,
+      "bytes": 609280,
+      "measured": 553083,
       "files": 17
     },
     "deliverables": {
-      "bytes": 735232,
-      "measured": 667605,
+      "bytes": 739328,
+      "measured": 671872,
       "files": 26
     },
     "screening": {
-      "bytes": 617472,
-      "measured": 561047,
+      "bytes": 622592,
+      "measured": 565314,
       "files": 19
     },
     "invite": {
-      "bytes": 598016,
-      "measured": 542726,
-      "files": 16
+      "bytes": 602112,
+      "measured": 546615,
+      "files": 15
     },
     "admin": {
-      "bytes": 576512,
-      "measured": 524042,
-      "files": 13
+      "bytes": 656384,
+      "measured": 596562,
+      "files": 17
     },
     "vault": {
-      "bytes": 709632,
-      "measured": 644485,
+      "bytes": 714752,
+      "measured": 649098,
       "files": 24
     },
     "purchase": {
-      "bytes": 576512,
-      "measured": 524002,
-      "files": 18
-    },
-    "purchases": {
-      "bytes": 609280,
-      "measured": 553852,
+      "bytes": 582656,
+      "measured": 528967,
       "files": 17
     }
   }

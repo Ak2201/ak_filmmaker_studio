@@ -73,7 +73,8 @@
     "prove:dialogs": "node scripts/prove-dialogs.mjs",
     "test:dialogs": "node scripts/check-dialogs.mjs",
     "prove:script": "node scripts/prove-script.mjs",
-    "thumbs": "node scripts/make-video-thumbs.mjs"
+    "thumbs": "node scripts/make-video-thumbs.mjs",
+    "smoke": "node scripts/smoke-production.mjs"
   },
   "engines": {
     "node": ">=22.12"

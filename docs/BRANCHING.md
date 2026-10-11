@@ -34,6 +34,97 @@ git checkout develop && git merge --no-ff feature/<name> && git push origin deve
 Work in a worktree, never in the main checkout directory (it may have another
 branch checked out). Retry a push 5/10/20/30 s on an HTTP 500.
 
+## Production is PROMOTED, not pushed (owner, 11 Oct 2026)
+
+**A push to `main` no longer changes `filmmakerstudio.in`.** Vercel →
+Settings → Environments → Production → **Auto-assign Custom Production
+Domains is OFF**, so the owner holds the release.
+
+What a push to `main` now does: Vercel builds it and creates a
+Production Deployment with its own URL, which you can open and check.
+The custom domains — `filmmakerstudio.in`,
+`thefilmmakerstudio.vercel.app`, `ak-filmmaker-studio.vercel.app` —
+stay on whatever deployment they are on.
+
+To ship: Vercel → **Deployments** → the one you want → **Promote to
+Production**. That is the moment the public site changes, and it is a
+deliberate click rather than a side effect of a merge.
+
+The same screen is the rollback: promote an older deployment and the
+site is back, in seconds, without a revert commit or a rebuild. That
+is faster than git and should be the first move in an incident — fix
+forward afterwards.
+
+### The one interaction to know
+
+**`smoke.yml` fires on BUILD success, not on promotion.** Vercel emits
+`deployment_status` when the deployment finishes building; promoting
+emits nothing. So an automatic smoke run now tests the deployment that
+is still live — the OLD one — and passes for the wrong reason.
+
+That is a known limit, not a bug to chase. After promoting, smoke it
+yourself:
+
+```bash
+npm run smoke
+```
+
+or use the **Run workflow** button on the Smoke action, which takes an
+optional `base`. Treat the automatic run as a check that production is
+still healthy, and the manual run as the check that the thing you just
+promoted is good.
+
+## What runs, and where (11 Oct 2026)
+
+Three layers, and they answer three different questions. The third
+did not exist until 11 Oct, and its absence is why two incidents
+shipped past a fully green pipeline.
+
+| Layer | Question it answers | Where |
+|---|---|---|
+| `gate.yml` | **is this build correct?** `tests`, `verify`, `proofs` in parallel | PR into `main`/`develop`; push to `develop` or `main` |
+| Vercel | — | builds `main` → production, `develop` → the preview host |
+| `smoke.yml` | **is the thing now SERVED the thing we think is served?** | Vercel's `deployment_status`, Production + success only |
+
+**Vercel does not wait for `gate.yml`.** They are parallel, not
+sequential. A red gate and a green deploy coexist happily, and the
+only thing that couples them is branch protection requiring the
+three checks on a PR. Until that is on, `main` is protected by
+discipline rather than by the repo.
+
+### Why the smoke layer exists
+
+Every other check in this repo serves `dist/` and tests that. So:
+
+- **10 Oct.** `motion-app.js` threw `ReferenceError: HEADS is not
+  defined` in every real browser; nobody could sign in for three
+  hours. `verify` passed 21 pages, `prove:gate` 120, `prove:growth`
+  78, `prove:billing` 186. All green, all blind — the module is off
+  under `navigator.webdriver` by design, so no Playwright check in
+  this repo can ever see a fault in it.
+- **11 Oct.** The host moved. A local build and a local baseline
+  will agree perfectly while production serves last week's bundle;
+  nothing could tell the difference.
+
+`npm run smoke` hits the real origin over the real network and
+answers only that narrower question. It is deliberately small —
+pages answer, the deployed markup names the brand host, robots and
+sitemap agree, www redirects to the apex, and a real browser reports
+zero console errors on `/start` and `/`.
+
+**The host is DERIVED from `src/data/brand.json`, never typed.** A
+smoke test with the host written into it passes on the day the host
+changes and fails for a week afterwards — the exact rot that left
+the old address in ten documentation files.
+
+**It is proved to fail.** Pointed at a copy that serves unbuilt
+source it reports 5 failures and exits 1, naming the literal
+`{{brand:name}}` placeholders. A check that has never been seen to
+fail is not a check.
+
+Run it by hand any time: `npm run smoke`, or
+`SMOKE_BASE=https://… SMOKE_BROWSER=0 npm run smoke`.
+
 ## The release gate (develop → main)
 
 Run on a clean checkout of `develop`, **uncapped**, with distinct

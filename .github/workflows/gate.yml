@@ -7,7 +7,14 @@ on:
   pull_request:
     branches: [main, develop]
   push:
-    branches: [develop]
+    # main is here as a BACKSTOP, not as the design. The design is
+    # branch protection requiring these three checks on a PR, so a
+    # bad commit never reaches main at all. Until that is on, a
+    # direct push to main ran NOTHING — which is how the domain
+    # change shipped on 11 Oct with only a local gate behind it.
+    # Listing main means a direct push is at least reported, after
+    # the fact, instead of silently unchecked.
+    branches: [develop, main]
   workflow_dispatch:
 
 concurrency:

@@ -730,6 +730,92 @@ try {
     ok(!!band && band.shown, 'the invite band is shown ([data-invite-band] or #inviteBand): ' + JSON.stringify(band));
     allErrors.push(...errs, ...perrs); await ctx.close();
   }
+
+  console.log('(p) optimistic admission: a passed tab paints at once');
+  F.reset(); F.db.sessions.clear();
+  {
+    /* The Supabase origin answers SLOWLY here (1.2s a call), which is what
+       a real network does and what makes "waited for cloud:booted"
+       measurable. A recorder in the page notes, against navigation start,
+       when the veil lifted and when main first had content. */
+    const DELAY = 1200;
+    const slowCtx = async (tok, seedPass) => {
+      const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
+      await ctx.route(SB + '/**', async (r) => { await new Promise((x) => setTimeout(x, DELAY)); return handle(r); });
+      await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
+      await ctx.addInitScript(([k, v, uid, pass]) => {
+        if (k && !sessionStorage.getItem('__seeded')) {
+          localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid);
+          sessionStorage.setItem('__seeded', '1');
+        }
+        if (pass && !sessionStorage.getItem('__passSeeded')) { sessionStorage.setItem('fms_sitegate_pass', '1'); sessionStorage.setItem('__passSeeded', '1'); }
+        window.__t = { veil: null, content: null, boot: null };
+        const tick = () => {
+          const de = document.documentElement; if (!de) return requestAnimationFrame(tick);
+          const t = performance.now();
+          if (window.__t.veil == null && de.dataset.sitegate !== 'pending' && (window.__t.seen || window.StudioCloud)) window.__t.veil = t;
+          if (de.dataset.sitegate === 'pending') window.__t.seen = true;
+          const m = document.querySelector('main');
+          { const mm = document.querySelector('main'); if (window.StudioCloud && !/start|invite/.test(location.pathname) && de.dataset.sitegate == null && mm && (mm.textContent || '').trim().length > 20) { try { sessionStorage.setItem('__leak', '1'); } catch (e) { /* ignore */ } } }
+          if (window.__t.content == null && de.dataset.sitegate == null && m && (m.textContent || '').trim().length > 20) window.__t.content = t;
+          if (window.__t.boot == null && window.StudioCloud && window.StudioCloud.isBooted && window.StudioCloud.isBooted()) window.__t.boot = t;
+          if (window.__t.content == null) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, [tok ? `sb-${REF}-auth-token` : null, tok ? sessionFor(tok) : null, tok ? USERS[tok].id : null, seedPass]);
+      const page = await ctx.newPage();
+      return { ctx, page };
+    };
+    const times = (page) => page.evaluate(() => ({ ...window.__t, now: performance.now(), sg: document.documentElement.dataset.sitegate || '' }));
+
+    // 1. a member whose tab has not passed yet: the first page waits for the gate (veil up, > the network delay)
+    const M = await slowCtx('tok-admin', false);
+    await M.page.goto(BASE + 'index.html');
+    await M.page.waitForTimeout(300);
+    ok((await times(M.page)).sg === 'pending', 'a tab that has not passed yet is still veiled while the gate is unanswered');
+    await M.page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 15000 });
+    const t0 = await times(M.page);
+    ok(t0.veil > DELAY * 0.8, `first page: the veil lifts only after the gate answers (${Math.round(t0.veil)}ms)`);
+    console.log(`    timing index.html (first, not passed): veil ${Math.round(t0.veil)}ms, content ${Math.round(t0.content || -1)}ms`);
+    // 2. later pages in the same, now passed, tab
+    for (const p of ['admin.html', 'purchase.html', 'story.html']) {
+      await M.page.goto(BASE + p);
+      await M.page.waitForFunction(() => window.__t && window.__t.content != null, null, { timeout: 15000 }).catch(() => {});
+      const t = await times(M.page);
+      console.log(`    timing ${p} (passed tab): veil ${Math.round(t.veil)}ms, content ${Math.round(t.content || -1)}ms, booted ${t.boot == null ? 'not yet' : Math.round(t.boot) + 'ms'}`);
+      ok(t.veil != null && t.veil < 1000, `${p} in a passed tab: veil lifted in ${Math.round(t.veil)}ms, under 1000ms (the network answers in ${DELAY}ms)`);
+      ok(t.boot == null || t.veil < t.boot, `${p}: and before cloud:booted (did not wait for it)`);
+      ok(M.page.url().endsWith('/' + p), `${p}: and stays on it`);
+    }
+    await M.ctx.close();
+
+    // 3. a fresh tab (nothing passed): veiled, and a stranger is still redirected
+    const S = await slowCtx(null, false);
+    await S.page.goto(BASE + 'breakdown.html');
+    await S.page.waitForTimeout(200);
+    ok(await urlBecomes(S.page, /start\.html/, 15000), 'a stranger (nothing passed, no session) is still sent to start.html');
+    ok(await S.page.evaluate(() => sessionStorage.getItem('__leak')) == null, 'and never saw the page content first');
+    await S.ctx.close();
+
+    // 4. a pass flag alone is not enough: no stored session and no code means no optimism
+    const P = await slowCtx(null, true);
+    await P.page.goto(BASE + 'breakdown.html');
+    await P.page.waitForTimeout(200);
+    ok(await urlBecomes(P.page, /start\.html/, 15000), 'a pass flag with no stored session and no code is still sent away');
+    ok(await P.page.evaluate(() => sessionStorage.getItem('__leak')) == null, 'and never saw the page content first (no optimism on a flag alone)');
+    await P.ctx.close();
+
+    // 5. a background deny after optimistic admission still redirects
+    F.db.sessions.clear();
+    const D = await slowCtx('tok-dan', true);   // dan is not a member; the tab claims a pass
+    await D.page.goto(BASE + 'breakdown.html');
+    await D.page.waitForTimeout(250);
+    const td = await times(D.page);
+    ok(td.sg === '' && /breakdown\.html/.test(D.page.url()), 'a passed tab with a stored session is admitted before the verdict');
+    ok(await urlBecomes(D.page, /invite\.html|start\.html/, 15000), 'and the verdict, a deny, still redirects it: ' + D.page.url());
+    ok(await D.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'and the pass is cleared');
+    await D.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

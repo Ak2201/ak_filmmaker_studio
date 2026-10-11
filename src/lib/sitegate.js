@@ -125,7 +125,22 @@ export function isExempt() {
 const passed = () => { try { return sessionStorage.getItem(PASS_KEY) === '1'; } catch (e) { return false; } };
 const remember = () => { try { sessionStorage.setItem(PASS_KEY, '1'); } catch (e) { /* private mode: asks again */ } };
 
+/* Is a supabase-js session sitting in localStorage? The same shape check
+   cloud.js uses to decide whether to load the SDK, read without it. Here
+   storage that throws answers NO: optimistic admission must never be
+   granted on a guess. */
+function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^sb-.+-auth-token(\.\d+)?$/.test(k)) return true;
+    }
+  } catch (e) { /* no storage, no optimism */ }
+  return false;
+}
+
 let decided = false;
+let optimistic = false;   // the veil was lifted before the verdict; the verdict is still owed
 let timer = 0;
 
 function allow() {
@@ -225,6 +240,18 @@ function redecide() { decided = false; decide(); }
 
 if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
   document.documentElement.dataset.sitegate = 'pending';
+  /* OPTIMISTIC ADMISSION. A tab that already passed this session, and
+     that still holds a stored session or a code pass, lifts the veil at
+     once instead of waiting for the lazy SDK, the session restore and
+     the membership call on every navigation. Nothing else changes: the
+     same verdict is still computed, and a deny still runs deny() and
+     redirects. Anyone who has not passed in this tab (a new tab, a
+     stranger, a cleared session) never reaches this branch and waits,
+     failing closed as before. */
+  if (passed() && (hasStoredSession() || getCodePass())) {
+    optimistic = true;
+    delete document.documentElement.dataset.sitegate;
+  }
   Store.subscribe('cloud:booted', decide);
   Store.subscribe('gate:changed', () => (decided ? redecide() : decide()));
   /* cloud.js assigns window.StudioCloud when it evaluates, which may be
@@ -246,6 +273,10 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
     if (decided) return;
     if (document.querySelector('.gt-overlay')) { timer = setTimeout(giveUp, GIVE_UP_MS); return; }
     clearInterval(hook);
+    /* Already admitted on this tab's pass and never contradicted: an
+       unanswered status call is the unreachable case, which a passed
+       tab survives. */
+    if (optimistic) { allow(); return; }
     deny('timeout');
   };
   timer = setTimeout(giveUp, GIVE_UP_MS);

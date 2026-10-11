@@ -86,7 +86,7 @@ eq(R.promoLabel({ percent_off: 10 }), '10% off', 'label for a percentage');
 eq(R.promoLabel({ amount_off_paise: 50000 }), '₹500 off', 'label for an amount');
 eq(R.promoLabel(null), '', 'label for nothing');
 
-/* ---- receipt and refund e-mails (schema §34, _shared/mail.js) ---- */
+/* ---- receipt and refund e-mails (schema §35, _shared/mail.js) ---- */
 const M = await import('../supabase/functions/_shared/mail.js');
 const { BRAND: FB } = await import('../supabase/functions/_shared/brand.js');
 const brandJson = JSON.parse((await import('node:fs')).readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8'));

@@ -8,7 +8,7 @@
 
    SENT EXACTLY ONCE. rzp-verify and rzp-webhook both see a capture, and
    whichever arrives first activates it. Mailing follows the same rule
-   one step later: schema §34's claim_receipt_email() stamps
+   one step later: schema §35's claim_receipt_email() stamps
    invoices.emailed_at with `where emailed_at is null`, so only one
    caller gets the row back and only that caller sends. A failed send
    releases the claim, so Razorpay's retry or the console's RESEND can
@@ -91,7 +91,7 @@ export function refundMail(r) {
   ], done ? [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${fmtPaise(r.amount_paise)} has been processed and is on its way to your original payment method. Razorpay refunds usually arrive in 5 to 7 working days.`,
-    `The ${r.plan_name || 'plan'} plan this payment bought has ended on your account.`
+    `The ${r.plan_name || 'plan'} plan this payment bought has ended, and your account has been given a fresh free trial, as the refund policy describes.`
   ] : [
     `Hi ${r.buyer_name || 'there'},`,
     `Your refund of ${fmtPaise(r.amount_paise)} could not be completed by the payment provider. No money has left your account for it, and we are looking into it.`,

@@ -448,6 +448,29 @@ try {
     ok(F.db.members.get(cal.id)?.role === (calWas ? calWas.role : 'user'), 'and the admin role it gave is taken back');
     ok(calAcc() && calAcc().plan !== 'pro', 'and the plan it gave');
 
+    // A grant with NO plan, while purchases are required (the fake's
+    // default, §33): Ben is let in, unwalled and uncapped, and told who
+    // gave him access. Ben is undone afterwards — (c) needs him a stranger.
+    const ben = USERS['tok-ben'];
+    await A.page.fill('#accEmail', ben.email);
+    await A.page.selectOption('#accRole', 'member');
+    await A.page.selectOption('#accPlan', '');
+    await A.page.selectOption('#accLength', 'forever');
+    await A.page.click('#giveAccess button[type="submit"]');
+    await A.page.waitForSelector(`#giveAccess tr[data-grant="${ben.email}"]`, { timeout: 8000 }).catch(() => {});
+    ok(F.db.emailGrants.get(ben.email)?.applied_user === ben.id && !F.db.emailGrants.get(ben.email)?.plan, 'a plan-less grant for Ben is applied at once');
+    {
+      const B = await newContext(browser, { tok: 'tok-ben' });
+      await B.page.goto(BASE + 'invite.html');
+      await B.page.waitForFunction(() => /Access given by the studio/.test(document.body.textContent), null, { timeout: 10000 }).catch(() => {});
+      ok(/Access given by the studio/.test(await B.page.textContent('body').catch(() => '')), 'invite.html: "You’re in" — access given by the studio');
+      await B.page.goto(BASE + 'index.html');
+      await B.page.waitForTimeout(2500);
+      ok(!(await B.page.$('.pg-wall')) && !(await B.page.$('.sh-trial')), 'the hub: no wall and no trial band for a plan-less grant');
+      allErrors.push(...B.errors); await B.ctx.close();
+    }
+    F.db.emailGrants.delete(ben.email); F.db.members.delete(ben.id); F.db.sessions.clear();
+
     // The switch, on the Purchases tab. The fake starts ON (see fake-supabase.mjs).
     await A.page.goto(BASE + 'admin.html#purchases');
     await A.page.waitForSelector('#accPurchasesOn', { timeout: 10000 })

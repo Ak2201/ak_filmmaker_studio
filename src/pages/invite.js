@@ -191,8 +191,12 @@ function render() {
     ]));
     body.append(sec);
   } else if (g.state === 'open') {
+    /* §33: access given by e-mail with no plan says so, in the studio's
+       words, rather than leaving the person to wonder what they are on. */
+    const granted = !!(lastStatus && lastStatus.granted === true);
     const sec = section('through', 'Through', 'You’re in.',
-      'Signed in as ' + email + '. Projects you open sync to this account, and the Chrome extension signs in with it too.');
+      'Signed in as ' + email + '. ' + (granted ? 'Access given by the studio — the whole studio is open to you. ' : '')
+      + 'Projects you open sync to this account, and the Chrome extension signs in with it too.');
     sec.append(h('div.iv-actions', {}, [
       h('a.btn.primary', { href: 'index.html', text: 'GO TO THE STUDIO' }),
       h('a.btn', { href: 'settings.html#account', text: 'ACCOUNT SETTINGS' }),

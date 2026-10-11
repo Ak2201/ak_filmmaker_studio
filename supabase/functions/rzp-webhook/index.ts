@@ -23,7 +23,7 @@
    would change nothing here, but re-serialising would, and the order
    of operations is the whole safety argument.
 
-   E-MAIL (schema §34, _shared/mail.js): after payment.captured the
+   E-MAIL (schema §35, _shared/mail.js): after payment.captured the
    receipt, after refund.processed / refund.failed the refund update.
    Each is claimed before it is sent, so a redelivery or rzp-verify
    racing this function sends nothing twice. It is awaited (the

@@ -26,7 +26,7 @@ import { REFUND_TERMS } from '../../supabase/functions/_shared/terms.js';
 const dateOf = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
 const line = (text) => (text ? h('div', { text }) : null);
 /* A label/value row; a field the invoice does not carry (one issued
-   before schema §34 has no Razorpay ids) is left out, not printed empty. */
+   before schema §35 has no Razorpay ids) is left out, not printed empty. */
 const fact = (k, v) => (v ? h('tr', {}, [h('th', { scope: 'row', text: k }), h('td', { text: v })]) : null);
 
 export function buildInvoice(inv) {

@@ -357,7 +357,7 @@ export const admin = {
     Store.notify('billing:changed', out);
     return out;
   },
-  /** §34. Send one invoice's receipt e-mail again (rzp-verify's
+  /** §35. Send one invoice's receipt e-mail again (rzp-verify's
    *  resend path; admin-checked there). Resolves to { ok, sent }. */
   async resendReceipt(invoiceId) {
     return invoke('rzp-verify', { resend_invoice: invoiceId });

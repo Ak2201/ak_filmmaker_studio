@@ -478,6 +478,7 @@ function renderPlanTile() {
      2026): it is the free trial, or nothing bought yet. */
   const line = !name ? 'Not signed in \u2014 working locally on this device'
     : cp.plan !== 'free' ? name + ' plan'
+    : cp.reason === 'granted' ? 'Access given by the studio'
     : cp.reason === 'trial' ? 'Free trial'
     : cp.reason === 'free' ? 'Free to use right now'
     : 'No plan yet';

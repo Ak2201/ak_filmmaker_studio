@@ -7,7 +7,7 @@
    one in admin.js.
 
    The console's list also says whether the receipt e-mail went
-   (invoices.emailed_at, schema §34) and offers RESEND RECEIPT, which
+   (invoices.emailed_at, schema §35) and offers RESEND RECEIPT, which
    asks first: it writes to a customer.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';

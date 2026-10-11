@@ -15,7 +15,7 @@
    signature is proof the payment happened, not proof of who is asking,
    and the response names the plan and expiry.
 
-   THE RECEIPT (schema §34). After activation the receipt e-mail is
+   THE RECEIPT (schema §35). After activation the receipt e-mail is
    claimed and sent (_shared/mail.js); whichever of this function and
    the webhook claims first sends, the other finds nothing to claim.
    It runs in the background (EdgeRuntime.waitUntil) so the buyer's

@@ -77,6 +77,12 @@ const purchasesOff = (st) => !!(st && st.purchase_required === false);
    (this page's own copy) and the server's clock through plan-gate. */
 function trialLine(st) {
   if (!st || st.plan !== 'free' || st.purchase_required === false) return null;
+  /* §33. Access given by e-mail with no plan: in, uncapped, nothing owed
+     while it stands. Said instead of any trial wording — a trial row
+     ticking beside it is not this person's situation. */
+  if (st.granted === true) {
+    return h('p.pl-status.pu-granted', { text: 'Access given by the studio. An administrator has opened the whole studio to you — there is nothing to buy while this access stands. A plan is here if you want one of your own.' });
+  }
   const ends = st.trial_ends_at ? Date.parse(st.trial_ends_at) : NaN;
   if (st.trial_active === true && Number.isFinite(ends)) {
     const left = timeLeft(ends - (PlanGate.serverNow ? PlanGate.serverNow() : Date.now()));
@@ -138,7 +144,8 @@ function planSection() {
     if (invs0) sec.append(invs0);
     return sec;
   }
-  const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' · ' + st.account_name : ''}` : 'Choose a plan.', DECK);
+  const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' · ' + st.account_name : ''}`
+    : st && st.granted === true ? 'Access given by the studio.' : 'Choose a plan.', DECK);
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
   if (st) {
     const tl = trialLine(st);

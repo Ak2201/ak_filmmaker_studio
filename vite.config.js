@@ -499,6 +499,7 @@ export default defineConfig({
         edit:         resolve(__dirname, 'edit.html'),
         deliverables: resolve(__dirname, 'deliverables.html'),
         story:      resolve(__dirname, 'story.html'),
+        drafts:     resolve(__dirname, 'drafts.html'),
         screening:  resolve(__dirname, 'screening.html'),
         // The doorway to the cloud: where a closed gate sends a sign-in.
         invite:     resolve(__dirname, 'invite.html'),

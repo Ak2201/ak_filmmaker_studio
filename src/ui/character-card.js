@@ -26,12 +26,34 @@
      rerender(box)   redraw this card after a structural change
    ============================================================ */
 import { h } from '../lib/dom.js';
-import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter } from '../lib/characters.js';
+import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter, projectFormat } from '../lib/characters.js';
 import { learn as learnBox } from './learn.js';
 import BIBLE from '../data/story-bible.json';
 import '../styles/story-bible.css';
 
 const safe = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+/* The Story page is where every blueprint answer is asked ONCE (the path
+   absorbs the blueprint's steps, src/data/story-paths.json), so a card
+   there carries the blueprint's own `data-key` on each field that lives
+   in the blueprint — the key the blueprint, the stage guide and verify's
+   key-union read. Another page drawing this card (Write's Characters
+   tab) passes no `dataKeys` and draws exactly what it always did. */
+const keyAttr = (b, o) => (o && o.dataKeys && b ? { 'data-key': b.key } : {});
+
+/** The private-note pencil the blueprint draws beside a few questions
+    (`notes` in story-bible.json; the Feature Blueprint only — the short
+    film has none). Same markup and same store (fms_note_<key>) as the
+    blueprint's, so a note written there shows here. null when the key
+    has none. */
+const NOTE_KEYS = new Set(BIBLE.notes || []);
+export function noteButton(key, format) {
+  if (format === 'short' || !NOTE_KEYS.has(key)) return null;
+  return h('button.comment-btn', {
+    type: 'button', title: 'Add a private note (saved on your device)', text: '✎',
+    'data-key': 'comment_for_' + key, 'data-note-key': key
+  });
+}
 
 /** The little "What is a want?" box, or nothing when no topic exists.
     `topic` may be an id or null; returns an array so a caller can spread it. */
@@ -80,6 +102,12 @@ function contactSelect(id, view, contacts) {
 }
 
 function fieldBlock(f, view, o) {
+  /* A SHORT film's path does not mix in the feature's questions: a field
+     the feature blueprint holds (age, need, lie, wound, flaw, skill, arc…)
+     shows on a short project's card only once it has an answer. null = not
+     drawn. (Only the Story page asks; Write's tab draws every field.) */
+  const fb = view.backed && view.backed[f.key];
+  if (o.shortOnly && fb && fb.ns === 'feature' && !String(view[f.key] ?? '').trim()) return null;
   const id = 'cc-' + safe(view.id) + '-' + f.key;
   const labelText = f.label;
   const head = [h('label.cc-lab', { for: id, text: labelText }), ...learnFor(f.learn, o.film)];
@@ -96,15 +124,17 @@ function fieldBlock(f, view, o) {
     const isName = f.key === 'name';
     const raw = isName ? (view.nameRaw !== undefined ? view.nameRaw : view.name) : (f.key === 'aliases' ? (view.aliases || []).join(', ') : view[f.key]);
     input = h('input#' + id + '.cc-input', {
-      type: 'text', 'data-ch-field': f.key, placeholder: f.placeholder || '', autocomplete: 'off',
+      type: 'text', 'data-ch-field': f.key, ...keyAttr(view.backed && view.backed[f.key], o), placeholder: f.placeholder || '', autocomplete: 'off',
       readonly: isName && (view.derived || o.nameEditable === false) ? '' : null
     });
     input.value = raw || '';
   } else {
-    input = h('textarea#' + id + '.cc-input', { rows: f.rows || 2, 'data-ch-field': f.key, placeholder: f.placeholder || '' });
+    input = h('textarea#' + id + '.cc-input', { rows: f.rows || 2, 'data-ch-field': f.key, ...keyAttr(view.backed && view.backed[f.key], o), placeholder: f.placeholder || '' });
     input.value = view[f.key] || '';
   }
-  return h('div.cc-field', {}, [...head, input]);
+  const bk = o.dataKeys && view.backed && view.backed[f.key];
+  const note = bk ? noteButton(bk.key, projectFormat()) : null;
+  return h('div.cc-field', {}, [...head, note, input]);
 }
 
 function tiesBlock(f, view, o, id) {
@@ -126,14 +156,16 @@ function tiesBlock(f, view, o, id) {
 }
 
 function extrasBlock(view, o) {
-  if (!view.extras || !view.extras.length) return null;
+  const all = (view.extras || []).filter((x) => !(o.shortOnly && x.ns === 'feature' && !String(x.value || '').trim()));
+  if (!all.length) return null;
+  view = { ...view, extras: all };
   const sec = h('details.cc-sec', { open: o.open === false ? null : '' }, [
     h('summary.cc-sum', { text: 'More on the ' + roleLabel(view.role).toLowerCase() + ' — from your blueprint' })
   ]);
   const body = h('div.cc-body');
   view.extras.forEach((x) => {
     const id = 'cc-' + safe(view.id) + '-x-' + x.key;
-    const ta = h('textarea#' + id + '.cc-input', { rows: 2, 'data-ch-extra': x.key, 'data-ns': x.ns, placeholder: x.placeholder || '' });
+    const ta = h('textarea#' + id + '.cc-input', { rows: 2, 'data-ch-extra': x.key, 'data-ns': x.ns, ...(o.dataKeys ? { 'data-key': x.key } : {}), placeholder: x.placeholder || '' });
     ta.value = x.value || '';
     body.append(h('div.cc-field', {}, [h('label.cc-lab', { for: id, text: x.label }), ta]));
   });
@@ -153,7 +185,7 @@ export function renderCharacterSections(view, o = {}) {
   for (const s of BIBLE.characterCard) {
     const sec = h('details.cc-sec', { 'data-cc-sec': s.id, open: o.open === false ? null : '' }, [h('summary.cc-sum', { text: s.label })]);
     const body = h('div.cc-body');
-    for (const f of s.fields) body.append(fieldBlock(f, view, o));
+    for (const f of s.fields) { const fb = fieldBlock(f, view, o); if (fb) body.append(fb); }
     sec.append(body);
     root.append(sec);
   }
@@ -283,4 +315,4 @@ export function newCharacter(list, role, name = '') {
   return c;
 }
 
-export default { renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, learnFor, statsText, displayName, newCharacter };
+export default { noteButton, renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, learnFor, statsText, displayName, newCharacter };

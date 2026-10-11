@@ -38,6 +38,7 @@ import './store.js';   // must evaluate before anything reads localStorage
 import Store from './store.js';
 import FRAMEWORKS from '../data/frameworks.json';
 import BIBLE from '../data/story-bible.json';
+import PATHS from '../data/story-paths.json';
 import { readFields } from './blueprint-store.js';
 
 export const STORY_KEY = 'fms_story_v1';
@@ -59,7 +60,16 @@ export function blankStory() {
            /* the Story Bible's two story-level fields: which kinds of conflict
               (ids from story-bible.json `conflicts`) and the one-line version.
               A story written before they existed reads back [] and ''. */
-           conflicts: [], conflictLine: '' };
+           conflicts: [], conflictLine: '',
+           /* Which beat sheet the writer CHOSE, in Scene order. Until they do,
+              the outline is laid out against the format's suggestion
+              (suggestedFramework) and the page says so. */
+           frameworkChosen: false,
+           /* When the writer locked the step outline ('' = open). A lock
+              only means "finalised": nothing downstream reads it, and
+              Unlock clears it. ISO time. A story written before it
+              existed reads back ''. */
+           outlineLockedAt: '' };
 }
 
 /** A framework's own act split (frameworks.json `pacing.regions`), else
@@ -98,6 +108,12 @@ export function loadStory() {
   out.idea = typeof s.idea === 'string' ? s.idea : '';
   out.conflicts = Array.isArray(s.conflicts) ? [...new Set(s.conflicts.filter((x) => typeof x === 'string'))] : [];
   out.conflictLine = typeof s.conflictLine === 'string' ? s.conflictLine : '';
+  out.outlineLockedAt = typeof s.outlineLockedAt === 'string' ? s.outlineLockedAt : '';
+  /* A story written before the choice was recorded: a format that is not
+     the default, or any step or tag laid out under it, was chosen. */
+  out.frameworkChosen = typeof s.frameworkChosen === 'boolean'
+    ? s.frameworkChosen
+    : (out.framework !== FRAMEWORKS.default || out.outline.length > 0 || out.marks.length > 0);
   return out;
 }
 
@@ -727,36 +743,101 @@ export function undoSendOutline(story, ids, api) {
 
 /* ---- the path (derived, never stored) ------------------------ */
 
-/* NO STEP IS MANDATORY. The order is a suggestion: the stepper goes to
-   any step at any time, a tick only means "this has something in it",
-   and Next offers the first EMPTY step after the one you are on.
+/* NO STEP IS MANDATORY. The order is a suggestion: every step is on the
+   page at once, a tick only means "this has something in it", and Next
+   offers the first EMPTY step after the one you are on.
+
+   TWO PATHS. src/data/story-paths.json holds one road per project
+   format — a short film's is not a feature's with steps missing, and
+   the page never mixes them. PATH is the feature's (what every caller
+   that never named a format has always seen); pathFor(format) is the
+   one to use.
 
    `n` is the step's STABLE NUMBER — what `#path-N` links and the
    blueprint drawer's `steps.stages.json` mapping were written against
-   before the Story Bible joined (1 idea, 2 logline, 3 structure, 4
-   outline, 5 synopsis, 6 screenplay). It is not the step's place in
-   the line any more: that is `pos`. The Bible is 7 so no old link
-   changes meaning. */
-const PATH_ROWS = [
-  { n: 1, id: 'idea', label: 'Idea' },
-  { n: 2, id: 'logline', label: 'Logline' },
-  { n: 7, id: 'bible', label: 'Story Bible' },
-  { n: 3, id: 'structure', label: 'Scene order' },
-  { n: 4, id: 'outline', label: 'Step outline' },
-  { n: 5, id: 'synopsis', label: 'Synopsis' },
-  { n: 6, id: 'screenplay', label: 'To the Screenplay' }
-];
-export const PATH = PATH_ROWS.map((p, i) => ({ ...p, pos: i + 1 }));
-export const pathStepById = (id) => PATH.find((p) => p.id === id) || null;
+   (1 idea, 2 logline, 3 structure, 4 outline, 5 synopsis, 6 screenplay,
+   7 bible; later steps 8 and up). It is not the step's place in the
+   line: that is `pos`. */
+const buildPath = (rows) => rows.map((p, i) => ({ ...p, cards: p.cards || [], absorbs: p.absorbs || [], pos: i + 1 }));
+const PATH_BY_FORMAT = { feature: buildPath(PATHS.feature), short: buildPath(PATHS.short) };
+export const PATH = PATH_BY_FORMAT.feature;
+
+/** 'short' for a short-film project, else 'feature'. */
+export const pathFormat = (format) => (format === 'short' ? 'short' : 'feature');
+/** The path for a project format: 'short' → the short film's road,
+    anything else → the feature's. */
+export const pathFor = (format) => PATH_BY_FORMAT[pathFormat(format)];
+export const pathStepById = (id, format = 'feature') => pathFor(format).find((p) => p.id === id) || null;
+
+/** The framework the outline is laid out against for a format until the
+    writer chooses one in Scene order. */
+export const suggestedFramework = (format) => (pathFormat(format) === 'short' ? 'short_five' : 'save_the_cat');
+/** The framework in force: the writer's choice once made, else the
+    format's suggestion. */
+export const effectiveFramework = (story, format) =>
+  (story && story.frameworkChosen ? frameworkById(story.framework).id : suggestedFramework(format));
 
 /** A path step id from whatever a link carries: `path-<id>` (the form
-    the page writes now) or `path-<N>` (every link written before the
-    Bible, which keeps meaning what it meant). '' when it names none. */
-export function pathStepFromHash(hash) {
-  const m = /^#?path-([a-z]+|\d+)$/.exec(String(hash || ''));
+    the page writes) or `path-<N>` (every link written before the Bible,
+    which keeps meaning what it meant). '' when the hash is not a path
+    hash at all; the format's FIRST step when it names one that does not
+    exist (an old link to a step the short film's road has no use for
+    lands at the start, never nowhere). */
+export function pathStepFromHash(hash, format = 'feature') {
+  const m = /^#?path-([a-z][a-z0-9_-]*|\d+)$/.exec(String(hash || ''));
   if (!m) return '';
-  if (/^\d+$/.test(m[1])) { const p = PATH.find((x) => x.n === Number(m[1])); return p ? p.id : ''; }
-  return pathStepById(m[1]) ? m[1] : '';
+  const path = pathFor(format);
+  const aliases = (PATHS.aliases || {})[pathFormat(format)] || {};
+  if (/^\d+$/.test(m[1])) {
+    const p = path.find((x) => x.n === Number(m[1]));
+    if (p) return p.id;
+    return Number(m[1]) === 7 ? (aliases.bible || path[0].id) : path[0].id;   // 7 was the Bible
+  }
+  if (path.some((x) => x.id === m[1])) return m[1];
+  return aliases[m[1]] || path[0].id;
+}
+
+/** "<ns>:<id>[#part]" → { ns, id, part, raw } for the absorbs lists. */
+export function parseAbsorb(raw) {
+  const m = /^([a-z]+):([a-z0-9-]+)(?:#([a-z0-9_]+))?$/.exec(String(raw));
+  return m ? { ns: m[1], id: m[2], part: m[3] || '', raw: String(raw) } : null;
+}
+
+/** The `renderGuide` items for one path step's `absorbs`: { steps: the
+    whole steps and checklist-only steps, in order; ladder: the treatment
+    ladder narrowed to just the rungs the step takes, or null }. Pure. */
+export function absorbItems(absorbs, format) {
+  const fmt = pathFormat(format);
+  const steps = [];
+  const rungs = [];
+  for (const raw of absorbs || []) {
+    const x = parseAbsorb(raw);
+    if (!x) continue;
+    if (x.id === 'treatment-ladder') { if (x.part) rungs.push(x.part); continue; }
+    steps.push({ ns: x.ns, id: x.id, kind: 'step', format: fmt, ...(x.part === 'rest' ? { only: 'rest' } : {}) });
+  }
+  const ladder = rungs.length ? { ns: 'feature', id: 'treatment-ladder', kind: 'interlude', format: fmt, rungs } : null;
+  return { steps, ladder };
+}
+
+/** The path step that asks a blueprint step now: for the old
+    `story.html?step=<format>/<id>#guide` links (src/lib/blueprint-route.js),
+    which land on the step instead of at the Guide's cover. '' when no
+    path step takes it. */
+export function pathStepForBlueprint(format, id) {
+  const ns = pathFormat(format);
+  for (const p of pathFor(format)) {
+    if (p.absorbs.some((a) => { const x = parseAbsorb(a); return x && x.ns === ns && x.id === id; })) return p.id;
+  }
+  return '';
+}
+
+/** The blueprint items the Story Guide must leave out because a path
+    step already asks them: Set of "<ns>:<id>" for this format. */
+export function absorbedItems(format) {
+  const out = new Set();
+  for (const p of pathFor(format)) for (const a of p.absorbs) { const x = parseAbsorb(a); if (x) out.add(x.ns + ':' + x.id); }
+  return out;
 }
 
 /* ---- the Story Bible, as far as the path needs to know -------- */
@@ -827,32 +908,66 @@ export function bibleStatus(story) {
   return { cards, count, total: Object.keys(cards).length, any: count > 0 };
 }
 
-/** Which path steps are filled, from the story and the scene rows. */
-export function pathProgress(story, { scenes = [] } = {}) {
+const blueprintHas = (ns, keys) => {
+  try { return Object.values(readFields(ns, keys)).some(nonBlank); } catch (e) { return false; }
+};
+/* Every blueprint key a path step's own absorbs list names — for a whole
+   step the keys its content carries, which only the blueprint JSON knows;
+   a step's filled-ness therefore reads the keys the page asks for it. */
+const STEP_KEYS = {
+  feature: {
+    idea: ['s1_whatif', 's1_why_me', 's1_image'], logline: ['s2_log1', 's2_log2', 's2_log_final', 'lad_1_logline'],
+    structure: Array.from({ length: 15 }, (_, i) => 'b' + String(i + 1).padStart(2, '0')),
+    outline: ['lad_5_outline'], setups: Array.from({ length: 5 }, (_, i) => ['s10_setup_' + (i + 1), 's10_pay_' + (i + 1)]).flat(),
+    timeline: ['s9_chrono', 's9_screen', 's9_why'], synopsis: ['lad_2_synopsis', 'lad_3_onepager', 'lad_4_treatment']
+  },
+  short: {
+    idea: ['s1_seed', 's1_image', 's1_why'], logline: ['s2_log1', 's2_log2', 's2_log_final'],
+    structure: ['b1_setup', 'b2_disturb', 'b3_escalate', 'b4_turn', 'b5_image', 's4_test']
+  }
+};
+
+/** Which path steps are filled, from the story, the blueprint answers
+    each one asks inline, and the scene rows. `format` defaults to the
+    open project's. */
+export function pathProgress(story, { scenes = [], format } = {}) {
   const s = story || blankStory();
-  const o = outlineByBeat(s, s.framework);
+  const fmt = pathFormat(format || (projectIsShort() ? 'short' : 'feature'));
+  const fw = effectiveFramework(s, fmt);
+  const o = outlineByBeat(s, fw);
   const live = new Set((scenes || []).map((x) => x.id));
   const sent = (s.outline || []).filter((x) => x.sceneId && live.has(x.sceneId)).length;
   const beatScenes = (scenes || []).filter((x) => x.beatId).length;
   const bible = bibleStatus(s);
+  const keys = STEP_KEYS[fmt];
+  const bp = (id) => !!(keys[id] && blueprintHas(fmt, keys[id]));
   const done = {
-    idea: !!String(s.idea || '').trim(),
-    logline: !!String(s.logline || '').trim(),
+    idea: !!String(s.idea || '').trim() || bp('idea'),
+    logline: !!String(s.logline || '').trim() || bp('logline'),
     bible: bible.any,
-    structure: (s.outline || []).length > 0 || (s.marks || []).length > 0,
-    outline: o.withText > 0,
-    synopsis: !!String(s.source || '').trim(),
+    character: bible.cards.characters,
+    world: bible.cards.world,
+    conflict: bible.cards.conflict,
+    structure: s.frameworkChosen || (s.marks || []).length > 0 || bp('structure'),
+    outline: o.withText > 0 || bp('outline'),
+    setups: bp('setups'),
+    timeline: bp('timeline'),
+    synopsis: !!String(s.source || '').trim() || bp('synopsis'),
+    lock: !!String(s.outlineLockedAt || '').trim(),
     screenplay: sent > 0 || beatScenes > 0
   };
   const detail = {
     idea: '', logline: '',
     bible: bible.any ? `${bible.count} of ${bible.total} cards` : '',
-    structure: frameworkById(s.framework).short,
+    character: '', world: '', conflict: '',
+    structure: s.frameworkChosen ? frameworkById(fw).short : '',
     outline: o.withText ? `${o.withText} step${o.withText === 1 ? '' : 's'} · ${o.covered} of ${o.beatsTotal} beats` : '',
+    setups: '', timeline: '',
     synopsis: s.source ? `${(String(s.source).match(/\S+/g) || []).length} words` : '',
+    lock: s.outlineLockedAt ? 'locked' : '',
     screenplay: sent ? `${sent} sent` : beatScenes ? `${beatScenes} scenes on beats` : ''
   };
-  return PATH.map((p) => ({ ...p, done: done[p.id], detail: detail[p.id] }));
+  return pathFor(fmt).map((p) => ({ ...p, done: !!done[p.id], detail: detail[p.id] || '' }));
 }
 
 /** What "Next" offers from `cur`: the first step AFTER it with nothing
@@ -867,13 +982,21 @@ export function suggestNext(progress, cur) {
 /** The step a story should open on when nothing asked for one (an id):
     the synopsis once there is one, so a returning writer lands on their
     editor; else the first early step not yet filled. */
-export function defaultPathStep(story, opts) {
+export function defaultPathStep(story, opts = {}) {
   const s = story || blankStory();
-  if (String(s.source || '').trim()) return 'synopsis';
   const p = pathProgress(s, opts);
+  const ids = p.map((x) => x.id);
+  if (String(s.source || '').trim() && ids.includes('synopsis')) return 'synopsis';
   if (p.find((x) => x.id === 'outline').done) return 'outline';
-  const first = p.filter((x) => ['idea', 'logline', 'bible', 'structure'].includes(x.id)).find((x) => !x.done);
+  const early = ids.slice(0, ids.indexOf('outline'));
+  const first = p.filter((x) => early.includes(x.id)).find((x) => !x.done);
   return first ? first.id : 'outline';
+}
+
+/** Lock the step outline (now, as ISO) or unlock it. Mutates `story`. */
+export function setOutlineLock(story, locked, at = new Date()) {
+  story.outlineLockedAt = locked ? new Date(at).toISOString() : '';
+  return story.outlineLockedAt;
 }
 
 /** "Where am I" for a position in the synopsis (0..1): the nearest

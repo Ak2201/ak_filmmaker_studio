@@ -283,7 +283,7 @@ await settle();
 b = await blob(SKEY);
 check('(3) typing in the new row saves the whole array', [b._sceneMap.length, b._sceneMap[2]], [3, { slug: 'INT. NEW - DAY', who: '', what: '', beat: '', pages: '' }]);
 /* …and short.js reads it back */
-await page.goto(dev('short.html'), { waitUntil: 'domcontentloaded' });
+await page.goto(dev('short.html?stay=1'), { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#sceneMapBody tr', { timeout: 20000 });
 check('(3) short.html reads the guide’s scene map back', await page.evaluate(() =>
   [...document.querySelectorAll('#sceneMapBody tr')].map((tr) => tr.querySelector('[data-field="slug"]').value)),
@@ -298,8 +298,10 @@ check('(3) a flat-key scene map is not editable in the guide', await page.evalua
 
 /* feature: every stage mounts and the derived views draw */
 await devSeed('feature', FKEY, { s4_name: 'Kavin', s5_name: 'Rana', b01: 'open', b02: 'theme', v2s11_atl: '10L', v2s11_btl: '20L', lad_1_logline: 'LOGLINE-KEEP' });
-/* steps plus the interludes the blueprint carries (the ladder, write-the-draft) */
-const want = { story: 11, screenplay: 4, preprod: 11, production: 4, post: 4 };
+/* steps plus the interludes the blueprint carries (write-the-draft). The STORY stage's
+   steps are all asked inside the Story path now (story-paths.json), so its Guide is the
+   cover sheet alone; the path itself is proved on story.html just below. */
+const want = { story: 0, screenplay: 4, preprod: 11, production: 4, post: 4 };
 for (const [stage, n] of Object.entries(want)) {
   await mount(stage);
   await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
@@ -308,13 +310,44 @@ for (const [stage, n] of Object.entries(want)) {
 }
 await mount('story');
 await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
-check('(3) feature story: the treatment ladder follows step 02', (await page.evaluate(() =>
-  [...document.querySelectorAll('#guide .sg-steps > section')].map((s) => s.getAttribute('data-sg-id')))).slice(0, 3),
-['step-01', 'step-02', 'treatment-ladder']);
-check('(3) the ladder shows the saved rung', await page.inputValue('#guide [data-key="lad_1_logline"]'), 'LOGLINE-KEEP');
-check('(3) the pacing chart counts filled beats', await page.evaluate(() => document.querySelector('#guide [data-sg-id="pacingFilled"]').textContent), '2');
-check('(3) the character map names the protagonist', await page.evaluate(() => document.querySelector('#guide [data-sg-id="charMapSvg"]').textContent.includes('Kavin')), true);
-check('(3) the story guide wrote nothing', Object.keys(await blob(FKEY)).sort(), ['b01', 'b02', 's4_name', 's5_name', 'v2s11_atl', 'v2s11_btl', 'lad_1_logline'].sort());
+check('(3) feature story: the Guide is the cover sheet (title, writer, genre…), no blueprint step',
+  await page.evaluate(() => [...document.querySelectorAll('#guide [data-key]')].map((e) => e.getAttribute('data-key'))),
+  ['meta_title', 'meta_writer', 'meta_started', 'meta_stage', 'v1_title', 'v1_genre', 'v1_draft']);
+
+/* the Story page itself: every blueprint question is on it ONCE, drawn inline in its path step */
+await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000 });
+await page.waitForSelector('[data-bp="bible:ladder"], [data-bp="logline:ladder"]', { state: 'attached', timeout: 30000 });
+await settle();
+check('(3) story.html feature: the path steps are on the page, in order', await page.evaluate(() =>
+  [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path'))),
+['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay']);
+check('(3) story.html feature: Idea asks step 01, Logline step 02, Scene order step 08, Setups 10, Timeline 09', await page.evaluate(() =>
+  ['idea', 'logline', 'structure', 'setups', 'timeline'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
+['step-01', 'step-02', 'step-08', 'step-10', 'step-09']);
+check('(3) story.html feature: the ladder’s rungs are split — 1 under Logline, 5 under the outline, 2-4 under Synopsis', await page.evaluate(() =>
+  ['logline', 'outline', 'synopsis'].map((k) => [...document.querySelectorAll(`[data-bp="${k}:ladder"] [data-key]`)].map((e) => e.getAttribute('data-key')).join(','))),
+['lad_1_logline', 'lad_5_outline', 'lad_2_synopsis,lad_3_onepager,lad_4_treatment']);
+check('(3) story.html feature: the ladder shows the saved rung', await page.inputValue('[data-bp="logline:ladder"] [data-key="lad_1_logline"]'), 'LOGLINE-KEEP');
+check('(3) story.html feature: the pacing chart counts filled beats', await page.evaluate(() => document.querySelector('[data-bp="structure"] [data-sg-id="pacingFilled"]').textContent), '2');
+check('(3) story.html feature: the relationship map names the protagonist', await page.evaluate(() => document.querySelector('[data-bp="bible"] [data-sg-id="charMapSvg"]').textContent.includes('Kavin')), true);
+check('(3) story.html feature: no data-key appears twice on the page', await page.evaluate(() => {
+  const k = [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'));
+  return k.filter((x, i) => k.indexOf(x) !== i);
+}), []);
+check('(3) story.html feature: the Bible cards carry the blueprint’s keys (protagonist name, antagonist name, theme, world…)', await page.evaluate(() =>
+  ['s4_name', 's5_name', 's3_theme', 's3_ext', 's7_location', 's6_ally_name'].map((k) => !!document.querySelector(`.sb [data-key="${k}"]`))),
+[true, true, true, true, true, true]);
+check('(3) story.html feature: the Bible shows the saved answers', await page.evaluate(() =>
+  [document.querySelector('.sb [data-key="s4_name"]').value, document.querySelector('.sb [data-key="s5_name"]').value]), ['Kavin', 'Rana']);
+check('(3) the Story page wrote nothing', Object.keys(await blob(FKEY)).sort(), ['b01', 'b02', 's4_name', 's5_name', 'v2s11_atl', 'v2s11_btl', 'lad_1_logline'].sort());
+/* an answer typed in the Bible card is the blueprint's own key, in the blueprint's blob */
+await page.fill('.sb [data-key="s3_theme"]', 'THEME-ONCE');
+await settle();
+check('(3) a Bible card answer is stored under the blueprint’s key', (await blob(FKEY)).s3_theme, 'THEME-ONCE');
+/* back to a plain page for the other stages' checks below */
+await page.goto(dev('index.html'), { waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => window.StudioStore, null, { timeout: 20000 });
 await mount('preprod');
 await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
 check('(3) the budget total is derived from the fields', await page.evaluate(() =>
@@ -331,6 +364,23 @@ await mount('screenplay');
 await page.waitForSelector('#guide .sg-steps', { timeout: 20000 });
 check('(3) the scene-list table shows rows', await page.evaluate(() =>
   document.querySelectorAll('#guide [data-sg-id="sceneListBody"] tr').length >= 3), true);
+/* the SHORT road: its own steps, and none of the feature's */
+await devSeed('short', SKEY, { meta_title: 'Tiny', b1_setup: 'BEAT-ONE', s3_name: 'Ravi' });
+await page.goto(dev('story.html#guide'), { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('[data-bp="structure"] .sg-steps', { timeout: 30000 });
+await settle();
+check('(3) story.html short: its own path', await page.evaluate(() =>
+  [...document.querySelectorAll('main > section.st-step')].map((s) => s.getAttribute('data-path'))),
+['idea', 'logline', 'character', 'world', 'conflict', 'structure', 'outline', 'synopsis', 'lock', 'screenplay']);
+check('(3) story.html short: Seed asks step 01, Logline step 02, Scene order step 04', await page.evaluate(() =>
+  ['idea', 'logline', 'structure'].map((k) => [...document.querySelectorAll(`[data-bp="${k}"] .sg-steps > section`)].map((s) => s.getAttribute('data-sg-id')).join('+'))),
+['step-01', 'step-02', 'step-04']);
+check('(3) story.html short: no feature-only key, no feature-only card', await page.evaluate(() => {
+  const k = [...document.querySelectorAll('[data-key]')].map((e) => e.getAttribute('data-key'));
+  const dup = k.filter((x, i) => k.indexOf(x) !== i);
+  return { featureKeys: k.filter((x) => /^(s4_(name|age|want|need|lie|wound|skill|flaw|arc)|s5_name|s5_want|s6_|s7_|s3_(ext|int|theme|phil)|lad_|comment_for_)/.test(x)), dup, cards: [...document.querySelectorAll('[data-sb-card]')].map((c) => c.getAttribute('data-sb-card')) };
+}), { featureKeys: [], dup: [], cards: ['characters', 'world', 'conflict'] });
+check('(3) story.html short: the protagonist’s slot shows the saved name', await page.inputValue('.sb [data-key="s3_name"]'), 'Ravi');
 check('no page errors', errors, []);
 await vite.close();
 await browser.close();

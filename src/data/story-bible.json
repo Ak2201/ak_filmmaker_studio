@@ -30,6 +30,15 @@
   },
   "fallback": { "world": ["s7_era", "s7_duration"] },
 
+  "notes": ["s3_theme", "s3_ext", "s3_int", "s3_phil", "s4_arc", "s7_era", "s7_location", "s7_duration", "s7_rules", "s7_sensory"],
+  "notes_about": "The blueprint keys that carry a private-note pencil (comment_for_<key>) on feature.html. The Story page draws the same pencil beside the same questions (Feature only), because the questions are asked there now and a key a person's saved work reads must still be rendered somewhere.",
+
+  "shortFeatureOnly": {
+    "cards": ["stakes", "theme"],
+    "roles": ["antagonist", "ally", "love", "mentor"],
+    "_about": "A SHORT film's path never shows these: the short blueprint has no keys for them. They appear on a short project ONLY when the feature blueprint keys behind them already hold an answer (a person who moved a feature project's work over, or filled them in on feature.html), so nothing already written is hidden. src/ui/story-bible.js decides; this is the list."
+  },
+
   "fields": {
     "s3_ext":      { "label": "Outer stakes — what happens in the world", "placeholder": "What does the hero stand to lose in the world?", "learn": "stakes" },
     "s3_int":      { "label": "Inner stakes — what dies inside the hero", "placeholder": "What part of the hero will die if they fail?", "learn": "stakes" },

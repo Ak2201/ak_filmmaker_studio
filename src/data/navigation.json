@@ -113,7 +113,7 @@
       "sym": "auto_stories",
       "guide": [
         {
-          "label": "Feature steps 01–10 · Short steps 1–5",
+          "label": "Guided questions",
           "href": "story.html#guide",
           "part": "I"
         }
@@ -175,7 +175,7 @@
       "sym": "edit_note",
       "guide": [
         {
-          "label": "Feature steps 11–13 · Short steps 6–8",
+          "label": "Guided questions",
           "href": "write.html#guide",
           "part": "II"
         }
@@ -363,7 +363,7 @@
       "sym": "checklist",
       "guide": [
         {
-          "label": "Feature steps 14–24 · Short step 9",
+          "label": "Guided questions",
           "href": "breakdown.html#guide",
           "part": "III"
         }
@@ -398,7 +398,7 @@
       "sym": "videocam",
       "guide": [
         {
-          "label": "Feature steps 25–28 · Short step 9",
+          "label": "Guided questions",
           "href": "shoot.html#guide",
           "part": "IV"
         }
@@ -433,7 +433,7 @@
       "sym": "tune",
       "guide": [
         {
-          "label": "Feature steps 29–32 · Short step 10",
+          "label": "Guided questions",
           "href": "edit.html#guide",
           "part": "V"
         }

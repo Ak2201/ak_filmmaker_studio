@@ -427,7 +427,26 @@ const EXPECTED = {
      the same way, and it is worth one more line: an allowance is
      valid only until the next recapture, and you do not control who
      makes that or when. */
-  story: {},
+  /* "5 Qualities of Great Loglines" stopped rendering on the Logline
+     step when it was un-approved on 11 Oct 2026, and un-approving it
+     was the point: YouTube answers its id with oEmbed 403 and
+     playabilityStatus LOGIN_REQUIRED, so it is sign-in gated and can
+     never play in the anonymous youtube-nocookie embed this app uses.
+     A facade that opens an error is worse than no facade. (The other
+     dead one, gJxY0n8xwOo, is removed outright — 404 / ERROR — and
+     took no words off a baselined page with it.)
+
+     Two words, one page, one deliberate content change: the case an
+     allowance exists for. Note for whoever reads this next — the row
+     this replaced was removed an hour earlier because a parallel
+     session recaptured the oracle for a different content change. If
+     that happens again this row stops firing, the anti-rot check
+     fails the run, and the answer is to delete it, not to re-add the
+     words. */
+  story: {
+    qualities: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated',
+    loglines: 'title "5 Qualities of Great Loglines" — video un-approved, sign-in gated'
+  },
   edit: {},
   deliverables: {},
   screening: {},

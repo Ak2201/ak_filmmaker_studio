@@ -29,11 +29,11 @@
         "step:feature/step-02",
         "step:short/step-02"
       ],
-      "why": "A checklist to test your own logline against.",
+      "why": "Unapproved 11 Oct 2026: YouTube answers oEmbed 403 and playabilityStatus LOGIN_REQUIRED — sign-in/age gated, so it cannot play in an anonymous youtube-nocookie embed.",
       "fit": 4,
       "verified": false,
-      "approved": true,
-      "checked": "2026-10-10"
+      "approved": false,
+      "checked": "2026-10-11"
     },
     {
       "id": "what-is-theme-5-ways",
@@ -764,11 +764,11 @@
       "for": [
         "step:feature/step-24"
       ],
-      "why": "What happens on a tech scout.",
+      "why": "Unapproved 11 Oct 2026: removed from YouTube (oEmbed 404, playabilityStatus ERROR).",
       "fit": 4,
       "verified": false,
-      "approved": true,
-      "checked": "2026-10-10"
+      "approved": false,
+      "checked": "2026-10-11"
     },
     {
       "id": "sound-design-for-filmmaking",

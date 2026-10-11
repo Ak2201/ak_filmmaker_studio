@@ -109,6 +109,7 @@ jobs:
       - run: npm run prove:gate
       - run: npm run prove:billing
       - run: npm run prove:storage
+      - run: npm run prove:cloud-delete
       - run: npm run prove:drive
       - run: npm run prove:sw
       - run: npm run build:extension

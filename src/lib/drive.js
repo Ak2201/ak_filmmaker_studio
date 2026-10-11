@@ -257,15 +257,15 @@ export function getToken(opts) {
 let _fetch = (...a) => window.fetch(...a);
 export function __setFetch(fn) { _fetch = fn || ((...a) => window.fetch(...a)); }
 
-async function call(url, opts) {
+async function call(url, opts, tokenOpts) {
   opts = opts || {};
-  let token = await getToken();
+  let token = await getToken(tokenOpts);
   let res = await _fetch(url, withAuth(opts, token));
   if (res.status === 401) {
     /* An hour went by. Ask again rather than failing — the user
        still has a Google session, and consent is already given. */
     forgetToken();
-    token = await getToken({ force: true });
+    token = await getToken(Object.assign({ force: true }, tokenOpts));
     res = await _fetch(url, withAuth(opts, token));
   }
   if (!res.ok) {
@@ -399,11 +399,19 @@ export async function downloadRevision(fileId, revisionId) {
   return res.text();
 }
 
+/** Delete the backup file. A 404 means it is already gone. */
+export async function deleteFile(fileId) {
+  const url = API_ORIGIN + '/drive/v3/files/' + encodeURIComponent(fileId);
+  try { await call(url, { method: 'DELETE' }, { interactive: true }); }
+  catch (e) { if (e && e.status === 404) return false; throw e; }
+  return true;
+}
+
 export default {
   DRIVE_SCOPE, API_ORIGIN, IDENTITY_ORIGIN, GIS_SRC,
   BACKUP_FILE_NAME, BACKUP_MIME, CLIENT_ID,
   isConfigured, hasToken, forgetToken, adoptToken, getToken,
   findBackupFile, createBackupFile, uploadBackup,
-  readMeta, downloadBackup, listRevisions, downloadRevision,
+  readMeta, deleteFile, downloadBackup, listRevisions, downloadRevision,
   __setFetch
 };

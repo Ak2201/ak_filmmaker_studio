@@ -65,12 +65,29 @@
       "sym": "settings"
     },
     {
+      "id": "purchase",
+      "label": "Purchase",
+      "icon": "◇",
+      "href": "purchase.html",
+      "purpose": "Plans, checkout, your invoices and refund requests",
+      "sym": "shopping_cart"
+    },
+    {
       "id": "admin",
       "label": "Console",
       "icon": "⚙",
       "href": "admin.html",
       "purpose": "The application console: people, organisations, access, billing",
       "sym": "admin_panel_settings",
+      "adminOnly": true
+    },
+    {
+      "id": "purchases",
+      "label": "Purchases",
+      "icon": "₹",
+      "href": "purchases.html",
+      "purpose": "Every payment, refund, invoice, promo code and tier, for administrators",
+      "sym": "receipt_long",
       "adminOnly": true
     }
   ],
@@ -96,7 +113,7 @@
           "label": "Idea Vault",
           "purpose": "Links, pictures and notes you collect for this film, kept in one place",
           "status": "built",
-          "href": "story.html#vault",
+          "href": "vault.html#vault",
           "icon": "✦",
           "sym": "lightbulb"
         },

@@ -1444,7 +1444,7 @@ function planLimitToast(message, opts) {
   _planToastAt = Date.now();
   if (window.StudioUI && StudioUI.toast) {
     StudioUI.toast(message + ' This film is saved on this device.', {
-      type: 'error', action: 'See plans', onAction: () => { location.href = 'settings.html#plan'; }
+      type: 'error', action: 'See plans', onAction: () => { location.href = 'purchase.html'; }
     });
   }
 }
@@ -1908,6 +1908,40 @@ function toast(msg, type, duration) {
   console.log('[StudioCloud]', msg);
 }
 
+/* DELETE THE CLOUD COPIES OF EVERY PROJECT THIS ACCOUNT OWNS.
+   ------------------------------------------------------------
+   Owner-chosen (11 Oct 2026). Account, plan, purchases and invoices
+   stay; projects the user merely collaborates on are not theirs to
+   delete and are never selected (owner_id filter, on top of RLS
+   proj_delete = owner only). project_data cascades from projects, but
+   its rows are deleted first and explicitly so a failure is reported
+   per project rather than hidden in a cascade. Local copies are NOT
+   touched. Sync is paused FIRST: otherwise the next keystroke would
+   re-create the rows that were just deleted. No schema change needed:
+   pd_write is FOR ALL (covers DELETE) for anyone with edit access,
+   proj_delete allows the owner, and project_data.project_id is
+   ON DELETE CASCADE.
+   @returns {Promise<{ok:boolean, deleted:number, failed:{id:string,error:string}[]}>} */
+export async function deleteOwnedCloudProjects() {
+  const sb = await ensureClient();
+  if (!sb || !session) throw new Error('Sign in to delete your cloud projects.');
+  const uid = session.user.id;
+  await setSyncEnabled(false);
+  const { data, error } = await sb.from('projects').select('id').eq('owner_id', uid);
+  if (error) return { ok: false, deleted: 0, failed: [{ id: '*', error: error.message || String(error) }] };
+  let deleted = 0;
+  const failed = [];
+  for (const row of data || []) {
+    const d1 = await sb.from('project_data').delete().eq('project_id', row.id);
+    if (d1.error) { failed.push({ id: row.id, error: d1.error.message || String(d1.error) }); continue; }
+    const d2 = await sb.from('projects').delete().eq('id', row.id).eq('owner_id', uid);
+    if (d2.error) failed.push({ id: row.id, error: d2.error.message || String(d2.error) });
+    else deleted++;
+  }
+  Store.notify('projects:changed', { reason: 'cloud-delete' });
+  return { ok: failed.length === 0, deleted, failed };
+}
+
 // ============================================================
 // PUBLIC API
 // ============================================================
@@ -1928,7 +1962,7 @@ const StudioCloud = {
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync
-  pullProjectList, pullProjectData, attachToCurrentProject,
+  pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
   listSalvage, restoreSalvage,

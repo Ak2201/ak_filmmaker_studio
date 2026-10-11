@@ -246,7 +246,16 @@ const ALL_PAGES = [
   // The application console. Signed out here, so the capture is the
   // "sign in" state; the numbers and the queue are proved by
   // scripts/prove-gate.mjs against a fake Supabase.
-  { page: 'admin.html',      legacy: null, name: 'admin' }
+  { page: 'admin.html',      legacy: null, name: 'admin' },
+  // The Idea Vault's own page (it was a tab under story.html), the
+  // user-side Purchase page and the admin-only Purchases page. The last
+  // two are signed out here: the sign-in-first state is what is captured;
+  // the plans, the invoices and the five admin tabs are proved by
+  // scripts/prove-billing.mjs. BASELINE ROWS DO NOT EXIST YET: run
+  // `npm run baseline` once, deliberately, and say so in the commit.
+  { page: 'vault.html',      legacy: null, name: 'vault' },
+  { page: 'purchase.html',   legacy: null, name: 'purchase' },
+  { page: 'purchases.html',  legacy: null, name: 'purchases' }
 ];
 
 /* ---- THE BLUEPRINTS ARE BEING FOLDED INTO THE STAGE PAGES ----------
@@ -389,7 +398,10 @@ const EXPECTED = {
   deliverables: {},
   screening: {},
   invite: {},
-  admin: {}
+  admin: {},
+  vault: {},
+  purchase: {},
+  purchases: {}
 };
 
 

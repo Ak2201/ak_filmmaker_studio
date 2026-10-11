@@ -1,0 +1,5 @@
+/* vault.html — the vault is drawn by src/ui/idea-vault.js with story.css's
+   .st-vault rules; this sheet only trims the section's own rule, because
+   the page heading already sits above it. */
+#vault .st-vault { border-top: 0; padding-block-start: 0; }
+#vault .st-vault-add textarea { width: 100%; }

@@ -13,12 +13,93 @@ import { NOTE_PREFIX, downloadBackup, applyBackup, backupShape } from '../../lib
 import PDF from '../../lib/pdf.js';
 import { $ } from './util.js';
 import { BRAND } from '../../lib/brand.js';
+import { ask, tell } from '../../ui/dialog.js';
+import * as DriveSync from '../../lib/drive-sync.js';
 
 /**
  * @param {object} o
  * @param {string[]} o.allKeys        hub.js's ALL_KEYS, the reset list
  * @param {Function} o.logActivity    the hub's activity logger
  */
+/* Kept through an erase: credentials and access, not work. The AI key
+   (a credential), the account identity and the Supabase destination
+   (erasing them signs the user out), the invite code and device
+   session (the site gate would bounce a code-only visitor). The
+   Supabase SESSION is `sb-*-auth-token`, never an `fms_` key, so the
+   prefix sweep cannot touch it. */
+const KEEP_ON_ERASE = new Set([
+  'fms_ai_key_v1', 'fms_studio_account_v1', 'fms_supabase_cfg_v1',
+  'fms_invite_code_v1', 'fms_device_session_v1'
+]);
+
+/**
+ * Erase this device. Does NOT sign out. Cloud copies are untouched,
+ * and cloud sync is PAUSED (cloudSync:'off' in the device prefs) so
+ * the next load neither pulls the account back nor pushes emptiness.
+ * @returns {Promise<{ok:boolean, cancelled?:boolean, projects:number,
+ *           driveDeleted:boolean, message:string}>}
+ */
+export async function resetAll({ alsoDrive = false, confirmed = false, allKeys = [] } = {}) {
+  return resetAllImpl({ alsoDrive, confirmed, allKeys });
+}
+
+async function resetAllImpl({ alsoDrive = false, confirmed = false, allKeys = [] } = {}) {
+  const projects = Store.listAllProjects();
+  const n = projects.length;
+  const plural = n === 1 ? '' : 's';
+  if (!confirmed) {
+    const r = await ask({
+      title: 'Erase everything on this device?',
+      body: 'This erases ' + n + ' project' + plural + ', both blueprints, library calc, all prefs and comments from this device. ' +
+            'Export first if you want to keep anything. You stay signed in; copies in your account are not deleted.',
+      confirm: 'Erase everything', danger: true, typeToConfirm: 'ERASE',
+      checkbox: { label: 'Also delete my Google Drive backup file' }
+    });
+    if (!r || !r.ok) return { ok: false, cancelled: true, projects: 0, driveDeleted: false, message: 'Cancelled.' };
+    alsoDrive = !!r.checked;
+  }
+
+  let driveDeleted = false, driveNote = '';
+  if (alsoDrive) {
+    try { driveDeleted = await DriveSync.deleteBackupFile(); }
+    catch (e) { driveNote = ' The Drive file could not be deleted (' + (e && e.message || e) + ') and is still there.'; }
+  }
+
+  projects.forEach((p) => Store.purgeProjectEverywhere(p.id));
+  const keys = new Set(allKeys);
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('fms_')) keys.add(k.replace(/__.*$/, ''));
+  }
+  keys.forEach((k) => { if (!KEEP_ON_ERASE.has(k)) Store.rawRemove(k); });
+  Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));
+  const notes = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(NOTE_PREFIX)) notes.push(k);
+  }
+  notes.forEach((k) => localStorage.removeItem(k));
+
+  /* Pause cloud sync AFTER the prefs wipe. Signed in, an unpaused
+     sync would pull the account's projects straight back or push the
+     empty studio over them. Turning sync on again pulls them back. */
+  try {
+    let p = {};
+    try { p = JSON.parse(Store.rawGet('fms_studio_prefs_v1') || '{}') || {}; } catch (e) { p = {}; }
+    p.cloudSync = 'off';
+    Store.rawSet('fms_studio_prefs_v1', JSON.stringify(p));
+  } catch (e) { /* storage refused */ }
+  const c = window.StudioCloud;
+  if (c && c.setSyncEnabled) { try { await c.setSyncEnabled(false); } catch (e) { /* none */ } }
+
+  await Store.flushStorage();
+  const signed = !!(c && c.getSession && c.getSession());
+  const message = n + ' project' + plural + ' erased from this device.' +
+    (alsoDrive ? (driveDeleted ? ' Your Google Drive backup was deleted.' : driveNote || ' No Drive backup was connected.') : '') +
+    (signed ? ' You are still signed in. Copies in your account are untouched and cloud sync is paused; turn sync on in Settings to pull them back.' : '');
+  return { ok: true, projects: n, driveDeleted, message };
+}
+
 export function createBackupMenu({ allKeys, logActivity }) {
   const ALL_KEYS = allKeys;
 
@@ -108,77 +189,12 @@ function handleImportAll(e) {
   e.target.value = '';
 }
 
-async function resetAll() {
-  /* This said "erases EVERYTHING" and then called removeItem for each
-     scoped key — which the storage proxy resolved to the ACTIVE project
-     only. Other projects survived a wipe the user was told was total.
-     Now it means what it says: every project, then the globals.
-
-     The account namespace put the same trap back: listProjects()
-     AND deleteProject() are both namespace-scoped, so this promised
-     to erase everything while leaving every account-only project on
-     disk. purgeProjectEverywhere() is the namespace-blind form and
-     exists for exactly this one caller. */
-  const projects = Store.listAllProjects();
-  const n = projects.length;
-  /* Say what is kept as well as what goes. The two sentences below are
-     the only place a user is told that an ACCOUNT's copy is a separate
-     thing from this device's — and getting that wrong in either
-     direction is the worst kind of bug this dialog can have. */
-  const c      = window.StudioCloud;
-  const signed = !!(c && c.getSession && c.getSession());
-  if (!confirm('This erases EVERYTHING on this device — ' + n + ' project' + (n === 1 ? '' : 's') +
-               ', both blueprints, library calc, all prefs, all comments. ' +
-               'EXPORT first if you want to keep anything.\n\nContinue?')) return;
-  if (!confirm('Are you absolutely sure? This cannot be undone.' +
-               (signed
-                 ? '\n\nYou will be signed out. Projects already in your account stay there — ' +
-                   'this clears the device, not the account. Sign in again to bring them back.'
-                 : '') +
-               '')) return;
-
-  // deleteProject already wipes that project's namespaced keys, using
-  // store.js's own SCOPED_KEYS as the authority. Don't re-list them here.
-  projects.forEach((p) => Store.purgeProjectEverywhere(p.id));
-
-  // Anything still unsuffixed (a studio that predates projects), then globals.
-  ALL_KEYS.forEach((k) => Store.rawRemove(k));
-  // The per-namespace open-project pointers. ALL_KEYS knows the bare
-  // name; an account pointer is `…@<uid>`, which it has never heard of,
-  // so a wipe left one behind aiming at a project that no longer exists.
-  Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));
-
-  const toRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(NOTE_PREFIX)) toRemove.push(k);
-  }
-  toRemove.forEach((k) => localStorage.removeItem(k));
-
-  /* AFTER the purge, never before. signOut() ends with
-     Store.setAccount(null), which SCHEDULES A RELOAD — run it first
-     and the page can come back before the wipe has finished.
-
-     Signing out is what makes keeping SYNC_CFG safe (see ALL_KEYS).
-     Leave the session alive and the next load pulls the account's
-     projects straight back down, which would make both confirmations
-     above untrue. The session is not an `fms_` key — supabase-js keeps
-     it under `sb-<ref>-auth-token` — so nothing above can clear it and
-     only this call can.
-
-     Purging first is also safe from the sync side: every write above
-     goes through rawRemove, which bypasses the storage proxy and so
-     emits no `saved` event for the cloud subscriber to push. */
-  if (signed) {
-    try { await c.signOut(); }
-    catch (e) { console.warn('[reset] sign-out', e); }
-  }
-
-  // Same reason as the import path above: removals clear IndexedDB
-  // records too, and the reload must not outrun them.
-  await Store.flushStorage();
-  alert('All studio data cleared — ' + n + ' project' + (n === 1 ? '' : 's') + ' removed. Refreshing…');
+async function resetAll(opts) {
+  const r = await resetAllImpl({ allKeys: ALL_KEYS, ...(opts || {}) });
+  if (r.cancelled) return r;
+  await tell({ title: r.ok ? 'Studio erased' : 'Erase failed', body: r.message });
   location.reload();
+  return r;
 }
 
   return { exportOverviewPDF, exportAll, importAll, handleImportAll, resetAll };

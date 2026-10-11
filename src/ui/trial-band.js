@@ -62,7 +62,7 @@ function paint(plate, ends) {
     body = h('div.tb-body', {}, [
       h('span.sh-plate-flag.tb-flag', { text: 'TRIAL' }),
       h('span.sh-plate-text.tb-text', { role: 'status', 'aria-live': 'polite' }),
-      h('a.btn.primary.tb-cta', { href: 'settings.html#plan', text: 'SEE PLANS' })
+      h('a.btn.primary.tb-cta', { href: 'purchase.html', text: 'SEE PLANS' })
     ]);
     plate.append(body);
   }

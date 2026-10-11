@@ -109,7 +109,7 @@ const build = PREBUILT ? { status: 0 } : (console.log('building dist-storage/ â€
 ], {
   cwd: ROOT,
   // The site gate would send every signed-out page to invite.html; storage is on trial here, not the gate.
-  env: Object.assign({}, process.env, { VITE_DISABLE_SW: '1', VITE_SITE_GATE: 'off' }),
+  env: Object.assign({}, process.env, { VITE_DISABLE_SW: '1', VITE_SITE_GATE: 'off', VITE_GOOGLE_CLIENT_ID: 'probe-client-id.apps.googleusercontent.com' }),
   encoding: 'utf8'
 }));
 if (build.status !== 0) {
@@ -1072,6 +1072,85 @@ console.log('\n--- two projects: a script drives its own scenes, and only its ow
   check('S4 deleting project A leaves no __<A> key behind, the bin included', leftovers, []);
   check('S4 â€¦and B is byte-identical', await bKeys(), bBefore);
   check('no page errors', page.__errors, []);
+  await ctx.close();
+}
+
+
+/* ============================================================
+   ERASE THIS DEVICE (11 Oct 2026, lane L6)
+   Erase wipes every project and the global keys, never signs the
+   user out (the session and account keys survive), pauses cloud
+   sync so the next load neither pulls nor pushes, asks through the
+   in-app dialog (a NATIVE dialog fails the run), and with the Drive
+   box ticked deletes the Drive file exactly once.
+   ============================================================ */
+console.log('\n--- erase this device: local wipe, stay signed in, optional Drive ---');
+for (const alsoDrive of [false, true]) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
+  let driveDeletes = 0;
+  await ctx.route(/https:\/\/www\.googleapis\.com\/.*/, (r) => {
+    if (r.request().method() === 'DELETE') { driveDeletes++; return r.fulfill({ status: 204, body: '' }); }
+    return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+  await ctx.addInitScript(() => {
+    window.google = { accounts: { oauth2: { initTokenClient(cfg) {
+      return { requestAccessToken() { setTimeout(() => cfg.callback({ access_token: 'fake-token', expires_in: 3600, token_type: 'Bearer' }), 0); } };
+    } } } };
+  });
+  const page = await ctx.newPage();
+  let native = 0;
+  page.on('dialog', async (d) => { native++; d.dismiss().catch(() => {}); });
+  await page.goto(`http://localhost:${PORT}/index.html`);
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  const ids = await page.evaluate(() => {
+    const S = window.StudioStore;
+    const a = S.createProject({ title: 'Erase A', format: 'feature' });
+    const b = S.createProject({ title: 'Erase B', format: 'short' });
+    S.rawSet('fms_scenes_v1__' + a.id, JSON.stringify({ x: 'A' }));
+    S.rawSet('fms_scenes_v1__' + b.id, JSON.stringify({ x: 'B' }));
+    S.rawSet('fms_tour_v1', '{"done":1}');
+    localStorage.setItem('sb-probe-auth-token', '{"access_token":"x"}');
+    S.rawSet('fms_studio_account_v1', 'probe-uid');
+    S.rawSet('fms_invite_code_v1', 'CODE');
+    S.rawSet('fms_drive_sync_v1', JSON.stringify({ enabled: true, fileId: 'F1' }));
+    return [a.id, b.id];
+  });
+  await page.evaluate(() => document.querySelector('[data-action="reset-all"]').click());
+  const dlg = page.locator('.dlg');
+  await dlg.waitFor({ timeout: 8000 });
+  await dlg.locator('input.dlg-field').fill('ERASE');
+  if (alsoDrive) await dlg.locator('input[type="checkbox"]').check();
+  const nav = page.waitForNavigation({ timeout: 15000 }).catch(() => null);
+  await dlg.locator('button.primary').click();
+  await page.waitForFunction(() => /erased/i.test((document.querySelector('.dlg') || {}).textContent || ''), null, { timeout: 8000 });
+  /* Read the account key while the result dialog is still up, before the reload: the app itself
+     drops a stored account whose session it cannot restore, and the fake session here is not one. */
+  const acctAtErase = await page.evaluate(() => localStorage.getItem('fms_studio_account_v1'));
+  await page.locator('.dlg button.primary').click();
+  await nav;
+  await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
+  const t = alsoDrive ? 'drive ticked' : 'drive unticked';
+  const after = await page.evaluate((ids) => {
+    const keys = []; for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    return {
+      projects: window.StudioStore.listAllProjects().length,
+      suffixed: keys.filter((k) => ids.some((id) => k.endsWith('__' + id))),
+      tour: localStorage.getItem('fms_tour_v1'),
+      session: localStorage.getItem('sb-probe-auth-token'),
+      account: localStorage.getItem('fms_studio_account_v1'),
+      code: localStorage.getItem('fms_invite_code_v1'),
+      drivePtr: localStorage.getItem('fms_drive_sync_v1'),
+      prefs: JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}')
+    };
+  }, ids);
+  check(`E ${t}: every project wiped`, [after.projects, after.suffixed], [0, []]);
+  check(`E ${t}: global keys wiped`, after.tour, null);
+  check(`E ${t}: session, account and invite code survive (no sign-out)`, [!!after.session, acctAtErase, after.code], [true, 'probe-uid', 'CODE']);
+  check(`E ${t}: cloud sync paused`, after.prefs.cloudSync, 'off');
+  check(`E ${t}: Drive pointer cleared`, after.drivePtr, null);
+  check(`E ${t}: Drive DELETE calls`, driveDeletes, alsoDrive ? 1 : 0);
+  check(`E ${t}: no native dialog`, native, 0);
   await ctx.close();
 }
 

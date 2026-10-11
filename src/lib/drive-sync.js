@@ -461,6 +461,20 @@ export function disconnect() {
   return getDriveStatus();
 }
 
+/**
+ * Delete the Drive backup file itself (owner-chosen, explicit), then
+ * disconnect. Resolves true if a file was deleted, false if none was
+ * connected or it was already gone. Throws if Drive refuses; the
+ * pointer is kept then so the user can retry.
+ */
+export async function deleteBackupFile() {
+  const st = readState();
+  if (!st.fileId) { disconnect(); return false; }
+  const gone = await Drive.deleteFile(st.fileId);
+  disconnect();
+  return gone;
+}
+
 /** Earlier versions Drive is keeping of the one file. */
 export async function listVersions() {
   const st = readState();
@@ -703,13 +717,13 @@ function adoptSignInToken(sess) {
 global.StudioDrive = {
   DRIVE_STATE_KEY, DRIVE_STATES,
   onDriveStatus, getDriveStatus, isConnected, ownsSync,
-  connect, disconnect, push, pull, reconcile, resolveConflict,
+  connect, disconnect, deleteBackupFile, push, pull, reconcile, resolveConflict,
   listVersions, restoreVersion, readState, localClock
 };
 
 export default {
   DRIVE_STATE_KEY, DRIVE_STATES, HOUR_NOTE,
   onDriveStatus, getDriveStatus, isConnected, ownsSync,
-  connect, disconnect, push, pull, reconcile, resolveConflict,
+  connect, disconnect, deleteBackupFile, push, pull, reconcile, resolveConflict,
   listVersions, restoreVersion, readState, localClock
 };

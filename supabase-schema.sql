@@ -8000,7 +8000,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 32. PURCHASES REQUIRED, AND ACCESS GIVEN BY E-MAIL   RUN LIVE: not yet
+-- 32. PURCHASES REQUIRED, AND ACCESS GIVEN BY E-MAIL   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decisions, 11 Oct 2026, both of them in this section:
 --
@@ -8659,7 +8659,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 33. A FREE TRIAL, NOT A FREE PLAN — set in hours   RUN LIVE: not yet
+-- 33. A FREE TRIAL, NOT A FREE PLAN — set in hours   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decisions, 11 Oct 2026:
 --
@@ -8927,7 +8927,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 34. A REFUND GIVES A FRESH TRIAL   RUN LIVE: not yet
+-- 34. A REFUND GIVES A FRESH TRIAL   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decision, 11 Oct 2026: "a refunded buyer gets a fresh
 -- trial of the configured length." Section 30 decided the opposite —
@@ -9035,7 +9035,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 35. RECEIPT AND REFUND E-MAILS, SENT ONCE   RUN LIVE: not yet
+-- 35. RECEIPT AND REFUND E-MAILS, SENT ONCE   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner, 11 Oct 2026: "Once a user has purchased the product we
 -- should send mail to the user, from support@filmmakerstudio.in."

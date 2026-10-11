@@ -932,3 +932,21 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
 @media (max-width: 719px) {
   .st-hero .st-shot-hero { display: none; }
 }
+
+/* The comparison fits the column at every width rather than scrolling
+   sideways: a sideways table on a phone hid the Pro column with
+   nothing to say it was there. Fixed layout gives the three plans equal
+   columns. */
+.st-compare-all .st-table { min-width: 0; table-layout: fixed; }
+.st-compare-all .st-col-what { width: 46%; }
+.st-compare-all .st-table thead th { white-space: normal; overflow-wrap: anywhere; }
+.st-compare-all .st-table th, .st-compare-all .st-table td { padding-left: var(--s2); padding-right: var(--s2); }
+
+/* The recommended card: one even border all round, not a top rule that
+   curves into the side and stops at the badge. */
+.st-tiers > .st-pick { border: var(--sk-hue-rule-w) solid var(--cta-fill); }
+@media (max-width: 559px) {
+  .st-compare-all .st-col-what { width: 36%; }
+  .st-compare-all .st-table thead th { overflow-wrap: normal; hyphens: auto; font-size: var(--t-tiny); }
+  .st-compare-all .st-table th, .st-compare-all .st-table td { padding-left: var(--s1); padding-right: var(--s1); }
+}

@@ -146,7 +146,7 @@
   </div>
 
   <ul class="st-tiers" data-reveal-group>
-    <li data-trial class="st-trial"><strong>Free trial</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-tier-buy" href="invite.html" data-start-auth="google">Start the free trial</a></li>
+    <li data-trial class="st-trial"><strong>Free trial</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start the free trial</a></li>
     <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=starter#buy" data-plan="starter">or buy {{fms:plan.starter}} now</a></li>
     <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=indie#buy" data-plan="indie">or buy {{fms:plan.indie}} now</a></li>
     <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=pro#buy" data-plan="pro">or buy {{fms:plan.pro}} now</a></li>
@@ -156,6 +156,7 @@
     <summary>Compare every feature</summary>
     <div class="st-table-wrap" role="region" aria-label="Plan comparison" tabindex="0">
       <table class="st-table">
+        <colgroup><col class="st-col-what"><col><col><col></colgroup>
         <thead><tr><th scope="col">What you get</th><th scope="col">{{fms:plan.starter}}</th><th scope="col">{{fms:plan.indie}}</th><th scope="col">{{fms:plan.pro}}</th></tr></thead>
         <tbody>{{fms:matrix.rows}}</tbody>
       </table>

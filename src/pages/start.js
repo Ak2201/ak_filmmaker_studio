@@ -523,7 +523,7 @@ try {
     spotlight(q('.st-hero'));
     qa('.st-card, .st-tiers > li, .st-faq').forEach((n) => spotlight(n));
     const pick = q('.st-pick');
-    if (pick) { pick.classList.add('mo-trail'); glow(pick); }
+    if (pick) glow(pick);   /* no mo-trail: its conic rule drew a half border */
     /* The facts count; the PRICES never do — a price that reads ₹0 for
        a second, or to a screen reader, is a price that misleads. */
     qa('.st-fact-n').forEach((n) => countUp(n));

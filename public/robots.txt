@@ -6,4 +6,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://thefilmmakerstudio.vercel.app/sitemap.xml
+Sitemap: https://filmmakerstudio.in/sitemap.xml

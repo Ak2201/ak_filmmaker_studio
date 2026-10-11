@@ -327,15 +327,36 @@ the plan lapse.
 
 ## 7. Domain, cards, crawlers
 
-- `thefilmmakerstudio.vercel.app` is the CONFIRMED production host (owner,
-  7 Oct 2026), no longer a placeholder: nothing to replace. It appears in
-  `start.html` (canonical, og:url, og:image, twitter:image), `index.html`,
-  `invite.html`, `privacy.html`, `terms.html`, `refund.html` (og:url,
-  og:image, twitter:image), `public/robots.txt` (Sitemap line) and
-  `public/sitemap.xml` (four `<loc>`); `grep -rn thefilmmakerstudio.vercel.app
-  *.html public` lists them and `src/lib/gate.js` has one harmless fallback.
-  A custom domain LATER would need those same ten files, the domain added
-  in Vercel, and the Google OAuth Authorised JavaScript origins.
+- **`filmmakerstudio.in` is the production host (owner, 11 Oct 2026).**
+  Registered at Hostinger that day, paid to 2028-10-11. It replaces
+  `thefilmmakerstudio.vercel.app`, which STAYS as a Vercel alias and keeps
+  serving — so the old address never 404s and anything already shared
+  still resolves.
+
+  **The host is in ONE place now: `src/data/brand.json`.** The ten files
+  this note used to enumerate were already reading `{{brand:host}}`; what
+  actually carried a literal was three files, and all three are fixed:
+  `brand.json` (`host`), `src/lib/invite-code.js` (`DEFAULT_ORIGIN`, the
+  fallback used only when `location` is absent) and `public/sitemap.xml` /
+  `public/robots.txt`. Check with:
+
+  ```bash
+  grep -rn 'vercel\.app' src public *.html vercel.json netlify.toml
+  ```
+
+  It should return nothing but comments. `src/ui/footer.js` re-exports
+  `BRAND_HOST` from `brand.js`; it holds no literal.
+
+  **What the host change costs in the gate:** the footer PRINTS the host
+  (`brandText()`), so `thefilmmakerstudio` is a word in `baseline.json` on
+  26 pages. Moving it fails verify's word-coverage check on all of them.
+  That is a deliberate re-baseline, not an `EXPECTED` list — 26 rows is
+  far past the two-or-three threshold in CLAUDE.md §04.
+
+  **Off-repo, and NOT done by changing a file:** the domain added in
+  Vercel, DNS at Hostinger, the Google OAuth authorised origins and
+  redirect URIs, the Supabase Site URL and redirect allow-list, and a new
+  Search Console property. Section 7a lists them.
 - `/invite` is no longer in `sitemap.xml` (done): it is the gate's doorway
   and `noindex, nofollow`, and the landing page is the crawlable door.
 - After any palette change run `npm run og` and commit `public/og.png`.
@@ -348,6 +369,99 @@ the plan lapse.
   image and the one-line hook should appear. If not, Meta's debugger
   (developers.facebook.com/tools/debug) says which tag it missed.
 - Submit the sitemap in Google Search Console.
+
+## 7a. The domain cutover, step by step (11 Oct 2026)
+
+**STATUS, 11 Oct 2026.** Steps 1-5 and 7 are DONE and were verified by
+re-reading each setting after a full page reload, never from a save
+toast. What remains is step 0 (the owner's registrant e-mail), step 6
+(deploy this commit) and the branding RE-SUBMIT, which Google will not
+accept until 24 hours after the Search Console verification that landed
+today. Step 8 (Razorpay) and step 9 (sitemap) follow the deploy.
+
+| | | |
+|---|---|---|
+| 0 | registrant e-mail verified | **OWNER — by 26 Oct or the domain suspends** |
+| 1 | Vercel: apex Production, `www` 308 -> apex | done |
+| 2 | Hostinger DNS: `A @ 216.198.79.1`, `CNAME www` | done, MX/SPF/DKIM/DMARC untouched |
+| 3 | certificate issued, `/start` serves 200 | done |
+| 4 | Supabase Site URL + allow-list (BOTH hosts) | done |
+| 5 | Google origins + branding URLs + authorised domain | done |
+| 6 | deploy this commit | **pending** |
+| 7 | Search Console verified by DNS TXT | done |
+| - | branding re-submit | **pending — not before 12 Oct** |
+| 8 | Razorpay website/callback URLs | **pending** |
+| 9 | re-submit sitemap under the new property | after deploy |
+
+
+The code half is one commit. Everything below is OFF-REPO and has to
+happen in this order, because each step is the precondition for the next.
+`thefilmmakerstudio.vercel.app` keeps working throughout, so there is no
+window where the site is down — but there IS a window where the new
+address resolves and sign-in on it does not, which is what steps 4 and 5
+close.
+
+**0. Verify the registrant e-mail.** Hostinger shows a "Verify your email
+to finish registering your domain" banner. ICANN suspends a domain whose
+registrant address is unverified after 15 days. Nothing else here matters
+if this lapses. Registered 2026-10-11 13:52Z, so the deadline is
+**2026-10-26**.
+
+**1. Vercel → `ak-filmmaker-studio` → Settings → Domains → Add Existing.**
+Add `filmmakerstudio.in`. Do NOT create a second Vercel project: the repo
+already has two (`ak-filmmaker-studio` for `main`, `thefilmakerlocal` for
+`develop`), both carry their env vars, and a third would build the same
+commit a third time and need all five `VITE_*` values re-entered by hand.
+Add `www.filmmakerstudio.in` too and let Vercel redirect it to the apex.
+
+**2. Hostinger → Domains → DNS.** Replace the parking records
+(`hyperion`/`atlas.dns-parking.com`, A → `2.57.91.91`) with whatever
+Vercel's Domains page asks for — read them off that page rather than from
+memory, because Vercel changes them. Keep the MX records: the mailbox
+`support@filmmakerstudio.in` lives at Hostinger and dropping its MX
+silently stops customer mail. Changing nameservers wholesale to Vercel's
+WOULD drop them; prefer editing the A/CNAME in place.
+
+**3. Wait for the certificate.** Vercel's Domains page goes to "Valid
+Configuration". Confirm `https://filmmakerstudio.in/start` loads before
+going on.
+
+**4. Supabase → Authentication → URL Configuration.** Site URL to
+`https://filmmakerstudio.in`, and the redirect allow-list must carry
+`https://filmmakerstudio.in/**` **as well as** the old
+`https://thefilmmakerstudio.vercel.app/**`. Keep both: a member with the
+old address bookmarked still signs in. This is the step that cannot be
+skipped — `defaultRedirect()` is `new URL('.', location.href)`, so
+sign-in from the new host asks for a `redirect_to` on the new host, and
+Supabase silently falls back to the Site URL when it is not allow-listed.
+The symptom is "I pressed Continue with Google and came back to where I
+started", which has already cost one investigation.
+
+**5. Google Cloud Console → the OAuth client.** Add
+`https://filmmakerstudio.in` to Authorised JavaScript origins, and the
+Supabase callback stays as it is (the redirect URI is Supabase's
+`/auth/v1/callback`, not ours). Re-read the list after a full page reload
+rather than trusting the save toast. There is ONE client — Drive consent
+is recorded against it, so do not make a second.
+
+**6. Deploy the code commit**, then re-run the gate. Only after step 4,
+or the first person to use the new address cannot sign in.
+
+**7. Google Search Console.** Add `filmmakerstudio.in` as a new property.
+The `google-site-verification` meta tag in `index.html` proves the OLD
+host and is load-bearing for the OAuth consent screen's branding — see
+"Things that are deliberate" in CLAUDE.md. **Do not replace it**; add the
+new property's verification alongside, or verify the new one by DNS TXT
+at Hostinger, which does not touch the markup at all. DNS is the better
+route here for exactly that reason.
+
+**8. Razorpay.** The account's registered website/callback URLs name the
+old host. Update them, or a checkout opened from the new origin can be
+refused.
+
+**9. Re-submit the sitemap** under the new property, and leave the old
+property in place so Search Console shows the migration rather than a
+cliff.
 
 ## 8. Only then, ads
 

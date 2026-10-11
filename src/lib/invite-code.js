@@ -49,7 +49,7 @@ export function setCodePass(code, extra = {}) {
 }
 export function clearCodePass() { try { localStorage.removeItem(CODE_PASS_KEY); } catch (e) { /* ignore */ } }
 
-const DEFAULT_ORIGIN = 'https://thefilmmakerstudio.vercel.app/';
+const DEFAULT_ORIGIN = 'https://filmmakerstudio.in/';
 const here = () => (typeof location !== 'undefined' ? location.href : DEFAULT_ORIGIN);
 
 /** The shareable form of a code: the doorway with the code in the

@@ -16,7 +16,7 @@ release a working writing tool is the wrong trade.
 
 | | Production | Dev preview |
 | --- | --- | --- |
-| Address | `thefilmmakerstudio.vercel.app` | `thefilmakerlocal.vercel.app` |
+| Address | **`filmmakerstudio.in`** (alias: `thefilmmakerstudio.vercel.app`) | `thefilmakerlocal.vercel.app` |
 | Vercel project | the original | `thefilmakerlocal` |
 | Branch deployed | `main` | **`develop`** |
 | Build | `npm run build` (gate ON) | `npm run build` (gate ON) |
@@ -27,6 +27,11 @@ release a working writing tool is the wrong trade.
 and the preview has one — *thefil**m**aker*. They are one letter apart
 and both end `.vercel.app`. Changing a setting on the wrong one is a
 quiet way to take the live site down.
+
+Since 11 Oct 2026 production also answers on **`filmmakerstudio.in`**,
+which is the one unambiguous way to tell them apart in a browser. In the
+VERCEL DASHBOARD they are still one letter apart, so the warning stands
+where it matters most.
 
 Set up 9 Oct 2026; the full record, including what was checked in the
 browser and what was NOT, is `docs/BROWSER-HANDOFF.md` §6. Both hosts

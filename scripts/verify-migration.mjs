@@ -445,7 +445,10 @@ const EXPECTED = {
      words. */
   /* Emptied 11 Oct 2026: the deliberate re-baseline after the full-app
      sweep recaptured the oracle without that video's title, so the row
-     stopped firing — the case the note above says to delete it in. */
+     stopped firing — the case the note above says to delete it in. The
+     host move to filmmakerstudio.in recaptured it again the same day,
+     for the footer's printed address; neither recapture moved a
+     data-key. */
   story: {},
   edit: {},
   deliverables: {},

@@ -2,7 +2,7 @@
    DIALOG — the app's own confirm / alert / prompt
    ------------------------------------------------------------
    The browser's confirm(), alert() and prompt() are a grey system box
-   that names the host ("thefilmmakerstudio.vercel.app says"), cannot
+   that names the host ("filmmakerstudio.in says"), cannot
    be themed, blocks the page and reads as a different product (owner,
    11 Oct 2026: "all pops should be used inside app only"). These are
    the same three questions, asked in the studio's own modal:

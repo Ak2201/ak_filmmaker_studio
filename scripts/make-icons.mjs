@@ -110,6 +110,22 @@ mkdirSync(OUT, { recursive: true });
 const any      = mark();                 // full bleed — "any" purpose
 const maskable = mark({ inset: 58 });    // ~77% safe zone — "maskable"
 
+/* THE GOOGLE CONSENT SCREEN wants its own file, and the reason is a
+   format constraint rather than a design one: it accepts JPG, PNG or
+   BMP and NOT SVG, at most 1MB, square, and it renders at 120px. So
+   the one place that may not simply reference icon.svg is the one
+   place a stranger sees the mark before they trust us with an
+   account.
+
+   It is the SAME mark — redrawing it here would be a second opinion
+   about the brand, and the next palette change would move one of
+   them and not the other. It is generated from `mark()` like the
+   rest, so `npm run icons` keeps all four in step.
+
+   Google Cloud Console → Branding → App logo. Uploading a logo
+   RE-TRIGGERS branding verification, so upload it before submitting,
+   not after. */ 
+
 writeFileSync(join(OUT, 'icon.svg'), any);
 writeFileSync(join(OUT, 'icon-maskable.svg'), maskable);
 
@@ -124,6 +140,7 @@ console.log('icons → public/icons/');
 await Promise.all([
   png(any, 192, 'icon-192.png'),
   png(any, 512, 'icon-512.png'),
-  png(maskable, 512, 'icon-maskable-512.png')
+  png(maskable, 512, 'icon-maskable-512.png'),
+  png(any, 120, 'icon-consent-120.png')
 ]);
 console.log(`  icon.svg / icon-maskable.svg  (palette from tokens.css: ink ${C.ink}, paper ${C.paper})`);

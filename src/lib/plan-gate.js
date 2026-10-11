@@ -77,6 +77,17 @@ let planName = '';
    entitlement() below, which is the single most dangerous line in this
    module. */
 let ent = null;           // null | { entitled, reason, endsAt, used, trialEnabled }
+/* §32. Whether buying is a thing at all. null = unknown (the key was
+   absent: a database that has not run §32, or nobody signed in), and
+   unknown means "as before" — buying stays on screen, the wall keeps
+   its §30 rules. Only an explicit `false` from billing_status() hides
+   the buying UI. */
+let purchaseReq = null;
+
+/** §32. True only when the server SAID purchases are not required.
+ *  Every "buy" control in the studio hides while this is true
+ *  (`html[data-purchases="off"]`, plan-gate.css). */
+export const purchasesOff = () => purchaseReq === false;
 
 /** True unless the plan says false. Missing key = allowed. */
 export function allowed(key) {
@@ -114,7 +125,7 @@ export function trialEndsAt() {
   const e = entitlement();
   return e.reason === 'trial' && e.endsAt ? new Date(e.endsAt) : null;
 }
-export function currentPlan() { return { plan, planName, features: features ? { ...features } : null, gated: !!features, ...entitlement() }; }
+export function currentPlan() { return { plan, planName, features: features ? { ...features } : null, gated: !!features, purchaseRequired: purchaseReq, ...entitlement() }; }
 
 /** The modules of navigation.json, by stage, for the console's matrix.
  *  `page` is the file a module lives on and `siblings` the other
@@ -143,9 +154,9 @@ async function _refreshOnce() {
   const c = window.StudioCloud;
   /* Both axes are compared, so a trial expiring notifies even though the
      features map has not moved — that transition is the whole feature. */
-  const prev = JSON.stringify([features, ent]);
+  const prev = JSON.stringify([features, ent, purchaseReq]);
   try {
-    if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; ent = null; }
+    if (!c || !c.isConfigured() || !c.getSession()) { features = null; plan = ''; planName = ''; ent = null; purchaseReq = null; }
     else {
       const st = await Billing.status();
       features = (st && st.features && typeof st.features === 'object') ? st.features : {};
@@ -155,13 +166,18 @@ async function _refreshOnce() {
          key at all, and undefined must not read as false — that would
          wall every existing member the moment this build shipped against
          an older database. So the key has to be PRESENT to be believed. */
+      /* §32, the same rule: PRESENT to be believed. */
+      purchaseReq = (st && typeof st.purchase_required === 'boolean') ? st.purchase_required : null;
       if (st && typeof st.entitled === 'boolean') {
         ent = {
           entitled: st.entitled,
           /* A paid plan wins over a trial still running beside it:
              trial_active() ignores the plan, so a buyer who paid
              mid-trial would otherwise keep the countdown band. */
-          reason: st.entitled ? ((st.trial_active && plan === 'free') ? 'trial' : 'paid')
+          /* 'free': entitled because nothing is for sale (§32), so a
+             trial still ticking beside it is not news — no band. */
+          reason: st.entitled ? (purchaseReq === false && plan === 'free' ? 'free'
+                                 : (st.trial_active && plan === 'free') ? 'trial' : 'paid')
                               : (st.trial_enabled === false ? 'off' : 'expired'),
           endsAt: st.trial_ends_at || null,
           used: st.trial_used === true,
@@ -176,9 +192,9 @@ async function _refreshOnce() {
        network failure: nothing is known, so nothing is locked — and
        nothing is WALLED either. A paywall that closes when the network
        blinks locks out the people who have paid. */
-    features = null; plan = ''; planName = ''; ent = null;
+    features = null; plan = ''; planName = ''; ent = null; purchaseReq = null;
   }
-  if (JSON.stringify([features, ent]) !== prev) Store.notify('plan:changed', currentPlan());
+  if (JSON.stringify([features, ent, purchaseReq]) !== prev) Store.notify('plan:changed', currentPlan());
   apply();
 }
 export function refresh() {
@@ -436,6 +452,9 @@ export function lockTabs() {
 function apply() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
+  /* §32: nothing to buy, so no control offers to sell anything. */
+  if (purchaseReq === false) root.dataset.purchases = 'off';
+  else delete root.dataset.purchases;
   const existing = document.querySelector('.pg-lock');
   /* The wall outranks the module lock: there is no point telling
      somebody which tier a module is on when their trial has ended. */
@@ -482,6 +501,26 @@ if (typeof window !== 'undefined') {
     refresh();
   }, 50);
   setTimeout(() => clearInterval(hook), 20000);
+
+  /* §32. THE SWITCH REACHES PEOPLE ALREADY INSIDE. The owner turning
+     "Purchases required" on must wall a tab that has been open all
+     afternoon, not only the next page load — so billing_status() is
+     re-read when the tab regains focus or becomes visible, and every
+     few minutes while it is on screen. Throttled: focus and
+     visibilitychange arrive together, and a refresh is a round trip.
+     Signed out, refresh() makes no request at all. */
+  let lastFocusRefresh = 0;
+  const FOCUS_GAP = 5000, POLL = 4 * 60000;
+  const again = () => {
+    if (document.hidden) return;
+    const now = Date.now();
+    if (now - lastFocusRefresh < FOCUS_GAP) return;
+    lastFocusRefresh = now;
+    refresh();
+  };
+  window.addEventListener('focus', again);
+  document.addEventListener('visibilitychange', again);
+  setInterval(() => { if (!document.hidden) { lastFocusRefresh = Date.now(); refresh(); } }, POLL);
 }
 
-export default { allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { purchasesOff, allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

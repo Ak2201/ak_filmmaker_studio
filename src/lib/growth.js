@@ -58,7 +58,14 @@ export const admin = {
   /* §29: the start page's launch-offer sign-ups and the daily funnel counts */
   leads: () => rpc('admin_list_leads').then((d) => d || []),
   funnel: (from = null, to = null) => rpc('admin_funnel', { p_from: from, p_to: to }).then((d) => d || []),
-  affiliateOrders: (code) => rpc('admin_affiliate_orders', { p_code: normalisePromo(code) }).then((d) => d || [])
+  affiliateOrders: (code) => rpc('admin_affiliate_orders', { p_code: normalisePromo(code) }).then((d) => d || []),
+  /* §32: access given by e-mail. `plan` is a plans id or null for
+     membership only; `days` null is "until I remove it". The server
+     normalises the address and refuses a bad role, plan or length. */
+  grantEmail: ({ email, role = 'member', plan = null, days = null, note = null }) =>
+    rpc('admin_grant_email', { p_email: email, p_role: role, p_plan: plan || null, p_days: days ?? null, p_note: note || null }),
+  revokeEmailGrant: (email) => rpc('admin_revoke_email_grant', { p_email: email }),
+  listEmailGrants: () => rpc('admin_list_email_grants').then((d) => d || [])
 };
 
 export { normalisePromo };

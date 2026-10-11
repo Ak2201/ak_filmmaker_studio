@@ -364,7 +364,7 @@ try {
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");
     const tabs = await A.page.$$eval('.tabs [role="tab"]', (t) => t.map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-    ok(tabs.join(',') === 'Overview*,Organisations,People,Access,Purchases,Features', 'the console is six tabs (money moved to purchases.html), Overview selected: ' + tabs.join(', '));
+    ok(tabs.join(',') === 'Overview*,Organisations,People,Give access,Access,Purchases,Features', 'the console is seven tabs (money moved to purchases.html; Give access is §32), Overview selected: ' + tabs.join(', '));
     ok(await A.page.isHidden('#people') && await A.page.isVisible('#overview'), 'only the selected tab is on screen');
     await A.page.click('.tabs [data-tab="people"]');
     ok(await A.page.isVisible('#people') && await A.page.isHidden('#overview') && /#people$/.test(A.page.url()), 'clicking People shows it, hides Overview and writes the hash');
@@ -376,6 +376,98 @@ try {
     await N.page.goto(BASE + 'admin.html');
     await N.page.waitForSelector('#denied', { timeout: 10000 }).then(() => ok(true, 'a member who is not an admin gets "Administrators only"'), () => ok(false, 'a member who is not an admin gets "Administrators only"'));
     ok(!(await N.page.$('#overview')), 'and no numbers');
+    allErrors.push(...N.errors); await N.ctx.close();
+  }
+
+  console.log('(m2) give access by e-mail, and the purchases switch (schema section 32)');
+  F.db.sessions.clear();
+  {
+    const A = await newContext(browser, { tok: 'tok-admin' });
+    const dlgButton = (primary) => A.page.click(primary ? '.dlg .mbtn.primary' : '.dlg .mbtn:not(.primary)');
+    await A.page.goto(BASE + 'admin.html#give-access');
+    await A.page.waitForSelector('#giveAccess form[data-acc-form="grant"]', { timeout: 10000 })
+      .then(() => ok(true, 'the Give access tab draws the form'), () => ok(false, 'the Give access tab draws the form'));
+    const planOpts = await A.page.$$eval('#accPlan option', (o) => o.map((x) => x.value));
+    ok(planOpts.join() === ',starter,indie,pro', 'the plan list is the plans table (paid tiers) plus "no plan": ' + planOpts.join());
+    ok((await A.page.$$eval('#accRole option', (o) => o.map((x) => x.textContent))).join() === 'Member,Admin', 'the role is Member or Admin');
+    ok((await A.page.$$eval('#accLength option', (o) => o.map((x) => x.textContent))).join() === 'Until I remove it,For a number of days', 'the length: until removed (first, the default) or N days');
+
+    // An EXISTING account: Cal. As an admin, on Pro, until removed — applied now.
+    const cal = USERS['tok-cal'];
+    const calWas = F.db.members.get(cal.id) ? { ...F.db.members.get(cal.id) } : null;
+    await A.page.fill('#accEmail', cal.email);
+    await A.page.selectOption('#accRole', 'admin');
+    await A.page.selectOption('#accPlan', 'pro');
+    await A.page.click('#giveAccess button[type="submit"]');
+    await A.page.waitForSelector(`#giveAccess tr[data-grant="${cal.email}"]`, { timeout: 8000 }).catch(() => {});
+    const row = await A.page.textContent(`#giveAccess tr[data-grant="${cal.email}"]`).catch(() => '');
+    ok(/Admin/.test(row) && /Pro/.test(row) && /Until removed/.test(row) && /Yes/.test(row), 'the grant is listed: Admin · Pro · Until removed · applied: ' + row.replace(/\s+/g, ' ').trim());
+    ok(F.db.members.get(cal.id)?.role === 'admin' && !F.db.members.get(cal.id)?.disabled_at, 'and applied at once: Cal is an admin member');
+    const calAcc = () => F.db.accounts.find((a) => a.owner_id === cal.id);
+    ok(calAcc() && calAcc().plan === 'pro', 'with Pro on Cal’s organisation');
+
+    // An address with no account yet, for 30 days: it waits for the first sign-in.
+    await A.page.fill('#accEmail', 'new.person@example.com');
+    await A.page.selectOption('#accRole', 'member');
+    await A.page.selectOption('#accPlan', 'starter');
+    await A.page.selectOption('#accLength', 'days');
+    await A.page.fill('#accDays', '30');
+    await A.page.click('#giveAccess button[type="submit"]');
+    await A.page.waitForSelector('#giveAccess tr[data-grant="new.person@example.com"]', { timeout: 8000 }).catch(() => {});
+    const row2 = await A.page.textContent('#giveAccess tr[data-grant="new.person@example.com"]').catch(() => '');
+    ok(/Member/.test(row2) && /Basic/.test(row2) && /At first sign-in/.test(row2) && !/Until removed/.test(row2), 'a grant for an address with no account waits, with an end date: ' + row2.replace(/\s+/g, ' ').trim());
+    const g2 = F.db.emailGrants.get('new.person@example.com');
+    ok(!!g2 && Math.abs(Date.parse(g2.until) - (Date.now() + 30 * 86400e3)) < 120e3, 'the length went to the server as 30 days');
+
+    // A bad address is refused before it is sent.
+    const before = F.db.calls.filter((c) => c === 'admin_grant_email').length;
+    await A.page.fill('#accEmail', 'not-an-address');
+    await A.page.evaluate(() => document.querySelector('#giveAccess form').requestSubmit());
+    await A.page.waitForTimeout(300);
+    ok(F.db.calls.filter((c) => c === 'admin_grant_email').length === before, 'a malformed address is refused in the browser, nothing sent');
+
+    // Revoke goes through dialog.js. Cancel first: nothing changes.
+    await A.page.click(`#giveAccess button[data-acc-action="revoke"][data-email="${cal.email}"]`);
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    ok(/Revoke access for cal@example\.com\?/.test(await A.page.textContent('.dlg').catch(() => '')), 'REVOKE asks first, in the app’s own dialog');
+    await dlgButton(false);
+    await A.page.waitForTimeout(300);
+    ok(F.db.emailGrants.has(cal.email) && F.db.members.get(cal.id)?.role === 'admin', 'Cancel revokes nothing');
+    await A.page.click(`#giveAccess button[data-acc-action="revoke"][data-email="${cal.email}"]`);
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    await dlgButton(true);
+    await A.page.waitForFunction((e) => !document.querySelector(`#giveAccess tr[data-grant="${e}"]`), cal.email, { timeout: 8000 }).catch(() => {});
+    ok(!(await A.page.$(`#giveAccess tr[data-grant="${cal.email}"]`)) && !F.db.emailGrants.has(cal.email), 'Revoke removes the grant from the list and the server');
+    ok(F.db.members.get(cal.id)?.role === (calWas ? calWas.role : 'user'), 'and the admin role it gave is taken back');
+    ok(calAcc() && calAcc().plan !== 'pro', 'and the plan it gave');
+
+    // The switch, on the Purchases tab. The fake starts ON (see fake-supabase.mjs).
+    await A.page.goto(BASE + 'admin.html#purchases-link');
+    await A.page.waitForSelector('#accPurchasesOn', { timeout: 10000 })
+      .then(() => ok(true, 'the Purchases tab carries the "Purchases required" switch'), () => ok(false, 'the Purchases tab carries the "Purchases required" switch'));
+    ok(await A.page.isChecked('#accPurchasesOn'), 'reading the server’s position (on)');
+    await A.page.click('#accPurchasesOn');
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    const dtext = await A.page.textContent('.dlg').catch(() => '');
+    ok(/On: everyone who has not bought a plan is blocked until they buy, including people using the studio now\./.test(dtext)
+       && /Off: the studio is free; nothing is walled or capped\./.test(dtext), 'the confirm says what EACH position means');
+    await dlgButton(false);
+    await A.page.waitForTimeout(300);
+    ok(F.db.settings.purchase_required === true && await A.page.isChecked('#accPurchasesOn'), 'Cancel: nothing saved, the box springs back');
+    await A.page.click('#accPurchasesOn');
+    await A.page.waitForSelector('.dlg', { timeout: 5000 }).catch(() => {});
+    await dlgButton(true);
+    await A.page.waitForFunction(() => /^Off:/.test((document.querySelector('[data-acc-state]') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.purchase_required === false, 'Confirm: purchase_required is saved false through admin_set_billing_settings');
+    ok(!(await A.page.isChecked('#accPurchasesOn')) && (await A.page.getAttribute('[data-acc-state]', 'data-acc-state')) === 'off', 'and the block now reads Off');
+    F.db.settings.purchase_required = true;   // the later sections assume the fake's default
+    F.db.emailGrants.clear();
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    const N = await newContext(browser, { tok: 'tok-amy' });   // not an admin: the RPCs refuse
+    await N.page.goto(BASE + 'admin.html');
+    await N.page.waitForSelector('#denied', { timeout: 10000 }).catch(() => {});
+    ok(!(await N.page.$('#giveAccess')) && !(await N.page.$('#accPurchasesOn')), 'a non-admin sees neither block');
     allErrors.push(...N.errors); await N.ctx.close();
   }
 

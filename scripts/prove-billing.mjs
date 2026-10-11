@@ -48,6 +48,11 @@
          is where a plan is bought; DOWNLOAD MY WORK produces a real
          file from behind the wall, because nothing a person wrote is
          held hostage to a sale; and an administrator is never walled
+     (p) PURCHASES REQUIRED (schema section 32): switched OFF, an expired
+         free member is not walled, the rail's Purchase entry and every
+         buy link are hidden and purchase.html says there is nothing to
+         buy; switched ON while a page is open, a focus walls it with no
+         reload; and with the key ABSENT (§32 not run) nothing changes
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -872,6 +877,67 @@ try {
     await ad.page.waitForTimeout(1500);
     ok(!(await ad.page.$('.pg-lock.pg-wall')), 'nor anywhere else');
     allErrors.push(...ad.errors); await ad.ctx.close();
+  }
+
+  console.log('(p) purchases required: the switch (schema section 32)');
+  F.reset();
+  {
+    /* Amy is exactly the person the wall is for: a member on Free whose
+       trial ran out. With the switch OFF she is not walled, nothing on
+       screen offers to sell her anything, and purchase.html says there
+       is nothing to buy. */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    expireTrial(USERS['tok-amy'].id);
+    F.db.settings.purchase_required = false;
+    const purchaseRailHidden = (page) => page.evaluate(() => {
+      const a = document.querySelector('.sh-rail a.sh-rail-item[href="purchase.html"]');
+      return !a ? null : getComputedStyle(a).display === 'none';
+    });
+    const amy = await newContext(browser, { tok: 'tok-amy' });
+    await amy.page.goto(BASE + 'index.html');
+    ok(await waitGate(amy.page, 'open'), 'OFF: Amy is through the gate');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 })
+      .then(() => ok(true, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'), () => ok(false, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'));
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'OFF: an expired free member is NOT walled');
+    ok(!(await amy.page.$('.sh-trial')), 'OFF: no trial band');
+    const railOff = await purchaseRailHidden(amy.page);
+    if (railOff === null) skip('the rail has no Purchase entry on this page'); else ok(railOff, 'OFF: the rail’s Purchase entry is hidden');
+    await amy.page.goto(BASE + 'purchase.html');
+    await amy.page.waitForFunction(() => /free to use right now/.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
+    ok((await amy.page.textContent('#plan').catch(() => '')).includes('The studio is free to use right now \u2014 nothing to buy.'), 'OFF: purchase.html says "The studio is free to use right now — nothing to buy."');
+    ok(!(await amy.page.$('#plan .pl-card')), 'OFF: and shows no plan cards, so no checkout');
+    await amy.page.goto(BASE + 'settings.html');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 }).catch(() => {});
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('a[href="purchase.html"]')].every((a) => !a.offsetParent)),
+      'OFF: no visible link to purchase.html on Settings (the "Plan & purchases" row included)');
+
+    /* THE SWITCH REACHES AN OPEN TAB. The owner turns it on; Amy's
+       index.html has been open all along. Focus is what re-reads
+       billing_status() — no reload, no navigation. */
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 }).catch(() => {});
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), '(control) the open page is not walled before the switch');
+    F.db.settings.purchase_required = true;
+    await amy.page.waitForTimeout(5500);   // past plan-gate's focus throttle
+    await amy.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 })
+      .then(() => ok(true, 'ON + focus: the open page walls itself, with no reload'), () => ok(false, 'ON + focus: the open page walls itself, with no reload'));
+    ok(!(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-purchases'))), 'ON: data-purchases is gone, so buying is back on screen');
+    const railOn = await purchaseRailHidden(amy.page);
+    if (railOn === null) skip('the rail has no Purchase entry on this page'); else ok(!railOn, 'ON: the rail’s Purchase entry is visible again');
+    await amy.page.goto(BASE + 'purchase.html');
+    await amy.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
+    ok(!!(await amy.page.$('#plan .pl-card')), 'ON: purchase.html has the plan cards back');
+
+    /* AN OLDER DATABASE: no §32, so billing_status() carries no key.
+       The key has to be PRESENT to be believed — the studio is exactly
+       what it was before this section existed. */
+    delete F.db.settings.purchase_required;
+    await amy.page.goto(BASE + 'index.html');
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 })
+      .then(() => ok(true, 'NO KEY (§32 not run): the wall stands, as before'), () => ok(false, 'NO KEY (§32 not run): the wall stands, as before'));
+    ok(!(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-purchases'))), 'NO KEY: nothing is hidden');
+    allErrors.push(...amy.errors); await amy.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

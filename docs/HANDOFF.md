@@ -469,7 +469,9 @@ cloud container session.
 | B11 | **A second payment rail** | NOT BUILT. International buyers currently see a dollar price and are charged in rupees, disclosed on the card. A merchant-of-record (Paddle / Lemon Squeezy) would handle EU/UK VAT and US sales tax; Razorpay International needs activation, keeps you merchant of record, and needs an LUT for GST export-of-services. Owner's call. |
 | B12 | **Collect real testimonials** | NOT BUILT, and the reason is recorded in `src/data/testimonials.json`: nothing may be invented — a fabricated review is prohibited under the Consumer Protection Act and BIS IS 19000:2022, and "false popularity" is a named CCPA dark pattern. `_examples` holds four unpublishable templates showing what to ask for. What is missing is the in-app consent flow: a prompt after sustained use capturing quote, name, role, film and explicit consent with a date, revocable, queued for admin approval. Needs its own schema section. |
 
-Next free schema section: **§32**. §26-§31 all RAN LIVE on 9 Oct 2026. Every new section needs a `-- RUN` header
+| B13 | **Purchases required switch + access by e-mail** (§32, 11 Oct 2026) | BUILT, **NOT RUN LIVE**. `billing_settings.purchase_required` (default **false**: the studio is free, nothing walled or capped); `purchases_required()` (anon); `user_limits()`, `billing_status()`, `admin_set_billing_settings()` and `studio_status()` restated; `email_grants` + `admin_grant_email` / `admin_revoke_email_grant` / `admin_list_email_grants`, applied by a trigger on `auth.users` and by `studio_status()`. Client: `plan-gate.js` publishes the flag (key must be PRESENT), `html[data-purchases="off"]` hides buying, focus/4-min refresh walls open tabs; console blocks in `src/ui/access-admin.js`. Owner step: `docs/BILLING.md` §13. `scripts/schema-tests/purchases.sql`. |
+
+Next free schema section: **§33**. §26-§31 all RAN LIVE on 9 Oct 2026; **§32 has NOT run live**. Every new section needs a `-- RUN` header
 when it is run live, live checks in `docs/SECURITY-RLS.md`, and assertions in
 `scripts/schema-tests/*.sql` (`npm run test:schema`, PostgreSQL 16:
 `pg_ctlcluster 16 main start`). `scripts/fake-supabase.mjs` must honour each
@@ -634,6 +636,10 @@ integration pass HAPPENED (`ad7ab02`), so branch `wip-emotion` off
 the only correction needed; the phases themselves still stand.
 
 ## 8. Owner-only steps (the container cannot do these)
+
+**Run schema §32** (purchases required, default OFF; access by e-mail) —
+`docs/BILLING.md` §13 "Deploy (owner)": base64 → editor → SHA-256 → Run,
+then confirm `rpc/purchases_required` answers `false` to anon.
 
 See **`docs/LAUNCH.md`**. ~~Publish the Google consent screen~~ — already
 published; what is left there is one click, re-requesting the branding

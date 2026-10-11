@@ -64,6 +64,9 @@ async function refreshBilling() {
   render();
 }
 
+const FREE_LINE = 'The studio is free to use right now \u2014 nothing to buy.';
+const purchasesOff = (st) => !!(st && st.purchase_required === false);
+
 const DECK = 'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.';
 
 function planSection() {
@@ -96,6 +99,17 @@ function planSection() {
     return sec;
   }
   const st = billing.st;
+  /* §32. The owner has switched purchasing off: one line, no cards, no
+     checkout. The key must be PRESENT to be believed — a database that
+     has not run §32 sends none, and the page is what it always was. An
+     invoice already issued is still the buyer's, so it stays. */
+  if (purchasesOff(st)) {
+    const sec = section('plan', 'Plan', 'Free to use.', FREE_LINE);
+    sec.dataset.purchases = 'off';
+    const invs0 = memberInvoicePanel(st, { rerender: render });
+    if (invs0) sec.append(invs0);
+    return sec;
+  }
   const sec = section('plan', 'Plan', st && st.plan !== 'free' ? `${st.plan_name || Billing.planName(st.plan)}${st.account_name ? ' · ' + st.account_name : ''}` : 'Choose a plan.', DECK);
   if (billing.error) sec.append(h('p.gt-error', { role: 'alert', text: billing.error }));
   if (st) {
@@ -123,7 +137,8 @@ function render() {
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Studio · Purchase' }),
     h('h1.bd-title', { text: 'Purchase.' }),
-    h('p.bd-deck', { text: 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' })
+    h('p.bd-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
+      : 'Choose a plan, pay once, and find your invoices and refund requests in the same place.' })
   ]));
   const body = h('div.pu-body');
   body.append(planSection());
@@ -139,6 +154,12 @@ document.addEventListener('click', (e) => {
 });
 
 Store.subscribe('billing:changed', () => refreshBilling());
+/* §32: the switch moved while the page was open (plan-gate re-reads
+   billing_status() on focus and every few minutes) — redraw once. */
+Store.subscribe('plan:changed', (cp) => {
+  if (!cp || typeof cp.purchaseRequired !== 'boolean' || !billing.st) return;
+  if (cp.purchaseRequired !== billing.st.purchase_required) refreshBilling();
+});
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshBilling, 0));
 /* A restored session fires no SIGNED_IN, and a refreshBilling() at module
    evaluation runs before cloud.js has restored one; cloud:booted is the

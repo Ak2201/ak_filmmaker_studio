@@ -61,7 +61,7 @@ npm run prove:extension   # the unpacked extension in Chromium (item 11)
 npm run test:billing      # the Razorpay helper: HMACs, prices, paise (item 12)
 npm run test:undef        # an identifier used and never declared (no browser; see the
 #   motion-layer trap — Playwright cannot see that code at all)
-npm run test:schema       # the WHOLE schema on a real PostgreSQL + 430 checks.
+npm run test:schema       # the WHOLE schema on a real PostgreSQL + 478 checks.
 #   macOS: brew install postgresql@16, then
 #   export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH" LC_ALL=C LANG=C
 #   initdb -D /tmp/pgdata16 -U postgres --encoding=UTF8 --locale=C
@@ -1429,6 +1429,16 @@ Monaco model directly; then SHA-256 the editor's contents against the
 file before pressing Run. Every section this session was checked that
 way and every one matched byte for byte. Never paste schema SQL without
 a checksum.
+
+**SECTION 32 HAS NOT RUN LIVE** (written 11 Oct 2026): the "Purchases
+required" switch (`billing_settings.purchase_required`, default FALSE — the
+studio free, nothing walled or capped), `purchases_required()` for anon,
+`user_limits()` / `billing_status()` / `admin_set_billing_settings()` /
+`studio_status()` restated, and access by e-mail (`email_grants`,
+`admin_grant_email`, `admin_revoke_email_grant`, `admin_list_email_grants`,
+a trigger on `auth.users`). Until it runs, billing_status() carries no
+`purchase_required` key and the client behaves exactly as before — the key
+has to be PRESENT to be believed. Owner step: `docs/BILLING.md` §13.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

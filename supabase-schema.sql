@@ -7998,3 +7998,662 @@ notify pgrst, 'reload schema';
 -- 13. re-running section 31 is a no-op: the INR mirror is refreshed
 --     from plans, and a USD figure edited in the console survives.
 -- ============================================================
+
+-- ============================================================
+-- 32. PURCHASES REQUIRED, AND ACCESS GIVEN BY E-MAIL   RUN LIVE: not yet
+-- ------------------------------------------------------------
+-- The owner's decisions, 11 Oct 2026, both of them in this section:
+--
+-- ONE SWITCH, "PURCHASES REQUIRED", AND IT STARTS OFF. The studio is
+-- free to use right now: nothing to buy, nothing walled, nothing
+-- capped. Later the owner ticks one box in the console and from that
+-- moment everybody who has neither paid nor a running trial meets the
+-- wall — including people already inside, as soon as their
+-- billing_status() is next read (plan-gate.js re-reads it on focus and
+-- every few minutes). Buyers are unaffected either way.
+--
+-- THE SWITCH HAS TO LIVE HERE AND NOT IN THE CLIENT. Section 30 arms the
+-- wall in billing_status() (entitled = paid OR trial), section 18 gives
+-- the free plan {"sample_only": true, "new_projects": false}, and the
+-- P0402 triggers cap projects, shares and collaborators through
+-- user_limits(). A client-only flag would still leave a free member on
+-- the sample and capped by the database. So while the flag is OFF:
+--
+--     billing_status().entitled  = true
+--     billing_status().features  = the TOP PAID plan's map, chosen by
+--                                  plan_rank() over the plans table,
+--                                  never by a typed id
+--     user_limits()              = '{}' (unlimited; the triggers stand
+--                                  down because plan_cap() reads a
+--                                  missing key as no cap)
+--
+-- and while it is ON, every one of those is exactly what section 30
+-- left. Nothing touches plan, plan_until, apply_plan(), quote_for(),
+-- accounts_guard or a payment: the flag changes what is ENFORCED, never
+-- what anybody owns. Account seat limits (accounts.seat_limit) are not
+-- part of user_limits() and are untouched.
+--
+-- BACKWARDS COMPATIBILITY, BOTH WAYS. billing_status() keeps every key
+-- it had and gains one, `purchase_required`. plan-gate.js believes the
+-- key only when it is PRESENT, so a build shipped before this section
+-- runs behaves exactly as today, and so does a browser that loaded
+-- before it ran.
+--
+-- ACCESS GIVEN BY E-MAIL. The console can give somebody access before
+-- they have ever signed in: an address, a role (member or admin), a
+-- plan from the plans table, and a length ("until I remove it", or N
+-- days). If the address already belongs to a confirmed account the
+-- grant is applied at once; otherwise it waits in email_grants and is
+-- applied the first time that address signs in — by a trigger on
+-- auth.users AND by studio_status(), which is the gate's own membership
+-- check, so a granted address passes the invite gate with no code even
+-- if the trigger never fired. Revoking undoes what the grant did: the
+-- plan it put on the account (unless the person has since bought one),
+-- the admin role it gave, and the membership if the grant was what
+-- admitted them.
+--
+-- Applying reuses admin_grant_plan()'s own path — account_for_buyer()
+-- then apply_plan() — rather than a second way to put a plan on an
+-- account. It does not write a 'granted' payments row: the grant is
+-- its own record (email_grants, with what it changed), and a payments
+-- row would make start_trial() answer 'paid' and the Purchase page list
+-- a payment the person never made.
+--
+-- WHAT THE LENGTH BOUNDS. The plan: plan_until = now() + N days, which
+-- account_plan() already reads as an end. Membership and an admin role
+-- last until the grant is revoked. A timed grant is NOT put on top of a
+-- plan the person bought: when it lapsed, account_plan() would read the
+-- whole account as free and the purchase would vanish with it. Such a
+-- grant admits them and leaves their plan alone (applied_plan is null).
+--
+-- E-MAIL MATCHING needs a CONFIRMED address, the rule section 11
+-- (claim_invite) set: an unconfirmed address is not an identity, and a
+-- grant matched to one would be access given to whoever typed it.
+--
+--   32.1  billing_settings.purchase_required, purchases_required()
+--   32.2  user_limits(), restated
+--   32.3  open_features() and billing_status(), restated in full
+--   32.4  admin_set_billing_settings(), restated with the new key
+--   32.5  email_grants
+--   32.6  applying a grant: apply_email_grant(), the auth.users trigger,
+--         studio_status() restated to claim one
+--   32.7  the console: admin_grant_email, admin_revoke_email_grant,
+--         admin_list_email_grants
+--   32.8  grants
+--   32.9  CHECKS TO RUN
+-- ============================================================
+
+-- 32.1 THE SWITCH -------------------------------------------------------
+-- Default false is the owner's "off as of now". The column default is
+-- what an existing row gets on the ALTER, so running this section turns
+-- purchasing OFF on a live project. That is the decision, not a side
+-- effect — say so to whoever runs it.
+alter table public.billing_settings
+  add column if not exists purchase_required boolean not null default false;
+
+/** Callable by anon: start.html and a signed-out purchase.html read it
+ *  with no session and no SDK. One boolean, the shape
+ *  refund_requests_enabled() established. A database with no settings
+ *  row answers false, which is the column's own default. */
+create or replace function public.purchases_required()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select s.purchase_required from public.billing_settings s where s.id), false);
+$$;
+
+-- 32.2 user_limits(), RESTATED ------------------------------------------
+-- Section 16's body (the only one), behind the switch. '{}' is "no cap"
+-- to plan_cap(), so the three P0402 triggers stand down without being
+-- touched.
+create or replace function public.user_limits(p_user uuid default auth.uid())
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select case
+           when not public.purchases_required() then '{}'::jsonb
+           else coalesce((select p.limits from public.plans p where p.id = public.user_plan(p_user)), '{}'::jsonb)
+         end;
+$$;
+
+-- 32.3 billing_status(), RESTATED ---------------------------------------
+/** The features everybody gets while purchases are not required: the
+ *  highest-ranked paid plan's map. Chosen by plan_rank() over the rows
+ *  that exist, so a console edit to that plan's features is what the
+ *  free studio shows, and no plan id is typed here. Internal. */
+create or replace function public.open_features()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select p.features from public.plans p
+                    where p.id <> 'free'
+                    order by public.plan_rank(p.id) desc, p.sort desc
+                    limit 1), '{}'::jsonb);
+$$;
+
+-- The section 30.6 body — the one that wins; there are earlier ones in
+-- sections 16 and 18, and replacing either of THOSE would do nothing —
+-- in full, with every key keeping its name, type and meaning, plus
+-- `purchase_required`. Only `entitled` and `features` read the switch;
+-- `limits` follows it through user_limits() above.
+create or replace function public.billing_status()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+declare
+  uid    uuid := auth.uid();
+  pl     text;
+  acc    public.accounts;
+  lim    jsonb;
+  s      public.billing_settings;
+  m      public.studio_members;
+  t_ends timestamptz;
+  t_on   boolean;
+  feat   jsonb;
+  req    boolean;
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  pl := public.user_plan(uid);
+  select * into acc from public.accounts a where a.owner_id = uid
+   order by public.plan_rank(public.account_plan(a.id)) desc, a.plan_until desc nulls last limit 1;
+  lim := public.user_limits(uid);
+  select * into s from public.billing_settings x where x.id;
+  select * into m from public.studio_members x where x.user_id = uid;
+  t_ends := public.trial_ends_at(uid);
+  t_on   := public.trial_active(uid);
+  req    := coalesce(s.purchase_required, false);
+
+  feat := coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb);
+  if t_on and m.trial_scope = 'full' and pl = 'free' then
+    feat := coalesce((select p.features from public.plans p
+                       where p.id = coalesce(s.trial_plan, 'indie')), '{}'::jsonb);
+  end if;
+  -- section 32: nothing to buy, so nothing held back
+  if not req then
+    feat := public.open_features();
+  end if;
+
+  return jsonb_build_object(
+    'plan',        pl,
+    'plan_name',   (select name from public.plans where id = pl),
+    'limits',      lim,
+    'features',    feat,
+    'account_id',  acc.id,
+    'account_name', acc.name,
+    'plan_until',  case when pl <> 'free' then acc.plan_until end,
+    'bought_plan', acc.plan,
+    'lapsed',      acc.plan is not null and acc.plan <> 'free' and acc.plan_until is not null and acc.plan_until <= now(),
+    'disabled',    exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is not null),
+    'member',      exists (select 1 from public.studio_members x where x.user_id = uid and x.disabled_at is null),
+    -- section 30
+    'trial_enabled', coalesce(s.trial_enabled, false),
+    'trial_active',  t_on,
+    'trial_ends_at', t_ends,
+    'trial_minutes', coalesce(s.trial_minutes, 30),
+    'trial_used',    m.trial_started_at is not null,
+    'trial_source',  m.trial_source,
+    'trial_scope',   case when t_on then m.trial_scope end,
+    'entitled',      (not req) or (pl <> 'free') or t_on,
+    -- section 32
+    'purchase_required', req,
+    'usage', jsonb_build_object(
+      'projects',      (select count(*) from public.projects p where p.owner_id = uid),
+      'shares',        (select count(*) from public.shares sh join public.projects p on p.id = sh.project_id
+                         where p.owner_id = uid and (sh.expires_at is null or sh.expires_at > now())),
+      'collaborators', (select coalesce(max(c), 0) from (select count(*) c from public.project_collaborators pc
+                         join public.projects p on p.id = pc.project_id where p.owner_id = uid group by pc.project_id) t),
+      'seats',         (select count(*) from public.account_members am where am.account_id = acc.id and am.status in ('pending','active'))
+    ),
+    'payments', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'plan_id', x.plan_id, 'period', x.period,
+                   'amount_paise', x.amount_paise, 'status', x.status, 'created_at', x.created_at, 'ends_at', x.ends_at)
+                   order by x.created_at desc)
+                  from (select * from public.payments q where q.user_id = uid order by q.created_at desc limit 12) x), '[]'::jsonb)
+  );
+end;
+$fn$;
+
+-- 32.4 admin_set_billing_settings(), RESTATED ---------------------------
+-- The section 30.9 body with `purchase_required` added to the allowlist
+-- and validated before the UPDATE with its own sentence — the same
+-- reason 30.9 gives: the trailing check_violation handler talks about
+-- referrals, and a bad value for a new key must not be reported in that
+-- sentence. A string "true" is refused rather than cast: the switch
+-- that walls every unpaid member takes a JSON boolean or nothing.
+create or replace function public.admin_set_billing_settings(p_patch jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  k text;
+  v int;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  for k in select jsonb_object_keys(p_patch) loop
+    if k not in ('referral_friend_pct', 'referral_reward_pct', 'referral_reward_paise',
+                 'trial_enabled', 'trial_minutes', 'code_trial_days', 'trial_scope', 'trial_plan',
+                 'price_rises_after_buyers', 'purchase_required') then
+      raise exception 'Unknown setting "%"', k using errcode = '22023';
+    end if;
+  end loop;
+
+  if p_patch ? 'purchase_required' and jsonb_typeof(p_patch -> 'purchase_required') <> 'boolean' then
+    raise exception 'Purchases required is on (true) or off (false).' using errcode = '22023';
+  end if;
+  if p_patch ? 'trial_minutes' then
+    v := (p_patch ->> 'trial_minutes')::int;
+    if v is null or v < 1 or v > 44640 then
+      raise exception 'A trial lasts between 1 minute and 31 days (44640 minutes).' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'code_trial_days' then
+    v := (p_patch ->> 'code_trial_days')::int;
+    if v is null or v < 1 or v > 365 then
+      raise exception 'An invite code buys between 1 and 365 days.' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'trial_scope' and (p_patch ->> 'trial_scope') not in ('sample', 'full') then
+    raise exception 'A trial shows either the sample alone ("sample") or the whole studio ("full").' using errcode = '22023';
+  end if;
+  if p_patch ? 'trial_plan' and (p_patch ->> 'trial_plan') is not null
+     and not exists (select 1 from public.plans p where p.id = p_patch ->> 'trial_plan') then
+    raise exception 'No such plan "%"', p_patch ->> 'trial_plan' using errcode = '22023';
+  end if;
+  if p_patch ? 'price_rises_after_buyers' and (p_patch ->> 'price_rises_after_buyers') is not null
+     and (p_patch ->> 'price_rises_after_buyers')::int < 1 then
+    raise exception 'A founding-seat cap is at least 1, or null for no cap.' using errcode = '22023';
+  end if;
+
+  update public.billing_settings s
+     set referral_friend_pct   = coalesce((p_patch ->> 'referral_friend_pct')::int, s.referral_friend_pct),
+         referral_reward_pct   = case when p_patch ? 'referral_reward_pct' then (p_patch ->> 'referral_reward_pct')::int
+                                      when p_patch ? 'referral_reward_paise' and p_patch ->> 'referral_reward_paise' is not null then null
+                                      else s.referral_reward_pct end,
+         referral_reward_paise = case when p_patch ? 'referral_reward_paise' then (p_patch ->> 'referral_reward_paise')::int
+                                      when p_patch ? 'referral_reward_pct' and p_patch ->> 'referral_reward_pct' is not null then null
+                                      else s.referral_reward_paise end,
+         trial_enabled         = coalesce((p_patch ->> 'trial_enabled')::boolean, s.trial_enabled),
+         trial_minutes         = coalesce((p_patch ->> 'trial_minutes')::int, s.trial_minutes),
+         code_trial_days       = coalesce((p_patch ->> 'code_trial_days')::int, s.code_trial_days),
+         trial_scope           = coalesce(p_patch ->> 'trial_scope', s.trial_scope),
+         trial_plan            = case when p_patch ? 'trial_plan' then p_patch ->> 'trial_plan' else s.trial_plan end,
+         price_rises_after_buyers = case when p_patch ? 'price_rises_after_buyers'
+                                         then (p_patch ->> 'price_rises_after_buyers')::int
+                                         else s.price_rises_after_buyers end,
+         purchase_required     = coalesce((p_patch ->> 'purchase_required')::boolean, s.purchase_required),
+         updated_at = now(), updated_by = auth.uid()
+   where s.id;
+  if p_patch ? 'referral_friend_pct' then
+    update public.promo_codes c set percent_off = (p_patch ->> 'referral_friend_pct')::int, updated_at = now() where c.kind = 'referral';
+  end if;
+  return public.admin_get_billing_settings();
+exception
+  when check_violation then
+    raise exception 'A referral pays the friend 1–100%% off, and the referrer EITHER a percentage (1–100) OR a fixed amount in paise' using errcode = '22023';
+end;
+$fn$;
+
+-- 32.5 email_grants -----------------------------------------------------
+-- One row per address. RLS on and NO policy, the studio_members rule:
+-- the absence of a policy is the policy, and every read and write goes
+-- through the 32.7 RPCs, which re-check is_studio_admin(). The
+-- prior_* / applied_* columns are what applying changed, so that
+-- revoking undoes exactly that and nothing a purchase did since.
+create table if not exists public.email_grants (
+  email             text        primary key
+                    check (email = lower(btrim(email)) and email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  role              text        not null default 'member' check (role in ('member', 'admin')),
+  plan              text        references public.plans(id),   -- null: membership only
+  until             timestamptz,                               -- null: until removed
+  note              text,
+  created_by        uuid        references auth.users(id) on delete set null,
+  created_at        timestamptz not null default now(),
+  applied_user      uuid        references auth.users(id) on delete set null,
+  applied_at        timestamptz,
+  applied_account   uuid        references public.accounts(id) on delete set null,
+  applied_plan      text,       -- the plan actually put on the account; null if none was
+  created_member    boolean,    -- true when the grant is what admitted them
+  prior_role        text,
+  prior_plan        text,
+  prior_plan_until  timestamptz,
+  prior_plan_period text,
+  prior_seat_limit  int
+);
+alter table public.email_grants enable row level security;
+revoke all on table public.email_grants from public, anon, authenticated;
+
+-- 32.6 APPLYING A GRANT -------------------------------------------------
+/** Apply the pending grant for this user's confirmed address, once.
+ *  Returns true when something was applied. Internal: revoked from
+ *  everybody; reached through the trigger, studio_status() and
+ *  admin_grant_email(). */
+create or replace function public.apply_email_grant(p_user uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  mail  text;
+  g     public.email_grants;
+  mem   public.studio_members;
+  acc   uuid;
+  a     public.accounts;
+  put   text;
+begin
+  if p_user is null then return false; end if;
+  select lower(u.email) into mail from auth.users u
+   where u.id = p_user and u.email is not null and u.email_confirmed_at is not null;
+  if mail is null then return false; end if;
+  select * into g from public.email_grants x where x.email = mail for update;
+  if g.email is null or g.applied_user is not null then return false; end if;
+
+  select * into mem from public.studio_members x where x.user_id = p_user for update;
+
+  -- Membership. A disabled member is re-enabled: an administrator typing
+  -- this address has decided, the same as admin_decide_request(…, true).
+  insert into public.studio_members (user_id, role)
+  values (p_user, case when g.role = 'admin' then 'admin' else 'user' end)
+  on conflict (user_id) do update
+     set disabled_at = null,
+         role = case when g.role = 'admin' then 'admin' else public.studio_members.role end;
+
+  -- The plan, through admin_grant_plan()'s own path.
+  if g.plan is not null and g.plan <> 'free' then
+    acc := public.account_for_buyer(p_user, null);
+    select * into a from public.accounts x where x.id = acc for update;
+    if public.plan_rank(public.account_plan(acc)) >= public.plan_rank(g.plan) then
+      put := null;            -- they already have this much or more
+    elsif g.until is not null and public.account_plan(acc) <> 'free' then
+      put := null;            -- a timed grant would end their purchase when it lapsed
+    else
+      put := g.plan;
+      perform public.apply_plan(acc, g.plan, 'lifetime', 0);
+      if g.until is not null then
+        perform set_config('fms.billing', 'on', true);
+        update public.accounts x set plan_until = g.until, plan_period = 'grant', updated_at = now() where x.id = acc;
+      end if;
+    end if;
+  end if;
+
+  update public.email_grants x
+     set applied_user = p_user, applied_at = now(),
+         applied_account = acc, applied_plan = put,
+         created_member = (mem.user_id is null),
+         prior_role = mem.role,
+         prior_plan = a.plan, prior_plan_until = a.plan_until,
+         prior_plan_period = a.plan_period, prior_seat_limit = a.seat_limit
+   where x.email = g.email;
+  return true;
+end;
+$fn$;
+
+/** Undo what an applied grant did. Internal; the row is the caller's to
+ *  delete or rewrite. The plan is restored only while the account still
+ *  carries the grant's plan AND nothing has been paid on it since —
+ *  revoking a gift must never take back a purchase. */
+create or replace function public.undo_email_grant(p_email text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  g public.email_grants;
+begin
+  select * into g from public.email_grants x where x.email = p_email for update;
+  if g.email is null or g.applied_user is null then return; end if;
+
+  if g.applied_plan is not null and g.applied_account is not null
+     and not exists (select 1 from public.payments p
+                      where p.user_id = g.applied_user and p.status = 'paid' and p.paid_at >= g.applied_at) then
+    perform set_config('fms.billing', 'on', true);
+    update public.accounts x
+       set plan = coalesce(g.prior_plan, 'free'), plan_until = g.prior_plan_until,
+           plan_period = g.prior_plan_period, seat_limit = coalesce(g.prior_seat_limit, 1),
+           updated_at = now()
+     where x.id = g.applied_account and x.plan = g.applied_plan;
+  end if;
+
+  if g.role = 'admin' and coalesce(g.prior_role, '') <> 'admin' then
+    update public.studio_members m set role = 'user' where m.user_id = g.applied_user and m.role = 'admin';
+  end if;
+  -- The grant was what let them in: withdrawing it withdraws that. The
+  -- console's disable, not a deleted row — a deleted row would hand the
+  -- person a fresh trial on their next landing.
+  if g.created_member then
+    update public.studio_members m set disabled_at = coalesce(m.disabled_at, now()) where m.user_id = g.applied_user;
+  end if;
+
+  update public.email_grants x
+     set applied_user = null, applied_at = null, applied_account = null, applied_plan = null,
+         created_member = null, prior_role = null, prior_plan = null, prior_plan_until = null,
+         prior_plan_period = null, prior_seat_limit = null
+   where x.email = g.email;
+end;
+$fn$;
+
+/** The first sign-in. Never allowed to break one: a grant that cannot be
+ *  applied is a warning, and studio_status() will try again. */
+create or replace function public.email_grants_on_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  begin
+    perform public.apply_email_grant(new.id);
+  exception when others then
+    raise warning 'email grant for % not applied: %', new.id, sqlerrm;
+  end;
+  return new;
+end;
+$fn$;
+drop trigger if exists email_grants_on_user on auth.users;
+create trigger email_grants_on_user
+  after insert or update of email, email_confirmed_at on auth.users
+  for each row execute function public.email_grants_on_user();
+
+-- studio_status(), RESTATED: section 14.2's body and columns, unchanged,
+-- after claiming a pending grant for the caller. It is the call the gate
+-- makes after every sign-in, so a granted address is registered on the
+-- very answer that decides whether they are let in — whether or not the
+-- auth.users trigger ran. plpgsql and VOLATILE now, because it may
+-- write; the return type is the same, so CREATE OR REPLACE is enough.
+create or replace function public.studio_status()
+returns table (registered boolean, role text, disabled boolean,
+               request_status text, requested_at timestamptz, decided_at timestamptz,
+               decision_note text, pending_requests int)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if auth.uid() is not null then
+    begin
+      perform public.apply_email_grant(auth.uid());
+    exception when others then
+      raise warning 'email grant for % not applied: %', auth.uid(), sqlerrm;
+    end;
+  end if;
+  return query
+  select m.user_id is not null,
+         coalesce(m.role, '')::text,
+         m.disabled_at is not null,
+         coalesce(r.status, '')::text,
+         r.requested_at,
+         r.decided_at,
+         r.decision_note,
+         case when m.role = 'admin' and m.disabled_at is null
+              then (select count(*)::int from public.invite_requests q where q.status = 'pending')
+              else 0 end
+    from (select 1) one
+    left join public.studio_members  m on m.user_id = auth.uid()
+    left join public.invite_requests r on r.user_id = auth.uid();
+end;
+$fn$;
+
+-- 32.7 THE CONSOLE ------------------------------------------------------
+/** Give an address access. p_role 'member' | 'admin'; p_plan a plans id
+ *  or null/'free' for membership only; p_days null for "until I remove
+ *  it", else 1..3650. Re-granting an address replaces its grant: what
+ *  the old one applied is undone first, then the new one is applied. */
+create or replace function public.admin_grant_email(p_email text, p_role text default 'member',
+                                                    p_plan text default null, p_days int default null,
+                                                    p_note text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  mail text := lower(btrim(coalesce(p_email, '')));
+  pl   text := nullif(nullif(btrim(coalesce(p_plan, '')), ''), 'free');
+  uid  uuid;
+  done boolean := false;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if mail !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+    raise exception 'That does not look like an e-mail address.' using errcode = '22023';
+  end if;
+  if coalesce(p_role, '') not in ('member', 'admin') then
+    raise exception 'Access is as a member or as an admin.' using errcode = '22023';
+  end if;
+  if pl is not null and not exists (select 1 from public.plans p where p.id = pl) then
+    raise exception 'No such plan "%"', p_plan using errcode = '22023';
+  end if;
+  if p_days is not null and (p_days < 1 or p_days > 3650) then
+    raise exception 'A grant lasts 1 to 3650 days, or until you remove it.' using errcode = '22023';
+  end if;
+
+  perform public.undo_email_grant(mail);
+  insert into public.email_grants (email, role, plan, until, note, created_by)
+  values (mail, p_role, pl, case when p_days is null then null else now() + make_interval(days => p_days) end,
+          nullif(left(btrim(coalesce(p_note, '')), 300), ''), auth.uid())
+  on conflict (email) do update
+     set role = excluded.role, plan = excluded.plan, until = excluded.until,
+         note = excluded.note, created_by = excluded.created_by, created_at = now();
+
+  select u.id into uid from auth.users u
+   where lower(u.email) = mail and u.email_confirmed_at is not null limit 1;
+  if uid is not null then done := public.apply_email_grant(uid); end if;
+
+  return (select jsonb_build_object('email', g.email, 'role', g.role, 'plan', g.plan, 'until', g.until,
+                                    'applied', g.applied_user is not null, 'applied_at', g.applied_at,
+                                    'applied_plan', g.applied_plan)
+            from public.email_grants g where g.email = mail);
+end;
+$fn$;
+
+/** Remove an address's grant and undo what it applied. */
+create or replace function public.admin_revoke_email_grant(p_email text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare mail text := lower(btrim(coalesce(p_email, '')));
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if not exists (select 1 from public.email_grants g where g.email = mail) then
+    raise exception 'No access was given to that address.' using errcode = '22023';
+  end if;
+  perform public.undo_email_grant(mail);
+  delete from public.email_grants g where g.email = mail;
+end;
+$fn$;
+
+create or replace function public.admin_list_email_grants()
+returns table (email text, role text, plan text, plan_name text, until timestamptz, note text,
+               created_at timestamptz, created_by_email text, applied boolean, applied_at timestamptz,
+               applied_plan text, account_exists boolean)
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return query
+    select g.email, g.role, g.plan, p.name, g.until, g.note, g.created_at, c.email::text,
+           g.applied_user is not null, g.applied_at, g.applied_plan,
+           exists (select 1 from auth.users u where lower(u.email) = g.email)
+      from public.email_grants g
+      left join public.plans p on p.id = g.plan
+      left join auth.users c on c.id = g.created_by
+     order by g.created_at desc
+     limit 1000;
+end;
+$fn$;
+
+-- 32.8 GRANTS -----------------------------------------------------------
+revoke execute on function public.purchases_required()                          from public;
+revoke execute on function public.open_features()                               from public, anon, authenticated;
+revoke execute on function public.user_limits(uuid)                             from public, anon;
+revoke execute on function public.billing_status()                              from public, anon;
+revoke execute on function public.admin_set_billing_settings(jsonb)             from public, anon;
+revoke execute on function public.apply_email_grant(uuid)                       from public, anon, authenticated;
+revoke execute on function public.undo_email_grant(text)                        from public, anon, authenticated;
+revoke execute on function public.email_grants_on_user()                        from public, anon, authenticated;
+revoke execute on function public.studio_status()                               from public, anon;
+revoke execute on function public.admin_grant_email(text, text, text, int, text) from public, anon;
+revoke execute on function public.admin_revoke_email_grant(text)                from public, anon;
+revoke execute on function public.admin_list_email_grants()                     from public, anon;
+
+grant  execute on function public.purchases_required()                          to anon, authenticated;
+grant  execute on function public.user_limits(uuid)                             to authenticated;
+grant  execute on function public.billing_status()                              to authenticated;
+grant  execute on function public.admin_set_billing_settings(jsonb)             to authenticated;
+grant  execute on function public.studio_status()                               to authenticated;
+grant  execute on function public.admin_grant_email(text, text, text, int, text) to authenticated;
+grant  execute on function public.admin_revoke_email_grant(text)                to authenticated;
+grant  execute on function public.admin_list_email_grants()                     to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 32.9 CHECKS TO RUN, none of which has been run live -------------------
+--  1. billing_settings.purchase_required is false after this section
+--     runs; anon: purchases_required() -> false (anon CAN call it).
+--  2. OFF: a free member whose trial has expired has billing_status()
+--     entitled true, purchase_required false, no sample_only in
+--     features (= the top paid plan's map), limits '{}'; and can insert
+--     a second cloud project past the free cap (no P0402).
+--  3. ON (admin_set_billing_settings('{"purchase_required": true}')):
+--     the same member is entitled false, features is the free map, and
+--     the second project raises P0402 — section 30's behaviour exactly.
+--  4. a non-admin setting purchase_required -> 42501;
+--     '{"purchase_required": "yes"}' -> 22023.
+--  5. every key billing_status() carried before this section is still
+--     there (?& the section 30 list).
+--  6. admin_grant_email for an EXISTING confirmed account applies at
+--     once: a studio_members row (role per the grant), the plan on
+--     their account, applied true.
+--  7. admin_grant_email for an address with no account; the account is
+--     then created (the auth.users trigger) -> applied, member, plan.
+--     And with the trigger bypassed, the first studio_status() call
+--     registers them (the gate's own check).
+--  8. a timed grant sets plan_until = now() + N days.
+--  9. admin_revoke_email_grant undoes it: plan back to what it was,
+--     admin back to user, membership the grant created disabled; the
+--     row is gone.
+-- 10. non-admin admin_grant_email / admin_list_email_grants /
+--     admin_revoke_email_grant -> 42501. A bad role, a bad plan, a bad
+--     address or 0 days -> 22023.
+-- 11. anon / authenticated: select from email_grants -> nothing / 42501.
+-- Test file: scripts/schema-tests/purchases.sql (run by npm run test:schema).
+-- ============================================================

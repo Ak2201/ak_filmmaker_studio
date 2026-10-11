@@ -1,203 +1,2760 @@
 {
- "_about": [
-  "PLACEHOLDER — THE DARK KNIGHT SAMPLE.",
-  "A reconstruction. Every piece of paperwork is invented; no line of the real screenplay appears. The integrator replaces this file with the real content."
- ],
- "title": "The Dark Knight",
- "format": "feature",
- "blueprint": {
-  "meta_writer": "Sample reconstruction · PLACEHOLDER",
-  "meta_started": "Sample data · invented paperwork",
-  "meta_stage": "All five stages",
-  "v1_genre": "Crime · Thriller",
-  "lad_2_synopsis": "PLACEHOLDER synopsis."
- },
- "blueprintChecks": [
-  "ck_s1_a",
-  "ck_s1_b"
- ],
- "scenes": [
-  {
-   "number": "1",
-   "intExt": "INT",
-   "dayNight": "DAY",
-   "location": "Private bank — main hall",
-   "eighths": 8,
-   "pageNumber": "1",
-   "shootDay": 1,
-   "synopsis": "PLACEHOLDER scene one.",
-   "elements": {
-    "cast": [
-     "BATMAN"
-    ],
-    "extras": [],
-    "props": [
-     "Placeholder prop"
-    ],
-    "wardrobe": [],
-    "makeup": [],
-    "sound": [],
-    "special": []
-   }
+  "_about": [
+    "THE SAMPLE PROJECT - The Dark Knight (2008), a feature.",
+    "",
+    "READ THIS FIRST. This is a RECONSTRUCTION FOR PRACTICE. Everything in",
+    "this file that looks like production paperwork is INVENTED: the",
+    "schedule, the shoot dates, the budget, the unit list, the call sheets,",
+    "the recce notes, the shot list, the boards and the documents. They are",
+    "imagined as if a Chennai unit were making the film, in rupees, with",
+    "invented Chennai and Tamil Nadu stand-ins for every location. None of it",
+    "is the real production's paperwork, and no part of it was taken from it.",
+    "",
+    "NO LINE OF THE REAL SCREENPLAY. The pages in",
+    "sample.darkknight.script.json follow the public structure of the film",
+    "scene by scene, but every action line and every line of dialogue is",
+    "newly written for this app. The famous lines are deliberately absent.",
+    "The script is in English, and the dialogue is written to be shot as it",
+    "stands.",
+    "",
+    "NO REAL CAST OR CREW. Every name in the `contacts` list is invented,",
+    "with a +91 90000 2xxxx number and a @darkknight.example address -",
+    "`.example` is a reserved TLD and can never route. The `role` column",
+    "carries CHARACTER names, which belong to the story. No real actor,",
+    "director or crew member is named anywhere in the paperwork, and the",
+    "director's sign-off date on the HOD sheet is left blank.",
+    "",
+    "WHAT IT IS FOR. A second worked film beside Dragon, so every module",
+    "(breakdown, stripboard, reports, contacts, visualize, write, plan and",
+    "budget) has a bigger, action-heavy example to show: night work, stunts,",
+    "a set-piece demolition, two sets built on a stage and a marine unit.",
+    "Delete the project, or edit any of it, and nothing is lost."
+  ],
+  "title": "The Dark Knight",
+  "format": "feature",
+  "blueprint": {
+    "meta_writer": "Sample reconstruction - an invented unit, no real crew",
+    "meta_started": "Sample data - invented paperwork for a real film",
+    "meta_stage": "All five stages",
+    "v1_genre": "Crime thriller - Action",
+    "v1_draft": "Reconstruction draft - 40 scenes, condensed",
+    "v2_director": "Rangarajan Mahalingam (invented)",
+    "v2_producer": "Meenakshi Pictures (invented)",
+    "v2_start": "2 Mar 2026 (invented floor date)",
+    "v2_budget": "₹ 84 crore all-in - sample estimate, not the production's figure",
+    "s1_whatif": "What if the one man who keeps a city safe discovers that the thing it fears most is not a person with a plan but a person who wants to prove it has none?",
+    "s1_why_me": "Because the film is a worked lesson in how to keep an action movie argumentative. Every set piece is a question, and the questions pile up until the hero has to pick a lie to protect the people. That is a structure worth taking apart, which is why it is the sample.",
+    "s1_image": "A school bus idling at a bank at opening time, and four men in clown masks stepping down from it as if getting off at their own stop.",
+    "s2_log1": "A masked guardian and a crusading prosecutor try to end a city's crime, and an anarchist makes them pay for it.",
+    "s2_log2": "A vigilante, a police captain and a prosecutor join forces against organised crime, only to be pulled apart by a painted stranger who wants to show that nobody keeps their principles under pressure.",
+    "s2_log_final": "When a painted stranger robs the mob's banks and sets a city's decent people against one another, a masked vigilante, a police captain and a young prosecutor must decide how much of the truth the city can survive.",
+    "s3_theme": "A city needs a hope it can believe in more than it needs the truth about the people who hold it up.",
+    "s3_ext": "Can the three of them break the mob and stop the Joker before the next name on his list dies?",
+    "s3_int": "Can the man in the mask accept being hated so that the prosecutor can be loved?",
+    "s3_phil": "Is a good lie, told to protect people who could not bear the truth, the same as cowardice?",
+    "s4_arc": "From a man who wants to retire the mask to a man who accepts it is the only office he can hold.",
+    "s4_name": "BRUCE WAYNE / BATMAN",
+    "s4_age": "34",
+    "s4_want": "To hand the city to somebody in daylight and go home.",
+    "s4_need": "To accept that being trusted and being thanked are different jobs.",
+    "s4_lie": "If the city has a better man, it will not need him.",
+    "s4_wound": "He lost his parents to a mugging and has spent his life converting grief into a system.",
+    "s4_skill": "He can plan for any outcome except the one that costs him what he is.",
+    "s4_flaw": "He cannot let anybody else carry the city, so he carries it alone.",
+    "s5_name": "THE JOKER",
+    "s5_want": "To show that every person has a price and every rule has a breaking point.",
+    "s5_philosophy": "People are only as decent as the pressure on them is light.",
+    "s5_hero": "He never lies about what he is. He tells every person exactly what he will do and then does it, and that is what makes him impossible to bargain with.",
+    "s5_mirror": "The hero holds that people are good and must be protected. The Joker holds that they are not and must be shown. Both have built a whole life on a single unprovable sentence.",
+    "s5_humanity": "He gets no pleasure from winning. He is only ever relieved to be proven right, and the film lets the audience see how much he needs it.",
+    "s6_ally_name": "ALFRED - the butler and conscience",
+    "s6_ally_reflect": "He is the only person who has watched the hero long enough to know what it costs.",
+    "s6_ally_subplot": "He holds a letter that could end the story the hero is telling himself.",
+    "s6_ally_exit": "He keeps the letter and burns it in a quiet kitchen, and nobody is ever told.",
+    "s6_lover_name": "RACHEL - the childhood friend",
+    "s6_lover_sees": "That the hero has chosen a mask over the one person who would have asked him to take it off.",
+    "s6_lover_goal": "To be free to choose a life that is not rescued by somebody else.",
+    "s6_lover_decision": "She chooses the prosecutor and writes the hero a letter that says so.",
+    "s6_mentor_name": "FOX - the engineer",
+    "s6_mentor_tool": "He gives the hero the machines, and the film asks what they are for.",
+    "s6_mentor_failure": "He builds the listening machine against his own conscience, and decides to resign after using it once.",
+    "s7_era": "Present day, one week in the life of a city",
+    "s7_location": "Chennai - a bank in Mylapore, a glass tower in Guindy and Taramani, a mill in Ambattur, the port at Ennore, a half-built tenement in Royapuram",
+    "s7_duration": "Seven days, from the bank to the last night on the river road",
+    "s7_rules": "1. The Joker never lies about what he intends. 2. The hero is never shown choosing the easy option. 3. Every set piece asks a moral question and is staged so the audience answers it before the characters do. 4. The city is a character: its roads, its ports, its noise. 5. The last image is a lie told for a reason.",
+    "s7_sensory": "Sodium light on wet concrete, the noise of a port, a tube light that hums in an interview room, a purple card in a pocket.",
+    "s9_chrono": "The bank → the rooftop → the mob meeting → the prosecutor → the accountant → the Joker's offer → the fundraiser → the funeral → the convoy → the interrogation → the two explosions → the hospital → the ferries → the tower → the coin and the fall → the river road.",
+    "s9_screen": "Chronological and escalating, with the interrogation as the hinge: after it every choice is a trap for somebody.",
+    "s9_why": "The film asks the audience to enjoy the villain for half the picture, so the structure has to give him wins early and then price them. Each act turns up the cost of the one before.",
+    "s10_setup_1": "A coin the prosecutor flips as a joke in a restaurant.",
+    "s10_pay_1": "The same coin deciding a family's future on the third floor of a half-built block.",
+    "s10_setup_2": "A butler is handed a letter to keep until it matters.",
+    "s10_pay_2": "The letter is what the hero decides he cannot allow anybody else to read.",
+    "s10_setup_3": "An accountant says he is a careful man.",
+    "s10_pay_3": "He is the first person to put a name on the thing nobody planned for.",
+    "s10_setup_4": "A listening machine is built with a promise it will be used once.",
+    "s10_pay_4": "It finds the man it was built for, and its engineer resigns.",
+    "s10_setup_5": "A rooftop searchlight with a bat-shaped hole in it.",
+    "s10_pay_5": "The last time the light is switched on, it is to warn a city of something it cannot see.",
+    "b01": "A school bus outside a bank. A robbery in which each man is only needed until the next job is done.",
+    "b02": "The theme stated as a negotiation: a captain asks the vigilante to guard the people who are imitating him.",
+    "b03": "The three allies and the plan: a lawyer in court, a captain on the street and a vigilante in the dark.",
+    "b04": "A man in make-up walks into a mob meeting with the bank's own money and an offer nobody can refuse.",
+    "b05": "The hero is tempted to retire; the butler says the city forgets its saviours.",
+    "b06": "He chooses to go and fetch the accountant from across the sea. The act-two choice is an escalation, not a plan.",
+    "b07": "The fundraiser, the guests, the first sign of the clown, and the first time the hero catches somebody mid-fall.",
+    "b08": "The Joker sets a deadline and a list. The city counts its dead in names.",
+    "b09": "The prosecutor claims to be the vigilante. A false victory: the killing stops, and the lie begins.",
+    "b10": "The convoy chase, the arrest, and the interrogation in which the villain wins by telling the truth.",
+    "b11": "Two explosions. The hero chooses and the choice costs him the one person he was trying to save.",
+    "b12": "A hospital. The prosecutor is visited by a man in an orderly's coat and the film marks the turn.",
+    "b13": "The hero builds the machine he swore he would not, and its engineer says he will use it once.",
+    "b14": "Two ferries and a tower. The people choose not to do what the villain says, and the villain is proven wrong for once.",
+    "b15": "The coin and the fall, and a lie told on a river road so the city can sleep.",
+    "s12_note_v1": "Decide now which of the first act's small gestures (the coin, the card, the searchlight) will carry the finale, and plant each of them twice. Do not let the villain and the hero end up in different pictures.",
+    "v2s1_draft": "Reconstruction draft - 40 scenes, condensed for the sample. Locked 20 Feb 2026 (invented).",
+    "v2s1_weak": "1. The ferry scenes ask the audience to hold two stories at once. 2. The interrogation runs long and has to be shot in one night. 3. The two explosions happen in different buildings in the same minute.",
+    "v2s1_signoff": "Invented sign-off, for the sample: producer, DOP and editor on 21 Feb 2026. The director's row on the HOD sheet carries no date.",
+    "v2s2_theme": "A city needs a hope it can believe in more than it needs the truth about the people who hold it up.",
+    "v2s2_tone1": "Grimy / Gritty",
+    "v2s2_tone2": "Propulsive · morally tangled · night-bound · merciless in the last third",
+    "v2s2_refs": "Heat for the street-level crime, Seven for the villain-as-argument, and Raatchasan for the way a Tamil thriller lets a plan fail without ceasing to be fun.",
+    "v2s2_refuse": "No villain who explains himself in a flashback. No hero who gets the last word. No safe set piece. No speech from the mayor. No music that tells the audience whose side to be on.",
+    "v2s2_para": "Everything we build exists to put the audience in the position of the characters. They are asked to choose, quickly, with incomplete information, and the camera never knows more than they do. The look is cold, the cutting is hard, and nothing in the design flatters the city.",
+    "v2s3_palette": "Slate blue, sodium amber, hospital green",
+    "v2s3_light": "Sodium lamps and tube light, never a soft source. The funeral is shot in white overcast; the last night in a dawn that arrives late.",
+    "v2s3_frames": "Wide and locked off for the city, handheld inside the Joker's scenes, and a single long lens on every close-up of Dent.",
+    "v2s3_texture": "Cold / steel-blue",
+    "v2s3_location": "Shared drive · DARKKNIGHT/02_LOOKBOOK (sample)",
+    "v2s5_camera": "ARRI Alexa Mini LF",
+    "v2s5_aspect": "2.39:1 (Scope / CinemaScope)",
+    "v2s5_fps": "24 fps",
+    "v2s5_res": "6K",
+    "v2s5_lens": "Zeiss Master Primes - 18, 25, 32, 50, 75; Atlas anamorphics on the chase",
+    "v2s5_speciallens": "Probe lens for the lorry flip; 100mm macro for the coin",
+    "v2s5_light_phil": "A single hard source in every night scene, and a polarizer on every glass tower. Capture is 6K open gate, delivered 4K DCI.",
+    "v2s5_grade": "Cold and clean through the first two acts so the last night can turn gold and stay there.",
+    "v2s5_dn": "~60% night, ~40% day",
+    "v2s6_sets": "Interrogation room, underground workshop and penthouse (built on the Madhavaram stage), everything else location.",
+    "v2s6_dressed": "The Joker's purple card is a continuity spine: 1,000 printed, 12 hero copies, and it must read at three metres.",
+    "v2s6_heroprops": "Dent's silver coin (six copies, one weighted), the purple card, and the stopped wall clock.",
+    "v2s6_recurring": "The card, the coin, the stopped clock, the searchlight.",
+    "v2s6_period": "Present day. No identifiable local brands on any vehicle or sign.",
+    "v2s6_pd": "Latha Chidambaram",
+    "v2s6_ad": "Parthiban G",
+    "v2s6_setlead": "Murugan S",
+    "v2s6_artbudget": "₹ 6,20,00,000",
+    "v2s7_designer": "Kalpana Ranganathan",
+    "v2s7_hair": "Sheela Dharmaraj",
+    "v2s7_makeup": "Sheela Dharmaraj",
+    "v2s7_sfx_need": "Specialised supervisor required",
+    "v2s7_protag": "A hard suit in three stages: new, worn, and the one he leaves behind in the last reel.",
+    "v2s7_antag": "A purple coat that never changes and a paint face that is re-applied before every scene.",
+    "v2s7_period": "Present day, the city in civvies; the police in dress uniform for the funeral.",
+    "v2s10_composer": "Joshua Daniel",
+    "v2s10_songs": "0 (no songs)",
+    "v2s10_bgm": "Twenty-six cues, 78 minutes. A single sustained string note under every Joker scene, and not a note of score under the ferries.",
+    "v2s10_refs": "Industrial percussion and bowed metal for the chase; a bare piano for the interrogation.",
+    "v2s10_sd": "Joshua Daniel",
+    "v2s10_psr": "Yazhini Nambiar",
+    "v2s10_phil": "The silence on the ferries is a rule, not a gap. Mix is nine days at a Chennai stage (sample).",
+    "v2s10_mix": "Dolby Atmos",
+    "v2s11_blocks": "Four blocks: the bank and the stage sets (days 1-10), the tower, the hospital and the roads (days 11-18), the port (days 19-20), the tower finale and the river (days 21-22).",
+    "v2s11_ad": "Muthu Pandian",
+    "v2s11_expday": "Day 22 - the half-built tenement and the river road, one unit, two locations, a full night.",
+    "v2s11_total": "840000000",
+    "v2s11_atl": "240000000",
+    "v2s11_btl": "380000000",
+    "v2s11_post": "110000000",
+    "v2s11_cont": "15% (recommended)",
+    "v2s11_largest": "The convoy chase, the hospital demolition and the ferry unit, which together are a third of the shoot.",
+    "v2s11_dop": "Sundar Raman",
+    "v2s11_pd": "Latha Chidambaram",
+    "v2s11_editor": "Anwar Basha",
+    "v2s11_composer": "Joshua Daniel",
+    "v2s11_sound": "Yazhini Nambiar",
+    "v2s11_cd": "Kalpana Ranganathan",
+    "v2s11_casting": "Gayathri Anbumani",
+    "v2s11_pm": "Venkat Subbu",
+    "v2s12_recce": "9-13 Feb 2026 (invented) - the bank in Mylapore, the Ennore port, the Ambattur mill, the Manali depot, the Taramani tower, the Royapettah hospital wing and the Sholinganallur shell.",
+    "v2s12_problems": "1. The hospital wing can be demolished once. 2. The port is only available for two consecutive nights. 3. The tower crane for the extraction is rented by the night. 4. The elevated expressway is closed for eight hours with one shot at the flip. 5. Two sets are built on the Madhavaram stage and share one crew.",
+    "v2s12_resolutions": "1. Seven cameras on the demolition, one pass. 2. The two ferry nights are scheduled back to back, port crew only. 3. The crane is booked for the Taramani night and nothing else. 4. Full rehearsal on a closed stretch the week before. 5. Stage sets shot in one block.",
+    "v2s12_note": "Shoot the bank first. It is the film in miniature: a plan that works until it meets a person who knows how it ends.",
+    "p3_start": "2 Mar 2026",
+    "p3_base": "Mylapore bank, then the Madhavaram stage",
+    "p3_ad": "Muthu Pandian",
+    "p4_editor": "Anwar Basha",
+    "p4_lock": "30 Jun 2026",
+    "p4_sound": "Chennai mix stage (sample)",
+    "p4_music": "Joshua Daniel",
+    "lad_1_logline": "When a painted stranger robs the mob's banks and sets a city's decent people against one another, a masked vigilante, a police captain and a young prosecutor must decide how much of the truth the city can survive.",
+    "lad_2_synopsis": "A masked guardian, a tired police captain and a prosecutor who works in daylight agree to dismantle the mob that owns the city. They get close. A figure in make-up robs the mob's own banks, offers to kill the guardian for half of what he is worth, and sets a deadline for the city to give him up. The prosecutor takes the blame to stop the killing and is nearly killed for it. The guardian is made to choose between two people in two places and chooses wrong. By the end, the prosecutor is a monster and the guardian is the only man who can protect his memory, which he does by taking the blame.",
+    "lad_3_onepager": "Genre: crime thriller / action. Length: about 91 pages / 40 scenes (condensed reconstruction). Budget: ₹84 cr (sample estimate). Schedule: 22 days, Chennai. The hook is that the villain tells the truth and the heroes have to lie.",
+    "lad_4_treatment": "See Write → documents → 'The Dark Knight - sample treatment (reconstruction)'.",
+    "lad_5_outline": "Fifteen beats, in step 08, condensed from the Save the Cat sheet.",
+    "palette_c1": "#2a3a4d",
+    "palette_c1_name": "Slate blue",
+    "palette_c2": "#d98a2b",
+    "palette_c2_name": "Sodium amber",
+    "palette_c3": "#6a9a8d",
+    "palette_c3_name": "Hospital green",
+    "hod_dir_name": "Rangarajan Mahalingam",
+    "hod_dir_date": "",
+    "hod_prod_name": "Gayathri Anbumani",
+    "hod_prod_date": "2026-02-21",
+    "hod_dop_name": "Sundar Raman",
+    "hod_dop_date": "2026-02-21",
+    "hod_pd_name": "Latha Chidambaram",
+    "hod_pd_date": "2026-02-22",
+    "hod_ad_name": "Muthu Pandian",
+    "hod_ad_date": "2026-02-23",
+    "hod_sd_name": "Yazhini Nambiar",
+    "hod_sd_date": "2026-02-23",
+    "hod_comp_name": "Joshua Daniel",
+    "hod_comp_date": "2026-02-24",
+    "hod_ed_name": "Anwar Basha",
+    "hod_ed_date": "2026-02-21",
+    "hod_cos_name": "Kalpana Ranganathan",
+    "hod_cos_date": "2026-02-22",
+    "hod_cast_name": "Gayathri Anbumani",
+    "hod_cast_date": "2026-02-10",
+    "hod_pm_name": "Venkat Subbu",
+    "hod_pm_date": "2026-02-23"
   },
-  {
-   "number": "2",
-   "intExt": "EXT",
-   "dayNight": "NIGHT",
-   "location": "Port ferry terminal, Chennai",
-   "eighths": 8,
-   "pageNumber": "2",
-   "shootDay": 1,
-   "synopsis": "PLACEHOLDER scene two.",
-   "elements": {
-    "cast": [
-     "BATMAN"
-    ],
-    "extras": [],
-    "props": [
-     "Placeholder prop"
-    ],
-    "wardrobe": [],
-    "makeup": [],
-    "sound": [],
-    "special": []
-   }
-  },
-  {
-   "number": "3",
-   "intExt": "INT",
-   "dayNight": "NIGHT",
-   "location": "Disused mill, Ennore",
-   "eighths": 8,
-   "pageNumber": "3",
-   "shootDay": 2,
-   "synopsis": "PLACEHOLDER scene three.",
-   "elements": {
-    "cast": [
-     "BATMAN"
-    ],
-    "extras": [],
-    "props": [
-     "Placeholder prop"
-    ],
-    "wardrobe": [],
-    "makeup": [],
-    "sound": [],
-    "special": []
-   }
-  }
- ],
- "days": {
-  "1": "2025-03-03",
-  "2": "2025-03-04"
- },
- "recces": {
-  "port ferry terminal, chennai": {
-   "address": "PLACEHOLDER",
-   "contact": "Invented",
-   "permission": "approved",
-   "power": "",
-   "parking": "",
-   "toilets": "",
-   "bestTime": "",
-   "cost": "",
-   "notes": "PLACEHOLDER"
-  }
- },
- "media": [
-  {
-   "title": "PLACEHOLDER lookbook",
-   "url": "https://example.com/darkknight/lookbook",
-   "kind": "Reference image",
-   "notes": "",
-   "linkedTo": "Port ferry terminal, Chennai"
-  }
- ],
- "contacts": [
-  {
-   "name": "Placeholder Lead",
-   "role": "BATMAN",
-   "department": "Cast",
-   "phone": "+91 90000 20001",
-   "email": "lead@darkknight.example",
-   "notes": "PLACEHOLDER contact."
-  },
-  {
-   "name": "Placeholder Director",
-   "role": "Director",
-   "department": "Direction",
-   "phone": "+91 90000 20002",
-   "email": "director@darkknight.example",
-   "notes": "PLACEHOLDER contact."
-  }
- ],
- "callSheets": [
-  {
-   "title": "The Dark Knight — Day 1",
-   "day": 1,
-   "generalCall": "06:00",
-   "location": "Private bank — main hall",
-   "notes": "SAMPLE CALL SHEET. PLACEHOLDER. A reconstruction; the paperwork is invented.",
-   "sceneNumbers": [
-    "1"
-   ],
-   "calls": {
-    "Placeholder Lead": "06:30",
-    "Placeholder Director": "06:00"
-   }
-  }
- ],
- "shots": [
-  {
-   "scene": "1",
-   "number": "1",
-   "size": "WS",
-   "angle": "eye level",
-   "movement": "static",
-   "lens": "35mm",
-   "description": "PLACEHOLDER shot."
-  }
- ],
- "frames": [
-  {
-   "scene": "1",
-   "shotNumber": "1",
-   "caption": "PLACEHOLDER frame",
-   "ref": "https://example.com/darkknight/board/1"
-  }
- ],
- "boards": [
-  {
-   "name": "Palette",
-   "note": "PLACEHOLDER",
-   "entries": [
+  "blueprintChecks": [
+    "ck_s1_a",
+    "ck_s1_b",
+    "ck_s1_c",
+    "ck_s2_a",
+    "ck_s2_b",
+    "ck_s2_c",
+    "ck_s3_a",
+    "ck_s3_b",
+    "ck_s3_c",
+    "ck_s4_a",
+    "ck_s4_b",
+    "ck_s4_c",
+    "ck_s4_d",
+    "ck_s5_a",
+    "ck_s5_b",
+    "ck_s5_c",
+    "ck_s6_a",
+    "ck_s6_b",
+    "ck_s6_c",
+    "ck_s7_a",
+    "ck_s7_b",
+    "ck_s7_c",
+    "ck_s8_a",
+    "ck_s8_b",
+    "ck_s8_c",
+    "ck_s9_a",
+    "ck_s9_b",
+    "ck_s10_a",
+    "ck_s10_b",
+    "ck_s10_c",
+    "ck_s11_a",
+    "ck_s11_b",
+    "ck_s11_c",
+    "fc_v1_01",
+    "fc_v1_02",
+    "fc_v1_03",
+    "fc_v1_04",
+    "fc_v1_05",
+    "fc_v1_06",
+    "fc_v1_07",
+    "fc_v1_08",
+    "fc_v1_09",
+    "fc_v1_10",
+    "fc_v1_11",
+    "fc_v1_12",
+    "fc_v1_13",
+    "fc_v1_14",
+    "fc_v1_15",
+    "ck_v2s1_a",
+    "ck_v2s1_b",
+    "ck_v2s1_c",
+    "ck_v2s1_d",
+    "ck_v2s2_a",
+    "ck_v2s2_b",
+    "ck_v2s2_c",
+    "ck_v2s2_d",
+    "ck_v2s3_a",
+    "ck_v2s3_b",
+    "ck_v2s3_c",
+    "ck_v2s5_a",
+    "ck_v2s5_b",
+    "ck_v2s5_c",
+    "ck_v2s6_a",
+    "ck_v2s6_b",
+    "ck_v2s7_a",
+    "ck_v2s7_b",
+    "ck_v2s11_a",
+    "ck_v2s11_b",
+    "ck_v2s11_c",
+    "fc_v2_01",
+    "fc_v2_02",
+    "fc_v2_03",
+    "fc_v2_04",
+    "fc_v2_05",
+    "fc_v2_06",
+    "fc_v2_07",
+    "fc_v2_08"
+  ],
+  "scenes": [
     {
-     "title": "PLACEHOLDER",
-     "ref": "https://example.com/darkknight/palette/1",
-     "why": "PLACEHOLDER"
+      "number": "1",
+      "intExt": "EXT",
+      "dayNight": "DAY",
+      "location": "Co-operative bank, Mylapore",
+      "eighths": 11,
+      "pageNumber": "1",
+      "shootDay": 1,
+      "synopsis": "A school bus idles outside a co-operative bank at opening time. Four men in rubber clown masks check their watches and their weapons.",
+      "elements": {
+        "cast": [
+          "JOKER",
+          "TALL MASK",
+          "STOUT MASK",
+          "THE DRIVER"
+        ],
+        "extras": [
+          "Passers-by (25)",
+          "Street vendors (6)"
+        ],
+        "props": [
+          "Yellow school bus",
+          "Four rubber clown masks",
+          "Duffel bags"
+        ],
+        "wardrobe": [
+          "Grey work overalls x4",
+          "Clown masks"
+        ],
+        "sound": [
+          "Street wildtrack",
+          "Bus engine"
+        ],
+        "vehicles": [
+          "School bus (hero)",
+          "Two parked scooters"
+        ]
+      }
+    },
+    {
+      "number": "2",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Co-operative bank, Mylapore",
+      "eighths": 21,
+      "pageNumber": "2",
+      "shootDay": 1,
+      "synopsis": "The robbery runs to a plan in which each man is needed only until the next job is done. One man leaves with the money and the bus.",
+      "elements": {
+        "cast": [
+          "JOKER",
+          "TALL MASK",
+          "STOUT MASK",
+          "THE DRIVER",
+          "BANK MANAGER"
+        ],
+        "extras": [
+          "Customers (30)",
+          "Bank staff (8)"
+        ],
+        "props": [
+          "Cash trays",
+          "Vault door and keys",
+          "Shotgun (prop)",
+          "Alarm panel"
+        ],
+        "wardrobe": [
+          "Bank staff uniforms",
+          "Customer wardrobe x30"
+        ],
+        "makeup": [
+          "Blood squibs - minor"
+        ],
+        "sound": [
+          "Alarm bell",
+          "Gunfire - blanks"
+        ],
+        "special": [
+          "Squib rig",
+          "Camera on short crane"
+        ],
+        "stunts": [
+          "Gunfire and falls - 3 performers"
+        ]
+      }
+    },
+    {
+      "number": "3",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Rooftop, Anna Salai",
+      "eighths": 20,
+      "pageNumber": "5",
+      "shootDay": 11,
+      "synopsis": "Gordon waits at a rooftop searchlight to meet Batman. Imitators are getting hurt and the mob money is moving faster than the law.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "BATMAN",
+          "RAMIREZ"
+        ],
+        "props": [
+          "Searchlight (practical)",
+          "Evidence folder",
+          "Thermos"
+        ],
+        "wardrobe": [
+          "Gordon overcoat",
+          "Batman suit - hero"
+        ],
+        "sound": [
+          "City bed, traffic below",
+          "Wind"
+        ],
+        "special": [
+          "Rooftop safety rig",
+          "Rain tower - standby"
+        ]
+      }
+    },
+    {
+      "number": "4",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Chemical depot, Manali",
+      "eighths": 18,
+      "pageNumber": "7",
+      "shootDay": 12,
+      "synopsis": "Batman breaks up a handover at a depot where two imitators in homemade armour are about to be killed for impersonating him.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "GAMBOL",
+          "IMITATOR ONE",
+          "IMITATOR TWO"
+        ],
+        "extras": [
+          "Mob men (14)"
+        ],
+        "props": [
+          "Homemade armour x2",
+          "Cash bags",
+          "Tanker valves"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Imitator armour x2"
+        ],
+        "makeup": [
+          "Bruising"
+        ],
+        "sound": [
+          "Depot hum",
+          "Tanker hiss"
+        ],
+        "vehicles": [
+          "Tanker lorry",
+          "Two vans"
+        ],
+        "stunts": [
+          "Fight - 6 performers",
+          "Wire gag - one fall"
+        ]
+      }
+    },
+    {
+      "number": "5",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Wayne Enterprises tower, Guindy",
+      "eighths": 19,
+      "pageNumber": "10",
+      "shootDay": 3,
+      "synopsis": "Fox shows Bruce a depositor list that does not add up, and a new suit panel he would rather Bruce did not test on himself.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "FOX"
+        ],
+        "extras": [
+          "Office staff (20)"
+        ],
+        "props": [
+          "Ledger printouts",
+          "Suit panel prototype",
+          "Tablet"
+        ],
+        "wardrobe": [
+          "Bruce - business suit",
+          "Fox - cardigan, glasses"
+        ],
+        "sound": [
+          "Office hush"
+        ],
+        "special": [
+          "Glass-wall reflections - polarizer"
+        ]
+      }
+    },
+    {
+      "number": "6",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Sessions court, Egmore",
+      "eighths": 22,
+      "pageNumber": "12",
+      "shootDay": 5,
+      "synopsis": "Dent takes apart a mob defence in front of a packed court. Maroni smiles at him on the way out and promises nothing.",
+      "elements": {
+        "cast": [
+          "HARVEY DENT",
+          "RACHEL",
+          "MARONI",
+          "THE JUDGE",
+          "DEFENCE COUNSEL"
+        ],
+        "extras": [
+          "Court gallery (60)",
+          "Court staff (6)",
+          "Press (8)"
+        ],
+        "props": [
+          "Case files",
+          "Exhibit tags",
+          "Gavel",
+          "Dent coin (hero)"
+        ],
+        "wardrobe": [
+          "Dent - court suit, advocate bands",
+          "Judge robes"
+        ],
+        "sound": [
+          "Court room tone"
+        ]
+      }
+    },
+    {
+      "number": "7",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Heritage hotel, Mylapore",
+      "eighths": 21,
+      "pageNumber": "15",
+      "shootDay": 6,
+      "synopsis": "Over dinner Bruce, Rachel and Dent size each other up. Bruce starts to think the city might do without him.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "RACHEL",
+          "HARVEY DENT",
+          "MAITRE D'"
+        ],
+        "extras": [
+          "Diners (25)",
+          "Waiters (6)"
+        ],
+        "props": [
+          "Dinner service",
+          "Wine glasses",
+          "Reservation book"
+        ],
+        "wardrobe": [
+          "Bruce - dinner jacket",
+          "Rachel - evening dress",
+          "Dent - dark suit"
+        ],
+        "sound": [
+          "Restaurant bed"
+        ],
+        "special": [
+          "Practical candles"
+        ]
+      }
+    },
+    {
+      "number": "8",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Old mill, Ambattur",
+      "eighths": 19,
+      "pageNumber": "17",
+      "shootDay": 8,
+      "synopsis": "The city mob gathers in a disused mill to decide what to do about frozen accounts. Lau joins on a video link and promises to move the money abroad.",
+      "elements": {
+        "cast": [
+          "MARONI",
+          "GAMBOL",
+          "THE BROKER",
+          "LAU"
+        ],
+        "extras": [
+          "Mob men (18)"
+        ],
+        "props": [
+          "Laptop on trestle",
+          "Cash ledgers",
+          "Folding chairs",
+          "Cigars"
+        ],
+        "wardrobe": [
+          "Mob suits x6",
+          "Lau - video link, shirt and tie"
+        ],
+        "sound": [
+          "Mill hum",
+          "Pigeons"
+        ],
+        "special": [
+          "Smoke machine",
+          "Single practical bulb rig"
+        ]
+      }
+    },
+    {
+      "number": "9",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Police HQ, Egmore",
+      "eighths": 21,
+      "pageNumber": "20",
+      "shootDay": 9,
+      "synopsis": "Gordon, Dent and Ramirez agree a one-night sweep of every account the mob uses. Dent calls in a judge who will sign without reading twice.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "HARVEY DENT",
+          "RAMIREZ",
+          "THE JUDGE"
+        ],
+        "extras": [
+          "Constables (16)"
+        ],
+        "props": [
+          "Warrants",
+          "City map",
+          "Case boards"
+        ],
+        "wardrobe": [
+          "Police uniforms",
+          "Gordon overcoat"
+        ],
+        "sound": [
+          "Station bed",
+          "Phones"
+        ]
+      }
+    },
+    {
+      "number": "10",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Underground workshop, Madhavaram stage",
+      "eighths": 21,
+      "pageNumber": "22",
+      "shootDay": 4,
+      "synopsis": "In the workshop Bruce, Fox and Alfred work out where the mob accountant could have gone, and what it would cost to bring him back.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "FOX",
+          "ALFRED"
+        ],
+        "props": [
+          "Suit rack",
+          "Workbench",
+          "Wall map of the city",
+          "Tea tray"
+        ],
+        "wardrobe": [
+          "Bruce - work shirt",
+          "Alfred - waistcoat",
+          "Fox - cardigan"
+        ],
+        "sound": [
+          "Machine hum"
+        ],
+        "special": [
+          "Set with removable fourth wall"
+        ]
+      }
+    },
+    {
+      "number": "11",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Business tower, Taramani",
+      "eighths": 20,
+      "pageNumber": "25",
+      "shootDay": 13,
+      "synopsis": "Bruce visits Lau, an accountant who has moved his office across the sea, and makes sure everybody sees him do it.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "LAU",
+          "LAU'S AIDE"
+        ],
+        "extras": [
+          "Office staff (40)",
+          "Visitors (12)"
+        ],
+        "props": [
+          "Business cards",
+          "Reception desk",
+          "Glass doors"
+        ],
+        "wardrobe": [
+          "Bruce - tailored suit",
+          "Lau - office wear"
+        ],
+        "sound": [
+          "Atrium echo"
+        ],
+        "special": [
+          "Glass scaffold - rig crew day before"
+        ],
+        "vfx": [
+          "Skyline replacement"
+        ]
+      }
+    },
+    {
+      "number": "12",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Business tower, Taramani",
+      "eighths": 18,
+      "pageNumber": "28",
+      "shootDay": 14,
+      "synopsis": "That night Batman takes Lau off the roof. A rented crane lifts the two of them clear before the guards reach the edge.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "LAU",
+          "LAU'S GUARDS"
+        ],
+        "extras": [
+          "Guards (10)"
+        ],
+        "props": [
+          "Crane hook rig",
+          "Safety harnesses",
+          "Guard torches"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Guard uniforms"
+        ],
+        "sound": [
+          "Wind",
+          "Crane engine"
+        ],
+        "vehicles": [
+          "Tower crane (rented)",
+          "Two guard vans"
+        ],
+        "stunts": [
+          "Wire lift - hero",
+          "Wire lift - Lau double"
+        ],
+        "vfx": [
+          "Rig removal",
+          "Skyline extension"
+        ]
+      }
+    },
+    {
+      "number": "13",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Interrogation room, Madhavaram stage",
+      "eighths": 20,
+      "pageNumber": "30",
+      "shootDay": 10,
+      "synopsis": "Lau sits in an interview room and understands he is safer in custody than at home. Dent starts a list of names.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "HARVEY DENT",
+          "LAU"
+        ],
+        "props": [
+          "Steel table",
+          "Tape recorder",
+          "Paper cups",
+          "List of names"
+        ],
+        "wardrobe": [
+          "Lau - torn overalls",
+          "Dent - shirtsleeves"
+        ],
+        "sound": [
+          "Room tone",
+          "Buzzing tube light"
+        ],
+        "special": [
+          "Removable wall for camera"
+        ]
+      }
+    },
+    {
+      "number": "14",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Old mill, Ambattur",
+      "eighths": 23,
+      "pageNumber": "32",
+      "shootDay": 8,
+      "synopsis": "A man in smeared make-up interrupts the mob meeting with a bag of their own money and an offer they cannot afford to refuse.",
+      "elements": {
+        "cast": [
+          "JOKER",
+          "MARONI",
+          "GAMBOL",
+          "THE BROKER"
+        ],
+        "extras": [
+          "Mob men (18)"
+        ],
+        "props": [
+          "Bag of stamped notes",
+          "Folding chairs",
+          "Cash ledgers"
+        ],
+        "wardrobe": [
+          "Joker - purple coat, hero",
+          "Mob suits"
+        ],
+        "makeup": [
+          "Joker make-up - 90 min"
+        ],
+        "sound": [
+          "Mill hum"
+        ],
+        "special": [
+          "Single practical bulb rig"
+        ]
+      }
+    },
+    {
+      "number": "15",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Bruce's penthouse, Madhavaram stage",
+      "eighths": 19,
+      "pageNumber": "35",
+      "shootDay": 7,
+      "synopsis": "Alfred pours tea and tells Bruce the truth about daylight and who might carry it for him. Bruce is nearly persuaded.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "ALFRED"
+        ],
+        "props": [
+          "Tea tray",
+          "Newspapers",
+          "Penthouse dressing"
+        ],
+        "wardrobe": [
+          "Bruce - dressing gown",
+          "Alfred - waistcoat"
+        ],
+        "sound": [
+          "City hush through glass"
+        ],
+        "special": [
+          "Window plate - city night"
+        ]
+      }
+    },
+    {
+      "number": "16",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Police HQ, Egmore",
+      "eighths": 20,
+      "pageNumber": "38",
+      "shootDay": 9,
+      "synopsis": "The Joker sets a deadline: a name every night until the mask comes off. The commissioner and the mayor argue over who should be afraid.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "RAMIREZ",
+          "THE COMMISSIONER",
+          "THE MAYOR"
+        ],
+        "extras": [
+          "Constables (12)"
+        ],
+        "props": [
+          "Joker note (hero)",
+          "Phones",
+          "Mayor briefing folder"
+        ],
+        "wardrobe": [
+          "Police uniforms",
+          "Mayor - formal"
+        ],
+        "sound": [
+          "Station bed at night"
+        ]
+      }
+    },
+    {
+      "number": "17",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Heritage hotel, Mylapore",
+      "eighths": 16,
+      "pageNumber": "40",
+      "shootDay": 6,
+      "synopsis": "Bruce hosts a fundraiser for Dent's campaign, steering donors with a smile and avoiding Rachel's questions.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "HARVEY DENT",
+          "RACHEL",
+          "THE COMMISSIONER",
+          "THE MAYOR"
+        ],
+        "extras": [
+          "Guests (120)",
+          "Waiters (14)",
+          "Band (6)"
+        ],
+        "props": [
+          "Donor cards",
+          "Microphone and stand",
+          "Cocktail trays"
+        ],
+        "wardrobe": [
+          "Evening wear x120",
+          "Bruce - dinner jacket"
+        ],
+        "sound": [
+          "Ballroom bed",
+          "Live quartet"
+        ],
+        "special": [
+          "Crane for the entrance shot"
+        ]
+      }
+    },
+    {
+      "number": "18",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Bruce's penthouse, Madhavaram stage",
+      "eighths": 22,
+      "pageNumber": "42",
+      "shootDay": 7,
+      "synopsis": "The Joker arrives at the party's after-hours gathering with his own idea of a toast. Rachel is thrown clear, and someone has to catch her.",
+      "elements": {
+        "cast": [
+          "JOKER",
+          "BRUCE WAYNE",
+          "RACHEL",
+          "HARVEY DENT",
+          "GUEST"
+        ],
+        "extras": [
+          "Guests (30)",
+          "Joker henchmen (8)"
+        ],
+        "props": [
+          "Glass tray",
+          "Champagne flutes",
+          "Henchmen props"
+        ],
+        "wardrobe": [
+          "Joker - purple coat",
+          "Evening wear x30"
+        ],
+        "makeup": [
+          "Joker make-up - 90 min"
+        ],
+        "sound": [
+          "Glass crash",
+          "Party bed"
+        ],
+        "special": [
+          "Window rig for the drop"
+        ],
+        "stunts": [
+          "Window fall - 1 performer"
+        ],
+        "vfx": [
+          "Skyline plate",
+          "Rig removal"
+        ]
+      }
+    },
+    {
+      "number": "19",
+      "intExt": "EXT",
+      "dayNight": "DAY",
+      "location": "Mount Road funeral route",
+      "eighths": 15,
+      "pageNumber": "45",
+      "shootDay": 15,
+      "synopsis": "The commissioner is carried through the city in a long parade. Somebody on a rooftop has an unauthorised plan for the mayor, and Gordon takes the bullet instead.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "THE MAYOR",
+          "HARVEY DENT",
+          "ALFRED",
+          "DISGUISED SNIPER"
+        ],
+        "extras": [
+          "Mourners (500)",
+          "Police marchers (80)",
+          "Band (24)"
+        ],
+        "props": [
+          "Funeral wagon",
+          "Flowers",
+          "Sniper rifle (prop)",
+          "Wreaths"
+        ],
+        "wardrobe": [
+          "Police dress uniform x100",
+          "Mourners in white x500"
+        ],
+        "sound": [
+          "Funeral drum corps",
+          "Crowd"
+        ],
+        "vehicles": [
+          "Funeral wagon",
+          "Escort bikes x12"
+        ],
+        "stunts": [
+          "Gordon dive - 1 performer"
+        ],
+        "special": [
+          "Road closure - 6 hours",
+          "Crane for parade overhead"
+        ]
+      }
+    },
+    {
+      "number": "20",
+      "intExt": "INT",
+      "dayNight": "DAY",
+      "location": "Sessions court, Egmore",
+      "eighths": 15,
+      "pageNumber": "47",
+      "shootDay": 5,
+      "synopsis": "Dent stands up in court and announces he is the masked man everybody wants. It is a lie meant to end the killing.",
+      "elements": {
+        "cast": [
+          "HARVEY DENT",
+          "RACHEL",
+          "THE JUDGE"
+        ],
+        "extras": [
+          "Court gallery (60)",
+          "Press (12)"
+        ],
+        "props": [
+          "Microphones",
+          "Case files",
+          "Dent coin (hero)"
+        ],
+        "wardrobe": [
+          "Dent - court suit",
+          "Judge robes"
+        ],
+        "sound": [
+          "Court room tone",
+          "Camera flashes"
+        ]
+      }
+    },
+    {
+      "number": "21",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Bruce's penthouse, Madhavaram stage",
+      "eighths": 17,
+      "pageNumber": "49",
+      "shootDay": 7,
+      "synopsis": "Rachel leaves Bruce a letter she wants Alfred to hold until it matters. Bruce decides to give himself up.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "ALFRED",
+          "RACHEL"
+        ],
+        "props": [
+          "Letter (hero)",
+          "Envelope",
+          "Glass of water"
+        ],
+        "wardrobe": [
+          "Bruce - shirtsleeves",
+          "Rachel - day wear"
+        ],
+        "sound": [
+          "City hush"
+        ]
+      }
+    },
+    {
+      "number": "22",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Maduravoyal elevated expressway",
+      "eighths": 20,
+      "pageNumber": "51",
+      "shootDay": 16,
+      "synopsis": "The Joker's lorry meets a convoy carrying Dent on an elevated road, and the road becomes a series of increasingly bad ideas.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "HARVEY DENT",
+          "JOKER",
+          "BATMAN",
+          "POLICE DRIVERS"
+        ],
+        "extras": [
+          "Police drivers (16)",
+          "Civilian cars (30)"
+        ],
+        "props": [
+          "Armoured van",
+          "Lorry rig",
+          "Rocket launcher (prop)"
+        ],
+        "wardrobe": [
+          "Police uniforms",
+          "Joker - purple coat"
+        ],
+        "sound": [
+          "Chase bed",
+          "Engine hero cues"
+        ],
+        "vehicles": [
+          "Armoured van x2",
+          "Police cars x8",
+          "Lorry (stunt)",
+          "Batman bike (hero)"
+        ],
+        "stunts": [
+          "Lorry flip",
+          "Bike gag",
+          "Crash - 8 vehicles"
+        ],
+        "special": [
+          "Road closure - 8 hours",
+          "Camera car"
+        ],
+        "vfx": [
+          "Debris",
+          "Fire",
+          "Rig removal"
+        ]
+      }
+    },
+    {
+      "number": "23",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Port tunnel approach, Island Grounds",
+      "eighths": 13,
+      "pageNumber": "53",
+      "shootDay": 17,
+      "synopsis": "At the mouth of a tunnel the chase ends in a collision, and the Joker steps out of the wreck and into police hands.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "JOKER",
+          "GORDON"
+        ],
+        "extras": [
+          "Police (30)"
+        ],
+        "props": [
+          "Wrecked lorry",
+          "Tunnel lighting"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Joker - purple coat"
+        ],
+        "sound": [
+          "Tunnel echo",
+          "Sirens"
+        ],
+        "vehicles": [
+          "Batman bike (hero)",
+          "Lorry (wreck)",
+          "Police cars x6"
+        ],
+        "stunts": [
+          "Bike crash - 1 performer"
+        ],
+        "special": [
+          "Tunnel closure - 6 hours"
+        ],
+        "vfx": [
+          "Smoke",
+          "Rig removal"
+        ]
+      }
+    },
+    {
+      "number": "24",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Interrogation room, Madhavaram stage",
+      "eighths": 31,
+      "pageNumber": "55",
+      "shootDay": 10,
+      "synopsis": "Batman and the Joker are alone in the interview room while Gordon watches through glass. The Joker tells him what he has hidden, and where.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "JOKER",
+          "GORDON"
+        ],
+        "props": [
+          "Steel table",
+          "Handcuffs",
+          "Wall clock",
+          "Mirror glass"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Joker - police-issue jacket"
+        ],
+        "makeup": [
+          "Joker make-up - 90 min"
+        ],
+        "sound": [
+          "Room tone",
+          "Tube light buzz"
+        ],
+        "special": [
+          "Removable wall for camera",
+          "Two-way mirror rig"
+        ]
+      }
+    },
+    {
+      "number": "25",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Old mill, Ambattur",
+      "eighths": 18,
+      "pageNumber": "59",
+      "shootDay": 8,
+      "synopsis": "Rachel wakes tied to a drum in a mill, a phone line open to Dent's voice in another building.",
+      "elements": {
+        "cast": [
+          "RACHEL",
+          "JOKER HENCHMAN",
+          "HARVEY DENT"
+        ],
+        "props": [
+          "Oil drum rig",
+          "Mobile phone (hero)",
+          "Timer display (hero)"
+        ],
+        "wardrobe": [
+          "Rachel - same as scene 21"
+        ],
+        "makeup": [
+          "Rachel - dust and fatigue"
+        ],
+        "sound": [
+          "Mill hum",
+          "Timer beeps"
+        ],
+        "special": [
+          "Explosion rig - controlled",
+          "Fire marshal on set"
+        ]
+      }
+    },
+    {
+      "number": "26",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Chemical depot, Manali",
+      "eighths": 17,
+      "pageNumber": "61",
+      "shootDay": 12,
+      "synopsis": "Dent is tied in a chair in an empty office while the line to Rachel stays open. Batman reaches him a second too late to stop the number reaching zero.",
+      "elements": {
+        "cast": [
+          "HARVEY DENT",
+          "JOKER HENCHMAN",
+          "BATMAN"
+        ],
+        "props": [
+          "Chair",
+          "Mobile phone",
+          "Chemical drums",
+          "Timer display"
+        ],
+        "wardrobe": [
+          "Dent - court suit",
+          "Batman suit - hero"
+        ],
+        "makeup": [
+          "Dent - scorch make-up (burn prosthetic stage 1)"
+        ],
+        "sound": [
+          "Depot hum"
+        ],
+        "special": [
+          "Explosion rig - controlled",
+          "Fire marshal on set"
+        ],
+        "stunts": [
+          "Fire gag"
+        ],
+        "vfx": [
+          "Fire extension"
+        ]
+      }
+    },
+    {
+      "number": "27",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Chemical depot, Manali",
+      "eighths": 12,
+      "pageNumber": "63",
+      "shootDay": 12,
+      "synopsis": "The depot goes up. Batman carries Dent out of the fire, and what is left of the face the city believed in.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "HARVEY DENT"
+        ],
+        "extras": [
+          "Fire crew (10)"
+        ],
+        "props": [
+          "Burn prosthetic (hero)",
+          "Stretcher"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Dent - singed"
+        ],
+        "makeup": [
+          "Dent - burn prosthetic stage 2 (3 hrs)"
+        ],
+        "sound": [
+          "Fire",
+          "Sirens"
+        ],
+        "vehicles": [
+          "Fire tender"
+        ],
+        "stunts": [
+          "Fire gag - 1 performer"
+        ],
+        "special": [
+          "Fire marshal",
+          "Foam and water rig"
+        ],
+        "vfx": [
+          "Fire extension",
+          "Burn extension"
+        ]
+      }
+    },
+    {
+      "number": "28",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Government hospital, Royapettah",
+      "eighths": 20,
+      "pageNumber": "65",
+      "shootDay": 18,
+      "synopsis": "Dent is bandaged in a ward bed. A man in an orderly coat visits and offers him a different way of explaining the last night.",
+      "elements": {
+        "cast": [
+          "HARVEY DENT",
+          "JOKER",
+          "NURSE"
+        ],
+        "extras": [
+          "Patients (20)",
+          "Staff (10)"
+        ],
+        "props": [
+          "Hospital bed",
+          "Bandages",
+          "Orderly coat",
+          "Flowers"
+        ],
+        "wardrobe": [
+          "Dent - hospital gown",
+          "Joker - orderly coat over costume"
+        ],
+        "makeup": [
+          "Dent - burn prosthetic stage 2 (3 hrs)",
+          "Joker make-up - 90 min"
+        ],
+        "sound": [
+          "Ward ambience",
+          "Heart monitor"
+        ]
+      }
+    },
+    {
+      "number": "29",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Government hospital, Royapettah",
+      "eighths": 13,
+      "pageNumber": "67",
+      "shootDay": 18,
+      "synopsis": "The evacuated hospital wing comes down. The Joker walks out through the evacuees as if there were no hurry at all.",
+      "elements": {
+        "cast": [
+          "JOKER",
+          "GORDON"
+        ],
+        "extras": [
+          "Evacuees (120)",
+          "Hospital staff (20)",
+          "Police (24)"
+        ],
+        "props": [
+          "Wheelchairs",
+          "Stretchers",
+          "Fire barriers"
+        ],
+        "wardrobe": [
+          "Hospital gowns x60",
+          "Police uniforms"
+        ],
+        "sound": [
+          "Evacuation shouts",
+          "Explosion"
+        ],
+        "vehicles": [
+          "Ambulances x4",
+          "Hospital bus"
+        ],
+        "special": [
+          "Controlled demolition - hospital wing (set piece)",
+          "Fire marshal and engineer"
+        ],
+        "stunts": [
+          "Debris fall",
+          "Fire gag"
+        ],
+        "vfx": [
+          "Building collapse",
+          "Debris",
+          "Smoke"
+        ]
+      }
+    },
+    {
+      "number": "30",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Underground workshop, Madhavaram stage",
+      "eighths": 18,
+      "pageNumber": "69",
+      "shootDay": 4,
+      "synopsis": "Bruce asks Fox for a machine that can listen to the whole city at once. Fox does not want to build it and builds it anyway.",
+      "elements": {
+        "cast": [
+          "BRUCE WAYNE",
+          "FOX"
+        ],
+        "props": [
+          "Phone wall",
+          "Monitors",
+          "Workbench",
+          "Tool rolls"
+        ],
+        "wardrobe": [
+          "Bruce - work shirt",
+          "Fox - cardigan"
+        ],
+        "sound": [
+          "Machine hum",
+          "Static"
+        ],
+        "vfx": [
+          "Phone-wall graphics - screens"
+        ]
+      }
+    },
+    {
+      "number": "31",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Police HQ, Egmore",
+      "eighths": 16,
+      "pageNumber": "71",
+      "shootDay": 9,
+      "synopsis": "With the city on the verge of panic, Gordon and the mayor have to decide how to move half a million people before a threat they can't locate.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "THE MAYOR",
+          "RAMIREZ"
+        ],
+        "extras": [
+          "Constables (16)"
+        ],
+        "props": [
+          "City map",
+          "Evacuation order",
+          "Phones"
+        ],
+        "wardrobe": [
+          "Police uniforms",
+          "Mayor - formal"
+        ],
+        "sound": [
+          "Station bed"
+        ]
+      }
+    },
+    {
+      "number": "32",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Ennore port, ferry berth",
+      "eighths": 15,
+      "pageNumber": "73",
+      "shootDay": 19,
+      "synopsis": "Two ferries wait at the berth to take people out of the city: one for the public, one for prisoners. Each is wired by someone who wants to see what happens.",
+      "elements": {
+        "cast": [
+          "FERRY CAPTAIN",
+          "WARDEN",
+          "PASSENGER ONE",
+          "PASSENGER TWO"
+        ],
+        "extras": [
+          "Passengers (200)",
+          "Prisoners (40)",
+          "Police (20)",
+          "Dock workers (10)"
+        ],
+        "props": [
+          "Luggage",
+          "Boarding passes",
+          "Handcuffs",
+          "Life jackets"
+        ],
+        "wardrobe": [
+          "Passenger wear x200",
+          "Prisoner uniforms x40"
+        ],
+        "sound": [
+          "Harbour bed",
+          "Ferry horns"
+        ],
+        "vehicles": [
+          "Two ferries (hired)",
+          "Tug",
+          "Police launch"
+        ],
+        "special": [
+          "Marine unit and safety boats",
+          "Port permission"
+        ]
+      }
+    },
+    {
+      "number": "33",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Ennore port, passenger ferry",
+      "eighths": 21,
+      "pageNumber": "75",
+      "shootDay": 20,
+      "synopsis": "On the passenger deck a detonator and a deadline split the room into people who will vote and people who will not.",
+      "elements": {
+        "cast": [
+          "FERRY CAPTAIN",
+          "PASSENGER ONE",
+          "PASSENGER TWO",
+          "PASSENGER THREE"
+        ],
+        "extras": [
+          "Passengers (100)"
+        ],
+        "props": [
+          "Detonator box (hero)",
+          "Ballot slips",
+          "Cap (hero)"
+        ],
+        "wardrobe": [
+          "Passenger wear x100"
+        ],
+        "sound": [
+          "Engine hum",
+          "Crowd murmur"
+        ],
+        "special": [
+          "Gimbal platform - deck set"
+        ]
+      }
+    },
+    {
+      "number": "34",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Ennore port, prisoner ferry",
+      "eighths": 19,
+      "pageNumber": "77",
+      "shootDay": 20,
+      "synopsis": "Below on the prisoner ferry the warden holds the other detonator. A convict he has been afraid of for years is about to ask for it.",
+      "elements": {
+        "cast": [
+          "WARDEN",
+          "PRISONER ONE",
+          "PRISONER TWO"
+        ],
+        "extras": [
+          "Prisoners (40)",
+          "Guards (6)"
+        ],
+        "props": [
+          "Detonator box (hero)",
+          "Steel chains",
+          "Warden cap"
+        ],
+        "wardrobe": [
+          "Prisoner uniforms x40",
+          "Guard uniforms x6"
+        ],
+        "sound": [
+          "Engine hum",
+          "Chains"
+        ],
+        "special": [
+          "Gimbal platform - deck set"
+        ]
+      }
+    },
+    {
+      "number": "35",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Unfinished tower, Sholinganallur",
+      "eighths": 17,
+      "pageNumber": "80",
+      "shootDay": 21,
+      "synopsis": "In an unfinished tower the Joker has dressed his own men as hostages and his hostages as his men. Batman has to sort them out in the dark.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "JOKER HENCHMAN",
+          "HOSTAGE ONE"
+        ],
+        "extras": [
+          "Henchmen (14)",
+          "Hostages (10)",
+          "Police tactical team (12)"
+        ],
+        "props": [
+          "Clown masks",
+          "Hospital scrubs",
+          "Night-vision rigs"
+        ],
+        "wardrobe": [
+          "Hospital scrubs x10",
+          "Henchmen overalls x14",
+          "Batman suit - hero"
+        ],
+        "sound": [
+          "Concrete echo",
+          "Heartbeat"
+        ],
+        "special": [
+          "Scaffold rig",
+          "Blue-black lighting crane"
+        ],
+        "stunts": [
+          "Fight - 8 performers",
+          "Wire gag"
+        ],
+        "vfx": [
+          "Sonar overlay"
+        ]
+      }
+    },
+    {
+      "number": "36",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Unfinished tower, Sholinganallur",
+      "eighths": 19,
+      "pageNumber": "82",
+      "shootDay": 21,
+      "synopsis": "On the unfinished roof Batman and the Joker finish their argument. One of them falls, and is caught.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "JOKER",
+          "GORDON"
+        ],
+        "extras": [
+          "Police tactical team (12)"
+        ],
+        "props": [
+          "Wire gear",
+          "Rooftop dressing"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Joker - purple coat"
+        ],
+        "makeup": [
+          "Joker make-up - 90 min"
+        ],
+        "sound": [
+          "Wind",
+          "Sirens below"
+        ],
+        "special": [
+          "Crane for the descent",
+          "Rooftop safety rig"
+        ],
+        "stunts": [
+          "Descent gag - 2 performers"
+        ],
+        "vfx": [
+          "Rig removal",
+          "Skyline"
+        ]
+      }
+    },
+    {
+      "number": "37",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Gordon's house, Besant Nagar",
+      "eighths": 16,
+      "pageNumber": "84",
+      "shootDay": 2,
+      "synopsis": "Gordon's family sits in a quiet house the night after the funeral. He comes through the door and the evening changes.",
+      "elements": {
+        "cast": [
+          "GORDON",
+          "MRS GORDON",
+          "GORDON'S SON"
+        ],
+        "props": [
+          "Photographs",
+          "Tea cups",
+          "School bag"
+        ],
+        "wardrobe": [
+          "Gordon - overcoat",
+          "Mrs Gordon - cotton saree",
+          "Son - school clothes"
+        ],
+        "sound": [
+          "House ambience",
+          "Ceiling fan"
+        ],
+        "special": [
+          "Practical lamps"
+        ]
+      }
+    },
+    {
+      "number": "38",
+      "intExt": "INT",
+      "dayNight": "NIGHT",
+      "location": "Half-built tenement, Royapuram",
+      "eighths": 19,
+      "pageNumber": "86",
+      "shootDay": 22,
+      "synopsis": "Dent holds Gordon's family in the half-finished building where Rachel died. A coin decides who gets to keep a future, until it does not.",
+      "elements": {
+        "cast": [
+          "HARVEY DENT",
+          "GORDON",
+          "GORDON'S SON",
+          "MRS GORDON",
+          "BATMAN"
+        ],
+        "props": [
+          "Dent coin (hero)",
+          "Revolver (prop)",
+          "Chair x3"
+        ],
+        "wardrobe": [
+          "Dent - burned suit",
+          "Gordon family",
+          "Batman suit - hero"
+        ],
+        "makeup": [
+          "Dent - burn prosthetic stage 3 (3 hrs)"
+        ],
+        "sound": [
+          "Concrete echo",
+          "Wind through frames"
+        ],
+        "special": [
+          "Scaffold rig",
+          "Fall rig - floor to net"
+        ],
+        "stunts": [
+          "Fall - 1 performer"
+        ],
+        "vfx": [
+          "Burn extension"
+        ]
+      }
+    },
+    {
+      "number": "39",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Half-built tenement, Royapuram",
+      "eighths": 15,
+      "pageNumber": "89",
+      "shootDay": 22,
+      "synopsis": "After the fall Batman and Gordon decide who will carry the blame. A boy is told a smaller, kinder version of the night.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "GORDON",
+          "GORDON'S SON"
+        ],
+        "props": [
+          "Dent coin (hero)",
+          "Police tape"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Gordon - overcoat"
+        ],
+        "sound": [
+          "Sirens",
+          "Wind"
+        ],
+        "special": [
+          "Rooftop edge rig"
+        ]
+      }
+    },
+    {
+      "number": "40",
+      "intExt": "EXT",
+      "dayNight": "NIGHT",
+      "location": "Riverside road, Adyar",
+      "eighths": 13,
+      "pageNumber": "91",
+      "shootDay": 2,
+      "synopsis": "On a river road Batman takes the blame and Gordon takes a vow. The city gets a story it can sleep on, and a bike's engine fades into traffic.",
+      "elements": {
+        "cast": [
+          "BATMAN",
+          "GORDON",
+          "RAMIREZ"
+        ],
+        "extras": [
+          "Traffic (20)",
+          "Police (10)"
+        ],
+        "props": [
+          "Batman bike (hero)",
+          "Police lights"
+        ],
+        "wardrobe": [
+          "Batman suit - hero",
+          "Gordon - overcoat"
+        ],
+        "sound": [
+          "River bed",
+          "Bike engine fade"
+        ],
+        "vehicles": [
+          "Batman bike (hero)",
+          "Police cars x3"
+        ],
+        "special": [
+          "Road closure - 4 hours"
+        ]
+      }
     }
-   ]
-  }
- ],
- "script": {
-  "documents": [
-   {
-    "title": "The Dark Knight — sample treatment (reconstruction)",
-    "kind": "Treatment",
-    "body": "SAMPLE DOCUMENT. PLACEHOLDER. A reconstruction written for the sample project."
-   }
-  ]
- },
- "calc": [
-  {
-   "item": "Camera package",
-   "days": "2",
-   "rate": "30000"
+  ],
+  "days": {
+    "1": "2026-03-02",
+    "2": "2026-03-03",
+    "3": "2026-03-04",
+    "4": "2026-03-05",
+    "5": "2026-03-06",
+    "6": "2026-03-07",
+    "7": "2026-03-09",
+    "8": "2026-03-10",
+    "9": "2026-03-11",
+    "10": "2026-03-12",
+    "11": "2026-03-13",
+    "12": "2026-03-14",
+    "13": "2026-03-16",
+    "14": "2026-03-17",
+    "15": "2026-03-18",
+    "16": "2026-03-19",
+    "17": "2026-03-20",
+    "18": "2026-03-21",
+    "19": "2026-03-23",
+    "20": "2026-03-24",
+    "21": "2026-03-25",
+    "22": "2026-03-26"
   },
-  {
-   "item": "Lighting package",
-   "days": "2",
-   "rate": "20000"
-  }
- ]
+  "recces": {
+    "Co-operative bank, Mylapore": {
+      "address": "Closed co-operative bank, a main road off Luz Corner, Mylapore (invented)",
+      "contact": "Branch trust office - Mr D. Anandan (invented)",
+      "permission": "approved",
+      "power": "Building supply, 40A single phase. Genny for the exterior.",
+      "parking": "Road-side, 12 vehicles; the school bus parks in the lane behind.",
+      "toilets": "Two on the ground floor, open for the unit.",
+      "bestTime": "07:00-17:00, with the shutters up at 08:00 for the hero exterior.",
+      "cost": "₹ 70,000 per day, two days agreed (sample figure)",
+      "notes": "The bank is the only location in the shoot that sets the scale of the film on day one. One day for the exterior and the bus, one for the vault. No rolling over; the trust will not extend."
+    },
+    "Rooftop, Anna Salai": {
+      "address": "Rooftop of a commercial block on Anna Salai (invented)",
+      "contact": "Building owner's representative - Mr S. Jayakumar (invented)",
+      "permission": "approved",
+      "power": "Rooftop supply, 20A. Battery power for the searchlight.",
+      "parking": "Basement car park, 10 vehicles.",
+      "toilets": "On the 6th floor.",
+      "bestTime": "Night only, 19:00-04:00. The city bed is loudest before midnight.",
+      "cost": "₹ 90,000 for the night (sample figure)",
+      "notes": "The searchlight is a hero prop on a bolted plate. Safety rig for every performer within three metres of the edge."
+    },
+    "Chemical depot, Manali": {
+      "address": "Closed chemical depot, near the Manali industrial belt (invented)",
+      "contact": "Depot manager - Mr K. Raghunathan (invented)",
+      "permission": "approved",
+      "power": "Depot supply, 63A three phase. Genny for the night unit.",
+      "parking": "Yard, 30 vehicles.",
+      "toilets": "Depot block, open for the unit.",
+      "bestTime": "Night only. Explosion rig after 21:00 with the fire tender on set.",
+      "cost": "₹ 1,20,000 per night, three nights agreed (sample figure)",
+      "notes": "The depot is licensed for one controlled burn. The fire marshal signs the rig before the day and again before the pass. No second take on the explosion."
+    },
+    "Sessions court, Egmore": {
+      "address": "Old Sessions Court building, Egmore (invented)",
+      "contact": "Court administrator - Mrs V. Lalitha (invented)",
+      "permission": "approved",
+      "power": "Court supply, 32A. No genny allowed inside.",
+      "parking": "Court compound, 20 vehicles.",
+      "toilets": "Ground floor.",
+      "bestTime": "Weekend only, 07:00-18:00. Day interior for two scenes.",
+      "cost": "₹ 55,000 per day, one day agreed (sample figure)",
+      "notes": "A working court on weekdays, so one Sunday for both scenes. Sixty background in the gallery and a polite sign on every door."
+    },
+    "Heritage hotel, Mylapore": {
+      "address": "Heritage hotel, a lane off Mylapore tank (invented)",
+      "contact": "General manager - Mr R. Bhaskaran (invented)",
+      "permission": "approved",
+      "power": "Hotel supply, 100A. Backup genny for the ballroom.",
+      "parking": "Basement, 30 vehicles.",
+      "toilets": "Ballroom foyer.",
+      "bestTime": "Night, 17:00-04:00; hotel guests out of the east wing.",
+      "cost": "₹ 1,80,000 for the night (sample figure)",
+      "notes": "The ballroom and the restaurant on one night, both within the east wing. A hundred and twenty background in evening wear, called in two waves."
+    },
+    "Old mill, Ambattur": {
+      "address": "A disused spinning mill in an Ambattur industrial estate (invented)",
+      "contact": "Estate caretaker - Mr P. Nataraj (invented)",
+      "permission": "approved",
+      "power": "No live supply. Two gennys and a lighting plant.",
+      "parking": "Mill yard, 40 vehicles.",
+      "toilets": "Portable toilets on the yard.",
+      "bestTime": "Any, but all scenes are night interiors. Windows painted black before the day.",
+      "cost": "₹ 90,000 per night, one night agreed (sample figure)",
+      "notes": "Three scenes on one night. The meeting and the Joker's entrance are a single room and a single light; Rachel's drum is the one corner with a separate rig."
+    },
+    "Police HQ, Egmore": {
+      "address": "Old police building, Egmore (invented)",
+      "contact": "Station adjutant - Inspector M. Selvam (invented)",
+      "permission": "approved",
+      "power": "Station supply, 63A.",
+      "parking": "Compound, 25 vehicles.",
+      "toilets": "On the first floor.",
+      "bestTime": "Day for one scene, night for two. Station working in the east wing.",
+      "cost": "₹ 60,000 per day (sample figure)",
+      "notes": "The long upper room with the high fans is the only real police room in the film. The interrogation room is a set; this is for the briefing, the Joker's letter and the mayor's meeting."
+    },
+    "Underground workshop, Madhavaram stage": {
+      "address": "Built set - Stage 3, Madhavaram (invented)",
+      "contact": "Parthiban G (art)",
+      "permission": "approved",
+      "power": "Stage supply, 100A three phase.",
+      "parking": "Stage compound, 20 vehicles.",
+      "toilets": "On the stage.",
+      "bestTime": "Any. Two scenes, night interiors.",
+      "cost": "₹ 1,40,000 stage rent for 3 days (sample figure)",
+      "notes": "A long cavern with a wall of phones and a workbench. Removable fourth wall so a 50mm can sit on the bench line."
+    },
+    "Business tower, Taramani": {
+      "address": "A glass office tower in Taramani (invented)",
+      "contact": "Facilities manager - Ms A. Revathi (invented)",
+      "permission": "approved",
+      "power": "Lobby supply; roof supply on request.",
+      "parking": "Basement, 18 vehicles.",
+      "toilets": "On the 3rd floor.",
+      "bestTime": "Day for the atrium; night for the roof, from 21:00.",
+      "cost": "₹ 2,50,000 for two days (sample figure)",
+      "notes": "The only crane scene. The tower crane is rented by the night, so the roof day is a clean one. The atrium day is the day before."
+    },
+    "Government hospital, Royapettah": {
+      "address": "A closed wing of a government hospital, Royapettah (invented)",
+      "contact": "Medical superintendent - Dr L. Chitra (invented)",
+      "permission": "approved",
+      "power": "Hospital supply; backup generator.",
+      "parking": "Staff car park, 20 vehicles.",
+      "toilets": "Wing toilets.",
+      "bestTime": "Night. The wing is demolished once, and the demolition is the shoot.",
+      "cost": "₹ 6,50,000 for the wing, two nights agreed (sample figure)",
+      "notes": "The wing is scheduled for demolition; the film pays the municipality to do it on the night and shoot it with seven cameras. A fire marshal and a structural engineer are on set from call."
+    },
+    "Ennore port, ferry berth": {
+      "address": "A working berth at Ennore port (invented)",
+      "contact": "Port operations - Capt. T. Balasubramanian (invented)",
+      "permission": "approved",
+      "power": "Berth supply, 63A. Floating lights from the tug.",
+      "parking": "Port yard, 40 vehicles.",
+      "toilets": "On the berth.",
+      "bestTime": "Two consecutive nights. The two ferries are hired for the shoot and a safety boat sits off each bow.",
+      "cost": "₹ 4,00,000 per night (sample figure)",
+      "notes": "The second hardest location in the film. Two ferries, two hundred passengers and forty prisoners, and a marine unit watching the weather."
+    },
+    "Unfinished tower, Sholinganallur": {
+      "address": "An unfinished high-rise shell in Sholinganallur (invented)",
+      "contact": "Contractor - Mr N. Ganesan (invented)",
+      "permission": "approved",
+      "power": "Site supply, 63A. Two gennys at ground level.",
+      "parking": "Site yard, 30 vehicles.",
+      "toilets": "Site toilets, ground floor.",
+      "bestTime": "Night, 19:00-05:00. The structure is open; wind and rain are the hazards.",
+      "cost": "₹ 1,50,000 for the night (sample figure)",
+      "notes": "The scaffold rigs are built the week before. The roof scene needs a crane and a safety net, and the floor scene needs the lighting crane at the open face."
+    }
+  },
+  "media": [
+    {
+      "title": "Lookbook - sodium and slate",
+      "url": "https://example.com/darkknight/lookbook-night",
+      "kind": "Reference image",
+      "notes": "60 frames. The city at night, wet concrete, tube light.",
+      "linkedTo": "Rooftop, Anna Salai"
+    },
+    {
+      "title": "Recce photos - Ennore berth",
+      "url": "https://example.com/darkknight/recce-ennore",
+      "kind": "Recce photos",
+      "notes": "Berth depth, ferry draught, the lamp positions. Read before the marine plan is signed.",
+      "linkedTo": "Ennore port, ferry berth"
+    },
+    {
+      "title": "Purple card artwork, 12 hero copies",
+      "url": "https://example.com/darkknight/card-artwork",
+      "kind": "Document",
+      "notes": "Hero, insert, and an aged copy for the last reel. Must read at three metres.",
+      "linkedTo": "Old mill, Ambattur"
+    },
+    {
+      "title": "Demolition rehearsal clip",
+      "url": "https://example.com/darkknight/demo-rehearsal",
+      "kind": "Video",
+      "notes": "The hospital wing from seven angles in a scale-model test.",
+      "linkedTo": "Government hospital, Royapettah"
+    }
+  ],
+  "contacts": [
+    {
+      "name": "Tharun Velavan",
+      "role": "BRUCE WAYNE / BATMAN",
+      "department": "Cast",
+      "phone": "+91 90000 20001",
+      "email": "tharun.velavan@darkknight.example",
+      "notes": "Lead, 20 of 22 days. Stunt prep on days 11 and 12; suit fitting 90 minutes."
+    },
+    {
+      "name": "Sudhakar Pitchai",
+      "role": "JOKER",
+      "department": "Cast",
+      "phone": "+91 90000 20002",
+      "email": "sudhakar.pitchai@darkknight.example",
+      "notes": "Fourteen days. Make-up call 90 minutes before every scene."
+    },
+    {
+      "name": "Pranav Selvakumar",
+      "role": "HARVEY DENT",
+      "department": "Cast",
+      "phone": "+91 90000 20003",
+      "email": "pranav.selvakumar@darkknight.example",
+      "notes": "Nine days. Burn prosthetic on days 12, 18 and 22, three hours each."
+    },
+    {
+      "name": "Raghunath Appadurai",
+      "role": "GORDON",
+      "department": "Cast",
+      "phone": "+91 90000 20004",
+      "email": "raghunath.appadurai@darkknight.example",
+      "notes": "Eleven days, including the funeral parade on day 15."
+    },
+    {
+      "name": "Mythili Sundaram",
+      "role": "RACHEL",
+      "department": "Cast",
+      "phone": "+91 90000 20005",
+      "email": "mythili.sundaram@darkknight.example",
+      "notes": "Seven days, all interior except the fall."
+    },
+    {
+      "name": "Kandasamy Rengan",
+      "role": "ALFRED",
+      "department": "Cast",
+      "phone": "+91 90000 20006",
+      "email": "kandasamy.rengan@darkknight.example",
+      "notes": "Four days, all stage-built sets."
+    },
+    {
+      "name": "Thirumalai Nambi",
+      "role": "FOX",
+      "department": "Cast",
+      "phone": "+91 90000 20007",
+      "email": "thirumalai.nambi@darkknight.example",
+      "notes": "Four days, the tower and the workshop."
+    },
+    {
+      "name": "Balaji Ponnusamy",
+      "role": "MARONI",
+      "department": "Cast",
+      "phone": "+91 90000 20008",
+      "email": "balaji.ponnusamy@darkknight.example",
+      "notes": "Three days: the court and the mill."
+    },
+    {
+      "name": "Wen Li Natarajan",
+      "role": "LAU",
+      "department": "Cast",
+      "phone": "+91 90000 20009",
+      "email": "wen.li.natarajan@darkknight.example",
+      "notes": "Four days. Wire harness on day 14, with a double for the lift."
+    },
+    {
+      "name": "Anandhi Raj",
+      "role": "RAMIREZ",
+      "department": "Cast",
+      "phone": "+91 90000 20010",
+      "email": "anandhi.raj@darkknight.example",
+      "notes": "Six days across the station and the river road."
+    },
+    {
+      "name": "Sivasankar Dorai",
+      "role": "THE COMMISSIONER",
+      "department": "Cast",
+      "phone": "+91 90000 20011",
+      "email": "sivasankar.dorai@darkknight.example",
+      "notes": "Two days; the funeral is his last."
+    },
+    {
+      "name": "Yamuna Pathy",
+      "role": "THE MAYOR",
+      "department": "Cast",
+      "phone": "+91 90000 20012",
+      "email": "yamuna.pathy@darkknight.example",
+      "notes": "Four days, including the funeral and the station."
+    },
+    {
+      "name": "Senthil Vendhan",
+      "role": "GAMBOL",
+      "department": "Cast",
+      "phone": "+91 90000 20013",
+      "email": "senthil.vendhan@darkknight.example",
+      "notes": "Three days; one fight day at the depot."
+    },
+    {
+      "name": "Rangarajan Mahalingam",
+      "role": "Director",
+      "department": "Direction",
+      "phone": "+91 90000 20014",
+      "email": "rangarajan.mahalingam@darkknight.example",
+      "notes": "Invented. Present on every day."
+    },
+    {
+      "name": "Muthu Pandian",
+      "role": "1st AD",
+      "department": "Direction",
+      "phone": "+91 90000 20015",
+      "email": "muthu.pandian@darkknight.example",
+      "notes": "Owns the port window and the parade closure."
+    },
+    {
+      "name": "Priyanka Devarajan",
+      "role": "2nd AD",
+      "department": "Direction",
+      "phone": "+91 90000 20016",
+      "email": "priyanka.devarajan@darkknight.example",
+      "notes": "Background wrangler for the parade (500) and the hospital evacuees (120)."
+    },
+    {
+      "name": "Hemalatha Jayaram",
+      "role": "Script supervisor",
+      "department": "Direction",
+      "phone": "+91 90000 20017",
+      "email": "hemalatha.jayaram@darkknight.example",
+      "notes": "Keeps the card, the coin and the clock continuous."
+    },
+    {
+      "name": "Sundar Raman",
+      "role": "Director of Photography",
+      "department": "Camera",
+      "phone": "+91 90000 20018",
+      "email": "sundar.raman@darkknight.example",
+      "notes": "Seven cameras on the demolition, one pass."
+    },
+    {
+      "name": "Arvind Kesavan",
+      "role": "Focus puller",
+      "department": "Camera",
+      "phone": "+91 90000 20019",
+      "email": "arvind.kesavan@darkknight.example",
+      "notes": "Atlas anamorphics on the chase; Master Primes elsewhere."
+    },
+    {
+      "name": "Manikandan P",
+      "role": "Gaffer",
+      "department": "Camera",
+      "phone": "+91 90000 20020",
+      "email": "manikandan.p@darkknight.example",
+      "notes": "Sodium look at night; a single hard source in every scene."
+    },
+    {
+      "name": "Yazhini Nambiar",
+      "role": "Sound recordist",
+      "department": "Sound",
+      "phone": "+91 90000 20021",
+      "email": "yazhini.nambiar@darkknight.example",
+      "notes": "Sound department on the ferries, with the engine on the track."
+    },
+    {
+      "name": "Latha Chidambaram",
+      "role": "Production Designer",
+      "department": "Art",
+      "phone": "+91 90000 20022",
+      "email": "latha.chidambaram@darkknight.example",
+      "notes": "Three stage sets and the tenement dressing."
+    },
+    {
+      "name": "Parthiban G",
+      "role": "Art director",
+      "department": "Art",
+      "phone": "+91 90000 20023",
+      "email": "parthiban.g@darkknight.example",
+      "notes": "Interrogation room, workshop and penthouse sets, built in four weeks."
+    },
+    {
+      "name": "Kalpana Ranganathan",
+      "role": "Costume Designer",
+      "department": "Costume",
+      "phone": "+91 90000 20024",
+      "email": "kalpana.ranganathan@darkknight.example",
+      "notes": "Three suits for the lead; the purple coat is a single hero piece with six doubles."
+    },
+    {
+      "name": "Sheela Dharmaraj",
+      "role": "Hair & Makeup",
+      "department": "Makeup",
+      "phone": "+91 90000 20025",
+      "email": "sheela.dharmaraj@darkknight.example",
+      "notes": "The Joker's paint, the burn prosthetics and the stunts' continuity."
+    },
+    {
+      "name": "Gayathri Anbumani",
+      "role": "Producer / Production Manager",
+      "department": "Production",
+      "phone": "+91 90000 20026",
+      "email": "gayathri.anbumani@darkknight.example",
+      "notes": "Owns the budget and the municipal sign-offs."
+    },
+    {
+      "name": "Venkat Subbu",
+      "role": "Production executive",
+      "department": "Production",
+      "phone": "+91 90000 20027",
+      "email": "venkat.subbu@darkknight.example",
+      "notes": "Location permits, road closures and the marine unit."
+    },
+    {
+      "name": "Karuppiah Raj",
+      "role": "Stunt coordinator",
+      "department": "Production",
+      "phone": "+91 90000 20028",
+      "email": "karuppiah.raj@darkknight.example",
+      "notes": "Lorry flip, wire lift, fire gags and the fall."
+    },
+    {
+      "name": "Anwar Basha",
+      "role": "Editor",
+      "department": "Post",
+      "phone": "+91 90000 20029",
+      "email": "anwar.basha@darkknight.example",
+      "notes": "On set for the chase and the ferries."
+    },
+    {
+      "name": "Joshua Daniel",
+      "role": "Composer / Sound Designer",
+      "department": "Post",
+      "phone": "+91 90000 20030",
+      "email": "joshua.daniel@darkknight.example",
+      "notes": "No score under the ferries; one string note under every Joker scene."
+    },
+    {
+      "name": "Aparna Narayan",
+      "role": "VFX supervisor",
+      "department": "Post",
+      "phone": "+91 90000 20031",
+      "email": "aparna.narayan@darkknight.example",
+      "notes": "About 520 shots; the hospital and the lorry flip are the largest."
+    }
+  ],
+  "callSheets": [
+    {
+      "title": "The Dark Knight - Day 1",
+      "day": 1,
+      "generalCall": "06:00",
+      "location": "Co-operative bank, Mylapore (unit base: lane behind the bank)",
+      "notes": "SAMPLE CALL SHEET. A reconstruction for practice, invented like the rest of this project's paperwork - see the project note. The bank is two days only and does not roll over. Road closure from 06:30 on the east lane. Four clown masks, one school bus. Squib check at 07:00; the fire marshal signs before the first take. 25 background from 07:30.",
+      "sceneNumbers": [
+        "1",
+        "2"
+      ],
+      "calls": {
+        "Rangarajan Mahalingam": "05:30",
+        "Muthu Pandian": "05:30",
+        "Priyanka Devarajan": "05:30",
+        "Hemalatha Jayaram": "05:45",
+        "Sundar Raman": "05:45",
+        "Arvind Kesavan": "05:45",
+        "Manikandan P": "05:00",
+        "Yazhini Nambiar": "05:45",
+        "Latha Chidambaram": "05:30",
+        "Sheela Dharmaraj": "05:00",
+        "Kalpana Ranganathan": "05:45",
+        "Sudhakar Pitchai": "05:00",
+        "Karuppiah Raj": "05:30",
+        "Venkat Subbu": "05:00"
+      }
+    },
+    {
+      "title": "The Dark Knight - Day 12",
+      "day": 12,
+      "generalCall": "16:00",
+      "location": "Chemical depot, Manali (unit base: yard)",
+      "notes": "SAMPLE CALL SHEET. A reconstruction for practice, invented like the rest of this project's paperwork - see the project note. Night shoot, the heaviest day of the schedule: a controlled explosion, a fire gag and a tanker. The fire tender is on set from 15:30 and the fire marshal signs the rig at 17:00. One take on the explosion. Dent's burn prosthetic is a 3-hour call; Dent's make-up call is 13:00.",
+      "sceneNumbers": [
+        "4",
+        "26",
+        "27"
+      ],
+      "calls": {
+        "Rangarajan Mahalingam": "15:00",
+        "Muthu Pandian": "15:00",
+        "Priyanka Devarajan": "15:00",
+        "Hemalatha Jayaram": "15:30",
+        "Sundar Raman": "15:30",
+        "Arvind Kesavan": "15:30",
+        "Manikandan P": "14:00",
+        "Yazhini Nambiar": "15:30",
+        "Latha Chidambaram": "14:30",
+        "Sheela Dharmaraj": "13:00",
+        "Kalpana Ranganathan": "15:00",
+        "Tharun Velavan": "14:30",
+        "Pranav Selvakumar": "13:00",
+        "Senthil Vendhan": "16:00",
+        "Karuppiah Raj": "14:00",
+        "Venkat Subbu": "13:00",
+        "Aparna Narayan": "15:00"
+      }
+    }
+  ],
+  "shots": [
+    {
+      "scene": "2",
+      "number": "1",
+      "size": "WS",
+      "angle": "eye level",
+      "movement": "static",
+      "lens": "25mm",
+      "description": "The bank hall from the door. Twelve customers, ceiling fans, a long counter. Nothing is wrong yet."
+    },
+    {
+      "scene": "2",
+      "number": "2",
+      "size": "MS",
+      "angle": "eye level",
+      "movement": "handheld",
+      "lens": "32mm",
+      "description": "The Joker crossing the floor behind the others. He is the only man who does not run."
+    },
+    {
+      "scene": "2",
+      "number": "3",
+      "size": "CU",
+      "angle": "low",
+      "movement": "static",
+      "lens": "75mm",
+      "description": "The card going into the manager's pocket. Legible at three metres."
+    },
+    {
+      "scene": "2",
+      "number": "4",
+      "size": "EWS",
+      "angle": "high",
+      "movement": "crane",
+      "lens": "18mm",
+      "description": "The bus pulling out as the alarm begins, one minute late."
+    },
+    {
+      "scene": "12",
+      "number": "1",
+      "size": "EWS",
+      "angle": "high",
+      "movement": "drone",
+      "lens": "24mm",
+      "description": "The tower and the crane from above. The red lamp is the only point of reference."
+    },
+    {
+      "scene": "12",
+      "number": "2",
+      "size": "MS",
+      "angle": "eye level",
+      "movement": "handheld",
+      "lens": "32mm",
+      "description": "Through the broken window with Batman. Glass, a collar, a pair of spectacles."
+    },
+    {
+      "scene": "12",
+      "number": "3",
+      "size": "WS",
+      "angle": "low",
+      "movement": "static",
+      "lens": "18mm",
+      "description": "The two figures lifted into the night, shot from the street."
+    },
+    {
+      "scene": "22",
+      "number": "1",
+      "size": "WS",
+      "angle": "high",
+      "movement": "track",
+      "lens": "25mm",
+      "description": "The convoy on the expressway, camera car on the outside lane. The lorry fills the mirror."
+    },
+    {
+      "scene": "22",
+      "number": "2",
+      "size": "MCU",
+      "angle": "low",
+      "movement": "static",
+      "lens": "50mm",
+      "description": "The Joker on the roof of the lorry, coat flying. The only close shot in the chase."
+    },
+    {
+      "scene": "24",
+      "number": "1",
+      "size": "MS",
+      "angle": "eye level",
+      "movement": "static",
+      "lens": "50mm",
+      "description": "The two of them across the steel table. No movement for the first minute."
+    },
+    {
+      "scene": "24",
+      "number": "2",
+      "size": "ECU",
+      "angle": "eye level",
+      "movement": "static",
+      "lens": "100mm macro",
+      "description": "The stopped clock, ten past three."
+    },
+    {
+      "scene": "38",
+      "number": "1",
+      "size": "CU",
+      "angle": "eye level",
+      "movement": "static",
+      "lens": "100mm macro",
+      "description": "The coin turning on the knuckles, caught once in the lantern light."
+    }
+  ],
+  "frames": [
+    {
+      "scene": "2",
+      "shotNumber": "3",
+      "caption": "The card - board 1 of 2",
+      "ref": "https://example.com/darkknight/board/sc02-03"
+    },
+    {
+      "scene": "12",
+      "shotNumber": "1",
+      "caption": "Tower and crane, from above",
+      "ref": "Overhead plate. The crane's red lamp at frame centre, the tower in two shades of black."
+    },
+    {
+      "scene": "22",
+      "shotNumber": "1",
+      "caption": "The convoy - board 1 of 3",
+      "ref": "https://example.com/darkknight/board/sc22-01"
+    },
+    {
+      "scene": "24",
+      "shotNumber": "2",
+      "caption": "The stopped clock, insert",
+      "ref": "Insert plate. A wall clock, 3:10. The second hand stuck on the 6."
+    }
+  ],
+  "boards": [
+    {
+      "name": "Palette",
+      "note": "Slate blue, sodium amber, hospital green. Nothing in the city is allowed to be warm except the lamps.",
+      "entries": [
+        {
+          "title": "Slate blue",
+          "ref": "https://example.com/darkknight/palette/slate",
+          "why": "Every exterior and every glass tower. The colour of a city that does not look back."
+        },
+        {
+          "title": "Sodium amber",
+          "ref": "https://example.com/darkknight/palette/sodium",
+          "why": "The streetlamps, the depot, the port. The only warmth, and it is a warning."
+        },
+        {
+          "title": "Hospital green",
+          "ref": "Swatch card - matte, paper white under glass",
+          "why": "The ward, the interrogation tube light, the burn unit. A light that has no source."
+        }
+      ]
+    },
+    {
+      "name": "Light",
+      "note": "One hard source in every night scene, and a polarizer on every glass tower.",
+      "entries": [
+        {
+          "title": "Tube light, interrogation",
+          "ref": "https://example.com/darkknight/light/tube",
+          "why": "Hard overhead, no fill. The Joker scene lives under it."
+        },
+        {
+          "title": "Sodium on wet concrete",
+          "ref": "https://example.com/darkknight/light/sodium",
+          "why": "The depot and the expressway. The look the whole film is judged against."
+        },
+        {
+          "title": "Lantern, the tenement",
+          "ref": "Gaffer's test, 6 Mar",
+          "why": "Scene 38 is one practical source and nothing else."
+        }
+      ]
+    }
+  ],
+  "script": {
+    "documents": [
+      {
+        "title": "The Dark Knight - sample treatment (reconstruction)",
+        "kind": "Treatment",
+        "body": "SAMPLE DOCUMENT. This is a reconstruction written for the sample project, imagined as if a Chennai unit were making the film. The film - The Dark Knight (2008) - is real; this treatment is not the production's, and nothing in it was taken from the production. It stays at the level of premise, structure and craft.\n\nPREMISE. A masked vigilante, a police captain and a prosecutor who works in daylight agree to dismantle the mob that owns their city. A stranger in make-up robs the mob's own banks, offers to kill the vigilante for half of what the mob can pay, and sets the city a deadline: a name every night, until the mask comes off.\n\nTHE HOOK. The villain tells the truth about what he will do, and then does it. Everyone else lies, and the film is about the price of the lie that is worth telling.\n\nHOW IT IS BUILT. The first act sets up three allies and a plan. The second act is a series of traps, each one forcing a choice, each choice costing one of the allies. The last act asks whether ordinary people, with nothing to gain, will do what the villain says they will do. They do not, and he is wrong for once.\n\nTHE ANTAGONIST IS AN ARGUMENT. He is not a plan but a thesis, and every scene of his is a test of it. The structure gives him early wins and then lets the hero find the one thing he did not account for: that people are, on a bad night, kinder than they are asked to be.\n\nWHERE THE COST LANDS. On the prosecutor, who becomes the second villain, and on the hero, who accepts the blame for him. The last image is a lie told for a reason, and it is the only moment in the film where nobody is shown being tested."
+      },
+      {
+        "title": "Approach note - written for the sample, not by the film's director",
+        "kind": "Director's Statement",
+        "body": "SAMPLE DOCUMENT. Nobody connected with The Dark Knight wrote this. It exists so the Write module has a director's statement to show, and so a filmmaker reading the sample can see what one is for.\n\nThe discipline of this reconstruction is that every set piece asks a question the audience answers before the characters do. The bank asks whether a plan can be loyal. The ferries ask whether a stranger can be trusted with a trigger. The tower asks whether a hostage can tell the difference between rescue and a trap. We do not cut away from the answer.\n\nThat one rule decides the lenses (a wide on the city so we know where we are, a long lens on the faces so we know what they cost), the light (one hard source per night scene, sodium in the street, tube light indoors), and the blocking (the Joker is always the one who is still).\n\nWhat this approach refuses: a speech from the mayor, a flashback for the villain, a hero who gets the last word and a score that tells the audience whose side to be on. If the theme is that decency survives pressure in unexpected people, the film must be shot at the pressure and not at the rescue."
+      },
+      {
+        "title": "One-pager - for the market (sample)",
+        "kind": "One-Pager",
+        "body": "SAMPLE DOCUMENT. Invented for the sample.\n\nTITLE. The Dark Knight (reconstruction).\nGENRE. Crime thriller / action, Tamil with a pan-Indian release in mind.\nLENGTH. About 91 pages, 40 scenes, a 22-day schedule.\nBUDGET. ₹84 crore (sample estimate).\n\nTHE PITCH. A masked guardian, a captain and a prosecutor against a man who wants to prove that nobody keeps their principles under pressure. The villain never lies. The heroes do.\n\nWHY IT TRAVELS. The set pieces ask moral questions that need no language: a bank that kills its robbers, a hospital that goes up, two ferries and a trigger. The only scene that needs subtitles is the interrogation, and it is shot so that it does not.\n\nWHAT WE NEED. A 22-day shoot across Chennai, the port at Ennore and a stage in Madhavaram, a hospital wing to demolish, and a marine unit for two nights."
+      },
+      {
+        "title": "Character bible - Harvey Dent (sample)",
+        "kind": "Character Bible",
+        "body": "SAMPLE DOCUMENT. Invented for the sample; no real actor is attached.\n\nWHO HE IS. A prosecutor who is exactly as good in public as he is in private, and has never had to find out which of the two he would choose. He keeps a worn silver coin in a waistcoat pocket and uses it, he says, to tell the other side that he is thinking.\n\nWHAT HE WANTS. A city where nobody needs a mask. He wants to be the proof.\n\nWHAT BREAKS HIM. A phone line, a fire and a choice that is made for him. He loses the woman he loves and then the face he has built his reputation on, and he spends the last act looking for something that will tell him it was nobody's fault.\n\nHOW HE SPEAKS. In whole sentences, with a lawyer's patience, until the second half of the film, when he speaks in short ones and cannot be interrupted.\n\nHIS LAST SCENE. He gives the decision to the coin, and the coin gives it back."
+      }
+    ]
+  },
+  "calc": [
+    {
+      "item": "ARRI Alexa Mini LF",
+      "days": "22",
+      "rate": "45000"
+    },
+    {
+      "item": "ARRI Alexa 35",
+      "days": "14",
+      "rate": "48000"
+    },
+    {
+      "item": "Zeiss Master Primes set",
+      "days": "22",
+      "rate": "42000"
+    },
+    {
+      "item": "Atlas Anamorphic set",
+      "days": "10",
+      "rate": "25000"
+    },
+    {
+      "item": "HMI 2.5K",
+      "days": "66",
+      "rate": "3800"
+    },
+    {
+      "item": "Aputure 600D Pro",
+      "days": "44",
+      "rate": "3000"
+    },
+    {
+      "item": "LED panel kit",
+      "days": "22",
+      "rate": "4000"
+    },
+    {
+      "item": "Dolly + 30ft track",
+      "days": "22",
+      "rate": "3000"
+    },
+    {
+      "item": "Crane 16ft",
+      "days": "10",
+      "rate": "7000"
+    },
+    {
+      "item": "Steadicam + operator",
+      "days": "12",
+      "rate": "20000"
+    },
+    {
+      "item": "Gimbal (Ronin) + op",
+      "days": "12",
+      "rate": "8000"
+    },
+    {
+      "item": "Drone + pilot",
+      "days": "6",
+      "rate": "20000"
+    },
+    {
+      "item": "Camera car",
+      "days": "8",
+      "rate": "6000"
+    },
+    {
+      "item": "Generator 60 KVA",
+      "days": "22",
+      "rate": "7000"
+    },
+    {
+      "item": "Generator 30 KVA",
+      "days": "22",
+      "rate": "4000"
+    },
+    {
+      "item": "Production van",
+      "days": "44",
+      "rate": "3200"
+    },
+    {
+      "item": "Sound recordist + kit",
+      "days": "22",
+      "rate": "6500"
+    },
+    {
+      "item": "Comtek/IFB",
+      "days": "22",
+      "rate": "800"
+    },
+    {
+      "item": "DOP",
+      "days": "30",
+      "rate": "22000"
+    },
+    {
+      "item": "1st AD",
+      "days": "40",
+      "rate": "11000"
+    },
+    {
+      "item": "2nd AD",
+      "days": "40",
+      "rate": "4500"
+    },
+    {
+      "item": "Production Designer",
+      "days": "70",
+      "rate": "12000"
+    },
+    {
+      "item": "Costume Designer",
+      "days": "50",
+      "rate": "8000"
+    },
+    {
+      "item": "Editor",
+      "days": "120",
+      "rate": "6500"
+    },
+    {
+      "item": "Sound Designer",
+      "days": "60",
+      "rate": "10000"
+    },
+    {
+      "item": "Focus Puller",
+      "days": "22",
+      "rate": "5500"
+    },
+    {
+      "item": "Gaffer",
+      "days": "22",
+      "rate": "5500"
+    },
+    {
+      "item": "Production Manager",
+      "days": "60",
+      "rate": "6000"
+    },
+    {
+      "item": "Electrician (each)",
+      "days": "264",
+      "rate": "1200"
+    },
+    {
+      "item": "Sound mix studio (Atmos)",
+      "days": "12",
+      "rate": "65000"
+    },
+    {
+      "item": "DI / color grade",
+      "days": "14",
+      "rate": "22000"
+    },
+    {
+      "item": "VFX shot",
+      "days": "520",
+      "rate": "18000"
+    }
+  ]
 }

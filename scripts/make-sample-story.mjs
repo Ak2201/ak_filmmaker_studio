@@ -1,17 +1,22 @@
-/* Generates src/data/sample.dragon.story.json from the hand-written
+/* Generates src/data/sample.<id>.story.json from the hand-written
    steps below, using the shipped buildSynopsisFromOutline() so every
    mark's offsets are exactly what the app itself would produce.
-   Run from the repo root:  node scripts/make-sample-story.mjs */
+   Run from the repo root:  node scripts/make-sample-story.mjs [dragon|darkknight]
+   (default dragon). The Dark Knight's steps live in
+   scripts/sample-darkknight/story-steps.mjs; Dragon's output is
+   byte-identical to what it was before the id argument existed. */
 import { writeFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const root = process.cwd();
 await import(pathToFileURL(root + '/scripts/node-seams.mjs').href);
 const S = await import(pathToFileURL(root + '/src/lib/story.js').href);
-const sample = JSON.parse(readFileSync(root + '/src/data/sample.dragon.json', 'utf8'));
+const SAMPLE_ID = process.argv[2] || 'dragon';
+if (!['dragon', 'darkknight'].includes(SAMPLE_ID)) throw new Error('unknown sample id ' + SAMPLE_ID);
+const sample = JSON.parse(readFileSync(root + '/src/data/sample.' + SAMPLE_ID + '.json', 'utf8'));
 
 const F = 'save_the_cat';
 // [beat, scene number or null, text]
-const STEPS = [
+const DRAGON_STEPS = [
   ['opening_image', 1, '2014, prize day in a school hall of plastic chairs. Young Ragavan collects a medal he genuinely earned while his parents watch from the back.'],
   ['theme_stated', 2, 'At the school gate the plan is said out loud: engineering, a masters abroad, then marriage. Nobody imagines it needs a shortcut.'],
   ['setup', null, 'Ragavan has top marks, a family that has planned his life around them, and has never once had to pretend.'],
@@ -53,25 +58,31 @@ const STEPS = [
   ['final_image', 36, 'On a delivery route in plain daylight he is earning something much smaller, and keeping it.']
 ];
 
+const STEPS = SAMPLE_ID === 'dragon'
+  ? DRAGON_STEPS
+  : (await import(pathToFileURL(root + '/scripts/sample-darkknight/story-steps.mjs').href)).STEPS;
+
 const story = { ...S.blankStory(), framework: F,
   idea: sample.blueprint.s1_whatif,
   logline: sample.blueprint.s2_log_final,
   outline: STEPS.map(([beat, num, text], i) => {
-    const st = { id: 'dragon-st-' + String(i + 1).padStart(2, '0'), beat: F + ':' + beat, text };
-    if (num) st.sceneId = 'dragon-sc-' + num;
+    const st = { id: SAMPLE_ID + '-st-' + String(i + 1).padStart(2, '0'), beat: F + ':' + beat, text };
+    if (num) st.sceneId = SAMPLE_ID + '-sc-' + num;
     return st;
   }) };
 for (const st of story.outline) if (!S.beatById(F, st.beat.split(':')[1])) throw new Error('bad beat ' + st.beat);
 S.buildSynopsisFromOutline(story, F);
-story.sourceName = 'Dragon (sample)';
+story.sourceName = SAMPLE_ID === 'dragon' ? 'Dragon (sample)' : 'The Dark Knight (sample)';
 let k = 0;
-for (const m of story.marks) m.id = 'dragon-mk-' + String(++k).padStart(2, '0');
+for (const m of story.marks) m.id = SAMPLE_ID + '-mk-' + String(++k).padStart(2, '0');
 // Verify every mark is verbatim.
 for (const m of story.marks) if (story.source.slice(m.start, m.end) !== m.text) throw new Error('offset drift');
 delete story.updatedAt;
 const out = {
-  _about: 'THE DRAGON SAMPLE’S STORY, for the Story page (story.html) and the hub’s sample project. A RECONSTRUCTION, like every other piece of the sample’s paperwork: the idea and the logline are the sample blueprint’s own answers, and the step outline is written from the sample’s 36 scene synopses in src/data/sample.dragon.json (plus three steps for beats the scene list skips), one step per scene, each filed under a Save the Cat! beat. None of it is the film’s writing. The synopsis and its marks are GENERATED from the outline by buildSynopsisFromOutline() in src/lib/story.js, so every mark’s offsets are what the app itself produces; edit the steps and regenerate rather than editing `source` by hand. `sceneId` on a step names the hub’s sample scene id (dragon-sc-<number>). A DYNAMIC IMPORT: vite.config.js keeps it out of the shared `data` chunk, the same exception as sample.dragon.script.json.',
+  _about: SAMPLE_ID === 'dragon'
+    ? 'THE DRAGON SAMPLE’S STORY, for the Story page (story.html) and the hub’s sample project. A RECONSTRUCTION, like every other piece of the sample’s paperwork: the idea and the logline are the sample blueprint’s own answers, and the step outline is written from the sample’s 36 scene synopses in src/data/sample.dragon.json (plus three steps for beats the scene list skips), one step per scene, each filed under a Save the Cat! beat. None of it is the film’s writing. The synopsis and its marks are GENERATED from the outline by buildSynopsisFromOutline() in src/lib/story.js, so every mark’s offsets are what the app itself produces; edit the steps and regenerate rather than editing `source` by hand. `sceneId` on a step names the hub’s sample scene id (dragon-sc-<number>). A DYNAMIC IMPORT: vite.config.js keeps it out of the shared `data` chunk, the same exception as sample.dragon.script.json.'
+    : 'THE DARK KNIGHT SAMPLE’S STORY, for the Story page (story.html) and the hub’s sample project. A RECONSTRUCTION FOR PRACTICE, like every other piece of the sample’s paperwork: the idea and the logline are the sample blueprint’s own answers, and the step outline is written from the sample’s 40 scene synopses in src/data/sample.darkknight.json (plus a few steps for beats the scene list skips), each filed under a Save the Cat! beat. None of it is the film’s writing. The synopsis and its marks are GENERATED from the outline by buildSynopsisFromOutline() in src/lib/story.js, so every mark’s offsets are what the app itself produces; edit the steps and regenerate rather than editing `source` by hand. `sceneId` on a step names the hub’s sample scene id (darkknight-sc-<number>). A DYNAMIC IMPORT: vite.config.js keeps it out of the shared `data` chunk, the same exception as sample.darkknight.script.json.',
   story
 };
-writeFileSync(root + '/src/data/sample.dragon.story.json', JSON.stringify(out, null, 2) + '\n');
+writeFileSync(root + '/src/data/sample.' + SAMPLE_ID + '.story.json', JSON.stringify(out, null, 2) + '\n');
 console.log('steps', story.outline.length, 'marks', story.marks.length, 'chars', story.source.length);

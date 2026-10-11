@@ -8000,7 +8000,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 32. PURCHASES REQUIRED, AND ACCESS GIVEN BY E-MAIL   RUN LIVE: not yet
+-- 32. PURCHASES REQUIRED, AND ACCESS GIVEN BY E-MAIL   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decisions, 11 Oct 2026, both of them in this section:
 --
@@ -8659,7 +8659,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 33. A FREE TRIAL, NOT A FREE PLAN — set in hours   RUN LIVE: not yet
+-- 33. A FREE TRIAL, NOT A FREE PLAN — set in hours   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decisions, 11 Oct 2026:
 --

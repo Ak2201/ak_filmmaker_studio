@@ -20,3 +20,4 @@ dist-*/
 supabase/.temp/
 social/*.svg
 social/*.zip
+schema-3*.sql

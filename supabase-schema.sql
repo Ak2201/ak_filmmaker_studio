@@ -8848,3 +8848,197 @@ notify pgrst, 'reload schema';
 --  7. re-running the section is a no-op.
 -- Test file: scripts/schema-tests/trial-hours.sql (run by npm run test:schema).
 -- ============================================================
+
+-- ============================================================
+-- 34. RECEIPT AND REFUND E-MAILS, SENT ONCE   RUN LIVE: not yet
+-- ------------------------------------------------------------
+-- The owner, 11 Oct 2026: "Once a user has purchased the product we
+-- should send mail to the user, from support@filmmakerstudio.in."
+--
+-- The mail is sent by the edge functions through Resend
+-- (supabase/functions/_shared/mail.js). The database decides WHO sends:
+-- rzp-verify and rzp-webhook both see every capture, and for a refund
+-- the webhook can be redelivered, so each mail is CLAIMED by an UPDATE
+-- that only one caller can win, and the winner sends. A failed send
+-- RELEASES the claim, so a retry can try again.
+--
+--   34.1  invoices: emailed_at, plus the three payment facts the invoice
+--         PDF now prints (Razorpay payment id, order id, paid_at). A
+--         BEFORE INSERT trigger copies them from payments, so
+--         issue_invoice() is NOT restated, and existing rows are
+--         backfilled once.
+--   34.2  refunds: emailed_status, the status last mailed ('processed' or
+--         'failed'). A status and not a timestamp, because a refund that
+--         failed and was later processed is two mails, not one.
+--   34.3  claim_receipt_email / release_receipt_email   service role only
+--   34.4  claim_refund_email  / release_refund_email    service role only
+--   34.5  admin_resend_receipt   the console's RESEND: clears the claim
+--         and answers the order id, which rzp-verify then claims and sends.
+--
+-- my_invoices() and admin_list_invoices() are `setof invoices`, so the
+-- new columns reach the client with no restatement.
+-- ============================================================
+
+-- 34.1 INVOICES ---------------------------------------------------------
+alter table public.invoices add column if not exists razorpay_payment_id text;
+alter table public.invoices add column if not exists razorpay_order_id   text;
+alter table public.invoices add column if not exists paid_at             timestamptz;
+alter table public.invoices add column if not exists emailed_at          timestamptz;
+
+create or replace function public.invoices_payment_facts()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  select p.razorpay_payment_id, p.razorpay_order_id, p.paid_at
+    into new.razorpay_payment_id, new.razorpay_order_id, new.paid_at
+    from public.payments p where p.id = new.payment_id;
+  return new;
+end;
+$fn$;
+revoke execute on function public.invoices_payment_facts() from public, anon, authenticated;
+drop trigger if exists invoices_payment_facts on public.invoices;
+create trigger invoices_payment_facts before insert on public.invoices
+  for each row execute function public.invoices_payment_facts();
+
+-- once: invoices issued before this section. Invoices issued before it
+-- were never mailed, and are left unclaimed on purpose — the console's
+-- RESEND is how one of them is sent, by a person who decided to.
+update public.invoices i
+   set razorpay_payment_id = coalesce(i.razorpay_payment_id, p.razorpay_payment_id),
+       razorpay_order_id   = coalesce(i.razorpay_order_id,   p.razorpay_order_id),
+       paid_at             = coalesce(i.paid_at,             p.paid_at)
+  from public.payments p
+ where p.id = i.payment_id
+   and (i.razorpay_payment_id is null or i.razorpay_order_id is null or i.paid_at is null);
+
+-- 34.2 REFUNDS ----------------------------------------------------------
+alter table public.refunds add column if not exists emailed_status text;
+alter table public.refunds drop constraint if exists refunds_emailed_status_check;
+alter table public.refunds add constraint refunds_emailed_status_check
+  check (emailed_status is null or emailed_status in ('processed', 'failed'));
+
+-- 34.3 THE RECEIPT CLAIM ------------------------------------------------
+/** The invoice for this Razorpay order, stamped as mailed — or nothing,
+ *  when it was mailed already, has no e-mail, or does not exist (the
+ *  invoice trigger warned). Exactly one concurrent caller gets a row. */
+create or replace function public.claim_receipt_email(p_order_id text)
+returns setof public.invoices
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  perform public.billing_require_service();
+  return query
+    update public.invoices i set emailed_at = now()
+     where i.razorpay_order_id = p_order_id
+       and i.emailed_at is null
+       and coalesce(btrim(i.buyer_email), '') <> ''
+    returning i.*;
+end;
+$fn$;
+
+create or replace function public.release_receipt_email(p_invoice uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  perform public.billing_require_service();
+  update public.invoices i set emailed_at = null where i.id = p_invoice;
+end;
+$fn$;
+
+-- 34.4 THE REFUND CLAIM -------------------------------------------------
+create or replace function public.claim_refund_email(p_rzp_refund text, p_status text)
+returns table (refund_id uuid, status text, amount_paise int, razorpay_refund_id text,
+               buyer_email text, buyer_name text, plan_name text, invoice_number text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare f public.refunds;
+begin
+  perform public.billing_require_service();
+  if p_status not in ('processed', 'failed') then raise exception 'Only a settled refund is mailed' using errcode = '22023'; end if;
+  update public.refunds r set emailed_status = p_status
+   where r.razorpay_refund_id = p_rzp_refund
+     and r.status = p_status
+     and r.emailed_status is distinct from p_status
+  returning * into f;
+  if f.id is null then return; end if;
+  return query
+    select f.id, f.status, f.amount_paise, f.razorpay_refund_id,
+           u.email::text,
+           coalesce(nullif(btrim(u.raw_user_meta_data ->> 'full_name'), ''), nullif(btrim(u.raw_user_meta_data ->> 'name'), '')),
+           coalesce((select x.name from public.plans x where x.id = p.plan_id), initcap(p.plan_id)),
+           (select i.number from public.invoices i where i.payment_id = p.id)
+      from public.payments p
+      left join auth.users u on u.id = p.user_id
+     where p.id = f.payment_id
+       and coalesce(btrim(u.email::text), '') <> '';
+end;
+$fn$;
+
+create or replace function public.release_refund_email(p_refund uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  perform public.billing_require_service();
+  update public.refunds r set emailed_status = null where r.id = p_refund;
+end;
+$fn$;
+
+-- 34.5 THE CONSOLE'S RESEND ----------------------------------------------
+/** Clears the claim on one invoice and answers its order id; rzp-verify
+ *  calls this AS THE ADMIN, then claims and sends with the service role. */
+create or replace function public.admin_resend_receipt(p_invoice uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare v text;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  update public.invoices i set emailed_at = null where i.id = p_invoice returning i.razorpay_order_id into v;
+  if v is null then raise exception 'No such invoice, or it has no Razorpay order' using errcode = '22023'; end if;
+  return v;
+end;
+$fn$;
+
+-- 34.6 GRANTS -------------------------------------------------------------
+revoke execute on function public.claim_receipt_email(text)        from public, anon, authenticated;
+revoke execute on function public.release_receipt_email(uuid)      from public, anon, authenticated;
+revoke execute on function public.claim_refund_email(text, text)   from public, anon, authenticated;
+revoke execute on function public.release_refund_email(uuid)       from public, anon, authenticated;
+revoke execute on function public.admin_resend_receipt(uuid)       from public, anon;
+grant  execute on function public.claim_receipt_email(text)        to service_role;
+grant  execute on function public.release_receipt_email(uuid)      to service_role;
+grant  execute on function public.claim_refund_email(text, text)   to service_role;
+grant  execute on function public.release_refund_email(uuid)       to service_role;
+grant  execute on function public.admin_resend_receipt(uuid)       to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 34.7 CHECKS TO RUN, none of which has been run live -------------------
+--  1. a capture issues an invoice carrying the payment's Razorpay ids and
+--     paid_at; existing invoices are backfilled.
+--  2. claim_receipt_email(order) as service -> one row; again -> none.
+--  3. release_receipt_email(id), then claim -> one row again.
+--  4. authenticated / anon: claim_* and release_* -> 42501.
+--  5. a refund 'processed': claim_refund_email(id, 'processed') -> one row
+--     with the buyer's e-mail and the invoice number; again -> none;
+--     claim with 'failed' on a processed refund -> none.
+--  6. admin_resend_receipt: non-admin -> 42501; admin -> the order id,
+--     and the next claim returns the row.
+--  7. re-running the section is a no-op.
+-- Test file: scripts/schema-tests/receipt-email.sql (run by npm run test:schema).
+-- ============================================================

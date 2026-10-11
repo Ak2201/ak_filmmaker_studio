@@ -10,34 +10,69 @@
    `gstin` is empty the document says the supplier is not registered
    under GST and shows NO tax lines — it is a Bill of Supply, not a
    tax invoice, and must never be mistaken for one.
+
+   The refund sentence is REFUND_TERMS (supabase/functions/_shared/
+   terms.js), the same one the receipt e-mail prints, worded as
+   refund.html words it: final, with the three exceptions. A flat "no
+   refunds" would contradict the published policy.
    ============================================================ */
 import { h } from './dom.js';
 import { BRAND } from './brand.js';
 import { exportPDF } from './pdf.js';
+import { amountInWords } from './invoice.js';
 import { fmtPaise } from '../../supabase/functions/_shared/razorpay.js';
+import { REFUND_TERMS } from '../../supabase/functions/_shared/terms.js';
 
 const dateOf = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
+const line = (text) => (text ? h('div', { text }) : null);
+/* A label/value row; a field the invoice does not carry (one issued
+   before schema §34 has no Razorpay ids) is left out, not printed empty. */
+const fact = (k, v) => (v ? h('tr', {}, [h('th', { scope: 'row', text: k }), h('td', { text: v })]) : null);
 
 export function buildInvoice(inv) {
   const gst = String(BRAND.gstin || '').trim();
-  const seller = [h('strong', { text: BRAND.seller }), BRAND.address ? h('div', { text: BRAND.address }) : null,
-    h('div', { text: BRAND.supportEmail }), gst ? h('div', { text: 'GSTIN ' + gst }) : null].filter(Boolean);
-  const buyer = [h('strong', { text: inv.buyer_name }), inv.buyer_email ? h('div', { text: inv.buyer_email }) : null,
-    inv.buyer_gstin ? h('div', { text: 'GSTIN ' + inv.buyer_gstin }) : null].filter(Boolean);
+  const amt = fmtPaise(inv.amount_paise);
+  const refundUrl = `https://${BRAND.host}/refund`;
+  const seller = [h('strong', { text: BRAND.seller }), line(BRAND.address), line(BRAND.supportEmail),
+    line(BRAND.host), gst ? line('GSTIN ' + gst) : null].filter(Boolean);
+  const buyer = [h('strong', { text: inv.buyer_name }), line(inv.buyer_email),
+    inv.buyer_gstin ? line('GSTIN ' + inv.buyer_gstin) : null].filter(Boolean);
+  const facts = [
+    fact('Invoice number', inv.number),
+    fact('Date of issue', dateOf(inv.issued_at)),
+    fact('Payment date', inv.paid_at ? dateOf(inv.paid_at) : ''),
+    fact('Payment method', 'Paid online via Razorpay'),
+    fact('Razorpay payment ID', inv.razorpay_payment_id),
+    fact('Razorpay order ID', inv.razorpay_order_id)
+  ].filter(Boolean);
   return h('div.inv-doc', { role: 'document' }, [
-    h('h1', { text: 'Bill of Supply' }),
-    h('p.inv-no', { text: `${inv.number} · ${dateOf(inv.issued_at)}` }),
+    h('div.inv-head', {}, [
+      h('div', {}, [h('h1', { text: 'Bill of Supply' }), h('p.inv-no', { text: `${inv.number} · ${dateOf(inv.issued_at)}` })]),
+      h('span.inv-paid', { text: 'PAID' })
+    ]),
     h('div.inv-cols', {}, [
       h('div', {}, [h('h2', { text: 'Supplier' }), ...seller]),
       h('div', {}, [h('h2', { text: 'Billed to' }), ...buyer])
     ]),
+    h('h2', { text: 'Payment details' }),
+    h('table.inv-facts', {}, [h('tbody', {}, facts)]),
     h('table', {}, [
-      h('thead', {}, [h('tr', {}, [h('th', { text: 'Description' }), h('th.inv-amt', { text: 'Amount' })])]),
-      h('tbody', {}, [h('tr', {}, [h('td', { text: `${BRAND.name} — ${inv.plan_name} plan (licence, one payment)` }), h('td.inv-amt', { text: fmtPaise(inv.amount_paise) })])]),
-      h('tfoot', {}, [h('tr', {}, [h('th', { text: 'Total' }), h('th.inv-amt', { text: fmtPaise(inv.amount_paise) })])])
+      h('thead', {}, [h('tr', {}, [h('th', { text: 'Description' }), h('th.inv-amt', { text: 'Qty' }),
+        h('th.inv-amt', { text: 'Rate' }), h('th.inv-amt', { text: 'Amount' })])]),
+      h('tbody', {}, [h('tr', {}, [
+        h('td', {}, [h('div', { text: `${BRAND.name} — ${inv.plan_name} plan` }),
+          h('div.inv-sub', { text: 'One-time purchase · lifetime access · no renewal or subscription' })]),
+        h('td.inv-amt', { text: '1' }), h('td.inv-amt', { text: amt }), h('td.inv-amt', { text: amt })])]),
+      h('tfoot', {}, [h('tr', {}, [h('th', { colspan: '3', text: 'Total paid' }), h('th.inv-amt', { text: amt })])])
     ]),
+    h('p.inv-words', { text: 'Amount in words: ' + amountInWords(inv.amount_paise) }),
     h('p.inv-note', { text: gst ? 'Bill of Supply.' : 'Bill of Supply — supplier not registered under GST. No tax is charged.' }),
-    h('p.inv-note', { text: `Paid online through Razorpay. Questions: ${BRAND.supportEmail}.` })
+    h('div.inv-terms', {}, [
+      h('h2', { text: 'Refund policy' }),
+      h('p', { text: REFUND_TERMS }),
+      h('p', { text: 'Full policy: ' + refundUrl })
+    ]),
+    h('p.inv-note', { text: `This is a computer-generated document and needs no signature. Questions: ${BRAND.supportEmail}.` })
   ]);
 }
 

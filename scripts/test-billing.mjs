@@ -86,5 +86,58 @@ eq(R.promoLabel({ percent_off: 10 }), '10% off', 'label for a percentage');
 eq(R.promoLabel({ amount_off_paise: 50000 }), '₹500 off', 'label for an amount');
 eq(R.promoLabel(null), '', 'label for nothing');
 
+/* ---- receipt and refund e-mails (schema §34, _shared/mail.js) ---- */
+const M = await import('../supabase/functions/_shared/mail.js');
+const { BRAND: FB } = await import('../supabase/functions/_shared/brand.js');
+const brandJson = JSON.parse((await import('node:fs')).readFileSync(new URL('../src/data/brand.json', import.meta.url), 'utf8'));
+for (const k of ['name', 'host', 'supportEmail', 'seller']) eq(FB[k], brandJson[k], `functions' brand.${k} matches src/data/brand.json`);
+
+const inv = { id: 'inv-1', number: 'FMS/2026-27/000007', buyer_email: 'buyer@example.com', buyer_name: '<b>Ana</b> & Co',
+  plan_name: 'Intermediate', amount_paise: 79900, issued_at: '2026-10-11T10:00:00Z', paid_at: '2026-10-11T09:59:00Z', razorpay_payment_id: 'pay_ABC' };
+const rm = M.receiptMail(inv);
+ok(rm && rm.to === 'buyer@example.com', 'receipt goes to the invoice e-mail');
+ok(rm.subject.includes('FMS/2026-27/000007') && rm.subject.includes('Intermediate'), 'receipt subject names the plan and the invoice');
+ok(rm.html.includes('₹799') && rm.text.includes('₹799'), 'receipt prints ₹ from paise');
+ok(rm.html.includes('&lt;b&gt;Ana&lt;/b&gt; &amp; Co') && !rm.html.includes('<b>Ana'), 'receipt HTML escapes the buyer name');
+ok(rm.html.includes(M.REFUND_TERMS) && rm.text.includes(M.REFUND_TERMS), 'receipt carries the refund terms');
+ok(rm.text.includes(`https://${brandJson.host}/refund`) && rm.text.includes(`https://${brandJson.host}/purchase`), 'receipt links the policy and the plan page');
+ok(rm.text.includes('11 October 2026') && rm.text.includes('pay_ABC'), 'receipt dates in IST and names the payment id');
+eq(M.receiptMail({ ...inv, buyer_email: '' }), null, 'no e-mail, no message');
+const rf = M.refundMail({ refund_id: 'r1', status: 'processed', amount_paise: 79900, buyer_email: 'b@x.in', plan_name: 'Intermediate', invoice_number: 'FMS/2026-27/000007' });
+ok(rf.subject.startsWith('Refund processed') && rf.text.includes('5 to 7 working days') && rf.text.includes('FMS/2026-27/000007'), 'processed refund mail');
+ok(M.refundMail({ status: 'failed', amount_paise: 100, buyer_email: 'b@x.in' }).subject.includes('could not be completed'), 'failed refund mail');
+
+const calls = [];
+const fakeFetch = (status = 200) => async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ id: 'em_1' }), { status }); };
+eq((await M.sendMail(rm, { apiKey: '', from: 'x' })).reason, 'not-configured', 'no key: nothing is sent');
+calls.length = 0;
+const sent = await M.sendMail(rm, { apiKey: 're_k', from: 'Studio <support@x.in>', idempotencyKey: 'receipt-inv-1', fetch: fakeFetch() });
+ok(sent.ok && calls.length === 1 && calls[0].url === M.RESEND_URL, 'a configured send makes one Resend call');
+ok(calls[0].init.headers.Authorization === 'Bearer re_k' && calls[0].init.headers['Idempotency-Key'] === 'receipt-inv-1', 'bearer key and idempotency key');
+const sentBody = JSON.parse(calls[0].init.body);
+ok(sentBody.from === 'Studio <support@x.in>' && sentBody.reply_to === brandJson.supportEmail && sentBody.to[0] === 'buyer@example.com', 'from, reply-to, to');
+eq((await M.sendMail(rm, { apiKey: 'k', from: 'f', fetch: fakeFetch(403) })).reason, 'resend 403', 'a refusal is reported, not thrown');
+eq((await M.sendMail(rm, { apiKey: 'k', from: 'f', fetch: async () => { throw new Error('down'); } })).reason, 'network', 'a network failure is reported, not thrown');
+
+// claim -> send -> release on failure, against a fake service client
+const fakeSvc = (rowsByFn) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return { data: rowsByFn[fn] ?? null, error: null }; } }; };
+const env = { RESEND_API_KEY: 'k', MAIL_FROM: 'f' };
+let svc = fakeSvc({ claim_receipt_email: [inv] }); calls.length = 0;
+ok((await M.sendReceiptOnce(svc, 'order_1', env, { fetch: fakeFetch() })).ok && calls.length === 1, 'claimed -> one mail');
+ok(!svc.log.some(([fn]) => fn === 'release_receipt_email'), '... and no release');
+svc = fakeSvc({ claim_receipt_email: [] }); calls.length = 0;
+ok((await M.sendReceiptOnce(svc, 'order_1', env, { fetch: fakeFetch() })).skipped && calls.length === 0, 'nothing to claim -> no mail (the other caller sent it)');
+svc = fakeSvc({ claim_receipt_email: [inv] });
+const failed = await M.sendReceiptOnce(svc, 'order_1', env, { fetch: fakeFetch(500) });
+ok(!failed.ok && svc.log.some(([fn, a]) => fn === 'release_receipt_email' && a.p_invoice === 'inv-1'), 'a failed send releases the claim');
+svc = fakeSvc({ claim_receipt_email: [inv] });
+ok((await M.sendReceiptOnce(svc, 'order_1', {})).reason === 'not-configured' && svc.log.length === 0, 'no key: nothing is claimed either');
+svc = { rpc: async () => { throw new Error('boom'); } };
+eq((await M.sendReceiptOnce(svc, 'o', env)).reason, 'error', 'a throwing client never throws out');
+svc = fakeSvc({ claim_refund_email: [{ refund_id: 'r1', status: 'processed', amount_paise: 100, buyer_email: 'b@x.in' }] }); calls.length = 0;
+ok((await M.sendRefundOnce(svc, 'rfnd_1', 'processed', env, { fetch: fakeFetch() })).ok && calls.length === 1, 'refund claimed -> one mail');
+eq(JSON.parse(calls[0].init.body).subject.startsWith('Refund processed'), true, '... the processed one');
+ok(calls[0].init.headers['Idempotency-Key'] === 'refund-r1-processed', 'refund idempotency key carries the status');
+
 console.log(`${fail ? '✗' : '✓'} billing: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

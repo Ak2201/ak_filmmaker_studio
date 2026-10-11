@@ -1,5 +1,5 @@
 /* npm run test:invoice — the pure half of buyer invoices (src/lib/invoice.js). */
-import { gstinValid, financialYear, invoiceNumber, normaliseGstin } from '../src/lib/invoice.js';
+import { gstinValid, financialYear, invoiceNumber, normaliseGstin, amountInWords } from '../src/lib/invoice.js';
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } };
 const eq = (a, b, m) => ok(a === b, `${m} — got ${a}, want ${b}`);
@@ -25,6 +25,14 @@ eq(financialYear(new Date('2099-12-31T00:00:00Z')), '2099-00', 'century suffix')
 eq(invoiceNumber('2026-27', 123), 'FMS/2026-27/000123', 'number');
 eq(invoiceNumber('2026-27', 1), 'FMS/2026-27/000001', 'padding');
 eq(invoiceNumber('2026-27', 1234567), 'FMS/2026-27/1234567', 'overflow is not truncated');
+
+eq(amountInWords(59900), 'Rupees Five Hundred Ninety-Nine only', 'words: ₹599');
+eq(amountInWords(149900), 'Rupees One Thousand Four Hundred Ninety-Nine only', 'words: ₹1,499');
+eq(amountInWords(49950), 'Rupees Four Hundred Ninety-Nine and Fifty Paise only', 'words: paise');
+eq(amountInWords(100), 'Rupees One only', 'words: ₹1');
+eq(amountInWords(12345678900), 'Rupees Twelve Crore Thirty-Four Lakh Fifty-Six Thousand Seven Hundred Eighty-Nine only', 'words: crore and lakh');
+eq(amountInWords(10000000000), 'Rupees Ten Crore only', 'words: round crore');
+eq(amountInWords(0), 'Rupees Zero only', 'words: zero');
 
 console.log(`invoice: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -22,9 +22,23 @@
    first and verified as those exact bytes; parsing before verifying
    would change nothing here, but re-serialising would, and the order
    of operations is the whole safety argument.
+
+   E-MAIL (schema §34, _shared/mail.js): after payment.captured the
+   receipt, after refund.processed / refund.failed the refund update.
+   Each is claimed before it is sent, so a redelivery or rzp-verify
+   racing this function sends nothing twice. It is awaited (the
+   function's answer can wait; Razorpay allows seconds), and a mail
+   that fails is logged, released for a retry, and never turns the
+   delivery into a 5xx.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyWebhookSignature } from '../_shared/razorpay.js';
+import { sendReceiptOnce, sendRefundOnce } from '../_shared/mail.js';
+
+const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
+const logMail = (what: string) => (m: { ok: boolean; reason?: string; detail?: string }) => {
+  if (!m.ok && m.reason !== 'not-configured') console.warn('[rzp-webhook] ' + what, m.reason, m.detail ?? '');
+};
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('POST only', { status: 405 });
@@ -50,6 +64,7 @@ Deno.serve(async (req) => {
         // not create (another product on the same Razorpay account); say
         // 200 so Razorpay stops retrying, and log it.
         if (error) console.warn('[rzp-webhook] activate', error.message);
+        else logMail('receipt')(await sendReceiptOnce(svc, payment.order_id, mailEnv()));
         break;
       }
       case 'payment.failed': {
@@ -67,6 +82,7 @@ Deno.serve(async (req) => {
           const rec = await svc.rpc('record_refund', { p_refund: null, p_payment_rzp: refund.payment_id, p_rzp_refund: refund.id ?? null, p_status: 'processed', p_amount: refund.amount ?? null, p_error: null, p_raw: raw });
           if (rec.error) console.warn('[rzp-webhook] record_refund', rec.error.message);
           await svc.rpc('mark_payment_refunded', { p_payment_id: refund.payment_id, p_raw: raw });
+          if (refund.id) logMail('refund')(await sendRefundOnce(svc, refund.id, 'processed', mailEnv()));
         }
         break;
       }
@@ -74,6 +90,7 @@ Deno.serve(async (req) => {
         if (refund?.payment_id) {
           const rec = await svc.rpc('record_refund', { p_refund: null, p_payment_rzp: refund.payment_id, p_rzp_refund: refund.id ?? null, p_status: 'failed', p_amount: refund.amount ?? null, p_error: 'Razorpay marked the refund failed.', p_raw: { event: evt.event, refund } });
           if (rec.error) console.warn('[rzp-webhook] record_refund', rec.error.message);
+          if (refund.id) logMail('refund')(await sendRefundOnce(svc, refund.id, 'failed', mailEnv()));
         }
         break;
       }

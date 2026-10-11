@@ -81,7 +81,7 @@ import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/s
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
-import { showOnly, stepFooter, wireStepper } from '../ui/stepper.js';
+import { showOnly, stepFooter, wireStepper, landUnder } from '../ui/stepper.js';
 
 const app = document.getElementById('app');
 
@@ -1078,25 +1078,9 @@ function after() {
 }
 
 
-/* Landing on a step. The step bar stays in view: on a wide screen it is
-   pinned (story.css) and the step lands just under it; on a phone it
-   scrolls with the page, so the landing is the bar itself. Re-landed
-   once the step has laid out (learn boxes, examples and fonts arrive
-   after the first scroll and pushed a phone landing mid-step), unless
-   the reader has taken over in the meantime. */
-let stepLandLive = 0;
-['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { stepLandLive = 0; }, { passive: true, capture: true }));
+/* Landing on a step: src/ui/stepper.js landUnder(), with Story's own bar. */
 function landStepView(el, { exact = false } = {}) {
-  if (!el) return;
-  const bar = document.querySelector('#main nav.st-path:not([hidden])');
-  const pinned = !!bar && getComputedStyle(bar).position === 'sticky';
-  if (pinned) document.documentElement.style.setProperty('--st-bar-h', Math.round(bar.getBoundingClientRect().height) + 'px');
-  const target = exact || pinned || !bar ? el : bar;
-  const go = () => target.scrollIntoView({ block: 'start', behavior: 'instant' });
-  const mine = ++stepLandLive;
-  go();
-  requestAnimationFrame(() => { if (stepLandLive === mine) go(); });
-  setTimeout(() => { if (stepLandLive === mine) go(); }, 450);
+  landUnder(el, document.querySelector('#main nav.st-path:not([hidden])'), { exact });
 }
 
 /* A path step id, from an id or (for any caller that still holds one)

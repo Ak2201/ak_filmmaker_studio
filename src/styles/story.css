@@ -207,7 +207,7 @@
     background: var(--paper);
     padding-block: var(--s2);
   }
-  main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st-bar-h, 0px); }
+  main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--stp-bar-h, 0px); }
   /* One compact row while pinned: a bar that covers a third of the
      screen is a bar in the way. The state line moves to the tooltip. */
   .st-path .st-path-list { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: var(--s1); }

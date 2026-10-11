@@ -14,3 +14,19 @@
 .stp-n { flex: none; font-family: var(--f-mono); font-weight: 700; }
 .stp-tab.is-done .stp-n { color: var(--accent-deep); }
 .stp-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Wide: the bar is pinned under the band, one compact row, and a step
+   lands just under it (landUnder() publishes --stp-bar-h) — the same
+   furniture as Story's path bar. On a phone it scrolls with the page. */
+@media (min-width: 720px) {
+  .stp-bar {
+    position: sticky;
+    top: calc(var(--sh-chrome-h, 0px) + var(--tabs-h, 0px));   /* under a page's tab strip too (tabs.js) */
+    z-index: 4;
+    margin-block: 0 var(--s3);
+    padding-block: var(--s2);
+    background: var(--paper);
+  }
+  .stp-tab { min-height: 36px; padding: var(--s1) var(--s3); }
+  .sg-steps > section, .sg-steps > .sg-cover { scroll-margin-top: var(--stp-bar-h, 0px); }
+}

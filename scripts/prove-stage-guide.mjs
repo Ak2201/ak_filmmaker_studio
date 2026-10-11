@@ -396,6 +396,44 @@ check('(3) story.html short: no feature-only key, no feature-only card', await p
   return { featureKeys: k.filter((x) => /^(s4_(name|age|want|need|lie|wound|skill|flaw|arc)|s5_name|s5_want|s6_|s7_|s3_(ext|int|theme|phil)|lad_|comment_for_)/.test(x)), dup, cards: [...document.querySelectorAll('[data-sb-card]')].map((c) => c.getAttribute('data-sb-card')) };
 }), { featureKeys: [], dup: [], cards: ['characters', 'world', 'conflict'] });
 check('(3) story.html short: the protagonist’s slot shows the saved name', await page.inputValue('.sb [data-key="s3_name"]'), 'Ravi');
+/* ---- (4) the step strip, on the build, with the Dragon sample ------- */
+await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+await page.evaluate(() => localStorage.clear());
+await page.goto(url('index.html?sample=1'), { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+for (const pg of ['breakdown.html#guide', 'script.html#guide', 'shoot.html#guide']) {
+  await page.goto(url(pg), { waitUntil: 'networkidle' });
+  await page.waitForSelector('#guide .stp-tab', { timeout: 15000 });
+  await page.waitForTimeout(700);
+  const r = await page.evaluate(() => {
+    const bar = document.querySelector('#guide .stp-bar');
+    const pills = [...bar.querySelectorAll('.stp-tab')].map((t) => t.textContent.trim());
+    return {
+      oneNumber: pills.every((t) => t === 'Cover' || /^(\d+|✓)?[^\d·]+$/.test(t)),
+      noDot: pills.every((t) => !/[.·]$/.test(t) && !t.includes('·')),
+      pinned: getComputedStyle(bar).position,
+      oneRow: bar.querySelector('.stp-list').getBoundingClientRect().height < 70,
+      count: (document.querySelector('#guide .stp-count') || {}).textContent || ''
+    };
+  });
+  check(`(4) ${pg}: each pill is one number and a short name`, [r.oneNumber, r.noDot], [true, true]);
+  check(`(4) ${pg}: the strip is pinned, in one row`, [r.pinned, r.oneRow], ['sticky', true]);
+  check(`(4) ${pg}: the footer says the position`, /^Step 1 of \d+$/.test(r.count), true);
+  await page.click('#guide .stp-nav .btn.primary');
+  await page.waitForTimeout(700);
+  const land = await page.evaluate(() => {
+    const on = [...document.querySelectorAll('#guide .sg-steps > section, #guide .sg-steps > .sg-cover')].find((e) => !e.hidden);
+    const bar = document.querySelector('#guide .stp-bar');
+    return Math.round(on.getBoundingClientRect().top) >= Math.round(bar.getBoundingClientRect().bottom) - 2;
+  });
+  check(`(4) ${pg}: Next lands the step under the bar`, land, true);
+}
+check('(4) breakdown.html#guide: an overflowing strip says so', await (async () => {
+  await page.goto(url('breakdown.html#guide'), { waitUntil: 'networkidle' });
+  await page.waitForSelector('#guide .stp-tab', { timeout: 15000 });
+  await page.waitForTimeout(900);
+  return page.evaluate(() => { const ol = document.querySelector('#guide .stp-list'); return ol.scrollWidth <= ol.clientWidth + 1 || /right/.test(ol.getAttribute('data-more') || ''); });
+})(), true);
 check('no page errors', errors, []);
 await vite.close();
 await browser.close();

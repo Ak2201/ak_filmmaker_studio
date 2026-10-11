@@ -43,7 +43,7 @@ import {
   classify, extraRenderers, interludeSection, drawDerived
 } from './stage-guide-widgets.js';
 import { mountComments, togglePanel, hasNote, paintBadges } from './comments.js';
-import { showOnly, stepFooter, stepBar, wireStepper, scrollToTop } from './stepper.js';
+import { showOnly, stepFooter, stepBar, wireStepper, landUnder } from './stepper.js';
 import '../styles/steps-stages.css';
 
 const SAVE_MS = 400;
@@ -118,14 +118,18 @@ function trimmed(sec, item) {
 function stepSection(item, ctx, extra) {
   if (item.kind === 'interlude') {
     const sec = interludeSection(item);
-    return sec ? trimmed(sec, item) : sec;
+    const out = sec ? trimmed(sec, item) : sec;
+    if (out && item.short) out.setAttribute('data-sg-short', item.short);
+    return out;
   }
   const rec = fullStep(item.ns, item.id);
   if (!rec) return null;
   const step = classify({ ...rec, badge: null }, item.ns);
   const sec = renderStep(step, extra, item.ns);
   sec.querySelectorAll('.st-stage-row, .st-why, .row-actions, .step-badge').forEach((el) => el.remove());
-  return trimmed(sec, item);
+  const out = trimmed(sec, item);
+  if (out && item.short) out.setAttribute('data-sg-short', item.short);   // the step strip's name (steps.stages.json `short`)
+  return out;
 }
 
 /** Four tables: rows from the shared builders, as many as are saved. */
@@ -169,19 +173,26 @@ function stepGuide(root, memoKey) {
   const kids = [...root.children].filter((el) => el.matches('.sg-cover, section'));
   if (kids.length < 2) return;
   const text = (el, sel) => { const n = el.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; };
+  /* ONE number per pill: the blueprint's own step number (the one its
+     heading and the rest of the app use); the strip's position is said
+     once, in the footer ("Step 3 of 12"). The name is the sidecar's
+     short noun, never the heading sentence with its full stop. */
   const panels = kids.map((el, i) => {
-    if (el.matches('.sg-cover')) return { id: 'cover', label: 'Cover', el };
-    const num = text(el, '.step-num'), title = text(el, '.step-title') || text(el, 'h2, h3');
-    return { id: el.getAttribute('data-sg-id') || el.id || 'step-' + i, label: [num, title].filter(Boolean).join(' · ') || 'Step ' + (i + 1), el };
+    if (el.matches('.sg-cover')) return { id: 'cover', label: 'Cover', num: '', title: 'Cover', el };
+    const numText = text(el, '.step-num'), title = text(el, '.step-title') || text(el, 'h2, h3');
+    const n = (/\d+/.exec(numText) || [''])[0];
+    const short = el.getAttribute('data-sg-short') || title.replace(/[.\s]+$/, '');
+    return { id: el.getAttribute('data-sg-id') || el.id || 'step-' + i, label: short || 'Step ' + (i + 1), num: n, title: [numText, title].filter(Boolean).join(' · '), el };
   });
   const ticks = (p) => { const li = [...p.el.querySelectorAll('.step-check li')]; return li.length > 0 && li.every((x) => x.classList.contains('checked') || x.classList.contains('done')); };
+  const barOpts = { label: 'Blueprint steps', done: ticks, num: (p) => p.num, title: (p) => p.title };
   let cur = lastStep.get(memoKey);
   if (!panels.some((p) => p.id === cur)) cur = panels[0].id;
   const hashed = (location.hash || '').length > 1 && document.getElementById(location.hash.slice(1));
   if (hashed && root.contains(hashed)) { const host = panels.find((p) => p.el.contains(hashed)); if (host) cur = host.id; }
   let bar = null;
   const paint = () => {
-    const nb = stepBar(panels, cur, { label: 'Blueprint steps', done: ticks });
+    const nb = stepBar(panels, cur, barOpts);
     if (bar) bar.replaceWith(nb); else root.prepend(nb);
     bar = nb;
     const on = nb.querySelector('.is-on'), ol = nb.querySelector('.stp-list');
@@ -197,10 +208,10 @@ function stepGuide(root, memoKey) {
     if (!panels.some((p) => p.id === id)) return;
     cur = id; lastStep.set(memoKey, id);
     paint();
-    scrollToTop(bar);
+    landUnder(panels.find((p) => p.id === id).el, bar);
   };
   wireStepper(root, go);
-  root.addEventListener('click', () => setTimeout(() => { if (root.isConnected) { const nb = stepBar(panels, cur, { label: 'x', done: ticks }); const a = [...nb.querySelectorAll('.is-done')].length, b = bar.querySelectorAll('.is-done').length; if (a !== b) paint(); } }, 0));
+  root.addEventListener('click', () => setTimeout(() => { if (root.isConnected) { const nb = stepBar(panels, cur, barOpts); const a = [...nb.querySelectorAll('.is-done')].length, b = bar.querySelectorAll('.is-done').length; if (a !== b) paint(); } }, 0));
   paint();
 }
 

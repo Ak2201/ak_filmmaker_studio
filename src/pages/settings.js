@@ -935,7 +935,7 @@ delegate(document, 'click', '[data-action="tour-start"]', () => {
 delegate(document, 'click', '[data-action="erase-all"]', async () => {
   const r = await ask({
     title: 'Erase everything on this device?',
-    body: 'Every project, setting and saved key in this browser is erased, and you are signed out. This cannot be undone.',
+    body: 'Every project, setting and saved key in this browser is erased. You stay signed in; the cloud copies of your projects are not touched, and cloud sync is paused so the empty device does not upload over them. This cannot be undone.',
     typeToConfirm: 'ERASE',
     checkbox: { label: 'Also delete my Google Drive backup file', checked: false },
     confirm: 'ERASE EVERYTHING', danger: true

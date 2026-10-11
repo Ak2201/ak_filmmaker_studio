@@ -1105,7 +1105,10 @@ for (const alsoDrive of [false, true]) {
   const page = await ctx.newPage();
   let native = 0;
   page.on('dialog', async (d) => { native++; d.dismiss().catch(() => {}); });
-  await page.goto(`http://localhost:${PORT}/index.html`);
+  /* The erase lives in Settings → Danger zone now (11 Oct 2026). Seed on
+     that page itself: a second page load would let the app drop the fake
+     account (its session cannot be restored) before the erase runs. */
+  await page.goto(`http://localhost:${PORT}/settings.html#danger`);
   await page.waitForFunction(() => !!window.StudioStore, null, { timeout: 15000 });
   const ids = await page.evaluate(() => {
     const S = window.StudioStore;
@@ -1120,7 +1123,8 @@ for (const alsoDrive of [false, true]) {
     S.rawSet('fms_drive_sync_v1', JSON.stringify({ enabled: true, fileId: 'F1' }));
     return [a.id, b.id];
   });
-  await page.evaluate(() => document.querySelector('[data-action="reset-all"]').click());
+  await page.waitForSelector('[data-action="erase-all"]', { timeout: 15000 });
+  await page.evaluate(() => document.querySelector('[data-action="erase-all"]').click());
   const dlg = page.locator('.dlg');
   await dlg.waitFor({ timeout: 8000 });
   await dlg.locator('input.dlg-field').fill('ERASE');

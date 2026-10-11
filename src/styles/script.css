@@ -345,3 +345,11 @@
 html.fm-on .sc-sheet { padding-block: 0; }
 html.fm-on .sc-sheet .wr-page { box-shadow: none; }
 html.fm-on .sc-line-more { display: none; }
+
+/* The host bar exists for focus mode, read-as and dictation to find
+   (the ⋯ menu clicks their buttons); it is never seen. Doubled class so
+   write.css's .wr-bar borders cannot order it back into view. */
+.sc-sheet > .wr-bar.sc-hostbar {
+  position: absolute; width: 1px; height: 1px; margin: 0; padding: 0;
+  overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap;
+}

@@ -141,13 +141,8 @@
   "checklist": {
     "label": "YOUR FIRST WEEK",
     "title": "Find your way round.",
-    "deck": "Seven things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
+    "deck": "Six things to try. The ticks are read from the open film every time this page draws — nothing here is stored.",
     "items": [
-      {
-        "id": "sample",
-        "label": "Open the Dragon sample",
-        "href": "index.html?sample=1"
-      },
       {
         "id": "story",
         "label": "Write a logline or a synopsis",

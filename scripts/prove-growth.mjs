@@ -27,7 +27,7 @@
          remove_branding: no switch, and a stored 'off' is ignored
      (f) THE SCREENING ROOM closes with the line
      (g) THE TOUR: no storage write on load, the checklist is derived
-         (seven items, the sample ticks six), only clicks write
+         (six items), only clicks write
          fms_tour_v1, Esc ends it and focus is inside each step
      (h) PUBLIC VIEW: a call sheet opens from #view=<token>; the token
          leaves the address bar; no phone or e-mail is drawn; nothing
@@ -398,7 +398,7 @@ try {
     let t0 = await now(page);
     await page.waitForTimeout(4000);
     ok((await localWrites(page, t0)).length === 0 && (await localWrites(page)).every((k) => k !== 'fms_tour_v1'), 'the hub with its checklist writes nothing on load or idle');
-    ok(await page.evaluate(() => document.querySelectorAll('#firstweek .tw-item').length === 7 && !document.querySelector('#firstweek .tw-item.is-done')), 'seven items, none ticked on an empty desk');
+    ok(await page.evaluate(() => document.querySelectorAll('#firstweek .tw-item').length === 6 && !document.querySelector('#firstweek .tw-item.is-done')), 'six items, none ticked on an empty desk');
     t0 = await now(page);
     await page.click('[data-tour-act="start"]'); await page.waitForTimeout(600);
     ok(JSON.stringify(await localWrites(page, t0)) === '["fms_tour_v1"]', 'starting writes fms_tour_v1 once, and only that');

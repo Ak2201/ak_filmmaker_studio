@@ -32,6 +32,7 @@ import C from '../lib/costs.js';
 import { listContacts, listCallSheets, DEPARTMENTS } from '../lib/contacts.js';
 import { calendarDays } from '../lib/locations.js';
 import wages from '../data/wages.fefsi.json';
+import { askDanger } from './dialog.js';
 
 const rs = (n) => (n < 0 ? '−₹\u00a0' : '₹\u00a0') + INR.format(Math.round(Math.abs(n || 0)));
 const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
@@ -646,8 +647,8 @@ const ACTIONS = {
     refresh();
     if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'UNDO', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
   },
-  'del-float': (el) => { if (confirm('Delete this float? The balance in that person\'s hand is worked out again without it.')) { C.removeFloat(el.dataset.id); refresh(); } },
-  'del-payment': (el) => { if (confirm('Delete this payment from the ledger?')) { C.removePayment(el.dataset.id); refresh(); } },
+  'del-float': async (el) => { if (await askDanger('Delete this float? The balance in that person\'s hand is worked out again without it.')) { C.removeFloat(el.dataset.id); refresh(); } },
+  'del-payment': async (el) => { if (await askDanger('Delete this payment from the ledger?')) { C.removePayment(el.dataset.id); refresh(); } },
   'use-wage': (el) => { C.setCrew(el.dataset.id, { fee: Number(el.dataset.v) || 0, feeType: 'day' }); refresh(); toast('Fee set from the wage table — confirm it with the person and the union.'); },
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),

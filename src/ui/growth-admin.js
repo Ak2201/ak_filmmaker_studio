@@ -35,6 +35,7 @@ import Billing, { fmtPaise, parseRupees, planName } from '../lib/billing.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
+import { ask, askDanger } from './dialog.js';
 
 let rerender = () => {};
 const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
@@ -539,7 +540,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
   const lines = risePreview(rows, at, cap);
   /* The last gate before a public promise: the owner confirms the
      sentence itself, not "save changes?". */
-  if (lines.length && !confirm('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?')) return;
+  if (lines.length && !await ask('This will be shown to everyone, and it will happen by itself:\n\n' + lines.join('\n') + '\n\nSchedule it?')) return;
   try {
     /* The cap first: it is one of the two triggers the sentence names,
        and a tier saved against a cap that failed to save would be
@@ -562,7 +563,7 @@ delegate(document, 'submit', '[data-gra-form="pricerise"]', async (e, form) => {
 
 delegate(document, 'click', '[data-gra-action="price-cancel"]', async (e, el) => {
   const id = el.dataset.plan;
-  if (!confirm('Cancel the scheduled rise for this plan?\n\nThe price stays where it is and the landing page stops saying it will change.')) return;
+  if (!await askDanger('Cancel the scheduled rise for this plan?\n\nThe price stays where it is and the landing page stops saying it will change.')) return;
   try {
     S.prices = await Billing.admin.setNextPrice(id, null, null);
     rerender();

@@ -92,6 +92,8 @@ jobs:
       - run: npm run prove:adoption
       # The Story path per format, against the same gate-off build.
       - run: npm run prove:story-path
+      # No native confirm/alert/prompt: the in-app dialog appears, Cancel keeps data.
+      - run: npm run prove:dialogs
 
   proofs:
     name: proofs

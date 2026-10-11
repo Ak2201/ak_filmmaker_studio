@@ -38,6 +38,7 @@
 import { h } from '../lib/dom.js';
 import { parseNum, fmtINR } from '../lib/money.js';
 import shortData from '../data/steps.short.json';
+import { askDanger } from './dialog.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MIN_SCENE_ROWS = 5;      /* short.js */
@@ -259,7 +260,7 @@ export function sceneMapWidget(ctx) {
 
   wrap.addEventListener('input', (e) => { if (e.target.closest('[data-field]')) { save(); ctx.refresh(); } });
   wrap.addEventListener('change', (e) => { if (e.target.closest('[data-field]')) { save(); ctx.refresh(); } });
-  wrap.addEventListener('click', (e) => {
+  wrap.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-sg]');
     if (!btn || !wrap.contains(btn)) return;
     const act = btn.getAttribute('data-sg');
@@ -274,7 +275,7 @@ export function sceneMapWidget(ctx) {
       tr.after(sceneMapRow(rowValues(tr)));
       renumber(); save(); ctx.refresh();
     } else if (act === 'map-del') {
-      if (!confirm('Delete this scene from the map?')) return;
+      if (!await askDanger('Delete this scene from the map?')) return;
       btn.closest('tr').remove();
       renumber(); save(); ctx.refresh();
     }
@@ -364,7 +365,7 @@ export function scriptWidget(ctx) {
     }
   };
   wrap.addEventListener('input', (e) => { if (e.target.closest('.scene-block')) { save(); ctx.refresh(); } });
-  wrap.addEventListener('click', (e) => {
+  wrap.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-sg]');
     if (!btn || !wrap.contains(btn)) return;
     const act = btn.getAttribute('data-sg');
@@ -372,10 +373,10 @@ export function scriptWidget(ctx) {
     else if (act === 'script-add-dlg') { btn.closest('.scene-block').querySelector('.dialogues').append(dialogueBlock()); }
     else if (act === 'script-del-dlg') { btn.closest('.dialogue-block').remove(); save(); ctx.refresh(); }
     else if (act === 'script-del-scene') {
-      if (!confirm('Delete this whole scene from the script?')) return;
+      if (!await askDanger('Delete this whole scene from the script?')) return;
       btn.closest('.scene-block').remove(); renumber(); save(); ctx.refresh();
     } else if (act === 'script-clear') {
-      if (!confirm('Clear ALL scenes from the script? This cannot be undone unless you exported JSON.')) return;
+      if (!await askDanger('Clear ALL scenes from the script? This cannot be undone unless you exported JSON.')) return;
       scenesEl.replaceChildren(sceneBlock()); renumber(); save(); ctx.refresh();
     }
   });

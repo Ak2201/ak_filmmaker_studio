@@ -718,14 +718,14 @@ function moveAndFocus(el, dir) {
 }
 delegate(document, 'click', '[data-action="scene-up"]',   (e, el) => moveAndFocus(el, -1));
 delegate(document, 'click', '[data-action="scene-down"]', (e, el) => moveAndFocus(el,  1));
-delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
+delegate(document, 'click', '[data-action="scene-del"]',  async (e, el) => {
   const id = sceneIdOf(el);
   const scene = Scenes.listScenes().find((s) => s.id === id);
   const label = scene && (scene.location || scene.synopsis) ? ` "${(scene.location || scene.synopsis).slice(0, 40)}"` : '';
   // removeScene() goes through the bin (src/lib/scene-bin.js), so the
   // scene's shots, frames, call-sheet places and edit notes go with it
   // and come back with it.
-  if (!confirm(`Move scene${label} to the bin? Its tagged elements, shots, frames and call-sheet places go with it, and Restore brings them all back.`)) return;
+  if (!await ask(`Move scene${label} to the bin? Its tagged elements, shots, frames and call-sheet places go with it, and Restore brings them all back.`)) return;
   Scenes.removeScene(id);
   render();
 });
@@ -749,22 +749,22 @@ delegate(document, 'click', '[data-action="bin-restore"]', (e, el) => {
   render();
   if (row) StudioUI.toast(`Scene ${row.number || ''} is back, with everything that was attached to it.`, { type: 'success' });
 });
-delegate(document, 'click', '[data-action="bin-delete"]', (e, el) => {
+delegate(document, 'click', '[data-action="bin-delete"]', async (e, el) => {
   const id = binIdOf(el);
   const entry = Bin.listBin().find((x) => x.id === id);
   if (!entry) return;
-  if (!confirm(`Delete for good — ${Bin.describeEntry(entry)}?\n\nThis cannot be undone.`)) return;
+  if (!await askDanger(`Delete for good — ${Bin.describeEntry(entry)}?\n\nThis cannot be undone.`)) return;
   Bin.deleteBinEntry(id);
   render();
 });
-delegate(document, 'click', '[data-action="bin-empty"]', () => {
+delegate(document, 'click', '[data-action="bin-empty"]', async () => {
   const t = Bin.binTotals();
   if (!t.scenes) return;
   const bits = [`${t.scenes} scene${t.scenes === 1 ? '' : 's'}`];
   if (t.shots) bits.push(`${t.shots} shot${t.shots === 1 ? '' : 's'}`);
   if (t.frames) bits.push(`${t.frames} frame${t.frames === 1 ? '' : 's'}`);
   if (t.sheets) bits.push(`${t.sheets} call-sheet place${t.sheets === 1 ? '' : 's'}`);
-  if (!confirm(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
+  if (!await askDanger(`Empty the bin? ${bits.join(', ')} will be deleted for good.\n\nThis cannot be undone.`)) return;
   Bin.emptyBin();
   render();
 });
@@ -793,6 +793,7 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // since the field was entered (UX audit H10). saveOnInput() debounces
 // the store write and flushes it on pagehide / hidden.
 import { saveOnInput } from '../lib/autosave.js';
+import { ask, askDanger } from '../ui/dialog.js';
 const sceneValue = (el) => el.dataset.sceneField === 'eighths'
   ? Math.max(0, parseInt(el.value, 10) || 0)
   : el.dataset.sceneField === 'number' ? el.value.trim() : el.value;
@@ -872,7 +873,7 @@ delegate(document, 'click', '[data-action="song-down"]', (e, el) => { Songs.move
 /* Deleting a song UNLINKS its scenes rather than deleting them. A
    song row is a plan; the scenes are pages someone wrote. One button
    must never take both, and the confirm says which it takes. */
-delegate(document, 'click', '[data-action="song-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="song-del"]', async (e, el) => {
   const id = songIdOf(el);
   const song = Songs.listSongs().find((s) => s.id === id);
   if (!song) return;
@@ -882,7 +883,7 @@ delegate(document, 'click', '[data-action="song-del"]', (e, el) => {
     ? `\n\n${linked.length} scene${linked.length === 1 ? '' : 's'} will be unlinked. `
       + 'The scenes themselves are kept.'
     : '';
-  if (!confirm(`Delete song${label}?${note}`)) return;
+  if (!await askDanger(`Delete song${label}?${note}`)) return;
   linked.forEach((sc) => Scenes.updateScene(sc.id, { songId: '' }));
   Songs.removeSong(id);
   render();
@@ -959,7 +960,7 @@ delegate(document, 'change', 'input[data-action=bd-upload]', async (e, input) =>
   }
   const have = loadScript().elements.length;
   const scenesHave = Scenes.listScenes().length;
-  if ((have || scenesHave) && !confirm('Replace the script' + (scenesHave ? ' and the ' + scenesHave + ' scenes' : '') + ' with this file?\n\n'
+  if ((have || scenesHave) && !await askDanger('Replace the script' + (scenesHave ? ' and the ' + scenesHave + ' scenes' : '') + ' with this file?\n\n'
     + (have ? 'A revision of the current script is kept first. ' : '')
     + (scenesHave ? 'The old scenes go to the bin, with everything attached, and can be restored.' : ''))) return;
   commitImportedScript(plan, { mode: 'replace', importName: file.name });

@@ -74,6 +74,7 @@ import { mountWraps } from '../ui/blueprint-wrap.js';
 
 import shortData from '../data/steps.short.json';
 import festivalData from '../data/festivals.json';
+import { askDanger, tell } from '../ui/dialog.js';
 
 
 /* The theme toggle's tooltip, derived from the list it describes.
@@ -765,12 +766,12 @@ function trackFestival(name) {
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function removeTrackedFestival(row) {
+async function removeTrackedFestival(row) {
   if (!row) return;
   const id = row.dataset.festId;
   const s = Fest.listSubmissions().find((x) => x.id === id);
   const label = (s && s.festival) || 'this entry';
-  if (!confirm(`Stop tracking ${label}? The fee, dates and notes go with it.`)) return;
+  if (!await askDanger(`Stop tracking ${label}? The fee, dates and notes go with it.`)) return;
   Fest.removeSubmission(id);
   refreshTracker();
   flashStatus('●  saved');
@@ -1276,8 +1277,8 @@ function duplicateSceneMapRow(tr) {
   renumberSceneMap();
   saveData();
 }
-function deleteSceneMapRow(tr) {
-  if (!confirm('Delete this scene from the map?')) return;
+async function deleteSceneMapRow(tr) {
+  if (!await askDanger('Delete this scene from the map?')) return;
   tr.remove();
   renumberSceneMap();
   saveData();
@@ -1343,8 +1344,8 @@ function addDialogue(sceneIdx, prefill) {
   wrap.appendChild(div);
 }
 
-function removeScriptScene(idx) {
-  if (!confirm('Delete this whole scene from the script?')) return;
+async function removeScriptScene(idx) {
+  if (!await askDanger('Delete this whole scene from the script?')) return;
   const block = document.querySelector(`.scene-block[data-scene-idx="${idx}"]`);
   if (block) block.remove();
   renumberScriptScenes();
@@ -1369,8 +1370,8 @@ function collectScriptData() {
   return scenes;
 }
 
-function clearScript() {
-  if (!confirm('Clear ALL scenes from the script? This cannot be undone unless you exported JSON.')) return;
+async function clearScript() {
+  if (!await askDanger('Clear ALL scenes from the script? This cannot be undone unless you exported JSON.')) return;
   document.getElementById('scriptScenes').innerHTML = '';
   scriptSceneUid = 0;
   addScriptScene();
@@ -1640,7 +1641,7 @@ Be specific. Quote scenes by their slug lines. Be honest, not nice.`;
 
 function copyAIPrompt() {
   const ta = document.getElementById('aiPrompt');
-  if (!ta.value) { alert('Build a prompt first.'); return; }
+  if (!ta.value) { tell('Build a prompt first.'); return; }
   copyToClipboard(ta.value, '●  AI prompt copied');
 }
 
@@ -1692,7 +1693,7 @@ function handleImport(e) {
   const file = e.target.files[0];
   if (!file) return;
   const r = new FileReader();
-  r.onload = (ev) => {
+  r.onload = async (ev) => {
     const keys = new Set(Array.from(document.querySelectorAll('[data-key]'), (el) => el.getAttribute('data-key')));
     const res = readBlueprintFile(String(ev.target.result || ''), {
       keys,
@@ -1705,11 +1706,11 @@ function handleImport(e) {
     if (!res.ok) {
       flashStatus('●  import refused');
       if (StudioUI && StudioUI.toast) StudioUI.toast(res.error, { type: 'error', duration: 8000 });
-      else alert(res.error);
+      else tell(res.error);
       return;
     }
     try {
-      if (!confirm('Replace everything in this Short Film Blueprint with "' + file.name + '"?\n\n' +
+      if (!await askDanger('Replace everything in this Short Film Blueprint with "' + file.name + '"?\n\n' +
                    'Fields the file does not contain will be emptied. Your festival tracker is not touched. ' +
                    'Export first if you want to keep what is here now.')) return;
       clearTimeout(saveTimer);
@@ -1720,7 +1721,7 @@ function handleImport(e) {
       scriptSceneUid = 0;
       loadData();
       flashStatus('●  imported');
-    } catch (err) { alert('Import failed: ' + err.message); }
+    } catch (err) { tell('Import failed: ' + err.message); }
   };
   r.readAsText(file);
   e.target.value = '';
@@ -1734,9 +1735,10 @@ function handleImport(e) {
    and fees. The pending autosave is cancelled first, or it could land
    between the remove and the reload and write the old blueprint
    straight back. */
-function resetData() {
-  if (!confirm('Erase ALL your data for this short — every field, the scene map, the script and the festival tracker — and start fresh? This cannot be undone unless you exported JSON first.')) return;
-  if (!confirm('Are you SURE? Last chance.')) return;
+async function resetData() {
+  /* Was two native confirms ("…?" then "Are you SURE? Last chance."). One
+     dialog that has to be typed answers both. */
+  if (!await askDanger('Erase ALL your data for this short — every field, the scene map, the script and the festival tracker — and start fresh? This cannot be undone unless you exported JSON first.', { typeToConfirm: 'ERASE', confirm: 'Erase everything' })) return;
   clearTimeout(saveTimer);
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(Fest.FESTIVALS_KEY);

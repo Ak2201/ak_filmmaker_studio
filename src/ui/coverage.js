@@ -50,6 +50,7 @@ import { h, delegate } from '../lib/dom.js';
 import StudioUI from './chrome.js';
 import PDF from '../lib/pdf.js';
 import { apiHost } from '../lib/ai-providers.js';
+import { ask } from './dialog.js';
 
 let getDoc = () => null;
 let save = () => {};
@@ -580,7 +581,7 @@ async function startCoverage(fresh) {
   }
   const prior = !fresh && part ? part.coverage.checkpoint : null;
   if (!prior && done().some((d) => d.coverage.sig === sig)) {
-    if (!window.confirm('This exact draft already has a coverage report. Run it again? That sends the script again and bills your account again. The old report is kept.')) return;
+    if (!await ask('This exact draft already has a coverage report. Run it again? That sends the script again and bills your account again. The old report is kept.')) return;
   }
   run.running = true; run.error = ''; run.status = 'Starting…';
   run.abort = new AbortController();
@@ -646,8 +647,8 @@ function printReport(docId) {
 
 function wire() {
   delegate(document, 'click', '[data-action="cv-run"]', () => { startCoverage(false); });
-  delegate(document, 'click', '[data-action="cv-restart"]', () => {
-    if (!window.confirm('Start the coverage again from the first scene? The parts already read are discarded and will be sent — and billed — again.')) return;
+  delegate(document, 'click', '[data-action="cv-restart"]', async () => {
+    if (!await ask('Start the coverage again from the first scene? The parts already read are discarded and will be sent — and billed — again.')) return;
     startCoverage(true);
   });
   delegate(document, 'click', '[data-action="cv-stop"]', () => { if (run.abort) run.abort.abort(); });

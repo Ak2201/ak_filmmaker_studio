@@ -79,8 +79,25 @@ function actions(card, list) {
   return row;
 }
 
-/** confirm(), in the app. */
-export function ask(opts = {}) {
+/* A native-style message → {title, body}. The first paragraph (or, for a
+   one-paragraph message longer than a short question, its first sentence)
+   is the title; the rest is the body. The wording is the caller's, as it
+   was when it went to confirm(). */
+function fromMessage(msg) {
+  const text = String(msg == null ? '' : msg).trim();
+  const para = text.split(/\n{2,}/);
+  if (para.length > 1) return { title: para[0].trim(), body: para.slice(1).join('\n\n') };
+  if (text.length > 70) {
+    const m = text.match(/^(.{20,}?[.?!])\s+(\S[\s\S]*)$/);
+    if (m) return { title: m[1], body: m[2] };
+  }
+  return { title: text, body: '' };
+}
+
+/** confirm(), in the app. Takes an options object, or a plain message
+    string (split into title and body) plus optional extra options. */
+export function ask(opts = {}, extra) {
+  if (typeof opts === 'string') opts = { ...fromMessage(opts), ...(extra || {}) };
   return open((card, finish) => {
     head(card, opts.title, opts.body);
     let box = null;
@@ -108,6 +125,11 @@ export function ask(opts = {}) {
   });
 }
 
+/** confirm() for something that destroys: the confirm button is red. */
+export function askDanger(opts = {}, extra) {
+  return ask(opts, { danger: true, ...(extra || {}) });
+}
+
 /** alert(), in the app. */
 export function tell(opts = {}) {
   if (typeof opts === 'string') opts = { body: opts };
@@ -121,7 +143,8 @@ export function tell(opts = {}) {
 }
 
 /** prompt(), in the app. Resolves the trimmed text, or null on cancel. */
-export function askText(opts = {}) {
+export function askText(opts = {}, extra) {
+  if (typeof opts === 'string') opts = { ...fromMessage(opts), ...(extra || {}) };
   return open((card, finish) => {
     head(card, opts.title, opts.body);
     const field = h('input.dlg-field', { type: 'text', autocomplete: 'off', placeholder: opts.placeholder || '', 'aria-label': opts.title || 'Answer' });
@@ -137,4 +160,4 @@ export function askText(opts = {}) {
   });
 }
 
-export default { ask, tell, askText };
+export default { ask, askDanger, tell, askText };

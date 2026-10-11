@@ -48,6 +48,7 @@ import { h, delegate } from '../lib/dom.js';
 import AI from '../lib/ai.js';
 import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
+import { askDanger } from './dialog.js';
 
 /* View state, and none of it is stored. Whether the key form is
    open is not the user's work, and a "replace your key" form that
@@ -357,11 +358,11 @@ export function wireAIPanel() {
     announce();
   });
 
-  delegate(document, 'click', '[data-action="ai-forget-key"]', () => {
+  delegate(document, 'click', '[data-action="ai-forget-key"]', async () => {
     /* Named, because there can be two keys saved and a confirm that
        says "the API key" would not say which one is about to go. */
     const prov = AI.provider();
-    if (!confirm('Forget the ' + prov.label + ' API key on this device?\n\n'
+    if (!await askDanger('Forget the ' + prov.label + ' API key on this device?\n\n'
       + 'Nothing you have written is touched. You will need to paste the key again '
       + 'to use any of the model-backed tools.')) return;
     AI.clearKey();

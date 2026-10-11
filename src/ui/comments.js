@@ -57,6 +57,7 @@
 import Store from '../lib/store.js';
 import { esc, delegate } from '../lib/dom.js';
 import '../styles/comments.css';
+import { askDanger } from './dialog.js';
 
 /* ------------------------------------------------------------
    CONFIG — one per page
@@ -515,7 +516,7 @@ async function setStatus(id, status, el) {
 
 async function remove(id, el) {
   const c = cloud();
-  if (!window.confirm('Delete this comment for everyone on the project?')) return;
+  if (!await askDanger('Delete this comment for everyone on the project?')) return;
   try { await c.deleteComment(id); }
   catch (e) { showErr(el, e.message || String(e)); return; }
   await refreshAllOpen();

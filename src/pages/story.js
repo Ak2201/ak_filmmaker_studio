@@ -79,6 +79,7 @@ import { learn } from '../ui/learn.js';
 import { onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-film.js';
 import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/story-bible.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+import { askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
 
@@ -1148,7 +1149,7 @@ const sampleStory = IO.sampleStory;
 
 async function useSample() {
   const cur = story();
-  if (!isEmpty(cur) && !window.confirm('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
+  if (!isEmpty(cur) && !await askDanger('Replace the story on this page with the Dragon sample? Your idea, logline, outline and synopsis here are replaced. The Idea Vault is kept.')) return;
   const s = await sampleStory();
   s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
@@ -1203,7 +1204,7 @@ function undoSend() {
   StudioUI.toast(`${n} placeholder scene${n === 1 ? '' : 's'} removed. Nothing else in the scene list was touched.`);
 }
 
-delegate(document, 'click', '[data-st]', (e, el) => {
+delegate(document, 'click', '[data-st]', async (e, el) => {
   const act = el.getAttribute('data-st');
   const s = story();
   if (act === 'sample') {
@@ -1279,7 +1280,7 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     delete sugg[el.getAttribute('data-beat')];
     render();
   } else if (act === 'build') {
-    if (s.source.trim() && !window.confirm('Rebuild the synopsis from the outline? The synopsis on this page is replaced; highlights you made by hand are kept where their words still appear. You can undo this once.')) return;
+    if (s.source.trim() && !await askDanger('Rebuild the synopsis from the outline? The synopsis on this page is replaced; highlights you made by hand are kept where their words still appear. You can undo this once.')) return;
     undoBuild = Story.buildSynopsisFromOutline(s, s.framework);
     mode = 'tag';
     commit(s);
@@ -1335,7 +1336,7 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     Story.removeMark(s, el.getAttribute('data-mark'));
     commit(s);
   } else if (act === 'clear') {
-    if (!window.confirm('Clear the synopsis, every highlight and every tension score on this page? The idea, the logline, the step outline and the Idea Vault are kept.')) return;
+    if (!await askDanger('Clear the synopsis, every highlight and every tension score on this page? The idea, the logline, the step outline and the Idea Vault are kept.')) return;
     s.source = ''; s.sourceName = ''; s.marks = []; s.tension = {};
     mode = null; litBeat = ''; undoBuild = null;
     commit(s);

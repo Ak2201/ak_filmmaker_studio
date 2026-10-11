@@ -546,10 +546,12 @@ function currentHolder(list, role, format) {
 
 /** Give a character a role. Only one protagonist and one antagonist:
     when another character holds the role, `confirm(message)` is asked
+    (synchronously; the default declines — the cards ask in the app's own
+    dialog first and pass `() => true`)
     and, on yes, that character's blueprint answers are copied onto
     their own record and the role moves. Returns { ok, rec, listChanged,
     moved } — ok false means the writer declined. */
-export function assignRole(list, view, role, { format = projectFormat(), confirm = (m) => (globalThis.confirm ? globalThis.confirm(m) : true) } = {}) {
+export function assignRole(list, view, role, { format = projectFormat(), confirm: sureAbout = () => false } = {}) {
   const want = ROLES.includes(role) ? role : '';
   const no = { ok: false, rec: null, listChanged: false, moved: false };
   let holder = null;
@@ -560,7 +562,7 @@ export function assignRole(list, view, role, { format = projectFormat(), confirm
       const hv = holder.rec ? viewOf(holder.rec, list, format) : holder.virtual;
       const name = hv.name || 'The current ' + roleLabel(want).toLowerCase();
       const label = roleLabel(want).toLowerCase();
-      if (!confirm(`${name} is your ${label} now. Make ${view.name || 'this character'} the ${label} instead?\n\n`
+      if (!sureAbout(`${name} is your ${label} now. Make ${view.name || 'this character'} the ${label} instead?\n\n`
         + `${name}'s answers are kept on their own card. The blueprint's further prompts for the role stay with the role.`)) return no;
     }
   }

@@ -43,6 +43,7 @@ import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS, MEDIA_KINDS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
+import { askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
 
@@ -769,10 +770,10 @@ saveOnInput('[data-media-field]', (el) => {
   if (id) Locations.updateMedia(id, { [el.dataset.mediaField]: el.value });
 });
 
-delegate(document, 'click', '[data-action="recce-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="recce-del"]', async (e, el) => {
   const key = locKeyOf(el);
   if (!key) return;
-  if (!confirm('Discard the recce notes for "' + key + '"? No scene points at this place any more, and this cannot be undone.')) return;
+  if (!await askDanger('Discard the recce notes for "' + key + '"? No scene points at this place any more, and this cannot be undone.')) return;
   Locations.removeRecce(key);
   render();
 });
@@ -784,12 +785,12 @@ delegate(document, 'click', '[data-action="media-add"]', () => {
   if (last) last.focus();
 });
 
-delegate(document, 'click', '[data-action="media-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="media-del"]', async (e, el) => {
   const id = mediaIdOf(el);
   if (!id) return;
   const item = Locations.listMedia().find((m) => m.id === id);
   const label = item && item.title ? ' "' + item.title + '"' : '';
-  if (!confirm('Remove the reference' + label + '? The file itself is wherever you keep it and is untouched.')) return;
+  if (!await askDanger('Remove the reference' + label + '? The file itself is wherever you keep it and is untouched.')) return;
   Locations.removeMedia(id);
   render();
 });

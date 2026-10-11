@@ -39,6 +39,7 @@ import Sun from '../lib/sun.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
 import WA from '../lib/callsheet-text.js';
+import { askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
 
@@ -923,11 +924,11 @@ delegate(document, 'click', '[data-action="contact-add"]', () => {
   card.scrollIntoView({ block: 'center', behavior: 'instant' });
 });
 
-delegate(document, 'click', '[data-action="contact-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const id = contactIdOf(el);
   const c = Contacts.listContacts().find((x) => x.id === id);
   const label = c && c.name ? ' ' + c.name : '';
-  if (!confirm('Remove' + label + '? They come off every call sheet too.')) return;
+  if (!await askDanger('Remove' + label + '? They come off every call sheet too.')) return;
   Contacts.removeContact(id);
   render();
 });
@@ -957,11 +958,11 @@ delegate(document, 'click', '[data-action="sheet-add"]', () => {
   if (last) last.focus();
 });
 
-delegate(document, 'click', '[data-action="sheet-del"]', (e, el) => {
+delegate(document, 'click', '[data-action="sheet-del"]', async (e, el) => {
   const id = sheetIdOf(el);
   const s = Contacts.listCallSheets().find((x) => x.id === id);
   const label = s && s.title ? ' "' + s.title + '"' : '';
-  if (!confirm('Delete call sheet' + label + '? The people and the scenes stay.')) return;
+  if (!await askDanger('Delete call sheet' + label + '? The people and the scenes stay.')) return;
   Contacts.removeCallSheet(id);
   render();
 });

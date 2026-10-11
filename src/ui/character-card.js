@@ -26,6 +26,7 @@
      rerender(box)   redraw this card after a structural change
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { ask } from './dialog.js';
 import C, { ROLES, roleLabel, viewFor, setField, setExtra, assignRole, blankCharacter, projectFormat } from '../lib/characters.js';
 import { learn as learnBox } from './learn.js';
 import BIBLE from '../data/story-bible.json';
@@ -266,7 +267,7 @@ export function onCardInput(el, ctx) {
 
 /** `change` on a card field (blur, or a select): a write, now. A new
     role may be refused by the writer, which puts the select back. */
-export function onCardChange(el, ctx) {
+export async function onCardChange(el, ctx) {
   const box = boxOf(el);
   if (!box) return false;
   if (el.hasAttribute('data-ch-extra')) { now(el, () => setExtra({ ns: el.dataset.ns, key: el.dataset.chExtra }, el.value)); return true; }
@@ -275,7 +276,16 @@ export function onCardChange(el, ctx) {
     const list = ctx.list();
     const view = viewFor(list, box.dataset.ch, box.dataset.chName);
     const prior = view.role || '';
-    const res = assignRole(list, view, el.value, { confirm: ctx.confirm });
+    /* assignRole asks synchronously and returns before changing anything
+       when the answer is no — so when it asks, the question is put in the
+       app's own dialog and, on yes, the call is made again for real. When
+       nothing needed asking the first call is the real one. */
+    let question = '';
+    let res = assignRole(list, view, el.value, { confirm: (m) => { question = m; return false; } });
+    if (question) {
+      if (!await ask(question)) { el.value = prior; return true; }
+      res = assignRole(list, view, el.value, { confirm: () => true });
+    }
     if (!res.ok) { el.value = prior; return true; }
     if (res.rec) settleBox(box, res.rec);
     if (res.listChanged) ctx.save(true);

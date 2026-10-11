@@ -2610,14 +2610,19 @@ if (!exported.unavailable && exported.text) {
   await rtPage.evaluate((text) => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    window.confirm = () => true;
-    window.alert = () => {};
     const input = document.getElementById('importAllFile');
     const dt = new DataTransfer();
     dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
     input.files = dt.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, exported.text);
+
+  /* The import asks in the app's own dialog ("Import N projects?"), then
+     says it is done and reloads on OK — press the in-app button each time,
+     as a person would. */
+  for (let i = 0; i < 2; i++) {
+    await rtPage.click('.dlg .mbtn.primary', { timeout: 8000 }).catch(() => {});
+  }
 
   // importV2 finishes with location.reload()
   await rtPage.waitForLoadState('networkidle').catch(() => {});

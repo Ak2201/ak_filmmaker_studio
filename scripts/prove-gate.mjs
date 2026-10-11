@@ -295,10 +295,14 @@ try {
        prompt — the lock doing its job. Release it, as (d) does. */
     F.db.sessions.delete(USERS['tok-admin'].id);
     const A2 = await newContext(browser, { tok: 'tok-admin' });
-    A2.page.on('dialog', (d) => d.accept('Not this season — ask Amy to vouch for you.'));
+    A2.page.on('dialog', (d) => { throw new Error('native dialog: ' + d.message()); });
     await A2.page.goto(BASE + 'admin.html#admin-console');
     await A2.page.waitForSelector('#admin-console [data-gate-action="decline"]', { timeout: 10000 });
     await A2.page.click('#admin-console [data-gate-action="decline"]');
+    /* the note is asked in the app's own dialog now (askText) */
+    await A2.page.waitForSelector('.dlg input.dlg-field', { timeout: 8000 });
+    await A2.page.fill('.dlg input.dlg-field', 'Not this season — ask Amy to vouch for you.');
+    await A2.page.click('.dlg .mbtn.primary');
     await A2.page.waitForFunction(() => /\(0 waiting\)/.test(document.querySelector('#admin-console').textContent), null, { timeout: 8000 });
     ok(F.db.requests.get(USERS['tok-dan'].id).status === 'declined' && !F.db.members.has(USERS['tok-dan'].id), 'DECLINE records the decision and makes nobody a member');
     /* Two decided by now: Cal's approval from (j) and this decline. */

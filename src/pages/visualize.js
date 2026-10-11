@@ -1175,9 +1175,9 @@ delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
   say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
 });
 
-delegate(document, 'click', '[data-action="vz-ai-undo"]', () => {
+delegate(document, 'click', '[data-action="vz-ai-undo"]', async () => {
   if (!aiLastRun.length) return;
-  if (!confirm('Remove the ' + aiLastRun.length + ' shots from the last draft?\n\n'
+  if (!await askDanger('Remove the ' + aiLastRun.length + ' shots from the last draft?\n\n'
     + 'Only those shots are removed. Anything you wrote or edited since is kept.')) return;
   const ids = new Set(aiLastRun);
   Shots.saveShots(Shots.listShots().filter((s) => !ids.has(s.id)));
@@ -1210,13 +1210,13 @@ delegate(document, 'click', '[data-action="vz-shot-add"]', (e, el) => {
 });
 delegate(document, 'click', '[data-action="vz-shot-up"]',   (e, el) => { Shots.moveShot(shotIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => { Shots.moveShot(shotIdOf(el),  1); render(); });
-delegate(document, 'click', '[data-action="vz-shot-del"]',  (e, el) => {
+delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
   const shot = Shots.listShots().find((s) => s.id === id);
   const frames = Shots.listFrames().filter((f) => f.shotId === id).length;
   const label = shot && shot.description ? ' "' + shot.description.slice(0, 40) + '"' : '';
   const also = frames ? ' Its ' + plural(frames, 'frame goes', 'frames go') + ' with it.' : '';
-  if (!confirm('Delete shot' + label + '?' + also)) return;
+  if (!await askDanger('Delete shot' + label + '?' + also)) return;
   Shots.removeShot(id);
   render();
 });
@@ -1255,8 +1255,8 @@ delegate(document, 'click', '[data-action="vz-frame-add"]', (e, el) => {
 });
 delegate(document, 'click', '[data-action="vz-frame-up"]',   (e, el) => { Shots.moveFrame(frameIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-frame-down"]', (e, el) => { Shots.moveFrame(frameIdOf(el),  1); render(); });
-delegate(document, 'click', '[data-action="vz-frame-del"]',  (e, el) => {
-  if (!confirm('Delete this frame? The shot it draws is untouched.')) return;
+delegate(document, 'click', '[data-action="vz-frame-del"]',  async (e, el) => {
+  if (!await askDanger('Delete this frame? The shot it draws is untouched.')) return;
   Shots.removeFrame(frameIdOf(el));
   render();
 });
@@ -1280,12 +1280,12 @@ delegate(document, 'click', '[data-action="vz-board-add"]', () => {
 });
 delegate(document, 'click', '[data-action="vz-board-up"]',   (e, el) => { Shots.moveBoard(boardIdOf(el), -1); render(); });
 delegate(document, 'click', '[data-action="vz-board-down"]', (e, el) => { Shots.moveBoard(boardIdOf(el),  1); render(); });
-delegate(document, 'click', '[data-action="vz-board-del"]',  (e, el) => {
+delegate(document, 'click', '[data-action="vz-board-del"]',  async (e, el) => {
   const id = boardIdOf(el);
   const board = Shots.listBoards().find((b) => b.id === id);
   const n = board ? board.entries.length : 0;
   const also = n ? ' Its ' + plural(n, 'reference goes', 'references go') + ' with it.' : '';
-  if (!confirm('Delete the board "' + ((board && board.name) || 'untitled') + '"?' + also)) return;
+  if (!await askDanger('Delete the board "' + ((board && board.name) || 'untitled') + '"?' + also)) return;
   Shots.removeBoard(id);
   render();
 });
@@ -1350,6 +1350,7 @@ delegate(document, 'change', '[data-entry-field]', (e, el) => {
    flushes it on pagehide / hidden. Selects and checkboxes are skipped;
    their `change` already saved them. */
 import { saveOnInput, preservingFocus } from '../lib/autosave.js';
+import { askDanger } from '../ui/dialog.js';
 saveOnInput('[data-shot-field]', (el) => Shots.updateShot(shotIdOf(el), { [el.dataset.shotField]: el.value }));
 saveOnInput('[data-frame-field]', (el) => Shots.updateFrame(frameIdOf(el), { [el.dataset.frameField]: el.value }));
 saveOnInput('[data-board-field]', (el) => Shots.updateBoard(boardIdOf(el), { [el.dataset.boardField]: el.value }));

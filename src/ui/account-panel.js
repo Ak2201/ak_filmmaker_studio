@@ -27,6 +27,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import Account from '../lib/account.js';
+import { ask, askDanger } from './dialog.js';
 
 let state = { phase: 'idle', data: null, error: '', busy: '' };
 let host  = null;
@@ -270,7 +271,7 @@ export function accountSection(section) {
 
 /* ---- events — delegated, no inline handlers ----------------- */
 
-delegate(document, 'click', '[data-acct-action]', (e, el) => {
+delegate(document, 'click', '[data-acct-action]', async (e, el) => {
   const act = el.getAttribute('data-acct-action');
   if (state.busy) return;
 
@@ -305,7 +306,7 @@ delegate(document, 'click', '[data-acct-action]', (e, el) => {
       : 'Take "' + title + '" back out of ' + state.data.account.name + '?\n\n'
         + 'Members lose access to it. Nothing written is deleted, and anybody '
         + 'invited to the film itself keeps that.';
-    if (!confirm(msg)) return;
+    if (!await ask(msg)) return;
     setState({ busy: 'films', error: '' });
     Account.setProjectAccount(id, on ? state.data.account.id : null)
       .then(() => refresh())
@@ -315,7 +316,7 @@ delegate(document, 'click', '[data-acct-action]', (e, el) => {
 
   if (act === 'revoke') {
     const email = el.getAttribute('data-email');
-    if (!confirm('Remove ' + email + ' from this account?\n\nThey lose access to '
+    if (!await askDanger('Remove ' + email + ' from this account?\n\nThey lose access to '
                + 'the films in it. Nothing they wrote is deleted.')) return;
     setState({ busy: 'revoke', error: '' });
     Account.revokeMember(state.data.account.id, email)

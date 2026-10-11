@@ -28,6 +28,7 @@ import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
 import * as Songs from '../lib/songs.js';
 import { parseNum, fmtINR, INR } from '../lib/money.js';
 import { norm, rowKey } from '../lib/costs.js';
+import { askDanger } from './dialog.js';
 
 /* ============================================================
    THE CALCULATOR
@@ -401,8 +402,8 @@ function loadCalc() {
   } catch (e) {}
 }
 
-function resetCalc() {
-  if (!confirm('Clear all calculator rows?')) return;
+async function resetCalc() {
+  if (!await askDanger('Clear all calculator rows?')) return;
   try { localStorage.removeItem(CALC_KEY); } catch (e) {}
   const wrap = document.getElementById('calcRows');
   if (wrap) wrap.replaceChildren();

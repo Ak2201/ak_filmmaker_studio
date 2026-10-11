@@ -66,6 +66,7 @@ import Scenes, { ELEMENT_CATEGORIES, formatEighths, totalEighths } from '../lib/
 import Locations from '../lib/locations.js';
 import * as Songs from '../lib/songs.js';
 import DPR from '../lib/dpr.js';
+import { ask, askDanger } from '../ui/dialog.js';
 
 const app = document.getElementById('app');
 const CAST = 'cast';
@@ -1054,11 +1055,11 @@ document.addEventListener('contextmenu', (e) => {
    in one place are shot together, in script order, and each place
    becomes a day. It is a starting point, not a schedule — which is
    why it says so before it overwrites anything. */
-delegate(document, 'click', '[data-action="sb-auto"]', () => {
+delegate(document, 'click', '[data-action="sb-auto"]', async () => {
   const scenes = Scenes.listScenes();
   if (!scenes.length) return;
   const already = scenes.filter((s) => shootDayOf(s)).length;
-  if (already && !confirm(
+  if (already && !await ask(
     `${already} ${already === 1 ? 'scene already has' : 'scenes already have'} a shoot day. `
     + 'Re-schedule every scene by location?'
   )) return;
@@ -1076,10 +1077,10 @@ delegate(document, 'click', '[data-action="sb-auto"]', () => {
   toast(`Scheduled into ${dayFor.size} ${dayFor.size === 1 ? 'day' : 'days'}, one per location.`);
 });
 
-delegate(document, 'click', '[data-action="sb-clear"]', () => {
+delegate(document, 'click', '[data-action="sb-clear"]', async () => {
   const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
   if (!scenes.length) return;
-  if (!confirm(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
+  if (!await askDanger(`Clear the shoot day from ${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}? The scenes themselves are untouched.`)) return;
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
   Locations.clearDayOrders();

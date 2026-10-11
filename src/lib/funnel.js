@@ -103,4 +103,13 @@ export async function purchasesRequired() {
   try { const v = await rpc('purchases_required', {}); return typeof v === 'boolean' ? v : null; } catch (e) { return null; }
 }
 
-export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired };
+/** §33's trial_offer(): { trial_enabled, trial_minutes, trial_hours,
+ *  purchase_required } for the landing page's "Free trial" card, or
+ *  null when it is not known (unconfigured, offline, a database that
+ *  has not run §33). NEVER THROWS; null leaves the markup's own words. */
+export async function trialOffer() {
+  if (!configured()) return null;
+  try { const v = await rpc('trial_offer', {}); return v && typeof v === 'object' && typeof v.trial_enabled === 'boolean' ? v : null; } catch (e) { return null; }
+}
+
+export default { bumpEvent, bumpOnce, addLead, optedOut, optOut, configured, priceNotice, purchasesRequired, trialOffer };

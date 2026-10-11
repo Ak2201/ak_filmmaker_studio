@@ -53,6 +53,20 @@
          buy link are hidden and purchase.html says there is nothing to
          buy; switched ON while a page is open, a focus walls it with no
          reload; and with the key ABSENT (§32 not run) nothing changes
+     (q) THE END OF A TRIAL, AND THE WAY OUT (schema section 33): a trial
+         that runs out while a page is open walls it with no navigation,
+         and a fresh load after expiry is one navigation and a wall that
+         stays (counted over ten seconds); the wall offers SIGN OUT, which
+         signs out, lands on start.html and stays out, and signing back in
+         works; invite.html no longer tells a lapsed member "You're in";
+         purchase.html says the trial ended and offers SIGN OUT; a
+         membership with no trial is offered one on the wall; two tabs:
+         a plan bought in one takes the other's wall down with no focus
+     (r) HOURS AND NO FREE PLAN (owner, 11 Oct 2026): the console sets the
+         trial in hours and stores minutes (round trip), the band and
+         invite.html say hours; no Free card on purchase.html or
+         invite.html, no Free tier or column on start.html, and the
+         console's grant lists offer paid plans only
 
    Run:  npm run build && node scripts/prove-billing.mjs
    ============================================================ */
@@ -60,7 +74,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial } from './fake-supabase.mjs';
+import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial } from './fake-supabase.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
@@ -169,12 +183,14 @@ try {
     ok(await waitGate(page, 'open'), 'Amy (a member) is through the gate');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     const p = await prices(page);
-    ok(p.length === 4 && p.map((x) => x[0]).join() === 'free,starter,indie,pro', 'four cards in order: ' + p.map((x) => x[0]).join(', '));
+    /* NO FREE CARD (owner, 11 Oct 2026): a free TRIAL, not a free plan.
+       The table's 'free' row is the no-plan state and is never drawn. */
+    ok(p.length === 3 && p.map((x) => x[0]).join() === 'starter,indie,pro', 'three cards, the paid tiers in order, and no Free card: ' + p.map((x) => x[0]).join(', '));
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
     ok((await page.textContent('#plan')).includes('yours for good'), 'and says it is bought once, for good');
     ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
-    ok((await page.textContent('#plan .is-current .bd-eyebrow')) === 'Your plan' && (await page.getAttribute('#plan .is-current', 'data-plan')) === 'free', 'Free is marked as the current plan');
-    ok((await page.textContent('#plan')).includes('Cloud projects: 0 of 1'), 'usage shows 0 of 1 projects on Free');
+    ok(!(await page.$('#plan .is-current')) && !/Baseline/.test(await page.textContent('#plan')), 'with nothing bought, no card is "Your plan" and none is a "Baseline"');
+    ok(!(await page.textContent('#plan')).includes('Your usage'), 'and no usage against a free tier\'s caps (there is no free tier)');
 
     console.log('(b) buy');
     await page.evaluate(() => { window.__w = 0; window.__wk = []; const o = Storage.prototype.setItem; Storage.prototype.setItem = function (...a) { window.__w++; window.__wk.push(String(a[0])); return o.apply(this, a); }; });
@@ -370,7 +386,7 @@ try {
     ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
     await amy.page.goto(BASE + 'story.html');
     await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (all three of its modules unticked for Free) shows the plan lock'), () => ok(false, 'story.html (all three of its modules unticked for Free) shows the plan lock'));
-    ok(/Not on the Free plan/.test(await amy.page.textContent('.pg-lock')), 'naming the plan');
+    ok(/Not part of the free trial/.test(await amy.page.textContent('.pg-lock')), 'saying it is not part of the free trial (no "Free plan" is named)');
     ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not removed');
     await amy.page.goto(BASE + 'breakdown.html');
     await amy.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().state === 'open', null, { timeout: 10000 });
@@ -395,9 +411,9 @@ try {
     await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });
     const counts = await amy.page.$$eval('#plan .pl-card', (cards) => Object.fromEntries(cards.map((c) => [c.dataset.plan, (c.querySelector('.pl-features-n') || {}).textContent])));
-    ok(counts.free === `${total - 4} of ${total} features`, `the Free card counts ${total - 4} of ${total} (three modules and new projects unticked): ${counts.free}`);
+    ok(!('free' in counts), 'a trial user on purchase.html is offered no Free card — only plans to buy');
     ok(counts.pro === `${total} of ${total} features`, `the Pro card counts everything: ${counts.pro}`);
-    ok(/Sample project only/.test(await amy.page.textContent('#plan .pl-card[data-plan="free"]')), 'and Free says "Sample project only" in words');
+    ok(/free trial has .* left/i.test(await amy.page.textContent('#plan')), 'and the page says how long her free trial has left');
     allErrors.push(...amy.errors); await amy.ctx.close();
   }
 
@@ -956,6 +972,230 @@ try {
       .then(() => ok(true, 'NO KEY (§32 not run): the wall stands, as before'), () => ok(false, 'NO KEY (§32 not run): the wall stands, as before'));
     ok(!(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-purchases'))), 'NO KEY: nothing is hidden');
     allErrors.push(...amy.errors); await amy.ctx.close();
+  }
+
+  console.log('(q) the end of a trial: one stable wall, and the way out');
+  /* One browser at a time: the 90-second device lock (§14) would put the
+     takeover prompt over every page a SECOND context opens for Amy, and
+     that prompt — not the wall — is then what the checks would read. */
+  const soloContext = (o) => { F.db.sessions.clear(); return newContext(browser, o); };
+  {
+    const amyId = USERS['tok-amy'].id;
+    /* Main-frame navigations, the loop's only honest measure. */
+    const navCounter = (page) => { const n = []; page.on('framenavigated', (f) => { if (f === page.mainFrame()) n.push(f.url().replace(BASE, '/')); }); return n; };
+
+    // 1. the clock runs out while the page is open
+    F.reset();
+    F.db.members.set(amyId, { role: 'user', disabled_at: null });
+    setTrial(amyId, { minutes: 30, startedAt: Date.now() - 30 * 60000 + 8000 });   // eight seconds left
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
+      ok(!!(await A.page.$('.sh-trial')) && !(await A.page.$('.pg-wall')), '(control) the band is up and there is no wall while seconds remain');
+      const navs = navCounter(A.page);
+      await A.page.waitForSelector('.pg-lock.pg-wall', { timeout: 20000 })
+        .then(() => ok(true, 'the trial runs out on an open page: the band asks the server and the wall goes up'), () => ok(false, 'the trial runs out on an open page: the band asks the server and the wall goes up'));
+      await A.page.waitForTimeout(10000);
+      ok(navs.length === 0, 'and NO navigation in the ten seconds after it (no loop): ' + (navs.join(' > ') || 'none'));
+      ok(!!(await A.page.$('.pg-wall')) && !(await A.page.$('.sh-trial')), 'the wall is still up and the band is gone');
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 2. a fresh load after expiry, on the hub, a module page and the dashboard
+    for (const pg of ['index.html', 'breakdown.html', 'dashboard.html']) {
+      const A = await soloContext({ tok: 'tok-amy' });
+      const navs = navCounter(A.page);
+      await A.page.goto(BASE + pg);
+      await A.page.waitForTimeout(10000);
+      ok(navs.length <= 1 && !!(await A.page.$('.pg-wall')), `${pg} after expiry: ${navs.length} navigation in ten seconds, and one stable wall`);
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 3. purchase.html is reachable, usable, and tells the truth
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      const navs = navCounter(A.page);
+      await A.page.goto(BASE + 'purchase.html');
+      await A.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
+      await A.page.waitForTimeout(6000);
+      ok(navs.length <= 1 && !(await A.page.$('.pg-wall')), 'purchase.html after expiry: not walled, no loop');
+      ok(/free trial ended/i.test(await A.page.textContent('#plan').catch(() => '')), 'and it says the free trial ended (not "Your plan: Free")');
+      ok(!!(await A.page.$('#plan [data-auth-action="signout"]')), 'with a SIGN OUT beside the plans');
+      ok(!!(await A.page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]:not([disabled])')), 'and a plan it can actually buy');
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 4. invite.html no longer says "You're in"
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.goto(BASE + 'invite.html');
+      await A.page.waitForFunction(() => /free trial is over/i.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
+      const t = await A.page.textContent('main').catch(() => '');
+      ok(/free trial is over/i.test(t) && !/You’re in/.test(t), 'invite.html tells a lapsed member the trial is over, not "You’re in"');
+      ok(!!(await A.page.$('main a[href="purchase.html"]')) && !!(await A.page.$('main [data-auth-action="signout"]')), 'and offers SEE PLANS and SIGN OUT');
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 5. SIGN OUT from the wall, at desktop and at phone width; it stays out; signing back in works
+    for (const width of [1280, 390]) {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.setViewportSize({ width, height: 860 });
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForSelector('.pg-wall [data-auth-action="signout"]', { timeout: 12000 }).catch(() => {});
+      const btn = await A.page.$('.pg-wall [data-auth-action="signout"]');
+      ok(!!btn && await btn.isVisible(), `${width}px: the wall offers a visible SIGN OUT (the band and the phone bar are hidden under it)`);
+      if (!btn) { skip(`${width}px: signing out from the wall (no button)`); allErrors.push(...A.errors); await A.ctx.close(); continue; }
+      const navs = navCounter(A.page);
+      await btn.click();
+      await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
+      await A.page.waitForTimeout(3000);
+      ok(/start\.html/.test(A.page.url()), `${width}px: it lands on start.html: ` + navs.join(' > '));
+      ok(navs.length <= 2, `${width}px: in at most two navigations (${navs.length})`);
+      ok(!(await A.page.evaluate((k) => localStorage.getItem(k), `sb-${REF}-auth-token`)), `${width}px: and the session is gone from storage`);
+      ok(!(await A.page.$('.pg-wall, .sh-trial')), `${width}px: no stale wall and no trial band`);
+      // stays out: the hub sends a signed-out visitor straight back to the landing page
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
+      ok(/start\.html/.test(A.page.url()) && !(await A.page.evaluate(() => window.StudioCloud && window.StudioCloud.getSession && window.StudioCloud.getSession())), `${width}px: it stays out — index.html returns to start.html, no session`);
+      if (width === 1280) {
+        // and back in, the way Google returns
+        const exp = Math.floor(Date.now() / 1000) + 3600;
+        const back = navCounter(A.page);
+        await A.page.goto(BASE + '#access_token=tok-amy&refresh_token=r-tok-amy&expires_in=3600&expires_at=' + exp + '&token_type=bearer');
+        await A.page.waitForSelector('.pg-wall', { timeout: 15000 }).catch(() => {});
+        await A.page.waitForTimeout(4000);
+        ok(!!(await A.page.evaluate(() => window.StudioCloud.getSession())) && !!(await A.page.$('.pg-wall')), 'signing back in works: a session, and (the trial still over) the wall');
+        ok(back.length <= 4, 'the return from Google settles in a bounded number of loads, no loop: ' + back.length);
+      }
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 6. SIGN OUT from Settings (the account pill's destination) during a RUNNING trial
+    F.reset();
+    F.db.members.set(amyId, { role: 'user', disabled_at: null });
+    setTrial(amyId, { minutes: 30 });
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
+      const pill = await A.page.$('[data-auth-action="pill"]');
+      if (pill && await pill.isVisible()) { await pill.click(); await A.page.waitForURL(/settings\.html/, { timeout: 10000 }).catch(() => {}); }
+      else await A.page.goto(BASE + 'settings.html#account');
+      ok(/settings\.html/.test(A.page.url()), 'the account pill leads a trial user to Settings → Account');
+      await A.page.waitForSelector('[data-auth-action="signout"]', { timeout: 10000 }).catch(() => {});
+      await A.page.click('[data-auth-action="signout"]').catch(() => {});
+      await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
+      ok(/start\.html/.test(A.page.url()) && !(await A.page.$('.sh-trial')), 'Settings’ SIGN OUT signs a trial user out to start.html, with no band left behind');
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 7. a member with no trial (a membership-only grant) is OFFERED one on the wall
+    F.reset();
+    F.db.members.set(amyId, { role: 'user', disabled_at: null });
+    clearTrial(amyId);
+    F.db.settings.trial_minutes = 120;
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForSelector('.pg-wall [data-action="pg-start-trial"]', { timeout: 12000 }).catch(() => {});
+      const b = await A.page.$('.pg-wall [data-action="pg-start-trial"]');
+      ok(!!b && /2 HOURS/.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
+      if (b) {
+        await b.click();
+        await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && document.querySelector('.sh-trial'), null, { timeout: 12000 })
+          .then(() => ok(true, 'starting it takes the wall down and puts the band up'), () => ok(false, 'starting it takes the wall down and puts the band up'));
+        ok(/\d+ h/.test(await A.page.textContent('.sh-trial').catch(() => '')), 'and the band counts down in hours: ' + (await A.page.textContent('.sh-trial').catch(() => '')).trim());
+      } else skip('starting the trial from the wall');
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+
+    // 8. two tabs: a plan bought in one takes the other's wall down, with no focus
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(amyId, { role: 'user', disabled_at: null });
+    expireTrial(amyId);
+    {
+      const A = await soloContext({ tok: 'tok-amy' });
+      await A.page.goto(BASE + 'index.html');
+      await A.page.waitForSelector('.pg-wall', { timeout: 12000 }).catch(() => {});
+      const B = await A.ctx.newPage();
+      B.on('pageerror', (e) => A.errors.push(e.message));
+      await B.goto(BASE + 'purchase.html');
+      await B.waitForSelector('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]', { timeout: 12000 });
+      ok(!!(await A.page.$('.pg-wall')), '(control) tab one is walled while tab two shops');
+      await B.click('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]');
+      await B.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 })
+        .then(() => ok(true, 'tab two buys Basic'), () => ok(false, 'tab two buys Basic'));
+      await A.page.waitForFunction(() => !document.querySelector('.pg-wall'), null, { timeout: 8000 })
+        .then(() => ok(true, 'and tab one’s wall comes down by itself — no focus, no reload (BroadcastChannel)'), () => ok(false, 'and tab one’s wall comes down by itself — no focus, no reload (BroadcastChannel)'));
+      allErrors.push(...A.errors); await A.ctx.close();
+    }
+  }
+
+  console.log('(r) hours, and no free plan anywhere');
+  F.reset();
+  {
+    /* The console: 30 minutes reads 0.5 hours; 3 hours saves 180 minutes. */
+    const A = await soloContext({ tok: 'tok-admin' });
+    await A.page.goto(BASE + 'admin.html#growth');
+    await A.page.waitForSelector('#graTrialHours', { timeout: 15000 }).catch(() => {});
+    ok((await A.page.inputValue('#graTrialHours').catch(() => '')) === '0.5', 'the console shows the 30-minute trial as 0.5 hours');
+    ok(/hours/i.test(await A.page.textContent('label[for="graTrialHours"]').catch(() => '')), 'and the field is labelled in hours');
+    await A.page.fill('#graTrialHours', '3');
+    await A.page.click('form[data-gra-form="trial"] button[type="submit"]');
+    await A.page.waitForFunction(() => document.querySelector('form[data-gra-form="trial"] .ba-saved'), null, { timeout: 8000 }).catch(() => {});
+    ok(F.db.settings.trial_minutes === 180, 'saving 3 hours stores 180 minutes (the column stays minutes): ' + F.db.settings.trial_minutes);
+    await A.page.reload();
+    await A.page.waitForSelector('#graTrialHours', { timeout: 15000 }).catch(() => {});
+    ok((await A.page.inputValue('#graTrialHours').catch(() => '')) === '3', 'and reads back as 3 hours after a reload');
+    ok(/3 hours/.test(await A.page.textContent('form[data-gra-form="trial"]').catch(() => '')), 'the switch’s sentence says "3 hours"');
+    // the grant lists: paid plans only
+    await A.page.goto(BASE + 'admin.html#tiers');
+    await A.page.waitForSelector('#baGrantPlan', { timeout: 15000 }).catch(() => {});
+    const grantOpts = await A.page.$$eval('#baGrantPlan option', (o) => o.map((x) => x.value)).catch(() => ['?']);
+    ok(grantOpts.length > 0 && !grantOpts.includes('free'), 'the console’s grant-a-plan list offers paid plans only: ' + grantOpts.join(','));
+    await A.page.goto(BASE + 'admin.html#give-access');
+    await A.page.waitForSelector('#accPlan', { timeout: 15000 }).catch(() => {});
+    const accOpts = await A.page.$$eval('#accPlan option', (o) => o.map((x) => x.value)).catch(() => ['?']);
+    ok(!accOpts.includes('free'), 'and the give-access list has no Free plan (blank = membership only): ' + accOpts.join(','));
+    allErrors.push(...A.errors); await A.ctx.close();
+
+    /* invite.html: a signed-in stranger is offered "3 hours", and the
+       cards there carry no Free card. */
+    const N = await soloContext({ tok: 'tok-ben' });
+    await N.page.goto(BASE + 'invite.html');
+    await N.page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 12000 }).catch(() => {});
+    ok(/START MY 3 HOURS/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: START MY 3 HOURS');
+    await N.page.waitForSelector('#buy .pl-card', { timeout: 12000 }).catch(() => {});
+    const inv = await N.page.$$eval('#buy .pl-card', (c) => c.map((x) => x.dataset.plan)).catch(() => []);
+    ok(inv.length === 3 && !inv.includes('free'), 'invite.html’s cards are the three paid plans, no Free card: ' + inv.join(','));
+    allErrors.push(...N.errors); await N.ctx.close();
+
+    /* start.html: no Free tier, no Free column, and the trial card says 3 hours. */
+    const S = await soloContext();
+    await S.page.goto(BASE + 'start.html');
+    await S.page.waitForFunction(() => /3 hours/.test((document.querySelector('.st-tiers [data-trial-length]') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});
+    ok(!(await S.page.$('.st-tiers li[data-tier="free"]')) && !!(await S.page.$('.st-tiers li[data-trial]')), 'start.html: no Free tier, and a free-trial card in its place');
+    ok(!(await S.page.$$eval('.st-table thead th', (t) => t.map((x) => x.textContent.trim()))).includes('Free'), 'start.html: no Free column in the comparison table');
+    ok(/3 hours/.test(await S.page.textContent('.st-tiers [data-trial-length]').catch(() => '')), 'start.html: the trial card says "3 hours", from the anon trial_offer()');
+    allErrors.push(...S.errors); await S.ctx.close();
+
+    /* the band, in hours */
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    setTrial(USERS['tok-amy'].id, { minutes: 180 });
+    const B = await soloContext({ tok: 'tok-amy' });
+    await B.page.goto(BASE + 'index.html');
+    await B.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
+    ok(/Trial · [23] h/.test(await B.page.textContent('.sh-trial').catch(() => '')), 'a three-hour trial’s band says hours, not "180 minutes": ' + (await B.page.textContent('.sh-trial .tb-text').catch(() => '')));
+    /* skew: a server clock 3 minutes ahead of this browser shortens the countdown by those minutes */
+    F.db.serverSkewMs = 3 * 60000;
+    setTrial(USERS['tok-amy'].id, { minutes: 10 });
+    await B.page.reload();
+    await B.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
+    const left = Number(((await B.page.textContent('.sh-trial .tb-text').catch(() => '')).match(/(\d+) minutes/) || [])[1]);
+    ok(left >= 6 && left <= 7, 'the band counts against the SERVER’s clock (server_now): 10-minute trial, server 3 min ahead -> ' + left + ' minutes left');
+    F.db.serverSkewMs = 0;
+    allErrors.push(...B.errors); await B.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

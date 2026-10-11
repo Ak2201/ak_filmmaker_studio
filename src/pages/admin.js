@@ -61,6 +61,7 @@ import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesReq
 import { billingAdminSection, wireBillingAdmin, billingSnapshot } from '../ui/billing-admin.js';
 import { invoiceAdminSection } from '../ui/invoice-panels.js';
 import { growthAdminSection, wireGrowthAdmin, growthSnapshot } from '../ui/growth-admin.js';
+import { trialLength } from '../lib/trial-time.js';
 /* LAST, after every module's own sheet, so the console's one set of
    components (admin.css, scoped to .ad-console) wins the ties. */
 import '../styles/admin.css';
@@ -138,7 +139,7 @@ function overviewTab() {
   const paying = Object.entries(by).filter(([k]) => k !== 'free').reduce((t, [, v]) => t + (Number(v) || 0), 0);
   const trials = Number.isInteger(d.trials_active)
     ? stat('Trials running', n(d.trials_active), '', '#growth')
-    : stat('Trial', g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', g && g.trial_enabled !== false ? `${n(g.trial_minutes || 30)} min` : '', '#growth');
+    : stat('Trial', g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', g && g.trial_enabled !== false ? trialLength(g.trial_minutes || 30) : '', '#growth');
   sec.append(h('div.ad-stats', {}, [
     stat('Members', n(d.members_active), `${n(d.members_admin)} admin`, '#members'),
     stat('Pending requests', n(d.requests_pending), '', '#admin-console', d.requests_pending > 0),

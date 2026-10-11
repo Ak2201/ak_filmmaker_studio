@@ -25,19 +25,30 @@
 import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { h } from '../lib/dom.js';
+import { timeLeft } from '../lib/trial-time.js';
 
 let tick = null;      // the minute-by-minute repaint
 let endTimer = null;  // the one-shot at expiry
 
+/* THE SERVER'S CLOCK, not this browser's (§33): billing_status()
+   carries `server_now`, and plan-gate keeps the difference. A laptop
+   ten minutes fast used to drop the band ten minutes early; one ten
+   minutes slow kept it up after the server had ended the trial. */
+const now = () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now());
+
 /** Whole minutes remaining, never negative. */
 function minutesLeft(ends) {
-  return Math.max(0, Math.ceil((ends.getTime() - Date.now()) / 60000));
+  return Math.max(0, Math.ceil((ends.getTime() - now()) / 60000));
 }
 
+/* HOURS NOW (owner, 11 Oct 2026): a trial is set in hours, and a code
+   trial is days. "10080 minutes left" was this band's sentence for a
+   week-long code trial. trial-time.js says it the one way every page
+   says it. */
 function sentence(mins) {
-  if (mins <= 1) return 'Trial · under a minute left';
-  if (mins <= 10) return 'Trial · ' + mins + ' minutes left';
-  return 'Trial · ' + mins + ' minutes left with the sample film';
+  const left = timeLeft(mins * 60000);
+  if (mins <= 10) return 'Trial · ' + left + ' left';
+  return 'Trial · ' + left + ' left with the sample film';
 }
 
 /* The band's height is measured by shell.js on resize; adding or
@@ -87,10 +98,10 @@ function release() {
  *  with the whole span. */
 function armExpiry(ends) {
   if (endTimer) clearTimeout(endTimer);
-  const ms = Math.min(Math.max(ends.getTime() - Date.now(), 0) + 1500, 120000);
+  const ms = Math.min(Math.max(ends.getTime() - now(), 0) + 1500, 120000);
   endTimer = setTimeout(() => {
     endTimer = null;
-    if (Date.now() >= ends.getTime()) PlanGate.refresh();
+    if (now() >= ends.getTime()) PlanGate.refresh();
     else armExpiry(ends);
   }, ms);
 }
@@ -98,7 +109,14 @@ function armExpiry(ends) {
 export function renderTrialBand() {
   if (typeof document === 'undefined') return;
   const ends = PlanGate.trialEndsAt();
-  if (!ends || ends.getTime() <= Date.now()) { release(); return; }
+  if (!ends || ends.getTime() <= now()) {
+    release();
+    /* Time is up here but the server still said "trial" when it was
+       last asked — the request raced the clock. Ask again shortly,
+       once, rather than leaving the page open until the 4-minute poll. */
+    if (ends && !endTimer) endTimer = setTimeout(() => { endTimer = null; PlanGate.refresh(); }, 15000);
+    return;
+  }
 
   const fresh = !document.querySelector('.sh-trial');
   const host = takeHost();

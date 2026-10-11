@@ -689,7 +689,8 @@ server locks out the people who have paid, and `npm run verify` loads all
 §26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
 each verified afterwards over PostgREST rather than from the screen.
 
-**§32 is NOT run live** — see §13 below; it is the next owner step.
+**§32 and §33 are NOT run live** — see §13 and §14 below; they are the
+next owner steps, in that order.
 
 **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
 §30's refusal sentences carry em-dashes and `₹`, so that mojibake would
@@ -750,8 +751,9 @@ switch ON so every older proof still asserts the wall.
 
 ### Deploy (owner)
 
-1. Run **§32** (from `-- 32. PURCHASES REQUIRED` to the end of
-   `supabase-schema.sql`) in the dashboard SQL editor, the documented way:
+1. Run **§32** (from `-- 32. PURCHASES REQUIRED` down to, NOT including,
+   `-- 33. A FREE TRIAL` — §33 follows as its own step, §14 below) in the
+   dashboard SQL editor, the documented way:
    base64 the section → decode in the page → set the Monaco model →
    SHA-256 the editor's contents against the file → Run.
 2. Confirm over PostgREST: `rpc/purchases_required` with the anon key
@@ -762,3 +764,69 @@ switch ON so every older proof still asserts the wall.
 4. Until §32 runs the site behaves exactly as today, because the key is
    absent and the client keeps its current rules.
 
+
+## 14. A free trial, not a free plan — set in hours (schema §33, 11 Oct 2026). NOT RUN LIVE.
+
+**The owner's decisions.** "Let's not have a free version; it can be a free
+TRIAL version that lasts for configured HOURS." And: users ended in a loop
+when the trial ran out, and trial users had a sign-out problem.
+
+**Nothing is stored differently.** The trial's length stays in MINUTES
+(`billing_settings.trial_minutes`, and the snapshot on
+`studio_members.trial_minutes`), so every row already written stays valid
+and no running trial moves. The console (admin.html → Growth → Trial) takes
+and shows it in **hours** (`hours × 60` is saved; 30 minutes reads 0.5), and
+so does "Grant more time". `src/lib/trial-time.js` is the one formatter
+(pure, in the `startlib` chunk with funnel.js): the band says "2 h 15 min
+left", invite.html "START MY 3 HOURS", the landing page's trial card "3
+hours".
+
+**No Free plan anywhere.** The `free` plans row stays — it is the "no plan"
+state `user_plan()` answers, and `quote_for()` already refuses it — but it is
+never drawn as a choice: no Free card on purchase.html or invite.html, no
+Free tier or column on start.html (the first card is the free TRIAL; the
+build checks `li[data-tier]` is the PAID tiers plus exactly one
+`li[data-trial]`), no Free option in either console grant list (there never
+was), and the Features matrix labels that column "Free trial (no plan)". With
+**Purchases required OFF** nothing changes from §32: the studio is free to
+use and purchase.html says so.
+
+**What §33 contains.**
+
+| Object | What it does |
+| --- | --- |
+| `trial_offer()` | anon + authenticated: `{trial_enabled, trial_minutes, trial_hours, purchase_required}` for start.html's trial card |
+| `billing_status()` (restated in full from §32.3) | every key kept, plus `trial_hours` and `server_now` — the trial band counts against the SERVER's clock |
+| `admin_get_billing_settings()` (restated) | adds `trial_hours` |
+
+No ALTER, no data change, CREATE OR REPLACE throughout; re-runs cleanly.
+
+**The loop, and the sign-out.** No automatic redirect loop exists: counted
+in the fake, a trial expiring on an open page causes 0 navigations and a
+fresh load after expiry 1. The loop users met was a cycle with no exit: the
+wall hid `.sh-bar` and the phone's `.mab` (plan-gate.css, `[data-paywall]`),
+which held the only sign-out route (the account pill → Settings); the wall
+offered only SEE PLANS and DOWNLOAD; invite.html told the same member
+"You're in — GO TO THE STUDIO", back to the wall; and the landing page's
+Continue with Google came straight back to it. Now the wall carries SIGN OUT
+(and, for a member who never had a trial, START MY N HOURS), invite.html and
+purchase.html say the trial ended and offer SIGN OUT, a plan bought in one
+tab takes another tab's wall down (BroadcastChannel `fms-billing`, nothing
+stored), and the band's expiry re-asks the server once if the two clocks
+disagreed.
+
+**Proved.** `test:schema` (`scripts/schema-tests/trial-hours.sql`),
+`prove:billing` (q) and (r), `prove:gate` (q), `prove:growth`.
+
+### Deploy (owner) — after §32
+
+1. Run **§33** (from `-- 33. A FREE TRIAL` to the end of
+   `supabase-schema.sql`) the same checksummed way as §32.
+2. Confirm over PostgREST: `rpc/trial_offer` with the anon key answers the
+   four keys; `rpc/billing_status` signed in carries `server_now`.
+3. In the console, set the trial length in hours (Growth → Trial). Until §33
+   runs the client still works: it reads `trial_minutes`, and
+   `server_now`/`trial_offer()` are optional (absent ⇒ the browser's clock
+   and the landing page's "a limited time").
+4. Legal copy is unchanged and still mentions "the free plan" (refund.html,
+   terms.html) — an owner/legal edit, not done here.

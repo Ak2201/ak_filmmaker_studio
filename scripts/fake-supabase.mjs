@@ -176,7 +176,12 @@ function applyGrant(u) {
   const g = u && F.db.emailGrants.get(String(u.email || '').toLowerCase());
   if (!g || g.applied_user) return false;
   const mem = F.db.members.get(u.id);
-  F.db.members.set(u.id, { ...(mem || {}), role: g.role === 'admin' ? 'admin' : (mem ? mem.role : 'user'), disabled_at: null });
+  /* A row the grant CREATES is the SQL's `insert (user_id, role)`: the
+     trial columns null, i.e. never had a trial — NOT this fake's
+     grandfather default (a row with no trial_started_at key), which
+     would make a membership-only grant read as a year's trial. */
+  F.db.members.set(u.id, { ...(mem || { trial_started_at: null, trial_minutes: null, trial_source: null, trial_scope: null }),
+    role: g.role === 'admin' ? 'admin' : (mem ? mem.role : 'user'), disabled_at: null });
   let put = null, acc = null, prior = null;
   if (g.plan) {
     acc = accountForBuyer(u.id);
@@ -408,7 +413,11 @@ function rpc(name, args, user, route) {
         trial_used: !!t,
         trial_source: t ? t.source : null,
         trial_scope: tOn && t ? t.scope : null,
+        trial_minutes: F.db.settings.trial_minutes || 30,
         entitled: isEntitled(user.id),
+        // section 33. F.db.serverSkewMs moves the server's clock, for the band's skew check.
+        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100,
+        server_now: new Date(Date.now() + (F.db.serverSkewMs || 0)).toISOString(),
         account_id: acc ? acc.id : null, account_name: acc ? acc.name : null,
         plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
         lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),
@@ -567,6 +576,10 @@ function rpc(name, args, user, route) {
         credits: mine.slice().reverse().map(({ amount_paise, status, created_at, paid_at }) => ({ amount_paise, status, created_at, paid_at })) });
     }
     /* ---- section 32 ---- */
+    /* section 33: the landing page's read, anon */
+    case 'trial_offer':
+      return json(route, 200, { trial_enabled: !!F.db.settings.trial_enabled, trial_minutes: F.db.settings.trial_minutes || 30,
+        trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100, purchase_required: purchasesRequired() });
     case 'purchases_required':
       if (!('purchase_required' in F.db.settings)) return pgErr(route, 'PGRST202', 'Could not find the function public.purchases_required in the schema cache', 404);
       return json(route, 200, purchasesRequired());
@@ -603,7 +616,7 @@ function rpc(name, args, user, route) {
     }
     case 'admin_get_billing_settings':
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
-      return json(route, 200, { ...F.db.settings });
+      return json(route, 200, { ...F.db.settings, trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100 });
     case 'admin_set_billing_settings': {
       if (!isAdmin(user)) return pgErr(route, '42501', 'Administrators only');
       const p = args.p_patch || {};

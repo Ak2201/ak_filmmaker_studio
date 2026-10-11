@@ -36,6 +36,7 @@ import Growth, { isMissing } from '../lib/growth.js';
 import '../styles/plans.css';
 import '../styles/growth.css';
 import { ask, askDanger } from './dialog.js';
+import { minutesToHours, hoursToMinutes, trialLength } from '../lib/trial-time.js';
 
 let rerender = () => {};
 const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
@@ -151,6 +152,11 @@ function trialBlock(sec) {
 
   const on = st.trial_enabled !== false;
   const mins = Number(st.trial_minutes) || 30;
+  /* HOURS (owner, 11 Oct 2026). The column is still minutes — every
+     stored row stays valid, and a running trial's snapshot is untouched
+     — but the owner sets and reads the length in hours. 30 minutes
+     shows as 0.5. */
+  const hours = minutesToHours(mins);
   const days = Number(st.code_trial_days) || 7;
   const f = h('form.gr-panel', { 'data-gra-form': 'trial', autocomplete: 'off' });
 
@@ -161,7 +167,7 @@ function trialBlock(sec) {
      "trial_enabled: false" is a column name; "signing in lands
      straight on the paywall" is the decision being made. */
   f.append(h('p.gr-meta', { text: on
-    ? `On: somebody who signs in gets ${mins} minute${mins === 1 ? '' : 's'} with the Dragon sample before the wall. An invite code gets ${days} day${days === 1 ? '' : 's'} instead.`
+    ? `On: somebody who signs in gets a ${trialLength(mins)} free trial with the Dragon sample, then must buy a plan. An invite code gets ${days} day${days === 1 ? '' : 's'} instead.`
     : 'Off: signing in lands on the paywall. A trial already running keeps its clock.' }));
 
   const scope = h('select', { id: 'graTrialScope', name: 'scope' }, [
@@ -178,7 +184,7 @@ function trialBlock(sec) {
   planSel.value = st.trial_plan || '';
 
   f.append(h('div.gr-fields', {}, [
-    h('div', {}, [h('label', { for: 'graTrialMins', text: 'Trial length (minutes)' }), h('input', { id: 'graTrialMins', name: 'minutes', type: 'number', min: 1, max: 44640, step: 1, value: String(mins), required: true })]),
+    h('div', {}, [h('label', { for: 'graTrialHours', text: 'Trial length (hours)' }), h('input', { id: 'graTrialHours', name: 'hours', type: 'number', min: Math.min(0.5, hours), max: 744, step: 'any', inputmode: 'decimal', value: String(hours), required: true })]),
     h('div', {}, [h('label', { for: 'graTrialDays', text: 'An invite code buys (days)' }), h('input', { id: 'graTrialDays', name: 'days', type: 'number', min: 1, max: 365, step: 1, value: String(days), required: true })]),
     h('div', {}, [h('label', { for: 'graTrialScope', text: 'A code trial shows' }), scope]),
     h('div', {}, [h('label', { for: 'graTrialPlan', text: 'A whole-studio trial borrows' }), planSel])
@@ -203,12 +209,12 @@ function trialBlock(sec) {
       h('option', { value: m.user_id, text: m.email + (m.disabled_at ? ' (disabled)' : '') }))));
   g.append(h('div.gr-fields', {}, [
     h('div', {}, [h('label', { for: 'graTrialWho', text: 'Who' }), who]),
-    h('div', {}, [h('label', { for: 'graTrialGrantMins', text: 'Minutes (up to a year)' }), h('input', { id: 'graTrialGrantMins', name: 'minutes', type: 'number', min: 1, max: 525600, step: 1, value: '10080', required: true })]),
+    h('div', {}, [h('label', { for: 'graTrialGrantHours', text: 'Hours (up to a year)' }), h('input', { id: 'graTrialGrantHours', name: 'hours', type: 'number', min: 0.5, max: 8760, step: 'any', inputmode: 'decimal', value: '168', required: true })]),
     h('div', {}, [h('label', { for: 'graTrialGrantNote', text: 'Why' }), h('input', { id: 'graTrialGrantNote', name: 'note', type: 'text', maxlength: 300, placeholder: 'asked by e-mail, demo…' })])
   ]));
   g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT MORE TIME' }),
     S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
-  g.append(h('p.gr-meta', { text: 'A fresh whole-studio trial from now; not a plan. 10080 minutes is a week.' }));
+  g.append(h('p.gr-meta', { text: 'A fresh whole-studio trial from now; not a plan. 168 hours is a week.' }));
   sec.append(h('h3.gt-h3', { text: 'Grant more time' }), g);
 }
 
@@ -492,9 +498,9 @@ delegate(document, 'submit', '[data-gra-form="referral"]', async (e, form) => {
 delegate(document, 'submit', '[data-gra-form="trial"]', async (e, form) => {
   e.preventDefault();
   const f = new FormData(form);
-  const mins = parseInt(String(f.get('minutes') || ''), 10);
+  const mins = hoursToMinutes(f.get('hours'));
   const days = parseInt(String(f.get('days') || ''), 10);
-  if (!(mins >= 1 && mins <= 44640)) { toast('A trial lasts between 1 minute and 31 days (44640 minutes).', 'error'); return; }
+  if (!(mins >= 1 && mins <= 44640)) { toast('A trial lasts up to 744 hours (31 days); give it at least a minute.', 'error'); return; }
   if (!(days >= 1 && days <= 365)) { toast('An invite code buys between 1 and 365 days.', 'error'); return; }
   const patch = {
     trial_enabled: f.get('enabled') != null,
@@ -516,12 +522,12 @@ delegate(document, 'submit', '[data-gra-form="granttrial"]', async (e, form) => 
   e.preventDefault();
   const f = new FormData(form);
   const whoId = String(f.get('who') || '');
-  const mins = parseInt(String(f.get('minutes') || ''), 10);
+  const mins = hoursToMinutes(f.get('hours'));
   if (!whoId) { toast('Choose who the time is for.', 'error'); return; }
-  if (!(mins >= 1 && mins <= 525600)) { toast('Between 1 minute and a year (525600 minutes).', 'error'); return; }
+  if (!(mins >= 30 && mins <= 525600)) { toast('Between half an hour and a year (8760 hours).', 'error'); return; }
   try {
     await Billing.admin.grantTrial(whoId, mins, String(f.get('note') || '').trim());
-    S.granted = `Granted — ${mins} minute${mins === 1 ? '' : 's'}, starting now.`;
+    S.granted = `Granted — ${trialLength(mins)}, starting now.`;
     rerender();
     { const note = S.granted; setTimeout(() => { if (S.granted === note) S.granted = ''; clearNote(note); }, 4000); }
   } catch (err) { toast(err.message || 'The time was not granted.', 'error'); }

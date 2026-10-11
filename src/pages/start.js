@@ -49,7 +49,8 @@ import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
 import { scrollProgress, parallax, marquee, glow, aurora } from '../lib/motion-landing.js';
-import { addLead, bumpOnce, bumpEvent, optOut, priceNotice, purchasesRequired } from '../lib/funnel.js';
+import { addLead, bumpOnce, bumpEvent, optOut, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
+import { trialLength } from '../lib/trial-time.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
@@ -470,6 +471,25 @@ try {
   Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
     if (req === false) { showFreeNow(); return; }
     renderPriceRise(notice);
+  }, () => {});
+} catch (e) { /* never breaks the page */ }
+
+/* ---- 9c. the free trial's length (§33) -----------------------------
+   There is no free plan (owner, 11 Oct 2026); the first card is the
+   free TRIAL, set in hours in the console. The markup says "a limited
+   time" — true whatever the setting, and what a crawler or a failed
+   request sees — and the anon trial_offer() replaces it with the
+   length the server will actually give. Trials switched off: the card
+   goes, because offering one would be untrue. */
+try {
+  trialOffer().then((t) => {
+    if (!t) return;
+    if (t.trial_enabled === false) {
+      document.querySelectorAll('.st-tiers li[data-trial]').forEach((li) => { li.hidden = true; });
+      return;
+    }
+    const len = trialLength(t.trial_minutes);
+    if (len) document.querySelectorAll('[data-trial-length]').forEach((n) => { n.textContent = len; });
   }, () => {});
 } catch (e) { /* never breaks the page */ }
 

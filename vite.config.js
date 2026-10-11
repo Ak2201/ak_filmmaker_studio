@@ -227,6 +227,9 @@ function startFigures() {
            into the HTML is a claim the server can contradict an hour
            later. */
         for (const id of PLAN_ORDER) values['price.' + id] = inr(LIST_PRICE[id]);
+        /* NO FREE TIER (owner, 11 Oct 2026): 'free' is the "no plan"
+           state, never a column or a card. The trial is not a plan. */
+        const PAID = PLAN_ORDER.filter((id) => id !== 'free');
         /* The comparison table's body, from src/data/plan-matrix.json.
            [row label, matrix key]; a missing key fails the build. */
         const MATRIX = JSON.parse(readFileSync(resolve(__dirname, 'src/data/plan-matrix.json'), 'utf8'));
@@ -244,14 +247,17 @@ function startFigures() {
         values['matrix.rows'] = ROWS.map(([label, key]) => {
           const row = MATRIX.features.find((f) => f.key === key);
           if (!row) fail('plan-matrix.json has no feature "' + key + '"');
-          return '<tr><th scope="row">' + label + '</th>' + PLAN_ORDER.map((id) => cell(row.plans.includes(id))).join('') + '</tr>';
+          return '<tr><th scope="row">' + label + '</th>' + PAID.map((id) => cell(row.plans.includes(id))).join('') + '</tr>';
         }).join('');
 
         const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
         const ids = tiers.map((m) => m[1]);
-        if (ids.join(',') !== PLAN_ORDER.join(',')) {
-          fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not PLAN_ORDER ['
-               + PLAN_ORDER.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match.');
+        if (ids.join(',') !== PAID.join(',')) {
+          fail('the pricing list\'s data-tier ids [' + ids.join(', ') + '] are not the PAID tiers of PLAN_ORDER ['
+               + PAID.join(', ') + '] from src/lib/plans.js — add, remove or reorder the <li>s to match. There is no free tier.');
+        }
+        if ((html.replace(/<!--[\s\S]*?-->/g, '').match(/<li\b[^>]*\bdata-trial\b/g) || []).length !== 1) {
+          fail('the pricing list needs exactly one <li data-trial> — the free TRIAL is the first card, not a free plan.');
         }
         for (const [, id, body] of tiers) {
           if (!body.includes('{{fms:plan.' + id + '}}')) fail('<li data-tier="' + id + '"> does not print its name as {{fms:plan.' + id + '}}.');
@@ -609,8 +615,10 @@ export default defineConfig({
 
              They must stay import-free for this to hold. The day one of them
              imports store.js, this line silently stops being enough and the
-             209 KB comes back. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion)\.js$/.test(id)) return 'startlib';
+             209 KB comes back. trial-time.js (11 Oct 2026) joined them: the
+             trial's length in hours is said the same way on the landing
+             page and in the app, and it is pure for the same reason. */
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
           const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;

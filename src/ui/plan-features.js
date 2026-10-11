@@ -49,7 +49,10 @@ export function planFeaturesSection(section, st) {
   const plans = S.plans;
   const form = h('form.pf-form', { 'data-pf-form': 'features' });
   const table = h('table.gt-table.pf-table');
-  table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Feature' }), ...plans.map((p) => h('th', { scope: 'col', text: p.name || planName(p.id) }))])]));
+  /* The 'free' column is what the FREE TRIAL (and somebody with no plan)
+     sees; there is no free plan to sell (owner, 11 Oct 2026), so the
+     column says what it governs rather than naming a tier. */
+  table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Feature' }), ...plans.map((p) => h('th', { scope: 'col', text: p.id === 'free' ? 'Free trial (no plan)' : p.name || planName(p.id) }))])]));
   const tb = h('tbody');
   const row = (key, label, hint, dflt) => {
     const tr = h('tr', { 'data-feature': key }, [h('th', { scope: 'row' }, [h('span', { text: label }), hint ? h('span.gt-meta', { text: ' — ' + hint }) : null].filter(Boolean))]);

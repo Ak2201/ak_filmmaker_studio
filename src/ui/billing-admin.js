@@ -119,7 +119,7 @@ export function billingAdminSection(section, st, { part } = {}) {
   for (const p of S.plans) {
     const form = h('form.ba-plan', { 'data-ba-form': 'plan', 'data-plan': p.id });
     form.append(h('div.ba-plan-head', {}, [
-      h('strong', { text: p.name }), h('span.gt-meta', { text: p.id }),
+      h('strong', { text: p.name }), h('span.gt-meta', { text: p.id === 'free' ? 'free · the no-plan state: what a trial or a lapsed member has; never sold or shown as a plan' : p.id }),
       p.active ? null : h('span.st-badge', { text: 'not for sale' })
     ].filter(Boolean)));
     const fields = h('div.ba-fields');

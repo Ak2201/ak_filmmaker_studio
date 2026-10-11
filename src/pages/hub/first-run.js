@@ -104,7 +104,7 @@ export function welcomeCard() {
   const card = h('section.section.tw-section#welcomePlan', { role: 'status', 'aria-label': 'Welcome' }, [
     h('div.section-inner', {}, [
       h('h2', { text: name ? 'You’re on ' + name + '. Welcome in.' : 'Welcome in.' }),
-      h('p.deck', { text: 'Your plan is active — one payment, yours for good. Your invoice is under Plan invoices in Settings.' }),
+      h('p.deck', { text: 'Your plan is active — one payment, yours for good. Your invoice is listed on the Purchase page.' }),
       h('div.eps-actions', {}, [
         h('button.btn.primary', { 'data-action': 'new-project', text: 'START YOUR FILM' }),
         h('a.btn', { href: 'purchase.html', text: 'SEE WHAT UNLOCKED' }),
@@ -119,11 +119,12 @@ document.addEventListener('click', (e) => {
   if (b) { const c = document.getElementById('welcomePlan'); if (c) c.remove(); }
 });
 
-/* The free tier's hub: the sample, and the way up. */
+/* The free trial's hub: the sample, and the way up. There is no free
+   PLAN (owner, 11 Oct 2026), so it does not call this one. */
 function renderSampleOnly() {
   return h('div.empty-projects-state', {}, [
     h('div.eps-title', { text: 'Open a sample film.' }),
-    h('div.eps-deck', { text: 'Your plan opens the sample projects — scenes, a crew, a budget and a schedule to explore in every module. A paid plan adds films of your own.' }),
+    h('div.eps-deck', { text: 'Your free trial opens the sample projects — scenes, a crew, a budget and a schedule to explore in every module. A plan adds films of your own.' }),
     h('div.iv-actions', {}, [
       ...sampleButtons('OPEN ', true),
       h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })

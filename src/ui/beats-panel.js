@@ -48,6 +48,8 @@ export function deriveBeats(els, currentId, { story, targetPages } = {}) {
   // The beat being written: the last one whose target page has begun.
   let cur = -1;
   if (curPage) rows.forEach((r, i) => { if (r.page <= curPage) cur = i; });
+  // Before the first beat's page, you are writing toward the first beat.
+  if (curPage && cur < 0 && rows.length) cur = 0;
   rows.forEach((r, i) => { r.current = i === cur; });
 
   // First scene at/after the target page; failing that, the end.

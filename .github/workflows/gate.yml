@@ -90,6 +90,7 @@ jobs:
       # `if: failure()` steps above belong to `verify` and should not
       # fire, or upload a verify.log artifact, for an adoption failure.
       - run: npm run prove:adoption
+      - run: npm run prove:script
 
   proofs:
     name: proofs

@@ -14,7 +14,7 @@
    script gets ONE blank line in memory so there is somewhere to type,
    and that line is saved only when the writer types in it.
    ============================================================ */
-import { flushStorage } from '../lib/store.js';
+import { flushStorage, currentProject } from '../lib/store.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -442,13 +442,21 @@ function setBeats(open) {
   document.getElementById('main')?.classList.toggle('has-beats', open);
   if (btn) { btn.setAttribute('aria-expanded', String(open)); btn.classList.toggle('is-on', open); }
   if (open) {
-    mountBeats(aside, {
-      getElements: () => doc.elements,
-      scrollToEl: (id) => editor.scrollToEl(id),
-      onJump: (id) => { editor.scrollToEl(id); editor.focusEl(id); }
-    });
+    if (!beats || !aside.contains(document.querySelector('.bp'))) {
+      if (beats) beats.destroy();
+      beats = mountBeats(aside, {
+        getElements: () => doc.elements,
+        scrollToEl: (id) => editor.scrollToEl(id),
+        onJump: ({ id }) => { if (id) editor.focusEl(id); },
+        /* a feature runs ~110 pages, a short ~15: where each beat should land */
+        getTargetPages: () => (/short/i.test(String((currentProject() || {}).format || '')) ? 15 : 110)
+      });
+      if (curId) beats.setCurrent(curId);
+    }
+    beats.open();   // the button is the only toggle; the panel's own caret stays usable
   }
 }
+let beats = null;
 delegate(document, 'click', '[data-action="sc-beats"]', () => setBeats(!beatsOpen));
 
 /* ---- the ⋯ menu ------------------------------------------------- */

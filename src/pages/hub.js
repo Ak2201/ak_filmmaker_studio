@@ -868,6 +868,18 @@ function shareProject(id) {
   else tell({ body: 'Sharing requires the cloud module — please configure it from Settings.' });
 }
 
+/* renderProjects() rebuilds the cards, so the control that opened a
+   dialog or acted is gone by the time the action lands; focus would fall
+   to <body>. Put it on the same control on the new card (or, if the card
+   is gone, the first card / the new-project card). */
+function refocusProjectControl(action, id) {
+  const sel = id ? '[data-action="' + action + '"][data-id="' + id + '"]' : '';
+  const el = (sel && document.querySelector(sel))
+    || document.querySelector('.project-card[data-action="switch-project"]')
+    || document.querySelector('.pc-new[data-action="new-project"], [data-action="new-project"]');
+  if (el && typeof el.focus === 'function') el.focus();
+}
+
 function duplicateProject(id) {
   const p = Store.getProject(id);
   if (!p) return;
@@ -881,6 +893,7 @@ function duplicateProject(id) {
   renderProjects();
   renderProjectSwitcher();
   updateStatus();
+  refocusProjectControl('duplicate-project', id);
 }
 
 function renderProjectSwitcher() {
@@ -992,6 +1005,7 @@ function submitProjectModal(e) {
   renderProjectSwitcher();
   updateStatus();
   renderGreeting();
+  if (editId) refocusProjectControl('rename-project', editId);
 }
 
 function switchToProject(id) {
@@ -1025,6 +1039,7 @@ async function deleteProjectConfirm(id) {
   renderProjects();
   renderProjectSwitcher();
   updateStatus();
+  refocusProjectControl('delete-project', null);
 }
 
 // ============================================================
@@ -1075,12 +1090,18 @@ function wireEvents() {
   // `delegate` resolves to the INNERMOST matching element, so the
   // rename/duplicate/delete buttons inside a project card win over
   // the card's own switch-project action without any stopPropagation.
-  delegate(app, 'click', '[data-action]', (e, el) => {
+  const onAction = (e, el) => {
     const fn = CLICK_ACTIONS[el.dataset.action];
     if (!fn) return;
     e.preventDefault();
     fn(el, e);
-  });
+  };
+  delegate(app, 'click', '[data-action]', onAction);
+  /* On a phone the band's tools (project switcher, Backup menu) are
+     BORROWED into the Tools sheet, which is a child of <body>, outside
+     #app — so the delegate above never saw them and the switcher did
+     nothing. The sheet answers to the same actions. */
+  delegate(document.body, 'click', '.mn-overlay [data-action]', onAction);
 
   delegate(app, 'keydown', '[data-action][role="button"], [data-action][tabindex]', (e, el) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;

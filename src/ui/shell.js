@@ -250,7 +250,17 @@ function resolveModule(hash) {
   if (g) return { phase: null, module: null, global: g, exact: false };
 
   const whole = mods.find((x) => !x.frag);
-  if (whole) return { phase: whole.phase, module: whole.module, global: whole.global, exact: false };
+  if (whole) {
+    /* The page as a whole is not always the module that owns its address:
+       story.html is the Story editor, and "Beats & Pacing" is only one
+       section of it. A module that says so (`pageLabel` / `pageFrag`) is
+       named by the page until its own section is the one on screen. */
+    let module = whole.module;
+    if (module.pageLabel && module.pageFrag && !isShown(document.getElementById(module.pageFrag))) {
+      module = Object.assign({}, module, { label: module.pageLabel });
+    }
+    return { phase: whole.phase, module, global: whole.global, exact: false };
+  }
 
   const shown = mods
     .map((x) => ({ x, el: document.getElementById(x.frag) }))
@@ -796,7 +806,7 @@ function goTo(loc) {
      fallback build fresh objects on every call, so `===` on them never
      matched on the Library — every rAF repainted the crumb, the repaint
      fed the #app/.sh-bar observers, and scrolling stuttered at 30fps. */
-  const key = (x) => (x ? (x.id || x.href || x.label || '') : '');
+  const key = (x) => (x ? (x.id || x.href || x.label || '') + '|' + (x.label || '') : '');
   if (current && key(current.module) === key(loc.module) && key(current.global) === key(loc.global)
       && key(current.phase) === key(loc.phase) && partOf(current) === partOf(loc)) {
     current = loc;   // the same place; only how sure we are of it changed

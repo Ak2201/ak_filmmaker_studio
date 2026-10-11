@@ -222,6 +222,24 @@ html.mn-locked { overflow: hidden; }
 }
 .mn-tools-group > .toolbar > *,
 .mn-tools-group > .sh-tools > * { flex: 0 1 auto; max-width: 100%; }
+/* A dropdown borrowed into the sheet used to be absolutely positioned
+   against the full-screen overlay, so it opened at top:100% — below the
+   screen — and the project switcher and the Backup menu appeared to do
+   nothing. In the sheet they open in the flow, as a full-width row under
+   their button. */
+.mn-sheet .mn-tools-group .switcher-wrap,
+.mn-sheet .mn-tools-group .tb-menu { display: contents; }
+.mn-sheet .mn-tools-group .switcher-dropdown,
+.mn-sheet .mn-tools-group .tb-menu .tb-menu-panel,
+.mn-sheet .mn-tools-group .tb-menu.align-right .tb-menu-panel {
+  position: static;
+  flex: 1 0 100%;
+  margin: 0;
+  left: auto;
+  right: auto;
+  max-height: 40vh;
+  overflow: auto;
+}
 .mn-empty { color: var(--chrome-muted); }
 
 @media print { .mn-overlay { display: none !important; } }

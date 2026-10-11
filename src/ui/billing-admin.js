@@ -78,15 +78,26 @@ async function load() {
   }
 }
 
-export function billingAdminSection(section, st) {
+/* `part` splits the one section into the three tabs purchases.html shows:
+   'payments' (the money, refund requests, the ledger — id #billing, so
+   every selector that named it still lands), 'promos' (#promos) and
+   'tiers' (the tiers and the grant form, #tiers). With no `part` it is
+   the whole section as before. All three read the one shared state S. */
+export function billingAdminSection(section, st, { part } = {}) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
-  const sec = section('billing', 'Billing', 'Plans and payments.',
-    'What each tier costs and allows, who has paid for what, and a way to grant a plan by hand. Prices change on the next purchase; nobody’s running plan is touched by an edit.');
+  const want = (k) => !part || part === k;
+  const sec = part === 'promos'
+    ? section('promos', 'Promo codes', 'Promo codes.', 'Discount and affiliate codes. A code is checked by the server on every quote and every order.')
+    : part === 'tiers'
+      ? section('tiers', 'Tiers & grants', 'Tiers and grants.', 'What each tier costs and allows, and a way to grant a plan by hand. Prices change on the next purchase; nobody’s running plan is touched by an edit.')
+      : section('billing', 'Billing', part ? 'Payments and refunds.' : 'Plans and payments.',
+        part ? 'What has been paid, by whom, and the refund requests waiting for an answer.' : 'What each tier costs and allows, who has paid for what, and a way to grant a plan by hand. Prices change on the next purchase; nobody’s running plan is touched by an edit.');
   if (!S.loaded && !S.busy && !S.error) load();
   if (S.error) sec.append(h('p.gt-error', { role: 'alert', text: S.error }));
   if (!S.loaded) { sec.append(h('p.gt-meta', { text: S.busy ? 'Loading…' : '' })); return sec; }
 
   // The money
+  if (want('payments')) {
   const o = S.overview;
   const by = o.active_by_plan || {};
   const grid = h('div.ba-grid');
@@ -98,8 +109,10 @@ export function billingAdminSection(section, st) {
   stat(String(S.payments.filter((p) => p.status === 'granted').length), 'granted by hand');
   stat(String(o.refunds || 0), 'refunds');
   sec.append(grid);
+  }
 
   // The plans
+  if (want('tiers')) {
   sec.append(h('h3.gt-h3', { text: 'Tiers' }));
   const list = h('div.ba-plans');
   for (const p of S.plans) {
@@ -137,8 +150,10 @@ export function billingAdminSection(section, st) {
   }
   sec.append(list);
   sec.append(h('p.gt-meta', { text: 'A blank limit means unlimited. The price is paid once and buys the tier for good; it is in rupees, stored to the paisa, and the free tier has none by rule.' }));
+  }
 
   // Promo codes (section 20)
+  if (want('promos')) {
   sec.append(h('h3.gt-h3', { text: `Promo codes${S.promos ? ` (${S.promos.length})` : ''}` }));
   if (S.promos === null) sec.append(h('p.gt-meta', { text: 'Promo codes are not available on this database yet (schema section 20 has not run).' }));
   else {
@@ -202,8 +217,10 @@ export function billingAdminSection(section, st) {
     pf.append(h('p.gt-meta', { text: 'A code is counted as used when a payment with it is confirmed, not when a checkout is opened. The discounted price never drops below ₹1, which is Razorpay’s minimum — a 100% code costs the buyer ₹1; to give a plan away, use a grant below. Codes are checked by the server on every quote and every order.' }));
     sec.append(pf);
   }
+  }
 
   // Grant
+  if (want('tiers')) {
   sec.append(h('h3.gt-h3', { text: 'Grant a plan' }));
   const g = h('form.ba-grant', { 'data-ba-form': 'grant' });
   const who = h('select', { id: 'baGrantWho', name: 'who' }, [h('option', { value: '', text: 'Choose a member…' }),
@@ -217,11 +234,13 @@ export function billingAdminSection(section, st) {
   g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT' }), S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
   g.append(h('p.gt-meta', { text: 'A grant puts the member’s organisation on that plan for good and admits a non-member. It is recorded as a ₹0 payment.' }));
   sec.append(g);
+  }
 
   // Refund requests (schema section 27)
-  if (S.rreqs) sec.append(refundBlock());
+  if (want('payments') && S.rreqs) sec.append(refundBlock());
 
   // Ledger
+  if (want('payments')) {
   sec.append(h('h3.gt-h3', { text: `Payments (${S.payments.length})` }));
   if (!S.payments.length) sec.append(h('p.gt-meta', { text: 'No payments yet.' }));
   else {
@@ -248,6 +267,7 @@ export function billingAdminSection(section, st) {
     table.append(tb);
     sec.append(h('div.gt-scroll', {}, [table]));
   }
+  }
   sec.append(h('button.btn', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
@@ -259,7 +279,7 @@ function refundBlock() {
   box.append(h('h3.gt-h3', { text: `Refund requests (${S.rreqs.filter((r) => r.status === 'pending').length} waiting)` }));
   box.append(h('label.rf-switch', { for: 'baRefundSwitch' }, [
     h('input', { id: 'baRefundSwitch', type: 'checkbox', 'data-ba-action': 'refund-switch', checked: S.rrEnabled, disabled: S.rrBusy }),
-    h('span', { text: 'Let customers request refunds from Settings' })
+    h('span', { text: 'Let customers request refunds from the Purchase page' })
   ]));
   box.append(h('p.gt-meta', { text: 'Off by default. When on, a member with a captured, unrefunded payment sees “Request a refund” under their plan. It only files a request; nothing is refunded until you approve it here. refund.html is the policy: purchases are final except a duplicate charge, a charge not delivered, or where the law requires.' }));
   if (!S.rreqs.length) { box.append(h('p.gt-meta', { text: 'No requests yet.' })); return box; }

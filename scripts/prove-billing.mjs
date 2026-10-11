@@ -44,7 +44,7 @@
      (o) THE TRIAL AND THE WALL (schema section 30): while a trial runs
          the shell's plate carries the band and the hub shows the
          sample alone with no NEW PROJECT; when it has run out the
-         paywall covers index.html but NOT settings.html#plan, which
+         paywall covers index.html but NOT purchase.html, which
          is where a plan is bought; DOWNLOAD MY WORK produces a real
          file from behind the wall, because nothing a person wrote is
          held hostage to a sale; and an administrator is never walled
@@ -144,7 +144,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'settings.html#plan');   // the Plan TAB; the section is hidden under any other
+    await page.goto(BASE + 'purchase.html');   // the Plan TAB; the section is hidden under any other
     ok(await waitGate(page, 'open'), 'Amy (a member) is through the gate');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     const p = await prices(page);
@@ -249,9 +249,9 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-admin' });
-    await page.goto(BASE + 'admin.html#billing');   // the Billing tab
-    await page.waitForSelector('#billing .ba-plan', { timeout: 15000 });
-    ok((await page.$$eval('#billing .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
+    await page.goto(BASE + 'purchases.html#tiers');   // the Tiers & grants tab
+    await page.waitForSelector('#tiers .ba-plan', { timeout: 15000 });
+    ok((await page.$$eval('#tiers .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
     await page.fill('#ba_indie_price', '599');
     await page.fill('#ba_indie_projects', '12');
@@ -278,7 +278,11 @@ try {
     allErrors.push(...errors); await ctx.close();
 
     const amy = await newContext(browser, { tok: 'tok-amy' });
-    await amy.page.goto(BASE + 'settings.html#plan');
+    // purchases.html is for administrators: a member who is not one gets the denied state and no tabs.
+    await amy.page.goto(BASE + 'purchases.html');
+    await amy.page.waitForSelector('#denied', { timeout: 15000 }).then(() => ok(true, 'a non-admin sees the denied state on purchases.html'), () => ok(false, 'a non-admin sees the denied state on purchases.html'));
+    ok(!(await amy.page.$('#billing')) && !(await amy.page.$('#promos')), 'and none of the money sections are on the page');
+    await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     ok((await prices(amy.page)).find((x) => x[0] === 'indie')[1] === '₹599', 'the cards show the edited price');
     ok((await amy.page.getAttribute('#plan .is-current', 'data-plan')) === 'pro', 'and Amy sees Pro as her plan after the grant');
@@ -310,7 +314,7 @@ try {
     ok((await A.page.$$eval('#features thead th', (e) => e.length)) === 5, 'the matrix has a column per plan');
     ok(await A.page.isChecked('input[name="free:sample_only"]') && !(await A.page.isChecked('input[name="free:new_projects"]')) && await A.page.isChecked('input[name="pro:new_projects"]'), 'the free tier reads sample only, no new projects; pro reads everything');
     ok(await A.page.isChecked('input[name="free:story-beats"]'), 'a module nobody has touched is ticked (missing = allowed)');
-    ok(/shares a page with Idea Vault/.test(await A.page.textContent('tr[data-feature="story-beats"]')), 'a module that shares a page says so, and with whom');
+    ok(/shares a page with .*Elements/.test(await A.page.textContent('tr[data-feature="breakdowns"]')), 'a module that shares a page says so, and with whom');
     // story.html hosts three modules; a page locks only when all of its modules are unticked.
     for (const id of ['story-beats', 'idea-vault', 'pitch-deck']) await A.page.uncheck(`input[name="free:${id}"]`);
     await A.page.click('#features button[type="submit"]');
@@ -363,7 +367,7 @@ try {
     const capSrc = fs.readFileSync(path.join(ROOT, 'src/lib/plan-gate.js'), 'utf8');
     const caps = [...(capSrc.match(/export const CAPABILITIES = \[([\s\S]*?)\n\];/) || ['', ''])[1].matchAll(/\['([a-z_]+)'/g)].map((m) => m[1]);
     const total = built + caps.filter((k) => k !== 'sample_only').length;
-    await amy.page.goto(BASE + 'settings.html#plan');
+    await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card .pl-features-n', { timeout: 10000 });
     const counts = await amy.page.$$eval('#plan .pl-card', (cards) => Object.fromEntries(cards.map((c) => [c.dataset.plan, (c.querySelector('.pl-features-n') || {}).textContent])));
     ok(counts.free === `${total - 4} of ${total} features`, `the Free card counts ${total - 4} of ${total} (three modules and new projects unticked): ${counts.free}`);
@@ -377,7 +381,7 @@ try {
   F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
   {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'settings.html#plan');
+    await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     ok(!!(await page.$('#plan .pl-promo summary')), 'the row offers "Have a code?" under the cards');
     ok((await prices(page)).find((x) => x[0] === 'indie')[1] === '₹7,999', 'before a code the Indie card shows the list price');
@@ -413,22 +417,22 @@ try {
 
     // the console: list, add, deactivate — and the card obeys
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#billing');
-    await A.page.waitForSelector('#billing tr[data-promo="LAUNCH10"]', { timeout: 15000 }).then(() => ok(true, 'the console lists LAUNCH10'), () => ok(false, 'the console lists LAUNCH10'));
-    ok(/10% off/.test(await A.page.textContent('#billing tr[data-promo="LAUNCH10"]')) && /\b1\b/.test(await A.page.textContent('#billing tr[data-promo="LAUNCH10"] td:nth-child(4)')), 'with its discount and one use');
+    await A.page.goto(BASE + 'purchases.html#promos');
+    await A.page.waitForSelector('#promos tr[data-promo="LAUNCH10"]', { timeout: 15000 }).then(() => ok(true, 'the console lists LAUNCH10'), () => ok(false, 'the console lists LAUNCH10'));
+    ok(/10% off/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"]')) && /\b1\b/.test(await A.page.textContent('#promos tr[data-promo="LAUNCH10"] td:nth-child(4)')), 'with its discount and one use');
     ok(/LAUNCH10 \(₹799\.90 off\)/.test(await A.page.textContent('#billing .ba-ledger')), 'the payments ledger shows the code on the discounted row');
     await A.page.fill('#baPromoCode', 'fest 500');
     await A.page.selectOption('#baPromoKind', 'amount');
     await A.page.fill('#baPromoValue', '500');
     await A.page.fill('#baPromoMax', '1');
-    await A.page.uncheck('#billing input[name="plan"][value="starter"]');
+    await A.page.uncheck('#promos input[name="plan"][value="starter"]');
     await A.page.fill('#baPromoNote', 'festival desk');
     await A.page.click('form[data-ba-form="promo"] button[type="submit"]');
-    await A.page.waitForSelector('#billing tr[data-promo="FEST500"]', { timeout: 8000 }).then(() => ok(true, 'ADD CODE lands FEST500 in the list'), () => ok(false, 'ADD CODE lands FEST500 in the list'));
+    await A.page.waitForSelector('#promos tr[data-promo="FEST500"]', { timeout: 8000 }).then(() => ok(true, 'ADD CODE lands FEST500 in the list'), () => ok(false, 'ADD CODE lands FEST500 in the list'));
     const fest = F.db.promos.find((c) => c.code === 'FEST500');
     ok(fest && fest.amount_off_paise === 50000 && fest.max_uses === 1 && fest.plan_ids && fest.plan_ids.join() === 'indie,pro' && fest.note === 'festival desk', 'admin_set_promo_code received ₹500 as 50000 paise, one use, Indie and Pro only, with the note');
-    await A.page.click('#billing tr[data-promo="LAUNCH10"] [data-ba-action="promo-toggle"]');
-    await A.page.waitForFunction(() => /inactive/.test((document.querySelector('#billing tr[data-promo="LAUNCH10"]') || {}).textContent || ''), null, { timeout: 8000 })
+    await A.page.click('#promos tr[data-promo="LAUNCH10"] [data-ba-action="promo-toggle"]');
+    await A.page.waitForFunction(() => /inactive/.test((document.querySelector('#promos tr[data-promo="LAUNCH10"]') || {}).textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'DEACTIVATE marks LAUNCH10 inactive'), () => ok(false, 'DEACTIVATE marks LAUNCH10 inactive'));
     ok(F.db.promos.find((c) => c.code === 'LAUNCH10').active === false, 'and the fake’s row is inactive');
     await A.page.setViewportSize({ width: 390, height: 844 });
@@ -462,7 +466,7 @@ try {
     F.db.payments.push({ id: 'payS', user_id: amy, account_id: 'acc_amy', plan_id: 'starter', period: 'lifetime', amount_paise: 299900, list_paise: 299900, discount_paise: 0, credit_paise: 0,
       currency: 'INR', razorpay_order_id: 'order_s', razorpay_payment_id: 'pay_s', status: 'paid', created_at: at, paid_at: at });
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'settings.html#plan');
+    await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-upgrade', { timeout: 10000 })
       .then(() => ok(true, 'a Starter holder sees an upgrade line on the Indie card'), () => ok(false, 'a Starter holder sees an upgrade line on the Indie card'));
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-upgrade')) === 'Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)', 'it reads "Upgrade to Intermediate — ₹5,000 (you paid ₹2,999 for Basic)"');
@@ -494,7 +498,7 @@ try {
     // still holds her one-device lock (fresh for 90s), so release it.
     F.db.sessions.clear();
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
-    await page.goto(BASE + 'settings.html#plan');
+    await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan [data-gr-panel="referral"] .gr-code', { timeout: 10000 })
       .then(() => ok(true, 'a paying member sees "Your referral code" under the cards'), () => ok(false, 'a paying member sees "Your referral code" under the cards'));
     const code = (await page.textContent('#plan [data-gr-panel="referral"] .gr-code')).trim();
@@ -529,7 +533,7 @@ try {
 
     // the console lists it and records the payout
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#growth');
+    await A.page.goto(BASE + 'purchases.html#growth');
     await A.page.waitForSelector('#growth tr[data-credit]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists the credit'), () => ok(false, 'the Growth tab lists the credit'));
     ok(/amy@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')) && /ben@example\.com/.test(await A.page.textContent('#growth tr[data-credit]')), 'naming referrer and friend');
     await A.page.check('#growth input[name="credit"]');
@@ -552,7 +556,7 @@ try {
   F.db.sessions.clear();
   {
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.goto(BASE + 'purchases.html#promos');
     await A.page.waitForSelector('#baPromoComm', { timeout: 15000 });
     /* WAIT FOR THE LOAD TO SETTLE BEFORE TYPING. The section kicks off
        load() while it is being built, and load() calls rerender() twice
@@ -567,17 +571,17 @@ try {
        keeps the form's draft across a rerender now, so a refresh that
        lands mid-typing no longer empties it — that was the other half,
        and the same bug the refund form had.) */
-    await A.page.waitForSelector('#billing tr[data-promo]', { timeout: 15000 });
+    await A.page.waitForSelector('#promos tr[data-promo]', { timeout: 15000 });
     await A.page.waitForLoadState('networkidle');
     await A.page.fill('#baPromoCode', 'festdesk');
     await A.page.fill('#baPromoValue', '5');
     await A.page.fill('#baPromoComm', '20');
     await A.page.fill('#baPromoNote', 'Chennai festival desk');
     await A.page.click('form[data-ba-form="promo"] button[type="submit"]');
-    await A.page.waitForSelector('#billing tr[data-promo="FESTDESK"]', { timeout: 8000 }).catch(() => {});
+    await A.page.waitForSelector('#promos tr[data-promo="FESTDESK"]', { timeout: 8000 }).catch(() => {});
     const fd = F.db.promos.find((c) => c.code === 'FESTDESK');
     ok(fd && fd.kind === 'affiliate' && fd.commission_pct === 20 && fd.percent_off === 5, 'ADD CODE with a commission makes an affiliate code (5% off, 20% commission)');
-    ok(/20% commission/.test(await A.page.textContent('#billing tr[data-promo="FESTDESK"]')), 'the promo list says so');
+    ok(/20% commission/.test(await A.page.textContent('#promos tr[data-promo="FESTDESK"]')), 'the promo list says so');
     allErrors.push(...A.errors); await A.ctx.close();
 
     const C = await newContext(browser, { tok: 'tok-cal' });
@@ -593,7 +597,7 @@ try {
 
     F.db.sessions.clear();
     const A2 = await newContext(browser, { tok: 'tok-admin' });
-    await A2.page.goto(BASE + 'admin.html#growth');
+    await A2.page.goto(BASE + 'purchases.html#growth');
     await A2.page.waitForSelector('#growth tr[data-affiliate="FESTDESK"]', { timeout: 15000 }).then(() => ok(true, 'the Growth tab lists FESTDESK under Affiliates'), () => ok(false, 'the Growth tab lists FESTDESK under Affiliates'));
     const cells = await A2.page.$$eval('#growth tr[data-affiliate="FESTDESK"] td', (tds) => tds.map((t) => t.textContent));
     ok(cells[3] === '1' && cells[4] === '₹7,599.05' && cells[6] === '₹1,519.81', `one order, revenue net of the 5% (₹7,599.05), commission due ₹1,519.81: ${cells.slice(3, 7).join(' / ')}`);
@@ -620,7 +624,7 @@ try {
 
     // 1. the switch is off: the customer has nothing to click
     const B = await newContext(browser, { tok: 'tok-ben' });
-    await B.page.goto(BASE + 'settings.html#plan');
+    await B.page.goto(BASE + 'purchase.html');
     await B.page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     await B.page.waitForTimeout(600);
     ok(F.db.calls.includes('my_refund_status') && !(await B.page.$('[data-rf-panel]')), 'with the switch off, Ben has a captured payment and sees NO "Request a refund"');
@@ -629,9 +633,9 @@ try {
     // 2. the admin turns it on
     F.db.sessions.clear();
     const A = await newContext(browser, { tok: 'tok-admin' });
-    await A.page.goto(BASE + 'admin.html#billing');
+    await A.page.goto(BASE + 'purchases.html#billing');
     await A.page.waitForSelector('#baRefundSwitch', { timeout: 15000 });
-    ok(!(await A.page.isChecked('#baRefundSwitch')), 'the console switch "Let customers request refunds from Settings" reads OFF by default');
+    ok(!(await A.page.isChecked('#baRefundSwitch')), 'the console switch "Let customers request refunds from the Purchase page" reads OFF by default');
     await A.page.check('#baRefundSwitch');
     await A.page.waitForFunction(() => document.getElementById('baRefundSwitch') && document.getElementById('baRefundSwitch').checked && !document.getElementById('baRefundSwitch').disabled, null, { timeout: 8000 });
     ok(F.db.rrEnabled === true, 'turning it on reaches the database (admin_set_refund_requests_enabled)');
@@ -722,7 +726,7 @@ try {
 
     // 7. decline, with a note the customer reads
     const C = await newContext(browser, { tok: 'tok-cal' });
-    await C.page.goto(BASE + 'settings.html#plan');
+    await C.page.goto(BASE + 'purchase.html');
     await C.page.waitForSelector('[data-rf-panel="request"]', { timeout: 12000 });
     await C.page.selectOption('#rfCategory', 'other');
     await C.page.click('[data-rf-form="request"] button[type="submit"]');
@@ -816,9 +820,9 @@ try {
        live pathname `/settings` — an exemption anchored to .html
        would have walled the page you pay on, on the live site and
        nowhere else. */
-    await amy.page.goto(BASE + 'settings.html#plan');
+    await amy.page.goto(BASE + 'purchase.html');
     await amy.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
-    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'settings.html#plan is NOT walled — it is where a plan is bought');
+    ok(!(await amy.page.$('.pg-lock.pg-wall')), 'purchase.html is NOT walled — it is where a plan is bought');
     ok(!!(await amy.page.$('#plan .pl-card')), 'and the tiers are there to buy');
 
     /* ---- DOWNLOAD MY WORK ----------------------------------------

@@ -497,7 +497,7 @@ function renderPlanTile(projects) {
     h('p.db-tile-line', { text: name ? name + ' plan' : 'Not signed in \u2014 working locally on this device' }),
     h('p.db-tile-line', { text: projects.length + ' project' + (projects.length === 1 ? '' : 's')
       + ' here. The plan sets how many you can keep; Settings shows what yours allows.' }),
-    h('a.btn.db-tile-go', { href: 'settings.html#plan', 'aria-label': 'Plans and upgrade, in Settings',
+    h('a.btn.db-tile-go', { href: 'purchase.html', 'aria-label': 'Plans and upgrade',
       text: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans' })
   );
   return tl;

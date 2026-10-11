@@ -87,12 +87,16 @@ import { renderCharacters, wireCharacters, characterNames } from '../ui/characte
    the Story page when they are empty (story.js docStarter, a read). */
 import { loadStory, docStarter, STARTER_KINDS } from '../lib/story.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+/* The screenplay editor itself — rows, keys, the one type-change path,
+   the chunked render and the row patching — lives in
+   src/ui/script-editor/ so another page can mount it. This page keeps
+   the model, the ONE debounced save, and everything around the rows. */
+import { mountEditor, elFocus, iconBtn, field, setAttr, autosize } from '../ui/script-editor/editor.js';
 import Script, {
-  ELEMENT_TYPES, ELEMENT_TYPE_IDS, DOC_KINDS,
+  ELEMENT_TYPE_IDS, DOC_KINDS,
   revisionColour, typeLabel,
   blankElement, blankDocument,
   pageCount, formatPages, formatRuntime, wordCount, totalLines,
-  dualPairs, canPairDual, contdOffer, withContd,
   TITLE_FIELDS, hasTitlePage, normaliseTitlePage
 } from '../lib/script.js';
 
@@ -244,12 +248,6 @@ let openDocId = null;
    the script, not part of it, so it is neither stored nor synced. */
 let pageView = false;
 let Typeset = null;            // screenplay-export.js, once page view has asked for it
-/* Which dual-dialogue pairs the page was last BUILT with. A patch that
-   changes the pairing (a line inserted inside a pair, a flag whose
-   speech above it was just deleted) cannot be patched row by row; it
-   falls back to a render, and this is how it knows. */
-let dualRendered = '';
-
 /* Import view state. `importPlan` is what a file parsed to and what
    the preview is showing; it is NOT stored, because it is a
    proposal the user has not accepted yet and a proposal that
@@ -355,19 +353,6 @@ const how = (n, title, body) =>
     h('p', { text: body })
   ]);
 
-function iconBtn(glyph, action, label, disabled, danger) {
-  return h('button.bd-icon' + (danger ? '.is-danger' : ''), {
-    type: 'button', 'data-action': action, title: label,
-    'aria-label': label, text: glyph, disabled: disabled || false
-  });
-}
-
-function field(spec, props, value) {
-  const el = h(spec, props);
-  if (value !== undefined) el.value = value;
-  return el;
-}
-
 function labelled(text, control) {
   return h('label.wr-field', {}, [h('span', { text }), control]);
 }
@@ -444,106 +429,6 @@ function renderScreenplayEmpty() {
     })
   ]);
 }
-
-function renderElement(el, i, total) {
-  const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id });
-
-  const sel = h('select.wr-type', {
-    'data-el-field': 'type',
-    'aria-label': 'Element type for element ' + (i + 1)
-  });
-  ELEMENT_TYPES.forEach((t) => {
-    const opt = h('option', { value: t.id, text: t.label });
-    if (t.id === el.type) opt.selected = true;
-    sel.append(opt);
-  });
-
-  const ta = field('textarea.wr-text', {
-    rows: '1',
-    spellcheck: 'true',
-    'data-el-field': 'text',
-    placeholder: PLACEHOLDER[el.type] || '',
-    'aria-label': typeLabel(el.type) + ', element ' + (i + 1)
-  }, el.text);
-
-  /* The mark is built here, not by the lazy AI module, so that a line
-     the model wrote is marked from the first paint of a cold load
-     rather than three hundred milliseconds into it. A mark that
-     arrives late is a mark somebody can miss. */
-  if (el.aiPass) {
-    row.classList.add('has-ai');
-    row.append(h('div.wr-ai-tag', {}, [
-      h('span.ai-mark', {
-        title: 'This line was written by ' + (el.aiPass.model || 'a model')
-             + ' and accepted by you. Undo puts your own words back.',
-        text: 'AI PASS'
-      }),
-      h('button.ai-undo', {
-        type: 'button', 'data-action': 'pass-undo',
-        title: 'Put back the line you wrote',
-        text: 'Undo'
-      })
-    ]));
-  }
-
-  row.append(sel, ta, rowActs(el, i, total));
-  return row;
-}
-
-/** A row's buttons. Built per type, so a type change rebuilds them. */
-function rowActs(el, i, total) {
-  return h('div.wr-el-acts', {}, [
-    /* Only dialogue. An action line is description and a slug is an
-       address; neither is the thing "a dialogue pass" means, and a ◇
-       on all six types is a ◇ nobody reads. */
-    el.type === 'dialogue'
-      ? iconBtn('◇', 'pass-open', 'Ask for a pass on this speech', false)
-      : null,
-    ...(el.type === 'character' ? cueButtons(el, i) : []),
-    iconBtn('↑', 'el-up', 'Move up', i === 0),
-    iconBtn('↓', 'el-down', 'Move down', i === total - 1),
-    iconBtn('✕', 'el-del', 'Delete element', false, true)
-  ].filter(Boolean));
-}
-
-/* ---- a cue's two extra controls --------------------------------
-   Dual dialogue is a toggle on the SECOND cue (src/lib/script.js has
-   the model): pressed, this speech sits beside the one above it. And
-   (CONT'D) is OFFERED, never typed for the writer — the button only
-   shows when the same character speaks again after action in the same
-   scene, and one click appends the words to the cue. Both are DOM
-   built from the model at render; refreshCueOffers() keeps the offer
-   in step as the writer types, at idle, without a re-render. */
-function cueButtons(el, i) {
-  const on = el.dual === true;
-  const dual = h('button.bd-icon.wr-dual-btn' + (on ? '.is-on' : ''), {
-    type: 'button', 'data-action': 'el-dual',
-    title: on ? 'Dual dialogue: on — this speech sits beside the one above'
-      : 'Dual dialogue: set this speech beside the one above',
-    'aria-label': 'Dual dialogue', 'aria-pressed': on ? 'true' : 'false',
-    text: '⇄'
-  });
-  const contd = h('button.wr-contd', {
-    type: 'button', 'data-action': 'el-contd',
-    title: "Same speaker after action in this scene — add (CONT'D)",
-    text: "+ CONT'D"
-  });
-  contd.hidden = !contdOffer(doc.elements, i);
-  return [contd, dual];
-}
-
-/** Rows per run on the screenplay page; see renderScreenplay(). */
-const CHUNK = 64;
-
-const PLACEHOLDER = {
-  scene: 'INT. LOCATION — DAY',
-  action: 'What we see.',
-  character: 'CHARACTER',
-  paren: 'quietly',
-  dialogue: 'What they say.',
-  transition: 'CUT TO:',
-  shot: 'CLOSE ON —'
-};
 
 function renderScreenplay() {
   const section = h('section.wr-section', { id: 'screenplay' });
@@ -625,36 +510,11 @@ function renderScreenplay() {
     return section;
   }
 
-  /* The rows go into runs of CHUNK. A run is the unit the browser may
-     skip while it is off screen (`content-visibility` in write.css), so
-     a keystroke lays out the few runs in view instead of a feature's
-     two thousand rows. The runs are invisible: same column, same gap.
-
-     A dual-dialogue pair is the one place rows are nested: both
-     speeches go in a `.wr-dual` holding two columns, so they sit side
-     by side. A run never breaks inside one. */
-  const page = h('div.wr-page' + (pageView ? '.is-pageview' : ''), { id: 'wr-page' });
-  const pairs = new Map(dualPairs(doc.elements).map((p) => [p.left[0], p]));
-  dualRendered = dualSignature();
-  let run = null;
-  let inRun = 0;
-  let pair = null;
-  doc.elements.forEach((el, i) => {
-    if (!pair && (!run || inRun >= CHUNK)) { run = h('div.wr-chunk'); page.append(run); inRun = 0; }
-    if (!pair && pairs.has(i)) {
-      pair = pairs.get(i);
-      const left = h('div.wr-dual-col');
-      const right = h('div.wr-dual-col');
-      run.append(h('div.wr-dual', { 'data-dual': doc.elements[pair.right[0]].id }, [left, right]));
-      pair.cols = [left, right];
-    }
-    const box = pair ? pair.cols[i >= pair.right[0] ? 1 : 0] : run;
-    box.append(renderElement(el, i, doc.elements.length));
-    inRun++;
-    // The panel is a sibling of the row it belongs to, so it opens
-    // where the speech is rather than somewhere else on the page.
-    if (passFor === el.id) box.append(renderPass(el, i));
-    if (pair && i === pair.right[1]) pair = null;
+  /* The rows themselves: src/ui/script-editor (runs of 64, a dual pair
+     never split). The pass panel sits straight after its speech. */
+  const page = editor.renderPage({
+    pageView,
+    afterRow: (el, i) => (passFor === el.id ? renderPass(el, i) : null)
   });
   section.append(page, h('button.btn.primary.wr-add', {
     type: 'button', 'data-action': 'el-add', text: '+  Add element'
@@ -1867,8 +1727,8 @@ function render(focus) {
   app.replaceChildren(main);
   countNodes = null;
   smart.invalidate();
-  autosizeAll();
-  requestAnimationFrame(autosizeAll);   // again once layout has settled
+  editor.autosizeAll();
+  requestAnimationFrame(editor.autosizeAll);   // again once layout has settled
 
   mountStageGuide(document.getElementById('main'), { stage: 'screenplay' });   // the blueprint's questions for this stage
   mountShell();
@@ -1886,75 +1746,8 @@ function render(focus) {
   else sceneSyncLater();   // a re-render follows an import or a restore
 }
 
-function applyFocus(sel) {
-  const node = typeof sel === 'string' ? document.querySelector(sel) : sel;
-  if (!node) return;
-  /* A row in a run the browser is skipping (off screen, see write.css)
-     has a placeholder height, and the page scrolls smoothly — so a
-     focus() aimed at it plans its scroll against the placeholders and
-     stops thousands of pixels short. Bring that row into view first,
-     instantly, which lays its run out for real; then focus as before. */
-  if (typeof node.checkVisibility === 'function'
-      && !node.checkVisibility({ contentVisibilityAuto: true })
-      && node.closest('.wr-chunk')) {
-    node.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }
-  node.focus();
-  if (typeof node.setSelectionRange === 'function' && typeof node.value === 'string') {
-    try { node.setSelectionRange(node.value.length, node.value.length); } catch (e) { /* select */ }
-  }
-}
-const elFocus = (id) => `[data-el="${id}"] .wr-text`;
-
-/* ---- sizing the elements to their text ---------------------
-   C2 in docs/UX-AUDIT-2026-10-06.md: on a feature-length script this
-   page froze for minutes. The old autosize wrote `height: auto`, read
-   scrollHeight and wrote the height back, once per textarea — a forced
-   synchronous layout of the whole page per row, 2,361 times per render,
-   twice per render, and every Return re-rendered every row.
-
-   Where the browser can do it, it does: `field-sizing: content` in
-   write.css grows each textarea to its text with no script at all, and
-   it stays right across a font swap and a resize for free. Everywhere
-   else the JS below is the fallback, and it is BATCHED — every write,
-   then every read, then every write — so a whole page costs one layout
-   rather than one per row. DOM only; never touches storage. */
-const NATIVE_SIZING = typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
-  && CSS.supports('field-sizing', 'content');
-
-function autosizeMany(list) {
-  if (NATIVE_SIZING || !list.length) return;
-  list.forEach((ta) => { ta.style.height = 'auto'; });
-  // `scrollHeight` is the CONTENT box; the element is border-box, so
-  // assigning it directly loses the two border pixels and every block
-  // renders two pixels short of its own text. Add the frame back.
-  const heights = list.map((ta) => ta.scrollHeight + (ta.offsetHeight - ta.clientHeight));
-  list.forEach((ta, i) => { ta.style.height = heights[i] + 'px'; });
-}
-function autosize(ta) { if (ta) autosizeMany([ta]); }
-
-/* The elements are `overflow: hidden`, so a height measured against the
-   wrong font clips the text and there is no scrollbar to say so. The
-   script face is a webfont: the first measurement happens before it
-   arrives, every line then gets wider, and a four-line action block
-   renders as three. So measure again once the fonts are in, and again
-   whenever the column changes width — the indents are percentages, so a
-   resize genuinely does change how many lines a block takes. (Only the
-   fallback path needs any of this; field-sizing re-flows by itself.) */
-function autosizeAll() {
-  if (NATIVE_SIZING) return;
-  autosizeMany(Array.from(document.querySelectorAll('.wr-text')));
-}
-if (!NATIVE_SIZING && document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(autosizeAll).catch(() => {});
-}
-let resizeFrame = 0;
-if (!NATIVE_SIZING) {
-  addEventListener('resize', () => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(autosizeAll);
-  });
-}
+/* Focus, sizing and the rows are the editor's (src/ui/script-editor). */
+const applyFocus = (sel) => editor.applyFocus(sel);
 
 /* The counter nodes, found once per render rather than once per
    keystroke: four attribute queries over a 30,000-node page were most
@@ -2031,18 +1824,7 @@ function scheduleDerived(delay = DERIVED_DELAY) {
 }
 
 /** Show or hide each cue's "+ CONT'D" as the script now reads. */
-function refreshCueOffers() {
-  const rows = allRows();
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row.classList.contains('t-character')) continue;
-    const btn = row.querySelector('.wr-contd');
-    if (!btn) continue;
-    const el = doc.elements[i];
-    const want = !!el && el.id === row.dataset.el && contdOffer(doc.elements, i);
-    if (btn.hidden === want) btn.hidden = !want;
-  }
-}
+const refreshCueOffers = () => editor.refreshCueOffers();
 
 /* ---- PAGE VIEW ----------------------------------------------
    The rows stay the writing surface — same textareas, same keys, same
@@ -2245,552 +2027,33 @@ document.addEventListener('focusin', (e) => {
 const idOf = (el, attr) => el.closest(`[data-${attr}]`)?.dataset[attr];
 const indexOfEl = (id) => doc.elements.findIndex((e) => e.id === id);
 
-/* ---- screenplay: structure ---------------------------------
-   A structural edit PATCHES the page rather than rebuilding it. On a
-   feature-length script a full render is thousands of rows of DOM, and
-   Return is a key people press every few seconds; rebuilding the lot
-   for one new row is what made this page freeze (C2 in the UX audit).
-
-   So add, delete and move touch the affected row(s) and nothing else,
-   then bring the cheap derived state into step: each row's ordinal in
-   its aria-labels, the first row's dead ↑ and the last row's dead ↓,
-   and the counters. The model and the save path are exactly as before —
-   the splice and `persistNow()` happen first, and the DOM follows.
-
-   It falls back to a full render whenever a patch would have to know
-   more than one row: the empty state (no page to patch), the header's
-   "element"/"elements" switching at one, an open import preview (it
-   quotes the element count) and an open pass panel (a sibling that
-   sits between rows). All rare; none of them is Return.
-
-   The rows live in runs (`.wr-chunk`, see renderScreenplay). A patch
-   puts a new row in the run of the row above it, splits a run that has
-   grown to twice its size, and drops a run left empty; a full render
-   re-deals them evenly. */
-const pageNode = () => document.getElementById('wr-page');
-const rowOf = (id) => {
-  const page = pageNode();
-  return page ? page.querySelector(`[data-el="${CSS.escape(String(id))}"]`) : null;
-};
-
-/** Every row on the page, in order, across the runs. */
-function allRows() {
-  const page = pageNode();
-  const rows = [];
-  if (!page) return rows;
-  for (const run of page.children) {
-    for (const n of run.children) {
-      if (n.tagName === 'ARTICLE') rows.push(n);
-      // A dual-dialogue pair: its two columns, left then right, which
-      // is the order the elements are in.
-      else if (n.classList.contains('wr-dual')) {
-        for (const col of n.children) for (const r of col.children) if (r.tagName === 'ARTICLE') rows.push(r);
-      }
-    }
-  }
-  return rows;
-}
-
-/** The pairing the page was built with, as ids. Cheap: one scan of the
-    element list, and on a script with no dual flag at all, nothing. */
-function dualSignature() {
-  if (!doc.elements.some((e) => e.dual === true)) return '';
-  return dualPairs(doc.elements)
-    .map((p) => [p.left[0], p.left[1], p.right[0], p.right[1]].map((k) => doc.elements[k].id).join(','))
-    .join(';');
-}
-
-/** A structural patch is only safe outside a dual pair. Inside one, or
-    when the edit changed which speeches pair, the page is rebuilt. */
-function dualNeedsRender(...nodes) {
-  if (dualSignature() !== dualRendered) return true;
-  return nodes.some((n) => n && n.closest && n.closest('.wr-dual'));
-}
-
-/** Keep the runs a sensible size after a patch. Never touches a row's
-    contents, only which run holds it. */
-function tidyRun(run) {
-  if (!run || !run.classList.contains('wr-chunk')) return;
-  if (!run.children.length) { run.remove(); return; }
-  if (run.children.length < CHUNK * 2) return;
-  const tail = h('div.wr-chunk');
-  const kids = Array.from(run.children).slice(CHUNK);
-  // A pass panel belongs with the row before it; never split them.
-  while (kids.length && kids[0].tagName !== 'ARTICLE') kids.shift();
-  tail.append(...kids);
-  run.after(tail);
-}
-
-function patchable(lenBefore, lenAfter) {
-  return lenBefore >= 2 && lenAfter >= 2 && !importOpen && passFor === null && !!pageNode();
-}
-
-function setAttr(node, name, value) {
-  if (node && node.getAttribute(name) !== value) node.setAttribute(name, value);
-}
-
-/** Bring rows [from, to] back in step with their position: the ordinal
-    in both labels, and which arrows are dead. Attribute writes only —
-    no layout is read, so this is cheap even across the whole script. */
-function reindexRows(from, to) {
-  const page = pageNode();
-  if (!page) return;
-  // Rows only (an open pass panel is a sibling between them), and the
-  // row's own children walked rather than queried.
-  const rows = allRows();
-  const total = doc.elements.length;
-  const last = Math.min(rows.length - 1, to === undefined ? rows.length - 1 : to);
-  for (let i = Math.max(0, from); i <= last; i++) {
-    const el = doc.elements[i];
-    if (!el) continue;
-    for (const part of rows[i].children) {
-      if (part.tagName === 'SELECT') setAttr(part, 'aria-label', 'Element type for element ' + (i + 1));
-      else if (part.tagName === 'TEXTAREA') setAttr(part, 'aria-label', typeLabel(el.type) + ', element ' + (i + 1));
-      else if (part.tagName === 'DIV' && part.classList.contains('wr-el-acts')) {
-        for (const btn of part.children) {
-          const act = btn.getAttribute('data-action');
-          if (act === 'el-up') { if (btn.disabled !== (i === 0)) btn.disabled = i === 0; }
-          else if (act === 'el-down') { if (btn.disabled !== (i === total - 1)) btn.disabled = i === total - 1; }
-        }
-      }
-    }
-  }
-}
-
-/* The ordinals of every row BELOW an insertion or a deletion are one
-   out until this runs. They are only words in an aria-label — the
-   arrows at either end are fixed synchronously — so they are brought
-   back in step once the browser is idle, not inside the keystroke. */
-let reindexFrom = Infinity;
-let reindexTask = 0;
-function reindexLater(from) {
-  reindexFrom = Math.min(reindexFrom, Math.max(0, from));
-  if (reindexTask) return;
-  const run = () => {
-    reindexTask = 0;
-    const start = reindexFrom;
-    reindexFrom = Infinity;
-    if (start !== Infinity) reindexRows(start);
-  };
-  reindexTask = typeof requestIdleCallback === 'function'
-    ? requestIdleCallback(run, { timeout: 1000 })
-    : setTimeout(run, 200);
-}
-
-function addElement(after, type, text = '') {
-  const el = blankElement({ type, text });
-  const lenBefore = doc.elements.length;
-  const at = after === null ? lenBefore : after + 1;
-  doc.elements.splice(at, 0, el);
-  persistNow();
-  if (!patchable(lenBefore, doc.elements.length)) { render(elFocus(el.id)); return; }
-
-  const row = renderElement(el, at, doc.elements.length);
-  const prev = at > 0 ? rowOf(doc.elements[at - 1].id) : null;
-  const next = doc.elements[at + 1] ? rowOf(doc.elements[at + 1].id) : null;
-  if (!prev && !next) { render(elFocus(el.id)); return; }
-  if (dualNeedsRender(prev, next)) { render(elFocus(el.id)); return; }
-  // Into the run of the row above, straight after it — or, for a new
-  // first element, in front of the old one.
-  if (prev) prev.after(row);
-  else next.before(row);
-  tidyRun(row.parentElement);
-  autosize(row.querySelector('.wr-text'));
-  reindexRows(at - 1, at);
-  reindexLater(at + 1);
-  refreshCounters();
-  applyFocus(row.querySelector('.wr-text'));
-  scheduleDerived();
-}
-
-/** Where Return would split this field, or null when it would not:
- *  the caret (or the selection) must start inside the text and stop
- *  short of its end. A caret at 0 is not a split — that would leave
- *  an empty element behind with the whole line moved under it. */
-function splitAt(ta) {
-  let a, b;
-  try { a = ta.selectionStart; b = ta.selectionEnd; } catch (e) { return null; }
-  if (a == null || b == null) return null;
-  return a > 0 && b < ta.value.length ? { a, b } : null;
-}
-
-/** Split element `i` at the caret: the head stays, the tail becomes a
- *  new element straight after it — the same type, except after a
- *  one-line type, where it takes `flowType` (Return's usual next). */
-const ONE_LINE = new Set(['scene', 'character', 'transition']);
-function splitElement(i, ta, flowType) {
-  const at = splitAt(ta);
-  const el = doc.elements[i];
-  if (!at || !el) return;
-  const head = ta.value.slice(0, at.a).replace(/\s+$/, '');
-  const tail = ta.value.slice(at.b).replace(/^\s+/, '');
-  el.text = head;
-  ta.value = head;
-  autosize(ta);
-  addElement(i, ONE_LINE.has(el.type) && flowType ? flowType : el.type, tail);
-  const next = document.activeElement;
-  if (next && next.matches && next.matches('.wr-text')) {
-    try { next.setSelectionRange(0, 0); } catch (e) { /* not a text field */ }
-  }
-}
-
-/** Take element `i` out, and put the caret in `neighbourOf(i)`. */
-function removeElement(i, neighbourOf) {
-  const lenBefore = doc.elements.length;
-  const [gone] = doc.elements.splice(i, 1);
-  persistNow();
-  const neighbour = neighbourOf(i);
-  if (!patchable(lenBefore, doc.elements.length)) {
-    render(neighbour ? elFocus(neighbour.id) : null);
-    return;
-  }
-  const row = rowOf(gone.id);
-  if (dualNeedsRender(row)) {
-    render(neighbour ? elFocus(neighbour.id) : null);
-    return;
-  }
-  if (row) {
-    const run = row.parentElement;
-    row.remove();
-    tidyRun(run);
-  }
-  reindexRows(i - 1, i);
-  reindexLater(i + 1);
-  refreshCounters();
-  if (neighbour) applyFocus(elFocus(neighbour.id));
-  scheduleDerived();
-}
-
-delegate(document, 'click', '[data-action="el-first"]', () => addElement(null, 'scene'));
-delegate(document, 'click', '[data-action="el-add"]', () => {
-  const last = doc.elements[doc.elements.length - 1];
-  addElement(null, last ? Keys.returnNext(last.type, keyPrefs, knownTypes()) : 'scene');
+/* ---- the screenplay editor ----------------------------------
+   Rows, structure (add / split / delete / move, PATCHED rather than
+   re-rendered), typing, the type select, dual dialogue, (CONT'D), the
+   keyboard and Backspace-with-undo: src/ui/script-editor/. Mounted here
+   with this page's model and save path; it never saves on its own. */
+const editor = mountEditor(document, {
+  getDoc: () => doc,
+  persist: () => persist(),
+  persistNow: () => persistNow(),
+  render: (focus) => render(focus),
+  // A patch would have to know more than one row: the import preview
+  // quotes the element count, and the pass panel sits between rows.
+  canPatch: () => !importOpen && passFor === null,
+  refreshCounters: () => refreshCounters(),
+  scheduleDerived: () => scheduleDerived(),
+  smart,
+  getPrefs: () => keyPrefs,
+  known: knownTypes,
+  say: (m) => say(m),
+  toast: (m, o) => StudioUI.toast(m, o)
 });
-
-delegate(document, 'click', '[data-action="el-up"]', (e, btn) => moveElement(idOf(btn, 'el'), -1));
-delegate(document, 'click', '[data-action="el-down"]', (e, btn) => moveElement(idOf(btn, 'el'), 1));
-function moveElement(id, delta) {
-  const i = indexOfEl(id);
-  const j = i + delta;
-  if (i < 0 || j < 0 || j >= doc.elements.length) return;
-  [doc.elements[i], doc.elements[j]] = [doc.elements[j], doc.elements[i]];
-  persistNow();
-  const len = doc.elements.length;
-  const mine = rowOf(id);
-  const theirs = rowOf(doc.elements[i].id);   // the one it swapped with
-  if (!patchable(len, len) || !mine || !theirs || dualNeedsRender(mine, theirs)) { render(elFocus(id)); return; }
-  // Whichever row now comes first goes in front of the other.
-  // Across a run boundary this moves a row from one run to the next,
-  // which can leave a run of one empty.
-  const runs = [mine.parentElement, theirs.parentElement];
-  if (delta < 0) theirs.before(mine);
-  else mine.before(theirs);
-  runs.forEach(tidyRun);
-  reindexRows(Math.min(i, j), Math.max(i, j));
-  applyFocus(elFocus(id));
-  scheduleDerived();
-}
-
-delegate(document, 'click', '[data-action="el-del"]', (e, btn) => {
-  const id = idOf(btn, 'el');
-  const i = indexOfEl(id);
-  if (i < 0) return;
-  const el = doc.elements[i];
-  // Only ask when there is something to lose. A confirm on an empty
-  // element is the dialog people learn to click through.
-  if (el.text.trim()
-      && !confirm(`Delete this ${typeLabel(el.type).toLowerCase()}?\n\n“${el.text.trim().slice(0, 80)}”`)) return;
-  removeElement(i, (k) => doc.elements[k] || doc.elements[k - 1]);
-});
-
-/* ---- screenplay: editing -----------------------------------
-   Typing updates the model and the counters; it does not re-render,
-   because a re-render takes the caret with it. */
-delegate(document, 'input', '.wr-text[data-el-field="text"]', (e, ta) => {
-  const i = indexOfEl(idOf(ta, 'el'));
-  if (i < 0) return;
-  doc.elements[i].text = ta.value;
-  autosize(ta);
-  refreshCounters();
-  persist();
-  smart.noteEdit(doc.elements[i]);
-  smart.update(ta, doc.elements[i]);
-  scheduleDerived();
-});
-delegate(document, 'focusout', '.wr-text[data-el-field="text"]', () => smart.close());
-
-/* A type change moves the element across the page, so the row's class
-   changes — but re-rendering the whole section would cost the focus the
-   user still has on the select. Swap the class in place instead. */
-delegate(document, 'change', 'select[data-el-field="type"]', (e, sel) => {
-  const row = sel.closest('[data-el]');
-  setElementType(indexOfEl(row?.dataset.el), sel.value);
-});
-
-/* ---- dual dialogue and (CONT'D) -----------------------------
-   Both are clicks on a cue's own row. The toggle rebuilds the page —
-   a pair is two speeches moving into two columns, which is more than
-   one row's patch — and is rare enough that it may. The (CONT'D) is
-   four words added to one textarea and patches that one row. */
-delegate(document, 'click', '[data-action="el-dual"]', (e, btn) => {
-  const id = idOf(btn, 'el');
-  const i = indexOfEl(id);
-  if (i < 0) return;
-  const el = doc.elements[i];
-  if (el.dual === true) delete el.dual;
-  else {
-    if (!canPairDual(doc.elements, i)) {
-      say('Dual dialogue sets this speech beside the one directly above it, and there is no speech directly above this cue.');
-      return;
-    }
-    el.dual = true;
-  }
-  persistNow();
-  render(`[data-el="${id}"] [data-action="el-dual"]`);
-  say(el.dual ? 'Dual dialogue: the two speeches now sit side by side.' : 'Dual dialogue off.');
-});
-
-delegate(document, 'click', '[data-action="el-contd"]', (e, btn) => {
-  const id = idOf(btn, 'el');
-  const i = indexOfEl(id);
-  if (i < 0) return;
-  const el = doc.elements[i];
-  el.text = withContd(el.text);
-  const ta = rowOf(id)?.querySelector('.wr-text');
-  if (ta) { ta.value = el.text; autosize(ta); }
-  btn.hidden = true;
-  persistNow();
-  refreshCounters();
-  scheduleDerived();
-  if (ta) applyFocus(ta);
-});
-
-/** Change element i's type in place: the model, the row's class, the
-    select, the placeholder and the label. One path for the select,
-    Alt/Ctrl+number, Tab, Shift+Tab and Return on an empty line. */
-function setElementType(i, type) {
-  if (i < 0 || !doc.elements[i]) return;
-  const row = rowOf(doc.elements[i].id);
-  const el = doc.elements[i];
-  el.type = type;
-  // Only a cue can be the second half of a dual pair (Phase 1).
-  if (type !== 'character') delete el.dual;
-  if (row && dualNeedsRender(row)) {
-    // A pair is two speeches in two columns: more than one row's patch.
-    persistNow();
-    smart.invalidate();
-    render(`[data-el="${el.id}"] .wr-text`);
-    return;
-  }
-  if (row) {
-    // Swap only the t-* class, so a class another feature put on the
-    // row (has-ai, a dual mark) survives a type change.
-    row.classList.forEach((c) => { if (c.startsWith('t-')) row.classList.remove(c); });
-    row.classList.add('t-' + type);
-    const sel = row.querySelector('select[data-el-field="type"]');
-    if (sel && sel.value !== type) sel.value = type;
-    const ta = row.querySelector('.wr-text');
-    if (ta) {
-      ta.placeholder = PLACEHOLDER[type] || '';
-      ta.setAttribute('aria-label', typeLabel(type) + ', element ' + (i + 1));
-      autosize(ta);
-    }
-    // The buttons depend on the type: ◇ on a speech, ⇄ and CONT'D on a cue.
-    const acts = row.querySelector('.wr-el-acts');
-    if (acts) acts.replaceWith(rowActs(el, i, doc.elements.length));
-  }
-  smart.invalidate();
-  refreshCounters();
-  persistNow();
-  scheduleDerived();
-}
-
-/* THE KEYBOARD. One handler, in this order:
-     1. SmartType's list, when it is open, owns ↑ ↓ Return Tab Esc —
-        and a Return that accepts a suggestion stops here, so it never
-        also makes a new element.
-     2. write-keys.js says what the key means for this element:
-        Return makes the next element in the type that usually follows
-        (or, on an EMPTY line, cycles its type in place); Tab and
-        Shift+Tab walk Character → Parenthetical → Dialogue;
-        Alt/Option+number (and Ctrl/Cmd+number where it is free) sets
-        the type; Alt+D, Ctrl/Cmd+Shift+K and Ctrl/Cmd+Shift+S are
-        dual dialogue, a note and the navigator.
-   Shift+Return stays a line break inside the element. Return still
-   goes through addElement(), which PATCHES the rows it touches (C2) —
-   nothing here renders.
-
-   Esc then Tab leaves the screenplay: Tab is taken only where the flow
-   table has something to say, and Esc frees the next Tab, so the page
-   never becomes a keyboard trap. */
-const tabFree = new WeakSet();
-delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
-  if (e.isComposing) return;
-  if (smart.handleKey(e, ta)) return;
-  if (e.key === 'Escape') { tabFree.add(ta); return; }
-  if (e.key === 'Tab' && tabFree.has(ta)) { tabFree.delete(ta); return; }
-  tabFree.delete(ta);
-  const i = indexOfEl(idOf(ta, 'el'));
-  if (i < 0) return;
-  const el = doc.elements[i];
-  const act = Keys.resolveKey(e, {
-    type: el.type,
-    empty: ta.value === '',
-    prefs: keyPrefs,
-    known: knownTypes(),
-    ctrlDigits: keyPrefs.ctrlDigits || WriteKeys.ctrlDigitsFree()
-  });
-  if (!act) return;
-  e.preventDefault();
-  el.text = ta.value;                      // the debounce may not have fired
-  smart.close();
-  switch (act.kind) {
-    case 'type':
-      if (act.type !== el.type) setElementType(i, act.type);
-      break;
-    case 'return':
-      /* Return with the caret INSIDE the text splits the line there
-         (UX audit L26): the text after the caret becomes the next
-         element, in the SAME type — half a speech is still dialogue —
-         and the caret lands at its start. A one-line type (heading,
-         cue, transition) hands its tail to the type the flow table
-         says follows it instead. At the end of the line, or
-         with a selection reaching it, it is the flow table's move. */
-      if (act.op !== 'change' && splitAt(ta) !== null) { splitElement(i, ta, act.type); break; }
-      if (act.op === 'change') setElementType(i, act.type);
-      else addElement(i, act.type);
-      break;
-    case 'tab':
-      if (act.op === 'change') setElementType(i, act.type);
-      else addElement(i, act.type);
-      break;
-    case 'dual': toggleDual(i); break;
-    case 'note': openNote(i, ta); break;
-    case 'navigator': openNavigator(); break;
-    default: break;
-  }
-});
-
-/* Ctrl/Cmd+Shift+S from anywhere else on the page (a button, the
-   type select). Inside a line the handler above has it already. */
-document.addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return;
-  if (e.code !== 'KeyS' && String(e.key).toLowerCase() !== 's') return;
-  if (e.target && e.target.closest && e.target.closest('.wr-text, .wk-nav')) return;
-  if (!document.getElementById('wr-page')) return;
-  e.preventDefault();
-  openNavigator();
-});
-
-function openNavigator() {
-  WriteKeys.openNavigator({
-    elements: doc.elements,
-    onJump: (id) => applyFocus(elFocus(id))
-  });
-}
-
-/* DUAL DIALOGUE (Alt+D). Phase 1 adds the `dual` flag to a character
-   element and draws it in the page view. This toggles the flag on the
-   cue this speech belongs to — but only once the model carries it
-   (`dual` present in blankElement()), so until Phase 1 lands the key
-   is wired and says so instead of writing a field nothing reads. If
-   Phase 1 exports its own toggle, call it here instead. */
-function toggleDual(i) {
-  let c = i;
-  while (c >= 0 && doc.elements[c].type !== 'character') {
-    const t = doc.elements[c].type;
-    if (t !== 'dialogue' && t !== 'paren') { c = -1; break; }
-    c--;
-  }
-  if (c < 0) { say('Dual dialogue goes on a character cue — put the caret in one first.'); return; }
-  /* The same path as the ⇄ button on the cue's row (Phase 1), so the
-     key and the click cannot disagree about when a pair is allowed or
-     how the page redraws it. */
-  const cue = doc.elements[c];
-  if (cue.dual === true) delete cue.dual;
-  else {
-    if (!canPairDual(doc.elements, c)) {
-      say('Dual dialogue sets this speech beside the one directly above it, and there is no speech directly above this cue.');
-      return;
-    }
-    cue.dual = true;
-  }
-  persistNow();
-  render(`[data-el="${cue.id}"] .wr-text`);
-  say(cue.dual ? 'Dual dialogue: the two speeches now sit side by side.' : 'Dual dialogue off.');
-}
-
-/* A NOTE ON THIS LINE (Ctrl/Cmd+Shift+K) — src/ui/comments.js's panel,
-   hung off the element by its id. The private note half is local and
-   always works (fms_note_script_<id>, the note family backup.js and
-   reset already sweep); the shared thread needs the cloud, and says
-   so. Loaded on first use: nothing on this page needed it before. */
-let commentsMod = null;
-async function openNote(i, ta) {
-  const el = doc.elements[i];
-  const row = ta.closest('[data-el]');
-  if (!el || !row) return;
-  try {
-    if (!commentsMod) {
-      commentsMod = await import('../ui/comments.js');
-      commentsMod.mountComments({ scope: 'script' });
-    }
-    commentsMod.togglePanel('script_' + el.id, row);
-  } catch (e) {
-    say('Notes could not be opened here. Try again in a moment.');
-  }
-}
+const pageNode = () => editor.pageNode();
+const rowOf = (id) => editor.rowOf(id);
+const allRows = () => editor.allRows();
 
 /* The `?` sheet's Write section, for the active preset. DOM only. */
 WriteKeys.publishSheet(keyPrefs);
-
-/* Backspace in an empty element deletes it and steps back, which is
-   how every screenwriting app behaves and what makes the Return
-   mapping above safe to be wrong about. */
-/* It is UNDOABLE (UX audit L26). An empty line can still carry its
-   type, alternate takes, a dual flag and a private note keyed by its
-   id, and a Backspace too many used to take all of that with no way
-   back. One toast for a run of removals, not one per key — an
-   actionable toast does not time out, so a toast per Backspace would
-   stack up on screen — and Undo puts every line of the run back, with
-   its id, where it was. */
-let removedRun = [];      // [{ el, at }] in the order they were removed
-let removedToast = null;
-delegate(document, 'keydown', '.wr-text[data-el-field="text"]', (e, ta) => {
-  if (e.key !== 'Backspace' || ta.value !== '' || doc.elements.length < 2) return;
-  const i = indexOfEl(idOf(ta, 'el'));
-  if (i < 0) return;
-  e.preventDefault();
-  removedRun.push({ el: doc.elements[i], at: i });
-  removeElement(i, (k) => doc.elements[k - 1] || doc.elements[k]);
-  offerUndoRemoval();
-});
-function offerUndoRemoval() {
-  if (removedToast) { try { removedToast.dismiss(); } catch (e) { /* gone */ } }
-  const run = removedRun;
-  const n = run.length;
-  try {
-    removedToast = StudioUI.toast(n === 1 ? 'Empty line removed.' : n + ' empty lines removed.', {
-      type: 'info', action: 'Undo',
-      onAction: () => {
-        if (removedRun === run) { removedRun = []; removedToast = null; }
-        for (let k = run.length - 1; k >= 0; k--) {
-          const { el, at } = run[k];
-          if (indexOfEl(el.id) < 0) doc.elements.splice(Math.min(at, doc.elements.length), 0, el);
-        }
-        persistNow();
-        render(elFocus(run[0].el.id));
-      }
-    });
-  } catch (e) { /* chrome may not be up */ }
-}
-/* Typing anything closes the run: the next removal starts a new one. */
-document.addEventListener('input', (e) => {
-  if (removedRun.length && e.target && e.target.matches && e.target.matches('.wr-text')) {
-    removedRun = [];
-    if (removedToast) { try { removedToast.dismiss(); } catch (err) { /* gone */ } removedToast = null; }
-  }
-}, true);
 
 /* ---- Fountain export ---------------------------------------- */
 function download(text, filename, mime) {
@@ -3760,4 +3023,4 @@ BeatBoard.wireBeatBoard({
 
 render(wantsImporter ? '#wr-import-paste' : null);
 mountFocusMode(() => doc);   // Phase 4: src/ui/focus-mode.js
-mountBeatGuide({ getDoc: () => doc, addScene: (text) => addElement(null, 'scene', text) });   // plan rev. 3 §1b: src/ui/beat-guide.js
+mountBeatGuide({ getDoc: () => doc, addScene: (text) => editor.addElement(null, 'scene', text) });   // plan rev. 3 §1b: src/ui/beat-guide.js

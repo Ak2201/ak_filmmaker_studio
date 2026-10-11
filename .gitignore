@@ -18,3 +18,4 @@ dist-*/
 
 # Supabase CLI scratch (linked project, version cache) — not source
 supabase/.temp/
+social/*.svg

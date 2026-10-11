@@ -69,7 +69,13 @@ async function resetAllImpl({ alsoDrive = false, confirmed = false, allKeys = []
   const keys = new Set(allKeys);
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('fms_')) keys.add(k.replace(/__.*$/, ''));
+    if (!k || !k.startsWith('fms_')) continue;
+    keys.add(k.replace(/__.*$/, ''));
+    /* And the suffixed key itself: a blob whose project id is no longer
+       in the list (an earlier orphan) is not reached by purging the
+       listed projects, and removing only its base name leaves it — and
+       its IndexedDB bytes — behind an "erases EVERYTHING". */
+    if (k.includes('__')) keys.add(k);
   }
   keys.forEach((k) => { if (!KEEP_ON_ERASE.has(k)) Store.rawRemove(k); });
   Store.currentPointerKeys().forEach((k) => Store.rawRemove(k));

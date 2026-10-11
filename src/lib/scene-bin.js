@@ -130,8 +130,6 @@ export function binScene(sceneId, opts = {}) {
   const shots = Shots.takeSceneOut(sceneId);
   const sheets = Contacts.takeSceneOut(sceneId);
   const edit = Edit.takeSceneOut(sceneId);
-  rows.splice(index, 1);
-  writeRawScenes(rows);
   const entry = {
     id: uid(),
     binnedAt: new Date().toISOString(),
@@ -143,9 +141,26 @@ export function binScene(sceneId, opts = {}) {
     sheets,
     edit
   };
+  /* KEEP BEFORE YOU DELETE. The bin entry used to be written LAST, after
+     the row and every dependent had already left their models, and its
+     write result was ignored — so a refused write (both tiers full, or
+     the bin key a stub the overflow tier cannot read: the proxy's
+     setItem answers false and never throws) deleted the scene, its
+     shots, frames, sheet placements and edit notes with nothing left to
+     restore from. The entry is written and READ BACK first; only then
+     does the row leave the list. If the bin cannot hold it, everything
+     the takes removed is put back and nothing is binned. */
   const bin = readBin();
   bin.entries.push(entry);
-  writeBin(bin);
+  const kept = writeBin(bin) && readBin().entries.some((e) => e.id === entry.id);
+  if (!kept) {
+    Shots.putSceneBack({ shots: entry.shots, frames: entry.frames });
+    Contacts.putSceneBack(sceneId, entry.sheets);
+    Edit.putSceneBack(sceneId, entry.edit);
+    return null;
+  }
+  rows.splice(index, 1);
+  writeRawScenes(rows);
   return entry;
 }
 

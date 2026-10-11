@@ -69,11 +69,13 @@ export function saveOnInput(selector, save, delay = DELAY) {
   });
 }
 
-// The page's own change handler saves the same value; a pending
-// debounce behind it would only write it twice.
+// The page's own change handler usually saves the same value — but
+// not every field wired here has one, and dropping the pending write
+// on `change` lost the last keystrokes of any that did not when focus
+// left inside the debounce. Flushing writes the same value twice at
+// worst; dropping it loses text at worst. Flush.
 document.addEventListener('change', (e) => {
-  const p = pending.get(e.target);
-  if (p) { clearTimeout(p.timer); pending.delete(e.target); }
+  if (pending.has(e.target)) run(e.target);
 }, true);
 
 // `pagehide` is the one that fires on mobile where `unload` does not;

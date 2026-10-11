@@ -843,8 +843,19 @@ function buildStepRail() {
                   '<span class="sri-title">' + (title || 'Untitled') + '</span>' +
                   '<span class="sri-check"></span>';
     a.addEventListener('click', () => {
-      // smooth scroll handled by browser, but close the drawer on small screens
-      if (window.innerWidth <= 1100) rail.classList.remove('show');
+      /* Close the drawer on small screens — ALL of it. Removing `show`
+         alone hid the rail but left body.rail-open, and chrome.css
+         keeps the fixed STEPS tab at left: var(--rail-w) under that
+         class: after tapping a step on a phone the tab sat 220px in
+         from the edge, mid-text, intercepting taps until the rail was
+         opened and closed again. */
+      if (window.innerWidth <= 1100) {
+        rail.classList.remove('show');
+        rail.classList.add('collapsed');
+        document.body.classList.remove('rail-open');
+        const t = document.getElementById('stepRailToggle');
+        if (t) t.setAttribute('aria-expanded', 'false');
+      }
     });
     groupEl.appendChild(a);
   });
@@ -855,11 +866,13 @@ function buildStepRail() {
     btn.id = 'stepRailToggle';
     btn.className = 'step-rail-toggle';
     btn.setAttribute('aria-label', 'Toggle step navigation');
+    btn.setAttribute('aria-expanded', 'false');
     btn.textContent = 'STEPS';
     btn.addEventListener('click', () => {
       const open = rail.classList.toggle('show');
       rail.classList.toggle('collapsed', !open);
       document.body.classList.toggle('rail-open', open);
+      btn.setAttribute('aria-expanded', String(open));
     });
     document.body.appendChild(btn);
   }

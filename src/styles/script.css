@@ -206,10 +206,11 @@
 .wr-el:hover > .sc-line-more { opacity: 1; }
 .sc-line-more:focus-visible { opacity: 1; }
 @media (max-width: 719px) { .sc-line-more { display: none; } }
+@media (hover: none) and (min-width: 720px) { .sc-line-more { opacity: 1; } }   /* a tablet has no hover to reveal it */
 
 .sc-line-menu {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-float);
   display: flex;
   flex-direction: column;
   min-width: 12rem;
@@ -297,8 +298,11 @@
   .sc-main.has-beats { grid-template-areas: "top" "page" "after" "chips"; grid-template-columns: minmax(0, 1fr); }
   .sc-beats {
     position: fixed;
-    z-index: 40;
-    top: 0; right: 0; bottom: 0;
+    /* Above the bottom bar (--z-float - 1) and under the pinned band:
+       at z 40 the drawer's last 70px sat under the bar, and in landscape
+       the band painted over its heading. */
+    z-index: var(--z-float);
+    top: var(--sh-chrome-h, 0px); right: 0; bottom: var(--mab-h, 0px);
     width: min(20rem, 90vw);
     box-shadow: var(--sk-card-shadow);
     transition: transform calc(0.2s * var(--motion, 1));
@@ -309,10 +313,10 @@
 .sc-imp {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: var(--z-overlay);   /* was 70: the bottom bar painted over the card's buttons */
   display: grid;
   place-items: center;
-  padding: var(--s4);
+  padding: var(--s4) var(--s4) calc(var(--s4) + var(--mab-h, 0px));
   background: color-mix(in srgb, var(--ink) 45%, transparent);
 }
 .sc-imp-card {

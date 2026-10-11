@@ -445,7 +445,7 @@ function build() {
     autocapitalize: 'off',
     spellcheck: 'false',
     placeholder: 'Go to a module, a scene, a person, a setting…',
-    'aria-expanded': 'true',
+    'aria-expanded': 'false',   // openPalette/closePalette keep it true only while open
     /* The list is filtered as you type rather than completing the
        value in the field, which is "list" and not "both" or
        "inline". Saying "both" would promise an inline completion
@@ -544,6 +544,7 @@ export function openPalette() {
   opener = document.activeElement;
   buildIndex();
   root.hidden = false;
+  input.setAttribute('aria-expanded', 'true');
   document.body.classList.add('pal-open');
   input.value = '';
   active = 0;
@@ -556,6 +557,7 @@ export function closePalette() {
   if (!open || !root) return;
   open = false;
   root.hidden = true;
+  if (input) input.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('pal-open');
   /* Focus goes back where it came from. A dialog that drops focus
      on <body> at close sends the next Tab to the top of the

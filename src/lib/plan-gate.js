@@ -107,7 +107,8 @@ export function allowed(key) {
 export function sampleOnly() { return !!(features && features.sample_only === true); }
 
 /** §30. Whether this person may use the studio: a bought plan, or a live
- *  trial. `reason` is 'paid' | 'trial' | 'expired' | 'off' | 'unknown'.
+ *  trial. `reason` is 'paid' | 'trial' | 'granted' | 'free' | 'expired' |
+ *  'off' | 'unknown' ('granted': access given by the studio, §33).
  *
  *  UNKNOWN MEANS ENTITLED, and it is not a convenience. `npm run verify`
  *  loads all 21 pages SIGNED OUT against the open build: there is no
@@ -186,7 +187,12 @@ async function _refreshOnce() {
              mid-trial would otherwise keep the countdown band. */
           /* 'free': entitled because nothing is for sale (§32), so a
              trial still ticking beside it is not news — no band. */
+          /* 'granted' (§33): access given by e-mail with no plan, while
+             it stands — no band, no wall, and the studio's own words
+             ("Access given by the studio") rather than a trial's or a
+             plan's. PRESENT to be believed, like every key here. */
           reason: st.entitled ? (purchaseReq === false && plan === 'free' ? 'free'
+                                 : (st.granted === true && plan === 'free') ? 'granted'
                                  : (st.trial_active && plan === 'free') ? 'trial' : 'paid')
                               : (st.trial_enabled === false ? 'off' : 'expired'),
           endsAt: st.trial_ends_at || null,
@@ -314,7 +320,8 @@ function lockCard(mods) {
     h('p.bd-eyebrow', { text: 'Your plan' }),
     /* No free PLAN (owner, 11 Oct 2026): somebody on 'free' is on the
        trial, or on nothing at all, and the card says so in those words. */
-    h('h2.pg-lock-h', { text: plan === 'free' ? 'Not part of the free trial.' : 'Not on the ' + (planName || 'current') + ' plan.' })
+    h('h2.pg-lock-h', { text: ent && ent.reason === 'granted' ? 'Not part of the access the studio gave you.'
+                            : plan === 'free' ? 'Not part of the free trial.' : 'Not on the ' + (planName || 'current') + ' plan.' })
   ]);
   if (list.length) {
     const ul = h('ul.pg-lock-mods', { 'aria-label': 'What this part of the studio does' });
@@ -378,9 +385,10 @@ const pageName = () => file().replace(/\.html$/, '');
 function wallPanel() {
   const e = entitlement();
   const off = e.reason === 'off';
-  /* §33. Somebody who is a member but never had a trial — a membership
-     given by e-mail with no plan, while purchases are required — meets
-     the wall on their first page. They are offered the trial everybody
+  /* §33. Somebody who is a member but never had a trial — e.g. one whose
+     plan-less e-mail grant was revoked or ran out (while it stands they
+     are 'granted' and never walled) — meets the wall on their first
+     page. They are offered the trial everybody
      else gets rather than told one is "over". start_trial() decides; a
      refusal ('used', 'paid', 'disabled') is printed, never guessed. */
   const fresh = !off && !e.used && e.trialEnabled && !e.paidBefore;

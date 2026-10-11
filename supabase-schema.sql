@@ -8689,7 +8689,7 @@ notify pgrst, 'reload schema';
 --         shape: one narrow, public fact. The length of a trial is not a
 --         secret — it is printed on the card.
 --   33.2  billing_status(), restated IN FULL (the §32.3 body, the one that
---         wins), plus two keys:
+--         wins), plus three keys:
 --           trial_hours  the next trial's length in hours, for the pages
 --                        that say it (minutes / 60, two places)
 --           server_now   the server's clock. The trial band counted down
@@ -8697,9 +8697,36 @@ notify pgrst, 'reload schema';
 --                        fast took the band away ten minutes early and
 --                        one ten minutes slow kept it after the server had
 --                        walled. plan-gate.js keeps the difference.
+--           granted      true while this person holds access given by
+--                        e-mail with NO plan (below); the client says
+--                        "Access given by the studio" instead of trial or
+--                        plan wording
 --         Every key §32 returned keeps its name, its type and its meaning.
 --   33.3  admin_get_billing_settings(), restated: the console's read gains
 --         trial_hours beside trial_minutes. The section 22 body otherwise.
+--
+-- ACCESS GIVEN BY E-MAIL IS ACCESS (owner, 11 Oct 2026). Section 32 let
+-- the console give somebody membership with no plan, and with purchases
+-- required that person met the wall on their first page — the studio
+-- had let them in and then refused them. The decision: a member or an
+-- admin given access by e-mail WITHOUT a plan gets the whole studio, no
+-- wall and no caps, for as long as the grant stands. So, for a person
+-- on no plan whose grant is applied, unexpired (`until` null or in the
+-- future) and whose membership is not disabled:
+--
+--     billing_status().entitled  = true
+--     billing_status().features  = open_features() (the top paid plan's)
+--     billing_status().granted   = true
+--     user_limits()              = '{}' (unlimited)
+--
+-- Revoking deletes the row and `until` passing ends the predicate, so
+-- either returns them to the ordinary state by itself: a trial if they
+-- never used one, else the wall. A grant that NAMES a plan is that plan
+-- (section 32 puts it on the account) and is not "granted" here — the
+-- administrator chose the tier. Nothing is written; this is a read.
+--
+--   33.2a email_grant_active() — the predicate, internal
+--   33.2b user_limits(), restated (the §32.2 body, plus the grant)
 --
 -- Idempotent: CREATE OR REPLACE throughout, no ALTER, no data change.
 --
@@ -8724,6 +8751,43 @@ as $$
     left join public.billing_settings s on s.id;
 $$;
 
+-- 33.2a email_grant_active() -----------------------------------------------
+/** True while this person holds an applied, unexpired, PLAN-LESS grant
+ *  from the console (section 32) and their membership is not disabled.
+ *  Internal: billing_status() and user_limits() are how anybody learns it. */
+create or replace function public.email_grant_active(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select p_user is not null and exists (
+    select 1 from public.email_grants g
+      join public.studio_members m on m.user_id = g.applied_user and m.disabled_at is null
+     where g.applied_user = p_user
+       and g.plan is null
+       and (g.until is null or g.until > now()));
+$$;
+
+-- 33.2b user_limits(), RESTATED ---------------------------------------------
+-- The §32.2 body, plus: a plan-less grant is uncapped while it stands.
+-- user_plan() is asked first so a grant never lowers a bought plan's caps
+-- (a bought plan's caps are its own; '{}' is only for somebody on none).
+create or replace function public.user_limits(p_user uuid default auth.uid())
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select case
+           when not public.purchases_required() then '{}'::jsonb
+           when public.user_plan(p_user) = 'free' and public.email_grant_active(p_user) then '{}'::jsonb
+           else coalesce((select p.limits from public.plans p where p.id = public.user_plan(p_user)), '{}'::jsonb)
+         end;
+$$;
+
 -- 33.2 billing_status(), RESTATED -------------------------------------------
 create or replace function public.billing_status()
 returns jsonb
@@ -8743,6 +8807,7 @@ declare
   t_on   boolean;
   feat   jsonb;
   req    boolean;
+  g_on   boolean;
 begin
   if uid is null then raise exception 'Sign in first' using errcode = '42501'; end if;
   pl := public.user_plan(uid);
@@ -8754,6 +8819,8 @@ begin
   t_ends := public.trial_ends_at(uid);
   t_on   := public.trial_active(uid);
   req    := coalesce(s.purchase_required, false);
+  -- section 33: access given by e-mail with no plan, while it stands
+  g_on   := pl = 'free' and public.email_grant_active(uid);
 
   feat := coalesce((select p.features from public.plans p where p.id = pl), '{}'::jsonb);
   if t_on and m.trial_scope = 'full' and pl = 'free' then
@@ -8761,7 +8828,7 @@ begin
                        where p.id = coalesce(s.trial_plan, 'indie')), '{}'::jsonb);
   end if;
   -- section 32: nothing to buy, so nothing held back
-  if not req then
+  if not req or g_on then
     feat := public.open_features();
   end if;
 
@@ -8785,12 +8852,13 @@ begin
     'trial_used',    m.trial_started_at is not null,
     'trial_source',  m.trial_source,
     'trial_scope',   case when t_on then m.trial_scope end,
-    'entitled',      (not req) or (pl <> 'free') or t_on,
+    'entitled',      (not req) or (pl <> 'free') or t_on or g_on,
     -- section 32
     'purchase_required', req,
     -- section 33
     'trial_hours',   round(coalesce(s.trial_minutes, 30) / 60.0, 2),
     'server_now',    now(),
+    'granted',       g_on,
     'usage', jsonb_build_object(
       'projects',      (select count(*) from public.projects p where p.owner_id = uid),
       'shares',        (select count(*) from public.shares sh join public.projects p on p.id = sh.project_id
@@ -8825,9 +8893,12 @@ $fn$;
 
 -- 33.4 GRANTS -----------------------------------------------------------
 revoke execute on function public.trial_offer()                from public;
+revoke execute on function public.email_grant_active(uuid)     from public, anon, authenticated;
+revoke execute on function public.user_limits(uuid)            from public, anon;
 revoke execute on function public.billing_status()             from public, anon;
 revoke execute on function public.admin_get_billing_settings() from public, anon;
 grant  execute on function public.trial_offer()                to anon, authenticated;
+grant  execute on function public.user_limits(uuid)            to authenticated;
 grant  execute on function public.billing_status()             to authenticated;
 grant  execute on function public.admin_get_billing_settings() to authenticated;
 
@@ -8846,5 +8917,119 @@ notify pgrst, 'reload schema';
 --  6. quote_for(<anyone>, 'free') -> 22023 "not for sale": the Free row
 --     cannot be bought, whatever a client draws.
 --  7. re-running the section is a no-op.
+--  8. ON: a member given access by e-mail with no plan is entitled,
+--     granted true, features = open_features(), limits and user_limits()
+--     '{}', and syncs past the free cap (no P0402). Revoked: entitled
+--     false and the trial offered (never used); a timed grant whose
+--     `until` has passed: the same. A grant naming a plan is granted
+--     false and on that plan.
 -- Test file: scripts/schema-tests/trial-hours.sql (run by npm run test:schema).
+-- ============================================================
+
+-- ============================================================
+-- 34. A REFUND GIVES A FRESH TRIAL   RUN LIVE: not yet
+-- ------------------------------------------------------------
+-- The owner's decision, 11 Oct 2026: "a refunded buyer gets a fresh
+-- trial of the configured length." Section 30 decided the opposite —
+-- start_trial() answers 'paid' for anybody with a paid_at, refunded or
+-- not, "so a refund is not a way back to a fresh trial" — and that
+-- refusal STAYS: a person cannot ask for a second trial. The refund
+-- gives them one, once per refund, by itself.
+--
+-- ONE TRIGGER, ON THE ROW, SO EVERY PATH IS COVERED ONCE. A payment
+-- becomes 'refunded' in exactly one function, mark_payment_refunded()
+-- (sections 16.6 and 27.7), reached from the rzp-webhook's
+-- refund.processed, from rzp-refund through record_refund('processed'),
+-- and from a refund made in the Razorpay dashboard (the webhook again).
+-- A trigger on payments.status catches all of them and any writer added
+-- later, and old.status <> 'refunded' makes a redelivered webhook a
+-- no-op — the same guard 27.7 put on the function.
+--
+-- DEFERRED TO COMMIT, on purpose. mark_payment_refunded() writes the
+-- status FIRST and ends the plan (accounts.plan_until) in the statement
+-- after it, so an ordinary AFTER trigger would still see the refunded
+-- plan as current and decline. A constraint trigger INITIALLY DEFERRED
+-- runs at commit, when the plan has ended, and "no other active paid
+-- plan" is then simply user_plan() = 'free'. A buyer whose account
+-- still carries a plan — a later purchase, a grant, the refund of an
+-- older payment — keeps their plan and their trial row untouched.
+--
+-- WHAT IS WRITTEN. The studio_members row (activate_payment() made
+-- one; inserted if somehow absent, the parity every admitting path
+-- keeps): trial_started_at = now(), trial_minutes = the CURRENT
+-- billing_settings.trial_minutes (the configured hours, snapshotted
+-- like every trial), trial_source = 'refund', trial_scope = the
+-- configured billing_settings.trial_scope. disabled_at is never
+-- touched: a refund does not re-admit somebody an administrator turned
+-- away. The trial is still subject to trial_enabled, like every trial.
+--
+-- NEVER ALLOWED TO BREAK A REFUND. A failure in here is a warning; the
+-- money has moved and the payment row must say so.
+--
+--   34.1  trial_source learns 'refund'
+--   34.2  payments_refund_trial(), and the trigger
+--   34.3  grants
+--   34.4  CHECKS TO RUN
+-- ============================================================
+
+-- 34.1 trial_source -----------------------------------------------------
+-- Drop and re-add, so a re-run converges on the same constraint.
+alter table public.studio_members drop constraint if exists studio_members_trial_source_check;
+alter table public.studio_members add constraint studio_members_trial_source_check
+  check (trial_source is null or trial_source in ('signup', 'code', 'admin', 'refund'));
+
+-- 34.2 THE TRIGGER --------------------------------------------------------
+create or replace function public.payments_refund_trial()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  s public.billing_settings;
+begin
+  if new.status is distinct from 'refunded' or old.status is not distinct from 'refunded' then return null; end if;
+  if new.user_id is null then return null; end if;
+  begin
+    -- at commit: the refunded plan has ended, so anything left is another plan
+    if public.user_plan(new.user_id) <> 'free' then return null; end if;
+    select * into s from public.billing_settings x where x.id;
+    insert into public.studio_members (user_id, role, trial_started_at, trial_minutes, trial_source, trial_scope)
+    values (new.user_id, 'user', now(), coalesce(s.trial_minutes, 30), 'refund', coalesce(s.trial_scope, 'sample'))
+    on conflict (user_id) do update
+       set trial_started_at = now(),
+           trial_minutes    = excluded.trial_minutes,
+           trial_source     = 'refund',
+           trial_scope      = excluded.trial_scope;
+  exception when others then
+    raise warning 'refund trial for % not started: %', new.user_id, sqlerrm;
+  end;
+  return null;
+end;
+$fn$;
+drop trigger if exists payments_refund_trial on public.payments;
+create constraint trigger payments_refund_trial
+  after update of status on public.payments
+  deferrable initially deferred
+  for each row execute function public.payments_refund_trial();
+
+-- 34.3 GRANTS -----------------------------------------------------------
+revoke execute on function public.payments_refund_trial() from public, anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 34.4 CHECKS TO RUN, none of which has been run live -------------------
+--  1. mark_payment_refunded() on a buyer's only payment -> at commit the
+--     plan is free, studio_members.trial_started_at = now(),
+--     trial_minutes = billing_settings.trial_minutes, trial_source
+--     'refund', trial_scope the setting; billing_status() trial_active
+--     true, trial_ends_at = now() + the configured hours.
+--  2. the same webhook redelivered -> nothing moves (status already
+--     'refunded').
+--  3. a refund while the account carries another paid plan -> the trial
+--     row is exactly what it was.
+--  4. start_trial() for the refunded buyer still refuses ('used') — the
+--     trial came from the refund, not from asking.
+--  5. re-running the section is a no-op (one constraint, one trigger).
+-- Test file: scripts/schema-tests/refund-trial.sql (run by npm run test:schema).
 -- ============================================================

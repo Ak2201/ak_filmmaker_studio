@@ -56,7 +56,23 @@ function userPlan(uid) {
    the P0402 triggers stand down — and billing_status() is entitled with
    the top paid plan's features. */
 export const purchasesRequired = () => F.db.settings.purchase_required !== false;
-function userLimits(uid) { return purchasesRequired() ? ((F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {}) : {}; }
+/* section 33: email_grant_active() — an applied, unexpired, PLAN-LESS
+   grant on a membership that is not disabled. Uncapped and entitled
+   while it stands; revoke (the row deleted) or `until` passing ends it. */
+function grantActive(uid) {
+  if (!uid) return false;
+  const m = F.db.members.get(uid);
+  if (!m || m.disabled_at) return false;
+  for (const g of F.db.emailGrants.values()) {
+    if (g.applied_user === uid && !g.plan && (!g.until || Date.parse(g.until) > Date.now())) return true;
+  }
+  return false;
+}
+const grantedNow = (uid) => userPlan(uid) === 'free' && grantActive(uid);
+function userLimits(uid) {
+  if (!purchasesRequired() || grantedNow(uid)) return {};
+  return (F.db.plans.find((p) => p.id === userPlan(uid)) || {}).limits || {};
+}
 function openFeatures() {
   const top = F.db.plans.filter((p) => p.id !== 'free').sort((a, b) => (PLAN_RANK[b.id] ?? 0) - (PLAN_RANK[a.id] ?? 0))[0];
   return (top && top.features) || {};
@@ -95,7 +111,7 @@ function trialActive(uid) {
   const m = uid && F.db.members.get(uid);
   return !!(t && F.db.settings.trial_enabled && m && !m.disabled_at && t.ends > Date.now());
 }
-function isEntitled(uid) { return !!uid && (!purchasesRequired() || userPlan(uid) !== 'free' || trialActive(uid)); }
+function isEntitled(uid) { return !!uid && (!purchasesRequired() || userPlan(uid) !== 'free' || trialActive(uid) || grantedNow(uid)); }
 
 /** "This person is mid-trial." Minutes and scope default to what
  *  signing up buys; startedAt is a ms epoch so a proof can place the
@@ -213,6 +229,13 @@ function endPlanByRefund(pay) {
   pay.status = 'refunded';
   const a = F.db.accounts.find((x) => x.id === pay.account_id);
   if (a && a.plan === pay.plan_id) a.plan_until = new Date(Date.now() - 1000).toISOString();
+  /* section 34: the trigger at commit — no other plan left, so the trial
+     restarts now, for the configured length and scope, source 'refund'. */
+  if (userPlan(pay.user_id) === 'free') {
+    const cur = F.db.members.get(pay.user_id);
+    setTrial(pay.user_id, { minutes: F.db.settings.trial_minutes || 30, source: 'refund',
+      scope: F.db.settings.trial_scope || 'sample', startedAt: Date.now(), role: (cur && cur.role) || 'user' });
+  }
 }
 /** What the refund.processed WEBHOOK does, for a proof to call: settle the refunds row, end the plan once. */
 export function webhookRefundProcessed(paymentRowId) {
@@ -401,7 +424,8 @@ function rpc(name, args, user, route) {
          seeded as {sample_only, new_projects:false}. */
       let feat = (F.db.plans.find((p) => p.id === pl) || {}).features || {};
       if (tOn && t && t.scope === 'full') feat = (F.db.plans.find((p) => p.id === (F.db.settings.trial_plan || 'indie')) || {}).features || {};
-      if (!purchasesRequired()) feat = openFeatures();
+      const gOn = grantedNow(user.id);
+      if (!purchasesRequired() || gOn) feat = openFeatures();
       return json(route, 200, {
         ...('purchase_required' in F.db.settings ? { purchase_required: purchasesRequired() } : {}),
         plan: pl, plan_name: (F.db.plans.find((p) => p.id === pl) || {}).name, limits: lim,
@@ -418,6 +442,7 @@ function rpc(name, args, user, route) {
         // section 33. F.db.serverSkewMs moves the server's clock, for the band's skew check.
         trial_hours: Math.round((F.db.settings.trial_minutes || 30) / 60 * 100) / 100,
         server_now: new Date(Date.now() + (F.db.serverSkewMs || 0)).toISOString(),
+        granted: gOn,
         account_id: acc ? acc.id : null, account_name: acc ? acc.name : null,
         plan_until: pl !== 'free' && acc ? acc.plan_until : null, bought_plan: acc ? acc.plan : null,
         lapsed: !!(acc && acc.plan !== 'free' && acc.plan_until && Date.parse(acc.plan_until) <= Date.now()),

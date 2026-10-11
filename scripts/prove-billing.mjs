@@ -1197,6 +1197,53 @@ try {
     F.db.serverSkewMs = 0;
     allErrors.push(...B.errors); await B.ctx.close();
   }
+
+  console.log('(s) access given by the studio, and a refund’s fresh trial (schema sections 33 and 34)');
+  F.reset();
+  {
+    /* A member given access by e-mail with NO plan, while purchases are
+       required (the fake's default): no wall, no band, the studio's own
+       words. Their trial was never used. */
+    const ben = USERS['tok-ben'];
+    F.db.members.set(ben.id, { role: 'user', disabled_at: null });
+    clearTrial(ben.id);
+    F.db.emailGrants.set(ben.email, { email: ben.email, role: 'member', plan: null, until: null, applied_user: ben.id,
+      applied_at: new Date().toISOString(), applied_account: null, applied_plan: null, created_member: false, prior_role: 'user', prior: null });
+    const G = await soloContext({ tok: 'tok-ben' });
+    await G.page.goto(BASE + 'index.html');
+    await G.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getSession && window.StudioCloud.getSession(), null, { timeout: 10000 }).catch(() => {});
+    await G.page.waitForTimeout(2500);
+    ok(!(await G.page.$('.pg-wall')) && !(await G.page.$('.sh-trial')), 'a plan-less grant while purchases are required: no wall and no trial band');
+    await G.page.goto(BASE + 'purchase.html');
+    await G.page.waitForSelector('.pu-granted', { timeout: 10000 }).catch(() => {});
+    const pu = await G.page.textContent('#plan').catch(() => '');
+    ok(/Access given by the studio/.test(pu) && !/free trial/i.test(pu), 'purchase.html says "Access given by the studio" and no trial wording');
+    /* Revoked: the ordinary state — never had a trial, so the wall offers one. */
+    F.db.emailGrants.clear();
+    await G.page.goto(BASE + 'index.html');
+    await G.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 }).catch(() => {});
+    ok((await G.page.getAttribute('.pg-wall', 'data-kind').catch(() => '')) === 'fresh', 'revoked: the wall is back, offering the unused trial');
+    allErrors.push(...G.errors); await G.ctx.close();
+
+    /* A buyer whose trial ran out long ago is refunded: the refund
+       starts a fresh trial of the configured length, and the band says so. */
+    const amy = USERS['tok-amy'];
+    F.db.settings.trial_minutes = 120;
+    F.db.members.set(amy.id, { role: 'user', disabled_at: null });
+    expireTrial(amy.id);
+    const acc = { id: 'acc_refund', name: 'Amy’s Studio', owner_id: amy.id, plan: 'indie', plan_period: 'lifetime', plan_until: null, seat_limit: 3, created_at: new Date().toISOString() };
+    F.db.accounts.push(acc);
+    F.db.payments.push({ id: 'payRT', user_id: amy.id, account_id: acc.id, plan_id: 'indie', period: 'lifetime', amount_paise: 799900, status: 'paid',
+      razorpay_order_id: 'order_RT', razorpay_payment_id: 'pay_RT', created_at: new Date().toISOString(), paid_at: new Date().toISOString(), ends_at: null });
+    webhookRefundProcessed('payRT');
+    ok(F.db.members.get(amy.id)?.trial_source === 'refund' && F.db.members.get(amy.id)?.trial_minutes === 120, '(fake) the refund restarted the trial: source refund, the configured 120 minutes');
+    const R = await soloContext({ tok: 'tok-amy' });
+    await R.page.goto(BASE + 'index.html');
+    await R.page.waitForSelector('.sh-trial', { timeout: 12000 }).catch(() => {});
+    ok(!!(await R.page.$('.sh-trial')) && !(await R.page.$('.pg-wall')), 'a refunded buyer sees the trial band, and no wall');
+    ok(/Trial · [12] h/.test(await R.page.textContent('.sh-trial .tb-text').catch(() => '')), 'counting down the configured hours: ' + (await R.page.textContent('.sh-trial .tb-text').catch(() => '')));
+    allErrors.push(...R.errors); await R.ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

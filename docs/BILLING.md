@@ -689,8 +689,8 @@ server locks out the people who have paid, and `npm run verify` loads all
 §26 → §27 → §28 → §29 → §30 → §31. **ALL SIX RAN LIVE on 9 Oct 2026**,
 each verified afterwards over PostgREST rather than from the screen.
 
-**§32 and §33 are NOT run live** — see §13 and §14 below; they are the
-next owner steps, in that order.
+**§32, §33 and §34 are NOT run live** — see §13, §14 and §15 below; they
+are the next owner steps, in that order.
 
 **Checksum every paste.** `pbcopy` → Chrome turns an em-dash into `‚Äî`;
 §30's refusal sentences carry em-dashes and `₹`, so that mojibake would
@@ -796,8 +796,20 @@ use and purchase.html says so.
 | Object | What it does |
 | --- | --- |
 | `trial_offer()` | anon + authenticated: `{trial_enabled, trial_minutes, trial_hours, purchase_required}` for start.html's trial card |
-| `billing_status()` (restated in full from §32.3) | every key kept, plus `trial_hours` and `server_now` — the trial band counts against the SERVER's clock |
+| `billing_status()` (restated in full from §32.3) | every key kept, plus `trial_hours`, `server_now` — the trial band counts against the SERVER's clock — and `granted` |
+| `email_grant_active(uid)` | internal: an applied, unexpired (`until` null or future), PLAN-LESS grant on a membership that is not disabled |
+| `user_limits()` (restated from §32.2) | also `'{}'` for somebody on no plan while `email_grant_active()` |
 | `admin_get_billing_settings()` (restated) | adds `trial_hours` |
+
+**Access given by e-mail is access (owner, 11 Oct 2026).** With purchases
+required, a Member or Admin given access by e-mail WITHOUT a plan gets the
+whole studio — `entitled` true, `features` = `open_features()`, limits
+`'{}'`, `granted` true — until the grant is revoked or its `until` passes.
+Then they are in the ordinary state: the trial if they never used it, else
+the wall. A grant that NAMES a plan is that plan (`granted` false). Client:
+`plan-gate.js` reason `granted` (no band, no wall), the dashboard tile and
+purchase.html say "Access given by the studio", invite.html's "You're in"
+says so too.
 
 No ALTER, no data change, CREATE OR REPLACE throughout; re-runs cleanly.
 
@@ -815,18 +827,60 @@ tab takes another tab's wall down (BroadcastChannel `fms-billing`, nothing
 stored), and the band's expiry re-asks the server once if the two clocks
 disagreed.
 
-**Proved.** `test:schema` (`scripts/schema-tests/trial-hours.sql`),
-`prove:billing` (q) and (r), `prove:gate` (q), `prove:growth`.
+**Proved.** `test:schema` (`scripts/schema-tests/trial-hours.sql`, check 8
+for the grant), `prove:billing` (q), (r) and (s), `prove:gate` (m2) and
+(q), `prove:growth`.
 
 ### Deploy (owner) — after §32
 
-1. Run **§33** (from `-- 33. A FREE TRIAL` to the end of
-   `supabase-schema.sql`) the same checksummed way as §32.
+1. Run **§33** (from `-- 33. A FREE TRIAL` down to, NOT including,
+   `-- 34. A REFUND GIVES A FRESH TRIAL` — §34 is its own step, §15 below)
+   the same checksummed way as §32.
 2. Confirm over PostgREST: `rpc/trial_offer` with the anon key answers the
-   four keys; `rpc/billing_status` signed in carries `server_now`.
+   four keys; `rpc/billing_status` signed in carries `server_now` and
+   `granted`.
 3. In the console, set the trial length in hours (Growth → Trial). Until §33
    runs the client still works: it reads `trial_minutes`, and
-   `server_now`/`trial_offer()` are optional (absent ⇒ the browser's clock
-   and the landing page's "a limited time").
-4. Legal copy is unchanged and still mentions "the free plan" (refund.html,
-   terms.html) — an owner/legal edit, not done here.
+   `server_now`/`trial_offer()`/`granted` are optional (absent ⇒ the
+   browser's clock, the landing page's "a limited time", and no grant
+   wording — which, with purchases required, would wall a plan-less grant,
+   so run §33 BEFORE turning Purchases required on).
+4. Legal copy: refund.html §7 and terms.html §4–§5 now say "free trial"
+   of the configured hours instead of "the free plan" (11 Oct 2026).
+
+## 15. A refund gives a fresh trial (schema §34, 11 Oct 2026). NOT RUN LIVE.
+
+**The owner's decision.** A refunded buyer gets a FRESH trial of the
+configured length. `start_trial()` still refuses a second trial on request
+(`used` / `paid`); the refund gives one by itself.
+
+**One trigger covers every path.** A payment becomes `refunded` only in
+`mark_payment_refunded()` (§16.6 / §27.7), reached from rzp-webhook's
+`refund.processed`, from rzp-refund via `record_refund('processed')`, and
+from a dashboard refund (the webhook again). `payments_refund_trial` is a
+CONSTRAINT trigger on `payments.status`, **deferred to commit**: the status
+is written before the plan is ended, so only at commit is "no other active
+paid plan" simply `user_plan() = 'free'`. Then the studio_members row gets
+`trial_started_at = now()`, `trial_minutes` = the current setting,
+`trial_source = 'refund'`, `trial_scope` = the configured scope;
+`disabled_at` is never touched. A redelivered webhook is a no-op
+(`old.status` already `refunded`); a buyer still on another plan keeps their
+row untouched; a failure inside is a WARNING, never a lost refund.
+
+| Object | What it does |
+| --- | --- |
+| `studio_members_trial_source_check` | dropped and re-added with `'refund'` |
+| `payments_refund_trial()` + constraint trigger `payments_refund_trial` | the fresh trial, at commit |
+
+**Proved.** `test:schema` (`scripts/schema-tests/refund-trial.sql`),
+`prove:billing` (s) (a refunded buyer sees the trial band).
+
+### Deploy (owner) — after §33
+
+1. Run **§34** (from `-- 34. A REFUND GIVES A FRESH TRIAL` to the end of
+   `supabase-schema.sql`) the same checksummed way.
+2. Confirm: `select tgname, tgdeferrable, tginitdeferred from pg_trigger
+   where tgname = 'payments_refund_trial'` → one row, true, true; and
+   `pg_get_constraintdef` of `studio_members_trial_source_check` names
+   `refund`.
+3. No edge function changes and no redeploy are needed.

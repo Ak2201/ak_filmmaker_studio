@@ -1,10 +1,16 @@
 {
-  "_about": "Client-visible feature matrix: the planned single source for the pricing table. It does NOT change gating by itself; live gating comes from the database plans.features. Plan ids are the DB ids (free/starter/indie/pro); labels are Basic/Intermediate/Pro. kind=limit rows are enforced by plans.limits. `inverted` rows are true (restricting) for the listed plans.",
+  "_about": "THE SINGLE SOURCE of what each plan includes (owner, 11 Oct 2026: three plans, each includes everything below it). `plans` lists every plan id that has the row (the lowest paid one is where it is first sold), `free` meaning the trial / no-plan state, which is never sold. Module rows are every module id in navigation.json and carry no label (navigation.json has it); capability rows carry the label. Live gating reads the database plans.features, which schema section 35 sets from this file (scripts/make-plan-features-sql.mjs; npm run test:plans fails if the two differ). The free column mirrors the section 18 seed {sample_only: true, new_projects: false}: section 35 does not touch it. `inverted` rows restrict the plans listed. kind=limit rows live in plans.limits.",
   "plans": {
     "free": "Free",
     "starter": "Basic",
     "indie": "Intermediate",
     "pro": "Pro"
+  },
+  "lines": {
+    "_about": "One line per PAID plan, said before what it adds (start.html, the plan cards). The lists themselves are derived from `features`, never typed.",
+    "starter": "Write the film.",
+    "indie": "Prepare it.",
+    "pro": "Shoot it and finish it: everything."
   },
   "features": [
     {
@@ -31,6 +37,7 @@
       "kind": "capability",
       "label": "Script import",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -39,8 +46,9 @@
     {
       "key": "exports",
       "kind": "capability",
-      "label": "Exports",
+      "label": "PDF exports",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -51,6 +59,7 @@
       "kind": "capability",
       "label": "Google Drive backup",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -60,6 +69,7 @@
       "kind": "capability",
       "label": "AI tools (your own key)",
       "plans": [
+        "free",
         "pro"
       ]
     },
@@ -68,13 +78,13 @@
       "kind": "capability",
       "label": "Remove branding",
       "plans": [
+        "free",
         "pro"
       ]
     },
     {
       "key": "case-studies",
       "kind": "module",
-      "label": "Case Studies",
       "plans": [
         "free",
         "starter",
@@ -85,7 +95,6 @@
     {
       "key": "dissection",
       "kind": "module",
-      "label": "Dissection",
       "plans": [
         "free",
         "starter",
@@ -96,29 +105,6 @@
     {
       "key": "glossary",
       "kind": "module",
-      "label": "Film Terminology",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
-    },
-    {
-      "key": "feature-blueprint",
-      "kind": "module",
-      "label": "Feature Blueprint",
-      "plans": [
-        "free",
-        "starter",
-        "indie",
-        "pro"
-      ]
-    },
-    {
-      "key": "short-blueprint",
-      "kind": "module",
-      "label": "Short Blueprint",
       "plans": [
         "free",
         "starter",
@@ -129,8 +115,8 @@
     {
       "key": "story-beats",
       "kind": "module",
-      "label": "Beats & Pacing",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -139,8 +125,8 @@
     {
       "key": "idea-vault",
       "kind": "module",
-      "label": "Idea Vault",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -149,9 +135,8 @@
     {
       "key": "pitch-deck",
       "kind": "module",
-      "label": "Pitch Deck",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -159,8 +144,8 @@
     {
       "key": "screenplay",
       "kind": "module",
-      "label": "Screenplay",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -169,38 +154,28 @@
     {
       "key": "revisions",
       "kind": "module",
-      "label": "Revisions",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
       ]
     },
     {
-      "key": "docs",
+      "key": "import-script",
       "kind": "module",
-      "label": "Documents",
       "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
       ]
     },
     {
-      "key": "scene-list",
+      "key": "script-breakdown",
       "kind": "module",
-      "label": "Scene List",
       "plans": [
-        "starter",
-        "indie",
-        "pro"
-      ]
-    },
-    {
-      "key": "screen-time",
-      "kind": "module",
-      "label": "Screen Time",
-      "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -209,9 +184,8 @@
     {
       "key": "breakdowns",
       "kind": "module",
-      "label": "Script Breakdowns",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -219,8 +193,37 @@
     {
       "key": "elements",
       "kind": "module",
-      "label": "Elements",
       "plans": [
+        "free",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "scene-list",
+      "kind": "module",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "screen-time",
+      "kind": "module",
+      "plans": [
+        "free",
+        "starter",
+        "indie",
+        "pro"
+      ]
+    },
+    {
+      "key": "docs",
+      "kind": "module",
+      "plans": [
+        "free",
         "starter",
         "indie",
         "pro"
@@ -229,9 +232,8 @@
     {
       "key": "auto-tag",
       "kind": "module",
-      "label": "Auto-Tagging",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -239,9 +241,8 @@
     {
       "key": "cast-matrix",
       "kind": "module",
-      "label": "Cast Matrix",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -249,9 +250,8 @@
     {
       "key": "shot-list",
       "kind": "module",
-      "label": "Shot List",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -259,9 +259,8 @@
     {
       "key": "storyboard",
       "kind": "module",
-      "label": "Storyboard",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -269,9 +268,8 @@
     {
       "key": "lookbook",
       "kind": "module",
-      "label": "Lookbook",
       "plans": [
-        "starter",
+        "free",
         "indie",
         "pro"
       ]
@@ -279,8 +277,8 @@
     {
       "key": "media",
       "kind": "module",
-      "label": "Media",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -288,8 +286,8 @@
     {
       "key": "budget",
       "kind": "module",
-      "label": "Budget",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -297,8 +295,8 @@
     {
       "key": "contacts",
       "kind": "module",
-      "label": "Contacts",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -306,8 +304,8 @@
     {
       "key": "stripboard",
       "kind": "module",
-      "label": "Stripboard",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -315,8 +313,8 @@
     {
       "key": "songs",
       "kind": "module",
-      "label": "Songs",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -324,8 +322,8 @@
     {
       "key": "calendar",
       "kind": "module",
-      "label": "Calendar",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -333,8 +331,8 @@
     {
       "key": "locations",
       "kind": "module",
-      "label": "Locations",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -342,8 +340,8 @@
     {
       "key": "dood",
       "kind": "module",
-      "label": "Day Out of Days",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -351,8 +349,8 @@
     {
       "key": "sides",
       "kind": "module",
-      "label": "Sides",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -360,8 +358,8 @@
     {
       "key": "reports",
       "kind": "module",
-      "label": "Reports",
       "plans": [
+        "free",
         "indie",
         "pro"
       ]
@@ -369,34 +367,32 @@
     {
       "key": "shoot-day",
       "kind": "module",
-      "label": "Shoot Day",
       "plans": [
-        "indie",
+        "free",
         "pro"
       ]
     },
     {
       "key": "call-sheets",
       "kind": "module",
-      "label": "Call Sheets",
       "plans": [
-        "indie",
+        "free",
         "pro"
       ]
     },
     {
       "key": "edit-log",
       "kind": "module",
-      "label": "Edit Log",
       "plans": [
+        "free",
         "pro"
       ]
     },
     {
       "key": "deliverables",
       "kind": "module",
-      "label": "Deliverables",
       "plans": [
+        "free",
         "pro"
       ]
     },
@@ -405,11 +401,10 @@
       "kind": "limit",
       "label": "Chrome extension",
       "plans": [
-        "starter",
         "indie",
         "pro"
       ],
-      "note": "Enforced by limits.extension, not features"
+      "note": "Enforced by plans.limits.extension (schema section 35 sets it), not by features"
     }
   ]
 }

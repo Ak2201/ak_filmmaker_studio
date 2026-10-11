@@ -105,6 +105,7 @@ import Script, {
   TITLE_FIELDS, hasTitlePage, normaliseTitlePage
 } from '../lib/script.js';
 import { ask, askDanger } from '../ui/dialog.js';
+import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 /* The typesetter and the parser are both lazy chunks. Neither is
    needed to read or write a page, both are a few kilobytes of
@@ -2314,6 +2315,7 @@ function resetImport() {
 }
 
 async function takeScript(text, filename) {
+  if (!PlanGate.guard('script_import')) return;
   if (!String(text || '').trim()) { say('That file was empty.'); return; }
   let Parser;
   try { Parser = await importer(); }

@@ -84,6 +84,7 @@ import Panel from '../ui/ai-panel.js';
 import { listSkins, currentSkin } from '../lib/skin.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
+import PlanGate from '../lib/plan-gate.js';
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
    know what a backup looks like. Already a static import here
@@ -590,6 +591,19 @@ function renderDrive() {
 
   const cloudSwitch = cloudSyncSwitch();
   if (cloudSwitch) sec.append(cloudSwitch);
+
+  /* The plan's `drive_backup` (src/data/plan-matrix.json: Intermediate
+     and up). Locked: say so and offer the way up; the backup FILE stays
+     a download for everybody (Storage, Home), so nothing is held back. */
+  if (!PlanGate.allowed('drive_backup')) {
+    sec.dataset.planLocked = 'drive_backup';
+    sec.append(h('p.st-note', {
+      text: 'Google Drive backup is not part of your plan. You can still '
+          + 'download a backup file from the Storage section or from Home.'
+    }));
+    sec.append(h('div.st-drive-actions', {}, [h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })]));
+    return sec;
+  }
 
   if (!st.configured) {
     sec.append(h('p.st-note', {
@@ -1122,6 +1136,8 @@ async function refreshGate() {
 }
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('gate:changed', () => refreshGate());
+/* The Drive section reads the plan's drive_backup, which arrives later. */
+Store.subscribe('plan:changed', () => { if (!busy) render(); });
 refreshGate();
 
 render();

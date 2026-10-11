@@ -53,7 +53,7 @@
 /* ---- the tab lock: one tab of a bigger page, not the page ----
    The section keeps its id and its place in the tab strip; its own
    content is hidden under the card, never removed. */
-section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
+[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .pg-lock-inline {
   display: grid;
   place-items: start center;

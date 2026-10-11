@@ -56,6 +56,10 @@
 import Store, { rawGet, rawSet, rawRemove } from './store.js';
 import { buildBackup, applyBackup, backupShape } from './backup.js';
 import Drive from './drive.js';
+/* The plan's `drive_backup` capability (src/data/plan-matrix.json:
+   Intermediate and up). Connecting asks; an automatic push on a plan
+   that lacks it is skipped quietly. Unknown is allowed (plan-gate.js). */
+import PlanGate from './plan-gate.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -263,6 +267,7 @@ async function headAfterWrite(fileId, writeResult) {
 async function _doPush(opts) {
   opts = opts || {};
   if (!isConnected()) return { ok: false, reason: 'not-connected' };
+  if (!PlanGate.allowed('drive_backup')) return { ok: false, reason: 'plan' };
   const st = readState();
   setStatus(DRIVE_STATES.SYNCING, 'Uploading to Drive…');
   try {
@@ -418,6 +423,7 @@ export function resolveConflict(choice) {
  */
 export async function connect() {
   if (!Drive.isConfigured()) throw new Error('This build has no Google client id.');
+  if (!PlanGate.guard('drive_backup')) throw new Error('Google Drive backup is not part of your plan.');
   setStatus(DRIVE_STATES.SYNCING, 'Asking Google…');
   await Drive.getToken({ interactive: true });
 

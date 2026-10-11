@@ -51,6 +51,7 @@ import Script, {
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
   pageCount, formatPages
 } from '../lib/script.js';
+import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 
 const typesetter = () => import('../lib/screenplay-export.js');
 const importer = () => import('../lib/script-import.js');
@@ -654,9 +655,10 @@ function drawImport() {
   impDialog = dlg;
   (dlg.querySelector('textarea, button.primary') || dlg).focus?.();
 }
-function openImport(inline = false) { if (!impDialog) { imp = null; impInline = inline; drawImport(); } }
+function openImport(inline = false) { if (!PlanGate.guard('script_import')) return; if (!impDialog) { imp = null; impInline = inline; drawImport(); } }
 
 async function takeScript(text, name) {
+  if (!PlanGate.guard('script_import')) return;
   if (!String(text || '').trim()) { say('That file was empty.'); return; }
   let Parser;
   try { Parser = await importer(); }

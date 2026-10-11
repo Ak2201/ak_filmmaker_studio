@@ -75,6 +75,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProcessed, setTrial, expireTrial, clearTrial } from './fake-supabase.mjs';
+import { loadMatrixModule } from './make-plan-features-sql.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
@@ -1243,6 +1244,62 @@ try {
     ok(!!(await R.page.$('.sh-trial')) && !(await R.page.$('.pg-wall')), 'a refunded buyer sees the trial band, and no wall');
     ok(/Trial · [12] h/.test(await R.page.textContent('.sh-trial .tb-text').catch(() => '')), 'counting down the configured hours: ' + (await R.page.textContent('.sh-trial .tb-text').catch(() => '')));
     allErrors.push(...R.errors); await R.ctx.close();
+  }
+
+  console.log('(t) the three plans, as plan-matrix.json says (schema section 35)');
+  F.reset();
+  {
+    /* The fake's plans take EXACTLY the maps section 35 writes — the same
+       functions generate both — so this is the owner's split as a buyer
+       meets it: Basic writes, Intermediate prepares, Pro is everything. */
+    const M = await loadMatrixModule();
+    for (const p of F.db.plans) if (p.id !== 'free') { p.features = M.matrixFeatures(p.id); p.limits = { ...p.limits, ...M.matrixLimits(p.id) }; }
+    const amy = USERS['tok-amy'];
+    F.db.members.set(amy.id, { role: 'user', disabled_at: null });
+    expireTrial(amy.id);
+    const acc = { id: 'acc_tiers', name: 'Amy’s Studio', owner_id: amy.id, plan: 'starter', plan_period: 'lifetime', plan_until: null, seat_limit: 1, created_at: new Date().toISOString() };
+    F.db.accounts.push(acc);
+    const T = await soloContext({ tok: 'tok-amy' });
+    const open = async (file) => {
+      await T.page.goto(BASE + file);
+      await T.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().state === 'open', null, { timeout: 10000 }).catch(() => {});
+      await T.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getSession && window.StudioCloud.getSession(), null, { timeout: 10000 }).catch(() => {});
+    };
+    const locked = async (file) => { await open(file); return T.page.waitForSelector('.pg-lock:not(.pg-wall)', { timeout: 8000 }).then(() => true, () => false); };
+    const unlocked = async (file) => { await open(file); await T.page.waitForTimeout(1800); return !(await T.page.$('.pg-lock')); };
+
+    ok(await locked('budget.html'), 'Basic: budget.html is locked');
+    ok(/Not on the Basic plan/.test(await T.page.textContent('.pg-lock').catch(() => '')), 'naming the plan');
+    ok(/Included in the Intermediate plan/.test(await T.page.waitForFunction(() => /Included in the/.test((document.querySelector('.pg-lock-plan') || {}).textContent || ''), null, { timeout: 8000 }).then(() => T.page.textContent('.pg-lock-plan'), () => '')), 'and the lowest plan that has it (Intermediate)');
+    ok(await locked('shoot.html'), 'Basic: shoot.html (Shoot Day) is locked');
+    ok(await unlocked('script.html'), 'Basic: script.html (Script) opens');
+    ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts & revisions) opens');
+    ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
+    ok(await unlocked('reports.html'), 'Basic: reports.html opens — Screen Time is Basic');
+    await T.page.waitForSelector('#cast-matrix[data-tab-lock] .pg-lock-inline', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: on reports.html the Cast Matrix section is locked in place'), () => ok(false, 'Basic: on reports.html the Cast Matrix section is locked in place'));
+    ok(!(await T.page.$('#screentime[data-tab-lock]')), 'and Screen Time is not');
+    ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Script Breakdown, Scene List)');
+    await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
+    ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
+    await open('settings.html#drive');
+    await T.page.waitForSelector('[data-plan-locked="drive_backup"]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: Settings says Drive backup is not part of the plan'), () => ok(false, 'Basic: Settings says Drive backup is not part of the plan'));
+    await open('purchase.html');
+    await T.page.waitForSelector('#plan .pl-card[data-plan="indie"] .pl-adds', { timeout: 10000 }).catch(() => {});
+    { const t = await T.page.textContent('#plan .pl-card[data-plan="indie"] .pl-adds').catch(() => '');
+      ok(/Everything in Basic, plus/.test(t) && /Budget/.test(t) && !/Shoot Day/.test(t), 'the Intermediate card lists what it adds, from the rows: ' + t.replace(/\s+/g, ' ').slice(0, 80)); }
+    { const t = await T.page.textContent('#plan .pl-card[data-plan="pro"] .pl-adds').catch(() => '');
+      ok(/Everything in Intermediate, plus/.test(t) && /Shoot Day/.test(t) && /Deliverables/.test(t), 'the Pro card adds Shoot Day and Deliverables'); }
+
+    acc.plan = 'indie';
+    ok(await unlocked('budget.html'), 'Intermediate: budget.html opens');
+    ok(await locked('shoot.html'), 'Intermediate: shoot.html is still locked');
+    ok(await unlocked('contacts.html'), 'Intermediate: contacts.html opens');
+    await T.page.waitForSelector('#call-sheets[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Intermediate: Call Sheets is locked in place on contacts.html'), () => ok(false, 'Intermediate: Call Sheets is locked in place on contacts.html'));
+
+    acc.plan = 'pro';
+    for (const f of ['shoot.html', 'budget.html', 'edit.html', 'deliverables.html', 'contacts.html']) ok(await unlocked(f), 'Pro: ' + f + ' opens');
+    ok(!(await T.page.$('[data-tab-lock]')), 'Pro: no section is locked anywhere on contacts.html');
+    allErrors.push(...T.errors); await T.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

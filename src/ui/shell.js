@@ -39,14 +39,14 @@
 /* navigation.json is read through navmodel.js (phases/globals), which
    applies the region filter — see its header. Imported for nothing
    else here, so there is no second, unfiltered view of the map. */
-import announce from '../data/announcements.json';
 import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
-import { moduleGroups, guideStops, phases, globals } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals, firstModuleOf } from '../lib/navmodel.js';
+import { renderTrialBand } from './trial-band.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -55,6 +55,39 @@ const CURRENT = (() => {
   const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
   return file === '' ? 'index.html' : file;
 })();
+
+/* ---- TWO SHELL MODES (owner, 11 Oct 2026) -------------------
+   Library, Settings, Admin and the purchase pages are "not project
+   based, general for all", so they are shown without the project items
+   in the band: no stage strip, no search handle, no project switcher,
+   and no stages or Dashboard in the rail. Everything else — the stage
+   and module pages and the dashboard — keeps the full band.
+
+   'global' is DERIVED: the page is the hub, or an entry of
+   navigation.json's `global[]` that is not the dashboard (library,
+   settings, admin), or one of the names in EXTRA_GLOBAL_PAGES. That
+   constant is the ONE hard-coded list: the purchase pages are created
+   by another lane and have no navigation entry, and invite.html is the
+   doorway, so they cannot be derived. Add a page here, nowhere else. */
+const EXTRA_GLOBAL_PAGES = ['index.html', 'purchase.html', 'purchases.html', 'invite.html'];
+function shellMode() {
+  if (EXTRA_GLOBAL_PAGES.includes(CURRENT)) return 'global';
+  const g = globalHere();
+  return g && g.id !== 'dashboard' ? 'global' : 'project';
+}
+const GLOBAL_MODE = shellMode();
+const isGlobalMode = () => GLOBAL_MODE === 'global';
+
+/* The stage strip animates in when you arrive from the dashboard (a
+   stage card was clicked): the referrer is the only signal, because
+   the dashboard lane owns its own code. */
+function cameFromDashboard() {
+  try {
+    if (!document.referrer) return false;
+    const u = new URL(document.referrer);
+    return u.origin === location.origin && /(^|\/)dashboard(\.html)?$/i.test(u.pathname);
+  } catch (e) { return false; }
+}
 
 /* ---- WHERE AM I -------------------------------------------
    The complaint this answers is literally "I don't know where I
@@ -232,72 +265,29 @@ function resolveModule(hash) {
   return { phase: null, module: null, global: null, exact: false };
 }
 
-/* ---- the module rows inside a phase dropdown --------------- */
-
-function moduleRow(m) {
-  const planned = m.status === 'planned';
-  const el = h(planned ? 'button.sh-mod.planned' : 'a.sh-mod', planned
-    ? { type: 'button', 'data-action': 'module-planned', 'data-module': m.id }
-    : { href: m.href });
-  el.dataset.moduleId = m.id;
-  el.append(
-    iconSpan('sh-mod-icon', m),
-    h('span.sh-mod-label', { text: m.label }),
-    h('span.sh-mod-purpose', { text: m.purpose })
-  );
-  if (m.status !== 'built') {
-    el.append(h('span.sh-mod-flag', { text: m.status === 'partial' ? 'PARTIAL' : 'SOON' }));
-  }
-  return el;
+/* A stage tab is a plain link to the stage's main page — the first
+   built module of the phase. There is no dropdown: the stage page is
+   where its modules are listed (tabs, the stage guide), and a menu
+   over the page was a second, slower way to the same place. A real
+   <a> gives keyboard, middle-click and aria-current for free. */
+function phaseHref(phase) {
+  const first = firstModuleOf(phase);
+  return first ? first.href : null;
 }
 
 function phaseTab(phase, active) {
   const wrap = h(`div.sh-phase.sh-ph-${phase.hue}` + (active ? '.is-active' : ''), {
     'data-phase': phase.id
   });
-  const btn = h('button.sh-phase-btn', {
-    type: 'button',
-    'data-action': 'phase-toggle',
-    'data-phase': phase.id,
-    'aria-expanded': 'false'
-  });
+  const href = phaseHref(phase);
+  const btn = h(href ? 'a.sh-phase-btn' : 'span.sh-phase-btn', Object.assign(
+    { 'data-phase': phase.id, title: phase.blurb || phase.label },
+    href ? { href } : {}
+  ));
+  if (active) btn.setAttribute('aria-current', 'page');
   btn.append(h('span.sh-phase-dot', { 'aria-hidden': 'true' }),
              h('span.sh-phase-label', { text: phase.label }));
-  /* A disclosure of links, like the Sections panel below: no
-     `role="menu"`, which promised arrow keys and one Tab stop that
-     nothing here implements (UX audit L17). Tab walks the links,
-     Escape closes, aria-expanded on the button says it is open. */
-  const menu = h('div.sh-phase-menu', { hidden: true, role: 'group', 'aria-label': phase.label });
-  menu.append(h('div.sh-phase-menu-head', { text: phase.blurb }));
-  /* `group` on a module is a sub-heading (Pre-Production's Break down ·
-     See it · Cost & staff it · Schedule it). A heading is printed when
-     the group changes, so the JSON's order is the menu's order and a
-     stage with no groups renders exactly as before. */
-  let group = null;
-  phase.modules.forEach((m) => {
-    if (m.group && m.group !== group) {
-      menu.append(h('div.sh-phase-menu-group', { text: m.group }));
-    }
-    group = m.group || null;
-    menu.append(moduleRow(m));
-  });
-  /* "Guide for this stage": the blueprint parts that cover it. A
-     cross-reference, not a module — its own row under a rule, with no
-     data-module-id, so the plan flags and the "you are here" paint
-     never treat it as one. */
-  const guide = (phase.guide || []).filter((g) => g && g.href);
-  if (guide.length) {
-    const foot = h('div.sh-phase-menu-guide');
-    foot.append(h('span.sh-guide-head', { text: 'Guide for this stage' }));
-    const links = h('span.sh-guide-links');
-    guide.forEach((g, i) => {
-      if (i) links.append(h('span.sh-guide-sep', { text: '·', 'aria-hidden': 'true' }));
-      links.append(h('a.sh-guide-link', { href: g.href, text: g.label }));
-    });
-    foot.append(links);
-    menu.append(foot);
-  }
-  wrap.append(btn, menu);
+  wrap.append(btn);
   return wrap;
 }
 
@@ -325,7 +315,7 @@ function crumbStep(tag, cls, entry, label, props = {}) {
 
 function renderCrumb(crumb, loc) {
   crumb.textContent = '';
-  crumb.className = 'sh-where' + (loc.phase ? ` sh-ph-${loc.phase.hue}` : '');
+  crumb.className = 'sh-where' + (loc.phase && !isGlobalMode() ? ` sh-ph-${loc.phase.hue}` : '');
 
   const home = globals()[0];
   const here = loc.module || loc.global;
@@ -340,7 +330,7 @@ function renderCrumb(crumb, loc) {
   if (atHome) {
     crumb.append(h('span.sh-where-purpose', { text: home.purpose }));
   } else {
-    if (loc.phase) {
+    if (loc.phase && !isGlobalMode()) {
       crumb.append(h('span.sh-where-sep', { text: '›', 'aria-hidden': 'true' }));
       crumb.append(crumbStep('button', '.sh-where-phase', loc.phase, loc.phase.label, {
         type: 'button',
@@ -466,6 +456,8 @@ function buildPageNav(toolbar) {
 function buildRail() {
   const rail = h('nav#studioRail.sh-rail', { 'aria-label': 'Studio' });
   globals().forEach((g) => {
+    /* No project items in the global shell. */
+    if (isGlobalMode() && g.id === 'dashboard') return;
     /* A shelf is "here" on its own page and on the pages of its
        modules: the Blueprints entry lands on the hub's blueprint
        section, and is lit on feature.html and short.html. */
@@ -489,7 +481,7 @@ function buildRail() {
     }
     rail.append(a);
   });
-  rail.append(buildRailStages());
+  if (!isGlobalMode()) rail.append(buildRailStages());
   return rail;
 }
 
@@ -569,92 +561,9 @@ if (typeof document !== 'undefined') {
   setTimeout(() => clearInterval(hook), 20000);
 }
 
-/* THE BRAND PLATE — one line of purple above the navigation.
-
-   It is the product's own strip rather than the page's: purple in
-   both themes, like --panel is dark in both themes, because it is a
-   plate and not a ground.
-
-   NO TIMER. The dots advance it on click and nothing else, which is
-   not a styling preference — a strip that cycles by itself is a clock
-   in the one place every page shows, and the gate compares each
-   page's visible words against a captured baseline. Three messages in
-   rotation, one message in the baseline, and every run after the
-   first fails for words that "went missing". announcements.json says
-   the same thing at the top of the file, where the next person to add
-   an item will be looking.
-
-   Rendered even with one item; the dots are hidden by CSS below two,
-   because a single dot is a control that cannot do anything. */
-function buildPlate() {
-  const items = (announce && announce.items) || [];
-  if (!items.length) return null;
-  const plate = h('div.sh-plate', { role: 'region', 'aria-label': 'Studio announcements' });
-  const slides = h('div.sh-plate-slides');
-  items.forEach((it, i) => {
-    const a = h('a.sh-plate-item' + (i === 0 ? '.is-on' : ''), {
-      href: it.href,
-      hidden: i !== 0
-    });
-    if (it.flag) a.append(h('span.sh-plate-flag', { text: it.flag }));
-    a.append(h('span.sh-plate-text', { text: it.text }));
-    a.append(h('span.sh-plate-arrow', { text: '→', 'aria-hidden': 'true' }));
-    slides.append(a);
-  });
-  plate.append(slides);
-
-  /* Plain buttons, the current one marked aria-current. They were a
-     tablist of tabs with no tabpanel and no arrow keys (UX audit L17). */
-  const dots = h('div.sh-plate-dots', { role: 'group', 'aria-label': 'Announcements' });
-  items.forEach((it, i) => {
-    dots.append(h('button.sh-plate-dot' + (i === 0 ? '.is-on' : ''), {
-      type: 'button',
-      'data-action': 'plate-go',
-      'data-index': String(i),
-      'aria-label': 'Announcement ' + (i + 1) + ' of ' + items.length + ': ' + it.text,
-      'aria-current': i === 0 ? 'true' : 'false'
-    }));
-  });
-  plate.append(dots);
-
-  /* DISMISSABLE, for this browser session. The plate is news, not
-     navigation, and a strip you cannot put away is a strip that
-     competes with the band under it on every page forever. Hidden,
-     not removed: its words stay in the document (the gate reads
-     innerHTML), and the next session shows it again so a new item is
-     not missed for good. sessionStorage rather than localStorage —
-     a per-viewer convenience, not part of the storage contract, and
-     never written unless somebody clicks. */
-  plate.append(h('button.sh-plate-close', {
-    type: 'button',
-    'data-action': 'plate-dismiss',
-    'aria-label': 'Hide announcements',
-    title: 'Hide announcements for this session',
-    text: '×'
-  }));
-  try { if (sessionStorage.getItem(PLATE_KEY) === '1') plate.hidden = true; } catch (e) { /* storage blocked: show it */ }
-  return plate;
-}
-const PLATE_KEY = 'fms_plate_hidden';
-
-/** Show one announcement. Index is clamped, so a stale dot cannot blank the plate. */
-function showPlate(i) {
-  const items = [...document.querySelectorAll('.sh-plate-item')];
-  const dots = [...document.querySelectorAll('.sh-plate-dot')];
-  if (!items.length) return;
-  const at = Math.max(0, Math.min(items.length - 1, i | 0));
-  items.forEach((el, n) => {
-    el.hidden = n !== at;
-    el.classList.toggle('is-on', n === at);
-  });
-  dots.forEach((el, n) => {
-    el.classList.toggle('is-on', n === at);
-    el.setAttribute('aria-current', n === at ? 'true' : 'false');
-  });
-  /* The messages are different lengths, so the plate's height can
-     change and the bar below it is parked on that measurement. */
-  measureBar();
-}
+/* THE ANNOUNCEMENT PLATE IS GONE (owner, 11 Oct 2026). Nothing sits
+   above the band now except trial-band.js's own .sh-trial strip, and
+   only while a trial runs. src/data/announcements.json is unused. */
 
 function buildBar(active) {
   const bar = h('div.sh-bar', { role: 'navigation', 'aria-label': 'Studio navigation' });
@@ -675,9 +584,15 @@ function buildBar(active) {
   renderCrumb(crumb, active);
   bar.append(crumb);
 
-  const tabs = h('div.sh-phases');
-  phases().forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
-  bar.append(tabs);
+  if (!isGlobalMode()) {
+    const tabs = h('div.sh-phases');
+    phases().forEach((p) => tabs.append(phaseTab(p, active.phase && active.phase.id === p.id)));
+    /* Arriving from a dashboard stage card: the strip fades up into
+       place. @starting-style (chrome.css) animates from the first
+       style resolution, so no JS timing is involved. */
+    if (cameFromDashboard()) tabs.classList.add('is-arrive');
+    bar.append(tabs);
+  }
 
   /* The palette's handle. ⌘K is the fast way in and it is also
      invisible: a shortcut nobody has been told about is a feature
@@ -714,7 +629,8 @@ function buildBar(active) {
   find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }),
               h('span.sh-find-label', { text: 'Search', 'aria-hidden': 'true' }),
               h('kbd.sh-find-key', { text: mac ? '⌘K' : 'Ctrl K', 'aria-hidden': 'true' }));
-  bar.append(find);
+  if (!isGlobalMode()) bar.append(find);
+  bar.dataset.mode = GLOBAL_MODE;
   return bar;
 }
 
@@ -843,8 +759,15 @@ function paintLocation(loc) {
   if (crumbEl) renderCrumb(crumbEl, loc);
 
   document.querySelectorAll('.sh-phase').forEach((tab) => {
-    tab.classList.toggle('is-active', !!loc.phase && tab.dataset.phase === loc.phase.id);
+    const on = !!loc.phase && tab.dataset.phase === loc.phase.id;
+    tab.classList.toggle('is-active', on);
+    const b = tab.querySelector('.sh-phase-btn');
+    if (b) { if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
   });
+  /* The module the page is in, for mobile-nav's Go-to sheet (the stage
+     menus that used to carry the .is-here row are gone). */
+  if (loc.module && loc.module.id) document.documentElement.setAttribute('data-sh-module', loc.module.id);
+  else document.documentElement.removeAttribute('data-sh-module');
   document.querySelectorAll('.sh-rail-stage').forEach((a) => {
     a.classList.toggle('is-active', !!loc.phase && a.dataset.phase === loc.phase.id);
   });
@@ -1033,7 +956,7 @@ function measureBar() {
      below the narrow breakpoint both are `relative`: nothing is
      pinned there, the plate scrolls away like any other block, and
      its height must not be added to an offset. */
-  const plate = document.querySelector('.sh-plate');
+  const plate = document.querySelector('.sh-trial');
   const plateH = plate && getComputedStyle(plate).position === 'sticky'
     ? Math.round(plate.getBoundingClientRect().height)
     : 0;
@@ -1195,6 +1118,14 @@ function measureChrome() {
        what keeps .reading-progress out of the sum — 2px, fixed, full
        width, and not a thing anything is hidden behind. */
     if (r.height < 16 || r.width < vw * 0.5) continue;
+    /* AND NOT A SCREEN. plan-gate's .pg-lock is a fixed, full-width
+       overlay parked at `top: var(--sh-chrome-h)`; with the band
+       hidden (the paywall hides it) and no trial strip above it, it
+       measured as a band of its own height and then parked on that,
+       so the wall sat below the fold at 900px. The old announcement
+       plate hid it by keeping the band above zero. A band is never
+       most of the viewport; an overlay is. */
+    if (r.height > vh * 0.6) continue;
     /* AND IT HAS TO CROSS THE PAGE, not merely be wide.
        `width >= half the viewport` is a proxy for "spans the page"
        and it stops being one on a phone, where half the viewport is
@@ -1402,15 +1333,6 @@ function wire() {
     openPalette();
   });
 
-  delegate(document, 'click', '[data-action="phase-toggle"]', (e, btn) => {
-    const menu = btn.parentElement.querySelector('.sh-phase-menu');
-    const open = menu.hidden;
-    closeAllMenus(menu);
-    menu.hidden = !open;
-    fitMenu(menu);
-    btn.setAttribute('aria-expanded', String(open));
-  });
-
   /* "On this page" — the same panel as a phase menu, opened from the
      end of the breadcrumb. */
   delegate(document, 'click', '[data-action="pagenav-toggle"]', (e, btn) => {
@@ -1446,31 +1368,12 @@ function wire() {
   // than a ::before nobody can click.
   delegate(document, 'click', '[data-action="rail-close"]', () => setRail(false));
 
-  // The breadcrumb's phase segment opens that phase's own menu. It is
-  // the same control as the tab, reached from the place you were
-  // already reading to find out where you are.
+  // The breadcrumb's stage segment goes to the stage's main page (on a
+  // phone mobile-nav.js intercepts it first and opens the Go-to sheet).
   delegate(document, 'click', '[data-action="crumb-phase"]', (e, btn) => {
-    const tab = document.querySelector(`.sh-phase[data-phase="${CSS.escape(btn.dataset.phase)}"]`);
-    if (!tab) return;
-    const menu = tab.querySelector('.sh-phase-menu');
-    const open = menu.hidden;
-    closeAllMenus(menu);
-    menu.hidden = !open;
-    fitMenu(menu);
-    const tabBtn = tab.querySelector('.sh-phase-btn');
-    if (tabBtn) tabBtn.setAttribute('aria-expanded', String(open));
-  });
-
-  // The plate's dots. The only thing that advances it — see buildPlate.
-  delegate(document, 'click', '[data-action="plate-go"]', (e, btn) => {
-    showPlate(Number(btn.dataset.index));
-  });
-  delegate(document, 'click', '[data-action="plate-dismiss"]', (e, btn) => {
-    const plate = btn.closest('.sh-plate');
-    if (!plate) return;
-    plate.hidden = true;
-    try { sessionStorage.setItem(PLATE_KEY, '1'); } catch (err) { /* ignore */ }
-    measureBar();
+    const p = phases().find((x) => x.id === btn.dataset.phase);
+    const href = p && phaseHref(p);
+    if (href) location.assign(href);
   });
 
   // A planned module explains itself rather than 404ing or, worse,
@@ -1560,7 +1463,6 @@ export function mountShell() {
 
   const rail = buildRail();
   const bar = buildBar(active);
-  const plate = buildPlate();
   const scrim = h('button.sh-scrim', {
     type: 'button',
     'data-action': 'rail-close',
@@ -1568,7 +1470,6 @@ export function mountShell() {
     'aria-hidden': 'true'
   });
   app.insertBefore(bar, app.firstChild);
-  if (plate) app.insertBefore(plate, app.firstChild);
   app.insertBefore(rail, app.firstChild);
   app.insertBefore(scrim, app.firstChild);
 
@@ -1587,9 +1488,11 @@ export function mountShell() {
      #signInPill. */
   if (!adoptPageTools(bar) && !bar.querySelector(':scope > .toolbar')) buildStudioTools(bar);
 
-  mountProjectSwitcher(bar);   // the hub draws its own and gets none
+  if (!isGlobalMode()) mountProjectSwitcher(bar);   // global pages are not about one film
   crumbEl = bar.querySelector('#studioWhere');
   document.body.classList.add('has-sh-shell');
+  document.documentElement.setAttribute('data-shell-mode', GLOBAL_MODE);
+  renderTrialBand();   // the strip exists only while a trial runs
   wire();
   setRail(initialRail());
   paintLocation(active);

@@ -55,12 +55,6 @@ function toastOk(msg) {
 
 const errText = (e) => (e && (e.message || e.error_description)) || String(e || 'Something went wrong.');
 
-function fmtEmail(e) {
-  if (!e) return '';
-  if (e.length > 22) return e.slice(0, 8) + '…' + e.slice(-10);
-  return e;
-}
-
 // ============================================================
 // SIGN-IN PILL
 // ============================================================
@@ -81,6 +75,7 @@ export function attachSignInPill(host) {
     type: 'button',
     'data-auth-action': 'pill'
   }, [
+    h('span.sip-avatar', { 'aria-hidden': 'true', hidden: true }),
     h('span.sip-dot', { 'aria-hidden': 'true' }),
     h('span.sip-label', { text: 'Sign in' })
   ]);
@@ -114,6 +109,7 @@ export function refreshSignInPill() {
     pill.classList.remove('signed-in');
     pill.dataset.sync = 'busy';
     lab.textContent = 'Opening Google…';
+    setAvatar(pill, '');
     pill.title = 'Waiting for Google. Your work is saved on this device.';
     pill.setAttribute('aria-label', 'Signing in with Google');
     pill.disabled = true;
@@ -126,6 +122,7 @@ export function refreshSignInPill() {
     pill.classList.remove('signed-in');
     pill.dataset.sync = 'off';
     lab.textContent = 'Sign in';
+    setAvatar(pill, '');
     pill.title = 'Sign in to back up your projects to your account and pick them up on another device. Local-only keeps working either way.';
     pill.setAttribute('aria-label', 'Sign in to your account');
     return;
@@ -147,11 +144,24 @@ export function refreshSignInPill() {
   if (g.state === 'closed') {
     pill.dataset.sync = g.reason === 'unreachable' ? 'error' : 'waiting';
     lab.textContent = g.reason === 'pending' ? 'Invite pending' : 'Invite needed';
+    setAvatar(pill, '');
   } else {
-    lab.textContent = fmtEmail(email);
+    /* The pill is a plain link to Settings > Account now (11 Oct
+       2026): avatar and first name, nothing more. The sync line, sign
+       out and the admin link live in the account block there. */
+    const nm = displayName();
+    lab.textContent = nm.split(/\s+/)[0] || nm;
+    setAvatar(pill, initials(nm));
   }
-  pill.title = 'Signed in as ' + email + (st.detail ? ' · ' + st.detail : '');
-  pill.setAttribute('aria-label', 'Account menu for ' + email + '. ' + (st.detail || ''));
+  pill.title = 'Signed in as ' + email + (st.detail ? ' · ' + st.detail : '') + ' — open your account';
+  pill.setAttribute('aria-label', 'Account settings for ' + email + '. ' + (st.detail || ''));
+}
+
+function setAvatar(pill, text) {
+  const a = pill.querySelector('.sip-avatar');
+  if (!a) return;
+  a.textContent = text;
+  a.hidden = !text;
 }
 
 /* Five sync states collapse to four tones, because the dot has to be
@@ -260,7 +270,7 @@ function seatWord(seats) {
 
 function paintAccountBlock() {
   const wrap = document.getElementById('amAccount');
-  if (!wrap) return;                       // menu closed while the query was in flight
+  if (!wrap) return;                       // block removed while the query was in flight
   wrap.textContent = '';
 
   if (_acct.phase === 'idle' || _acct.phase === 'loading') {
@@ -321,42 +331,60 @@ async function fillAccountBlock() {
 }
 
 function closeAccountMenu() {
+  /* The dropdown is gone (the pill links to Settings > Account); a
+     leftover element from an older build is simply removed. */
   const m = document.getElementById('accountMenu');
   if (m) m.remove();
 }
 
-export function openAccountMenu(anchor) {
-  if (document.getElementById('accountMenu')) { closeAccountMenu(); return; }
-  const c  = cloud();
-  if (!c) return;
+/* Kept because chrome.js re-exports it as StudioUI.openAccountMenu.
+   It no longer opens a popover: it takes you to the account page. */
+export function openAccountMenu() {
+  const c = cloud();
+  const sess = c && c.getSession && c.getSession();
+  if (sess && sess.user) location.assign('settings.html#account');
+  else openCloudAuthModal();
+}
+
+/* THE ACCOUNT BLOCK — what the pill's dropdown used to hold, as a
+   plain element for Settings > Account to mount: who you are, which
+   studio account and role, the sync line, the gate rows (invite /
+   admin console), SYNC NOW, CLOUD SETTINGS and SIGN OUT.
+
+   Its buttons carry data-auth-action and are handled by the one
+   delegated listener at the foot of this file, so mounting it anywhere
+   works with no wiring. The element is a snapshot of the sign-in
+   state at call time: call it again (or replace the node) on
+   StudioCloud.onAuth to follow a sign-in or sign-out. Its sync line
+   refreshes itself on 'cloud:status', and the studio-account row fills
+   in when the query lands. Signed out, it is a short sign-in card. */
+export function renderAccountBlock() {
+  const c = cloud();
+  const sess = c && c.getSession && c.getSession();
+  if (!c || !sess || !sess.user) {
+    return h('div#amBlock.account-menu.am-inline.show', {}, [
+      h('p.am-acct-note', { text: 'You are not signed in. Your projects are saved on this device either way.' }),
+      h('button.am-item', { type: 'button', 'data-auth-action': 'pill', text: 'SIGN IN' })
+    ]);
+  }
   const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
   const email = (c.getUserEmail && c.getUserEmail()) || '';
   const name  = displayName();
-  /* The gate's answer, from the one place that holds it. A closed
-     gate gets a row to the doorway; an administrator with people
-     waiting gets a row to the console. Both are LINKS to pages that
-     always render, not controls that depend on data existing. */
   const g = (c.getGateState && c.getGateState()) || { state: 'open', reason: '', status: null };
   const waiting = (g.status && g.status.pendingRequests) || 0;
   const gateRows = [];
   if (g.state === 'closed') {
-    gateRows.push(h('a.am-item', { href: 'invite.html', role: 'menuitem', text: g.reason === 'pending' ? '→ YOUR INVITE REQUEST' : '→ GET AN INVITE' }));
+    gateRows.push(h('a.am-item', { href: 'invite.html', text: g.reason === 'pending' ? '→ YOUR INVITE REQUEST' : '→ GET AN INVITE' }));
   }
   if (g.role === 'admin') {
-    gateRows.push(h('a.am-item', { href: 'admin.html', role: 'menuitem',
+    gateRows.push(h('a.am-item', { href: 'admin.html',
       text: waiting ? `→ CONSOLE · ${waiting} REQUEST${waiting === 1 ? '' : 'S'} WAITING` : '→ ADMIN CONSOLE' }));
   }
-
-  const menu = h('div#accountMenu.account-menu', { role: 'menu' }, [
+  const block = h('div#amBlock.account-menu.am-inline.show', {}, [
     h('div.am-you', {}, [
       h('span.am-avatar', { 'aria-hidden': 'true', text: initials(name) }),
       h('span.am-you-text', {}, [
         h('span.am-you-name', { text: name }),
-        /* NOT .am-email: chrome.css styles that class as a bordered
-           standalone row, which is wrong inside this header. A new
-           name rather than an override, because beating a rule in
-           another sheet depends on import order — see the ordering
-           trap in CLAUDE.md. */
         h('span.am-you-mail', { text: email })
       ])
     ]),
@@ -366,33 +394,14 @@ export function openAccountMenu(anchor) {
       h('span.am-sync-text', { text: st.detail || 'Local only' })
     ]),
     ...gateRows,
-    h('button.am-item', { type: 'button', role: 'menuitem', 'data-auth-action': 'sync',     text: '↻ SYNC NOW' }),
-    h('button.am-item', { type: 'button', role: 'menuitem', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
-    h('button.am-item.danger', { type: 'button', role: 'menuitem', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
+    h('button.am-item', { type: 'button', 'data-auth-action': 'sync', text: '↻ SYNC NOW' }),
+    h('button.am-item', { type: 'button', 'data-auth-action': 'settings', text: '⚙ CLOUD SETTINGS' }),
+    h('button.am-item.danger', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
     h('p.am-foot', { text: 'Signing out leaves every project on this device.' })
   ]);
-  document.body.appendChild(menu);
-  fillAccountBlock();
-
-  const r = anchor.getBoundingClientRect();
-  menu.style.top = (r.bottom + 6) + 'px';
-  /* Clamp to the viewport. At 390px the toolbar pill sits close to the
-     right edge and a 220px menu pinned to it pushed the document
-     sideways — which `verify` measures, and which is a real thumb
-     problem before it is a test failure. */
-  const width = 260;
-  const right = Math.max(8, Math.min(window.innerWidth - r.right, window.innerWidth - width - 8));
-  menu.style.right = right + 'px';
-  menu.classList.add('show');
-
-  setTimeout(() => {
-    document.addEventListener('click', function close(ev) {
-      if (!menu.contains(ev.target) && ev.target !== anchor) {
-        closeAccountMenu();
-        document.removeEventListener('click', close);
-      }
-    });
-  }, 50);
+  /* Fill the studio-account row once the block is in the document. */
+  setTimeout(() => { if (block.isConnected) fillAccountBlock(); }, 0);
+  return block;
 }
 
 // ============================================================
@@ -649,7 +658,7 @@ delegate(document, 'click', '[data-auth-action]', async (e, el) => {
   switch (act) {
     case 'pill': {
       const sess = c && c.getSession && c.getSession();
-      if (sess && sess.user) openAccountMenu(el); else openCloudAuthModal();
+      if (sess && sess.user) location.assign('settings.html#account'); else openCloudAuthModal();
       break;
     }
     case 'close':    closeCloudAuthModal(); break;
@@ -671,8 +680,10 @@ delegate(document, 'click', '[data-auth-action]', async (e, el) => {
     case 'signout': {
       closeAccountMenu();
       if (!c) break;
-      await c.signOut();
+      const done = await c.signOut();
       refreshSignInPill();
+      if (done === false) break;          // Stay signed in
+
       const u = ui();
       if (u && u.toastInfo) {
         u.toastInfo('Signed out. Every project is still on this device.');
@@ -693,7 +704,18 @@ document.addEventListener('keydown', (e) => {
 
 /* Keep the pill honest about state that changed elsewhere: a sign-in
    in another tab, a queue that drained, a project switch. */
-Store.subscribe('cloud:status', () => refreshSignInPill());
+Store.subscribe('cloud:status', () => {
+  refreshSignInPill();
+  /* A mounted account block keeps its sync line true. */
+  const line = document.querySelector('#amBlock .am-sync');
+  const c = cloud();
+  if (line && c && c.getSyncStatus) {
+    const st = c.getSyncStatus() || {};
+    line.dataset.sync = syncTone(st.state);
+    const t = line.querySelector('.am-sync-text');
+    if (t) t.textContent = st.detail || 'Local only';
+  }
+});
 Store.subscribe('cloud:auth-error', (info) => {
   setModalError(info && info.message ? info.message : 'Sign-in did not complete.');
 });
@@ -702,6 +724,7 @@ export default {
   attachSignInPill,
   refreshSignInPill,
   openAccountMenu,
+  renderAccountBlock,
   resetAccountCache,
   openCloudAuthModal,
   closeCloudAuthModal,

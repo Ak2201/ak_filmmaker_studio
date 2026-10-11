@@ -10,14 +10,13 @@
 /* ---- the band: one slim row, the breadcrumb ----------------------
    The stage strip, the page's toolbar, the account zone, the palette
    handle and the burger move off the band: Go to, Tools and Search on
-   the bottom bar are the same things, one thumb away. The announcement
-   plate goes too — 30px of marketing above every page on a phone. */
+   the bottom bar are the same things, one thumb away. (The trial strip,
+   when a trial runs, stays: it is not marketing, and it is un-pinned.) */
 html.mn-on .sh-bar > .sh-phases,
 html.mn-on .sh-bar > .toolbar,
 html.mn-on .sh-bar > .sh-tools,
 html.mn-on .sh-bar > .sh-find,
-html.mn-on .sh-bar > .sh-rail-toggle,
-html.mn-on .sh-plate { display: none; }
+html.mn-on .sh-bar > .sh-rail-toggle { display: none; }
 
 /* The crumb's stage segment comes back (the strip that said the same
    thing is gone) and opens the Go-to sheet at that stage. */

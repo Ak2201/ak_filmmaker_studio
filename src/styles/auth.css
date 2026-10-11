@@ -287,3 +287,14 @@
      It truncates in the header rather than widening the menu. */
   .account-menu .am-you-mail { max-width: 56vw; }
 }
+
+/* The account block mounted in Settings (renderAccountBlock): the
+   dropdown's contents with none of its popover chrome. */
+.account-menu.am-inline {
+  position: static;
+  max-height: none;
+  min-width: 0;
+  max-width: 28rem;
+  overflow: visible;
+  box-shadow: none;
+}

@@ -42,7 +42,7 @@
          idempotent; DECLINE needs a note the customer then reads; a
          non-admin calling rzp-refund is refused
      (o) THE TRIAL AND THE WALL (schema section 30): while a trial runs
-         the shell's plate carries the band and the hub shows the
+         the shell's .sh-trial strip carries the band and the hub shows the
          sample alone with no NEW PROJECT; when it has run out the
          paywall covers index.html but NOT settings.html#plan, which
          is where a plan is bought; DOWNLOAD MY WORK produces a real
@@ -349,7 +349,9 @@ try {
     await amy.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getGateState().state === 'open', null, { timeout: 10000 });
     await amy.page.waitForTimeout(800);
     ok(!(await amy.page.$('.pg-lock')), 'a module still ticked (scene list) opens normally');
-    ok(await amy.page.evaluate(() => !!document.querySelector('[data-module-id="story-beats"].is-locked .pg-flag')), 'the phase menu marks Story · Beats with a PLAN flag');
+    /* (The PLAN flag on Story · Beats used to be asserted in the stage dropdown. That
+       dropdown is gone — a stage tab is a plain link since 11 Oct 2026 — and the hub no
+       longer draws module tiles, so the mark has no surface in this flow to read.) */
     /* The cards count what the matrix left ticked: every built module
        plus five capabilities (sample_only is said in words, not counted). */
     /* Every module on the map: the five stages' and the Library's own
@@ -781,14 +783,13 @@ try {
     }, USERS['tok-amy'].id);
     await amy.page.reload();
     ok(await waitGate(amy.page, 'open'), 'a trial user is through the gate (start_trial inserts the member row, which is what admits them)');
-    /* THE BAND BORROWS THE ONE .sh-plate rather than adding a second
-       sticky element — shell.js measures the FIRST plate it finds and
-       parks the toolbar under it, so a second band would sit beneath
-       the toolbar and a hidden first one would measure zero and drop
-       the toolbar on top. .tb-on is the plate wearing the trial. */
-    await amy.page.waitForSelector('.sh-plate.tb-on', { timeout: 10000 })
-      .then(() => ok(true, 'the shell plate carries the trial band (.sh-plate.tb-on)'), () => ok(false, 'the shell plate carries the trial band (.sh-plate.tb-on)'));
-    ok(/minute/i.test(await amy.page.textContent('.sh-plate.tb-on').catch(() => '')), 'saying how long is left, in MINUTES — a ticking second counter on a thirty-minute trial is pressure theatre');
+    /* THE TRIAL BAND HAS ITS OWN HOST, .sh-trial, built by
+       trial-band.js only while a trial runs (the announcement plate it
+       used to borrow is gone). shell.js measures it into --sh-plate-h
+       and parks the toolbar under it. */
+    await amy.page.waitForSelector('.sh-trial', { timeout: 10000 })
+      .then(() => ok(true, 'the shell carries the trial band (.sh-trial)'), () => ok(false, 'the shell carries the trial band (.sh-trial)'));
+    ok(/minute/i.test(await amy.page.textContent('.sh-trial').catch(() => '')), 'saying how long is left, in MINUTES — a ticking second counter on a thirty-minute trial is pressure theatre');
     ok(!(await amy.page.$('.pg-lock.pg-wall')), 'and the page is NOT walled while the trial runs');
     await amy.page.waitForFunction(() => document.querySelectorAll('#projectsGrid .project-card:not(.new-card)').length === 1, null, { timeout: 10000 })
       .then(() => ok(true, 'the hub shows ONE project'), () => ok(false, 'the hub shows ONE project'));
@@ -809,7 +810,7 @@ try {
     ok(!!(await amy.page.$('.pg-lock.pg-wall .pg-lock-card.pg-wall-card')), 'as a variant of the existing lock, both class names present');
     ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not deleted');
     ok(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-paywall')), 'and :root carries data-paywall');
-    ok(!(await amy.page.$('.sh-plate.tb-on')), 'the trial band is gone, and the announcement plate is back');
+    ok(!(await amy.page.$('.sh-trial')), 'the trial band is gone (no host element at all)');
 
     /* YOU CANNOT BUY FROM BEHIND A WALL. settings is exempt by name,
        matched WITHOUT the .html because vercel's cleanUrls makes the

@@ -80,6 +80,7 @@ import { onFavChange, favStudy, favSlug, loadFavStudiesSoon } from '../ui/fav-fi
 import { renderBibleBody, wireBible, rewireNotes, shortShowsCard } from '../ui/story-bible.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { askDanger } from '../ui/dialog.js';
+import { showOnly, stepFooter, wireStepper } from '../ui/stepper.js';
 
 const app = document.getElementById('app');
 
@@ -94,6 +95,7 @@ let flashMark = '';       // a mark to scroll to after the next render
 let pathStep = null;      // the lit path step's id, or null = derive from the story
 let landStep = '';        // a step to scroll to after the next draw (a link, a hash)
 let reland = '';          // the step a link landed on: the blueprint hosts above it grow when they load, so land again then
+let extra = '';           // 'pacing' | 'pitch' | 'guide' when one of the sections after the path is the step shown
 let started = false;      // the start cards were answered this visit
 let undoBuild = null;     // one level: the synopsis before the last build
 let lastSend = null;      // the scene ids the last send created
@@ -190,7 +192,7 @@ function renderStepper(s, cur) {
   const nav = h('nav.st-path', { 'aria-label': 'Story path' });
   const ol = h('ol.st-path-list');
   for (const p of progress(s)) {
-    const on = p.id === cur;
+    const on = !extra && p.id === cur;
     const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
       /* data-step is the step's STABLE NUMBER (story-paths.json `n`): the
          blueprint drawer reads it from the current tab to know which
@@ -204,6 +206,11 @@ function renderStepper(s, cur) {
     ol.append(h('li', {}, [b]));
   }
   nav.append(ol);
+  nav.append(h('p.st-path-count', { text: 'Step ' + (pathNow().findIndex((p) => p.id === cur) + 1) + ' of ' + pathNow().length }));
+  nav.append(h('div.st-extras', {}, [h('span.st-extras-k', { text: 'Then' }),
+    ...EXTRAS.map((x) => h('button.st-extra' + (extra === x.id ? '.is-on' : ''), {
+      type: 'button', 'data-stepper-go': x.id, 'aria-current': extra === x.id ? 'step' : null
+    }, [h('span.st-path-label', { text: x.label })]))]));
   return nav;
 }
 
@@ -237,13 +244,7 @@ const stepHead = (id, title, lead) => [
 ].filter(Boolean);
 /* Next suggests the first step AFTER this one with nothing in it; it is
    a suggestion and never a gate (the stepper reaches any step). */
-const nextBtn = (s, id) => {
-  const nx = Story.suggestNext(progress(s), id);
-  if (!nx) return null;
-  return h('div.st-step-nav', {}, [
-    h('button.btn.primary', { type: 'button', 'data-st': 'path', 'data-path': nx.id, text: 'NEXT: ' + nx.label.toUpperCase() })
-  ]);
-};
+const nextBtn = () => null;   // Back / Next are the stepper's footer now (src/ui/stepper.js), added in applyView()
 /* A film's own words for a step (the favourite film, chosen in Settings).
    The films are imported a moment after first paint (fav-film.js), so the
    box is drawn empty and FILLED IN PLACE when they land: a redraw of the
@@ -1028,7 +1029,9 @@ function draw() {
   }
   main.append(bar);
 
-  main.append(renderStepper(s, cur));
+  const bar0 = renderStepper(s, cur);
+  if (cards) bar0.hidden = true;
+  main.append(bar0);
   /* EVERY STEP IS ON THE PAGE, in the project's own path. */
   const panels = {
     idea: renderIdea, logline: renderLogline, structure: renderStructure, outline: renderOutline,
@@ -1066,6 +1069,7 @@ function after() {
     focusStep = '';
     if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
   }
+  applyView();
   if (landStep) {
     const el = document.getElementById('path-' + landStep);
     landStep = '';
@@ -1088,13 +1092,82 @@ function stepId(x) {
    start cards, which this answers. */
 function goStep(x, { scroll = true } = {}) {
   pathStep = stepId(x);
+  extra = '';
   history.replaceState(null, '', location.pathname + location.search + '#path-' + pathStep);
-  if (!started) { started = true; landStep = scroll ? pathStep : ''; render(); return; }
+  if (!started || document.querySelector('.st-modes')) { started = true; landStep = scroll ? pathStep : ''; render(); return; }   // the start cards leave with the first step
   refreshStepper();
+  applyView();
   if (scroll) {
     const el = document.getElementById('path-' + pathStep);
     if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
   }
+}
+
+/* ONE STEP AT A TIME. The steps are the sections the page draws — the
+   project's path (story-paths.json) and then the three sections after it
+   — and only the current one is shown; the rest keep the `hidden`
+   attribute (never removed: every data-key stays in the DOM). The sequence
+   Back / Next walks is derived from the DOM, not listed a second time. */
+const EXTRAS = [
+  { id: 'pacing', label: 'Beats & pacing' },
+  { id: 'pitch', label: 'Pitch deck' },
+  { id: 'guide', label: 'Cover sheet' }
+];
+const viewPanels = () => [
+  ...pathNow().map((p) => ({ id: p.id, label: p.label, el: document.getElementById('path-' + p.id) })),
+  ...EXTRAS.map((x) => ({ id: x.id, label: x.label, el: document.getElementById(x.id) }))
+].filter((p) => p.el);
+
+function applyView() {
+  const main = document.getElementById('main');
+  if (!main) return;
+  const s = story();
+  const cards = isEmpty(s) && !started;
+  const panels = viewPanels();
+  const shown = cards ? '' : (extra || currentStep(s));
+  showOnly(panels, shown);
+  panels.forEach((p) => {
+    const old = p.el.querySelector(':scope > .stp-nav');
+    if (old) old.remove();
+    if (p.id === shown) { const f = stepFooter(panels, p.id); if (f) p.el.append(f); }
+  });
+  const bar = main.querySelector('nav.st-path');
+  if (bar) {
+    bar.hidden = cards;
+    const ol = bar.querySelector('.st-path-list');
+    const on = ol && ol.querySelector('.is-on');
+    if (ol && on && ol.scrollWidth > ol.clientWidth) ol.scrollLeft = Math.max(0, on.offsetLeft - ol.offsetLeft - 12);
+  }
+}
+
+/* A step by id, whether it is on the path or one of the sections after. */
+function goView(id) {
+  if (EXTRAS.some((x) => x.id === id)) {
+    extra = id; started = true;
+    history.replaceState(null, '', location.pathname + location.search + '#' + id);
+    refreshStepper();
+    applyView();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  } else goStep(id);
+}
+wireStepper(document, goView);
+
+/* A fragment (#pitch, #ai-map, #logline, an id inside a step): open the
+   step that holds it, then land on it. */
+function openFragment(frag) {
+  if (!frag) return false;
+  const direct = pathNow().some((p) => p.id === frag) ? document.getElementById('path-' + frag) : null;
+  const el = direct || document.getElementById(frag);
+  const host = el && el.closest('main > section');
+  if (!host) return false;
+  const pid = host.getAttribute('data-path');
+  if (pid) { pathStep = pid; extra = ''; } else if (EXTRAS.some((x) => x.id === host.id)) { extra = host.id; } else return false;
+  started = true;
+  refreshStepper();
+  applyView();
+  el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  return true;
 }
 
 /* ---- where you are (rev. 3 §1b) ------------------------------- */
@@ -1444,9 +1517,8 @@ function readHash() {
 /* The reader taking over ends the second landing. */
 ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => addEventListener(t, () => { reland = ''; }, { passive: true, capture: true }));
 addEventListener('hashchange', () => {
-  if (readHash()) { render(); return; }
-  const el = document.getElementById((location.hash || '').replace(/^#/, ''));
-  if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  if (readHash()) { extra = ''; render(); return; }
+  openFragment((location.hash || '').replace(/^#/, ''));
 });
 
 /* ?start= from the extension panel's ways in (FR-402). Read once and
@@ -1478,8 +1550,5 @@ if (START === 'import') { const d = document.querySelector('.st-drop, .st-import
    page is drawn by script, so the browser's own landing found nothing. */
 {
   const frag = (location.hash || '').replace(/^#/, '');
-  if (frag && frag !== 'guide' && !Story.pathStepFromHash(frag, fmt())) {
-    const el = document.getElementById(frag);
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
-  }
+  if (frag && !Story.pathStepFromHash(frag, fmt())) openFragment(frag);
 }

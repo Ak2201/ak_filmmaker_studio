@@ -43,6 +43,7 @@ import {
   classify, extraRenderers, interludeSection, drawDerived
 } from './stage-guide-widgets.js';
 import { mountComments, togglePanel, hasNote, paintBadges } from './comments.js';
+import { showOnly, stepFooter, stepBar, wireStepper, scrollToTop } from './stepper.js';
 import '../styles/steps-stages.css';
 
 const SAVE_MS = 400;
@@ -156,7 +157,54 @@ function buildRow(id, n) {
   return row;
 }
 
-export function renderGuide(body, { stage, format, items, fields }) {
+/* Which step each guide was on, in memory only (a page that redraws mounts
+   a fresh guide; no storage key is spent on this). */
+const lastStep = new Map();
+
+/* ONE STEP AT A TIME (stepper: true). The panels are what the guide drew:
+   the cover fields, then each blueprint step — derived from the DOM, so a
+   step added to the sidecar needs no edit here. The rest keep `hidden`;
+   nothing is removed, so every data-key stays in the DOM. */
+function stepGuide(root, memoKey) {
+  const kids = [...root.children].filter((el) => el.matches('.sg-cover, section'));
+  if (kids.length < 2) return;
+  const text = (el, sel) => { const n = el.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; };
+  const panels = kids.map((el, i) => {
+    if (el.matches('.sg-cover')) return { id: 'cover', label: 'Cover', el };
+    const num = text(el, '.step-num'), title = text(el, '.step-title') || text(el, 'h2, h3');
+    return { id: el.getAttribute('data-sg-id') || el.id || 'step-' + i, label: [num, title].filter(Boolean).join(' · ') || 'Step ' + (i + 1), el };
+  });
+  const ticks = (p) => { const li = [...p.el.querySelectorAll('.step-check li')]; return li.length > 0 && li.every((x) => x.classList.contains('checked') || x.classList.contains('done')); };
+  let cur = lastStep.get(memoKey);
+  if (!panels.some((p) => p.id === cur)) cur = panels[0].id;
+  const hashed = (location.hash || '').length > 1 && document.getElementById(location.hash.slice(1));
+  if (hashed && root.contains(hashed)) { const host = panels.find((p) => p.el.contains(hashed)); if (host) cur = host.id; }
+  let bar = null;
+  const paint = () => {
+    const nb = stepBar(panels, cur, { label: 'Blueprint steps', done: ticks });
+    if (bar) bar.replaceWith(nb); else root.prepend(nb);
+    bar = nb;
+    const on = nb.querySelector('.is-on'), ol = nb.querySelector('.stp-list');
+    if (on && ol.scrollWidth > ol.clientWidth) ol.scrollLeft = Math.max(0, on.offsetLeft - ol.offsetLeft - 12);
+    panels.forEach((p) => {
+      const old = p.el.querySelector(':scope > .stp-nav');
+      if (old) old.remove();
+      if (p.id === cur) { const f = stepFooter(panels, p.id); if (f) p.el.append(f); }
+    });
+    showOnly(panels, cur);
+  };
+  const go = (id) => {
+    if (!panels.some((p) => p.id === id)) return;
+    cur = id; lastStep.set(memoKey, id);
+    paint();
+    scrollToTop(bar);
+  };
+  wireStepper(root, go);
+  root.addEventListener('click', () => setTimeout(() => { if (root.isConnected) { const nb = stepBar(panels, cur, { label: 'x', done: ticks }); const a = [...nb.querySelectorAll('.is-done')].length, b = bar.querySelectorAll('.is-done').length; if (a !== b) paint(); } }, 0));
+  paint();
+}
+
+export function renderGuide(body, { stage, format, items, fields, stepper }) {
   const spec = SPECS[format] || SPECS.feature;
   const extraCtx = {
     queue: (k, v) => queue(k, v),
@@ -347,6 +395,7 @@ export function renderGuide(body, { stage, format, items, fields }) {
   widgets.forEach((w) => w.load(blob0));
   load(blob0);
   drawDerived(root, getter(blob0));
+  if (stepper) stepGuide(root, stage + ':' + format);
 
   const pull = () => {
     if (!root.isConnected) return;

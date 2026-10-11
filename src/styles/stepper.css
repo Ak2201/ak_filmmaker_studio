@@ -1,0 +1,16 @@
+/* src/ui/stepper.js: the step bar and Back / Next, for every page that shows one step at a time. */
+.sg-steps > [hidden] { display: none; }
+.stp-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--rule); }
+.stp-nav .btn { min-width: 0; max-width: 100%; white-space: normal; text-align: left; }
+.stp-nav .btn.primary { margin-inline-start: auto; }
+.stp-count { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.stp-bar { margin-block: var(--s3); }
+.stp-list { list-style: none; margin: 0; padding: 0 0 var(--s2); display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: thin; }
+.stp-list li { flex: 0 0 auto; }
+.stp-tab { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: var(--s2); min-height: 44px; max-width: 16rem; padding: var(--s2) var(--s3); background: var(--paper-raised); border: var(--sk-card-line-w, 1px) solid var(--rule); border-radius: var(--sk-radius, var(--radius)); color: var(--ink); font-size: var(--t-small); }
+.stp-tab:hover { border-color: var(--accent); }
+.stp-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
+.stp-tab.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.stp-n { flex: none; font-family: var(--f-mono); font-weight: 700; }
+.stp-tab.is-done .stp-n { color: var(--accent-deep); }
+.stp-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

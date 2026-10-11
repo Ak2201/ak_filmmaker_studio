@@ -6,7 +6,9 @@
    'invoice' document (pdf.css hides everything else), prints, and
    removes it again. Live text, not a bitmap.
 
-   The seller block reads src/data/brand.json through brand.js. While
+   The seller block reads src/data/brand.json through brand.js. It
+   names the TRADING name, never the owner (owner, 11 Oct 2026: "I
+   don't want my name to be displayed"); `seller` is empty on purpose. While
    `gstin` is empty the document says the supplier is not registered
    under GST and shows NO tax lines — it is a Bill of Supply, not a
    tax invoice, and must never be mistaken for one.
@@ -33,7 +35,7 @@ export function buildInvoice(inv) {
   const gst = String(BRAND.gstin || '').trim();
   const amt = fmtPaise(inv.amount_paise);
   const refundUrl = `https://${BRAND.host}/refund`;
-  const seller = [h('strong', { text: BRAND.seller }), line(BRAND.address), line(BRAND.supportEmail),
+  const seller = [h('strong', { text: BRAND.name }), line(BRAND.address), line(BRAND.supportEmail),
     line(BRAND.host), gst ? line('GSTIN ' + gst) : null].filter(Boolean);
   const buyer = [h('strong', { text: inv.buyer_name }), line(inv.buyer_email),
     inv.buyer_gstin ? line('GSTIN ' + inv.buyer_gstin) : null].filter(Boolean);

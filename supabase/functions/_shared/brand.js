@@ -6,5 +6,5 @@ export const BRAND = {
   name: 'FilmMakerStudio',
   host: 'filmmakerstudio.in',
   supportEmail: 'support@filmmakerstudio.in',
-  seller: 'Arun Kumar Mohanan'
+  seller: ''
 };

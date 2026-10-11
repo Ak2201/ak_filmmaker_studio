@@ -217,7 +217,7 @@ function render() {
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'No cloud, no console.', 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time.'));
   } else if (!signedIn) {
-    const sec = section('signin', 'Administrators', 'Sign in.', 'Only the studio’s administrators can open the console. Sign in with an administrator’s Google account to see it.');
+    const sec = section('signin', 'Administrators', 'Sign in.', 'Use the Google account an administrator was granted access with.');
     sec.append(h('div.ad-actions', {}, [h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })]));
     body.append(sec);
   } else if (!st) {

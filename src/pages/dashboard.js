@@ -588,9 +588,7 @@ function stageCard(s, suggested) {
 }
 
 function renderStages(snap) {
-  const sec = section('stages', 'The five stages', 'Where the film stands.',
-    'Story, screenplay, pre-production, production and post. Move between them freely; '
-    + 'no stage waits on another.');
+  const sec = section('stages', 'The five stages', 'Where the film stands.');
   const sug = snap.suggest;
   const sugState = sug && snap.states.find((s) => s.id === sug.id);
 

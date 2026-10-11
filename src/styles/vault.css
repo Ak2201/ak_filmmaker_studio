@@ -3,3 +3,15 @@
    the page heading already sits above it. */
 #vault .st-vault { border-top: 0; padding-block-start: 0; }
 #vault .st-vault-add textarea { width: 100%; }
+/* modules.css gives every .st-sec a full-width card (it was added for
+   Settings). Here the section is a column on the page's own measure, the
+   one .bd-head above it uses, not a card spanning the viewport. */
+#vault.st-sec {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding: 0 var(--s5) var(--s7);
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+@media (max-width: 719px) { #vault.st-sec { padding-inline: var(--s4); } }

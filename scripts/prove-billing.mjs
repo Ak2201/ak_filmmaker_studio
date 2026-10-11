@@ -64,6 +64,9 @@ import { F, USERS, SB, REF, handle, sessionFor, signFor, RZP, webhookRefundProce
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT  = path.join(ROOT, 'dist-billing');
+/* READ, never typed — billing.js builds the checkout logo url from
+   this same field, so a domain move must not need two edits. */
+const BRAND_HOST = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8')).host;
 
 /* ---- build, with a public Razorpay key id, into our own directory.
    The committed .env carries no key id until the owner has one, and a
@@ -113,6 +116,19 @@ async function newContext(browser, { tok = null } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
   await ctx.route(SB + '/**', handle);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
+  /* THE CHECKOUT LOGO. billing.js passes Razorpay an absolute
+     `image` on the brand host, because checkout is their iframe on
+     their origin and a relative path would resolve to nothing. This
+     proof fakes every other external origin — Supabase, the fonts,
+     checkout.js — and the moment the logo was added and this route
+     was not, the (f) project-cap assertion began failing
+     deterministically: an unrouted request to the real brand host
+     goes out over the real network, and the 10s wait for the sync
+     status no longer fits around it. The failure surfaced three
+     sections away from its cause, which is what cost the time.
+     Fulfil it like the fonts: the bytes do not matter, only that
+     nothing leaves the machine. */
+  await ctx.route(new RegExp('https://' + BRAND_HOST.replace(/\./g, '\\.') + '/.*'), (r) => r.fulfill({ status: 200, contentType: 'image/png', body: '' }));
   await ctx.route('https://checkout.razorpay.com/v1/checkout.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: CHECKOUT_STUB }));
   await ctx.route(/https:\/\/checkout\.razorpay\.com\/__sign/, async (r) => {
     const order = new URL(r.request().url()).searchParams.get('order');

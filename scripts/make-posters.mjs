@@ -206,6 +206,59 @@ const p3 = frame(`
   ${text(80, 1204, 'Nothing to install. Your work stays in your browser.', { size: 30, weight: 500, fill: MUTED })}
   ${footer(1278)}`);
 
+/* ============ the profile picture ==========================
+   INSTAGRAM CROPS THE DP TO A CIRCLE AND DRAWS IT AT ~40px IN
+   FEED. That rules out three things people reach for:
+
+   - the app icon as-is. Its mark sits in generous padding, right
+     for a home screen where it has a tile to itself, wrong here:
+     inside a circle it becomes a speck in a field.
+   - any text. A word at 40px is mush. The mark alone has to carry
+     recognition, which the clapperboard can and a wordmark cannot.
+   - anything in the corners, which the circle simply removes.
+
+   So: the same clapperboard, zoomed until it nearly fills the
+   circle, on the ink ground the app actually wears. Light on near
+   black reads at any size, and the three-hue stripe supplies the
+   colour that makes it findable in a list of grey avatars. 1080px
+   square — Instagram stores far smaller, but it downscales better
+   than it upscales.
+
+   THE PROOF CHANGED THE DESIGN, which is the only reason to draw
+   one. The first attempt scaled the mark 1.62 and kept the slate's
+   two ruled lines: fine at 320px, mush at 40px — the mark floated
+   in empty ground and the ruled lines read as dirt rather than as
+   a slate. Scaled 1.95, the lines dropped, the colour stripe
+   thickened to carry recognition at the size that matters.
+
+   KEPT INSIDE A 78% SAFE CIRCLE. The square's corners are gone and
+   the circle's edge is where a crop goes slightly wrong, so no
+   part of the mark goes near it. ========================== */
+const DP = 1080, DPC = DP / 2;
+const dpSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${DP} ${DP}" width="${DP}" height="${DP}">
+  <defs><radialGradient id="dpglow" cx="50%" cy="38%" r="68%">
+    <stop offset="0%" stop-color="${C.brand}" stop-opacity="0.42"/>
+    <stop offset="100%" stop-color="${C.brand}" stop-opacity="0"/>
+  </radialGradient></defs>
+  <rect width="${DP}" height="${DP}" fill="${BG}"/>
+  <rect width="${DP}" height="${DP}" fill="url(#dpglow)"/>
+  <g transform="translate(${DPC} ${DPC}) scale(1.95) translate(-256 -272)">
+    <g transform="rotate(-9 76 212)">
+      <rect x="76" y="150" width="360" height="62" rx="6" fill="${FG}"/>
+      <g fill="${BG}">
+        ${[124, 209, 294, 379].map((x) => `<polygon points="${x},150 ${x + 30},150 ${x + 12},212 ${x - 18},212"/>`).join('')}
+      </g>
+    </g>
+    <rect x="76" y="222" width="360" height="186" rx="10" fill="${FG}" opacity="0.34"/>
+    <rect x="76" y="222" width="360" height="186" rx="10" fill="none" stroke="${FG}" stroke-opacity="0.72" stroke-width="5"/>
+    <g>
+      <rect x="76"  y="364" width="120" height="44" fill="${C.feature}"/>
+      <rect x="196" y="364" width="120" height="44" fill="${C.shorts}"/>
+      <rect x="316" y="364" width="120" height="44" fill="${C.library}"/>
+    </g>
+  </g>
+</svg>`;
+
 /* ---- write -------------------------------------------------- */
 mkdirSync(OUT, { recursive: true });
 console.log('posters -> social/   (1080x1350, 4:5)');
@@ -216,4 +269,26 @@ await Promise.all([p1, p2, p3].map((svg, i) =>
     .then((r) => console.log(`  poster-${i + 1}.png  ${W}x${H}  ${(r.size / 1024).toFixed(0)} KB`))
 ));
 for (let i = 1; i <= 3; i++) writeFileSync(join(OUT, `poster-${i}.svg`), [p1, p2, p3][i - 1]);
+
+/* the DP, plus a circle-cropped proof at the size the feed uses —
+   because "it looks fine" at 1080px tells you nothing about the
+   40px circle that is what people actually see. */
+await sharp(Buffer.from(dpSvg)).png({ compressionLevel: 9 })
+  .toFile(join(OUT, 'instagram-dp.png'))
+  .then((r) => console.log(`  instagram-dp.png  ${DP}x${DP}  ${(r.size / 1024).toFixed(0)} KB`));
+writeFileSync(join(OUT, 'instagram-dp.svg'), dpSvg);
+
+const mask = (d) => Buffer.from(`<svg width="${d}" height="${d}"><circle cx="${d / 2}" cy="${d / 2}" r="${d / 2}" fill="#fff"/></svg>`);
+const PREVIEW = [320, 150, 56, 40];
+const tiles = await Promise.all(PREVIEW.map(async (d) => ({
+  input: await sharp(Buffer.from(dpSvg)).resize(d, d)
+    .composite([{ input: mask(d), blend: 'dest-in' }]).png().toBuffer(),
+  top: 40, left: 0
+})));
+let x = 40;
+for (const t of tiles) { t.left = x; x += (await sharp(t.input).metadata()).width + 40; }
+for (const t of tiles) t.top = 40 + (320 - (await sharp(t.input).metadata()).height) / 2;
+await sharp({ create: { width: x, height: 400, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } })
+  .composite(tiles).png().toFile(join(OUT, 'instagram-dp-preview.png'));
+console.log(`  instagram-dp-preview.png   the circle crop at ${PREVIEW.join('px, ')}px, on white`);
 console.log('  (svg beside each png, so a wording change needs no redraw by hand)');

@@ -399,6 +399,7 @@ rather than taken from a save toast.
 | 9 | sitemap submitted under the new property | done |
 | - | **branding RE-SUBMIT** | **PENDING — not before 12 Oct.** Google requires 24h after verification. Branding -> View issues -> "I have fixed the issues" -> Proceed. |
 | 8 | **Razorpay website/callback URLs** | **PENDING — owner.** Still name the old host. |
+| 10 | **Resend: verify `filmmakerstudio.in`** (DKIM TXT `resend._domainkey`, MX + SPF on `send.`) | **PENDING — owner.** Adds records only; the root MX/SPF/DMARC stay as they are. Steps in `docs/BILLING.md` §16. |
 
 **Why the branding re-submit is the whole point.** The consent screen
 showed `conhlrulxfwkhsnymakz.supabase.co` because branding was being

@@ -884,3 +884,73 @@ row untouched; a failure inside is a WARNING, never a lost refund.
    `pg_get_constraintdef` of `studio_members_trial_source_check` names
    `refund`.
 3. No edge function changes and no redeploy are needed.
+
+## 16. Receipt and refund e-mails, and a clearer invoice (schema §35, 11 Oct 2026). NOT RUN LIVE.
+
+**The owner's decision.** "Once a user has purchased the product we should
+send mail to the user, from support@filmmakerstudio.in." Provider: **Resend**.
+Scope: the purchase receipt and refund updates (processed / failed).
+
+**How it is sent.** Server-side only, from the edge functions, through
+`supabase/functions/_shared/mail.js`, never from the browser (the API key is a
+secret). The Hostinger mailbox is untouched: it still RECEIVES mail and every
+message carries `Reply-To: support@filmmakerstudio.in`, so a customer's reply
+lands there. Hostinger's SMTP is not used, because Supabase Edge Functions
+cannot open SMTP ports 25/587.
+
+| Event | Who sends | Mail |
+| --- | --- | --- |
+| checkout success | `rzp-verify` (in the background, after activation) | receipt |
+| `payment.captured` | `rzp-webhook` | receipt (whichever claims first; the other sends nothing) |
+| `refund.processed` | `rzp-webhook` | "Refund processed" |
+| `refund.failed` | `rzp-webhook` | "Your refund could not be completed" |
+| console RESEND RECEIPT | `rzp-verify` `{resend_invoice}` (admin-checked by `admin_resend_receipt()` as the caller) | receipt again |
+
+**Sent exactly once.** §35 claims each mail with an UPDATE only one caller can
+win (`invoices.emailed_at`, `refunds.emailed_status`); the winner sends; a
+failed send releases the claim so a retry can send. Resend's `Idempotency-Key`
+(`receipt-<invoice id>`, `refund-<id>-<status>`) is the second guard. A mail
+failure never fails the payment: it is logged and the function still answers
+200. Without `RESEND_API_KEY` / `MAIL_FROM` nothing is claimed and nothing is
+sent, so mail can be switched on later and nothing is lost. Invoices issued
+BEFORE §35 are left unmailed on purpose; RESEND RECEIPT sends one.
+
+**What §35 contains.** `invoices` gains `razorpay_payment_id`,
+`razorpay_order_id`, `paid_at` (copied from `payments` by a BEFORE INSERT
+trigger; existing rows backfilled once) and `emailed_at`; `refunds` gains
+`emailed_status`. Service role only: `claim_receipt_email(order)`,
+`release_receipt_email(invoice)`, `claim_refund_email(rzp_refund, status)`,
+`release_refund_email(refund)`. Admin: `admin_resend_receipt(invoice)`.
+`issue_invoice()`, `my_invoices()` and `admin_list_invoices()` are not
+restated. Proved by `test:schema` (`scripts/schema-tests/receipt-email.sql`)
+and `test:billing` (the builders, the Resend call, claim → send → release
+against a fake client).
+
+**The invoice PDF** (`src/lib/invoice-pdf.js`) now prints a PAID mark,
+supplier (name, address once `brand.json` `address` is filled, e-mail,
+website), payment details (dates in IST, Razorpay payment and order ids,
+method), Qty / Rate / Amount with "one-time purchase · lifetime access · no
+renewal", the amount in words, the GST note, a **Refund policy** box, and
+"computer-generated, needs no signature". The refund sentence is
+`REFUND_TERMS` in `supabase/functions/_shared/terms.js`, shared with the
+e-mail and worded as `refund.html` words it: purchases are final and
+non-refundable EXCEPT a duplicate/erroneous charge, a plan never activated,
+or where Indian law requires a refund. A flat "no refunds" would contradict
+the published policy. Change both together.
+
+### Deploy (owner)
+
+1. **Resend → Domains → Add `filmmakerstudio.in`.** Add the records it lists
+   at **Hostinger DNS**: the DKIM TXT (`resend._domainkey`) and the `send`
+   subdomain's MX and SPF TXT. They sit on `send.` and `resend._domainkey`, so
+   the root MX / SPF / DMARC that serve the mailbox are NOT edited. Wait for
+   "Verified".
+2. **Resend → API Keys → create** a key with *Sending access* for that domain.
+3. `supabase secrets set RESEND_API_KEY=re_… MAIL_FROM="FilmMakerStudio <support@filmmakerstudio.in>"`
+4. Run **§35** (from `-- 35. RECEIPT AND REFUND E-MAILS` to the end of
+   `supabase-schema.sql`) the checksummed way, after §32, §33 and §34.
+5. Redeploy **`rzp-verify`** and **`rzp-webhook`** from current source (both
+   import `_shared/mail.js`). Keep `rzp-webhook` on `--no-verify-jwt`.
+6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
+   reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
+   console's Invoices list shows "Sent <date>".

@@ -1440,6 +1440,13 @@ a trigger on `auth.users`). Until it runs, billing_status() carries no
 `purchase_required` key and the client behaves exactly as before — the key
 has to be PRESENT to be believed. Owner step: `docs/BILLING.md` §13.
 
+**SECTION 35 HAS NOT RUN LIVE EITHER** (11 Oct 2026): receipt and refund
+e-mails through Resend from `support@filmmakerstudio.in`, each one CLAIMED
+by an UPDATE before it is sent (`claim_receipt_email`, `claim_refund_email`)
+so rzp-verify and the webhook never both send. A mail failure never fails a
+payment. The refund sentence lives in `supabase/functions/_shared/terms.js`,
+shared by the e-mail and the invoice PDF. Owner steps: `docs/BILLING.md` §16.
+
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this
 paragraph said "§16–§24 have NOT been verified" and "the consent screen

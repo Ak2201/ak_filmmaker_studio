@@ -5,9 +5,14 @@
    is drawn in the browser by src/lib/invoice-pdf.js, imported only when
    a button is clicked. Self-contained: one mount line in settings.js,
    one in admin.js.
+
+   The console's list also says whether the receipt e-mail went
+   (invoices.emailed_at, schema §35) and offers RESEND RECEIPT, which
+   asks first: it writes to a customer.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import { fmtPaise } from '../lib/billing.js';
+import { fmtPaise, admin as billingAdmin } from '../lib/billing.js';
+import { ask } from './dialog.js';
 import '../styles/motion.css';
 
 const S = { mine: { state: 'idle', rows: [] }, all: { state: 'idle', rows: [] } };
@@ -37,13 +42,17 @@ const dateOf = (iso) => new Date(iso).toLocaleDateString(undefined, { dateStyle:
 function table(kind, withBuyer) {
   const t = h('table.gt-table', {}, [h('thead', {}, [h('tr', {}, [
     h('th', { text: 'Number' }), h('th', { text: 'Date' }), withBuyer ? h('th', { text: 'Buyer' }) : null,
-    h('th', { text: 'Plan' }), h('th', { text: 'Amount' }), h('th', { text: '' })].filter(Boolean))])]);
+    h('th', { text: 'Plan' }), h('th', { text: 'Amount' }), withBuyer ? h('th', { text: 'Receipt' }) : null, h('th', { text: '' })].filter(Boolean))])]);
   const body = h('tbody');
   for (const r of S[kind].rows) {
     body.append(h('tr', {}, [
       h('td', { text: r.number }), h('td', { text: dateOf(r.issued_at) }), withBuyer ? h('td', { text: r.buyer_email || r.buyer_name }) : null,
       h('td', { text: r.plan_name }), h('td', { text: fmtPaise(r.amount_paise) }),
-      h('td', {}, [h('button.btn', { type: 'button', 'data-action': 'invoice-pdf', 'data-kind': kind, 'data-id': r.id, 'aria-label': 'Download PDF for ' + r.number, text: 'DOWNLOAD PDF' })])
+      withBuyer ? h('td', { text: r.emailed_at ? 'Sent ' + dateOf(r.emailed_at) : 'Not sent' }) : null,
+      h('td', {}, [h('button.btn', { type: 'button', 'data-action': 'invoice-pdf', 'data-kind': kind, 'data-id': r.id, 'aria-label': 'Download PDF for ' + r.number, text: 'DOWNLOAD PDF' }),
+        withBuyer && r.buyer_email && r.razorpay_order_id
+          ? h('button.btn', { type: 'button', 'data-action': 'invoice-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'RESEND RECEIPT' })
+          : null])
     ].filter(Boolean)));
   }
   t.append(body);
@@ -85,6 +94,20 @@ if (!wired && typeof document !== 'undefined') {
     if (!inv) return;
     const m = await import('../lib/invoice-pdf.js');
     m.downloadInvoicePdf(inv);
+  });
+  delegate(document, 'click', '[data-action="invoice-resend"]', async (e, el) => {
+    const inv = rows.all.get(el.dataset.id);
+    if (!inv || el.disabled) return;
+    if (!await ask({ title: 'Send the receipt again?', body: `${inv.number} goes to ${inv.buyer_email}.`, confirm: 'Send' })) return;
+    const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
+    el.disabled = true;
+    try {
+      const out = await billingAdmin.resendReceipt(inv.id);
+      toast(out && out.sent ? `Receipt sent to ${inv.buyer_email}.` : 'Nothing was sent: the invoice has no buyer e-mail.');
+      S.all.state = 'idle'; rerender();
+    } catch (err) {
+      toast(err && err.message ? err.message : 'The receipt could not be sent.', 'error');
+    } finally { el.disabled = false; }
   });
 }
 export default { memberInvoicePanel, invoiceAdminSection, refreshInvoices };

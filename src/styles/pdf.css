@@ -60,6 +60,16 @@
   .inv-doc th, .inv-doc td { text-align: left; padding: 5pt 4pt; border-bottom: 1px solid var(--print-ink); }
   .inv-doc td.inv-amt, .inv-doc th.inv-amt { text-align: right; }
   .inv-doc .inv-note { font-size: 9.5pt; margin-top: 12pt; }
+  .inv-doc .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12pt; }
+  .inv-doc .inv-paid { border: 1.5pt solid var(--print-ink); padding: 2pt 8pt; font-size: 11pt; font-weight: 700; letter-spacing: .12em; }
+  .inv-doc .inv-facts { margin-top: 0; }
+  .inv-doc .inv-facts th, .inv-doc .inv-facts td { border-bottom: 1px solid var(--print-rule); padding: 3pt 4pt; font-size: 10pt; }
+  .inv-doc .inv-facts th { width: 40%; font-weight: 400; color: var(--print-muted); }
+  .inv-doc .inv-sub { font-size: 9pt; color: var(--print-muted); }
+  .inv-doc .inv-words { font-size: 10pt; font-style: italic; margin: 0 0 8pt; }
+  .inv-doc .inv-terms { border: 1px solid var(--print-ink); padding: 6pt 8pt; margin-top: 12pt; break-inside: avoid; }
+  .inv-doc .inv-terms h2 { margin-bottom: 2pt; }
+  .inv-doc .inv-terms p { font-size: 9.5pt; margin: 2pt 0; }
 
   /* ----------------------------------------------------------
      THE MASTHEAD

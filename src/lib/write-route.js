@@ -21,9 +21,12 @@ const ROUTES = {
   documents: 'drafts.html',
   outline: 'breakdown.html#script',
   characters: 'breakdown.html#script',
-  coverage: 'breakdown.html#script',
-  generate: 'script.html',
-  guide: 'script.html'   // TODO(handoff): the stage guide lands on script.html later; see docs/HANDOFF.md
+  /* The AI coverage report and synopsis-to-script still live in
+     write.js; they are reached through the escape, linked from the
+     Script Breakdown and the Script page's ⋯ menu. */
+  coverage: 'write.html?stay=1#coverage',
+  generate: 'write.html?stay=1#generate',
+  guide: 'script.html#guide'
 };
 
 /** Where an old write.html hash goes; always answers. */

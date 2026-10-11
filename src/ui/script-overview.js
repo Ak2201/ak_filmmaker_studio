@@ -139,7 +139,8 @@ export function renderScriptOverview(scenes, opts = {}) {
     h('p.bd-sub', { text: 'What the script is made of, worked out from its pages. Nothing here is typed twice: change the script and this follows.' }),
     h('p.bdo-onward', {}, [
       hasScript ? h('button.btn.primary.bd-cta', { type: 'button', 'data-action': 'run-breakdown-script', text: scenes.length ? 'Run breakdown again' : 'Run breakdown' }) : null,
-      h('a.btn', { href: 'script.html', text: 'Back to the Script' })
+      h('a.btn', { href: 'script.html', text: 'Back to the Script' }),
+      hasScript ? h('a.btn', { href: 'write.html?stay=1#coverage', text: 'AI coverage report' }) : null
     ].filter(Boolean)),
     h('p.bdo-status', { role: 'status', 'aria-live': 'polite', 'data-so-status': '', text: '' })
   );

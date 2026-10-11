@@ -176,7 +176,8 @@ function buildTop() {
     { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
     { label: 'Format check', action: 'sc-check' },
     '---',
-    { label: 'Stage guide', action: 'sc-guide', hint: 'questions' }
+    { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
+    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
@@ -620,6 +621,7 @@ function syncGuide() {
   if (show) g.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
 addEventListener('hashchange', () => { if (location.hash === '#import') openImport(); syncGuide(); });
+delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
 delegate(document, 'click', '[data-action="sc-guide"]', () => {
   if (location.hash === '#guide') syncGuide(); else location.hash = '#guide';
 });

@@ -3664,6 +3664,20 @@ html {
   .sh-phases[data-more="right"] {
     mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
   }
+
+/* The step strips (src/ui/stepper.js, Story's path) overflow on a desk
+   too — a pre-production guide is thirteen pills — so they fade at
+   every width, not only below 1100px. */
+.stp-list[data-more="right"], .st-path-list[data-more="right"] {
+  mask-image: linear-gradient(to left, transparent, #000 var(--s6));
+}
+.stp-list[data-more="left"], .st-path-list[data-more="left"] {
+  mask-image: linear-gradient(to right, transparent, #000 var(--s6));
+}
+.stp-list[data-more="left right"], .st-path-list[data-more="left right"] {
+  mask-image: linear-gradient(to right, transparent, #000 var(--s6),
+                              #000 calc(100% - var(--s6)), transparent);
+}
   .sh-phases[data-more="left"] {
     mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
   }

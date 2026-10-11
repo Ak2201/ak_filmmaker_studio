@@ -270,5 +270,24 @@ eq(s.meta_title, 'T2', 'and the fields');
   eq(Story.pathStepForBlueprint('short', 'step-09'), '', 'a step the Story path does not ask has no step');
 }
 
+/* The step strip's names (steps.stages.json `short`): one short noun per
+   step, no full stop, no '·' (the strip states the blueprint number on
+   its own), unique within a stage so two pills never read the same. */
+{
+  const byStage = new Map();
+  for (const [k, v] of Object.entries(stages.steps)) {
+    const sh = v.short;
+    ok(typeof sh === 'string' && sh.length >= 2 && sh.length <= 24, k + ' has a short strip name of 2-24 characters');
+    ok(!/[.·]\s*$/.test(sh || '') && !(sh || '').includes('·'), k + ' short name has no full stop or ·');
+    const fmt = k.startsWith('short:') ? 'short' : 'feature';
+    for (const st of [].concat(v.stage)) {
+      const key = fmt + '/' + st;
+      if (!byStage.has(key)) byStage.set(key, new Set());
+      ok(!byStage.get(key).has(sh), k + ' short name is unique within ' + key);
+      byStage.get(key).add(sh);
+    }
+  }
+}
+
 console.log(`stage guide: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

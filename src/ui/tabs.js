@@ -171,7 +171,26 @@ function buildStrip(sections) {
   for (const s of sections) {
     strip.append(h('button.tabs-tab', { type: 'button', role: 'tab', id: 'tab-' + s.id, 'data-tab': s.id, 'aria-controls': s.id, 'aria-selected': 'false', text: labelFor(s) }));
   }
+  watchHeight(strip);
   return strip;
+}
+
+/* The strip's pinned height, MEASURED, as --tabs-h on <html> (outside
+   the observed element, so no loop): what a second pinned bar inside a
+   tab — a stage guide's step strip — stacks under. 0 while the strip is
+   not pinned at this width. RO plus one timer, as chrome's other
+   measured heights do (RO rides the render loop). */
+let stripRO = null;
+function watchHeight(strip) {
+  const publish = () => {
+    const pinned = strip.isConnected && getComputedStyle(strip).position === 'sticky';
+    const px = (pinned ? Math.round(strip.getBoundingClientRect().height) : 0) + 'px';
+    const de = document.documentElement;
+    if (de.style.getPropertyValue('--tabs-h') !== px) de.style.setProperty('--tabs-h', px);
+  };
+  if (stripRO) stripRO.disconnect();
+  if (typeof ResizeObserver === 'function') { stripRO = new ResizeObserver(publish); stripRO.observe(strip); }
+  setTimeout(publish, 300);
 }
 
 export function apply() {

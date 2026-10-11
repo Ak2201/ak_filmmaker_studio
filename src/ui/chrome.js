@@ -1912,7 +1912,7 @@ try { loadSkin(); } catch (e) {}
    shell.js uses, so chrome.css states the fade once for all of them.
    The stage strip keeps its own implementation — it is wired into the
    band's measuring and is not worth disturbing to save ten lines. */
-const EDGY = '.tabs, table.scene-table, table.pp-table, .equip-table, .beat-table';
+const EDGY = '.tabs, .stp-list, .st-path-list, table.scene-table, table.pp-table, .equip-table, .beat-table';
 function markScrollEdges(el) {
   if (!el) return;
   const slack = el.scrollWidth - el.clientWidth;

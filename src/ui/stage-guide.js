@@ -79,10 +79,10 @@ export function guideSteps(stage, format) {
   return Object.entries(STEPS)
     .filter(([k, v]) => mine(k.slice(0, k.indexOf(':'))) && list(v.stage).includes(stage))
     .sort((a, b) => sortKey(a[0]) - sortKey(b[0]))
-    .map(([k]) => {
+    .map(([k, v]) => {
       const ns = k.slice(0, k.indexOf(':'));
       const id = k.slice(k.indexOf(':') + 1);
-      return { ns, id, kind: STEP_ID.test(id) ? 'step' : 'interlude', format: fmt };
+      return { ns, id, kind: STEP_ID.test(id) ? 'step' : 'interlude', format: fmt, short: v.short || '' };
     });
 }
 

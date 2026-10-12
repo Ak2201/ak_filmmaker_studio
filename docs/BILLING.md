@@ -996,7 +996,7 @@ the published policy. Change both together.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
    reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
    console's Invoices list shows "Sent <date>".
-## 17. Three plans, each including everything below it (schema §36, 11 Oct 2026). NOT RUN LIVE.
+## 17. Three plans, each including everything below it (schema §36, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 The owner's decision: **Basic writes the film, Intermediate prepares it,
 Pro is everything** — and the matrix REPLACES the live features map (the

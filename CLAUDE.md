@@ -1464,15 +1464,15 @@ directory, and the only way through it is to inline a copy of a shared file.
 terminal and let the CLI keep the token in `~/.supabase` rather than putting
 one in a file. A refund has still never been exercised end to end.
 
-**SECTION 37 IS LIVE** (run 12 Oct 2026) and **SECTION 36 IS NOT**.
+**SECTIONS 36 AND 37 ARE BOTH LIVE** (run 12 Oct 2026).
 §36 generates `plans.features` for the three paid tiers from
 `src/data/plan-matrix.json` via `scripts/make-plan-features-sql.mjs` — do not
 edit that SQL by hand; change the JSON, regenerate, commit both, and
-`npm run test:plans` fails when the file drifts from the generator. **It is a
-hard precondition for requiring purchases**: today all three paid tiers carry
-an EMPTY features map live, so the moment `purchase_required` goes true Basic,
-Intermediate and Pro are indistinguishable and every feature is allowed on
-every tier. §37 widened the `project_data` scope CHECK to `write_goals`. It mattered more
+`npm run test:plans` fails when the file drifts from the generator. It was a hard precondition for requiring purchases: until it ran, all three
+paid tiers carried an EMPTY features map live, so flipping `purchase_required`
+would have made Basic, Intermediate and Pro indistinguishable and allowed
+every feature on every tier. Read back live: Basic 15 on, Intermediate 34,
+Pro 40, each a superset. §37 widened the `project_data` scope CHECK to `write_goals`. It mattered more
 than it reads: the deployed bundle already maps `fms_write_goals_v1 →
 write_goals` and `LOCAL_ONLY` holds only the scene bin, so the live client
 was syncing a scope the database refused — **code ahead of the database**,

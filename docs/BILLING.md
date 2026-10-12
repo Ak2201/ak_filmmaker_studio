@@ -717,8 +717,33 @@ cannot re-charge a card.
 | `ui/trial-band.js` | borrows the single `.sh-plate` and gives it back; minutes, not seconds |
 | `billing.js` | `startTrial()` → `rpc('start_trial')` |
 | `funnel.js` | `priceNotice()` → `rpc('price_notice')`, plain fetch, never throws |
-| `invite.js` | the trial CTA, above the request block |
+| `invite.js` | the trial CTA — FIRST on the page since 12 Oct 2026, and the request block is off the public door |
 | `hub.js` | opens the sample by itself when a trial is running and the studio is empty |
+
+**THE TRIAL WAS UNREACHABLE FROM 11 TO 12 OCT 2026, AND ONE LINE DID IT.**
+`invite.js`'s `readTrialOffer()` offered a trial only when
+`st.entitled !== true`. `billing_status()` computes `entitled` as
+`(not purchase_required) or (plan <> 'free') or trial_active`, and the live
+switch is OFF — so `entitled` is **true for everybody**, so the offer was
+never on, so the "Start your free trial" block was never drawn and nobody
+could begin one. The feature was built, deployed, enabled at thirty minutes,
+and invisible. Entitlement answers *may they use the app*; whether to OFFER a
+trial is a different question, and the four facts that answer it are: trials
+are on, this account has not had one, is not in one, and has never paid.
+
+**Nothing starts a trial by itself** (owner, 12 Oct 2026). It begins on a
+press. The one exception is a redeemed invite code — `startCodeTrial()` in
+`cloud.js`, inside the code-redemption block — because `redeem_invite()`
+writes the membership row but never `trial_started_at`, so with the purchases
+switch ON a code holder became a member who was not entitled and got walled by
+the very thing the code was supposed to open. Submitting the code was the
+press.
+
+**After the press, the trial lands on the FILM.** `startTrial()` goes to
+`enterAddress()` (the demo link's existing landing) rather than a bare hub: the
+button's own sentence promises the Dragon sample and a signup trial's scope
+*is* `'sample'`, so an empty hub hands somebody a studio with nothing in it and
+thirty minutes to find what they were shown.
 
 **`entitlement()` fails OPEN** — unknown means entitled. See the trap of
 that name in `CLAUDE.md`: a paywall that closes when it cannot reach the

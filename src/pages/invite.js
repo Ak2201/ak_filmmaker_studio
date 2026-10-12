@@ -44,9 +44,14 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
 import { trialLength } from '../lib/trial-time.js';
+/* §33's trial_offer(): ANON-callable, one narrow public fact (is the
+   trial on, and how long is it). The signed-out half of this page needs
+   it to name the length, and billing_status() cannot answer without a
+   session. Plain fetch, no SDK — funnel.js owns that pattern. */
+import { trialOffer as anonTrialOffer } from '../lib/funnel.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
-import { getCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
+import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -62,11 +67,19 @@ function section(id, eyebrow, title, deck) {
    is, in one sentence, before the sections repeat it with controls. */
 function deckFor(c, g) {
   if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
-  if (!c.getSession() && getCodePass()) return 'This browser came in with an invite code. Sign in with Google whenever you want your work backed up to an account; nothing else is needed.';
-  if (!c.getSession()) return 'The studio is invite-only. Enter the code you were given to come straight in — or sign in with Google and ask for an invite.';
+  if (!c.getSession() && getCodePass()) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
+  if (!c.getSession()) return 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
   if (g.state === 'unknown') return 'Checking your invite…';
   if (g.state === 'open') return 'You are in. Your projects sync to this account.';
   if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
+  /* CLOSED. The old sentence here was the sync status — "Awaiting an
+     invite" — which is true and is no longer what this page is for: it
+     told somebody who had just asked for a free trial that they were
+     waiting for one. Say what they can do instead, and keep the one
+     thing they will actually be worried about. */
+  if (g.state === 'closed' && (!g.reason || g.reason === 'noinvite')) {
+    return 'Start a free trial, buy a plan, or enter the code you were given. Everything on this device is still here, exactly as you left it.';
+  }
   return c.gateDetail ? c.gateDetail(g.reason) + '. Everything on this device is still here.' : 'Sync is paused.';
 }
 
@@ -91,9 +104,9 @@ function whySentence() {
   const r = String(w.reason).toLowerCase();
   const page = w.from ? String(w.from).replace(/^\//, '').split(/[?#]/)[0] : '';
   const lead = page ? 'You were sent here from ' + page + ' because ' : 'You were sent here because ';
-  if (r === 'signedout') return lead + 'the studio is invite-only and you are not signed in.';
+  if (r === 'signedout') return lead + 'you are not signed in.';
   if (r === 'timeout' || r === 'unreachable') return lead + 'your invite could not be checked just then. Everything on this device is still here.';
-  return lead + 'this account is not an invited member yet.';
+  return lead + 'this account has no trial running and no plan yet.';
 }
 
 /* WHAT THE READER HAS TYPED, ACROSS A REDRAW.
@@ -127,8 +140,8 @@ function render() {
 
   const main = h('main#main');
   main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Studio · Invite' }),
-    h('h1.bd-title', { text: 'Invite.' }),
+    h('p.bd-eyebrow', { text: 'Studio · Come in' }),
+    h('h1.bd-title', { text: 'Come in.' }),
     h('p.bd-deck', { text: deckFor(c, g) })
   ]));
   const body = h('div.iv-body');
@@ -138,7 +151,8 @@ function render() {
   if (!c || !c.isConfigured()) {
     body.append(section('local', 'Local only', 'Nothing to redeem.',
       'Cloud sync is not available right now. Your work lives in this browser; you can back it up from Settings.'));
-  } else if (!signedIn && getCodePass()) {
+  } else if (!signedIn && getCodePass() && getCodePass().from === 'demo') {
+    /* A DEMO PASS, and only a demo pass, is in on its own. */
     const sec = section('through', 'Through', 'You’re in, with a code.',
       'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
     sec.append(h('div.iv-actions', {}, [
@@ -147,18 +161,42 @@ function render() {
       h('button.btn', { type: 'button', 'data-iv-action': 'forget-code', text: 'FORGET THIS CODE' })
     ]));
     body.append(sec);
-  } else if (!signedIn) {
-    /* The code first: it is the shorter road and the one a link
-       arrives by. Sign-in is the other road, for people with no code. */
-    const code = inviteSection(section, null);
-    if (code) body.append(code);
-    const sec = section('signin', 'No code?', 'Sign in with Google and ask.',
-      'Sign in with your Google account and send a short request. Once it is approved you are in on your next visit. Signing in does not change anything on this device.');
+  } else if (!signedIn && getCodePass()) {
+    /* HELD, NOT SPENT. The code is in this browser and worth a seven-day
+       trial; a trial is counted against a person, so it is waiting for
+       an account. One button, and it says what pressing it does. */
+    const sec = section('through', 'Your code', 'Sign in to spend your code.',
+      'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Sign in with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
     sec.append(h('div.iv-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })
+      h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' }),
+      h('button.btn', { type: 'button', 'data-iv-action': 'forget-code', text: 'FORGET THIS CODE' })
     ]));
     sec.append(legalLine('By continuing you agree to the '));
     body.append(sec);
+  } else if (!signedIn) {
+    /* THE ORDER IS THE OFFER, and it was the other way round until
+       12 Oct 2026. This page used to lead with the code box and then
+       ask a stranger to apply for an invite — so somebody who had just
+       pressed "Start your free trial" on the landing page arrived at a
+       form asking them to request one, and the trial they came for was
+       nowhere on the page. Trial, then plans, then the code: what most
+       people came for, first.
+
+       All three begin with the same Google button, because all three
+       belong to an ACCOUNT: a trial is counted against a person, a plan
+       is bought by one, and a code is spent on one. */
+    {
+      const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
+      /* The LENGTH belongs in the deck, not in the heading: "Start your
+         30 minutes free trial" is not a sentence anybody says. */
+      const t = section('trial', 'Free trial', 'Start your free trial.',
+        'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Sign in and it begins.');
+      t.append(h('div.iv-actions', {}, [
+        h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'CONTINUE WITH GOOGLE' })
+      ]));
+      t.append(legalLine('By continuing you agree to the '));
+      body.append(t);
+    }
     /* start.html links to invite.html#buy. A plan is bought by an
        account, so signed out the cards' way in is signing in. */
     /* Signed out, the prices are on start.html: fetching the plan rows
@@ -166,13 +204,17 @@ function render() {
        which the budget forbids (CLAUDE.md, "lazy chunks"). */
     {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan lets an account in without an invite. Sign in with Google first, then choose a plan.');
+        'One payment, access for good — no trial first if you already know you want it. Sign in with Google, then choose a plan.');
       buy.append(h('div.iv-actions', {}, [
         h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
         h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
       ]));
       body.append(buy);
     }
+    /* Third, and no longer a door of its own: the box holds the code and
+       sends them to Google, which is the only way it can be spent. */
+    const code = inviteSection(section, null);
+    if (code) body.append(code);
   } else if (g.state === 'unknown') {
     body.append(section('checking', 'One moment', 'Checking your invite…', 'Checking the invite for ' + (email || 'this account') + '.'));
   } else if (g.state === 'open' && lastStatus && lastStatus.entitled === false) {
@@ -210,42 +252,48 @@ function render() {
     sec.append(h('div.iv-actions', {}, [h('button.btn.primary', { type: 'button', 'data-iv-action': 'takeover', text: 'TAKE OVER SESSION' })]));
     body.append(sec);
   } else {
-    /* closed */
-    const st = g.status;
-    const pending = st && st.requestStatus === 'pending';
-    const sec = section('request', 'Step two', pending ? 'Your request is in.' : 'Ask for an invite.',
-      'Signed in as ' + email + ', which is not a member of this studio yet.');
-    /* THE TRIAL IS THE FIRST ROAD IN NOW (§30, owner 9 Oct 2026).
-       Before this, a signed-in stranger's only move was to ask for an
-       invite and wait for a human. Thirty minutes with the sample is
-       the thing they came for, so it goes above the request block —
-       which stays, because a trial is not a membership and somebody
-       who has used theirs still needs a way to ask.
+    /* CLOSED — signed in, not a member. Since 12 Oct 2026 this is where
+       a brand-new signup LANDS: they press "Start your free trial" on
+       the landing page, Google sends them back to the hub, the site
+       gate reads "not a member" and replaces the document with this
+       page. So this branch is the offer, not a waiting room.
 
-       Drawn only when the server says one is available. trialOffer is
-       null when section 30 has not run, when the switch is off, when
-       this account has had its trial, or when it has already paid —
-       and in every one of those cases the page reads exactly as it did
-       before, which is why nothing here is conditional on a version. */
+       THE ORDER CARRIES THE DECISION (owner, 12 Oct 2026):
+         a trial is available -> the trial, first and primary; plans
+                                 below it as the alternative
+         no trial available   -> no trial section AT ALL; the plans
+                                 lead, and the page says why
+
+       NOTHING STARTS BY ITSELF. The owner was explicit: the trial
+       begins when somebody presses the button and not before. A signup
+       that quietly consumed the one trial an account ever gets, before
+       the person had read a word of what it was, would spend it for
+       them.
+
+       trialOffer is null when §30 has not run, when the switch is off,
+       when this account has had its trial, or when it has already paid.
+       All four read as "plans only", which is why nothing here is
+       conditional on a schema version. */
+    const st = g.status;
+    const used = !!(lastStatus && lastStatus.trial_used === true);
     if (trialOffer) {
-      const t = section('trial', 'Step two', 'Start your ' + trialLength(trialOffer.minutes) + ' free trial.',
-        'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside. No card, nothing to fill in.');
+      const len = trialLength(trialOffer.minutes);
+      const t = section('trial', 'Free trial', 'Start your free trial.',
+        'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside, for ' + len + '. No card, nothing to fill in.');
       t.append(h('div.iv-actions', {}, [
-        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + trialLength(trialOffer.minutes).toUpperCase() })
+        h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
       ]));
       t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
       body.append(t);
     }
-    sec.append(requestBlock(st, g.reason));
-    body.append(sec);
-    const code = inviteSection(section, st);
-    if (code) body.append(code);
-    /* PAYING GRANTS ENTRY (schema section 16): a plan is the third route
-       through the gate. The cards come from the plans table; a purchase
-       activates server-side and runGate() is asked again. */
+    /* PAYING GRANTS ENTRY (schema section 16). With a trial on offer
+       this is the alternative; without one it is the whole page. */
     if (plans) {
-      const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
-        'A paid plan lets this account in without an invite. One payment, access for good — and it is the only thing that keeps the studio open once a trial has run out.');
+      const buy = trialOffer
+        ? section('buy', 'Or', 'Buy a plan and come straight in.',
+            'One payment, access for good — and the only thing that keeps the studio open once a trial has run out.')
+        : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
+            'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. One payment, access for good.');
       /* The status, not null (§33): planCards() disables BUY and says
          why for a DISABLED account, and with null it could not know —
          a disabled visitor pressed BUY, waited for Checkout, and was
@@ -259,6 +307,29 @@ function render() {
         rerender: render
       }));
       body.append(buy);
+    }
+    const code = inviteSection(section, st);
+    if (code) body.append(code);
+    /* THE REQUEST QUEUE IS OFF THE PUBLIC DOOR (owner, 12 Oct 2026).
+       "Ask an administrator and wait" was the only road in before the
+       trial existed; it is now the slowest of four, and leading with it
+       is what made this page read as a rejection. The RPC, the console
+       queue and every pending request are untouched — the block is
+       drawn for somebody who already HAS a request in flight (so they
+       can see where it stands), and otherwise only at invite.html#request,
+       which is the address an administrator can still hand out. */
+    const asked = !!(st && st.requestStatus);
+    /* NOT DEPLOYED is the third case and it is not optional: with the
+       gate's functions missing there is no trial to offer and no plan
+       to sell, so without the request block this page would have
+       nothing on it at all. requestBlock() is what says "invites are
+       not open yet" — it is the only place that sentence exists. */
+    const undeployed = !!(st && st.deployed === false);
+    if (asked || undeployed || /(^|#)request$/.test(location.hash)) {
+      const sec = section('request', 'Or', undeployed ? 'Invites are not open yet.' : asked && st.requestStatus === 'pending' ? 'Your request is in.' : 'Ask for an invite.',
+        'Signed in as ' + email + ', which is not a member of this studio yet.');
+      sec.append(requestBlock(st, g.reason));
+      body.append(sec);
     }
     const out = section('meanwhile', 'Meanwhile', 'Your work is safe.',
       'Anything already saved on this device stays exactly as it is. Once you are in, everything opens again and sync starts by itself.');
@@ -321,7 +392,16 @@ async function startTrial(btn) {
     const c = cloud();
     if (c && c.runGate) await c.runGate();
     Store.notify('billing:changed', null);
-    location.href = 'index.html';
+    /* LAND ON THE FILM, NOT ON AN EMPTY HUB. The sentence above this
+       button promises the Dragon sample, and a signup trial's scope IS
+       'sample' — so sending them to a bare hub hands them a studio with
+       nothing in it and thirty minutes to find the thing they were
+       shown. enterAddress() is the demo link's existing landing: the
+       sample is seeded on the hub and `fms_demo_land` carries them on to
+       the dashboard, or straight to the dashboard if this device already
+       has films of its own. One mechanism, not a second one. */
+    markDemoPending();
+    location.href = enterAddress();
   } catch (e) {
     say(errorSentence(e, 'That did not start. Please try again.'), true);
     btn.disabled = false; btn.textContent = was;
@@ -329,34 +409,45 @@ async function startTrial(btn) {
 }
 
 /* AN INVITE LINK: invite.html#code=XXXX-XXXX-XXXX. The code is read
-   once, taken off the address bar (so a reload, a bookmark or a
-   screenshot does not carry it), typed into the box and submitted as
-   if by hand — one code path for the link and the keyboard. Only when
-   signed out: a signed-in member with a link has nothing to do with
-   it, and a signed-in non-member gets the same box, pre-filled. */
+   once and taken off the address bar straight away — a code left there
+   travels in a screenshot and sits in the history of a shared machine.
+
+   IT NO LONGER LETS THEM IN BY ITSELF (owner, 12 Oct 2026). The link
+   used to type the code into the box and submit it as if by hand, which
+   entered the studio with no sign-in. A code is worth a seven-day trial
+   now, and a trial is counted against a PERSON, so the code has to meet
+   an account: it is HELD in this browser, the box shows it, and the
+   next sign-in — from any button on this page — spends it. cloud.js's
+   runGate() does the redeeming, as it already did for "come in now,
+   sign in later".
+
+   It is also no longer SUBMITTED on arrival. Sending somebody to Google
+   the instant they open a link, before they have read a word of what
+   this is, is not one motion — it is a hijack. The press is theirs. */
 function adoptLinkCode() {
   const code = codeFromLocation();
   if (!code) return;
-  /* `&demo=1` (the console's "Create demo link"): after the code lets
-     them in, land on the Dragon sample rather than the bare hub. Read
-     BEFORE the fragment is stripped. A browser that already holds a
-     code pass has nothing to submit, so it goes straight in. */
+  /* `&demo=1` (the console's "Create demo link") IS THE ONE EXCEPTION,
+     and deliberately so: a demo link exists to show the sample to a room
+     — a festival desk, a producer, a classroom — where asking for a
+     Google account is the whole of the friction it was made to avoid.
+     The pass is stamped `from: 'demo'`, and sitegate.js admits a
+     signed-out browser on that stamp and on no other. Read BEFORE the
+     fragment is stripped. */
   const demo = /(?:^#|&)demo=1(?:&|$)/.test(String(location.hash || ''));
-  if (demo) {
-    const c0 = cloud();
-    if (c0 && c0.getSession && c0.getSession()) { /* a signed-in visitor has no code to submit; the flag would only linger */ }
-    else {
-      markDemoPending();
-      if (getCodePass()) { location.replace(enterAddress()); return; }
-    }
+  const signedIn = !!(cloud() && cloud().getSession && cloud().getSession());
+  if (demo && !signedIn) {
+    setCodePass(code, { from: 'demo' });
+    markDemoPending();
+    location.replace(enterAddress());
+    return;
   }
+  if (!signedIn) setCodePass(code, { from: 'link' });
   try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* ignore */ }
   const fill = () => {
     const box = document.getElementById('gtCode');
     if (!box) return false;
     box.value = formatCode(code);
-    const c = cloud();
-    if (c && !c.getSession() && !getCodePass()) box.form.requestSubmit();
     return true;
   };
   if (!fill()) {
@@ -381,6 +472,18 @@ let trialOffer = null;
 /* The last billing_status() this page read, for the 'open' state: a
    member who is not entitled is not "in" (§33). */
 let lastStatus = null;
+/* { enabled, minutes } from the anon read, for the SIGNED-OUT branch
+   only. Null until it lands, and the page is correct without it — the
+   trial section simply says "your free trial" instead of naming a
+   length. Never throws; funnel.js returns null on any failure. */
+let anonTrial = null;
+if (!(cloud() && cloud().getSession && cloud().getSession())) {
+  anonTrialOffer().then((t) => {
+    if (!t) return;
+    anonTrial = { enabled: t.trial_enabled === true, minutes: Number(t.trial_minutes) > 0 ? Math.round(t.trial_minutes) : 30 };
+    render();
+  }).catch(() => { /* the length is a courtesy, never a gate */ });
+}
 async function loadPlans() {
   const c = cloud();
   if (!c || !c.isConfigured() || !c.getSession()) return;
@@ -405,13 +508,38 @@ async function loadPlans() {
   render();
 }
 
+/* Anything paid, granted or refunded. start_trial() refuses with
+ *  reason 'paid' on `payments.paid_at is not null`, which catches a grant
+ *  and a refunded buyer too — so offering one here would be offering what
+ *  the server is about to refuse. The same read as plan-gate.js:234,
+ *  deliberately: the wall and the door must not disagree about who has
+ *  already paid. */
+function paidBefore(st) {
+  return !!(st && Array.isArray(st.payments)
+            && st.payments.some((p) => p && /^(paid|granted|refunded)$/.test(p.status)));
+}
+
 function readTrialOffer(st) {
   lastStatus = st || null;
   try {
     /* The key has to be PRESENT to be believed: an older database
        returns no `trial_enabled` at all, and undefined must not read as
-       "offer them one" any more than it reads as "wall them". */
-    const on = st && st.trial_enabled === true && st.trial_used !== true && st.entitled !== true;
+       "offer them one" any more than it reads as "wall them".
+
+       IT USED TO READ `st.entitled !== true` AS WELL, AND THAT ONE LINE
+       WAS THE WHOLE BUG. billing_status() computes entitled as
+       `(not purchase_required) or (plan <> 'free') or trial_active`, and
+       the live purchases switch is OFF — so entitled is TRUE for
+       everybody, so this was never on, so the "Start your free trial"
+       block was never drawn and nobody could ever begin one. The trial
+       was enabled, configured and invisible.
+
+       Entitlement answers "may they USE the app". Whether to OFFER a
+       trial is a different question with a different answer, and the
+       four facts below are the whole of it: trials are on, this account
+       has not had one, is not in one, and has never paid. */
+    const on = st && st.trial_enabled === true && st.trial_used !== true
+            && st.trial_active !== true && !paidBefore(st);
     /* The console can set any length (1 minute to 31 days), so the
        offer reads the server's figure; 30 is the column's default, for
        a database that predates the key. */
@@ -430,6 +558,12 @@ try {
 Store.subscribe('gate:changed', () => { if (!plans) loadPlans(); });
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(loadPlans, 0));
 loadPlans();
+/* THE HASH IS PART OF WHAT THIS PAGE DRAWS now that the request block
+   lives behind #request, so a link to it from this very page — the
+   commonest way anybody reaches it — must redraw. Without this the hash
+   changes, nothing re-renders, and the block the address names is not
+   there: a dead link that looks like a broken page. */
+addEventListener('hashchange', render);
 Store.subscribe('gate:changed', render);
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(render, 0));
 render();

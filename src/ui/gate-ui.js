@@ -127,26 +127,30 @@ export function inviteSection(section, st) {
   if (signedIn && st && (!st.deployed || (st.registered && !st.disabled))) return null;
   const sec = section('invite', signedIn ? 'Invite' : 'With a code', 'Have an invite code?',
     signedIn
-      ? 'If somebody handed you a code, enter it and you are through. No code? Request an invite instead — the administrator sees the account you signed in with.'
-      : 'A code lets you straight in, with no sign-in. Enter it and you are through on this browser; sign in with Google whenever you want your work backed up to an account.');
+      ? 'If somebody handed you a code, enter it and you are through, with the free trial it carries.'
+      : 'Enter the code you were given and sign in with Google in one go: the code is spent on your account, and the trial it carries starts there.');
   const form = h('form.gt-code', { 'data-gate-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'gtCode', text: 'Invite or screening pass code' }));
   form.append(h('input#gtCode.gt-input', { type: 'text', inputmode: 'text', autocapitalize: 'characters', spellcheck: 'false',
     placeholder: 'XXXX-XXXX-XXXX', maxlength: 40, 'data-gate-field': 'code', 'aria-describedby': 'gtCodeHint', value: formatCode(codeTyped) }));
   form.append(h('p#gtCodeHint.gt-meta', { text: 'Spaces and dashes are ignored. A screening pass opens the screening room instead.' }));
-  /* The signed-out label used to read CONTINUE WITH GOOGLE, which is
-     what happens AFTER a code checks out — and with the box empty the
-     submit did nothing at all, so the button that most looked like the
-     way in was a dead click. It names the code now, and an empty
-     submit says where the way in is. */
-  form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'ENTER WITH THIS CODE') }));
+  /* IT SAYS CONTINUE WITH GOOGLE AGAIN, AND THIS TIME IT IS TRUE.
+     The label was changed away from those words once, correctly, because
+     back then a code DID admit a signed-out browser outright and the
+     button that said Google did not go to Google. Since 12 Oct 2026 a
+     code is no longer a key on its own — it is held, and the submit goes
+     straight to Google, where it is spent on the account that comes
+     back. The old objection (an empty submit was a dead click) still
+     stands and is still answered: submitCode() refuses an empty box with
+     a sentence rather than doing nothing. */
+  form.append(h('button.btn.primary', { type: 'submit', disabled: codeBusy, text: codeBusy ? 'CHECKING…' : (signedIn ? 'REDEEM CODE' : 'CONTINUE WITH GOOGLE') }));
   if (codeError) form.append(h('p.gt-error', { role: 'alert', text: codeError }));
   sec.append(form);
   /* The other route, when this box is drawn somewhere other than the
      doorway itself. invite.html renders the request block beside it,
      so it does not need the pointer. */
   if (signedIn && !/(^|\/)invite(\.html)?$/.test(location.pathname)) {
-    sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? Request an invite →' })]));
+    sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? Start a free trial →' })]));
   }
   sec.append(h('p.gt-meta', {}, [h('a', { href: 'start.html', text: 'What is this? About ' + BRAND.name + ' →' })]));   // the public landing page, outside the gate
   return sec;
@@ -172,6 +176,12 @@ async function submitCode(form) {
       await g.redeemCode(raw);
       codeTyped = '';
       toast('Invite code accepted — sync is on.', 'success');
+      /* The code carries a trial and redeeming it is what spends the
+         code, so this is where the trial begins on this path. One
+         function, shared with cloud.js's held-code path; see its
+         comment for why a member without a trial is a member who is
+         not entitled. */
+      if (c.startCodeTrial) await c.startCodeTrial();
       await c.runGate();
       if (c.attachToCurrentProject) c.attachToCurrentProject();
     } else {
@@ -180,14 +190,25 @@ async function submitCode(form) {
         location.href = 'screening.html?pass=' + encodeURIComponent(normaliseCode(raw));
         return;
       }
-      /* Code-only entry: remember the code in this browser and go in.
-         No sign-in is asked for. The ticket verifyCode() left in
-         sessionStorage is still redeemed if they do sign in within ten
-         minutes, and after that cloud.js redeems the remembered code
-         itself on the first sign-in. */
+      /* CODE THEN GOOGLE, ONE MOTION (owner, 12 Oct 2026). The code is
+         held in this browser and the visitor goes straight to Google;
+         cloud.js's runGate() redeems the held code against the account
+         that comes back — that path already existed for "come in now,
+         sign in later" and is unchanged, which is what makes this a
+         small edit rather than a new flow.
+
+         WHAT IS DELIBERATELY NOT DONE HERE: `fms_sitegate_pass` is not
+         written. That flag is the site gate's "this tab is through", and
+         writing it was how a code admitted a signed-out browser outright.
+         A code is no longer a key on its own — it is worth a 7-day trial,
+         and a trial is counted against a PERSON, so the code has to meet
+         an account to be worth anything. Demo links are the exception and
+         keep their own anonymous landing (invite.js, adoptLinkCode). */
       setCodePass(raw);
-      try { sessionStorage.setItem('fms_sitegate_pass', '1'); } catch (e) { /* re-verified on arrival */ }
-      location.assign(enterAddress());
+      if (c.signInWithGoogle) { await c.signInWithGoogle(); return; }
+      /* No sign-in available on this build: the code is held, so the
+         doorway can still say what is waiting to be spent. */
+      location.assign('invite.html');
       return;
     }
   } catch (e) {
@@ -350,14 +371,15 @@ function requestsPart(sec) {
   /* docs/BILLING.md §8: a visitor who enters on a code alone is not
      signed in, has no organisation and so no plan — the plan gate does
      not apply to them. Say so where the code is made. */
-  form.append(h('p.gt-meta', { text: 'A code-only visitor has no plan; tier locks apply once they sign in.' }));
+  form.append(h('p.gt-meta', { text: 'A code is spent when its holder signs in, and buys them a 7-day trial; tier locks apply as usual.' }));
   if (admin.made) {
     form.append(h('p.gt-made', {}, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
       h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));
     if (admin.made.pass_type === 'standard') {
-      /* The same code as a link. Whoever opens it is in, no sign-in —
-         so this is the thing to send, and the code is the thing to read
-         aloud when a link cannot travel.
+      /* The same code as a link: the thing to send, where the code is
+         the thing to read aloud when a link cannot travel. Whoever opens
+         it signs in once and is in with a 7-day trial — it has not let
+         anybody in without a sign-in since 12 Oct 2026.
 
          IT POINTS AT start.html NOW, not invite.html (§30). A code no
          longer admits somebody outright — it buys a seven-day trial,

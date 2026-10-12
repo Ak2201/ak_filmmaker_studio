@@ -447,14 +447,20 @@ const EXPECTED = {
      host move to filmmakerstudio.in recaptured it again the same day,
      for the footer's printed address; neither recapture moved a
      data-key. */
-  /* The crumb on story.html read "Story editor" and now reads "Story",
-     like every other stage crumb (navigation.json pageLabel on the
-     story-beats module, 12 Oct 2026). `editor` appeared nowhere else
-     on that page, so the word-set check reports it missing from a
-     page whose only change is this one deliberate rename. One row, the
-     first since the last recapture; the anti-rot check fails the run
-     if it ever stops firing. */
-  story: { editor: 'the crumb "Story editor" became "Story" (12 Oct 2026)' },
+  /* Emptied 12 Oct 2026, and the note it replaced called this exactly:
+     it held `editor` for the story crumb ("Story editor" -> "Story"),
+     written as "the first row since the last recapture; the anti-rot
+     check fails the run if it ever stops firing". The free-trial pass
+     recaptured the oracle a few hours later — for invite.html and
+     settings.html, nothing to do with that crumb — so the baseline now
+     records the page as it actually reads, the allowance never fires,
+     and the run failed for a stale allowance. Deleting it is that
+     mechanism working, for the fourth time on this list.
+
+     FOURTH TIME. The pattern is no longer worth re-deriving: an
+     allowance is valid only until the next recapture, and you do not
+     control who makes that or when. */
+  story: {},
   edit: {},
   deliverables: {},
   screening: {},

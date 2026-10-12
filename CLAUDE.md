@@ -21,16 +21,31 @@ browser's `localStorage`. Optional Supabase sync on top. Static build, no server
 It is a **writing tool people keep months of work in.** That single fact decides
 most arguments: correctness of stored data beats every other consideration.
 
-**And since 5 Oct 2026 the website is INVITE-ONLY, by the owner's decision.**
+**THE WEBSITE'S DOOR FOLLOWS THE PURCHASES SWITCH (owner, 12 Oct 2026).**
 `src/lib/sitegate.js` (imported by `chrome.js`, so on every reachable page)
-hides the document until the gate answers and sends anyone not through it —
-signed out, or signed in without membership — to `invite.html`. A valid
-invite CODE is a key on its own: it enters with no sign-in, is remembered in
-that browser (`fms_invite_code_v1`, in `ALL_KEYS`, in no backup) and
-re-verified each browser session; every code is also a link,
-`invite.html#code=…`, that the console copies. This reverses
-"the gate guards the cloud, never local work", which older notes below still
-say; read those as history. Local work is HIDDEN from a visitor outside the
+hides the document until the gate answers. `purchase_required` OFF → anybody
+signed in with Google is in, and membership only decides whether their work
+SYNCS. ON → a plan or a running free trial, both of which write the
+`studio_members` row the gate reads. Not known (offline, §32 absent) → the
+old membership gate, failing closed. Signed out → `start.html`; every other
+refusal → `invite.html`, which is the OFFER page: trial first, plans second,
+code box third. The invite-request queue came off the public door —
+`invite.html#request` and the console still have it.
+
+**Nothing starts a trial by itself.** It begins on a press, and the one
+exception is a redeemed code, where submitting the code WAS the press
+(`startCodeTrial()` in `cloud.js`, inside the code-redemption block —
+`redeem_invite()` writes the membership but never `trial_started_at`, so
+without it a code holder was walled by the thing the code opened).
+
+**A valid invite CODE used to be a key on its own and is NOT any more.** It is
+worth a 7-day trial, and a trial is counted against a PERSON, so the code has
+to meet an account: the box holds it (`fms_invite_code_v1`, in `ALL_KEYS`, in
+no backup) and goes straight to Google, and `runGate()` redeems it for the
+account that comes back. It is re-verified each browser session. Demo links
+(`…&demo=1`) keep the anonymous landing, deliberately. Every code is also a
+link that the console copies. This all reverses "the gate guards the cloud,
+never local work", which older notes below still say; read those as history. Local work is HIDDEN from a visitor outside the
 gate, never deleted or touched. Two builds follow from it: `npm run build` has
 the gate on (what the hosts run); `npm run build:open` turns it off and is the
 only build `npm run verify` accepts, because verify loads every page signed

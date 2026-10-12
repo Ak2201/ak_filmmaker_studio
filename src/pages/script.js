@@ -42,6 +42,7 @@ import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor } from '../ui/script-editor/editor.js';
+import { installLineLanding } from '../ui/script-find.js';
 import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
@@ -725,6 +726,8 @@ mountFocusMode(() => doc);
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
 if (location.hash === '#import') openImport(true);
+/* script.html#line-<id>: a search result opens the page at that line. */
+installLineLanding(editor);
 function syncGuide() {
   const g = document.getElementById('guide');
   if (!g) return;

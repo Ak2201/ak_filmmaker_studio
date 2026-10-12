@@ -431,18 +431,16 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
-  /* The dashboard revamp (12 Oct 2026) folded the journey strip into
-     the five stage cards, so its section ("Where this film is. Each
-     stage has a part of the blueprint (Guide)… Both are read from what
-     you have already written — nothing here is stored.") and the old
-     deck ("Each card shows where…") left the page. The words below
-     appear nowhere else on it. Re-baseline the next time this grows. */
-  dashboard: {
-    both: 'journey strip section removed; its meters now sit in the stage cards',
-    journey: 'journey strip section removed; #journey is kept on the stage list',
-    stored: 'journey strip deck ("nothing here is stored") removed with the section',
-    card: 'head deck shortened ("Each card shows where that part of the film stands")',
-    shows: 'head deck shortened ("Each card shows where that part of the film stands")'
+  /* Emptied: the dashboard revamp's five rows went stale once develop
+     re-baselined (b31871c) after it, which is the anti-rot check doing
+     its job. */
+  dashboard: {},
+  /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
+     for the AI pill in the toolbar, whose menu (Coverage report, …) is
+     built only when it is opened. */
+  screenplay: {
+    coverage: 'the "AI coverage report" menu item moved into the AI pill menu',
+    report: 'the "AI coverage report" menu item moved into the AI pill menu'
   },
   /* AI Desk (12 Oct 2026): settings.html#ai shows the key section
      only on a plan with AI tools; locked (verify runs signed out) it
@@ -2781,7 +2779,14 @@ const exported = await rtPage.evaluate(async () => {
   const origClick = HTMLAnchorElement.prototype.click;
   URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
   HTMLAnchorElement.prototype.click = function () {};
-  document.querySelector('[data-action="export-all"]').click();
+  /* The Backup menu in the band (src/ui/topbar-backup.js, UI revamp 1)
+     replaced the hub's [data-action="export-all"]. Its handler awaits a
+     lazy import of the backup module before building the file, so the
+     capture waits for the blob instead of reading it on this tick. */
+  const btn = document.querySelector('[data-action="bk-export"]') || document.querySelector('[data-action="export-all"]');
+  if (!btn) { URL.createObjectURL = origCreate; HTMLAnchorElement.prototype.click = origClick; return { text: null, noControl: true }; }
+  btn.click();
+  for (let i = 0; i < 100 && !blob; i++) await new Promise((r) => setTimeout(r, 50));
   URL.createObjectURL = origCreate;
   HTMLAnchorElement.prototype.click = origClick;
   return { text: blob ? await blob.text() : null };
@@ -2798,7 +2803,18 @@ if (!exported.unavailable && exported.text) {
   await rtPage.evaluate((text) => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    const input = document.getElementById('importAllFile');
+    let input = document.getElementById('importAllFile');
+    if (!input) {
+      /* The band's Backup menu builds its file input on the first
+         [data-action="bk-import"] click; stub the picker so headless
+         Chromium opens nothing, then feed the file to that input. */
+      const pick = HTMLInputElement.prototype.click;
+      HTMLInputElement.prototype.click = function () {};
+      const imp = document.querySelector('[data-action="bk-import"]');
+      if (imp) imp.click();
+      HTMLInputElement.prototype.click = pick;
+      input = document.querySelector('input[type="file"][aria-label="Import a studio backup"]');
+    }
     const dt = new DataTransfer();
     dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
     input.files = dt.files;

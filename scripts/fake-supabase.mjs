@@ -1102,8 +1102,13 @@ export function aiScenario(kind, tok = 'tok-amy', { features = {} } = {}) {
   F.db.members.set(u.id, { ...(cur || {}), role: (cur && cur.role) || 'user', disabled_at: null });
   applyPlan(accountForBuyer(u.id), plan);
   const ai = kind === 'pro';
-  const p = F.db.plans.find((x) => x.id === plan);
-  p.features = { ...p.features, ai_tools: ai };
+  /* The rows as src/data/plan-matrix.json sells them: ai_tools on Pro
+     only among the paid plans. offerFor(['ai_tools']) reads these rows,
+     so a row left unset (missing = allowed) would name a cheaper plan. */
+  for (const row of F.db.plans) {
+    if (row.id === 'free') continue;
+    row.features = { ...(row.features || {}), ai_tools: row.id === 'pro' };
+  }
   F.db.featureOverrides = { ai_tools: ai, ...features };
   return tok;
 }

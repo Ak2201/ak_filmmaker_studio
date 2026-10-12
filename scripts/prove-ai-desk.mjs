@@ -43,8 +43,8 @@ const PORT = Number(process.env.PROVE_PORT) || 5383;
 const BASE = 'http://localhost:' + PORT;
 const SHOTS = process.env.PROVE_SHOTS || '';
 
-if (!fs.existsSync(path.join(DIST, 'script.html'))) {
-  console.error('✗ no ' + path.relative(process.cwd(), DIST) + '/script.html — run `npm run build:open` first');
+if (!fs.existsSync(path.join(DIST, 'screenplay.html'))) {
+  console.error('✗ no ' + path.relative(process.cwd(), DIST) + '/screenplay.html — run `npm run build:open` first');
   process.exit(2);
 }
 {
@@ -203,7 +203,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const { ctx, page, errors } = await context({ tok });
   try {
   await seed(page, { key: true });   // a key on the device must not unlock a locked plan
-  await page.goto(BASE + '/script.html', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/screenplay.html', { waitUntil: 'networkidle' });
   await planKnown(page, !!tok);
   const p = await pill(page);
   const st = await p.evaluate((el) => ({ cls: el.className, state: el.dataset.aiState, aria: el.getAttribute('aria-disabled'), disabled: el.disabled, text: el.textContent }));
@@ -225,7 +225,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(!(await deskOpen(page)) && await page.locator('aside.ai-desk').count() === 0, 'the Desk did not open');
   await page.locator('.dlg button', { hasText: 'Not now' }).click().catch(() => {});
   await page.waitForTimeout(400);
-  ok(/\/script(\.html)?$/.test(new URL(page.url()).pathname) && !(await dlg.isVisible().catch(() => false)), '"Not now" closes it and stays on the page', page.url());
+  ok(/\/screenplay(\.html)?$/.test(new URL(page.url()).pathname) && !(await dlg.isVisible().catch(() => false)), '"Not now" closes it and stays on the page', page.url());
   ok(await page.locator('aside.ai-desk').count() === 0, 'still no Desk after "Not now"');
 
   await (await pill(page)).click({ force: true });
@@ -237,7 +237,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const u = new URL(page.url());
   ok(/\/purchase(\.html)?$/.test(u.pathname) && u.searchParams.get('plan') === 'pro', '"See Pro plans" lands on purchase.html?plan=pro', page.url());
 
-  for (const pg of ['script.html', 'story.html', 'visualize.html', 'feature.html', 'settings.html#ai']) {
+  for (const pg of ['screenplay.html', 'story.html', 'visualize.html', 'feature.html', 'settings.html#ai']) {
     await page.goto(BASE + '/' + pg, { waitUntil: 'networkidle' });
     await planKnown(page, !!tok);
     const n = await page.locator('.ai-key-input').count();
@@ -258,7 +258,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const { ctx, page, errors } = await context({ tok });
   try {
   await seed(page, { key: false });
-  await page.goto(BASE + '/script.html', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/screenplay.html', { waitUntil: 'networkidle' });
   await planKnown(page, true);
   ok(F.db.calls.includes('billing_status'), 'signed in: the page asked billing_status()', F.db.calls.slice(0, 12));
   const p = await pill(page);
@@ -283,7 +283,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(requests.length === 0, 'nothing was sent', requests.length);
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'desk-nokey-1280.png') });
 
-  for (const pg of ['script.html', 'story.html', 'visualize.html', 'feature.html']) {
+  for (const pg of ['screenplay.html', 'story.html', 'visualize.html', 'feature.html']) {
     await page.goto(BASE + '/' + pg, { waitUntil: 'networkidle' });
     await planKnown(page, true);
     const n = await page.locator('.ai-key-input').count();
@@ -308,7 +308,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const { ctx, page, errors } = await context({ tok });
   try {
   await seed(page, { key: true });
-  await page.goto(BASE + '/script.html', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/screenplay.html', { waitUntil: 'networkidle' });
   await planKnown(page, true);
   const p = await pill(page);
   ok(await p.evaluate((el) => el.dataset.aiState) === 'ready', 'the pill reads data-ai-state="ready"');
@@ -450,7 +450,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const { ctx, page, errors } = await context({ tok, width: 390 });
   try {
   await seed(page, { key: true });
-  await page.goto(BASE + '/script.html', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/screenplay.html', { waitUntil: 'networkidle' });
   await planKnown(page, true);
   /* The rows are textareas, so the speech is their VALUE, not their
      text content: find the row by its element id. */

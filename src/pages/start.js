@@ -94,7 +94,7 @@ const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening)(?:\.html)?
 function gateAppLinks(root) {
   if (!GATED) return;
   for (const a of root.querySelectorAll('a[href]')) {
-    if (APP_PAGE.test(a.getAttribute('href'))) a.setAttribute('href', 'invite.html#request');
+    if (APP_PAGE.test(a.getAttribute('href'))) a.setAttribute('href', 'invite.html');
   }
 }
 gateAppLinks(document);
@@ -176,9 +176,19 @@ function says(text, bad) {
   if (!info || !info.message) return;
   says('Sign-in did not complete. ' + info.message, true);
 })();
+/* A VISITOR WHO IS ALREADY SIGNED IN does not need Google again: the
+   buttons say so and go to the studio. Detected by the shape of the
+   stored session (no SDK here), which can be stale — an expired one
+   simply meets the gate on the hub and comes back to this page. */
+const SIGNED_IN = StartAuth.hasStoredSession();
+if (SIGNED_IN) {
+  document.documentElement.dataset.signedin = '1';
+  for (const a of document.querySelectorAll('[data-start-auth="google"]')) a.setAttribute('href', '/');
+}
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('[data-start-auth="google"]');
   if (!a || e.defaultPrevented) return;
+  if (SIGNED_IN) return;                        // the href is the studio; let it go
   /* A modified click is the reader asking for a new tab or a saved
      link. Let the href do exactly what they asked for. */
   if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -377,8 +387,29 @@ function renderPriceRise(notice) {
    the page, and the price-rise band is not drawn — a countdown to a
    rise on a studio that is not selling would be urgency nobody
    enforces. */
+/* THE WORDS, WHILE NOTHING IS FOR SALE. The markup keeps the TRIAL
+   wording (crawlers, scripts off, and the day the switch is on); these
+   attributes carry the alternatives, swapped here and never rewritten at
+   build time:
+     data-open-text  a signed-in visitor: the button opens the studio
+     data-off-text   purchases off: no trial is promised, because nothing
+                     starts one by itself and the studio is open
+   Signed in wins over off. textContent only: no markup is built from
+   these strings. */
+function swapWords() {
+  const off = document.documentElement.dataset.purchases === 'off';
+  for (const n of document.querySelectorAll('[data-open-text], [data-off-text]')) {
+    const t = SIGNED_IN && n.dataset.openText ? n.dataset.openText : (off ? n.dataset.offText : '');
+    if (!t) continue;
+    if (n.dataset.origText === undefined) n.dataset.origText = n.textContent;
+    n.textContent = t;
+  }
+  if (off) document.querySelectorAll('.st-tiers li[data-trial]').forEach((li) => { li.hidden = true; });
+}
+swapWords();
 function showFreeNow() {
   document.documentElement.dataset.purchases = 'off';
+  swapWords();
 }
 try {
   Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {

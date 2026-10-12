@@ -510,6 +510,16 @@ function landOnInvite() {
      by aborting the first, which a harness sees as an interrupted
      navigation and a person may see as a flash. One owner. */
   if (document.documentElement.dataset.sitegate) return;
+  /* THE OPEN SITE. With purchases off the gate lets any signed-in
+     visitor in, and allow() may already have removed data-sitegate by
+     the time this runs — so the guard above sees nothing and a member
+     the site admits is walked to the doorway anyway. Ask the gate
+     itself (window hook; sitegate.js imports this file, so this file
+     cannot import it). */
+  try {
+    const sg = window.StudioSiteGate;
+    if (sg && sg.evaluate && sg.evaluate().verdict === 'allow') return;
+  } catch (e) { /* no answer: carry on as before */ }
   location.assign('invite.html');
 }
 
@@ -2238,7 +2248,6 @@ async function boot() {
           + '(its Supabase client uses the implicit flow). Nothing you do differently will '
           + 'change that — see docs/GOOGLE-AUTH.md.'
         : 'Google signed you in, but this browser could not turn that into a session.';
-          + 'a Site URL or redirect-URL mismatch in the Supabase project.';
       setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
       notifyAuth('OAUTH_ERROR', null);
       stashAuthError(why + said, codeFlow ? 'code_flow_mismatch' : 'no_session');

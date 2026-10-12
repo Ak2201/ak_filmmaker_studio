@@ -163,8 +163,8 @@ async function submitCode(form) {
   codeTyped = raw;
   if (!normaliseCode(raw)) {
     codeError = c.getSession()
-      ? 'Enter the code you were given — or request an invite above.'
-      : 'Enter the code you were given. With no code, sign in with Google and ask for an invite.';
+      ? 'Enter the code you were given, or choose a plan or the free trial above.'
+      : 'Enter the code you were given. With no code, sign in with Google and choose a plan or a free trial.';
     rerender();
     form.querySelector('[data-gate-field="code"]').focus();
     return;

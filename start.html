@@ -71,7 +71,7 @@
          "Continue with Google" beside the brand truncates the brand
          to an ellipsis. display: none hides the other from a screen
          reader too, so only one is ever announced. -->
-    <a class="st-btn st-btn-primary st-btn-sm" href="invite.html" data-start-auth="google"><span class="st-at-narrow">Sign in</span><span class="st-at-wide">Continue with Google</span></a>
+    <a class="st-btn st-btn-primary st-btn-sm" href="invite.html" data-start-auth="google" data-open-text="Open the studio"><span class="st-at-narrow">Sign in</span><span class="st-at-wide">Continue with Google</span></a>
   </div>
 </header>
 
@@ -97,11 +97,11 @@
     <h1 class="st-title" id="hero-h">Make your first film. Pay once.</h1>
     <p class="st-hook">Story &rarr; Script &rarr; Prep &rarr; Shoot &rarr; Post, in one studio that teaches every step as you do it. No subscription &mdash; one payment, yours for good.</p>
     <p class="st-cta">
-      <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-start-auth="google">Start your free trial</a>
+      <a class="st-btn st-btn-primary" id="ctaOpen" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start your free trial</a>
       <a class="st-btn" href="#pricing">See the plans</a>
     </p>
     <ul class="st-trust" aria-label="Before you start">
-      <li>No card for the trial</li>
+      <li data-off-text="No card needed">No card for the trial</li>
       <li>Your work stays in your browser</li>
       <li>Sign in with Google</li>
     </ul>
@@ -132,7 +132,7 @@
 <section data-reveal="fade" class="st-sec st-plans" id="pricing" aria-labelledby="pricing-h">
   <p class="st-eyebrow st-eyebrow-gold">Plans</p>
   <h2 class="st-h2" id="pricing-h">One payment. Yours for good.</h2>
-  <p class="st-lede">Pick the stage you need. Every plan is bought once, never renews and never lapses &mdash; and every one starts with a free trial of the whole studio.</p>
+  <p class="st-lede" data-off-text="Pick the stage you need. Every plan is bought once, never renews and never lapses.">Pick the stage you need. Every plan is bought once, never renews and never lapses &mdash; and every one starts with a free trial of the whole studio.</p>
 
   <!-- THE LAUNCH PRICE, AND ONLY IF IT IS REAL. Hidden unless
        price_notice() (schema §30) reports a rise the server will
@@ -146,10 +146,10 @@
   </div>
 
   <ul class="st-tiers" data-reveal-group>
-    <li data-trial class="st-trial"><strong>Free trial</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start the free trial</a></li>
-    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=starter#buy" data-plan="starter">or buy {{fms:plan.starter}} now</a></li>
-    <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=indie#buy" data-plan="indie">or buy {{fms:plan.indie}} now</a></li>
-    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=pro#buy" data-plan="pro">or buy {{fms:plan.pro}} now</a></li>
+    <li data-trial class="st-trial"><strong>Free trial</strong><span class="st-trial-say">Every module, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span>. No card. Then keep the plan that fits.</span><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Start the free trial</a></li>
+    <li data-tier="starter"><strong>{{fms:plan.starter}}</strong><p class="st-tier-line">{{fms:tier.line.starter}}</p><b class="st-price">{{fms:price.starter}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.starter}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=starter#buy" data-plan="starter">or buy {{fms:plan.starter}} now</a></li>
+    <li data-tier="indie" class="st-pick"><p class="st-pick-flag">Recommended for a first film</p><strong>{{fms:plan.indie}}</strong><p class="st-tier-line">{{fms:tier.line.indie}}</p><b class="st-price">{{fms:price.indie}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.indie}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=indie#buy" data-plan="indie">or buy {{fms:plan.indie}} now</a></li>
+    <li data-tier="pro"><strong>{{fms:plan.pro}}</strong><p class="st-tier-line">{{fms:tier.line.pro}}</p><b class="st-price">{{fms:price.pro}}</b><span class="st-once">one payment</span><ul class="st-inc">{{fms:tier.list.pro}}</ul><a class="st-btn st-btn-primary st-tier-buy" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start free trial</a><a class="st-tier-alt" href="invite.html?plan=pro#buy" data-plan="pro">or buy {{fms:plan.pro}} now</a></li>
   </ul>
 
   <details class="st-compare-all">
@@ -253,8 +253,8 @@
   <p class="st-eyebrow">Questions</p>
   <h2 class="st-h2" id="faq-h">Before you buy</h2>
   <details class="st-faq">
-    <summary>What do I get in the free trial?</summary>
-    <p>Every module in the studio, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span> &mdash; no card and nothing to install. When it ends you choose a plan, and everything you changed is still there.</p>
+    <summary data-off-text="What do I get when I sign in?">What do I get in the free trial?</summary>
+    <p data-off-text="Sign in with Google and every module in the studio is open, with the Dragon and The Dark Knight sample films to look at — nothing to install. Your work is saved in your browser, and you can choose a plan whenever you like.">Every module in the studio, on the <em>Dragon</em> and <em>The Dark Knight</em> sample films, for <span data-trial-length>a limited time</span> &mdash; no card and nothing to install. When it ends you choose a plan, and everything you changed is still there.</p>
   </details>
   <details class="st-faq">
     <summary>Which plan is right for me?</summary>
@@ -286,7 +286,7 @@
   <h2 class="st-h2" id="go-h">Your first film starts tonight.</h2>
   <p class="st-lede">Open the samples, try every module, then keep the plan that fits. One payment, yours for good.</p>
   <p class="st-cta">
-    <a class="st-btn st-btn-primary" id="ctaOpen2" href="invite.html" data-start-auth="google">Start your free trial</a>
+    <a class="st-btn st-btn-primary" id="ctaOpen2" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start your free trial</a>
     <a class="st-btn" href="#pricing">See the plans</a>
   </p>
   <p class="st-legal">Signing in means you accept the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
@@ -328,7 +328,7 @@
      720px and only once the hero has scrolled past. Its height is
      MEASURED and published as --st-bar-h, which the body reserves. -->
 <div class="st-bar" id="startBar" hidden>
-  <a class="st-btn st-btn-primary" href="invite.html" data-start-auth="google">Start your free trial</a>
+  <a class="st-btn st-btn-primary" href="invite.html" data-start-auth="google" data-off-text="Sign in" data-open-text="Open the studio">Start your free trial</a>
 </div>
 
 <script type="module" src="/src/pages/start.js"></script>

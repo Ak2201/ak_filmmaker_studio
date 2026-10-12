@@ -492,6 +492,46 @@ Razorpay dashboard. Secrets are reused: `RAZORPAY_KEY_ID` and
 `RAZORPAY_KEY_SECRET`; nothing new is set. `node scripts/deploy-billing.mjs
 --functions` now deploys `rzp-refund` too. Then ship the client.
 
+**`rzp-refund` WAS NOT ACTUALLY DEPLOYED UNTIL 12 Oct 2026**, and nothing
+said so. Step (2) above was written on 9 Oct and read as done; the live
+project answered **`404 NOT_FOUND`** for `/functions/v1/rzp-refund` for three
+days while `rzp-order`, `rzp-verify` and `rzp-webhook` all answered 401. So
+the console's REFUND button and the whole admin refund path were dead on a
+site whose `refund.html` promises refunds in three non-discretionary cases.
+It surfaced only from probing all four endpoints, not from reading anything.
+
+The database side was complete the whole time: `begin_refund`,
+`record_refund` and `mark_payment_refunded` all exist live and answer 42501
+to anon. **Probe them WITH their argument names** — called with `{}` all
+three answer `PGRST202`, which looks like "missing" and is not: PGRST202 is
+*no matching signature*, and every one of them takes arguments. That misread
+nearly got reported as three missing functions.
+
+It is deployed now and answers `401 UNAUTHORIZED_NO_AUTH_HEADER`, the same
+as `rzp-order` and `rzp-verify`. The route that worked:
+
+```bash
+npx --yes supabase@latest login        # in a REAL terminal: it needs a TTY
+npx --yes supabase@latest functions deploy rzp-refund --project-ref conhlrulxfwkhsnymakz
+```
+
+Two things worth knowing before anyone tries this from a tool or a script.
+`supabase login` refuses a non-TTY shell (`LoginMissingTokenError`) and wants
+`--token` or `SUPABASE_ACCESS_TOKEN` instead — do not put a token in a file
+or a command line; run the login in the user's own terminal and let the CLI
+keep it in `~/.supabase`. And `WARNING: Docker is not running` is harmless
+here: deploy uploads the sources (it uploaded `index.ts` **and**
+`_shared/razorpay.js`) rather than bundling locally.
+
+**Do not deploy this one from the dashboard's in-browser editor.** It imports
+`basicAuth` from `../_shared/razorpay.js`, and that editor has no parent
+directory, so the only way through it is to inline a copy of a shared file —
+the duplication this codebase has already paid for twice (see the money
+parser in CLAUDE.md). The CLI resolves `../_shared/` correctly.
+
+**Still unexercised:** a refund has never actually been run end to end, in
+test mode or live. Deploying the function makes it possible, not proven.
+
 **The button (A).** Console → Billing → Payments: REFUND on every `paid`
 row. The dialog asks for an amount (rupees, full by default, never more
 than was paid) and a REQUIRED reason, and warns that a refund ends the

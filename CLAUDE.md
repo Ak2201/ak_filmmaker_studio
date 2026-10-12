@@ -1447,6 +1447,23 @@ NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row
 says "receipt sent", and nothing arrives — worse than not having the
 feature. Owner steps: `docs/BILLING.md` §13 and §16.
 
+**ALL FOUR EDGE FUNCTIONS ARE DEPLOYED** (rzp-refund only since 12 Oct
+2026). For three days `rzp-order`, `rzp-verify` and `rzp-webhook` answered
+401 while `/functions/v1/rzp-refund` answered **404 NOT_FOUND**, so the
+console's REFUND button was dead on a site whose refund.html promises refunds
+in three non-discretionary cases — and `docs/BILLING.md` read as though it
+had been deployed on 9 Oct. Nothing caught it; probing all four endpoints
+did. Ask the server which functions exist, the same way you ask the database
+which sections ran.
+
+Deploy with the CLI, never the dashboard's in-browser editor: rzp-refund
+imports `basicAuth` from `../_shared/razorpay.js`, that editor has no parent
+directory, and the only way through it is to inline a copy of a shared file.
+`supabase login` also needs a REAL TTY — it refuses a tool shell with
+`LoginMissingTokenError` and asks for a token instead; run it in the user's
+terminal and let the CLI keep the token in `~/.supabase` rather than putting
+one in a file. A refund has still never been exercised end to end.
+
 **SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
 §36 generates `plans.features` for the three paid tiers from
 `src/data/plan-matrix.json` via `scripts/make-plan-features-sql.mjs` — do not

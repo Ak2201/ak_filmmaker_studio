@@ -80,6 +80,13 @@ export {
   models, defaultModel, getModel, setModel
 };
 
+/* The AI Desk's chat refinement: a pure block a task appends to its
+   own user prompt (src/lib/ai-refine.js, pure so it tests in Node). */
+export { refineBlock, withRefine } from './ai-refine.js';
+/* The one request path, for a Desk task that needs a prompt no
+   existing job builds. Same callModel(), so the same key handling. */
+export { callModel as callModelForTask };
+
 const API_VERSION = '2023-06-01';
 
 /* ------------------------------------------------------------

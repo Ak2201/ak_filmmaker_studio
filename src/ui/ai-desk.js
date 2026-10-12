@@ -1,14 +1,14 @@
 /* ============================================================
-   THE AI DESK — CONTRACT (Wave 1 stub)
+   THE AI DESK — the sidebar every AI pill opens
    ------------------------------------------------------------
    The Desk is the docked right-hand sidebar (a full-height sheet
    on phones) every AI pill opens. It is LAZY: src/ui/ai-pill.js
    reaches it with `import('./ai-desk.js')` at a click, so nothing
    here is in any page's first paint.
 
-   This file is a STUB. The registry is real; openDesk() only logs.
-   Wave 2 replaces the body with the full sidebar and MUST KEEP
-   these exports and this contract.
+   The contract below was fixed before the Desk was built, and the
+   tasks (src/lib/ai-tasks.js) and proofs are written against it.
+   Keep these exports and this shape.
 
    EXPORTS
      registerTask(task)       add or replace a task by id; returns task
@@ -59,6 +59,54 @@
      - A locked plan never reaches openDesk: the pill stops it.
    ============================================================ */
 
+
+/* ============================================================
+   THE SIDEBAR
+   ------------------------------------------------------------
+   LAYOUT. One `aside.ai-desk` is appended to <body> on first open
+   and reused. `html.ai-desk-open` is set while it shows.
+     ≥1100px  docked right; its measured width is published as
+              `--ai-desk-w` on <html>, and ai-desk.css gives `main`
+              that much `margin-inline-end`, so the page NARROWS
+              beside it (main is never translated — fragment
+              landings depend on it).
+     <1100px  a full-height sheet above the phone's bottom bar
+              (`--mab-h`), with Tab held inside it (modal-focus.js),
+              because at that width it covers the page.
+
+   SELECTORS the proofs read (scripts/prove-ai-desk.mjs):
+     header       .ai-desk-title, .ai-desk-model,
+                  button[data-action="ai-desk-close"]
+     what goes in textarea.ai-desk-input, .ai-disclose,
+                  button[data-action="ai-desk-run"]
+     running      .ai-status[role=status], .ai-error[role=alert],
+                  button[data-action="ai-desk-stop"]
+     answer       .ai-hunk input[type=checkbox] ('text'),
+                  .ai-desk-item input[type=checkbox] ('list'),
+                  .ai-desk-read + span.ai-mark ('read'),
+                  button.ai-desk-ver ('v1', 'v2' … aria-pressed)
+     chat         textarea.ai-desk-chat,
+                  button[data-action="ai-desk-send"],
+                  button.ai-desk-chip
+     footer       [data-action="ai-desk-accept"] (hidden for 'read'),
+                  [data-action="ai-desk-accept-all"],
+                  [data-action="ai-desk-skip"]
+     no key       a[href="settings.html#ai"] and nothing else
+
+   MEMORY. `sessions` holds { input, versions, chat } per task and
+   ctx for this page visit. Nothing here touches localStorage or
+   sessionStorage, and nothing runs while the Desk sits idle.
+   ============================================================ */
+import { h, delegate } from '../lib/dom.js';
+import PlanGate from '../lib/plan-gate.js';
+import { hasKey, providerLabel, apiName, apiHost, getModel, models } from '../lib/ai-providers.js';
+import { diffLines, mergeHunks } from '../lib/ai-diff.js';
+import { holdFocus, releaseFocus } from './modal-focus.js';
+import StudioUI from './chrome.js';
+import { disclose, aiMark } from './ai-panel.js';
+import '../styles/ai.css';
+import '../styles/ai-desk.css';
+
 const tasks = new Map();
 
 export function registerTask(task) {
@@ -75,10 +123,461 @@ export function listTasks() {
   return [...tasks.values()];
 }
 
-export function openDesk(taskId, ctx = {}) {
-  console.info('[ai-desk] stub: openDesk', taskId, getTask(taskId) ? '' : '(unregistered)', ctx);
+/* ---- the tasks module, loaded once at the first open ---------- */
+let tasksReady = null;
+let tasksError = '';
+function loadTasks() {
+  if (!tasksReady) {
+    tasksReady = import('../lib/ai-tasks.js')
+      .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(); })
+      .catch((e) => {
+        tasksError = 'The AI tools did not load (' + ((e && e.message) || 'unknown error') + '). Reload the page and try again.';
+        console.warn('[ai-desk] ai-tasks.js did not load', e);
+      });
+  }
+  return tasksReady;
 }
 
-export function closeDesk() { /* stub */ }
+/* ---- per-visit memory ---------------------------------------- */
+const sessions = new Map();
+
+function identity(ctx) {
+  if (ctx == null) return '';
+  if (typeof ctx !== 'object') return String(ctx);
+  if (ctx.identity != null) return String(ctx.identity);
+  try {
+    return JSON.stringify(ctx, (k, v) => {
+      if (typeof v === 'function') return undefined;
+      if (typeof Node !== 'undefined' && v instanceof Node) return undefined;
+      return v;
+    }) || '';
+  } catch (e) { return ''; }
+}
+
+function sessionFor(task, ctx) {
+  const key = task.id + '|' + identity(ctx);
+  let s = sessions.get(key);
+  if (!s) {
+    let input = '';
+    try { input = String(task.input ? (task.input(ctx) ?? '') : ''); }
+    catch (e) { console.warn('[ai-desk] task.input threw', e); }
+    s = { key, input, versions: [], current: -1, chat: [], draft: '' };
+    sessions.set(key, s);
+  }
+  return s;
+}
+
+/* A version: the result, plus what the reader has unticked. */
+function makeVersion(task, result) {
+  const v = { result: result || {}, hunks: [], items: [], unticked: new Set() };
+  if (task.kind === 'text') {
+    v.hunks = diffLines(v.result.original ?? '', v.result.proposed ?? '');
+  } else if (task.kind === 'list') {
+    v.items = [].concat(v.result.items || []).filter(Boolean)
+      .map((it, i) => ({ ...it, id: it.id != null ? String(it.id) : 'i' + i }));
+  }
+  return v;
+}
+
+/* ---- state of the open Desk ---------------------------------- */
+let desk = null;        // the aside
+let body = null;        // its scrolling body
+let foot = null;        // the footer, outside the scroll
+let open = false;
+let opener = null;
+let task = null;
+let ctx = {};
+let sess = null;
+let running = null;     // AbortController while a request is out
+let statusText = '';
+let errorText = '';
+let mode = 'task';      // 'task' | 'nokey' | 'missing'
+let held = false;
+
+const WIDE = '(min-width: 1100px)';
+const isWide = () => window.matchMedia(WIDE).matches;
+
+function modelText() {
+  const id = getModel();
+  const m = (models() || []).find((x) => x.id === id);
+  return providerLabel() + ' · ' + (m ? m.label : id);
+}
+
+function ensureDesk() {
+  if (desk) return desk;
+  desk = h('aside.ai-desk', {
+    role: 'dialog', 'aria-labelledby': 'ai-desk-title', 'aria-modal': 'false', hidden: true, tabindex: '-1'
+  });
+  body = h('div.ai-desk-body');
+  foot = h('div.ai-desk-foothost');
+  desk.append(body, foot);
+  document.body.append(desk);
+  wire();
+  return desk;
+}
+
+/* ---- publishing the docked width ------------------------------ */
+function publishWidth() {
+  const root = document.documentElement;
+  if (open && desk && isWide()) root.style.setProperty('--ai-desk-w', desk.offsetWidth + 'px');
+  else root.style.removeProperty('--ai-desk-w');
+  // Below 1100 the sheet covers the page, so Tab stays inside it.
+  const want = open && !isWide();
+  if (want && !held) { holdFocus(desk); held = true; }
+  else if (!want && held) { releaseFocus(desk); held = false; }
+}
+
+/* ---- rendering ------------------------------------------------- */
+function header() {
+  return h('header.ai-desk-head', {}, [
+    h('div.ai-desk-headtext', {}, [
+      h('h2#ai-desk-title.ai-desk-title', { text: task ? task.label : 'AI' }),
+      h('p.ai-desk-model', { text: modelText() })
+    ]),
+    h('button.btn.ai-desk-close', {
+      type: 'button', 'data-action': 'ai-desk-close', 'aria-label': 'Close the AI Desk', text: 'Close'
+    })
+  ]);
+}
+
+function lineList(cls, lines, sign) {
+  return h('div.' + cls, {}, lines.map((l) =>
+    h('div.ai-line', {}, [
+      h('span.ai-line-sign', { 'aria-hidden': 'true', text: sign }),
+      h('span.ai-line-text', { text: l === '' ? ' ' : l })
+    ])));
+}
+
+function answerText(v) {
+  if (!v.hunks.length) return [h('p.ai-desk-empty', { text: 'No changes proposed — the answer matches what you sent.' })];
+  return v.hunks.map((hk, i) => {
+    const where = hk.removed.length ? 'line ' + (hk.start + 1) : 'after line ' + hk.start;
+    return h('div.ai-hunk', { 'data-hunk': hk.id }, [
+      h('label.ai-hunk-head', {}, [
+        h('input', {
+          type: 'checkbox', 'data-tick': 'hunk', 'data-id': hk.id,
+          checked: !v.unticked.has(hk.id)
+        }),
+        h('span', { text: 'Change ' + (i + 1) + ' · ' + where })
+      ]),
+      hk.before ? h('p.ai-hunk-ctx', { text: hk.before }) : null,
+      hk.removed.length ? lineList('ai-hunk-del', hk.removed, '−') : null,
+      hk.added.length ? lineList('ai-hunk-add', hk.added, '+') : null
+    ]);
+  });
+}
+
+function answerList(v) {
+  if (!v.items.length) return [h('p.ai-desk-empty', { text: 'Nothing came back to choose from.' })];
+  return v.items.map((it) =>
+    h('label.ai-desk-item', {}, [
+      h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': it.id, checked: !v.unticked.has(it.id) }),
+      h('div.ai-desk-itemtext', {}, [
+        h('strong', { text: String(it.text ?? '') }),
+        it.detail ? h('p', { text: String(it.detail) }) : null
+      ])
+    ]));
+}
+
+function answerRead(v) {
+  return [h('div.ai-desk-read', {}, [
+    aiMark(),
+    h('div.ai-desk-readtext', { text: String(v.result.text ?? '') })
+  ])];
+}
+
+function statusLines() {
+  return h('div.ai-desk-lines', {}, [
+    h('p.ai-status', { role: 'status', text: statusText }),
+    errorText ? h('p.ai-error', { role: 'alert' }, [
+      h('strong', { text: 'It did not run. ' }), h('span', { text: errorText })
+    ]) : null,
+    running ? h('button.btn.ai-desk-stop', { type: 'button', 'data-action': 'ai-desk-stop', text: 'Stop' }) : null
+  ]);
+}
+
+function render() {
+  if (!desk) return;
+  const keepScroll = body.scrollTop;
+  foot.replaceChildren();
+  if (mode === 'nokey') {
+    body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
+      h('p', { text: 'AI tools run on your own key, and this device does not have one yet.' }),
+      h('a.btn.primary.ai-desk-settings', { href: 'settings.html#ai', text: 'Add your AI key in Settings →' })
+    ]));
+    return;
+  }
+  if (mode === 'missing') {
+    body.replaceChildren(header(), h('section.ai-desk-sec', {}, [
+      h('p.ai-error', { role: 'alert' }, [
+        h('strong', { text: 'Not available. ' }),
+        h('span', { text: tasksError || 'This AI tool is not available on this page.' })
+      ])
+    ]));
+    return;
+  }
+
+  const v = sess.versions[sess.current] || null;
+  const busy = !!running;
+  const kids = [header()];
+
+  kids.push(h('section.ai-desk-sec.ai-desk-in', {}, [
+    h('h3.ai-desk-label', { text: 'What goes in' }),
+    h('textarea.ai-desk-input', {
+      rows: '8', 'aria-label': 'What goes in', spellcheck: 'false',
+      readonly: sess.versions.length > 0 || busy ? true : null
+    }),
+    disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
+      + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
+    sess.versions.length ? null : h('button.btn.primary.ai-desk-run', {
+      type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running…' : 'Run'
+    })
+  ]));
+
+  kids.push(statusLines());
+
+  if (v) {
+    const vers = h('div.ai-desk-vers', { role: 'group', 'aria-label': 'Versions' },
+      sess.versions.map((_, i) => h('button.ai-desk-ver', {
+        type: 'button', 'data-action': 'ai-desk-ver', 'data-i': String(i),
+        'aria-pressed': i === sess.current ? 'true' : 'false', text: 'v' + (i + 1)
+      })));
+    const answer = task.kind === 'text' ? answerText(v) : task.kind === 'list' ? answerList(v) : answerRead(v);
+    kids.push(h('section.ai-desk-sec.ai-desk-answer', {}, [
+      h('div.ai-desk-answerhead', {}, [h('h3.ai-desk-label', { text: 'The answer' }), vers]),
+      v.result.note ? h('p.ai-desk-note', { text: String(v.result.note) }) : null,
+      ...answer
+    ]));
+
+    kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
+      h('h3.ai-desk-label', { text: 'Ask for changes' }),
+      h('div.ai-desk-chips', {}, ['Shorter', 'Keep my wording', 'More tension', 'In Tanglish'].map((c) =>
+        h('button.ai-desk-chip', { type: 'button', 'data-action': 'ai-desk-chip', 'data-say': c, disabled: busy ? true : null, text: c }))),
+      sess.chat.length ? h('ol.ai-desk-asked', {}, sess.chat.map((m) => h('li', { text: m }))) : null,
+      h('textarea.ai-desk-chat', { rows: '2', 'aria-label': 'Ask for a change', placeholder: 'e.g. keep the second line as it was' }),
+      h('button.btn.ai-desk-send', { type: 'button', 'data-action': 'ai-desk-send', disabled: busy ? true : null, text: 'Send' })
+    ]));
+  }
+
+  const read = task.kind === 'read';
+  foot.replaceChildren(h('footer.ai-desk-foot', {}, [
+    read ? null : h('button.btn.primary.ai-desk-accept', {
+      type: 'button', 'data-action': 'ai-desk-accept', disabled: !v || busy ? true : null, text: 'Accept selected'
+    }),
+    read ? null : h('button.btn.ai-desk-acceptall', {
+      type: 'button', 'data-action': 'ai-desk-accept-all', disabled: !v || busy ? true : null, text: 'Accept all'
+    }),
+    h('button.btn.ai-desk-skip', { type: 'button', 'data-action': 'ai-desk-skip', text: read ? 'Done' : 'Skip' })
+  ]));
+
+  body.replaceChildren(...kids);
+  // Values are set as properties: a textarea's attribute is not its value.
+  const inp = body.querySelector('.ai-desk-input');
+  if (inp) inp.value = sess.input;
+  const chat = body.querySelector('.ai-desk-chat');
+  if (chat) chat.value = sess.draft;
+  body.scrollTop = keepScroll;
+}
+
+function setStatus(text) {
+  statusText = text || '';
+  const el = desk && desk.querySelector('.ai-desk-lines .ai-status');
+  if (el) el.textContent = statusText;
+}
+
+/* ---- running --------------------------------------------------- */
+async function run(refineWith) {
+  if (!task || running || !sess) return;
+  const own = sess;
+  const ctl = new AbortController();
+  running = ctl;
+  errorText = '';
+  statusText = refineWith ? 'Refining…' : 'Sending…';
+  render();
+  try {
+    const refine = refineWith
+      ? { previous: own.versions[own.current].result, instructions: refineWith }
+      : undefined;
+    const result = await task.run(own.input, {
+      onStatus: (m) => { if (running === ctl) setStatus(m); },
+      signal: ctl.signal, ctx, refine
+    });
+    if (ctl.signal.aborted) throw Object.assign(new Error('Stopped. Nothing was changed.'), { code: 'aborted' });
+    if (refineWith) { own.chat = refineWith.slice(); own.draft = ''; }
+    own.versions.push(makeVersion(task, result));
+    own.current = own.versions.length - 1;
+    statusText = 'v' + own.versions.length + ' is ready.';
+  } catch (e) {
+    const stopped = (e && (e.kind === 'aborted' || e.code === 'aborted' || e.name === 'AbortError')) || ctl.signal.aborted;
+    statusText = stopped ? 'Stopped. Nothing was changed.' : '';
+    errorText = stopped ? '' : ((e && e.message) || 'Something went wrong.');
+  } finally {
+    if (running === ctl) running = null;
+  }
+  if (open && sess === own) {
+    render();
+    const focus = desk.querySelector(errorText ? '.ai-error' : '.ai-desk-answer .ai-desk-ver[aria-pressed="true"]');
+    if (focus) focus.focus();
+  }
+}
+
+function send(text) {
+  const msg = String(text || '').trim();
+  if (!msg || !sess || !sess.versions.length) return;
+  run([...sess.chat, msg]);
+}
+
+/* ---- accepting --------------------------------------------------- */
+async function accept(all) {
+  if (!task || !sess || running) return;
+  const v = sess.versions[sess.current];
+  if (!v) return;
+  let selected;
+  if (task.kind === 'text') {
+    const ids = v.hunks.map((hk) => hk.id).filter((id) => all || !v.unticked.has(id));
+    if (!ids.length && v.hunks.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
+    selected = mergeHunks(v.result.original ?? '', v.hunks, ids);
+  } else if (task.kind === 'list') {
+    selected = v.items.filter((it) => all || !v.unticked.has(it.id));
+    if (!selected.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
+  } else {
+    closeDesk();
+    return;
+  }
+  if (typeof task.apply !== 'function') { closeDesk(); return; }
+  let undo;
+  try {
+    undo = await task.apply(selected, ctx);
+  } catch (e) {
+    errorText = (e && e.message) || 'The change could not be written. Nothing was changed.';
+    render();
+    return;
+  }
+  const label = task.label;
+  closeDesk();
+  if (typeof undo === 'function') {
+    // An actionable toast never times out (chrome.js); Undo is reachable.
+    StudioUI.toast(label + ': applied.', {
+      action: 'Undo',
+      onAction: () => {
+        Promise.resolve().then(undo)
+          .then(() => StudioUI.toast('Undone.', { type: 'info' }))
+          .catch(() => StudioUI.toastError('It could not be undone.'));
+      }
+    });
+  } else {
+    StudioUI.toastSuccess(label + ': applied.');
+  }
+}
+
+/* ---- open / close ---------------------------------------------- */
+function onResize() { if (open) publishWidth(); }
+
+function onDocKey(e) {
+  if (!open || e.key !== 'Escape' || e.defaultPrevented) return;
+  // A dialog over the Desk holds focus and takes its own Escape, so
+  // only an Escape from inside the Desk (or from nowhere) closes it.
+  const inDesk = desk.contains(document.activeElement);
+  if (!inDesk && document.activeElement && document.activeElement !== document.body) return;
+  e.preventDefault();
+  closeDesk();
+}
+
+let wired = false;
+function wire() {
+  if (wired) return;
+  wired = true;
+  delegate(desk, 'click', '[data-action="ai-desk-close"]', () => closeDesk());
+  delegate(desk, 'click', '[data-action="ai-desk-skip"]', () => closeDesk());
+  delegate(desk, 'click', '[data-action="ai-desk-run"]', () => run());
+  delegate(desk, 'click', '[data-action="ai-desk-stop"]', () => {
+    if (running) { running.abort(); setStatus('Stopping…'); }
+  });
+  delegate(desk, 'click', '[data-action="ai-desk-ver"]', (e, el) => {
+    const i = Number(el.dataset.i);
+    if (!sess || !(i >= 0 && i < sess.versions.length)) return;
+    sess.current = i;
+    render();
+    const now = desk.querySelector('.ai-desk-ver[data-i="' + i + '"]');
+    if (now) now.focus();
+  });
+  delegate(desk, 'click', '[data-action="ai-desk-send"]', () => {
+    const chat = desk.querySelector('.ai-desk-chat');
+    send(chat ? chat.value : '');
+  });
+  delegate(desk, 'click', '[data-action="ai-desk-chip"]', (e, el) => send(el.dataset.say));
+  delegate(desk, 'click', '[data-action="ai-desk-accept"]', () => accept(false));
+  delegate(desk, 'click', '[data-action="ai-desk-accept-all"]', () => accept(true));
+
+  delegate(desk, 'change', 'input[data-tick]', (e, el) => {
+    const v = sess && sess.versions[sess.current];
+    if (!v) return;
+    if (el.checked) v.unticked.delete(el.dataset.id); else v.unticked.add(el.dataset.id);
+  });
+  delegate(desk, 'input', '.ai-desk-input', (e, el) => { if (sess) sess.input = el.value; });
+  delegate(desk, 'input', '.ai-desk-chat', (e, el) => { if (sess) sess.draft = el.value; });
+  delegate(desk, 'keydown', '.ai-desk-chat', (e, el) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(el.value); }
+  });
+
+  document.addEventListener('keydown', onDocKey);
+  window.addEventListener('resize', onResize);
+}
+
+export async function openDesk(taskId, ctxArg = {}) {
+  if (!PlanGate.aiUnlocked()) return;      // the pill asks the Pro question
+  const from = document.activeElement;
+  let c = ctxArg;
+  if (typeof c === 'function') {
+    try { c = await c(); } catch (e) { console.warn('[ai-desk] ctx() threw', e); c = {}; }
+  }
+  c = c || {};
+
+  ensureDesk();
+  if (running) { running.abort(); running = null; }
+  statusText = '';
+  errorText = '';
+
+  await loadTasks();
+  if (!hasKey()) {
+    mode = 'nokey';
+    task = getTask(taskId);
+    sess = null;
+  } else {
+    task = getTask(taskId);
+    if (!task) {
+      mode = 'missing';
+      sess = null;
+    } else {
+      mode = 'task';
+      ctx = c;
+      sess = sessionFor(task, ctx);
+    }
+  }
+
+  if (!open) opener = from && from !== document.body ? from : null;
+  open = true;
+  desk.hidden = false;
+  document.documentElement.classList.add('ai-desk-open');
+  render();
+  publishWidth();
+  const first = desk.querySelector(mode === 'task'
+    ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-input')
+    : (mode === 'nokey' ? 'a[href="settings.html#ai"]' : '[data-action="ai-desk-close"]'));
+  (first || desk).focus();
+}
+
+export function closeDesk() {
+  if (!desk || !open) return;
+  if (running) { running.abort(); running = null; }
+  open = false;
+  if (held) { releaseFocus(desk); held = false; }
+  desk.hidden = true;
+  document.documentElement.classList.remove('ai-desk-open');
+  document.documentElement.style.removeProperty('--ai-desk-w');
+  const back = opener;
+  opener = null;
+  if (back && back.isConnected && typeof back.focus === 'function') back.focus();
+}
 
 export default { registerTask, getTask, listTasks, openDesk, closeDesk };

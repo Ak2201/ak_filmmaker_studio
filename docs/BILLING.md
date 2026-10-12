@@ -880,7 +880,7 @@ row untouched; a failure inside is a WARNING, never a lost refund.
 ### Deploy (owner) — after §33
 
 1. Run **§34** (from `-- 34. A REFUND GIVES A FRESH TRIAL` to the end of
-   `supabase-schema.sql`) the same checksummed way.
+   §37 below is its own run) the same checksummed way.
 2. Confirm: `select tgname, tgdeferrable, tginitdeferred from pg_trigger
    where tgname = 'payments_refund_trial'` → one row, true, true; and
    `pg_get_constraintdef` of `studio_members_trial_source_check` names
@@ -1003,8 +1003,29 @@ required, or for a plan-less e-mail grant, `billing_status()` serves
 
 ### Deploy (owner) — after §34
 
-1. Run **§36** (from `-- 36. PLAN FEATURES FROM THE MATRIX` to the end of
-   `supabase-schema.sql`) the same checksummed way.
+1. Run **§36** (from `-- 36. PLAN FEATURES FROM THE MATRIX` to `-- END OF SECTION 36 (generated)`;
+   §37 below is its own run) the same checksummed way.
 2. Confirm: `select id, features, limits->'extension' from plans` — the
    three paid rows match `matrixFeatures(id)`; free is unchanged.
 3. Open admin.html#features: the ticks are the split above.
+
+## 17. Writing-goal history syncs across devices (schema §37, 12 Oct 2026). NOT RUN LIVE.
+
+Not billing, but it is a schema section and its deploy steps live here with
+§24's siblings. `project_data.scope` gains `write_goals`; `fms_write_goals_v1`
+(focus-mode goal + per-day history) moves out of `LOCAL_ONLY` in `cloud.js`
+and is merged day by day (`mergeWriteGoals`), so two devices keep each
+other's days. Tests: `scripts/schema-tests/goals-sync.sql`.
+
+### Deploy (owner) — independent of §32–§36
+
+1. Take the text from `-- 37. ONE MORE SYNC SCOPE: write_goals` to the end of
+   `supabase-schema.sql`. Base64 it (`base64 -w0`), paste the ASCII, decode
+   in the SQL editor page (never paste raw SQL through the clipboard — it
+   corrupts non-ASCII), and compare the editor's SHA-256 with
+   `sha256sum` of the same text before pressing Run.
+2. Expect "Success. No rows returned". Read back: `select pg_get_constraintdef(oid)
+   from pg_constraint where conname = 'project_data_scope_check'` names
+   `'write_goals'` and still `'characters'`, `'costs'`.
+3. Re-running is safe. Until it runs, only that one scope's saves are refused
+   (and retried); nothing else is affected. Then mark it RUN in the header.

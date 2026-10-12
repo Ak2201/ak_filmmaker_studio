@@ -431,8 +431,15 @@ export function journey(project) {
   const { index, complete } = pickCurrent(stages);
   const cur = stages[index];
   let next = null;
+  let nextStage = cur;
   if (!complete) {
-    next = cur.tools.next || stageFallback(cur);
+    /* Never advise a stage the plan locks: the suggestion would land
+       on the lock overlay. Move on to the next open stage; if none is
+       open, point at the dashboard. */
+    nextStage = stages.slice(index).find((s) => !stageLocked(s.id)) || null;
+    next = nextStage
+      ? (nextStage.tools.next || stageFallback(nextStage))
+      : { label: 'See the dashboard', href: 'dashboard.html' };
   }
   if (!next) next = { label: 'Review the deliverables', href: 'deliverables.html#checklist' };
 
@@ -443,7 +450,7 @@ export function journey(project) {
     current: cur.id,
     currentLabel: cur.label,
     complete,
-    next: { ...next, stage: cur.id },
+    next: { ...next, stage: (nextStage || cur).id },
     blueprint: { id: bp.id, label: bp.label, href: bp.href }
   };
 }
@@ -507,6 +514,21 @@ export function stageHref(id) {
   const ph = nav.phases.find((p) => p.id === id);
   const m = ph && ph.modules && ph.modules[0];
   return (m && m.href) || 'dashboard.html';
+}
+
+/* A stage whose first module is not on the member's plan. Asked of
+   plan-gate.js through `window.StudioPlan` (set there) rather than an
+   import: this file is read by Node tests and must stay pure. Unknown
+   is NOT locked — entitlement fails open, so with no plan state, no
+   window or a throw the answer is false and nothing is skipped. */
+function stageLocked(id) {
+  try {
+    const gate = typeof window !== 'undefined' && window.StudioPlan;
+    if (!gate || typeof gate.allowed !== 'function') return false;
+    const ph = nav.phases.find((p) => p.id === id);
+    const m = ph && (ph.modules || []).find((x) => x.status === 'built' && x.href);
+    return !!m && !gate.allowed(m.id);
+  } catch (e) { return false; }
 }
 
 const plur = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
@@ -645,7 +667,11 @@ export function stageStates(project) {
  * @returns {null | {id, why}}
  */
 export function suggestNext(states) {
-  const list = states || [];
+  const all = states || [];
+  /* Skip stages the plan locks; if that would leave nothing, advise
+     as before (unknown or all-locked must not change the answer). */
+  const unlocked = all.filter((s) => !stageLocked(s.id));
+  const list = unlocked.length ? unlocked : all;
   if (!list.length) return null;
   const started = list.filter((s) => s.status.id !== 'none');
   if (!started.length) return { id: list[0].id, why: 'start' };

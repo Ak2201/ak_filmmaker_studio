@@ -74,7 +74,9 @@
 import { moduleGroups, hueClassOf, globals } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
-import { listProjects, currentProjectId, setCurrentProject } from '../lib/store.js';
+import { listProjects, currentProjectId } from '../lib/store.js';
+import { switchProject } from './project-switcher.js';
+import { markLocked } from '../lib/plan-gate.js';
 import '../styles/palette.css';
 
 const MAX_ROWS = 60;
@@ -188,6 +190,7 @@ function navItems() {
          itself. */
       out.push(entry({
         id: 'mod:' + m.id,
+        moduleId: m.id,   // plan-gate.js markLocked() flags the row by this
         label: m.label,
         sub: m.purpose,
         group: p.label,
@@ -224,7 +227,7 @@ function projectItems() {
       group: 'Projects',
       icon: '◳',
       keywords: ['project', 'switch', 'open film'],
-      run: () => { setCurrentProject(p.id); location.reload(); }
+      run: () => { switchProject(p.id); }   // the one switch: sets the project, lands on the dashboard (project-switcher.js)
     }));
 }
 
@@ -351,6 +354,7 @@ function rowFor(it, i) {
     'aria-selected': String(i === active),
     'data-i': String(i)
   });
+  if (it.moduleId) li.dataset.moduleId = it.moduleId;
   li.append(iconSpan('pal-row-icon', it, '\u2022'));
   const body = h('span.pal-row-body');
   body.append(h('span.pal-row-label', { text: it.label }));
@@ -374,6 +378,7 @@ function render(q) {
   if (active >= shown.length) active = Math.max(0, shown.length - 1);
   listEl.textContent = '';
   shown.forEach((it, i) => listEl.append(rowFor(it, i)));
+  markLocked(listEl);   // PLAN flag on a module the plan does not include
   const n = shown.length;
   emptyEl.hidden = n > 0;
   if (!n) {

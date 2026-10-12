@@ -23,7 +23,12 @@
    24-step reading flow with their own step rail, the hub is a landing
    page the verify gate drives, invite.html is two routes meant to be
    seen together, story.html IS its beats editor with two side rooms.
-   Everything else with categories is here.
+   Everything else with categories is here. Eleven pages today: settings,
+   admin, library, breakdown, stripboard, reports, contacts, visualize,
+   write, plan and budget. study and dissect are redirect stubs (they
+   moved into the Library) and are not tabbed pages. write.html is
+   retired; behind ?stay=1 it shows only the sections navmodel's
+   STAY_PAGES names (AI coverage, Write from a synopsis).
 
    LABELS. `data-tab-label` on the section wins; then the label of the
    navigation.json module whose fragment is this section's id; then
@@ -38,6 +43,7 @@
    ARIA: role=tablist / tab / tabpanel, arrow keys, Home and End.
    ============================================================ */
 import nav from '../data/navigation.json';
+import { stayEntry } from '../lib/navmodel.js';
 import { h } from '../lib/dom.js';
 import '../styles/tabs.css';
 
@@ -89,7 +95,16 @@ function dedupeHeads(sections) {
 function findTabs() {
   const main = document.querySelector('main');
   if (!main) return { parent: null, sections: [] };
-  const all = [...main.querySelectorAll('section[id]')];
+  let all = [...main.querySelectorAll('section[id]')];
+  /* A retired page kept behind ?stay=1 (navmodel STAY_PAGES) shows only
+     the sections it names. The rest are hidden, not removed, and are
+     left out of the strip so show() never re-opens them. */
+  const stay = stayEntry(page() + '.html', location.search);
+  if (stay && stay.frags && Object.keys(stay.frags).length) {
+    const keep = all.filter((s) => stay.frags[s.id]);
+    for (const s of all) if (!keep.some((k) => k.contains(s))) s.hidden = true;
+    all = keep;
+  }
   const byParent = new Map();
   for (const s of all) { const p = s.parentElement; byParent.set(p, (byParent.get(p) || []).concat(s)); }
   for (const [parent, list] of byParent) if (list.length >= 2) return { parent, sections: list };

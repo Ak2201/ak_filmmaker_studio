@@ -33,6 +33,7 @@ import { flushStorage } from '../lib/store.js';
    own its jobs. An old link forwards by its fragment (write-route.js);
    ?stay=1 keeps this page. */
 import { redirectIfWrite } from '../lib/write-route.js';
+import { stayEntry } from '../lib/navmodel.js';
 redirectIfWrite();
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -1729,6 +1730,15 @@ function renderDocuments() {
    ============================================================ */
 function render(focus) {
   const main = h('main', { id: 'main' });
+  /* ?stay=1 is the retired editor's escape hatch (AI coverage, Write
+     from a synopsis). tabs.js shows only those two sections; this is
+     the way back, kept on screen above them. */
+  const stay = stayEntry('write.html', location.search);
+  if (stay && stay.back) {
+    main.append(h('p.wr-stay-back', {}, [
+      h('a.btn.ghost', { href: stay.back, text: '← ' + (stay.backLabel || 'Back') })
+    ]));
+  }
   main.append(renderHeader(), renderScreenplay(), BeatBoard.renderOutline(),
     renderGenerate(), renderRevisions(), renderDocuments(), renderCharacters());
   app.replaceChildren(main);

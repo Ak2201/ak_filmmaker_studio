@@ -389,7 +389,7 @@ try {
     const flat = text.replace(/\s+/g, ' ');
     ok(new RegExp(`${d.users} signed in`).test(flat), `the meta line counts ${d.users} signed in (auth.users)`);
     ok(new RegExp(`${d.members}\\s*Members`).test(flat), `the Members tile counts ${d.members} members`);
-    ok((await A.page.$$('#overview .ad-stats .ad-stat')).length === 6, 'Overview is one row of six tiles');
+    ok((await A.page.$$('#overview .ad-stats .ad-stat')).length === 10, 'Overview is ten tiles (six counts, four from the health report)');
     ok(/1 organisation\b/.test(flat) && text.includes('Dragon Pictures') && text.includes('1 of 5'), 'the organisation is counted, and listed with its owner, seats and films');
     ok(text.includes('cal@example.com') && text.includes('dan@example.com') && /not a member|declined/.test(text), 'everyone who signed in is listed, including non-members');
     ok(!!(await A.page.$('#admin-console')), "the gate's controls are on the same page");

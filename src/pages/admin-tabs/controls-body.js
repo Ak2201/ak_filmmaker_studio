@@ -354,10 +354,9 @@ function dataCard() {
   const who = field('E-mail or user id', input(d.who, (v) => { d.who = v; }, { placeholder: 'person@example.com' }), { wide: true, id: 'ctl-data-who' });
   const form = h('form.ctl-form', { novalidate: '' }, [
     who,
-    h('p.ad-meta', { text: 'Export covers what is on the server: profile, payments, invoices, notes, sessions and synced projects. Work kept only in someone’s own browser is not here, and the file says so. Erasing keeps invoices (they are the seller’s legal record), deletes the person’s sign-in and synced work, and cannot be undone.' }),
+    h('p.ad-meta', { text: 'Export covers what is on the server: profile, payments, invoices, notes, sessions and synced projects. Work kept only in someone’s own browser is not here, and the file says so. To erase a person, use People → Delete totally.' }),
     h('div.gt-actions', {}, [
       h('button.btn.primary', { type: 'submit', text: 'EXPORT AS JSON', disabled: S.busy ? '' : null }),
-      h('button.btn.ctl-danger', { type: 'button', text: 'ERASE THIS PERSON…', disabled: S.busy ? '' : null, onclick: eraseUser }),
       noteLine('data')
     ])
   ]);
@@ -371,29 +370,8 @@ function dataCard() {
       download('studio-export-' + slug + '-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out, null, 2));
     }, 'Export downloaded. This was recorded in the audit log.');
   });
-  return card('Data tools', 'Answer a data request about one person: give them a copy, or erase them.', [form]);
+  return card('Data tools', 'Answer a data request about one person: give them a copy. Erasing a person is People → Delete totally.', [form]);
 }
-async function eraseUser() {
-  const d = S.draft.data;
-  let p;
-  try { p = await resolvePerson(d.who); } catch (err) { await tell({ title: 'Check the person', body: why(err) }); return; }
-  if (!p.email) { await tell({ title: 'No e-mail address', body: 'That account has no e-mail address to confirm against, so it cannot be erased from here.' }); return; }
-  const ok = await askDanger({
-    title: 'Erase ' + p.email + '?',
-    body: 'This deletes their sign-in and the work synced to the server. Invoices are kept. It cannot be undone, and it is recorded in the audit log. Work kept only in their own browser is not touched.',
-    confirm: 'Erase this person', typeToConfirm: p.email.toLowerCase()
-  });
-  if (!ok) return;
-  act('data', async () => {
-    const res = await rpc('admin_delete_user', { p_user: p.id, p_confirm_email: p.email });
-    S.draft.data.who = '';
-    S.users = null;
-    const bits = res && typeof res === 'object'
-      ? Object.entries(res).filter(([, v]) => typeof v === 'number').map(([k, v]) => v + ' ' + k.replace(/_/g, ' ')).join(', ') : '';
-    await tell({ title: 'Erased', body: p.email + ' has been erased.' + (bits ? ' (' + bits + ')' : '') });
-  }, 'Erased.');
-}
-
 /* ---- the tab ------------------------------------------------------ */
 
 export function render(c) {

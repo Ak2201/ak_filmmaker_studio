@@ -82,6 +82,7 @@ const CAPS = {
   plan:    ['owner', 'finance'],
   session: ['owner', 'support'],
   reset:   ['owner', 'support'],
+  delete:  ['owner'],
   invoice: ['owner', 'finance'],
   money:   ['owner', 'finance'],
   ticket:  ['owner', 'support'],
@@ -404,9 +405,16 @@ function actionsSection(d) {
   const isSelf = String(i.email || '').toLowerCase() === self.email;
   if (can('reset') && s.role !== 'admin' && !isSelf && (s.is_member || d.redemptions && d.redemptions.length)) {
     parts.push(h('div.cu-danger', {}, [
-      h('h4.cu-h4', { text: 'Clear this person' }),
+      h('h4.cu-h4', { text: 'Clear access' }),
       h('p.cu-meta', { text: 'Removes their membership, invite request, the code they used (freeing it) and their session, so their next sign-in starts as a new one. Their films, organisation and payments are not touched.' }),
-      h('button.btn.danger', { type: 'button', 'data-cu-act': 'reset', text: 'CLEAR…' })
+      h('button.btn.danger', { type: 'button', 'data-cu-act': 'reset', text: 'CLEAR ACCESS…' })
+    ]));
+  }
+  if (can('delete') && s.role !== 'admin' && !isSelf && i.email) {
+    parts.push(h('div.cu-danger', {}, [
+      h('h4.cu-h4', { text: 'Delete totally' }),
+      h('p.cu-meta', { text: 'Removes the person, their sign-in, synced films, payments, team, tickets, grant and mailing-list entry. Their invoices are kept as the seller’s legal record with the name, e-mail and GSTIN removed. It cannot be undone and is recorded in the audit log.' }),
+      h('button.btn.danger', { type: 'button', 'data-cu-act': 'delete', text: 'DELETE TOTALLY…' })
     ]));
   }
   if (!parts.length) return null;
@@ -527,9 +535,9 @@ async function disable() {
 async function resetUser() {
   const email = emailNow();
   if (!await askDanger({
-    title: 'Clear ' + email + '?',
+    title: 'Clear access for ' + email + '?',
     body: 'This removes their membership, their invite request, the invite code they used (freeing it) and their session, so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.',
-    confirm: 'Clear this person', typeToConfirm: email
+    confirm: 'Clear access', typeToConfirm: email
   })) return;
   try {
     const out = await rpc('admin_reset_user', { p_user: cur.id, p_note: null });
@@ -539,6 +547,20 @@ async function resetUser() {
     if (out && out.redemptions_freed) bits.push(out.redemptions_freed + ' code ' + (out.redemptions_freed === 1 ? 'use' : 'uses') + ' freed');
     bits.push(out && out.signed_out ? 'signed out' : 'session left in place');
     await afterWrite(email + ' is a stranger again — ' + bits.join(', ') + '.');
+  } catch (e) { toast(sentence(e), 'error'); }
+}
+async function deleteTotally() {
+  const email = emailNow();
+  if (!await askDanger({
+    title: 'Delete ' + email + ' totally?',
+    body: 'This deletes their sign-in, their films and everything synced to the server, their payments, team, support tickets, access grant and mailing-list entry. It cannot be undone, and it is recorded in the audit log.\n\nTheir invoices are kept, as the seller\u2019s legal record, with the name, e-mail and GSTIN removed. Work kept only in their own browser is not touched.\n\nTo only take their access away, use Clear access instead.',
+    confirm: 'Delete totally', typeToConfirm: email
+  })) return;
+  try {
+    const out = await rpc('admin_delete_user', { p_user: cur.id, p_confirm_email: email });
+    const n = out && typeof out.invoices_retained === 'number' ? out.invoices_retained : 0;
+    wrote(email + ' is deleted' + (n ? ' — ' + n + (n === 1 ? ' invoice' : ' invoices') + ' kept, anonymised' : '') + '.');
+    closeDrawer();
   } catch (e) { toast(sentence(e), 'error'); }
 }
 async function issueInvoice(paymentId) {
@@ -556,6 +578,7 @@ delegate(document, 'click', '[data-cu-act]', (e, el) => {
   if (act === 'end-session') endSession();
   else if (act === 'disable') disable();
   else if (act === 'reset') resetUser();
+  else if (act === 'delete') deleteTotally();
   else if (act === 'invoice') issueInvoice(el.dataset.id);
   else if (act === 'copy-email') {
     try { navigator.clipboard.writeText(emailNow()); toast('E-mail copied.'); } catch (err) { toast('Copy is not available here.', 'error'); }

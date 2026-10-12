@@ -204,6 +204,18 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForSelector('.ad-drawer', { state: 'detached', timeout: 3000 });
     ok(!/user=/.test(await page.evaluate(() => location.hash)), 'Escape closes the drawer and removes ?user from the hash');
+    /* delete totally: the owner's own button, e-mail typed, invoices kept */
+    await page.goto(BASE + `admin.html#people?user=${AMY}`);
+    await page.waitForSelector('.ad-drawer.is-open [data-cu-act="delete"]', { timeout: 8000 });
+    await page.click('[data-cu-act="delete"]');
+    await page.waitForSelector('.dlg-overlay .dlg-field');
+    ok(await page.isDisabled('.dlg-overlay .mbtn.primary'), 'DELETE TOTALLY is disabled until the e-mail is typed');
+    ok(/invoices are kept/i.test(await page.innerText('.dlg-overlay')), 'and the dialog says the invoices are kept');
+    await page.fill('.dlg-overlay .dlg-field', 'amy@example.com');
+    await page.click('.dlg-overlay .mbtn.primary');
+    await page.waitForFunction(() => /is deleted/.test(document.body.innerText), null, { timeout: 5000 });
+    ok((P.deleted || []).includes(AMY), 'admin_delete_user ran for the typed address');
+    ok(!(await page.$('.ad-drawer.is-open')), 'and the drawer closed');
     ok(errors.length === 0, 'no console errors: ' + errors.join(' | '));
     allErrors.push(...errors);
   }

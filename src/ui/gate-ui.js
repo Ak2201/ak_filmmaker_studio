@@ -250,6 +250,7 @@ async function loadAdmin({ quiet = false } = {}) {
     const [codes, members, redemptions, requests] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions(), g.admin.listRequests()]);
     admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions; admin.requests = requests || [];
     try { admin.projects = await g.admin.listProjects(); } catch (e) { admin.projects = []; }
+    try { admin.role = await g.admin.studioRole(); } catch (e) { admin.role = null; }
     admin.loaded = true;
   } catch (e) {
     admin.error = errorSentence(e, 'The console could not load.');
@@ -345,7 +346,9 @@ function requestsPart(sec) {
             ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Let ' + r.email + ' in', text: 'LET THEM IN' })
             : null,
           protectedEmails.has(String(r.email || '').toLowerCase()) ? null
-            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Clear ' + r.email, text: 'CLEAR' })
+            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Clear access for ' + r.email, text: 'CLEAR ACCESS' }),
+          protectedEmails.has(String(r.email || '').toLowerCase()) || admin.role !== 'owner' ? null
+            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Delete ' + r.email + ' totally', text: 'DELETE TOTALLY' })
         ].filter(Boolean))
       ]));
     });
@@ -473,11 +476,15 @@ function membersPart(sec) {
         h('td.gt-row-actions', {}, [
           live(m) ? h('button.btn', { type: 'button', 'data-gate-action': 'terminate', 'data-id': m.user_id, text: 'END SESSION' }) : null,
           !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Disable ' + m.email, text: 'DISABLE' }) : null,
-          /* DISABLE keeps the row and stops them; CLEAR removes the row
-             and makes the next sign-in a new one. Not offered for an
-             admin — schema section 25 refuses it anyway, and a button
-             that always errors is worse than no button. */
-          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Clear ' + m.email, text: 'CLEAR' }) : null
+          /* DISABLE keeps the row and stops them; CLEAR ACCESS removes the
+             row and makes the next sign-in a new one (their films and
+             payments stay); DELETE TOTALLY removes the person, their
+             payments and everything synced, keeping only an anonymised
+             invoice. Neither is offered for an admin — schema sections 25
+             and 45 refuse it anyway, and a button that always errors is
+             worse than no button. DELETE TOTALLY is the owner's alone. */
+          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Clear access for ' + m.email, text: 'CLEAR ACCESS' }) : null,
+          m.role !== 'admin' && admin.role === 'owner' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Delete ' + m.email + ' totally', text: 'DELETE TOTALLY' }) : null
         ].filter(Boolean))
       ]));
     }
@@ -611,7 +618,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
          an administrator is most afraid of here is losing somebody's
          films. Schema section 25 keeps that promise; this sentence is
          the one the person clicking actually reads. */
-      if (!await askDanger(`Clear ${el.dataset.email}?\n\nThis removes their membership, their invite request, the invite code they used (freeing it) and their session — so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.`)) return;
+      if (!await askDanger(`Clear access for ${el.dataset.email}?\n\nThis removes their membership, their invite request, the invite code they used (freeing it) and their session — so their next sign-in starts as a new one.\n\nTheir projects, their organisation and any payment are NOT touched.`)) return;
       const out = await g.admin.resetUser(el.dataset.id);
       await loadAdmin();
       const bits = [];
@@ -621,6 +628,20 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
       if (out && out.device_lock_cleared) bits.push('device lock cleared');
       bits.push(out && out.signed_out ? 'signed out' : 'session left in place');
       toast(`${el.dataset.email} is a stranger again — ${bits.join(', ')}.`, 'success', 6000);
+    } else if (act === 'delete-user') {
+      if (!await askDanger({
+        title: 'Delete ' + el.dataset.email + ' totally?',
+        body: 'This deletes their sign-in, their films and everything synced to the server, their payments, team, support tickets, access grant and mailing-list entry. It cannot be undone, and it is recorded in the audit log.\n\nTheir invoices are kept, as the seller\u2019s legal record, with the name, e-mail and GSTIN removed. Work kept only in their own browser is not touched.\n\nTo only take their access away, use Clear access instead.',
+        confirm: 'Delete totally', typeToConfirm: String(el.dataset.email || '')
+      })) return;
+      try {
+        const out = await g.admin.deleteUser(el.dataset.id, el.dataset.email);
+        await loadAdmin();
+        const n = out && typeof out.invoices_retained === 'number' ? out.invoices_retained : 0;
+        toast(`${el.dataset.email} is deleted${n ? ` — ${n} ${n === 1 ? 'invoice' : 'invoices'} kept, anonymised` : ''}.`, 'success', 6000);
+      } catch (e) {
+        toast(errorSentence(e, 'The person could not be deleted.'), 'error');
+      }
     } else if (act === 'reload') {
       await loadAdmin();
     } else if (act === 'copy') {

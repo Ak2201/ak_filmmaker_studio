@@ -79,7 +79,7 @@ function renderHeader(contacts, sheets) {
   const cast = contacts.filter((c) => c.department === 'Cast').length;
   const depts = new Set(contacts.map((c) => c.department).filter(Boolean)).size;
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Contacts · people, and the day they are called' }),
+    h('p.bd-eyebrow', { text: 'Cast & Crew · people, and the day they are called' }),
     h('h1.bd-title', { text: 'Cast & Crew.' }),
     h('p.bd-deck', {
       text: 'Everybody on the film, once, with a department and a number. '

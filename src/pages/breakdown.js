@@ -48,7 +48,7 @@ const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
 function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Breakdown · one scene model, three views' }),
+    h('p.bd-eyebrow', { text: 'Breakdown · one scene model, every view' }),
     h('h1.bd-title', { text: 'Breakdown.' }),
     h('p.bd-deck', {
       text: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
@@ -593,7 +593,7 @@ function renderElements() {
 const SUGGEST_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
-  wrap.append(h('h2.bd-h2', { text: 'Suggested from the script' }),
+  wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
               h('p.bd-sub', { text: 'Read from each scene\u2019s cues and action lines, in the colour of its category. '
                 + 'Press one to tag it; nothing is added until you do. Each scene is matched to the script heading that names the same place, so moving or deleting a scene here keeps its own text.' }));
   const report = scenes.length ? suggestReport(scenes, loadScript().elements) : { rows: [], match: null };

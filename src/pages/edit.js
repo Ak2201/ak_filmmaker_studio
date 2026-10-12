@@ -202,7 +202,7 @@ function renderEmpty(reason) {
     h('p.bd-deck', { text: reason })
   ]));
   main.append(h('div.el-list', { id: 'log' }, [
-    h('p', {}, [h('a.btn', { href: 'breakdown.html#scenes', text: 'Open the breakdown →' })])
+    h('p', {}, [h('a.btn', { href: 'breakdown.html#scenes', text: 'Open the Scene List →' })])
   ]));
   return main;
 }
@@ -311,6 +311,9 @@ function render(focus) {
     shown.forEach((r) => list.append(sceneRow(r)));
   }
   main.append(list);
+  main.append(h('p.bd-onward', {}, [
+    h('a.btn', { href: 'deliverables.html#checklist', text: 'Next: Deliverables →' })
+  ]));
 
   app.replaceChildren(main);
   after(focus);

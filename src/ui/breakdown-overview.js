@@ -187,7 +187,7 @@ export function renderOverview(scenes, status = '') {
     h('span', { text: 'Next: ' }),
     h('a.btn', { href: 'stripboard.html', text: 'Schedule it on the Stripboard' }),
     h('span.bdo-learn', { 'data-learn': 'stripboard' }),
-    h('a.btn', { href: 'reports.html', text: 'Reports' }),
+    h('a.btn', { href: 'reports.html', text: 'Production Reports' }),
     h('a.btn', { href: 'plan.html', text: 'Plan' })
   ]));
   return wrap;

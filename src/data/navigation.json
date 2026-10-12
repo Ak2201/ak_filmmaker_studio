@@ -374,7 +374,7 @@
         {
           "id": "contacts",
           "label": "Cast & Crew",
-          "purpose": "Everyone on the film, with phone and e-mail, by department",
+          "purpose": "Cast and crew, with phone and e-mail, by department",
           "status": "built",
           "href": "contacts.html#contacts",
           "icon": "☺",

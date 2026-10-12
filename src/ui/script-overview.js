@@ -101,12 +101,12 @@ function overviewPart(d, scenesRows, els) {
   }
   if (scenesRows.length) {
     const cm = castMatrix(scenesRows, els);
-    wrap.append(h('h4.bd-h4', { text: 'Cast matrix' }),
+    wrap.append(h('h4.bd-h4', { text: 'Cast Matrix' }),
       table(['Character', 'Scenes', 'Lines'], cm.characters.slice(0, 30).map((c) => h('tr', {}, [
         cell(titleCase(String(c.name).toLowerCase()), 'bdo-name'), cell(c.scenes.size), cell(c.lines || '—')
-      ])), 'Cast matrix, characters by scenes'),
-      h('p.bd-sub', { text: 'The full characters-by-scenes grid is on Reports.' }),
-      h('p.bdo-onward', {}, [h('a.btn', { href: 'reports.html#screentime', text: 'Screen time by scene' }), h('a.btn', { href: 'reports.html', text: 'Reports' })]));
+      ])), 'Cast Matrix, characters by scenes'),
+      h('p.bd-sub', { text: 'The full characters-by-scenes grid is in the Cast Matrix.' }),
+      h('p.bdo-onward', {}, [h('a.btn', { href: 'reports.html#screentime', text: 'Screen time by scene' }), h('a.btn', { href: 'reports.html#cast-matrix', text: 'Cast Matrix' })]));
   } else {
     wrap.append(h('p.bd-sub', { text: 'The cast matrix appears once the breakdown has been run: it counts who is tagged in each scene as well as who speaks.' }));
   }

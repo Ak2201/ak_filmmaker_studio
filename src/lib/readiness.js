@@ -166,7 +166,7 @@ export function readiness() {
     'cast-uncast', 'gap',
     'Characters with nobody cast',
     characters.filter((n) => !claimed.has(norm(n))),
-    'Nobody to call, and nobody to pay. Add them in Contacts with the character in the role column.',
+    'Nobody to call, and nobody to pay. Add them in Cast & Crew with the character in the role column.',
     'contacts.html'
   ));
 

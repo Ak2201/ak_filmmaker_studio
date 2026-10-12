@@ -457,6 +457,22 @@ document.addEventListener('click', (e) => {
   if (!buy) return;
   try { sessionStorage.setItem(PLAN_KEY, JSON.stringify({ plan: /^[\w-]{1,32}$/.test(plan) ? plan : '', buy: true })); } catch (err) { /* ignore */ }
 }, true);
+/* ...and the restore. The stash used to bring back only the scroll to
+   #buy, so a buyer who pressed "Buy Intermediate" on start.html came
+   back from Google to the right section with no card picked and no
+   checkout — the plan they chose was lost on the hop. plan-cards.js
+   reads ?plan= from the ADDRESS, so put it back there (replaceState:
+   Back is not a second visit). start.js writes the same key. */
+(function restorePlan() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('plan')) return;
+    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
+    if (!v || !v.plan || !/^[\w-]{1,32}$/.test(v.plan)) return;
+    q.set('plan', v.plan);
+    history.replaceState(history.state, '', location.pathname + '?' + q.toString() + '#buy');
+  } catch (e) { /* the scroll to #buy below still happens */ }
+})();
 
 /* TWO STEPS, AND THE SECOND IS NOT OPTIONAL. start_trial() inserts the
    studio_members row, which is what the SITE gate reads — so until the

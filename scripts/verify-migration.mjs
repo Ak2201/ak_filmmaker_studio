@@ -406,19 +406,9 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
-  /* The dashboard revamp (12 Oct 2026) folded the journey strip into
-     the five stage cards, so its section ("Where this film is. Each
-     stage has a part of the blueprint (Guide)… Both are read from what
-     you have already written — nothing here is stored.") and the old
-     deck ("Each card shows where…") left the page. The words below
-     appear nowhere else on it. Re-baseline the next time this grows. */
-  dashboard: {
-    both: 'journey strip section removed; its meters now sit in the stage cards',
-    journey: 'journey strip section removed; #journey is kept on the stage list',
-    stored: 'journey strip deck ("nothing here is stored") removed with the section',
-    card: 'head deck shortened ("Each card shows where that part of the film stands")',
-    shows: 'head deck shortened ("Each card shows where that part of the film stands")'
-  },
+  /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
+     revamp's words (the journey strip folded into the stage cards). */
+  dashboard: {},
   settings: {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
@@ -2685,7 +2675,11 @@ const exported = await rtPage.evaluate(async () => {
   const origClick = HTMLAnchorElement.prototype.click;
   URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
   HTMLAnchorElement.prototype.click = function () {};
-  document.querySelector('[data-action="export-all"]').click();
+  /* Backup moved into the band's menu (12 Oct 2026, topbar-backup.js) and its
+     work is a lazy import, so the click returns before the file is made: keep
+     the stubs in place until the blob arrives (or five seconds pass). */
+  document.querySelector('[data-action="bk-export"]').click();
+  for (let i = 0; i < 100 && !blob; i++) await new Promise((r) => setTimeout(r, 50));
   URL.createObjectURL = origCreate;
   HTMLAnchorElement.prototype.click = origClick;
   return { text: blob ? await blob.text() : null };
@@ -2702,7 +2696,9 @@ if (!exported.unavailable && exported.text) {
   await rtPage.evaluate((text) => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    const input = document.getElementById('importAllFile');
+    /* the band's Backup menu creates its hidden file input on first use */
+    document.querySelector('[data-action="bk-import"]').click();
+    const input = document.querySelector('input[type="file"][aria-label="Import a studio backup"]');
     const dt = new DataTransfer();
     dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
     input.files = dt.files;

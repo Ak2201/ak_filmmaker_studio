@@ -53,7 +53,7 @@
 /* ---- the tab lock: one tab of a bigger page, not the page ----
    The section keeps its id and its place in the tab strip; its own
    content is hidden under the card, never removed. */
-section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
+[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
 .pg-lock-inline {
   display: grid;
   place-items: start center;
@@ -100,6 +100,15 @@ section[data-tab-lock] > :not(.pg-lock-inline) { display: none; }
    floats above a panel that is meant to be the only thing on screen. */
 :root[data-paywall] .sh-bar,
 :root[data-paywall] .mab { display: none; }
+
+/* THE TOASTS SIT ABOVE THE WALL (--z-toast over --z-toolbar), and a toast
+   with an action never times out: the device-lock one ("active on another
+   device" + Take over) is pinned bottom-right until answered. On a phone
+   or a short window that slab lands on the wall's SIGN OUT and DOWNLOAD
+   buttons, and under a wall they are the only way out. The wall scrolls,
+   so the fix is room: enough tail padding that the last row of actions can
+   always be scrolled clear of a stack of toasts. */
+:root[data-paywall] .pg-lock { padding-bottom: calc(var(--s7) + 14rem); }
 
 /* ---- the trial band (§30) ----
    Rules for the countdown in its own .sh-trial host. The host

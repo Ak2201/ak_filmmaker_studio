@@ -363,7 +363,7 @@ export function freshDb() {
        next_price_paise / next_price_at, null until a proof (or the
        console, through admin_set_next_price) schedules a rise. */
     plans: [
-      /* section 36: the row stays (it is what user_plan() answers for
+      /* section 38: the row stays (it is what user_plan() answers for
          somebody who has bought nothing) and its OFFER is withdrawn, so
          price_notice() drops it exactly as the live feed now does. */
       { id: 'free',    name: 'No plan', blurb: 'What an account has before it buys one. Not for sale.', features: { sample_only: true, new_projects: false }, price_paise: 0, monthly_paise: 0, yearly_paise: 0, next_price_paise: null, next_price_at: null, limits: { projects: 1, collaborators: 0, shares: 0, seats: 1, extension: false }, sort: 0, active: false },

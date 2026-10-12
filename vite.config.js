@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sampleFigures } from './src/lib/sample-figures.js';
 import { PLAN_ORDER, planName, LIST_PRICE, inr } from './src/lib/plans.js';
+import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
 
 /* ============================================================
    THE ICON FONT, DERIVED — one <link> for every page, from the data
@@ -186,7 +187,7 @@ function startFigures() {
     name: 'fms-start-figures',
     transformIndexHtml: {
       order: 'pre',
-      handler(html, ctx) {
+      async handler(html, ctx) {
         const file = String((ctx && (ctx.filename || ctx.path)) || '');
         if (!/(^|[\\/])start\.html$/.test(file)) return;
         const fig = sampleFigures(JSON.parse(readFileSync(SAMPLE, 'utf8')));
@@ -230,25 +231,39 @@ function startFigures() {
         /* NO FREE TIER (owner, 11 Oct 2026): 'free' is the "no plan"
            state, never a column or a card. The trial is not a plan. */
         const PAID = PLAN_ORDER.filter((id) => id !== 'free');
-        /* The comparison table's body, from src/data/plan-matrix.json.
-           [row label, matrix key]; a missing key fails the build. */
-        const MATRIX = JSON.parse(readFileSync(resolve(__dirname, 'src/data/plan-matrix.json'), 'utf8'));
-        const ROWS = [
-          ['Learning library & blueprints', 'case-studies'],
-          ['Your own films', 'new_projects'],
-          ['Screenplay editor, revisions', 'screenplay'], ['Script import and exports', 'script_import'],
-          ['Breakdown, scene list, shot list', 'breakdowns'], ['Stripboard, day out of days, calendar', 'stripboard'],
-          ['Budget at Chennai rates', 'budget'], ['Call sheets and the shoot day', 'call-sheets'],
-          ['Google Drive backup', 'drive_backup'], ['AI tools (your own key)', 'ai_tools'],
-          ['Edit log and deliverables', 'edit-log']
-        ];
+        /* WHAT EACH PLAN INCLUDES, from src/data/plan-matrix.json through
+           src/lib/plan-matrix.js — the same functions schema section 35 is
+           generated with, so the page, the database and the cards agree.
+           The table has a row per feature, grouped by the plan that first
+           includes it; each tier's line is that plan's addedBy(). Nothing
+           here names a feature. */
+        const M = await loadMatrixModule();
+        const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const list = (xs) => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : (xs[0] || '');
+        if (M.PAID.join() !== PAID.join()) fail('plan-matrix.json plans [' + M.PAID + '] are not the paid PLAN_ORDER [' + PAID + ']');
+        for (const [i, id] of PAID.entries()) {
+          const adds = M.addedBy(id).map(M.labelOf);
+          if (!adds.length) fail('plan-matrix.json: ' + id + ' adds nothing to the plan below it');
+          const line = (M.MATRIX.lines && M.MATRIX.lines[id]) || '';
+          values['tier.adds.' + id] = esc((line ? line + ' ' : '') + (i === 0 ? '' : 'Everything in ' + planName(PAID[i - 1]) + ', plus ') + list(adds) + '.');
+          /* The card's own bullets: the plan's line, then what it ADDS
+             (the first six, the rest counted and left to the table). */
+          values['tier.line.' + id] = esc(line);
+          const own = M.addedBy(id);
+          const pick = ((M.MATRIX.card && M.MATRIX.card[id]) || []).map((k) => {
+            const row = own.find((r) => r.key === k);
+            if (!row) fail('plan-matrix.json card.' + id + ' names "' + k + '", which ' + id + ' does not add.');
+            return M.labelOf(row);
+          });
+          const shown = pick.length ? pick : adds.slice(0, 6);
+          values['tier.list.' + id] = (i === 0 ? '' : '<li class="st-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
+            + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
+            + (adds.length > shown.length ? '<li class="st-inc-more">+ ' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
+        }
         const cell = (yes) => yes ? '<td class="st-yes"><span aria-hidden="true">\u2713</span><span class="st-vh">Included</span></td>'
                                   : '<td class="st-no"><span aria-hidden="true">\u2014</span><span class="st-vh">Not included</span></td>';
-        values['matrix.rows'] = ROWS.map(([label, key]) => {
-          const row = MATRIX.features.find((f) => f.key === key);
-          if (!row) fail('plan-matrix.json has no feature "' + key + '"');
-          return '<tr><th scope="row">' + label + '</th>' + PAID.map((id) => cell(row.plans.includes(id))).join('') + '</tr>';
-        }).join('');
+        values['matrix.rows'] = PAID.map((id) => M.addedBy(id).map((row) =>
+          '<tr><th scope="row">' + esc(M.labelOf(row)) + '</th>' + PAID.map((p) => cell(M.planHas(row, p))).join('') + '</tr>').join('')).join('');
 
         const tiers = [...html.matchAll(/<li\b[^>]*\bdata-tier="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)];
         const ids = tiers.map((m) => m[1]);

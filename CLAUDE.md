@@ -1369,6 +1369,7 @@ numbered as they are in the history.
 | 28 | The screenplay space, conventional (11 Oct 2026) | Done | HISTORY item 31. `script.html` writes, `breakdown.html#script` analyses, `drafts.html` versions. Drafts are `revisions` entries (no new key); "changed" is a hash. The editor core is `src/ui/script-editor/`; every type change still goes through `setElementType`. The stage guide sits hidden behind `#guide` on script.html. |
 | 29 | Project-first navigation and the Story path (11 Oct 2026) | Done | HISTORY item 32. Global pages carry no project chrome (`shell.js` `EXTRA_GLOBAL_PAGES` + `navigation.json` `global[]`); never call native confirm/alert/prompt — use `dialog.js` (`test:dialogs`); each blueprint question is asked once, in the Story path step `story-paths.json` says absorbs it; erase never signs out. |
 | 30 | Receipt e-mails, clearer invoice, no owner name (11 Oct 2026) | Built; **§35 not run live**, no Resend key | HISTORY item 33. Mail is sent only by edge functions via `_shared/mail.js`, each one CLAIMED first; a mail failure never fails a payment. `brand.json` `seller` is EMPTY by the owner's decision — never display the owner's name. Refund wording lives in `_shared/terms.js`. |
+| 31 | The entry page is the purchase page (12 Oct 2026) | Done | HISTORY item 34. `start.html` is five blocks with the plans second; plans show whatever the purchases switch says; each card leads with the trial, "or buy now" second; card bullets come from `plan-matrix.json` `card`; tier rules are `.st-tiers > li` (a nested list is not a card). |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
@@ -1446,8 +1447,29 @@ NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row
 says "receipt sent", and nothing arrives — worse than not having the
 feature. Owner steps: `docs/BILLING.md` §13 and §16.
 
-**SECTIONS 36 AND 37 ARE LIVE** (run 12 Oct 2026, each verified over PostgREST afterwards rather than read off the screen).
-§36 retires the free plan: the row STAYS (it is what `user_plan()` answers
+**SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
+§36 generates `plans.features` for the three paid tiers from
+`src/data/plan-matrix.json` via `scripts/make-plan-features-sql.mjs` — do not
+edit that SQL by hand; change the JSON, regenerate, commit both, and
+`npm run test:plans` fails when the file drifts from the generator. **It is a
+hard precondition for requiring purchases**: today all three paid tiers carry
+an EMPTY features map live, so the moment `purchase_required` goes true Basic,
+Intermediate and Pro are indistinguishable and every feature is allowed on
+every tier. §37 widens the `project_data` scope CHECK to `write_goals` so
+`fms_write_goals_v1` (focus-mode goal and daily history) syncs, merged day by
+day by `mergeWriteGoals` in cloud.js; until it runs that one scope's upserts
+are refused (23514) and queued, and every other scope syncs as before.
+Owner steps: `docs/BILLING.md` §17 (§36) and §18 (§37); §38 and §39 are §19.
+
+**SECTIONS 38 AND 39 ARE LIVE** (run 12 Oct 2026, each verified over
+PostgREST afterwards rather than read off the screen). They were written as
+"36" and "37" by a session that had not fetched first, and renumbered on the
+merge — the numbers follow AUTHORING order, and §36/§37 were authored seven
+hours earlier. The lesson is the one
+[[concurrent-sessions-share-the-checkout]] already carried, one step earlier
+than it says: fetch before you NUMBER, not just before you push.
+
+§38 retires the free plan: the row STAYS (it is what `user_plan()` answers
 for somebody who has bought nothing, and `user_limits()`, `billing_status()`
 and the P0402 triggers all read it) and its OFFER is withdrawn —
 `active = false`, renamed "No plan", plus a CHECK so it cannot be re-listed.
@@ -1456,17 +1478,16 @@ It was written because the live `price_notice()` was publishing
 start.html all say there is no free plan. Nobody's access moves: every read
 that can receive `'free'` reads `plans` WITHOUT an `active` filter, and
 every read that filters on `active` is a purchase path that already refuses
-`free`. §37 does NOT throw the `purchase_required` switch — that stays an
+`free`. §39 does NOT throw the `purchase_required` switch — that stays an
 owner step, because flipping it in the schema file would change the fixture
 every later test runs against. It adds `admin_purchase_wall()` (the census:
 members, paid, in_trial, walled, grandfathered_walled) and restates
 `admin_set_billing_settings()` with ONE new refusal: turning the switch on
 is refused while it would wall a member the §30 grandfather backfill
 covered. **Neither section makes a plan necessary**, so refund.html's "a
-plan is needed again" stays untrue until the switch flips — and it must not
-flip until Resend works — and `purchases_required()` still answers
-**false**, which is the proof §37 did not throw it.
-`scripts/schema-tests/no-free-plan.sql`.
+plan is needed again" stays untrue until the switch flips, and
+`purchases_required()` still answers **false**, which is the proof §39 did
+not throw it. `scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

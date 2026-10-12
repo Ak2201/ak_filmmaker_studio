@@ -315,7 +315,7 @@
 .ct-doc-facts {
   display: grid;
   gap: var(--s3);
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));   /* four fixed columns were 80px each at 390px */
   margin-bottom: var(--s5);
 }
 .ct-doc-fact { display: grid; gap: 2px; }
@@ -325,7 +325,9 @@
   letter-spacing: var(--track-label);
   text-transform: uppercase;
 }
-.ct-doc-table { width: 100%; border-collapse: collapse; margin-bottom: var(--s5); }
+.ct-doc-table { width: 100%; min-width: 36rem; border-collapse: collapse; margin-bottom: var(--s5); }
+.ct-doc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: var(--s5); }
+.ct-doc-scroll > .ct-doc-table { margin-bottom: 0; }
 .ct-doc-table caption {
   text-align: left;
   font-family: var(--f-mono);

@@ -31,9 +31,9 @@
    5. Sign-in. Every CTA is already <a href="invite.html"> in the
       markup — a real door for a reader with scripts off — and this
       only INTERCEPTS it when the build has a Supabase project.
-   6. The five stages and their modules, DERIVED from navigation.json
-      (invariant 2). A hand-written copy of that list on a sales page
-      would be the first thing to drift from the product.
+   6. (The stage list that was here went with the section, 12 Oct
+      2026: the plans lead the page now, and each card's features are
+      stamped at build time from plan-matrix.json.)
    7. Testimonials, if any have been given with consent. There are
       none; the section stays hidden.
    8. The launch-offer form and the day counters.
@@ -48,18 +48,12 @@ import '../styles/start.css';
 import '../styles/motion.css';
 import '../styles/motion-landing.css';
 import { reveal, splitWords, countUp, spotlight, magnetic, tilt, prefersReducedMotion } from '../lib/motion.js';
-import { scrollProgress, parallax, marquee, glow, aurora } from '../lib/motion-landing.js';
+import { scrollProgress, parallax, glow, aurora } from '../lib/motion-landing.js';
 import { addLead, bumpOnce, bumpEvent, optOut, priceNotice, purchasesRequired, trialOffer } from '../lib/funnel.js';
 import { trialLength } from '../lib/trial-time.js';
 import { codeFromLocation, setCodePass, formatCode } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
-
-/* navigation.json is FETCHED, not imported. vite.config.js folds every
-   `import` of src/data/*.json into one shared `data` chunk — 450KB that
-   every app page needs and this page does not. A URL import emits the
-   15KB file as its own asset and leaves the chunking rule alone. */
-const NAV_URL = new URL('../data/navigation.json', import.meta.url);
 
 const $ = (sel) => document.querySelector(sel);
 const byId = (id) => document.getElementById(id);
@@ -199,7 +193,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-/* ---- 6. the stages ------------------------------------------------- */
+/* ---- 6. a small element builder ----------------------------------- */
 function el(tag, attrs = {}, children = []) {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -210,68 +204,6 @@ function el(tag, attrs = {}, children = []) {
   }
   for (const c of [].concat(children)) if (c != null) n.append(c);
   return n;
-}
-
-const built = (m) => m && m.status === 'built' && m.href;
-
-function moduleList(mods) {
-  return el('ul', { class: 'st-mods' }, mods.map((m) => el('li', {}, [
-    el('a', { href: m.href, text: m.label }),
-    m.purpose ? el('span', { text: ' — ' + m.purpose }) : null
-  ])));
-}
-
-function stageCard(phase, index) {
-  const mods = (phase.modules || []).filter(built);
-  return el('article', { class: 'st-stage', 'data-stage': phase.id }, [
-    el('p', { class: 'st-stage-n', text: String(index + 1).padStart(2, '0') }),
-    el('h3', { class: 'st-h3', text: phase.label }),
-    phase.blurb ? el('p', { class: 'st-stage-blurb', text: phase.blurb }) : null,
-    moduleList(mods)
-  ]);
-}
-
-function shelfCard(shelf) {
-  const mods = (shelf.modules || []).filter(built);
-  return el('article', { class: 'st-stage st-shelf', 'data-shelf': shelf.id }, [
-    el('p', { class: 'st-stage-n', text: 'Shelf' }),
-    el('h3', { class: 'st-h3', text: shelf.label }),
-    shelf.blurb ? el('p', { class: 'st-stage-blurb', text: shelf.blurb }) : null,
-    moduleList(mods)
-  ]);
-}
-
-async function renderStages(host) {
-  let nav;
-  try {
-    const r = await fetch(NAV_URL);
-    if (!r.ok) throw new Error('navigation.json ' + r.status);
-    nav = await r.json();
-  } catch (e) {
-    /* Offline on a first visit, or blocked: the <noscript> sentence is
-       not shown (scripts ran), so say the same thing in its place. */
-    host.replaceChildren(el('p', { class: 'st-note', text: 'The list of stages and modules could not be loaded just now. Everything else on this page stands.' }));
-    return;
-  }
-  const phases  = nav.phases || [];
-  const shelves = (nav.global || []).filter((g) => Array.isArray(g.modules) && g.modules.some(built) && !g.adminOnly);
-  const total   = phases.reduce((n, p) => n + (p.modules || []).filter(built).length, 0)
-                + shelves.reduce((n, s) => n + (s.modules || []).filter(built).length, 0);
-  host.replaceChildren(
-    el('p', { class: 'st-count', text: `${total} modules across ${phases.length} stages and ${shelves.length} shelves — every one of them built and live.` }),
-    el('div', { class: 'st-stage-grid' }, [
-      ...phases.map(stageCard),
-      ...shelves.map(shelfCard)
-    ])
-  );
-  gateAppLinks(host);
-  const mq = byId('modMarquee');
-  if (mq) {
-    const ul = mq.querySelector('ul');
-    const labels = [...phases, ...shelves].flatMap((p) => (p.modules || []).filter(built).map((m) => m.label));
-    ul.replaceChildren(...labels.map((t) => el('li', { class: 'st-mq-item', text: t })));
-    mq.hidden = !labels.length;
-  }
 }
 
 /* ---- 7. testimonials ----------------------------------------------
@@ -318,9 +250,6 @@ async function renderVoices() {
   sec.hidden = false;
 }
 renderVoices();
-
-const stageHost = byId('stageList');
-const stagesReady = stageHost ? renderStages(stageHost) : Promise.resolve();
 
 /* ---- 8. launch offers and the funnel -------------------------------
    Plain fetch through src/lib/funnel.js: the Supabase SDK stays out of
@@ -441,31 +370,15 @@ function renderPriceRise(notice) {
   band.hidden = false;
 }
 /* ---- 9b. purchases not required (§32) ------------------------------
-   The owner can switch purchasing off, and has: the studio is free to
-   use. The prices are in the markup (crawlers and a failed request both
-   see a correct page), so this only ever REMOVES them, and only on an
-   explicit `false` from the anon purchases_required() — no SDK, the
-   same plain fetch as price_notice(). Hidden, not deleted. */
-const FREE_NOW = 'The studio is free to use right now \u2014 nothing to buy.';
+   The owner can switch purchasing off. The plans STAY on this page
+   either way (owner, 12 Oct 2026): it is the purchase page, and the
+   prices are what a plan will cost the day purchasing is switched on.
+   An explicit `false` from the anon purchases_required() only marks
+   the page, and the price-rise band is not drawn — a countdown to a
+   rise on a studio that is not selling would be urgency nobody
+   enforces. */
 function showFreeNow() {
   document.documentElement.dataset.purchases = 'off';
-  const sec = byId('pricing');
-  if (sec) {
-    for (const c of Array.from(sec.children)) {
-      if (c.matches('.st-eyebrow, h2, .st-cta')) continue;
-      c.hidden = true;
-    }
-    const hh = sec.querySelector('h2');
-    if (hh) hh.textContent = 'Free to use, right now.';
-    if (!sec.querySelector('.st-free-now')) {
-      const p = el('p', { class: 'st-free-now', text: FREE_NOW });
-      if (hh) hh.after(p); else sec.prepend(p);
-    }
-  }
-  const band = byId('offer');
-  if (band) band.hidden = true;
-  /* Every link INTO the price list, and every "Buy <plan>" button. */
-  document.querySelectorAll('a[href="#pricing"], a[data-plan]').forEach((a) => { a.hidden = true; });
 }
 try {
   Promise.all([purchasesRequired(), priceNotice()]).then(([req, notice]) => {
@@ -590,7 +503,7 @@ try {
        CTAs pop -> screenshot slides in */
     if (!reduced) {
       enter(q('.st-hero .st-hook'), 'mo-up', 900);
-      enter(q('.st-hero .st-lede'), 'mo-up', 1050);
+      enter(q('.st-hero .st-trust'), 'mo-up', 1050);
       /* The hero CTA and screenshot are never delayed: the thing a visitor came to press and see is there at once. */
       enter(q('.st-hero .st-fine'), 'mo-up', 1500);
     }
@@ -608,21 +521,13 @@ try {
     parallax(q('.st-shot-hero'), { speed: 0.06 });
     qa('.st-sec .st-shot').forEach((f) => parallax(f, { speed: 0.04 }));
     spotlight(q('.st-hero'));
-    qa('.st-card, .st-tiers li, .st-faq').forEach((n) => spotlight(n));
+    qa('.st-card, .st-tiers > li, .st-faq').forEach((n) => spotlight(n));
     const pick = q('.st-pick');
-    if (pick) { pick.classList.add('mo-trail'); glow(pick); }
+    if (pick) glow(pick);   /* no mo-trail: its conic rule drew a half border */
     /* The facts count; the PRICES never do — a price that reads ₹0 for
        a second, or to a screen reader, is a price that misleads. */
     qa('.st-fact-n').forEach((n) => countUp(n));
     qa('.st-faq').forEach(smoothFaq);
-    stagesReady.then(() => {
-      try {
-        const g = q('.st-stage-grid');
-        if (g) { g.setAttribute('data-reveal-group', ''); reveal(g.parentElement); }
-        qa('.st-stage').forEach((n) => spotlight(n));
-        marquee(q('#modMarquee'));
-      } catch (e) { /* decoration */ }
-    });
   } catch (e) { /* motion is decoration; never let it break the page */ }
 
   /* FAQ: animate the box height with WAAPI. The native toggle still does

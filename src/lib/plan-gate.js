@@ -29,6 +29,12 @@
                        card inline and its content hidden. Locking the
                        whole Library because one shelf is off the plan
                        would hide twenty-two films nobody unticked.
+                       The same goes for a stage module that is one
+                       section of a page shared with a lower plan's
+                       modules (reports.html's Cast Matrix beside Basic's
+                       Screen Time): tabsHere() below.
+   What each plan starts with is src/data/plan-matrix.json, written into
+   plans.features by schema section 35 (the owner's three-plan split).
      the marks         [data-module-id] elements in the shell's menus,
                        the launcher and the palette get .is-locked and
                        a PLAN flag, so a locked door looks locked
@@ -61,12 +67,15 @@ import { trialLength } from './trial-time.js';
 import '../styles/plan-gate.css';
 
 export const CAPABILITIES = [
+  /* The SAME keys, in the same order, as the capability rows of
+     src/data/plan-matrix.json (npm run test:plans compares them). The
+     matrix is not imported here because this module is CORE. */
   ['sample_only',   'Sample project only',    'The hub shows the sample projects and nothing else'],
   ['new_projects',  'New projects',           'Create, import or duplicate a project'],
   ['script_import', 'Script import',          'Fountain, FDX and PDF importers'],
-  ['ai_tools',      'AI tools',               'Every model-backed tool, on the user’s own key'],
-  ['exports',       'Exports',                'PDF, backup and other downloads'],
+  ['exports',       'PDF exports',            'Every PDF the studio prints (the backup download is never held back)'],
   ['drive_backup',  'Google Drive backup',    'The Drive connection on Settings'],
+  ['ai_tools',      'AI tools',               'Every model-backed tool, on the user’s own key'],
   ['remove_branding', 'Remove branding',      'Switch off “Made with ' + BRAND.name + '” (paid plans only)']
 ];
 
@@ -105,6 +114,24 @@ export function allowed(key) {
 }
 /** The one capability that is OFF unless the plan says true. */
 export function sampleOnly() { return !!(features && features.sample_only === true); }
+
+/** The question a CAPABILITY's entry point asks before it acts: true
+ *  when allowed; otherwise a toast names the capability and the plan,
+ *  with the way up, and the caller does nothing. `what` is the thing
+ *  refused ("Drive backup"); it defaults to the capability's label.
+ *  Fails open like allowed(): unknown is yes. */
+export function guard(key, what) {
+  if (allowed(key)) return true;
+  const label = what || ((CAPABILITIES.find(([k]) => k === key) || [])[1]) || 'This';
+  const where = ent && ent.reason === 'granted' ? 'the access the studio gave you'
+              : plan === 'free' ? 'the free trial' : 'the ' + (planName || 'current') + ' plan';
+  try {
+    const ui = typeof window !== 'undefined' && window.StudioUI;
+    if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.', {
+      type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
+  } catch (e) { /* no chrome on this page: the refusal stands, silently */ }
+  return false;
+}
 
 /** §30. Whether this person may use the studio: a bought plan, or a live
  *  trial. `reason` is 'paid' | 'trial' | 'granted' | 'free' | 'expired' |
@@ -498,36 +525,76 @@ export function walled() {
   return !entitled();
 }
 
-/** Shelf modules whose tab is on THIS page and in the document. */
+/** Modules whose SECTION is on this page and in the document: a shelf's
+ *  tabs (the Library's case studies, dissection, glossary) and, since
+ *  the owner's three-plan split (11 Oct 2026), a stage module that is
+ *  one section of a page shared with modules of a LOWER plan — Basic
+ *  keeps Screen Time on reports.html while Cast Matrix, Sides and
+ *  Reports lock as sections there. A page whose every module is locked
+ *  is covered whole (pageLocked) and needs none of this.
+ *
+ *  A target NESTED in (or wrapping) the target of an ALLOWED module on
+ *  the same page is not locked: breakdown.html's #breakdown is the scene
+ *  cards inside #scenes, "the same cards read two ways", and hiding it
+ *  would hide the Scene List a Basic plan includes. The nav mark
+ *  (markLocked) still says PLAN on such a door. */
 function tabsHere() {
   const here = file().replace(/\.html$/, '');
-  const out = [];
-  for (const s of shelves()) for (const m of s.modules) {
+  const cands = [];
+  const take = (m) => {
     const [f, frag] = (m.href || '').split('#');
-    if (!frag || f.toLowerCase().replace(/\.html$/, '') !== here) continue;
+    if (!frag || f.toLowerCase().replace(/\.html$/, '') !== here) return;
     const sec = document.getElementById(frag);
-    if (sec) out.push({ m, sec });
-  }
-  return out;
+    if (sec) cands.push({ m, sec });
+  };
+  for (const s of shelves()) for (const m of s.modules) take(m);
+  if (!pageLocked()) for (const p of phases()) for (const m of p.modules) if (m.status !== 'planned') take(m);
+  const open = cands.filter((c) => allowed(c.m.id)).map((c) => c.sec);
+  return cands.filter((c) => allowed(c.m.id)
+    || !open.some((o) => o !== c.sec && (o.contains(c.sec) || c.sec.contains(o))));
 }
 
 /* THE TAB LOCK. The section keeps its id and its place in
    the tab strip; everything in it is hidden under the card
    (plan-gate.css) and comes back untouched when the plan changes.
    Exported because the library renders its tabs after this module has
-   run, and calls it once they exist. */
+   run, and calls it once they exist; the other pages re-render their
+   sections whenever their data changes, so a rAF-throttled observer
+   (watchSections, below) re-applies it while anything here is locked. */
 export function lockTabs() {
   if (typeof document === 'undefined') return;
   for (const { m, sec } of tabsHere()) {
     const locked = !allowed(m.id);
     let card = sec.querySelector(':scope > .pg-lock-inline');
-    sec.toggleAttribute('data-tab-lock', locked);
+    if (sec.hasAttribute('data-tab-lock') !== locked) sec.toggleAttribute('data-tab-lock', locked);
     if (locked && !card) {
       card = h('div.pg-lock-inline', { role: 'region', 'aria-label': 'Not on your plan' }, [lockCard([m])]);
       sec.prepend(card);
     }
     if (!locked && card) card.remove();
   }
+  watchSections();
+}
+
+/* Only while this page has a locked section: no plan known, or nothing
+   locked here, means no observer at all. Writes nothing to storage. */
+let _secObs = null;
+let _secRaf = 0;
+function watchSections() {
+  if (typeof MutationObserver === 'undefined' || !document.body) return;
+  const need = !!features && anyLockedHere();
+  if (need && !_secObs) {
+    _secObs = new MutationObserver(() => {
+      if (_secRaf) return;
+      _secRaf = requestAnimationFrame(() => { _secRaf = 0; lockTabs(); });
+    });
+    _secObs.observe(document.body, { childList: true, subtree: true });
+  } else if (!need && _secObs) { _secObs.disconnect(); _secObs = null; }
+}
+function anyLockedHere() {
+  const here = file().replace(/\.html$/, '');
+  const on = (m) => { const [f, frag] = (m.href || '').split('#'); return !!frag && f.toLowerCase().replace(/\.html$/, '') === here && !allowed(m.id); };
+  return shelves().some((s) => s.modules.some(on)) || phases().some((p) => p.modules.some(on));
 }
 
 function apply() {
@@ -630,4 +697,4 @@ if (typeof window !== 'undefined') {
   setInterval(() => { if (!document.hidden) { lastFocusRefresh = Date.now(); refresh(); } }, POLL);
 }
 
-export default { serverNow, purchasesOff, allowed, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { serverNow, purchasesOff, allowed, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

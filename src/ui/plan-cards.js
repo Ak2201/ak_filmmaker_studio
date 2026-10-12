@@ -112,6 +112,53 @@ function featureBlock(p) {
   return wrap;
 }
 
+/* WHAT THIS PLAN ADDS to the paid plan below it. From the plans ROWS
+   (plans.features — what the pages will actually do, console edits
+   included), which schema section 35 seeds from src/data/plan-matrix.json.
+   If the rows do not tell the plans apart at all (section 35 not run
+   yet, every map still {}), the matrix itself says it, loaded lazily —
+   invite.html's first paint is budgeted. Never a typed list. */
+let matrixMod = null;
+let matrixAsked = false;
+function addsFromRows(plans, p) {
+  const paid = plans.filter((x) => x.id !== 'free').sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
+  const i = paid.findIndex((x) => x.id === p.id);
+  if (i < 0) return null;
+  const items = featureSummary(p);
+  const mine = [...items.stages.flatMap((s) => s.items), ...items.caps].filter((x) => x.on);
+  if (i === 0) return { first: true, prev: null, labels: mine.map((x) => x.label) };
+  const prevF = (paid[i - 1].features) || {};
+  return { first: false, prev: paid[i - 1], labels: mine.filter((x) => prevF[x.id] === false).map((x) => x.label) };
+}
+function addsBlock(plans, p) {
+  const paid = plans.filter((x) => x.id !== 'free');
+  const differ = paid.some((x) => x.features && Object.values(x.features).some((v) => v === false));
+  let first, prevName, labels, line = '';
+  if (differ) {
+    const r = addsFromRows(plans, p);
+    if (!r) return null;
+    first = r.first; prevName = r.prev && (r.prev.name || planName(r.prev.id)); labels = r.labels;
+  } else {
+    if (!matrixMod) {
+      if (!matrixAsked) {
+        matrixAsked = true;
+        import('../lib/plan-matrix.js').then((m) => { matrixMod = m; if (hooks.rerender) hooks.rerender(); }).catch(() => { /* the counts stand */ });
+      }
+      return null;
+    }
+    const i = matrixMod.PAID.indexOf(p.id);
+    if (i < 0) return null;
+    first = i === 0; prevName = i > 0 ? planName(matrixMod.PAID[i - 1]) : '';
+    labels = matrixMod.addedBy(p.id).map(matrixMod.labelOf);
+    line = (matrixMod.MATRIX.lines && matrixMod.MATRIX.lines[p.id]) || '';
+  }
+  if (!labels.length) return null;
+  const box = h('div.pl-adds', { 'data-plan-adds': p.id });
+  box.append(h('p.pl-note', { text: (line ? line + ' ' : '') + (first ? 'Includes:' : 'Everything in ' + prevName + ', plus:') }));
+  box.append(h('ul.pl-what-list', {}, labels.map((t) => h('li', { text: t }))));
+  return box;
+}
+
 function limitList(limits, features) {
   const ul = h('ul.pl-limits');
   for (const [key, text] of LIMIT_LINES) ul.append(h('li', { text: text(cap(limits, key)) }));
@@ -154,6 +201,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     ].filter(Boolean)));
     if (q && q.credit_paise > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${p.name || planName(p.id)} — ${fmtPaise(q.amount_paise)} (you paid ${fmtPaise(q.paid_paise || q.credit_paise)} for ${q.upgrade_from_name || planName(q.upgrade_from)})` }));
     if (pq && pq.discount_paise > 0) card.append(h('p.pl-save', { text: `${fmtPaise(pq.discount_paise)} off with ${pq.code}` }));
+    { const adds = addsBlock(plans, p); if (adds) card.append(adds); }
     card.append(limitList(p.limits, p.features));
     card.append(featureBlock(p));
     /* A button only where there is something to buy: a higher tier.
@@ -243,28 +291,22 @@ function wantedPlan() {
 }
 
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the
-   pricing table uses (plan-matrix.json): the capabilities this plan
-   has that the one before it did not, falling back to the plan's own
-   list. The invoice lives on purchase.html (invoice-panels). */
-function unlockedBy(matrix, planId) {
-  const ids = matrix.plans ? Object.keys(matrix.plans) : [];
-  const prev = ids[Math.max(0, ids.indexOf(planId) - 1)];
-  const has = (f, id) => f.inverted ? !(f.plans || []).includes(id) : (f.plans || []).includes(id);
-  const all = (matrix.features || []).filter((f) => !f.inverted && has(f, planId));
-  const fresh = all.filter((f) => prev === planId || !has(f, prev));
-  return (fresh.length ? fresh : all).map((f) => f.label).slice(0, 8);
+   pricing table uses (src/lib/plan-matrix.js addedBy()): what this plan
+   has that the paid plan before it did not. The invoice lives on purchase.html (invoice-panels). */
+function unlockedBy(M, planId) {
+  return M.addedBy(planId).map(M.labelOf).slice(0, 8);
 }
 function successCard(planId, plans) {
   const p = (plans || []).find((x) => x.id === planId);
   const name = (p && p.name) || planName(planId);
   const card = h('section.pl-success', { role: 'status', 'aria-live': 'polite' });
   card.append(h('p.bd-eyebrow', { text: 'Payment received' }), h('h3.pl-success-h', { text: `You’re on ${name}.` }));
-  /* plan-matrix.json is a lazy chunk (invite's first paint is budgeted),
+  /* plan-matrix.js is a lazy chunk (invite's first paint is budgeted),
      so the unlock list fills in when it arrives. */
   const slot = h('div.pl-unlocked');
   card.append(slot);
-  import('../data/plan-matrix.json').then((m) => {
-    const items = unlockedBy(m.default, planId);
+  import('../lib/plan-matrix.js').then((m) => {
+    const items = unlockedBy(m, planId);
     if (items.length) slot.append(h('p.pl-note', { text: 'Just unlocked:' }), h('ul.pl-what-list', {}, items.map((t) => h('li', { text: t }))));
   }).catch(() => { /* the card still says what plan you are on */ });
   

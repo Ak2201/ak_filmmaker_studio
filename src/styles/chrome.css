@@ -858,7 +858,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   position: relative;
   width: 100%;
   max-width: var(--modal-w);
-  max-height: 90vh;
+  max-height: calc(100dvh - 2 * var(--s5));   /* 90vh + the overlay's padding overran a 390px-tall landscape phone */
   overflow-y: auto;
   padding: var(--s6) var(--s6) var(--s5);
   background: var(--paper-raised);
@@ -1209,7 +1209,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   z-index: var(--z-float);
   display: none;
   min-width: 220px;
-  max-height: 400px;
+  max-height: min(400px, calc(100dvh - var(--s6)));
   overflow-y: auto;
   padding: var(--s1);
   background: var(--paper-raised);
@@ -1533,6 +1533,13 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 }
 .project-card:hover .pc-actions,
 .project-card:focus-within .pc-actions { opacity: 1; }
+/* No hover on a touch screen: rename, duplicate, delete and share were
+   invisible there until something inside the card had focus, and a tap
+   on the card opens the project instead. */
+@media (hover: none) {
+  .project-card .pc-actions,
+  .project-card .pc-share { opacity: 1; }
+}
 .project-card .pc-actions button {
   width: var(--s6);
   height: var(--s6);
@@ -1868,7 +1875,15 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 }
 
 /* --- 560px: phone ------------------------------------------ */
-@media (max-width: 560px) {
+/* 720px, NOT 560: chrome.js attaches the bar at `(max-width: 720px)`
+   and mobile-nav.css hides the band's stage strip, toolbar, account
+   zone, search and burger the moment it is attached. With this tier at
+   560 a window between 561 and 720px wide — an iPhone in landscape, a
+   foldable's inner screen, a tablet in split view — had the bar in the
+   DOM and `display: none`, and nothing left in the band: no way off a
+   global page but the browser's Back. The three numbers have to be one
+   number, and the JS is the one the others follow. */
+@media (max-width: 720px) {
   /* The toolbar wraps here rather than scrolling sideways, because a
      control you have to swipe to find is a control you do not know is
      there. Wrapped, it is four rows and 175px — and sticky, that was
@@ -1917,7 +1932,12 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
     display: flex;
     gap: var(--s2);
     justify-content: space-around;
-    padding: var(--s2) var(--s3) env(safe-area-inset-bottom, var(--s2));
+    /* env()'s fallback fires only where env is unsupported. Where it IS
+       supported and 0 — every Android, and every page without
+       viewport-fit=cover — the bottom padding was 0 and the buttons sat
+       flush on the screen edge. The inset is added to the padding, not
+       substituted for it. */
+    padding: var(--s2) var(--s3) calc(var(--s2) + env(safe-area-inset-bottom, 0px));
     background: var(--chrome);
     border-top: 1px solid var(--chrome-hair);
     backdrop-filter: var(--blur-chrome);
@@ -2070,7 +2090,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 
 .sh-rail {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0 auto var(--mab-h, 0px) 0;   /* the stage links come last and sat under the bottom bar */
   z-index: calc(var(--z-toolbar) + 2);
   display: flex;
   flex-direction: column;
@@ -2567,7 +2587,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   .step-rail,
   .step-rail-toggle { top: var(--sh-chrome-h, var(--s8)); }
   .step-rail-toggle { transform: none; }
-  .step-rail { max-height: calc(100vh - var(--sh-chrome-h, var(--s8)) - var(--s4)); }
+  /* dvh, and the bar's height off the bottom: at 100vh the rail's scroll
+     box ran under the URL bar and the bottom bar, so its last steps could
+     not be reached. */
+  .step-rail { max-height: calc(100dvh - var(--sh-chrome-h, var(--s8)) - var(--mab-h, 0px) - var(--s4)); }
   body.rail-shown.rail-open .step-rail-toggle { left: calc(var(--sh-rail-w) + var(--rail-w)); }
 }
 /* Open, the tab hangs off the rail's outer edge rather than sitting on
@@ -2610,7 +2633,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 
    verify did not catch this: it measures overflow with every menu shut.
    Closed now by the menus-open assertion in scripts/verify-migration.mjs. */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 500px) {
+  /* Also on any screen under 500px tall — a phone in landscape, 844x390:
+     between 720 and 1099 wide the band wraps to three rows and measured
+     113px pinned, twenty-nine per cent of the screen. */
   .sh-bar { position: relative; top: auto; }
   /* The plate's own un-pinning lives at the END of its section, not
      here — this block is declared BEFORE `.sh-plate { position:
@@ -2635,8 +2661,13 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   /* :not(.sh-where-here) matters — on the hub the root IS the
      destination, and hiding it would leave an empty breadcrumb on
      the one page whose crumb is a single segment. */
-  .sh-where-root:not(.sh-where-here),
-  .sh-where-root:not(.sh-where-here) + .sh-where-sep { display: none; }
+  /* :has(~ .sh-where-step) matters too — write.html?stay=1, the two
+     blueprints with ?stay=1 and invite.html are pages the IA does not
+     name, so their crumb is the root alone and NOT marked here. Hiding
+     it left a 61px band with nothing in it on every one of them. The
+     root goes only when a later segment is there to answer instead. */
+  .sh-where-root:not(.sh-where-here):has(~ .sh-where-step),
+  .sh-where-root:not(.sh-where-here):has(~ .sh-where-step) + .sh-where-sep { display: none; }
 }
 
 /* ---- ONE BAND -----------------------------------------------
@@ -3646,14 +3677,14 @@ html {
    ============================================================ */
 @media (max-width: 1099px) {
   [data-more="right"] {
-    mask-image: linear-gradient(to left, transparent, #000 var(--s6));
+    mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
   }
   [data-more="left"] {
-    mask-image: linear-gradient(to right, transparent, #000 var(--s6));
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
   }
   [data-more="left right"] {
-    mask-image: linear-gradient(to right, transparent, #000 var(--s6),
-                                #000 calc(100% - var(--s6)), transparent);
+    mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6),
+                                var(--chrome) calc(100% - var(--s6)), transparent);
   }
   /* The stage strip states its own above, against --chrome, and it is
      declared earlier in this file. Specificity is equal, so without
@@ -3670,14 +3701,14 @@ html {
    too — a pre-production guide is thirteen pills — so they fade at
    every width, not only below 1100px. */
 .stp-list[data-more="right"], .st-path-list[data-more="right"] {
-  mask-image: linear-gradient(to left, transparent, #000 var(--s6));
+  mask-image: linear-gradient(to left, transparent, var(--chrome) var(--s6));
 }
 .stp-list[data-more="left"], .st-path-list[data-more="left"] {
-  mask-image: linear-gradient(to right, transparent, #000 var(--s6));
+  mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));
 }
 .stp-list[data-more="left right"], .st-path-list[data-more="left right"] {
-  mask-image: linear-gradient(to right, transparent, #000 var(--s6),
-                              #000 calc(100% - var(--s6)), transparent);
+  mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6),
+                              var(--chrome) calc(100% - var(--s6)), transparent);
 }
   .sh-phases[data-more="left"] {
     mask-image: linear-gradient(to right, transparent, var(--chrome) var(--s6));

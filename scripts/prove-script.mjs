@@ -216,6 +216,24 @@ for (const [from, to] of [['write.html', /script\.html$/], ['write.html#revision
 await page.goto(url('write.html?stay=1'), { waitUntil: 'networkidle' });
 ok(/write\.html\?stay=1/.test(page.url()), '12 write.html?stay=1 stays');
 
+/* ---- 14 notes overview (a derived view: reads, writes nothing) ----------- */
+await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+const noteId = await page.$eval('#wr-page [data-el]', (n) => n.getAttribute('data-el'));
+await page.evaluate((id) => localStorage.setItem('fms_note_script_' + id, 'Overview probe note'), noteId);
+const keysBefore = await page.evaluate(() => Object.keys(localStorage).sort().join('|'));
+await page.evaluate(() => document.querySelector('[data-action="sc-notes"]').click());
+await page.waitForSelector('.sn .sn-note', { timeout: 5000 }).catch(() => {});
+ok((await page.$$eval('.sn .sn-note', (n) => n.length)) === 1, '14 the notes overview lists the private note');
+await page.selectOption('.sn select[data-sn="state"]', 'resolved');
+ok((await page.$$eval('.sn .sn-note', (n) => n.length)) === 0, '14 the Resolved filter hides it');
+await page.selectOption('.sn select[data-sn="state"]', 'all');
+const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click('[data-sn-export="csv"]')]);
+ok(dl && /-notes\.csv$/.test(dl.suggestedFilename()), '14 CSV downloads', dl && dl.suggestedFilename());
+await page.keyboard.press('Escape');
+ok(!(await page.$('.sn')), '14 Escape closes it');
+ok((await page.evaluate(() => Object.keys(localStorage).sort().join('|'))) === keysBefore, '14 opening the overview adds no storage key');
+await page.evaluate((id) => localStorage.removeItem('fms_note_script_' + id), noteId);
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['script.html', 'drafts.html', 'breakdown.html#script']) {

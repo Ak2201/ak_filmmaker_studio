@@ -75,6 +75,15 @@ function shellMode() {
   const g = globalHere();
   return g && g.id !== 'dashboard' ? 'global' : 'project';
 }
+/* A global page with no navigation.json entry still needs a name for the
+   crumb, or it reads as a bare "Studio" that says nothing about where you
+   are (invite.html, the doorway). It is deliberately NOT added to
+   navigation.json: an entry there is also a rail item, a palette row and a
+   Go-to link, and nobody should navigate TO the doorway from inside. */
+const EXTRA_GLOBAL_ENTRIES = {
+  'invite.html': { id: 'invite', label: 'Invite', icon: '✉', sym: 'mail', href: 'invite.html',
+    purpose: 'Enter an invite code, or ask for one' }
+};
 const GLOBAL_MODE = shellMode();
 export const isGlobalMode = () => GLOBAL_MODE === 'global';
 
@@ -108,7 +117,8 @@ function cameFromDashboard() {
 
 /** The global (app-scope) destination this page is, if it is one. */
 function globalHere() {
-  return globals().find((g) => g.href.toLowerCase().split('#')[0] === CURRENT) || null;
+  return globals().find((g) => g.href.toLowerCase().split('#')[0] === CURRENT)
+    || EXTRA_GLOBAL_ENTRIES[CURRENT] || null;
 }
 
 /** The modules this page hosts, in navigation order, with their fragment. */
@@ -1120,6 +1130,20 @@ function measureChrome() {
   const de = document.documentElement;
   let band = 0;
   let parked = 0;
+  /* The value things are parked on RIGHT NOW: what this function last
+     published, or, before it has run once, the stylesheet's default.
+     It used to be `lastBand`, with the parked test gated on
+     `lastBand > 0` — which is false on exactly the width where the
+     band is 0 by design (below 720px the bar scrolls away). There the
+     tab strip, pinned at top: 0, was counted as the band (61px), so
+     the strip moved to top: 61; the next measure found it parked on
+     the published value and put the band back to 0; the strip moved
+     back. Every resize and every band mutation flipped it — the strip
+     jumped 61px down and up on a phone — and a fragment that landed
+     on the 0/0 beat sat under the strip. Measured on budget#topsheet
+     at 390px: chrome 0, cover 0, heading behind the strip. */
+  const published = lastBand >= 0 ? lastBand
+    : (parseFloat(getComputedStyle(de).getPropertyValue('--sh-chrome-h')) || 0);
   /* A small, structural candidate set rather than a walk of the
      document: this runs on resize frames, and the hub is several
      thousand nodes. */
@@ -1163,7 +1187,7 @@ function measureChrome() {
        top IS the published value is under the band, not part of it;
        it is collected separately and added to what a fragment jump has
        to clear (--sh-cover-h), never to where things park. */
-    if (lastBand > 0 && Math.abs(top - lastBand) <= 1) { parked += Math.round(r.height); continue; }
+    if (Math.abs(top - published) <= 1) { parked += Math.round(r.height); continue; }
     band = Math.max(band, Math.round(top + r.height));
   }
   const cover = band + parked;

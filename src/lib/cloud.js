@@ -98,7 +98,13 @@ const SCOPE_BY_KEY = {
   // time of writing — until it does, Postgres refuses these two upserts
   // and the rest still sync (the same window section 17 had).
   'fms_characters_v1':          'characters',
-  'fms_costs_v1':               'costs'
+  'fms_costs_v1':               'costs',
+  // Schema section 37, which has NOT run against the database at the
+  // time of writing — until it does, Postgres refuses this upsert and
+  // the rest still sync (the same window sections 17 and 24 had). Its
+  // value is a per-day history, so it is MERGED, not replaced: see
+  // MERGE_BY_SCOPE below.
+  'fms_write_goals_v1':         'write_goals'
 };
 const KEY_BY_SCOPE = Object.fromEntries(
   Object.entries(SCOPE_BY_KEY).map(([k, v]) => [v, k])
@@ -107,17 +113,40 @@ const KEY_BY_SCOPE = Object.fromEntries(
 // Derived, not hand-checked: the list of scoped keys lives in store.js
 // and this asks that file rather than repeating it.
 /* LOCAL ONLY, ON PURPOSE — the one sanctioned exception to the rule
-   above. `fms_write_goals_v1` (focus mode's goal and daily history,
-   src/lib/write-goals.js) is per project and travels in backups, but it
-   has NO scope name here because `project_data.scope`'s CHECK
-   constraint does not list one yet: an entry without the schema change
-   would be an upsert Postgres refuses on every save. When a schema
-   section adds the scope, move the key into SCOPE_BY_KEY and out of
-   this set in the same commit. `fms_scene_bin_v1` (the scene bin,
-   src/lib/scene-bin.js) joined it for the same reason.
-   `fms_characters_v1` and `fms_costs_v1` were here until schema
-   section 24 named their scopes. */
-const LOCAL_ONLY = new Set(['fms_write_goals_v1', 'fms_scene_bin_v1']);
+   above: a key with NO scope name because `project_data.scope`'s CHECK
+   constraint does not list one. `fms_scene_bin_v1` (the scene bin,
+   src/lib/scene-bin.js) is the one left. `fms_characters_v1` and
+   `fms_costs_v1` left this set with schema section 24, and
+   `fms_write_goals_v1` with section 37. */
+const LOCAL_ONLY = new Set(['fms_scene_bin_v1']);
+
+/* A scope whose value is a HISTORY (per-day entries) cannot use the
+   whole-blob last-writer-wins rule below: two devices that each wrote a
+   different day would have one of them erased. For these scopes the
+   pull and the live handler MERGE the two copies instead.
+   `fms_write_goals_v1` is { v, goal, days: { 'YYYY-MM-DD': {w0,p0,w,p} } }:
+   days are unioned; a day both devices have keeps the entry that
+   recorded more writing (w - w0), the remote on a tie; the goal follows
+   whichever side wins the clock. Pure, and returns canonical JSON text
+   (sorted days) so "did anything change" is a string comparison. */
+export function mergeWriteGoals(localRaw, remoteRaw, localWins) {
+  const parse = (r) => { try { const o = typeof r === 'string' ? JSON.parse(r) : r; return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+  const L = parse(localRaw), R = parse(remoteRaw);
+  const ld = L.days && typeof L.days === 'object' ? L.days : {};
+  const rd = R.days && typeof R.days === 'object' ? R.days : {};
+  const written = (d) => (d && Number.isFinite(d.w - d.w0)) ? d.w - d.w0 : -Infinity;
+  const days = {};
+  for (const k of [...new Set([...Object.keys(ld), ...Object.keys(rd)])].sort()) {
+    if (!(k in ld)) days[k] = rd[k];
+    else if (!(k in rd)) days[k] = ld[k];
+    else days[k] = written(ld[k]) > written(rd[k]) ? ld[k] : rd[k];
+  }
+  const goal = (localWins ? L.goal || R.goal : R.goal || L.goal);
+  const out = { v: 1, days };
+  if (goal) out.goal = goal;
+  return JSON.stringify(out);
+}
+const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
 const _unsynced = (Store.SCOPED_KEYS || []).filter((k) => !SCOPE_BY_KEY[k] && !LOCAL_ONLY.has(k));
 if (_unsynced.length) {
   console.warn(
@@ -1313,7 +1342,21 @@ export async function pullProjectData(projectId) {
     const nsKey    = localKey + '__' + projectId;
     const remoteTs = Date.parse(row.updated_at || '') || 0;
     const localRaw = Store.rawGet(nsKey);
-    const nextRaw  = JSON.stringify(row.data || {});
+    let nextRaw    = JSON.stringify(row.data || {});
+
+    if (MERGE_BY_SCOPE[row.scope] && localRaw != null && localRaw !== '{}') {
+      const localWins = localClock(projectId, row.scope) > remoteTs;
+      const merged = MERGE_BY_SCOPE[row.scope](localRaw, row.data || {}, localWins);
+      const remoteCanon = MERGE_BY_SCOPE[row.scope]('{}', row.data || {}, false);
+      if (merged !== localRaw) {
+        _applyingRemote = true;
+        try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
+        applied++;
+      }
+      markRemoteSeen(projectId, row.scope, remoteTs, merged === remoteCanon);
+      if (merged !== remoteCanon) { kept++; _debouncedPush(projectId, row.scope, 250); }
+      continue;
+    }
 
     if (localRaw === nextRaw) {                   // identical — write nothing
       markRemoteSeen(projectId, row.scope, remoteTs);
@@ -1366,8 +1409,16 @@ async function _pushScope(projectId, scope) {
   const localKey = KEY_BY_SCOPE[scope];
   if (!localKey) return;
   const raw = Store.rawGet(localKey + '__' + projectId);
+  /* A null read is not an empty document. It is a key that was never
+     written, or — worse — a stub whose bytes sit in an overflow tier
+     this document cannot open (store.js returns null and says
+     storage:degraded). Pushing `{}` with a fresh stamp from here made
+     the server's copy empty with the newest clock, and every other
+     device then pulled the emptiness over its own screenplay. Nothing
+     to read means nothing to say. */
+  if (raw == null) return;
   let json = {};
-  if (raw) { try { json = JSON.parse(raw); } catch (e) { json = {}; } }
+  try { json = JSON.parse(raw); } catch (e) { return; }
   const stamp = new Date().toISOString();
   setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
   const { error } = await supabase.from('project_data').upsert({
@@ -1574,8 +1625,14 @@ export async function attachToCurrentProject() {
 }
 
 function _onRemoteData(payload) {
+  /* A DELETE carries no data: `new` is empty and `old` names the scope,
+     so `row.data` would be undefined, `nextRaw` '{}', and the stamp
+     Date.now() — newer than any local clock — which replaced the local
+     blob with nothing. A project deleted in the cloud is handled by its
+     own path; a row vanishing is never an edit to apply. */
+  if (payload && payload.eventType === 'DELETE') return;
   const row = payload.new || payload.old;
-  if (!row) return;
+  if (!row || !row.scope) return;
   if (session && row.updated_by === session.user.id) return;  // self echo
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;
@@ -1584,6 +1641,20 @@ function _onRemoteData(payload) {
   const localRaw = Store.rawGet(nsKey);
   const nextRaw  = JSON.stringify(row.data || {});
   if (localRaw === nextRaw) return;
+
+  if (MERGE_BY_SCOPE[row.scope] && localRaw != null && localRaw !== '{}') {
+    const merge = MERGE_BY_SCOPE[row.scope];
+    const merged = merge(localRaw, row.data || {}, localClock(row.project_id, row.scope) > remoteTs);
+    const remoteCanon = merge('{}', row.data || {}, false);
+    if (merged !== localRaw) {
+      _applyingRemote = true;
+      try { Store.rawSet(nsKey, merged); } finally { _applyingRemote = false; }
+      Store.notify('cloud:synced', { projectId: row.project_id, scope: row.scope });
+    }
+    markRemoteSeen(row.project_id, row.scope, remoteTs, merged === remoteCanon);
+    if (merged !== remoteCanon) _debouncedPush(row.project_id, row.scope, 250);
+    return;
+  }
 
   // Same rule as the pull: a live edit from another device does not
   // get to overwrite a later edit made here. It loses, and this

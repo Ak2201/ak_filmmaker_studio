@@ -43,6 +43,7 @@ import { formatCode, normaliseCode } from '../lib/gate.js';
 import { inExtension, onSessionLost, onClipQueued, CLIP_QUEUE_KEY } from '../lib/extension-bridge.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import Billing from '../lib/billing.js';
+import matrix from '../data/plan-matrix.json';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud;
@@ -143,6 +144,8 @@ const MODES = {
    server cannot tell an extension's request from a page's, so what this
    buys is an honest panel, not an enforced one. Unknown (section 16 not
    run, or the status call failed) means allowed. */
+/* Which plans include it: the `extension` row of src/data/plan-matrix.json. */
+const EXT_PLANS = ((matrix.features.find((f) => f.key === 'extension') || {}).plans || []).filter((id) => id !== 'free');
 let extAllowed = null;
 async function checkPlan() {
   try {
@@ -155,7 +158,7 @@ async function checkPlan() {
 function renderNoExtension() {
   const main = h('main#main.pn-main');
   main.append(head('Your plan', 'The extension is not in your plan.',
-    'The Free tier covers the website and local work. ' + Billing.PLAN_ORDER.slice(1).map(Billing.planName).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' include the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
+    'Your plan covers the website and local work. ' + EXT_PLANS.map(Billing.planName).join(', ').replace(/, ([^,]*)$/, ' and $1') + (EXT_PLANS.length > 1 ? ' include' : ' includes') + ' the Chrome extension \u2014 the side panel, the web clipper and the device lock.'));
   main.append(h('a.btn.primary', { href: '../purchase.html', target: '_blank', rel: 'noopener', text: 'SEE PLANS' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I HAVE UPGRADED' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));

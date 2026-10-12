@@ -447,7 +447,14 @@ const EXPECTED = {
      host move to filmmakerstudio.in recaptured it again the same day,
      for the footer's printed address; neither recapture moved a
      data-key. */
-  story: {},
+  /* The crumb on story.html read "Story editor" and now reads "Story",
+     like every other stage crumb (navigation.json pageLabel on the
+     story-beats module, 12 Oct 2026). `editor` appeared nowhere else
+     on that page, so the word-set check reports it missing from a
+     page whose only change is this one deliberate rename. One row, the
+     first since the last recapture; the anti-rot check fails the run
+     if it ever stops firing. */
+  story: { editor: 'the crumb "Story editor" became "Story" (12 Oct 2026)' },
   edit: {},
   deliverables: {},
   screening: {},

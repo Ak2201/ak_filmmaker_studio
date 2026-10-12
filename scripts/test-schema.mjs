@@ -123,8 +123,12 @@ if (r.status !== 0) fail('supabase-schema.sql (§32 onward) did not load cleanly
    table, replaces a trigger on auth.users and restates five functions. */
 r = psql(['-f', '-'], { input: phase3 });
 if (r.status !== 0) fail('supabase-schema.sql (§32 onward) is not re-runnable', r);
-console.log('✓ the whole schema loads (and §32 onward — §33 to §35 included — re-runs cleanly)');
-for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'no-free-plan.sql']) runChecks(file);
+console.log('✓ the whole schema loads (and §32 onward — §33 to §39 included — re-runs cleanly)');
+/* In file order. no-free-plan.sql covers §38 and §39 and runs LAST because
+   §38 withdraws the free plan's offer and plan-features.sql asserts the
+   paid tiers' maps — the two touch different rows, but a file that reads
+   `plans` should see the file's final state, not a half-applied one. */
+for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'plan-features.sql', 'goals-sync.sql', 'no-free-plan.sql']) runChecks(file);
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

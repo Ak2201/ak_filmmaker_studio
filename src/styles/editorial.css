@@ -196,7 +196,7 @@
   font-size: var(--t-base);
 }
 .hero-cta .btn .arrow { transition: transform var(--speed) var(--ease); }
-.hero-cta .btn:hover .arrow { transform: translateX(3px); }
+.hero-cta .btn:hover .arrow { transform: translateX(calc(3px * var(--motion))); }
 
 .hero-deck { color: var(--ink-body); }
 .hero-deck em { color: var(--accent-deep); font-weight: 600; }
@@ -292,7 +292,7 @@
   text-decoration: none;
   transition: transform var(--speed) var(--ease);
 }
-.toc-item:hover { transform: translateX(var(--s1)); }
+.toc-item:hover { transform: translateX(calc(var(--s1) * var(--motion))); }
 .toc-item .num {
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -769,6 +769,10 @@ select.field-input {
   cursor: pointer;
   user-select: none;
 }
+@media (pointer: coarse) {
+  /* an <li> has no role, so base.css's 44px floor never reaches it */
+  .step-check li { min-height: 44px; display: flex; align-items: center; }
+}
 .step-check li::before {
   content: "○";
   position: absolute;
@@ -865,7 +869,7 @@ select.field-input {
   .director-card:hover,
   .door:hover,
   .start-card:hover,
-  .tool-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .tool-card:hover { transform: translateY(calc(-2px * var(--motion))); box-shadow: var(--shadow-md); }
 }
 
 .film-card h3,
@@ -1236,7 +1240,7 @@ select.field-input {
 }
 .door-cta .arrow { transition: transform var(--speed-slow) var(--ease); }
 .door:hover .door-cta { background: var(--feature-deep); }
-.door:hover .door-cta .arrow { transform: translateX(var(--s1)); }
+.door:hover .door-cta .arrow { transform: translateX(calc(var(--s1) * var(--motion))); }
 .door.shorts .door-cta { background: var(--shorts); color: var(--shorts-on); }
 .door.shorts:hover .door-cta { background: var(--shorts-deep); }
 .door.library .door-cta { background: var(--library); color: var(--library-on); }
@@ -1343,7 +1347,7 @@ select.field-input {
   font-weight: 700;
   transition: transform var(--speed) var(--ease), background var(--speed) var(--ease);
 }
-.resume-card .resume-btn:hover { transform: translateX(2px); }
+.resume-card .resume-btn:hover { transform: translateX(calc(2px * var(--motion))); }
 .resume-card .resume-btn.alt {
   background: transparent;
   color: var(--sk-slab-ink);

@@ -61,7 +61,14 @@ export function commitImportedScript(plan, opts = {}) {
   const base = replaceScenes ? 0 : existingScenes.length;
   const rows = plan.scenes.map((s, i) => {
     let number = String(s.number || '');
-    if (!number || taken.has(number)) { number = String(base + i + 1); renumbered++; }
+    if (!number || taken.has(number)) {
+      /* The generated number can collide too: scenes 1–5 and a
+         hand-numbered "7" already present, then base + i + 1 = 7 for the
+         second appended scene. Step past anything taken. */
+      let n = base + i + 1;
+      while (taken.has(String(n))) n++;
+      number = String(n); renumbered++;
+    }
     taken.add(number);
     return { ...s, number };
   });

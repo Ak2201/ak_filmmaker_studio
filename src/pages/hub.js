@@ -944,7 +944,10 @@ function closeProjectSwitcher() {
 
 function openProjectModal(editId, format) {
   if (!editId && !PlanGate.allowed('new_projects')) {
-    StudioUI.toastInfo('Your plan does not add new projects. See plans on Settings.');
+    StudioUI.toastInfo('Your plan does not add new projects. See plans.', {
+      action: 'See plans',
+      onAction: () => { location.href = 'purchase.html'; }
+    });
     return;
   }
   closeProjectSwitcher();

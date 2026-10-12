@@ -1805,7 +1805,7 @@ function openShareDialog(projectId) {
     const exp = days ? new Date(Date.now() + days * 86400e3).toISOString() : null;
     try {
       const token = await StudioCloud.createShare(projectId, role, exp);
-      const url = location.origin + '/index.html?share=' + token;
+      const url = location.origin + '/?share=' + token;
       const wrap = m.querySelector('#shResult');
       wrap.hidden = false;
       m.querySelector('#shUrl').value = url;
@@ -1826,7 +1826,7 @@ function openShareDialog(projectId) {
     if (!rows.length) { list.innerHTML = '<em class="cm-hint">No active links yet.</em>'; return; }
     list.innerHTML = rows.map(r => {
       const exp = r.expires_at ? ('expires ' + new Date(r.expires_at).toLocaleDateString()) : 'no expiry';
-      const url = location.origin + '/index.html?share=' + r.token;
+      const url = location.origin + '/?share=' + r.token;
       return '<div class="share-item">' +
         '<div class="si-meta">' +
           '<span class="si-role">' + r.role.toUpperCase() + '</span>' +

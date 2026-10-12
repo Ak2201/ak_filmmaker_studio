@@ -90,7 +90,7 @@ const GATED = String(import.meta.env.VITE_SITE_GATE || 'invite').toLowerCase() !
    stay that way, because that href is the whole of the no-JS fallback.
    A previous version of this file also rewrote the CTAs through a
    data-gated/data-open pair; that is gone with the buttons it served. */
-const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
+const APP_PAGE = /^(?!(?:invite|start|privacy|terms|refund|screening|purchase)(?:\.html)?(?:[?#]|$))[\w-]+\.html(?:[?#]|$)/;
 function gateAppLinks(root) {
   if (!GATED) return;
   for (const a of root.querySelectorAll('a[href]')) {

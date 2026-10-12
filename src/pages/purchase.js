@@ -114,7 +114,7 @@ function planSection() {
   }
   if (!signedIn) {
     const sec = section('plan', 'Plan', 'Sign in to see the plans.',
-      DECK + ' A plan belongs to an account, so the plans and your usage show here once you are signed in.');
+      DECK + ' A plan belongs to an account, so the plans and your usage show here once you are signed in — you come straight back to this page.');
     sec.append(h('div.pu-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
       h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })

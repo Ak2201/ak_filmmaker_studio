@@ -39,7 +39,7 @@
                                  visitor in signed out or signed in
                                  and closed alike; invalid, it is
                                  forgotten and the rest applies
-        Signed out            -> start.html (the public landing page;
+        Signed out            -> purchase.html (the one place a plan is bought), start.html (the public landing page;
                                  every other refusal goes to invite.html)
         no cloud in the build -> invite.html (nobody can be checked,
                                  so nobody is in — fail closed)
@@ -136,7 +136,12 @@ export const WHY_KEY = 'fms_sitegate_why';
    inside twenty seconds and the allowance is gone, deliberately. A
    timeout here should stay loud enough to mean something. */
 const GIVE_UP_MS = 20000;
-const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start)(\.html)?$/;
+/* purchase is exempt since 12 Oct 2026: it is the ONE place a plan is bought,
+   and a signed-in person the gate has not let through (purchases required, no
+   plan, no trial) has to be able to reach it. invite.html used to sell plans
+   itself for exactly that reason. The page draws no studio content, and it
+   handles being signed out. */
+const EXEMPT = /(^|\/)(invite|screening|privacy|terms|refund|start|purchase)(\.html)?$/;
 
 export function isExempt() {
   if (typeof location === 'undefined') return true;

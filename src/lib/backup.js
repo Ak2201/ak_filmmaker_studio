@@ -356,7 +356,15 @@ function applyGlobalsAndNotes(all) {
   }
   if (all.notes) {
     Object.keys(all.notes).forEach((k) => {
-      localStorage.setItem(noteKey(k), all.notes[k]);
+      /* ONLY a note key. `notes` is the one place a backup names a raw
+         storage key, and nothing checked it: a damaged or crafted file
+         could carry `fms_studio_projects_v1` here and replace the
+         project list, or a scoped key and overwrite the OPEN project's
+         scenes through the proxy. A key outside the note prefix, or a
+         value that is not a string, is skipped. */
+      const dest = noteKey(k);
+      if (!dest.startsWith(NOTE_PREFIX) || typeof all.notes[k] !== 'string') return;
+      localStorage.setItem(dest, all.notes[k]);
     });
   }
 }
@@ -379,10 +387,16 @@ function applyV2(all, shape, opts) {
   const taken = Store.listProjects().map((p) => p.id);
   let added = 0, replaced = 0;
 
+  /* rawSet answers false when both tiers refuse (quota, or a stub the
+     overflow tier cannot read) and never throws, so a half-written
+     project used to be counted as imported, reported as such, and then
+     published back out as truth by the next export or Drive push. Every
+     refused field is counted and named in the result. */
+  const failed = [];
   const writeBucket = (id, bucket) => {
     Object.keys(PROJECT_KEYS).forEach((name) => {
       if (bucket[name] === undefined) return;
-      Store.rawSet(PROJECT_KEYS[name] + '__' + id, JSON.stringify(bucket[name]));
+      if (Store.rawSet(PROJECT_KEYS[name] + '__' + id, JSON.stringify(bucket[name])) === false) failed.push(name);
     });
   };
 
@@ -442,6 +456,16 @@ function applyV2(all, shape, opts) {
   const parts = [];
   if (added)    parts.push('Imported ' + added + ' project' + (added === 1 ? '' : 's'));
   if (replaced) parts.push('Updated ' + replaced + ' project' + (replaced === 1 ? '' : 's'));
+  if (failed.length) {
+    const names = [...new Set(failed)].join(', ');
+    return {
+      ok: false, added, replaced, failed: failed.length,
+      message: (parts.join(', ') || 'Nothing imported') + ', but ' + failed.length + ' part'
+        + (failed.length === 1 ? '' : 's') + ' could not be stored (' + names + '): this browser\'s storage '
+        + 'refused the write. Free some space or try another browser, then import again. '
+        + 'Do not export or sync until it succeeds — the copy here is incomplete.'
+    };
+  }
   return {
     ok: true, added, replaced,
     message: (parts.join(', ') || 'Nothing to change') + '.'
@@ -471,7 +495,15 @@ function applyV1(all, opts) {
   // can both be handed a pre-rename file.
   if (all.notes) {
     Object.keys(all.notes).forEach((k) => {
-      localStorage.setItem(noteKey(k), all.notes[k]);
+      /* ONLY a note key. `notes` is the one place a backup names a raw
+         storage key, and nothing checked it: a damaged or crafted file
+         could carry `fms_studio_projects_v1` here and replace the
+         project list, or a scoped key and overwrite the OPEN project's
+         scenes through the proxy. A key outside the note prefix, or a
+         value that is not a string, is skipped. */
+      const dest = noteKey(k);
+      if (!dest.startsWith(NOTE_PREFIX) || typeof all.notes[k] !== 'string') return;
+      localStorage.setItem(dest, all.notes[k]);
     });
   }
   return { ok: true, added: 1, replaced: 0, message: 'Studio data imported.' };

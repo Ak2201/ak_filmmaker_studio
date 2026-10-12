@@ -835,7 +835,7 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
       + ' on the unit list'
       + (pages.length ? ', and the script they were broken down from' : '')
       + '. Edit or delete any of it.',
-      { type: 'ok', duration: 6000 });
+      { type: 'success', duration: 6000 });   // 'ok' is not a toast type; it fell back to the plain gilt rule
   }
 }
 

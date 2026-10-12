@@ -35,7 +35,11 @@ html.mn-on .mobile-actionbar [aria-expanded="true"],
 html.mn-on .mobile-actionbar [aria-current="page"] { background: var(--chrome-fill-strong); }
 
 /* ---- the sheets ------------------------------------------------- */
-html.mn-locked { overflow: hidden; }
+/* On html AND body: iOS Safari keeps scrolling a page whose <html>
+   alone is overflow:hidden, so a drag on the scrim moved the page
+   under the sheet. */
+html.mn-locked,
+html.mn-locked body { overflow: hidden; }
 
 .mn-overlay {
   position: fixed;

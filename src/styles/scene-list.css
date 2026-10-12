@@ -1,0 +1,166 @@
+/* ============================================================
+   THE SCENE LIST on breakdown.html (src/pages/breakdown.js renderScene)
+   ------------------------------------------------------------
+   A table: one compact row per scene, the rest behind a chevron. Every
+   shape is a skin variable and every colour a token — invariants 4 and 7.
+   The old card rules in modules.css still style the controls inside a
+   row; the doubled `.bd-scene.bd-sl` below is what turns the card into a
+   row, and it is doubled so the order tie-break against modules.css (which
+   declares .bd-scene) cannot undo it.
+   ============================================================ */
+/* A table needs more than the reading measure the other sections use. */
+section#scenes.bd-list { max-width: min(1180px, 100%); }
+section#scenes .bd-breakdown { gap: 0; }
+.bd-breakdown { --sl-cols: 28px 56px minmax(0, 2.4fr) 84px 112px 100px minmax(0, 1fr) 92px 36px; }
+
+/* ---- toolbar -------------------------------------------------- */
+.bd-sl-tools { display: grid; gap: var(--s3); margin-bottom: var(--s4); }
+.bd-sl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.bd-sl-bar .bd-sl-search { flex: 1 1 18rem; min-width: 0; width: auto; }
+.bd-sl-bar .bd-sl-filter { flex: 0 0 auto; width: auto; max-width: 100%; }
+.bd-sl-count { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.bd-sl-bulk {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--accent-wash);
+  border: 1px solid var(--accent);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.bd-sl-bulk[hidden] { display: none; }
+.bd-sl-bulk .bd-sel { flex: 0 0 auto; width: auto; max-width: 100%; }
+.bd-sl-bulk-n { margin-right: auto; color: var(--accent-deep); font-size: var(--t-small); }
+.bd-sl-search,
+.bd-sl-filter {
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  font: inherit;
+  font-size: var(--t-small);
+}
+.bd-sl-filter { font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-sl-search:focus-visible, .bd-sl-filter:focus-visible { border-color: var(--accent); outline: none; }
+
+/* ---- header + rows -------------------------------------------- */
+.bd-sl-head,
+.bd-sl-main {
+  display: grid;
+  grid-template-columns: var(--sl-cols);
+  align-items: center;
+  column-gap: var(--s2);
+}
+.bd-sl-head {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.bd-scene.bd-sl {
+  gap: 0;
+  padding: 0;
+  border-width: 0 0 1px;
+  border-style: solid;
+  border-color: var(--rule-hair);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.bd-scene.bd-sl[hidden] { display: none; }
+.bd-scene.bd-sl:hover { background: var(--accent-wash); }
+.bd-scene.bd-sl.is-open { background: var(--paper-raised, var(--paper)); border-bottom-color: var(--rule); }
+.bd-scene.bd-sl:focus-within { border-color: var(--rule); }
+.bd-sl-main { padding: var(--s2) var(--s3); min-height: 52px; }
+.bd-sl-pick { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+/* the controls in a row are quiet until you reach for them. Tripled
+   specificity: `.bd-scene input` in modules.css gives them a field look
+   and would win on order alone. */
+.bd-scene.bd-sl .bd-sl-main .bd-slug,
+.bd-scene.bd-sl .bd-sl-main select,
+.bd-scene.bd-sl .bd-sl-len input { background: transparent; border-color: transparent; }
+.bd-scene.bd-sl .bd-sl-main .bd-slug:hover,
+.bd-scene.bd-sl .bd-sl-main select:hover,
+.bd-scene.bd-sl .bd-sl-len input:hover { border-color: var(--rule-hair); }
+.bd-scene.bd-sl .bd-sl-main .bd-slug:focus-visible,
+.bd-scene.bd-sl .bd-sl-main select:focus-visible,
+.bd-scene.bd-sl .bd-sl-len input:focus-visible { background: var(--paper); border-color: var(--accent); }
+.bd-scene.bd-sl .bd-sl-main .bd-slug { width: 100%; font-weight: 600; text-overflow: ellipsis; }
+.bd-scene.bd-sl .bd-sl-main select.bd-sel { width: 100%; min-width: 0; padding-inline: var(--s2); }
+.bd-sl-where { display: grid; min-width: 0; }
+.bd-sl-syn {
+  padding: 0 var(--s3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: var(--t-tiny);
+}
+.bd-sl-len { display: flex; align-items: center; gap: var(--s1); }
+.bd-sl-len input { width: 3.6rem; flex: 0 0 auto; text-align: right; }
+.bd-sl-len .bd-pages { min-width: 0; }
+.bd-sl-cast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--ink-body); }
+.bd-sl-cast.is-none { color: var(--ink-muted); }
+
+/* where a scene stands — a text label on a wash, never a fill as text */
+.bd-sl-status {
+  justify-self: start;
+  padding: 2px var(--s2);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--rule-hair);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.bd-sl-status.is-tagged { color: var(--accent-deep); background: var(--accent-wash); border-color: transparent; }
+.bd-sl-status.is-scheduled { color: var(--accent-deep); background: var(--accent-wash); border-color: var(--accent); }
+.bd-sl-status.is-shot { color: var(--ok-deep); background: var(--ok-wash); border-color: transparent; }
+.bd-sl-status.is-part { color: var(--warn-deep); background: var(--warn-wash); border-color: transparent; }
+.bd-sl-status.is-dropped { color: var(--danger); background: var(--danger-wash); border-color: transparent; }
+.bd-sl-toggle { min-width: 36px; min-height: 36px; }
+
+/* ---- the open scene -------------------------------------------- */
+.bd-sl-detail {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4) var(--s4) calc(28px + 56px + var(--s2) * 2 + var(--s3));
+}
+.bd-sl-detail[hidden] { display: none; }
+.bd-sl-detail .bd-scene-acts { margin-left: 0; justify-self: start; }
+.bd-sl-none { margin: var(--s5) 0; text-align: center; color: var(--ink-muted); }
+.bd-sl-none[hidden] { display: none; }
+
+/* ---- a phone: each row becomes a small card -------------------- */
+@media (max-width: 899px) {
+  .bd-sl-head { display: none; }
+  .bd-sl-main {
+    grid-template-columns: 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
+    grid-template-areas:
+      "pick no   where where tog"
+      ".    ie   ie    dn    dn"
+      ".    len  len   cast  cast"
+      ".    st   st    st    st";
+    row-gap: var(--s2);
+    padding: var(--s3);
+  }
+  .bd-sl-pick { grid-area: pick; }
+  .bd-sl-main > .bd-scene-no { grid-area: no; }
+  .bd-sl-where { grid-area: where; }
+  .bd-sl-main > select[data-scene-field="intExt"] { grid-area: ie; }
+  .bd-sl-main > select[data-scene-field="dayNight"] { grid-area: dn; }
+  .bd-sl-len { grid-area: len; }
+  .bd-sl-cast { grid-area: cast; }
+  .bd-sl-status { grid-area: st; }
+  .bd-sl-toggle { grid-area: tog; }
+  .bd-sl-syn { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .bd-sl-detail { padding-left: var(--s3); }
+}
+@media (pointer: coarse) {
+  .bd-sl-pick { width: 24px; height: 24px; }
+  .bd-sl-main select { min-height: 44px; }
+}
+@media print { .bd-sl-tools, .bd-sl-toggle, .bd-sl-pick { display: none !important; } .bd-sl-detail[hidden] { display: grid !important; } }

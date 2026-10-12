@@ -94,6 +94,7 @@ import Panel from '../ui/ai-panel.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
    know what a backup looks like. Already a static import here
@@ -806,12 +807,35 @@ function renderAccountMine() {
 /* The plan, as a summary and nothing more. Buying, invoices and refunds are
    on the Purchase page ONLY (owner, 12 Oct 2026): this card reads what the
    studio already knows (plan-gate.js) and sends you there. */
+/* USAGE AGAINST THE PLAN'S CAPS (12 Oct 2026). billing_status() carries the
+   limits and what is used; ui/plan-cards.js's usageList() draws them (and
+   brings plans.css with it), so both are fetched together, once, and only
+   for somebody signed in who has a plan to be counted against. The answer is
+   held here and the card is drawn from it, so the redraw that follows the
+   fetch finds it cached and asks for nothing \u2014 no loop, and no request from
+   a page that is only being looked at signed out. It is dropped when the
+   account or the plan changes. Nothing is stored. */
+let usageSeen = null;        // { st, usageList } | { failed: true }
+let usageFetching = false;
+function dropUsage() { usageSeen = null; }
+function wantUsage() {
+  if (usageSeen || usageFetching) return;
+  usageFetching = true;
+  Promise.all([Billing.status(), import('../ui/plan-cards.js')])
+    .then(([st, m]) => { usageSeen = st ? { st, usageList: m.usageList } : { failed: true }; })
+    .catch(() => { usageSeen = { failed: true }; })
+    .finally(() => { usageFetching = false; if (!busy) render(); });
+}
+
 function renderPlanCard() {
   const cp = PlanGate.currentPlan();
+  const c = window.StudioCloud;
+  const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('plan-summary', 'Your plan', 'Plan.',
     'What you have, and when it ends. Everything about buying, invoices and refunds is on the Purchase page.');
+  const off = PlanGate.purchasesOff();
   let line;
-  if (PlanGate.purchasesOff()) line = 'The studio is free to use right now. Nothing needs buying.';
+  if (off) line = 'The studio is free to use right now. Nothing needs buying.';
   else if (cp.reason === 'trial') {
     const end = PlanGate.trialEndsAt();
     line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
@@ -820,7 +844,32 @@ function renderPlanCard() {
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   sec.append(h('p.st-plan-line', { text: line }));
-  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', { href: 'purchase.html', text: 'Plan & purchases \u2192' })]));
+
+  /* The second line: what the plan means for what you can keep and share. */
+  let usageNote = '';
+  if (off) usageNote = 'The studio is open, so nothing is capped: sync as many films as you like and share them freely.';
+  else if (!signedIn) usageNote = '';   // the line above already says plan details need a sign-in
+  else if (cp.reason === 'granted') usageNote = 'Nothing is capped while this access stands.';
+  else if (cp.reason === 'trial') usageNote = 'Plan limits on synced films and shares apply once you choose a plan.';
+  else if (cp.reason === 'expired') usageNote = 'Everything you wrote is still saved on this device.';
+  if (usageNote) sec.append(h('p.st-plan-note', { text: usageNote }));
+
+  const bought = signedIn && !off && cp.reason === 'paid';
+  if (bought) {
+    wantUsage();
+    const seen = usageSeen;
+    if (seen && seen.st && seen.st.plan && seen.st.plan !== 'free') {
+      sec.append(h('h3.st-plan-sub', { text: 'Your usage' }), seen.usageList(seen.st));
+    } else if (!seen || !seen.failed) {
+      sec.append(h('p.st-plan-note', { text: 'Counting your usage\u2026' }));
+    } else {
+      sec.append(h('p.st-plan-note', { text: 'Your usage could not be loaded just now. The Purchase page shows it too.' }));
+    }
+  }
+  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', {
+    href: 'purchase.html',
+    text: bought ? 'Manage plan \u2192' : 'Plan & purchases \u2192'
+  })]));
   return sec;
 }
 
@@ -1150,7 +1199,7 @@ DriveSync.onDriveStatus(() => { if (!busy) render(); });
    how these go. Anything whose VISIBILITY depends on who is signed
    in has to redraw when that answer arrives. */
 if (window.StudioCloud && window.StudioCloud.onAuth) {
-  window.StudioCloud.onAuth(() => { refreshGate(); if (!busy) render(); });
+  window.StudioCloud.onAuth(() => { dropUsage(); refreshGate(); if (!busy) render(); });
 }
 
 /* THE GATE'S ANSWER ARRIVES LATER STILL — a round trip after the
@@ -1169,7 +1218,7 @@ async function refreshGate() {
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('gate:changed', () => refreshGate());
 /* The Drive section reads the plan's drive_backup, which arrives later. */
-Store.subscribe('plan:changed', () => { if (!busy) render(); });
+Store.subscribe('plan:changed', () => { dropUsage(); if (!busy) render(); });
 refreshGate();
 
 render();

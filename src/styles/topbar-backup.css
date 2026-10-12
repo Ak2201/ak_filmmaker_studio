@@ -1,0 +1,23 @@
+/* The Backup menu's health line and the amber dot. Tiny on purpose: this sheet
+   is CORE (src/ui/topbar-backup.js), so it ships on every page. */
+.tb-note {
+  padding: var(--s2) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--panel-muted);
+  border-bottom: 1px solid var(--panel-hair);
+  margin-bottom: var(--s2);
+}
+.tb-backup-dot { display: none; }
+.is-backup-stale > .tb-menu-btn { position: relative; }
+.is-backup-stale > .tb-menu-btn > .tb-backup-dot {
+  display: block;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--warn);
+  box-shadow: 0 0 0 2px var(--chrome, transparent);
+}

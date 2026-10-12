@@ -75,6 +75,15 @@ function shellMode() {
   const g = globalHere();
   return g && g.id !== 'dashboard' ? 'global' : 'project';
 }
+/* A global page with no navigation.json entry still needs a name for the
+   crumb, or it reads as a bare "Studio" that says nothing about where you
+   are (invite.html, the doorway). It is deliberately NOT added to
+   navigation.json: an entry there is also a rail item, a palette row and a
+   Go-to link, and nobody should navigate TO the doorway from inside. */
+const EXTRA_GLOBAL_ENTRIES = {
+  'invite.html': { id: 'invite', label: 'Invite', icon: '✉', sym: 'mail', href: 'invite.html',
+    purpose: 'Enter an invite code, or ask for one' }
+};
 const GLOBAL_MODE = shellMode();
 export const isGlobalMode = () => GLOBAL_MODE === 'global';
 
@@ -108,7 +117,8 @@ function cameFromDashboard() {
 
 /** The global (app-scope) destination this page is, if it is one. */
 function globalHere() {
-  return globals().find((g) => g.href.toLowerCase().split('#')[0] === CURRENT) || null;
+  return globals().find((g) => g.href.toLowerCase().split('#')[0] === CURRENT)
+    || EXTRA_GLOBAL_ENTRIES[CURRENT] || null;
 }
 
 /** The modules this page hosts, in navigation order, with their fragment. */

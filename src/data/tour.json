@@ -21,6 +21,8 @@
       "href": "story.html",
       "anchor": [
         "[data-tour=\"story\"]",
+        "#main .st-modes",
+        "#main .st-step:not([hidden])",
         "#main .bd-head",
         "#main h1",
         "#main"
@@ -96,6 +98,7 @@
       "href": "shoot.html",
       "anchor": [
         "[data-tour=\"shoot\"]",
+        "#main .sd-stats",
         "#main .bd-head",
         "#main h1",
         "#main"

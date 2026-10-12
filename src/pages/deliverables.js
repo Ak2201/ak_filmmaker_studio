@@ -501,7 +501,7 @@ function dialoguePanel(build) {
   const notes = h('ul.dv-dl-notes');
   notes.append(h('li', { text: 'The CSV opens in Excel or Google Sheets with Tamil script intact (UTF-8). The English column is empty, for the translator.' }));
   notes.append(h('li', { text: 'The SRT is a skeleton: one numbered cue per line, every timecode 00:00:00,000 --> 00:00:00,000, for a subtitler to time against the locked picture. Do not play it.' }));
-  notes.append(h('li', { text: 'Reels are estimated, at ' + REEL_MINUTES + ' minutes each, from the screen-time estimate on the Reports page. A digital film has no physical reels; this is where each scene would fall.' }));
+  notes.append(h('li', { text: 'Reels are estimated, at ' + REEL_MINUTES + ' minutes each, from the screen-time estimate on the Production Reports page. A digital film has no physical reels; this is where each scene would fall.' }));
   notes.append(h('li', {
     text: 'For certification: summaries of the Cinematograph (Certification) Rules, 2024 say the e-Cinepramaan '
         + 'application carries the script including the full text of the songs. We could not find a prescribed '

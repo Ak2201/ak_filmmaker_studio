@@ -110,7 +110,7 @@ admin.html                                        the application console
 breakdown.html stripboard.html reports.html       the scene-derived views
 contacts.html visualize.html write.html plan.html the rest of the 22 modules
 shoot.html                                        the on-set day view
-script.html drafts.html                           the Screenplay stage: writing
+screenplay.html drafts.html                       the Screenplay stage: the Screenplay Writer
                                                   only, and numbered drafts
                                                   (write.html redirects there)
 edit.html deliverables.html                       Post-Production: the suite's
@@ -1381,7 +1381,7 @@ numbered as they are in the history.
 | 25 | Beginner pass: Story and Screenplay (10 Oct 2026) | Done | HISTORY item 28. Fields with a blueprint key are written in the blueprint blob via `blueprint-store` merge-write, never on the character record; `learn()` returns null for unknown ids — filter before append. |
 | 26 | Project-first studio (10 Oct 2026) | Done | HISTORY item 29. The hub opens on three doors and the dashboard's five stage cards are derived in `journey.js`, never stored; "Suggested next" is advice and is never forced. The project switcher is CORE, so it runs on every shell page. |
 | 27 | Blueprints folded into the stages (10 Oct 2026) | Done | HISTORY item 30. Stage guides write only through `blueprint-store`; the redirect is exempt with `?stay=1`; verify's key-union is what protects saved answers now. |
-| 28 | The screenplay space, conventional (11 Oct 2026) | Done | HISTORY item 31. `script.html` writes, `breakdown.html#script` analyses, `drafts.html` versions. Drafts are `revisions` entries (no new key); "changed" is a hash. The editor core is `src/ui/script-editor/`; every type change still goes through `setElementType`. The stage guide sits hidden behind `#guide` on script.html. |
+| 28 | The screenplay space, conventional (11 Oct 2026) | Done | HISTORY item 31. `screenplay.html` (was script.html; /script and /script.html 301 to it) is the Screenplay Writer, `breakdown.html#script` is Screenplay Analysis (id kept), `drafts.html` versions. Drafts are `revisions` entries (no new key); "changed" is a hash. The editor core is `src/ui/script-editor/`; every type change still goes through `setElementType`. The stage guide sits hidden behind `#guide` on script.html. |
 | 29 | Project-first navigation and the Story path (11 Oct 2026) | Done | HISTORY item 32. Global pages carry no project chrome (`shell.js` `EXTRA_GLOBAL_PAGES` + `navigation.json` `global[]`); never call native confirm/alert/prompt — use `dialog.js` (`test:dialogs`); each blueprint question is asked once, in the Story path step `story-paths.json` says absorbs it; erase never signs out. |
 | 30 | Receipt e-mails, clearer invoice, no owner name (11 Oct 2026) | Built; **§35 not run live**, no Resend key | HISTORY item 33. Mail is sent only by edge functions via `_shared/mail.js`, each one CLAIMED first; a mail failure never fails a payment. `brand.json` `seller` is EMPTY by the owner's decision — never display the owner's name. Refund wording lives in `_shared/terms.js`. |
 | 31 | The entry page is the purchase page (12 Oct 2026) | Done | HISTORY item 34. `start.html` is five blocks with the plans second; plans show whatever the purchases switch says; each card leads with the trial, "or buy now" second; card bullets come from `plan-matrix.json` `card`; tier rules are `.st-tiers > li` (a nested list is not a card). |

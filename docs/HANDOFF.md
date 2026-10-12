@@ -859,3 +859,13 @@ a promise that it is current — `GOOGLE-AUTH.md` above is the proof. Check a
 status claim against the database, the console or `git log` before acting on
 it, which is this file's own standing instruction and the one it has itself
 broken most often.
+
+## Naming pass (12 Oct 2026)
+
+`script.html` → `screenplay.html` (Screenplay Writer); `/script` and `/script.html` 301 to `/screenplay` in
+`vercel.json` and `netlify.toml`. Features renamed in `navigation.json` (ids and storage keys unchanged):
+Drafts, Import Screenplay, Title Page (moved into Screenplay), Screenplay Analysis, Scene Breakdown, Auto-Tag,
+Reference Media, Shoot Calendar, Cast & Crew, Production Reports. Pre-Production groups: Breakdown · Visualise ·
+Plan & Schedule · Budget & People. §36 was regenerated (labels in comments only; live map is keyed by id).
+Known and not from this change: `prove:sw` fails on 404.html/feature on the untouched tree; the `invite` page's
+"30 minutes" depends on the live trial setting, so verify fails on it in an env with no Supabase.

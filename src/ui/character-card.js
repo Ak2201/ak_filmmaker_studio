@@ -86,7 +86,7 @@ export function displayName(view) {
 
 function contactSelect(id, view, contacts) {
   const sel = h('select#' + id + '.cc-input', { 'data-ch-field': 'contactId', 'aria-label': 'Cast as — ' + displayName(view) });
-  sel.append(h('option', { value: '', text: contacts.length ? 'Not cast yet' : 'Add people on the Contacts page first' }));
+  sel.append(h('option', { value: '', text: contacts.length ? 'Not cast yet' : 'Add people on the Cast & Crew page first' }));
   const cast = contacts.filter((p) => p.department === 'Cast');
   const rest = contacts.filter((p) => p.department !== 'Cast');
   const add = (p) => {

@@ -171,8 +171,8 @@ export function coverFields(stage, format) {
 /* ---- the section ---------------------------------------------------- */
 
 const TITLES = {
-  story: 'Story', screenplay: 'Screenplay', preprod: 'Pre-production',
-  production: 'Production', post: 'Post-production'
+  story: 'Story', screenplay: 'Screenplay', preprod: 'Pre-Production',
+  production: 'Production', post: 'Post-Production'
 };
 
 function openProject() {

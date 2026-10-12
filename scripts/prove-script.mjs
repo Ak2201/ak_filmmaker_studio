@@ -93,7 +93,7 @@ await page.evaluate(() => {
 });
 
 /* ---- 1–4 typing ----------------------------------------------------- */
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 ok(await page.$$eval('#wr-page select', (s) => s.length) === 0, '4  no per-row <select> on the writing page');
 ok(await page.isVisible('.sc-hint'), 'the empty script shows its one-line hint');
 await page.click('#wr-page .wr-text');
@@ -175,7 +175,7 @@ ok(/breakdown\.html/.test(page.url()), '9  Save as Draft 2, and the navigation c
 revs = ((await doc()) || {}).revisions || [];
 ok(revs.length === 2 && revs[1].number === 2, '9  Draft 2 exists', revs.map((r) => r.number));
 
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 await editAndLeave(' Once more.');
 await Promise.all([page.waitForURL(/breakdown\.html/, { timeout: 8000 }).catch(() => {}), page.click('.lp-card [data-lp="update"]')]);
 revs = ((await doc()) || {}).revisions || [];
@@ -183,12 +183,12 @@ const live = ((await doc()) || {}).elements || [];
 ok(revs.length === 2 && JSON.stringify(revs[1].elements.map((e) => e.text)) === JSON.stringify(live.map((e) => e.text)),
   '9  Update Draft 2 overwrites it with the working copy, and adds none', revs.length);
 
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 await page.click('.sc-done a');
 await page.waitForURL(/breakdown\.html/, { timeout: 5000 }).catch(() => {});
 ok(/breakdown\.html/.test(page.url()) && !(await page.$('.lp-card')), '10 leaving with no changes asks nothing');
 
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 await editAndLeave(' Not yet.');
 await Promise.all([page.waitForURL(/breakdown\.html/, { timeout: 8000 }).catch(() => {}), page.click('.lp-card [data-lp="skip"]')]);
 revs = ((await doc()) || {}).revisions || [];
@@ -207,8 +207,8 @@ const prints = await page.evaluate(() => window.__prints);
 ok(prints.length === 2 && prints[0] === prints[1] && prints[0].length > 200, '11 the same draft stages the same document twice', prints.map((p) => p.length));
 
 /* ---- 12 redirects ------------------------------------------------------ */
-for (const [from, to] of [['write.html', /script\.html$/], ['write.html#revisions', /drafts\.html$/],
-  ['write.html#outline', /breakdown\.html#script$/], ['write.html#guide', /script\.html#guide$/]]) {
+for (const [from, to] of [['write.html', /screenplay\.html$/], ['write.html#revisions', /drafts\.html$/],
+  ['write.html#outline', /breakdown\.html#script$/], ['write.html#guide', /screenplay\.html#guide$/]]) {
   await page.goto(url(from));
   await page.waitForURL(to, { timeout: 5000 }).catch(() => {});
   ok(to.test(page.url()), `12 ${from} → ${page.url().replace(/^.*\//, '')}`);
@@ -217,7 +217,7 @@ await page.goto(url('write.html?stay=1'), { waitUntil: 'networkidle' });
 ok(/write\.html\?stay=1/.test(page.url()), '12 write.html?stay=1 stays');
 
 /* ---- 14 notes overview (a derived view: reads, writes nothing) ----------- */
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 const noteId = await page.$eval('#wr-page [data-el]', (n) => n.getAttribute('data-el'));
 await page.evaluate((id) => localStorage.setItem('fms_note_script_' + id, 'Overview probe note'), noteId);
 const keysBefore = await page.evaluate(() => Object.keys(localStorage).sort().join('|'));
@@ -236,7 +236,7 @@ await page.evaluate((id) => localStorage.removeItem('fms_note_script_' + id), no
 
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
-  for (const p of ['script.html', 'drafts.html', 'breakdown.html#script']) {
+  for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {
     await page.setViewportSize({ width: w, height: 860 });
     await page.goto(url(p), { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);

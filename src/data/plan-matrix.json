@@ -62,7 +62,7 @@
     {
       "key": "script_import",
       "kind": "capability",
-      "label": "Script import",
+      "label": "Screenplay import",
       "plans": [
         "free",
         "starter",

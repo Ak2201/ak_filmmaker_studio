@@ -67,7 +67,13 @@ function stepPanel(s) {
   ]));
   sec.append(h('p.pp-about', { text: s.about }));
   if (s.facts.length) sec.append(h('p.pp-facts', { text: s.facts.join(' · ') }));
-  if (s.id === 'ready') sec.append(readinessList());
+  if (s.id === 'ready') {
+    sec.append(readinessList());
+    sec.append(h('div.pp-act', {}, [
+      h('a.btn.primary', { href: 'contacts.html#call-sheets', text: 'MAKE THE CALL SHEET →' }),
+      h('a.btn', { href: 'shoot.html', text: 'OPEN THE SHOOT DAY →' })
+    ]));
+  }
   else if (s.missing.length) {
     sec.append(h('p.pp-missing-h', { text: 'Still to do' }),
       h('ul.pp-missing', {}, s.missing.map((m) => h('li', { text: m }))));
@@ -94,7 +100,7 @@ function render() {
   const main = h('main#main');
   main.append(h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Studio · Pre-Production' }),
-    h('h1.bd-title', { text: 'Pre-production.' }),
+    h('h1.bd-title', { text: 'Pre-Production.' }),
     h('p.bd-deck', { text: 'From the script to the first day of shooting, one step at a time. Each step says what it is for and what is still missing, then opens the tool where it is done.' })
   ]));
   const page = h('div.pp-page');
@@ -109,7 +115,7 @@ function render() {
         return h('span.pp-meter', { role: 'img', 'aria-label': done + ' of ' + steps.length + ' steps done' }, [fill]);
       })()
     ]));
-    page.append(stepBar(steps, cur, { label: 'Pre-production steps', done: (s) => s.state === 'done', title: (s) => s.about }));
+    page.append(stepBar(steps, cur, { label: 'Pre-Production steps', done: (s) => s.state === 'done', title: (s) => s.about }));
     steps.forEach((s) => page.append(stepPanel(s)));
   }
   main.append(page);

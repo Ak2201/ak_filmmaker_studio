@@ -112,13 +112,22 @@ function openTask(taskId, ctx) {
 }
 
 async function askPro() {
+  /* The plan the console says carries AI (PlanGate.offerFor, read from the
+     plans rows), so a tier move needs no edit here; Pro when the rows
+     cannot be read (signed out, offline). Asked BEFORE the dialog so a
+     slow lookup cannot race the click. */
+  const offer = await Promise.race([
+    PlanGate.offerFor(['ai_tools']).catch(() => null),
+    new Promise((r) => setTimeout(() => r(null), 1500))
+  ]);
+  const href = (offer && offer.href) || 'purchase.html?plan=pro&for=ai_tools';
   const ok = await ask({
     title: 'AI tools come with Pro',
     body: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click. Nothing you’ve written is affected.',
     confirm: 'See Pro plans',
     cancel: 'Not now'
   });
-  if (ok) location.href = 'purchase.html?plan=pro';
+  if (ok) location.href = href;
 }
 
 /* ---- the task menu ------------------------------------------- */

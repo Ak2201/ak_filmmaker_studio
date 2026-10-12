@@ -202,7 +202,7 @@ const ALL_PAGES = [
   { page: 'write.html',      legacy: null, name: 'write' },
   /* The writing page and its drafts took write.html's jobs (11 Oct 2026);
      both rows arrive with the pages, as the settings note below demands. */
-  { page: 'script.html',     legacy: null, name: 'script' },
+  { page: 'screenplay.html',  legacy: null, name: 'screenplay' },
   { page: 'drafts.html',     legacy: null, name: 'drafts' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
   /* study.html and dissect.html left this list on 6 Oct 2026: they are
@@ -282,16 +282,16 @@ const ALL_PAGES = [
 const BLUEPRINT_PAGES_ARE_REDIRECTS = true;
 const BLUEPRINT_NAMES = ['feature', 'short'];
 /* write.html is a redirect now (src/lib/write-route.js): its fragments go
-   to script.html, drafts.html and breakdown.html#script. Same treatment
+   to screenplay.html, drafts.html and breakdown.html#script. Same treatment
    as the blueprints, for the same reason: a redirect has nothing to
    measure, its `write` row stays in baseline.json as the key-union
    reference, and the fragment sweep follows by itself because it only
    offers hrefs to pages in PAGES. The Screenplay stage's page (the first
-   module of that phase in navigation.json) is script.html, so the
+   module of that phase in navigation.json) is screenplay.html, so the
    guide probe asks it rather than write.html. Least invasive: no
    ?stay=1 plumbing, and nothing here loads the retired editor. */
 const WRITE_PAGE_IS_REDIRECT = true;
-const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'script.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
+const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'screenplay.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
 const PAGES = ALL_PAGES.filter((p) => !(BLUEPRINT_PAGES_ARE_REDIRECTS && BLUEPRINT_NAMES.includes(p.name)) && !(WRITE_PAGE_IS_REDIRECT && p.name === 'write'));
 
 /* THE BUILD HAS TO BE THE OPEN ONE. src/lib/sitegate.js makes the
@@ -547,10 +547,39 @@ const EXPECTED = {
   edit: {},
   deliverables: {},
   screening: {},
-  invite: {},
+  /* 12 Oct 2026, the conversion pass. Each row is a word a deliberate
+     rewording took off the page; re-baseline the next time this grows
+     (it will be absorbed by the recapture the UI revamp needs anyway). */
+  invite: {
+    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
+  },
   admin: {},
   vault: {},
-  purchase: {}
+  purchase: {
+    are: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    can: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    chrome: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    collaborators: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    device: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    do: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    extension: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    limited: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    links: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    never: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    projects: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    seats: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    share: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    synced: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    team: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    unlocks: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    work: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    see: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    show: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    signed: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    usage: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    here: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
+  }
 };
 
 

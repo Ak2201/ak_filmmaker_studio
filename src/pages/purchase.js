@@ -31,6 +31,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
+import { listPriceBlock } from '../ui/list-prices.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
@@ -101,7 +102,14 @@ function trialLine(st) {
   return null;
 }
 
-const DECK = 'A plan sets how much you can do in the cloud — synced projects, share links, collaborators and team seats — and unlocks the Chrome extension. Work on this device is never limited.';
+/* What a plan actually does. This said "work on this device is never
+   limited", which stopped being true with the three-plan split: a plan
+   decides which STAGES open (plan-matrix.json), and the trial's end walls
+   the studio. Nothing written is ever deleted — that part was true and
+   stays. Names from planName(), never typed. */
+const DECK = 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
+  + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. '
+  + 'One payment, yours for good. Nothing you write is ever deleted, on any plan or none.';
 
 function planSection() {
   const c = cloud();
@@ -113,11 +121,15 @@ function planSection() {
     return sec;
   }
   if (!signedIn) {
-    const sec = section('plan', 'Plan', 'Sign in to see the plans.',
-      DECK + ' A plan belongs to an account, so the plans and your usage show here once you are signed in — you come straight back to this page.');
+    const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
+      DECK + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
+    /* The prices HERE, not one page away (start.html#pricing), which
+       took a buyer off the buying path to learn the one fact they came
+       for. The link stays for the full comparison. */
+    sec.append(listPriceBlock());
     sec.append(h('div.pu-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-auth-action': 'google', text: 'SIGN IN TO BUY' }),
-      h('a.btn', { href: 'start.html#pricing', text: 'SEE PLANS AND PRICES' })
+      h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
     ]));
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;

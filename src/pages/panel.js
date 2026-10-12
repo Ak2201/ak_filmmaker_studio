@@ -134,8 +134,8 @@ const MODES = {
   ],
   screenplay: [
     ['Sample', 'Open the sample project, a whole feature filled in.', 'index.html?sample=1'],
-    ['New', 'A blank screenplay.', 'write.html#screenplay'],
-    ['Import', 'Fountain, Final Draft (.fdx), PDF or plain text.', 'write.html#screenplay']
+    ['New', 'A blank screenplay.', 'screenplay.html'],
+    ['Import', 'Fountain, Final Draft (.fdx), PDF or plain text.', 'screenplay.html#import']
   ]
 };
 

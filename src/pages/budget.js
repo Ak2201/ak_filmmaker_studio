@@ -71,7 +71,7 @@ function render() {
      other pages use, rather than a budget stylesheet of its own; the
      blueprint pill finds its host by `header.bd-head` too. */
   main.append(h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Plan · what it costs' }),
+    h('p.bd-eyebrow', { text: 'Budget & People · what it costs' }),
     h('h1.bd-title', { text: 'Budget.' }),
     h('p.bd-deck', {
       text: 'A line-item estimate that reads your schedule. Days come from the '

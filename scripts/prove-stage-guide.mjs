@@ -403,7 +403,7 @@ await page.goto(url('index.html'), { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.goto(url('index.html?sample=1'), { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-for (const pg of ['breakdown.html#guide', 'script.html#guide', 'shoot.html#guide']) {
+for (const pg of ['breakdown.html#guide', 'screenplay.html#guide', 'shoot.html#guide']) {
   await page.goto(url(pg), { waitUntil: 'networkidle' });
   await page.waitForSelector('#guide .stp-tab', { timeout: 15000 });
   await page.waitForTimeout(700);

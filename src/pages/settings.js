@@ -610,11 +610,20 @@ function renderDrive() {
      a download for everybody (Storage, Home), so nothing is held back. */
   if (!PlanGate.allowed('drive_backup')) {
     sec.dataset.planLocked = 'drive_backup';
-    sec.append(h('p.st-note', {
+    const note = h('p.st-note', {
       text: 'Google Drive backup is not part of your plan. You can still '
           + 'export a backup file from Backup in the top bar.'
-    }));
-    sec.append(h('div.st-drive-actions', {}, [h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })]));
+    });
+    const see = h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' });
+    sec.append(note, h('div.st-drive-actions', {}, [see]));
+    /* Which plan has it, and what it costs (PlanGate.offerFor). */
+    PlanGate.offerFor(['drive_backup']).then((o) => {
+      if (!o) return;
+      note.textContent = 'Google Drive backup comes with ' + PlanGate.offerText(o) + ' — one payment. You can still '
+        + 'export a backup file from Backup in the top bar.';
+      see.href = o.href;
+      see.textContent = 'SEE ' + o.name.toUpperCase();
+    }).catch(() => { /* the plain note stands */ });
     return sec;
   }
 

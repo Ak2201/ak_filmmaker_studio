@@ -122,12 +122,19 @@ document.addEventListener('click', (e) => {
 /* The free trial's hub: the sample, and the way up. There is no free
    PLAN (owner, 11 Oct 2026), so it does not call this one. */
 function renderSampleOnly() {
+  const see = h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' });
+  /* The way up, named and priced once the plan rows answer. */
+  PlanGate.offerFor(['new_projects']).then((o) => {
+    if (!o) return;
+    see.href = o.href;
+    see.textContent = ('Own film: ' + PlanGate.offerText(o)).toUpperCase();
+  }).catch(() => { /* SEE PLANS stands */ });
   return h('div.empty-projects-state', {}, [
     h('div.eps-title', { text: 'Open a sample film.' }),
     h('div.eps-deck', { text: 'Your free trial opens the sample projects — scenes, a crew, a budget and a schedule to explore in every module. A plan adds films of your own.' }),
     h('div.iv-actions', {}, [
       ...sampleButtons('OPEN ', true),
-      h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })
+      see
     ])
   ]);
 }

@@ -84,7 +84,7 @@ function renderHeader(scenes, days, locs, media) {
   const dated = days.filter((d) => d.date).length;
   return h('header.bd-head', {}, [
     h('p.bd-eyebrow', { text: 'Plan · dates, places, references' }),
-    h('h1.bd-title', { text: 'Calendar & Locations.' }),
+    h('h1.bd-title', { text: 'Shoot Calendar & Locations.' }),
     h('p.bd-deck', {
       text: 'The schedule already exists — the stripboard made it. This page puts '
           + 'real dates on those shoot days, keeps a recce record for every place '
@@ -111,7 +111,7 @@ const stat = (value, label) =>
 function renderEmpty() {
   return h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '▦', 'aria-hidden': 'true' }),
-    h('h2', { text: 'A calendar needs a schedule first' }),
+    h('h2', { text: 'The Shoot Calendar needs a schedule first' }),
     h('p', {
       text: 'This page does not hold a schedule of its own. A shoot day is a number '
           + 'on a scene, and a location is the place typed on a scene — so both arrive '
@@ -151,7 +151,7 @@ const how = (n, title, body) =>
 function renderCalendar(scenes) {
   const wrap = h('section#calendar.pl-cal');
   wrap.append(
-    h('h2.bd-h2', { text: 'Shooting calendar' }),
+    h('h2.bd-h2', { text: 'Shoot Calendar' }),
     h('p.bd-sub', {
       text: 'One card per shoot day, in order, straight off the board. The date is '
           + 'the only thing this page saves — the scenes, the pages and the cast on '
@@ -481,7 +481,7 @@ function renderOrphanRecces(orphans) {
 function renderMedia(scenes, media) {
   const wrap = h('section#media.pl-media-sec');
   wrap.append(
-    h('h2.bd-h2', { text: 'Reference material' }),
+    h('h2.bd-h2', { text: 'Reference Media' }),
     h('p.bd-sub', {
       text: 'Recce photographs, a lookbook, a location video, the sound reference — '
           + 'wherever they already live, listed in one place and attached to the day '

@@ -109,7 +109,7 @@ function renderHeader(scenes, shots, frames, boards) {
   const covered = new Set(shots.map((s) => s.sceneId).filter((id) => live.has(id))).size;
   const refs = Shots.countEntries(boards);
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Visualize · the film seen before it is shot' }),
+    h('p.bd-eyebrow', { text: 'Visualise · the film seen before it is shot' }),
     h('h1.bd-title', { text: 'Shots & Frames.' }),
     h('p.bd-deck', {
       text: 'A shot list is the scene broken into the pieces the camera actually '
@@ -514,7 +514,7 @@ function renderAI(scenes, shots) {
       'A shot division is a reading of the scene as written — without the '
         + 'pages there is nothing to read, and a division invented from a slug '
         + 'line is a guess dressed up as a plan.',
-      h('a.btn.primary.bd-cta', { href: 'script.html', text: 'Write the script  →' })
+      h('a.btn.primary.bd-cta', { href: 'screenplay.html', text: 'Write the screenplay  →' })
     ));
     return wrap;
   }

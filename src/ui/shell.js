@@ -46,7 +46,7 @@ import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
 import { mountBackupMenu } from './topbar-backup.js';
-import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry, stagePageEntry } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked } from '../lib/plan-gate.js';
@@ -218,7 +218,7 @@ function blueprintPart() {
 /* A retired page kept behind ?stay=1 (navmodel STAY_PAGES): named by
    the declared label, under its stage if it has one. Null elsewhere. */
 function stayLocation(hash) {
-  const e = stayEntry(CURRENT, location.search);
+  const e = stayEntry(CURRENT, location.search) || stagePageEntry(CURRENT);
   if (!e) return null;
   const frag = (hash || '').replace(/^#/, '');
   const phase = e.stage ? phases().find((p) => p.id === e.stage) || null : null;

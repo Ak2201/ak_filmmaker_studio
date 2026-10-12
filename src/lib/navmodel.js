@@ -99,6 +99,8 @@ export function projectPageFiles() {
     .filter(Boolean));
   /* The retired pages kept behind `?stay=1` still write a film. */
   Object.keys(STAY_PAGES).forEach((f) => files.add(f));
+  /* A stage's own landing page (its `home`) is a project page too. */
+  Object.keys(STAGE_PAGES).forEach((f) => files.add(f));
   return files;
 }
 
@@ -118,6 +120,15 @@ export const STAY_PAGES = {
   'feature.html': { stage: '', label: 'Feature blueprint', frags: {} },
   'short.html': { stage: '', label: 'Short film blueprint', frags: {} }
 };
+
+/** A stage's own landing page — not a module, so it has no plan feature and
+ *  no usage counter, but it still belongs to its stage: the crumb reads
+ *  "Pre-Production › Path" and the stage tab is lit. Declarative, like
+ *  STAY_PAGES; shell.js reads it and names no page. */
+export const STAGE_PAGES = {
+  'preprod.html': { stage: 'preprod', label: 'Path' }
+};
+export function stagePageEntry(file) { return STAGE_PAGES[String(file || '').toLowerCase()] || null; }
 
 /** The stay entry for this page, or null when `?stay=1` is absent. */
 export function stayEntry(file, search) {
@@ -163,6 +174,10 @@ export function hueClassOf(group) {
  *  href. The stage's menu, the rail's stage link and the hub's doors
  *  all start there, so there is one answer. */
 export function firstModuleOf(phase) {
+  /* A stage may carry a `home` (navigation.json): its own landing page that
+     is not a module, so no plan feature or usage counter has to exist for
+     it. Pre-Production's is its path (preprod.html). */
+  if (phase && phase.home && phase.home.href) return { id: phase.id + '-home', status: 'built', ...phase.home };
   return ((phase && phase.modules) || []).find((m) => m.status === 'built' && m.href) || null;
 }
 
@@ -182,4 +197,4 @@ export function jobs() {
   }).filter(Boolean);
 }
 
-export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, STAY_PAGES, stayEntry, guideStops, firstModuleOf, jobs };
+export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, STAY_PAGES, stayEntry, STAGE_PAGES, stagePageEntry, guideStops, firstModuleOf, jobs };

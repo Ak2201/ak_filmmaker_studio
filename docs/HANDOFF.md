@@ -1,5 +1,17 @@
 # HANDOFF — read this first
 
+> **12 Oct 2026 (UI revamp) — branch `feature/ui-revamp`, merged to `develop` in one
+> change.** One top bar (switcher · Backup · Dark/Light · name) on every page; Settings as
+> a five-tab console; plans bought only on `purchase.html`; People "Delete totally"
+> (schema **§47**, not run live: `docs/ADMIN-CONSOLE.md`); a real search field; Home
+> trimmed; the scene list is a table; **`preprod.html`** is the Pre-production path and
+> its strip sits on every tool page. Full account: `docs/HISTORY.md` item 35.
+> **Owner steps:** run §45, §46 then §47 (checksummed) before relying on Delete totally;
+> the button hides for non-owners and the call fails cleanly until they have run.
+> **Gate:** `verify` needs one baseline recapture (`npm run build:open && npm run baseline`
+> after reading the diff) and the `prove:*` scripts that clicked BUY on `invite.html` or
+> the Controls-tab erase were edited without being run.
+
 > **12 Oct 2026 (pending sweep) — what was fixed, what is left.** The owner asked
 > for the pending items to be taken and fixed. From the container: **G7** and
 > **T2** were already done (their rows were stale); **T3** and **T9** are done

@@ -115,7 +115,7 @@ export function readiness() {
     days.filter((d) => !d.scenes.some((s) => coveredScenes.has(s.id)))
         .map((d) => 'Day ' + d.day),
     'The call sheet is the only document most of the unit will read.',
-    'reports.html#sides'
+    'contacts.html#call-sheets'
   ));
 
   /* ---- locations ---------------------------------------------- */
@@ -126,7 +126,7 @@ export function readiness() {
     'Locations with no recce',
     index.filter((l) => !l.recce || !norm(l.recce.address)).map((l) => l.name),
     'A location nobody has stood in is a location nobody can budget or light.',
-    'plan.html'
+    'plan.html#locations'
   ));
 
   checks.push(check(
@@ -134,7 +134,7 @@ export function readiness() {
     'Locations that were refused',
     index.filter((l) => l.recce && l.recce.permission === 'refused').map((l) => l.name),
     'These scenes need somewhere else to happen before the day arrives.',
-    'plan.html'
+    'plan.html#locations'
   ));
 
   checks.push(check(
@@ -145,7 +145,7 @@ export function readiness() {
       return p === 'unknown' || p === 'scouting' || p === 'requested' || !p;
     }).map((l) => l.name),
     'Asked is not approved. A permission that lands late is a day lost.',
-    'plan.html'
+    'plan.html#locations'
   ));
 
   /* ---- people -------------------------------------------------- */
@@ -179,7 +179,7 @@ export function readiness() {
       'Songs with no scene',
       songs.filter((s) => !placed.has(String(s.id))).map((s) => s.title || 'Untitled song'),
       'A song shot as a block still needs scenes, days and a location like any other unit.',
-      'plan.html'
+      'breakdown.html#songs'
     ));
   }
 

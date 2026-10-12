@@ -234,6 +234,10 @@ const ALL_PAGES = [
      unchecked from the day it landed. Both rows arrive with the
      re-baseline that regrouped six phases into the PRD's five stages. */
   { page: 'shoot.html',      legacy: null, name: 'shoot' },
+  /* preprod.html (12 Oct 2026): the Pre-production path. In vite.config.js
+     and reached from the Pre-Production stage tab; named here in the same
+     commit, as the note above demands. It needs a baseline capture. */
+  { page: 'preprod.html',    legacy: null, name: 'preprod' },
   { page: 'story.html',      legacy: null, name: 'story' },
   /* Post-Production. Both rows arrive in the same commit as the page
      entries, as the settings note above demands, with the re-baseline

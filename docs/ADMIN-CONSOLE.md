@@ -318,3 +318,75 @@ tickets only.
 `site_announcement_now()` is meant to be read once per session by `chrome.js`.
 The banner is text in a row and is **not** in `baseline.json`: `npm run verify`
 must run with `site_announcement` empty (it does; the table is new and empty).
+
+---
+
+## §46 — The role matrix (schema) and the Controls tab
+
+File: `schema-46-role-matrix.sql` (standalone, **RUN LIVE: not yet**; refuses to
+load without §40 `admin_audit_write`, §42 `admin_add_note` and §45
+`require_role`). Checks: `scripts/schema-tests/role-matrix.sql`; `npm run
+test:schema` loads it twice, after the §45 checks. Fixture ids `…046xx`.
+
+§45 deliberately did not retrofit the writers that already existed. §46 does:
+each of the twenty restates its **latest** definition (§40 for the nineteen
+audited writers, §42 for `admin_add_note`) with one line added straight after the
+`is_studio_admin()` check, and nothing else changed (audit calls, sentences,
+errcodes, return types and grants are byte-identical):
+
+```
+perform public.require_role(array['<role>']);
+```
+
+Owner always passes, as does a studio admin with no `admin_roles` row (reads as
+owner), and §45 backfilled every existing admin as owner — so nobody who could do
+something yesterday is refused today. Reads (`admin_list_*`, `admin_customer`,
+`admin_funnel`, …) are **not** narrowed; they show what an admin already sees.
+
+| Role | Writers |
+| --- | --- |
+| finance | `admin_decide_refund_request`, `admin_issue_invoice`, `admin_resend_receipt`, `admin_set_promo_code`, `admin_mark_referral_paid` |
+| support | `admin_grant_trial`, `admin_terminate_session`, `admin_add_note` |
+| owner | `admin_grant_plan`, `admin_set_plan`, `admin_set_plan_price`, `admin_set_next_price`, `admin_set_billing_settings`, `admin_set_refund_requests_enabled`, `admin_grant_email`, `admin_revoke_email_grant`, `admin_decide_request`, `admin_reset_user`, `admin_create_invite`, `admin_revoke_invite` (+ every §45 owner RPC) |
+
+Judgement calls, all conservative toward owner — change one by editing its
+`array['…']` and the matrix in `scripts/schema-tests/role-matrix.sql`:
+
+- `admin_decide_request` (approve/decline an invite request) is **owner**: approving
+  one grants access. Support can read the queue (§45) but an owner decides.
+- `admin_grant_email` / `admin_revoke_email_grant` are **owner**: an e-mail grant
+  is a plan or role grant.
+- `admin_grant_plan` is **owner** (it gives a paid plan for good); `admin_grant_trial`
+  is **support** (the brief names trial grants).
+- `admin_set_refund_requests_enabled` is **owner**: it is a switch, like the
+  purchases switch.
+- `admin_set_plan` is **owner**: it edits what a plan is.
+- `admin_mark_referral_paid` is **finance**: money out. `admin_resend_receipt` is
+  **finance**: the invoice's other half.
+- `admin_terminate_session` is **support** (the brief names sessions) even though
+  `disable := true` locks the account; revisit if that should be owner.
+- `admin_reset_user` is **owner**; `admin_create_invite` / `admin_revoke_invite`
+  are **owner**.
+
+### The Controls tab and the banner (client)
+
+- `src/pages/admin-tabs/controls.js` is a shell; `controls-body.js` loads on first
+  open (its own chunk, so admin's first-paint budget does not carry it) and draws
+  Roles, Feature overrides, Announcement banner and Data tools. Owner-only: any
+  other role sees a sentence and **no owner RPC is called**. Every refusal the
+  server makes (the last-owner sentence, a mismatched e-mail) is shown verbatim.
+- `src/ui/site-banner.js` (in CORE, one import in `chrome.js`) asks
+  `site_announcement_now()` **once per session**, with a plain `fetch` and the
+  public key (no Supabase SDK, so a signed-out first load still fetches no
+  `supabase-*` chunk), deferred to idle after `load`. The answer is cached in
+  `sessionStorage`, written on `pagehide` (not when the answer arrives) so verify's
+  idle-writes check cannot see it; dismissal is per-id in `sessionStorage`.
+  **No banner row means no element in the DOM**, which is why `npm run verify`
+  needs `site_announcement` empty (a live banner adds words to every page).
+  The bar is static at the top of `<body>`, never changes by itself, and is hidden
+  in print.
+- `plan-gate.js` reads `effective_features()` after `billing_status()`: an object
+  replaces `features`; an error, a missing function, or anything that is not an
+  object keeps `billing_status()`'s map. It fails **open**.
+- `scripts/fake-admin-rpcs-controls.mjs` is a self-checking browser harness for all
+  of the above against the shared fake Supabase (see its header).

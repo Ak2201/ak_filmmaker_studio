@@ -877,3 +877,27 @@ html.ad-drawer-on { overflow: hidden; }
    its natural width (30 columns for a heat grid) widened the whole page at 390px. Making the figure
    the containing block and clipping it keeps the twin in the accessibility tree and out of layout. */
 figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }
+/* ── controls ── (src/pages/admin-tabs/controls.js) ───────────────── */
+.ctl { display: grid; gap: var(--s4); min-width: 0; }
+.ctl-card { min-width: 0; }
+.ctl-form { display: grid; gap: var(--s3); min-width: 0; padding-top: var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); }
+.ctl-wide { grid-column: 1 / -1; }
+.ctl-form textarea { width: 100%; resize: vertical; min-height: 4.5rem; }
+.ctl-note:empty { display: none; }
+.ctl-note { color: var(--ok-deep); }
+.ctl-row-a { display: inline-flex; flex-wrap: nowrap; gap: var(--s1); white-space: nowrap; }
+.ctl-row-a .btn { padding: var(--s1) var(--s2); }
+.ctl-count-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3); }
+.ctl-count { font-variant-numeric: tabular-nums; }
+.ctl-prev-wrap { display: grid; gap: var(--s1); }
+.ctl-prev-l {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.ctl-live { display: grid; gap: var(--s1); }
+.ctl-danger { background: var(--danger-wash); color: var(--danger); border-color: var(--danger); }
+@media (max-width: 719px) {
+  .ctl-row-a { flex-wrap: wrap; }
+}

@@ -29,6 +29,8 @@ import '../lib/sitegate.js';
 /* And the plan gate (src/lib/plan-gate.js): what a member's plan may
    SHOW, decided from billing_status() once the gate has answered. */
 import '../lib/plan-gate.js';
+/* Counts which tools are used (src/lib/usage.js): opt-out, names only, sent once as the page is left. */
+import '../lib/usage.js';
 /* §30. The trial countdown. Here rather than in each page because it
    has to be on every page a trial user can reach, and because this
    module is already the thing that is. It fills the rail's .sh-rail-trial block (and a phone chip) when a

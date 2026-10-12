@@ -850,3 +850,30 @@ html.ad-drawer-on { overflow: hidden; }
 .ad-console .acc-sharing { display: grid; gap: var(--s5); }
 .ad-console .acc-table .ad-sub { margin-top: 2px; }
 /* ── end customer & support ─────────────────────────────────────── */
+/* ── usage & sync ── (Usage and Sync & storage tabs, the Growth cohorts block) */
+.us-root { display: grid; gap: var(--s4); min-width: 0; }
+.us-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.us-spacer { flex: 1 1 auto; }
+.ad-chip[aria-pressed="true"] { background: var(--brand-wash); color: var(--brand-deep); border-color: var(--brand-deep); }
+.us-warn { color: var(--warn-deep); }
+.us-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
+.us-chip {
+  padding: 2px var(--s3);
+  border-radius: var(--radius-pill);
+  background: var(--paper-sunk);
+  color: var(--ink);
+  font-size: var(--t-small);
+}
+/* the scope-diff alarm: a wash and a rule, plus words — never colour alone */
+.ad-card.us-alarm { border-color: var(--danger); background: var(--danger-wash); }
+.us-loud { padding: var(--s3); border-radius: var(--sk-radius, var(--radius)); border-left: 4px solid var(--danger); background: var(--paper-raised); color: var(--ink); }
+.us-loud p { margin: 0; }
+.us-loud-h { font-family: var(--f-display); font-size: var(--t-base); font-weight: 800; color: var(--danger); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--s1) !important; }
+.sy-meters { display: grid; gap: var(--s2); min-width: 14rem; }
+@media (max-width: 719px) { .sy-meters { min-width: 10rem; } }
+/* a chart is a grid item of its card; without this its min-content width (the SVG's) widens the track */
+.us-root > *, .ad-card > .adc, .ad-card > .ad-dt, .ad-card > .us-loud { min-width: 0; max-width: 100%; }
+/* A chart's table twin is visually hidden by position, but a <table> ignores overflow:hidden and
+   its natural width (30 columns for a heat grid) widened the whole page at 390px. Making the figure
+   the containing block and clipping it keeps the twin in the accessibility tree and out of layout. */
+figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }

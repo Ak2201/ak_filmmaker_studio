@@ -61,6 +61,7 @@ import { BRAND } from './brand.js';
    an invoice is a receipt, not an export of somebody's work, and is
    never held back. Fails open, like every plan check. */
 import PlanGate from './plan-gate.js';
+import { bumpUsage } from './usage.js';
 
 /* ------------------------------------------------------------
    PAGE SETUPS
@@ -244,6 +245,7 @@ export function exportPDF(opts = {}) {
     return false;
   }
 
+  if (opts.scope !== 'invoice') bumpUsage('export_pdf');   // a name only (src/lib/usage.js)
   let done = false;
   const finish = () => {
     if (done) return;

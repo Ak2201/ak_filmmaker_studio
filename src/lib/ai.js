@@ -54,6 +54,7 @@
    that captures a URL. Nothing in this file interpolates a key
    into a URL.
    ============================================================ */
+import { bumpUsage } from './usage.js';
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
@@ -531,6 +532,7 @@ async function callModel({
   if (!parsed || typeof parsed !== 'object') {
     throw new AIError('The reply was not the shape we asked for, so nothing was changed.', 'malformed');
   }
+  bumpUsage('ai_call');   // a model answered; the count carries no prompt (src/lib/usage.js)
   return { parsed, truncated: stop === 'max_tokens', model };
 }
 

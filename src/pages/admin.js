@@ -90,6 +90,7 @@ import * as supportTab from './admin-tabs/support.js';
 import * as usageTab from './admin-tabs/usage.js';
 import * as syncTab from './admin-tabs/sync.js';
 import * as controlsTab from './admin-tabs/controls.js';
+import { duration } from './admin-tabs/rpc.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
@@ -154,6 +155,7 @@ const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateS
 const fmtWhen = (ts) => (ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 const fmtTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { timeStyle: 'short' }) : '');
 const n = (v) => (Number(v) || 0).toLocaleString();
+const num0 = (v) => Number(v) || 0;
 const plural = (v, one, many) => `${n(v)} ${Number(v) === 1 ? one : many}`;
 
 /* ---- the numbers ------------------------------------------------ */
@@ -245,16 +247,67 @@ function moduleTab(id) {
 
 /* ---- the command centre ------------------------------------------ */
 
-function attentionItem(count, text, href) {
-  return h('li', {}, [h('a.ad-att', { href }, [
-    pill(String(count), 'warn'),
+/** One row of "Needs attention": a pill, a sentence, and a link into the right tab. */
+function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
+  return h('li', {}, [h('a.ad-att', { href: kit.hashFor(to, params), 'data-ad-go': to, 'data-ad-params': params ? JSON.stringify(params) : null }, [
+    pill(String(label), tone),
     h('span.ad-att-t', { text }),
     h('span.ad-att-go', { 'aria-hidden': 'true', text: '→' })
   ])]);
 }
 
+/** The ranked list: health failures, failed receipts, refund requests over 48 hours,
+ *  invite requests, other refund requests, abandoned payments. Anything the health
+ *  report could not read is said, never counted as zero. */
+function attentionList(d, hs) {
+  const out = [];
+  const hd = hs.phase === 'ok' ? hs.data : null;
+  const bad = (v) => !v || v.error;
+  const COVERED = new Set(['receipts', 'payments_created', 'refunds', 'invite_requests']);
+  if (hs.phase === 'error') out.push(attentionItem({ label: 'Health', tone: 'danger', text: 'The health report could not load: ' + hs.error, tab: 'health' }));
+  if (hd) {
+    for (const c of hd.checks || []) {
+      if (COVERED.has(c.id) || (c.level !== 'warn' && c.level !== 'unknown')) continue;
+      out.push(attentionItem({ label: c.level === 'unknown' ? 'Unknown' : 'Health', tone: c.level === 'unknown' ? 'neutral' : 'danger', text: c.observed || c.id, tab: 'health' }));
+    }
+    for (const c of hd.checks || []) if (c.level === 'unknown' && COVERED.has(c.id)) out.push(attentionItem({ label: 'Unknown', tone: 'neutral', text: c.observed, tab: 'health' }));
+    const r = hd.receipts;
+    if (!bad(r) && Number(r.awaiting_recent) > 0) out.push(attentionItem({ label: r.awaiting_recent, text: `${Number(r.awaiting_recent) === 1 ? 'receipt' : 'receipts'} from the last 7 days ${Number(r.awaiting_recent) === 1 ? 'has' : 'have'} no mail recorded`, tab: 'health' }));
+  }
+  const rf = hd && !bad(hd.refunds) ? hd.refunds : null;
+  const pendingRefunds = rf ? Number(rf.requests_pending) || 0 : (pendingCounts().purchases || 0);
+  const old = rf && Number(rf.oldest_pending_age_seconds) > 48 * 3600;
+  if (old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, tone: 'danger', text: `${pendingRefunds === 1 ? 'refund request' : 'refund requests'} waiting, the oldest ${duration(rf.oldest_pending_age_seconds)}`, tab: 'purchases' }));
+  const inv = Number(d.requests_pending) || 0;
+  if (inv) out.push(attentionItem({ label: inv, text: inv === 1 ? 'person is waiting for an invite' : 'people are waiting for an invite', tab: 'requests' }));
+  if (!old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, text: pendingRefunds === 1 ? 'refund request is waiting for an answer' : 'refund requests are waiting for an answer', tab: 'purchases' }));
+  const ab = hd && !bad(hd.payments) ? Number(hd.payments.created_older_than_1h) || 0 : 0;
+  if (ab) out.push(attentionItem({ label: ab, tone: 'neutral', text: `${ab === 1 ? 'payment' : 'payments'} still open after an hour (abandoned or not yet settled)`, tab: 'purchases' }));
+  return out;
+}
+
+function activityCard(ctx) {
+  const rc = auditTab.recentState();
+  const card = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Activity' })]);
+  if (rc.phase === 'error') card.append(errorState({ title: 'The audit log could not load', why: rc.error, onRetry: () => auditTab.reloadRecent(ctx) }));
+  else if (rc.phase !== 'ok') card.append(skeleton({ kind: 'rows', count: 4 }));
+  else if (!rc.rows.length) card.append(emptyState({ title: 'No admin action recorded yet', body: 'Every admin write is listed here, newest first.', stamp: true, icon: '◷' }));
+  else {
+    card.append(kit.timeline(rc.rows.map((r) => ({
+      at: r.at, tone: auditTab.rowTone(r), title: auditTab.rowTitle(r),
+      sub: h('p.ad-tl-s', {}, [h('code', { text: auditTab.rowTarget(r) })]),
+      target: { href: kit.hashFor('audit', { target: r.target_id }), label: 'Everything about this target' }
+    }))));
+    card.append(h('p.ad-meta.ad-card-f', {}, [h('a', { href: '#audit', 'data-ad-go': 'audit', text: 'Open the audit log →' })]));
+  }
+  return card;
+}
+
 function overviewTab() {
   const sec = tab('overview');
+  const ctx = makeCtx('overview');
+  healthTab.ensureHealth(ctx);
+  auditTab.ensureRecent(ctx);
   if (ov.phase === 'error') {
     sec.append(errorState({ title: 'The numbers could not load', why: ov.error, onRetry: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); } }));
     return sec;
@@ -264,12 +317,23 @@ function overviewTab() {
   const b = billingSnapshot();
   const g = growthSnapshot();
   const pr = purchasesRequiredNow();
+  const hs = healthTab.healthState();
   const by = (b && b.overview.active_by_plan) || {};
   const paying = Object.entries(by).filter(([k]) => k !== 'free').reduce((t, [, v]) => t + (Number(v) || 0), 0);
   const trials = Number.isInteger(d.trials_active)
     ? kpi({ label: 'Trials running', value: n(d.trials_active), href: '#growth' })
     : kpi({ label: 'Trial', value: g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', sub: g && g.trial_enabled !== false ? trialLength(g.trial_minutes || 30) : '', href: '#growth' });
-  const counts = pendingCounts();
+
+  /* A tile from the health report. A slot that errored, or a report that
+     has not landed, is "—" / "…" and says so: never a zero that reads as healthy. */
+  const hk = (label, slot, pick, { sub, href, hot = (v) => v > 0 } = {}) => {
+    if (hs.phase === 'error') return kpi({ label, value: '—', sub: 'unknown', href });
+    if (hs.phase !== 'ok') return kpi({ label, value: '…', href });
+    const v = hs.data[slot];
+    if (!v || v.error) return kpi({ label, value: '—', sub: 'unknown', href, title: v && v.message ? v.message : null });
+    const x = Number(pick(v)) || 0;
+    return kpi({ label, value: n(x), sub, href, attention: hot(x) });
+  };
 
   sec.append(h('div.ad-stats.ad-kpis', {}, [
     kpi({ label: 'Members', value: n(d.members_active), sub: `${n(d.members_admin)} admin`, href: '#people' }),
@@ -277,24 +341,20 @@ function overviewTab() {
     kpi({ label: 'Paying accounts', value: b ? n(paying) : '…', href: '#billing' }),
     kpi({ label: 'Revenue', value: b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', sub: b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', href: '#billing' }),
     trials,
-    kpi({ label: 'Purchases required', value: pr === null ? '—' : pr ? 'On' : 'Off', href: '#purchasesRequired' })
+    kpi({ label: 'Purchases required', value: pr === null ? '—' : pr ? 'On' : 'Off', href: '#purchasesRequired' }),
+    hk('Failed receipts', 'receipts', (v) => v.awaiting_recent, { sub: 'last 7 days', href: '#health' }),
+    hk('Abandoned payments', 'payments', (v) => v.created_older_than_1h, { sub: 'open over 1 hour', href: '#purchases', hot: () => false }),
+    hk('Refund backlog', 'refunds', (v) => num0(v.requests_pending) + num0(v.requests_approved_not_refunded) + num0(v.refunds_failed), { sub: 'pending, approved, failed', href: '#purchases' }),
+    hk('Walled', 'wall', (v) => v.walled, { sub: pr ? 'out of the studio' : 'if purchases were required', href: '#health', hot: () => false })
   ]));
 
-  const items = [];
-  if (counts.requests) items.push(attentionItem(counts.requests, counts.requests === 1 ? 'person is waiting for an invite' : 'people are waiting for an invite', '#admin-console'));
-  if (counts.purchases) items.push(attentionItem(counts.purchases, counts.purchases === 1 ? 'refund request is waiting for an answer' : 'refund requests are waiting for an answer', '#refunds'));
-  const attention = h('div.ad-card', {}, [
-    h('h3.ad-card-h', { text: 'Needs attention' }),
-    items.length
-      ? h('ul.ad-att-list', {}, items)
-      : emptyState({ title: 'Nothing needs you', body: 'No invite or refund requests are waiting.', stamp: true, icon: '✓' }),
-    h('p.ad-meta.ad-card-f', { text: 'Failed receipts, abandoned payments and health failures join this list with Launch & health.' })
-  ]);
-  const activity = h('div.ad-card', {}, [
-    h('h3.ad-card-h', { text: 'Activity' }),
-    emptyState({ title: 'No activity feed yet', body: 'Admin actions will be listed here, newest first, once the audit log is live.', stamp: true, icon: '◷' })
-  ]);
-  sec.append(h('div.ad-cols', {}, [attention, activity]));
+  const items = attentionList(d, hs);
+  const attention = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Needs attention' })]);
+  if (items.length) attention.append(h('ul.ad-att-list', {}, items));
+  else if (hs.phase === 'ok') attention.append(emptyState({ title: 'Nothing needs you', body: 'The health checks pass, and no receipt, refund, invite or payment is waiting.', stamp: true, icon: '✓' }));
+  else if (hs.phase === 'loading' || hs.phase === 'idle') attention.append(skeleton({ kind: 'rows', count: 3 }));
+  else attention.append(emptyState({ title: 'Nothing found so far', body: 'The health report did not load, so this is not an all-clear.', stamp: true, icon: '?' }));
+  sec.append(h('div.ad-cols', {}, [attention, activityCard(ctx)]));
 
   sec.append(h('p.ad-meta', { text: [
     plural(d.users_total, 'signed in', 'signed in'), `${n(d.users_active_7d)} active this week`,
@@ -499,7 +559,16 @@ function render() {
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-ad-action="reload"]');
-  if (el) { ov = { ...ov, phase: 'idle' }; loadOverview(); }
+  if (el) { ov = { ...ov, phase: 'idle' }; loadOverview(); const c = makeCtx('overview'); healthTab.reload(c); auditTab.reloadRecent(c); }
+});
+/* A link in the Overview that names a tab: go through ctx.go() so its params
+   (an audit target, a drawer) land in the hash the way the tab expects. */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-ad-go]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault();
+  let params; try { params = a.dataset.adParams ? JSON.parse(a.dataset.adParams) : undefined; } catch (err) { params = undefined; }
+  makeCtx(a.dataset.adGo).go(a.dataset.adGo, params);
 });
 
 wireGateUI(render);

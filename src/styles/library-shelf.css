@@ -307,3 +307,8 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
   .lib-search { padding-top: var(--s4); }
   .lib-search-row { flex-wrap: wrap; }
 }
+
+/* A contents row is the whole tap target; 27px tall on a phone. */
+@media (pointer: coarse) {
+  .lib-contents-card li a { display: flex; align-items: center; min-height: 44px; }
+}

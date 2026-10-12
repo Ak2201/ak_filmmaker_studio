@@ -1,5 +1,41 @@
 # HANDOFF — read this first
 
+> **12 Oct 2026 (later) — WHERE `main` AND `develop` DIFFER, and what the
+> owner decides next.** `main` = `2f910b5`; `develop` = `651410c`, two commits
+> ahead. Check `git log` rather than quoting these.
+>
+> - **44 code files are on `develop` and NOT on `main`.** Another session left
+>   them uncommitted in the shared checkout (backup.js refuses a non-note key
+>   in a backup's `notes` and reports refused writes instead of counting them
+>   as imported; autosave flushes the pending write on `change` instead of
+>   dropping it; store.js refreshes its overflow cache from the `storage`
+>   event so a second tab does not lose a long script; `viewport-fit=cover` on
+>   every page; chrome/shell/mobile-nav/style edits). They were snapshotted to
+>   `feature/wip-snapshot-2026-10-11` (`272e5d2`) and merged to `develop` as
+>   `651410c` **without a local gate, at the owner's instruction**. GitHub
+>   Gate #87 on `651410c` finished **green** (12 Oct, 04:55 UTC). A release of
+>   `develop` to `main` was started and then stopped by the owner, twice, so it
+>   is the owner's call and still open: merge `develop` to `main` per
+>   `docs/BRANCHING.md` when ready.
+> - **The owner's name is displayed nowhere.** `brand.json` `seller` is empty
+>   and stays empty; refund, privacy and terms say "a sole proprietor"; the
+>   invoice's supplier block shows the trading name. It remains in git history
+>   (rewriting `main` was not on the table). Razorpay may ask for a legal
+>   seller name for the policy pages; if so, a registered business name is the
+>   answer, not the personal one.
+> - **Receipt and refund e-mails (§35) are live** through Resend from
+>   `support@filmmakerstudio.in`; the invoice PDF now prints payment ids, the
+>   amount in words and a refund-policy box worded as `refund.html`. Still
+>   empty and optional: `brand.json` `address`.
+> - **Shared-checkout hazard.** `/home/user/ak_filmmaker_studio` is shared by
+>   sessions; this one found 44 uncommitted files from another and did NOT
+>   commit them into a release or touch them in place. Snapshot to a branch,
+>   use a scratch worktree for any merge, and let the owner decide what goes to
+>   `main`. The stop hook will keep asking to commit; answering it with
+>   somebody else's unreviewed work is the wrong answer.
+> - The owner switched this session's model (Fable, then Sonnet) by hand;
+>   nothing in the repo selects a model.
+
 > **12 Oct 2026 — STOPPED HERE, at the owner's request. What is finished and
 > what is pending, in one place.** `develop` = `main` at the time of writing
 > (both carry `81613ff`); check `git log` rather than quoting it.
@@ -244,8 +280,11 @@ switch and the Pro card in a signed-in browser.
 ## 3. Decisions the owner made — do not re-ask
 
 - **The site gate stays the door** (invite-only). `start.html` is the public page.
-- **Seller is an individual** — the legal name is now filled on the legal
-  pages; only the GSTIN line is left (supply it or delete the sentence).
+- **Seller is an individual, and the owner's name is NOT displayed anywhere**
+  (owner, 11 Oct 2026: "I don't want my name to be displayed"). The legal
+  pages say "a sole proprietor"; `brand.json` `seller` is empty. Never put a
+  person's name back without the owner asking. Only the GSTIN line is left
+  (supply it or delete the sentence).
   **Production host is `filmmakerstudio.in`** (owner, 11 Oct 2026;
   `thefilmmakerstudio.vercel.app` stays an alias). The support address is
   `support@filmmakerstudio.in` at last, not a personal Gmail — the
@@ -474,7 +513,7 @@ cloud container session.
 | P6 | **Google Branding re-request**: Branding → View issues → "I have fixed the issues" on **9 Oct 2026 or later** | owner / browser | the branding status clears | `LAUNCH.md` §2 |
 | P7 | Submit `sitemap.xml` in Search Console; paste the landing URL into WhatsApp and Instagram DM and run Meta's debugger | owner | a link card with the image appears | `LAUNCH.md` §7 |
 | P8 | **GSTIN line on Terms**: supply the number, or delete that sentence if there is no registration | owner | no `[OWNER: GSTIN…]` marker on `/terms` | `LAUNCH.md` §3 |
-| P9 | ~~**Deploy `main`** so the legal name is live on the public site~~ **DONE 8 Oct 2026.** `main` was promoted and Vercel rebuilt from it; `/privacy`, `/terms` and `/refund` all serve the owner's legal name now, confirmed by fetching the live pages. Only the GSTIN marker is left, which is P8. | owner | done | — |
+| P9 | ~~**Deploy `main`** so the legal name is live on the public site~~ **DONE 8 Oct 2026.** `main` was promoted and Vercel rebuilt from it; `/privacy`, `/terms` and `/refund` all serve the owner's legal name now, confirmed by fetching the live pages. Only the GSTIN marker is left, which is P8. **Superseded 11 Oct: the name was taken off the legal pages again; the live site shows it until the next promotion.** | owner | done | — |
 | P10 | **The door**: keep the invite gate, or open it for launch (`VITE_SITE_GATE=off`) | owner | decision written in `LAUNCH.md` §1 | `LAUNCH.md` §1 |
 | P11 | Optional: set `VITE_SUPPORT_WHATSAPP` (digits) so the footer shows a WhatsApp help link | owner | link renders | `src/ui/footer.js` |
 | P12 | ~~Open every `sourceUrls` link of the CBFC / AWBI / OTT rules in a real browser~~ **DONE 8 Oct 2026**: links read, Gazette text read where published, the quashed rule 4(6) removed, AWBI fees corrected and the G.S.R. 528(E) ban on bulls as performing animals added. Nothing left here. | browser | done | `KNOWN-ISSUES.md` |
@@ -558,8 +597,9 @@ start `Brand`, `Tier labels`, `Landing page`, `Dashboard`, `Gate/settings`,
   The backup file's `_from` is a FIXED `FORMAT_ID` in `backup.js`, so a
   rename never breaks restore.
 - **R2 Owner traces removed.** No "Curated by Arunak" bylines, exports,
-  e-mail signature or PPTX author. The seller's legal name stays on the
-  legal pages only, through `{{brand:seller}}`.
+  e-mail signature or PPTX author. Since 11 Oct 2026 the seller's name is
+  not shown on the legal pages either: `{{brand:seller}}` is kept as a
+  placeholder, but its value is empty and the pages do not use it.
 - **R3 Tiers.** Labels Free / Basic / Intermediate / Pro on the unchanged ids
   free / starter / indie / pro (`src/lib/plans.js`). Schema **§26** makes the
   limit messages read the stored plan name and renames the default seed
@@ -706,7 +746,8 @@ live; only **§20–§23** remain, and they go in the same session as the
 now done; the rest need a second real Google account). Razorpay (test mode
 first), `VITE_RAZORPAY_KEY_ID` — but the prices are already real, so
 CONFIRM them rather than re-seeding. ~~Fill the legal placeholders~~ — the
-legal name is filled; only the **GSTIN** is left, and if there is no
+owner's name was filled on 8 Oct and REMOVED again on 11 Oct (it is displayed
+nowhere now); only the **GSTIN** is left, and if there is no
 registration the fix is deleting that sentence rather than filling it;
 (for the emotional-craft layer) supply `scripts/deny-shingles.txt`; set
 `VITE_SUPPORT_WHATSAPP` if wanted. To let a session do the network steps,
@@ -739,6 +780,16 @@ provide `SUPABASE_ACCESS_TOKEN` and the Razorpay keys as environment secrets.
   print route). §6c lists only what was verified.
 - **A cold read finds the gaps.** After writing a handoff, give it to a fresh
   agent with nothing else and ask it questions.
+- **Uncommitted files in the shared checkout belong to somebody.** The stop
+  hook asks for a commit; before giving one, diff the files against `HEAD`,
+  check their mtimes, and say whose they are. Snapshot them to a branch
+  (`git commit-tree` on a throwaway index leaves the working tree alone), do
+  the real merge in a scratch worktree, and reconcile the shared folder only
+  after proving each file's content is already in git.
+- **A green gate is the evidence, so wait for it.** A release was proposed
+  while GitHub's Gate was still running on the commit; the right order is
+  push to `develop`, read the run, then merge. The owner has twice stopped a
+  merge to `main` made before that run finished.
 
 ## 10. Where every doc lives
 

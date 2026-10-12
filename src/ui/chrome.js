@@ -34,6 +34,9 @@ import '../lib/plan-gate.js';
    module is already the thing that is. It fills the rail's .sh-rail-trial block (and a phone chip) when a
    trial is live and removes it when one is not — see its header. */
 import './trial-band.js';
+/* §45. The owner's one-line announcement: drawn only when a row exists,
+   asked for once per session after load. Absent from the DOM otherwise. */
+import './site-banner.js';
 import { registerSW } from '../lib/pwa.js';
 import { actionMenu, wireActionBar } from './actionbar.js';
 import {

@@ -197,7 +197,16 @@ async function _refreshOnce() {
     else {
       const st = await Billing.status();
       features = (st && st.features && typeof st.features === 'object') ? st.features : {};
-      plan = (st && st.plan) || 'free';
+      /* §45/§46: the admin's overrides ride on effective_features(), which
+         starts from this very map. An object answers → use it; ANYTHING
+         else (section not run, network, a thrown error) → the map above,
+         unchanged. Fails OPEN, like entitlement(). */
+      try {
+        const sb = await c.ensureClient();
+        const { data: eff, error: effErr } = sb ? await sb.rpc('effective_features') : { data: null, error: null };
+        if (!effErr && eff && typeof eff === 'object' && !Array.isArray(eff)) features = eff;
+      } catch (e) { /* keep billing_status()'s own features */ }
+      plan =(st && st.plan) || 'free';
       planName = (st && st.plan_name) || Billing.planName(plan);
       /* §30. A server that has not run section 30 returns no `entitled`
          key at all, and undefined must not read as false — that would

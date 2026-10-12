@@ -196,6 +196,17 @@ for (const f of ['schema-45-admin-controls.sql', 'schema-45-admin-controls.sql']
 }
 console.log('✓ §45 loads (and re-runs cleanly)');
 runChecks('admin-controls.sql');
+/* --- §46 (the role matrix) --- standalone, on top of §40, §42 and §45:
+   it restates twenty writers with one require_role() line each. Loaded twice
+   (re-runnable), after the §45 checks so they ran against the unrestated
+   writers. */
+for (const f of ['schema-46-role-matrix.sql', 'schema-46-role-matrix.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §46 loads (and re-runs cleanly)');
+runChecks('role-matrix.sql');
+/* --- end §46 --- */
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

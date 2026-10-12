@@ -16,10 +16,10 @@
    w0/p0 are the script's words/pages the first time that day was seen,
    w/p the latest. Written per day = w - w0. It is registered in
    store.js SCOPED_KEYS, backup.js PROJECT_KEYS and hub.js ALL_KEYS, and
-   deliberately NOT in cloud.js's SCOPE_BY_KEY: a new cloud scope needs
-   the CHECK constraint on `project_data.scope` widened first, and until
-   a schema section does that Postgres would refuse the upsert. It is
-   listed as LOCAL_ONLY there so the load-time warning stays quiet.
+   syncs to an account as the `write_goals` scope (schema section 37,
+   cloud.js SCOPE_BY_KEY). It is a per-day HISTORY, so cloud.js merges
+   it day by day (`mergeWriteGoals`) instead of replacing one copy with
+   the other: two devices keep each other's days.
 
    WHEN IT WRITES. Only after the SCRIPT saved (a user event), only when
    a number actually moved, and at most once a minute while typing —

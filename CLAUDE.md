@@ -1442,6 +1442,12 @@ a trigger on `auth.users`). Until it runs, billing_status() carries no
 `purchase_required` key and the client behaves exactly as before — the key
 has to be PRESENT to be believed. Owner step: `docs/BILLING.md` §13.
 
+**SECTION 37 HAS NOT RUN LIVE** (12 Oct 2026): widens the `project_data`
+scope CHECK to `write_goals`, so `fms_write_goals_v1` (focus-mode goal and
+daily history) syncs, merged day by day (`mergeWriteGoals` in cloud.js).
+Until it runs, that one scope's upserts are refused and queued; every
+other scope syncs as before. Owner step: `docs/BILLING.md` §17.
+
 **SECTION 35 HAS NOT RUN LIVE EITHER** (11 Oct 2026): receipt and refund
 e-mails through Resend from `support@filmmakerstudio.in`, each one CLAIMED
 by an UPDATE before it is sent (`claim_receipt_email`, `claim_refund_email`)

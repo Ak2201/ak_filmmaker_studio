@@ -446,3 +446,97 @@
 .wr-el.has-ai .wr-text {
   box-shadow: inset var(--sk-hue-rule-w) 0 0 var(--warn);
 }
+
+/* ---- the AI pill (src/ui/ai-pill.js) -------------------------
+   The one way into every AI tool. READY is the brand's call-to-
+   action fill (--cta-fill is --brand in light and the AA-mixed
+   violet in dark; --brand-on on it measures 4.59:1 there). LOCKED
+   is greyed, but stays a real, clickable button — it asks the Pro
+   question — so it keeps a pointer cursor: --ink-muted on
+   --paper-sunk is about 5.7:1 in light and 7:1 in dark. */
+.ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--cta-fill, var(--brand));
+  color: var(--brand-on);
+  border: var(--sk-card-line-w, 1px) solid transparent;
+  border-radius: var(--radius-pill);
+  transition: background var(--speed) var(--ease),
+              border-color var(--speed) var(--ease),
+              color var(--speed) var(--ease),
+              transform var(--speed) var(--ease);
+}
+.ai-pill:hover { background: var(--cta-fill-hover, var(--brand)); color: var(--brand-on); }
+.ai-pill:active { transform: scale(calc(1 - (1 - var(--sk-press, 1)) * var(--motion, 1))); }
+.ai-pill:focus-visible {
+  outline: var(--sk-focus-w, 2px) solid var(--accent);
+  outline-offset: var(--focus-offset, 2px);
+}
+.ai-pill-glyph { flex: none; }
+
+.ai-pill.is-locked,
+.ai-pill.is-locked:hover {
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  border-color: var(--rule);
+}
+.ai-pill.is-locked:hover { border-color: var(--ink-muted); }
+.ai-pill.is-locked:active { transform: none; }
+
+@media (pointer: coarse) {
+  .ai-pill { min-height: 44px; }
+  .ai-pill-item { min-height: 44px; }
+}
+
+/* The locked wrapper and the "add your key" wrapper keyGate() draws. */
+.ai-keygate.ai-locked { display: grid; gap: var(--s2); justify-items: start; }
+.ai-gate-line {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+}
+
+/* ---- the pill's task menu ------------------------------------ */
+.ai-pill-menu {
+  position: absolute;
+  z-index: 60;
+  display: grid;
+  min-width: 12rem;
+  max-width: calc(100vw - 16px);
+  padding: var(--s1);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--shadow-md);
+}
+.ai-pill-item {
+  display: block;
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  text-align: start;
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: pointer;
+}
+.ai-pill-item:hover,
+.ai-pill-item:focus-visible { background: var(--paper-sunk); color: var(--ink); }
+.ai-pill-item:focus-visible {
+  outline: var(--sk-focus-w, 2px) solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media print { .ai-pill, .ai-pill-menu { display: none; } }

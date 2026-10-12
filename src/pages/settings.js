@@ -91,6 +91,7 @@ import { h, delegate, commitMain } from '../lib/dom.js';
    page only needs to name the host in its own prose. */
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
+import { aiPill } from '../ui/ai-pill.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
@@ -183,6 +184,16 @@ function renderKey() {
     'The AI tools in the studio run on ' + apiName() + ' with your own key — one key for '
       + 'every tool, on this browser. Each tool shows what it will send and waits '
       + 'for your click. You can switch provider below; each one keeps its own key.');
+
+  /* LOCKED: nobody can type a key their plan cannot use. The section
+     keeps its heading so settings.html#ai still lands somewhere, and
+     re-renders on 'plan:changed' (subscribed below), so a plan that
+     arrives after first paint swaps the pill for the key section. */
+  if (!PlanGate.aiUnlocked()) {
+    sec.append(h('p.st-note', { text: 'AI tools come with Pro. Your key would be kept on this device only.' }));
+    sec.append(aiPill({ label: 'Unlock AI tools' }));
+    return sec;
+  }
 
   /* The module's own arrangement of the bar, the gate, the form and
      the disclosure. The disclosure body is this page's, because what

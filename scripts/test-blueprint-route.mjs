@@ -83,6 +83,11 @@ eq(R.routeForAnchor('/feature', '#vol-2'), 'breakdown.html#guide', 'cover vol-2'
 eq(R.routeForAnchor('/feature', '#phase-3'), 'shoot.html#guide', 'cover phase-3');
 eq(R.routeForAnchor('/feature', '#phase-4'), 'edit.html#guide', 'cover phase-4');
 eq(R.routeForAnchor('/feature', '#glossary'), 'library.html#glossary', 'feature glossary');
+eq(R.routeForAnchor('/short', '#glossary'), 'library.html#glossary', 'short glossary');
+eq(R.routeForAnchor('/short', '#festival-tracker'), 'deliverables.html#festivals', 'short festival tracker');
+eq(R.routeForAnchor('/feature', '#pitch-deck'), 'story.html#pitch', 'feature pitch deck');
+eq(R.routeForAnchor('/feature', '#sync-section'), 'settings.html#drive', 'feature sync section');
+eq(R.routeForAnchor('/short', '#pitch-deck'), 'story.html#guide', 'a feature-only anchor on the short falls back');
 eq(R.routeForAnchor('/feature', '#treatment-ladder').split('?')[0], 'story.html', 'treatment-ladder interlude has a stage page');
 eq(R.routeForAnchor('/feature', ''), 'story.html#guide', 'no hash lands on the first stage guide');
 eq(R.routeForAnchor('/short', '#whatever'), 'story.html#guide', 'unknown short anchor lands on the first stage guide');

@@ -48,7 +48,19 @@ const COVER_STAGE = {};
 for (const part of (STAGES.parts && STAGES.parts.feature) || []) COVER_STAGE[part.cover] = part.stage;
 
 /** Anchors that are not steps and not stage covers: where they go. */
-const SPECIAL = { glossary: 'library.html#glossary' };
+const SPECIAL = {
+  feature: {
+    glossary: 'library.html#glossary',
+    'pitch-deck': 'story.html#pitch',
+    'sync-section': 'settings.html#drive'
+  },
+  short: {
+    glossary: 'library.html#glossary',
+    /* The submission tracker's data is read back on the deliverables
+       checklist ("What your festivals ask for"), its nearest home. */
+    'festival-tracker': 'deliverables.html#festivals'
+  }
+};
 
 /** `/feature`, `/feature.html`, `/short/`, `feature.html?x#y` -> 'feature.html'. */
 export function pageOf(pathname) {
@@ -107,7 +119,7 @@ export function routeForAnchor(fileOrPath, hash) {
   const page = pageOf(fileOrPath);
   const ns = page === 'short.html' ? 'short' : 'feature';
   const frag = String(hash || '').replace(/^#/, '');
-  if (SPECIAL[frag] && ns === 'feature') return SPECIAL[frag];
+  if (Object.prototype.hasOwnProperty.call(SPECIAL[ns], frag)) return SPECIAL[ns][frag];
   if (/^step-\d+$/.test(frag)) {
     const h = guideHref(ns, frag);
     if (h) return h;

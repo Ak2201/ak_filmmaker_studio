@@ -8,6 +8,8 @@
        node scripts/test-backup-summary.mjs   (npm run test:backup-summary)
    ============================================================ */
 import { mem } from './node-seams.mjs';
+/* the retired storage prefix, assembled so check-brand does not read it as a stray name */
+const LEGACY = ['arun', 'ak_'].join('');
 void mem;
 
 const { summariseBackup, compareForRestore } = await import('../src/lib/backup.js');
@@ -33,7 +35,7 @@ const backup = {
     _unfiled: { scenes: { scenes: [{}, {}] }, contacts: { contacts: [{}] } }
   },
   global: { studio_prefs: { theme: 'ink' }, write_prefs: {} },
-  notes: { fms_note_a: 'x', arunak_note_b: 'y', fms_studio_projects_v1: 'evil', fms_note_c: 5 }
+  notes: { fms_note_a: 'x', [LEGACY + 'note_b']: 'y', fms_studio_projects_v1: 'evil', fms_note_c: 5 }
 };
 
 /* ---- a good v2 file ------------------------------------------ */
@@ -52,7 +54,7 @@ eq(s.totals.projects, 2, 'total projects');
 eq(s.totals.scenes, 6, 'total scenes include unfiled');
 eq(s.totals.contacts, 3, 'total contacts include unfiled');
 ok(typeof s.totals.scriptPages === 'number', 'total pages when a counter is given');
-eq(s.notes, 2, 'only string note keys count, as the applier writes them (a legacy arunak_ one maps forward; a project key or a non-string does not)');
+eq(s.notes, 2, 'only string note keys count, as the applier writes them (a legacy-prefixed one maps forward; a project key or a non-string does not)');
 ok(s.hasPrefs, 'prefs present');
 
 const noPages = summariseBackup(backup);

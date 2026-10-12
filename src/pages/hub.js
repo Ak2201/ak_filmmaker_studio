@@ -100,7 +100,6 @@ import {
   FEATURE_URL, SHORT_URL, DASHBOARD_URL, LIBRARY_URL,
   FORMAT_LABELS, plain, clip, title, parseStorage, relTime, fmtRelDate, $
 } from './hub/util.js';
-import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.json
 import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
 import { createResumeCards } from './hub/resume-cards.js';

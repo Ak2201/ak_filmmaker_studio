@@ -176,7 +176,14 @@ function renderRoom(pass) {
 
   if (!blocks.length) main.append(h('p.sc-note', { text: 'This project has nothing shared in it yet.' }));
   if (pass.branding !== false) main.append(brandLine({ ref: typeof pass.ref === 'string' ? pass.ref : '' }));
+  main.append(aboutLink());
   return { main, blocks };
+}
+
+/* One link out of the room, to the public landing page. The room stays free
+   of the shell and the chrome; this is just an anchor. */
+function aboutLink() {
+  return h('p.made-with', {}, [h('a', { href: 'start.html', text: 'About the studio' })]);
 }
 
 function expiryText(ms) {
@@ -209,6 +216,7 @@ function renderView(v) {
   ].filter(Boolean)));
   main.append(h('section.sc-block', { id: 'view' }, [v.kind === 'callsheet' ? renderCallSheet(v.payload) : renderPitch(v.payload)]));
   if (v.branding) main.append(brandLine({ ref: v.ref }));
+  main.append(aboutLink());
   return main;
 }
 

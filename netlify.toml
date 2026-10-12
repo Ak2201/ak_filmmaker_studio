@@ -235,6 +235,51 @@
   status = 200
 
 [[redirects]]
+  from = "/script"
+  to = "/script.html"
+  status = 200
+
+[[redirects]]
+  from = "/story"
+  to = "/story.html"
+  status = 200
+
+[[redirects]]
+  from = "/drafts"
+  to = "/drafts.html"
+  status = 200
+
+[[redirects]]
+  from = "/vault"
+  to = "/vault.html"
+  status = 200
+
+[[redirects]]
+  from = "/purchase"
+  to = "/purchase.html"
+  status = 200
+
+[[redirects]]
+  from = "/purchases"
+  to = "/purchases.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from = "/invite"
+  to = "/invite.html"
+  status = 200
+
+[[redirects]]
+  from = "/screening"
+  to = "/screening.html"
+  status = 200
+
+[[redirects]]
   from = "/shared/:token"
   to = "/?share=:token"
   status = 302

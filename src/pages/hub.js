@@ -104,7 +104,6 @@ import { BRAND } from '../lib/brand.js';   // rule 8: the name lives in brand.js
 import { ALL_KEYS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY, SHOTS_KEY, SCRIPT_KEY, LOCS_KEY } from './hub/all-keys.js';
 import { ask, tell } from '../ui/dialog.js';
 import { createResumeCards } from './hub/resume-cards.js';
-import { createBackupMenu } from './hub/backup-menu.js';
 import { sampleDays, samplePages, welcomeCard } from './hub/first-run.js';
 import {
   renderProjects, renderAdoptNotice, applyPlanToControls, resetProjectFilters,
@@ -120,14 +119,6 @@ import {
 } from './hub/project-cards.js';
 
 
-/* The theme toggle's tooltip, derived from the list it describes.
-   It read "Theme — paper, sepia, ink" on three pages long after sepia
-   was dropped and the order reversed: three hand-written copies of
-   StudioUI.themeOrder(), which is the thing they were describing. */
-function themeTitle() {
-  const order = (StudioUI.themeOrder && StudioUI.themeOrder()) || [];
-  return order.length ? 'Theme — ' + order.join(', ') : 'Theme';
-}
 /* PROJECT_KEYS and GLOBAL_KEYS used to be declared here. They are the
    BACKUP FORMAT'S schema — the map from a field name in the file to a
    storage key on disk — and the file now has a second reader (Drive
@@ -242,40 +233,13 @@ function toolbarMarkup() {
      this page's own. shell.js lifts them into an "on this page" menu
      on the end of the breadcrumb; see buildPageNav() in shell.js for
      why they are discovered there rather than declared. */
+  /* The project switcher, theme, Backup and the account pill are NOT here any
+     more: the shell band's right-hand zone carries the same four on every
+     page (shell.js buildStudioTools), so the hub is no longer different. */
   return h('div.toolbar', {
     html: `
       <a class="nav-link" href="#projects">Projects</a>
-      <div class="switcher-wrap">
-        <button class="project-switcher empty" id="projectSwitcherBtn"
-                data-action="toggle-switcher" title="Switch project" aria-haspopup="true" aria-expanded="false">
-          <span class="ps-label" id="projectSwitcherLabel">— NO PROJECT —</span>
-          <span class="ps-caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="switcher-dropdown" id="switcherDropdown"></div>
-      </div>
-      <button class="btn icon-btn" data-action="toggle-theme" id="darkBtn" title="${themeTitle()}">◐</button>
       <button class="btn" data-action="install-app" id="installBtn" title="Install the Studio as an app" hidden>⇣ INSTALL</button>
-      <div class="tb-menu align-right" data-tb-backup>
-        <button class="btn tb-menu-btn" type="button" data-action="tb-menu-toggle"
-                title="Backup — export or import the studio"
-                aria-expanded="false" aria-haspopup="true" aria-controls="tbm-backup">
-          <span>Backup</span><span class="tb-caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="tb-menu-panel" id="tbm-backup" hidden role="menu">
-          <button class="tb-item" type="button" data-action="export-all" role="menuitem"
-                  title="Every project, not just the open one">
-            <span class="tb-item-label">Export everything</span><span class="tb-item-hint">.json</span>
-          </button>
-          <button class="tb-item" type="button" data-action="import-all" role="menuitem">
-            <span class="tb-item-label">Import a backup</span>
-          </button>
-          <button class="tb-item" type="button" data-action="pdf-overview" role="menuitem"
-                  title="The studio overview as a paginated A4 document">
-            <span class="tb-item-label">Studio overview</span><span class="tb-item-hint">.pdf</span>
-          </button>
-        </div>
-      </div>
-      <input type="file" id="importAllFile" accept=".json" class="visually-hidden" data-action="import-file" aria-label="Import a studio backup">
       <div class="toolbar-stripe" aria-hidden="true"></div>`
   });
 }
@@ -404,19 +368,6 @@ function render() {
 }
 
 // ============================================================
-// THEME
-// ============================================================
-function toggleDark() {
-  StudioUI.cycleTheme();
-}
-function syncThemeIcon() {
-  const darkBtn = document.getElementById('darkBtn');
-  if (!darkBtn) return;
-  const cur = document.body.classList.contains('dark') ? 'ink' : 'paper';
-  darkBtn.textContent = cur === 'ink' ? '☀' : '◐';
-}
-
-// ============================================================
 // GREETING
 // ============================================================
 function renderGreeting() {
@@ -452,7 +403,6 @@ const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibrarySt
 // ============================================================
 // EXPORT / IMPORT / RESET — src/pages/hub/backup-menu.js
 // ============================================================
-const { exportOverviewPDF, exportAll, importAll, handleImportAll } = createBackupMenu({ allKeys: ALL_KEYS, logActivity });
 
 // ============================================================
 // ACTIVITY LOG
@@ -1050,11 +1000,7 @@ async function deleteProjectConfirm(id) {
 // There is not a single inline handler on this page.
 // ============================================================
 const CLICK_ACTIONS = {
-  'toggle-theme':          () => { toggleDark(); syncThemeIcon(); },
   'install-app':           () => promptInstall(),
-  'export-all':            () => exportAll(),
-  'import-all':            () => importAll(),
-  'pdf-overview':          () => exportOverviewPDF(),
   'new-project':           () => openProjectModal(),
   'start-feature':         () => openProjectModal(null, 'feature'),
   'start-short':           () => openProjectModal(null, 'short'),
@@ -1065,7 +1011,6 @@ const CLICK_ACTIONS = {
   'sample-project':        (el) => { openSampleProject(el && el.dataset && el.dataset.sample).catch(sampleFailed); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
-  'toggle-switcher':       () => toggleProjectSwitcher(),
   'switch-project':        (el) => switchToProject(el.dataset.id),
   // The card's "open →": make it the open project, then go to it.
   // setCurrentProject() is a synchronous pointer write, so the page
@@ -1134,7 +1079,6 @@ function wireEvents() {
     setProjectSort(e.target.value);
     renderProjects();
   });
-  delegate(app, 'change', '#importAllFile', (e) => handleImportAll(e));
   delegate(app, 'submit', '#projectForm', (e) => submitProjectModal(e));
   delegate(app, 'click', '#projectModal', (e, el) => {
     if (e.target === el) closeProjectModal();
@@ -1197,10 +1141,6 @@ function init() {
   StudioUI.wireGlossaryPopovers();
   StudioUI.autoAriaLabels();
   StudioUI.polishEmptyStates();
-  syncThemeIcon();
-  // Swaps the ◐ cycle button for the Appearance menu (theme + design).
-  // After this the button is gone, which is why syncThemeIcon() runs first.
-  StudioUI.upgradeThemeButton(toolbar);
 
   renderGreeting();
   renderProjects();

@@ -1,8 +1,8 @@
 /* ============================================================
    THE COMMAND PALETTE — one key for twenty-two modules
    ------------------------------------------------------------
-   The studio has 22 modules across six phases, four themes, six
-   skins, a project list, and however many scenes and contacts the
+   The studio has 22 modules across six phases, two themes, a
+   project list, and however many scenes and contacts the
    film has. The shell answers "where am I"; the launcher answers
    "what exists". Neither answers the question a person actually
    has at 2am, which is "take me to Scene 14", and the honest
@@ -13,8 +13,7 @@
    front of it, and three rules:
 
    1. IT IS DERIVED, NEVER LISTED. Modules come from
-      navigation.json, skins from skin.js reading the CSSOM,
-      themes from StudioUI.themeOrder(), projects from
+      navigation.json, themes from StudioUI.themeOrder(), projects from
       listProjects(), scenes and contacts from their own models.
       A hand-written list of what the app contains is a list that
       is wrong by the second change — the same rule that keeps the
@@ -234,35 +233,21 @@ function projectItems() {
 function settingItems() {
   const out = [];
   const UI = typeof window !== 'undefined' ? window.StudioUI : null;
-  const SK = typeof window !== 'undefined' ? window.StudioSkin : null;
 
-  /* Themes and skins are asked for, not listed. THEME_ORDER lives
-     in chrome.js and the skins are discovered from the CSSOM, so
-     a fifth theme or a seventh skin appears here by existing. */
+  /* The themes are asked for, not listed: THEME_ORDER lives in chrome.js.
+     They read Dark and Light (StudioUI.themeLabel), never the internal
+     ids. There is no "Design" row: one skin ships, so it is not a choice. */
   if (UI && UI.themeOrder) {
-    const LABEL = { paper: 'Paper', sepia: 'Sepia', ink: 'Ink', desk: 'Desk' };
     for (const t of UI.themeOrder()) {
+      const name = (UI.themeLabel && UI.themeLabel(t)) || t;
       out.push(entry({
         id: 'theme:' + t,
-        label: 'Theme: ' + (LABEL[t] || t),
-        sub: 'Change the palette',
+        label: 'Theme: ' + name,
+        sub: 'Switch the whole studio to ' + String(name).toLowerCase(),
         group: 'Appearance',
-        icon: '◐',
-        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode'],
+        icon: t === 'ink' ? '☾' : '☀',
+        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode', 'appearance'],
         run: () => UI.applyTheme(t)
-      }));
-    }
-  }
-  if (SK && SK.listSkins) {
-    for (const s of SK.listSkins()) {
-      out.push(entry({
-        id: 'skin:' + s.id,
-        label: 'Design: ' + s.label,
-        sub: 'Change the shapes and the type',
-        group: 'Appearance',
-        icon: '◇',
-        keywords: ['skin', 'design', 'look', 'style', 'shape', 'font'],
-        run: () => SK.applySkin(s.id)
       }));
     }
   }

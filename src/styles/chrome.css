@@ -3788,3 +3788,50 @@ html {
     grid-template-columns: minmax(max-content, 1fr) max-content;
   }
 }
+
+/* ============================================================
+   THE ONE RIGHT-HAND ZONE (12 Oct 2026)
+   ------------------------------------------------------------
+   Project switcher · Backup · theme · account name, on every page.
+   shell.js buildStudioTools builds `.sh-tools`; on the four pages
+   that carry a `.toolbar` it is the toolbar's last child, on the rest
+   a direct child of the band. One set of rules for both.
+   ============================================================ */
+.sh-bar .sh-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  column-gap: 6px;
+  min-width: 0;
+}
+.sh-bar > .toolbar > .sh-tools { margin-left: auto; }
+.sh-bar[data-stacked] > .sh-tools { margin-left: auto; }
+
+/* The theme button: a glyph and the word of the theme you are in. */
+.tb-theme { display: inline-flex; align-items: center; gap: var(--s1); }
+.tb-theme-glyph { font-size: var(--t-small); line-height: 1; }
+
+/* Where the row needs the width: the word goes, the glyph stays (the
+   accessible name and the title carry the word), and the project
+   button gives up its format chip and shortens its title. */
+@media (min-width: 1100px) and (max-width: 1439px) {
+  .sh-bar .tb-theme-word { display: none; }
+  .sh-bar .ps-btn .ps-fmt { display: none; }
+  .sh-bar .ps-btn .ps-title { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 1099px) {
+  .sh-bar .tb-theme-word { display: none; }
+}
+@media (max-width: 719px) {
+  .sh-bar [data-tb-backup] > .tb-menu-btn > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .sh-bar [data-tb-backup] > .tb-menu-btn::before { content: "⇅"; font-size: var(--t-small); }
+  .sh-bar > .sh-tools { margin-left: auto; }
+  .sh-bar > .toolbar > .sh-tools { margin-left: auto; }
+}

@@ -1409,8 +1409,16 @@ async function _pushScope(projectId, scope) {
   const localKey = KEY_BY_SCOPE[scope];
   if (!localKey) return;
   const raw = Store.rawGet(localKey + '__' + projectId);
+  /* A null read is not an empty document. It is a key that was never
+     written, or — worse — a stub whose bytes sit in an overflow tier
+     this document cannot open (store.js returns null and says
+     storage:degraded). Pushing `{}` with a fresh stamp from here made
+     the server's copy empty with the newest clock, and every other
+     device then pulled the emptiness over its own screenplay. Nothing
+     to read means nothing to say. */
+  if (raw == null) return;
   let json = {};
-  if (raw) { try { json = JSON.parse(raw); } catch (e) { json = {}; } }
+  try { json = JSON.parse(raw); } catch (e) { return; }
   const stamp = new Date().toISOString();
   setSync(SYNC_STATES.SYNCING, 'Saving to your account…');
   const { error } = await supabase.from('project_data').upsert({
@@ -1617,8 +1625,14 @@ export async function attachToCurrentProject() {
 }
 
 function _onRemoteData(payload) {
+  /* A DELETE carries no data: `new` is empty and `old` names the scope,
+     so `row.data` would be undefined, `nextRaw` '{}', and the stamp
+     Date.now() — newer than any local clock — which replaced the local
+     blob with nothing. A project deleted in the cloud is handled by its
+     own path; a row vanishing is never an edit to apply. */
+  if (payload && payload.eventType === 'DELETE') return;
   const row = payload.new || payload.old;
-  if (!row) return;
+  if (!row || !row.scope) return;
   if (session && row.updated_by === session.user.id) return;  // self echo
   const localKey = KEY_BY_SCOPE[row.scope];
   if (!localKey) return;

@@ -307,6 +307,10 @@
   text-align: center;
   white-space: nowrap;
 }
+@media (pointer: coarse) {
+  /* the 44px floor lifts two 24px buttons to 88px+ inside a 60px cell */
+  .scene-table .row-ctrl { width: auto; min-width: 96px; }
+}
 .row-ctrl-btn {
   width: var(--s5);
   height: var(--s5);
@@ -1363,7 +1367,7 @@
   font-variant-numeric: tabular-nums;
   transition: transform var(--speed) var(--ease), background var(--speed) var(--ease);
 }
-.focus-timer:hover { transform: translateY(-2px); }
+.focus-timer:hover { transform: translateY(calc(-2px * var(--motion))); }
 .focus-timer.running { background: var(--accent-deep); }
 .focus-timer.paused  { background: var(--panel-raised); }
 /* Done reads from the ok TEXT pair, not the --ok fill: --ok is a fill

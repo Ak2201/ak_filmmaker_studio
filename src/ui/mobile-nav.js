@@ -264,7 +264,15 @@ if (typeof document !== 'undefined') {
     if (sheet.kind === 'goto' && t.closest && t.closest('.mn-sheet a[href]')) close();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sheet) { e.stopPropagation(); close(); }
+    if (e.key !== 'Escape' || !sheet) return;
+    /* A dialog, the palette or a menu opened from inside the sheet is
+       above it, and Escape is theirs: this listener was registered at
+       import, so it runs before the ones they add at open, and
+       stopPropagation does not stop a later listener on the same node.
+       One Escape used to cancel the dialog AND drop the sheet under it,
+       sending focus to a button that was display:none by then. */
+    if (document.querySelector('.modal-overlay, #studioPalette:not([hidden]), body.pal-open, .tb-menu-panel:not([hidden]), .switcher-dropdown:not([hidden])')) return;
+    e.stopPropagation(); close();
   }, true);
   /* The crumb's stage segment opens that stage's menu on a desktop.
      On a phone the menu is the Go-to sheet, opened at that stage.

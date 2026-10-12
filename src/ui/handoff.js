@@ -306,9 +306,13 @@ export function syncNow() {
     return plan;
   }
   emptyNoted = false;
-  syncPrev = cur;
-  if (isEmptyPlan(plan)) return plan;
+  if (isEmptyPlan(plan)) { syncPrev = cur; return plan; }
   const res = applySync(plan);
+  /* After the apply, not before it: an exception halfway through
+     applySync (a scene binned, its replacement not yet added) used to
+     leave the baseline already advanced, so nothing retried until some
+     other heading changed. */
+  syncPrev = cur;
   afterSync(res, plan);
   safeRender();
   return plan;

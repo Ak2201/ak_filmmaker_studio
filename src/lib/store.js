@@ -204,6 +204,31 @@ const _current = (k, g) => _gen.get(k) === g;
    small tier is full the copy is skipped, which is no worse than the
    loss it guards against. */
 const _inflight = new Map();          // key -> latest value an overflowed write still owes
+/* THE CACHE IS PER DOCUMENT, AND THE OTHER TAB DOES NOT KNOW. hydrate()
+   fills it once at boot and never again, so a key that another tab
+   moved into the overflow tier AFTER this tab booted read as a stub
+   with nothing behind it (null, and storage:degraded) — the breakdown
+   open in a second tab lost the script the moment it crossed the
+   threshold in the first, and an import from that tab saved over it
+   with no "Before importing" revision taken, because loadScript() came
+   back blank. `storage` fires in every OTHER document for a localStorage
+   write, so the stub's arrival is the signal: read the bytes back into
+   this cache (hydrating a still-cold tier first). A key removed or
+   shrunk back into localStorage elsewhere drops its stale cache copy
+   the same way. Nothing this document wrote itself (_gen) is touched. */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (e) => {
+    const k = e && e.key;
+    if (!k || k.indexOf(NEW_PREFIX) !== 0 || _gen.has(k)) return;
+    if (Overflow.isStub(e.newValue)) {
+      const pull = () => Overflow.readBack(k).then((v) => { if (v != null && !_gen.has(k)) Overflow.cache().set(k, v); });
+      const p = Overflow.state() === 'cold' ? Overflow.hydrate().then(pull) : pull();
+      if (p && p.catch) p.catch(() => {});
+    } else if (Overflow.cache().has(k)) {
+      Overflow.cache().delete(k);
+    }
+  });
+}
 let _leaving = false;
 function _copyNow(k, v) { try { _origSet(k, v); return true; } catch (e) { return false; } }
 if (typeof window !== 'undefined') {
@@ -1202,15 +1227,23 @@ export function migrateLegacy() {
     const project = createProject({ title, format: 'feature', ns: [DEVICE_NS], adopt: false });
 
     // Move legacy keys to namespaced keys
+    /* Set, verify, then remove — the same property migratePrefix()
+       keeps. rawSet answers false when both tiers refuse (quota, or a
+       stub the overflow tier cannot read), and removing the only copy
+       on a refused write is how a migration becomes data loss. A key
+       that could not move keeps its old name, the marker is NOT
+       written, and the next load tries again. */
+    let moved = true;
     SCOPED_KEYS.forEach(k => {
       const v = rawGet(k);
       if (v != null) {
-        rawSet(k + '__' + project.id, v);
-        rawRemove(k);
+        const dst = k + '__' + project.id;
+        if (rawSet(dst, v) !== false && rawGet(dst) === v) rawRemove(k);
+        else moved = false;
       }
     });
 
-    rawSet(SCHEMA_VERSION_KEY, '1');
+    if (moved) rawSet(SCHEMA_VERSION_KEY, '1');
     notify('migration:done', { project });
     return project;
   }

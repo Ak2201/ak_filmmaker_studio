@@ -512,6 +512,7 @@ export const STATUS = {
 /** A stage's main page, from navigation.json (the stage's first module). */
 export function stageHref(id) {
   const ph = nav.phases.find((p) => p.id === id);
+  if (ph && ph.home && ph.home.href) return ph.home.href;   // the stage's own landing page (navigation.json `home`)
   const m = ph && ph.modules && ph.modules[0];
   return (m && m.href) || 'dashboard.html';
 }

@@ -22,6 +22,7 @@ import '../styles/budget.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { h } from '../lib/dom.js';
 import { renderBudget, initBudget } from '../ui/budget.js';
 import { costSections, initCosts } from '../ui/budget-costs.js';
@@ -110,6 +111,7 @@ function render() {
   body.append(estimate, ...costSections());
   main.append(body);
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   initBudget(app);

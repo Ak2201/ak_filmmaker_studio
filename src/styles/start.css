@@ -96,9 +96,14 @@
   max-width: var(--measure);
 }
 
+/* :where() keeps these two at ELEMENT specificity. As `.st p` /
+   `.st li` they were (0,1,1) and beat every single-class rule on a <p>
+   or <li> — .st-fact-n, .st-note, .st-fine, .st-legal, .st-chip,
+   .st-pick-flag, .st-eyebrow — so the counted facts printed at 16px
+   instead of the display size, and every small note at body size. */
 .st-lede,
-.st p,
-.st li {
+:where(.st) p,
+:where(.st) li {
   color: var(--ink-body);
   font-size: var(--t-base);
   line-height: var(--lh-body);
@@ -106,7 +111,7 @@
 }
 .st-lede { font-size: var(--sk-deck-size); max-width: var(--sk-deck-measure); }
 
-.st p { margin: 0 0 var(--s3); }
+:where(.st) p { margin: 0 0 var(--s3); }
 
 .st-h2 {
   font-family: var(--sk-display);
@@ -708,6 +713,9 @@ body.has-st-bar { padding-bottom: calc(var(--st-bar-h, 84px) + var(--s3)); }
   .st-tiers > .st-trial .st-trial-say { flex: 1 1 20rem; }
   .st-tiers > .st-trial .st-tier-buy { margin-top: 0; align-self: center; }
   .st-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* Six stage tiles: auto-fit made four columns at a desk width and
+     left two orphans on a second row. */
+  .st-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   /* A strip at a desk width, so the plan cards reach the first
      screen (owner, 12 Oct 2026: this page is where people buy). */
   .st-hero { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); align-items: center; padding: var(--s5) 0 var(--s3); }

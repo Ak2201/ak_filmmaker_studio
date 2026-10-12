@@ -445,3 +445,61 @@
 }
 .st-danger-row p { margin: 0; flex: 1 1 18rem; color: var(--ink); }
 #danger > .bd-eyebrow { color: var(--danger-deep, var(--danger)); }
+
+/* ============================================================
+   THE CONSOLE'S SHAPE (12 Oct 2026)
+   ------------------------------------------------------------
+   Five tabs in a vertical sub-nav at the left from 1100px, the one
+   sideways-scrolling strip below it; a card per setting in the panel.
+   The sub-nav rules are the Console's (admin.css, scoped to
+   .ad-console) restated for .st-console: that sheet is the admin
+   page's alone and settings must not load it.
+   ============================================================ */
+.st-console { max-width: min(76rem, 100%); }
+.st-tab { display: grid; gap: var(--sk-grid-gap); align-content: start; min-width: 0; }
+.st-tab > * { min-width: 0; }
+.st-plan-line { margin: 0; font-size: var(--t-base); color: var(--ink); }
+.st-console > .tabs-grouped .tabs-group { display: contents; }
+.st-console > .tabs-grouped .tabs-group-h { display: none; }
+
+@media (min-width: 1100px) {
+  .st-console {
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    column-gap: var(--s6);
+    align-items: start;
+  }
+  .st-console > .tabs-grouped {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    top: calc(var(--sh-chrome-h, 0px) + var(--s3));
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: visible;
+    gap: var(--s4);
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border-bottom: 0;
+  }
+  .st-console > .st-tab { grid-column: 2; }
+  .st-console > .tabs-grouped .tabs-group { display: grid; gap: 2px; align-content: start; }
+  .st-console > .tabs-grouped .tabs-group-h {
+    display: block;
+    padding: 0 var(--s3) var(--s1);
+    font-family: var(--f-mono);
+    font-size: var(--t-micro);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .st-console > .tabs-grouped .tabs-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    width: 100%;
+    padding: var(--s2) var(--s3);
+    border-radius: var(--sk-radius, var(--radius));
+  }
+}

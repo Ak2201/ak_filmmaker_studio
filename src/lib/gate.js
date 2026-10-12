@@ -304,6 +304,15 @@ export function createGate(getClient) {
      *  alone — see schema section 25 for why. Returns a summary of
      *  what actually went. */
     resetUser: (userId, note = '') => rpc('admin_reset_user', { p_user: userId, p_note: note || null }),
+    /** Delete totally (schema §45, anonymising the invoice since §47): the
+     *  person, their sign-in, synced films, payments, team, tickets, grant
+     *  and lead row. Owner only; the e-mail is typed back; invoices stay
+     *  with the buyer's name, e-mail and GSTIN removed. */
+    deleteUser: (userId, email) => rpc('admin_delete_user', { p_user: userId, p_confirm_email: email }),
+    /** owner | finance | support, or null. Resolves 'owner' where §45 has
+     *  not run (every admin was one before roles existed). */
+    studioRole: () => rpc('studio_role').then((r) => r || null)
+      .catch((e) => (e && (e.code === 'PGRST202' || e.code === '42883' || /Could not find|does not exist/i.test(String(e.message || ''))) ? 'owner' : null)),
     /* Section 15: the application as a whole. Read-only. */
     overview: async () => (await rpc('admin_overview')) || {},
     listAccounts: async () => (await rpc('admin_list_accounts')) || [],

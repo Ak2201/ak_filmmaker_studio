@@ -104,7 +104,7 @@ export async function handle(route) {
   const m = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z_]+)/);
   if (!m) return baseHandle(route);
   const name = m[1];
-  const mine = ['studio_role', 'admin_customer', 'admin_list_notes', 'admin_add_note', 'admin_issue_invoice', 'admin_reset_user', 'admin_list_support',
+  const mine = ['studio_role', 'admin_customer', 'admin_list_notes', 'admin_add_note', 'admin_issue_invoice', 'admin_reset_user', 'admin_delete_user', 'admin_list_support',
     'admin_log_ticket', 'admin_update_ticket', 'admin_list_passes', 'admin_revoke_pass', 'admin_extend_pass', 'admin_list_shares', 'admin_revoke_share',
     'admin_grant_trial'];
   if (!mine.includes(name)) return baseHandle(route);
@@ -146,6 +146,14 @@ export async function handle(route) {
       if ((r = needs(route, ['support']))) return r;
       F.db.members.delete(args.p_user); F.db.sessions.delete(args.p_user);
       return json(route, 200, { membership_removed: true, request_removed: false, redemptions_freed: 1, device_lock_cleared: true, signed_out: true });
+    }
+    case 'admin_delete_user': {
+      if ((r = needs(route, ['owner']))) return r;
+      const u = userById(args.p_user);
+      if (!u || String(args.p_confirm_email || '').toLowerCase() !== String(u.email || '').toLowerCase()) return pgErr(route, '22023', 'The e-mail address typed does not match this account. Nothing was deleted.');
+      P.deleted = (P.deleted || []).concat(args.p_user);
+      F.db.members.delete(args.p_user); F.db.sessions.delete(args.p_user);
+      return json(route, 200, { deleted: true, invoices_retained: 1, invoices_anonymised: 1, tombstone: true });
     }
     case 'admin_list_support': {
       if ((r = needs(route, ['support', 'finance']))) return r;

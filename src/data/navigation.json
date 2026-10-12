@@ -188,6 +188,7 @@
       "label": "Pre-Production",
       "hue": "preprod",
       "blurb": "Break it down, see it, plan it, cost it",
+      "home": { "href": "preprod.html", "label": "Pre-production path", "purpose": "The steps from a script to a shoot day, one at a time", "icon": "◷", "sym": "checklist" },
       "icon": "◷",
       "modules": [
         {

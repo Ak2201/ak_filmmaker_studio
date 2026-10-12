@@ -1,8 +1,8 @@
 /* ============================================================
    THE COMMAND PALETTE — one key for twenty-two modules
    ------------------------------------------------------------
-   The studio has 22 modules across six phases, four themes, six
-   skins, a project list, and however many scenes and contacts the
+   The studio has 22 modules across six phases, two themes, a
+   project list, and however many scenes and contacts the
    film has. The shell answers "where am I"; the launcher answers
    "what exists". Neither answers the question a person actually
    has at 2am, which is "take me to Scene 14", and the honest
@@ -13,8 +13,7 @@
    front of it, and three rules:
 
    1. IT IS DERIVED, NEVER LISTED. Modules come from
-      navigation.json, skins from skin.js reading the CSSOM,
-      themes from StudioUI.themeOrder(), projects from
+      navigation.json, themes from StudioUI.themeOrder(), projects from
       listProjects(), scenes and contacts from their own models.
       A hand-written list of what the app contains is a list that
       is wrong by the second change — the same rule that keeps the
@@ -140,6 +139,30 @@ function score(item, q) {
   return 0;
 }
 
+let scriptLines = [];
+/** Up to six script lines containing the query (three characters or more),
+ *  as ordinary palette entries that open the script at that line. */
+function scriptHits(needle) {
+  if (needle.length < 3 || !scriptLines.length) return [];
+  const out = [];
+  for (const l of scriptLines) {
+    const at = l.text.toLowerCase().indexOf(needle);
+    if (at < 0) continue;
+    const from = Math.max(0, at - 24);
+    out.push(entry({
+      id: 'line:' + l.id,
+      label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
+      sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
+      group: 'Screenplay',
+      hueClass: 'sh-ph-screenplay',
+      icon: '¶',
+      href: 'screenplay.html'
+    }));
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
 function rank(q) {
   const needle = q.trim().toLowerCase();
   const out = [];
@@ -150,7 +173,10 @@ function rank(q) {
     out.push({ it, s: s + (bump >= 0 ? (8 - bump) * 50 : 0) });
   }
   out.sort((a, b) => b.s - a.s || a.it.label.localeCompare(b.it.label));
-  return out.slice(0, MAX_ROWS).map((r) => r.it);
+  const rows = out.slice(0, MAX_ROWS).map((r) => r.it);
+  /* Script lines come last: a module or a person named like the query is
+     a better answer than a line that happens to contain it. */
+  return rows.concat(scriptHits(needle)).slice(0, MAX_ROWS + 6);
 }
 
 /* ------------------------------------------------------------
@@ -234,35 +260,21 @@ function projectItems() {
 function settingItems() {
   const out = [];
   const UI = typeof window !== 'undefined' ? window.StudioUI : null;
-  const SK = typeof window !== 'undefined' ? window.StudioSkin : null;
 
-  /* Themes and skins are asked for, not listed. THEME_ORDER lives
-     in chrome.js and the skins are discovered from the CSSOM, so
-     a fifth theme or a seventh skin appears here by existing. */
+  /* The themes are asked for, not listed: THEME_ORDER lives in chrome.js.
+     They read Dark and Light (StudioUI.themeLabel), never the internal
+     ids. There is no "Design" row: one skin ships, so it is not a choice. */
   if (UI && UI.themeOrder) {
-    const LABEL = { paper: 'Paper', sepia: 'Sepia', ink: 'Ink', desk: 'Desk' };
     for (const t of UI.themeOrder()) {
+      const name = (UI.themeLabel && UI.themeLabel(t)) || t;
       out.push(entry({
         id: 'theme:' + t,
-        label: 'Theme: ' + (LABEL[t] || t),
-        sub: 'Change the palette',
+        label: 'Theme: ' + name,
+        sub: 'Switch the whole studio to ' + String(name).toLowerCase(),
         group: 'Appearance',
-        icon: '◐',
-        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode'],
+        icon: t === 'ink' ? '☾' : '☀',
+        keywords: ['theme', 'colour', 'color', 'dark', 'light', 'mode', 'appearance'],
         run: () => UI.applyTheme(t)
-      }));
-    }
-  }
-  if (SK && SK.listSkins) {
-    for (const s of SK.listSkins()) {
-      out.push(entry({
-        id: 'skin:' + s.id,
-        label: 'Design: ' + s.label,
-        sub: 'Change the shapes and the type',
-        group: 'Appearance',
-        icon: '◇',
-        keywords: ['skin', 'design', 'look', 'style', 'shape', 'font'],
-        run: () => SK.applySkin(s.id)
       }));
     }
   }
@@ -326,7 +338,7 @@ async function loadContent() {
         id: 'contact:' + c.id,
         label: c.name,
         sub: [c.role, c.department].filter(Boolean).join(' · ') || 'Crew',
-        group: 'Contacts',
+        group: 'People',
         hueClass: 'hue-shoot',
         icon: '☏',
         href: 'contacts.html#c-' + c.id,
@@ -334,6 +346,30 @@ async function loadContent() {
       }));
     }
   } catch (e) { /* ditto */ }
+  try {
+    const { locationIndex } = await import('../lib/locations.js');
+    for (const row of locationIndex()) {
+      add.push(entry({
+        id: 'place:' + row.key,
+        label: row.name,
+        sub: row.scenes.length + (row.scenes.length === 1 ? ' scene' : ' scenes'),
+        group: 'Places',
+        hueClass: 'hue-plan',
+        icon: '⌖',
+        href: 'plan.html#locations',
+        keywords: ['location', 'place', 'recce', 'set']
+      }));
+    }
+  } catch (e) { /* ditto */ }
+  try {
+    /* Script text is searched on demand (scriptHits), never indexed: a
+       feature is thousands of lines and most queries are not about them. */
+    const { loadScript } = await import('../lib/script.js');
+    const doc = loadScript();
+    scriptLines = (doc && Array.isArray(doc.elements) ? doc.elements : [])
+      .filter((e) => e && e.text && /^(action|dialogue|scene|heading|parenthetical)$/.test(String(e.type)))
+      .map((e, i) => ({ id: e.id, text: String(e.text), type: e.type, i }));
+  } catch (e) { /* no script */ }
   if (add.length) {
     items = items.concat(add);
     if (open) render(input.value);
@@ -449,7 +485,7 @@ function build() {
     autocomplete: 'off',
     autocapitalize: 'off',
     spellcheck: 'false',
-    placeholder: 'Go to a module, a scene, a person, a setting…',
+    placeholder: 'Search scenes, people, places, tools, settings, script lines…',
     'aria-expanded': 'false',   // openPalette/closePalette keep it true only while open
     /* The list is filtered as you type rather than completing the
        value in the field, which is "list" and not "both" or
@@ -542,19 +578,20 @@ function onKey(e) {
   }
 }
 
-export function openPalette() {
+export function openPalette(seed = '') {
   build();
-  if (open) { input.select(); return; }
+  if (open) { if (seed) { input.value = seed; active = 0; render(seed); } else input.select(); return; }
   open = true;
   opener = document.activeElement;
   buildIndex();
   root.hidden = false;
   input.setAttribute('aria-expanded', 'true');
   document.body.classList.add('pal-open');
-  input.value = '';
+  input.value = seed || '';
   active = 0;
-  render('');
+  render(input.value);
   input.focus();
+  if (seed) { try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* ignore */ } }
   loadContent();
 }
 

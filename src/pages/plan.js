@@ -38,6 +38,7 @@ import '../styles/plan.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
@@ -622,6 +623,7 @@ function render() {
     renderMedia(scenes, media)
   );
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   // Chrome initialises at import time, when #app is still empty — the

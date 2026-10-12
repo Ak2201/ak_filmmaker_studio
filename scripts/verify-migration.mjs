@@ -234,6 +234,10 @@ const ALL_PAGES = [
      unchecked from the day it landed. Both rows arrive with the
      re-baseline that regrouped six phases into the PRD's five stages. */
   { page: 'shoot.html',      legacy: null, name: 'shoot' },
+  /* preprod.html (12 Oct 2026): the Pre-production path. In vite.config.js
+     and reached from the Pre-Production stage tab; named here in the same
+     commit, as the note above demands. It needs a baseline capture. */
+  { page: 'preprod.html',    legacy: null, name: 'preprod' },
   { page: 'story.html',      legacy: null, name: 'story' },
   /* Post-Production. Both rows arrive in the same commit as the page
      entries, as the settings note above demands, with the re-baseline
@@ -402,7 +406,19 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
-  dashboard: {},
+  /* The dashboard revamp (12 Oct 2026) folded the journey strip into
+     the five stage cards, so its section ("Where this film is. Each
+     stage has a part of the blueprint (Guide)… Both are read from what
+     you have already written — nothing here is stored.") and the old
+     deck ("Each card shows where…") left the page. The words below
+     appear nowhere else on it. Re-baseline the next time this grows. */
+  dashboard: {
+    both: 'journey strip section removed; its meters now sit in the stage cards',
+    journey: 'journey strip section removed; #journey is kept on the stage list',
+    stored: 'journey strip deck ("nothing here is stored") removed with the section',
+    card: 'head deck shortened ("Each card shows where that part of the film stands")',
+    shows: 'head deck shortened ("Each card shows where that part of the film stands")'
+  },
   settings: {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.

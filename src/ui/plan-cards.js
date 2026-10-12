@@ -239,6 +239,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const target = row.querySelector(`.pl-card[data-plan="${CSS.escape(want)}"]`);
     if (target) {
       pickedDone = true;
+      try { sessionStorage.removeItem(PLAN_STASH); } catch (e) { /* ignore */ }
       target.classList.add('is-picked');
       setTimeout(() => { if (target.isConnected) target.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 0);
       const btn = target.querySelector('[data-plan-action="buy"]');
@@ -286,9 +287,25 @@ function promoBox(buyable) {
   return det;
 }
 
+/* ?plan= survives the Google hop (which returns to the bare path) through a
+   sessionStorage stash written when a sign-in button is pressed on a page
+   that carried it. sessionStorage, never localStorage: verify asserts no
+   idle localStorage writes, and a plan choice is not worth keeping. */
+const PLAN_STASH = 'fms_purchase_plan';
 function wantedPlan() {
-  try { return new URLSearchParams(location.search).get('plan') || ''; } catch (e) { return ''; }
+  try {
+    const q = new URLSearchParams(location.search).get('plan');
+    if (q) return q;
+    return sessionStorage.getItem(PLAN_STASH) || '';
+  } catch (e) { return ''; }
 }
+document.addEventListener('click', (e) => {
+  if (!(e.target.closest && e.target.closest('[data-auth-action="google"]'))) return;
+  try {
+    const q = new URLSearchParams(location.search).get('plan');
+    if (q && /^[\w-]{1,32}$/.test(q)) sessionStorage.setItem(PLAN_STASH, q);
+  } catch (err) { /* ignore */ }
+}, true);
 
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the
    pricing table uses (src/lib/plan-matrix.js addedBy()): what this plan

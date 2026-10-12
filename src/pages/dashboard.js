@@ -57,7 +57,6 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
-import { renderJourneyStrip } from '../ui/journey-strip.js';
 import { renderLauncher } from '../ui/launcher.js';
 
 import Scenes, { formatEighths, totalEighths } from '../lib/scenes.js';
@@ -297,14 +296,28 @@ function renderReadiness() {
   const sec = section('readiness', 'Derived from your scenes · nothing to tick',
     'Could you shoot tomorrow?', deck);
 
-  const list = h('ul.rd-list');
   /* Failures first and blockers above gaps, because the order IS the
-     advice. Passed checks keep their place at the bottom as evidence
-     the question was asked. */
+     advice. Passed checks are still SHOWN, as evidence the question
+     was asked — but as one compact row of ticks under the work, so
+     five green cards no longer outweigh the two things to do. */
   const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
-  r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count)
-    .forEach((c) => list.append(readinessRow(c)));
-  sec.append(list);
+  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const fails = sorted.filter((c) => !c.passed);
+  const passes = sorted.filter((c) => c.passed);
+  if (fails.length) {
+    const list = h('ul.rd-list');
+    fails.forEach((c) => list.append(readinessRow(c)));
+    sec.append(list);
+  }
+  if (passes.length) {
+    sec.append(h('p.rd-pass-h', { text: 'Passing \u00b7 ' + passes.length + ' of ' + r.checks.length }));
+    const ul = h('ul.rd-pass');
+    passes.forEach((c) => ul.append(h('li.rd-chip', {}, [
+      h('span.rd-mark', { 'aria-hidden': 'true', text: '\u2713' }),
+      h('span', { text: c.label + ' — none' })
+    ])));
+    sec.append(ul);
+  }
 
   const dot = sec.querySelector('.bd-eyebrow');
   if (dot) dot.classList.add(tone);
@@ -376,70 +389,127 @@ function continueTarget(snap) {
   return { href: pick.href, what: pick.label, ts: snap.resume ? snap.resume.at : null };
 }
 
+/* ============================================================
+   THE FOCUS ROW — one answer to "what now?", one to "how ready?"
+   ------------------------------------------------------------
+   The page used to say "go here next" five ways (a Continue tile, a
+   suggested-next panel, a resume line, the journey strip's next step
+   and the suggested stage card) and "how ready is it" three ways (a
+   tick list on the project tile, "three things to do" and the full
+   readiness section). The first card below holds every "next"; the
+   second holds the readiness summary and links down to the full list.
+   The ids the old pieces carried (#suggested, #resume) live on here.
+   ============================================================ */
+const WHY = {
+  start: 'Nothing started yet, so the story is a natural first step.',
+  continue: 'Work is under way here.',
+  next: 'Everything started is finished; this is the earliest stage not started.'
+};
+
 function renderContinue(snap) {
   /* THIS PROJECT ONLY (owner, 11 Oct 2026): it used to suggest the most
      recently edited OTHER film. Switching films is the home page's job. */
   const tl = tile('continue', 'Continue', 'Pick up where you left off');
-  tl.classList.add('db-tile-wide');
+  tl.classList.add('db-up');
   const t = continueTarget(snap);
   tl.append(
-    h('p.db-tile-line', { text: t.what + (t.ts ? ' \u00b7 ' + relTime(t.ts) : '') }),
-    h('a.btn.primary.db-big', { href: t.href, 'aria-label': 'Continue: ' + t.what, text: 'Continue  \u2192' })
+    h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }),
+    h('a.btn.primary.db-big', { href: t.href, 'aria-label': 'Continue: ' + t.what, text: 'Continue  →' })
   );
-  return tl;
-}
 
-function renderProjectTile(snap) {
-  const tl = tile('project', FORMAT_LABEL[snap.project.format] || 'Project', snap.project.title);
-  const j = snap.journey;
-  tl.append(h('p.db-tile-line', { text: 'Stage: ' + (j ? j.currentLabel : 'Story') }));
-  const r = readiness();
-  if (!r.hasFilm) {
-    tl.append(h('p.db-tile-line', { text: 'Readiness: no scenes yet, so nothing to check.' }));
+  const sug = snap.suggest;
+  const sugState = sug && snap.states.find((s) => s.id === sug.id);
+  const box = h('div.db-up-next', { id: 'suggested' });
+  if (sugState) {
+    box.append(
+      h('p.db-tile-eyebrow', { text: 'Suggested next · only a suggestion' }),
+      h('p.db-up-stage.' + stageHueClass(sugState.hue), {}, [
+        h('span.db-dot', { 'aria-hidden': 'true' }),
+        h('strong', { text: sugState.label })
+      ]),
+      h('p.db-tile-line', { text: WHY[sug.why] || WHY.continue })
+    );
+    const acts = h('div.db-up-acts');
+    acts.append(h('a.btn', { href: sugState.href, 'aria-label': 'Go to ' + sugState.label, text: 'Go to ' + sugState.label + '  →' }));
+    const nx = snap.journey && snap.journey.next;
+    if (nx && nx.href && nx.label) {
+      acts.append(h('a.db-gap-link', { href: nx.href, text: 'Next step: ' + nx.label }));
+    }
+    box.append(acts);
   } else {
-    const pass = r.checks.filter((c) => c.passed);
-    tl.append(h('p.db-tile-line', {
-      text: 'Readiness: ' + pass.length + ' of ' + r.checks.length + ' checks pass \u00b7 '
-        + r.blockers + ' blocker' + (r.blockers === 1 ? '' : 's') + ', ' + r.gaps + ' gap' + (r.gaps === 1 ? '' : 's')
-    }));
-    const ul = h('ul.db-tick');
-    r.checks.forEach((c) => ul.append(h('li' + (c.passed ? '.is-pass' : '.is-fail'), {
-      text: (c.passed ? '\u2713 ' : '\u2022 ') + c.label
-    })));
-    tl.append(ul);
+    box.append(h('p.db-none', { text: 'Every stage is done. Open any card to review it.' }));
   }
-  const upcoming = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
-    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0];
-  tl.append(h('p.db-tile-line', {
-    text: upcoming ? 'Next shoot: day ' + upcoming.d.day + ' \u00b7 ' + when(upcoming.n)
-      : snap.days.length ? 'Shoot countdown: no upcoming dated day.' : 'Shoot countdown: no shoot days planned yet.'
-  }));
+  tl.append(box);
   return tl;
 }
 
-function renderActions(snap) {
-  const tl = tile('actions', 'Next', 'Three things to do');
+function renderReadyTile() {
+  const tl = tile('ready', 'Readiness', 'Three things to do');
+  tl.classList.add('db-ready');
   const r = readiness();
-  const rank = (c) => (c.severity === 'blocker' ? 0 : 1);
-  const todo = r.checks.filter((c) => !c.passed).sort((a, b) => rank(a) - rank(b) || b.count - a.count).slice(0, 3);
-  const ul = h('ul.db-acts');
   if (!r.hasFilm) {
-    ul.append(h('li', {}, [h('a.db-gap-link', { href: 'breakdown.html', text: 'Add the scenes' }),
-      h('span.db-gap-why', { text: 'Readiness is derived from them.' })]));
-  } else if (!todo.length) {
+    tl.append(
+      h('p.db-tile-line', { text: 'No scenes yet, so nothing to check.' }),
+      h('ul.db-acts', {}, [h('li', {}, [
+        h('a.db-gap-link', { href: 'breakdown.html', text: 'Add the scenes' }),
+        h('span.db-gap-why', { text: 'Readiness is derived from them.' })
+      ])])
+    );
+    return tl;
+  }
+
+  const rank = (c) => (c.passed ? 2 : c.severity === 'blocker' ? 0 : 1);
+  const sorted = r.checks.slice().sort((a, b) => rank(a) - rank(b) || b.count - a.count);
+  const pass = sorted.filter((c) => c.passed).length;
+  const total = sorted.length;
+
+  /* The score is a number AND a word, and the bar under it repeats the
+     list's own order — blockers, gaps, passes — one segment per check.
+     The segments carry no text, so a fill colour is safe there; the
+     counts beside them are ink. */
+  const label = pass + ' of ' + total + ' checks pass · '
+    + r.blockers + ' blocker' + (r.blockers === 1 ? '' : 's') + ', ' + r.gaps + ' gap' + (r.gaps === 1 ? '' : 's');
+  const seg = h('div.db-seg', { role: 'img', 'aria-label': label });
+  sorted.forEach((c) => seg.append(h('span.db-seg-i.' + (c.passed ? 'is-pass' : c.severity === 'blocker' ? 'is-blocker' : 'is-gap'))));
+  tl.append(
+    h('p.db-score', {}, [h('strong', { text: pass + '/' + total }), h('span', { text: 'checks pass' })]),
+    seg,
+    h('p.db-tile-line', { text: 'Readiness: ' + label })
+  );
+
+  const todo = sorted.filter((c) => !c.passed).slice(0, 3);
+  const ul = h('ul.db-acts');
+  if (!todo.length) {
     ul.append(h('li', {}, [h('span.db-gap-why', { text: 'Every readiness check passes.' })]));
   } else {
-    todo.forEach((c) => ul.append(h('li', {}, [
-      h('a.db-gap-link', { href: c.where || 'dashboard.html#readiness', text: c.label + ' \u2014 ' + c.count }),
+    todo.forEach((c) => ul.append(h('li.' + (c.severity === 'blocker' ? 'is-blocker' : 'is-gap'), {}, [
+      h('a.db-gap-link', { href: c.where || 'dashboard.html#readiness', text: c.label + ' — ' + c.count }),
       h('span.db-gap-why', { text: c.hint })
     ])));
   }
-  tl.append(ul);
+  tl.append(ul, h('a.db-link.db-tile-more', { href: '#readiness', text: 'See every check ↓' }));
   return tl;
+}
+
+function renderFocus(snap) {
+  const sec = h('section.db-focus', { id: 'focus', 'aria-label': 'Where to go next', 'data-reveal-group': '' });
+  sec.append(renderContinue(snap), renderReadyTile());
+  return sec;
+}
+
+/* ============================================================
+   THE SIDE COLUMN — the calendar, the plan, the backup
+   ============================================================ */
+function nextShootLine(snap) {
+  const upcoming = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
+    .map((x) => ({ ...x, n: daysFromToday(x.date) })).filter((x) => x.n >= 0).sort((a, b) => a.n - b.n)[0];
+  return upcoming ? 'Next shoot: day ' + upcoming.d.day + ' · ' + when(upcoming.n)
+    : snap.days.length ? 'Shoot countdown: no upcoming dated day.' : 'Shoot countdown: no shoot days planned yet.';
 }
 
 function renderWeek(snap) {
   const tl = tile('week', 'This week', 'Shoot days and call sheets');
+  tl.append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
   const covered = new Set();
   snap.sheets.forEach((cs) => (cs.sceneIds || []).forEach((id) => covered.add(id)));
   const rows = snap.days.map((d) => ({ d, date: localDay(d.date) })).filter((x) => x.date)
@@ -457,13 +527,13 @@ function renderWeek(snap) {
     let dpr = '';
     if (x.n <= 0) {
       const rec = dprSummary(x.d.day, snap.scenes).record;
-      dpr = ' \u00b7 report ' + (rec && (rec.crewCall || rec.wrap) ? 'started' : 'not started');
+      dpr = ' · report ' + (rec && (rec.crewCall || rec.wrap) ? 'started' : 'not started');
     }
     ul.append(h('li', {}, [
       h('a.db-gap-link', { href: sheet ? 'contacts.html#call-sheets' : 'reports.html#sides',
-        text: 'Day ' + x.d.day + ' \u00b7 ' + when(x.n) }),
+        text: 'Day ' + x.d.day + ' · ' + when(x.n) }),
       h('span.db-gap-why', { text: x.d.scenes.length + ' scene' + (x.d.scenes.length === 1 ? '' : 's')
-        + ' \u00b7 ' + (sheet ? 'call sheet made' : 'no call sheet') + dpr })
+        + ' · ' + (sheet ? 'call sheet made' : 'no call sheet') + dpr })
     ]));
   }
   tl.append(ul);
@@ -476,7 +546,7 @@ function renderPlanTile() {
   const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
   /* 'free' is the "no plan" state, never a plan to name (owner, 11 Oct
      2026): it is the free trial, or nothing bought yet. */
-  const line = !name ? 'Not signed in \u2014 working locally on this device'
+  const line = !name ? 'Not signed in — working locally on this device'
     : cp.plan !== 'free' ? name + ' plan'
     : cp.reason === 'granted' ? 'Access given by the studio'
     : cp.reason === 'trial' ? 'Free trial'
@@ -494,9 +564,13 @@ function renderBackupTile() {
   const tl = tile('backup', 'Backup', 'Is your work safe?');
   let st = null;
   try { st = getDriveStatus(); } catch (e) { /* a status is not a transfer */ }
-  tl.append(h('p.db-tile-line', { text: st && st.connected
-    ? 'Google Drive: connected' + (st.syncedAt ? ', last synced ' + relTime(st.syncedAt) : ', not yet synced') + '.'
-    : 'Google Drive: not connected.' }));
+  const on = !!(st && st.connected);
+  tl.append(h('p.db-tile-line.db-state' + (on ? '.is-on' : '.is-off'), {}, [
+    h('span.db-dot', { 'aria-hidden': 'true' }),
+    txt(on
+      ? 'Google Drive: connected' + (st.syncedAt ? ', last synced ' + relTime(st.syncedAt) : ', not yet synced') + '.'
+      : 'Google Drive: not connected.')
+  ]));
   tl.append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
     + 'this page cannot see when you last exported one.' }));
   tl.append(h('a.btn.db-tile-go', { href: 'index.html', 'aria-label': 'Export a backup, from the studio home page', text: 'Export a backup' }));
@@ -504,10 +578,9 @@ function renderBackupTile() {
 }
 
 function renderDesk(snap) {
-  const sec = h('section.db-desk', { id: 'desk', 'data-reveal-group': '', 'aria-label': 'Today\u2019s desk' });
-  sec.append(renderContinue(snap), renderProjectTile(snap), renderActions(snap),
-    renderWeek(snap), renderPlanTile(), renderBackupTile());
-  return sec;
+  const aside = h('aside.db-desk', { id: 'desk', 'data-reveal-group': '', 'aria-label': 'Today’s desk' });
+  aside.append(renderWeek(snap), renderPlanTile(), renderBackupTile());
+  return aside;
 }
 
 /* ---- header ----------------------------------------------------- */
@@ -530,14 +603,15 @@ function renderHead(snap) {
     studiesAsked = true;
     import('../lib/studies.js').then((m) => { studiesMod = m; render(); }).catch(() => { /* the slug stands in */ });
   }
-  const head = h('header.bd-head');
+  const head = h('header.bd-head.db-head');
+  const j = snap.journey;
   head.append(
-    h('p.bd-eyebrow', { text: (FORMAT_LABEL[p.format] || 'Project') + ' · Project dashboard' }),
+    h('p.bd-eyebrow', { text: (FORMAT_LABEL[p.format] || 'Project') + ' · Project dashboard'
+      + (j ? ' · Stage: ' + j.currentLabel : '') }),
     h('h1.bd-title', { text: p.title }),
     h('p.bd-deck', {
-      text: 'Five stages, in any order. Each card shows where that part of the film stands, '
-          + 'read from what you have already made. Nothing is mandatory: with a script in '
-          + 'hand, start straight in Pre-production.'
+      text: 'Five stages, in any order, each read from what you have already made. '
+          + 'Nothing is mandatory: with a script in hand, start straight in Pre-production.'
     })
   );
   const favLine = h('p.st-fav', { id: 'favourite' });
@@ -550,11 +624,13 @@ function renderHead(snap) {
   }
   head.append(favLine);
   if (!snap.isEmpty) {
-    head.append(h('div.bd-stats', {}, [
+    head.append(h('div.bd-stats.db-stats', {}, [
       stat(String(snap.scenes.length), snap.scenes.length === 1 ? 'scene' : 'scenes'),
       stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages'),
       stat(String(snap.days.length), snap.days.length === 1 ? 'shoot day' : 'shoot days'),
-      stat(String(snap.contacts.length), 'people')
+      stat(String(snap.contacts.length), 'people'),
+      stat(String(snap.shots.length), snap.shots.length === 1 ? 'shot' : 'shots'),
+      stat(snap.budget.short, 'budget')
     ]));
   }
   return head;
@@ -563,27 +639,48 @@ function renderHead(snap) {
 /* ---- the five stage cards ----------------------------------------
    State is derived by journey.js stageStates(); this only arranges it.
    Status is a WORD plus a glyph, never colour alone. The ids always
-   render: #stages and #stage-<id> exist with no data behind them. */
+   render: #stages and #stage-<id> exist with no data behind them.
+
+   The journey strip used to sit under these as a second row of the
+   same five stages, with the Guide and Tools meters. The meters moved
+   INTO the cards, so each stage is said once; #journey is kept on the
+   list, because a fragment target must not disappear with a redesign. */
 const STATUS_GLYPH = { none: '○', doing: '◐', done: '●' };
 const GO = { none: 'Start', doing: 'Continue', done: 'Open' };
 
-function stageCard(s, suggested) {
+function stageMeter(label, pct, value) {
+  const v = Math.max(0, Math.min(100, pct || 0));
+  return h('div.st-meter', {}, [
+    h('span.st-meter-lab', { text: label }),
+    h('span.db-bar', { 'aria-hidden': 'true' }, [h('span.db-bar-fill', { style: 'width:' + v + '%' })]),
+    h('span.st-meter-val', { text: value })
+  ]);
+}
+
+function stageCard(s, suggested, js, current) {
   const li = h('li.st-card.' + stageHueClass(s.hue) + '.st-' + s.status.id + (suggested ? '.is-suggested' : ''),
     { id: 'stage-' + s.id });
   li.append(h('div.st-head', {}, [
     h('span.st-part', { text: 'Part ' + s.part }),
-    suggested ? h('span.st-sug', { text: 'Suggested next' }) : null
+    suggested ? h('span.st-sug', { text: 'Suggested next' })
+      : current ? h('span.st-sug', { text: 'You are here' }) : null
   ]));
   li.append(h('h3.st-name', { text: s.label }));
   li.append(h('p.st-status', {}, [
     h('span.st-glyph', { text: STATUS_GLYPH[s.status.id], 'aria-hidden': 'true' }),
     h('span', { text: s.status.label })
   ]));
+  if (js) {
+    li.append(h('div.st-meters', {}, [
+      stageMeter('Guide', js.guide.pct, js.guide.total ? js.guide.pct + '%' : '—'),
+      stageMeter('Tools', js.tools.pct, js.tools.total ? js.tools.done + '/' + js.tools.total : '—')
+    ]));
+  }
   const facts = h('ul.st-facts');
   s.facts.forEach((f) => facts.append(h('li', { text: f })));
   li.append(facts);
   const acts = h('div.st-acts');
-  acts.append(h('a.btn.primary.st-go', {
+  acts.append(h('a.btn' + (suggested ? '.primary' : '') + '.st-go', {
     href: s.href,
     'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label,
     text: GO[s.status.id] + '  →'
@@ -598,47 +695,25 @@ function stageCard(s, suggested) {
 function renderStages(snap) {
   const sec = section('stages', 'The five stages', 'Where the film stands.');
   const sug = snap.suggest;
-  const sugState = sug && snap.states.find((s) => s.id === sug.id);
-
-  const panel = h('div.st-suggest', { id: 'suggested' });
-  if (sugState) {
-    const why = sug.why === 'start' ? 'Nothing started yet, so the story is a natural first step.'
-      : sug.why === 'continue' ? 'Work is under way here.'
-      : 'Everything started is finished; this is the earliest stage not started.';
-    panel.append(h('div.st-suggest-body', {}, [
-      h('span.st-suggest-lab', { text: 'Suggested next · only a suggestion' }),
-      h('strong.st-suggest-title', { text: sugState.label }),
-      h('span.st-suggest-why', { text: why })
-    ]), h('a.btn.primary', {
-      href: sugState.href, 'aria-label': 'Go to ' + sugState.label, text: 'Go  →'
-    }));
-  } else {
-    panel.append(h('p.db-none', { text: 'Every stage is done. Open any card to review it.' }));
-  }
-  sec.append(panel);
-
-  const r = snap.resume;
-  if (r) {
-    sec.append(h('p.st-resume', { id: 'resume' }, [
-      txt('Resume where you left off: '),
-      h('a.db-link', { href: r.href, text: r.label }),
-      txt(' · edited ' + relTime(r.at))
-    ]));
-  }
-
-  const list = h('ol.st-list', { 'aria-label': 'The five stages of this film' });
-  snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id)));
+  const j = snap.journey;
+  const list = h('ol.st-list', { id: 'journey', 'aria-label': 'The five stages of this film' });
+  snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id,
+    j && j.stages.find((x) => x.id === s.id), !!j && j.current === s.id)));
   sec.append(list);
 
   sec.append(h('p.db-foot', {}, [
-    txt('Prefer to be asked questions? '),
+    txt('Guide is how much of the blueprint is answered; Tools is how much of the stage’s work exists. '
+      + 'Prefer to be asked questions? '),
     h('a.db-link', { href: snap.main.blueprint.href, text: 'Guided questions' }),
     txt(' (' + snap.main.pct + '% answered) are a companion, not a step.')
   ]));
   return sec;
 }
 
-/* ---- the production chain ---------------------------------------- */
+/* ---- the production chain ----------------------------------------
+   Twelve numbers, now in four labelled groups, because twelve equal
+   cards in a row read as twelve equal facts — and "scenes" and
+   "storyboards" are not equally the spine of the film. */
 function chainCard(number, label, note, href, hue) {
   return h('a.db-card.hue-' + hue, { href }, [
     h('strong.db-card-num', { text: number }),
@@ -651,40 +726,37 @@ function renderChain(snap) {
   const sec = section('chain', 'The chain', 'Scene to call sheet.',
     'One scene model, read by every module below. Move a scene and all of '
     + 'these move with it.');
-  const grid = h('div.db-grid');
   const n = (v) => String(v);
+  const group = (title, cards) => h('div.db-chain-group', {}, [
+    h('p.db-chain-h', { text: title }), h('div.db-grid', {}, cards)
+  ]);
 
-  grid.append(
-    chainCard(n(snap.scenes.length), 'Scenes', 'Breakdown — the one place a scene is typed', 'breakdown.html', 'shorts'),
-    chainCard(formatEighths(snap.eighths), 'Scene pages', 'Length in eighths, from the breakdown', 'breakdown.html', 'shorts'),
-    chainCard(n(snap.elements), 'Elements tagged', 'Cast, props, wardrobe, vehicles', 'breakdown.html#elements', 'shorts'),
-    chainCard(n(snap.locationCount), 'Locations', 'Distinct places named on a scene', 'plan.html#locations', 'plan'),
-    chainCard(n(snap.days.length), 'Shoot days', snap.unscheduled.length
-      ? snap.unscheduled.length + ' scene' + (snap.unscheduled.length === 1 ? '' : 's') + ' still unscheduled'
-      : 'Every scene has a day', 'stripboard.html', 'shoot'),
-    chainCard(n(snap.datedDays), 'Dated days', 'Shoot days with a real date against them', 'plan.html#calendar', 'plan'),
-    chainCard(n(snap.contacts.length), 'People', 'Cast and crew, by department', 'contacts.html', 'shoot'),
-    chainCard(n(snap.sheets.length), 'Call sheets', 'Built from the day, the scenes and the people', 'contacts.html#call-sheets', 'shoot'),
-    chainCard(n(snap.shots.length), 'Shots', 'Shot list, hung off the scenes', 'visualize.html', 'visualize'),
-    chainCard(n(snap.boards), 'Storyboards', 'Frames, in order', 'visualize.html#storyboard', 'visualize'),
-    chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' revision' + (snap.revisions === 1 ? '' : 's') + ' saved', 'screenplay.html', 'library'),
-    chainCard(snap.budget.short, 'Budget', snap.budget.lines
-      ? snap.budget.exact + ' across ' + snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's')
-      : 'Nothing costed yet', 'budget.html', 'plan')
+  sec.append(
+    group('Break down', [
+      chainCard(n(snap.scenes.length), 'Scenes', 'Breakdown — the one place a scene is typed', 'breakdown.html', 'shorts'),
+      chainCard(formatEighths(snap.eighths), 'Scene pages', 'Length in eighths, from the breakdown', 'breakdown.html', 'shorts'),
+      chainCard(n(snap.elements), 'Elements tagged', 'Cast, props, wardrobe, vehicles', 'breakdown.html#elements', 'shorts'),
+      chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' revision' + (snap.revisions === 1 ? '' : 's') + ' saved', 'screenplay.html', 'library')
+    ]),
+    group('Schedule', [
+      chainCard(n(snap.locationCount), 'Locations', 'Distinct places named on a scene', 'plan.html#locations', 'plan'),
+      chainCard(n(snap.days.length), 'Shoot days', snap.unscheduled.length
+        ? snap.unscheduled.length + ' scene' + (snap.unscheduled.length === 1 ? '' : 's') + ' still unscheduled'
+        : 'Every scene has a day', 'stripboard.html', 'shoot'),
+      chainCard(n(snap.datedDays), 'Dated days', 'Shoot days with a real date against them', 'plan.html#calendar', 'plan'),
+      chainCard(snap.budget.short, 'Budget', snap.budget.lines
+        ? snap.budget.exact + ' across ' + snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's')
+        : 'Nothing costed yet', 'budget.html', 'plan')
+    ]),
+    group('People', [
+      chainCard(n(snap.contacts.length), 'People', 'Cast and crew, by department', 'contacts.html', 'shoot'),
+      chainCard(n(snap.sheets.length), 'Call sheets', 'Built from the day, the scenes and the people', 'contacts.html#call-sheets', 'shoot')
+    ]),
+    group('See it', [
+      chainCard(n(snap.shots.length), 'Shots', 'Shot list, hung off the scenes', 'visualize.html', 'visualize'),
+      chainCard(n(snap.boards), 'Storyboards', 'Frames, in order', 'visualize.html#storyboard', 'visualize')
+    ])
   );
-  sec.append(grid);
-  return sec;
-}
-
-/* ---- where the film is -------------------------------------------
-   The journey strip, for THIS project: it reads, it never writes. It
-   always renders in the project branch, so #journey resolves. */
-function renderWhere(snap, project) {
-  const sec = section('journey', 'The journey', 'Where this film is.',
-    'Each stage has a part of the blueprint (Guide) and the modules that do the work (Tools). '
-    + 'Both are read from what you have already written \u2014 nothing here is stored.');
-  const strip = renderJourneyStrip(project, { heading: false, journey: snap.journey });
-  if (strip) sec.append(strip);
   return sec;
 }
 
@@ -761,7 +833,7 @@ function renderNoProject() {
 let revealed = false;
 function render() {
   const project = Store.currentProject();
-  const main = h('main', { id: 'main' });
+  const main = h('main.db-main', { id: 'main' });
 
   if (!project) {
     main.append(
@@ -783,19 +855,22 @@ function render() {
     const snap = snapshot(project);
     /* Stage-first: the five stages lead, with the suggestion; the desk
        tiles, the chain and the readiness checks sit below them. */
-    main.append(renderHead(snap), renderStages(snap), renderWhere(snap, project), renderDesk(snap), renderLauncher());
-    if (!snap.isEmpty) main.append(renderChain(snap));
+    /* Top to bottom: what to do now (focus), where each stage stands,
+       then the detail in a main column with the calendar, plan and
+       backup beside it, and the full module map last. */
+    const col = h('div.db-col');
+    if (!snap.isEmpty) col.append(renderChain(snap));
     /* OUTSIDE the isEmpty branch on purpose. `isEmpty` asks whether
        the BLUEPRINT has been filled in, and readiness asks about the
        SCENES — a producer who imported a script and has not answered
        a single blueprint step is exactly who this is for, and the
-       first version hid it from them. renderReadiness() returns null
-       when there are no scenes, which is the condition that actually
-       governs it. */
-    const ready = renderReadiness();
-    if (ready) main.append(ready);
+       first version hid it from them. Without scenes it renders the
+       section's empty state, so #readiness always resolves. */
+    col.append(renderReadiness());
     const activity = renderActivity(snap.scenes);
-    if (activity) main.append(activity);
+    if (activity) col.append(activity);
+    main.append(renderHead(snap), renderFocus(snap), renderStages(snap),
+      h('div.db-body', {}, [col, renderDesk(snap)]), renderLauncher());
   }
 
   if (!commitMain(app, main, mountShell)) return;

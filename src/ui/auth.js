@@ -70,7 +70,10 @@ const errText = (e) => (e && (e.message || e.error_description)) || String(e || 
 let _pillWired = false;
 
 export function attachSignInPill(host) {
-  if (!host || host.querySelector('#signInPill')) return;
+  /* One pill per DOCUMENT, not per host: the band's right-hand zone owns it
+     (shell.js buildStudioTools), and a page that later hands its own
+     toolbar to this function must not get a second one. */
+  if (!host || document.getElementById('signInPill')) return;
   const pill = h('button#signInPill.sign-in-pill', {
     type: 'button',
     'data-auth-action': 'pill'

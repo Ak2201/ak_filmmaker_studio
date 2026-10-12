@@ -192,7 +192,8 @@ function currentStep(s) {
 function renderStepper(s, cur) {
   const nav = h('nav.st-path', { 'aria-label': 'Story path' });
   const ol = h('ol.st-path-list');
-  for (const p of progress(s)) {
+  const rows = progress(s);
+  for (const p of rows) {
     const on = !extra && p.id === cur;
     const b = h('button.st-path-tab' + (on ? '.is-on' : '') + (p.done ? '.is-done' : ''), {
       /* data-step is the step's STABLE NUMBER (story-paths.json `n`): the
@@ -206,12 +207,24 @@ function renderStepper(s, cur) {
     ]);
     ol.append(h('li', {}, [b]));
   }
+  /* Beats & pacing, Pitch deck and the Cover sheet are the LAST STEPS of the
+     strip now, numbered on from the path (they were a second "Then" row that
+     repeated the menu — owner, 12 Oct 2026). They have no done-state of their
+     own, so they say "Open". */
+  EXTRAS.forEach((x, i) => {
+    const on = extra === x.id;
+    ol.append(h('li', {}, [h('button.st-path-tab.st-path-extra' + (on ? '.is-on' : ''), {
+      type: 'button', 'data-stepper-go': x.id, 'aria-current': on ? 'step' : null
+    }, [
+      h('span.st-path-n', { text: String(rows.length + i + 1) }),
+      h('span.st-path-label', { text: x.label }),
+      h('span.st-path-state', { text: 'Open' })
+    ])]));
+  });
   nav.append(ol);
-  nav.append(h('p.st-path-count', { text: 'Step ' + (pathNow().findIndex((p) => p.id === cur) + 1) + ' of ' + pathNow().length }));
-  nav.append(h('div.st-extras', {}, [h('span.st-extras-k', { text: 'Then' }),
-    ...EXTRAS.map((x) => h('button.st-extra' + (extra === x.id ? '.is-on' : ''), {
-      type: 'button', 'data-stepper-go': x.id, 'aria-current': extra === x.id ? 'step' : null
-    }, [h('span.st-path-label', { text: x.label })]))]));
+  const at = extra ? rows.length + EXTRAS.findIndex((x) => x.id === extra) + 1
+    : pathNow().findIndex((p) => p.id === cur) + 1;
+  nav.append(h('p.st-path-count', { text: 'Step ' + at + ' of ' + (rows.length + EXTRAS.length) }));
   return nav;
 }
 
@@ -238,7 +251,7 @@ function refreshStepper() {
 wireBible({ getStory: story, saved: () => { refreshStepper(); pullBlueprintHosts(); }, film: favSlug, rerender: render });
 
 const stepHead = (id, title, lead) => [
-  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
+  h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + (pathNow().length + EXTRAS.length) }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
   learnBox(LEARN_TOPIC[id])
@@ -1138,8 +1151,7 @@ function applyView() {
        sections after it (Beats & pacing, Pitch deck, Cover sheet) are
        the bar's "Then" row and say so rather than taking a number. */
     if (p.id === shown) {
-      const n = pathNow().length;
-      const f = stepFooter(panels, p.id, { countText: (i) => (i < n ? 'Step ' + (i + 1) + ' of ' + n : 'After the path') });
+      const f = stepFooter(panels, p.id, { countText: (i) => 'Step ' + (i + 1) + ' of ' + panels.length });
       if (f) p.el.append(f);
     }
   });

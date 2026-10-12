@@ -40,6 +40,7 @@ import '../styles/ai.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 /* The provider TABLE only — not src/lib/ai.js, which this page
@@ -940,6 +941,7 @@ function render(focus) {
     renderLookbook(boards)
   );
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();

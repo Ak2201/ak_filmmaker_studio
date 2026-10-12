@@ -1742,3 +1742,69 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       the rise band; `prove:growth` asserts the plans and buy links stay.
     - `.st-tiers li` matched the bullet lists inside each card, giving every
       bullet a card's padding and border — the tier rules are `> li` now.
+
+
+35. **The UI revamp: one top bar, a console-style Settings, purchases in one
+    place, a scene table, and the Pre-production path (12 Oct 2026).** The
+    owner liked Story's flow and asked for the same across pre-production, a
+    consistent band, Dark/Light, a revamped account/Settings/Drive, one place
+    to buy, People "delete totally", a real search and a lighter Home.
+    Owner's answers: one big change; no local gate; ONE Dark/Light button;
+    total delete keeps invoices, anonymised; Story keeps its step strip and
+    loses the "Then" row; Search is a real box in the band; the right zone is
+    Project switcher · Backup · Theme · Name on every page but the doorway.
+    - **Band.** `buildStudioTools` builds one `.sh-tools` zone on every page
+      (inside the page `.toolbar` on hub/library/feature/short). Theme is one
+      button (`chrome.js` `themeToggle`, labels Dark/Light; ids `ink`/`paper`
+      and `fms_studio_theme_v1` unchanged); the "Design" row, the legacy ◐
+      picker and the stale sepia/desk text are gone. Backup is one menu
+      (`topbar-backup.js`, CORE: it copies `ACTIVITY_KEY` instead of importing
+      `all-keys.js`, which would pull drive-sync into CORE). Global pages use a
+      3-column grid (crumb | search | tools).
+    - **Search.** `.sh-find` is a real field (a launcher: a click or the first
+      key opens the palette with that text; NOT on focus, because the palette
+      returns focus to its opener). Index gained Places and People; script
+      lines are searched on demand (`scriptHits`), never indexed. On a bar with
+      the stage strip it is the glyph alone until the band stacks.
+    - **Settings.** Five tabs: Account · Preferences · Data & backup · Team ·
+      Admin, in the console's grouped sub-nav (`.st-console`). Old hashes still
+      land (`#drive` opens Data & backup). `ownsSync()` in `drive-sync.js` is
+      DELIBERATELY unchanged: two devices uploading to one Drive file overwrite
+      each other, so the page says plainly that with cloud sync on, Drive is
+      manual.
+    - **Purchases.** `invite.html` draws no plan cards; `purchase.html` is
+      exempt from the site gate (`EXEMPT` in `sitegate.js`, `APP_PAGE` in
+      `start.js`) so a signed-in person outside the door can reach it;
+      `start.html`'s "or buy now" goes to `purchase.html?plan=X`; the plan
+      survives the Google hop in a sessionStorage stash (`plan-cards.js`).
+    - **People.** DELETE TOTALLY beside CLEAR ACCESS (members table, request
+      rows, Customer 360), owner only, e-mail typed back, calling the existing
+      `admin_delete_user`; the Controls-tab erase form is gone. **Schema §47**
+      restates it to anonymise the kept invoices (name -> "Deleted customer",
+      e-mail and GSTIN cleared; number, FY, sequence, amount untouched).
+    - **Home** lost its title block, tour invite and closing quote (the page h1
+      is the projects heading).
+    - **Scene list** is a table (`renderScene` in `breakdown.js`,
+      `scene-list.css`): find + three filters, rows open to edit, bulk set,
+      MOVE TO BIN with UNDO instead of a confirm. Filtering hides rows in place;
+      open/selected/filter state lives in `SL` for the page view only.
+    - **Pre-production path.** `preprod.html` (`src/pages/preprod.js`) shows
+      the eleven steps one at a time (`src/data/preprod-path.json`), each state
+      DERIVED in `src/lib/preprod-path.js` from the models and
+      `readiness.js` (nothing stored). `src/ui/path-bar.js` mounts the same
+      strip + Back/Next on breakdown, visualize, plan, budget, contacts,
+      stripboard and reports. It is NOT sticky: `measureChrome()` counts any
+      pinned row not parked on the published value as band. The stage's tab
+      lands on the path through a phase `home` in `navigation.json`
+      (`firstModuleOf`, `stageHref`) and `STAGE_PAGES` in `navmodel.js` — NOT a
+      nav module, because a module id needs a plan-matrix row, a §36
+      regeneration and a §43 usage name.
+    - **Not done.** Drag-reorder of scenes (up/down only); element
+      autocomplete is a datalist of the film's existing names; the dashboard's
+      Pre-production card does not say "Step N of M" (journey.js is first
+      paint and must not import the path model).
+    - **Gate.** Page text changed on most pages and `preprod.html` is a new
+      page, so `verify` needs a baseline recapture and several `prove:*`
+      scripts were edited blind (prove-billing, prove-admin-people,
+      fake-admin-rpcs-*). `test:schema` (1138 checks incl. §47) and the Node
+      tests pass; the browser proofs have not been run.

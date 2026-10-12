@@ -28,6 +28,7 @@ import '../styles/pdf.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
+import { mountPathBar } from '../ui/path-bar.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -883,6 +884,7 @@ function render() {
   main.append(renderPeople(contacts));
   main.append(renderSheets(sheets, contacts, scenes));
 
+  mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);
   mountShell();
   wireActionBar();

@@ -28,6 +28,10 @@ import Billing, { planName } from '../lib/billing.js';
 import Growth, { isMissing } from '../lib/growth.js';
 import Store from '../lib/store.js';
 import { ask, askDanger } from './dialog.js';
+import { pill, emptyState, errorState, skeleton } from './admin-kit.js';
+import { rpc, studioRole, can } from './admin-customer.js';
+import { formatCode, errorSentence as sentence } from '../lib/gate.js';
+import { addRequestsBlock } from './gate-ui.js';
 import '../styles/growth.css';
 
 let rerender = () => {};
@@ -205,4 +209,119 @@ delegate(document, 'click', '[data-acc-action="revoke"]', async (e, el) => {
   rerender();
 });
 
-export default { purchasesSwitchBlock, giveAccessBlock, accessAdminSection, wireAccessAdmin };
+/* ---- screening passes and share links (schema §45.5) -----------------
+   Two more lists in the Access & sharing tab. METADATA ONLY: the server
+   sends no share token and no redeemer address. gate-ui.js draws the
+   requests tab and does not import this file (it also serves the invite
+   and settings pages, which must not pull the console in), so these blocks
+   are REGISTERED: importing this module adds them to the tab through
+   addRequestsBlock(). The roles hide the buttons; the server's refusal
+   sentence is shown as it came. */
+const LISTS = { passes: { phase: 'idle', rows: [], error: '' }, shares: { phase: 'idle', rows: [], error: '' } };
+const LIST_RPC = { passes: 'admin_list_passes', shares: 'admin_list_shares' };
+
+async function loadList(key) {
+  const L = LISTS[key];
+  L.phase = 'loading'; L.error = '';
+  try { L.rows = (await rpc(LIST_RPC[key])) || []; L.phase = 'ready'; }
+  catch (e) { L.error = sentence(e, 'This list could not load.'); L.phase = 'error'; }
+  rerender();
+}
+function listBody(key, title, intro, draw) {
+  const L = LISTS[key];
+  if (L.phase === 'idle') { studioRole().then(() => rerender()); loadList(key); }
+  const box = h('div.ad-block.acc-' + key, { id: key === 'passes' ? 'screening-passes' : 'share-links' }, [h('h3.gt-h3', { text: title }), h('p.gt-meta', { text: intro })]);
+  if (L.phase === 'loading' || L.phase === 'idle') { box.append(skeleton({ kind: 'rows', count: 3 })); return box; }
+  if (L.phase === 'error') { box.append(errorState({ title: title + ' could not load', why: L.error, onRetry: () => { L.phase = 'idle'; rerender(); } })); return box; }
+  return draw(box, L.rows);
+}
+const pillFor = (status) => pill(String(status).replace(/^./, (c) => c.toUpperCase()), status === 'active' ? 'ok' : status === 'revoked' ? 'danger' : 'neutral', { dot: true });
+const mayManage = () => can('passes');
+
+export function passesBlock() {
+  return listBody('passes', 'Screening passes', 'Read-only links to one film. Revoke ends a pass now; extend moves its expiry out.', (box, all) => {
+    const rows = all.filter((p) => p.pass_type === 'screening_pass');
+    if (!rows.length) { box.append(emptyState({ title: 'No screening passes', body: 'Issue one under Issue a code above; it will be listed here.', icon: '◇' })); return box; }
+    const table = h('table.gt-table.acc-table');
+    table.append(h('thead', {}, [h('tr', {}, ['Code', 'Film', 'Made by', 'Used', 'Expires', 'State', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+    const tb = h('tbody');
+    for (const p of rows) {
+      const live = p.status === 'active';
+      const can_ = mayManage();
+      tb.append(h('tr', { 'data-pass': p.code }, [
+        h('td', {}, [h('code.gt-codeval', { text: formatCode(p.code) }), p.label ? h('span.ad-sub', { text: p.label }) : null]),
+        h('td', { text: p.project_title || '—' }),
+        h('td', { text: p.created_by_email || '—' }),
+        h('td', { text: `${p.uses} / ${p.max_uses}` }),
+        h('td', { text: p.expires_at ? new Date(p.expires_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Never' }),
+        h('td', {}, [pillFor(p.status)]),
+        h('td.gt-row-actions', {}, can_ && p.status !== 'revoked' ? [
+          p.expires_at ? h('button.btn', { type: 'button', 'data-acc-action': 'extend-pass', 'data-code': p.code, 'data-days': '7', 'aria-label': 'Extend ' + formatCode(p.code) + ' by 7 days', text: '+7 DAYS' }) : null,
+          p.expires_at ? h('button.btn', { type: 'button', 'data-acc-action': 'extend-pass', 'data-code': p.code, 'data-days': '30', 'aria-label': 'Extend ' + formatCode(p.code) + ' by 30 days', text: '+30 DAYS' }) : null,
+          live ? h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-pass', 'data-code': p.code, 'aria-label': 'Revoke ' + formatCode(p.code), text: 'REVOKE' }) : null
+        ].filter(Boolean) : [])
+      ]));
+    }
+    table.append(tb);
+    box.append(h('div.gt-scroll', {}, [table]));
+    return box;
+  });
+}
+
+export function sharesBlock() {
+  return listBody('shares', 'Share links', 'Links people made to share a film. No link address is shown here. Revoke ends the link; anybody who already joined through it keeps their access.', (box, rows) => {
+    if (!rows.length) { box.append(emptyState({ title: 'No share links', body: 'Nobody has shared a film by link yet.', icon: '◇' })); return box; }
+    const table = h('table.gt-table.acc-table');
+    table.append(h('thead', {}, [h('tr', {}, ['Film', 'Owner', 'Gives', 'Made by', 'Made', 'Expires', 'State', ''].map((t) => h('th', { scope: 'col', text: t })))]));
+    const tb = h('tbody');
+    for (const s of rows) {
+      tb.append(h('tr', { 'data-share': s.id }, [
+        h('td', { text: s.project_title || '—' }),
+        h('td', { text: s.owner_email || '—' }),
+        h('td', { text: s.role ? String(s.role).replace(/^./, (c) => c.toUpperCase()) : '—' }),
+        h('td', { text: s.created_by_email || '—' }),
+        h('td', { text: fmtDate(s.created_at) }),
+        h('td', { text: s.expires_at ? fmtDate(s.expires_at) : 'Never' }),
+        h('td', {}, [pillFor(s.active ? 'active' : 'ended')]),
+        h('td.gt-row-actions', {}, mayManage() && s.active ? [
+          h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-share', 'data-id': s.id, 'aria-label': 'Revoke the share link for ' + (s.project_title || 'this film'), text: 'REVOKE' })
+        ] : [])
+      ]));
+    }
+    table.append(tb);
+    box.append(h('div.gt-scroll', {}, [table]));
+    return box;
+  });
+}
+
+/** Both, under one wrapper, for the Access & sharing tab. */
+export function sharingBlocks() {
+  return h('div.ad-block.acc-sharing', { id: 'sharing' }, [passesBlock(), sharesBlock()]);
+}
+addRequestsBlock(sharingBlocks);
+
+const ackWrote = (msg) => toast(msg);
+delegate(document, 'click', '[data-acc-action="revoke-pass"]', async (e, el) => {
+  const code = el.dataset.code;
+  if (!await askDanger({ title: 'Revoke screening pass ' + formatCode(code) + '?', body: 'Nobody can open the screening room with it again, including people who hold the link now. The row stays in this list.', confirm: 'Revoke pass' })) return;
+  try { await rpc('admin_revoke_pass', { p_code: code }); ackWrote('Pass ' + formatCode(code) + ' revoked.'); await loadList('passes'); }
+  catch (err) { toast(sentence(err, 'The pass was not revoked.'), 'error'); }
+});
+delegate(document, 'click', '[data-acc-action="extend-pass"]', async (e, el) => {
+  const code = el.dataset.code, days = parseInt(el.dataset.days, 10);
+  const p = LISTS.passes.rows.find((x) => x.code === code);
+  const from = Math.max(Date.now(), p && p.expires_at ? Date.parse(p.expires_at) : Date.now());
+  const to = new Date(from + days * 86400000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  if (!await ask({ title: 'Extend pass ' + formatCode(code) + ' by ' + days + ' days?', body: 'It will expire on ' + to + '. If it has already expired it counts from now, and it opens again.', confirm: 'Extend ' + days + ' days' })) return;
+  try { await rpc('admin_extend_pass', { p_code: code, p_days: days }); ackWrote('Pass ' + formatCode(code) + ' extended by ' + days + ' days.'); await loadList('passes'); }
+  catch (err) { toast(sentence(err, 'The pass was not extended.'), 'error'); }
+});
+delegate(document, 'click', '[data-acc-action="revoke-share"]', async (e, el) => {
+  const id = el.dataset.id;
+  const s = LISTS.shares.rows.find((x) => x.id === id);
+  if (!await askDanger({ title: 'Revoke the share link for ' + ((s && s.project_title) || 'this film') + '?', body: 'The link stops working now. People who already joined through it keep the access they were given; that is not touched here.', confirm: 'Revoke link' })) return;
+  try { await rpc('admin_revoke_share', { p_share: id }); ackWrote('Share link revoked.'); await loadList('shares'); }
+  catch (err) { toast(sentence(err, 'The link was not revoked.'), 'error'); }
+});
+
+export default { purchasesSwitchBlock, giveAccessBlock, accessAdminSection, wireAccessAdmin, passesBlock, sharesBlock, sharingBlocks };

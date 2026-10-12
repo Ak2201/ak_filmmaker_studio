@@ -700,3 +700,153 @@ html.ad-drawer-on { overflow: hidden; }
   .adc-bar-r, .adc-fn-r { grid-template-columns: minmax(4rem, 7rem) minmax(0, 1fr) auto; }
   .adc-fn-d { display: none; }
 }
+
+/* ── customer & support ──────────────────────────────────────────────
+   The Customer 360 drawer (src/ui/admin-customer.js), the Support tab
+   (src/pages/admin-tabs/support.js) and the screening-pass / share-link
+   lists (src/ui/access-admin.js). The drawer sits on <body>, outside
+   .ad-console, so its rules are scoped to .ad-drawer. Tokens and --sk-*
+   only; the sheet's transition is admin-kit's, nothing here moves. */
+
+/* rows that open the drawer */
+.ad-console tr[data-gate-user],
+.ad-console tr.cu-open-row { cursor: pointer; }
+.ad-console tr[data-gate-user]:hover,
+.ad-console tr.cu-open-row:hover { background: var(--paper-sunk); }
+.ad-console tr[data-gate-user]:focus-visible,
+.ad-console tr.cu-open-row:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: -2px; }
+
+/* the drawer's header: name over a pill line, the likely actions beside it */
+/* the kit's header is one row; with three actions beside CLOSE the e-mail
+   was breaking mid-word, so the title keeps a floor and the actions wrap under it */
+.ad-drawer .ad-drawer-h { flex-wrap: wrap; }
+.ad-drawer .ad-drawer-t { flex: 1 1 14rem; }
+.ad-drawer .ad-drawer-a { flex: 1 1 auto; justify-content: flex-start; }
+.ad-drawer .cu-acts { display: contents; }
+.ad-drawer .cu-sub { display: grid; gap: var(--s1); margin-top: var(--s1); }
+.ad-drawer .cu-sub .ad-meta { overflow-wrap: anywhere; }
+.ad-drawer .cu-pills { display: flex; flex-wrap: wrap; gap: var(--s1); margin: 0; }
+.ad-drawer .cu-body { display: grid; gap: var(--s3); min-width: 0; }
+.ad-drawer .btn.cu-mini, .ad-console .btn.cu-mini { padding: var(--s1) var(--s3); font-size: var(--t-tiny); }
+
+/* a section: a card you can fold */
+.ad-drawer .cu-sec {
+  min-width: 0;
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-raised);
+}
+.ad-drawer .cu-sec-h {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--sk-radius, var(--radius));
+}
+.ad-drawer .cu-sec-h::-webkit-details-marker { display: none; }
+.ad-drawer .cu-sec-h::after { content: '+'; margin-left: auto; color: var(--ink-muted); font-weight: 700; }
+.ad-drawer .cu-sec[open] > .cu-sec-h::after { content: '–'; }
+.ad-drawer .cu-sec-h:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: -2px; }
+.ad-drawer .cu-sec-t { font-family: var(--f-display); font-weight: 700; font-size: var(--t-base); color: var(--ink); }
+.ad-drawer .cu-sec-b { padding: 0 var(--s4) var(--s4); min-width: 0; }
+.ad-drawer .cu-stack { display: grid; gap: var(--s3); min-width: 0; }
+.ad-drawer .cu-h4 {
+  margin: 0;
+  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 400;
+  letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ad-drawer .cu-line { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
+.ad-drawer .cu-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.ad-drawer .cu-meta a { color: var(--accent-deep); }
+.ad-drawer .cu-none { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.ad-drawer .cu-code {
+  font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-body);
+  overflow-wrap: anywhere;
+}
+.ad-drawer .ad-when { margin-left: 0; }
+
+/* label / value pairs: two columns on a desk, stacked on a phone */
+.ad-drawer .cu-dl { display: grid; grid-template-columns: minmax(6.5rem, 0.4fr) minmax(0, 1fr); gap: var(--s2) var(--s3); margin: 0; font-size: var(--t-small); }
+.ad-drawer .cu-dl dt { margin: 0; color: var(--ink-muted); }
+.ad-drawer .cu-dl dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+
+/* lists of payments, invoices, requests, organisations */
+.ad-drawer .cu-rows, .ad-drawer .cu-list, .ad-drawer .cu-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.ad-drawer .cu-list { font-size: var(--t-small); color: var(--ink-body); gap: var(--s1); }
+.ad-drawer .cu-row {
+  display: grid; gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--paper-sunk);
+  min-width: 0;
+}
+.ad-drawer .cu-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; }
+.ad-drawer .cu-row-main strong { color: var(--ink); font-size: var(--t-small); overflow-wrap: anywhere; }
+.ad-drawer .cu-amt { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+.ad-drawer .cu-row-sub { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s1); font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; }
+.ad-drawer .cu-row .btn { justify-self: start; }
+.ad-drawer .cu-quote {
+  margin: var(--s1) 0 0; padding-left: var(--s3);
+  border-left: 3px solid var(--sk-card-line);
+  font-size: var(--t-small); color: var(--ink-body); overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.ad-drawer .cu-quote.is-note { border-left-color: var(--brand); }
+
+.ad-drawer .cu-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.ad-drawer .cu-meters { display: grid; gap: var(--s2); }
+.ad-drawer .cu-btns { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* forms in the drawer */
+.ad-drawer .cu-form, .ad-drawer .cu-note-form { display: grid; gap: var(--s3); }
+.ad-drawer .cu-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--s2) var(--s3); }
+.ad-drawer .cu-fields > div { display: grid; gap: var(--s1); min-width: 0; align-content: end; }
+.ad-drawer .cu-fields label {
+  font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.ad-drawer :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { padding: var(--s2); font-size: var(--t-small); min-width: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
+.ad-drawer .cu-form > .btn { justify-self: start; }
+.ad-drawer .cu-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.ad-drawer .cu-danger {
+  display: grid; gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--danger-wash);
+}
+.ad-drawer .cu-danger .btn { justify-self: start; }
+
+/* the notes thread */
+.ad-drawer .cu-note { display: grid; gap: var(--s1); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-sunk); }
+.ad-drawer .cu-note-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); font-size: var(--t-tiny); color: var(--ink-muted); }
+.ad-drawer .cu-note-h strong { color: var(--ink); overflow-wrap: anywhere; }
+.ad-drawer .cu-note-b { margin: 0; font-size: var(--t-small); color: var(--ink-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 719px) {
+  .ad-drawer .cu-dl { grid-template-columns: 1fr; gap: 0; }
+  .ad-drawer .cu-dl dd { margin-bottom: var(--s2); }
+  .ad-drawer .ad-drawer-a .btn { padding-inline: var(--s3); }
+}
+
+/* the Support tab */
+.ad-console .su { display: grid; gap: var(--s4); min-width: 0; }
+.ad-console .su-filters { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
+.ad-console .su-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); }
+.ad-console .su-gl { margin-right: var(--s1); font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.ad-console .su-filters .ad-chip[aria-pressed="true"] { background: var(--brand-wash); border-color: var(--brand); color: var(--brand-deep); font-weight: 600; }
+.ad-console .su-n { font-variant-numeric: tabular-nums; }
+.ad-console .su-what { display: grid; gap: 2px; min-width: 12rem; max-width: 26rem; }
+.ad-console .su-what strong { color: var(--ink); overflow-wrap: anywhere; }
+.ad-console .su-detail {
+  font-size: var(--t-tiny); color: var(--ink-muted);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ad-console .su-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); min-width: 10rem; }
+.ad-console .su-status { padding: var(--s1) var(--s2); width: auto; }
+.ad-console .su-log textarea { width: 100%; box-sizing: border-box; }
+
+/* screening passes and share links */
+.ad-console .acc-sharing { display: grid; gap: var(--s5); }
+.ad-console .acc-table .ad-sub { margin-top: 2px; }
+/* ── end customer & support ─────────────────────────────────────── */

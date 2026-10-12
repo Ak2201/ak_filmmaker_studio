@@ -275,9 +275,21 @@ export function adminSection(section, st, { part } = {}) {
   if (want('requests')) requestsPart(sec);
   if (want('members')) membersPart(sec);
   if (want('requests')) redemptionsPart(sec);
+  if (part === 'requests') {
+    for (const fn of requestsExtras) {
+      try { const el = fn(); if (el) sec.append(el); } catch (e) { console.warn('[gate-ui] requests block', e); }
+    }
+  }
   sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gate-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
+
+/* Blocks other modules add under the requests tab (screening passes and
+   share links, from access-admin.js). Registered rather than imported:
+   this file also serves invite.html and settings.html, which must not pull
+   the console's modules in. A block is a function returning a node. */
+const requestsExtras = [];
+export function addRequestsBlock(fn) { if (typeof fn === 'function' && !requestsExtras.includes(fn)) requestsExtras.push(fn); }
 
 function requestsPart(sec) {
 
@@ -293,7 +305,7 @@ function requestsPart(sec) {
     table.append(h('thead', {}, [h('tr', {}, ['Who', 'Asked', 'Their note', 'From', ''].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const r of pending) {
-      tb.append(h('tr', { 'data-request': r.user_id }, [
+      tb.append(h('tr', { 'data-request': r.user_id, 'data-gate-user': r.user_id, tabindex: '0', 'aria-label': 'Open ' + r.email }, [
         h('td', {}, [h('strong', { text: r.display_name || r.email }), r.display_name ? h('br') : null, r.display_name ? h('span.gt-meta', { text: r.email }) : null].filter(Boolean)),
         h('td', { text: fmtDate(r.requested_at) + (r.times_asked > 1 ? ` · asked ${r.times_asked}×` : '') }),
         h('td', { text: r.note || '—' }),
@@ -453,7 +465,7 @@ function membersPart(sec) {
     table.append(h('thead', {}, [h('tr', {}, ['Email', 'Role', 'Session', 'Where', ''].map((t) => h('th', { scope: 'col', text: t })))]));
     const tb = h('tbody');
     for (const m of admin.members) {
-      tb.append(h('tr', {}, [
+      tb.append(h('tr', { 'data-gate-user': m.user_id, tabindex: '0', 'aria-label': 'Open ' + m.email }, [
         h('td', { text: m.email }),
         h('td', { text: m.disabled_at ? m.role + ' (disabled)' : m.role }),
         h('td', { text: live(m) ? 'Active · ' + since(m.last_heartbeat) : m.last_heartbeat ? 'Idle since ' + fmtDate(m.last_heartbeat) : 'None' }),
@@ -547,6 +559,20 @@ delegate(document, 'input', '[data-gate-field="code"]', (e, el) => {
   // Show the normalised form as it is typed (FR-101), keeping the caret at the end.
   const f = formatCode(el.value);
   if (f !== el.value) el.value = f;
+});
+/* A row that names a person opens the Customer 360 drawer
+   (#people?user=<id>, src/ui/admin-customer.js). Loaded on demand: this
+   file also serves pages that have no console. A click on something
+   inside the row that does its own thing (a button, a link) is left to it. */
+const openPerson = (id) => { import('./admin-customer.js').then((m) => m.openUser(id)).catch((e) => toast(errorSentence(e, 'The person could not be opened.'), 'error')); };
+delegate(document, 'click', 'tr[data-gate-user]', (e, tr) => {
+  if (e.target.closest('a, button, input, select, textarea, label, summary')) return;
+  openPerson(tr.dataset.gateUser);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const tr = e.target && e.target.matches && e.target.matches('tr[data-gate-user]') ? e.target : null;
+  if (tr) { e.preventDefault(); openPerson(tr.dataset.gateUser); }
 });
 delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   const g = gate();

@@ -42,6 +42,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
+import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
    trial on, and how long is it). The signed-out half of this page needs
@@ -263,9 +264,11 @@ function render() {
     {
       const buy = section('buy', 'Or', 'Buy a plan and come straight in.',
         'One payment, access for good — no trial first if you already know you want it.');
+      /* The prices on this page (src/ui/list-prices.js), not a link away. */
+      buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
-        h('a.btn', { href: 'start.html#pricing', text: 'SEE PRICES' })
+        h('a.btn', { href: 'start.html#pricing', text: 'COMPARE EVERY FEATURE' })
       ]));
       body.append(buy);
     }
@@ -285,8 +288,12 @@ function render() {
     const used = lastStatus.trial_used === true;
     const sec = section('through', used ? 'Your trial' : 'The studio', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
       'Signed in as ' + email + '. Everything you wrote is still saved on this device; a plan opens the studio for good.');
+    /* The same prices and the same button a new signup gets: this branch
+       used to offer one bare SEE PLANS, one hop more than a stranger.
+       Plans are BOUGHT on purchase.html only (owner, 12 Oct 2026). */
+    sec.append(listPriceBlock());
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' }),
+      h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS AND BUY' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
     ]));
     body.append(sec);
@@ -345,7 +352,7 @@ function render() {
     if (trialOffer) {
       const len = trialLength(trialOffer.minutes);
       const t = section('trial', 'Free trial', 'Start your free trial.',
-        'Open the Dragon sample — a complete Tamil feature, with its script, its breakdown, its schedule and its call sheets — and read it from the inside, for ' + len + '. No card, nothing to fill in.');
+        'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
       t.append(h('div.iv-actions', {}, [
         h('button.btn.primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
       ]));
@@ -364,6 +371,7 @@ function render() {
             'One payment, access for good — and the only thing that keeps the studio open once a trial has run out.')
         : section('buy', used ? 'Your trial' : 'Plans', used ? 'Your free trial is over.' : 'Choose a plan to come in.',
             'Signed in as ' + email + '. Everything you wrote is still saved on this device, exactly as it is. One payment, access for good.');
+      buy.append(listPriceBlock());
       buy.append(h('div.iv-actions', {}, [
         h('a.btn' + (trialOffer ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS AND BUY' })
       ]));

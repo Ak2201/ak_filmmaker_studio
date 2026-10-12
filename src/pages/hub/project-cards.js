@@ -278,7 +278,16 @@ function renderProjects() {
       h('div.pc-cta', { text: 'NEW PROJECT' })
     ]));
   } else if (sampleOnly) {
-    grid.append(h('p.pc-plan-note', { text: 'Your plan opens the sample project. A paid plan adds films of your own.' }));
+    /* "Your plan" was wrong for the commonest reader of this line — a
+       trial is not a plan. The way up is named, priced and linked once
+       the plan rows answer; until then the plain sentence stands. */
+    const lead = PlanGate.currentPlan().reason === 'trial' ? 'Your free trial opens the sample films.' : 'Without a plan the studio opens the sample films.';
+    const note = h('p.pc-plan-note', { text: lead + ' A plan adds films of your own.' });
+    grid.append(note);
+    PlanGate.offerFor(['new_projects']).then((o) => {
+      if (!o || !note.isConnected) return;
+      note.replaceChildren(lead + ' ', h('a', { href: o.href, text: PlanGate.offerText(o) }), ' adds films of your own — one payment.');
+    }).catch(() => { /* the plain sentence stands */ });
   }
 }
 

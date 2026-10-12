@@ -17,7 +17,7 @@
     "feature:step-05": { "short": "Antagonist", "stage": "story", "part": 1, "tools": [] },
     "feature:step-06": { "short": "Supporting cast", "stage": "story", "part": 1, "tools": [] },
     "feature:step-07": { "short": "World", "stage": "story", "part": 1, "tools": ["idea-vault"] },
-    "feature:step-08": { "short": "15 beats", "stage": "story", "part": 1, "tools": ["story-beats", { "module": "screenplay", "href": "write.html#outline", "sub": "Outline" }] },
+    "feature:step-08": { "short": "15 beats", "stage": "story", "part": 1, "tools": ["story-beats", { "module": "screenplay", "href": "breakdown.html#script", "sub": "Outline" }] },
     "feature:step-09": { "short": "Timeline", "stage": "story", "part": 1, "tools": ["story-beats"] },
     "feature:step-10": { "short": "Setups & payoffs", "stage": "story", "part": 1, "tools": ["story-beats"] },
 
@@ -63,7 +63,7 @@
     "short:step-11": { "short": "Final lock", "stage": "screenplay", "lock": true, "tools": ["revisions"] }
   },
   "paths": {
-    "_about": "A PAGE WITH A PATH ON IT, and which blueprint step answers each step of the path - read by src/ui/blueprint-drawer.js to narrow its pill. story.html is a six-step path (1 Idea, 2 Logline, 3 Structure, 4 Step outline, 5 Synopsis, 6 To the Screenplay) and its hash is `#path-N`; without the mapping the pill listed every step whose tools land on the page (02, 03, 08, 09, 10) whichever step was open (docs/KNOWN-ISSUES.md section 7).\n\nKEYED BY PAGE FILE. `hash` is the fragment prefix the page writes for its path step; the drawer also reads the step from the element carrying aria-current=\"step\" and data-step, so a path step chosen without a hash still narrows. `steps` maps a path step number to the blueprint step ids that answer it, PER BLUEPRINT FORMAT (`feature` covers the 01-32 feature blueprint, whichever namespace renders the step; `short` the short film's). A path step with no entry for the open blueprint, or whose ids resolve to nothing, falls back to the tools-based list, so an unmapped step is never a missing pill. The ids are blueprint step ids, which the drawer links as `<page>#step-NN`.",
+    "_about": "A PAGE WITH A PATH ON IT, and which blueprint step answers each step of the path - read by src/ui/blueprint-drawer.js to narrow its pill. story.html is a six-step path (1 Idea, 2 Logline, 3 Structure, 4 Step outline, 5 Synopsis, 6 Open the Screenplay Writer) and its hash is `#path-N`; without the mapping the pill listed every step whose tools land on the page (02, 03, 08, 09, 10) whichever step was open (docs/KNOWN-ISSUES.md section 7).\n\nKEYED BY PAGE FILE. `hash` is the fragment prefix the page writes for its path step; the drawer also reads the step from the element carrying aria-current=\"step\" and data-step, so a path step chosen without a hash still narrows. `steps` maps a path step number to the blueprint step ids that answer it, PER BLUEPRINT FORMAT (`feature` covers the 01-32 feature blueprint, whichever namespace renders the step; `short` the short film's). A path step with no entry for the open blueprint, or whose ids resolve to nothing, falls back to the tools-based list, so an unmapped step is never a missing pill. The ids are blueprint step ids, which the drawer links as `<page>#step-NN`.",
     "story.html": {
       "hash": "path-",
       "steps": {

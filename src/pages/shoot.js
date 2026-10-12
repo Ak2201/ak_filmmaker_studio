@@ -147,7 +147,7 @@ function render(focus) {
     app.replaceChildren(renderEmpty(
       'No scenes yet. Break the script down first and the day builds itself — '
       + 'this page is a view of the scene list, not a second copy of it.',
-      { href: 'breakdown.html#scenes', label: 'Open the breakdown →' }));
+      { href: 'breakdown.html#scenes', label: 'Open the Scene List →' }));
     after();
     return;
   }
@@ -229,7 +229,8 @@ function render(focus) {
   /* The day answers the plan here; the report on it is written on
      reports.html (src/lib/dpr.js), which reads these marks back. */
   main.append(h('p.sd-dpr', {}, [
-    h('a.btn', { href: 'reports.html?day=' + day.day + '#dpr', text: 'End of day → DPR' })
+    h('a.btn', { href: 'reports.html?day=' + day.day + '#dpr', text: 'End of day → DPR' }),
+    h('a.btn', { href: 'edit.html#log', text: 'Next: Edit Log →' })
   ]));
 
   app.replaceChildren(main);

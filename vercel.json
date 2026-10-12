@@ -48,6 +48,7 @@
     { "source": "/contacts", "destination": "/contacts.html" },
     { "source": "/visualize", "destination": "/visualize.html" },
     { "source": "/write", "destination": "/write.html" },
+    { "source": "/screenplay", "destination": "/screenplay.html" },
     { "source": "/plan", "destination": "/plan.html" },
     { "source": "/study", "destination": "/study.html" },
     { "source": "/dissect", "destination": "/dissect.html" },
@@ -61,6 +62,8 @@
     { "source": "/start", "destination": "/start.html" }
   ],
   "redirects": [
+    { "source": "/script.html", "destination": "/screenplay", "permanent": true },
+    { "source": "/script", "destination": "/screenplay", "permanent": true },
     { "source": "/shared/:token", "destination": "/?share=:token", "permanent": false },
     { "source": "/arunak-filmmaker-blueprint.html", "destination": "/feature", "permanent": true },
     { "source": "/arunak-shortfilm-blueprint.html", "destination": "/short", "permanent": true },

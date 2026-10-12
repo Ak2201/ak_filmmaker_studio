@@ -118,7 +118,7 @@ export function buildIndex(src) {
 export const STAGES = [
   { id: 'story', label: 'Story' },
   { id: 'screenplay', label: 'Screenplay' },
-  { id: 'preprod', label: 'Pre-production' },
+  { id: 'preprod', label: 'Pre-Production' },
   { id: 'production', label: 'Production' },
   { id: 'post', label: 'Post' }
 ];

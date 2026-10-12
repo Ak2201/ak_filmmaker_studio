@@ -235,9 +235,19 @@
   status = 200
 
 [[redirects]]
-  from = "/script"
-  to = "/script.html"
+  from = "/screenplay"
+  to = "/screenplay.html"
   status = 200
+
+[[redirects]]
+  from = "/script.html"
+  to = "/screenplay"
+  status = 301
+
+[[redirects]]
+  from = "/script"
+  to = "/screenplay"
+  status = 301
 
 [[redirects]]
   from = "/story"

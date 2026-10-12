@@ -266,13 +266,13 @@ eq(S.sendOutlineToScenes(sendStory, api).length, 1, 'a step whose scene is gone 
 const FEATURE_PATH = ['idea', 'logline', 'bible', 'structure', 'outline', 'setups', 'timeline', 'synopsis', 'lock', 'screenplay'];
 const SHORT_PATH = ['idea', 'logline', 'character', 'world', 'conflict', 'structure', 'outline', 'synopsis', 'lock', 'screenplay'];
 const pp = S.pathProgress({ ...S.blankStory(), logline: 'x' }, { scenes: [] });
-eq(pp.map((p) => p.id), FEATURE_PATH, 'the feature path: Idea, Logline, Story Bible, Scene order, Step outline, Setups & payoffs, Timeline, Synopsis & treatment, Lock, To the Screenplay');
-eq(pp.map((p) => p.label), ['Idea', 'Logline', 'Story Bible', 'Scene order', 'Step outline', 'Setups & payoffs', 'Timeline', 'Synopsis & treatment', 'Lock the outline', 'To the Screenplay'], 'the feature path labels');
+eq(pp.map((p) => p.id), FEATURE_PATH, 'the feature path: Idea, Logline, Story Bible, Scene order, Step outline, Setups & payoffs, Timeline, Synopsis & treatment, Lock, Open the Screenplay Writer');
+eq(pp.map((p) => p.label), ['Idea', 'Logline', 'Story Bible', 'Scene order', 'Step outline', 'Setups & payoffs', 'Timeline', 'Synopsis & treatment', 'Lock the outline', 'Open the Screenplay Writer'], 'the feature path labels');
 eq(pp.map((p) => p.pos), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 'ten places in the feature line');
 eq(pp.map((p) => p.done), [false, true, false, false, false, false, false, false, false, false], 'the path reads what is filled');
 const sp = S.pathProgress({ ...S.blankStory(), logline: 'x' }, { scenes: [], format: 'short' });
-eq(sp.map((p) => p.id), SHORT_PATH, 'the short path: Seed, Logline, Character, World, Conflict, Scene order, Step outline, Synopsis, Lock, To the Screenplay');
-eq(sp.map((p) => p.label), ['Seed', 'Logline', 'Character', 'World', 'Conflict', 'Scene order', 'Step outline', 'Synopsis', 'Lock the outline', 'To the Screenplay'], 'the short path labels');
+eq(sp.map((p) => p.id), SHORT_PATH, 'the short path: Seed, Logline, Character, World, Conflict, Scene order, Step outline, Synopsis, Lock, Open the Screenplay Writer');
+eq(sp.map((p) => p.label), ['Seed', 'Logline', 'Character', 'World', 'Conflict', 'Scene order', 'Step outline', 'Synopsis', 'Lock the outline', 'Open the Screenplay Writer'], 'the short path labels');
 ok(!sp.some((p) => ['bible', 'setups', 'timeline'].includes(p.id)), 'a short film’s path has no feature-only step (Story Bible, Setups, Timeline)');
 ok(!pp.some((p) => ['character', 'world', 'conflict'].includes(p.id)), 'and the feature’s has none of the short’s');
 eq(S.pathFor('short').map((p) => p.id), SHORT_PATH, 'pathFor(short)');

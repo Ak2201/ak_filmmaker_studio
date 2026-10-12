@@ -88,7 +88,7 @@ await page.evaluate(() => {
   const p = S.createProject({ title: 'Proof Tamil', format: 'feature' });
   S.setCurrentProject(p.id);
 });
-await page.goto(url('script.html'), { waitUntil: 'networkidle' });
+await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
 const loadWrites = await writes();
 
 /* A heading, an action, a cue, then a dialogue line to type into. */

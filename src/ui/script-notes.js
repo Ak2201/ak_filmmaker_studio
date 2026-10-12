@@ -1,5 +1,5 @@
 /* ============================================================
-   SCRIPT NOTES OVERVIEW (opened from script.html's ⋯ menu)
+   SCRIPT NOTES OVERVIEW (opened from screenplay.html's ⋯ menu)
    ------------------------------------------------------------
    Every note on the script in one dialog: filter by state, scene,
    author and kind; download as text or CSV; jump to the line.

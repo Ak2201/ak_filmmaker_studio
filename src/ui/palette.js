@@ -172,16 +172,16 @@ function score(item, q) {
 }
 
 let scriptLines = [];
-/* A script hit opens the page AT the line: script.html#line-<element id>.
+/* A script hit opens the page AT the line: screenplay.html#line-<element id>.
    script.js reads the hash on load and on hashchange. Already on the
    script page, choosing the SAME hash again would fire no hashchange and
    a different one would be a full reload for nothing, so the hash is set
    quietly and the event dispatched, which is what fragments.js does for
    a same-page link. */
-function lineHref(id) { return 'script.html#line-' + encodeURIComponent(String(id)); }
+function lineHref(id) { return 'screenplay.html#line-' + encodeURIComponent(String(id)); }
 function goToLine(id) {
   const href = lineHref(id);
-  if (pageFile(location.pathname) === 'script.html') {
+  if (pageFile(location.pathname) === 'screenplay.html') {
     history.replaceState(null, '', href.slice(href.indexOf('#')));
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   } else {
@@ -200,8 +200,8 @@ function scriptHits(needle) {
     out.push(entry({
       id: 'line:' + l.id,
       label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
-      sub: 'Script · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
-      group: 'Script',
+      sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
+      group: 'Screenplay',
       hueClass: 'sh-ph-screenplay',
       icon: '¶',
       href: lineHref(l.id),
@@ -679,7 +679,7 @@ function build() {
     autocomplete: 'off',
     autocapitalize: 'off',
     spellcheck: 'false',
-    placeholder: 'Search scenes, people, places, tools, settings, script lines…',
+    placeholder: 'Search scenes, people, places, tools, settings, screenplay lines…',
     'aria-expanded': 'false',   // openPalette/closePalette keep it true only while open
     /* The list is filtered as you type rather than completing the
        value in the field, which is "list" and not "both" or

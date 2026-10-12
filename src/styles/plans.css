@@ -84,3 +84,19 @@
 .pl-success .pl-note { color: inherit; }
 .pl-success-h { margin: 0; }
 .pl-card.is-picked { outline: 2px solid var(--cta-fill, var(--brand)); outline-offset: 2px; }
+
+/* Why a deep link picked this card (plan-cards.js markPicked). */
+.pl-why { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--accent-deep); }
+/* The refund terms beside the buttons. */
+.pl-promise { color: var(--ink-body); }
+/* Compare every feature (plan-cards.js compareBlock). */
+.pl-compare { margin-top: var(--s4); }
+.pl-compare > summary { cursor: pointer; font-weight: 600; color: var(--accent-deep); }
+.pl-compare-wrap { overflow-x: auto; margin-top: var(--s3); }
+.pl-compare-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.pl-compare-table th, .pl-compare-table td { padding: var(--s1) var(--s2); border-bottom: 1px solid var(--rule); text-align: center; }
+.pl-compare-table th[scope="row"] { text-align: left; font-weight: 500; color: var(--ink-body); }
+.pl-compare-table thead th { color: var(--ink); }
+.pl-compare-stage th { text-align: left; padding-top: var(--s3); color: var(--ink); font-weight: 700; }
+.pl-compare-table .is-on { color: var(--accent-deep); font-weight: 700; }
+.pl-compare-table .is-off { color: var(--ink-muted); }

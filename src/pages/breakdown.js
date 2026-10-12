@@ -48,7 +48,7 @@ const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
 function renderHeader(scenes) {
   const eighths = totalEighths(scenes);
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Breakdown · one scene model, three views' }),
+    h('p.bd-eyebrow', { text: 'Breakdown · one scene model, every view' }),
     h('h1.bd-title', { text: 'Breakdown.' }),
     h('p.bd-deck', {
       text: 'Every scene once — INT/EXT, time, location, length. The stripboard, '
@@ -121,13 +121,13 @@ const how = (n, title, body) =>
    and a field that refuses the step blocks the fix (UX audit M26,
    docs/KNOWN-ISSUES.md §8). Nothing in the app sorts by number — the
    list order IS the scene order — so "12A" needs no comparator. */
-const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in Write to renumber it.';
+const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in the Screenplay Writer to renumber it.';
 /* LOCKED NUMBERS (src/lib/script.js). Once Write locks the scene
    numbers, a bound scene's number is the lock's — 12A for a scene cut
    in after 12 — and scene-sync.js writes it onto the row; the card says
    so, because "change the heading to renumber it" stops being true. A
    hand-made scene is still the Breakdown's own and stays editable. */
-const LOCKED_TITLE = 'Locked scene number, set in Write. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
+const LOCKED_TITLE = 'Locked scene number, set in the Screenplay Writer. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
 let NUM_LOCK = { locked: false, omitted: [] };
 function readNumberLock() {
   try {
@@ -681,7 +681,7 @@ function renderElements() {
 const SUGGEST_CATS = ['cast', 'props', 'vehicles', 'stunts', 'sound'];
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
-  wrap.append(h('h2.bd-h2', { text: 'Suggested from the script' }),
+  wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),
               h('p.bd-sub', { text: 'Read from each scene\u2019s cues and action lines, in the colour of its category. '
                 + 'Press one to tag it; nothing is added until you do. Each scene is matched to the script heading that names the same place, so moving or deleting a scene here keeps its own text.' }));
   const report = scenes.length ? suggestReport(scenes, loadScript().elements) : { rows: [], match: null };
@@ -851,7 +851,7 @@ function render(focus) {
     NUM_LOCK = readNumberLock();
     if (NUM_LOCK.locked) {
       tagging.append(h('p.bd-lock-note', {
-        text: 'Scene numbers are locked in Write: a scene inserted after 12 is 12A, and a cut scene keeps its number as OMITTED'
+        text: 'Scene numbers are locked in the Screenplay Writer: a scene inserted after 12 is 12A, and a cut scene keeps its number as OMITTED'
           + (NUM_LOCK.omitted.length ? ' (omitted: ' + NUM_LOCK.omitted.join(', ') + ')' : '')
           + '. Unlock them in Write’s Revisions to renumber.'
       }));

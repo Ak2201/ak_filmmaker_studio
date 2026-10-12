@@ -97,8 +97,8 @@ export function interludeSection(item) {
   if (item.id === 'write-the-draft') {
     return h('section.step.sg-interlude', { id: 'write-the-draft' }, [
       h('div.step-header', {}, [h('div.step-title', { html: 'Write <em>the draft.</em>' })]),
-      h('p.step-deck', { text: 'This is the step the guide cannot do for you. The screenplay is written in Write — formatted as you type, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists.' }),
-      h('p', {}, [h('a.btn', { href: 'write.html', text: 'Open Write →' })])
+      h('p.step-deck', { text: 'This is the step the guide cannot do for you. The screenplay is written in the Screenplay Writer — formatted as you type, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists.' }),
+      h('p', {}, [h('a.btn', { href: 'screenplay.html', text: 'Open Screenplay Writer →' })])
     ]);
   }
   return null;

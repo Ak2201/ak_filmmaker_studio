@@ -996,7 +996,7 @@ the published policy. Change both together.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
    reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
    console's Invoices list shows "Sent <date>".
-## 17. Three plans, each including everything below it (schema §36, 11 Oct 2026). NOT RUN LIVE.
+## 17. Three plans, each including everything below it (schema §36, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 The owner's decision: **Basic writes the film, Intermediate prepares it,
 Pro is everything** — and the matrix REPLACES the live features map (the
@@ -1049,7 +1049,7 @@ required, or for a plan-less e-mail grant, `billing_status()` serves
    three paid rows match `matrixFeatures(id)`; free is unchanged.
 3. Open admin.html#features: the ticks are the split above.
 
-## 18. Writing-goal history syncs across devices (schema §37, 12 Oct 2026). NOT RUN LIVE.
+## 18. Writing-goal history syncs across devices (schema §37, 12 Oct 2026). RUN LIVE 12 Oct 2026.
 
 Not billing, but it is a schema section and its deploy steps live here with
 §24's siblings. `project_data.scope` gains `write_goals`; `fms_write_goals_v1`

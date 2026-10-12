@@ -69,7 +69,11 @@ function section(id, eyebrow, title, deck) {
 function deckFor(c, g) {
   if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!c.getSession() && getCodePass()) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
-  if (!c.getSession()) return 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+  if (!c.getSession()) {
+    return anonTrial && anonTrial.enabled
+      ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
+      : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+  }
   if (g.state === 'unknown') return 'Checking your invite…';
   if (g.state === 'open') return 'You are in. Your projects sync to this account.';
   if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
@@ -236,8 +240,11 @@ function render() {
        All three begin with the same Google button, because all three
        belong to an ACCOUNT: a trial is counted against a person, a plan
        is bought by one, and a code is spent on one. */
-    {
-      const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
+    /* Only while the trial is actually on offer: with trials switched off
+       (or the answer not in yet) a "Start your free trial" card would
+       promise what the server will refuse. Plans and the code box stay. */
+    if (anonTrial && anonTrial.enabled) {
+      const len = trialLength(anonTrial.minutes);
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
       const t = section('trial', 'Free trial', 'Start your free trial.',

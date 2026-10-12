@@ -2248,7 +2248,6 @@ async function boot() {
           + '(its Supabase client uses the implicit flow). Nothing you do differently will '
           + 'change that — see docs/GOOGLE-AUTH.md.'
         : 'Google signed you in, but this browser could not turn that into a session.';
-          + 'a Site URL or redirect-URL mismatch in the Supabase project.';
       setSync(SYNC_STATES.ERROR, 'Sign-in did not complete');
       notifyAuth('OAUTH_ERROR', null);
       stashAuthError(why + said, codeFlow ? 'code_flow_mismatch' : 'no_session');

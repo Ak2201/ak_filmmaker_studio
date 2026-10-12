@@ -110,6 +110,10 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
 import { accountSection } from '../ui/account-panel.js';
 import * as AuthUI from '../ui/auth.js';
 import { ask, tell } from '../ui/dialog.js';
+/* The restore preview (Data & backup → Drive): the reader and the
+   comparison are backup.js's, the panel is restore-preview.js's. */
+import { buildBackup, downloadBackup, summariseBackup, compareForRestore } from '../lib/backup.js';
+import { restorePreview, replaceSentences } from '../ui/restore-preview.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { OPTOUT_KEY, usageOptedOut } from '../lib/usage.js';
@@ -470,6 +474,11 @@ function renderStorage() {
 
 let versions = null;     // null until EARLIER VERSIONS is opened
 let busy = '';           // which control is mid-flight, for the label
+/* The restore preview, when one is open: what the Drive file holds
+   beside what this browser holds, drawn before the confirmation. A
+   render flag like `versions` — never stored. { kind: 'head' |
+   'version' | 'theirs', rev, source, savedAt, incoming, current, plan } */
+let restorePrev = null;
 
 const when = (iso) => {
   if (!iso) return 'never';
@@ -516,7 +525,7 @@ function conflictCard(st) {
   card.append(rows);
   card.append(h('div.st-drive-actions', {}, [
     driveButton('drive-keep-mine', 'Keep mine — upload over Drive', { busyLabel: 'Uploading…' }),
-    driveButton('drive-take-theirs', 'Take theirs — replace this browser', { busyLabel: 'Restoring…' })
+    driveButton('drive-take-theirs', 'Take theirs — replace this browser', { busyLabel: 'Reading Drive…' })
   ]));
   return card;
 }
@@ -671,12 +680,21 @@ function renderDrive() {
 
   const actions = h('div.st-drive-actions');
   actions.append(driveButton('drive-backup', 'Back up now', { primary: true, busyLabel: 'Uploading…' }));
-  actions.append(driveButton('drive-restore', 'Restore from Drive', { busyLabel: 'Restoring…' }));
+  actions.append(driveButton('drive-restore', 'Restore from Drive', { busyLabel: 'Reading Drive…' }));
   actions.append(driveButton('drive-versions', versions ? 'Hide earlier versions' : 'Earlier versions', { busyLabel: 'Reading…' }));
   actions.append(driveButton('drive-disconnect', 'Disconnect'));
   sec.append(actions);
 
   if (versions) sec.append(versionList());
+
+  if (restorePrev) {
+    sec.append(restorePreview({
+      plan: restorePrev.plan, incoming: restorePrev.incoming, current: restorePrev.current,
+      source: restorePrev.source, savedAt: restorePrev.savedAt,
+      actions: { confirm: 'drive-restore-confirm', cancel: 'drive-restore-cancel', download: 'drive-restore-download' },
+      disabled: !!busy
+    }));
+  }
 
   if (st.link) {
     sec.append(h('p.st-note', {}, [
@@ -1073,18 +1091,7 @@ function run(action, fn) {
 const DRIVE_ACTIONS = {
   'drive-connect':  () => run('drive-connect', () => DriveSync.connect()),
   'drive-backup':   () => run('drive-backup', () => DriveSync.push()),
-  'drive-restore':  () => run('drive-restore', async () => {
-    /* A restore REPLACES the projects this browser shares with the
-       file. Asked out loud, every time, because the one thing this
-       app refuses is deciding that silently. */
-    if (!await ask({
-      title: 'Replace this browser’s copy?',
-      body: 'Every project that is also in the Drive backup is replaced. Projects the backup has never heard of are left alone. Drive keeps the current version either way.',
-      confirm: 'REPLACE', danger: true
-    })) return;
-    const r = await DriveSync.pull();
-    if (r && r.ok) location.reload();
-  }),
+  'drive-restore':  () => run('drive-restore', () => openRestorePreview('head', null, 'The backup in Drive')),
   'drive-versions': () => run('drive-versions', async () => {
     if (versions) { versions = null; return; }
     versions = await DriveSync.listVersions();
@@ -1097,14 +1104,68 @@ const DRIVE_ACTIONS = {
     })) return;
     DriveSync.disconnect();
     versions = null;
+    restorePrev = null;
     render();
   },
   'drive-keep-mine':   () => run('drive-keep-mine', () => DriveSync.resolveConflict('mine')),
-  'drive-take-theirs': () => run('drive-take-theirs', async () => {
-    const r = await DriveSync.resolveConflict('theirs');
-    if (r && r.ok) location.reload();
-  })
+  'drive-take-theirs': () => run('drive-take-theirs', () => openRestorePreview('theirs', null, 'The backup in Drive')),
+  'drive-restore-cancel': () => { restorePrev = null; render(); },
+  /* The preview's own buttons. Restore still ends in ask(): the panel is
+     what the dialog is about, not a replacement for it. */
+  'drive-restore-download': () => {
+    try {
+      const n = downloadBackup();
+      StudioUI.toast('Backup downloaded \u2014 ' + plural(n, 'project', 'projects') + ' in the file.');
+    } catch (e) {
+      StudioUI.toastError('The backup could not be written. ' + ((e && e.message) || 'Nothing was changed.'), { duration: 6000 });
+    }
+  },
+  'drive-restore-confirm': () => {
+    const p = restorePrev;
+    if (!p) return;
+    run('drive-restore-confirm', async () => {
+      /* A restore REPLACES the projects this browser shares with the
+         file. Asked out loud, every time, because the one thing this
+         app refuses is deciding that silently — and the question
+         repeats the panel's own sentences so the two cannot disagree. */
+      const sentences = replaceSentences(p.plan, p.incoming);
+      if (!await ask({
+        title: 'Replace this browser\u2019s copy?',
+        body: [...sentences, 'The file in Drive is not changed by this.'],
+        confirm: 'REPLACE', danger: true
+      })) return;
+      const r = p.kind === 'theirs'
+        ? await DriveSync.resolveConflict('theirs')
+        : await DriveSync.pull(p.rev ? { revisionId: p.rev } : {});
+      if (r && r.ok) { restorePrev = null; location.reload(); }
+    });
+  }
 };
+
+/* Read the Drive file a restore would apply and open the preview — and
+   NOTHING else: no write, no apply. A file that cannot be read says why
+   in a toast and no panel opens, because a restore of something that
+   cannot be read could only fail. `kind` is what the confirm will do:
+   'head' (the current Drive file), 'version' (an earlier revision, `rev`),
+   'theirs' (the conflict's "take theirs"). */
+async function openRestorePreview(kind, rev, source) {
+  const r = await DriveSync.previewRemote(rev ? { revisionId: rev } : {});
+  if (!r.ok) { StudioUI.toastError(r.message || 'Drive did not answer.', { duration: 6000 }); return; }
+  const { pageCount } = await import('../lib/script.js');
+  const incoming = summariseBackup(r.all, { pageCount });
+  if (!incoming.ok) { StudioUI.toastError(incoming.problem || 'That backup could not be read.', { duration: 6000 }); return; }
+  const current = summariseBackup(buildBackup(), { pageCount });
+  restorePrev = {
+    kind, rev: rev || null, source, incoming, current,
+    plan: compareForRestore(incoming, current),
+    savedAt: when(incoming.exported || r.modifiedTime)
+  };
+  /* The panel renders when run() redraws; bring it into view after that. */
+  setTimeout(() => {
+    const el = document.querySelector('.st-restore');
+    if (el) { el.scrollIntoView({ block: 'nearest' }); try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }, 60);
+}
 
 /* ---- the admin console's two buttons ------------------------
    Both delegate to code that already exists: the modal owns the form,
@@ -1138,16 +1199,10 @@ delegate(document, 'click', '[data-action^="drive-"]', async (e, el) => {
   const act = el.getAttribute('data-action');
   if (act === 'drive-restore-version') {
     const rev = el.getAttribute('data-rev');
-    if (!await ask({
-      title: 'Restore this version?',
-      body: 'Restore the studio from the version saved on ' + when((versions || []).find((v) => v.id === rev)?.modifiedTime)
-          + '. This replaces the projects that version contains. Drive keeps the current version too, so this is reversible.',
-      confirm: 'RESTORE'
-    })) return;
-    return run('drive-restore-version', async () => {
-      const r = await DriveSync.restoreVersion(rev);
-      if (r && r.ok) location.reload();
-    });
+    /* The date comes from the file itself (savedAt), so the line says
+       "An earlier version of the backup, saved <date>" and no more. */
+    return run('drive-restore-version', () =>
+      openRestorePreview('version', rev, 'An earlier version of the backup in Drive'));
   }
   const fn = DRIVE_ACTIONS[act];
   if (fn) fn();

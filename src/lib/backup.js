@@ -277,6 +277,131 @@ export function backupShape(all) {
 }
 
 /* ============================================================
+   SUMMARISE — what a backup holds, read-only, for a preview
+   ------------------------------------------------------------
+   A restore replaces work, so the person is shown what the file
+   contains and what it would touch BEFORE the confirmation. This is
+   the reader for that: pure, no storage, no Store, nothing written.
+   It reads the same field names buildBackup() writes (PROJECT_KEYS),
+   so the format still lives in this file and nowhere else.
+
+   NEVER THROWS. The input is a file a person picked or Drive handed
+   back; it may be truncated, hand-edited or some other app's JSON.
+   Every read is guarded and a bad part is counted as zero rather than
+   raised, because a preview that crashes on a damaged file is the one
+   moment the person most needs a sentence instead of a stack trace.
+
+   `opts.pageCount(elements)` is INJECTED, not imported: pageCount()
+   lives in script.js, and this module is part of the shared CORE chunk
+   that every page loads, which must not grow a screenplay layout
+   engine for a preview nobody opens on most pages. A caller that wants
+   pages passes it; without it `scriptPages` is null and the element
+   count still reads.
+   ============================================================ */
+const arrLen = (v) => (Array.isArray(v) ? v.length : 0);
+const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+
+function summariseBucket(bucket, pageCount) {
+  const b = isObj(bucket) ? bucket : {};
+  const scenes = isObj(b.scenes) ? arrLen(b.scenes.scenes) : 0;
+  const contacts = isObj(b.contacts) ? arrLen(b.contacts.contacts) : 0;
+  const elements = isObj(b.script) && Array.isArray(b.script.elements) ? b.script.elements : [];
+  let pages = null;
+  if (typeof pageCount === 'function') {
+    try { const n = Number(pageCount(elements)); pages = Number.isFinite(n) ? n : null; } catch (e) { pages = null; }
+  }
+  return { scenes, contacts, scriptElements: elements.length, scriptPages: pages };
+}
+
+/**
+ * @returns {{
+ *   ok: boolean, problem: string|null, looksOurs: boolean, version: number,
+ *   exported: string|null,
+ *   projects: Array<{id:string|null,title:string,format:string,updatedAt:string|null,
+ *                    scenes:number,contacts:number,scriptElements:number,scriptPages:number|null}>,
+ *   unfiled: {buckets:number,scenes:number,contacts:number},
+ *   totals: {projects:number,scenes:number,contacts:number,scriptPages:number|null},
+ *   notes: number, hasPrefs: boolean
+ * }}
+ */
+export function summariseBackup(all, opts) {
+  const pageCount = opts && opts.pageCount;
+  const out = {
+    ok: false, problem: null, looksOurs: false, version: 0, exported: null,
+    projects: [], unfiled: { buckets: 0, scenes: 0, contacts: 0 },
+    totals: { projects: 0, scenes: 0, contacts: 0, scriptPages: null },
+    notes: 0, hasPrefs: false
+  };
+  try {
+    const shape = backupShape(all);
+    out.version = shape.version;
+    out.looksOurs = shape.looksOurs;
+    out.exported = typeof shape.exported === 'string' ? shape.exported : null;
+    const problem = notABackup(all, shape);
+    if (problem) { out.problem = problem; return out; }
+
+    if (shape.version === 2) {
+      shape.projects.forEach((p) => {
+        out.projects.push(Object.assign({
+          id: clip(p.id, 80),
+          title: clip(p.title, 120) || 'Untitled project',
+          format: clip(p.format, 20) || 'feature',
+          updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : null
+        }, summariseBucket(all.data[p.id], pageCount)));
+      });
+      shape.unfiledBuckets.forEach((name) => {
+        const s = summariseBucket(all.data[name], pageCount);
+        out.unfiled.buckets++;
+        out.unfiled.scenes += s.scenes;
+        out.unfiled.contacts += s.contacts;
+      });
+    } else {
+      const title = (isObj(all.feature_blueprint) && (all.feature_blueprint.meta_title || all.feature_blueprint.v1_title)) ||
+                    (isObj(all.short_blueprint) && all.short_blueprint.meta_title) || 'Imported Project';
+      out.projects.push({ id: null, title: clip(title, 120), format: 'feature', updatedAt: null,
+                          scenes: 0, contacts: 0, scriptElements: 0, scriptPages: null });
+    }
+
+    const t = out.totals;
+    t.projects = out.projects.length;
+    out.projects.forEach((p) => { t.scenes += p.scenes; t.contacts += p.contacts; });
+    t.scenes += out.unfiled.scenes;
+    t.contacts += out.unfiled.contacts;
+    if (out.projects.length && out.projects.every((p) => p.scriptPages != null)) {
+      t.scriptPages = Math.round(out.projects.reduce((n, p) => n + p.scriptPages, 0) * 10) / 10;
+    }
+    out.notes = isObj(all.notes) ? Object.keys(all.notes).filter((k) => noteKey(k).startsWith(NOTE_PREFIX) && typeof all.notes[k] === 'string').length : 0;
+    out.hasPrefs = isObj(all.global) && Object.keys(GLOBAL_KEYS).some((n) => isObj(all.global[n]) && Object.keys(all.global[n]).length > 0);
+    out.ok = true;
+  } catch (e) {
+    out.ok = false;
+    out.problem = 'That backup could not be read.';
+  }
+  return out;
+}
+
+/**
+ * What a RESTORE (mode 'restore', as Drive does) would do, given two
+ * summaries: the file's and the studio's now. Mirrors the one branch in
+ * applyV2 — an incoming id this studio already has is REPLACED, one it
+ * has not is ADDED, and a local project the file has never heard of is
+ * LEFT ALONE. Pure; both arguments are summariseBackup() results.
+ */
+export function compareForRestore(incoming, current) {
+  const inc = (incoming && incoming.projects) || [];
+  const cur = (current && current.projects) || [];
+  const mine = new Map(cur.map((p) => [p.id, p]));
+  const theirs = new Set(inc.map((p) => p.id));
+  const replaces = [], adds = [];
+  inc.forEach((p) => {
+    if (p.id && mine.has(p.id)) replaces.push({ incoming: p, current: mine.get(p.id) });
+    else adds.push(p);
+  });
+  const keeps = cur.filter((p) => !theirs.has(p.id));
+  return { replaces, adds, keeps };
+}
+
+/* ============================================================
    APPLY
    ============================================================ */
 
@@ -512,5 +637,5 @@ function applyV1(all, opts) {
 export default {
   downloadBackup,
   PROJECT_KEYS, GLOBAL_KEYS, NOTE_PREFIX,
-  buildBackup, backupShape, applyBackup
+  buildBackup, backupShape, applyBackup, summariseBackup, compareForRestore
 };

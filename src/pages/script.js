@@ -41,7 +41,8 @@ import Keys from '../lib/write-keys.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
-import { mountEditor } from '../ui/script-editor/editor.js';
+import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft, changedSinceDraft } from '../lib/drafts.js';
@@ -192,9 +193,31 @@ function buildTop() {
     '---',
     { label: 'Show or hide hints', action: 'sc-hints' },
     { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
-    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' },
-    { label: 'AI coverage report', action: 'sc-coverage', hint: 'AI' }
+    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
+
+  /* ONE AI pill, a menu of the existing tools, each an AI Desk task
+     (src/lib/ai-tasks.js). The ctx is computed at the click: the
+     script in memory, the page's own save and redraw, and the line
+     the caret was last in — so "this speech" and "this scene" mean
+     the one the writer is on. Greyed with the Pro offer on a plan
+     without AI; this page loads no model code. */
+  const ai = aiPill({
+    label: 'AI',
+    tasks: [
+      { id: 'coverage', label: 'Coverage report' },
+      { id: 'dialogue-pass', label: 'Dialogue pass (speech at the caret)' },
+      { id: 'beat-critique', label: 'Critique this scene' }
+    ],
+    ctx: () => ({
+      identity: 'script:' + (curId || ''),
+      getDoc: () => doc,
+      cursorId: () => curId,
+      save: () => persistNow(),
+      render: (id) => renderPage(id ? elFocus(id) : null),
+      after: () => refreshDraftLabel()
+    })
+  });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
      page's own, and a focus button is moved in once focus-mode has
@@ -202,7 +225,7 @@ function buildTop() {
   tipNode = h('div#scTip.sc-tip', { role: 'note', 'aria-live': 'polite', hidden: !hintsOn() });
   return h('div#scTop.sc-top', {}, [
     crumb,
-    h('div.sc-tools', {}, [typeSel, beatsBtn, h('span#scFocusSlot.sc-focus-slot'), menu]),
+    h('div.sc-tools', {}, [typeSel, beatsBtn, ai, h('span#scFocusSlot.sc-focus-slot'), menu].filter(Boolean)),
     tipNode
   ]);
 }
@@ -734,7 +757,6 @@ function syncGuide() {
 }
 addEventListener('hashchange', () => { if (location.hash === '#import') openImport(true); syncGuide(); });
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
-delegate(document, 'click', '[data-action="sc-coverage"]', () => { location.href = 'write.html?stay=1#coverage'; });
 delegate(document, 'click', '[data-action="sc-notes"]', async () => {
   try {
     const m = await import('../ui/script-notes.js');

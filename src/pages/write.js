@@ -70,7 +70,8 @@ import { mountWriteExtrasB } from '../ui/write-extras-b.js';
 /* Revision compare, revised-page marks and locked scene numbers: the
    panels under the Revisions list (src/ui/write-revisions.js). */
 import { mountRevisionTools, renderRevisionTools } from '../ui/write-revisions.js';
-import { mountCoverage } from '../ui/coverage.js';   // the Coverage tab: report + voice check
+import { mountCoverage } from '../ui/coverage.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click   // the Coverage tab: report + voice check
 /* Script → shot list (BLUEPRINT-REALIGN-PLAN §1c): the per-heading
    shot count and "Break into shots". */
 import Shots, { SHOTS_KEY } from '../lib/shots.js';
@@ -143,13 +144,14 @@ function readFailed(err) {
    on the writing itself — dialogue passes, beat critique — using
    the blueprint as context. Still not a chat box."
 
-   NOT A CHAT BOX, and the shape is the argument. There is no
-   panel down the side of the page. There is a ◇ on the row of a
-   speech, and what opens is about THAT speech: two or three
-   alternative versions, each with one line on what it changes,
-   shown BESIDE the words the writer already has. It is one
-   transaction — here is my line, here are some other lines —
-   with no conversation and no second turn.
+   THE AI DESK RUNS IT. There is a ◇ on the row of a speech; it
+   opens a strip under that speech holding one AI pill for the
+   Desk's 'dialogue-pass' task (src/lib/ai-tasks.js), which wraps
+   the same dialoguePass(). The Desk shows the speech beside the
+   model's version as a diff the writer accepts change by change,
+   and any chat there refines THAT speech and nothing else. The
+   pill greys itself on a plan without AI and sends a device with
+   no key to Settings, so this page draws no key form.
 
    THE FIVE RULES THIS PAGE HAS TO HOLD, and every one of them is
    a defect somebody already paid for:
@@ -211,10 +213,6 @@ async function primeAI() {
    user's work, and a run in flight that survived a reload would be a
    lie about a request that is no longer happening. */
 let passFor = null;                 // element id, or null
-let passRun = blankPassRun();
-function blankPassRun() {
-  return { running: false, abort: null, status: '', error: '', result: null };
-}
 
 const app = document.getElementById('app');
 
@@ -539,50 +537,10 @@ function renderScreenplay() {
    in the row above and is never re-rendered by anything here.
    ============================================================ */
 
-/** The scene a speech sits in, as the model should read it: the slug
-    line, a few elements before, the cue, and a couple after. Derived
-    at the moment it is needed — a stored join between a speech and
-    its scene would be wrong the first time either was reordered, the
-    same argument sliceScriptByScene() makes in src/lib/ai.js. */
-function passJobFor(i) {
-  const els = doc.elements;
-  const me = els[i];
-  if (!me) return null;
-
-  let slug = '';
-  for (let j = i; j >= 0; j--) {
-    if (els[j].type === 'scene' && els[j].text.trim()) { slug = els[j].text.trim().toUpperCase(); break; }
-  }
-  // The cue and any parenthetical immediately above this speech.
-  let character = '', paren = '';
-  for (let j = i - 1; j >= 0 && j >= i - 2; j--) {
-    if (els[j].type === 'character' && !character) character = els[j].text.trim();
-    else if (els[j].type === 'paren' && !paren) paren = els[j].text.trim();
-    else break;
-  }
-
-  const line = (el) => typeLabel(el.type).toUpperCase() + ': ' + el.text.trim();
-  const before = els.slice(Math.max(0, i - 6), i)
-    .filter((e) => e.text.trim() && e.type !== 'scene').map(line).join('\n');
-  const after = els.slice(i + 1, i + 4)
-    .filter((e) => e.text.trim()).map(line).join('\n');
-
-  return {
-    slug, before, after,
-    character,
-    paren,
-    speech: me.text
-  };
-}
-
-function renderPass(el, i) {
+/* The scene a speech sits in, as the model reads it, is derived in
+   src/lib/ai-tasks.js (passJob) at the moment the pass runs. */
+function renderPass(el) {
   const wrap = h('div.ai-inline', { 'data-pass': el.id });
-
-  if (!AIm) {
-    wrap.append(h('p.ai-status', { role: 'status', text: 'Opening…' }));
-    return wrap;
-  }
-
   const panel = h('div.ai-panel');
   panel.append(h('div.ai-head', {}, [
     h('h4.ai-title', { text: 'A pass on this speech' }),
@@ -591,131 +549,34 @@ function renderPass(el, i) {
       title: 'Close', 'aria-label': 'Close the pass panel', text: '✕'
     })
   ]));
-
-  /* GATE 1 — the key. */
-  const kg = Panelm.keyGate('A dialogue pass');
-  if (kg) {
-    panel.append(kg);
-    if (kg.dataset.blocking === 'true') { wrap.append(panel); return wrap; }
-  }
-  panel.append(Panelm.keyBar());
-
-  /* GATE 2 — the writing. Independent of the key. */
-  const job = passJobFor(i);
-  if (!job || !job.speech.trim()) {
-    panel.append(Panelm.gate(
-      'This speech is empty.',
-      'A pass is a second look at words that already exist. Write the line first — '
-      + 'a machine guessing at what a character might say is not a pass, it is a '
-      + 'stranger writing your film.'
-    ));
+  if (!String(el.text || '').trim()) {
+    panel.append(h('p.ai-gate', {}, [
+      h('strong', { text: 'This speech is empty. ' }),
+      h('span', { text: 'A pass is a second look at words that already exist. Write the line first.' })
+    ]));
     wrap.append(panel);
     return wrap;
   }
-
-  const context = BPm.blueprintContext();
-  const sum = BPm.contextSummary(context);
-  const full = { ...job, context, ask: passAsk() };
-
-  panel.append(Panelm.disclose(
-    'Clicking the button below sends this speech, the few lines around it in the '
-    + 'scene, and '
-    + (sum.fields
-      ? sum.fields + ' ' + (sum.fields === 1 ? 'answer' : 'answers') + ' from '
-        + sum.steps + ' ' + (sum.steps === 1 ? 'step' : 'steps')
-        + ' of your feature blueprint (logline, theme, who the characters are) '
-      : 'nothing from your blueprint, because none of its spine steps is filled in yet, ')
-    + 'to ' + apiHost() + ' using the key on this device. The rest of the screenplay '
-    + 'stays here. Nothing is sent until you click.'
-  ));
-
-  panel.append(h('label.ai-field.ai-ask', {}, [
-    h('span.ai-flabel', { text: 'Anything in particular? (optional)' }),
-    field('input.ai-ask-input', {
-      type: 'text', id: 'wr-pass-ask', maxlength: '200', autocomplete: 'off',
-      placeholder: 'Shorter. Less on the nose. More Madurai.',
-      'aria-label': 'What to ask for in the pass'
-    }, passAsk())
-  ]));
-
-  const peek = h('details.ai-peek');
-  peek.append(h('summary', { text: 'Show me exactly what would be sent' }));
-  const pre = h('pre.ai-peek-body');
-  pre.textContent = AIm.buildDialoguePrompt(full);
-  peek.append(pre);
-  panel.append(peek);
-
-  panel.append(h('div.ai-acts', {}, [
-    passRun.running
-      ? h('button.btn.danger', { type: 'button', 'data-action': 'pass-stop', text: 'Stop' })
-      : h('button.btn.primary', { type: 'button', 'data-action': 'pass-run', text: 'Send this speech' }),
-    passRun.result && !passRun.running
-      ? h('button.btn', { type: 'button', 'data-action': 'pass-clear', text: 'Discard these versions' })
-      : null
-  ]));
-
-  const status = Panelm.statusLine(passRun.status);
-  if (status) panel.append(status);
-  const err = Panelm.errorLine(passRun.error);
-  if (err) panel.append(err);
-
-  if (passRun.result) panel.append(renderPassResult(el, passRun.result));
+  /* The AI Desk does the rest: what is sent, the versions beside your
+     line, Accept (marked as a model pass, with `aiPass.was` kept so the
+     row's Undo is exact) and Skip. ctx at the click, so it reads the
+     words on screen rather than the last save. */
+  const pill = aiPill({
+    label: 'Ask for a pass', tasks: ['dialogue-pass'],
+    ctx: () => {
+      const k = indexOfEl(el.id);
+      const live = document.querySelector(`[data-el="${el.id}"] .wr-text`);
+      if (k >= 0 && live) doc.elements[k].text = live.value;
+      return {
+        identity: 'speech:' + el.id, elId: el.id,
+        getDoc: () => doc, save: () => persistNow(),
+        render: (id) => { passFor = null; render(elFocus(id)); }
+      };
+    }
+  });
+  if (pill) panel.append(h('div.ai-acts', {}, [pill]));
   wrap.append(panel);
   return wrap;
-}
-
-/* The optional steer. Kept in a module variable rather than read out
-   of the DOM at send time, because the panel is rebuilt on every
-   render and a value living only in an <input> would be lost by the
-   first key-change repaint. */
-let passAskText = '';
-function passAsk() { return passAskText; }
-
-/** The versions, BESIDE the original. Never in place of it: until a
-    person clicks, the model's text is a suggestion on the page and
-    the user's line is still the line. */
-function renderPassResult(el, res) {
-  const box = h('div.ai-result');
-  box.append(h('div.ai-result-head', {}, [
-    h('span.ai-mark', { title: 'Written by a model, not by you', text: 'MODEL VERSIONS' }),
-    h('span.ai-result-meta', {
-      text: 'by ' + res.model + ' · nothing is changed until you choose one'
-        + (res.truncated ? ' · the reply was cut short' : '')
-    })
-  ]));
-  if (res.keep) {
-    box.append(h('p.ai-verdict', {}, [
-      h('span.ai-try-label', { text: 'WORKS' }),
-      h('span', { text: ' ' + res.keep })
-    ]));
-  }
-
-  const grid = h('div.ai-compare');
-  const mine = h('div.ai-mine');
-  mine.append(h('p.ai-col-label', { text: 'YOUR LINE' }));
-  mine.append(h('p.ai-speech', { text: el.text }));
-  grid.append(mine);
-
-  const theirs = h('div.ai-theirs');
-  res.options.forEach((opt, n) => {
-    const card = h('div.ai-option');
-    card.append(h('p.ai-col-label', { text: 'VERSION ' + (n + 1) }));
-    card.append(h('p.ai-speech', { text: opt.text }));
-    if (opt.note) card.append(h('p.ai-note-line', { text: opt.note }));
-    card.append(h('button.btn', {
-      type: 'button', 'data-action': 'pass-use', 'data-option': String(n),
-      text: 'Use this line'
-    }));
-    theirs.append(card);
-  });
-  grid.append(theirs);
-  box.append(grid);
-
-  box.append(h('p.ai-caveat', {
-    text: 'Choosing one replaces the speech above, marks it as a model pass, and '
-        + 'keeps your own words so Undo can put them straight back.'
-  }));
-  return box;
 }
 
 /* ============================================================
@@ -976,7 +837,7 @@ const GEN_FORMATS = [
    drop target that END AT THE TEXTAREA. There is no second
    pipeline behind this and no new stored key — scriptgen.js
    already persists gen.synopsis, and the beats still come from the
-   existing `gen-beats` button, which is where the model is.
+   beat-sheet AI pill (the Desk's 'synopsis-script' task), which is where the model is.
 
    A SYNOPSIS IS PROSE, NOT A SCREENPLAY, so it is deliberately
    NOT routed through parseScript() / detectFormat() / scenesFrom().
@@ -1218,43 +1079,38 @@ function renderGenSynopsis() {
         + 'no monospaced Tamil font exists to count against. Everything else works.'
     }));
   }
-  /* THE GATE IS ON THE BUTTON, NOT ON THE STAGE. Everything above
+  /* THE GATE IS ON THE PILL, NOT ON THE STAGE. Everything above
      this line is a writing surface and a local file read; the thing
-     that needs a key is the request. The whole stage used to sit
-     behind keyGate(), which meant somebody with no key could not
-     even open their own treatment in the field. */
-  if (!AIm) {
-    wrap.append(
-      h('p.wr-gen-note', {
-        text: 'Drafting the beat sheet needs your own ' + providerLabel() + ' API '
-          + 'key, kept on this device and sent to nobody but ' + apiHost() + '. '
-          + 'Loading and editing the synopsis above needs nothing.'
-      }),
-      h('div.wr-gen-acts', {}, [
-        h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })
-      ])
-    );
-    return wrap;
-  }
-  if (!Panelm.hasKey()) {
-    wrap.append(Panelm.keyGate('draft a script from a synopsis'));
-    return wrap;
-  }
-
+     that needs a key is the request, and that is the AI pill: the
+     AI Desk's 'synopsis-script' task (src/lib/ai-tasks.js), which runs
+     the same draftBeatSheet() and, on Accept, writes the ticked beats
+     into this job exactly where the old button wrote them — so the
+     stage below opens on them. The pill greys itself on a plan
+     without AI and sends a device with no key to Settings. */
   wrap.append(
-    h('div.wr-gen-acts', {}, [
-      h('button.btn.primary', {
-        type: 'button', 'data-action': 'gen-beats', disabled: genBusy,
-        text: genBusy ? 'Working…' : 'Draft the beat sheet'
-      }),
-      genBusy ? h('button.btn', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null
-    ]),
+    h('div.wr-gen-acts', {}, [genBeatsPill('Draft the beat sheet')]),
     h('p.wr-gen-cost', {
       text: 'One request. This is the cheap stage — argue with the structure here, '
         + 'not after a hundred pages exist.'
     })
   );
   return wrap;
+}
+
+/* The beat-sheet pill. ctx at the click: the form is read and saved
+   first, so the Desk sends the synopsis on screen. */
+function genBeatsPill(label) {
+  return aiPill({
+    label, tasks: ['synopsis-script'],
+    ctx: () => {
+      readGenForm();
+      Scriptgen.save(gen);
+      return {
+        identity: 'synopsis',
+        after: () => { gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
+      };
+    }
+  });
 }
 
 /* ---- stage 2: the beats, editable -------------------------- */
@@ -1301,8 +1157,7 @@ function renderGenBeats() {
         text: genBusy ? 'Working…' : 'Lay out the scenes'
       }),
       genBusy ? h('button.btn', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
-      h('button.btn', { type: 'button', 'data-action': 'gen-beats', disabled: genBusy,
-        text: 'Draft the beats again' })
+      genBusy ? null : genBeatsPill('Draft the beats again')
     ]),
     h('p.wr-gen-cost', {
       text: 'One request. This one writes the SCENE BOARD — so the breakdown, '
@@ -1418,7 +1273,6 @@ function renderGenerate() {
      nothing on them to read or edit until a request has run — so
      they stay gated whole. */
   if (stage === 'synopsis') {
-    if (keyed) section.append(Panelm.keyBar());
     section.append(renderGenSynopsis());
     section.append(...genStatusBlock());
     if (keyed) section.append(Panelm.disclose(GEN_DISCLOSURE));
@@ -1442,7 +1296,6 @@ function renderGenerate() {
     return section;
   }
 
-  section.append(Panelm.keyBar());
   if (stage === 'beats') section.append(renderGenBeats());
   else section.append(renderGenPages());
   section.append(...genStatusBlock());
@@ -2181,123 +2034,17 @@ delegate(document, 'click', '[data-action="export-text"]', async () => {
    these starts at a click; none of them runs on load, on focus or on
    a timer, and only `pass-use` and `pass-undo` write anything. */
 
-delegate(document, 'click', '[data-action="pass-open"]', async (e, btn) => {
+delegate(document, 'click', '[data-action="pass-open"]', (e, btn) => {
   const id = idOf(btn, 'el');
   if (!id) return;
-  if (passRun.abort) passRun.abort.abort();
-  // A steer typed for one speech is not a standing instruction for the
-  // next one. Opening a different line starts from nothing asked.
-  if (passFor !== id) passAskText = '';
-  passFor = id;
-  passRun = blankPassRun();
-  render();                       // the "Opening…" placeholder
-  if (await primeAI()) render();  // the real panel
+  passFor = passFor === id ? null : id;
+  render(passFor ? null : elFocus(id));
 });
 
 delegate(document, 'click', '[data-action="pass-close"]', () => {
-  if (passRun.abort) passRun.abort.abort();
   const id = passFor;
   passFor = null;
-  passRun = blankPassRun();
   render(id ? elFocus(id) : null);
-});
-
-delegate(document, 'click', '[data-action="pass-clear"]', () => {
-  passRun.result = null;
-  passRun.status = '';
-  passRun.error = '';
-  render();
-});
-
-delegate(document, 'click', '[data-action="pass-stop"]', () => {
-  if (passRun.abort) passRun.abort.abort();
-});
-
-// The optional steer, kept in memory so a repaint cannot lose it.
-delegate(document, 'input', '.ai-ask-input', (e, input) => { passAskText = input.value; });
-
-delegate(document, 'click', '[data-action="pass-run"]', async () => {
-  if (passRun.running || !passFor) return;
-  if (!await primeAI()) return;
-
-  const i = indexOfEl(passFor);
-  if (i < 0) return;
-  // The debounce may not have fired. Send the words that are on
-  // screen, not the ones that were saved half a second ago.
-  const live = document.querySelector(`[data-el="${passFor}"] .wr-text`);
-  if (live) doc.elements[i].text = live.value;
-
-  const job = passJobFor(i);
-  if (!job || !job.speech.trim()) { render(); return; }
-
-  passRun.running = true;
-  passRun.error = '';
-  passRun.result = null;
-  passRun.status = 'Starting…';
-  passRun.abort = new AbortController();
-  render();
-
-  let result = null;
-  try {
-    result = await AIm.dialoguePass({
-      ...job,
-      ask: passAsk(),
-      context: BPm.blueprintContext()
-    }, {
-      signal: passRun.abort.signal,
-      onStatus: (m) => {
-        passRun.status = m;
-        /* DOM only. A re-render here would rebuild the panel under
-           the Stop button the user may be about to press. */
-        const node = document.querySelector('.ai-inline .ai-status');
-        if (node) node.textContent = m;
-      }
-    });
-  } catch (err) {
-    passRun.running = false;
-    passRun.abort = null;
-    passRun.status = '';
-    passRun.error = (err && err.message) ? err.message : 'Something went wrong and nothing was changed.';
-    render();
-    return;
-  }
-
-  passRun.running = false;
-  passRun.abort = null;
-  passRun.status = result.options.length
-    + (result.options.length === 1 ? ' version' : ' versions') + ' back. Nothing has changed yet.';
-  passRun.result = result;
-  render();
-});
-
-/* THE ONLY PLACE A MODEL'S WORDS REACH THE DOCUMENT, and it is a
-   click on a button that says which version it is. It writes through
-   persistNow() — the page's normal save path — and it keeps the
-   user's own sentence in `aiPass.was` so Undo is exact rather than
-   approximate. A second pass over an already-passed line keeps the
-   FIRST original: Undo must always mean "back to what I wrote". */
-delegate(document, 'click', '[data-action="pass-use"]', (e, btn) => {
-  if (!passRun.result || !passFor) return;
-  const n = Number(btn.dataset.option);
-  const opt = passRun.result.options[n];
-  if (!opt) return;
-  const i = indexOfEl(passFor);
-  if (i < 0) return;
-
-  const el = doc.elements[i];
-  el.aiPass = {
-    at: new Date().toISOString(),
-    model: passRun.result.model,
-    was: el.aiPass ? el.aiPass.was : el.text
-  };
-  el.text = opt.text;
-
-  persistNow();
-  const id = passFor;
-  passFor = null;
-  passRun = blankPassRun();
-  render(elFocus(id));
-  say('Line replaced and marked. Undo puts your own words back.');
 });
 
 delegate(document, 'click', '[data-action="pass-undo"]', (e, btn) => {
@@ -2729,32 +2476,6 @@ delegate(document, 'input', '[data-beat-text]', (e, ta) => {
   if (!b) return;
   b.happens = ta.value;
   Scriptgen.save(gen);
-});
-
-delegate(document, 'click', '[data-action="gen-beats"]', async () => {
-  if (genBusy) return;
-  if (!await primeAI()) return;
-  readGenForm();
-  if (!gen.synopsis.trim()) {
-    genError = 'Write a synopsis first — a paragraph is enough.';
-    render();
-    return;
-  }
-  genBegin();
-  render();
-  try {
-    const res = await Scriptgen.runBeats(gen, { onStatus: genSay, signal: genAbort.signal });
-    gen = res.job;
-    genStatus = '';
-    if (res.missing > 0) {
-      genError = res.missing + ' of the fifteen beats came back empty. Fill them in '
-        + 'by hand, or draft the beats again.';
-    } else {
-      say('Beat sheet drafted.');
-    }
-  } catch (err) { genFail(err); }
-  genEnd();
-  render();
 });
 
 delegate(document, 'click', '[data-action="gen-scenes"]', async () => {

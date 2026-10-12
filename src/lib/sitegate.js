@@ -16,6 +16,17 @@
    a browser is hidden while its owner is outside the gate — never
    deleted, never touched — and reappears the moment they are through.
 
+   AND SINCE 12 OCT 2026 IT FOLLOWS THE PURCHASES SWITCH (§32), which
+   is the owner's access model rather than this module's:
+     purchases OFF -> anybody signed in with Google is in. The website
+                      is open; membership only decides whether their
+                      work SYNCS.
+     purchases ON  -> a plan or a running trial, both of which write the
+                      membership row this gate reads. A free trial is
+                      the first road in and is started by a PRESS, never
+                      by itself.
+     not known     -> the membership gate below, failing closed.
+
    HOW IT DECIDES, in order, on every page that imports chrome.js:
      1. <html data-sitegate="pending"> is set at module evaluation,
         and base.css hides the document while it is. No flash of the
@@ -35,6 +46,7 @@
         gate 'open' or 'lost' -> show the page ('lost' is a member
                                  whose session is on another device;
                                  they are in, their sync is paused)
+        purchases OFF         -> show the page, whatever the gate says
         gate 'closed'         -> invite.html, whatever the reason —
                                  EXCEPT 'unreachable' in a tab that
                                  already passed this session, so one
@@ -68,6 +80,10 @@
    ============================================================ */
 import Store from './store.js';
 import { getCodePass, clearCodePass, isMissing } from './gate.js';
+/* §32's purchases_required(). Plain fetch to PostgREST with the anon
+   key — no SDK, so asking it costs nothing at first paint, and gate.js
+   already imports this module so it adds no weight to any chunk. */
+import { purchasesRequired } from './funnel.js';
 /* THE GATE CANNOT DECIDE WITHOUT THIS, so it asks for it rather than
    hoping. cloud.js sets window.StudioCloud, and everything below reads
    that global — evaluate() returns 'wait' until it appears, and after
@@ -100,6 +116,11 @@ import './cloud.js';
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 export const SITE_GATE = String(env.VITE_SITE_GATE || 'invite').toLowerCase() === 'off' ? 'off' : 'invite';
 export const PASS_KEY = 'fms_sitegate_pass';   // sessionStorage, never localStorage
+/* The purchases switch, cached for this tab's session. sessionStorage
+   and NOT localStorage, for the reason the pass is: `verify` asserts
+   zero localStorage writes across four idle seconds, and a gate that
+   recorded its own decision would trip it, correctly. */
+export const REQ_KEY = 'fms_purchases_req';
 /** Why the last redirect happened, for the page that lands after it.
  *  sessionStorage, diagnostic only; nothing decides on it. */
 export const WHY_KEY = 'fms_sitegate_why';
@@ -137,6 +158,49 @@ function hasStoredSession() {
     }
   } catch (e) { /* no storage, no optimism */ }
   return false;
+}
+
+/* ---- THE PURCHASES SWITCH, AND WHAT IT NOW DECIDES ----------------
+   The owner's decision, 12 Oct 2026, and it changes what this gate IS:
+
+     purchases OFF -> anybody who signs in with Google is in. No invite,
+                      no code, no plan, no trial. The website is open.
+     purchases ON  -> a plan or a running trial is required, and
+                      membership (which start_trial() and a purchase both
+                      write) is still what says so.
+     NOT KNOWN     -> exactly what this file did before: the membership
+                      gate, failing closed.
+
+   WHY THE UNKNOWN CASE IS THE OLD BEHAVIOUR rather than "open". A gate
+   that opened on a failed fetch would open on every offline load, on a
+   database that has not run §32, and on any request a proxy ate — which
+   is the fail-open bug docs/GATE.md exists to close. A wrong "closed"
+   costs somebody a reload; a wrong "open" costs the gate.
+
+   -1 unknown | 0 off | 1 on. Cached for the session because this is
+   asked on every navigation and the answer changes about once a month. */
+let purchaseReq = -1;
+try {
+  const v = sessionStorage.getItem(REQ_KEY);
+  if (v === '1') purchaseReq = 1; else if (v === '0') purchaseReq = 0;
+} catch (e) { /* private mode: asked again, every page */ }
+let askedReq = false;
+/* Has the question been ANSWERED, however it was answered? Distinct
+   from `purchaseReq !== -1`, because "the database has not run §32" is
+   a settled unknown and must not hold the veil up for twenty seconds.
+   True straight away when the session cache already held a value. */
+let reqSettled = purchaseReq !== -1;
+function askPurchaseReq() {
+  if (askedReq) return;
+  askedReq = true;
+  const done = () => { reqSettled = true; decide(); };
+  purchasesRequired().then((v) => {
+    if (typeof v === 'boolean') {
+      purchaseReq = v ? 1 : 0;
+      try { sessionStorage.setItem(REQ_KEY, v ? '1' : '0'); } catch (e) { /* ignore */ }
+    }
+    done();                                    // null: a settled unknown
+  }).catch(done);
 }
 
 let decided = false;
@@ -187,16 +251,56 @@ export function evaluate() {
      and a signed-in one the gate has closed on (their membership may
      simply not have happened yet). Verified once per browser session;
      `codeCheck` is that verification's outcome. */
-  if (getCodePass()) {
-    if (codeCheck === 'ok' || (codeCheck === 'pending' && passed())) return { verdict: 'allow', reason: 'code' };
-    if (codeCheck === 'pending') return { verdict: 'wait', reason: 'code-check' };
-    /* 'bad' falls through: the pass was cleared, the rest decides. */
+  /* A HELD CODE IS NOT A KEY ANY MORE, EXCEPT A DEMO ONE (owner,
+     12 Oct 2026). Every other pass is merely HELD — waiting to be spent
+     on the account that signs in next, which is where its seven-day
+     trial can be counted. A demo link is the exception on purpose: it
+     exists to show the sample to a room, where asking for a Google
+     account is the whole of the friction it was made to avoid.
+
+     THE STAMP IS WHAT DECIDES, not the code. gate-ui's box, start.js
+     and an invite link all set a pass without `from: 'demo'`, so none
+     of them admits a signed-out browser; only invite.js's demo branch
+     sets it. A pass with no stamp at all is an OLD one, written by a
+     build that let codes in on their own — it is not admitted either,
+     which is the conservative reading and costs that browser one
+     sign-in. */
+  const pass0 = getCodePass();
+  if (pass0) {
+    /* VERIFIED WHATEVER IT IS FOR. A held code is re-checked once per
+       browser session even when it cannot admit anybody, because that
+       check is what makes revoking a code mean something: without it a
+       revoked code would sit in a browser until the next sign-in and
+       then fail quietly at redemption. verifyCodePass() forgets a code
+       the server refuses. */
+    if (codeCheck === 'pending' && !passed()) return { verdict: 'wait', reason: 'code-check' };
+    /* ADMITTED only if it is a demo pass, or there is a session to
+       redeem it against. 'bad' falls through: the pass was cleared. */
+    if (codeCheck === 'ok' || (codeCheck === 'pending' && passed())) {
+      if (pass0.from === 'demo' || c.getSession()) return { verdict: 'allow', reason: 'code' };
+    }
   }
   if (!c.getSession()) return { verdict: 'deny', reason: 'signedout' };
+  /* Signed in, and nothing is for sale: the website is open. Note this
+     sits AFTER the signed-out check on purpose — "open" means open to
+     accounts, not to strangers, which is the owner's wording. It also
+     sits BEFORE the gate state, so a member whose sync is paused and a
+     visitor with no membership at all are treated the same here; what
+     membership still decides is whether their work SYNCS, which is
+     cloud.js's business and is left exactly as it was. */
+  if (purchaseReq === 0) return { verdict: 'allow', reason: 'open-site' };
   const g = c.getGateState();
   if (g.state === 'open' || g.state === 'lost') return { verdict: 'allow', reason: g.state };
   if (g.state === 'closed') {
     if (g.reason === 'unreachable' && passed()) return { verdict: 'allow', reason: 'unreachable-but-passed' };
+    /* DO NOT WALK THEM OUT BEFORE THE SWITCH HAS ANSWERED. The membership
+       call and the purchases call go out together, and the membership one
+       is the quicker of the two — so without this a signed-in visitor on
+       an OPEN website was bounced to the door for the half-second before
+       the answer that would have let them in arrived, which is a redirect
+       and therefore not something a later verdict can take back. The
+       give-up timer still bounds the wait. */
+    if (!reqSettled) return { verdict: 'wait', reason: 'purchases' };
     return { verdict: 'deny', reason: g.reason || 'closed' };
   }
   return { verdict: 'wait', reason: 'unknown' };
@@ -252,6 +356,10 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
     optimistic = true;
     delete document.documentElement.dataset.sitegate;
   }
+  /* Asked at once, not when it is first needed: it is a plain fetch with
+     no dependency on the SDK, the session or the gate, so it rides
+     alongside the cloud boot instead of adding a round trip after it. */
+  askPurchaseReq();
   Store.subscribe('cloud:booted', decide);
   Store.subscribe('gate:changed', () => (decided ? redecide() : decide()));
   /* cloud.js assigns window.StudioCloud when it evaluates, which may be

@@ -81,8 +81,8 @@ function shellMode() {
    navigation.json: an entry there is also a rail item, a palette row and a
    Go-to link, and nobody should navigate TO the doorway from inside. */
 const EXTRA_GLOBAL_ENTRIES = {
-  'invite.html': { id: 'invite', label: 'Invite', icon: '✉', sym: 'mail', href: 'invite.html',
-    purpose: 'Enter an invite code, or ask for one' }
+  'invite.html': { id: 'invite', label: 'Come in', icon: '✉', sym: 'mail', href: 'invite.html',
+    purpose: 'Start a free trial, buy a plan, or enter an invite code' }
 };
 const GLOBAL_MODE = shellMode();
 export const isGlobalMode = () => GLOBAL_MODE === 'global';

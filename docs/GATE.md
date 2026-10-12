@@ -16,30 +16,69 @@ used to fail open so the code could ship before the SQL, and the result was a
 studio any Google account could sync to. That is the bug this document
 exists to close. Section 1 is kept as the runbook for a fresh project.
 
-## 0. The website itself is invite-only (5 Oct 2026)
+## 0. Who gets in (5 Oct 2026, rewritten 12 Oct 2026)
 
-Not only the cloud: `src/lib/sitegate.js`, imported by `chrome.js` and so on
-every page a visitor can reach, hides the document until the gate answers and
-sends anyone who is not through it to `invite.html`. Signed out → `invite.html`.
-Signed in and not a member (no invite, pending, declined, disabled) →
-`invite.html`. A member whose session is on another device is in (sync paused).
-Exempt: `invite.html`, `screening.html`, the two legal pages, and everything
-inside the Chrome extension, which has its own gatekeeper.
+`src/lib/sitegate.js`, imported by `chrome.js` and so on every page a visitor
+can reach, hides the document until the gate answers and sends anyone who is
+not through it away. **Since 12 Oct 2026 it follows the purchases switch**
+(`billing_settings.purchase_required`, schema §32), which is the owner's
+access model rather than this module's:
 
-**A code is a key, not a form.** A visitor with a valid code enters with no
-sign-in: the code is remembered in that browser (`fms_invite_code_v1`, reset
-clears it, no backup carries it) and re-verified with `verify_invite()` once per
-browser session, so revoking the code shuts the door next session. Entering
-spends nothing; the first time that browser signs in, `runGate()` redeems the
-remembered code for the account and sync comes on. **Every standard code is
-also a link** — `invite.html#code=XXXX-XXXX-XXXX`, the code in the fragment so
-it never reaches a server log — shown beside the code in the console with COPY
-LINK; opening it enters without typing.
+| Purchases switch | Visitor | Result |
+| --- | --- | --- |
+| **OFF** | signed out | `start.html` |
+| **OFF** | signed in, anything | **in** — no invite, no code, no plan, no trial |
+| **ON** | signed out | `start.html` |
+| **ON** | signs in with no trial yet | `invite.html`, which offers the trial; a **press** starts it |
+| **ON** | entitled (paid, trial running, or granted) | in |
+| **ON** | trial used or switched off | `invite.html`, showing the plans |
+| either | member whose session is on another device | in, sync paused |
+| either | `purchases_required()` not known | the membership gate below, **failing closed** |
 
-This reverses the contract the codebase was written under — "the gate guards
-the cloud, never local work" — by the owner's decision. Local work is hidden
-from a visitor outside the gate; it is never deleted or touched, and it is all
-there the moment they are let in.
+The unknown case is deliberately the old behaviour and not "open": a gate that
+opened on a failed fetch would open on every offline load, on a database that
+has not run §32, and on any request a proxy ate — which is the fail-open bug
+this document exists to close. The answer is cached in `sessionStorage`
+(`fms_purchases_req`), never `localStorage`, because `verify` asserts zero
+`localStorage` writes across four idle seconds.
+
+**Signed out goes to `start.html`, not here.** `deny()` splits on exactly one
+reason: `signedout` → the public landing page, everything else → `invite.html`.
+This note said `invite.html` for both for several days after the code stopped
+doing it.
+
+**`invite.html` is the offer page, not a queue.** Trial first, plans second,
+the code box third. The "ask an administrator and wait" block came off the
+public door on 12 Oct 2026 — it was the only road in before the trial existed,
+and leading with it made the page read as a rejection to somebody who had just
+pressed *Start your free trial*. The RPC, the console queue and every pending
+request are untouched: the block is still drawn for anyone who already has a
+request in flight, and otherwise at `invite.html#request`, which is the address
+an administrator can hand out.
+
+**A code is no longer a key on its own.** It used to admit a signed-out browser
+outright. It is now worth a 7-day trial (`billing_settings.code_trial_days`),
+and a trial is counted against a *person*, so the code has to meet an account:
+the box holds the code and goes straight to Google, `runGate()` redeems it
+against the account that comes back, and `start_trial()` derives
+`source = 'code'` from `studio_members.invite_code_id` — which only
+`redeem_invite()` ever writes and no browser can reach. Revoking the code still
+shuts the door. **Demo links are the exception** (`invite.html#code=…&demo=1`):
+they keep the anonymous landing, because showing the sample to a room is what
+they are for.
+
+**Nothing starts a trial by itself.** The owner was explicit on 12 Oct 2026:
+the trial begins when somebody presses the button. A signup that quietly
+consumed the one trial an account ever gets, before the person had read what it
+was, would spend it for them. The single exception is a redeemed code, where
+the press was the code submission.
+
+Exempt from the gate entirely: `invite.html`, `screening.html`, `start.html`,
+`privacy.html`, `terms.html`, `refund.html`, and everything inside the Chrome
+extension, which has its own gatekeeper.
+
+Local work is hidden from a visitor outside the gate; it is never deleted or
+touched, and it is all there the moment they are let in.
 
 **Two builds.** `npm run build` (what Vercel and Netlify run) has the gate ON.
 `npm run build:open` sets `VITE_SITE_GATE=off`, and `npm run verify` refuses

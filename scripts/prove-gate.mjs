@@ -64,6 +64,14 @@
          390px, which lands on start.html and stays out with no session
          and no gate pass; invite.html says the trial is over
 
+     (r) THE PURCHASES SWITCH IS THE DOOR (owner, 12 Oct 2026): OFF, a
+         signed-in non-member stays on the page while the CLOUD gate is
+         still closed; ON, a fresh sign-in meets the offer page and
+         start_trial() is NOT called until the button is pressed; a used
+         trial gets plans and no button and no loop; a typed code neither
+         enters the studio nor leaves a pass; a redeemed code starts the
+         trial it carries
+
    Run:  npm run build && node scripts/prove-gate.mjs
    ============================================================ */
 import { spawn } from 'node:child_process';
@@ -221,9 +229,15 @@ try {
     const writesBefore = writes();
     ok(closedB && /awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused');
     ok(await urlBecomes(page, /invite\.html/), 'settings.html became invite.html — the site gate');
-    await page.waitForSelector('#request [data-ir-form]', { timeout: 8000 });
+    /* THE DOOR LEADS WITH THE TRIAL NOW (owner, 12 Oct 2026), not with
+       the request form. The form is off the public door: this waits for
+       the trial button instead, and the two assertions after it are the
+       whole change — the code box is still there, and the request form
+       is NOT, for somebody who has not asked. */
+    await page.waitForSelector('#trial [data-iv-action="start-trial"]', { timeout: 8000 });
     ok(!!(await page.$('#invite #gtCode')), 'and the code box is there');
-    ok(!!(await page.$('#request [data-ir-form]')), 'with the request form beside it');
+    ok(!(await page.$('#request [data-ir-form]')), 'the request form is OFF the public door — a trial is the road in now');
+    ok(!!(await page.$('#trial [data-iv-action="start-trial"]')), 'and the trial is offered, first');
     ok(writes() === writesBefore, 'nothing was uploaded while closed');
     await page.fill('#gtCode', 'amy code 2345 6');
     await page.click('#invite button[type="submit"]');
@@ -237,9 +251,19 @@ try {
 
   console.log('(i) the landing');
   {
+    /* A MARK, NOT A TOTAL. (b) ends with Amy redeeming a code, and a
+       redeemed code starts the trial it carries — so `calls` already
+       holds a start_trial by now and asserting on the whole list would
+       fail for somebody else's press. Count only what Cal's load adds. */
+    const callMark = F.db.calls.length;
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-cal', landing: true });
     await page.goto(BASE + 'story.html');
     ok(await urlBecomes(page, /invite\.html/), 'the first load after a closed sign-in lands on invite.html');
+    await page.waitForSelector('#trial [data-iv-action="start-trial"]', { timeout: 8000 });
+    ok(!(await page.$('#request [data-ir-form]')), 'a fresh sign-in is offered the trial, not an application form');
+    ok(!F.db.calls.slice(callMark).includes('start_trial'), 'and NOTHING started by itself — the trial waits for the press');
+    /* The form still exists for anyone an administrator points at it. */
+    await page.goto(BASE + 'invite.html#request');
     await page.waitForSelector('#request [data-ir-form]', { timeout: 8000 });
     const who = await page.textContent('#request .ir-who');
     ok(who.includes('cal@example.com') && who.includes('Cal Fernandes'), 'the form shows the attested Google account and name, read-only');
@@ -249,7 +273,7 @@ try {
     ok((await page.evaluate(() => document.documentElement.dataset.sitegate || '')) === '', 'invite.html itself is exempt (no data-sitegate)');
 
     console.log('(j) the request, and the approval');
-    await page.goto(BASE + 'invite.html');
+    await page.goto(BASE + 'invite.html#request');
     await page.waitForSelector('#request [data-ir-form]');
     await page.fill('#irNote', 'Cal here — DOP on Dragon, Amy sent me.');
     await page.click('#request [data-ir-form] button[type="submit"]');
@@ -290,7 +314,7 @@ try {
 
     console.log('(k) a decline');
     const D = await newContext(browser, { tok: 'tok-dan' });
-    await D.page.goto(BASE + 'invite.html');
+    await D.page.goto(BASE + 'invite.html#request');   // off the public door since 12 Oct 2026
     await D.page.waitForSelector('#request [data-ir-form]');
     await D.page.click('#request [data-ir-form] button[type="submit"]');
     await D.page.waitForSelector('#request .ir-state.is-pending', { timeout: 8000 });
@@ -511,29 +535,24 @@ try {
     const page = await ctx.newPage();
     const errs = []; page.on('pageerror', (e) => errs.push(e.message));
     await page.goto(BASE + 'invite.html#code=LINK-CODE-2345');
-    await page.waitForURL(/index\.html|\/$/, { timeout: 10000 }).then(() => ok(true, 'opening an invite link enters the studio, no typing, no sign-in'), () => ok(false, 'opening an invite link enters the studio, no typing, no sign-in'));
+    /* AN INVITE LINK HOLDS, IT DOES NOT ENTER (owner, 12 Oct 2026), and
+       it does not submit on arrival either: sending somebody to Google
+       the instant they open a link, before they have read what this is,
+       is a hijack rather than one motion. The press is theirs. */
+    await page.waitForSelector('#through', { timeout: 10000 });
+    ok(/invite\.html/.test(page.url()), 'opening an invite link stays on the doorway: ' + page.url());
     ok(!/code=/.test(page.url()), 'the code is gone from the address bar');
-    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 });
+    ok(/spend your code/i.test(await page.textContent('#through')), 'which says the code is held and offers Google');
+    ok(!!(await page.evaluate(() => JSON.parse(localStorage.getItem('fms_invite_code_v1') || 'null'))), 'the code is held in this browser');
+    ok(await page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'with no site-gate pass: holding is not being through');
     await page.goto(BASE + 'breakdown.html');
-    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'other pages open for the code-only visitor'), () => ok(false, 'other pages open for the code-only visitor'));
+    ok(await urlBecomes(page, /start\.html/, 12000), 'and the app is still shut to it: ' + page.url());
     ok(F.db.codes.find((c) => c.code === 'LINKCODE2345').redemptions_count === 0, 'nothing is spent by entering');
-    await page.goto(BASE + 'invite.html');
-    await page.waitForSelector('#through', { timeout: 8000 });
-    ok(/with a code/i.test(await page.textContent('#through')), 'invite.html says they are in with a code and offers sign-in');
-    // A NEW browser session with the same remembered code: re-verified, still valid.
     const stored = await page.evaluate(() => localStorage.getItem('fms_invite_code_v1'));
     await ctx.close();
-    const ctx2 = await browser.newContext({ serviceWorkers: 'block' });
-    await ctx2.route(SB + '/**', handle);
-    await ctx2.route(/fonts\./, (r) => r.fulfill({ status: 200, body: '' }));
-    await ctx2.addInitScript((v) => { if (!sessionStorage.getItem('__code')) { localStorage.setItem('fms_invite_code_v1', v); sessionStorage.setItem('__code', '1'); } }, stored);
-    const p2 = await ctx2.newPage();
-    const before = F.db.calls.length;
-    await p2.goto(BASE + 'story.html');
-    await p2.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'a new session with the remembered code is in'), () => ok(false, 'a new session with the remembered code is in'));
-    ok(F.db.calls.slice(before).includes('verify_invite'), 'after re-verifying the code with the server');
-    await ctx2.close();
-    // Revoked: forgotten, and the door shuts.
+    /* REVOKED: the door is shut to it and the browser forgets it. This
+       is the half of the old assertion that still bites — a revoked code
+       must not survive in a browser waiting to be spent on a sign-in. */
     F.db.codes.find((c) => c.code === 'LINKCODE2345').revoked_at = new Date().toISOString();
     const ctx3 = await browser.newContext({ serviceWorkers: 'block' });
     await ctx3.route(SB + '/**', handle);
@@ -543,9 +562,13 @@ try {
        assertion below is exactly that the app forgot it. */
     await ctx3.addInitScript((v) => { if (!sessionStorage.getItem('__code')) { localStorage.setItem('fms_invite_code_v1', v); sessionStorage.setItem('__code', '1'); } }, stored);
     const p3 = await ctx3.newPage();
+    const before = F.db.calls.length;
+    /* A GATED page, not invite.html: the doorway is exempt, so the site
+       gate does not arm there and nothing would re-verify anything. */
     await p3.goto(BASE + 'story.html');
-    await p3.waitForURL(/start\.html/, { timeout: 10000 }).then(() => ok(true, 'a revoked code no longer opens the door (a stranger lands on start.html)'), () => ok(false, 'a revoked code no longer opens the door (a stranger lands on start.html)'));
-    ok(!(await p3.evaluate(() => localStorage.getItem('fms_invite_code_v1'))), 'and the browser forgets it');
+    ok(await urlBecomes(p3, /start\.html/, 12000), 'a revoked code opens no door (a stranger lands on start.html)');
+    ok(F.db.calls.slice(before).includes('verify_invite'), 'because a held code is re-verified with the server each browser session');
+    ok(!(await p3.evaluate(() => localStorage.getItem('fms_invite_code_v1'))), 'and a revoked one is forgotten');
     F.db.codes.find((c) => c.code === 'LINKCODE2345').revoked_at = null;
     await ctx3.close();
     // Signing in later redeems the remembered code by itself.
@@ -594,11 +617,20 @@ try {
     await page.waitForSelector('#invite #gtCode');
     await page.fill('#gtCode', 'BENCODE23456');
     await page.click('#invite button[type="submit"]');
-    await page.waitForURL(/index\.html|\/$/, { timeout: 8000 }).then(() => ok(true, 'a valid code enters the studio with NO sign-in'), () => ok(false, 'a valid code enters the studio with NO sign-in'));
-    await page.waitForFunction(() => !document.documentElement.dataset.sitegate, null, { timeout: 8000 }).then(() => ok(true, 'and the hub renders for the code-only visitor'), () => ok(false, 'and the hub renders for the code-only visitor'));
-    const t = await page.evaluate(() => [sessionStorage.getItem('fms_preauth_ticket'), localStorage.getItem('fms_preauth_ticket'), JSON.parse(localStorage.getItem('fms_invite_code_v1') || 'null')]);
+    /* CODE THEN GOOGLE, ONE MOTION (owner, 12 Oct 2026). This used to
+       assert that a valid code entered the studio with no sign-in. It
+       does not any more: a code is worth a seven-day trial, a trial is
+       counted against a PERSON, so the code is HELD and the submit goes
+       to Google to find one. */
+    await page.waitForURL(/accounts\.google\.com|auth\/v1\/authorize/, { timeout: 8000 })
+      .then(() => ok(true, 'a typed code goes to Google — it is no longer a key on its own'),
+            () => ok(false, 'a typed code goes to Google — it is no longer a key on its own (at ' + page.url() + ')'));
+    ok(!/index\.html|dashboard\.html/.test(page.url()), 'and does NOT enter the studio: ' + page.url());
+    await page.goto(BASE + 'invite.html');
+    const t = await page.evaluate(() => [sessionStorage.getItem('fms_preauth_ticket'), localStorage.getItem('fms_preauth_ticket'), JSON.parse(localStorage.getItem('fms_invite_code_v1') || 'null'), sessionStorage.getItem('fms_sitegate_pass')]);
     ok(!!t[0] && !t[1], 'the pre-auth ticket waits in sessionStorage, never localStorage');
     ok(t[2] && t[2].code === 'BENCODE23456', 'the code is remembered for this browser');
+    ok(t[3] == null, 'and no site-gate pass was left behind: holding a code is not being through');
     ok(F.db.codes.find((c) => c.code === 'BENCODE23456').redemptions_count === 0, 'entering spent nothing');
     // "Back from Google": a stored session, then a load that starts signed in.
     await page.evaluate(([k, v, uid]) => { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); }, [`sb-${REF}-auth-token`, sessionFor('tok-ben'), USERS['tok-ben'].id]);
@@ -609,6 +641,8 @@ try {
     await page.waitForTimeout(500);
     ok(await waitGate(page, 'open'), 'the restored load redeemed the ticket and opened the gate');
     ok(F.db.codes.find((c) => c.code === 'BENCODE23456').redemptions_count === 1 && F.db.members.has(USERS['tok-ben'].id), 'Ben is a member and the code is spent once');
+    await page.waitForTimeout(1200);
+    ok(F.db.calls.includes('start_trial'), 'and the redemption started the trial the code carries');
     ok(!(await page.evaluate(() => sessionStorage.getItem('fms_preauth_ticket'))), 'the ticket is gone once spent');
     await ctx.close();
   }
@@ -979,6 +1013,100 @@ try {
     const t = await I.page.textContent('main').catch(() => '');
     ok(/free trial is over/i.test(t) && !/GO TO THE STUDIO/.test(t), 'invite.html says the trial is over and does not send a lapsed member to the studio (the wall)');
     allErrors.push(...I.errors); await I.ctx.close();
+  }
+
+  console.log('(r) the purchases switch IS the door, and the trial waits for a press (owner, 12 Oct 2026)');
+  {
+    /* 1. PURCHASES OFF -> THE WEBSITE IS OPEN to anybody signed in.
+       Dan is not a member and never will be in this block; with nothing
+       for sale there is nothing to be a member OF. Membership still
+       decides whether his work SYNCS, which is cloud.js's business and
+       is deliberately untouched. */
+    F.reset();
+    F.db.settings.purchase_required = false;
+    const O = await newContext(browser, { tok: 'tok-dan' });
+    await O.page.goto(BASE + 'breakdown.html');
+    await O.page.waitForTimeout(2500);
+    ok(/breakdown\.html/.test(O.page.url()), 'purchases OFF: a signed-in non-member stays on the page — the website is open: ' + O.page.url());
+    ok((await O.page.evaluate(() => document.documentElement.dataset.sitegate || '')) === '', 'and the veil is lifted, not merely un-redirected');
+    ok((await O.page.evaluate(() => window.StudioCloud.getGateState().state)) === 'closed', 'while the CLOUD gate is still closed — the site opened, sync did not');
+    ok(!F.db.calls.includes('start_trial'), 'and no trial was spent to do it');
+    allErrors.push(...O.errors); await O.ctx.close();
+
+    /* 2. PURCHASES ON -> the offer page, and nothing starts by itself. */
+    F.reset();
+    F.db.settings.purchase_required = true;
+    const N = await newContext(browser, { tok: 'tok-dan' });
+    await N.page.goto(BASE + 'index.html');
+    ok(await urlBecomes(N.page, /invite\.html/), 'purchases ON: a fresh sign-in is sent to the offer page');
+    await N.page.waitForSelector('#trial [data-iv-action="start-trial"]', { timeout: 12000 });
+    const label = await N.page.textContent('#trial [data-iv-action="start-trial"]');
+    ok(/START MY/i.test(label || ''), 'the trial is offered by name: ' + JSON.stringify(label));
+    ok(!F.db.calls.includes('start_trial'), 'and it has NOT started: nothing is spent until the press');
+    /* THE REGRESSION THIS BLOCK EXISTS FOR. invite.js offered a trial
+       only when billing_status() said entitled was false; with the
+       switch OFF entitled is true for everybody, so the button was
+       never drawn and the whole feature was unreachable in production
+       while every proof here passed. Assert the button, not the flag. */
+    await N.page.click('#trial [data-iv-action="start-trial"]');
+    ok(await urlBecomes(N.page, /index\.html|dashboard\.html|\/$/, 15000), 'pressing it opens the studio: ' + N.page.url());
+    ok(F.db.calls.includes('start_trial'), 'start_trial was called — by the press, and only by the press');
+    ok(F.db.members.has(USERS['tok-dan'].id), 'and the membership row the site gate reads now exists');
+    allErrors.push(...N.errors); await N.ctx.close();
+
+    /* 3. A TRIAL ALREADY USED -> plans, no trial button, and no loop. */
+    F.reset();
+    F.db.settings.purchase_required = true;
+    const danId = USERS['tok-dan'].id;
+    F.db.members.set(danId, { role: 'user', disabled_at: null });
+    expireTrial(danId);
+    const U = await newContext(browser, { tok: 'tok-dan' });
+    const seen = [];
+    U.page.on('framenavigated', (f) => { if (f === U.page.mainFrame()) seen.push(f.url().replace(BASE, '/')); });
+    await U.page.goto(BASE + 'invite.html');
+    await U.page.waitForFunction(() => /free trial is over/i.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
+    ok(!(await U.page.$('#trial [data-iv-action="start-trial"]')), 'a used trial is NOT offered again');
+    ok(/free trial is over/i.test(await U.page.textContent('main').catch(() => '')), 'the page says so plainly');
+    await U.page.waitForTimeout(6000);
+    ok(seen.length <= 1, 'and it is one page, not a loop: ' + seen.length + ' navigation');
+    allErrors.push(...U.errors); await U.ctx.close();
+
+    /* 4. A CODE IS NO LONGER A KEY ON ITS OWN. Signed out, the box holds
+       the code and goes to Google; it must not enter the studio, and it
+       must not leave a site-gate pass behind. */
+    F.reset();
+    const C = await newContext(browser);
+    await C.page.goto(BASE + 'invite.html');
+    await C.page.waitForSelector('#invite #gtCode', { timeout: 12000 });
+    await C.page.fill('#gtCode', 'amy code 2345 6');
+    await C.page.click('#invite button[type="submit"]');
+    await C.page.waitForTimeout(2500);
+    ok(!/index\.html|dashboard\.html/.test(C.page.url()), 'a typed code does not enter the studio on its own: ' + C.page.url());
+    /* BACK TO OUR OWN ORIGIN BEFORE READING STORAGE. The submit has
+       navigated to Google, and localStorage is per origin — read it
+       there and every key is null, which reads as "the code was not
+       held" and is really "you are looking at the wrong origin". */
+    await C.page.goto(BASE + 'invite.html');
+    ok(await C.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'and leaves no site-gate pass behind');
+    ok(!!(await C.page.evaluate((k) => localStorage.getItem(k), 'fms_invite_code_v1')), 'the code is HELD in this browser, to be spent on the account that signs in');
+    allErrors.push(...C.errors); await C.ctx.close();
+
+    /* 5. AND A REDEEMED CODE STARTS ITS TRIAL. redeem_invite() writes the
+       membership but never trial_started_at, so without startCodeTrial()
+       a code holder was a member who was not entitled — walled, on their
+       first page, by the thing the code was supposed to open. */
+    F.reset();
+    F.db.settings.purchase_required = true;
+    const K = await newContext(browser, { tok: 'tok-amy' });
+    await K.page.goto(BASE + 'invite.html');
+    await K.page.waitForSelector('#invite #gtCode', { timeout: 12000 });
+    await K.page.fill('#gtCode', 'amy code 2345 6');
+    await K.page.click('#invite button[type="submit"]');
+    const opened = await waitGate(K.page, 'open');
+    ok(opened, 'a signed-in redemption opens the gate' + (opened ? '' : ' — box said: ' + JSON.stringify(await K.page.textContent('#invite').catch(() => '')) ));
+    await K.page.waitForTimeout(1500);
+    ok(F.db.calls.includes('start_trial'), 'and the code starts the trial it carries — the submission was the press (calls: ' + F.db.calls.slice(-6).join(',') + ')');
+    allErrors.push(...K.errors); await K.ctx.close();
   }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);

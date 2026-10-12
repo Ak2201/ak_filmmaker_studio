@@ -374,7 +374,13 @@ export function renderAccountBlock() {
   const waiting = (g.status && g.status.pendingRequests) || 0;
   const gateRows = [];
   if (g.state === 'closed') {
-    gateRows.push(h('a.am-item', { href: 'invite.html', text: g.reason === 'pending' ? '→ YOUR INVITE REQUEST' : '→ GET AN INVITE' }));
+    /* "GET AN INVITE" was right while asking was the only road in. The
+       door offers a free trial, a plan and a code now, so it says what
+       the page actually does; a request already in flight still gets
+       its own row and its own address. */
+    gateRows.push(g.reason === 'pending'
+      ? h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' })
+      : h('a.am-item', { href: 'invite.html', text: '→ START YOUR FREE TRIAL' }));
   }
   if (g.role === 'admin') {
     gateRows.push(h('a.am-item', { href: 'admin.html',

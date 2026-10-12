@@ -552,6 +552,40 @@ async function takeBack() {
   }
 }
 
+/* A REDEEMED CODE MUST ALSO START ITS TRIAL, and this is the one place
+   a trial begins without somebody pressing a button marked "start my
+   trial". That is not the auto-start the owner ruled out on 12 Oct 2026:
+   the visitor has just submitted a code by hand, and this is what the
+   code is FOR.
+
+   WHY IT IS NEEDED AT ALL. redeem_invite() writes the studio_members
+   row but never touches trial_started_at, so with the purchases switch
+   ON a code holder became a member who was not entitled — walled, on
+   their first page, by the very thing the code was supposed to open.
+   start_trial() reads studio_members.invite_code_id (which only
+   redeem_invite() ever writes, and no browser can reach) and grants
+   code_trial_days, seven days by default, instead of the signup
+   trial's minutes. The client passes no source and cannot.
+
+   Quiet in every direction: a verdict ('used', 'paid') means they
+   already have something better, and a throw means the trial did not
+   start — neither is a closed door, because they are already a member
+   and already in. The import is lazy so billing.js stays out of the
+   first paint of every page that never redeems a code.
+
+   EXPORTED because there are TWO redemption paths and they are not the
+   same code: this one, for a code HELD in the browser and spent on the
+   next sign-in, and gate-ui.js's box for somebody already signed in.
+   The second was missed on the first pass and prove:gate caught it —
+   a signed-in person who typed a code became a member with no trial,
+   which with the purchases switch ON is a member who is not entitled. */
+export async function startCodeTrial() {
+  try {
+    const { default: Billing } = await import('./billing.js');
+    await Billing.startTrial();
+  } catch (e) { /* already used, already paid, or offline: they are in regardless */ }
+}
+
 /** Resolves true when sync may run. Never throws. */
 async function runGate() {
   if (!session) return false;
@@ -598,7 +632,10 @@ async function runGate() {
       await Gate.redeemCode(pass.code);
       st = await Gate.status();
       _gateStatus = st;
-      if (st.registered) toast('Your invite code is now on this account — sync is on.', 'success', 4000);
+      if (st.registered) {
+        toast('Your invite code is now on this account — sync is on.', 'success', 4000);
+        await startCodeTrial();
+      }
     } catch (e) { /* see above */ }
   }
   _gateRole = st.role || '';
@@ -2069,7 +2106,7 @@ const StudioCloud = {
   ownsSync, syncEnabled, setSyncEnabled,
   // auth — Google only; nothing else belongs on this line
   ensureClient,
-  signInWithGoogle, signOut,
+  signInWithGoogle, signOut, startCodeTrial,
   getSession, getUser, getUserEmail,
   onAuth, isSigningIn, readRedirect, sessionError, sdkError, authRedirectTarget,
   // sync

@@ -15,3 +15,35 @@
 .pu-sec > .bd-h2,
 .pu-sec > .bd-sub { margin-bottom: 0; }
 .pu-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
+
+/* ---- the referral panel (growth-panels.js) -----------------
+   Drawn under the plan cards. growth.css owns the panel's own shape
+   (.gr-panel, .gr-code, .gr-meta); these are the pieces added when it
+   became the buyer's "your code" card: the lead sentence, three stat
+   tiles for credit owed / paid / uses, and the one-line intro a
+   not-yet-paid member sees. Tokens and --sk-* only. */
+.gr-lead { margin: 0; max-width: var(--measure); font-size: var(--t-base); line-height: var(--lh-body); color: var(--ink); }
+.gr-stats {
+  display: grid;
+  gap: var(--s2);
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+}
+.gr-stat {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  min-inline-size: 0;
+}
+.gr-stat-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.gr-stat-figure { font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }
+.gr-intro { background: var(--paper-sunk); }
+.pu-ref { margin: 0; overflow-wrap: anywhere; }

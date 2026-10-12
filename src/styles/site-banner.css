@@ -1,0 +1,59 @@
+/* ============================================================
+   SITE BANNER — see src/ui/site-banner.js
+   One bar above the page. Tokens only; shape from --sk-*.
+   ============================================================ */
+.sb-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  font-size: var(--t-small);
+  line-height: 1.4;
+  color: var(--ink);
+  border-bottom: 1px solid var(--paper-edge);
+}
+.sb-bar.sb-info { background: var(--brand-wash); }
+.sb-bar.sb-warn { background: var(--warn-wash); }
+.sb-kind {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.sb-info .sb-kind { color: var(--brand-deep); }
+.sb-warn .sb-kind { color: var(--warn-deep); }
+.sb-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sb-x {
+  flex: none;
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  font: inherit;
+  font-size: var(--t-lg);
+  line-height: 1;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: var(--sk-radius, var(--radius));
+  cursor: pointer;
+}
+.sb-x:hover { background: var(--paper-sunk); }
+.sb-x:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
+.sb-x:disabled { opacity: 0.4; cursor: default; }
+/* In the console: a framed sample, not a full-bleed bar. */
+.sb-bar.is-preview {
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--paper-edge));
+  border-radius: var(--sk-radius, var(--radius));
+}
+@media (pointer: coarse) {
+  .sb-x { min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 719px) {
+  .sb-bar { padding-inline: var(--s3); gap: var(--s2); }
+}
+@media print { .sb-bar:not(.is-preview) { display: none; } }

@@ -81,7 +81,9 @@ function stopWaiting() {
 }
 
 function idFromHash(hash) {
-  const raw = String(hash || '').replace(/^#/, '');
+  /* `#people?user=7`: what follows a `?` is the page's own state (the
+     admin drawer), not an element id. */
+  const raw = String(hash || '').replace(/^#/, '').split('?')[0];
   if (!raw) return '';
   try { return decodeURIComponent(raw); } catch (e) { return raw; }
 }

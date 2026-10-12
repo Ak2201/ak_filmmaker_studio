@@ -73,6 +73,10 @@
   border-top: 1px solid var(--rule-hair);
   font-size: var(--t-small);
   color: var(--ink-muted);
+  /* The strip is empty until a line takes focus, then fills with the type,
+     its hint and a "What is…?" row; without a reserved height the sheet
+     jumped down ~40px on the first click into it. */
+  min-height: 3.5rem;
 }
 .sc-tip[hidden] { display: none; }
 .sc-tip-type { color: var(--accent-deep); }
@@ -256,6 +260,9 @@
   /* It overlays the white page but is not inside it; say the ground
      out loud so nothing (the AA walk included) reads it off the sheet. */
   background: var(--print-paper);
+  /* Same width as the sheet, so its opaque ground painted over the sheet's
+     own 1px edge — a white notch in the border beside the hint. */
+  clip-path: inset(0 2px);
   pointer-events: none;
 }
 .sc-hint[hidden] { display: none; }

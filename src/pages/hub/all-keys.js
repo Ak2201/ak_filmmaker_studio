@@ -49,13 +49,17 @@ const CODE_PASS_KEY = 'fms_invite_code_v1';
 /* The onboarding tour's place (src/ui/tour.js) — also in GLOBAL_KEYS.
    Reset forgets it, so a wiped studio offers the tour again. */
 const TOUR_KEY = 'fms_tour_v1';
+/* Usage counting's opt-out (src/lib/usage.js, Settings -> Privacy). In the reset
+   list so a wiped studio counts again by default; NOT in GLOBAL_KEYS or any
+   backup — a choice about this device's reporting must not travel to another. */
+const USAGE_OPTOUT_KEY = 'fms_usage_optout_v1';
 
 export const ALL_KEYS = [
   FEATURE_KEY, SHORT_KEY, LIB_CALC_KEY,
   FEAT_PREFS, SHORT_PREFS, LIB_PREFS,
   PREF_KEY, WRITE_PREFS, ACTIVITY_KEY, SCENES_KEY, CONTACTS_KEY,
   SHOTS_KEY, SCRIPT_KEY, LOCS_KEY, BENCH_KEY, DISSECT_KEY, FESTIVALS_KEY,
-  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, CHARACTERS_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY, TOUR_KEY,
+  SCRIPTGEN_KEY, SONGS_KEY, STORY_KEY, VAULT_KEY, EDIT_KEY, DELIVER_KEY, GOALS_KEY, SCENE_BIN_KEY, CHARACTERS_KEY, COSTS_KEY, DEVICE_SESSION_KEY, CODE_PASS_KEY, TOUR_KEY, USAGE_OPTOUT_KEY,
   /* The Drive pointer, so "reset everything" also DISCONNECTS Drive.
      Without it a wiped studio stays connected to a file full of
      work, and the next keystroke pushes the empty studio over it.

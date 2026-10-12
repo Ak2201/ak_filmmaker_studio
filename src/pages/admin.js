@@ -1,8 +1,34 @@
 /* ============================================================
    THE CONSOLE — the application as a whole, for its administrators
    ------------------------------------------------------------
-   ONE page, five tabs (src/ui/tabs.js turns the top-level sections
-   into the strip; the hash picks one):
+   ONE page, eleven tabs in four GROUPS (src/ui/tabs.js turns the
+   top-level sections into the strip, and draws each group under its
+   heading — a vertical sub-navigation inside the content column at
+   1100px and over, the single scrolling strip below; the hash picks
+   one). The groups, in order:
+
+     Run      Overview · Launch & health · Audit log
+     People   People · Support · Access & sharing (#requests)
+     Money    Purchases · Growth
+     Product  Usage · Sync & storage · Controls
+
+   The six tabs that are NOT written here — health, audit, support,
+   usage, sync, controls — are one module each in src/pages/admin-tabs/,
+   registered in NEW_TABS below. A module exports
+
+     render(ctx) -> Node          its content, built synchronously
+     badge(ctx)  -> number|null   (optional) the sub-nav count
+
+   and ctx is { id, gate, cloud, status, overview, billing, growth,
+   purchasesRequired, env, rerender, refresh, go, fmt } — see makeCtx().
+   Until a module is replaced it draws "Coming in this build".
+
+   A status bar sits under the band on every tab: Razorpay mode from the
+   key id's prefix, whether purchases are required, and when the numbers
+   were last counted. The drawer (src/ui/admin-kit.js) is linked from the
+   hash: #people?user=<id>.
+
+   Below is the original header, still true of the five old tabs:
 
      Overview    #overview   one row of numbers, each a link to its tab
      People      #people     members and sessions (gate-ui 'members'),
@@ -54,7 +80,17 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h } from '../lib/dom.js';
-import { fmtPaise } from '../lib/billing.js';
+import { fmtPaise, RAZORPAY_KEY_ID } from '../lib/billing.js';
+import { kpi, pill, emptyState, errorState, skeleton, relTime, stampDensity, syncDrawerFromHash } from '../ui/admin-kit.js';
+import * as kit from '../ui/admin-kit.js';
+import * as charts from '../ui/admin-charts.js';
+import * as healthTab from './admin-tabs/health.js';
+import * as auditTab from './admin-tabs/audit.js';
+import * as supportTab from './admin-tabs/support.js';
+import * as usageTab from './admin-tabs/usage.js';
+import * as syncTab from './admin-tabs/sync.js';
+import * as controlsTab from './admin-tabs/controls.js';
+import { duration } from './admin-tabs/rpc.js';
 import { adminSection, wireGateUI } from '../ui/gate-ui.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
@@ -70,13 +106,33 @@ const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
 const gate = () => (cloud() && cloud().gate) || null;
 
-const TABS = { overview: 'Overview', people: 'People', requests: 'Requests', purchases: 'Purchases', growth: 'Growth' };
+/* THE TABS, in the order they appear. `group` is the sub-nav heading (src/ui/tabs.js
+   draws it from data-tab-group); the ids of the first five are the old
+   ones and every old fragment still resolves inside them. */
+const TAB_DEFS = [
+  { id: 'overview',  label: 'Overview',          group: 'Run' },
+  { id: 'health',    label: 'Launch & health',   group: 'Run' },
+  { id: 'audit',     label: 'Audit log',         group: 'Run' },
+  { id: 'people',    label: 'People',            group: 'People' },
+  { id: 'support',   label: 'Support',           group: 'People' },
+  { id: 'requests',  label: 'Access & sharing',  group: 'People' },
+  { id: 'purchases', label: 'Purchases',         group: 'Money' },
+  { id: 'growth',    label: 'Growth',            group: 'Money' },
+  { id: 'usage',     label: 'Usage',             group: 'Product' },
+  { id: 'sync',      label: 'Sync & storage',    group: 'Product' },
+  { id: 'controls',  label: 'Controls',          group: 'Product' }
+];
+const TABS = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.label]));
+const GROUP = Object.fromEntries(TAB_DEFS.map((t) => [t.id, t.group]));
+/* THE REGISTRY. A tab that has its own module in ./admin-tabs/. To add
+   one: a file there, an import above, a row here and in TAB_DEFS. */
+const NEW_TABS = { health: healthTab, audit: auditTab, support: supportTab, usage: usageTab, sync: syncTab, controls: controlsTab };
 /* A block's own heading, where the module's first sub-heading does not
    already name it. Everything else starts at the module's h3. */
 const BLOCK_TITLE = { features: 'Plan features', invoices: 'Invoices' };
 
 function tab(id) {
-  return h('section.ad-tab', { id, 'data-tab-label': TABS[id] });
+  return h('section.ad-tab', { id, 'data-tab-label': TABS[id], 'data-tab-group': GROUP[id] });
 }
 /** The `section` a module asks for. Eyebrow and deck are not drawn:
  *  the tab names the place and a block carries one meta line at most. */
@@ -99,11 +155,12 @@ const fmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString(undefined, { dateS
 const fmtWhen = (ts) => (ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 const fmtTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { timeStyle: 'short' }) : '');
 const n = (v) => (Number(v) || 0).toLocaleString();
+const num0 = (v) => Number(v) || 0;
 const plural = (v, one, many) => `${n(v)} ${Number(v) === 1 ? one : many}`;
 
 /* ---- the numbers ------------------------------------------------ */
 
-let ov = { phase: 'idle', data: null, accounts: [], users: [], error: '' };
+let ov = { phase: 'idle', data: null, accounts: [], users: [], error: '', loadedAt: 0 };
 
 async function loadOverview() {
   const g = gate();
@@ -111,51 +168,199 @@ async function loadOverview() {
   ov = { ...ov, phase: 'loading', error: '' }; render();
   try {
     const [data, accounts, users] = await Promise.all([g.admin.overview(), g.admin.listAccounts(), g.admin.listUsers()]);
-    ov = { phase: 'ok', data: data || {}, accounts: accounts || [], users: users || [], error: '' };
+    ov = { phase: 'ok', data: data || {}, accounts: accounts || [], users: users || [], error: '', loadedAt: Date.now() };
   } catch (e) {
     ov = { ...ov, phase: 'error', error: e.message || 'The console could not load.' };
   }
   render();
 }
 
-/* A tile is a figure over its label, and a link to where it is acted on. */
-function stat(label, value, sub, href, attention) {
-  return h('a.ad-stat' + (attention ? '.is-attention' : ''), { href }, [
-    h('span.ad-stat-n', { text: value }),
-    h('span.ad-stat-l', { text: label }),
-    sub ? h('span.ad-stat-sub', { text: sub }) : null
-  ].filter(Boolean));
+/* ---- the status bar, and what the other tabs are handed --------- */
+
+/** Razorpay mode, read from the PREFIX of the public key id — never the key. */
+function razorpayEnv() {
+  if (/^rzp_test_/.test(RAZORPAY_KEY_ID)) return 'TEST';
+  if (/^rzp_live_/.test(RAZORPAY_KEY_ID)) return 'LIVE';
+  return null;
+}
+
+/** The two facts that change what every action on this page means. */
+function statusBar() {
+  const env = razorpayEnv();
+  const pr = purchasesRequiredNow();
+  const at = ov.data && ov.data.generated_at ? ov.data.generated_at : ov.loadedAt;
+  return h('div.ad-status', { role: 'region', 'aria-label': 'Environment' }, [
+    pill(env ? 'Razorpay ' + env : 'Razorpay not set', env === 'LIVE' ? 'danger' : env === 'TEST' ? 'warn' : 'neutral',
+      { dot: true, title: env ? 'From the public key id’s prefix (VITE_RAZORPAY_KEY_ID)' : 'No VITE_RAZORPAY_KEY_ID in this build' }),
+    pill(pr === null ? 'Purchases required: unknown' : pr ? 'Purchases required: ON' : 'Purchases required: OFF', pr ? 'warn' : 'neutral',
+      { dot: true, title: pr === null ? 'Section 32 has not answered' : null }),
+    h('span.ad-status-r', {}, [
+      ov.phase === 'loading' ? h('span.ad-meta', { text: 'Refreshing…' })
+        : h('span.ad-meta', {}, ['Refreshed ', h('time', { title: at ? new Date(at).toLocaleString() : null, text: at ? new Date(at).toLocaleTimeString(undefined, { timeStyle: 'short' }) : '—' })]),
+      h('button.btn.ad-refresh', { type: 'button', 'data-ad-action': 'reload', disabled: ov.phase === 'loading' ? '' : null, text: 'REFRESH' })
+    ])
+  ]);
+}
+
+/** Waiting items that already have a count, per tab, for the sub-nav badges. */
+function pendingCounts() {
+  const b = billingSnapshot();
+  return {
+    requests: ov.phase === 'ok' ? Number(ov.data.requests_pending) || 0 : 0,
+    purchases: b ? Number(b.refundRequestsPending) || 0 : 0
+  };
+}
+
+function makeCtx(id) {
+  const b = billingSnapshot();
+  return {
+    id,
+    gate: gate(),
+    cloud: cloud(),
+    status: st,
+    overview: ov,                       // { phase, data, accounts, users, error, loadedAt }
+    billing: b,                         // billingSnapshot(): { overview, payments, refundRequestsPending } | null
+    growth: growthSnapshot(),
+    purchasesRequired: purchasesRequiredNow(),
+    env: razorpayEnv(),                 // 'TEST' | 'LIVE' | null
+    kit, charts,
+    rerender: render,
+    refresh: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); },
+    go: (tabId, params) => {
+      const next = kit.hashFor(tabId, params);
+      try { history.replaceState(history.state, '', location.pathname + location.search + next); } catch (e) { /* ignore */ }
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    },
+    fmt: { date: fmtDate, when: fmtWhen, time: fmtTime, n, paise: fmtPaise, rel: relTime }
+  };
+}
+
+/** A tab module's section: its render(ctx) inside the tab, a failure inside one
+ *  tab never takes the others down. */
+function moduleTab(id) {
+  const sec = tab(id);
+  const ctx = makeCtx(id);
+  try { sec.append(NEW_TABS[id].render(ctx)); }
+  catch (e) { sec.append(errorState({ title: TABS[id] + ' could not draw', why: (e && e.message) || 'An error with no message.', onRetry: render })); }
+  return sec;
+}
+
+/* ---- the command centre ------------------------------------------ */
+
+/** One row of "Needs attention": a pill, a sentence, and a link into the right tab. */
+function attentionItem({ label, tone = 'warn', text, tab: to, params }) {
+  return h('li', {}, [h('a.ad-att', { href: kit.hashFor(to, params), 'data-ad-go': to, 'data-ad-params': params ? JSON.stringify(params) : null }, [
+    pill(String(label), tone),
+    h('span.ad-att-t', { text }),
+    h('span.ad-att-go', { 'aria-hidden': 'true', text: '→' })
+  ])]);
+}
+
+/** The ranked list: health failures, failed receipts, refund requests over 48 hours,
+ *  invite requests, other refund requests, abandoned payments. Anything the health
+ *  report could not read is said, never counted as zero. */
+function attentionList(d, hs) {
+  const out = [];
+  const hd = hs.phase === 'ok' ? hs.data : null;
+  const bad = (v) => !v || v.error;
+  const COVERED = new Set(['receipts', 'payments_created', 'refunds', 'invite_requests']);
+  if (hs.phase === 'error') out.push(attentionItem({ label: 'Health', tone: 'danger', text: 'The health report could not load: ' + hs.error, tab: 'health' }));
+  if (hd) {
+    for (const c of hd.checks || []) {
+      if (COVERED.has(c.id) || (c.level !== 'warn' && c.level !== 'unknown')) continue;
+      out.push(attentionItem({ label: c.level === 'unknown' ? 'Unknown' : 'Health', tone: c.level === 'unknown' ? 'neutral' : 'danger', text: c.observed || c.id, tab: 'health' }));
+    }
+    for (const c of hd.checks || []) if (c.level === 'unknown' && COVERED.has(c.id)) out.push(attentionItem({ label: 'Unknown', tone: 'neutral', text: c.observed, tab: 'health' }));
+    const r = hd.receipts;
+    if (!bad(r) && Number(r.awaiting_recent) > 0) out.push(attentionItem({ label: r.awaiting_recent, text: `${Number(r.awaiting_recent) === 1 ? 'receipt' : 'receipts'} from the last 7 days ${Number(r.awaiting_recent) === 1 ? 'has' : 'have'} no mail recorded`, tab: 'health' }));
+  }
+  const rf = hd && !bad(hd.refunds) ? hd.refunds : null;
+  const pendingRefunds = rf ? Number(rf.requests_pending) || 0 : (pendingCounts().purchases || 0);
+  const old = rf && Number(rf.oldest_pending_age_seconds) > 48 * 3600;
+  if (old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, tone: 'danger', text: `${pendingRefunds === 1 ? 'refund request' : 'refund requests'} waiting, the oldest ${duration(rf.oldest_pending_age_seconds)}`, tab: 'purchases' }));
+  const inv = Number(d.requests_pending) || 0;
+  if (inv) out.push(attentionItem({ label: inv, text: inv === 1 ? 'person is waiting for an invite' : 'people are waiting for an invite', tab: 'requests' }));
+  if (!old && pendingRefunds) out.push(attentionItem({ label: pendingRefunds, text: pendingRefunds === 1 ? 'refund request is waiting for an answer' : 'refund requests are waiting for an answer', tab: 'purchases' }));
+  const ab = hd && !bad(hd.payments) ? Number(hd.payments.created_older_than_1h) || 0 : 0;
+  if (ab) out.push(attentionItem({ label: ab, tone: 'neutral', text: `${ab === 1 ? 'payment' : 'payments'} still open after an hour (abandoned or not yet settled)`, tab: 'purchases' }));
+  return out;
+}
+
+function activityCard(ctx) {
+  const rc = auditTab.recentState();
+  const card = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Activity' })]);
+  if (rc.phase === 'error') card.append(errorState({ title: 'The audit log could not load', why: rc.error, onRetry: () => auditTab.reloadRecent(ctx) }));
+  else if (rc.phase !== 'ok') card.append(skeleton({ kind: 'rows', count: 4 }));
+  else if (!rc.rows.length) card.append(emptyState({ title: 'No admin action recorded yet', body: 'Every admin write is listed here, newest first.', stamp: true, icon: '◷' }));
+  else {
+    card.append(kit.timeline(rc.rows.map((r) => ({
+      at: r.at, tone: auditTab.rowTone(r), title: auditTab.rowTitle(r),
+      sub: h('p.ad-tl-s', {}, [h('code', { text: auditTab.rowTarget(r) })]),
+      target: { href: kit.hashFor('audit', { target: r.target_id }), label: 'Everything about this target' }
+    }))));
+    card.append(h('p.ad-meta.ad-card-f', {}, [h('a', { href: '#audit', 'data-ad-go': 'audit', text: 'Open the audit log →' })]));
+  }
+  return card;
 }
 
 function overviewTab() {
   const sec = tab('overview');
-  if (ov.error) sec.append(h('p.gt-error', { role: 'alert', text: ov.error }));
-  if (ov.phase !== 'ok') { sec.append(h('p.ad-meta', { text: ov.phase === 'loading' ? 'Counting…' : '' })); return sec; }
+  const ctx = makeCtx('overview');
+  healthTab.ensureHealth(ctx);
+  auditTab.ensureRecent(ctx);
+  if (ov.phase === 'error') {
+    sec.append(errorState({ title: 'The numbers could not load', why: ov.error, onRetry: () => { ov = { ...ov, phase: 'idle' }; loadOverview(); } }));
+    return sec;
+  }
+  if (ov.phase !== 'ok') { sec.append(skeleton({ kind: 'kpi' }), skeleton({ kind: 'block', count: 2 })); return sec; }
   const d = ov.data;
   const b = billingSnapshot();
   const g = growthSnapshot();
   const pr = purchasesRequiredNow();
+  const hs = healthTab.healthState();
   const by = (b && b.overview.active_by_plan) || {};
   const paying = Object.entries(by).filter(([k]) => k !== 'free').reduce((t, [, v]) => t + (Number(v) || 0), 0);
   const trials = Number.isInteger(d.trials_active)
-    ? stat('Trials running', n(d.trials_active), '', '#growth')
-    : stat('Trial', g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', g && g.trial_enabled !== false ? trialLength(g.trial_minutes || 30) : '', '#growth');
-  sec.append(h('div.ad-stats', {}, [
-    stat('Members', n(d.members_active), `${n(d.members_admin)} admin`, '#members'),
-    stat('Pending requests', n(d.requests_pending), '', '#admin-console', d.requests_pending > 0),
-    stat('Paying accounts', b ? n(paying) : '…', '', '#billing'),
-    stat('Revenue', b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', '#billing'),
+    ? kpi({ label: 'Trials running', value: n(d.trials_active), href: '#growth' })
+    : kpi({ label: 'Trial', value: g ? (g.trial_enabled !== false ? 'On' : 'Off') : '…', sub: g && g.trial_enabled !== false ? trialLength(g.trial_minutes || 30) : '', href: '#growth' });
+
+  /* A tile from the health report. A slot that errored, or a report that
+     has not landed, is "—" / "…" and says so: never a zero that reads as healthy. */
+  const hk = (label, slot, pick, { sub, href, hot = (v) => v > 0 } = {}) => {
+    if (hs.phase === 'error') return kpi({ label, value: '—', sub: 'unknown', href });
+    if (hs.phase !== 'ok') return kpi({ label, value: '…', href });
+    const v = hs.data[slot];
+    if (!v || v.error) return kpi({ label, value: '—', sub: 'unknown', href, title: v && v.message ? v.message : null });
+    const x = Number(pick(v)) || 0;
+    return kpi({ label, value: n(x), sub, href, attention: hot(x) });
+  };
+
+  sec.append(h('div.ad-stats.ad-kpis', {}, [
+    kpi({ label: 'Members', value: n(d.members_active), sub: `${n(d.members_admin)} admin`, href: '#people' }),
+    kpi({ label: 'Pending requests', value: n(d.requests_pending), href: '#requests', attention: d.requests_pending > 0 }),
+    kpi({ label: 'Paying accounts', value: b ? n(paying) : '…', href: '#billing' }),
+    kpi({ label: 'Revenue', value: b ? fmtPaise(b.overview.paid_total_paise || 0) : '…', sub: b ? `${fmtPaise(b.overview.paid_30d_paise || 0)} in 30 days` : '', href: '#billing' }),
     trials,
-    stat('Purchases required', pr === null ? '—' : pr ? 'On' : 'Off', '', '#purchasesRequired')
+    kpi({ label: 'Purchases required', value: pr === null ? '—' : pr ? 'On' : 'Off', href: '#purchasesRequired' }),
+    hk('Failed receipts', 'receipts', (v) => v.awaiting_recent, { sub: 'last 7 days', href: '#health' }),
+    hk('Abandoned payments', 'payments', (v) => v.created_older_than_1h, { sub: 'open over 1 hour', href: '#purchases', hot: () => false }),
+    hk('Refund backlog', 'refunds', (v) => num0(v.requests_pending) + num0(v.requests_approved_not_refunded) + num0(v.refunds_failed), { sub: 'pending, approved, failed', href: '#purchases' }),
+    hk('Walled', 'wall', (v) => v.walled, { sub: pr ? 'out of the studio' : 'if purchases were required', href: '#health', hot: () => false })
   ]));
-  sec.append(h('div.ad-bar', {}, [
-    h('p.ad-meta', { text: [
-      plural(d.users_total, 'signed in', 'signed in'), `${n(d.users_active_7d)} active this week`,
-      plural(d.accounts, 'organisation', 'organisations'), plural(d.projects, 'film', 'films'),
-      `${n(d.sessions_live)} online`, `${plural(d.codes_active, 'code', 'codes')} open`, 'counted ' + fmtTime(d.generated_at)
-    ].join(' · ') }),
-    h('button.btn.ad-refresh', { type: 'button', 'data-ad-action': 'reload', text: 'REFRESH' })
-  ]));
+
+  const items = attentionList(d, hs);
+  const attention = h('div.ad-card', {}, [h('h3.ad-card-h', { text: 'Needs attention' })]);
+  if (items.length) attention.append(h('ul.ad-att-list', {}, items));
+  else if (hs.phase === 'ok') attention.append(emptyState({ title: 'Nothing needs you', body: 'The health checks pass, and no receipt, refund, invite or payment is waiting.', stamp: true, icon: '✓' }));
+  else if (hs.phase === 'loading' || hs.phase === 'idle') attention.append(skeleton({ kind: 'rows', count: 3 }));
+  else attention.append(emptyState({ title: 'Nothing found so far', body: 'The health report did not load, so this is not an all-clear.', stamp: true, icon: '?' }));
+  sec.append(h('div.ad-cols', {}, [attention, activityCard(ctx)]));
+
+  sec.append(h('p.ad-meta', { text: [
+    plural(d.users_total, 'signed in', 'signed in'), `${n(d.users_active_7d)} active this week`,
+    plural(d.accounts, 'organisation', 'organisations'), plural(d.projects, 'film', 'films'),
+    `${n(d.sessions_live)} online`, `${plural(d.codes_active, 'code', 'codes')} open`, 'counted ' + fmtTime(d.generated_at)
+  ].join(' · ') }));
   return sec;
 }
 
@@ -282,6 +487,7 @@ function carryFields({ saved, focus }) {
 
 /* ---- the page ---------------------------------------------------- */
 
+let drawerSynced = false;   // the hash's drawer is opened once, on the first admin render
 let st = null;   // the last studio_status(); null until asked
 let askedFor = '';
 
@@ -308,6 +514,7 @@ function render() {
   ].filter(Boolean)));
 
   let body;
+  let statusEl = null;
   if (!c || !c.isConfigured()) {
     body = h('div.ad-body', {}, [state('local', 'No cloud, no console', 'This build carries no Supabase project (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).')]);
   } else if (!signedIn) {
@@ -321,15 +528,28 @@ function render() {
       [h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })])]);
   } else {
     if (ov.phase === 'idle') loadOverview();
-    body = h('div.ad-body.ad-console', {}, [
-      overviewTab(), peopleTab(st), requestsTab(st), purchasesTab(st), growthAdminSection(block, st)
-    ].filter(Boolean));
+    const sections = {
+      overview: overviewTab(), people: peopleTab(st), requests: requestsTab(st), purchases: purchasesTab(st), growth: growthAdminSection(block, st)
+    };
+    for (const id of Object.keys(NEW_TABS)) sections[id] = moduleTab(id);
+    const counts = pendingCounts();
+    for (const id of Object.keys(NEW_TABS)) {
+      let c = null;
+      try { c = NEW_TABS[id].badge ? NEW_TABS[id].badge(makeCtx(id)) : null; } catch (e) { c = null; }
+      if (Number(c) > 0) counts[id] = Number(c);
+    }
+    const ordered = TAB_DEFS.map((t) => sections[t.id]).filter(Boolean);
+    for (const sec of ordered) if (counts[sec.id] > 0) sec.dataset.tabBadge = String(Math.min(99, counts[sec.id]));
+    statusEl = statusBar();
+    body = stampDensity(h('div.ad-body.ad-console.ad-grouped', {}, ordered));
   }
 
+  if (statusEl) main.append(statusEl);
   main.append(body);
   app.replaceChildren(main);
   carryFields(kept);
   mountShell();
+  if (isAdmin && !drawerSynced) { drawerSynced = true; syncDrawerFromHash(makeCtx('')); }
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();
@@ -339,7 +559,16 @@ function render() {
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-ad-action="reload"]');
-  if (el) { ov = { ...ov, phase: 'idle' }; loadOverview(); }
+  if (el) { ov = { ...ov, phase: 'idle' }; loadOverview(); const c = makeCtx('overview'); healthTab.reload(c); auditTab.reloadRecent(c); }
+});
+/* A link in the Overview that names a tab: go through ctx.go() so its params
+   (an audit target, a drawer) land in the hash the way the tab expects. */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-ad-go]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault();
+  let params; try { params = a.dataset.adParams ? JSON.parse(a.dataset.adParams) : undefined; } catch (err) { params = undefined; }
+  makeCtx(a.dataset.adGo).go(a.dataset.adGo, params);
 });
 
 wireGateUI(render);

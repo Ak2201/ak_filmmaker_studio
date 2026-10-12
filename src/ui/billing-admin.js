@@ -311,7 +311,12 @@ const refundToast = (out) => toast(out.status === 'processed'
 
 export function wireBillingAdmin(render) { rerender = render || (() => {}); }
 /** What the console's Overview reads: the money, once loaded. Null until then. */
-export function billingSnapshot() { return S.loaded ? { overview: S.overview || {}, payments: S.payments } : null; }
+export function billingSnapshot() {
+  if (!S.loaded) return null;
+  /* Refund requests still waiting for an answer (the same test the table uses), for the console's nav badge. */
+  const refundRequestsPending = (S.rreqs || []).filter((r) => r.status === 'pending' && r.payment_status === 'paid').length;
+  return { overview: S.overview || {}, payments: S.payments, refundRequestsPending };
+}
 
 const toast = (msg, type) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(msg, type ? { type } : undefined); };
 

@@ -62,6 +62,7 @@ import { BRAND } from './brand.js';
    cannot lock a page it is no longer on. */
 import { moduleGroups, shelves, phases } from './navmodel.js';
 import { h } from './dom.js';
+import { bumpUsage } from './usage.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import { trialLength } from './trial-time.js';
 import '../styles/plan-gate.css';
@@ -122,6 +123,7 @@ export function sampleOnly() { return !!(features && features.sample_only === tr
  *  Fails open like allowed(): unknown is yes. */
 export function guard(key, what) {
   if (allowed(key)) return true;
+  bumpUsage('limit_hit');   // a plan said no (counts only; src/lib/usage.js)
   const label = what || ((CAPABILITIES.find(([k]) => k === key) || [])[1]) || 'This';
   const where = ent && ent.reason === 'granted' ? 'the access the studio gave you'
               : plan === 'free' ? 'the free trial' : 'the ' + (planName || 'current') + ' plan';
@@ -197,7 +199,16 @@ async function _refreshOnce() {
     else {
       const st = await Billing.status();
       features = (st && st.features && typeof st.features === 'object') ? st.features : {};
-      plan = (st && st.plan) || 'free';
+      /* §45/§46: the admin's overrides ride on effective_features(), which
+         starts from this very map. An object answers → use it; ANYTHING
+         else (section not run, network, a thrown error) → the map above,
+         unchanged. Fails OPEN, like entitlement(). */
+      try {
+        const sb = await c.ensureClient();
+        const { data: eff, error: effErr } = sb ? await sb.rpc('effective_features') : { data: null, error: null };
+        if (!effErr && eff && typeof eff === 'object' && !Array.isArray(eff)) features = eff;
+      } catch (e) { /* keep billing_status()'s own features */ }
+      plan =(st && st.plan) || 'free';
       planName = (st && st.plan_name) || Billing.planName(plan);
       /* §30. A server that has not run section 30 returns no `entitled`
          key at all, and undefined must not read as false — that would

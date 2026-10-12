@@ -37,6 +37,8 @@ import '../styles/plans.css';
 import '../styles/growth.css';
 import { ask, askDanger } from './dialog.js';
 import { minutesToHours, hoursToMinutes, trialLength } from '../lib/trial-time.js';
+import { dataTable, errorState, emptyState } from './admin-kit.js';
+import { funnel as funnelChart } from './admin-charts.js';
 
 let rerender = () => {};
 const S = { state: 'idle', error: '', settings: null, credits: null, prices: null, members: [], missing: {}, saved: '', granted: '' };
@@ -452,6 +454,90 @@ function funnelBlock(sec) {
   sec.append(h('div.gt-scroll', {}, [table]));
 }
 
+/* ---- cohorts (schema §43, admin_cohorts) --------------------------
+   Stepped funnel and conversion by signup week and by source, from the
+   server's derived counts. Each stage counts people who REACHED it, on its
+   own (a buyer who never held a trial is still "paid"), so the funnel bars
+   can rise as well as fall and the page says so. `active in trial` only
+   sees work that SYNCED, so it undercounts anybody without cloud sync.
+
+   There is no time-based retention triangle: that would need a per-person
+   activity record kept week after week, which the usage counters are built
+   not to have. The grid below is conversion by signup week instead — the
+   share of each week's sign-ups that reached each stage.
+
+   Loaded on its own and failing on its own: an error here never blanks the
+   rest of the Growth tab. */
+const COHORT = { weeks: 12, phase: 'idle', data: null, error: '' };
+const STAGE_LABEL = { signed_up: 'Signed up', members: 'Became a member', trial_started: 'Started a trial', active_in_trial: 'Active in trial', checkout_started: 'Started checkout', paid: 'Paid', refunded: 'Refunded' };
+const WEEK_CHOICES = [8, 12, 26];
+
+async function loadCohorts() {
+  if (COHORT.phase === 'loading') return;
+  COHORT.phase = 'loading'; COHORT.error = '';
+  try {
+    const c = window.StudioCloud;
+    const sb = c && c.ensureClient ? await c.ensureClient() : null;
+    if (!sb) throw new Error('This build has no cloud project configured.');
+    const { data, error } = await sb.rpc('admin_cohorts', { p_weeks: COHORT.weeks });
+    if (error) throw error;
+    COHORT.data = data; COHORT.phase = 'ok';
+  } catch (e) {
+    COHORT.phase = 'error';
+    COHORT.error = isMissing(e) ? 'The database has no admin_cohorts() yet \u2014 schema section 43 has not been run on it.' : (e && e.message) || 'The server did not say why.';
+  }
+  rerender();
+}
+
+const pct = (v, of) => (Number(of) ? Math.round((Number(v) / Number(of)) * 1000) / 10 : 0);
+
+function cohortsBlock(sec) {
+  sec.append(h('h3.gt-h3', { text: 'Cohorts and the trial funnel' }));
+  if (COHORT.phase === 'idle') loadCohorts();
+  if (COHORT.phase === 'error') { sec.append(errorState({ title: 'Cohorts could not load', why: COHORT.error, onRetry: () => { COHORT.phase = 'idle'; rerender(); } })); return; }
+  if (COHORT.phase !== 'ok' || !COHORT.data) { sec.append(h('p.gt-meta', { text: 'Counting cohorts…' })); return; }
+  const d = COHORT.data;
+  const t = d.totals || {};
+  sec.append(h('div.us-bar', { role: 'group', 'aria-label': 'Cohort window' }, [
+    h('span.gt-meta', { text: 'Sign-up window' }),
+    ...WEEK_CHOICES.map((w) => h('button.ad-chip', { type: 'button', 'data-gra-action': 'cohort-weeks', 'data-weeks': String(w), 'aria-pressed': String(COHORT.weeks === w), text: w + ' weeks' }))
+  ]));
+  sec.append(h('p.gt-meta', { text: `People who signed up from ${d.since} to ${d.until}. Each step counts the people who reached it, on its own; none is forced to imply the one before, so a step can be larger than the one above it. "Active in trial" only sees work that synced to an account, so it undercounts people who write offline.` }));
+  if (!Number(t.signed_up)) { sec.append(emptyState({ title: 'Nobody signed up in this window', body: 'Try a longer window.' })); return; }
+  const stages = (d.stages || []).filter((k) => k !== 'refunded');
+  sec.append(funnelChart(stages.map((k) => ({ label: STAGE_LABEL[k] || k, value: Number(t[k]) || 0 })), { label: 'Signed up to paid' }));
+  sec.append(h('p.gt-meta', { text: `${Number(t.refunded) || 0} of ${Number(t.paid) || 0} paying ${Number(t.paid) === 1 ? 'person was' : 'people were'} refunded.` }));
+
+  const weeks = d.by_week || [];
+  const cols = stages.filter((k) => k !== 'signed_up');
+  sec.append(h('h4.gt-h3', { text: 'Conversion by sign-up week' }));
+  sec.append(dataTable({
+    caption: 'Percent of each sign-up week that reached each step', rows: weeks, rowId: (w) => w.week_start,
+    columns: [
+      { key: 'week_start', label: 'Week of', render: (w) => w.week_start },
+      { key: 'signed_up', label: 'Signed up', align: 'end', render: (w) => w.signed_up },
+      ...cols.map((k) => ({ key: k, label: STAGE_LABEL[k] || k, align: 'end', render: (w) => (Number(w.signed_up) ? `${pct(w[k], w.signed_up)}%` : '\u2014'), title: (w) => `${w[k]} of ${w.signed_up}` }))
+    ],
+    empty: { title: 'No weeks', body: 'No sign-ups in the window.' }
+  }));
+  sec.append(h('p.gt-meta', { text: 'Each cell is the share of that week\u2019s sign-ups that reached the step. Recent weeks are still converting, so they read lower than they will.' }));
+
+  const mk = (key, label) => dataTable({
+    caption: label, rows: d['by_' + key] || [], rowId: (r) => r[key],
+    columns: [
+      { key, label: key === 'source' ? 'Came in by' : 'Promo kind', render: (r) => r[key] },
+      { key: 'signed_up', label: 'Signed up', align: 'end', render: (r) => r.signed_up },
+      { key: 'trial_started', label: 'Trial', align: 'end', render: (r) => `${r.trial_started} (${pct(r.trial_started, r.signed_up)}%)` },
+      { key: 'checkout_started', label: 'Checkout', align: 'end', render: (r) => `${r.checkout_started} (${pct(r.checkout_started, r.signed_up)}%)` },
+      { key: 'paid', label: 'Paid', align: 'end', render: (r) => `${r.paid} (${pct(r.paid, r.signed_up)}%)` },
+      { key: 'refunded', label: 'Refunded', align: 'end', render: (r) => r.refunded }
+    ],
+    empty: { title: 'Nothing to compare', body: 'No sign-ups in the window.' }
+  });
+  sec.append(h('h4.gt-h3', { text: 'By source' }), mk('source', 'Source: a standard invite code, or how the trial began; "none" never started one'));
+  sec.append(h('h4.gt-h3', { text: 'By promo attribution' }), mk('attribution', 'The kind of code on the first payment'));
+}
+
 export function growthAdminSection(section, st) {
   if (!st || !st.deployed || st.role !== 'admin') return null;
   const sec = section('growth', 'Growth', 'The trial, the price, referrals, affiliates, leads and the funnel.', '');
@@ -464,6 +550,7 @@ export function growthAdminSection(section, st) {
   affiliateBlock(sec);
   leadsBlock(sec);
   funnelBlock(sec);
+  cohortsBlock(sec);
   sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
   return sec;
 }
@@ -605,6 +692,12 @@ delegate(document, 'click', '[data-gra-action="leads-csv"]', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
-delegate(document, 'click', '[data-gra-action="reload"]', () => load());
+delegate(document, 'click', '[data-gra-action="cohort-weeks"]', (e, el) => {
+  const w = Number(el.dataset.weeks);
+  if (!WEEK_CHOICES.includes(w) || w === COHORT.weeks) return;
+  COHORT.weeks = w; COHORT.phase = 'idle'; rerender();
+});
+
+delegate(document, 'click', '[data-gra-action="reload"]', () => { COHORT.phase = 'idle'; load(); });
 
 export default { growthAdminSection, wireGrowthAdmin };

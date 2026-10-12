@@ -114,8 +114,13 @@ function findTabs() {
 let signature = '';
 let active = '';
 
+/* The part of the hash before a `?`: a page may hang its own state off
+   the tab (admin.html#people?user=7 — the console's drawer), and that
+   is not part of the tab's id. */
+const hashTab = () => (location.hash || '').replace(/^#/, '').split('?')[0];
+
 function currentFromHash(sections) {
-  const want = (location.hash || '').replace(/^#/, '');
+  const want = hashTab();
   if (want) {
     if (sections.some((s) => s.id === want)) return want;
     // a fragment INSIDE a tab's section selects that tab
@@ -156,7 +161,7 @@ function show(sections, id, { setHash = true, animate = false } = {}) {
     t.classList.toggle('is-on', on);
     if (on) intoStrip(t);
   });
-  if (setHash && (location.hash || '').replace(/^#/, '') !== id) {
+  if (setHash && hashTab() !== id) {
     /* replaceState rather than location.hash = …: no history entry per
        tab, and no scroll jump. The shell's breadcrumb listens for
        hashchange, so one is dispatched by hand. */
@@ -170,7 +175,7 @@ function show(sections, id, { setHash = true, animate = false } = {}) {
    Bring it in by moving the STRIP's scroll only: scrollIntoView would
    also scroll the window, under a sticky element, mid-load. */
 function intoStrip(tab) {
-  const strip = tab.parentElement;
+  const strip = tab.closest('.tabs');
   if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
   const s = strip.getBoundingClientRect();
   const t = tab.getBoundingClientRect();
@@ -201,10 +206,35 @@ export function revealTarget(id) {
   return true;
 }
 
+/* A section may carry `data-tab-group="Run"` (the admin console does):
+   the strip then draws each run of same-group tabs under that heading.
+   Below 1100px the headings fold away and it is the same single row; at
+   1100px and over a page that wants it (admin.css) lays the strip out
+   as a vertical list. `data-tab-badge="3"` puts a count on the tab. */
+function tabButton(s) {
+  const badge = s.dataset.tabBadge;
+  const btn = h('button.tabs-tab', { type: 'button', role: 'tab', id: 'tab-' + s.id, 'data-tab': s.id, 'aria-controls': s.id, 'aria-selected': 'false' }, [
+    h('span.tabs-tab-l', { text: labelFor(s) })
+  ]);
+  if (badge && badge !== '0') {
+    btn.append(h('span.tabs-badge', { 'aria-hidden': 'true', text: badge }));
+    btn.setAttribute('aria-label', labelFor(s) + ', ' + badge + ' waiting');
+  }
+  return btn;
+}
 function buildStrip(sections) {
-  const strip = h('nav.tabs', { role: 'tablist', 'aria-label': 'Sections' });
+  const grouped = sections.some((s) => s.dataset.tabGroup);
+  const strip = h('nav.tabs' + (grouped ? '.tabs-grouped' : ''), { role: 'tablist', 'aria-label': 'Sections', 'aria-orientation': grouped ? 'vertical' : null });
+  let group = null, name = null;
   for (const s of sections) {
-    strip.append(h('button.tabs-tab', { type: 'button', role: 'tab', id: 'tab-' + s.id, 'data-tab': s.id, 'aria-controls': s.id, 'aria-selected': 'false', text: labelFor(s) }));
+    if (!grouped) { strip.append(tabButton(s)); continue; }
+    const g = s.dataset.tabGroup || '';
+    if (!group || g !== name) {
+      name = g;
+      group = h('div.tabs-group', { role: 'presentation' }, [g ? h('span.tabs-group-h', { 'aria-hidden': 'true', text: g }) : null]);
+      strip.append(group);
+    }
+    group.append(tabButton(s));
   }
   watchHeight(strip);
   return strip;
@@ -218,7 +248,9 @@ function buildStrip(sections) {
 let stripRO = null;
 function watchHeight(strip) {
   const publish = () => {
-    const pinned = strip.isConnected && getComputedStyle(strip).position === 'sticky';
+    /* A vertical sub-nav (tabs-grouped, wide) pins beside the panel, not above it. */
+    const side = strip.classList.contains('tabs-grouped') && strip.parentElement && strip.offsetWidth < strip.parentElement.clientWidth / 2;
+    const pinned = strip.isConnected && !side && getComputedStyle(strip).position === 'sticky';
     const px = (pinned ? Math.round(strip.getBoundingClientRect().height) : 0) + 'px';
     const de = document.documentElement;
     if (de.style.getPropertyValue('--tabs-h') !== px) de.style.setProperty('--tabs-h', px);
@@ -233,7 +265,7 @@ export function apply() {
   const { parent, sections } = findTabs();
   const old = document.querySelector('.tabs');
   if (!parent) { if (old) old.remove(); signature = ''; return; }
-  const sig = sections.map((s) => s.id + '=' + labelFor(s)).join('|');
+  const sig = sections.map((s) => s.id + '=' + labelFor(s) + '/' + (s.dataset.tabGroup || '') + '/' + (s.dataset.tabBadge || '')).join('|');
   if (sig !== signature || !old || old.parentElement !== parent) {
     if (old) old.remove();
     parent.insertBefore(buildStrip(sections), sections[0]);
@@ -273,7 +305,10 @@ function onTabClick(e) {
 function revealPanel(strip, panel, y0, stuckAt) {
   if (!strip || !panel) return;
   const gap = parseFloat(getComputedStyle(strip).marginBottom) || 0;
-  const h = strip.getBoundingClientRect().height;
+  let h = strip.getBoundingClientRect().height;
+  /* A vertical sub-nav beside the panel (the admin console at 1100px
+     and over) does not stack above it, so it takes no height. */
+  if (strip.classList.contains('tabs-grouped') && strip.parentElement && strip.getBoundingClientRect().width < strip.parentElement.clientWidth / 2) h = 0;
   /* Document positions, so the resolver's half-finished scroll does
      not matter. */
   const panelDocTop = panel.getBoundingClientRect().top + window.scrollY;
@@ -294,11 +329,11 @@ function revealPanel(strip, panel, y0, stuckAt) {
 function onTabKey(e) {
   const t = e.target.closest('.tabs [role="tab"]');
   if (!t) return;
-  const tabs = [...t.parentElement.querySelectorAll('[role="tab"]')];
+  const tabs = [...t.closest('.tabs').querySelectorAll('[role="tab"]')];
   const i = tabs.indexOf(t);
   let j = -1;
-  if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
-  else if (e.key === 'ArrowLeft') j = (i + tabs.length - 1) % tabs.length;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = (i + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = (i + tabs.length - 1) % tabs.length;
   else if (e.key === 'Home') j = 0;
   else if (e.key === 'End') j = tabs.length - 1;
   if (j < 0) return;

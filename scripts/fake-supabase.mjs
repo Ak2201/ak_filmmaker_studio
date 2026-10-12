@@ -37,6 +37,13 @@ import { promoPrice, normalisePromo } from '../supabase/functions/_shared/razorp
 export const SB = 'https://conhlrulxfwkhsnymakz.supabase.co';
 export const REF = 'conhlrulxfwkhsnymakz';
 export const F = { db: null, reset() { F.db = freshDb(); return F.db; } };
+/* EXTENSION POINTS for lanes that add RPCs / edge functions without
+   editing this file's switch (see scripts/fake-admin-rpcs.mjs):
+     EXT_RPC[name] = (args, user, { isAdmin }) => data      (throw {code, message, status?} to refuse)
+     EXT_FN[name]  = (body, user) => [status, jsonBody]      (/functions/v1/<name>)
+   An EXT_RPC entry wins over a `case` of the same name. */
+export const EXT_RPC = {};
+export const EXT_FN = {};
 
 /* ---- section 16: the fake Razorpay ---------------------------------
    The key secret the fake "edge functions" verify with, and the mode
@@ -414,6 +421,10 @@ function rpc(name, args, user, route) {
     if (r && r.status === 'pending') { r.status = 'approved'; r.decided_at = r.decided_at || new Date().toISOString(); }
   };
   const fmtD = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (EXT_RPC[name]) {
+    try { return json(route, 200, EXT_RPC[name](args, user, { isAdmin: isAdmin(user) })); }
+    catch (e) { return pgErr(route, e.code || 'XX000', e.message || 'error', e.status || 400); }
+  }
   switch (name) {
     case 'billing_status': {
       if (!user) return pgErr(route, '42501', 'Sign in first');
@@ -942,6 +953,12 @@ export async function handle(route) {
   if (url.pathname.startsWith('/rest/v1/plans')) return json(route, 200, user ? [...F.db.plans].sort((a, b) => a.sort - b.sort) : []);
   if (url.pathname.startsWith('/rest/v1/payments')) return json(route, 200, user ? F.db.payments.filter((x) => x.user_id === user.id) : []);
 
+  const extFn = url.pathname.match(/^\/functions\/v1\/([a-z-]+)$/);
+  if (extFn && EXT_FN[extFn[1]]) {
+    let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
+    const [status, out] = EXT_FN[extFn[1]](body, user);
+    return json(route, status, out);
+  }
   /* ---- the two edge functions, as the browser reaches them ---- */
   if (url.pathname === '/functions/v1/rzp-order' && req.method() === 'POST') {
     if (!user) return json(route, 401, { error: 'Sign in first.' });

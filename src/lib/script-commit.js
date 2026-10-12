@@ -25,12 +25,14 @@
 import Script, { blankElement, hasTitlePage, normaliseTitlePage } from './script.js';
 import Scenes from './scenes.js';
 import { binScene } from './scene-bin.js';
+import { bumpUsage } from './usage.js';
 
 export function commitImportedScript(plan, opts = {}) {
   const both = opts.mode !== 'append';
   const replaceScript = opts.replaceScript !== undefined ? !!opts.replaceScript : both;
   const replaceScenes = opts.replaceScenes !== undefined ? !!opts.replaceScenes : both;
   const importName = opts.importName || '';
+  bumpUsage('script_import');   // a name only (src/lib/usage.js)
   const doc = opts.doc || Script.loadScript();
   const persist = opts.persist || (() => Script.saveScript(doc));
 

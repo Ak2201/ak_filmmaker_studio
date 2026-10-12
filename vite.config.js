@@ -637,8 +637,8 @@ export default defineConfig({
              trial's length in hours is said the same way on the landing
              page and in the app, and it is pure for the same reason. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time)\.js$/.test(id)) return 'startlib';
-          const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog)\.js$/;
+          const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

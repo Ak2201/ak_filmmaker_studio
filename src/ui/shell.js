@@ -674,17 +674,28 @@ function buildBar(active) {
       return /mac/i.test(navigator.platform || navigator.userAgent || '');
     } catch (e) { return false; }
   })();
-  const find = h('button.sh-find', {
-    type: 'button',
-    'data-action': 'palette-open',
-    'aria-label': 'Search the studio',
-    'aria-keyshortcuts': 'Meta+K Control+K',
-    title: 'Search the studio  (' + (mac ? '⌘K' : 'Ctrl K') + ')'
+  /* A REAL FIELD (owner, 12 Oct 2026: "a real search box in the top bar").
+     It is a launcher with a field's shape: a click or the first printable
+     key opens the results panel (the palette) carrying what was typed, so
+     the one index, ranking and keyboard handling stay in one place.
+     Deliberately NOT opened on focus: the palette gives focus back to its
+     opener on close, and a field that opens on focus would reopen it. */
+  const kbd = mac ? '⌘K' : 'Ctrl K';
+  const findInput = h('input.sh-find-input', {
+    type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off',
+    placeholder: 'Search the studio', 'aria-label': 'Search the studio',
+    'aria-haspopup': 'dialog', 'aria-keyshortcuts': 'Meta+K Control+K'
   });
-  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }),
-              h('span.sh-find-label', { text: 'Search', 'aria-hidden': 'true' }),
-              h('kbd.sh-find-key', { text: mac ? '⌘K' : 'Ctrl K', 'aria-hidden': 'true' }));
-  if (!isGlobalMode()) bar.append(find);
+  const find = h('div.sh-find', { 'data-action': 'palette-open', title: 'Search the studio  (' + kbd + ')' });
+  find.append(h('span.sh-find-icon', { text: '⌕', 'aria-hidden': 'true' }), findInput,
+              h('kbd.sh-find-key', { text: kbd, 'aria-hidden': 'true' }));
+  findInput.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Enter') { e.preventDefault(); openPalette(); }
+    else if (e.key.length === 1) { e.preventDefault(); openPalette(e.key); }
+  });
+  findInput.addEventListener('input', () => { const v = findInput.value; findInput.value = ''; if (v) openPalette(v); });
+  bar.append(find);
   bar.dataset.mode = GLOBAL_MODE;
   return bar;
 }

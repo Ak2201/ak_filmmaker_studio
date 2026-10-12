@@ -245,24 +245,18 @@ function toolbarMarkup() {
 }
 
 function heroMarkup() {
-  /* THE HERO IS THE PROJECT LIST (owner, 11 Oct 2026). With projects it
+  /* HOME LOST ITS TITLE BLOCK, ITS TOUR INVITE AND ITS CLOSING QUOTE (owner,
+     12 Oct 2026: "remove a section in home"). The tour lives in Settings →
+     Preferences → Help and the first-week checklist below; the name is in
+     the band. The page's h1 is now the projects heading.
+
+     THE HERO IS THE PROJECT LIST (owner, 11 Oct 2026). With projects it
      is the Continue cards and "+ New project"; with none, renderProjects()
      draws the three doors in the same place. Everything about a film —
      where it is, the stages, the modules — lives on its dashboard. */
   return h('section#top.hero', {
     html: `
       <div class="hero-inner">
-        <div class="hero-top">
-          <span class="hero-vol">A working desk for the working filmmaker</span>
-          <span class="hero-edition">EDITION 01 · CHENNAI · MMXXVI</span>
-        </div>
-
-        <h1><span class="light">FilmMaker</span><br>Studio.</h1>
-
-        <p class="hero-deck">Make a <em>feature</em>, make a <em class="s">short</em>, or learn the <em class="g">craft</em> first — all from one desk, with a film you love to explain every step.</p>
-
-        <div id="tourInviteHost"></div>
-
         <div id="heroProjects"></div>
       </div>`
   });
@@ -275,9 +269,8 @@ function projectsMarkup() {
         <div class="projects-head">
           <div>
             <div class="lab">PROJECTS · ONE PER FILM</div>
-            <h2 id="projectsHeading">Continue <em>where you left off.</em></h2>
+            <h1 id="projectsHeading">Continue <em>where you left off.</em></h1>
             <p class="greeting-block" id="hubGreeting">A working desk for the working filmmaker.</p>
-            <p class="deck">Every script, every plan lives under a project. Pick one to continue where you left off, or switch to another film — short or feature — whenever you like.</p>
           </div>
           <button class="btn primary" data-action="new-project">+ NEW PROJECT</button>
         </div>
@@ -320,16 +313,6 @@ function renderJourney() {
   return lastJourney;
 }
 
-function finalMarkup() {
-  return h('section.final-page', {
-    html: `
-      <div class="final-inner">
-        <p class="quote">"A studio is not a building. It is the pattern of <span class="feature">attention</span>, <span class="shorts">decisions</span>, and <span class="library">study</span> a working filmmaker keeps."</p>
-        <div class="signature">${esc(BRAND.name.toUpperCase())}</div>
-      </div>`
-  });
-}
-
 function modalMarkup() {
   return h('div#projectModal.modal-overlay', {
     role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pmHeading',
@@ -363,7 +346,7 @@ function render() {
   const hero = heroMarkup();
   // The project list IS the hero: the section nests inside it.
   hero.querySelector('#heroProjects').replaceWith(projectsMarkup());
-  main.append(hero, finalMarkup());
+  main.append(hero);
   app.append(toolbarMarkup(), main, modalMarkup());
 }
 

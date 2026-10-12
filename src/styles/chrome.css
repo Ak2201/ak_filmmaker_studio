@@ -1393,6 +1393,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   letter-spacing: var(--track-wide);
   color: var(--accent-deep);
 }
+.projects-head h1,
 .projects-head h2 {
   font-family: var(--f-display);
   font-size: clamp(var(--t-2xl), 4vw, var(--t-3xl));
@@ -1401,6 +1402,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
 }
+.projects-head h1 em,
 .projects-head h2 em { color: var(--accent-deep); }
 
 .projects-toolbar {
@@ -3780,12 +3782,12 @@ html {
 
 /* ---- GLOBAL MODE: brand + crumb + account/appearance only ----
    The wide band is a four-column grid (crumb | stages | search |
-   tools). Without the stage strip and the search handle the tools
-   would auto-place into the stages' column, so the global band states
-   its own two columns. */
+   tools). Without the stage strip the search field and the tools would
+   auto-place into the stages' column, so the global band states its own
+   three: crumb | search | tools. */
 @media (min-width: 1100px) {
   .sh-bar[data-mode="global"]:not([data-stacked]) {
-    grid-template-columns: minmax(max-content, 1fr) max-content;
+    grid-template-columns: minmax(max-content, 1fr) max-content max-content;
   }
 }
 
@@ -3834,4 +3836,57 @@ html {
   .sh-bar [data-tb-backup] > .tb-menu-btn::before { content: "⇅"; font-size: var(--t-small); }
   .sh-bar > .sh-tools { margin-left: auto; }
   .sh-bar > .toolbar > .sh-tools { margin-left: auto; }
+}
+
+/* ---- THE SEARCH FIELD (owner, 12 Oct 2026) ----
+   The band's search handle is a real field now: icon, input, key cap.
+   It is a launcher — shell.js opens the results panel on a click or the
+   first key — so it keeps the control language above and only changes
+   the cursor and the inner input. Wide screens show the field; from
+   1100 to 1439 and below 900 it is the glyph alone, which is where the
+   band is already full. Below 720 the bottom bar's SEARCH takes over. */
+.sh-bar .sh-find,
+.sh-bar:has(> .toolbar) .sh-find {
+  cursor: text;
+  gap: var(--s2);
+  width: 190px;
+  min-width: 0;
+  padding: 0 var(--s2) 0 var(--s3);
+  justify-content: flex-start;
+}
+.sh-find-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-ink);
+  font: inherit;
+  cursor: text;
+  outline: none;
+  box-shadow: none;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.sh-find-input::placeholder { color: var(--chrome-muted); opacity: 1; }
+.sh-find:focus-within { outline: var(--focus); outline-offset: var(--focus-offset); }
+/* A bar that carries the stage strip is full below ~1700px (crumb, five
+   stages, the field, and the zone), so there the field is the glyph alone
+   — until the band has to stack onto two rows, where the second row has
+   room for the whole field. Bars without a stage strip always have room.
+   The measure in layoutBand() runs unstacked, so it measures the glyph
+   and the two states cannot chase each other. */
+@media (min-width: 901px) and (max-width: 1699px) {
+  .sh-bar:has(> .sh-phases):not([data-stacked]) .sh-find,
+  .sh-bar:has(> .sh-phases):not([data-stacked]):has(> .toolbar) .sh-find { cursor: pointer; width: var(--sh-ctl-h); min-width: var(--sh-ctl-h); padding: 0; justify-content: center; }
+  .sh-bar:has(> .sh-phases):not([data-stacked]) .sh-find-input,
+  .sh-bar:has(> .sh-phases):not([data-stacked]) .sh-find-key { display: none; }
+}
+@media (max-width: 900px) {
+  .sh-bar .sh-find,
+  .sh-bar:has(> .toolbar) .sh-find { width: var(--sh-ctl-h); min-width: var(--sh-ctl-h); padding: 0; justify-content: center; cursor: pointer; }
+  .sh-find-input { display: none; }
 }

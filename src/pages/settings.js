@@ -1,6 +1,16 @@
 /* ============================================================
    SETTINGS — the things that belong to this DEVICE, not the film
    ------------------------------------------------------------
+   REVAMPED 12 Oct 2026, in the Console's shape: five tabs down the left
+   (Account · Preferences · Data & backup · Team · Admin), a card per
+   setting, and nothing that another place already does. Appearance is
+   gone from here (the Dark/Light button lives in the top bar, on every
+   page); "Download a backup" is gone (the Backup menu in the top bar is
+   the one place for export/import); buying and invoices were already on
+   the Purchase page. A hash that used to name a section (#drive,
+   #favourite, #danger …) still lands: those are cards INSIDE a tab, and
+   tabs.js opens the tab that holds the target.
+   ------------------------------------------------------------
    Almost everything on this page is per-device and per-browser:
    nothing in the key, Drive or Appearance sections is part of a
    project, in a backup file, or synced. That is the line the page
@@ -81,7 +91,6 @@ import { h, delegate, commitMain } from '../lib/dom.js';
    page only needs to name the host in its own prose. */
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
 import Panel from '../ui/ai-panel.js';
-import { listSkins, currentSkin } from '../lib/skin.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
@@ -89,7 +98,6 @@ import PlanGate from '../lib/plan-gate.js';
    Export and for Drive's upload. This page calls it; it does not
    know what a backup looks like. Already a static import here
    through drive-sync.js, so naming it costs nothing. */
-import { downloadBackup } from '../lib/backup.js';
 /* The admin console reuses the sign-in modal's own config form rather
    than growing a second copy of it. Two forms writing one storage key
    is two things to keep in step, and setCfg() has exactly one caller
@@ -123,12 +131,12 @@ const app = document.getElementById('app');
    listed, so dropping or adding a theme needs no edit here. */
 const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 
-/* ---- a section ---------------------------------------------- */
-/* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
-   prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', privacy: 'Privacy', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+/* ---- a card --------------------------------------------------
+   One setting, drawn as a card (the `.st-sec` surface from modules.css).
+   Cards live INSIDE the five tab panels below; the panels, not the
+   cards, are what tabs.js turns into tabs. */
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
+  const sec = h('div.st-sec.st-card', { id });
   sec.append(
     h('p.bd-eyebrow', { text: eyebrow }),
     h('h2.bd-h2', { text: title }),
@@ -211,32 +219,13 @@ function renderFavourite() {
 }
 onFavChange(() => render());
 
-/* ---- appearance --------------------------------------------- */
-function renderAppearance() {
-  const sec = section('appearance', 'This device · not part of the film',
-    'Appearance.',
-    'Choose how the studio looks on this browser. Your choice is not part of '
-      + 'any project or backup.');
-
-  sec.append(choices('Theme', 'data-theme-choice', StudioUI.currentTheme(),
-    StudioUI.themeOrder().map((t) => ({ value: t, label: titleCase(t) }))));
-
-  /* A second skin file is what makes this a choice; with one, a radio
-     row is a control that cannot do anything — the same mistake as a
-     theme button with no [data-theme] block behind it. So it renders
-     as a statement until there are two, and it counts rather than
-     asserting, because skin.js discovers them from the CSSOM. */
-  const skins = listSkins();
-  if (skins.length > 1) {
-    sec.append(choices('Design', 'data-skin-choice', currentSkin(),
-      skins.map((sk) => ({ value: sk.id, label: sk.label }))));
-  } else {
-    const only = skins[0] || { label: 'Studio' };
-    sec.append(h('p.st-note', {
-      text: 'Design: ' + only.label + '.'
-    }));
-  }
-
+/* ---- motion --------------------------------------------------
+   Theme moved to the top bar (one Dark/Light button, every page). What
+   stays here is the one display setting with no home in the bar. */
+function renderMotion() {
+  const sec = section('motion', 'This device · not part of the film',
+    'Motion.',
+    'Reduce the animation, or follow your device. Your choice is not part of any project or backup.');
   mountMotionChoice(sec);
   return sec;
 }
@@ -447,13 +436,9 @@ function renderStorage() {
         + 'storage. These figures count only your work, not the app itself.'
   }));
 
-  sec.append(h('div.st-drive-actions', {}, [
-    h('button.btn.primary', { type: 'button', 'data-action': 'storage-backup' },
-      [h('span', { text: 'Download a backup' })])
-  ]));
   sec.append(h('p.st-note', {
-    text: 'One file with every project on this browser. Keep a copy somewhere '
-        + 'safe \u2014 browsers can clear their storage without asking.'
+    text: 'To take a copy of every project, use Backup in the top bar (Export everything). '
+        + 'Keep it somewhere safe \u2014 browsers can clear their storage without asking.'
   }));
 
   return sec;
@@ -582,16 +567,32 @@ function cloudSyncSwitch() {
   return box;
 }
 
+/* Cloud sync gets a card of its own (it sat inside the Drive section, so it
+   read as a Drive setting; it is the ACCOUNT's). */
+function renderCloudSync() {
+  const c = window.StudioCloud;
+  const signedIn = !!(c && c.getSession && c.getSession());
+  const sec = section('cloud-sync', 'Your account',
+    'Cloud sync.',
+    'Keeps your projects the same on every device you sign in on. Independent of Google Drive.');
+  const sw = cloudSyncSwitch();
+  if (sw) { sec.append(sw); return sec; }
+  sec.append(h('p.st-note', { text: signedIn
+    ? 'Cloud sync is not available in this build.'
+    : 'Sign in to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
+  if (!signedIn && c && c.isConfigured && c.isConfigured()) {
+    sec.append(h('p', {}, [h('button.btn.primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+  }
+  return sec;
+}
+
 function renderDrive() {
   const st = DriveSync.getDriveStatus();
   const sec = section('drive', 'This device · your own Drive',
     'Back up to Google Drive.',
-    'Keep a backup of every project on this browser in your own Google Drive. '
-      + 'Drive keeps earlier versions, so you can go back. Your API key is never '
-      + 'included.');
-
-  const cloudSwitch = cloudSyncSwitch();
-  if (cloudSwitch) sec.append(cloudSwitch);
+    'A copy of every project on this browser, in your own Google Drive. '
+      + 'Drive keeps earlier versions, so you can go back. Your AI key is never '
+      + 'included. (Quick exports and imports are in Backup, in the top bar.)');
 
   /* The plan's `drive_backup` (src/data/plan-matrix.json: Intermediate
      and up). Locked: say so and offer the way up; the backup FILE stays
@@ -600,7 +601,7 @@ function renderDrive() {
     sec.dataset.planLocked = 'drive_backup';
     sec.append(h('p.st-note', {
       text: 'Google Drive backup is not part of your plan. You can still '
-          + 'download a backup file from the Storage section or from Home.'
+          + 'export a backup file from Backup in the top bar.'
     }));
     sec.append(h('div.st-drive-actions', {}, [h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' })]));
     return sec;
@@ -609,7 +610,7 @@ function renderDrive() {
   if (!st.configured) {
     sec.append(h('p.st-note', {
       text: 'Google Drive backup is not available right now. You can still '
-          + 'download a backup file from the Storage section or from Home.'
+          + 'export a backup file from Backup in the top bar.'
     }));
     return sec;
   }
@@ -623,12 +624,11 @@ function renderDrive() {
   ]);
   sec.append(pill);
 
-  /* Said up front, in every state, because it is the one thing about
-     Drive that looks like a fault and is not: the Google token from a
-     sign-in lives about an hour and this static build has nowhere to
-     keep a refresh token (drive.js, CLAUDE.md item 10). The same
-     sentence is what the expired-token error says in drive-sync.js. */
-  sec.append(h('p.st-note', { text: DriveSync.HOUR_NOTE }));
+  /* The Google token from a sign-in lives about an hour and this static
+     build has nowhere to keep a refresh token (drive.js, CLAUDE.md item
+     10). That used to be a note shown in every state; now it appears only
+     when it has actually happened — the status line carries the sentence
+     (drive-sync.js) and a Reconnect button sits under it. */
 
   if (!st.connected) {
     sec.append(h('p.st-note', {
@@ -648,13 +648,21 @@ function renderDrive() {
             : '')
   }));
 
+  if (st.state === DRIVE_STATES.ERROR) {
+    sec.append(h('div.st-drive-actions', {}, [
+      driveButton('drive-connect', 'Reconnect Google Drive', { primary: true, busyLabel: 'Asking Google…' })
+    ]));
+  }
+
   if (!st.live) {
-    /* Supabase is signed in. Said plainly rather than left as a
-       switch that quietly does nothing. */
+    /* Supabase is signed in. Said plainly, in one sentence with its reason:
+       the account keeps your work up to date across devices, so Drive is the
+       one-tap EXTRA copy here. It does not also run by itself, because two
+       devices uploading to one Drive file would keep overwriting each other. */
     sec.append(h('p.st-note', {
-      text: 'You are signed in with cloud sync on, so it keeps your work up to date. Drive '
-          + 'backup is manual while you are signed in: use the buttons below '
-          + 'whenever you want a copy in Drive.'
+      text: 'Cloud sync is on, so your account already keeps your work up to date. '
+          + 'Drive is your extra copy: press Back up now whenever you want one. '
+          + 'It does not also upload by itself, so two devices never overwrite one file.'
     }));
   }
 
@@ -701,7 +709,7 @@ function renderAdmin() {
   const override = !!(c && c.isCfgOverridden && c.isCfgOverridden());
   const live     = (c && c.getCfg && c.getCfg()) || null;
 
-  const sec = section('admin', 'Admin · not shown to other people',
+  const sec = section('database', 'Admin · not shown to other people',
     'The database this build talks to.',
     'Everyone else signs in without ever meeting these two values, which is the '
       + 'point of them being here. The anon key is public by design — what keeps '
@@ -776,7 +784,7 @@ function consolePointer() {
 function renderAccountMine() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
-  const sec = section('account', 'You', signedIn ? 'Your account.' : 'Sign in.',
+  const sec = section('you', 'You', signedIn ? 'Your account.' : 'Sign in.',
     signedIn
       ? 'You are signed in. Signing in is what lets your films sync between devices and be shared.'
       : 'Everything works without an account. Signing in adds sync between devices and sharing.');
@@ -792,9 +800,27 @@ function renderAccountMine() {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
   sec.append(slot);
-  /* Buying and billing live on their own page (owner, 11 Oct 2026): one
-     plain link, no prices here. */
-  sec.append(h('p.st-plan-link', {}, [h('a.btn', { href: 'purchase.html', text: 'Plan & purchases \u2192' })]));
+  return sec;
+}
+
+/* The plan, as a summary and nothing more. Buying, invoices and refunds are
+   on the Purchase page ONLY (owner, 12 Oct 2026): this card reads what the
+   studio already knows (plan-gate.js) and sends you there. */
+function renderPlanCard() {
+  const cp = PlanGate.currentPlan();
+  const sec = section('plan-summary', 'Your plan', 'Plan.',
+    'What you have, and when it ends. Everything about buying, invoices and refunds is on the Purchase page.');
+  let line;
+  if (PlanGate.purchasesOff()) line = 'The studio is free to use right now. Nothing needs buying.';
+  else if (cp.reason === 'trial') {
+    const end = PlanGate.trialEndsAt();
+    line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
+  } else if (cp.reason === 'paid') line = (cp.planName || 'Your plan') + ' \u00b7 yours for good.';
+  else if (cp.reason === 'granted') line = 'Access given to you by the studio' + (cp.planName ? ' \u00b7 ' + cp.planName : '') + '.';
+  else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
+  else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
+  sec.append(h('p.st-plan-line', { text: line }));
+  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', { href: 'purchase.html', text: 'Plan & purchases \u2192' })]));
   return sec;
 }
 
@@ -841,7 +867,7 @@ function renderDanger() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('danger', 'Danger zone', 'Erase what you have written.',
-    'These cannot be undone. Download a backup from Storage first if you want to keep anything.');
+    'These cannot be undone. Export a backup first (Backup, in the top bar) if you want to keep anything.');
   sec.append(h('div.st-danger-row', {}, [
     h('p', { text: 'Removes every project, setting and saved key from this browser, and signs you out.' }),
     h('button.btn.danger', { type: 'button', 'data-action': 'erase-all', text: 'Erase everything on this device' })
@@ -907,6 +933,15 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
   }
 });
 
+/* A tab panel: the thing tabs.js turns into a tab. Cards are filtered for
+   null first (Element.append(null) inserts the text "null"); a panel with no
+   cards is not drawn at all (Team before sign-in, Admin for everyone else). */
+function tabPane(id, label, group, cards) {
+  const kept = cards.filter(Boolean);
+  if (!kept.length) return null;
+  return h('section.st-tab', { id, 'data-tab-label': label, 'data-tab-group': group }, kept);
+}
+
 function render() {
   const main = h('main#main');
 
@@ -914,28 +949,20 @@ function render() {
     h('p.bd-eyebrow', { text: 'Studio' }),
     h('h1.bd-title', { text: 'Settings.' }),
     h('p.bd-deck', {
-      /* COUNTED, NOT ASSERTED — or as close to it as prose gets. A
-         header that says three above four sections is the same fault
-         as the first-run panel that said twenty-two modules over
-         twenty-four, and the gate cannot see either. */
-      text: 'Your account, your favourite film, your AI key, storage and backups, how the studio looks, your activity log, and the danger zone.'
+      text: 'Your account, how the studio behaves on this device, where your work is kept and backed up, and your team.'
     })
   ]));
 
-  const body = h('div.st-body');
-  /* Several of these return null when they have nothing to show.
-     Element.append() does NOT ignore a null — it inserts the text
-     "null" — so they are filtered first. (This comment used to say
-     append ignores one; it held only because every section here
-     happened to render something on the pages anybody checked. The
-     storage section is one of the ones that always renders, which is
-     exactly why it would not have caught it either.) */
-  body.append(...[renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
-              renderAccountMine(),
-              accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck)),
-              renderActivitySection(), renderPrivacySection(), renderTourSection(),
-              inviteSection(section, gateStatus),
-              consolePointer(), renderAdmin(), renderDanger()].filter(Boolean));
+  const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
+  const panes = [
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)]),
+    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()]),
+    tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()]),
+    tabPane('team', 'Team', 'Together', [team]),
+    tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()])
+  ].filter(Boolean);
+
+  const body = h('div.st-body.st-console', {}, panes);
   main.append(body);
 
   /* Nine events redraw this page; commitMain skips the swap when nothing
@@ -962,18 +989,7 @@ function render() {
 Panel.wireAIPanel();
 Panel.onAIChange(() => render());
 
-/* Theme and design are APPLIED by chrome.js's own document listener,
-   which is already wired for these two attributes. It was registered
-   when chrome.js was imported, so it has run by the time this one
-   does and currentTheme() / currentSkin() already report the new
-   value. This handler repaints the checked state and nothing else;
-   applying the choice here as well would be two owners for one
-   setting, which is the shape of the money-parser trap. */
-delegate(document, 'click', '[data-theme-choice], [data-skin-choice]', () => {
-  render();
-});
-
-/* Region, and UNLIKE the two above this page owns it: there is no
+/* Region: this page owns it: there is no
    document-level listener for [data-region-choice] anywhere, because
    the choice is not applied by painting something — it is applied by
    loading the app again with a different map. See renderRegion().
@@ -1045,24 +1061,6 @@ const DRIVE_ACTIONS = {
    Both delegate to code that already exists: the modal owns the form,
    cloud.js owns the key. Nothing here writes storage directly, which
    is what keeps setCfg() a single caller. */
-/* ---- the backup button --------------------------------------
-   downloadBackup() builds the file, triggers the <a download> and
-   returns how many projects went into it. The count is reported
-   back rather than a cheerful noun, because "backed up" with no
-   number is exactly the reassurance the studio-wide export trap
-   gave twice while holding one film. */
-delegate(document, 'click', '[data-action="storage-backup"]', () => {
-  try {
-    const n = downloadBackup();
-    StudioUI.toast('Backup downloaded \u2014 ' + plural(n, 'project', 'projects')
-                   + ' in the file.');
-  } catch (e) {
-    StudioUI.toastError('The backup could not be written. '
-                        + ((e && e.message) || 'Nothing was changed.'),
-                        { duration: 6000 });
-  }
-});
-
 delegate(document, 'click', '[data-action="plan-sign-in"]', () => {
   openCloudAuthModal();
 });

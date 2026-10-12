@@ -114,6 +114,15 @@ export function allowed(key) {
   return features[key] !== false;
 }
 /** The one capability that is OFF unless the plan says true. */
+/* AI tools are LOCKED unless a known plan includes them. The opposite
+   default from allowed(), on purpose: allowed() fails open so a page is
+   never walled by a timeout, but an AI pill that opened on an unknown
+   plan would offer a tool the next answer takes away. Unknown (signed
+   out, plan not loaded yet) reads locked; a pill unlocks live on
+   'plan:changed'. True for Pro, a running trial, and everybody while the
+   purchases switch is off (open_features() opens every key). */
+export function aiUnlocked() { return !!features && features.ai_tools !== false; }
+
 export function sampleOnly() { return !!(features && features.sample_only === true); }
 
 /** The question a CAPABILITY's entry point asks before it acts: true
@@ -711,4 +720,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed };
 
-export default { serverNow, purchasesOff, allowed, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { serverNow, purchasesOff, allowed, aiUnlocked, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

@@ -54,6 +54,7 @@
    ============================================================ */
 
 import { delegate } from '../lib/dom.js';
+import { pageFile } from '../lib/page-file.js';
 import { revealTarget } from './tabs.js';
 
 /* An ABSOLUTE cap, not the thing that normally ends the wait — the
@@ -214,7 +215,7 @@ export function resolveFragment(hash = location.hash) {
 function isThisPage(href) {
   try {
     const u = new URL(href, location.href);
-    return u.origin === location.origin && u.pathname === location.pathname;
+    return u.origin === location.origin && pageFile(u.pathname) === pageFile(location.pathname);
   } catch (e) { return false; }
 }
 

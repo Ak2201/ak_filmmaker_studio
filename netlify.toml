@@ -115,10 +115,10 @@
 # NOTE — this one legitimately differs from vercel.json, which targets
 # "/" rather than "/index.html". Vercel sets cleanUrls:true, so it 308s
 # /index.html to /, and a rewrite POINTING AT /index.html is caught by
-# that redirect and 404s. It did, in production: /studio and the whole
-# /shared/:token share-link route were dead. Netlify has no such
-# rewrite-to-redirect interaction, and /index.html is idiomatic here, so
-# this file keeps it. Do not "fix" the difference without testing both.
+# that redirect and 404s. Netlify has no such interaction, so /studio keeps
+# /index.html. /shared/:token is a REDIRECT to /?share= on both hosts: the
+# build uses relative asset paths, so a rewrite served at /shared/x would
+# load assets from /shared/assets/.
 [[redirects]]
   from = "/studio"
   to = "/index.html"
@@ -236,5 +236,6 @@
 
 [[redirects]]
   from = "/shared/:token"
-  to = "/index.html?share=:token"
-  status = 200
+  to = "/?share=:token"
+  status = 302
+  force = true

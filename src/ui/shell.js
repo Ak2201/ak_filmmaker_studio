@@ -47,14 +47,12 @@ import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
 import { moduleGroups, guideStops, phases, globals, firstModuleOf } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
+import { pageFile } from '../lib/page-file.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
 
-const CURRENT = (() => {
-  const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  return file === '' ? 'index.html' : file;
-})();
+const CURRENT = pageFile(location.pathname);
 
 /* ---- TWO SHELL MODES (owner, 11 Oct 2026) -------------------
    Library, Settings, Admin and the purchase pages are "not project

@@ -697,4 +697,7 @@ if (typeof window !== 'undefined') {
   setInterval(() => { if (!document.hidden) { lastFocusRefresh = Date.now(); refresh(); } }, POLL);
 }
 
+/* journey.js asks this, without importing the module (it runs in Node tests). */
+if (typeof window !== 'undefined') window.StudioPlan = { allowed };
+
 export default { serverNow, purchasesOff, allowed, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

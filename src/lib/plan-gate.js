@@ -127,11 +127,17 @@ export function guard(key, what) {
   const label = what || ((CAPABILITIES.find(([k]) => k === key) || [])[1]) || 'This';
   const where = ent && ent.reason === 'granted' ? 'the access the studio gave you'
               : plan === 'free' ? 'the free trial' : 'the ' + (planName || 'current') + ' plan';
-  try {
-    const ui = typeof window !== 'undefined' && window.StudioUI;
-    if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.', {
-      type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
-  } catch (e) { /* no chrome on this page: the refusal stands, silently */ }
+  const say = (o) => {
+    try {
+      const ui = typeof window !== 'undefined' && window.StudioUI;
+      if (ui && ui.toast) ui.toast(label + ' is not part of ' + where + '.' + (o ? ' It comes with ' + offerText(o) + ' — one payment.' : ''), {
+        type: 'info', action: o ? 'SEE ' + o.name.toUpperCase() : 'SEE PLANS', onAction: () => { location.href = o ? o.href : 'purchase.html'; } });
+    } catch (e) { /* no chrome on this page: the refusal stands, silently */ }
+  };
+  /* The refusal is synchronous (the caller does nothing); only the
+     sentence waits for the plan rows, which are cached after the first
+     read. Unreadable rows: the plain sentence, as before. */
+  offerFor([key]).then(say, () => say(null));
   return false;
 }
 
@@ -255,7 +261,10 @@ async function _refreshOnce() {
        blinks locks out the people who have paid. */
     features = null; plan = ''; planName = ''; ent = null; purchaseReq = null;
   }
-  if (JSON.stringify([features, ent, purchaseReq]) !== prev) Store.notify('plan:changed', currentPlan());
+  if (JSON.stringify([features, ent, purchaseReq]) !== prev) {
+    flagNames = null; flagAsked = false;      // a new plan locks different doors
+    Store.notify('plan:changed', currentPlan());
+  }
   apply();
 }
 export function refresh() {
@@ -325,6 +334,45 @@ async function lowestPlanWith(ids) {
     .sort((a, b) => (a.sort ?? Billing.planRank(a.id)) - (b.sort ?? Billing.planRank(b.id)));
   return open.find((p) => ids.every((id) => !p.features || p.features[id] !== false)) || null;
 }
+/* ---- the offer: which plan, at what price ------------------------
+   ONE answer to "what would open this?" for every place that refuses
+   something — the toast from guard(), the hub's notes, the Settings
+   Drive note, the nav flags, the wall. Each used to say only "not part
+   of your plan" and link to a page of three cards, which makes the
+   person do the arithmetic the studio already knows. The plan and its
+   price come from the plans ROWS (Billing.listPlans(), the same rows
+   the cards draw), never from a typed figure; when the rows cannot be
+   read (signed out, offline, section 18 not run) this answers null and
+   every caller keeps its plain sentence.
+
+   `href` deep-links purchase.html to that plan, and `for` names what
+   was refused, so the card there can say why it was picked (idea 11 of
+   the 12 Oct review). Only known ids ever travel: plan-cards.js looks
+   the label up again rather than printing what the address says. */
+export async function offerFor(ids) {
+  const list = [].concat(ids || []).filter(Boolean);
+  const p = await lowestPlanWith(list);
+  if (!p) return null;
+  const paise = Billing.priceFor(p, 'lifetime');
+  const name = p.name || Billing.planName(p.id);
+  const q = new URLSearchParams({ plan: p.id });
+  if (list.length === 1) q.set('for', list[0]);
+  return { id: p.id, name, paise, price: paise > 0 ? Billing.fmtPaise(paise) : '',
+           href: 'purchase.html?' + q.toString() };
+}
+/** "Intermediate, ₹799" — the short form a toast or a note prints. */
+export const offerText = (o) => (o ? o.name + (o.price ? ', ' + o.price : '') : '');
+/** The label a refused id goes by: a module's from navigation.json, a
+ *  capability's from CAPABILITIES. '' for anything unknown — which is
+ *  how plan-cards.js refuses to print a made-up ?for= value. */
+export function labelFor(id) {
+  const cap = CAPABILITIES.find(([k]) => k === id);
+  if (cap) return cap[1];
+  for (const p of phases()) for (const m of p.modules) if (m.id === id) return m.label;
+  for (const s of shelves()) for (const m of s.modules) if (m.id === id) return m.label;
+  return '';
+}
+
 /* `cta` is the card's primary link: once the plan is known it deep-links
    to purchase.html?plan=<id>, and for a signed-in buyer the server's
    own quote says what the step costs. Every part falls back to the plain
@@ -335,8 +383,13 @@ function includedLine(ids, cta) {
   lowestPlanWith(ids).then((p) => {
     if (!p) return;
     const name = p.name || Billing.planName(p.id);
-    line.textContent = 'Included in the ' + name + ' plan.';
-    if (cta) cta.href = 'purchase.html?plan=' + encodeURIComponent(p.id);
+    const paise = Billing.priceFor(p, 'lifetime');
+    line.textContent = 'Included in the ' + name + ' plan' + (paise > 0 ? ' — ' + Billing.fmtPaise(paise) + ', one payment.' : '.');
+    if (cta) {
+      const q = new URLSearchParams({ plan: p.id });
+      if (ids.length === 1) q.set('for', ids[0]);
+      cta.href = 'purchase.html?' + q.toString();
+    }
     const c = window.StudioCloud;
     if (!cta || !c || !c.getSession || !c.getSession()) return;
     Billing.quote(p.id, null).then((q) => {
@@ -442,6 +495,13 @@ function wallPanel() {
     /* The promise the owner made, kept where it is visible rather than
        in a FAQ: nothing a person wrote is held hostage to a sale. */
     h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    /* The plans themselves, ON the wall: a name, a price and one line
+       each, every row a link straight to that plan's card. "SEE PLANS"
+       alone made the person leave the wall to learn what it would cost.
+       Not for somebody being offered their trial — that card has one
+       job. Filled from the plans rows; empty (and hidden) if they
+       cannot be read, which leaves the wall exactly as it was. */
+    fresh ? null : wallPlans(),
     h('div.pg-lock-actions', {}, [
       fresh ? h('button.btn.primary', { type: 'button', 'data-action': 'pg-start-trial', text: len ? 'START MY ' + len.toUpperCase() : 'START MY FREE TRIAL' }) : null,
       h('a.btn' + (fresh ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS' }),
@@ -459,6 +519,29 @@ function wallPanel() {
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' })
   ]);
   return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': off ? 'Members only' : fresh ? 'Start your free trial' : 'Your trial has ended' }, [card]);
+}
+
+function wallPlans() {
+  const ul = h('ul.pg-wall-plans', { 'aria-label': 'Plans', hidden: true });
+  Billing.listPlans().then((plans) => {
+    const paid = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+      .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
+    for (const p of paid) {
+      const paise = Billing.priceFor(p, 'lifetime');
+      if (!(paise > 0)) continue;
+      const name = p.name || Billing.planName(p.id);
+      ul.append(h('li', {}, [h('a.pg-wall-plan', { href: 'purchase.html?plan=' + encodeURIComponent(p.id) }, [
+        h('strong', { text: name }),
+        h('span.pg-wall-price', { text: Billing.fmtPaise(paise) }),
+        p.blurb ? h('span.pg-wall-blurb', { text: p.blurb }) : null
+      ].filter(Boolean))]));
+    }
+    if (ul.children.length) {
+      ul.append(h('li.pg-wall-once', { text: 'One payment each. Nothing renews, and your work is already here.' }));
+      ul.hidden = false;
+    }
+  }).catch(() => { /* the SEE PLANS button stands alone */ });
+  return ul;
 }
 
 /** The wall's own trial start (§33): the same two steps invite.html
@@ -647,15 +730,38 @@ function apply() {
 }
 
 /* ---- the marks ---------------------------------------------------- */
+/* The flag says WHICH plan opens the door ("INTERMEDIATE"), not just
+   that one does. The rows are read once (Billing caches them); until
+   they answer, or if they cannot, the flag says PLAN as it always did —
+   prove:billing reads .pg-flag by name and not by its text. */
+let flagNames = null;          // module id -> plan name, once the rows answered
+let flagAsked = false;
+function flagName(id) { return (flagNames && flagNames[id]) || ''; }
+function loadFlagNames() {
+  if (flagAsked || !features) return;
+  flagAsked = true;
+  Billing.listPlans().then(() => {
+    const out = {};
+    const ids = new Set([...document.querySelectorAll('[data-module-id]')].map((el) => el.dataset.moduleId));
+    return Promise.all([...ids].filter((id) => !allowed(id)).map((id) =>
+      lowestPlanWith([id]).then((p) => { if (p) out[id] = p.name || Billing.planName(p.id); }, () => {})))
+      .then(() => { flagNames = out; markLocked(); });
+  }).catch(() => { flagAsked = false; });
+}
 export function markLocked(scope) {
   if (typeof document === 'undefined') return;
   (scope || document).querySelectorAll('[data-module-id]').forEach((el) => {
     const locked = !allowed(el.dataset.moduleId);
     el.classList.toggle('is-locked', locked);
     let flag = el.querySelector(':scope > .pg-flag');
-    if (locked && !flag) el.append(h('span.pg-flag', { text: 'PLAN', title: 'Not on your plan' }));
+    const name = locked ? flagName(el.dataset.moduleId) : '';
+    const text = name ? name.toUpperCase() : 'PLAN';
+    const title = name ? 'Comes with the ' + name + ' plan' : 'Not on your plan';
+    if (locked && !flag) el.append(h('span.pg-flag', { text, title }));
+    else if (locked && flag && flag.textContent !== text) { flag.textContent = text; flag.title = title; }
     if (!locked && flag) flag.remove();
   });
+  if (features && !flagNames) loadFlagNames();
 }
 
 /* ---- wiring ------------------------------------------------------- */
@@ -711,4 +817,4 @@ if (typeof window !== 'undefined') {
 /* journey.js asks this, without importing the module (it runs in Node tests). */
 if (typeof window !== 'undefined') window.StudioPlan = { allowed };
 
-export default { serverNow, purchasesOff, allowed, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };
+export default { offerFor, offerText, labelFor, serverNow, purchasesOff, allowed, guard, sampleOnly, entitlement, entitled, trialEndsAt, walled, currentPlan, refresh, moduleCatalogue, modulesHere, pageLocked, lockTabs, markLocked, CAPABILITIES };

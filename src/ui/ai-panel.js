@@ -83,8 +83,16 @@ export function proCard() {
   const box = h('div.ai-gate.ai-pro');
   box.append(h('p', {}, [h('strong', { text: 'AI tools come with Pro.' })]));
   box.append(h('p', { text: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click.' }));
-  box.append(h('p', {}, [h('a', { href: 'purchase.html', text: 'See plans' })]));
+  const see = h('a', { href: 'purchase.html', text: 'See plans' });
+  box.append(h('p', {}, [see]));
   box.append(h('p', { text: 'Nothing you\u2019ve written is affected.' }));
+  /* The plan named by the rows (the console may move AI to another tier)
+     and its price; the heading's "Pro" is the default the matrix ships. */
+  PlanGate.offerFor(['ai_tools']).then((o) => {
+    if (!o) return;
+    see.href = o.href;
+    see.textContent = 'See ' + PlanGate.offerText(o) + ' \u2192';
+  }).catch(() => { /* See plans stands */ });
   box.dataset.blocking = 'true';
   return box;
 }

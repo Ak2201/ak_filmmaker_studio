@@ -480,10 +480,39 @@ const EXPECTED = {
   edit: {},
   deliverables: {},
   screening: {},
-  invite: {},
+  /* 12 Oct 2026, the conversion pass. Each row is a word a deliberate
+     rewording took off the page; re-baseline the next time this grows
+     (it will be absorbed by the recapture the UI revamp needs anyway). */
+  invite: {
+    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
+  },
   admin: {},
   vault: {},
-  purchase: {}
+  purchase: {
+    are: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    can: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    chrome: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    collaborators: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    device: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    do: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    extension: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    limited: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    links: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    never: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    projects: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    seats: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    share: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    synced: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    team: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    unlocks: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    work: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
+    see: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    show: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    signed: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    usage: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    here: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
+    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
+  }
 };
 
 

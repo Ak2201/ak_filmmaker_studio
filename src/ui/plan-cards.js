@@ -51,6 +51,10 @@ let hooks = { onBuy: null, rerender: null, onSuccess: null };
    onBuy resolves; drawn above the row as "You're on <plan>". */
 let justBought = '';
 let pickedDone = false;
+/* The card a deep link picked, and what it was picked FOR, kept for the
+   page: the row is rebuilt on every billing event, and the mark and the
+   reason line were drawn once and lost on the first redraw. */
+let picked = { id: '', why: '' };
 /* The code as typed, the quotes it earned (plan id -> quote_order()
    answer), a sentence when it was refused, and whether the box is open. */
 const promo = { typed: '', code: '', quotes: {}, error: '', busy: false, open: false };
@@ -240,18 +244,25 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     if (target) {
       pickedDone = true;
       try { sessionStorage.removeItem(PLAN_STASH); } catch (e) { /* ignore */ }
-      target.classList.add('is-picked');
+      picked = { id: want, why: wantedFor() };
+      markPicked(row);
       setTimeout(() => { if (target.isConnected) target.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 0);
       const btn = target.querySelector('[data-plan-action="buy"]');
       if (btn && st && !btn.disabled && hooks.onSuccess) setTimeout(() => { if (btn.isConnected) btn.click(); }, 400);
     }
   }
+  else if (picked.id) markPicked(row);
+  { const cmp = compareBlock(plans); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   loadUpgradeQuotes(st, buyable);
   if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(promoBox(buyable));
   if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   if (statusText) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   wrap.append(h('p.pl-note', { text: 'One payment, full access for good — nothing recurs and nothing expires. Paid through Razorpay in INR; an invoice arrives from Razorpay by e-mail.' }));
+  /* The refund terms and the upgrade credit, said BESIDE the button
+     rather than only in refund.html: the exceptions are the policy's
+     own three (refund.html §4), and the credit is schema section 21. */
+  wrap.append(h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, or if the plan is not activated on your account. Otherwise a plan is final — which is why the trial comes first. Move up later and pay only the difference.' }));
   wrap.append(h('p.pl-note.pl-legal', {}, [
     'By paying you agree to the ',
     h('a', { href: 'terms.html', text: 'Terms of Service' }),
@@ -292,6 +303,59 @@ function promoBox(buyable) {
    that carried it. sessionStorage, never localStorage: verify asserts no
    idle localStorage writes, and a plan choice is not worth keeping. */
 const PLAN_STASH = 'fms_purchase_plan';
+/* ?for=<id>: what a lock or a toast refused (plan-gate.js offerFor()).
+   Only an id the studio knows is ever printed — the LABEL is looked up
+   again here, so a hand-typed ?for= cannot put words on the card. */
+function wantedFor() {
+  try {
+    const id = new URLSearchParams(location.search).get('for') || '';
+    return /^[\w-]{1,48}$/.test(id) ? PlanGate.labelFor(id) : '';
+  } catch (e) { return ''; }
+}
+function markPicked(row) {
+  const target = row.querySelector(`.pl-card[data-plan="${CSS.escape(picked.id)}"]`);
+  if (!target) return;
+  target.classList.add('is-picked');
+  if (picked.why && !target.querySelector('.pl-why')) {
+    const after = target.querySelector('.pl-name');
+    const why = h('p.pl-why', { text: 'Opens ' + picked.why + ', the part of the studio you just tried.' });
+    if (after) after.after(why); else target.prepend(why);
+  }
+}
+
+/* COMPARE EVERY FEATURE, side by side. The cards each list what they
+   ADD, which answers "what is new here" and not "which one has X"; this
+   is the table for that question. From the plans ROWS (featureSummary,
+   so console edits show), one column per paid plan on sale, grouped by
+   stage. Closed by default: the cards are the decision, this is the
+   check. */
+function compareBlock(plans) {
+  const cols = (plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
+    .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
+  if (cols.length < 2) return null;
+  const sums = cols.map(featureSummary);
+  const det = h('details.pl-compare');
+  det.append(h('summary', { text: 'Compare every feature' }));
+  const table = h('table.pl-compare-table');
+  table.append(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Feature' }),
+    ...cols.map((p) => h('th', { scope: 'col', text: p.name || planName(p.id) }))])]));
+  const body = h('tbody');
+  const cell = (on) => h('td' + (on ? '.is-on' : '.is-off'), {}, [
+    h('span', { 'aria-hidden': 'true', text: on ? '\u2713' : '\u2014' }),
+    h('span.visually-hidden', { text: on ? 'Included' : 'Not included' })]);
+  sums[0].stages.forEach((stage, si) => {
+    body.append(h('tr.pl-compare-stage', {}, [h('th', { scope: 'rowgroup', colspan: String(cols.length + 1), text: stage.label })]));
+    stage.items.forEach((item, ii) => body.append(h('tr', {}, [h('th', { scope: 'row', text: item.label }),
+      ...sums.map((s) => cell(s.stages[si] && s.stages[si].items[ii] && s.stages[si].items[ii].on))])));
+  });
+  body.append(h('tr.pl-compare-stage', {}, [h('th', { scope: 'rowgroup', colspan: String(cols.length + 1), text: 'Capabilities' })]));
+  sums[0].caps.forEach((c, ci) => body.append(h('tr', {}, [h('th', { scope: 'row', text: c.label }),
+    ...sums.map((s) => cell(s.caps[ci] && s.caps[ci].on))])));
+  table.append(body);
+  det.append(h('div.pl-compare-wrap', { role: 'region', 'aria-label': 'Plan comparison', tabindex: '0' }, [table]));
+  return det;
+}
+
 function wantedPlan() {
   try {
     const q = new URLSearchParams(location.search).get('plan');

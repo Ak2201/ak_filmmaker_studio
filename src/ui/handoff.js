@@ -75,15 +75,15 @@ export function newHeadings(elements, scenes) {
 
 function binNote(k) {
   return k === 1
-    ? '1 scene removed from the script is in the bin, with everything that was attached to it.'
-    : `${k} scenes removed from the script are in the bin, with everything that was attached to them.`;
+    ? '1 scene removed from the screenplay is in the bin, with everything that was attached to it.'
+    : `${k} scenes removed from the screenplay are in the bin, with everything that was attached to them.`;
 }
 
 function sentence(n, rows) {
   const s = n === 1 ? '' : 's';
   return rows
     ? `${n} new scene${s} since your last breakdown.`
-    : `${n} scene${s} in this script ${n === 1 ? 'is' : 'are'} not in the Breakdown yet.`;
+    : `${n} scene${s} in this screenplay ${n === 1 ? 'is' : 'are'} not in the Breakdown yet.`;
 }
 
 function render() {
@@ -301,7 +301,7 @@ export function syncNow() {
        bins nothing, by design, so a failed load cannot empty it. */
     if (!emptyNoted && syncPrev.size && Scenes.listScenes().length) {
       emptyNoted = true;
-      StudioUI.toast('The script has no scene headings now, so the Breakdown keeps its scenes as they are. Delete them there if that is what you meant.', { type: 'info', duration: 8000 });
+      StudioUI.toast('The screenplay has no scene headings now, so the Breakdown keeps its scenes as they are. Delete them there if that is what you meant.', { type: 'info', duration: 8000 });
     }
     return plan;
   }

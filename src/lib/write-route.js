@@ -18,7 +18,7 @@ const ROUTES = {
   'wr-import': 'screenplay.html#import',
   'wr-import-paste': 'screenplay.html#import',
   revisions: 'drafts.html',
-  documents: 'drafts.html',
+  documents: 'drafts.html#title',
   outline: 'breakdown.html#script',
   characters: 'breakdown.html#script',
   /* The AI coverage report and synopsis-to-script still live in

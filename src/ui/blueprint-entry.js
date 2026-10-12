@@ -202,8 +202,8 @@ export function blueprintEntry(data) {
         + 'stored. It fills the screenplay AND the scene list, so the breakdown, '
         + 'stripboard, budget and reports have something to read.'
   });
-  ways.append(h('a.eps-tour-item', { href: 'write.html#wr-import' }, [
-    h('span.eps-tour-label', { text: 'I already have a script' }),
+  ways.append(h('a.eps-tour-item', { href: 'screenplay.html#import' }, [
+    h('span.eps-tour-label', { text: 'I already have a screenplay' }),
     importNote
   ]));
 
@@ -213,7 +213,7 @@ export function blueprintEntry(data) {
         + 'your own ' + providerLabel() + ' API key, kept on this device and sent '
         + 'to nobody but ' + apiHost() + '.'
   });
-  ways.append(h('a.eps-tour-item', { href: 'write.html#generate' }, [
+  ways.append(h('a.eps-tour-item', { href: 'write.html?stay=1#generate' }, [
     h('span.eps-tour-label', { text: 'I have a synopsis' }),
     draftNote
   ]));

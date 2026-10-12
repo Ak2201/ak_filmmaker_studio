@@ -101,12 +101,12 @@ function overviewPart(d, scenesRows, els) {
   }
   if (scenesRows.length) {
     const cm = castMatrix(scenesRows, els);
-    wrap.append(h('h4.bd-h4', { text: 'Cast matrix' }),
+    wrap.append(h('h4.bd-h4', { text: 'Cast Matrix' }),
       table(['Character', 'Scenes', 'Lines'], cm.characters.slice(0, 30).map((c) => h('tr', {}, [
         cell(titleCase(String(c.name).toLowerCase()), 'bdo-name'), cell(c.scenes.size), cell(c.lines || '—')
-      ])), 'Cast matrix, characters by scenes'),
-      h('p.bd-sub', { text: 'The full characters-by-scenes grid is on Reports.' }),
-      h('p.bdo-onward', {}, [h('a.btn', { href: 'reports.html#screentime', text: 'Screen time by scene' }), h('a.btn', { href: 'reports.html', text: 'Reports' })]));
+      ])), 'Cast Matrix, characters by scenes'),
+      h('p.bd-sub', { text: 'The full characters-by-scenes grid is in the Cast Matrix.' }),
+      h('p.bdo-onward', {}, [h('a.btn', { href: 'reports.html#screentime', text: 'Screen time by scene' }), h('a.btn', { href: 'reports.html#cast-matrix', text: 'Cast Matrix' })]));
   } else {
     wrap.append(h('p.bd-sub', { text: 'The cast matrix appears once the breakdown has been run: it counts who is tagged in each scene as well as who speaks.' }));
   }
@@ -146,11 +146,11 @@ export function renderScriptOverview(scenes, opts = {}) {
   );
   if (opts.from === 'script' && hasScript) {
     wrap.append(h('p.so-hint', { role: 'note', text: scenes.length
-      ? 'You came from the Script. If the script changed, run the breakdown again to bring the scenes up to date.'
-      : 'You came from the Script. Run the breakdown to turn its scene headings into scenes you can schedule and budget.' }));
+      ? 'You came from the Screenplay Writer. If the script changed, run the breakdown again to bring the scenes up to date.'
+      : 'You came from the Screenplay Writer. Run the breakdown to turn its scene headings into scenes you can schedule and budget.' }));
   }
   if (!hasScript) {
-    wrap.append(h('p.bd-none', { text: 'No script yet. Write one on the Script page or import a file there, and this fills in.' }));
+    wrap.append(h('p.bd-none', { text: 'No screenplay yet. Write one in the Screenplay Writer or use Import Screenplay, and this fills in.' }));
   }
   wrap.append(...[overviewPart(d, scenes, els), outlinePart(d), hasScript ? h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), h('div.so-lazy', { 'data-so-lazy': 'characters' })]) : null].filter(Boolean));   // append(null) prints "null"
   return wrap;

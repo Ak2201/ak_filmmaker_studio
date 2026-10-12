@@ -24,7 +24,7 @@
     {
       "flag": "New",
       "text": "Import a Fountain, FDX or plain screenplay and fill the scene model with it",
-      "href": "write.html"
+      "href": "screenplay.html#import"
     },
     {
       "flag": "Updated",

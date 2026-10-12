@@ -518,7 +518,7 @@ function renderWeek(snap) {
   if (!rows.length) {
     tl.append(h('p.db-tile-line', { text: snap.datedDays
       ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
-      h('a.db-gap-link', { href: 'plan.html#calendar', text: 'Open the calendar' }));
+      h('a.db-gap-link', { href: 'plan.html#calendar', text: 'Open the Shoot Calendar' }));
     return tl;
   }
   const ul = h('ul.db-acts');
@@ -611,7 +611,7 @@ function renderHead(snap) {
     h('h1.bd-title', { text: p.title }),
     h('p.bd-deck', {
       text: 'Five stages, in any order, each read from what you have already made. '
-          + 'Nothing is mandatory: with a script in hand, start straight in Pre-production.'
+          + 'Nothing is mandatory: with a screenplay in hand, start straight in Pre-Production.'
     })
   );
   const favLine = h('p.st-fav', { id: 'favourite' });
@@ -732,13 +732,13 @@ function renderChain(snap) {
   ]);
 
   sec.append(
-    group('Break down', [
+    group('Breakdown', [
       chainCard(n(snap.scenes.length), 'Scenes', 'Breakdown — the one place a scene is typed', 'breakdown.html', 'shorts'),
       chainCard(formatEighths(snap.eighths), 'Scene pages', 'Length in eighths, from the breakdown', 'breakdown.html', 'shorts'),
       chainCard(n(snap.elements), 'Elements tagged', 'Cast, props, wardrobe, vehicles', 'breakdown.html#elements', 'shorts'),
-      chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' revision' + (snap.revisions === 1 ? '' : 's') + ' saved', 'screenplay.html', 'library')
+      chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' draft' + (snap.revisions === 1 ? '' : 's') + ' saved', 'screenplay.html', 'library')
     ]),
-    group('Schedule', [
+    group('Plan & Schedule', [
       chainCard(n(snap.locationCount), 'Locations', 'Distinct places named on a scene', 'plan.html#locations', 'plan'),
       chainCard(n(snap.days.length), 'Shoot days', snap.unscheduled.length
         ? snap.unscheduled.length + ' scene' + (snap.unscheduled.length === 1 ? '' : 's') + ' still unscheduled'
@@ -748,11 +748,11 @@ function renderChain(snap) {
         ? snap.budget.exact + ' across ' + snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's')
         : 'Nothing costed yet', 'budget.html', 'plan')
     ]),
-    group('People', [
-      chainCard(n(snap.contacts.length), 'People', 'Cast and crew, by department', 'contacts.html', 'shoot'),
+    group('Budget & People', [
+      chainCard(n(snap.contacts.length), 'Cast & Crew', 'Cast and crew, by department', 'contacts.html', 'shoot'),
       chainCard(n(snap.sheets.length), 'Call sheets', 'Built from the day, the scenes and the people', 'contacts.html#call-sheets', 'shoot')
     ]),
-    group('See it', [
+    group('Visualise', [
       chainCard(n(snap.shots.length), 'Shots', 'Shot list, hung off the scenes', 'visualize.html', 'visualize'),
       chainCard(n(snap.boards), 'Storyboards', 'Frames, in order', 'visualize.html#storyboard', 'visualize')
     ])

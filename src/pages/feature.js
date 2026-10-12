@@ -353,7 +353,7 @@ const DRAFT_HTML = `
   <div class="ladder-intro">
     <div class="draft-eyebrow">INTERLUDE · BETWEEN STEPS 12 AND 13</div>
     <h2 class="draft-title">Write <em>the draft.</em></h2>
-    <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in Write — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
+    <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in the Screenplay Writer — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
     <div class="draft-acts" data-draft-slot></div>
   </div>
 </section>

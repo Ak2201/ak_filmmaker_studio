@@ -275,14 +275,14 @@ function screenplayTools(ctx) {
   const headings = els.filter((e) => e.type === 'scene').length;
   const checks = [
     check('Screenplay started', els.length > 0, 'screenplay.html', 'Start the screenplay'),
-    check('Scene headings', headings > 0, 'screenplay.html', 'Add scene headings to the script'),
+    check('Scene headings', headings > 0, 'screenplay.html', 'Add scene headings to the screenplay'),
     check('Title page', hasTitlePage(script.titlePage), 'drafts.html#title', 'Fill in the title page'),
     check('Scene list', ctx.scenes.length > 0, 'breakdown.html#scenes', 'Build the scene list')
   ];
   const bits = [];
   if (els.length) bits.push(formatPages(pageCount(els)) + ' pp');
   if (ctx.scenes.length) bits.push(plural(ctx.scenes.length, 'scene'));
-  return { checks, note: bits.join(' · ') || 'No script yet' };
+  return { checks, note: bits.join(' · ') || 'No screenplay yet' };
 }
 
 function preprodTools() {
@@ -572,7 +572,7 @@ function screenplayState() {
   const els = sc.elements || [];
   const heads = els.filter((e) => e.type === 'scene').length;
   const any = els.some((e) => String(e.text || '').trim());
-  const facts = any ? [formatPages(pageCount(els)) + ' pages', plur(heads, 'scene heading')] : ['No script yet'];
+  const facts = any ? [formatPages(pageCount(els)) + ' pages', plur(heads, 'scene heading')] : ['No screenplay yet'];
   const done = any && heads > 0 && hasTitlePage(sc.titlePage);
   return { status: status(done, any), facts, at: 0 };
 }
@@ -631,8 +631,8 @@ export function favouriteOf(project, titleOf) {
 }
 
 const START = {
-  screenplay: { label: 'Already have a script? Import it', href: 'screenplay.html#import' },
-  preprod:    { label: 'Have a script? Upload it and we’ll break it down', href: 'breakdown.html' }
+  screenplay: { label: 'Already have a screenplay? Import it', href: 'screenplay.html#import' },
+  preprod:    { label: 'Have a screenplay? Upload it and we’ll break it down', href: 'breakdown.html' }
 };
 
 /**

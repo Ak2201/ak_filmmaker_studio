@@ -406,7 +406,7 @@ function renderCrew(ctx) {
     h('p.cx-deck', { text: 'What each person was promised, what they have had, and what is still owed. Days come from the day out of days for the cast and from the call sheets for everyone else, unless you type them.' })
   ])];
   if (!ctx.contacts.length) {
-    out.push(emptyNote('No contacts yet. Add the unit on the Contacts page and each person gets a ledger here.', 'contacts.html#contacts', 'GO TO CONTACTS'));
+    out.push(emptyNote('No contacts yet. Add the unit on the Cast & Crew page and each person gets a ledger here.', 'contacts.html#contacts', 'GO TO CAST & CREW'));
     return out;
   }
   let gross = 0, paid = 0, due = 0, tds = 0;

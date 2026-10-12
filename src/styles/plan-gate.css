@@ -110,31 +110,8 @@
    always be scrolled clear of a stack of toasts. */
 :root[data-paywall] .pg-lock { padding-bottom: calc(var(--s7) + 14rem); }
 
-/* ---- the trial band (§30) ----
-   Rules for the countdown in its own .sh-trial host. The host
-   supplies the pinning, the ground and the hairline; this only lays
-   out what is inside it, so nothing here can change the measured
-   height the sticky arithmetic depends on. */
-.sh-trial { gap: var(--s3); }
-.tb-body { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-/* Teal, because gold on this page belongs to the thing you buy, and
-   the SEE PLANS button beside it is the gold thing. */
-/* --brand-on, not --bg-primary: on a brand fill the readable colour is
-   the one the palette nominates, and in the light theme --bg-primary is
-   pale-on-violet. That exact substitution is named in the 9 Oct revert. */
-.tb-flag { background: var(--cta-fill); color: var(--brand-on); }
-.tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-cta { flex: none; }
-.sh-trial.is-urgent .tb-flag { background: var(--cta-fill); }
-
-/* At 390px the plate is most of a line already. The sentence shortens
-   itself (trial-band.js drops "with the sample film" under ten
-   minutes) and the button keeps its full target size rather than
-   shrinking — it is the one thing on this band anybody taps. */
-@media (max-width: 560px) {
-  .tb-body { gap: var(--s1); }
-  .tb-cta { padding-inline: var(--s2); }
-}
+/* The trial timer's rules live in chrome.css (.sh-rail-trial, .sh-trial-chip);
+   the top strip and its .tb-* rules were removed on 12 Oct 2026. */
 
 /* ---- the Pro card where an AI tool would be (ai-panel.js proCard) ----
    Calm, not a warning: the .ai-gate base paints the warn wash, which

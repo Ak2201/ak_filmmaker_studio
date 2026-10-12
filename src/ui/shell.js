@@ -502,6 +502,9 @@ function buildRail() {
     rail.append(a);
   });
   if (!isGlobalMode()) rail.append(buildRailStages());
+  /* The live trial clock, at the foot of the rail. Built HIDDEN and
+     empty; trial-band.js fills and shows it only while a trial runs. */
+  rail.append(h('div.sh-rail-trial', { hidden: true }));
   return rail;
 }
 

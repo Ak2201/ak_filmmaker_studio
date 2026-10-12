@@ -490,7 +490,7 @@ try {
       ok(/Access given by the studio/.test(await B.page.textContent('body').catch(() => '')), 'invite.html: "You’re in" — access given by the studio');
       await B.page.goto(BASE + 'index.html');
       await B.page.waitForTimeout(2500);
-      ok(!(await B.page.$('.pg-wall')) && !(await B.page.$('.sh-trial')), 'the hub: no wall and no trial band for a plan-less grant');
+      ok(!(await B.page.$('.pg-wall')) && !(await B.page.evaluate(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return !!b && !b.hidden; })) && !(await B.page.$('.sh-trial-chip')), 'the hub: no wall and no trial clock for a plan-less grant');
       allErrors.push(...B.errors); await B.ctx.close();
     }
     F.db.emailGrants.delete(ben.email); F.db.members.delete(ben.id); F.db.sessions.clear();

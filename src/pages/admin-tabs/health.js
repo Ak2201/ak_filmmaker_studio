@@ -26,9 +26,10 @@
 
    EDGE FUNCTIONS are probed from the browser, with a deliberately
    unauthenticated POST. 401, 400, 403, 422 and 503 are an answer from a
-   deployed function; 404 is a missing one; no readable answer is shown as
-   unreachable (a network error and a CORS refusal look the same to a
-   page, and the tab says so).
+   deployed function; 404 is a missing one. A reply the browser cannot read
+   (no CORS headers — rzp-webhook, on purpose) is retried in no-cors mode:
+   if that resolves the function is deployed ("answered, status unreadable");
+   only when both fail is it shown as unreachable.
 
    Shared with the Overview (src/pages/admin.js): ensureHealth(),
    healthState(), reload().
@@ -118,7 +119,20 @@ async function probeOne(base, fn) {
     try { const j = await r.clone().json(); msg = String(j.error || j.message || ''); } catch (e) { /* no JSON body */ }
     return { status: r.status, msg: msg.slice(0, 140) };
   } catch (e) {
-    return { status: 0, msg: e && e.name === 'AbortError' ? 'no answer in 8 seconds' : '' };
+    if (e && e.name === 'AbortError') return { status: 0, msg: 'no answer in 8 seconds' };
+    /* A readable answer failed. Ask again in no-cors mode: that resolves (an
+       opaque response) when a server answered and merely sent no CORS
+       headers — which is what rzp-webhook does on purpose, since only
+       Razorpay calls it — and rejects on a real network failure. A missing
+       function is NOT hidden by this: the platform answers a 404 for an
+       undeployed function WITH CORS headers, so it would have been read
+       above. */
+    try {
+      await fetch(`${base}/functions/v1/${fn}`, { method: 'POST', body: '{}', mode: 'no-cors', signal: ac.signal, cache: 'no-store', credentials: 'omit' });
+      return { status: -1, msg: 'answered, but sends no CORS headers (as a webhook should), so the browser cannot read its status' };
+    } catch (e2) {
+      return { status: 0, msg: '' };
+    }
   } finally { clearTimeout(timer); }
 }
 async function runProbes() {
@@ -133,7 +147,7 @@ async function runProbes() {
   P.phase = 'done'; P.at = Date.now();
   again();
 }
-const probeKind = (r) => (!r ? 'wait' : r.status === 0 ? 'down' : r.status === 404 ? 'missing' : r.status >= 500 && r.status !== 503 ? 'error' : 'alive');
+const probeKind = (r) => (!r ? 'wait' : r.status === -1 ? 'alive' : r.status === 0 ? 'down' : r.status === 404 ? 'missing' : r.status >= 500 && r.status !== 503 ? 'error' : 'alive');
 const PROBE_WORD = { alive: ['Answers', 'ok'], missing: ['Missing (404)', 'danger'], down: ['Unreachable', 'danger'], error: ['Server error', 'warn'], wait: ['Not probed', 'neutral'] };
 
 function wantProbes() { return P.phase === 'idle' && hashParts().tab === 'health'; }
@@ -286,6 +300,7 @@ function probeCard(ctx) {
     const [word, tone] = PROBE_WORD[kind];
     const detail = !r ? (P.phase === 'running' ? 'Probing…' : 'Not probed yet')
       : r.status === 0 ? `No readable answer${r.msg ? ' (' + r.msg + ')' : ' (a network error or a CORS refusal look the same to a page)'}`
+      : r.status === -1 ? `Deployed: ${r.msg}`
       : `HTTP ${r.status}${r.msg ? ': ' + r.msg : ''}`;
     list.append(h('li', {}, [h('code', { text: fn }), pill(word, tone), h('span.ad-meta', { text: detail })]));
   }

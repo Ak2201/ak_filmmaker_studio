@@ -1,5 +1,5 @@
 {
-  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks — supabase-*, pptxgen-*, sample.dragon.script-* — are failed by name if a first paint ever fetches one, whatever the total says.",
+  "_about": "The most JS+CSS (same-origin, raw bytes) each page may fetch on its first load, before a project exists. Judged by npm run verify. Each row was captured at 110% of what loaded at the time; tighten a row by editing it, recapture every row with `npm run verify -- --budget` (a deliberate act, like --baseline, and worth a sentence in the commit). The lazy chunks \u2014 supabase-*, pptxgen-*, sample.dragon.script-* \u2014 are failed by name if a first paint ever fetches one, whatever the total says.",
   "capturedAt": "2026-10-11T17:42:03.959Z",
   "capturedDay": "2026-10-11",
   "knownLazyFetches": {},
@@ -100,9 +100,9 @@
       "files": 15
     },
     "admin": {
-      "bytes": 656384,
-      "measured": 596562,
-      "files": 17
+      "bytes": 833536,
+      "measured": 756932,
+      "files": 19
     },
     "vault": {
       "bytes": 714752,

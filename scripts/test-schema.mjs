@@ -186,6 +186,16 @@ console.log('✓ the standalone sections (§41, §43, §44) load and re-run clea
   console.log(`  ✓ usage_names() in PostgreSQL equals navigation.json's ${ids.length} module ids plus the 8 fixed names`);
 }
 for (const file of STANDALONE_CHECKS) runChecks(file);
+/* §45 (admin controls) is a standalone file at the repo root, not yet
+   folded into supabase-schema.sql, and it calls section 40's
+   admin_audit_write(), which §40 (loaded above) provides: load the section — twice, for re-runnability — then its checks.
+   */
+for (const f of ['schema-45-admin-controls.sql', 'schema-45-admin-controls.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §45 loads (and re-runs cleanly)');
+runChecks('admin-controls.sql');
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

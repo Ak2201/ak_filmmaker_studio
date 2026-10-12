@@ -124,11 +124,36 @@ if (r.status !== 0) fail('supabase-schema.sql (§32 onward) did not load cleanly
 r = psql(['-f', '-'], { input: phase3 });
 if (r.status !== 0) fail('supabase-schema.sql (§32 onward) is not re-runnable', r);
 console.log('✓ the whole schema loads (and §32 onward — §33 to §39 included — re-runs cleanly)');
+/* §40 and §42 (the admin console's audit log and Customer 360). Until the
+   main thread folds them into supabase-schema.sql they are standalone
+   files at the repo root, loaded here ON TOP of the whole schema — twice,
+   because §40 restates nineteen functions and every section claims to be
+   re-runnable. Once they ARE in supabase-schema.sql this block loads
+   nothing and the two check files still run. They load BEFORE the
+   §32-onward check files, so purchases, trial-hours, refund-trial,
+   receipt-email, plan-features, goals-sync and no-free-plan — which call
+   set_billing_settings, grant_trial, grant_email, resend_receipt and
+   set_plan — run, UNCHANGED, against the restated bodies. The earlier
+   files (billing, promo, refunds, invoice …) assert §16–§31 behaviour
+   that §32 deliberately changed and cannot be replayed here; the two
+   admin files re-assert every restated writer's contract instead. */
+const ADMIN_FILES = ['schema-40-admin-audit.sql', 'schema-42-customer-360.sql'];
+if (!/admin_audit_write/.test(full)) {
+  for (const f of ADMIN_FILES) {
+    for (let pass = 1; pass <= 2; pass++) {
+      r = psql(['-f', f]);
+      if (r.status !== 0) fail(`${f} ${pass === 1 ? 'did not load cleanly' : 'is not re-runnable'}`, r);
+    }
+  }
+  console.log('✓ §40 and §42 load (and re-run cleanly)');
+}
 /* In file order. no-free-plan.sql covers §38 and §39 and runs LAST because
    §38 withdraws the free plan's offer and plan-features.sql asserts the
    paid tiers' maps — the two touch different rows, but a file that reads
    `plans` should see the file's final state, not a half-applied one. */
 for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'plan-features.sql', 'goals-sync.sql', 'no-free-plan.sql']) runChecks(file);
+
+for (const file of ['admin-audit.sql', 'admin-customer.sql']) runChecks(file);
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

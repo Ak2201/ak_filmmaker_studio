@@ -1,8 +1,8 @@
 /* ============================================================
-   SEARCH LANDS ON THE LINE — script.html#line-<element id>
+   SEARCH LANDS ON THE LINE — screenplay.html#line-<element id>
    ------------------------------------------------------------
    The command palette finds a line of dialogue or action and opens
-   the script at it: `script.html#line-<id>`. This is the page's half.
+   the script at it: `screenplay.html#line-<id>`. This is the page's half.
    It reads the hash on load and on `hashchange`, scrolls that row to
    the middle of the page, puts the caret at the start of it, and
    flashes a highlight that fades after a moment.

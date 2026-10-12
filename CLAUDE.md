@@ -1464,7 +1464,7 @@ directory, and the only way through it is to inline a copy of a shared file.
 terminal and let the CLI keep the token in `~/.supabase` rather than putting
 one in a file. A refund has still never been exercised end to end.
 
-**SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
+**SECTION 37 IS LIVE** (run 12 Oct 2026) and **SECTION 36 IS NOT**.
 §36 generates `plans.features` for the three paid tiers from
 `src/data/plan-matrix.json` via `scripts/make-plan-features-sql.mjs` — do not
 edit that SQL by hand; change the JSON, regenerate, commit both, and
@@ -1472,10 +1472,15 @@ edit that SQL by hand; change the JSON, regenerate, commit both, and
 hard precondition for requiring purchases**: today all three paid tiers carry
 an EMPTY features map live, so the moment `purchase_required` goes true Basic,
 Intermediate and Pro are indistinguishable and every feature is allowed on
-every tier. §37 widens the `project_data` scope CHECK to `write_goals` so
-`fms_write_goals_v1` (focus-mode goal and daily history) syncs, merged day by
-day by `mergeWriteGoals` in cloud.js; until it runs that one scope's upserts
-are refused (23514) and queued, and every other scope syncs as before.
+every tier. §37 widened the `project_data` scope CHECK to `write_goals`. It mattered more
+than it reads: the deployed bundle already maps `fms_write_goals_v1 →
+write_goals` and `LOCAL_ONLY` holds only the scene bin, so the live client
+was syncing a scope the database refused — **code ahead of the database**,
+the inverse of the ordering this file insists on — and every writing-goal
+save answered 23514 and queued. Read `pg_constraint` before and after: the
+definition went 442 → 463 characters, `write_goals` false → true, with
+`characters` and `costs` still named and exactly ONE check constraint left
+on the table. When a client change needs a scope, run the section FIRST.
 Owner steps: `docs/BILLING.md` §17 (§36) and §18 (§37); §38 and §39 are §19.
 
 **SECTIONS 38 AND 39 ARE LIVE** (run 12 Oct 2026, each verified over

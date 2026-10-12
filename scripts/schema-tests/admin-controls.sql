@@ -184,6 +184,13 @@ select (select id::text from public.accounts where owner_id = '00000000-0000-400
 create temp table _feat_before as select id, features from public.plans;
 grant all on _feat_before to authenticated;
 
+-- Earlier check files (run before this one in the full runner) leave members
+-- behind whose grandfathered access has lapsed; §39 would rightly refuse to
+-- wall them. This file is about overrides, not the wall, so clear them.
+delete from public.studio_members m
+ where m.user_id::text not like '00000000-0000-4000-8000-0000000045%'
+   and m.user_id <> '00000000-0000-4000-8000-00000000000a';
+
 begin;
 select t.claims('00000000-0000-4000-8000-00000000000a');
 select public.admin_set_billing_settings('{"purchase_required": true}');
@@ -412,6 +419,9 @@ select t.reset();
 commit;
 
 -- seed the other two sources
+-- leftovers from earlier check files would add rows to the merged queue
+delete from public.invite_requests where user_id is null or user_id::text not like '00000000-0000-4000-8000-0000000045%';
+delete from public.refund_requests where user_id::text not like '00000000-0000-4000-8000-0000000045%';
 insert into public.invite_requests (user_id, email, display_name, note) values
   ('00000000-0000-4000-8000-000000004507', 'ac-invitee@example.com', 'Invitee', 'let me in');
 insert into public.invite_requests (user_id, email, status, decided_at) values

@@ -10,11 +10,11 @@
 \set ON_ERROR_STOP on
 
 insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
-  ('00000000-0000-4000-8000-000000004101', 'h-member@example.com',  now(), '{}'),
-  ('00000000-0000-4000-8000-000000004102', 'h-old@example.com',     now(), '{}'),
-  ('00000000-0000-4000-8000-000000004103', 'h-asker@example.com',   now(), '{}'),
-  ('00000000-0000-4000-8000-000000004104', 'h-payer@example.com',   now(), '{}');
-insert into public.studio_members (user_id, role) values ('00000000-0000-4000-8000-000000004101', 'user')
+  ('00000000-0000-4000-8000-000000004111', 'h-member@example.com',  now(), '{}'),
+  ('00000000-0000-4000-8000-000000004112', 'h-old@example.com',     now(), '{}'),
+  ('00000000-0000-4000-8000-000000004113', 'h-asker@example.com',   now(), '{}'),
+  ('00000000-0000-4000-8000-000000004114', 'h-payer@example.com',   now(), '{}');
+insert into public.studio_members (user_id, role) values ('00000000-0000-4000-8000-000000004111', 'user')
 on conflict (user_id) do nothing;
 
 -- 1. admin only: anon and a signed-in member are refused, on both
@@ -24,7 +24,7 @@ exception when sqlstate '42501' then raise notice 'ok - 41. (1) anon: admin_heal
 do $$ begin perform public.admin_launch_preview(); raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 41. (1) anon: admin_launch_preview -> 42501'; end $$;
 begin;
-select t.claims('00000000-0000-4000-8000-000000004101');
+select t.claims('00000000-0000-4000-8000-000000004111');
 do $$ begin perform public.admin_health(); raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 41. (1) a member: admin_health -> 42501'; end $$;
 do $$ begin perform public.admin_launch_preview(); raise exception 'should have refused';
@@ -107,8 +107,8 @@ select t.claims('00000000-0000-4000-8000-00000000000a');
 create temp table _h0 as select public.admin_health() -> 'receipts' as r;
 select t.reset();
 insert into public.invoices (number, fy, seq, payment_id, user_id, buyer_name, buyer_email, plan_id, plan_name, amount_paise, issued_at, emailed_at)
-values ('H41-TEST-1', '2026-27', 990001, gen_random_uuid(), '00000000-0000-4000-8000-000000004104', 'Payer', 'h-payer@example.com', 'indie', 'Intermediate', 100, now() - interval '3 days', null),
-       ('H41-TEST-2', '2026-27', 990002, gen_random_uuid(), '00000000-0000-4000-8000-000000004104', 'Payer', '',                    'indie', 'Intermediate', 100, now() - interval '3 days', null);
+values ('H41-TEST-1', '2026-27', 990001, gen_random_uuid(), '00000000-0000-4000-8000-000000004114', 'Payer', 'h-payer@example.com', 'indie', 'Intermediate', 100, now() - interval '3 days', null),
+       ('H41-TEST-2', '2026-27', 990002, gen_random_uuid(), '00000000-0000-4000-8000-000000004114', 'Payer', '',                    'indie', 'Intermediate', 100, now() - interval '3 days', null);
 select t.claims('00000000-0000-4000-8000-00000000000a');
 select t.ok((public.admin_health() #>> '{receipts,awaiting}')::int = (select (r ->> 'awaiting')::int from _h0) + 1,
   '41. (6) an unmailed invoice with an e-mail adds one to awaiting');
@@ -131,12 +131,12 @@ select t.claims('00000000-0000-4000-8000-00000000000a');
 create temp table _h1 as select public.admin_health() as h;
 select t.reset();
 insert into public.payments (id, user_id, plan_id, period, amount_paise, status, created_at)
-values ('00000000-0000-4000-8000-0000000041a1', '00000000-0000-4000-8000-000000004104', 'indie', 'lifetime', 100, 'created', now() - interval '2 hours'),
-       ('00000000-0000-4000-8000-0000000041a2', '00000000-0000-4000-8000-000000004104', 'indie', 'lifetime', 100, 'created', now() - interval '5 minutes');
+values ('00000000-0000-4000-8000-0000000041d1', '00000000-0000-4000-8000-000000004114', 'indie', 'lifetime', 100, 'created', now() - interval '2 hours'),
+       ('00000000-0000-4000-8000-0000000041d2', '00000000-0000-4000-8000-000000004114', 'indie', 'lifetime', 100, 'created', now() - interval '5 minutes');
 insert into public.refund_requests (user_id, payment_id, category) values
-  ('00000000-0000-4000-8000-000000004104', '00000000-0000-4000-8000-0000000041a1', 'other');
+  ('00000000-0000-4000-8000-000000004114', '00000000-0000-4000-8000-0000000041d1', 'other');
 insert into public.invite_requests (user_id, email, status, requested_at) values
-  ('00000000-0000-4000-8000-000000004103', 'h-asker@example.com', 'pending', now() - interval '2 days');
+  ('00000000-0000-4000-8000-000000004113', 'h-asker@example.com', 'pending', now() - interval '2 days');
 select t.claims('00000000-0000-4000-8000-00000000000a');
 select t.ok((public.admin_health() #>> '{payments,created_older_than_1h}')::int = (select (h #>> '{payments,created_older_than_1h}')::int from _h1) + 1,
   '41. (7) a payment created two hours ago counts; one created five minutes ago does not');
@@ -174,7 +174,7 @@ rollback;
 -- 10. the launch preview
 begin;
 insert into public.studio_members (user_id, role, trial_started_at, trial_minutes, trial_source, trial_scope)
-values ('00000000-0000-4000-8000-000000004102', 'user', now() - interval '1 day', 30, 'signup', 'sample')
+values ('00000000-0000-4000-8000-000000004112', 'user', now() - interval '1 day', 30, 'signup', 'sample')
 on conflict (user_id) do update set trial_started_at = now() - interval '1 day', trial_minutes = 30, trial_source = 'signup', trial_scope = 'sample';
 select t.claims('00000000-0000-4000-8000-00000000000a');
 select t.ok((public.admin_launch_preview() ->> 'would_wall_count')::int = (public.admin_purchase_wall() ->> 'walled')::int,
@@ -182,7 +182,7 @@ select t.ok((public.admin_launch_preview() ->> 'would_wall_count')::int = (publi
 select t.ok(public.admin_launch_preview() -> 'census' = public.admin_purchase_wall(),
   '41. (10) the census is admin_purchase_wall(), reused');
 select t.ok(exists (select 1 from jsonb_array_elements(public.admin_launch_preview() -> 'members') e
-                     where e ->> 'user_id' = '00000000-0000-4000-8000-000000004102'
+                     where e ->> 'user_id' = '00000000-0000-4000-8000-000000004112'
                        and e ->> 'email' = 'h-old@example.com' and (e ->> 'grandfathered')::bool = false),
   '41. (10) a lapsed signup trial is listed with its e-mail, not grandfathered');
 select t.ok((public.admin_launch_preview() ->> 'blocked_by_grandfathered')::int = (public.admin_purchase_wall() ->> 'grandfathered_walled')::int
@@ -190,12 +190,12 @@ select t.ok((public.admin_launch_preview() ->> 'blocked_by_grandfathered')::int 
   '41. (10) can_throw is true exactly when nobody grandfathered is walled');
 select t.reset();
 update public.studio_members set trial_started_at = now() - interval '2 years', trial_minutes = 525600, trial_source = 'admin', trial_scope = 'full'
- where user_id = '00000000-0000-4000-8000-000000004102';
+ where user_id = '00000000-0000-4000-8000-000000004112';
 select t.claims('00000000-0000-4000-8000-00000000000a');
 select t.ok((public.admin_launch_preview() ->> 'can_throw')::bool = false
         and (public.admin_launch_preview() ->> 'blocked_by_grandfathered')::int >= 1
         and (select (e ->> 'grandfathered')::bool from jsonb_array_elements(public.admin_launch_preview() -> 'members') e
-              where e ->> 'user_id' = '00000000-0000-4000-8000-000000004102'),
+              where e ->> 'user_id' = '00000000-0000-4000-8000-000000004112'),
   '41. (10) a lapsed grandfathered member blocks the switch and is flagged in the list');
 select t.ok((public.admin_launch_preview() #>> '{members,0,grandfathered}')::bool,
   '41. (10) grandfathered members are listed first');
@@ -227,7 +227,7 @@ rollback;
 
 -- 13. the internal probes are not callable by anyone
 begin;
-select t.claims('00000000-0000-4000-8000-000000004101');
+select t.claims('00000000-0000-4000-8000-000000004111');
 do $$ begin perform public.health_has_fn('is_studio_admin'); raise exception 'should have refused';
 exception when sqlstate '42501' then raise notice 'ok - 41. (13) health_has_fn is internal -> 42501'; end $$;
 rollback;

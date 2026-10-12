@@ -62,6 +62,16 @@
 
 /* ---- "Made with FilmMakerStudio", closing the room (footer.js) ---- */
 .sc-room > .made-with { text-align: center; margin-top: var(--s6); }
+/* The room's one link out (screening.js aboutLink): the line's look, not
+   its class, so branding:false leaves it in place and the line is drawn once. */
+.sc-room > .sc-about {
+  margin: var(--s4) 0 0;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+}
+.sc-room > .sc-about a { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 2px; }
 
 /* ---- a public view (src/lib/public-view.js; build flag OFF) -------- */
 .pv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--s3); margin: 0 0 var(--s4); }

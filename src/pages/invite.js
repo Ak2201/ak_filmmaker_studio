@@ -42,7 +42,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud; the gate live
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain } from '../lib/dom.js';
 import { trialLength } from '../lib/trial-time.js';
 /* §33's trial_offer(): ANON-callable, one narrow public fact (is the
    trial on, and how long is it). The signed-out half of this page needs
@@ -413,9 +413,7 @@ function render() {
   }
 
   main.append(body);
-  app.replaceChildren(main);
-  restoreTyped(typed);
-  mountShell();
+  if (!commitMain(app, main, () => { restoreTyped(typed); mountShell(); })) return;
   try {
     StudioUI.autoAriaLabels();
     StudioUI.wireGlossaryPopovers();

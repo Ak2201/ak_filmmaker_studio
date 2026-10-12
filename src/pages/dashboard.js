@@ -55,7 +55,7 @@ import '../styles/motion.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { renderJourneyStrip } from '../ui/journey-strip.js';
 import { renderLauncher } from '../ui/launcher.js';
@@ -798,8 +798,7 @@ function render() {
     if (activity) main.append(activity);
   }
 
-  app.replaceChildren(main);
-  mountShell();
+  if (!commitMain(app, main, mountShell)) return;
   /* Play once: render() runs on every store event, and a desk that
      re-faded on each edit would be noise. */
   if (!revealed) { revealed = true; reveal(main); }

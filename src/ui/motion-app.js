@@ -74,6 +74,22 @@ const pick = (root, sel) => {
   return out;
 };
 
+/* THE ENTRANCE PLAYS ONCE PER PAGE LOAD. Pages rebuild <main> whenever auth,
+   the gate or a fetch lands (the console did it five times in a second),
+   and every replacement re-ran the page fade, re-veiled every card and
+   re-counted every number: the page blinked blank three or four times.
+   A main added after the first one is marked `ma-same-page`; it gets no
+   entrance and its contents are not veiled. */
+let mainSeen = !!document.querySelector('main');
+const replay = (n) => !(n.closest && n.closest('main.ma-same-page'));
+function markReplacedMain(records) {
+  for (const r of records) for (const n of r.addedNodes) {
+    if (n.nodeName !== 'MAIN') continue;
+    if (mainSeen) n.classList.add('ma-same-page');
+    mainSeen = true;
+  }
+}
+
 function scan(root) {
   const isNew = fresh();
   const counts = new Map();
@@ -99,7 +115,7 @@ function scan(root) {
        motion-landing.js still does it to the hero. Putting it back
        here would be reviving something that was pruned on purpose. */
     if (inView(h)) return;
-    if (isNew) watch(h, 'head');
+    if (isNew && replay(h)) watch(h, 'head');
   });
 
   pick(root, CARDS + ',' + ROWS).forEach((n) => {
@@ -112,19 +128,19 @@ function scan(root) {
       if (cs.position === 'static') n.classList.add('ma-rel');
       if (getComputedStyle(n, '::after').content === 'none') spotlight(n);
     }
-    if (isNew) { stagger(n); watch(n, 'card', 'ma-veil'); }
+    if (isNew && replay(n)) { stagger(n); watch(n, 'card', 'ma-veil'); }
   });
 
   pick(root, FILLS).forEach((n) => {
     if (seen.has(n)) return;
     seen.add(n);
-    if (isNew) watch(n, 'fill', 'ma-fill-veil');
+    if (isNew && replay(n)) watch(n, 'fill', 'ma-fill-veil');
   });
 
   pick(root, NUMS).forEach((n) => {
     if (seen.has(n)) return;
     seen.add(n);
-    if (isNew && !n.closest('input, textarea, [contenteditable]')) countUp(n);
+    if (isNew && replay(n) && !n.closest('input, textarea, [contenteditable]')) countUp(n);
   });
 
   let m = 0;
@@ -222,6 +238,7 @@ function boot() {
   };
   tick();
   new MutationObserver((records) => {
+    markReplacedMain(records);
     if (!fresh()) {
       for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) added.add(n);
       if (!added.size) return;

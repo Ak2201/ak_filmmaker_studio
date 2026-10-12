@@ -28,7 +28,7 @@ import '../lib/cloud.js';              /* sets window.StudioCloud */
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h } from '../lib/dom.js';
+import { h, commitMain } from '../lib/dom.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageList } from '../ui/plan-cards.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
@@ -183,8 +183,7 @@ function render() {
   const body = h('div.pu-body');
   body.append(planSection());
   main.append(body);
-  app.replaceChildren(main);
-  mountShell();
+  if (!commitMain(app, main, mountShell)) return;
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[purchase] chrome', e); }
 }
 

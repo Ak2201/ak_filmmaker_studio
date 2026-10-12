@@ -76,7 +76,7 @@ import '../styles/settings.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, delegate } from '../lib/dom.js';
+import { h, delegate, commitMain } from '../lib/dom.js';
 /* The provider table. The key area is composed by ai-panel.js; this
    page only needs to name the host in its own prose. */
 import { apiHost, apiName, providerLabel } from '../lib/ai-providers.js';
@@ -907,7 +907,6 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
   }
 });
 
-let lastRenderSig = '';
 function render() {
   const main = h('main#main');
 
@@ -939,22 +938,9 @@ function render() {
               consolePointer(), renderAdmin(), renderDanger()].filter(Boolean));
   main.append(body);
 
-  /* Nine events redraw this page — auth, gate, plan, Drive status, the AI
-     key, theme clicks — and most of them arrive after first paint with
-     nothing new to say. Replacing `main` for each one tore the whole page
-     down and rebuilt it (a visible flicker, a scroll jump, a focused
-     field lost). The signature is taken BEFORE mountShell()/tabs.js add
-     their own attributes, so it compares what render() produced. */
-  const sig = main.innerHTML;
-  if (sig === lastRenderSig && app.firstElementChild) return;
-  lastRenderSig = sig;
-
-  const y = window.scrollY;
-  const focusId = document.activeElement && document.activeElement.id;
-  app.replaceChildren(main);
-  mountShell();
-  if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
-  if (focusId) { const f = document.getElementById(focusId); if (f) try { f.focus({ preventScroll: true }); } catch (e) {} }
+  /* Nine events redraw this page; commitMain skips the swap when nothing
+     changed and keeps scroll and focus when it does. */
+  if (!commitMain(app, main, mountShell)) return;
 
   /* Chrome initialises at import time, when #app is still empty, so
      every page re-inits after its own render. Without this the

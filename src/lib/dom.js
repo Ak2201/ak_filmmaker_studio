@@ -71,6 +71,36 @@ export function delegate(root, type, selector, handler, opts) {
   }, opts);
 }
 
+/* ---- painting a page without tearing it down ------------------------
+   Several pages rebuild `main` whenever auth, the gate, the plan or a
+   fetch lands, and most of those arrive after first paint with nothing
+   new to say. `app.replaceChildren(main)` each time throws the whole page
+   away: a visible flicker, a scroll jump, a lost caret. commitMain skips
+   the swap when what render() produced is byte-identical to the last
+   paint, and otherwise keeps the scroll position and the focused id.
+   The signature is taken BEFORE `mount` (tabs.js, shell chrome) adds its
+   own attributes, so it compares render()'s output only. */
+const lastPaint = new WeakMap();
+export function commitMain(app, main, mount) {
+  const sig = main.innerHTML;
+  if (lastPaint.get(app) === sig && app.firstElementChild) return false;
+  lastPaint.set(app, sig);
+  const y = window.scrollY;
+  const fid = document.activeElement && document.activeElement.id;
+  app.replaceChildren(main);
+  if (typeof mount === 'function') mount();
+  if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
+  if (fid) { const f = document.getElementById(fid); if (f) try { f.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+  return true;
+}
+
+/** Collapse a burst of calls (auth, gate, plan and fetch events all land
+    within a second of load) into one trailing call. */
+export function coalesce(fn, ms = 60) {
+  let t = 0;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => { t = 0; fn(...a); }, ms); };
+}
+
 /** Collapse whitespace the way the extractors did, for comparisons. */
 export function normalise(s) {
   return String(s ?? '').replace(/\s+/g, ' ').trim();

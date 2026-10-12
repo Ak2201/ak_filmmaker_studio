@@ -84,6 +84,7 @@ import { getCodePass, clearCodePass, isMissing } from './gate.js';
    key — no SDK, so asking it costs nothing at first paint, and gate.js
    already imports this module so it adds no weight to any chunk. */
 import { purchasesRequired } from './funnel.js';
+import { rememberReturn, takeReturn } from './return-to.js';
 /* THE GATE CANNOT DECIDE WITHOUT THIS, so it asks for it rather than
    hoping. cloud.js sets window.StudioCloud, and everything below reads
    that global — evaluate() returns 'wait' until it appears, and after
@@ -213,7 +214,23 @@ function allow() {
   clearTimeout(timer);
   remember();
   delete document.documentElement.dataset.sitegate;
+  /* The reason for an earlier bounce is history once they are in; left
+     behind it would be printed by invite.html for a state that no longer
+     holds. */
+  try { sessionStorage.removeItem(WHY_KEY); } catch (e) { /* ignore */ }
   Store.notify('sitegate:open', {});
+  spendReturn();
+}
+/* THE PAGE THEY ASKED FOR (return-to.js). Spent once, on the hub only:
+   that is where a Google return lands. A hub load that carries a query
+   (?sample=1, ?welcome=plan) is somebody else's errand and is left
+   alone, as is anything while the demo landing is pending. */
+function spendReturn() {
+  try {
+    if (!/\/(index(\.html)?)?$/.test(location.pathname) || location.search) return;
+    if (sessionStorage.getItem('fms_demo_land') === '1') return;
+    takeReturn().then((to) => { if (to) location.replace(to); }).catch(() => {});
+  } catch (e) { /* a courtesy, never a gate */ }
 }
 function deny(reason) {
   if (decided) return;
@@ -230,6 +247,9 @@ function deny(reason) {
       reason, from: location.pathname + location.hash, at: new Date().toISOString(),
     }));
   } catch (e) { /* private mode: the breadcrumb is a nicety */ }
+  /* And where they were going, so the way back from sign-in can be the
+     page they asked for. Path only; see return-to.js. */
+  rememberReturn(location.pathname + location.hash);
   document.documentElement.dataset.sitegate = 'denied';
   Store.notify('sitegate:denied', { reason });
   /* A STRANGER (signed out, no valid code) is sent to the public landing
@@ -362,6 +382,20 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
   askPurchaseReq();
   Store.subscribe('cloud:booted', decide);
   Store.subscribe('gate:changed', () => (decided ? redecide() : decide()));
+  /* A page restored from the back/forward cache keeps its old JS state,
+     so a gated page left open before a sign-out elsewhere would show
+     itself again. Decide afresh: no stored session and no code pass
+     means signed out whatever this page remembers. */
+  addEventListener('pageshow', (ev) => {
+    if (!ev.persisted) return;
+    if (!hasStoredSession() && !getCodePass()) {
+      decided = false;
+      document.documentElement.dataset.sitegate = 'pending';
+      deny('signedout');
+      return;
+    }
+    redecide();
+  });
   /* cloud.js assigns window.StudioCloud when it evaluates, which may be
      after this module on a page whose entry imports it later. Poll
      briefly for the global. (This module DOES import cloud.js, above,
@@ -390,6 +424,11 @@ if (SITE_GATE === 'invite' && typeof document !== 'undefined' && !isExempt()) {
   timer = setTimeout(giveUp, GIVE_UP_MS);
   decide();
 }
+
+/* A WINDOW HOOK, NOT AN IMPORT: cloud.js cannot import this file (this
+   one imports cloud.js), and cloud.js's landOnInvite() needs to ask
+   whether the gate would let this page through right now. */
+if (SITE_GATE === 'invite' && typeof window !== 'undefined') window.StudioSiteGate = { evaluate };
 
 export default { SITE_GATE, isExempt, evaluate };
 

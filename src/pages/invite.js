@@ -48,7 +48,8 @@ import { trialLength } from '../lib/trial-time.js';
    trial on, and how long is it). The signed-out half of this page needs
    it to name the length, and billing_status() cannot answer without a
    session. Plain fetch, no SDK — funnel.js owns that pattern. */
-import { trialOffer as anonTrialOffer } from '../lib/funnel.js';
+import { trialOffer as anonTrialOffer, purchasesRequired } from '../lib/funnel.js';
+import { resolveReturn, clearReturn } from '../lib/return-to.js';
 import { inviteSection, wireGateUI, markDemoPending, enterAddress } from '../ui/gate-ui.js';
 import { requestBlock, wireRequestUI } from '../ui/invite-request.js';
 import { getCodePass, setCodePass, clearCodePass, codeFromLocation, formatCode, errorSentence } from '../lib/gate.js';
@@ -68,7 +69,11 @@ function section(id, eyebrow, title, deck) {
 function deckFor(c, g) {
   if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!c.getSession() && getCodePass()) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
-  if (!c.getSession()) return 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+  if (!c.getSession()) {
+    return !trialsOff()
+      ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
+      : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
+  }
   if (g.state === 'unknown') return 'Checking your invite…';
   if (g.state === 'open') return 'You are in. Your projects sync to this account.';
   if (g.state === 'lost') return 'This account is active on another device, so sync is paused here.';
@@ -97,14 +102,23 @@ function legalLine(lead) {
 
 /* sitegate.js leaves the reason it turned a visitor away in
    sessionStorage (fms_sitegate_why). Say it once, plainly; no new key. */
-function whySentence() {
+function whyRaw() { try { return sessionStorage.getItem('fms_sitegate_why') || ''; } catch (e) { return ''; } }
+
+function whySentence(c, signedIn, state) {
   let w = null;
-  try { w = JSON.parse(sessionStorage.getItem('fms_sitegate_why') || 'null'); } catch (e) { w = null; }
+  try { w = JSON.parse(whyRaw() || 'null'); } catch (e) { w = null; }
   if (!w || !w.reason) return '';
   const r = String(w.reason).toLowerCase();
+  /* A BREADCRUMB ABOUT A STATE THAT NO LONGER HOLDS IS A LIE. The gate
+     cleared it when it let somebody in, but this page is exempt and so
+     never sees that happen; compare it with now instead. */
+  if (r === 'signedout' && signedIn) return '';
+  if (r === 'nocloud' && c && c.isConfigured()) return '';
+  if (signedIn && (state === 'open' || state === 'lost')) return '';
   const page = w.from ? String(w.from).replace(/^\//, '').split(/[?#]/)[0] : '';
   const lead = page ? 'You were sent here from ' + page + ' because ' : 'You were sent here because ';
   if (r === 'signedout') return lead + 'you are not signed in.';
+  if (r === 'nocloud') return lead + 'this site is not connected to its server just now. Everything on this device is still here.';
   if (r === 'timeout' || r === 'unreachable') return lead + 'your invite could not be checked just then. Everything on this device is still here.';
   return lead + 'this account has no trial running and no plan yet.';
 }
@@ -131,11 +145,52 @@ function restoreTyped(v) {
   if (el && !el.value) el.value = v;
 }
 
+/* THE OPEN SITE. With the purchases switch off, any signed-in visitor is
+   in (sitegate.js); membership only decides whether work SYNCS. This page
+   is exempt from the gate, so it asks the same anon question itself and
+   draws "you're in" instead of an offer nobody needs. Cached in the
+   gate's own sessionStorage key, so both agree. */
+let siteOpen = false;
+try { siteOpen = sessionStorage.getItem('fms_purchases_req') === '0'; } catch (e) { /* ignore */ }
+let askedOpen = false;
+function askSiteOpen() {
+  if (siteOpen || askedOpen) return;
+  askedOpen = true;
+  purchasesRequired().then((v) => {
+    if (typeof v !== 'boolean') return;
+    try { sessionStorage.setItem('fms_purchases_req', v ? '1' : '0'); } catch (e) { /* ignore */ }
+    if (v === false) { siteOpen = true; render(); }
+  }).catch(() => { /* the offer stands */ });
+}
+
+/* The page they asked for before the gate turned them away
+   (return-to.js), validated; '' until it resolves. */
+let returnHref = '';
+function refreshReturn() {
+  resolveReturn().then((to) => { if (to !== returnHref) { returnHref = to; render(); } }).catch(() => {});
+}
+
+/* `#request` survives the Google hop in sessionStorage: the hash does
+   not (the return lands on the hub). */
+const VIEW_KEY = 'fms_invite_view';
+function wantsRequest() {
+  if (/(^|#)request$/.test(location.hash)) {
+    try { sessionStorage.setItem(VIEW_KEY, 'request'); } catch (e) { /* ignore */ }
+    return true;
+  }
+  try { return sessionStorage.getItem(VIEW_KEY) === 'request'; } catch (e) { return false; }
+}
+function forgetRequest() { try { sessionStorage.removeItem(VIEW_KEY); } catch (e) { /* ignore */ } }
+
 function render() {
   const typed = keepTyped();
   const c = cloud();
-  const g = (c && c.getGateState && c.getGateState()) || { state: 'unknown', reason: '', status: null };
+  const g0 = (c && c.getGateState && c.getGateState()) || { state: 'unknown', reason: '', status: null };
   const signedIn = !!(c && c.getSession && c.getSession());
+  if (signedIn) askSiteOpen();
+  const openSite = signedIn && siteOpen && g0.state !== 'lost';
+  const g = openSite ? Object.assign({}, g0, { state: 'open' }) : g0;
+  const wantReq = wantsRequest();
   const email = (c && c.getUserEmail && c.getUserEmail()) || '';
 
   const main = h('main#main');
@@ -145,7 +200,7 @@ function render() {
     h('p.bd-deck', { text: deckFor(c, g) })
   ]));
   const body = h('div.iv-body');
-  const why = whySentence();
+  const why = whySentence(c, signedIn, g.state);
   if (why) body.append(h('p.bd-sub.iv-why', { role: 'status', text: why }));
 
   if (!c || !c.isConfigured()) {
@@ -185,7 +240,13 @@ function render() {
        All three begin with the same Google button, because all three
        belong to an ACCOUNT: a trial is counted against a person, a plan
        is bought by one, and a code is spent on one. */
-    {
+    /* Hidden only when the server has SAID trials are off: a "Start your
+       free trial" card would promise what it will refuse. An answer that
+       has not arrived (offline, a slow call, a build with no network —
+       which is what verify's baseline is captured under) leaves the card
+       in place, the same fail-open rule start.js applies to its own card.
+       Plans and the code box stay either way. */
+    if (!trialsOff()) {
       const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
@@ -217,7 +278,7 @@ function render() {
     if (code) body.append(code);
   } else if (g.state === 'unknown') {
     body.append(section('checking', 'One moment', 'Checking your invite…', 'Checking the invite for ' + (email || 'this account') + '.'));
-  } else if (g.state === 'open' && lastStatus && lastStatus.entitled === false) {
+  } else if (g.state === 'open' && !openSite && lastStatus && lastStatus.entitled === false) {
     /* §33. THROUGH THE GATE, BUT NOT ENTITLED: a member whose trial has
        run out (or who never had one, while purchases are required).
        This page used to say "You're in — GO TO THE STUDIO", and the
@@ -232,15 +293,23 @@ function render() {
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
     ]));
     body.append(sec);
+    /* A held or typed code can still be entered here: the box was only
+       drawn for somebody with no membership, which left a member whose
+       trial had run out with no way to spend the code they were given. */
+    const codeBox = inviteSection(section, g.status);
+    if (codeBox) body.append(codeBox);
   } else if (g.state === 'open') {
+    forgetRequest();
     /* §33: access given by e-mail with no plan says so, in the studio's
        words, rather than leaving the person to wonder what they are on. */
     const granted = !!(lastStatus && lastStatus.granted === true);
     const sec = section('through', 'Through', 'You’re in.',
       'Signed in as ' + email + '. ' + (granted ? 'Access given by the studio — the whole studio is open to you. ' : '')
-      + 'Projects you open sync to this account, and the Chrome extension signs in with it too.');
+      + (g0.state === 'open'
+        ? 'Projects you open sync to this account, and the Chrome extension signs in with it too.'
+        : 'The studio is open to everyone who signs in. Your work is saved on this device; syncing it to your account needs an invite or a plan.'));
     sec.append(h('div.iv-actions', {}, [
-      h('a.btn.primary', { href: 'index.html', text: 'GO TO THE STUDIO' }),
+      h('a.btn.primary', { href: returnHref || 'index.html', 'data-iv-action': 'enter', text: 'GO TO THE STUDIO' }),
       h('a.btn', { href: 'settings.html#account', text: 'ACCOUNT SETTINGS' }),
       /* Every state of this page that has a session has a way out of it. */
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
@@ -325,7 +394,7 @@ function render() {
        nothing on it at all. requestBlock() is what says "invites are
        not open yet" — it is the only place that sentence exists. */
     const undeployed = !!(st && st.deployed === false);
-    if (asked || undeployed || /(^|#)request$/.test(location.hash)) {
+    if (asked || undeployed || wantReq) {
       const sec = section('request', 'Or', undeployed ? 'Invites are not open yet.' : asked && st.requestStatus === 'pending' ? 'Your request is in.' : 'Ask for an invite.',
         'Signed in as ' + email + ', which is not a member of this studio yet.');
       sec.append(requestBlock(st, g.reason));
@@ -333,7 +402,10 @@ function render() {
     }
     const out = section('meanwhile', 'Meanwhile', 'Your work is safe.',
       'Anything already saved on this device stays exactly as it is. Once you are in, everything opens again and sync starts by itself.');
+    /* A check that could not be made is retryable; the others are not. */
+    const retryable = g.reason === 'unreachable' || g.reason === 'nocloud' || /"reason":"(timeout|unreachable|nocloud)"/.test(whyRaw());
     out.append(h('div.iv-actions', {}, [
+      retryable ? h('button.btn.primary', { type: 'button', 'data-iv-action': 'retry', text: 'TRY AGAIN' }) : null,
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' }),
       h('a.btn', { href: 'start.html', text: 'ABOUT THE STUDIO' })
     ]));
@@ -361,7 +433,32 @@ document.addEventListener('click', (e) => {
     render();
   }
   if (el.dataset.ivAction === 'start-trial') startTrial(el);
+  if (el.dataset.ivAction === 'enter') clearReturn();   // the link goes where it points; the errand is spent
+  if (el.dataset.ivAction === 'retry') retryGate(el);
 });
+
+/* The gate's check can fail for the network's reasons (a timeout, an
+   unreachable server). Ask again, then draw what it says. */
+async function retryGate(btn) {
+  btn.disabled = true; btn.textContent = 'CHECKING…';
+  try { const c = cloud(); if (c && c.runGate) await c.runGate(); } catch (e) { /* the page says what it finds */ }
+  try { sessionStorage.removeItem('fms_sitegate_why'); } catch (e) { /* ignore */ }
+  render();
+}
+
+/* ?plan= and #buy must survive the Google hop, which returns to the hub
+   and so loses both. Stashed (sessionStorage) when a sign-in button is
+   pressed, restored below once this page is drawn again. */
+const PLAN_KEY = 'fms_invite_plan';
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-auth-action="google"]');
+  if (!b) return;
+  let plan = '';
+  try { plan = new URLSearchParams(location.search).get('plan') || ''; } catch (err) { plan = ''; }
+  const buy = !!b.closest('#buy') || location.hash === '#buy' || !!plan;
+  if (!buy) return;
+  try { sessionStorage.setItem(PLAN_KEY, JSON.stringify({ plan: /^[\w-]{1,32}$/.test(plan) ? plan : '', buy: true })); } catch (err) { /* ignore */ }
+}, true);
 
 /* TWO STEPS, AND THE SECOND IS NOT OPTIONAL. start_trial() inserts the
    studio_members row, which is what the SITE gate reads — so until the
@@ -477,6 +574,8 @@ let lastStatus = null;
    trial section simply says "your free trial" instead of naming a
    length. Never throws; funnel.js returns null on any failure. */
 let anonTrial = null;
+/* True only when the anonymous offer arrived AND says trials are off. */
+function trialsOff() { return !!anonTrial && anonTrial.enabled === false; }
 if (!(cloud() && cloud().getSession && cloud().getSession())) {
   anonTrialOffer().then((t) => {
     if (!t) return;
@@ -550,14 +649,35 @@ function readTrialOffer(st) {
 wireGateUI(render);
 wireRequestUI(render);
 /* ?plan=<id> from a landing-page button: bring the buy section into view. */
-try {
-  if (new URLSearchParams(location.search).get('plan')) {
-    setTimeout(() => { const b = document.getElementById('buy'); if (b) b.scrollIntoView({ block: 'start' }); }, 600);
-  }
-} catch (e) { /* ignore */ }
+function wantsBuy() {
+  try {
+    if (new URLSearchParams(location.search).get('plan') || location.hash === '#buy') return true;
+    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
+    return !!(v && v.buy);
+  } catch (e) { return false; }
+}
+if (wantsBuy()) {
+  /* The buy section draws once the plans (or, signed out, the page) have
+     rendered; look for it until it is there, then scroll once. The stash
+     is spent only when signed in: signed out, the visitor has not yet
+     been through Google. */
+  let tries = 0;
+  const seek = () => {
+    const b = document.getElementById('buy');
+    if (b) {
+      b.scrollIntoView({ block: 'start' });
+      if (cloud() && cloud().getSession && cloud().getSession()) { try { sessionStorage.removeItem(PLAN_KEY); } catch (e) { /* ignore */ } }
+      return;
+    }
+    if (++tries < 40) setTimeout(seek, 300);
+  };
+  setTimeout(seek, 600);
+}
 Store.subscribe('gate:changed', () => { if (!plans) loadPlans(); });
 if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(loadPlans, 0));
 loadPlans();
+refreshReturn();
+if (cloud() && cloud().onAuth) cloud().onAuth(() => setTimeout(refreshReturn, 0));
 /* THE HASH IS PART OF WHAT THIS PAGE DRAWS now that the request block
    lives behind #request, so a link to it from this very page — the
    commonest way anybody reaches it — must redraw. Without this the hash

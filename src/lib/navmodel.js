@@ -95,8 +95,35 @@ export function shelves() {
  *  blueprints). src/ui/no-project.js reads this. */
 export function projectPageFiles() {
   const groups = [...phases(), ...shelves().filter((s) => s.projectPages)];
-  return new Set(groups.flatMap((g) => (g.modules || []).map((m) => String(m.href || '').split('#')[0].toLowerCase()))
+  const files = new Set(groups.flatMap((g) => (g.modules || []).map((m) => String(m.href || '').split('#')[0].toLowerCase()))
     .filter(Boolean));
+  /* The retired pages kept behind `?stay=1` still write a film. */
+  Object.keys(STAY_PAGES).forEach((f) => files.add(f));
+  return files;
+}
+
+/** Retired pages that stay reachable behind `?stay=1` (write-route.js,
+ *  blueprint-route.js). They are in no module's href, so without this
+ *  the crumb is a bare "Studio" and no stage is lit. `frags` names the
+ *  sections kept (label = the crumb's last segment, also the tab
+ *  label); `stage` is the stage the page belongs to; `back` is the
+ *  page the persistent back link returns to. Declarative: shell.js and
+ *  tabs.js read this and name no page. */
+export const STAY_PAGES = {
+  'write.html': {
+    stage: 'screenplay', back: 'script.html', backLabel: 'Back to Script',
+    frags: { coverage: 'AI coverage', generate: 'Write from a synopsis' },
+    label: 'Screenplay tools'
+  },
+  'feature.html': { stage: '', label: 'Feature blueprint', frags: {} },
+  'short.html': { stage: '', label: 'Short film blueprint', frags: {} }
+};
+
+/** The stay entry for this page, or null when `?stay=1` is absent. */
+export function stayEntry(file, search) {
+  const e = STAY_PAGES[String(file || '').toLowerCase()];
+  if (!e || !/(^|[?&])stay=1(&|$)/.test(search || '')) return null;
+  return e;
 }
 
 /** The blueprint stops on one page — `[{ phase, index, guide, frag }]`
@@ -155,4 +182,4 @@ export function jobs() {
   }).filter(Boolean);
 }
 
-export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, guideStops, firstModuleOf, jobs };
+export default { phases, globals, inRegion, shelves, moduleGroups, allModules, hueClassOf, projectPageFiles, STAY_PAGES, stayEntry, guideStops, firstModuleOf, jobs };

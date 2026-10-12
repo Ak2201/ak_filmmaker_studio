@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" data-volume="studio">
+<head>
+<meta charset="UTF-8">
+<!-- Served at ANY unknown path (/a/b/c), and the build uses relative asset
+     paths, so without this base the stylesheet and script would be looked
+     up under that path and the page would render unstyled. -->
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Not found · {{brand:name}}</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<main class="legal">
+
+<a class="legal-back" href="/">&larr; {{brand:name}}</a>
+
+<h1>That page is not here.</h1>
+<p class="legal-sub">The link may be old, or the address mistyped. Your work is untouched &mdash; it lives in your browser.</p>
+
+<p><a class="legal-back" href="/">Go to the studio</a></p>
+<p><a class="legal-back" href="/start">About {{brand:name}}</a></p>
+
+</main>
+<script type="module" src="/src/pages/legal.js"></script>
+</body>
+</html>

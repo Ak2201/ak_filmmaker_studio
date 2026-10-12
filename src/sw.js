@@ -76,10 +76,13 @@ const SCOPE = self.registration.scope;
    network handles fine. They are also the only manifest entries that
    redirect for a REASON rather than as a side effect of cleanUrls. */
 const IS_REDIRECT_STUB = /(^|\/)arunak-[^/]*\.html$/;
+/* 404.html is the host's dead-end page; caching it would let it stand in
+   for a real page offline. */
+const IS_NOT_FOUND = /(^|\/)404\.html$/;
 const PRECACHE_URLS = [...new Set(
   MANIFEST
     .map(e => e.url)
-    .filter(u => !IS_REDIRECT_STUB.test(u))
+    .filter(u => !IS_REDIRECT_STUB.test(u) && !IS_NOT_FOUND.test(u))
     .map(u => new URL(u, SCOPE).href)
 )];
 const SHELL = new URL('index.html', SCOPE).href;

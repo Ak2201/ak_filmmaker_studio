@@ -32,6 +32,7 @@
    refresh it after a draft is saved.
    ============================================================ */
 import { h } from '../lib/dom.js';
+import { pageFile } from '../lib/page-file.js';
 import '../styles/leave-prompt.css';
 import StudioUI from './chrome.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
@@ -136,7 +137,7 @@ export function installLeavePrompt({ getDoc, persistNow } = {}) {
     }
   }
 
-  const sameDoc = (url) => url.origin === location.origin && url.pathname === location.pathname && url.search === location.search;
+  const sameDoc = (url) => url.origin === location.origin && pageFile(url.pathname) === pageFile(location.pathname) && url.search === location.search;
 
   function onClick(e) {
     if (bypass || e.defaultPrevented || e.button !== 0) return;

@@ -42,9 +42,11 @@ export function trialLength(mins) {
   return plural(minutesToHours(m), 'hour', 'hours');
 }
 
-/** What is LEFT, for the band: minutes under an hour, hours and
- *  minutes under two days, days and hours beyond. Never seconds — a
- *  ticking second counter is pressure theatre. */
+/** What is LEFT, in WORDS, for sentences (purchase.js and others):
+ *  minutes under an hour, hours and minutes under two days, days and
+ *  hours beyond. Never seconds — a sentence does not tick. The sidebar's
+ *  live clock is countdown() below, which does show seconds (owner,
+ *  12 Oct 2026). */
 export function timeLeft(ms) {
   const mins = Math.max(0, Math.ceil(Number(ms) / 60000));
   if (mins <= 1) return 'under a minute';
@@ -55,4 +57,22 @@ export function timeLeft(ms) {
   return plural(days, 'day', 'days') + (h ? ' ' + h + ' h' : '');
 }
 
-export default { minutesToHours, hoursToMinutes, trialLength, timeLeft };
+/** The LIVE clock, for the sidebar timer (owner, 12 Oct 2026: seconds
+ *  ALWAYS — this reverses the 11 Oct "no ticking counter" note).
+ *  Under an hour 'm:ss' (28:41, 0:00), under a day 'h:mm:ss' (5:12:09),
+ *  a day or more '6d 4h'. Whole seconds are rounded UP so the clock
+ *  reads 0:00 only when the time is really up. Never negative. */
+export function countdown(ms) {
+  const n = Number(ms);
+  const secs = Math.max(0, Math.ceil((Number.isFinite(n) ? n : 0) / 1000));
+  const pad = (v) => (v < 10 ? '0' : '') + v;
+  if (secs >= 86400) {
+    return Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+  }
+  if (secs >= 3600) {
+    return Math.floor(secs / 3600) + ':' + pad(Math.floor((secs % 3600) / 60)) + ':' + pad(secs % 60);
+  }
+  return Math.floor(secs / 60) + ':' + pad(secs % 60);
+}
+
+export default { minutesToHours, hoursToMinutes, trialLength, timeLeft, countdown };

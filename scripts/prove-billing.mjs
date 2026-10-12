@@ -42,7 +42,7 @@
          idempotent; DECLINE needs a note the customer then reads; a
          non-admin calling rzp-refund is refused
      (o) THE TRIAL AND THE WALL (schema section 30): while a trial runs
-         the shell's .sh-trial strip carries the band and the hub shows the
+         the rail's .sh-rail-trial block carries the clock and the hub shows the
          sample alone with no NEW PROJECT; when it has run out the
          paywall covers index.html but NOT purchase.html, which
          is where a plan is bought; DOWNLOAD MY WORK produces a real
@@ -126,6 +126,20 @@ window.Razorpay.prototype.open = function () {
     o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: s.payment_id, razorpay_signature: sig });
   });
 };`;
+
+/* THE TRIAL TIMER (12 Oct 2026): the top strip .sh-trial is gone. The clock is
+   .sh-rail-trial at the foot of the rail (built hidden by shell.js, shown by
+   trial-band.js only while a trial runs) and ticks in SECONDS: m:ss under an
+   hour, h:mm:ss under a day. "Up" means present AND not hidden. */
+const trialUp = (page) => page.evaluate(() => {
+  const b = document.querySelector('#studioRail .sh-rail-trial');
+  return !!b && !b.hidden && !!b.querySelector('[role="timer"]');
+}).catch(() => false);
+const trialClock = (page) => page.textContent('.sh-rail-trial-time', { timeout: 500 }).then((t) => t.trim(), () => '');
+const waitTrial = (page, up = true, timeout = 10000) => page.waitForFunction((u) => {
+  const b = document.querySelector('#studioRail .sh-rail-trial');
+  return (!!b && !b.hidden && !!b.querySelector('[role="timer"]')) === u;
+}, up, { timeout });
 
 async function newContext(browser, { tok = null } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
@@ -827,13 +841,14 @@ try {
     }, USERS['tok-amy'].id);
     await amy.page.reload();
     ok(await waitGate(amy.page, 'open'), 'a trial user is through the gate (start_trial inserts the member row, which is what admits them)');
-    /* THE TRIAL BAND HAS ITS OWN HOST, .sh-trial, built by
-       trial-band.js only while a trial runs (the announcement plate it
-       used to borrow is gone). shell.js measures it into --sh-plate-h
-       and parks the toolbar under it. */
-    await amy.page.waitForSelector('.sh-trial', { timeout: 10000 })
-      .then(() => ok(true, 'the shell carries the trial band (.sh-trial)'), () => ok(false, 'the shell carries the trial band (.sh-trial)'));
-    ok(/minute/i.test(await amy.page.textContent('.sh-trial').catch(() => '')), 'saying how long is left, in MINUTES — a ticking second counter on a thirty-minute trial is pressure theatre');
+    /* THE TRIAL CLOCK lives in the rail (.sh-rail-trial), built by
+       trial-band.js only while a trial runs, and ticks in seconds. */
+    await waitTrial(amy.page)
+      .then(() => ok(true, 'the rail carries the trial clock (.sh-rail-trial)'), () => ok(false, 'the rail carries the trial clock (.sh-rail-trial)'));
+    ok(/^\d+:\d\d$/.test(await trialClock(amy.page)), 'saying how long is left, in m:ss — seconds always (owner, 12 Oct 2026): ' + await trialClock(amy.page));
+    { const t1 = await trialClock(amy.page); await amy.page.waitForTimeout(2300);
+      ok(t1 !== await trialClock(amy.page), 'and it TICKS: ' + t1 + ' -> ' + await trialClock(amy.page)); }
+    ok(!(await amy.page.$('.sh-trial')), 'the old top strip (.sh-trial) is gone');
     ok(!(await amy.page.$('.pg-lock.pg-wall')), 'and the page is NOT walled while the trial runs');
     await amy.page.waitForFunction(() => document.querySelectorAll('#projectsGrid .project-card:not(.new-card)').length === 1, null, { timeout: 10000 })
       .then(() => ok(true, 'the hub shows ONE project'), () => ok(false, 'the hub shows ONE project'));
@@ -854,7 +869,7 @@ try {
     ok(!!(await amy.page.$('.pg-lock.pg-wall .pg-lock-card.pg-wall-card')), 'as a variant of the existing lock, both class names present');
     ok((await amy.page.evaluate(() => getComputedStyle(document.querySelector('main')).visibility)) === 'hidden', 'with the page veiled underneath, not deleted');
     ok(await amy.page.evaluate(() => document.documentElement.hasAttribute('data-paywall')), 'and :root carries data-paywall');
-    ok(!(await amy.page.$('.sh-trial')), 'the trial band is gone (no host element at all)');
+    ok(!(await trialUp(amy.page)) && !(await amy.page.$('.sh-trial-chip')), 'the trial clock is gone (hidden and emptied, no chip)');
 
     /* YOU CANNOT BUY FROM BEHIND A WALL. settings is exempt by name,
        matched WITHOUT the .html because vercel's cleanUrls makes the
@@ -934,7 +949,7 @@ try {
     await amy.page.waitForFunction(() => document.documentElement.dataset.purchases === 'off', null, { timeout: 12000 })
       .then(() => ok(true, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'), () => ok(false, 'OFF: plan-gate publishes data-purchases="off" from billing_status()'));
     ok(!(await amy.page.$('.pg-lock.pg-wall')), 'OFF: an expired free member is NOT walled');
-    ok(!(await amy.page.$('.sh-trial')), 'OFF: no trial band');
+    ok(!(await trialUp(amy.page)), 'OFF: no trial band');
     const railOff = await purchaseRailHidden(amy.page);
     if (railOff === null) skip('the rail has no Purchase entry on this page'); else ok(railOff, 'OFF: the rail’s Purchase entry is hidden');
     await amy.page.goto(BASE + 'purchase.html');
@@ -992,14 +1007,14 @@ try {
     {
       const A = await soloContext({ tok: 'tok-amy' });
       await A.page.goto(BASE + 'index.html');
-      await A.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
-      ok(!!(await A.page.$('.sh-trial')) && !(await A.page.$('.pg-wall')), '(control) the band is up and there is no wall while seconds remain');
+      await waitTrial(A.page).catch(() => {});
+      ok((await trialUp(A.page)) && !(await A.page.$('.pg-wall')), '(control) the band is up and there is no wall while seconds remain');
       const navs = navCounter(A.page);
       await A.page.waitForSelector('.pg-lock.pg-wall', { timeout: 20000 })
         .then(() => ok(true, 'the trial runs out on an open page: the band asks the server and the wall goes up'), () => ok(false, 'the trial runs out on an open page: the band asks the server and the wall goes up'));
       await A.page.waitForTimeout(10000);
       ok(navs.length === 0, 'and NO navigation in the ten seconds after it (no loop): ' + (navs.join(' > ') || 'none'));
-      ok(!!(await A.page.$('.pg-wall')) && !(await A.page.$('.sh-trial')), 'the wall is still up and the band is gone');
+      ok(!!(await A.page.$('.pg-wall')) && !(await trialUp(A.page)), 'the wall is still up and the band is gone');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
@@ -1054,7 +1069,7 @@ try {
       ok(/start\.html/.test(A.page.url()), `${width}px: it lands on start.html: ` + navs.join(' > '));
       ok(navs.length <= 2, `${width}px: in at most two navigations (${navs.length})`);
       ok(!(await A.page.evaluate((k) => localStorage.getItem(k), `sb-${REF}-auth-token`)), `${width}px: and the session is gone from storage`);
-      ok(!(await A.page.$('.pg-wall, .sh-trial')), `${width}px: no stale wall and no trial band`);
+      ok(!(await A.page.$('.pg-wall')) && !(await trialUp(A.page)), `${width}px: no stale wall and no trial band`);
       // stays out: the hub sends a signed-out visitor straight back to the landing page
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
@@ -1079,7 +1094,7 @@ try {
     {
       const A = await soloContext({ tok: 'tok-amy' });
       await A.page.goto(BASE + 'index.html');
-      await A.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
+      await waitTrial(A.page).catch(() => {});
       const pill = await A.page.$('[data-auth-action="pill"]');
       if (pill && await pill.isVisible()) { await pill.click(); await A.page.waitForURL(/settings\.html/, { timeout: 10000 }).catch(() => {}); }
       else await A.page.goto(BASE + 'settings.html#account');
@@ -1087,7 +1102,7 @@ try {
       await A.page.waitForSelector('[data-auth-action="signout"]', { timeout: 10000 }).catch(() => {});
       await A.page.click('[data-auth-action="signout"]').catch(() => {});
       await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
-      ok(/start\.html/.test(A.page.url()) && !(await A.page.$('.sh-trial')), 'Settings’ SIGN OUT signs a trial user out to start.html, with no band left behind');
+      ok(/start\.html/.test(A.page.url()) && !(await trialUp(A.page)), 'Settings’ SIGN OUT signs a trial user out to start.html, with no band left behind');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
@@ -1104,9 +1119,9 @@ try {
       ok(!!b && /2 HOURS/.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
       if (b) {
         await b.click();
-        await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && document.querySelector('.sh-trial'), null, { timeout: 12000 })
+        await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && (() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && b.querySelector('[role="timer"]'); })(), null, { timeout: 12000 })
           .then(() => ok(true, 'starting it takes the wall down and puts the band up'), () => ok(false, 'starting it takes the wall down and puts the band up'));
-        ok(/\d+ h/.test(await A.page.textContent('.sh-trial').catch(() => '')), 'and the band counts down in hours: ' + (await A.page.textContent('.sh-trial').catch(() => '')).trim());
+        ok(/^\d+:\d\d:\d\d$/.test(await trialClock(A.page)), 'and the clock counts down in h:mm:ss: ' + await trialClock(A.page));
       } else skip('starting the trial from the wall');
       allErrors.push(...A.errors); await A.ctx.close();
     }
@@ -1186,15 +1201,15 @@ try {
     setTrial(USERS['tok-amy'].id, { minutes: 180 });
     const B = await soloContext({ tok: 'tok-amy' });
     await B.page.goto(BASE + 'index.html');
-    await B.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
-    ok(/Trial · [23] h/.test(await B.page.textContent('.sh-trial').catch(() => '')), 'a three-hour trial’s band says hours, not "180 minutes": ' + (await B.page.textContent('.sh-trial .tb-text').catch(() => '')));
+    await waitTrial(B.page).catch(() => {});
+    ok(/^[23]:\d\d:\d\d$/.test(await trialClock(B.page)), 'a three-hour trial’s clock reads h:mm:ss, not "180 minutes": ' + await trialClock(B.page));
     /* skew: a server clock 3 minutes ahead of this browser shortens the countdown by those minutes */
     F.db.serverSkewMs = 3 * 60000;
     setTrial(USERS['tok-amy'].id, { minutes: 10 });
     await B.page.reload();
-    await B.page.waitForSelector('.sh-trial', { timeout: 10000 }).catch(() => {});
-    const left = Number(((await B.page.textContent('.sh-trial .tb-text').catch(() => '')).match(/(\d+) minutes/) || [])[1]);
-    ok(left >= 6 && left <= 7, 'the band counts against the SERVER’s clock (server_now): 10-minute trial, server 3 min ahead -> ' + left + ' minutes left');
+    await waitTrial(B.page).catch(() => {});
+    const left = Number(((await trialClock(B.page)).match(/^(\d+):\d\d$/) || [])[1]);
+    ok(left >= 6 && left <= 7, 'the clock counts against the SERVER’s clock (server_now): 10-minute trial, server 3 min ahead -> ' + left + ' minutes left');
     F.db.serverSkewMs = 0;
     allErrors.push(...B.errors); await B.ctx.close();
   }
@@ -1214,7 +1229,7 @@ try {
     await G.page.goto(BASE + 'index.html');
     await G.page.waitForFunction(() => window.StudioCloud && window.StudioCloud.getSession && window.StudioCloud.getSession(), null, { timeout: 10000 }).catch(() => {});
     await G.page.waitForTimeout(2500);
-    ok(!(await G.page.$('.pg-wall')) && !(await G.page.$('.sh-trial')), 'a plan-less grant while purchases are required: no wall and no trial band');
+    ok(!(await G.page.$('.pg-wall')) && !(await trialUp(G.page)), 'a plan-less grant while purchases are required: no wall and no trial band');
     await G.page.goto(BASE + 'purchase.html');
     await G.page.waitForSelector('.pu-granted', { timeout: 10000 }).catch(() => {});
     const pu = await G.page.textContent('#plan').catch(() => '');
@@ -1240,9 +1255,9 @@ try {
     ok(F.db.members.get(amy.id)?.trial_source === 'refund' && F.db.members.get(amy.id)?.trial_minutes === 120, '(fake) the refund restarted the trial: source refund, the configured 120 minutes');
     const R = await soloContext({ tok: 'tok-amy' });
     await R.page.goto(BASE + 'index.html');
-    await R.page.waitForSelector('.sh-trial', { timeout: 12000 }).catch(() => {});
-    ok(!!(await R.page.$('.sh-trial')) && !(await R.page.$('.pg-wall')), 'a refunded buyer sees the trial band, and no wall');
-    ok(/Trial · [12] h/.test(await R.page.textContent('.sh-trial .tb-text').catch(() => '')), 'counting down the configured hours: ' + (await R.page.textContent('.sh-trial .tb-text').catch(() => '')));
+    await waitTrial(R.page, true, 12000).catch(() => {});
+    ok((await trialUp(R.page)) && !(await R.page.$('.pg-wall')), 'a refunded buyer sees the trial band, and no wall');
+    ok(/^[12]:\d\d:\d\d$/.test(await trialClock(R.page)), 'counting down the configured hours: ' + await trialClock(R.page));
     allErrors.push(...R.errors); await R.ctx.close();
   }
 

@@ -58,12 +58,12 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/refund", "destination": "/refund.html" },
-    { "source": "/start", "destination": "/start.html" },
-    { "source": "/shared/:token", "destination": "/?share=:token" }
+    { "source": "/start", "destination": "/start.html" }
   ],
   "redirects": [
-    { "source": "/arunak-filmmaker-blueprint.html", "destination": "/feature.html", "permanent": true },
-    { "source": "/arunak-shortfilm-blueprint.html", "destination": "/short.html", "permanent": true },
-    { "source": "/arunak-filmmaker-library.html", "destination": "/library.html", "permanent": true }
+    { "source": "/shared/:token", "destination": "/?share=:token", "permanent": false },
+    { "source": "/arunak-filmmaker-blueprint.html", "destination": "/feature", "permanent": true },
+    { "source": "/arunak-shortfilm-blueprint.html", "destination": "/short", "permanent": true },
+    { "source": "/arunak-filmmaker-library.html", "destination": "/library", "permanent": true }
   ]
 }

@@ -98,6 +98,20 @@ export function defaultRedirect() {
   try { return new URL('.', location.href).href; } catch (e) { return '/'; }
 }
 
+/** Is a supabase-js session sitting in localStorage? The same shape check
+ *  cloud.js and sitegate.js use, read without the SDK. A copy on purpose:
+ *  sitegate.js is in CORE, and importing it here would drag the app onto
+ *  the landing page. Storage that throws answers NO. */
+export function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^sb-.+-auth-token(\.\d+)?$/.test(k)) return true;
+    }
+  } catch (e) { /* no storage, no guess */ }
+  return false;
+}
+
 /** The authorize URL, built rather than called — exported on its own so
  *  a test can read it without navigating. */
 export function googleAuthorizeUrl(opts) {
@@ -121,4 +135,4 @@ export function startGoogle(opts) {
   return true;
 }
 
-export default { configured, googleAuthorizeUrl, defaultRedirect, startGoogle };
+export default { configured, hasStoredSession, googleAuthorizeUrl, defaultRedirect, startGoogle };

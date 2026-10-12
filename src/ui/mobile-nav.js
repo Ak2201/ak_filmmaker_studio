@@ -37,6 +37,7 @@ import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { phases, globals, shelves } from '../lib/navmodel.js';
 import { projectRows, projectList, formatLabel } from './project-switcher.js';
+import { markLocked } from '../lib/plan-gate.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
 import { isGlobalMode } from './shell.js';
 import '../styles/mobile-nav.css';
@@ -144,7 +145,11 @@ export function openGoTo(phaseId) {
   const body = h('div.mn-body');
   // the app-scope destinations, as one row of tiles
   const top = h('nav.mn-globals', { 'aria-label': 'Studio' });
+  /* On a global page (library, settings, admin, purchase, the hub) the
+     desktop shell hides every project item; the sheet follows it. */
+  const globalPage = isGlobalMode();
   for (const g of globals()) {
+    if (globalPage && g.id === 'dashboard') continue;
     if (g.adminOnly && !isAdmin()) continue;   // the rail hides it too (shell.js syncAdminOnly)
     const a = h('a.mn-global', { href: g.href }, [iconSpan('mn-global-icon', g), h('span', { text: g.label })]);
     if (fileOf(g.href) === CURRENT && !(g.modules && g.modules.some((m) => m.id === here))) {
@@ -161,11 +166,12 @@ export function openGoTo(phaseId) {
   ]));
   if (list.length) proj.append(...projectRows());
   proj.append(h('a.ps-link', { href: 'index.html', text: list.length ? '+ New project' : 'No project — start one' }));
-  body.append(proj);
-  for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));
+  if (!globalPage) body.append(proj);
+  if (!globalPage) for (const p of phases()) body.append(group(p, here, '.sh-ph-' + p.hue));
   // shelves carry CATEGORY hues (.hue-*), never a phase class — the hue-class trap
   for (const s of shelves()) body.append(group(s, here, s.hue ? '.hue-' + s.hue : ''));
 
+  markLocked(body);   // PLAN flag on a module the plan does not include
   let target = null;
   open('goto', 'Go to', body, {
     focus: () => {

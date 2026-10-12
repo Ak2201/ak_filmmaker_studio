@@ -539,6 +539,9 @@ export default defineConfig({
         privacy:    resolve(__dirname, 'privacy.html'),
         terms:      resolve(__dirname, 'terms.html'),
         refund:     resolve(__dirname, 'refund.html'),
+        // The dead end: served by the host at any unknown path. Legal-style
+        // page (words in markup, no chrome, no gate), not precached.
+        notFound:   resolve(__dirname, '404.html'),
         // The public landing page: outside the site gate, no app code
         // (src/pages/start.js), the words in the markup like the legal pages.
         start:      resolve(__dirname, 'start.html'),

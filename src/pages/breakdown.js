@@ -651,7 +651,7 @@ function render(focus) {
      carries its own teaching copy when the index is empty. */
   const list = h('section.bd-list', { id: 'scenes' });
   /* #breakdown is Script Breakdowns' own target (Pre-Production), and
-     #scenes the Scene List's (Screenplay): the same cards, read two
+     #scenes the Scene List's (also Pre-Production): the same cards, read two
      ways — the list of scenes, and the tagging inside each one. A div,
      not a section, so tabs.js still sees one Scene List tab; and it
      ALWAYS renders, empty state included, for the reason above. */

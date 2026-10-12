@@ -45,16 +45,15 @@ import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
 import { mountProjectSwitcher } from './project-switcher.js';
-import { moduleGroups, guideStops, phases, globals, firstModuleOf } from '../lib/navmodel.js';
+import { moduleGroups, guideStops, phases, globals, firstModuleOf, stayEntry } from '../lib/navmodel.js';
 import { renderTrialBand } from './trial-band.js';
+import { pageFile } from '../lib/page-file.js';
+import { markLocked } from '../lib/plan-gate.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
 
-const CURRENT = (() => {
-  const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  return file === '' ? 'index.html' : file;
-})();
+const CURRENT = pageFile(location.pathname);
 
 /* ---- TWO SHELL MODES (owner, 11 Oct 2026) -------------------
    Library, Settings, Admin and the purchase pages are "not project
@@ -183,7 +182,7 @@ function isShown(el) {
  * navigation.json and the DOM, so a sixth two-phase page needs no edit.
  */
 function resolveLocation(hash = location.hash) {
-  const loc = resolveModule(hash);
+  const loc = stayLocation(hash) || resolveModule(hash);
   const part = blueprintPart();
   if (part) loc.part = part;
   return loc;
@@ -213,6 +212,22 @@ function blueprintPart() {
   for (const st of live) if (st.el.getBoundingClientRect().top <= line) best = st;
   if (!best) return null;
   return { phase: best.phase, guide: best.guide, frag: best.frag };
+}
+
+/* A retired page kept behind ?stay=1 (navmodel STAY_PAGES): named by
+   the declared label, under its stage if it has one. Null elsewhere. */
+function stayLocation(hash) {
+  const e = stayEntry(CURRENT, location.search);
+  if (!e) return null;
+  const frag = (hash || '').replace(/^#/, '');
+  const phase = e.stage ? phases().find((p) => p.id === e.stage) || null : null;
+  const label = (e.frags && e.frags[frag]) || e.label;
+  const lead = phase && firstModuleOf(phase);
+  return {
+    phase, global: null, exact: true,
+    module: { id: 'stay:' + CURRENT, label, href: CURRENT + location.search + (frag ? '#' + frag : ''),
+      sym: lead && lead.sym, icon: lead && lead.icon }
+  };
 }
 
 function resolveModule(hash) {
@@ -305,9 +320,14 @@ function phaseTab(phase, active) {
     href ? { href } : {}
   ));
   if (active) btn.setAttribute('aria-current', 'page');
+  /* plan-gate.js markLocked() flags a link by the module it opens: the
+     stage's first one is where the tab lands. */
+  const lead = firstModuleOf(phase);
+  if (href && lead) btn.dataset.moduleId = lead.id;
   btn.append(h('span.sh-phase-dot', { 'aria-hidden': 'true' }),
              h('span.sh-phase-label', { text: phase.label }));
   wrap.append(btn);
+  markLocked(wrap);   // a stage whose first module is not on the plan reads PLAN
   return wrap;
 }
 
@@ -502,6 +522,9 @@ function buildRail() {
     rail.append(a);
   });
   if (!isGlobalMode()) rail.append(buildRailStages());
+  /* The live trial clock, at the foot of the rail. Built HIDDEN and
+     empty; trial-band.js fills and shows it only while a trial runs. */
+  rail.append(h('div.sh-rail-trial', { hidden: true }));
   return rail;
 }
 
@@ -528,11 +551,13 @@ function buildRailStages() {
     const descId = 'shRailStageDesc-' + p.id;
     const a = h(`a.sh-rail-item.sh-rail-stage.sh-ph-${p.hue}`, { href: first.href, title: desc, 'aria-describedby': descId });
     a.dataset.phase = p.id;
+    a.dataset.moduleId = first.id;   // plan-gate.js markLocked(): the module this link opens
     a.append(iconSpan('sh-rail-icon', p), h('span.sh-rail-label', { text: p.label }));
     const d = h('span', { id: descId, text: desc });
     d.hidden = true;
     wrap.append(a, d);
   });
+  markLocked(wrap);
   return wrap;
 }
 
@@ -790,12 +815,6 @@ function paintLocation(loc) {
   else document.documentElement.removeAttribute('data-sh-module');
   document.querySelectorAll('.sh-rail-stage').forEach((a) => {
     a.classList.toggle('is-active', !!loc.phase && a.dataset.phase === loc.phase.id);
-  });
-  document.querySelectorAll('.sh-mod').forEach((row) => {
-    const on = !!loc.module && row.dataset.moduleId === loc.module.id;
-    row.classList.toggle('is-here', on);
-    if (on) row.setAttribute('aria-current', 'true');
-    else row.removeAttribute('aria-current');
   });
   /* On a phone the stages are one sideways-scrolling line (chrome.css),
      so the one you are in may start off-screen. Bring it in. Only the
@@ -1306,7 +1325,9 @@ function trapRailFocus(e) {
      the FIRST stop — free to Tab forward into the page underneath:
      measured, focus left the drawer on the second press. A trap with
      one open side is not a trap. */
-  const stops = [...rail.querySelectorAll('a[href], button:not([disabled])')];
+  /* Only what is on screen can take focus: a hidden admin link or the
+     phone-only stage links on a wide viewport would stall Tab. */
+  const stops = [...rail.querySelectorAll('a[href], button:not([disabled])')].filter((el) => el.getClientRects().length > 0);
   const toggle = document.getElementById('railToggle');
   if (toggle) stops.push(toggle);
   if (!stops.length) return;

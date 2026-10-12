@@ -98,7 +98,11 @@ function tryLand(id) {
      rather than `smooth`: this runs on load, and a smooth scroll that
      begins while the rest of the page is still rendering gets
      overtaken by the reflow and stops somewhere arbitrary. */
-  el.scrollIntoView({ block: 'start', behavior: 'auto' });
+  /* 'instant', not 'auto': per spec 'auto' defers to the computed
+     scroll-behavior, which base.css sets to smooth — so this started a
+     glide that the instant hashchange landing one line later cancelled.
+     The note above meant instant; only 'instant' says it. */
+  el.scrollIntoView({ block: 'start', behavior: 'instant' });
   return true;
 }
 

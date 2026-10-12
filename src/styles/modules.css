@@ -859,6 +859,14 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   font-size: var(--t-micro);
   font-weight: 700;
 }
+/* base.css floors every input at 16px under (pointer: coarse) so iOS
+   does not zoom on focus — but that rule and this one tie on
+   specificity and this one is declared later, so the badge kept its
+   11px and every tap on a scene number zoomed the page. Restated here,
+   where it cannot lose the order tie-break. */
+@media (pointer: coarse) {
+  .bd-scene input.bd-scene-no-edit { font-size: max(16px, 1em); width: 4.25rem; }
+}
 .bd-scene input.bd-scene-no-edit::placeholder { color: var(--accent-on); opacity: 0.6; }
 .bd-scene input.bd-scene-no-edit:focus-visible {
   border-color: transparent;

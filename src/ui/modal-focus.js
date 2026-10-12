@@ -21,6 +21,11 @@
    ============================================================ */
 
 const held = new WeakMap();
+/* Open overlays, oldest first. A dialog opened from inside the phone's
+   Tools sheet is a second trap over the first; both handlers ran, the
+   sheet's forced focus to ITS first stop, the dialog's to its own, and
+   Tab never cycled. Only the newest trap handles the key. */
+const stack = [];
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), '
   + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -37,6 +42,7 @@ export function holdFocus(overlay) {
   const opener = document.activeElement;
   const onKey = (e) => {
     if (e.key !== 'Tab') return;
+    if (stack.length && stack[stack.length - 1] !== overlay) return;
     const list = focusables(overlay);
     if (!list.length) { e.preventDefault(); return; }
     const first = list[0];
@@ -52,12 +58,15 @@ export function holdFocus(overlay) {
   // (on <body>, after a click on the scrim) and Tab must still come back.
   document.addEventListener('keydown', onKey, true);
   held.set(overlay, { opener, onKey });
+  stack.push(overlay);
 }
 
 export function releaseFocus(overlay) {
   const h = overlay && held.get(overlay);
   if (!h) return;
   held.delete(overlay);
+  const at = stack.indexOf(overlay);
+  if (at >= 0) stack.splice(at, 1);
   document.removeEventListener('keydown', h.onKey, true);
   let back = h.opener;
   /* A page that re-renders on close (the hub redraws its project

@@ -522,7 +522,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
       formatEighths(s.eighths)
     ])));
     table.append(body);
-    doc.append(table);
+    doc.append(h('div.ct-doc-scroll', {}, [table]));   // scrolls sideways on a phone
   }
 
   const called = Object.keys(sheet.calls)
@@ -547,7 +547,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
       c.phone || ''
     ])));
     table.append(body);
-    doc.append(table);
+    doc.append(h('div.ct-doc-scroll', {}, [table]));   // scrolls sideways on a phone
   } else {
     doc.append(h('p.ct-doc-none', { text: 'Nobody is called on this sheet yet.' }));
   }
@@ -762,7 +762,7 @@ function renderRouteDoc(onSheet) {
     ]));
   });
   table.append(body);
-  return table;
+  return h('div.ct-doc-scroll', {}, [table]);   // scrolls sideways on a phone
 }
 
 /* ---- the message ------------------------------------------------- */

@@ -1446,7 +1446,7 @@ NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row
 says "receipt sent", and nothing arrives — worse than not having the
 feature. Owner steps: `docs/BILLING.md` §13 and §16.
 
-**SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
+**SECTIONS 36 AND 37 ARE LIVE** (run 12 Oct 2026, each verified over PostgREST afterwards rather than read off the screen).
 §36 retires the free plan: the row STAYS (it is what `user_plan()` answers
 for somebody who has bought nothing, and `user_limits()`, `billing_status()`
 and the P0402 triggers all read it) and its OFFER is withdrawn —
@@ -1464,7 +1464,9 @@ members, paid, in_trial, walled, grandfathered_walled) and restates
 is refused while it would wall a member the §30 grandfather backfill
 covered. **Neither section makes a plan necessary**, so refund.html's "a
 plan is needed again" stays untrue until the switch flips — and it must not
-flip until Resend works. `scripts/schema-tests/no-free-plan.sql`.
+flip until Resend works — and `purchases_required()` still answers
+**false**, which is the proof §37 did not throw it.
+`scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

@@ -9229,7 +9229,7 @@ notify pgrst, 'reload schema';
 -- ============================================================
 
 -- ============================================================
--- 36. THE FREE PLAN IS RETIRED   RUN LIVE: not yet
+-- 36. THE FREE PLAN IS RETIRED   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- The owner's decision, 11 Oct 2026: "Let's not have a free version;
 -- it can be a free TRIAL version." Section 33 recorded the decision,
@@ -9327,6 +9327,13 @@ alter table public.plans add constraint plans_free_not_offered
 notify pgrst, 'reload schema';
 
 -- 36.3 CHECKS TO RUN -----------------------------------------------------
+-- Checks 1, 2 and 5 were RUN LIVE over PostgREST on 12 Oct 2026 and
+-- passed; so was a direct read of the row, which is the evidence for the
+-- half of check 3 that does not need a session. Checks 3 (the function
+-- reads), 4, 6 and 7 need a signed-in user, an admin or a transaction to
+-- roll back, and are proved by scripts/schema-tests/no-free-plan.sql
+-- rather than live. Say which is which; "verified" and "asserted in a
+-- test" are not the same claim.
 --  1. anon: price_notice() -> no plan with id 'free'; the three paid
 --     tiers are all still there, with their prices and their rises.
 --  2. anon: price_notice('USD') -> the same, in the other currency.
@@ -9346,7 +9353,7 @@ notify pgrst, 'reload schema';
 
 -- ============================================================
 -- 37. REQUIRING A PLAN, WITHOUT WALLING THE PEOPLE WHO WERE
---     PROMISED OTHERWISE   RUN LIVE: not yet
+--     PROMISED OTHERWISE   RUN LIVE 12 Oct 2026
 -- ------------------------------------------------------------
 -- Section 36 withdrew the free plan's OFFER. This section is about the
 -- other half: making a plan NECESSARY, which is one boolean --
@@ -9540,6 +9547,12 @@ grant  execute on function public.admin_set_billing_settings(jsonb)   to authent
 notify pgrst, 'reload schema';
 
 -- 37.4 CHECKS TO RUN -----------------------------------------------------
+-- RUN LIVE 12 Oct 2026, over PostgREST: both functions EXIST and refuse
+-- anon with 42501 (`permission denied for function` — not PGRST202,
+-- which would have meant a missing signature), and purchases_required()
+-- still answers false, which is the proof this section did not throw the
+-- switch. Everything below needs an admin session or a rolled-back
+-- transaction and is proved by scripts/schema-tests/no-free-plan.sql.
 --  1. anon and a non-admin: admin_purchase_wall() -> 42501.
 --  2. admin: it returns purchase_required false, and members = paid +
 --     in_trial + walled over the members who are not disabled.

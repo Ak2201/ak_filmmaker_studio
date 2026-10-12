@@ -955,7 +955,7 @@ the published policy. Change both together.
    reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
    console's Invoices list shows "Sent <date>".
 
-## 17. The free plan is retired, and the switch that requires one (schema §36 and §37, 12 Oct 2026). NOT RUN LIVE.
+## 17. The free plan is retired, and the switch that requires one (schema §36 and §37, 12 Oct 2026). §36 and §37 RUN LIVE 12 Oct 2026 — THE SWITCH IS NOT THROWN.
 
 The owner decided on 11 Oct 2026 that there is no free version, only a free
 trial. §33 recorded the decision, kept the row and said that never drawing it
@@ -996,17 +996,27 @@ operational state with an admin RPC of its own, and §32's own check 1 asserts
 it is false after loading — flipping it in the schema file would change the
 fixture every later test runs against. It stays an owner step, below.
 
-### Deploy (owner) — these two are safe to run today
+### Deploy (owner) — DONE 12 Oct 2026
 
-1. Run **§36** (from `-- 36. THE FREE PLAN IS RETIRED` to the start of §37)
-   the checksummed way.
-2. Run **§37** (from `-- 37. REQUIRING A PLAN` to the end of the file) the
-   same way. §37 contains the referral sentence's **en-dashes** (`1–100%`),
-   copied byte-for-byte from §32.4 — this is the character the clipboard has
-   mangled before, so the SHA-256 check is not optional here.
-3. Check, as anon: `price_notice()` returns three plans and no `free`;
-   `price_notice('USD')` the same. As an admin: `admin_purchase_wall()`
-   answers, and `purchases_required()` is still **false**.
+Both sections were run through the dashboard SQL editor, each loaded into
+the Monaco model from base64 (§37 gzipped) rather than pasted, and each
+SHA-256'd **in the editor** against the file before Run. §37 carries the
+referral sentence's **en-dashes** (`1–100%`), copied byte-for-byte from
+§32.4 — the character the clipboard has mangled before — and the digest
+confirmed them intact.
+
+Verified afterwards over PostgREST, not read off the screen:
+
+| Probe | Answer |
+|---|---|
+| `price_notice()` | three plans, no `free` |
+| `price_notice('USD')` | three plans, no `free` |
+| `plans?id=eq.free` | name "No plan", `active false`, `limits` and `features` **unchanged** |
+| `quote_order('free')` | 22023 "That plan is not for sale" |
+| `quote_order` starter / indie / pro | 59900 / 79900 / 99900 — selling unbroken |
+| `admin_purchase_wall()` | 42501 (exists and refuses anon; PGRST202 would be missing) |
+| `admin_set_billing_settings()` | 42501 (exists) |
+| `purchases_required()` | **false** — the switch was not thrown |
 
 ### Throwing the switch — NOT YET, and here is the order
 

@@ -436,6 +436,21 @@ async function retryGate(btn) {
   render();
 }
 
+/* A plan chosen on start.html (signed out) is stashed there under this key
+   (start.js writes it) and has to survive the Google hop, which returns to the
+   hub and so loses ?plan=. Plans are bought on purchase.html only, so once
+   this page knows there is a session it forwards the buyer there with the plan
+   named — plan-cards.js marks that card. The stash is spent when it is used. */
+const PLAN_KEY = 'fms_invite_plan';
+function forwardPlan() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(PLAN_KEY) || 'null');
+    if (!v || !v.buy || !(cloud() && cloud().getSession && cloud().getSession())) return;
+    sessionStorage.removeItem(PLAN_KEY);
+    location.replace('purchase.html' + (v.plan && /^[\w-]{1,32}$/.test(v.plan) ? '?plan=' + encodeURIComponent(v.plan) : ''));
+  } catch (e) { /* the page still offers SEE PLANS AND BUY */ }
+}
+
 /* TWO STEPS, AND THE SECOND IS NOT OPTIONAL. start_trial() inserts the
    studio_members row, which is what the SITE gate reads — so until the
    gate is asked again, the studio still refuses this browser even
@@ -567,6 +582,7 @@ async function loadPlans() {
      typing a note into the request form would lose it on a second one. */
   const st = await Billing.status().catch(() => null);
   statusRead = true;
+  forwardPlan();
   readTrialOffer(st);
   render();
 }

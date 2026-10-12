@@ -406,7 +406,19 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
-  dashboard: {},
+  /* The dashboard revamp (12 Oct 2026) folded the journey strip into
+     the five stage cards, so its section ("Where this film is. Each
+     stage has a part of the blueprint (Guide)… Both are read from what
+     you have already written — nothing here is stored.") and the old
+     deck ("Each card shows where…") left the page. The words below
+     appear nowhere else on it. Re-baseline the next time this grows. */
+  dashboard: {
+    both: 'journey strip section removed; its meters now sit in the stage cards',
+    journey: 'journey strip section removed; #journey is kept on the stage list',
+    stored: 'journey strip deck ("nothing here is stored") removed with the section',
+    card: 'head deck shortened ("Each card shows where that part of the film stands")',
+    shows: 'head deck shortened ("Each card shows where that part of the film stands")'
+  },
   settings: {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.

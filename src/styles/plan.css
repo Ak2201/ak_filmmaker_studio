@@ -486,3 +486,8 @@
   }
   .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
 }
+
+/* "Open" opens the reference; 18px tall on a phone. */
+@media (pointer: coarse) {
+  .pl-media-open:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
+}

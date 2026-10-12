@@ -631,3 +631,8 @@
 }
 .st-acts { display: grid; gap: var(--s2); justify-items: start; margin-top: var(--s2); }
 .st-alt { font-size: var(--t-small); }
+
+/* A gap link is the whole row's tap target; 23px tall on a phone. */
+@media (pointer: coarse) {
+  .db-gap-link { display: flex; align-items: center; min-height: 44px; }
+}

@@ -173,3 +173,8 @@
 @media (min-width: 720px) {
   .el-row { grid-template-columns: 1fr; }
 }
+
+/* The shot / setups chips are real links; 29px tall on a phone. */
+@media (pointer: coarse) {
+  .el-got, .el-setups { display: inline-flex; align-items: center; min-height: 44px; }
+}

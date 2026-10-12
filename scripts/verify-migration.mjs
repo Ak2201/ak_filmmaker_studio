@@ -1558,11 +1558,12 @@ for (const spec of PAGES) {
        difference is that this one was in the thing whose job is to
        notice.
 
-       `.sh-trial` (the trial strip, present only during a trial) is in too.
+       The trial clock (`.sh-rail-trial`, in the rail) is hidden until a trial
+       runs, so verify never sees it; prove:billing exercises it.
 
        Anything with text in it is measured, whether or not somebody
        thought of it. That is the whole difference. */
-    const ROOTS = 'main, .modal, .shortcut-sheet, .sh-bar, .sh-trial, .toolbar';
+    const ROOTS = 'main, .modal, .shortcut-sheet, .sh-bar, .toolbar';
 
     /* A per-element name, built from the element and its two nearest
        classed ancestors. The old version printed the matched SURFACE

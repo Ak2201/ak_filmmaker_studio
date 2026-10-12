@@ -31,7 +31,7 @@ import '../lib/sitegate.js';
 import '../lib/plan-gate.js';
 /* §30. The trial countdown. Here rather than in each page because it
    has to be on every page a trial user can reach, and because this
-   module is already the thing that is. It builds its own .sh-trial strip when a
+   module is already the thing that is. It fills the rail's .sh-rail-trial block (and a phone chip) when a
    trial is live and removes it when one is not — see its header. */
 import './trial-band.js';
 import { registerSW } from '../lib/pwa.js';

@@ -1,20 +1,27 @@
 /* ============================================================
-   THE TRIAL BAND — how long is left, where you cannot miss it
+   THE TRIAL TIMER — how long is left, where you cannot miss it
    ------------------------------------------------------------
-   Section 30 gives a new account thirty minutes with the Dragon
-   sample. This is the only thing on screen that says so.
+   Section 30 gives a new account a trial with the Dragon sample.
+   This is the only thing on screen that says how long is left.
 
-   WHERE IT LIVES. Its own host, `.sh-trial`, built here only while a
-   trial is running and put where the announcement plate used to be —
-   just above `.sh-bar`, pinned (chrome.css). shell.js measures it into
-   --sh-plate-h and parks the bar under it. No trial, no element: the
-   page carries nothing and the measurement is 0. (This module used to
-   borrow the announcement plate; the plate is gone.)
+   WHERE IT LIVES (owner, 12 Oct 2026): the top strip is GONE. The
+   clock is a block at the bottom of the studio rail, `.sh-rail-trial`
+   (built hidden by shell.js buildRail, shown here while a trial runs),
+   and on a phone, where the rail is a drawer, a small chip in the bar,
+   `.sh-trial-chip`, whose tap opens that drawer. No trial, nothing
+   shown; neither element takes any part of the page's height, so the
+   band's measured numbers (--sh-plate-h is 0 now) are untouched.
 
-   MINUTES, NOT SECONDS. A second-by-second counter on a thirty-minute
-   trial is pressure theatre; minutes are information. It also means a
-   30-second interval rather than a 1s one, so a backgrounded tab is
-   not doing arithmetic forever.
+   SECONDS, ALWAYS (owner, 12 Oct 2026). This file used to say a
+   per-second counter is "pressure theatre" and repainted in whole
+   minutes every 30s. The owner has reversed that on purpose: the
+   timer ticks every second, at every length. Do not put the minutes
+   back. What keeps it honest instead: it ticks only while the tab is
+   visible (a hidden tab does no arithmetic and repaints the moment it
+   returns), the ticking element is a role="timer" with aria-live off
+   so a screen reader is not read a clock, and a separate polite
+   region speaks only at ten minutes, one minute and expiry. Urgency
+   in the last ten minutes is colour only; the words never change.
 
    THE CLOCK IS NOT THE AUTHORITY. This only renders. When the time is
    up it asks plan-gate to re-read billing_status() and the SERVER
@@ -25,71 +32,107 @@
 import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { h } from '../lib/dom.js';
-import { timeLeft } from '../lib/trial-time.js';
+import { countdown } from '../lib/trial-time.js';
 
-let tick = null;      // the minute-by-minute repaint
+let tick = null;      // the one-second repaint
 let endTimer = null;  // the one-shot at expiry
+let lastText = '';    // what is on screen, so a day-long clock repaints only when it changes
+let lastSecs = null;  // for announcing a threshold only when it is CROSSED
 
 /* THE SERVER'S CLOCK, not this browser's (§33): billing_status()
    carries `server_now`, and plan-gate keeps the difference. A laptop
-   ten minutes fast used to drop the band ten minutes early; one ten
+   ten minutes fast used to drop the timer ten minutes early; one ten
    minutes slow kept it up after the server had ended the trial. */
 const now = () => (PlanGate.serverNow ? PlanGate.serverNow() : Date.now());
 
-/** Whole minutes remaining, never negative. */
-function minutesLeft(ends) {
-  return Math.max(0, Math.ceil((ends.getTime() - now()) / 60000));
+const URGENT_SECS = 600;
+
+/** The block shell.js built at the foot of the rail (null on a page with no shell). */
+const railBlock = () => document.querySelector('#studioRail .sh-rail-trial');
+const chipEl = () => document.querySelector('.sh-bar .sh-trial-chip');
+
+function fillRail(block) {
+  if (block.querySelector('[role="timer"]')) return;
+  block.append(
+    h('span.sh-rail-trial-label', { text: 'TRIAL ENDS IN' }),
+    h('span.sh-rail-trial-time', { role: 'timer', 'aria-live': 'off', 'aria-label': 'Trial time left' }),
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'SEE PLANS' }),
+    h('span.visually-hidden.sh-rail-trial-say', { role: 'status', 'aria-live': 'polite' })
+  );
 }
 
-/* HOURS NOW (owner, 11 Oct 2026): a trial is set in hours, and a code
-   trial is days. "10080 minutes left" was this band's sentence for a
-   week-long code trial. trial-time.js says it the one way every page
-   says it. */
-function sentence(mins) {
-  const left = timeLeft(mins * 60000);
-  if (mins <= 10) return 'Trial · ' + left + ' left';
-  return 'Trial · ' + left + ' left with the sample film';
-}
-
-/* The band's height is measured by shell.js on resize; adding or
-   removing the strip changes it without a resize. */
-function remeasure() {
-  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }
-}
-
-function paint(host, ends) {
-  const mins = minutesLeft(ends);
-  if (!host.querySelector('.tb-text')) {
-    host.append(
-      h('span.sh-trial-flag.tb-flag', { text: 'TRIAL' }),
-      h('span.sh-trial-text.tb-text', { role: 'status', 'aria-live': 'polite' }),
-      h('a.btn.primary.tb-cta', { href: 'purchase.html', text: 'SEE PLANS' })
-    );
-  }
-  host.querySelector('.tb-text').textContent = sentence(mins);
-  /* Urgency is the truth about the clock, not a colour chosen to
-     hurry anyone: it only appears in the last ten minutes, and the
-     word it changes is the same word. */
-  host.classList.toggle('is-urgent', mins <= 10);
-  return mins;
-}
-
-/** The host, created above the bar if the shell is there. */
-function takeHost() {
-  let host = document.querySelector('.sh-trial');
-  if (host) return host;
+/** The phone chip, put in the bar right after the rail's burger. */
+function takeChip() {
+  let chip = chipEl();
+  if (chip) return chip;
   const bar = document.querySelector('.sh-bar');
-  if (!bar || !bar.parentNode) return null;   // a page with no shell: nothing to draw on
-  host = h('div.sh-trial', { role: 'region', 'aria-label': 'Trial time left' });
-  bar.parentNode.insertBefore(host, bar);
-  return host;
+  if (!bar) return null;
+  chip = h('button.sh-trial-chip', { type: 'button', 'aria-label': 'Trial time left. Open the menu' });
+  chip.append(h('span.sh-trial-chip-word', { text: 'Trial' }), h('span.sh-trial-chip-time'));
+  chip.addEventListener('click', (e) => {
+    /* Open the drawer through its own control: the burger is the one
+       door setRail() has, so this edits nothing in shell.js. The click
+       must not travel on to shell.js's outside-click handler, which
+       closes the drawer for any click that is not on the rail or the
+       burger — it would shut what this just opened. */
+    e.stopPropagation();
+    if (document.body.classList.contains('rail-shown')) return;
+    const burger = document.getElementById('railToggle');
+    if (burger) burger.click();
+  });
+  const burger = bar.querySelector('#railToggle');
+  if (burger && burger.nextSibling) bar.insertBefore(chip, burger.nextSibling);
+  else bar.append(chip);
+  return chip;
+}
+
+const SAY = {
+  600: 'Ten minutes left in your trial.',
+  60: 'One minute left in your trial.',
+  0: 'Your trial has ended.'
+};
+
+function announce(block, secs) {
+  const say = block.querySelector('.sh-rail-trial-say');
+  if (!say || lastSecs == null) return;
+  for (const t of [0, 60, 600]) {   // the LOWEST threshold crossed wins
+    if (lastSecs > t && secs <= t) { say.textContent = SAY[t]; return; }
+  }
+}
+
+/** Paint both faces from one number. */
+function paint(ends) {
+  const ms = Math.max(0, ends.getTime() - now());
+  const secs = Math.ceil(ms / 1000);
+  const text = countdown(ms);
+  const block = railBlock();
+  if (block) {
+    fillRail(block);
+    block.hidden = false;
+    const chip = takeChip();
+    if (text !== lastText) {
+      block.querySelector('.sh-rail-trial-time').textContent = text;
+      if (chip) chip.querySelector('.sh-trial-chip-time').textContent = text;
+    }
+    /* Urgency is the truth about the clock, not a colour chosen to
+       hurry anyone: last ten minutes only, and the words are the same. */
+    const urgent = secs <= URGENT_SECS;
+    block.classList.toggle('is-urgent', urgent);
+    if (chip) chip.classList.toggle('is-urgent', urgent);
+    announce(block, secs);
+  }
+  lastText = text;
+  lastSecs = secs;
 }
 
 function release() {
-  const host = document.querySelector('.sh-trial');
-  if (host) { host.remove(); remeasure(); }
+  const block = railBlock();
+  if (block) { block.hidden = true; block.replaceChildren(); block.classList.remove('is-urgent'); }
+  const chip = chipEl();
+  if (chip) chip.remove();
   if (tick) { clearInterval(tick); tick = null; }
   if (endTimer) { clearTimeout(endTimer); endTimer = null; }
+  lastText = ''; lastSecs = null;
 }
 
 /** Re-arm the one-shot that asks the server when the time is up.
@@ -106,6 +149,15 @@ function armExpiry(ends) {
   }, ms);
 }
 
+function startTick() {
+  if (tick || document.hidden) return;
+  tick = setInterval(() => {
+    const e = PlanGate.trialEndsAt();
+    if (!e) { release(); return; }
+    paint(e);   // at zero it holds 0:00 until the server's answer (armExpiry) releases it
+  }, 1000);
+}
+
 export function renderTrialBand() {
   if (typeof document === 'undefined') return;
   const ends = PlanGate.trialEndsAt();
@@ -117,29 +169,20 @@ export function renderTrialBand() {
     if (ends && !endTimer) endTimer = setTimeout(() => { endTimer = null; PlanGate.refresh(); }, 15000);
     return;
   }
-
-  const fresh = !document.querySelector('.sh-trial');
-  const host = takeHost();
-  if (!host) return;
-  paint(host, ends);
-  if (fresh) remeasure();
+  if (!railBlock()) return;   // a page with no shell: nothing to draw on
+  paint(ends);
   armExpiry(ends);
-
-  if (!tick) {
-    tick = setInterval(() => {
-      const e = PlanGate.trialEndsAt();
-      if (!e) { release(); return; }
-      const hh = document.querySelector('.sh-trial');
-      if (hh) paint(hh, e);
-    }, 30000);
-  }
+  startTick();
 }
 
 if (typeof window !== 'undefined') {
   Store.subscribe('plan:changed', renderTrialBand);
-  /* A backgrounded tab's interval drifts, so repaint the moment it
-     comes back rather than showing a number that is minutes stale. */
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderTrialBand(); });
+  /* A hidden tab does no arithmetic: stop the one-second interval and
+     repaint the moment the tab comes back. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (tick) { clearInterval(tick); tick = null; } }
+    else renderTrialBand();
+  });
 }
 
 export default { renderTrialBand };

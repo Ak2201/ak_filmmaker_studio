@@ -2066,7 +2066,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
      bar that wrapped to two rows could never return to one. */
   --sh-bar-min: 56px;
   --sh-bar-h:   56px;
-  /* The trial strip above the bar (none unless a trial runs, so 0). */
+  /* Formerly the trial strip above the bar. The strip is gone (12 Oct
+     2026) so this is always 0; the bar's `top` and several readers still
+     name it, which is why it is kept rather than removed. */
   --sh-plate-min: 38px;
   --sh-plate-h:   0px;
   /* A third, answering a different question again: --sh-bar-h is where
@@ -2834,7 +2836,7 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 }
 
 @media print {
-  .sh-rail, .sh-bar, .sh-scrim, .sh-trial { display: none !important; }
+  .sh-rail, .sh-bar, .sh-scrim, .sh-trial-chip { display: none !important; }
   body.has-sh-shell { padding-left: 0 !important; }
 }
 
@@ -3081,54 +3083,81 @@ html {
   scroll-padding-top: calc(var(--sh-cover-h, var(--sh-chrome-h)) + var(--s3));
 }
 /* ============================================================
-   THE TRIAL STRIP
+   THE TRIAL TIMER
    ------------------------------------------------------------
-   The announcement plate is gone (owner, 11 Oct 2026). This host is
-   built by trial-band.js ONLY while a trial is running, and sits where
-   the plate did: pinned above the bar, measured by shell.js into
-   --sh-plate-h (the variable keeps its name — the bar parks on it and
-   several pages read it). No trial, no element, 0px.
+   The top strip is gone (owner, 12 Oct 2026). trial-band.js fills a
+   block at the foot of the rail and, below 1100px where the rail is a
+   drawer, a chip in the bar that opens it. Neither is in the page's
+   flow height, so --sh-plate-h stays 0 (the bar still parks on it).
+   Tokens only; the rail is 76px, so the words are micro, centred, and
+   the digits tabular so the clock does not shiver as it ticks.
    ============================================================ */
-.sh-trial {
-  position: sticky;
-  top: 0;
-  z-index: calc(var(--z-toolbar) + 2);
+.sh-rail-trial {
+  margin-top: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--s3);
-  min-height: var(--sh-plate-min);
-  padding: var(--s1) var(--s4);
-  background: var(--brand-wash);
-  color: var(--ink);
-  border-bottom: 1px solid var(--chrome-hair);
+  gap: var(--s1);
+  padding: var(--s2) var(--s1) var(--s3);
+  border-top: 1px solid var(--chrome-hair);
+  text-align: center;
+  font-family: var(--f-mono);
 }
-.sh-trial-flag {
-  flex: none;
-  padding: 0 var(--s1);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-pill);
+.sh-rail-trial[hidden] { display: none; }
+.sh-rail-trial-label {
   font-size: var(--t-micro);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  letter-spacing: .02em;
+  line-height: var(--lh-snug);
+  color: var(--chrome-muted);
 }
-.sh-trial-text {
-  min-width: 0;
+.sh-rail-trial-time {
+  max-width: 100%;
   font-size: var(--t-tiny);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--chrome-ink);
   white-space: nowrap;
 }
-/* Un-pinned on a phone. Declared AFTER the sticky rule on purpose:
-   when two rules tie, order decides (CLAUDE.md, the 38px plate). */
-@media (max-width: 719px) {
-  .sh-trial { position: relative; top: auto; }
+.sh-rail-trial-cta {
+  padding: var(--s1);
+  border: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--chrome-accent);
+  text-decoration: none;
+  white-space: nowrap;
 }
-@media (max-width: 559px) {
-  .sh-trial { gap: var(--s2); padding-inline: var(--s3); }
-  .sh-trial-flag { display: none; }
+.sh-rail-trial-cta:hover { background: var(--chrome-fill); }
+/* The last ten minutes: colour only, the words do not change. */
+.sh-rail-trial.is-urgent { border-top-color: var(--danger); }
+.sh-rail-trial.is-urgent .sh-rail-trial-time { color: var(--chrome-accent); }
+
+/* The phone chip: only while a trial runs (trial-band.js adds it) and
+   only where the rail is a drawer. */
+.sh-trial-chip {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 34px;
+  padding: 0 var(--s2);
+  background: none;
+  border: 1px solid var(--chrome-hair-strong);
+  border-radius: var(--radius-pill);
+  color: var(--chrome-ink);
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  cursor: pointer;
+}
+.sh-trial-chip-time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sh-trial-chip:hover { background: var(--chrome-fill); }
+.sh-trial-chip.is-urgent { border-color: var(--danger); }
+.sh-trial-chip.is-urgent .sh-trial-chip-time { color: var(--chrome-accent); }
+@media (max-width: 1099px) {
+  .sh-trial-chip { display: inline-flex; }
 }
 
 /* ============================================================

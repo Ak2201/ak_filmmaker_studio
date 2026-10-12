@@ -1432,28 +1432,79 @@ file before pressing Run. Every section this session was checked that
 way and every one matched byte for byte. Never paste schema SQL without
 a checksum.
 
-**SECTION 32 HAS NOT RUN LIVE** (written 11 Oct 2026): the "Purchases
-required" switch (`billing_settings.purchase_required`, default FALSE — the
-studio free, nothing walled or capped), `purchases_required()` for anon,
-`user_limits()` / `billing_status()` / `admin_set_billing_settings()` /
-`studio_status()` restated, and access by e-mail (`email_grants`,
-`admin_grant_email`, `admin_revoke_email_grant`, `admin_list_email_grants`,
-a trigger on `auth.users`). Until it runs, billing_status() carries no
-`purchase_required` key and the client behaves exactly as before — the key
-has to be PRESENT to be believed. Owner step: `docs/BILLING.md` §13.
+**SECTIONS 32, 33, 34 AND 35 ARE ALL LIVE** (run 12 Oct 2026). §32's
+"Purchases required" switch is live and `purchases_required()` answers
+**false** — so nothing is walled or capped, `billing_status().entitled` is
+true for everybody and `features` is `open_features()`. §33's
+`trial_offer()` reads 30 minutes, trial enabled. §34 was marked on the
+owner's word rather than a probe: it has no API surface, and the read that
+settles it is
+`select pg_get_constraintdef(oid) from pg_constraint where conname =
+'studio_members_trial_source_check';` — it should mention `'refund'`.
+§35 is live but **`RESEND_API_KEY` and `MAIL_FROM` are still unset**, so a
+payment now CLAIMS a receipt in the database and the send then fails. DO
+NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row
+says "receipt sent", and nothing arrives — worse than not having the
+feature. Owner steps: `docs/BILLING.md` §13 and §16.
 
-**SECTION 37 HAS NOT RUN LIVE** (12 Oct 2026): widens the `project_data`
-scope CHECK to `write_goals`, so `fms_write_goals_v1` (focus-mode goal and
-daily history) syncs, merged day by day (`mergeWriteGoals` in cloud.js).
-Until it runs, that one scope's upserts are refused and queued; every
-other scope syncs as before. Owner step: `docs/BILLING.md` §17.
+**ALL FOUR EDGE FUNCTIONS ARE DEPLOYED** (rzp-refund only since 12 Oct
+2026). For three days `rzp-order`, `rzp-verify` and `rzp-webhook` answered
+401 while `/functions/v1/rzp-refund` answered **404 NOT_FOUND**, so the
+console's REFUND button was dead on a site whose refund.html promises refunds
+in three non-discretionary cases — and `docs/BILLING.md` read as though it
+had been deployed on 9 Oct. Nothing caught it; probing all four endpoints
+did. Ask the server which functions exist, the same way you ask the database
+which sections ran.
 
-**SECTION 35 HAS NOT RUN LIVE EITHER** (11 Oct 2026): receipt and refund
-e-mails through Resend from `support@filmmakerstudio.in`, each one CLAIMED
-by an UPDATE before it is sent (`claim_receipt_email`, `claim_refund_email`)
-so rzp-verify and the webhook never both send. A mail failure never fails a
-payment. The refund sentence lives in `supabase/functions/_shared/terms.js`,
-shared by the e-mail and the invoice PDF. Owner steps: `docs/BILLING.md` §16.
+Deploy with the CLI, never the dashboard's in-browser editor: rzp-refund
+imports `basicAuth` from `../_shared/razorpay.js`, that editor has no parent
+directory, and the only way through it is to inline a copy of a shared file.
+`supabase login` also needs a REAL TTY — it refuses a tool shell with
+`LoginMissingTokenError` and asks for a token instead; run it in the user's
+terminal and let the CLI keep the token in `~/.supabase` rather than putting
+one in a file. A refund has still never been exercised end to end.
+
+**SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
+§36 generates `plans.features` for the three paid tiers from
+`src/data/plan-matrix.json` via `scripts/make-plan-features-sql.mjs` — do not
+edit that SQL by hand; change the JSON, regenerate, commit both, and
+`npm run test:plans` fails when the file drifts from the generator. **It is a
+hard precondition for requiring purchases**: today all three paid tiers carry
+an EMPTY features map live, so the moment `purchase_required` goes true Basic,
+Intermediate and Pro are indistinguishable and every feature is allowed on
+every tier. §37 widens the `project_data` scope CHECK to `write_goals` so
+`fms_write_goals_v1` (focus-mode goal and daily history) syncs, merged day by
+day by `mergeWriteGoals` in cloud.js; until it runs that one scope's upserts
+are refused (23514) and queued, and every other scope syncs as before.
+Owner steps: `docs/BILLING.md` §17 (§36) and §18 (§37); §38 and §39 are §19.
+
+**SECTIONS 38 AND 39 ARE LIVE** (run 12 Oct 2026, each verified over
+PostgREST afterwards rather than read off the screen). They were written as
+"36" and "37" by a session that had not fetched first, and renumbered on the
+merge — the numbers follow AUTHORING order, and §36/§37 were authored seven
+hours earlier. The lesson is the one
+[[concurrent-sessions-share-the-checkout]] already carried, one step earlier
+than it says: fetch before you NUMBER, not just before you push.
+
+§38 retires the free plan: the row STAYS (it is what `user_plan()` answers
+for somebody who has bought nothing, and `user_limits()`, `billing_status()`
+and the P0402 triggers all read it) and its OFFER is withdrawn —
+`active = false`, renamed "No plan", plus a CHECK so it cannot be re-listed.
+It was written because the live `price_notice()` was publishing
+`Free — ₹0` to anonymous visitors while terms.html, refund.html and
+start.html all say there is no free plan. Nobody's access moves: every read
+that can receive `'free'` reads `plans` WITHOUT an `active` filter, and
+every read that filters on `active` is a purchase path that already refuses
+`free`. §39 does NOT throw the `purchase_required` switch — that stays an
+owner step, because flipping it in the schema file would change the fixture
+every later test runs against. It adds `admin_purchase_wall()` (the census:
+members, paid, in_trial, walled, grandfathered_walled) and restates
+`admin_set_billing_settings()` with ONE new refusal: turning the switch on
+is refused while it would wall a member the §30 grandfather backfill
+covered. **Neither section makes a plan necessary**, so refund.html's "a
+plan is needed again" stays untrue until the switch flips, and
+`purchases_required()` still answers **false**, which is the proof §39 did
+not throw it. `scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

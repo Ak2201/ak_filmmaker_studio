@@ -492,6 +492,46 @@ Razorpay dashboard. Secrets are reused: `RAZORPAY_KEY_ID` and
 `RAZORPAY_KEY_SECRET`; nothing new is set. `node scripts/deploy-billing.mjs
 --functions` now deploys `rzp-refund` too. Then ship the client.
 
+**`rzp-refund` WAS NOT ACTUALLY DEPLOYED UNTIL 12 Oct 2026**, and nothing
+said so. Step (2) above was written on 9 Oct and read as done; the live
+project answered **`404 NOT_FOUND`** for `/functions/v1/rzp-refund` for three
+days while `rzp-order`, `rzp-verify` and `rzp-webhook` all answered 401. So
+the console's REFUND button and the whole admin refund path were dead on a
+site whose `refund.html` promises refunds in three non-discretionary cases.
+It surfaced only from probing all four endpoints, not from reading anything.
+
+The database side was complete the whole time: `begin_refund`,
+`record_refund` and `mark_payment_refunded` all exist live and answer 42501
+to anon. **Probe them WITH their argument names** — called with `{}` all
+three answer `PGRST202`, which looks like "missing" and is not: PGRST202 is
+*no matching signature*, and every one of them takes arguments. That misread
+nearly got reported as three missing functions.
+
+It is deployed now and answers `401 UNAUTHORIZED_NO_AUTH_HEADER`, the same
+as `rzp-order` and `rzp-verify`. The route that worked:
+
+```bash
+npx --yes supabase@latest login        # in a REAL terminal: it needs a TTY
+npx --yes supabase@latest functions deploy rzp-refund --project-ref conhlrulxfwkhsnymakz
+```
+
+Two things worth knowing before anyone tries this from a tool or a script.
+`supabase login` refuses a non-TTY shell (`LoginMissingTokenError`) and wants
+`--token` or `SUPABASE_ACCESS_TOKEN` instead — do not put a token in a file
+or a command line; run the login in the user's own terminal and let the CLI
+keep it in `~/.supabase`. And `WARNING: Docker is not running` is harmless
+here: deploy uploads the sources (it uploaded `index.ts` **and**
+`_shared/razorpay.js`) rather than bundling locally.
+
+**Do not deploy this one from the dashboard's in-browser editor.** It imports
+`basicAuth` from `../_shared/razorpay.js`, and that editor has no parent
+directory, so the only way through it is to inline a copy of a shared file —
+the duplication this codebase has already paid for twice (see the money
+parser in CLAUDE.md). The CLI resolves `../_shared/` correctly.
+
+**Still unexercised:** a refund has never actually been run end to end, in
+test mode or live. Deploying the function makes it possible, not proven.
+
 **The button (A).** Console → Billing → Payments: REFUND on every `paid`
 row. The dialog asks for an amount (rupees, full by default, never more
 than was paid) and a REQUIRED reason, and warns that a refund ends the
@@ -699,7 +739,7 @@ below; they are the next owner steps, in that order:
 have reached buyers. Base64 the section, decode it in the page, set the
 Monaco model, then SHA-256 the editor against the file before Run.
 
-## 13. Purchases required, and access by e-mail (schema §32, 11 Oct 2026). NOT RUN LIVE.
+## 13. Purchases required, and access by e-mail (schema §32, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 **The owner's decisions.** The studio is free to use right now: nothing to
 buy, nothing walled, nothing capped. One console switch, **Purchases
@@ -767,7 +807,7 @@ switch ON so every older proof still asserts the wall.
    absent and the client keeps its current rules.
 
 
-## 14. A free trial, not a free plan — set in hours (schema §33, 11 Oct 2026). NOT RUN LIVE.
+## 14. A free trial, not a free plan — set in hours (schema §33, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 **The owner's decisions.** "Let's not have a free version; it can be a free
 TRIAL version that lasts for configured HOURS." And: users ended in a loop
@@ -850,7 +890,7 @@ for the grant), `prove:billing` (q), (r) and (s), `prove:gate` (m2) and
 4. Legal copy: refund.html §7 and terms.html §4–§5 now say "free trial"
    of the configured hours instead of "the free plan" (11 Oct 2026).
 
-## 15. A refund gives a fresh trial (schema §34, 11 Oct 2026). NOT RUN LIVE.
+## 15. A refund gives a fresh trial (schema §34, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 **The owner's decision.** A refunded buyer gets a FRESH trial of the
 configured length. `start_trial()` still refuses a second trial on request
@@ -887,7 +927,7 @@ row untouched; a failure inside is a WARNING, never a lost refund.
    `refund`.
 3. No edge function changes and no redeploy are needed.
 
-## 16. Receipt and refund e-mails, and a clearer invoice (schema §35, 11 Oct 2026). NOT RUN LIVE.
+## 16. Receipt and refund e-mails, and a clearer invoice (schema §35, 11 Oct 2026). RUN LIVE 12 Oct 2026.
 
 **The owner's decision.** "Once a user has purchased the product we should
 send mail to the user, from support@filmmakerstudio.in." Provider: **Resend**.
@@ -956,7 +996,7 @@ the published policy. Change both together.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
    reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
    console's Invoices list shows "Sent <date>".
-## 16. Three plans, each including everything below it (schema §36, 11 Oct 2026). NOT RUN LIVE.
+## 17. Three plans, each including everything below it (schema §36, 11 Oct 2026). NOT RUN LIVE.
 
 The owner's decision: **Basic writes the film, Intermediate prepares it,
 Pro is everything** — and the matrix REPLACES the live features map (the
@@ -1009,7 +1049,7 @@ required, or for a plan-less e-mail grant, `billing_status()` serves
    three paid rows match `matrixFeatures(id)`; free is unchanged.
 3. Open admin.html#features: the ticks are the split above.
 
-## 17. Writing-goal history syncs across devices (schema §37, 12 Oct 2026). NOT RUN LIVE.
+## 18. Writing-goal history syncs across devices (schema §37, 12 Oct 2026). NOT RUN LIVE.
 
 Not billing, but it is a schema section and its deploy steps live here with
 §24's siblings. `project_data.scope` gains `write_goals`; `fms_write_goals_v1`
@@ -1029,3 +1069,108 @@ other's days. Tests: `scripts/schema-tests/goals-sync.sql`.
    `'write_goals'` and still `'characters'`, `'costs'`.
 3. Re-running is safe. Until it runs, only that one scope's saves are refused
    (and retried); nothing else is affected. Then mark it RUN in the header.
+
+## 19. The free plan is retired, and the switch that requires one (schema §38 and §39, 12 Oct 2026). §38 and §39 RUN LIVE 12 Oct 2026 — THE SWITCH IS NOT THROWN.
+
+The owner decided on 11 Oct 2026 that there is no free version, only a free
+trial. §33 recorded the decision, kept the row and said that never drawing it
+as a choice was "client work". The client did its half. The server did not,
+and on 12 Oct 2026 an anonymous caller still got this from the live project:
+
+```
+price_notice()            -> plans[0] = {"id":"free","name":"Free","price_paise":0}
+/rest/v1/plans?id=eq.free -> blurb "Admitted, unpaid. One film in the cloud."
+```
+
+So the one price feed a stranger can read was advertising a free plan on a
+site whose own Terms of Service deny it exists. **§38 closes that. §39 does
+not close the other half, and must not yet.**
+
+### What each section does
+
+**§38 — the offer is withdrawn, the row stays.** `plans.free` becomes
+`active = false`, named "No plan", with a CHECK so a console toggle cannot
+re-list it. The row cannot be deleted: `user_plan()` returns `'free'` for
+anybody who has bought nothing, and `billing_status()`, `user_limits()` and
+the three P0402 limit triggers all read it as the "no plan" state.
+
+It is safe because of a property worth re-checking before anyone changes it:
+**every read that can receive `'free'` reads `plans` WITHOUT an `active`
+filter**, and **every read that filters on `active` is a purchase path** that
+already refuses `free` by id or by its zero price. The only two readers that
+filter on `active` and are not purchase paths are `price_notice()` and
+`price_notice(currency)` — which is the whole point. Nobody's entitlement,
+limit or feature map is read differently after §38 than before it.
+
+**§39 — the census, and one guard.** It adds `admin_purchase_wall()`
+(members / paid / in_trial / walled / grandfathered_walled, admin only) and
+restates `admin_set_billing_settings()` with a single new refusal.
+
+**§39 DOES NOT THROW THE SWITCH.** `billing_settings.purchase_required` is
+operational state with an admin RPC of its own, and §32's own check 1 asserts
+it is false after loading — flipping it in the schema file would change the
+fixture every later test runs against. It stays an owner step, below.
+
+### Deploy (owner) — DONE 12 Oct 2026
+
+Both sections were run through the dashboard SQL editor, each loaded into
+the Monaco model from base64 (§39 gzipped) rather than pasted, and each
+SHA-256'd **in the editor** against the file before Run. §39 carries the
+referral sentence's **en-dashes** (`1–100%`), copied byte-for-byte from
+§32.4 — the character the clipboard has mangled before — and the digest
+confirmed them intact.
+
+Verified afterwards over PostgREST, not read off the screen:
+
+| Probe | Answer |
+|---|---|
+| `price_notice()` | three plans, no `free` |
+| `price_notice('USD')` | three plans, no `free` |
+| `plans?id=eq.free` | name "No plan", `active false`, `limits` and `features` **unchanged** |
+| `quote_order('free')` | 22023 "That plan is not for sale" |
+| `quote_order` starter / indie / pro | 59900 / 79900 / 99900 — selling unbroken |
+| `admin_purchase_wall()` | 42501 (exists and refuses anon; PGRST202 would be missing) |
+| `admin_set_billing_settings()` | 42501 (exists) |
+| `purchases_required()` | **false** — the switch was not thrown |
+
+### Throwing the switch — NOT YET, and here is the order
+
+Requiring a plan is one call:
+
+```sql
+select public.admin_set_billing_settings('{"purchase_required": true}');
+```
+
+**Do not make it until all four of these hold.**
+
+1. **Resend works** (§16 above). §35 is live, so a payment already CLAIMS a
+   receipt and then fails to send it. Requiring a purchase before that is
+   fixed means the first person walled is also the first person to pay and
+   get nothing in writing.
+2. **One real purchase has been proved end to end** on the live Razorpay key,
+   with the webhook delivering **200** — and a refund exercised once.
+3. **§36 (three plans from the matrix) has run.** Probed live on 12 Oct
+   2026: `starter`, `indie` and `pro` all carry an EMPTY `features` map, so
+   `allowed()` finds no key and permits everything. Require purchases before
+   §36 runs and the three paid tiers are indistinguishable — a Basic buyer
+   gets Pro. This was not obvious and is the reason to read the table rather
+   than assume the tiers differ.
+4. **`admin_purchase_wall()` reads `grandfathered_walled: 0`.** §30's
+   backfill gave every member admitted before 9 Oct 2026 a year at full
+   scope, because "they were let in on a promise of a free plan; taking it
+   away retroactively is not what the owner asked for". That year runs out in
+   **October 2027**. §39's guard refuses the switch rather than let it lock
+   those people out silently; if it ever fires, give them a plan, a longer
+   trial or an e-mail grant first. A member who arrived *after* that line and
+   let a 30-minute trial lapse does not block it — walling them is the intent.
+
+### What is still not true after §38 and §39
+
+refund.html §7 says *"There is no free plan: when that trial ends, a plan is
+needed again."* The first half becomes true with §38. **The second half stays
+false until the switch is thrown**, because `purchase_required` is false and
+`billing_status().entitled` is therefore true for everybody. The same
+sentence sits on terms.html:74 and start.html. Either throw the switch or
+soften the pages — do not leave a legal page making a claim the database
+contradicts.
+

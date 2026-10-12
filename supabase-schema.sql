@@ -9358,4 +9358,351 @@ notify pgrst, 'reload schema';
 --  3. re-running the section changes nothing.
 -- Test file: scripts/schema-tests/goals-sync.sql (run by npm run test:schema).
 -- END OF SECTION 37
+
+-- 38. THE FREE PLAN IS RETIRED   RUN LIVE 12 Oct 2026
+-- ------------------------------------------------------------
+-- The owner's decision, 11 Oct 2026: "Let's not have a free version;
+-- it can be a free TRIAL version." Section 33 recorded the decision,
+-- kept the row, and said that never drawing it as a choice "is client
+-- work". The client did its half: plan-gate.js filters `free` out of
+-- the upgrade cards, billing-admin.js and growth-admin.js filter it out
+-- of every list they draw, and terms.html, refund.html and start.html
+-- each say in so many words that there is no free plan.
+--
+-- THE SERVER DID NOT, AND ON 12 Oct 2026 AN ANONYMOUS CALLER GOT THIS:
+--
+--   price_notice()                 -> plans[0] = {"id":"free",
+--                                     "name":"Free","price_paise":0}
+--   /rest/v1/plans?id=eq.free      -> blurb "Admitted, unpaid. One film
+--                                     in the cloud."
+--
+-- So the one price feed a stranger can read was advertising a free plan
+-- on a site whose own Terms of Service deny it exists, and the row was
+-- describing a cloud allowance as something you are given. Two legal
+-- pages and a landing page said one thing; the database said another.
+-- This section closes that where the fact lives, rather than in a
+-- fourth client that has to remember.
+--
+-- THE ROW STAYS, AND IT HAS TO. user_plan() returns 'free' for anybody
+-- who has bought nothing, and billing_status(), user_limits(), the
+-- three P0402 limit triggers and quote_for() all read it as the "no
+-- plan" state. Deleting it takes the floor out from under every one of
+-- them. What is withdrawn is its OFFER, not its existence.
+--
+-- `active` IS THE EXISTING LEVER AND IT IS THE RIGHT ONE -- which was
+-- worth establishing before using it rather than after, because the
+-- failure would have been silent. Every read that can receive 'free' as
+-- a plan id reads public.plans WITHOUT an active filter: user_limits()
+-- (the limits), billing_status() (plan_name and features), the three
+-- limit triggers, my_invoices(). So the "no plan" state is untouched.
+-- Every read that DOES filter on active is a purchase path -- quote_for,
+-- create_pending_payment, activate_payment and the rest -- and each of
+-- those already refuses 'free' by id or by its zero price, so this
+-- changes nothing for them either.
+--
+-- The only two readers that filter on active and are NOT purchase paths
+-- are price_notice() and price_notice(currency). They are exactly what
+-- this section is for. Neither is restated: `where p.active` was always
+-- the right predicate and it is the row that was wrong.
+--
+-- NOBODY'S ACCESS MOVES. Not one entitlement, limit or feature map is
+-- read differently after this section than before it.
+--
+--   38.1  the row: withdrawn, and it stops describing an offer
+--   38.2  a CHECK, so it cannot be re-listed from the console
+--   38.3  CHECKS TO RUN
+--
+-- WHAT THIS SECTION DOES NOT DO, and the distinction is the whole of
+-- section 39: it does not make a plan NECESSARY.
+-- billing_settings.purchase_required is still false, so
+-- billing_status().entitled is true for everybody and features is
+-- open_features(). Withdrawing the offer and requiring a purchase are
+-- two different switches. This is the first, it is safe on its own, and
+-- it is the half that can be done before the receipts work.
+-- ============================================================
+
+-- 38.1 THE ROW ----------------------------------------------------------
+-- Guarded by its own WHERE so a re-run is a true no-op and updated_at
+-- does not churn -- the file loads twice under npm run test:schema.
+update public.plans
+   set name       = 'No plan',
+       blurb      = 'What an account has before it buys one. Not for sale.',
+       active     = false,
+       updated_at = now()
+ where id = 'free'
+   and (active
+        or name  is distinct from 'No plan'
+        or blurb is distinct from 'What an account has before it buys one. Not for sale.');
+
+-- 38.2 AND IT CANNOT COME BACK BY ACCIDENT ------------------------------
+-- admin_set_plan() takes the row FOR UPDATE and writes what the console
+-- sends it, so without this a stray toggle re-lists Free on the public
+-- price feed and nothing anywhere would say so. One line makes the
+-- decision structural instead of remembered -- which is the lesson of
+-- section 33 having left it to four separate clients.
+-- It refuses with the BARE constraint name rather than a sentence, and
+-- that is a judgement rather than an oversight: admin_set_plan() does
+-- write `active`, but no console surface offers the toggle for Free --
+-- billing-admin.js and growth-admin.js both filter `free` out of every
+-- plan list they draw -- so the only way to meet this is to write the
+-- UPDATE by hand, deliberately, and `plans_free_not_offered` says what
+-- happened. Restating a fifty-line function for a message no UI can
+-- reach would be the worse trade. If a console ever grows that toggle,
+-- give it a sentence first.
+-- Drop and re-add, so a re-run converges on the same constraint.
+alter table public.plans drop constraint if exists plans_free_not_offered;
+alter table public.plans add constraint plans_free_not_offered
+  check (id <> 'free' or not active);
+
+notify pgrst, 'reload schema';
+
+-- 38.3 CHECKS TO RUN -----------------------------------------------------
+-- Checks 1, 2 and 5 were RUN LIVE over PostgREST on 12 Oct 2026 and
+-- passed; so was a direct read of the row, which is the evidence for the
+-- half of check 3 that does not need a session. Checks 3 (the function
+-- reads), 4, 6 and 7 need a signed-in user, an admin or a transaction to
+-- roll back, and are proved by scripts/schema-tests/no-free-plan.sql
+-- rather than live. Say which is which; "verified" and "asserted in a
+-- test" are not the same claim.
+--  1. anon: price_notice() -> no plan with id 'free'; the three paid
+--     tiers are all still there, with their prices and their rises.
+--  2. anon: price_notice('USD') -> the same, in the other currency.
+--  3. the "no plan" state is untouched: for a user who has bought
+--     nothing, user_plan() is still 'free', user_limits() still returns
+--     the free row's limits, billing_status() still names it and still
+--     returns its features map.
+--  4. the P0402 limit triggers still fire for an unpaid user at the free
+--     cap -- they read plans.limits without an active filter.
+--  5. quote_for(<anyone>, 'free') -> 22023 "not for sale", as before and
+--     now for two reasons rather than one.
+--  6. update plans set active = true where id = 'free' -> check
+--     violation plans_free_not_offered.
+--  7. re-running the section is a no-op (the UPDATE touches no row).
+-- Test file: scripts/schema-tests/no-free-plan.sql (npm run test:schema).
+-- ============================================================
+
+-- ============================================================
+-- 39. REQUIRING A PLAN, WITHOUT WALLING THE PEOPLE WHO WERE
+--     PROMISED OTHERWISE   RUN LIVE 12 Oct 2026
+-- ------------------------------------------------------------
+-- Section 38 withdrew the free plan's OFFER. This section is about the
+-- other half: making a plan NECESSARY, which is one boolean --
+-- billing_settings.purchase_required -- that section 32 built and
+-- deliberately left false.
+--
+-- THIS SECTION DOES NOT THROW THAT SWITCH, AND THAT IS ON PURPOSE.
+-- A schema file describes structure; purchase_required is operational
+-- state with an admin RPC of its own, and section 32's own check 1
+-- asserts it is false after loading. Flipping it in here would change
+-- the fixture every later test runs against. It stays an owner step,
+-- in docs/BILLING.md.
+--
+-- What this section adds is the two things that make throwing it safe.
+--
+-- THE REASON IT IS NOT SAFE TODAY, said plainly so it is not discovered
+-- by a customer: RESEND IS NOT CONFIGURED. Section 35 is live, so a
+-- payment now CLAIMS a receipt in the database and then fails to send
+-- it. Requiring a purchase while that is true means the first person
+-- walled is also the first person to pay and get nothing in writing.
+-- The order is Resend, then a real purchase proved end to end, then
+-- this switch.
+--
+-- THE SECOND REASON, AND THE ONE SQL CAN ACTUALLY DEFEND. Section 30's
+-- grandfather backfill gave every member admitted before 9 Oct 2026 a
+-- year at full scope -- trial_source 'admin', trial_minutes 525600 --
+-- precisely because "they were let in on a promise of a free plan;
+-- taking it away retroactively is not what the owner asked for". That
+-- year runs out in October 2027. On the day it does, throwing this
+-- switch silently locks out everybody who was there first, and the
+-- console gives no sign. A member who arrived AFTER that line and let a
+-- 30-minute trial lapse is a different case entirely: walling them is
+-- the intent, not an accident.
+--
+-- So the guard is narrow by design. It refuses only for the
+-- grandfathered, names how many, and says what to do instead. It does
+-- not second-guess the owner about anybody else.
+--
+--   39.1  admin_purchase_wall() -- who the switch has walled, or would
+--   39.2  admin_set_billing_settings(), restated with the one refusal
+--   39.3  grants
+--   39.4  CHECKS TO RUN
+-- ============================================================
+
+-- 39.1 WHO THE SWITCH REACHES ------------------------------------------
+/** The count behind the decision, before it is made and after. Four
+ *  numbers over the members who are not disabled: how many there are,
+ *  how many have bought, how many are inside a live trial, and how many
+ *  are (or would be) walled -- with the grandfathered counted out
+ *  separately, because they are the only ones the switch can break a
+ *  promise to. Admin only: it is a census of the customer base. */
+create or replace function public.admin_purchase_wall()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  return (
+    select jsonb_build_object(
+      'purchase_required',    public.purchases_required(),
+      'members',              count(*),
+      'paid',                 count(*) filter (where public.user_plan(m.user_id) <> 'free'),
+      'in_trial',             count(*) filter (where public.user_plan(m.user_id) = 'free'
+                                                 and public.trial_active(m.user_id)),
+      'walled',               count(*) filter (where public.user_plan(m.user_id) = 'free'
+                                                 and not public.trial_active(m.user_id)),
+      -- the subset of `walled` that was admitted before section 30
+      'grandfathered_walled', count(*) filter (where public.user_plan(m.user_id) = 'free'
+                                                 and not public.trial_active(m.user_id)
+                                                 and m.trial_source  = 'admin'
+                                                 and m.trial_minutes >= 525600))
+      from public.studio_members m
+     where m.disabled_at is null);
+end;
+$fn$;
+
+-- 39.2 admin_set_billing_settings(), RESTATED ---------------------------
+-- The section 32.4 body -- the one that wins -- unchanged except for one
+-- new refusal, placed with the other per-key validations and BEFORE the
+-- UPDATE for the reason 30.9 and 32.4 both give: the trailing
+-- check_violation handler talks about referral percentages, and a new
+-- key's refusal must not be reported in that sentence.
+--
+-- It fires only when the switch is being turned ON, only for a member
+-- the grandfather covered, and only once that member's year has
+-- actually lapsed -- so today, and for as long as the backfill holds,
+-- it costs nothing and says nothing. Turning the switch OFF is never
+-- refused: giving access back is not a thing to be protected from.
+create or replace function public.admin_set_billing_settings(p_patch jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  k text;
+  v int;
+  g int;
+begin
+  if not public.is_studio_admin() then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_patch is null or jsonb_typeof(p_patch) <> 'object' then raise exception 'patch must be an object' using errcode = '22023'; end if;
+  for k in select jsonb_object_keys(p_patch) loop
+    if k not in ('referral_friend_pct', 'referral_reward_pct', 'referral_reward_paise',
+                 'trial_enabled', 'trial_minutes', 'code_trial_days', 'trial_scope', 'trial_plan',
+                 'price_rises_after_buyers', 'purchase_required') then
+      raise exception 'Unknown setting "%"', k using errcode = '22023';
+    end if;
+  end loop;
+
+  if p_patch ? 'purchase_required' and jsonb_typeof(p_patch -> 'purchase_required') <> 'boolean' then
+    raise exception 'Purchases required is on (true) or off (false).' using errcode = '22023';
+  end if;
+  -- section 39: turning it ON must not retroactively wall the people who
+  -- were admitted on the old promise. Everybody else is fair game.
+  if coalesce((p_patch ->> 'purchase_required')::boolean, false)
+     and not public.purchases_required() then
+    select count(*) into g
+      from public.studio_members m
+     where m.disabled_at is null
+       and m.trial_source  = 'admin'
+       and m.trial_minutes >= 525600
+       and public.user_plan(m.user_id) = 'free'
+       and not public.trial_active(m.user_id);
+    if g > 0 then
+      raise exception 'Requiring a plan would wall % member(s) who were admitted before purchases existed and whose grandfathered access has run out. Give them a plan, a longer trial or an e-mail grant first.', g
+        using errcode = '22023', hint = 'grandfathered';
+    end if;
+  end if;
+  if p_patch ? 'trial_minutes' then
+    v := (p_patch ->> 'trial_minutes')::int;
+    if v is null or v < 1 or v > 44640 then
+      raise exception 'A trial lasts between 1 minute and 31 days (44640 minutes).' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'code_trial_days' then
+    v := (p_patch ->> 'code_trial_days')::int;
+    if v is null or v < 1 or v > 365 then
+      raise exception 'An invite code buys between 1 and 365 days.' using errcode = '22023';
+    end if;
+  end if;
+  if p_patch ? 'trial_scope' and (p_patch ->> 'trial_scope') not in ('sample', 'full') then
+    raise exception 'A trial shows either the sample alone ("sample") or the whole studio ("full").' using errcode = '22023';
+  end if;
+  if p_patch ? 'trial_plan' and (p_patch ->> 'trial_plan') is not null
+     and not exists (select 1 from public.plans p where p.id = p_patch ->> 'trial_plan') then
+    raise exception 'No such plan "%"', p_patch ->> 'trial_plan' using errcode = '22023';
+  end if;
+  if p_patch ? 'price_rises_after_buyers' and (p_patch ->> 'price_rises_after_buyers') is not null
+     and (p_patch ->> 'price_rises_after_buyers')::int < 1 then
+    raise exception 'A founding-seat cap is at least 1, or null for no cap.' using errcode = '22023';
+  end if;
+
+  update public.billing_settings s
+     set referral_friend_pct   = coalesce((p_patch ->> 'referral_friend_pct')::int, s.referral_friend_pct),
+         referral_reward_pct   = case when p_patch ? 'referral_reward_pct' then (p_patch ->> 'referral_reward_pct')::int
+                                      when p_patch ? 'referral_reward_paise' and p_patch ->> 'referral_reward_paise' is not null then null
+                                      else s.referral_reward_pct end,
+         referral_reward_paise = case when p_patch ? 'referral_reward_paise' then (p_patch ->> 'referral_reward_paise')::int
+                                      when p_patch ? 'referral_reward_pct' and p_patch ->> 'referral_reward_pct' is not null then null
+                                      else s.referral_reward_paise end,
+         trial_enabled         = coalesce((p_patch ->> 'trial_enabled')::boolean, s.trial_enabled),
+         trial_minutes         = coalesce((p_patch ->> 'trial_minutes')::int, s.trial_minutes),
+         code_trial_days       = coalesce((p_patch ->> 'code_trial_days')::int, s.code_trial_days),
+         trial_scope           = coalesce(p_patch ->> 'trial_scope', s.trial_scope),
+         trial_plan            = case when p_patch ? 'trial_plan' then p_patch ->> 'trial_plan' else s.trial_plan end,
+         price_rises_after_buyers = case when p_patch ? 'price_rises_after_buyers'
+                                         then (p_patch ->> 'price_rises_after_buyers')::int
+                                         else s.price_rises_after_buyers end,
+         purchase_required     = coalesce((p_patch ->> 'purchase_required')::boolean, s.purchase_required),
+         updated_at = now(), updated_by = auth.uid()
+   where s.id;
+  if p_patch ? 'referral_friend_pct' then
+    update public.promo_codes c set percent_off = (p_patch ->> 'referral_friend_pct')::int, updated_at = now() where c.kind = 'referral';
+  end if;
+  return public.admin_get_billing_settings();
+exception
+  when check_violation then
+    raise exception 'A referral pays the friend 1–100%% off, and the referrer EITHER a percentage (1–100) OR a fixed amount in paise' using errcode = '22023';
+end;
+$fn$;
+
+-- 39.3 GRANTS -----------------------------------------------------------
+revoke execute on function public.admin_purchase_wall()               from public, anon;
+revoke execute on function public.admin_set_billing_settings(jsonb)   from public, anon;
+grant  execute on function public.admin_purchase_wall()               to authenticated;
+grant  execute on function public.admin_set_billing_settings(jsonb)   to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- 39.4 CHECKS TO RUN -----------------------------------------------------
+-- RUN LIVE 12 Oct 2026, over PostgREST: both functions EXIST and refuse
+-- anon with 42501 (`permission denied for function` — not PGRST202,
+-- which would have meant a missing signature), and purchases_required()
+-- still answers false, which is the proof this section did not throw the
+-- switch. Everything below needs an admin session or a rolled-back
+-- transaction and is proved by scripts/schema-tests/no-free-plan.sql.
+--  1. anon and a non-admin: admin_purchase_wall() -> 42501.
+--  2. admin: it returns purchase_required false, and members = paid +
+--     in_trial + walled over the members who are not disabled.
+--  3. a grandfathered member whose year has NOT lapsed:
+--     grandfathered_walled is 0 and
+--     admin_set_billing_settings('{"purchase_required": true}')
+--     SUCCEEDS. This is today's state and the switch must not be
+--     blocked while the backfill still holds.
+--  4. move that member's trial_started_at back beyond the year:
+--     grandfathered_walled is 1, and the same call raises 22023 with
+--     hint 'grandfathered' and the count in the sentence.
+--  5. a member who is NOT grandfathered (trial_source 'signup', 30
+--     minutes, lapsed) does not block the switch -- walling them is the
+--     point.
+--  6. turning it OFF is never refused, whatever the counts.
+--  7. every other key section 32.4 validated still refuses the same way
+--     and with the same sentence: trial_minutes 0, code_trial_days 400,
+--     trial_scope 'half', trial_plan 'nope', price cap 0, an unknown
+--     key, and a non-boolean purchase_required.
+--  8. the referral check_violation sentence is unchanged.
+--  9. re-running the section is a no-op.
+-- Test file: scripts/schema-tests/no-free-plan.sql (npm run test:schema).
 -- ============================================================

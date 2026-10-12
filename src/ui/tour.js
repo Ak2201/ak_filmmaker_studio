@@ -344,8 +344,12 @@ function renderChecklist() {
     ]));
   });
   /* While the invitation above is on screen it is the one offer of the
-     tour; the list would only say it a second time. */
-  const inviting = !t.active && !t.dismissed && !t.finished;
+     tour; the list would only say it a second time. ON SCREEN, not "would
+     be shown": UI revamp 5 (12 Oct 2026) took #tourInviteHost off Home, so
+     the invitation now has nowhere to draw, and reading the state alone
+     hid this button too — a new reader's Home offered the tour nowhere,
+     and Settings → Help was the only way in. */
+  const inviting = !!(inviteHost && inviteHost.isConnected);
   const tourBtn = inviting ? null : t.active
     ? h('button.btn.primary', { type: 'button', 'data-tour-act': 'resume', text: 'Resume the tour' })
     : h('button.btn.primary', { type: 'button', 'data-tour-act': 'start', text: t.finished ? 'Take the tour again' : 'Take the tour' });

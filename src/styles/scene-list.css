@@ -11,7 +11,7 @@
 /* A table needs more than the reading measure the other sections use. */
 section#scenes.bd-list { max-width: min(1180px, 100%); }
 section#scenes .bd-breakdown { gap: 0; }
-.bd-breakdown { --sl-cols: 28px 56px minmax(0, 2.4fr) 84px 112px 100px minmax(0, 1fr) 92px 36px; }
+.bd-breakdown { --sl-grip-w: 24px; --sl-cols: var(--sl-grip-w) 28px 56px minmax(0, 2.4fr) 84px 112px 100px minmax(0, 1fr) 92px 36px; }
 
 /* ---- toolbar -------------------------------------------------- */
 .bd-sl-tools { display: grid; gap: var(--s3); margin-bottom: var(--s4); }
@@ -69,6 +69,7 @@ section#scenes .bd-breakdown { gap: 0; }
   background: transparent;
   box-shadow: none;
 }
+.bd-scene.bd-sl { position: relative; }
 .bd-scene.bd-sl[hidden] { display: none; }
 .bd-scene.bd-sl:hover { background: var(--accent-wash); }
 .bd-scene.bd-sl.is-open { background: var(--paper-raised, var(--paper)); border-bottom-color: var(--rule); }
@@ -127,7 +128,7 @@ section#scenes .bd-breakdown { gap: 0; }
 .bd-sl-detail {
   display: grid;
   gap: var(--s3);
-  padding: var(--s2) var(--s4) var(--s4) calc(28px + 56px + var(--s2) * 2 + var(--s3));
+  padding: var(--s2) var(--s4) var(--s4) calc(var(--sl-grip-w) + 28px + 56px + var(--s2) * 3 + var(--s3));
 }
 .bd-sl-detail[hidden] { display: none; }
 .bd-sl-detail .bd-scene-acts { margin-left: 0; justify-self: start; }
@@ -138,15 +139,16 @@ section#scenes .bd-breakdown { gap: 0; }
 @media (max-width: 899px) {
   .bd-sl-head { display: none; }
   .bd-sl-main {
-    grid-template-columns: 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
+    grid-template-columns: var(--sl-grip-w) 28px 64px minmax(0, 1fr) minmax(0, 1fr) 40px;
     grid-template-areas:
-      "pick no   where where tog"
-      ".    ie   ie    dn    dn"
-      ".    len  len   cast  cast"
-      ".    st   st    st    st";
+      "grip pick no   where where tog"
+      ".    ie   ie   ie    dn    dn"
+      ".    len  len  len   cast  cast"
+      ".    st   st   st    st    st";
     row-gap: var(--s2);
     padding: var(--s3);
   }
+  .bd-sl-grip { grid-area: grip; }
   .bd-sl-pick { grid-area: pick; }
   .bd-sl-main > .bd-scene-no { grid-area: no; }
   .bd-sl-where { grid-area: where; }
@@ -160,7 +162,79 @@ section#scenes .bd-breakdown { gap: 0; }
   .bd-sl-detail { padding-left: var(--s3); }
 }
 @media (pointer: coarse) {
+  .bd-breakdown { --sl-grip-w: 44px; }
+  .bd-sl-grip { min-height: 44px; }
   .bd-sl-pick { width: 24px; height: 24px; }
   .bd-sl-main select { min-height: 44px; }
 }
-@media print { .bd-sl-tools, .bd-sl-toggle, .bd-sl-pick { display: none !important; } .bd-sl-detail[hidden] { display: grid !important; } }
+@media print { .bd-sl-tools, .bd-sl-toggle, .bd-sl-pick, .bd-sl-grip, .bd-sl-day { display: none !important; } .bd-sl-detail[hidden] { display: grid !important; } }
+
+
+/* ---- saved filters (in memory only) ----------------------------- */
+.bd-sl-presets { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.bd-sl-save { padding-block: var(--s1); font-size: var(--t-micro); }
+.bd-sl-preset {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--paper);
+  overflow: hidden;
+}
+.bd-sl-preset.is-on { border-color: var(--accent); background: var(--accent-wash); }
+.bd-sl-preset button {
+  margin: 0; padding: var(--s1) var(--s3);
+  background: transparent; color: var(--ink-body); border: 0; font: inherit;
+  font-size: var(--t-small); cursor: pointer; min-height: 32px;
+}
+.bd-sl-preset.is-on .bd-sl-preset-apply { color: var(--accent-deep); font-weight: 600; }
+.bd-sl-preset .bd-sl-preset-x { padding-inline: var(--s2); color: var(--ink-muted); border-left: 1px solid var(--rule-hair); }
+.bd-sl-preset button:hover { background: var(--accent-wash); }
+.bd-sl-preset button:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: -2px; }
+@media (pointer: coarse) { .bd-sl-preset button { min-height: 44px; } .bd-sl-preset .bd-sl-preset-x { min-width: 44px; } }
+
+/* ---- the shoot-day stripe ---------------------------------------
+   A thin stripe down the row's left edge, one hue per shoot day, cycling
+   through eight. The hues are the phase and category tokens (so they follow
+   the theme); an unscheduled scene has no stripe. Fills, never text. */
+.bd-sl-day { position: absolute; z-index: 1; inset: 0 auto 0 0; width: 6px; border-radius: 0; }
+.bd-sl-day::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--sl-day, var(--rule)); }
+.bd-sl-day[data-slot="1"] { --sl-day: var(--feature); }
+.bd-sl-day[data-slot="2"] { --sl-day: var(--plan); }
+.bd-sl-day[data-slot="3"] { --sl-day: var(--library); }
+.bd-sl-day[data-slot="4"] { --sl-day: var(--shoot); }
+.bd-sl-day[data-slot="5"] { --sl-day: var(--shorts); }
+.bd-sl-day[data-slot="6"] { --sl-day: var(--el-sound); }
+.bd-sl-day[data-slot="7"] { --sl-day: var(--visualize); }
+.bd-sl-day[data-slot="8"] { --sl-day: var(--el-cast); }
+
+/* ---- the drag handle and the drop line --------------------------- */
+.bd-sl-grip {
+  width: var(--sl-grip-w); min-width: 0; padding: 0;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  color: var(--ink-muted); background: transparent; border-color: transparent;
+}
+.bd-sl-grip:hover { color: var(--accent-deep); }
+.bd-sl-grip:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
+.bd-sl-grip[aria-disabled="true"] { cursor: not-allowed; opacity: 0.4; }
+.bd-sl-grip[aria-disabled="true"]:hover { color: var(--ink-muted); }
+body.bd-sl-is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
+.bd-scene.bd-sl.is-dragging { opacity: 0.5; pointer-events: none; }
+/* Zero-height so showing it moves nothing; the 3px bar is drawn on it. */
+.bd-sl-drop { position: relative; height: 0; z-index: 3; pointer-events: none; }
+.bd-sl-drop::before {
+  content: ""; position: absolute; inset: -2px 0 auto 0; height: 3px;
+  background: var(--accent);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: 0 0 0 calc(1px * var(--motion)) var(--accent-wash);
+}
+.bd-sl-drag-tag {
+  position: fixed; z-index: var(--z-float);
+  transform: translate(12px, 12px);
+  padding: var(--s1) var(--s3);
+  background: var(--panel); color: var(--panel-ink);
+  border-radius: var(--sk-btn-radius, var(--sk-radius, var(--radius)));
+  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: var(--track-label); text-transform: uppercase; white-space: nowrap;
+  pointer-events: none;
+}

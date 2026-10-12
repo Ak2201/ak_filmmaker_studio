@@ -9297,3 +9297,65 @@ notify pgrst, 'reload schema';
 -- Test file: scripts/schema-tests/plan-features.sql (run by npm run test:schema).
 -- END OF SECTION 36 (generated)
 -- ============================================================
+
+
+-- ============================================================
+-- 37. ONE MORE SYNC SCOPE: write_goals
+-- ------------------------------------------------------------
+-- RUN LIVE: not yet
+-- Widens project_data_scope_check to name 'write_goals', the scope for
+-- `fms_write_goals_v1` (focus mode's goal and per-day writing history,
+-- src/lib/write-goals.js). Same procedure as sections 17 and 24: the
+-- constraint is rebuilt (Postgres has no ALTER CONSTRAINT for a CHECK)
+-- and found by its definition, because an inline column CHECK is named
+-- by the server. Idempotent: re-running drops and recreates the same
+-- constraint, and the new list is a superset of §24's, so every
+-- existing row still validates.
+--
+-- Until this has run, cloud.js's upserts for the new scope are refused
+-- by the CHECK (23514); the push queue retries and every OTHER scope
+-- still syncs, the same window sections 17 and 24 had. The client
+-- merges a goals history DAY BY DAY, so two devices never lose each
+-- other's days.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select con.conname into cname
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'project_data'
+     and con.contype = 'c'
+     and pg_get_constraintdef(con.oid) like '%scope%'
+   limit 1;
+  if cname is not null then
+    execute format('alter table public.project_data drop constraint %I', cname);
+  end if;
+  alter table public.project_data
+    add constraint project_data_scope_check check (scope in (
+      'feature','short','library',
+      'feature_prefs','short_prefs','library_prefs','activity',
+      'scenes','contacts','shots','script','locations',
+      'workbench','dissect','festivals','scriptgen','songs',
+      'story','idea_vault',
+      'edit','deliverables',
+      'characters','costs',
+      'write_goals'
+    ));
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- 37.1 CHECKS TO RUN, none of which has been run live -------------------
+--  1. a member upserting project_data with scope 'write_goals' on a
+--     project they own -> allowed; 'anything_else' -> 23514; every
+--     earlier scope (incl. 'characters', 'costs') still allowed.
+--  2. goals written on device A appear on device B after its next pull,
+--     and a day written on each device survives on both.
+--  3. re-running the section changes nothing.
+-- Test file: scripts/schema-tests/goals-sync.sql (run by npm run test:schema).
+-- END OF SECTION 37
+-- ============================================================

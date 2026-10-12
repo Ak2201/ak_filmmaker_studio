@@ -1,0 +1,56 @@
+/* ============================================================
+   SCRIPT NOTES OVERVIEW (src/ui/script-notes.js). Tokens and --sk-* only.
+   ============================================================ */
+.sn {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: var(--s4);
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.sn-card {
+  box-sizing: border-box;
+  width: min(44rem, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--sk-card-pad);
+  background: var(--sk-card-bg);
+  color: var(--ink);
+  border: var(--sk-card-border, 1px solid var(--rule-hair));
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow);
+  min-width: 0;
+}
+.sn-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.sn-head h2 { margin: 0; font-size: var(--t-body); }
+.sn-hint, .sn-count, .sn-empty { margin: 0; color: var(--ink-muted); font-size: var(--t-sm); }
+.sn-filters { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); }
+.sn-f { display: grid; gap: var(--s1); font-size: var(--t-sm); color: var(--ink-muted); min-width: 0; }
+.sn-f select { max-width: 100%; min-width: 0; }
+.sn-list { overflow-y: auto; display: grid; gap: var(--s4); min-height: 4rem; overscroll-behavior: contain; }
+.sn-scene h3 { margin: 0 0 var(--s2); font-size: var(--t-sm); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); overflow-wrap: anywhere; }
+.sn-note {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s3);
+  margin-bottom: var(--s2);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-radius, var(--radius));
+  min-width: 0;
+}
+.sn-note.is-done { opacity: 0.8; }
+.sn-note p { margin: 0; overflow-wrap: anywhere; }
+.sn-meta { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; font-size: var(--t-sm); color: var(--ink-muted); }
+.sn-badge { padding: 0 var(--s2); border-radius: var(--radius-pill); border: 1px solid currentColor; font-weight: 700; }
+.sn-badge.is-open { color: var(--accent-deep); }
+.sn-badge.is-private { color: var(--ink-muted); }
+.sn-badge.is-resolved { color: var(--ink-muted); }
+.sn-line { color: var(--ink-muted); font-size: var(--t-sm); font-style: italic; }
+.sn-body { white-space: pre-wrap; }
+.sn-reply { font-size: var(--t-sm); color: var(--ink-muted); padding-inline-start: var(--s3); }
+.sn-go { justify-self: start; }
+.sn-foot { display: flex; flex-wrap: wrap; gap: var(--s2); }

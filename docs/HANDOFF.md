@@ -525,9 +525,10 @@ cloud container session.
 | B13 | **Purchases required switch + access by e-mail** (§32, 11 Oct 2026) | BUILT, **RUN LIVE 12 Oct 2026**. `billing_settings.purchase_required` (default **false**: the studio is free, nothing walled or capped); `purchases_required()` (anon); `user_limits()`, `billing_status()`, `admin_set_billing_settings()` and `studio_status()` restated; `email_grants` + `admin_grant_email` / `admin_revoke_email_grant` / `admin_list_email_grants`, applied by a trigger on `auth.users` and by `studio_status()`. Client: `plan-gate.js` publishes the flag (key must be PRESENT), `html[data-purchases="off"]` hides buying, focus/4-min refresh walls open tabs; console blocks in `src/ui/access-admin.js`. Owner step: `docs/BILLING.md` §13. `scripts/schema-tests/purchases.sql`. |
 | B14 | **Receipt and refund e-mails + clearer invoice** (§35, 11 Oct 2026) | BUILT, **RUN LIVE 12 Oct 2026**. Resend, from `support@filmmakerstudio.in`, sent by `rzp-verify` / `rzp-webhook` through `supabase/functions/_shared/mail.js`; each mail CLAIMED once (`invoices.emailed_at`, `refunds.emailed_status`) and released on failure; console RESEND RECEIPT. Invoice PDF gains payment ids, amount in words and the refund-policy box (`_shared/terms.js`, shared with the mail). Owner steps: `docs/BILLING.md` §16 (DNS at Hostinger, secrets, §35, redeploy two functions). Fill `brand.json` `address` for the invoice. `scripts/schema-tests/receipt-email.sql`. |
 
+| B16 | **Writing-goal history synced** (§37, 12 Oct 2026; was Q3) | BUILT, **NOT RUN LIVE**. Scope CHECK widened to `write_goals`; `fms_write_goals_v1` leaves `LOCAL_ONLY`, merged per day by `mergeWriteGoals`. `scripts/schema-tests/goals-sync.sql`. Owner step: `docs/BILLING.md` §17. |
 | B15 | **Three plans from one matrix** (§36, 12 Oct 2026) | BUILT, **NOT RUN LIVE**. `plans.features` generated from `src/data/plan-matrix.json` by `scripts/make-plan-features-sql.mjs`; `test:plans` fails if §36 drifts from the generator. |
 
-Next free schema section: **§37**. §32–§35 RAN LIVE 12 Oct 2026; **§36 has NOT run live**. Every new section needs a `-- RUN` header
+Next free schema section: **§38**. §32–§35 RAN LIVE 12 Oct 2026; **§36 and §37 have NOT run live**. Every new section needs a `-- RUN` header
 when it is run live, live checks in `docs/SECURITY-RLS.md`, and assertions in
 `scripts/schema-tests/*.sql` (`npm run test:schema`, PostgreSQL 16:
 `pg_ctlcluster 16 main start`). `scripts/fake-supabase.mjs` must honour each
@@ -539,7 +540,7 @@ new RPC so `prove:billing` exercises the real pages.
 |---|---|---|
 | Q1 | Monsoon weather flag on EXT shoot days | external weather API → `connect-src` in BOTH `vercel.json` and `netlify.toml`; builds on `sun.js` + recce lat/lng |
 | Q2 | Script-notes overview across the whole script | `src/ui/comments.js` `openCount` / `loadThreads`; filterable, exportable |
-| Q3 | Writing-goal history synced across devices | `fms_write_goals_v1` is in `cloud.js` `LOCAL_ONLY`; needs a schema section widening the scope CHECK — take the number from lane 1 |
+| Q3 | ~~Writing-goal history synced across devices~~ | DONE in code as §37 (B16); owner runs the SQL |
 | Q4 | Paid template / sample-pack plumbing + one free ORIGINAL starter | gate by a `plans.features` key; no real people, no reproduced scripts (`CLAUDE.md` item 8) |
 | Q5 | **Owner decision:** Tamil-script UI labels | reverses `lang.js`'s English-labels design — decide before anyone builds |
 

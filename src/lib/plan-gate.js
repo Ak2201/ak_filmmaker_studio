@@ -62,6 +62,7 @@ import { BRAND } from './brand.js';
    cannot lock a page it is no longer on. */
 import { moduleGroups, shelves, phases } from './navmodel.js';
 import { h } from './dom.js';
+import { bumpUsage } from './usage.js';
 import Billing from './billing.js';   // same chunk on every page; a dynamic import here moved nothing
 import { trialLength } from './trial-time.js';
 import '../styles/plan-gate.css';
@@ -122,6 +123,7 @@ export function sampleOnly() { return !!(features && features.sample_only === tr
  *  Fails open like allowed(): unknown is yes. */
 export function guard(key, what) {
   if (allowed(key)) return true;
+  bumpUsage('limit_hit');   // a plan said no (counts only; src/lib/usage.js)
   const label = what || ((CAPABILITIES.find(([k]) => k === key) || [])[1]) || 'This';
   const where = ent && ent.reason === 'granted' ? 'the access the studio gave you'
               : plan === 'free' ? 'the free trial' : 'the ' + (planName || 'current') + ' plan';

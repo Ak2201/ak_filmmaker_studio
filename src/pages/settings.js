@@ -103,6 +103,7 @@ import * as AuthUI from '../ui/auth.js';
 import { ask, tell } from '../ui/dialog.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
+import { OPTOUT_KEY, usageOptedOut } from '../lib/usage.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
@@ -125,7 +126,7 @@ const titleCase = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 /* ---- a section ---------------------------------------------- */
 /* Tab names for the shell's tabs (src/ui/tabs.js); the eyebrow is
    prose and the heading is a sentence, so neither reads as a tab. */
-const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
+const TAB_LABELS = { favourite: 'Favourite film', ai: 'AI key', storage: 'Storage', drive: 'Drive', appearance: 'Appearance', region: 'Region', account: 'Account', 'account-people': 'Sharing', activity: 'Activity', privacy: 'Privacy', tour: 'Tour', danger: 'Danger zone', invite: 'Invite', 'admin-console': 'Console', admin: 'Database' };
 function section(id, eyebrow, title, deck) {
   const sec = h('section.st-sec', { id, ...(TAB_LABELS[id] ? { 'data-tab-label': TAB_LABELS[id] } : {}) });
   sec.append(
@@ -806,6 +807,29 @@ function renderActivitySection() {
   return sec;
 }
 
+/* PRIVACY — the one switch, and it is about counting, not about your work.
+   On by default (the owner's decision, 12 Oct 2026); the answer lives on this
+   device only (fms_usage_optout_v1: in the reset list, in no backup). What is
+   counted and what never is, is written out in privacy.html and in the help
+   below, in the same words. */
+function renderPrivacySection() {
+  const on = !usageOptedOut();
+  const sec = section('privacy', 'This device \u00b7 what the studio may count', 'Privacy.',
+    'The studio never reads what you write. This switch is only about whether it may count which tools get used.');
+  sec.append(h('p.st-note.st-usage-count', {}, [
+    h('label', {}, [
+      h('input', { type: 'checkbox', id: 'usageCountToggle', 'data-action': 'usage-count-toggle', ...(on ? { checked: '' } : {}) }),
+      ' Count which tools I use (no content, ever)'
+    ]),
+    h('span', { text: on
+      ? ' \u2014 on. When you are signed in, the studio adds one to a daily total for a tool you opened or a feature you used, such as \u201cbudget opened\u201d or \u201cPDF exported\u201d. The total has no name, e-mail, film, script or text on it.'
+      : ' \u2014 off. Nothing is counted from this device.' })
+  ]));
+  sec.append(h('p.st-note', { text: 'Signed out, nothing is counted either way. Turn it off and nothing more is sent from the next click. Totals already added cannot be traced back to you, so they cannot be taken back out.' }));
+  sec.append(h('p.st-note', {}, [h('a', { href: 'privacy.html#usage-counts', text: 'Read exactly what is counted' }), '.']));
+  return sec;
+}
+
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
     'A two-minute walk through the studio. It never starts by itself; this is the button for it.');
@@ -909,7 +933,7 @@ function render() {
   body.append(...[renderFavourite(), renderKey(), renderStorage(), renderDrive(), renderAppearance(), renderRegion(),
               renderAccountMine(),
               accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck)),
-              renderActivitySection(), renderTourSection(),
+              renderActivitySection(), renderPrivacySection(), renderTourSection(),
               inviteSection(section, gateStatus),
               consolePointer(), renderAdmin(), renderDanger()].filter(Boolean));
   main.append(body);
@@ -1079,6 +1103,15 @@ delegate(document, 'click', '[data-action^="drive-"]', async (e, el) => {
   }
   const fn = DRIVE_ACTIONS[act];
   if (fn) fn();
+});
+
+/* The usage-counting switch. Checked = counting. The key is written only when
+   the answer is "no" and removed when it is "yes", so the default leaves nothing. */
+delegate(document, 'change', '[data-action="usage-count-toggle"]', (e, el) => {
+  try {
+    if (el.checked) Store.rawRemove(OPTOUT_KEY); else Store.rawSet(OPTOUT_KEY, '1');
+  } catch (err) { StudioUI.toastError('This browser would not save that choice.'); }
+  render();
 });
 
 delegate(document, 'change', '[data-action="cloud-sync-toggle"]', async (e, el) => {

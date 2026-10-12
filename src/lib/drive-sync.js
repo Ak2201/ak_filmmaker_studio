@@ -60,6 +60,7 @@ import Drive from './drive.js';
    Intermediate and up). Connecting asks; an automatic push on a plan
    that lacks it is skipped quietly. Unknown is allowed (plan-gate.js). */
 import PlanGate from './plan-gate.js';
+import { bumpUsage } from './usage.js';
 
 const global = typeof window !== 'undefined' ? window : globalThis;
 
@@ -426,6 +427,7 @@ export async function connect() {
   if (!PlanGate.guard('drive_backup')) throw new Error('Google Drive backup is not part of your plan.');
   setStatus(DRIVE_STATES.SYNCING, 'Asking Google…');
   await Drive.getToken({ interactive: true });
+  bumpUsage('drive_connect');   // Google granted access (src/lib/usage.js)
 
   const existing = await Drive.findBackupFile();
   if (!existing) {

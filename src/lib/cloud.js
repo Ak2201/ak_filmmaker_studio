@@ -31,6 +31,7 @@ import { AUTH_ERROR_KEY } from './auth-scope.js';
 export { AUTH_ERROR_KEY };
 import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
 import { ask } from '../ui/dialog.js';
+import { bumpUsage } from './usage.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -1447,6 +1448,27 @@ function _debouncedPush(projectId, scope, delay) {
   }, delay || 800));
 }
 
+/* ADMIN SYNC-HEALTH REPORT (schema §44, report_sync_error). When a sync
+   write is REFUSED by the database for one of three reasons that mean
+   "the client and the database disagree" — 23514 a CHECK (an unknown
+   scope: the §37 incident), 42501 RLS, P0402 a plan limit — tell the
+   console, so it can flag it. Sends the SCOPE NAME and the CODE and
+   nothing else: no project id, no content, no message. Once per
+   scope+code per page load (the queue retries every 30s and would
+   otherwise count one fault forever), best effort, never throws, and
+   honours the same opt-out as usage counting. */
+const _reportedSync = new Set();
+function reportSyncError(scope, code) {
+  try {
+    if (!supabase || !session || !/^(23514|42501|P0402)$/.test(String(code))) return;
+    const k = scope + '|' + code;
+    if (_reportedSync.has(k)) return;
+    _reportedSync.add(k);
+    if (Store.rawGet('fms_usage_optout_v1') === '1') return;
+    Promise.resolve(supabase.rpc('report_sync_error', { p_scope: scope, p_code: String(code) })).catch(() => {});
+  } catch (e) { /* a report must never disturb a save */ }
+}
+
 async function _pushScope(projectId, scope) {
   if (!supabase || !session) {
     _enqueue({ kind: 'upsert', projectId, scope });
@@ -1477,6 +1499,7 @@ async function _pushScope(projectId, scope) {
   }, { onConflict: 'project_id,scope' });
   if (error) {
     console.warn('[push scope]', error);
+    reportSyncError(scope, error.code);
     // The local copy is already on disk and stays there. All a failed
     // push costs is the upload, which the queue retries.
     _enqueue({ kind: 'upsert', projectId, scope });
@@ -1534,6 +1557,8 @@ async function _pushProjectMeta(project) {
        this project after that pushes with it. */
     if (error.code === 'P0402') {
       console.info('[push meta] plan limit:', error.message);
+      reportSyncError('other', 'P0402');   // project meta has no scope
+      bumpUsage('limit_hit');
       setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
       planLimitToast(error.message);
       return;
@@ -1758,6 +1783,7 @@ export async function createShare(projectId, role, expiresAt) {
     created_by: session.user.id
   });
   if (error) throw error;
+  bumpUsage('share_created');   // a name only (src/lib/usage.js)
   return token;
 }
 export async function listShares(projectId) {

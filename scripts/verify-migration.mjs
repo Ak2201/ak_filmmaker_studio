@@ -2708,17 +2708,42 @@ const exported = await rtPage.evaluate(async () => {
   S.setCurrentProject(b.id);
   seed('BETA');
 
-  // Capture the blob instead of letting the browser download it.
-  let blob = null;
-  const origCreate = URL.createObjectURL;
-  const origClick = HTMLAnchorElement.prototype.click;
-  URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
+  /* Capture the blob instead of letting the browser download it. The
+     stubs stay in place until the blob arrives: the export now lives in
+     the band's Backup menu (src/ui/topbar-backup.js), whose handler
+     dynamic-imports src/pages/hub/backup-menu.js before it builds the
+     file, so the download happens a tick or two AFTER the click. */
+  window.__rtBlob = null;
+  window.__rtOrig = { create: URL.createObjectURL, click: HTMLAnchorElement.prototype.click };
+  URL.createObjectURL = function (b2) { window.__rtBlob = b2; return 'blob:verify-stub'; };
   HTMLAnchorElement.prototype.click = function () {};
-  document.querySelector('[data-action="export-all"]').click();
-  URL.createObjectURL = origCreate;
-  HTMLAnchorElement.prototype.click = origClick;
-  return { text: blob ? await blob.text() : null };
+  return { seeded: true };
 });
+
+/* Drive the export as a person does: open the band's Backup menu, press
+   "Export everything". The hub's own export-all button went in the UI
+   revamp (719a3c7); this is the one export control on every page now. */
+const openBackupMenu = async () => {
+  const panel = rtPage.locator('[data-tb-backup] .tb-menu-panel');
+  if (await panel.isHidden().catch(() => true)) {
+    await rtPage.click('[data-tb-backup] [data-action="tb-menu-toggle"]', { timeout: 8000 });
+  }
+};
+let exportedText = null;
+if (!exported.unavailable) {
+  try {
+    await openBackupMenu();
+    await rtPage.click('[data-tb-backup] [data-action="bk-export"]', { timeout: 8000 });
+    await rtPage.waitForFunction(() => !!window.__rtBlob, null, { timeout: 10000 });
+    exportedText = await rtPage.evaluate(() => window.__rtBlob.text());
+  } catch (e) { rtErrors.push('export: ' + e.message); }
+  await rtPage.evaluate(() => {
+    if (!window.__rtOrig) return;
+    URL.createObjectURL = window.__rtOrig.create;
+    HTMLAnchorElement.prototype.click = window.__rtOrig.click;
+  }).catch(() => {});
+}
+exported.text = exportedText;
 
 let backup = { checked: false };
 if (!exported.unavailable && exported.text) {
@@ -2727,16 +2752,18 @@ if (!exported.unavailable && exported.text) {
     .map((d) => d.feature_blueprint && d.feature_blueprint.lad_1_logline)
     .filter(Boolean).sort();
 
-  // Wipe, then re-import the captured file through the real input path.
-  await rtPage.evaluate((text) => {
+  /* Wipe, then re-import the captured file through the real input path:
+     the Backup menu's "Import a backup", which opens a file chooser. */
+  await rtPage.evaluate(() => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    const input = document.getElementById('importAllFile');
-    const dt = new DataTransfer();
-    dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
-    input.files = dt.files;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  }, exported.text);
+  });
+  await openBackupMenu();
+  const [chooser] = await Promise.all([
+    rtPage.waitForEvent('filechooser', { timeout: 8000 }),
+    rtPage.click('[data-tb-backup] [data-action="bk-import"]', { timeout: 8000 })
+  ]);
+  await chooser.setFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(exported.text) });
 
   /* The import asks in the app's own dialog ("Import N projects?"), then
      says it is done and reloads on OK — press the in-app button each time,

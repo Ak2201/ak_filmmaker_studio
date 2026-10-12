@@ -280,6 +280,11 @@ function projectsMarkup() {
              is every state npm run verify can reach. renderAdoptNotice() -->
         <div id="adoptNotice" hidden></div>
 
+        <!-- "Today": the open film's next Pre-production step. Empty and
+             hidden until src/pages/hub/today-line.js arrives after first
+             paint (and for good when there is no open film or no scenes). -->
+        <div class="today-line" id="todayLine" hidden></div>
+
         <div class="projects-toolbar" id="projectsToolbar" hidden>
           <input type="search" class="projects-search" id="projectsSearch"
                  placeholder="Search projects by name…" data-action="filter-projects"
@@ -392,11 +397,26 @@ const { updateStatus, computeFeatureStatus, computeShortStatus, computeLibrarySt
 // ============================================================
 const ACTIVITY_LIMIT = 30;
 
+/* The newest "Exported full studio backup" line is how the Backup menu
+   (src/ui/topbar-backup.js) knows when you last backed up. The log holds
+   thirty lines, so a backup followed by thirty edits would otherwise fall
+   off the end and the menu would claim you had never made one. The newest
+   backup line is kept past the cap; it is one line, and it is a fact. */
+function capLog(arr) {
+  const kept = arr.slice(0, ACTIVITY_LIMIT);
+  const isBackup = (e) => e && /^Exported full studio backup/.test(String(e.what || ''));
+  if (!kept.some(isBackup)) {
+    const old = arr.slice(ACTIVITY_LIMIT).find(isBackup);
+    if (old) kept.push(old);
+  }
+  return kept;
+}
+
 function logActivity(where, what, url) {
   const log = parseStorage(ACTIVITY_KEY);
   const arr = Array.isArray(log.entries) ? log.entries : [];
   arr.unshift({ ts: Date.now(), where, what, url });
-  log.entries = arr.slice(0, ACTIVITY_LIMIT);
+  log.entries = capLog(arr);
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
 }
 
@@ -436,7 +456,7 @@ function detectActivity() {
         url: 'budget.html#estimate' });
     }
   }
-  log.entries = arr.slice(0, ACTIVITY_LIMIT);
+  log.entries = capLog(arr);
   log.lastSnap = now;
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
 }
@@ -1137,6 +1157,15 @@ function init() {
     const pj = document.getElementById('projects');
     if (wc && pj && pj.parentNode) pj.before(wc);
   } catch (e) { /* the welcome is a convenience */ }
+
+  /* The "Today" line is a lazy chunk on purpose: the path model reads
+     readiness, contacts, songs and shots, none of which the hub's first
+     paint needs. Idle, so it never competes with the first render; if
+     the import fails the line simply never appears. */
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  idle(() => {
+    import('./hub/today-line.js').then((m) => m.mountTodayLine()).catch((e) => console.warn('[hub] today line', e));
+  });
 
   decorateMotion();
   reveal(document);

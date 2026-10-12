@@ -35,6 +35,9 @@ const only2 = mergeHunks(A, hs, [hs[1].id]);
 ok(only2.includes('She checks the clock.') && only2.startsWith('INT.') && only2.includes('Where were you?'),
   'accepting only the insertion inserts it and nothing else');
 
+const sp = diffLines('one\ntwo\nthree', 'ONE\ntwo\nTHREE');
+ok(sp.length === 2, 'lines 0 and 2 changed around an unchanged line → 2 hunks, not merged');
+
 const crlfA = A.replace(/\n/g, '\r\n');
 ok(diffLines(crlfA, A).length === 0, 'CRLF original against LF proposed → 0 hunks');
 const crlfB = B.replace(/\n/g, '\r\n');

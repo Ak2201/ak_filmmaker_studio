@@ -128,6 +128,8 @@ let tasksReady = null;
 let tasksError = '';
 function loadTasks() {
   if (!tasksReady) {
+    // registerAll() may return a promise that settles once the tasks'
+    // lazy dependencies load; it is awaited before any task.input(ctx).
     tasksReady = import('../lib/ai-tasks.js')
       .then((m) => { if (m && typeof m.registerAll === 'function') return m.registerAll(); })
       .catch((e) => {
@@ -155,7 +157,11 @@ function identity(ctx) {
 }
 
 function sessionFor(task, ctx) {
-  const key = task.id + '|' + identity(ctx);
+  let ident;
+  if (typeof task.identity === 'function') {
+    try { ident = String(task.identity(ctx) ?? ''); } catch (e) { ident = identity(ctx); }
+  } else ident = identity(ctx);
+  const key = task.id + '|' + ident;
   let s = sessions.get(key);
   if (!s) {
     let input = '';
@@ -173,8 +179,10 @@ function makeVersion(task, result) {
   if (task.kind === 'text') {
     v.hunks = diffLines(v.result.original ?? '', v.result.proposed ?? '');
   } else if (task.kind === 'list') {
-    v.items = [].concat(v.result.items || []).filter(Boolean)
-      .map((it, i) => ({ ...it, id: it.id != null ? String(it.id) : 'i' + i }));
+    // The item objects are kept UNCHANGED — apply() reads fields of
+    // its own on them (row, draft, sceneId, beat …). Ids live beside.
+    v.items = [].concat(v.result.items || []).filter(Boolean);
+    v.itemIds = v.items.map((it, i) => (it.id != null ? String(it.id) : 'i' + i));
   }
   return v;
 }
@@ -269,9 +277,9 @@ function answerText(v) {
 
 function answerList(v) {
   if (!v.items.length) return [h('p.ai-desk-empty', { text: 'Nothing came back to choose from.' })];
-  return v.items.map((it) =>
+  return v.items.map((it, i) =>
     h('label.ai-desk-item', {}, [
-      h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': it.id, checked: !v.unticked.has(it.id) }),
+      h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': v.itemIds[i], checked: !v.unticked.has(v.itemIds[i]) }),
       h('div.ai-desk-itemtext', {}, [
         h('strong', { text: String(it.text ?? '') }),
         it.detail ? h('p', { text: String(it.detail) }) : null
@@ -325,7 +333,7 @@ function render() {
     h('h3.ai-desk-label', { text: 'What goes in' }),
     h('textarea.ai-desk-input', {
       rows: '8', 'aria-label': 'What goes in', spellcheck: 'false',
-      readonly: sess.versions.length > 0 || busy ? true : null
+      readonly: task.editable === false || sess.versions.length > 0 || busy ? true : null
     }),
     disclose('When you press Run, the text above is sent to ' + apiName() + ' at ' + apiHost()
       + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
@@ -438,7 +446,7 @@ async function accept(all) {
     if (!ids.length && v.hunks.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
     selected = mergeHunks(v.result.original ?? '', v.hunks, ids);
   } else if (task.kind === 'list') {
-    selected = v.items.filter((it) => all || !v.unticked.has(it.id));
+    selected = v.items.filter((it, i) => all || !v.unticked.has(v.itemIds[i]));
     if (!selected.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
   } else {
     closeDesk();

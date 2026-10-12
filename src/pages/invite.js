@@ -70,7 +70,7 @@ function deckFor(c, g) {
   if (!c || !c.isConfigured()) return 'Invites are not available right now. Everything you write is saved in this browser.';
   if (!c.getSession() && getCodePass()) return 'This browser is holding an invite code. Sign in with Google to spend it on your account and start the trial it carries.';
   if (!c.getSession()) {
-    return anonTrial && anonTrial.enabled
+    return !trialsOff()
       ? 'Start a free trial of the whole studio, buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.'
       : 'Buy a plan, or come in on the code you were given. Each of them begins by signing in with Google.';
   }
@@ -240,11 +240,14 @@ function render() {
        All three begin with the same Google button, because all three
        belong to an ACCOUNT: a trial is counted against a person, a plan
        is bought by one, and a code is spent on one. */
-    /* Only while the trial is actually on offer: with trials switched off
-       (or the answer not in yet) a "Start your free trial" card would
-       promise what the server will refuse. Plans and the code box stay. */
-    if (anonTrial && anonTrial.enabled) {
-      const len = trialLength(anonTrial.minutes);
+    /* Hidden only when the server has SAID trials are off: a "Start your
+       free trial" card would promise what it will refuse. An answer that
+       has not arrived (offline, a slow call, a build with no network —
+       which is what verify's baseline is captured under) leaves the card
+       in place, the same fail-open rule start.js applies to its own card.
+       Plans and the code box stay either way. */
+    if (!trialsOff()) {
+      const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
       const t = section('trial', 'Free trial', 'Start your free trial.',
@@ -571,6 +574,8 @@ let lastStatus = null;
    trial section simply says "your free trial" instead of naming a
    length. Never throws; funnel.js returns null on any failure. */
 let anonTrial = null;
+/* True only when the anonymous offer arrived AND says trials are off. */
+function trialsOff() { return !!anonTrial && anonTrial.enabled === false; }
 if (!(cloud() && cloud().getSession && cloud().getSession())) {
   anonTrialOffer().then((t) => {
     if (!t) return;

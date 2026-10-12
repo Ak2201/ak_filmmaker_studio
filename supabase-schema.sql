@@ -9239,7 +9239,7 @@ notify pgrst, 'reload schema';
 -- The owner's decision, 11 Oct 2026: three plans, each including
 -- everything below it, and the matrix REPLACES the live features map
 -- (the console can fine-tune it afterwards):
---   Basic: New projects, Script import, PDF exports, Case Studies,
+--   Basic: New projects, Screenplay import, PDF exports, Case Studies,
 --       Dissection, Film Terminology, Beats & Pacing, Idea Vault,
 --       Screenplay Writer, Drafts, Import Screenplay,
 --       Screenplay Analysis, Scene List, Screen Time, Title Page.

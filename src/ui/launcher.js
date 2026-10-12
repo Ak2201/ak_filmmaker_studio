@@ -248,7 +248,7 @@ const PROBES = {
   'scene-list': (s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene', 'scenes')) : empty('no scenes yet')),
   breakdowns:   (s) => (s.tagged ? work(`${s.tagged} of ${s.scenes.length} tagged`)
                        : s.scenes.length ? empty('nothing tagged yet') : empty('needs scenes first')),
-  'auto-tag':   (s) => (s.pages ? work('reads ' + formatPages(s.pages) + ' pages') : empty('needs a script')),
+  'auto-tag':   (s) => (s.pages ? work('reads ' + formatPages(s.pages) + ' pages') : empty('needs a screenplay')),
   'screen-time':(s) => (s.scenes.length ? work(plural(s.scenes.length, 'scene timed', 'scenes timed')) : empty('needs scenes first')),
   'cast-matrix':(s) => (s.cast.size ? work(plural(s.cast.size, 'character', 'characters')) : empty('no cast yet')),
   'pitch-deck': (s) => (String(s.story.source || '').trim() || s.feature ? work('ready to export') : empty('needs a synopsis')),

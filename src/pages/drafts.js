@@ -95,7 +95,7 @@ function titlePageBlock() {
     return h('label.dr-field', {}, [h('span', { text: TITLE_LABELS[f] }), el]);
   };
   return h('section#title.dr-card', { 'aria-labelledby': 'dr-tp-h' }, [
-    h('h2.dr-h', { id: 'dr-tp-h', text: 'Title page' }),
+    h('h2.dr-h', { id: 'dr-tp-h', text: 'Title Page' }),
     h('p.dr-sub', {
       'data-tp-state': '',
       text: Script.hasTitlePage(doc.titlePage)
@@ -172,7 +172,7 @@ function render() {
     /* #title is a nav target: it renders in every state (CLAUDE.md,
        "a nav target must not depend on data existing"). */
     /* Heading only: the NO PROJECT OPEN banner says the rest, once. */
-    main.append(h('section#title.dr-card', {}, [h('h2.dr-h', { text: 'Title page' })]));
+    main.append(h('section#title.dr-card', {}, [h('h2.dr-h', { text: 'Title Page' })]));
     app.replaceChildren(main);
     mountShell();
     return;

@@ -167,7 +167,7 @@ function buildTop() {
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
 
   const crumb = h('p.sc-crumb', {}, [
-    h('strong', { text: 'Script' }),
+    h('strong', { text: 'Screenplay Writer' }),
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
     h('span.sc-title', { text: Script.projectTitle() }),
     h('span.sc-sep', { text: '·', 'aria-hidden': 'true' }),
@@ -181,7 +181,7 @@ function buildTop() {
     'aria-controls': 'beatsPanel', text: 'Beats ◧'
   });
   const menu = actionMenu('⋯', [
-    { label: 'Import script', action: 'sc-import' },
+    { label: 'Import Screenplay', action: 'sc-import' },
     { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy' },
     '---',
     { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T' },
@@ -231,7 +231,7 @@ function render() {
   sheet.append(hintNode);
 
   const after = h('p.sc-done', {}, [
-    h('span', { text: 'Script done? ' }),
+    h('span', { text: 'Screenplay done? ' }),
     h('a', { href: 'breakdown.html#script', text: '→ Go to Screenplay Analysis' })
   ]);
   const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true });
@@ -615,7 +615,7 @@ function drawImport() {
       h('p', { text: 'Choose a PDF, Fountain, plain-text or Final Draft file, or paste the text. It is read in this browser; nothing is uploaded.' }),
       h('div.sc-imp-row', {}, [h('label.btn.primary', { for: 'scImpFile', text: 'Choose a file…' }), file]),
       h('label.sc-imp-paste-l', {}, [
-        h('span', { text: 'Or paste the script' }),
+        h('span', { text: 'Or paste the screenplay' }),
         h('textarea#scImpPaste.sc-imp-paste', { rows: '6', spellcheck: 'false', placeholder: 'INT. HOSTEL ROOM - NIGHT\n\nArun stares at the board.' })
       ]),
       h('button.btn', { type: 'button', 'data-action': 'sc-imp-paste', text: 'Read the pasted text' })
@@ -629,7 +629,7 @@ function drawImport() {
     );
     if (!isBlankDoc()) {
       body.append(h('div.sc-imp-modes', { role: 'radiogroup', 'aria-label': 'Where it goes' }, [
-        ['append', 'Add after what is written'], ['replace', 'Replace the script (a draft is saved first)']
+        ['append', 'Add after what is written'], ['replace', 'Replace the screenplay (a draft is saved first)']
       ].map(([m, label]) => h('button.btn' + ((imp.replace ? 'replace' : 'append') === m ? '.is-on' : ''), {
         type: 'button', role: 'radio', 'aria-checked': String((imp.replace ? 'replace' : 'append') === m),
         'data-action': 'sc-imp-mode', 'data-mode': m, text: label
@@ -664,7 +664,7 @@ async function takeScript(text, name) {
   if (!String(text || '').trim()) { say('That file was empty.'); return; }
   let Parser;
   try { Parser = await importer(); }
-  catch (e) { say('The script parser could not be loaded. Check the connection and try again.'); return; }
+  catch (e) { say('The screenplay parser could not be loaded. Check the connection and try again.'); return; }
   let plan;
   try { plan = Parser.parseScript(text, name); }
   catch (e) { console.warn('[script] import', e); say('That file could not be read as a screenplay.'); return; }
@@ -681,7 +681,7 @@ delegate(document, 'change', 'input[data-action="sc-imp-file"]', async (e, input
   const file = input.files && input.files[0];
   if (!file) return;
   let Parser;
-  try { Parser = await importer(); } catch (err) { say('The script parser could not be loaded.'); return; }
+  try { Parser = await importer(); } catch (err) { say('The screenplay parser could not be loaded.'); return; }
   let text;
   try { text = await Parser.readFile(file); }
   catch (err) { say((err && err.message) || 'That file could not be read.'); return; }
@@ -689,13 +689,13 @@ delegate(document, 'change', 'input[data-action="sc-imp-file"]', async (e, input
 });
 delegate(document, 'click', '[data-action="sc-imp-paste"]', () => {
   const box = document.getElementById('scImpPaste');
-  if (!box || !box.value.trim()) { say('Paste a script into the box first.'); return; }
+  if (!box || !box.value.trim()) { say('Paste a screenplay into the box first.'); return; }
   takeScript(box.value, '');
 });
 delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   if (!imp) return;
   const blank = isBlankDoc();
-  if (imp.replace && !blank && !(await ask({ title: 'Replace the script?', body: 'A draft of the current one is saved first, so it can be restored.', confirm: 'Replace' }))) return;
+  if (imp.replace && !blank && !(await ask({ title: 'Replace the screenplay?', body: 'A draft of the current one is saved first, so it can be restored.', confirm: 'Replace' }))) return;
   if (!imp) return;
   if (blank) doc.elements = [];
   const done = commitImportedScript(imp.plan, {

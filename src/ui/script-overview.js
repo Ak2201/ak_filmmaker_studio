@@ -146,11 +146,11 @@ export function renderScriptOverview(scenes, opts = {}) {
   );
   if (opts.from === 'script' && hasScript) {
     wrap.append(h('p.so-hint', { role: 'note', text: scenes.length
-      ? 'You came from the Script. If the script changed, run the breakdown again to bring the scenes up to date.'
-      : 'You came from the Script. Run the breakdown to turn its scene headings into scenes you can schedule and budget.' }));
+      ? 'You came from the Screenplay Writer. If the script changed, run the breakdown again to bring the scenes up to date.'
+      : 'You came from the Screenplay Writer. Run the breakdown to turn its scene headings into scenes you can schedule and budget.' }));
   }
   if (!hasScript) {
-    wrap.append(h('p.bd-none', { text: 'No script yet. Write one on the Script page or import a file there, and this fills in.' }));
+    wrap.append(h('p.bd-none', { text: 'No screenplay yet. Write one in the Screenplay Writer or use Import Screenplay, and this fills in.' }));
   }
   wrap.append(...[overviewPart(d, scenes, els), outlinePart(d), hasScript ? h('div.so-part', { id: 'script-characters' }, [h('h3.bd-h3', { text: 'Characters' }), h('div.so-lazy', { 'data-so-lazy': 'characters' })]) : null].filter(Boolean));   // append(null) prints "null"
   return wrap;

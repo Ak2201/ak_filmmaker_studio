@@ -485,7 +485,7 @@ function build() {
     autocomplete: 'off',
     autocapitalize: 'off',
     spellcheck: 'false',
-    placeholder: 'Search scenes, people, places, tools, settings, script lines…',
+    placeholder: 'Search scenes, people, places, tools, settings, screenplay lines…',
     'aria-expanded': 'false',   // openPalette/closePalette keep it true only while open
     /* The list is filtered as you type rather than completing the
        value in the field, which is "list" and not "both" or

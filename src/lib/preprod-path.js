@@ -57,7 +57,7 @@ function readers(ctx) {
       const els = sc.elements || [];
       const heads = els.filter((e) => e.type === 'scene' && String(e.text || '').trim()).length;
       const locked = isNumberingLocked(sc.numbering);
-      if (!els.some((e) => String(e.text || '').trim())) return { state: 'todo', facts: ['No script yet'], missing: ['Write or import a script'] };
+      if (!els.some((e) => String(e.text || '').trim())) return { state: 'todo', facts: ['No screenplay yet'], missing: ['Write or import a screenplay'] };
       const missing = [];
       if (!heads) missing.push('Add scene headings');
       if (!locked) missing.push('Lock the scene numbers (Drafts)');

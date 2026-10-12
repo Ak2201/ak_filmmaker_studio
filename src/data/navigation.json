@@ -157,7 +157,7 @@
         {
           "id": "docs",
           "label": "Title Page",
-          "purpose": "Treatments, notes and one-page summaries, kept beside the script",
+          "purpose": "Page 1 of every PDF: title, credit, author, draft, date and contact",
           "status": "built",
           "href": "drafts.html#title",
           "icon": "⌸",

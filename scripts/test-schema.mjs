@@ -124,7 +124,7 @@ if (r.status !== 0) fail('supabase-schema.sql (§32 onward) did not load cleanly
 r = psql(['-f', '-'], { input: phase3 });
 if (r.status !== 0) fail('supabase-schema.sql (§32 onward) is not re-runnable', r);
 console.log('✓ the whole schema loads (and §32 onward — §33 to §35 included — re-runs cleanly)');
-for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql']) runChecks(file);
+for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'no-free-plan.sql']) runChecks(file);
 
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);

@@ -954,3 +954,91 @@ the published policy. Change both together.
 6. Check: one test purchase → the receipt arrives; in Gmail, *Show original*
    reads SPF, DKIM and DMARC **PASS**. Then one refund → the refund mail. The
    console's Invoices list shows "Sent <date>".
+
+## 17. The free plan is retired, and the switch that requires one (schema §36 and §37, 12 Oct 2026). NOT RUN LIVE.
+
+The owner decided on 11 Oct 2026 that there is no free version, only a free
+trial. §33 recorded the decision, kept the row and said that never drawing it
+as a choice was "client work". The client did its half. The server did not,
+and on 12 Oct 2026 an anonymous caller still got this from the live project:
+
+```
+price_notice()            -> plans[0] = {"id":"free","name":"Free","price_paise":0}
+/rest/v1/plans?id=eq.free -> blurb "Admitted, unpaid. One film in the cloud."
+```
+
+So the one price feed a stranger can read was advertising a free plan on a
+site whose own Terms of Service deny it exists. **§36 closes that. §37 does
+not close the other half, and must not yet.**
+
+### What each section does
+
+**§36 — the offer is withdrawn, the row stays.** `plans.free` becomes
+`active = false`, named "No plan", with a CHECK so a console toggle cannot
+re-list it. The row cannot be deleted: `user_plan()` returns `'free'` for
+anybody who has bought nothing, and `billing_status()`, `user_limits()` and
+the three P0402 limit triggers all read it as the "no plan" state.
+
+It is safe because of a property worth re-checking before anyone changes it:
+**every read that can receive `'free'` reads `plans` WITHOUT an `active`
+filter**, and **every read that filters on `active` is a purchase path** that
+already refuses `free` by id or by its zero price. The only two readers that
+filter on `active` and are not purchase paths are `price_notice()` and
+`price_notice(currency)` — which is the whole point. Nobody's entitlement,
+limit or feature map is read differently after §36 than before it.
+
+**§37 — the census, and one guard.** It adds `admin_purchase_wall()`
+(members / paid / in_trial / walled / grandfathered_walled, admin only) and
+restates `admin_set_billing_settings()` with a single new refusal.
+
+**§37 DOES NOT THROW THE SWITCH.** `billing_settings.purchase_required` is
+operational state with an admin RPC of its own, and §32's own check 1 asserts
+it is false after loading — flipping it in the schema file would change the
+fixture every later test runs against. It stays an owner step, below.
+
+### Deploy (owner) — these two are safe to run today
+
+1. Run **§36** (from `-- 36. THE FREE PLAN IS RETIRED` to the start of §37)
+   the checksummed way.
+2. Run **§37** (from `-- 37. REQUIRING A PLAN` to the end of the file) the
+   same way. §37 contains the referral sentence's **en-dashes** (`1–100%`),
+   copied byte-for-byte from §32.4 — this is the character the clipboard has
+   mangled before, so the SHA-256 check is not optional here.
+3. Check, as anon: `price_notice()` returns three plans and no `free`;
+   `price_notice('USD')` the same. As an admin: `admin_purchase_wall()`
+   answers, and `purchases_required()` is still **false**.
+
+### Throwing the switch — NOT YET, and here is the order
+
+Requiring a plan is one call:
+
+```sql
+select public.admin_set_billing_settings('{"purchase_required": true}');
+```
+
+**Do not make it until all three of these hold.**
+
+1. **Resend works** (§16 above). §35 is live, so a payment already CLAIMS a
+   receipt and then fails to send it. Requiring a purchase before that is
+   fixed means the first person walled is also the first person to pay and
+   get nothing in writing.
+2. **One real purchase has been proved end to end** on the live Razorpay key,
+   with the webhook delivering **200** — and a refund exercised once.
+3. **`admin_purchase_wall()` reads `grandfathered_walled: 0`.** §30's
+   backfill gave every member admitted before 9 Oct 2026 a year at full
+   scope, because "they were let in on a promise of a free plan; taking it
+   away retroactively is not what the owner asked for". That year runs out in
+   **October 2027**. §37's guard refuses the switch rather than let it lock
+   those people out silently; if it ever fires, give them a plan, a longer
+   trial or an e-mail grant first. A member who arrived *after* that line and
+   let a 30-minute trial lapse does not block it — walling them is the intent.
+
+### What is still not true after §36 and §37
+
+refund.html §7 says *"There is no free plan: when that trial ends, a plan is
+needed again."* The first half becomes true with §36. **The second half stays
+false until the switch is thrown**, because `purchase_required` is false and
+`billing_status().entitled` is therefore true for everybody. The same
+sentence sits on terms.html:74 and start.html. Either throw the switch or
+soften the pages — do not leave a legal page making a claim the database
+contradicts.

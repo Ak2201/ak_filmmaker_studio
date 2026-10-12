@@ -1431,22 +1431,40 @@ file before pressing Run. Every section this session was checked that
 way and every one matched byte for byte. Never paste schema SQL without
 a checksum.
 
-**SECTION 32 HAS NOT RUN LIVE** (written 11 Oct 2026): the "Purchases
-required" switch (`billing_settings.purchase_required`, default FALSE — the
-studio free, nothing walled or capped), `purchases_required()` for anon,
-`user_limits()` / `billing_status()` / `admin_set_billing_settings()` /
-`studio_status()` restated, and access by e-mail (`email_grants`,
-`admin_grant_email`, `admin_revoke_email_grant`, `admin_list_email_grants`,
-a trigger on `auth.users`). Until it runs, billing_status() carries no
-`purchase_required` key and the client behaves exactly as before — the key
-has to be PRESENT to be believed. Owner step: `docs/BILLING.md` §13.
+**SECTIONS 32, 33, 34 AND 35 ARE ALL LIVE** (run 12 Oct 2026). §32's
+"Purchases required" switch is live and `purchases_required()` answers
+**false** — so nothing is walled or capped, `billing_status().entitled` is
+true for everybody and `features` is `open_features()`. §33's
+`trial_offer()` reads 30 minutes, trial enabled. §34 was marked on the
+owner's word rather than a probe: it has no API surface, and the read that
+settles it is
+`select pg_get_constraintdef(oid) from pg_constraint where conname =
+'studio_members_trial_source_check';` — it should mention `'refund'`.
+§35 is live but **`RESEND_API_KEY` and `MAIL_FROM` are still unset**, so a
+payment now CLAIMS a receipt in the database and the send then fails. DO
+NOT TAKE A REAL PAYMENT until Resend is configured: a buyer pays, the row
+says "receipt sent", and nothing arrives — worse than not having the
+feature. Owner steps: `docs/BILLING.md` §13 and §16.
 
-**SECTION 35 HAS NOT RUN LIVE EITHER** (11 Oct 2026): receipt and refund
-e-mails through Resend from `support@filmmakerstudio.in`, each one CLAIMED
-by an UPDATE before it is sent (`claim_receipt_email`, `claim_refund_email`)
-so rzp-verify and the webhook never both send. A mail failure never fails a
-payment. The refund sentence lives in `supabase/functions/_shared/terms.js`,
-shared by the e-mail and the invoice PDF. Owner steps: `docs/BILLING.md` §16.
+**SECTIONS 36 AND 37 ARE WRITTEN AND HAVE NOT RUN LIVE** (12 Oct 2026).
+§36 retires the free plan: the row STAYS (it is what `user_plan()` answers
+for somebody who has bought nothing, and `user_limits()`, `billing_status()`
+and the P0402 triggers all read it) and its OFFER is withdrawn —
+`active = false`, renamed "No plan", plus a CHECK so it cannot be re-listed.
+It was written because the live `price_notice()` was publishing
+`Free — ₹0` to anonymous visitors while terms.html, refund.html and
+start.html all say there is no free plan. Nobody's access moves: every read
+that can receive `'free'` reads `plans` WITHOUT an `active` filter, and
+every read that filters on `active` is a purchase path that already refuses
+`free`. §37 does NOT throw the `purchase_required` switch — that stays an
+owner step, because flipping it in the schema file would change the fixture
+every later test runs against. It adds `admin_purchase_wall()` (the census:
+members, paid, in_trial, walled, grandfathered_walled) and restates
+`admin_set_billing_settings()` with ONE new refusal: turning the switch on
+is refused while it would wall a member the §30 grandfather backfill
+covered. **Neither section makes a plan necessary**, so refund.html's "a
+plan is needed again" stays untrue until the switch flips — and it must not
+flip until Resend works. `scripts/schema-tests/no-free-plan.sql`.
 
 None of the live RLS checks has
 been executed. Ask the database, not the file — and note that this

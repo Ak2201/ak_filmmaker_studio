@@ -188,6 +188,7 @@ function buildTop() {
     { label: 'Dictation', action: 'sc-dictate' },
     { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?' },
     { label: 'Format check', action: 'sc-check' },
+    { label: 'Notes overview', action: 'sc-notes', hint: 'all notes' },
     '---',
     { label: 'Show or hide hints', action: 'sc-hints' },
     { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
@@ -732,6 +733,16 @@ function syncGuide() {
 }
 addEventListener('hashchange', () => { if (location.hash === '#import') openImport(true); syncGuide(); });
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
+delegate(document, 'click', '[data-action="sc-notes"]', async () => {
+  try {
+    const m = await import('../ui/script-notes.js');
+    await m.openScriptNotes({
+      getElements: () => doc.elements, getNumbering: () => doc.numbering,
+      title: Script.projectTitle(), say,
+      goTo: (id) => { editor.scrollToEl(id); editor.focusEl(id); }
+    });
+  } catch (e) { console.warn('[script] notes', e); say('Notes could not be opened here. Try again in a moment.'); }
+});
 delegate(document, 'click', '[data-action="sc-guide"]', () => {
   if (location.hash === '#guide') syncGuide(); else location.hash = '#guide';
 });

@@ -192,7 +192,8 @@ function buildTop() {
     '---',
     { label: 'Show or hide hints', action: 'sc-hints' },
     { label: 'Stage guide', action: 'sc-guide', hint: 'questions' },
-    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' }
+    { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI' },
+    { label: 'AI coverage report', action: 'sc-coverage', hint: 'AI' }
   ], { align: 'right', compact: true, ariaLabel: 'More' });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
@@ -733,6 +734,7 @@ function syncGuide() {
 }
 addEventListener('hashchange', () => { if (location.hash === '#import') openImport(true); syncGuide(); });
 delegate(document, 'click', '[data-action="sc-generate"]', () => { location.href = 'write.html?stay=1#generate'; });
+delegate(document, 'click', '[data-action="sc-coverage"]', () => { location.href = 'write.html?stay=1#coverage'; });
 delegate(document, 'click', '[data-action="sc-notes"]', async () => {
   try {
     const m = await import('../ui/script-notes.js');

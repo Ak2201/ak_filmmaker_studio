@@ -130,6 +130,39 @@ console.log('✓ the whole schema loads (and §32 onward — §33 to §39 includ
    `plans` should see the file's final state, not a half-applied one. */
 for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'plan-features.sql', 'goals-sync.sql', 'no-free-plan.sql']) runChecks(file);
 
+/* ADMIN CONSOLE V2 — the STANDALONE sections (41, 43, 44), authored as files
+   at the repo root and not yet folded into supabase-schema.sql. They load on
+   top of the whole schema, twice (re-runnable), after the audit shim that
+   stands in for section 40's admin_audit_write(). When a section is merged
+   into supabase-schema.sql, delete it from this list. */
+const STANDALONE = ['schema-41-admin-health.sql', 'schema-43-usage-cohorts.sql', 'schema-44-sync-limits.sql'];
+const STANDALONE_CHECKS = ['admin-health.sql', 'usage-cohorts.sql', 'sync-limits.sql'];
+r = psql(['-f', 'scripts/schema-tests/audit-shim.sql']);
+if (r.status !== 0) fail('the audit shim did not load', r);
+for (const f of STANDALONE) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load on top of the whole schema`, r);
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} is not re-runnable`, r);
+}
+console.log('✓ the standalone sections (§41, §43, §44) load and re-run cleanly');
+/* usage_names() must equal the module ids in navigation.json plus the fixed
+   names, read from the LIVE function: the generator's --check proves the file,
+   this proves what PostgreSQL holds. */
+{
+  const nav = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/navigation.json'), 'utf8'));
+  const ids = [];
+  for (const g of nav.global || []) for (const m of g.modules || []) ids.push('module_open:' + m.id);
+  for (const p of nav.phases || []) for (const m of p.modules || []) ids.push('module_open:' + m.id);
+  const want = [...ids, 'script_import', 'export_pdf', 'export_docx', 'ai_call', 'drive_connect', 'limit_hit', 'share_created', 'screening_pass_used'].sort();
+  r = psql(['-tAc', 'select n from unnest(public.usage_names()) n order by n']);
+  const got = (r.stdout || '').split('\n').filter(Boolean).sort();
+  if (r.status !== 0 || JSON.stringify(got) !== JSON.stringify(want)) fail(`usage_names() in the database (${got.length}) is not navigation.json's module ids plus the fixed names (${want.length})`, r);
+  total++;
+  console.log(`  ✓ usage_names() in PostgreSQL equals navigation.json's ${ids.length} module ids plus the 8 fixed names`);
+}
+for (const file of STANDALONE_CHECKS) runChecks(file);
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

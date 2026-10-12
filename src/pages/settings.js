@@ -907,6 +907,7 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
   }
 });
 
+let lastRenderSig = '';
 function render() {
   const main = h('main#main');
 
@@ -938,8 +939,22 @@ function render() {
               consolePointer(), renderAdmin(), renderDanger()].filter(Boolean));
   main.append(body);
 
+  /* Nine events redraw this page — auth, gate, plan, Drive status, the AI
+     key, theme clicks — and most of them arrive after first paint with
+     nothing new to say. Replacing `main` for each one tore the whole page
+     down and rebuilt it (a visible flicker, a scroll jump, a focused
+     field lost). The signature is taken BEFORE mountShell()/tabs.js add
+     their own attributes, so it compares what render() produced. */
+  const sig = main.innerHTML;
+  if (sig === lastRenderSig && app.firstElementChild) return;
+  lastRenderSig = sig;
+
+  const y = window.scrollY;
+  const focusId = document.activeElement && document.activeElement.id;
   app.replaceChildren(main);
   mountShell();
+  if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
+  if (focusId) { const f = document.getElementById(focusId); if (f) try { f.focus({ preventScroll: true }); } catch (e) {} }
 
   /* Chrome initialises at import time, when #app is still empty, so
      every page re-inits after its own render. Without this the

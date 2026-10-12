@@ -87,11 +87,18 @@ export function actionMenu(label, items, opts = {}) {
 function clampIntoViewport(panel) {
   panel.style.left = '';
   panel.style.right = '';
+  /* The left edge is the step rail's right edge, not the screen's: the
+     band is clipped there, so a panel clamped to x=8 was cut off under
+     the rail (the Theme menu showed "NK" for "INK"). */
+  const rail = document.querySelector('.sh-rail');
+  const railW = rail && getComputedStyle(rail).display !== 'none'
+    ? rail.getBoundingClientRect().right : 0;
   const pad = 8;
+  const minL = railW + pad;
   const vw = document.documentElement.clientWidth;
   let r = panel.getBoundingClientRect();
-  if (r.width >= vw - pad * 2) {                 // wider than the screen
-    panel.style.left = pad + 'px';
+  if (r.width >= vw - minL - pad) {              // wider than the room
+    panel.style.left = minL + 'px';
     panel.style.right = pad + 'px';
     return;
   }
@@ -100,10 +107,10 @@ function clampIntoViewport(panel) {
     panel.style.right = '0';
     r = panel.getBoundingClientRect();
   }
-  if (r.left < pad) {
+  if (r.left < minL) {
     const host = panel.parentElement.getBoundingClientRect();
     panel.style.right = 'auto';
-    panel.style.left = (pad - host.left) + 'px';
+    panel.style.left = (minL - host.left) + 'px';
   }
 }
 

@@ -206,6 +206,7 @@
 
 .st-meter-head {
   margin: 0;
+  max-width: none;   /* it is a <p>, so the prose measure stopped the figure short of the bar's right end */
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;

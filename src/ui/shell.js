@@ -1166,7 +1166,11 @@ function measureChrome() {
   /* A small, structural candidate set rather than a walk of the
      document: this runs on resize frames, and the hub is several
      thousand nodes. */
-  for (const el of document.querySelectorAll('#app > *, body > *, main > *')) {
+  /* `nav.tabs` is named because settings and admin wrap their sections in
+     a div, so the strip is a grandchild of <main> and was never counted:
+     --sh-cover-h stayed the band alone and a #storage landing put the
+     card's first 34px behind the strip. */
+  for (const el of document.querySelectorAll('#app > *, body > *, main > *, main nav.tabs')) {
     const cs = getComputedStyle(el);
     if (cs.position !== 'sticky' && cs.position !== 'fixed') continue;
     const top = parseFloat(cs.top);

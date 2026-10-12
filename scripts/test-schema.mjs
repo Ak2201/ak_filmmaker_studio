@@ -130,6 +130,18 @@ console.log('✓ the whole schema loads (and §32 onward — §33 to §39 includ
    `plans` should see the file's final state, not a half-applied one. */
 for (const file of ['purchases.sql', 'trial-hours.sql', 'refund-trial.sql', 'receipt-email.sql', 'plan-features.sql', 'goals-sync.sql', 'no-free-plan.sql']) runChecks(file);
 
+/* §45 (admin controls) is a standalone file at the repo root, not yet
+   folded into supabase-schema.sql, and it calls section 40's
+   admin_audit_write(), which this tree does not have: load the test shim
+   for it, then the section — twice, for re-runnability — then its checks.
+   Drop the shim line when §40 is in supabase-schema.sql. */
+for (const f of ['scripts/schema-tests/audit-shim.sql', 'schema-45-admin-controls.sql', 'schema-45-admin-controls.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §45 loads (and re-runs cleanly)');
+runChecks('admin-controls.sql');
+
 if (!keep) psql(['-c', `drop database if exists ${DB}`], { db: 'postgres' });
 else console.log(`kept: psql -d ${DB}`);
 console.log(`${failed ? '✗' : '✓'} schema: loads, ${total} checks passed, ${failed} failed`);

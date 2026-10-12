@@ -14,7 +14,7 @@
     { "id": "synopsis", "label": "Synopsis & treatment", "n": 5,
       "absorbs": ["feature:treatment-ladder#lad_2_synopsis", "feature:treatment-ladder#lad_3_onepager", "feature:treatment-ladder#lad_4_treatment"] },
     { "id": "lock", "label": "Lock the outline", "n": 10, "absorbs": [] },
-    { "id": "screenplay", "label": "To the Screenplay", "n": 6, "absorbs": [] }
+    { "id": "screenplay", "label": "Open the Screenplay Writer", "n": 6, "absorbs": [] }
   ],
 
   "short": [
@@ -27,7 +27,7 @@
     { "id": "outline", "label": "Step outline", "n": 4, "absorbs": [] },
     { "id": "synopsis", "label": "Synopsis", "n": 5, "absorbs": [] },
     { "id": "lock", "label": "Lock the outline", "n": 10, "absorbs": [] },
-    { "id": "screenplay", "label": "To the Screenplay", "n": 6, "absorbs": [] }
+    { "id": "screenplay", "label": "Open the Screenplay Writer", "n": 6, "absorbs": [] }
   ],
 
   "aliases": { "short": { "bible": "character" } }

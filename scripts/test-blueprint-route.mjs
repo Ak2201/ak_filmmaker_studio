@@ -18,7 +18,7 @@ const ok = (c, msg) => { if (c) pass++; else { fail++; console.error('  ✗', ms
 const eq = (a, b, msg) => ok(JSON.stringify(a) === JSON.stringify(b), msg + ' — got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b));
 const pad = (n) => 'step-' + String(n).padStart(2, '0');
 
-const PAGE = { story: 'story.html', screenplay: 'script.html', preprod: 'breakdown.html', production: 'shoot.html', post: 'edit.html' };
+const PAGE = { story: 'story.html', screenplay: 'screenplay.html', preprod: 'breakdown.html', production: 'shoot.html', post: 'edit.html' };
 for (const [stage, page] of Object.entries(PAGE)) eq(R.stagePage(stage), page, 'stage ' + stage + ' lives on ' + page);
 ok(nav.phases.every((p) => PAGE[p.id]), 'navigation.json has exactly the five known stages');
 
@@ -39,7 +39,7 @@ for (let n = 1; n <= 32; n++) {
 eq(R.guideHref('feature', 'step-07'), 'story.html?step=feature/step-07#guide', 'feature 07 is in Story');
 eq(R.stageForStep('feature', 'step-14').page, 'breakdown.html', 'feature 14 is in Pre-Production');
 eq(R.stageForStep('feature', 'step-25').page, 'shoot.html', 'feature 25 is in Production');
-eq(R.stageForStep('feature', 'step-11').page, 'script.html', 'feature 11 is in the Screenplay');
+eq(R.stageForStep('feature', 'step-11').page, 'screenplay.html', 'feature 11 is in the Screenplay');
 eq(R.stageForStep('feature', 'step-32').page, 'edit.html', 'feature 32 is in Post');
 
 /* short 01-11; step 9 spans two stages and answers with the first. */
@@ -51,7 +51,7 @@ for (let n = 1; n <= 11; n++) {
 }
 eq(R.stagesForStep('short', 'step-09'), ['preprod', 'production'], 'short 9 spans two stages');
 eq(R.stageForStep('short', 'step-09').page, 'breakdown.html', 'short 9 answers with its first stage');
-eq(R.stageForStep('short', 'step-11').page, 'script.html', 'short 11 (the lock) is the Screenplay');
+eq(R.stageForStep('short', 'step-11').page, 'screenplay.html', 'short 11 (the lock) is the Screenplay');
 
 /* every sidecar step is covered by the loops above (no orphan). */
 for (const key of Object.keys(stages.steps)) {
@@ -78,7 +78,7 @@ eq(R.routeForAnchor('/feature', '#step-07'), 'story.html?step=feature/step-07#gu
 eq(R.routeForAnchor('/feature.html', '#step-30'), 'edit.html?step=feature/step-30#guide', 'feature #step-30 (production ns)');
 eq(R.routeForAnchor('/short', '#step-09'), 'breakdown.html?step=short/step-09#guide', 'short #step-09');
 eq(R.routeForAnchor('/feature', '#vol-1'), 'story.html#guide', 'cover vol-1');
-eq(R.routeForAnchor('/feature', '#part-2'), 'script.html#guide', 'cover part-2');
+eq(R.routeForAnchor('/feature', '#part-2'), 'screenplay.html#guide', 'cover part-2');
 eq(R.routeForAnchor('/feature', '#vol-2'), 'breakdown.html#guide', 'cover vol-2');
 eq(R.routeForAnchor('/feature', '#phase-3'), 'shoot.html#guide', 'cover phase-3');
 eq(R.routeForAnchor('/feature', '#phase-4'), 'edit.html#guide', 'cover phase-4');

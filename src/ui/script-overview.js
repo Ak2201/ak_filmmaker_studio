@@ -1,7 +1,7 @@
 /* ============================================================
    SCRIPT OVERVIEW — the first tab of breakdown.html (#script)
    ------------------------------------------------------------
-   "Script Breakdown": what the script is made of, read straight off
+   "Screenplay Analysis": what the script is made of, read straight off
    the typed elements, plus the outline (scene list and the beat
    board) and the characters panel that used to live on write.html.
 
@@ -129,17 +129,17 @@ function outlinePart(d) {
 
 /** The section. `scenes` is listScenes(); `opts.from` is the ?from value. */
 export function renderScriptOverview(scenes, opts = {}) {
-  const wrap = h('section.bd-script', { id: 'script', 'data-tab-label': 'Script Breakdown' });
+  const wrap = h('section.bd-script', { id: 'script', 'data-tab-label': 'Screenplay Analysis' });
   let els = [];
   try { els = loadScript().elements; } catch (e) { /* no script */ }
   const d = deriveScript(els);
   const hasScript = d.scenes.length > 0;
   wrap.append(
-    h('h2.bd-h2', { text: 'Script Breakdown' }),
+    h('h2.bd-h2', { text: 'Screenplay Analysis' }),
     h('p.bd-sub', { text: 'What the script is made of, worked out from its pages. Nothing here is typed twice: change the script and this follows.' }),
     h('p.bdo-onward', {}, [
       hasScript ? h('button.btn.primary.bd-cta', { type: 'button', 'data-action': 'run-breakdown-script', text: scenes.length ? 'Run breakdown again' : 'Run breakdown' }) : null,
-      h('a.btn', { href: 'script.html', text: 'Back to the Script' }),
+      h('a.btn', { href: 'screenplay.html', text: 'Back to the Screenplay Writer' }),
       hasScript ? h('a.btn', { href: 'write.html?stay=1#coverage', text: 'AI coverage report' }) : null
     ].filter(Boolean)),
     h('p.bdo-status', { role: 'status', 'aria-live': 'polite', 'data-so-status': '', text: '' })

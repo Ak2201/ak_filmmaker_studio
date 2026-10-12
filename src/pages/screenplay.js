@@ -24,7 +24,7 @@ import '../styles/modules.css';
 import '../styles/print.css';
 import '../styles/write.css';
 import '../styles/pdf.css';
-import '../styles/script.css';
+import '../styles/screenplay.css';
 import '../ui/format-guide.js';   // Check format (its dock bar is hidden; the menu drives it)
 
 import StudioUI from '../ui/chrome.js';
@@ -221,18 +221,18 @@ function render() {
   sheet = h('section#screenplay.sc-sheet', { 'aria-label': 'Screenplay' });
   /* Hosts the other modules look for inside #screenplay: focus mode
      puts its button in `.wr-export`, read-as/dictation use `.wr-bar`.
-     Hidden (script.css); the ⋯ menu drives them. */
+     Hidden (screenplay.css); the ⋯ menu drives them. */
   sheet.append(h('div.wr-bar.sc-hostbar', {}, [h('div.wr-export')]));
   sheet.append(editor.renderPage({ pageView: true }));
   hintNode = h('p.sc-hint', {}, [
     h('span', { text: 'Start with INT. or EXT. — Enter moves on, Tab switches. ' }),
-    h('a', { href: '#import', 'data-action': 'sc-import', text: 'Import a script' })
+    h('a', { href: '#import', 'data-action': 'sc-import', text: 'Import Screenplay' })
   ]);
   sheet.append(hintNode);
 
   const after = h('p.sc-done', {}, [
     h('span', { text: 'Script done? ' }),
-    h('a', { href: 'breakdown.html#script', text: '→ Go to Script Breakdown' })
+    h('a', { href: 'breakdown.html#script', text: '→ Go to Screenplay Analysis' })
   ]);
   const aside = h('aside#beatsPanel.sc-beats', { 'aria-label': 'Beats', hidden: true });
   main.append(buildTop(), sheet, after, aside, buildChips());
@@ -641,11 +641,11 @@ function drawImport() {
     ]));
   }
   const dlg = h(impInline ? 'section#import.sc-imp.is-inline' : 'div#scImport.sc-imp', impInline
-    ? { 'aria-label': 'Import a script' }
-    : { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import a script' }, [
+    ? { 'aria-label': 'Import Screenplay' }
+    : { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Import Screenplay' }, [
     h('div.sc-imp-card', {}, [
       h('div.sc-imp-head', {}, [
-        h('h2', { text: 'Import a script' }),
+        h('h2', { text: 'Import Screenplay' }),
         h('button.bd-icon', { type: 'button', 'data-action': 'sc-imp-close', 'aria-label': 'Close', text: '✕' })
       ]),
       body
@@ -707,7 +707,7 @@ delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   renderPage();
   const d = document.querySelector('[data-sc="draft"]');
   if (d) d.textContent = draftLabel();
-  say('Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '. Next: Script Breakdown.');
+  say('Imported ' + done.elements + ' lines and ' + done.scenes + (done.scenes === 1 ? ' scene' : ' scenes') + '. Next: Screenplay Analysis.');
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && impDialog) closeImport(); });
 

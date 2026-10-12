@@ -2,7 +2,7 @@
   "_about": "The Pre-production PATH: the order a film is made ready to shoot, one step at a time, the way the Story path is. Read by src/lib/preprod-path.js (which DERIVES each step's state from the scene model and its neighbours — nothing here is stored), src/pages/preprod.js (the path page) and src/ui/path-bar.js (the same strip, above every pre-production tool). A step is { id, label, about, tool, pages, only }. `tool` is where the work is done. `pages` lists the page files (and, after a '#', the fragments) that belong to the step, so a tool page can light its own step. `only: \"songs\"` shows the step only when the film has songs. Ids are not storage keys; they appear in the address bar of preprod.html (#<id>), so do not rename one without a redirect in preprod.js.",
   "steps": [
     { "id": "script", "label": "Lock the script", "about": "A finished draft with its scene numbers locked, so everything built from it keeps its numbers.",
-      "tool": { "label": "Open the script", "href": "script.html" }, "pages": ["script.html", "drafts.html"] },
+      "tool": { "label": "Open the Screenplay Writer", "href": "screenplay.html" }, "pages": ["screenplay.html", "drafts.html"] },
     { "id": "scenes", "label": "Scene list", "about": "Every scene once: where it happens, INT or EXT, day or night, and how long.",
       "tool": { "label": "Open the scene list", "href": "breakdown.html#scenes" }, "pages": ["breakdown.html#scenes"] },
     { "id": "breakdown", "label": "Break it down", "about": "Tag the cast, props, wardrobe and vehicles in each scene. Every report builds itself from these tags.",

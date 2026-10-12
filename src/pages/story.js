@@ -8,9 +8,9 @@
 
      feature  Idea · Logline · Story Bible · Scene order · Step outline ·
               Setups & payoffs · Timeline · Synopsis & treatment ·
-              Lock the outline · To the Screenplay
+              Lock the outline · Open the Screenplay Writer
      short    Seed · Logline · Character · World · Conflict · Scene order ·
-              Step outline · Synopsis · Lock the outline · To the Screenplay
+              Step outline · Synopsis · Lock the outline · Open the Screenplay Writer
 
    so a short film never meets the feature's road with steps missing.
    Beats & Pacing and the Pitch deck follow as ordinary sections, then
@@ -735,8 +735,8 @@ function renderSynopsisStep(s) {
 /* ---- 6 · to the Screenplay ----------------------------------- */
 
 function renderScreenplay(s) {
-  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'To the Screenplay' }, stepHead('screenplay', 'To the Screenplay',
-    'One placeholder scene per step, each linked to its beat, so the Script Breakdown’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
+  const sec = h('section#path-screenplay.st-step.glossary-scope', { 'data-path': 'screenplay', 'aria-label': 'Open the Screenplay Writer' }, stepHead('screenplay', 'Open the Screenplay Writer',
+    'One placeholder scene per step, each linked to its beat, so the Screenplay Analysis’s outline, the Breakdown and the Stripboard have the shape of the story before a page is written. Nothing already in the scene list is changed.'));
   sec.append(h('p.st-muted', { text: 'None of this is required before you write. A scene order, an outline and a lock are all optional: open the Script whenever you like and start on the first page.' }));
   const live = new Set(scenes().map((x) => x.id));
   const written = s.outline.filter((x) => x.text.trim());
@@ -749,7 +749,7 @@ function renderScreenplay(s) {
   const row = h('div.st-build');
   row.append(h('button.btn.primary', { type: 'button', 'data-st': 'send', disabled: !todo, text: 'SEND THE OUTLINE TO SCREENPLAY' }));
   if (lastSend && lastSend.length) row.append(h('button.btn', { type: 'button', 'data-st': 'send-undo', text: 'UNDO THE SEND' }));
-  row.append(h('a.btn', { href: 'script.html', text: 'OPEN THE SCRIPT' }));
+  row.append(h('a.btn', { href: 'screenplay.html', text: 'OPEN THE SCREENPLAY WRITER' }));
   sec.append(row);
   if (!written.length) sec.append(h('p.st-muted', { text: 'Write a step or two in the step outline first.' }));
   return sec;

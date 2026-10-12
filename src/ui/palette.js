@@ -152,11 +152,11 @@ function scriptHits(needle) {
     out.push(entry({
       id: 'line:' + l.id,
       label: (from ? '…' : '') + l.text.slice(from, at + needle.length + 48).trim(),
-      sub: 'Script · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
-      group: 'Script',
+      sub: 'Screenplay · ' + (l.type === 'dialogue' ? 'dialogue' : l.type === 'action' ? 'action' : 'scene line'),
+      group: 'Screenplay',
       hueClass: 'sh-ph-screenplay',
       icon: '¶',
-      href: 'script.html'
+      href: 'screenplay.html'
     }));
     if (out.length >= 6) break;
   }

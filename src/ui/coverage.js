@@ -348,7 +348,7 @@ function renderRunPanel() {
     label: cp ? 'Resume coverage — ' + cp.parts.length + ' of ' + plan.batches.length + ' read'
       : (have ? 'Run coverage again' : 'Run coverage'),
     tasks: ['coverage'],
-    ctx: { identity: 'coverage:' + sig, getDoc: () => getDoc(), elements: () => liveElements(), save: () => save(), after: () => paint() }
+    ctx: { identity: 'coverage:' + sig, getDoc: () => getDoc(), elements: () => liveElements(), save: () => save(), after: () => paint(), progress: () => paint() }
   });
   if (pill) acts.append(pill);
   if (cp) acts.append(h('button.btn', { type: 'button', 'data-action': 'cv-restart', text: 'Start over' }));

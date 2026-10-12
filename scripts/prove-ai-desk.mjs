@@ -124,7 +124,15 @@ async function context({ tok = null, width = 1280 } = {}) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|websocket|realtime|beforeunload/i.test(m.text())) errors.push(m.text()); });
-  page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
+  /* beforeunload is the one native prompt the platform insists on:
+     script.html's leave-prompt warns on a page.goto while the working
+     copy differs from the latest draft (the seeded script has none).
+     Accept it — that is the page doing its job. Any OTHER native
+     dialog is an error (the app's asks go through dialog.js). */
+  page.on('dialog', (d) => {
+    if (d.type() === 'beforeunload') { d.accept().catch(() => {}); return; }
+    errors.push('native dialog: ' + d.type() + ' ' + d.message()); d.dismiss().catch(() => {});
+  });
   return { ctx, page, errors };
 }
 
@@ -205,7 +213,10 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const fill = await p.evaluate((el) => getComputedStyle(el).color);
   ok(!!fill, 'the pill has a computed colour (greyed by tokens): ' + fill);
 
-  await p.click();
+  /* force: Playwright counts aria-disabled="true" as not enabled and
+     would wait forever; a person's click lands, and that is the point
+     of aria-disabled over disabled. */
+  await p.click({ force: true });
   const dlg = page.locator('.dlg');
   const shown = await dlg.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false);
   ok(shown, 'a click opens the in-app dialog (.dlg)');
@@ -217,7 +228,7 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(/\/script(\.html)?$/.test(new URL(page.url()).pathname) && !(await dlg.isVisible().catch(() => false)), '"Not now" closes it and stays on the page', page.url());
   ok(await page.locator('aside.ai-desk').count() === 0, 'still no Desk after "Not now"');
 
-  await (await pill(page)).click();
+  await (await pill(page)).click({ force: true });
   await dlg.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
   await Promise.all([
     page.waitForURL(/purchase(\.html)?\?plan=pro/, { timeout: 8000 }).catch(() => {}),
@@ -303,8 +314,12 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(await p.evaluate((el) => el.dataset.aiState) === 'ready', 'the pill reads data-ai-state="ready"');
 
   /* The cursor in the three-line speech. */
-  const speechRow = page.locator('#wr-page .wr-el .wr-text', { hasText: 'Naan nalaikku Chennai poren.' }).first();
-  if (await speechRow.count()) await speechRow.click(); else ok(false, 'the seeded speech is on the page');
+  /* The rows are textareas, so the speech is their VALUE, not their
+     text content: find the row by its element id. */
+  const speechRow = page.locator('#wr-page [data-el="el4"] .wr-text').first();
+  const onPage = (await speechRow.count()) && (await speechRow.inputValue()).includes('Naan nalaikku Chennai poren.');
+  ok(onPage, 'the seeded speech is on the page');
+  if (onPage) await speechRow.click();
 
   /* The pill's menu offers the three script tasks. */
   await (await pill(page)).click();
@@ -437,7 +452,9 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   await seed(page, { key: true });
   await page.goto(BASE + '/script.html', { waitUntil: 'networkidle' });
   await planKnown(page, true);
-  const speechRow = page.locator('#wr-page .wr-el .wr-text', { hasText: 'Naan nalaikku Chennai poren.' }).first();
+  /* The rows are textareas, so the speech is their VALUE, not their
+     text content: find the row by its element id. */
+  const speechRow = page.locator('#wr-page [data-el="el4"] .wr-text').first();
   if (await speechRow.count()) await speechRow.click().catch(() => {});
   await openTask(page, 'dialogue-pass');
   ok(await deskOpen(page), 'the Desk opens at 390');

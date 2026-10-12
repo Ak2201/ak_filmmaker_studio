@@ -137,7 +137,7 @@ function sceneIndexAt(els, i) {
 }
 
 /* ============================================================
-   COVERAGE — list. ctx { getDoc, save, elements?, title?, after? }
+   COVERAGE — list. ctx { getDoc, save, elements?, title?, after?, progress? }
    ------------------------------------------------------------
    runCoverage(): batched, checkpointed, resumable. The checkpoints
    are stored as they land (that is what stops a stopped run billing
@@ -227,7 +227,10 @@ const coverageTask = {
       elements: els, title, context: withRefineContext(BP.blueprintContext(), refine), prior
     }, {
       signal, onStatus,
-      onCheckpoint: (cp) => { checkpoint = cp; store.storeCheckpoint(cp); }
+      /* `progress` lets the page that owns the report repaint (the
+         Coverage tab's pill then reads "Resume — N of M read" when a
+         run stops or fails part way); nothing else is written. */
+      onCheckpoint: (cp) => { checkpoint = cp; store.storeCheckpoint(cp); call(c.progress); }
     });
     last.set('coverage', { sig, checkpoint, res });
     const items = coverageItems(res.report || {});
@@ -727,7 +730,8 @@ const loglineTask = {
     const res = await AI.loglineWorkshop({ logline, idea: s.idea, synopsis, format: formatOf(c) }, { onStatus, signal });
     const check = res.check.map((p) => (p.present ? '✓ ' : '— ') + p.label + ': '
       + (p.found ? '“' + p.found + '”' : 'not in your logline') + (p.note ? ' — ' + p.note : '')).join('\n');
-    const removed = res.removed ? '\n' + plural(res.removed, 'quote', 'quotes') + ' removed because they were not in your logline.' : '';
+    const removed = res.removed ? '\n' + plural(res.removed, 'quote', 'quotes') + ' removed because '
+      + (res.removed === 1 ? 'it was' : 'they were') + ' not in your logline.' : '';
     return {
       items: res.variants.map((v, i) => ({ id: 'v' + i, text: v.text, detail: v.angle })),
       note: 'Your logline, checked:\n' + check + removed + '\n\nTick ONE variant to use it as your logline.'

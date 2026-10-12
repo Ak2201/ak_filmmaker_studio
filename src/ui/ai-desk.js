@@ -162,13 +162,20 @@ function sessionFor(task, ctx) {
     try { ident = String(task.identity(ctx) ?? ''); } catch (e) { ident = identity(ctx); }
   } else ident = identity(ctx);
   const key = task.id + '|' + ident;
+  const derive = () => {
+    try { return String(task.input ? (task.input(ctx) ?? '') : ''); }
+    catch (e) { console.warn('[ai-desk] task.input threw', e); return ''; }
+  };
   let s = sessions.get(key);
   if (!s) {
-    let input = '';
-    try { input = String(task.input ? (task.input(ctx) ?? '') : ''); }
-    catch (e) { console.warn('[ai-desk] task.input threw', e); }
-    s = { key, input, versions: [], current: -1, chat: [], draft: '' };
+    s = { key, input: derive(), edited: false, versions: [], current: -1, chat: [], draft: '' };
     sessions.set(key, s);
+  } else if (!s.versions.length && !s.edited) {
+    /* Nothing has come back yet and the writer has not typed in the
+       box: what goes in is re-derived, so a reopen shows what WILL be
+       sent now (a coverage run that read part 1 before it failed
+       sends one part fewer), never a copy frozen at the first open. */
+    s.input = derive();
   }
   return s;
 }
@@ -522,7 +529,7 @@ function wire() {
     if (!v) return;
     if (el.checked) v.unticked.delete(el.dataset.id); else v.unticked.add(el.dataset.id);
   });
-  delegate(desk, 'input', '.ai-desk-input', (e, el) => { if (sess) sess.input = el.value; });
+  delegate(desk, 'input', '.ai-desk-input', (e, el) => { if (sess) { sess.input = el.value; sess.edited = true; } });
   delegate(desk, 'input', '.ai-desk-chat', (e, el) => { if (sess) sess.draft = el.value; });
   delegate(desk, 'keydown', '.ai-desk-chat', (e, el) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(el.value); }

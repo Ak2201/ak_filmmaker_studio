@@ -32,8 +32,8 @@
     },
     {
       "id": "write",
-      "page": "script",
-      "href": "script.html#screenplay",
+      "page": "screenplay",
+      "href": "screenplay.html#screenplay",
       "anchor": [
         "[data-tour=\"write\"]",
         "#screenplay",

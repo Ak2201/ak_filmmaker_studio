@@ -111,7 +111,7 @@ export function projectPageFiles() {
  *  tabs.js read this and name no page. */
 export const STAY_PAGES = {
   'write.html': {
-    stage: 'screenplay', back: 'script.html', backLabel: 'Back to Script',
+    stage: 'screenplay', back: 'screenplay.html', backLabel: 'Back to the Screenplay Writer',
     frags: { coverage: 'AI coverage', generate: 'Write from a synopsis' },
     label: 'Screenplay tools'
   },

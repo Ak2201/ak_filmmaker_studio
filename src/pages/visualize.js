@@ -549,7 +549,7 @@ function renderAI(scenes, shots) {
       'A shot division is a reading of the scene as written — without the '
         + 'pages there is nothing to read, and a division invented from a slug '
         + 'line is a guess dressed up as a plan.',
-      h('a.btn.primary.bd-cta', { href: 'script.html', text: 'Write the script  →' })
+      h('a.btn.primary.bd-cta', { href: 'screenplay.html', text: 'Write the screenplay  →' })
     ));
     return wrap;
   }

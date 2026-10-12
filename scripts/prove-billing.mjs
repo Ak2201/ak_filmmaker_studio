@@ -1287,13 +1287,13 @@ try {
     ok(/Not on the Basic plan/.test(await T.page.textContent('.pg-lock').catch(() => '')), 'naming the plan');
     ok(/Included in the Intermediate plan/.test(await T.page.waitForFunction(() => /Included in the/.test((document.querySelector('.pg-lock-plan') || {}).textContent || ''), null, { timeout: 8000 }).then(() => T.page.textContent('.pg-lock-plan'), () => '')), 'and the lowest plan that has it (Intermediate)');
     ok(await locked('shoot.html'), 'Basic: shoot.html (Shoot Day) is locked');
-    ok(await unlocked('script.html'), 'Basic: script.html (Script) opens');
-    ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts & revisions) opens');
+    ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
+    ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
     ok(await unlocked('story.html'), 'Basic: story.html (Beats & Pacing) opens');
     ok(await unlocked('reports.html'), 'Basic: reports.html opens — Screen Time is Basic');
     await T.page.waitForSelector('#cast-matrix[data-tab-lock] .pg-lock-inline', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: on reports.html the Cast Matrix section is locked in place'), () => ok(false, 'Basic: on reports.html the Cast Matrix section is locked in place'));
     ok(!(await T.page.$('#screentime[data-tab-lock]')), 'and Screen Time is not');
-    ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Script Breakdown, Scene List)');
+    ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')) && !(await T.page.$('#breakdown[data-tab-lock]')), 'and the Scene List (with the cards nested in it) is not');
     await open('settings.html#drive');

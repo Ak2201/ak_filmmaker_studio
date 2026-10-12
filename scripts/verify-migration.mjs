@@ -202,7 +202,7 @@ const ALL_PAGES = [
   { page: 'write.html',      legacy: null, name: 'write' },
   /* The writing page and its drafts took write.html's jobs (11 Oct 2026);
      both rows arrive with the pages, as the settings note below demands. */
-  { page: 'script.html',     legacy: null, name: 'script' },
+  { page: 'screenplay.html',  legacy: null, name: 'screenplay' },
   { page: 'drafts.html',     legacy: null, name: 'drafts' },
   { page: 'plan.html',       legacy: null, name: 'plan' },
   /* study.html and dissect.html left this list on 6 Oct 2026: they are
@@ -278,16 +278,16 @@ const ALL_PAGES = [
 const BLUEPRINT_PAGES_ARE_REDIRECTS = true;
 const BLUEPRINT_NAMES = ['feature', 'short'];
 /* write.html is a redirect now (src/lib/write-route.js): its fragments go
-   to script.html, drafts.html and breakdown.html#script. Same treatment
+   to screenplay.html, drafts.html and breakdown.html#script. Same treatment
    as the blueprints, for the same reason: a redirect has nothing to
    measure, its `write` row stays in baseline.json as the key-union
    reference, and the fragment sweep follows by itself because it only
    offers hrefs to pages in PAGES. The Screenplay stage's page (the first
-   module of that phase in navigation.json) is script.html, so the
+   module of that phase in navigation.json) is screenplay.html, so the
    guide probe asks it rather than write.html. Least invasive: no
    ?stay=1 plumbing, and nothing here loads the retired editor. */
 const WRITE_PAGE_IS_REDIRECT = true;
-const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'script.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
+const STAGE_PAGES = ['story.html', WRITE_PAGE_IS_REDIRECT ? 'screenplay.html' : 'write.html', 'breakdown.html', 'shoot.html', 'edit.html'];
 const PAGES = ALL_PAGES.filter((p) => !(BLUEPRINT_PAGES_ARE_REDIRECTS && BLUEPRINT_NAMES.includes(p.name)) && !(WRITE_PAGE_IS_REDIRECT && p.name === 'write'));
 
 /* THE BUILD HAS TO BE THE OPEN ONE. src/lib/sitegate.js makes the

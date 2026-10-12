@@ -214,6 +214,15 @@ export function isPastSunset(hhmm, light) {
   return t > light.sunsetMinutes;
 }
 
+/** What this device's clock is offset by on a date, in the unit
+    `daylight()` takes (minutes WEST, as getTimezoneOffset reports). It
+    only matters outside India, where `offsetFor()` has no better source;
+    noon of the day, so a daylight-saving change that night cannot move it. */
+export function deviceOffsetOn(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTimezoneOffset() : new Date().getTimezoneOffset();
+}
+
 /** A scene that needs the daylight: exterior, and not written for
     night. "INT/EXT" counts — half of it is outside. */
 export function needsDaylight(scene) {
@@ -224,5 +233,6 @@ export function needsDaylight(scene) {
 
 export default {
   CHENNAI, ELEVATION, julianDay, solarPosition, sunTimes, validLatLng,
-  offsetFor, atOffset, clock, minutesOf, daylight, isPastSunset, needsDaylight
+  offsetFor, atOffset, clock, minutesOf, daylight, isPastSunset, needsDaylight,
+  deviceOffsetOn
 };

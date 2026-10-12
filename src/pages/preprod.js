@@ -23,7 +23,7 @@ import '../styles/path-bar.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
-import { h, commitMain } from '../lib/dom.js';
+import { h, commitMain, delegate } from '../lib/dom.js';
 import { showOnly, stepFooter, stepBar, wireStepper, landUnder } from '../ui/stepper.js';
 import { pathSteps, nextStep } from '../lib/preprod-path.js';
 import { readiness } from '../lib/readiness.js';
@@ -55,6 +55,12 @@ function readinessList() {
     ]));
   });
   wrap.append(ul);
+  /* One A4 page for the producer. The code that draws it is fetched on
+     the press, not with the page (src/lib/ready-pdf.js). */
+  wrap.append(h('div.pp-act.pp-ready-act', {}, [
+    h('button.btn.pp-pdf', { type: 'button', 'data-action': 'ready-pdf', text: 'DOWNLOAD ONE-PAGE PDF' }),
+    h('span.pp-check-hint', { text: 'Checks, shoot days, budget and open permissions, on one A4 page.' })
+  ]));
   return wrap;
 }
 
@@ -131,6 +137,17 @@ function go(id) {
 }
 
 wireStepper(document, go);
+delegate(document, 'click', '[data-action="ready-pdf"]', async (e, el) => {
+  if (el.disabled) return;
+  el.disabled = true;
+  try {
+    const m = await import('../lib/ready-pdf.js');
+    m.exportReadyPDF();
+  } catch (err) {
+    console.warn('[preprod] ready PDF', err);
+    StudioUI.toastError('The page could not be prepared.');
+  } finally { el.disabled = false; }
+});
 window.addEventListener('hashchange', () => { const id = hashId().replace(/^step-/, ''); if (id && id !== cur) go(id); });
 Store.subscribe('current:changed', render);
 render();

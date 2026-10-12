@@ -23,6 +23,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { anthropicSSE, geminiSSE } from './fake-ai.mjs';
+/* AI tools are LOCKED unless the signed-in plan is known and includes
+   them (plan-gate.js aiUnlocked()), so this proof signs in — Amy, on
+   Pro, against the shared Supabase fake — rather than running signed
+   out as it did before the lock. */
+import { F, SB, REF, USERS, handle, sessionFor, aiScenario } from './fake-supabase.mjs';
+const TOK = 'tok-amy';
 
 const DIST = path.resolve(process.env.PROVE_DIST || 'dist-verify');
 const PORT = Number(process.env.PROVE_PORT) || 5863;
@@ -163,7 +169,11 @@ async function session({ width, theme, provider }) {
     if (r.url().startsWith(BASE) && !/ERR_ABORTED/.test(why)) errors.push('failed ' + r.url() + ' ' + why);
   });
   await page.route(/^https:\/\/(api\.anthropic\.com|generativelanguage\.googleapis\.com)\//, route);
-  await page.route((u) => !u.href.startsWith(BASE) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
+  await page.route(SB + '/**', handle);
+  await page.route((u) => !u.href.startsWith(BASE) && !u.href.startsWith(SB) && !/anthropic\.com|googleapis\.com\/v1beta/.test(u.href), (r) => r.abort());
+  await page.addInitScript(([k, v, uid]) => {
+    if (!sessionStorage.getItem('__seeded')) { localStorage.setItem(k, v); localStorage.setItem('fms_studio_account_v1', uid); sessionStorage.setItem('__seeded', '1'); }
+  }, [`sb-${REF}-auth-token`, sessionFor(TOK), USERS[TOK].id]);
   /* The "run it again?" questions are asked in the app now: press the
      in-app confirm button the way a person would, and fail on a native box. */
   page.on('dialog', (d) => { errors.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });
@@ -179,11 +189,16 @@ const KEY = { anthropic: 'sk-ant-PROVEPROVEPROVEPROVE12', gemini: 'AIzaPROVEPROV
 for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'paper', 'gemini']]) {
   const tag = '[' + width + ' ' + theme + ' ' + provider + '] ';
   requests.length = 0;
+  F.reset(); aiScenario('pro', TOK);
   const { ctx, page, errors } = await session({ width, theme, provider });
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
-  await page.evaluate(({ els, theme, provider, key }) => {
+  await page.evaluate(({ els, theme, provider, key, keep }) => {
     const S = window.StudioStore;
+    /* Clear the studio but keep the session and the account pointer,
+       or the next load is signed out and every AI pill is locked. */
+    const saved = keep.map((k) => [k, localStorage.getItem(k)]);
     localStorage.clear();
+    for (const [k, v] of saved) if (v != null) localStorage.setItem(k, v);
     const p = S.createProject({ title: 'Ooru', format: 'feature' });
     S.setCurrentProject(p.id);
     localStorage.setItem('fms_script_v1', JSON.stringify({ elements: els, revisions: [], documents: [] }));
@@ -191,11 +206,15 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'paper
     S.rawSet('fms_ai_provider_v1', provider);
     S.rawSet(provider === 'anthropic' ? 'fms_ai_key_v1' : 'fms_ai_key_gemini_v1', key);
     localStorage.setItem('fms_story_v1', JSON.stringify({ logline: 'A broke son leaves his mother to find work in Chennai.', idea: '', source: '', marks: [], tension: {}, outline: [] }));
-  }, { els: makeScript(40), theme, provider, key: KEY[provider] });
+  }, { els: makeScript(40), theme, provider, key: KEY[provider], keep: [`sb-${REF}-auth-token`, 'fms_studio_account_v1'] });
 
   /* ---- write.html#coverage, before any click ---------------------- */
   await page.goto(BASE + '/write.html?stay=1#coverage', { waitUntil: 'networkidle' });
   await page.waitForSelector('#coverage .cv-run', { timeout: 15000 });
+  /* The plan has to have ARRIVED before an AI control is unlocked. */
+  for (let i = 0; i < 50 && !F.db.calls.includes('billing_status'); i++) await page.waitForTimeout(100);
+  check(tag + 'signed in: billing_status() was asked', F.db.calls.includes('billing_status'));
+  await page.waitForTimeout(400);
   check(tag + 'the Coverage tab is a tab', await page.locator('.tabs [role="tab"]', { hasText: 'Coverage' }).count() === 1);
   const cost = await page.locator('#coverage .cv-cost').textContent();
   check(tag + 'the cost is on screen before the click: ' + cost.slice(0, 60), /About 4 requests/.test(cost) && /tokens sent/.test(cost), cost);

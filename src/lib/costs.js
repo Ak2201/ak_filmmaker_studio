@@ -726,6 +726,27 @@ export function costReport({ lines = [], expenses = [], crew = {}, payments = []
   };
 }
 
+/** THE HEADER FIGURES: four numbers read off the cost report, nothing stored.
+ *  approved     estimate plus contingency (the ceiling spend is judged against)
+ *  actual       everything logged so far, GST-inclusive, crew at cost
+ *  remaining    approved minus actual; negative means over, `over` says so
+ *  contingency  the pool, how much of it overspend beyond the base estimate
+ *               has eaten, and what is left */
+export function budgetKpis(report) {
+  const t = (report && report.totals) || {};
+  const approved = round2(t.estimateWithContingency || 0);
+  const actual = round2(t.actual || 0);
+  const pool = round2(t.contingency || 0);
+  const used = Math.min(pool, round2(t.contingencyUsed || 0));
+  return {
+    approved, actual,
+    pctUsed: approved > 0 ? Math.round((actual / approved) * 100) : 0,
+    remaining: round2(approved - actual),
+    over: actual > approved + 0.005,
+    contingency: { pct: t.contingencyPct || 0, pool, used, left: round2(pool - used) }
+  };
+}
+
 /** THE TOP SHEET: the cost report folded to departments and groups. */
 export function topSheet(report) {
   const groups = GROUPS.map((g) => {
@@ -830,6 +851,6 @@ export default {
   listFloats, addFloat, removeFloat, listCrew, getCrew, setCrew, removeCrew,
   listPayments, addPayment, removePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
   estimateLines, readCalc, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
-  costReport, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
+  costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,
   deptOf, defaultDept, sectionOf, deptForContact, deptForCategory, castNames, toCSV
 };

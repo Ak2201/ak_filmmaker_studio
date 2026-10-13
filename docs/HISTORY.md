@@ -1808,3 +1808,102 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       scripts were edited blind (prove-billing, prove-admin-people,
       fake-admin-rpcs-*). `test:schema` (1138 checks incl. §47) and the Node
       tests pass; the browser proofs have not been run.
+
+36. **The dashboard revamp (12 Oct 2026).** The owner asked for a clearer
+    dashboard. The page said "go here next" five ways (a Continue tile, a
+    suggested-next panel, a resume line, the journey strip's next step and
+    the suggested stage card) and "how ready is it" three ways, with the
+    34-module map in the middle. Now, top to bottom: a head (stage in the
+    eyebrow, six stats); a **focus row** of two cards — Continue (resume,
+    suggested stage, the journey's next step; `#suggested` and `#resume`
+    live here) and Readiness (n/m checks, one bar segment per check, three
+    things to do, a link to `#readiness`); the **five stage cards carrying
+    the Guide/Tools meters** the journey strip used to repeat (`#journey`
+    is kept on the list, because a fragment target must not disappear with
+    a redesign); then a main column (the chain in four groups, readiness
+    with passing checks as one row of ticks, recent) beside a sticky side
+    column (this week, plan, backup), and the module map last. It still
+    stores nothing — every number is derived on render. 7,646px → 5,891px
+    on the Dragon sample at 1280.
+
+37. **The AI Desk: one key place, Pro-locked pills, a review-and-refine
+    sidebar (12–13 Oct 2026; PR #9).** The owner asked for AI "from start to
+    end", then set the rules: the key is added in ONE place; AI is reached
+    through one pill; plans without AI see the pill GREYED and are asked to
+    buy Pro on click; clicking opens a sidebar where you read what is sent,
+    accept the answer change by change, refine it by chat, then Accept or
+    Skip. Owner's answers: chat lasts this visit only; per-change ticks;
+    task-first (no general assistant); docked right. Built by four parallel
+    agents on disjoint files, then integrated.
+    - **`aiUnlocked()` fails CLOSED, on purpose the opposite of
+      `allowed()`.** `plan-gate.js`: true only for a KNOWN plan whose
+      `ai_tools` is not false (Pro, the trial, everyone while purchases are
+      off). Signed out and "plan not loaded yet" read locked. `allowed()`
+      still fails open for module locks. `ai-panel.js` `aiAllowed()` returns
+      `aiUnlocked()`, and `plan:changed` repaints every pill.
+    - **The pill** (`src/ui/ai-pill.js`) imports no AI code; the Desk loads
+      on click. Locked = `aria-disabled`, NOT `disabled`, so it stays
+      focusable — and so Playwright refuses to click it without
+      `{ force: true }`; that is the proof's problem, not the pill's. "See
+      Pro plans" asks `PlanGate.offerFor(['ai_tools'])` AFTER the press (the
+      dialog never waits on the network), falling back to
+      `purchase.html?plan=pro&for=ai_tools`.
+    - **The key lives only in Settings.** `keyGate()` draws no form outside
+      `keySection()`; it answers with the locked pill or a link to
+      `settings.html#ai`. `proCard()` is gone.
+    - **The Desk** (`src/ui/ai-desk.js`, `ai-desk.css`): docked at ≥1100px
+      (main narrows by the measured `--ai-desk-w`, never translated), a sheet
+      below. text tasks → a line diff with one tick per hunk
+      (`src/lib/ai-diff.js`, pure, `test:ai-desk`); list → a checklist;
+      read → text with the AI mark. Versions v1…vN. **A refinement re-sends
+      the SAME task with the SAME JSON schema** (`refineBlock` in
+      `src/lib/ai-refine.js` appended to a field the job already sends), so
+      every parser and quote check still runs and neither provider's wire
+      format needed multi-turn. Accept writes through the owning model with
+      an Undo toast that does not time out. The session is a module-level
+      Map — no storage key, no idle write.
+    - **Tasks** (`src/lib/ai-tasks.js`): coverage, dialogue-pass,
+      beat-critique, story-steps, story-map, shot-draft, synopsis-script
+      (stage 1), logline, each wrapping the existing `ai.js` function.
+      `task.identity(ctx)` keys the session (one script pill shares one ctx
+      across three tasks); `editable: false` makes the input read-only where
+      the task rebuilds its job from ctx. The Screenplay Writer's toolbar has
+      one pill (Coverage · Dialogue pass · Critique this scene).
+    - **Proofs.** `prove:ai-desk` (95 checks, `scripts/fake-supabase.mjs`
+      `aiScenario('pro'|'no-ai'|'signed-out')`, `fake-ai.mjs` `deskAnswer`)
+      and `prove:ai-coverage` rewritten for pill → Desk. Three traps hit on
+      the way: the locked pill's `aria-disabled` (above); editor rows are
+      `<textarea>`s, so `hasText` never matches — read `inputValue()`; and
+      the Screenplay Writer's `beforeunload` leave prompt cancels a
+      `page.goto` unless the proof accepts that one native prompt.
+    - **Not moved yet.** Synopsis → script stages 2–3 keep their panel
+      (with a Settings link); the voice check renders inside its panel. No
+      AI answer has come from a real provider yet.
+
+38. **CI back to green on develop (13 Oct 2026).** Three steps had been red
+    on every push since the UI revamp, none of them from the AI Desk:
+    - **§43 drift was ORDER ONLY.** The naming passes reordered
+      navigation.json; `make-usage-names-sql.mjs --write` produced the same
+      42 names in the new order. The CHECK is `name = any(usage_names())`,
+      so the live database accepts the same names; re-running §43 live only
+      changes the console's listing order. `test:usage-names` had been
+      stopping `test:all`, so every later suite was skipped in CI.
+    - **`prove:storage`** still clicked the hub's removed
+      `[data-action="export-all"]` and `#importAllFile`; it drives the band's
+      Backup menu now (`bk-export`, and `bk-import` with the picker stubbed),
+      the same fix `verify`'s round trip got. Its editor section opened
+      `write.html?stay=1`, where the editor is a hidden tab; it opens
+      `screenplay.html` and accepts the leave prompt.
+    - **A real bug under it: the Screenplay Writer never drove the scenes.**
+      `screenplay.js` called `sceneSyncLater()` but never `mountHandoff()`,
+      so handoff.js's `getDoc` stayed `() => null` and every sync was a
+      no-op: scene headings typed on screenplay.html — the only writing page
+      since item 31, write.html redirects there — never reached the
+      Breakdown. It went unnoticed because the proof that would have seen it
+      (`prove:storage`'s "two projects" block) never got past the backup
+      crash in CI. Fixed by mounting the hand-off with `getDoc: () => doc`.
+    - **`prove:story-path`** expected exactly ten `.st-path-tab`s; the owner
+      added Beats & pacing, Pitch deck and Cover sheet as the strip's last
+      steps on 12 Oct (`.st-path-extra`, no `data-path`). The proof compares
+      the path tabs and checks the three extras on their own.
+    - `prove:ai-desk` joined the Gate workflow's verify job.

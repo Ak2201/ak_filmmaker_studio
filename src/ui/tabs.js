@@ -40,7 +40,18 @@
    than trusting one call at mount. Idempotent: the strip is rebuilt
    only when the set of tabs changes.
 
-   ARIA: role=tablist / tab / tabpanel, arrow keys, Home and End.
+   THE STRIP IS section-menu.js. This file READS the page (the sections,
+   their data-tab-label / -group / -icon / -hint / -badge, plan-gate's
+   data-tab-lock, and src/data/section-icons.json `pages` for module pages
+   that carry none) and hands the list to buildSectionMenu(); it never draws
+   a row itself. Three or more tabs get the side layout: the container
+   gets `.tabs-has-side` and tabs.css lays it out as a column at 1100px
+   and over, the strip plus a Sections sheet below. A change to a count,
+   hint, icon or lock patches the rows in place (updateSectionMenu), so
+   the strip, its scroll and focus survive.
+
+   ARIA: role=tablist (.tabs-list inside the nav) / tab / tabpanel, arrow
+   keys, Home and End.
    ============================================================ */
 import nav from '../data/navigation.json';
 import { stayEntry } from '../lib/navmodel.js';

@@ -174,7 +174,10 @@ await new Promise((r) => server.listen(PORT, r));
 const swText = fs.readFileSync(path.join(OUT, 'sw.js'), 'utf8');
 const manifestUrls = [...swText.matchAll(/"url":"([^"]+)"/g)].map((m) => m[1]);
 const STUB = /(^|\/)arunak-[^/]*\.html$/;
-const expectedPrecache = new Set(manifestUrls.filter((u) => !STUB.test(u)).map((u) => new URL(u, ORIGIN + '/').href));
+/* src/sw.js keeps 404.html out of the precache on purpose (IS_NOT_FOUND):
+   cached, the host's dead-end page could stand in for a real page offline. */
+const NOT_FOUND = /(^|\/)404\.html$/;
+const expectedPrecache = new Set(manifestUrls.filter((u) => !STUB.test(u) && !NOT_FOUND.test(u)).map((u) => new URL(u, ORIGIN + '/').href));
 const titleOf = (file) => ((fs.readFileSync(path.join(OUT, file), 'utf8').match(/<title>([^<]*)<\/title>/) || [])[1] || '').trim();
 
 const report = [];
@@ -292,7 +295,9 @@ for (const r of vercel.redirects || []) {
   let failed = null;
   await page.goto(ORIGIN + r.source, { waitUntil: 'networkidle' }).catch((e) => { failed = e.message; });
   const title = failed ? null : await page.title();
-  const want = titleOf(landsOn(r.destination.replace(/^\//, '')));
+  /* vercel.json names clean URLs (`/feature`); the file is feature.html. */
+  const dest = r.destination.replace(/^\//, '');
+  const want = titleOf(landsOn(/\.[a-z]+$/.test(dest) ? dest : dest + '.html'));
   check(`(c) ${r.source} still redirects to ${r.destination}`,
     !failed && title === want,
     failed ? failed.split('\n')[0] : `landed on ${new URL(page.url()).pathname}, title "${title}"`);

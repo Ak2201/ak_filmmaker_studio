@@ -1,6 +1,6 @@
 -- ============================================================
 -- 44. SYNC HEALTH AND LIMIT PRESSURE (Admin console v2, plan §3.6)
---     NOT RUN LIVE. Standalone file; supabase-schema.sql is not edited.
+--     RUN LIVE 13 Oct 2026. Standalone file; supabase-schema.sql is not edited.
 -- ------------------------------------------------------------
 -- Two read-only reports for the console's "Sync & storage" tab, and the
 -- one tiny counter that lets the client say when a sync write was

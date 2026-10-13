@@ -1,5 +1,5 @@
 -- ============================================================
--- 47. TOTAL DELETE KEEPS THE INVOICE, NOT THE PERSON   NOT RUN LIVE
+-- 47. TOTAL DELETE KEEPS THE INVOICE, NOT THE PERSON   RUN LIVE 13 Oct 2026
 -- ------------------------------------------------------------
 -- Owner decision, 12 Oct 2026: People gets a "Delete totally" button beside
 -- Clear. Clear (admin_reset_user) removes the membership and the session

@@ -1,5 +1,5 @@
 -- ============================================================
--- 42. CUSTOMER 360 AND ADMIN NOTES   NOT RUN LIVE
+-- 42. CUSTOMER 360 AND ADMIN NOTES   RUN LIVE 13 Oct 2026
 -- ------------------------------------------------------------
 -- Admin console v2, docs/ADMIN-CONSOLE-PLAN.md §3.3. One call that
 -- answers "what does this person's account look like?", and a place to

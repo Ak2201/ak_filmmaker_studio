@@ -113,7 +113,7 @@ title or data anywhere; `admin_customer` for a random uuid raises 22023
 ## Lane: §41 launch & health, §43 usage & cohorts, §44 sync & limits
 
 Standalone files at the repo root, **not yet folded into `supabase-schema.sql`**
-and **not run live** (no `RUN LIVE` marker is set on any of them):
+and **run live 13 Oct 2026** (confirmed by PostgREST probe: each section's functions exist and refuse anon with 42501). They are still not folded into `supabase-schema.sql`:
 
 | File | Contents |
 | --- | --- |

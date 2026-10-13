@@ -1,5 +1,5 @@
 -- ============================================================
--- 46. THE ROLE MATRIX   NOT RUN LIVE
+-- 46. THE ROLE MATRIX   RUN LIVE 13 Oct 2026
 -- ------------------------------------------------------------
 -- Admin console v2, docs/ADMIN-CONSOLE.md "§46". §45 gave the console three
 -- roles (owner, finance, support) and require_role(), and deliberately did

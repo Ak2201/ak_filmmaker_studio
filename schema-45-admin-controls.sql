@@ -1,6 +1,6 @@
 -- ============================================================
 -- 45. ADMIN CONTROLS: ROLES, FEATURE OVERRIDES, BANNER, SUPPORT QUEUE,
---     PASSES AND SHARES, DATA-SUBJECT TOOLS          RUN LIVE: not yet
+--     PASSES AND SHARES, DATA-SUBJECT TOOLS          RUN LIVE: 13 Oct 2026
 -- ------------------------------------------------------------
 -- Admin console v2, docs/ADMIN-CONSOLE-PLAN.md §3.7-§3.10, narrowed by
 -- §11 (owner decisions, 12 Oct 2026): NO public contact form, NO anon

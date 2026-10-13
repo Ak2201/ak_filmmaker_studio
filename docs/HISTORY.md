@@ -1907,3 +1907,33 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       steps on 12 Oct (`.st-path-extra`, no `data-path`). The proof compares
       the path tabs and checks the three extras on their own.
     - `prove:ai-desk` joined the Gate workflow's verify job.
+
+39. **The last AI tools move into the Desk (13 Oct 2026).** Synopsis →
+    script stages 2–3 and the coverage voice check were the two AI tools
+    still drawing their own panels. Owner's choice for stage 3: batch by
+    batch in the Desk, with the bulk run kept beside it.
+    - **Draft and write are split in `src/lib/scriptgen.js`**, because the
+      Desk's rule is that nothing is written before Accept:
+      `draftScenes()` / `applyScenes()` and `draftBatch()` /
+      `applyBatch(draft, keepIds)`, each apply returning an undo.
+      `runScenes()` and `runNextBatch()` are now the two halves in a row,
+      so the bulk "Write all / Resume" path is byte-for-byte the old
+      behaviour. `applyBatch` refuses a draft made at another cursor
+      (`GenError` 'stale'), and a scene the writer unticks is skipped the
+      way a scene the reply missed always was: the cursor still moves
+      past the whole batch.
+    - **Three Desk tasks** in `src/lib/ai-tasks.js`: `gen-scenes`,
+      `gen-batch` (identity = job + cursor, so each batch is its own
+      session) and `voice-check` (rewrites become alternate takes through
+      coverage.js's exported `addTake` / `removeTake`). A refinement rides
+      on a field the request already sends — the synopsis for the scene
+      list, the logline for a batch — through `refineBlock`.
+    - **Call sites.** write.js stage 2's "Lay out the scenes" and stage
+      3's "Next N scenes, in the Desk" are AI pills; the bulk button is
+      hidden on a plan without AI (the pill carries the Pro offer); the
+      old stage 2–3 key gate is gone. The voice check keeps its character
+      picker and disclosure; its run button is a pill.
+    - **Proofs.** `prove:ai-desk` 150 (new scenarios e–g: untick a scene
+      and Accept, Undo, Skip writes nothing, no idle write);
+      `prove:ai-coverage`'s voice section goes pill → Desk → Accept →
+      Undo. Every AI tool in the studio now goes through the Desk.

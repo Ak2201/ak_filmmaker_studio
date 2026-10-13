@@ -29,8 +29,9 @@
      close button stays a 44px target. Hidden in print.
 
    KNOWN EDGE: the bar is static, at the very top of <body>, so it
-   scrolls away rather than pinning. Content shifts down by its height
-   once, when it arrives; the sticky band measures itself as usual.
+   scrolls away rather than pinning. A banner cached this session is
+   mounted at module evaluation (no shift); only the first look shifts
+   content down by its height, once, when it arrives; the sticky band measures itself as usual.
    ============================================================ */
 import '../styles/site-banner.css';
 
@@ -121,7 +122,7 @@ async function fetchRow() {
 function run({ force = false } = {}) {
   if (!force) {
     const c = readCache();
-    if (c) { mount(c.row); return Promise.resolve(); }
+    if (c) { if (!mounted) mount(c.row); return Promise.resolve(); }
   }
   if (inflight) return inflight;
   inflight = fetchRow().then((row) => {
@@ -144,6 +145,11 @@ export function refreshBanner() {
 function start() {
   if (started || typeof document === 'undefined') return;
   started = true;
+  /* A banner already known this session is drawn NOW, before first paint,
+     so the page never lands and then drops by the bar's height. Only a
+     first look in a session has to wait for the network and idle time. */
+  const known = readCache();
+  if (known && known.row && document.body) mount(known.row);
   window.addEventListener('pagehide', () => {
     if (pending) ss((s) => s.setItem(CACHE_KEY, JSON.stringify(pending)));
   });

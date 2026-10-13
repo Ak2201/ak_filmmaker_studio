@@ -855,13 +855,30 @@ function renderAccountMine() {
    account or the plan changes. Nothing is stored. */
 let usageSeen = null;        // { st, usageList } | { failed: true }
 let usageFetching = false;
-function dropUsage() { usageSeen = null; }
+/* A plan or auth event marks the held answer STALE and refetches it, but
+   keeps drawing it meanwhile: clearing it painted "Counting your usage..."
+   and then the list again, a blink on every event. It is cleared outright
+   only when the signed-in account itself changes, so one person never sees
+   another's figures. */
+let usageStale = false;
+let usageUid = null;
+function sessionUid() {
+  try { const c = window.StudioCloud; const s = c && c.getSession && c.getSession(); return (s && s.user && s.user.id) || null; } catch (e) { return null; }
+}
+function dropUsage() {
+  const uid = sessionUid();
+  if (uid !== usageUid) { usageSeen = null; usageUid = uid; }
+  usageStale = true;
+}
 function wantUsage() {
-  if (usageSeen || usageFetching) return;
+  if ((usageSeen && !usageStale) || usageFetching) return;
   usageFetching = true;
+  usageStale = false;
+  const uid = sessionUid();
+  usageUid = uid;
   Promise.all([Billing.status(), import('../ui/plan-cards.js')])
-    .then(([st, m]) => { usageSeen = st ? { st, usageList: m.usageList } : { failed: true }; })
-    .catch(() => { usageSeen = { failed: true }; })
+    .then(([st, m]) => { if (sessionUid() !== uid) return; usageSeen = st ? { st, usageList: m.usageList } : (usageSeen && usageSeen.st ? usageSeen : { failed: true }); })
+    .catch(() => { if (!(usageSeen && usageSeen.st)) usageSeen = { failed: true }; })
     .finally(() => { usageFetching = false; if (!busy) render(); });
 }
 

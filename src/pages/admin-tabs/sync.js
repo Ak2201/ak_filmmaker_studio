@@ -51,7 +51,7 @@ function clientScopes(ctx) {
 }
 
 function head() {
-  const busy = S.overview.phase === 'loading' || S.pressure.phase === 'loading';
+  const busy = S.overview.phase === 'loading' || S.pressure.phase === 'loading' || S.overview.refreshing || S.pressure.refreshing;
   return h('div.us-bar', {}, [
     h('span.us-spacer'),
     busy ? h('span.ad-meta', { text: 'Checking…' })

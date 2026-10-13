@@ -330,22 +330,28 @@ const sub = (title, lead) => [h('h3.st-sub', { text: title }), lead ? h('p.st-mu
 const put = (el, ...kids) => { el.append(...kids.flat().filter(Boolean)); return el; };
 
 let bpSaveTimer = 0;
+let bpBodyMod = null;   // stage-guide-body.js once loaded: later renders paint in the same tick
+function paintBlueprintHosts(m, todo) {
+  for (const r of todo) {
+    try {
+      const inst = m.renderGuide(r.el, { stage: 'story', format: fmt(), items: r.items, fields: [] });
+      r.inst = inst;
+    } catch (e) { console.warn('[story] blueprint step failed', r.items, e); }
+  }
+  rewireNotes();      // the Bible's pencils point at the whole document again
+  refreshStepper();   // the answers read from the blueprint tick their steps
+  if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
+    landStepView(document.getElementById('path-' + reland));
+  }
+}
 function startBlueprintHosts() {
   const todo = [...bpHosts.values()].filter((r) => !r.started);
   if (!todo.length) return;
   todo.forEach((r) => { r.started = true; });
+  if (bpBodyMod) { paintBlueprintHosts(bpBodyMod, todo); return; }
   import('../ui/stage-guide-body.js').then((m) => {
-    for (const r of todo) {
-      try {
-        const inst = m.renderGuide(r.el, { stage: 'story', format: fmt(), items: r.items, fields: [] });
-        r.inst = inst;
-      } catch (e) { console.warn('[story] blueprint step failed', r.items, e); }
-    }
-    rewireNotes();      // the Bible's pencils point at the whole document again
-    refreshStepper();   // the answers read from the blueprint tick their steps
-    if (reland) {       // a link landed above blocks that were still loading: land again, unless the reader has moved
-      landStepView(document.getElementById('path-' + reland));
-    }
+    bpBodyMod = m;
+    paintBlueprintHosts(m, todo);
   }).catch((e) => {
     todo.forEach((r) => { r.started = false; });
     console.warn('[story] the blueprint questions could not load', e);

@@ -183,6 +183,9 @@ function openProject() {
    re-renders on its own events, and a re-mount must not drop the
    last keystroke. */
 let flushLast = null;
+/* The body module, once it has loaded: a later mount renders from it in the
+   same tick instead of showing the placeholder and swapping. */
+let bodyMod = null;
 
 /**
  * Append the Guide section for `stage` to `host`. Returns the section.
@@ -222,16 +225,24 @@ export function mountStageGuide(host, { stage } = {}) {
       + TITLES[stage].toLowerCase() + ', answered here for “' + (project.title || 'this film')
       + '”. Your answers are the blueprint’s own — the same ones, saved in the same place.'
   }));
-  const body = h('div.sg-body', { 'aria-live': 'polite' }, [
+  const body = h('div.sg-body', { 'aria-live': 'polite' }, bodyMod ? [] : [
     h('p.sg-loading', { text: 'Loading the questions…' })
   ]);
   section.append(body);
+  if (bodyMod) {
+    try {
+      const inst = bodyMod.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
+      flushLast = inst && inst.flush;
+      return section;
+    } catch (e) { console.warn('[stage-guide] sync render failed', e); }
+  }
 
   let started = false;
   const start = () => {
     if (started) return;
     started = true;
     import('./stage-guide-body.js').then((m) => {
+      bodyMod = m;
       if (!body.isConnected) return;
       const inst = m.renderGuide(body, { stage, format: fmt, items, fields: cover, stepper: true });
       flushLast = inst && inst.flush;

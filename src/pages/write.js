@@ -28,7 +28,7 @@
    delete and reorder patch the rows they touch (see "screenplay:
    structure"); only a restore, an import and the panels rebuild.
    ============================================================ */
-import { flushStorage } from '../lib/store.js';
+import Store, { flushStorage } from '../lib/store.js';
 /* write.html is retired: the Script, Drafts and the Script Breakdown
    own its jobs. An old link forwards by its fragment (write-route.js);
    ?stay=1 keeps this page. */
@@ -60,7 +60,7 @@ import BeatBoard from '../ui/beat-board.js';
    still reaches with import() at a click. The disclosure below has
    to name the host the key will actually go to, and a restated
    hostname is a privacy claim that goes stale. */
-import { apiHost, providerLabel } from '../lib/ai-providers.js';
+import { apiHost, providerLabel, hasKey } from '../lib/ai-providers.js';
 import PDF from '../lib/pdf.js';
 import Scenes from '../lib/scenes.js';
 import { unaddScenes } from '../lib/scene-bin.js';
@@ -1150,14 +1150,26 @@ function renderGenBeats() {
       })
     ]));
   }
+  /* The AI Desk's 'gen-scenes' task (src/lib/ai-tasks.js): the scene
+     list is proposed there, the writer unticks what they do not want,
+     and Accept writes the rest to the scene board — honouring the
+     replace checkbox above as it stands at that moment — with an Undo.
+     ctx at the click, so the beats sent are the ones on screen. */
   wrap.append(
     h('div.wr-gen-acts', {}, [
-      h('button.btn.primary', {
-        type: 'button', 'data-action': 'gen-scenes', disabled: genBusy,
-        text: genBusy ? 'Working…' : 'Lay out the scenes'
+      aiPill({
+        label: 'Lay out the scenes', tasks: ['gen-scenes'],
+        ctx: () => {
+          readGenBeats();
+          Scriptgen.save(gen);
+          return {
+            patch: () => { readGenBeats(); return { beats: gen.beats }; },
+            replaceScenes: () => genReplaceScenes,
+            after: () => { gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
+          };
+        }
       }),
-      genBusy ? h('button.btn', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
-      genBusy ? null : genBeatsPill('Draft the beats again')
+      genBeatsPill('Draft the beats again')
     ]),
     h('p.wr-gen-cost', {
       text: 'One request. This one writes the SCENE BOARD — so the breakdown, '
@@ -1224,14 +1236,24 @@ function renderGenPages() {
         : 'Nothing written yet. Each request covers ' + Scriptgen.BATCH_SIZE
           + ' scenes, so this list is about ' + p.batches + ' requests.'
     }),
+    /* Two ways on. The AI pill is the reviewed one: the AI Desk's
+       'gen-batch' task drafts the next batch, the writer reads it, ticks
+       the scenes to keep and accepts (an unticked scene is skipped and
+       the run moves past it). The bulk button writes every batch in a
+       row without stopping to ask; it is hidden — not greyed — on a plan
+       without AI, because the pill beside it already carries the offer,
+       and plan:changed (below) shows it once the plan is known. */
     h('div.wr-gen-acts', {}, [
-      h('button.btn.primary', {
-        type: 'button', 'data-action': 'gen-run-all', disabled: genBusy,
-        text: genBusy ? 'Writing…' : (p.done ? 'Resume and write the rest' : 'Write all ' + p.left + ' scenes')
+      aiPill({
+        label: 'Next ' + Math.min(Scriptgen.BATCH_SIZE, p.left) + ' scenes, in the Desk', tasks: ['gen-batch'],
+        ctx: () => ({
+          after: () => { gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
+        })
       }),
       h('button.btn', {
-        type: 'button', 'data-action': 'gen-run-one', disabled: genBusy,
-        text: 'Just the next ' + Math.min(Scriptgen.BATCH_SIZE, p.left)
+        type: 'button', 'data-action': 'gen-run-all', disabled: genBusy,
+        hidden: PlanGate.aiUnlocked() ? null : true,
+        text: genBusy ? 'Writing…' : (p.done ? 'Resume and write the rest' : 'Write all ' + p.left + ' scenes')
       }),
       genBusy ? h('button.btn.is-danger', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
       h('button.btn', { type: 'button', 'data-action': 'gen-reset', disabled: genBusy,
@@ -1259,6 +1281,12 @@ function renderGenerate() {
 
   const stage = genStage();
   const keyed = !!(AIm && Panelm && Panelm.hasKey());
+  /* What leaves the browser, said before any button on stages 2 and 3.
+     ai-panel.js's own disclose() once it has loaded, the same markup
+     before then — the pills load the model code only at a click. */
+  const disclosure = () => (Panelm ? Panelm.disclose(GEN_DISCLOSURE) : h('div.ai-disclose', {}, [
+    h('strong', { text: 'What gets sent, and where' }), h('p', { text: GEN_DISCLOSURE })
+  ]));
 
   /* STAGE 1 IS NOT AN AI STAGE, and gating it whole made it look
      like one. Writing a synopsis is writing, and LOADING one off the
@@ -1279,27 +1307,14 @@ function renderGenerate() {
     return section;
   }
 
-  if (!AIm) {
-    section.append(
-      h('p.wr-gen-note', {
-        text: 'Needs your own ' + providerLabel() + ' API key, kept on this '
-          + 'device and sent to nobody but ' + apiHost() + '.'
-      }),
-      h('div.wr-gen-acts', {}, [
-        h('button.btn', { type: 'button', 'data-action': 'gen-open', text: 'Open' })
-      ])
-    );
-    return section;
-  }
-  if (!Panelm.hasKey()) {
-    section.append(Panelm.keyGate('draft a script from a synopsis'));
-    return section;
-  }
-
+  /* Stages 2 and 3 have no gate of their own any more: every request
+     on them is an AI pill (locked plan → the Pro offer; no key →
+     Settings) or the bulk button, which is hidden without AI and
+     checks for a key itself. What is already written stays readable. */
   if (stage === 'beats') section.append(renderGenBeats());
   else section.append(renderGenPages());
   section.append(...genStatusBlock());
-  section.append(Panelm.disclose(GEN_DISCLOSURE));
+  section.append(disclosure());
   return section;
 }
 
@@ -2425,10 +2440,6 @@ function genFail(err) {
   console.warn('[write] gen', err);
 }
 
-delegate(document, 'click', '[data-action="gen-open"]', async () => {
-  if (await primeAI()) render();
-});
-
 delegate(document, 'change', '[data-action="gen-replace-scenes"]', (e, box) => {
   genReplaceScenes = !!box.checked;
   render();
@@ -2478,25 +2489,6 @@ delegate(document, 'input', '[data-beat-text]', (e, ta) => {
   Scriptgen.save(gen);
 });
 
-delegate(document, 'click', '[data-action="gen-scenes"]', async () => {
-  if (genBusy) return;
-  if (!await primeAI()) return;
-  readGenBeats();
-  Scriptgen.save(gen);
-  genBegin();
-  render();
-  try {
-    const res = await Scriptgen.runScenes(gen, {
-      onStatus: genSay, signal: genAbort.signal, replaceScenes: genReplaceScenes
-    });
-    gen = res.job;
-    genStatus = '';
-    say(res.scenes + ' scenes on the board. The breakdown and stripboard can read them now.');
-  } catch (err) { genFail(err); }
-  genEnd();
-  render();
-});
-
 /* One batch, or all of them.
 
    `genAll` is checked at the TOP of every turn and cleared by Stop, so
@@ -2506,6 +2498,14 @@ delegate(document, 'click', '[data-action="gen-scenes"]', async () => {
    the one failure this feature is not allowed to have. */
 async function genRun(all) {
   if (genBusy) return;
+  /* The pill does these two checks for the reviewed path; the bulk
+     button is a plain button, so it asks them itself. */
+  if (!PlanGate.aiUnlocked()) return;
+  if (!hasKey()) {
+    genError = 'No AI key on this device. Add your key once in Settings (settings.html#ai); every AI tool uses it.';
+    render();
+    return;
+  }
   if (!await primeAI()) return;
   genBegin();
   genAll = all;
@@ -2529,8 +2529,15 @@ async function genRun(all) {
   render();
 }
 
-delegate(document, 'click', '[data-action="gen-run-one"]', () => genRun(false));
 delegate(document, 'click', '[data-action="gen-run-all"]', () => genRun(true));
+/* The bulk button is hidden until the plan is known to carry AI, and
+   the plan arrives after first paint. Toggled in place rather than by
+   a re-render, so a plan landing mid-sentence never rebuilds the page
+   under the caret. */
+Store.subscribe('plan:changed', () => {
+  const on = PlanGate.aiUnlocked();
+  document.querySelectorAll('[data-action="gen-run-all"]').forEach((b) => { b.hidden = !on; });
+});
 
 delegate(document, 'click', '[data-action="gen-stop"]', () => {
   genAll = false;

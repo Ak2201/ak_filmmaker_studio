@@ -587,3 +587,91 @@
   color: var(--ink-body);
   overflow-wrap: anywhere;
 }
+
+/* ============================================================
+   SETTINGS, OBSIDIAN LOOK (13 Oct 2026)
+   ------------------------------------------------------------
+   The account and the plan read as the design's two big blocks: a
+   lilac eyebrow, a large serif title and a quiet deck sit on the
+   page itself, and the thing they introduce is the card. Every
+   other settings card keeps its surface and takes the new type.
+   ============================================================ */
+.st-console .st-sec .bd-eyebrow { font-family: var(--f-body); font-size: var(--t-base); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--brand-deep); }
+.st-console .st-sec .bd-h2 { font-family: var(--face-display); font-weight: 700; font-size: var(--t-2xl); letter-spacing: -0.02em; line-height: 1.1; }
+.st-console .st-sec .bd-sub { color: var(--ink-muted); }
+
+/* the account and the plan: head on the page, card below */
+#you.st-sec, #plan-summary.st-sec { padding: 0; background: none; border: 0; box-shadow: none; gap: var(--s3); margin-top: var(--s3); }
+#you.st-sec .bd-h2, #plan-summary.st-sec .bd-h2 { font-size: var(--t-3xl); }
+#you.st-sec .bd-sub, #plan-summary.st-sec .bd-sub { font-size: var(--t-base); }
+
+/* the account card */
+#you .account-menu.am-inline {
+  max-width: none;
+  display: grid;
+  gap: 0;
+  padding: var(--s5) var(--s6);
+  background: var(--sk-deco-bg, var(--paper-raised));
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+}
+#you .am-inline .am-you { gap: var(--s4); padding: 0 0 var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); margin: 0; }
+#you .am-inline .am-avatar { width: 4.25rem; height: 4.25rem; font-size: var(--t-xl); font-family: var(--f-body); font-weight: 700; }
+#you .am-inline .am-you-name { font-size: var(--t-xl); font-family: var(--f-body); font-weight: 600; }
+#you .am-inline .am-you-mail { font-size: var(--t-small); letter-spacing: 0.04em; }
+#you .am-inline .am-account:not(:empty) { padding-block: var(--s4); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); margin: 0; }
+#you .am-inline .am-sync { padding: var(--s4) 0; border-bottom: 0; font-size: var(--t-small); color: var(--ink-body); }
+#you .am-inline .am-sync-dot { width: 8px; height: 8px; }
+#you .am-inline .am-item {
+  width: auto;
+  justify-self: start;
+  padding: var(--s3) 0;
+  border-radius: 0;
+  font-size: var(--t-tiny);
+  letter-spacing: var(--track-label);
+  text-decoration: none;
+  color: var(--ink);
+}
+#you .am-inline a.am-item { text-decoration: none; }
+@media (hover: hover) {
+  #you .am-inline .am-item:hover { background: none; color: var(--accent-deep); }
+  #you .am-inline .am-item.danger:hover { background: none; color: var(--danger); }
+}
+#you .am-inline .am-item.danger { margin-top: var(--s4); padding-top: var(--s5); border-top: var(--sk-card-line-w) solid var(--sk-card-line); width: 100%; border-radius: 0; }
+#you .am-inline .am-foot { padding: 0; border-top: 0; margin: 0; font-size: var(--t-small); }
+
+/* the plan card */
+.st-plan-card {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--s6);
+  background: var(--sk-deco-bg, var(--paper-raised));
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.st-plan-card > * { margin: 0; }
+.st-plan-pills { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.st-led {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+}
+.st-led.is-ok   { background: var(--ok-wash);     color: var(--ok-deep); }
+.st-led.is-warn { background: var(--warn-wash);   color: var(--warn-deep); }
+.st-led.is-bad  { background: var(--danger-wash); color: var(--danger); }
+.st-led .st-dot { background: currentColor; box-shadow: 0 0 6px 0 currentColor; }
+.st-plan-card .st-plan-line { font-family: var(--f-body); font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.01em; }
+.st-plan-card .st-plan-link { padding-top: var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); }
+@media (max-width: 719px) {
+  #you .account-menu.am-inline, .st-plan-card { padding: var(--s4); }
+}
+#you .am-inline .am-item.danger, #you .am-inline .am-item.danger:hover { color: var(--danger); }

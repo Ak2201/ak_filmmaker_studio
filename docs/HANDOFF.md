@@ -623,7 +623,7 @@ new RPC so `prove:billing` exercises the real pages.
 | Q3 | ~~Writing-goal history synced across devices~~ | DONE in code as §37 (B16); owner runs the SQL |
 | Q4 | Paid template / sample-pack plumbing + one free ORIGINAL starter | gate by a `plans.features` key; no real people, no reproduced scripts (`CLAUDE.md` item 8) |
 | Q5 | **Owner decision:** Tamil-script UI labels | reverses `lang.js`'s English-labels design — decide before anyone builds |
-| Q6 | ~~AI Desk: one key place, Pro-locked AI pills, a review-and-refine sidebar~~ | **DONE 13 Oct 2026** (PR #9, HISTORY 37–38). Remaining: move synopsis → script stages 2–3 (`draftSceneList`, `draftScenePages`) and the coverage voice check into Desk tasks (`src/lib/ai-tasks.js`); owner to try it once with a real key — no answer has come from a real provider yet |
+| Q6 | ~~AI Desk: one key place, Pro-locked AI pills, a review-and-refine sidebar~~ | **DONE 13 Oct 2026** (PR #9, HISTORY 37–38). Stages 2–3 and the voice check moved in too (HISTORY 39), so every AI tool goes through the Desk. Remaining: owner to try it once with a real key — no answer has come from a real provider yet |
 | Q7 | §43 re-run live (optional) | the 13 Oct regeneration is a REORDER of the same 42 names; the live CHECK already accepts them, so re-running only changes the console's listing order |
 
 ### R — Sell-ready pass (lane 6): DONE 9 Oct on `feature/sell-ready`, merged to `main`

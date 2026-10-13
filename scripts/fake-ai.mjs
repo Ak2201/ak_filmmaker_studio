@@ -95,3 +95,118 @@ export function installFakeFetch(respond, log = []) {
 }
 
 export { anthropicSSE, geminiSSE };
+
+/* ============================================================
+   DESK ANSWERS — deterministic replies for the AI Desk's tasks
+   ------------------------------------------------------------
+   `deskAnswer({ system, user })` returns the model's JSON for the
+   three script-page tasks (coverage, dialogue pass, beat critique),
+   keyed off the prompt text the existing ai.js builders write, so a
+   proof can hand it straight to anthropicSSE / geminiSSE (browser,
+   via Playwright route()) or return it from installFakeFetch's
+   `respond` (Node).
+
+   REFINEMENTS. A Desk refine re-sends the task's own system prompt
+   and schema with a user message holding the original input, the
+   previous version's JSON and the chat instructions, numbered
+   "1. …", "2. …" (src/lib/ai-refine.js refineBlock()). refineRound()
+   counts the numbers in the last such list, and the answer carries
+   the version it is, so v1, v2 and v3 are each different and each
+   predictable:
+
+     dialogue   every EVEN-indexed line of the speech (0, 2, 4 …) gets
+                " (pass vN)" appended; odd lines are left alone. A
+                three-line speech therefore yields TWO hunks with an
+                unchanged line between them, which is what a proof
+                needs to untick one and accept the other.
+     critique   notes quote the first answer verbatim; the verdict
+                ends "(vN)".
+     coverage   every quote is copied from the scene text sent; the
+                notes and the verdict reason end "(vN)".
+   ============================================================ */
+
+/** How many numbered chat instructions the prompt carries (0 = first send). */
+export function refineRound(user) {
+  /* The numbered list that follows the instructions heading — in
+     src/lib/ai-refine.js that is "The writer asks for these changes,
+     in order:" — taking the LAST such list in the prompt. */
+  const re = /(?:instruction|asks for these changes|changes, in order)[^\n]*\n((?:[ \t]*\d+[.)][ \t]+[^\n]*(?:\n|$))+)/gi;
+  let block = '';
+  for (const m of String(user || '').matchAll(re)) block = m[1];
+  let n = 0;
+  for (const m of block.matchAll(/^\s*(\d+)[.)]\s+\S/gm)) n = Math.max(n, Number(m[1]));
+  return n;
+}
+
+/** The speech block buildDialoguePrompt writes: the lines after "speech:"
+    up to the next blank line or "---" section. */
+export function speechOf(user) {
+  const m = String(user || '').match(/(?:^|\n)speech:\n([\s\S]*?)(?:\n\s*\n|\n---|$)/);
+  return m ? m[1] : '';
+}
+
+/** What a dialogue pass proposes for `speech` at version `v`. */
+export function passedSpeech(speech, v) {
+  return String(speech).split('\n').map((l, i) => (i % 2 === 0 && l.trim() ? l + ' (pass v' + v + ')' : l)).join('\n');
+}
+
+function firstAnswer(user) {
+  const m = String(user || '').match(/what the writer has put in it:\n\s+[^:\n]+:\s*([^\n]+)/);
+  return m ? m[1].trim() : '';
+}
+
+export function deskAnswer({ system = '', user = '' } = {}) {
+  const v = refineRound(user) + 1;
+  const tag = ' (v' + v + ')';
+
+  if (/--- THE SPEECH TO WORK ON ---/.test(user) || /dialogue editor/i.test(system)) {
+    const speech = speechOf(user) || 'Line one.';
+    return {
+      keep: 'The rhythm already works' + tag,
+      options: [
+        { text: passedSpeech(speech, v), note: 'Cuts the explaining' + tag },
+        { text: speech.split('\n').reverse().join('\n'), note: 'Reordered' + tag }
+      ]
+    };
+  }
+
+  if (/--- THE STEP TO CRITIQUE ---/.test(user)) {
+    const a = firstAnswer(user);
+    const quote = a.slice(0, Math.min(24, a.length)).trim();
+    return {
+      verdict: 'Strong enough to build on' + tag,
+      notes: [
+        { quote, problem: 'The want is stated, not shown' + tag, tryThis: 'Put it in an action' + tag },
+        { quote, problem: 'The cost is unclear' + tag, tryThis: 'Name what he loses' + tag }
+      ]
+    };
+  }
+
+  const scenes = [...String(user).matchAll(/--- SCENE (\S+) ---\n([\s\S]*?)(?=\n--- SCENE |\n*$)/g)]
+    .map((m) => ({ n: m[1], text: m[2] }));
+  if (scenes.length) {
+    const quoteFrom = (t) => {
+      const line = t.split('\n').map((x) => x.trim()).find((x) => x.length > 8 && !/^(INT|EXT)[. ]/.test(x)) || t.trim();
+      return line.slice(0, 30).trim();
+    };
+    return {
+      scenes: scenes.map((s) => ({ scene: s.n, summary: 'Scene ' + s.n + ' moves on' + tag })),
+      evidence: scenes.slice(0, 4).map((s, i) => ({
+        aspect: ['premise', 'character', 'dialogue', 'pacing'][i], scene: s.n, quote: quoteFrom(s.text), note: 'Shows the want' + tag
+      }))
+    };
+  }
+
+  if (/Write the coverage/.test(user)) {
+    const sec = (assessment) => ({ assessment: assessment + tag, points: [] });
+    return {
+      logline: 'A son leaves home to find work' + tag,
+      premise: sec('Simple and clear'),
+      structure: { assessment: 'A clean line' + tag, actBreaks: [], points: [] },
+      character: { protagonist: 'ANBU', want: 'Work', need: 'Forgiveness', assessment: 'Want clear' + tag, points: [] },
+      dialogue: sec('Mostly natural'), pacing: sec('Brisk'), marketability: sec('An OTT drama'),
+      verdict: 'consider', verdictWhy: 'A voice worth developing' + tag
+    };
+  }
+  return { ok: true };
+}

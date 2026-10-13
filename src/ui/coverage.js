@@ -19,7 +19,8 @@
       be sent, where, and roughly what it costs BEFORE the button:
       "about N requests", tokens ≈ characters ÷ 4 (and that Tamil
       script runs higher than that).
-   2. TWO GATES. No key → ai-panel.js's key gate. No scene headings
+   2. TWO GATES. The AI pill (locked plan → the Pro offer; no key →
+      Settings) and the Desk it opens. No scene headings
       (or a character with fewer than two lines) → a sentence saying
       so and no button to press.
    3. QUOTES ARE CHECKED. src/lib/ai.js strips every quotation that
@@ -51,6 +52,7 @@ import StudioUI from './chrome.js';
 import PDF from '../lib/pdf.js';
 import { apiHost } from '../lib/ai-providers.js';
 import { ask } from './dialog.js';
+import { aiPill } from './ai-pill.js';
 
 let getDoc = () => null;
 let save = () => {};
@@ -97,14 +99,69 @@ function prime() {
      { v:1, status:'partial'|'done', sig, at, model, revision,
        checkpoint?  (partial)   { sig, batchCount, parts },
        result?      (done)      what runCoverage() resolved to }  */
-const docs = () => {
-  const d = getDoc();
-  return d && Array.isArray(d.documents) ? d.documents : [];
-};
-const stored = () => docs().filter((d) => d && d.coverage && typeof d.coverage === 'object');
-const done = () => stored().filter((d) => d.coverage.status === 'done' && d.coverage.result);
-const partialFor = (sig) => stored().find((d) => d.coverage.status === 'partial'
-  && d.coverage.checkpoint && d.coverage.checkpoint.sig === sig);
+/* The storage half, bound to a script doc and its save path. Exported
+   (coverageStore) so the AI Desk's coverage task — which runs on
+   script.html too, where this tab is not mounted — stores a report in
+   exactly the shape and place this tab reads, through the page's own
+   save. ONE copy of "where a coverage lives". */
+export function coverageStore(getDocFn, saveFn) {
+  const docsOf = () => {
+    const d = getDocFn();
+    return d && Array.isArray(d.documents) ? d.documents : [];
+  };
+  const storedOf = () => docsOf().filter((d) => d && d.coverage && typeof d.coverage === 'object');
+  const doneOf = () => storedOf().filter((d) => d.coverage.status === 'done' && d.coverage.result);
+  const partialOf = (sig) => storedOf().find((d) => d.coverage.status === 'partial'
+    && d.coverage.checkpoint && d.coverage.checkpoint.sig === sig);
+  const revision = () => {
+    const d = getDocFn();
+    const revs = d && Array.isArray(d.revisions) ? d.revisions : [];
+    return revs.length ? revs[revs.length - 1].name : '';
+  };
+
+  /** Store the partial run, so Stop or a closed tab never bills twice. */
+  function storeCheckpoint(cp) {
+    const d = getDocFn();
+    if (!d || !Array.isArray(d.documents)) return;
+    let doc = partialOf(cp.sig);
+    const now = new Date().toISOString();
+    const body = 'Coverage in progress: ' + cp.parts.length + ' of ' + cp.batchCount
+      + ' parts of the script read. Resume it from the Coverage tab — the parts already read are not sent again.';
+    if (!doc) {
+      doc = { id: newDocId(), title: 'Coverage (in progress)', kind: 'Notes', body, updated: now,
+        coverage: { v: 1, status: 'partial', sig: cp.sig, at: now, model: cp.model, revision: revision(), checkpoint: cp } };
+      d.documents.push(doc);
+    } else {
+      doc.body = body;
+      doc.updated = now;
+      doc.coverage = { ...doc.coverage, model: cp.model, checkpoint: cp };
+    }
+    saveFn();
+  }
+
+  function storeResult(res) {
+    const d = getDocFn();
+    if (!d || !Array.isArray(d.documents)) return null;
+    const now = new Date().toISOString();
+    const meta = { at: now, revision: revision() };
+    let doc = partialOf(res.sig);
+    if (!doc) { doc = { id: newDocId(), kind: 'Notes' }; d.documents.push(doc); }
+    doc.title = 'Coverage — ' + (VERDICT_WORD[res.report.verdict] || 'report') + ' — ' + stamp(now).split(',')[0];
+    doc.kind = 'Notes';
+    doc.body = reportText(res, meta);
+    doc.updated = now;
+    doc.coverage = { v: 1, status: 'done', sig: res.sig, at: now, model: res.model, revision: meta.revision, result: res };
+    saveFn();
+    return doc;
+  }
+
+  return { docs: docsOf, stored: storedOf, done: doneOf, partialFor: partialOf, revisionLabel: revision, storeCheckpoint, storeResult };
+}
+
+const store = coverageStore(() => getDoc(), () => save());
+const docs = () => store.docs();
+const done = () => store.done();
+const partialFor = (sig) => store.partialFor(sig);
 
 function liveElements() {
   const d = getDoc();
@@ -116,12 +173,6 @@ function liveElements() {
     if (el && el.text !== ta.value) el.text = ta.value;
   }
   return els;
-}
-
-function revisionLabel() {
-  const d = getDoc();
-  const revs = d && Array.isArray(d.revisions) ? d.revisions : [];
-  return revs.length ? revs[revs.length - 1].name : '';
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -190,42 +241,6 @@ function newDocId() {
     : 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-/** Store the partial run, so Stop or a closed tab never bills twice. */
-function storeCheckpoint(cp) {
-  const d = getDoc();
-  if (!d || !Array.isArray(d.documents)) return;
-  let doc = partialFor(cp.sig);
-  const now = new Date().toISOString();
-  const body = 'Coverage in progress: ' + cp.parts.length + ' of ' + cp.batchCount
-    + ' parts of the script read. Resume it from the Coverage tab — the parts already read are not sent again.';
-  if (!doc) {
-    doc = { id: newDocId(), title: 'Coverage (in progress)', kind: 'Notes', body, updated: now,
-      coverage: { v: 1, status: 'partial', sig: cp.sig, at: now, model: cp.model, revision: revisionLabel(), checkpoint: cp } };
-    d.documents.push(doc);
-  } else {
-    doc.body = body;
-    doc.updated = now;
-    doc.coverage = { ...doc.coverage, model: cp.model, checkpoint: cp };
-  }
-  save();
-}
-
-function storeResult(res) {
-  const d = getDoc();
-  if (!d || !Array.isArray(d.documents)) return null;
-  const now = new Date().toISOString();
-  const meta = { at: now, revision: revisionLabel() };
-  let doc = partialFor(res.sig);
-  if (!doc) { doc = { id: newDocId(), kind: 'Notes' }; d.documents.push(doc); }
-  doc.title = 'Coverage — ' + (VERDICT_WORD[res.report.verdict] || 'report') + ' — ' + stamp(now).split(',')[0];
-  doc.kind = 'Notes';
-  doc.body = reportText(res, meta);
-  doc.updated = now;
-  doc.coverage = { v: 1, status: 'done', sig: res.sig, at: now, model: res.model, revision: meta.revision, result: res };
-  save();
-  return doc;
-}
-
 /* ---- render ------------------------------------------------- */
 function paint() {
   const old = document.getElementById(SECTION_ID);
@@ -278,13 +293,10 @@ function renderRunPanel() {
   const panel = h('div.ai-panel.cv-run.cv-noprint');
   panel.append(h('div.ai-head', {}, [h('h3.ai-title', { text: 'A reader’s report' }), Panelm.aiMark('AI')]));
 
-  const kg = Panelm.keyGate('Coverage', { lead: false });
-  if (kg) {
-    panel.append(kg);
-    if (kg.dataset.blocking === 'true') return panel;
-  }
-  panel.append(Panelm.keyBar());
-
+  /* No key gate here any more: the AI pill below is the way in, and
+     it is greyed (with the Pro offer) on a plan without AI, and sends
+     a device with no key to Settings. The plan and the cost are still
+     stated here, before the pill, because they are true either way. */
   const els = liveElements();
   const plan = AIm.planCoverage(els);
   if (!plan.batches.length) {
@@ -327,20 +339,21 @@ function renderRunPanel() {
   peek.append(pre);
   panel.append(peek);
 
+  /* The run itself is the AI Desk's 'coverage' task (src/lib/ai-tasks.js):
+     the same runCoverage(), the same checkpoints, stored through
+     coverageStore() above — and the Desk lets the writer keep only the
+     points they accept. */
   const acts = h('div.ai-acts');
-  if (run.running) {
-    acts.append(h('button.btn.danger', { type: 'button', 'data-action': 'cv-stop', text: 'Stop' }));
-  } else if (cp) {
-    acts.append(h('button.btn.primary', { type: 'button', 'data-action': 'cv-run', text: 'Resume — ' + cp.parts.length + ' of ' + plan.batches.length + ' read' }));
-    acts.append(h('button.btn', { type: 'button', 'data-action': 'cv-restart', text: 'Start over' }));
-  } else {
-    acts.append(h('button.btn' + (have ? '' : '.primary'), {
-      type: 'button', 'data-action': 'cv-run',
-      text: have ? 'Run coverage again' : 'Run coverage'
-    }));
-  }
+  const pill = aiPill({
+    label: cp ? 'Resume coverage — ' + cp.parts.length + ' of ' + plan.batches.length + ' read'
+      : (have ? 'Run coverage again' : 'Run coverage'),
+    tasks: ['coverage'],
+    ctx: { identity: 'coverage:' + sig, getDoc: () => getDoc(), elements: () => liveElements(), save: () => save(), after: () => paint(), progress: () => paint() }
+  });
+  if (pill) acts.append(pill);
+  if (cp) acts.append(h('button.btn', { type: 'button', 'data-action': 'cv-restart', text: 'Start over' }));
   panel.append(acts);
-  if (have && !run.running) {
+  if (have) {
     panel.append(h('p.ai-caveat', { text: 'This exact draft already has coverage, below. Running it again bills again.' }));
   }
   const st = Panelm.statusLine(run.status);
@@ -441,10 +454,11 @@ function renderReport() {
 function renderVoicePanel() {
   const panel = h('div.ai-panel.cv-voice.cv-noprint');
   panel.append(h('div.ai-head', {}, [h('h3.ai-title', { text: 'A character’s voice' }), Panelm.aiMark('AI')]));
-  if (!Panelm.aiAllowed()) { panel.append(Panelm.proCard()); return panel; }
-  if (!Panelm.hasKey()) {
-    panel.append(Panelm.gate('No API key on this device.', 'Add one in the report panel above to check a voice.'));
-    return panel;
+  /* Locked plan → the locked pill; no key → the Settings link. */
+  const kg = Panelm.keyGate('The voice check');
+  if (kg) {
+    panel.append(kg);
+    if (kg.dataset.blocking === 'true') return panel;
   }
   const els = liveElements();
   const cast = AIm.speakingCharacters(els);
@@ -568,47 +582,20 @@ function removeTake(id, text) {
   commitRow(id, el);
 }
 
-/* ---- the run ------------------------------------------------ */
-async function startCoverage(fresh) {
-  if (run.running || !AIm) return;
-  const els = liveElements();
-  const sig = AIm.scriptSignature(els);
+/* ---- the run ------------------------------------------------
+   Coverage runs from the AI Desk now (the pill in renderRunPanel).
+   "Start over" stays here: it only discards the stored partial run,
+   after a confirm, so the next run reads from the first scene. */
+async function discardPartial() {
+  if (!AIm) return;
+  const sig = AIm.scriptSignature(liveElements());
   const part = partialFor(sig);
-  if (fresh && part) {
-    const i = getDoc().documents.indexOf(part);
-    if (i >= 0) getDoc().documents.splice(i, 1);
-    save();
-  }
-  const prior = !fresh && part ? part.coverage.checkpoint : null;
-  if (!prior && done().some((d) => d.coverage.sig === sig)) {
-    if (!await ask('This exact draft already has a coverage report. Run it again? That sends the script again and bills your account again. The old report is kept.')) return;
-  }
-  run.running = true; run.error = ''; run.status = 'Starting…';
-  run.abort = new AbortController();
-  paint();
-  let res;
-  try {
-    res = await AIm.runCoverage({
-      elements: els.map((e) => ({ ...e })),
-      title: PDF.projectTitle(),
-      context: BPm.blueprintContext(),
-      prior
-    }, {
-      signal: run.abort.signal,
-      onStatus: (m) => { run.status = m; setStatus('.cv-run .ai-status', m); },
-      onCheckpoint: (cp) => storeCheckpoint(cp)
-    });
-  } catch (e) {
-    run.running = false; run.abort = null; run.status = '';
-    run.error = (e && e.message) || 'Something went wrong. What was read so far is kept.';
-    paint();
-    return;
-  }
-  const doc = storeResult(res);
-  run.running = false; run.abort = null;
-  run.status = 'Coverage written: ' + (VERDICT_WORD[res.report.verdict] || 'no verdict') + ' · ' + plural(res.requests, 'request', 'requests') + ' made.'
-    + (res.removed ? ' ' + quotesRemovedSentence(res) : '');
-  viewId = doc ? doc.id : '';
+  if (!part) return;
+  if (!await ask('Start the coverage again from the first scene? The parts already read are discarded and will be sent — and billed — again.')) return;
+  const i = docs().indexOf(part);
+  if (i >= 0) getDoc().documents.splice(i, 1);
+  save();
+  run.status = 'The parts already read were discarded. Run coverage reads from the first scene.';
   paint();
 }
 
@@ -646,12 +633,7 @@ function printReport(docId) {
 }
 
 function wire() {
-  delegate(document, 'click', '[data-action="cv-run"]', () => { startCoverage(false); });
-  delegate(document, 'click', '[data-action="cv-restart"]', async () => {
-    if (!await ask('Start the coverage again from the first scene? The parts already read are discarded and will be sent — and billed — again.')) return;
-    startCoverage(true);
-  });
-  delegate(document, 'click', '[data-action="cv-stop"]', () => { if (run.abort) run.abort.abort(); });
+  delegate(document, 'click', '[data-action="cv-restart"]', () => { discardPartial(); });
   delegate(document, 'change', 'select[data-action="cv-view"]', (e, sel) => { viewId = sel.value; paint(); });
   delegate(document, 'click', '[data-action="cv-print"]', (e, btn) => printReport(btn.dataset.doc));
   delegate(document, 'change', 'select[data-action="cv-voice-pick"]', (e, sel) => {

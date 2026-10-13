@@ -49,6 +49,7 @@ import AI from '../lib/ai.js';
 import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { askDanger } from './dialog.js';
+import { aiPill, refreshPills } from './ai-pill.js';
 
 /* View state, and none of it is stored. Whether the key form is
    open is not the user's work, and a "replace your key" form that
@@ -64,38 +65,32 @@ export function onAIChange(fn) {
   return () => listeners.delete(fn);
 }
 function announce() {
+  try { refreshPills(); } catch (e) { console.warn('[ai-panel]', e); }
   for (const fn of listeners) { try { fn(); } catch (e) { console.warn('[ai-panel]', e); } }
 }
 
-/* PLAN GATE (Pro). allowed('ai_tools') is true whenever the plan is
-   unknown — signed out, unreachable, key missing — so this FAILS OPEN and
-   `npm run verify`, which loads every page signed out, sees no wall.
-   Only a plan that says ai_tools: false closes it, and then it closes
-   every AI entry point at once, because they all ask this module:
-   hasKey() reads false and keyGate() answers with the Pro card, which is
-   `blocking`. Saved AI output is never hidden: this draws a card INSTEAD
-   OF THE TOOL, not instead of anything you already hold. */
-export function aiAllowed() { return PlanGate.allowed('ai_tools'); }
+/* PLAN GATE (Pro). aiUnlocked() is LOCKED unless a known plan includes
+   ai_tools — signed out and "plan not loaded yet" both read locked, and a
+   pill unlocks live on 'plan:changed'. It closes every AI entry point at
+   once, because they all ask this module: hasKey() reads false and
+   keyGate() answers with the locked pill, which is `blocking`. Saved AI
+   output is never hidden: this draws a pill INSTEAD OF THE TOOL, not
+   instead of anything you already hold. */
+export function aiAllowed() { return PlanGate.aiUnlocked(); }
 export function hasKey() { return AI.hasKey() && aiAllowed(); }
 
-/** The calm card shown where a tool would be. */
-export function proCard() {
-  const box = h('div.ai-gate.ai-pro');
-  box.append(h('p', {}, [h('strong', { text: 'AI tools come with Pro.' })]));
-  box.append(h('p', { text: 'They read your own writing and suggest, critique and draft, on your own key, and only when you click.' }));
-  const see = h('a', { href: 'purchase.html', text: 'See plans' });
-  box.append(h('p', {}, [see]));
-  box.append(h('p', { text: 'Nothing you\u2019ve written is affected.' }));
-  /* The plan named by the rows (the console may move AI to another tier)
-     and its price; the heading's "Pro" is the default the matrix ships. */
-  PlanGate.offerFor(['ai_tools']).then((o) => {
-    if (!o) return;
-    see.href = o.href;
-    see.textContent = 'See ' + PlanGate.offerText(o) + ' \u2192';
-  }).catch(() => { /* See plans stands */ });
-  box.dataset.blocking = 'true';
-  return box;
+/** The locked wrapper: a short line and a locked pill. */
+function lockedGate(what) {
+  const wrap = h('div.ai-keygate.ai-locked');
+  wrap.append(h('p.ai-gate-line', { text: 'AI tools come with Pro.' }));
+  wrap.append(aiPill({ label: what || 'AI tools' }));
+  wrap.dataset.blocking = 'true';
+  return wrap;
 }
+
+/** deprecated — agent C removes the last caller (coverage.js). Returns
+    the same locked keyGate wrapper. */
+export function proCard() { return lockedGate('Coverage'); }
 
 /* ---- the key test --------------------------------------------
    In memory only: a test result is about this sitting, and a new
@@ -216,7 +211,9 @@ export function gate(lead, body, cta) {
   return p;
 }
 
-/** The key gate, with the form under it. Returns null when a key is
+/** The key gate. Outside Settings it is a locked pill or a link to
+    settings.html#ai, never a form; with `ungated` (Settings) it is the
+    gate with the form under it. Returns null when a key is
     present and the user is not replacing it — so a caller can write
     `const g = keyGate(); if (g) { panel.append(g); return panel; }`
     and have the two gates stay genuinely independent. */
@@ -227,7 +224,19 @@ export function gate(lead, body, cta) {
    caller draws a disclosure that already does, which `lead: false`
    is for. */
 export function keyGate(what, { lead = true, ungated = false } = {}) {
-  if (!ungated && !aiAllowed()) return proCard();
+  if (!ungated) {
+    /* ONE KEY PLACE. Outside Settings no key form is ever drawn: a
+       locked plan gets the locked pill, a missing key gets a link to
+       settings.html#ai, and a key gets null. */
+    if (!aiAllowed()) return lockedGate(what);
+    if (AI.hasKey()) return null;
+    const wrap = h('div.ai-keygate');
+    wrap.append(gate('No AI key on this device.', 'Add your key once in Settings; every AI tool uses it.'));
+    wrap.append(h('a.ai-pill.ai-pill-link', { href: 'settings.html#ai', 'data-ai-state': 'nokey', text: 'Add your AI key in Settings \u2192' }));
+    wrap.dataset.blocking = 'true';
+    return wrap;
+  }
+  /* Settings (keySection) only: the full form, bar and replace flow. */
   if (AI.hasKey() && !editingKey) return null;
   const wrap = h('div.ai-keygate');
   if (!AI.hasKey()) {

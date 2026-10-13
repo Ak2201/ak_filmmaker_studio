@@ -75,7 +75,7 @@ import { h } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
 import { listProjects, currentProjectId } from '../lib/store.js';
 import { switchProject } from './project-switcher.js';
-import { markLocked } from '../lib/plan-gate.js';
+import { markLocked, aiUnlocked } from '../lib/plan-gate.js';
 import { pageFile } from '../lib/page-file.js';
 import '../styles/palette.css';
 
@@ -538,8 +538,45 @@ async function pullContent() {
   if (open && input) render(input.value);
 }
 
+/* AI, through the same pill flow. Every AI pill on THIS page is
+   offered by its own label (which already ends "· Pro" when the plan
+   has no AI), and choosing one clicks that pill — so the lock, the Pro
+   offer, the no-key step and the Desk are the pill's, never a second
+   copy here. Plus one row for the key's one place, Settings. Read off
+   the DOM at open; nothing is stored. */
+function aiItems() {
+  const out = [];
+  const locked = !aiUnlocked();
+  const seen = new Set();
+  document.querySelectorAll('button.ai-pill').forEach((pill) => {
+    if (root && root.contains(pill)) return;
+    const label = (pill.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!label || seen.has(label)) return;
+    seen.add(label);
+    out.push(entry({
+      id: 'ai:' + label,
+      label: 'AI: ' + label,
+      sub: locked ? 'AI tools come with Pro' : 'Opens the AI Desk',
+      group: 'AI',
+      icon: '✦',
+      keywords: ['ai', 'assistant', 'model', 'desk'],
+      run: () => { if (pill.isConnected) pill.click(); }
+    }));
+  });
+  out.push(entry({
+    id: 'ai:settings',
+    label: 'AI key' + (locked ? ' · Pro' : ''),
+    sub: locked ? 'AI tools come with Pro' : 'Add, replace or forget your AI key in Settings',
+    group: 'AI',
+    icon: '✦',
+    keywords: ['ai', 'key', 'api', 'anthropic', 'gemini', 'settings'],
+    href: 'settings.html#ai'
+  }));
+  return out;
+}
+
 function buildIndex() {
-  base = [].concat(navItems(), projectItems(), settingItems(), commandItems());
+  base = [].concat(navItems(), projectItems(), settingItems(), commandItems(), aiItems());
   items = base.concat(late);
 }
 

@@ -61,7 +61,10 @@
   padding: var(--s3) var(--s5);
   border: 0;
   border-radius: var(--radius-pill, 999px);
-  background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+  /* a solid colour under the gradient: the AA walk resolves a surface from
+     background-color, and a gradient alone reads as transparent */
+  background-color: var(--accent);
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
   color: var(--accent-on);
   font-family: var(--f-mono);
   font-size: var(--t-small);
@@ -73,7 +76,8 @@
               filter var(--speed) var(--ease);
 }
 .projects-section .projects-head > .btn.primary:hover {
-  background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+  background-color: var(--accent);
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
   color: var(--accent-on);
   filter: brightness(1.06);
   transform: translateY(calc(-1px * var(--motion)));

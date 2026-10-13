@@ -1,0 +1,88 @@
+/* ============================================================
+   THE STATUS BAR (src/ui/status-bar.js)
+   ------------------------------------------------------------
+   A thin strip at the foot of every shell page. Tokens only: the
+   text is --chrome-muted on --chrome (7.5:1 dark, AA light), the LEDs
+   are the semantic colours, and nothing here restates a theme.
+
+   Fixed, so it is always the last line of the window: it clears the
+   app rail at 1100px and over (the rail is furniture there and the page
+   is inset by it) and sits ABOVE the phone's bottom bar (--mab-h).
+   --ssb-h is measured and published by the module; the body reserves it
+   so nothing lands under the bar. z-index sits under the band, the
+   toasts and every overlay.
+   ============================================================ */
+.ssb {
+  position: fixed;
+  inset: auto 0 var(--mab-h, 0px) 0;
+  z-index: calc(var(--z-rail) + 5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s1) var(--s5);
+  min-height: 32px;
+  padding: var(--s1) var(--s5);
+  box-sizing: border-box;
+  /* Opaque, not glass: a footer line over scrolling text is unreadable
+     and the band above it already carries the frosted look. */
+  background: var(--chrome);
+  border-top: 1px solid var(--chrome-hair);
+  color: var(--chrome-muted);
+  font-family: var(--f-code);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ssb[hidden] { display: none; }
+.ssb-zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  min-width: 0;
+}
+.ssb-right { margin-left: auto; justify-content: flex-end; }
+.ssb-sync, .ssb-pay { display: inline-flex; align-items: center; gap: var(--s2); }
+.ssb-zone > span[hidden] { display: none; }
+.ssb-zone > span + span { position: relative; }
+/* A hairline between the left-hand facts, drawn rather than typed. */
+.ssb-zone:not(.ssb-right) > span + span::before {
+  content: "";
+  position: absolute;
+  inset: 15% auto 15% calc(var(--s2) * -1 - 1px);
+  width: 1px;
+  background: var(--chrome-hair-strong);
+}
+.ssb-led {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.ssb-led[data-tone="ok"]   { background: var(--ok); }
+.ssb-led[data-tone="warn"] { background: var(--warn); }
+.ssb-led[data-tone="err"]  { background: var(--danger); }
+.ssb-led[data-tone="busy"] { background: var(--brand); animation: pulse-soft 1.2s var(--ease) infinite; }
+.ssb-led[data-tone="off"]  { background: var(--ink-faint); }
+
+/* Beside the rail on a desk. */
+@media (min-width: 1100px) {
+  body.has-sh-shell.rail-shown .ssb { left: var(--sh-rail-w); }
+}
+@media (max-width: 719px) {
+  .ssb { padding-inline: var(--s3); font-size: 0.625rem; }
+  .ssb-right { margin-left: 0; justify-content: flex-start; }
+}
+
+/* The page reserves the bar's measured height. The phone's own rule for
+   --mab-h is stated again with the bar added, because that rule sets
+   padding-bottom itself and would otherwise win. */
+body.has-status-bar { padding-bottom: var(--ssb-h, 32px); }
+body.has-status-bar.has-mobile-actionbar {
+  padding-bottom: calc(var(--mab-h, 80px) + var(--s3) + var(--ssb-h, 32px));
+}
+
+@media print { .ssb { display: none !important; } }

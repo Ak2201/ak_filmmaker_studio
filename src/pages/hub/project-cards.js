@@ -86,6 +86,7 @@ function projectCard(p, currentId, openJourney) {
       h('button', { 'data-action': 'duplicate-project', 'data-id': p.id, 'aria-label': 'Duplicate project', title: 'Duplicate', text: '⎘' }),
       h('button', { 'data-action': 'delete-project', 'data-id': p.id, 'aria-label': 'Delete project', title: 'Delete', text: '×' })
     ]),
+    active && h('span.pc-pulse', { 'aria-hidden': 'true' }),
     h('div.pc-format', {
       text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
             (active ? ' · ACTIVE' : '') + ' · ' + status.label

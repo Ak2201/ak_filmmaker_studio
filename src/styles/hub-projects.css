@@ -1,0 +1,408 @@
+/* ============================================================
+   HUB — the Projects page, restyled to the Obsidian Cinema hub:
+   hero, Today banner, toolbar, project cards, the knowledge-base
+   shelves. Hub-only. Chrome.css still owns the unchanged base
+   (.project-card, .projects-*); every rule here is scoped under
+   .projects-section so nothing leaks to another page, and loaded
+   after chrome.css so it wins on equal specificity.
+
+   Colours are tokens; shapes read --sk-radius; every distance that
+   moves is multiplied by --motion, and the pulse stops under
+   prefers-reduced-motion.
+   ============================================================ */
+
+/* ---- (1) hero -------------------------------------------------- */
+.projects-section .projects-head {
+  align-items: flex-end;
+  gap: var(--s5) var(--s6);
+  margin-bottom: var(--s5);
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.projects-section .projects-head > div { min-width: 0; flex: 1 1 24rem; }
+.projects-section .projects-head .lab {
+  margin-bottom: var(--s4);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  color: var(--accent-deep);
+}
+.projects-section .projects-head h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(var(--t-3xl), 5vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: var(--track-tight);
+  color: var(--ink);
+}
+/* "where you left off." / "a path." — the accent half, italic serif.
+   --face-accent is for the display serif; until it is declared the
+   named face and then a system serif carry it. */
+.projects-section .projects-head h1 em {
+  font-family: var(--face-accent, 'Playfair Display', Georgia, 'Times New Roman', serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--accent-deep);
+}
+.projects-section .greeting-block {
+  margin: var(--s3) 0 0;
+  max-width: none;
+  font-size: var(--t-base);
+  color: var(--ink-muted);
+}
+.projects-section .greeting-block strong { color: var(--ink); font-weight: 700; }
+
+.projects-section .projects-head > .btn.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5);
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  /* a solid colour under the gradient: the AA walk resolves a surface from
+     background-color, and a gradient alone reads as transparent */
+  background-color: var(--accent);
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
+  color: var(--accent-on);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px var(--cta-glow, transparent);
+  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease),
+              filter var(--speed) var(--ease);
+}
+.projects-section .projects-head > .btn.primary:hover {
+  background-color: var(--accent);
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-deep));
+  color: var(--accent-on);
+  filter: brightness(1.06);
+  transform: translateY(calc(-1px * var(--motion)));
+  box-shadow: 0 10px 30px var(--cta-glow, transparent);
+}
+.projects-section .projects-head > .btn.primary:active { transform: scale(.98); }
+.projects-section .projects-head > .btn.primary[hidden] { display: none; }
+.projects-section .projects-head > .btn.primary svg { width: 1em; height: 1em; flex: none; }
+@media (max-width: 720px) {
+  .projects-section .projects-head > .btn.primary { flex: 1 1 100%; min-height: 48px; }
+}
+
+/* ---- (2) the Today banner ------------------------------------- */
+.projects-section .today-line {
+  gap: var(--s2) var(--s4);
+  margin: 0 0 var(--s6);
+  padding: var(--s3) var(--s5);
+  background: color-mix(in srgb, var(--paper-raised) 80%, transparent);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  transition: background var(--speed) var(--ease);
+}
+.projects-section .today-line:hover { background: var(--paper-raised); }
+.projects-section .today-line .tl-lab {
+  padding: 2px var(--s2);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--radius));
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.projects-section .today-line .tl-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s3);
+  font-size: var(--t-small);
+}
+.projects-section .today-line .tl-text strong { color: var(--ink); font-weight: 700; }
+.projects-section .today-line .tl-sep { color: var(--ink-muted); }
+.projects-section .today-line .tl-go.btn {
+  padding: var(--s2) var(--s4);
+  background: var(--brand-wash);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--accent-deep);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+.projects-section .today-line .tl-go.btn:hover {
+  background: color-mix(in srgb, var(--brand) 22%, var(--paper-raised));
+  color: var(--ink);
+}
+
+/* ---- (3) the toolbar ------------------------------------------ */
+.projects-section .projects-toolbar {
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  align-items: stretch;
+}
+.projects-section .projects-search {
+  flex: 1 1 18rem;
+  min-width: 0;
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.projects-section .projects-search::placeholder { color: var(--ink-muted); opacity: 1; }
+.projects-section .projects-search:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+.projects-section .projects-filter {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s1);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.projects-section .projects-filter button {
+  padding: var(--s2) var(--s4);
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-weight: 700;
+}
+.projects-section .projects-filter button:hover { color: var(--ink); background: transparent; }
+.projects-section .projects-filter button.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+.projects-section .projects-sort-wrap { position: relative; display: flex; }
+.projects-section .projects-sort-wrap::after {
+  content: '';
+  position: absolute;
+  right: var(--s4);
+  top: 50%;
+  width: 6px; height: 6px;
+  border-right: 1.5px solid var(--ink-muted);
+  border-bottom: 1.5px solid var(--ink-muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+.projects-section .projects-sort {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: var(--s2) calc(var(--s4) * 2 + 4px) var(--s2) var(--s4);
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  font-weight: 700;
+}
+.projects-section .projects-sort:hover { color: var(--ink); }
+@media (max-width: 720px) {
+  .projects-section .projects-search { flex-basis: 100%; }
+  .projects-section .projects-filter { flex: 1 1 auto; }
+  .projects-section .projects-filter button { flex: 1 1 auto; justify-content: center; }
+}
+
+/* ---- (4) project cards ---------------------------------------- */
+.projects-section .projects-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s5);
+}
+@media (max-width: 1100px) { .projects-section .projects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .projects-section .projects-grid { grid-template-columns: minmax(0, 1fr); } }
+/* The first-run doors, the sample-only panel and the filter-empty state
+   are not cards: they take the whole row. */
+.projects-section .projects-grid > :not(.project-card) { grid-column: 1 / -1; min-width: 0; }
+
+.projects-section .project-card {
+  gap: var(--s3);
+  min-height: 14rem;
+  padding: var(--s5) var(--s5) var(--s4);
+  background: color-mix(in srgb, var(--paper-raised) 80%, transparent);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: none;
+}
+.projects-section .project-card:hover {
+  background: var(--paper-raised);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--rule));
+  box-shadow: none;
+  transform: translateY(calc(-2px * var(--motion)));
+}
+.projects-section .project-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.projects-section .project-card .pc-format {
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.projects-section .project-card.active {
+  background: var(--paper-raised);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 32px var(--cta-glow, transparent);
+}
+.projects-section .project-card.active .pc-format { color: var(--accent-deep); }
+.projects-section .project-card .pc-title {
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  letter-spacing: var(--track-tight);
+  overflow-wrap: anywhere;
+}
+.projects-section .project-card:hover .pc-title { color: var(--ink); }
+/* SHARE appears on hover: out of the row's flow (beside "open →") so the
+   footer keeps one line. Where there is no hover it stays in flow. */
+@media (hover: hover) {
+  .projects-section .project-card .pc-meta { position: relative; }
+  .projects-section .project-card .pc-share { position: absolute; right: 5.25rem; bottom: 0; }
+}
+.projects-section .project-card .pc-meta {
+  margin-top: auto;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-small);
+}
+.projects-section .project-card .pc-open {
+  color: var(--ink-muted);
+  transition: color var(--speed) var(--ease);
+}
+.projects-section .project-card.active .pc-open,
+.projects-section .project-card:hover .pc-open { color: var(--accent-deep); }
+
+/* The pulsing dot of the open project. It shares the corner with the
+   rename / duplicate / delete controls, which appear on hover and
+   focus (always, where there is no hover): the dot gives way. */
+.projects-section .project-card .pc-pulse {
+  position: absolute;
+  top: calc(var(--s5) + 4px);
+  right: var(--s5);
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: opacity var(--speed) var(--ease);
+}
+.projects-section .project-card .pc-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: .5;
+  animation: pc-pulse 2s var(--ease-out, ease-out) infinite;
+}
+@keyframes pc-pulse {
+  0%   { transform: scale(1); opacity: .5; }
+  80%, 100% { transform: scale(calc(1 + 2 * var(--motion))); opacity: 0; }
+}
+.projects-section .project-card:hover .pc-pulse,
+.projects-section .project-card:focus-within .pc-pulse { opacity: 0; }
+@media (hover: none) { .projects-section .project-card .pc-pulse { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .projects-section .project-card .pc-pulse::after { animation: none; display: none; }
+}
+
+/* ---- (5) the dashed NEW PROJECT slot -------------------------- */
+.projects-section .project-card.new-card {
+  align-items: center;
+  justify-content: center;
+  gap: var(--s4);
+  background: transparent;
+  border: 2px dashed var(--rule);
+  color: var(--ink-muted);
+}
+.projects-section .project-card.new-card:hover {
+  background: color-mix(in srgb, var(--paper-raised) 50%, transparent);
+  border-color: var(--accent);
+}
+.projects-section .project-card.new-card .pc-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem; height: 2.5rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  font-family: var(--f-body);
+  font-size: var(--t-xl);
+  font-weight: 400;
+  color: var(--ink-muted);
+  transition: border-color var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+.projects-section .project-card.new-card:hover .pc-plus { border-color: var(--accent); color: var(--accent-deep); background: var(--brand-wash); }
+.projects-section .project-card.new-card .pc-cta {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--ink-muted);
+}
+.projects-section .project-card.new-card:hover .pc-cta { color: var(--accent-deep); }
+
+/* ---- (6) the knowledge-base shelves --------------------------- */
+.hub-shelves {
+  margin-top: var(--s7);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--rule);
+}
+.hub-shelves-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+  margin-bottom: var(--s4);
+}
+.hub-shelves-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; font-weight: 400; }
+.hub-shelves-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.hub-shelves-dot { color: var(--ink-muted); }
+.hub-shelves-sub { font-size: var(--t-small); color: var(--ink-muted); }
+.hub-shelves-all {
+  font-size: var(--t-small);
+  color: var(--accent-deep);
+  text-decoration: none;
+}
+.hub-shelves-all:hover { text-decoration: underline; }
+.hub-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s4);
+}
+@media (max-width: 1000px) { .hub-shelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px)  { .hub-shelf-grid { grid-template-columns: minmax(0, 1fr); } }
+.hub-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4);
+  min-width: 0;
+  background: color-mix(in srgb, var(--paper-raised) 60%, transparent);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  color: var(--ink);
+  text-decoration: none;
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease),
+              transform var(--speed) var(--ease);
+}
+.hub-shelf:hover {
+  background: var(--paper-raised);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--rule));
+  transform: translateY(calc(-2px * var(--motion)));
+}
+.hub-shelf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hub-shelf h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+.hub-shelf:hover h3 { color: var(--accent-deep); }
+.hub-shelf p { margin: 0; max-width: none; font-size: var(--t-small); color: var(--ink-muted); }
+.hub-shelf-count {
+  margin-top: var(--s1);
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--library-deep);
+}
+.hub-shelf-count span[aria-hidden] { margin-right: var(--s1); font-size: .8em; }

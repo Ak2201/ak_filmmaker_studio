@@ -1937,3 +1937,29 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       and Accept, Undo, Skip writes nothing, no idle write);
       `prove:ai-coverage`'s voice section goes pill → Desk → Accept →
       Undo. Every AI tool in the studio now goes through the Desk.
+
+40. **The start page lists everything the studio does (13 Oct 2026).** The
+    "What you get" section had six broad tiles and named almost none of the
+    tools (auto-tag, cast matrix, shot list, storyboard, lookbook, day out of
+    days, sides, the AI Desk, Drive backup). A new `#everything` section sits
+    right after it in `start.html`. Released to `main` as `18673a7`.
+    - **Six stage cards, one line per tool**, in the studio's own order: Story;
+      Screenplay; Pre-Production in three groups (the script, the look, the
+      plan); and Production with Post. Each line is that module's `purpose`
+      string from `navigation.json`.
+    - **Six cross-film cards**: the library and palette, the AI Desk (own key,
+      reviewed before it touches the script), sync/Drive/export, offline and
+      on set, read-only screening and PDF exports, and the Tamil Nadu pieces.
+    - **The list is typed in markup, on purpose and with a cost.** This page
+      keeps its words in markup and carries no count, so nothing drifts loudly:
+      a module added to `navigation.json` must be added to this list by hand.
+      Which plan unlocks which tool is NOT repeated; it stays in
+      `plan-matrix.json` and prints in "Compare every feature".
+    - **Not in the gate.** `start.html` is not in `baseline.json`, so `verify`
+      cannot see its words; it was read in a browser (desktop and 375px, no
+      horizontal overflow). The offline, installable, screening-link and PDF
+      claims were written from the notes and navigation data, not tested one
+      by one; read those cards before a big push of the page.
+    - **Checks.** Local `verify` all pages pass (`dist-verify`, gate off);
+      CI Gate green on `3039bb6`. The full release-gate list (every `test:*`,
+      `prove:*`, the gated build, the budget) was not run by hand.

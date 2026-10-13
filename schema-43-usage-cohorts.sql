@@ -1,6 +1,6 @@
 -- ============================================================
 -- 43. USAGE COUNTERS AND COHORTS (Admin console v2, plan §3.4 and §3.5)
---     NOT RUN LIVE. Standalone file; supabase-schema.sql is not edited.
+--     RUN LIVE 13 Oct 2026. Standalone file; supabase-schema.sql is not edited.
 -- ------------------------------------------------------------
 -- The owner's decision, 12 Oct 2026: usage analytics are YES — counts
 -- only, a fixed name list, an opt-out in Settings, and privacy.html

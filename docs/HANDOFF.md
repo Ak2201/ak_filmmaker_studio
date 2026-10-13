@@ -3,11 +3,13 @@
 > **12 Oct 2026 (UI revamp) — branch `feature/ui-revamp`, merged to `develop` in one
 > change.** One top bar (switcher · Backup · Dark/Light · name) on every page; Settings as
 > a five-tab console; plans bought only on `purchase.html`; People "Delete totally"
-> (schema **§47**, not run live: `docs/ADMIN-CONSOLE.md`); a real search field; Home
+> (schema **§47**, run live 13 Oct 2026: `docs/ADMIN-CONSOLE.md`); a real search field; Home
 > trimmed; the scene list is a table; **`preprod.html`** is the Pre-production path and
 > its strip sits on every tool page. Full account: `docs/HISTORY.md` item 35.
-> **Owner steps:** run §45, §46 then §47 (checksummed) before relying on Delete totally;
-> the button hides for non-owners and the call fails cleanly until they have run.
+> **Schema §40–§47 are all LIVE (13 Oct 2026).** §46 and §47 were run checksummed and read
+> back with `pg_get_functiondef` (`admin_delete_user` carries the invoice anonymisation, the
+> admin writers carry `require_role`); §40–§45 were confirmed by PostgREST probe (42501 =
+> exists). Delete totally has not been clicked end to end.
 > **Gate:** `verify` needs one baseline recapture (`npm run build:open && npm run baseline`
 > after reading the diff) and the `prove:*` scripts that clicked BUY on `invite.html` or
 > the Controls-tab erase were edited without being run.
@@ -26,8 +28,7 @@
 > proofs against `vite dev`; no local gate (owner's instruction).
 >
 > **Still pending, and not fixable from the container:** set `RESEND_API_KEY`
-> and `MAIL_FROM` (blocks real payments, B14); run schema §40–§46 live (admin
-> console v2, none has a RUN marker); Razorpay live webhook and callback URLs
+> and `MAIL_FROM` (blocks real payments, B14); Razorpay live webhook and callback URLs
 > on `filmmakerstudio.in`; Google branding re-submit; GSTIN (P8); two-account
 > live RLS checks (P4); second admin sign-in (P5); `brand.json` `address`;
 > WhatsApp number (P11); a real-phone look at `write.html` (P13); owner calls
@@ -607,7 +608,7 @@ cloud container session.
 | B18 | **Requiring a plan, without walling the grandfathered** (§39, 12 Oct 2026) | BUILT AND **RUN LIVE 12 Oct 2026** — `admin_purchase_wall()` and `admin_set_billing_settings()` both answer 42501 to anon (they EXIST and refuse; PGRST202 would have meant missing), and `purchases_required()` still answers **false**, the proof the switch was not thrown. §39 deliberately does NOT throw `purchase_required` — that is operational state with an admin RPC, and flipping it in the schema file would change the fixture every later test runs against (§32's own check 1 asserts it is false after loading). It adds `admin_purchase_wall()` (members / paid / in_trial / walled / grandfathered_walled, admin only) and restates `admin_set_billing_settings()` with one new refusal: turning the switch ON is refused while it would wall a member the §30 grandfather backfill covered (`trial_source 'admin'`, 525600 minutes) whose year has lapsed. Turning it OFF is never guarded. **The flip is blocked on Resend AND on §36**, in that order. |
 | B19 | **The free trial was unreachable, and the door was the wrong door** (12 Oct 2026) | **DONE, client only — no schema change.** Three faults, each enough on its own. (1) `invite.js`'s `readTrialOffer()` offered a trial only when `billing_status().entitled !== true`; `entitled` is `(not purchase_required) or (plan <> 'free') or trial_active` and the live switch is OFF, so entitled is **true for everybody** — the "Start your free trial" button was never drawn and nobody could ever begin one. The feature was built, deployed, enabled at 30 minutes and invisible. (2) Every landing-page CTA returns to the hub, where the site gate reads "not a member" and replaces the document with invite.html. (3) That page led with **Ask for an invite** — so somebody who pressed *Start your free trial* was handed an application form. Fixed: the offer reads the four facts that actually answer it (trials on, not used, not running, never paid); `sitegate.js` now follows the purchases switch (OFF → anybody signed in is in, and membership only decides whether work SYNCS; ON → a plan or a running trial; **not known → the old membership gate, failing closed**, and a closed gate WAITS for the switch before redirecting, or an open website bounced people for the half-second before the answer landed); invite.html is the offer page — trial, plans, code — with the request queue moved to `invite.html#request` and the console. **Nothing starts a trial by itself** (owner): the one exception is a redeemed code, where submitting it was the press — `startCodeTrial()`, because `redeem_invite()` writes the membership but never `trial_started_at`, so a code holder was walled by the thing the code opened. A code is **no longer a key on its own**: the box holds it and goes to Google. `prove:gate` block (r); invite.html re-baselined. Trial LENGTH and SCOPE are untouched console dials — 30 minutes, samples-only, which is a demo rather than a trial by any market standard; `trial_minutes` 10080 and `trial_scope` 'full' are the 7-day whole-studio setting, owner's call. |
 
-Next free schema section: **§40**. §26-§31 RAN LIVE 9 Oct 2026; **§32-§39 all RAN LIVE 12 Oct 2026** — this line said "§36 and §37 have NOT run live" for several hours after they had, which is the same stale-by-reading failure the paragraph below warns about. §34 was marked on the owner's word, not an independent probe — it has no API surface; the constraint read is in the §34 header. **Two sessions picked §36/§37 on the same day** — fetch before you NUMBER a section, not just before you push. Every new section needs a `-- RUN` header
+Next free schema section: **§48** (§40–§47 all RAN LIVE 13 Oct 2026). §26-§31 RAN LIVE 9 Oct 2026; **§32-§39 all RAN LIVE 12 Oct 2026** — this line said "§36 and §37 have NOT run live" for several hours after they had, which is the same stale-by-reading failure the paragraph below warns about. §34 was marked on the owner's word, not an independent probe — it has no API surface; the constraint read is in the §34 header. **Two sessions picked §36/§37 on the same day** — fetch before you NUMBER a section, not just before you push. Every new section needs a `-- RUN` header
 when it is run live, live checks in `docs/SECURITY-RLS.md`, and assertions in
 `scripts/schema-tests/*.sql` (`npm run test:schema`, PostgreSQL 16:
 `pg_ctlcluster 16 main start`). `scripts/fake-supabase.mjs` must honour each

@@ -404,3 +404,13 @@ tr.is-over .cx-bar > span { background: var(--danger); }
     border-bottom: 1px solid var(--sk-slab-hair);
   }
 }
+
+/* ============================================================
+   SCHEDULE IMPACT AND VERSIONS (src/ui/budget-impact.js)
+   ============================================================ */
+.cx-lens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s3) 0 0; }
+.cx-result { margin: var(--s3) 0 0; color: var(--ink); }
+.cx-version { margin-block: var(--s3); }
+.cx-v-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.cx-v-total { margin-left: auto; font-family: var(--f-mono); }
+.cx-v-cmp { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--rule-hair); }

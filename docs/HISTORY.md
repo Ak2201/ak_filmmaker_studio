@@ -2003,3 +2003,22 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     shot-list share link, which waits on B7's security review and a schema
     section. Verify needed one allowlist row removed (`use` came back on the
     page, so its row went stale); no re-baseline.
+
+43. **Script-to-screen lesson, Phase 4 (13 Oct 2026).** The schedule and the
+    budget, linked without a second copy. Two budget tabs
+    (`src/ui/budget-impact.js`): **Schedule impact** — what a shoot day costs
+    (`perDayCost`: the estimator lines that scale with the shoot, automatic when
+    a line is priced at exactly the shoot length, overridable per line), the
+    shoot-day table, and an "if we cut…" what-if where a day is saved ONLY when
+    every scene on it is ticked (a partial cut shows a labelled share, never a
+    saving). **Versions** — lock the budget (`snapshotBudget`/`lockVersion`),
+    compare any later state to it (`compareVersion`); locked means immutable,
+    only delete (with Undo). `src/lib/schedule-impact.js` is pure and stores
+    nothing; the only writes are `versions` and the per-line `scales` flag,
+    both INSIDE `fms_costs_v1` (no new key; `readAll()`/`EMPTY()` list
+    `versions`, or every expense save drops it). Producer / line producer /
+    1st AD are shortcuts to Top sheet / Cost report / Schedule impact, not
+    permissions. Song days the estimator folds into its own count are not in
+    the day count here; a line priced on that count is marked by hand.
+    `test:impact` (new), `test:costs` extended. Known wrinkle: the lock button
+    shows the estimate WITH contingency, the comparison is without it.

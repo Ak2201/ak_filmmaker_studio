@@ -33,6 +33,7 @@ import { listContacts, listCallSheets, DEPARTMENTS } from '../lib/contacts.js';
 import { calendarDays } from '../lib/locations.js';
 import wages from '../data/wages.fefsi.json';
 import { askDanger } from './dialog.js';
+import { renderSchedule, renderVersions, impactActions, impactForms, bindImpact } from './budget-impact.js';
 
 const rs = (n) => (n < 0 ? '−₹\u00a0' : '₹\u00a0') + INR.format(Math.round(Math.abs(n || 0)));
 const pct = (n) => (n === null || n === undefined ? '—' : n + '%');
@@ -574,6 +575,8 @@ const SECTIONS = [
   { id: 'actuals', label: 'Cost report', render: renderActuals },
   { id: 'crew', label: 'Crew payments', render: renderCrew },
   { id: 'topsheet', label: 'Top sheet', render: renderTopSheet },
+  { id: 'schedule', label: 'Schedule impact', render: renderSchedule },
+  { id: 'versions', label: 'Versions', render: renderVersions },
   { id: 'wages', label: 'Wage table', render: renderWages },
   { id: 'export', label: 'Export', render: renderExport }
 ];
@@ -640,6 +643,7 @@ function printDoc(doc) {
 }
 
 const ACTIONS = {
+  ...impactActions,
   'del-expense': (el) => {
     const list = C.listExpenses();
     const index = list.findIndex((x) => x.id === el.dataset.id);
@@ -659,6 +663,7 @@ const ACTIONS = {
 };
 
 const FORMS = {
+  version(form) { impactForms.version(form, context()); },
   expense(form) {
     const f = new FormData(form);
     const amount = parseNum(f.get('amount'));
@@ -699,6 +704,7 @@ function commitField(el) {
   const kind = el.dataset.cxField;
   if (kind === 'contingency') C.setSettings({ contingencyPct: el.value });
   else if (kind === 'line-dept') C.setLineDept(el.dataset.id, el.value);
+  else if (kind === 'line-scales') C.setLineScales(el.dataset.id, el.value === 'scales' ? true : el.value === 'fixed' ? false : null);
   else if (kind === 'crew') { C.setCrew(el.dataset.id, { [el.dataset.k]: el.value }); openCrew.add(el.dataset.id); }
   else if (kind === 'wage') C.setWageOverride(el.dataset.id, { [el.dataset.k]: el.value });
   else return;
@@ -710,6 +716,7 @@ function commitField(el) {
 
 /** Fill the shells and wire them. Call after the page is in the DOM. */
 export function initCosts(root) {
+  bindImpact({ refresh, toast });
   refresh();
   delegate(root, 'click', '[data-cx]', (e, el) => {
     const fn = ACTIONS[el.dataset.cx];

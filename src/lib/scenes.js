@@ -93,6 +93,12 @@ export function blankScene(patch = {}) {
        'part' = pick-ups owed, 'dropped' = cut from the film. */
     shotState: '',
     shotAt: '',          // ISO, when it was last marked
+    /* THE TAKES LOGGED ON THE DAY, for shoot.html's roster: a list of
+       { n, circled, note, at }, appended by src/lib/shootday.js
+       (logTake / circleTake / undoTake). A FIELD spread under every
+       stored row, like shotState: older rows read back [] and no
+       migration or new key exists. */
+    takes: [],
     /* WHICH STORY BEAT THIS SCENE SERVES, for the write page's Outline
        tab (src/lib/beat-outline.js). Framework-qualified —
        'save_the_cat:midpoint', never a bare 'midpoint' — so switching

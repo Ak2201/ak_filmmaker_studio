@@ -19,14 +19,15 @@
    Returns { refresh(), setCurrent(id), open(), close(), destroy() }.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { loadStory, frameworkById, matrix } from '../lib/story.js';
+import { loadStory, frameworkById, matrix, qualifyBeat } from '../lib/story.js';
+import Scenes from '../lib/scenes.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
 import '../styles/beats-panel.css';
 
 const PHONE = '(max-width: 719.98px)';
 
 /** Pure: the rows the panel draws and where each one jumps. */
-export function deriveBeats(els, currentId, { story, targetPages } = {}) {
+export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows } = {}) {
   const list = els || [];
   const st = story || loadStory();
   const fw = frameworkById(st.framework);
@@ -44,7 +45,22 @@ export function deriveBeats(els, currentId, { story, targetPages } = {}) {
   try { counts = new Map(matrix(st, fw.id).map((r) => [r.beat.id, r.marks.length])); } catch (e) { /* none */ }
 
   const beats = [...fw.beats].sort((a, b) => a.at - b.at);
-  const rows = beats.map((b) => ({ beat: b, page: pageOf(b.at), marks: counts.get(b.id) || 0 }));
+  /* Which scenes serve each beat: scene.beatId, framework-qualified, is
+     the one stored link (src/lib/beat-outline.js). Read only; the panel
+     never writes it. Numbers sort the way a person counts ("2" < "10"). */
+  const bySceneBeat = new Map();
+  (sceneRows || []).forEach((sc) => {
+    if (!sc || !sc.beatId) return;
+    const num = String(sc.number || '').trim();
+    if (!num) return;
+    (bySceneBeat.get(sc.beatId) || bySceneBeat.set(sc.beatId, []).get(sc.beatId)).push(num);
+  });
+  const byNum = (a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0) || a.localeCompare(b);
+  const rows = beats.map((b) => {
+    const marks = counts.get(b.id) || 0;
+    const scenes = (bySceneBeat.get(qualifyBeat(fw.id, b.id)) || []).slice().sort(byNum);
+    return { beat: b, page: pageOf(b.at), marks, scenes, linked: marks > 0 || scenes.length > 0 };
+  });
   // The beat being written: the last one whose target page has begun.
   let cur = -1;
   if (curPage) rows.forEach((r, i) => { if (r.page <= curPage) cur = i; });
@@ -61,7 +77,8 @@ export function deriveBeats(els, currentId, { story, targetPages } = {}) {
     r.targetId = hit ? hit.e.id : (list.length ? list[list.length - 1].id : null);
     if (!hit) r.written = false;
   }
-  return { fw, rows, curPage, written, span };
+  const linked = rows.filter((r) => r.linked).length;
+  return { fw, rows, curPage, written, span, linked, total: rows.length, percent: rows.length ? Math.round((linked / rows.length) * 100) : 0 };
 }
 
 export function mountBeats(host, opts = {}) {
@@ -112,8 +129,10 @@ export function mountBeats(host, opts = {}) {
     }
   }
   function draw() {
+    let sceneRows = [];
+    try { sceneRows = Scenes.listScenes(); } catch (e) { /* no scenes: no links */ }
     const d = deriveBeats(getElements ? getElements() : [], currentId, {
-      targetPages: getTargetPages ? getTargetPages() : 0
+      targetPages: getTargetPages ? getTargetPages() : 0, scenes: sceneRows
     });
     rowsNow = d.rows;
     toggle.textContent = '';
@@ -122,22 +141,39 @@ export function mountBeats(host, opts = {}) {
     toggle.setAttribute('aria-expanded', String(isOpen));
     root.classList.toggle('is-open', isOpen);
     body.hidden = !isOpen;
-    const sig = d.fw.id + '|' + d.rows.map((r) => r.beat.id + ':' + r.page + ':' + r.marks + ':' + r.written + ':' + r.targetId).join(',');
+    const sig = d.fw.id + '|' + d.rows.map((r) => r.beat.id + ':' + r.page + ':' + r.marks + ':' + r.scenes.join('+') + ':' + r.written + ':' + r.targetId + (r.current ? '*' : '')).join(',');
     if (sig === lastSig) { paintCurrent(); return; }
     lastSig = sig;
     const sc0 = scroller();
     const keep = sc0 ? sc0.scrollTop : 0;
     body.textContent = '';
+    body.append(h('p.bp-progress', {}, [
+      h('span', { text: 'Framework progress' }),
+      h('strong', { text: d.linked + ' / ' + d.total + ' linked (' + d.percent + '%)' })
+    ]));
     const ol = h('ol.bp-list');
     d.rows.forEach((r, i) => {
+      const sceneWord = r.scenes.length ? (r.scenes.length === 1 ? 'Scene ' + r.scenes[0] : 'Sc. ' + r.scenes[0] + (r.scenes.length > 1 ? '–' + r.scenes[r.scenes.length - 1] : '')) : '';
+      const state = r.current ? 'Writing here' : r.linked
+        ? 'Linked' + (sceneWord ? ' · ' + sceneWord : ' · ' + r.marks + ' marked')
+        : 'Pending';
       const btn = h('button.bp-beat', {
         type: 'button',
         dataset: { beat: r.beat.id }
       }, [
-        h('span.bp-name', { text: r.beat.label || r.beat.id }),
-        r.marks ? h('span.bp-marks', { text: String(r.marks), title: r.marks + ' marked in the Story' }) : null,
-        h('span.bp-page', { text: '~p.' + r.page })
-      ].filter(Boolean));
+        h('span.bp-mark', { 'aria-hidden': 'true', text: r.current ? '◉' : r.linked ? '✓' : '○' }),
+        h('span.bp-main', {}, [
+          h('span.bp-line', {}, [
+            h('span.bp-name', { text: r.beat.label || r.beat.id }),
+            h('span.bp-page', { text: '~p.' + r.page })
+          ]),
+          h('span.bp-line.bp-sub', {}, [
+            h('span.bp-state', { text: state }),
+            h('span.bp-go', { text: r.current ? 'Focus line' : r.written ? 'Jump →' : '' })
+          ])
+        ])
+      ]);
+      btn.classList.toggle('is-linked', r.linked);
       btn.addEventListener('click', () => {
         const row = rowsNow[i] || r;
         if (row.targetId && scrollToEl) scrollToEl(row.targetId);

@@ -353,3 +353,72 @@ main:has(> .lib-sec).tabs-has-side { --side-pad: var(--s4); } /* not --gutter: h
 @media (pointer: coarse) {
   .lib-contents-card li a { display: flex; align-items: center; min-height: 44px; }
 }
+
+/* ============================================================
+   THE COVER, OBSIDIAN LOOK (13 Oct 2026)
+   ------------------------------------------------------------
+   An amber mono kicker, a very large serif title with one italic
+   amber word, the deck and the real shelf count beside it, and the
+   contents as a grid of shelf cards: amber SECTION numeral, title,
+   summary, and the count that shelf's own array produced. Amber is
+   --library-deep, the text variant, never the fill. Tokens only.
+   ============================================================ */
+.cover .cover-mark { font-family: var(--f-mono); color: var(--library-deep); letter-spacing: var(--track-label); }
+.cover .cover-title {
+  font-family: var(--face-display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--s4);
+}
+.cover .cover-title .light { font-style: italic; font-weight: 700; color: var(--library-deep); }
+.cover-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s4) var(--s6); max-width: none; margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: var(--sk-card-line-w) solid var(--sk-card-line); }
+.cover-row .cover-sub { flex: 1 1 28rem; max-width: 46rem; margin: 0; }
+.cover-pills { margin: 0; display: flex; gap: var(--s2); }
+.cover-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s4);
+  border-radius: var(--radius-pill);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  background: var(--paper-raised);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--ink);
+}
+.cover-pill-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--library); }
+
+.cover .cover-toc { max-width: none; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: var(--s4); margin-bottom: 0; }
+.cover .toc-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s5);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-left-width: var(--sk-card-line-w);
+  border-radius: var(--sk-radius, var(--radius));
+  transition: transform var(--speed) var(--ease), border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+@media (hover: hover) {
+  .cover .toc-item:hover {
+    transform: translateY(calc(-1 * var(--s1) * var(--motion)));
+    border-color: var(--library);
+    box-shadow: var(--sk-card-shadow-hover, var(--sk-card-shadow));
+  }
+}
+.cover .toc-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+.cover .toc-item .num { font-weight: 600; color: var(--library-deep); }
+.cover .toc-go { font-size: var(--t-lg); line-height: 1; color: var(--ink-muted); }
+.cover .toc-item:hover .toc-go { color: var(--library-deep); }
+.cover .toc-item .title { margin-top: 0; font-size: var(--t-xl); font-weight: 600; color: var(--ink); }
+.cover .toc-item .desc { margin-top: 0; font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cover .toc-foot { margin-top: auto; padding-top: var(--s4); border-top: var(--sk-card-line-w) solid var(--sk-card-line); font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: 0.04em; color: var(--library-deep); }
+@media (max-width: 719px) { .cover .toc-item { padding: var(--s4); } }
+/* the ring behind the old cover title would sit under the shelf cards */
+.cover::after { display: none; }

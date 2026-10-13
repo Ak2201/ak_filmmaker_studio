@@ -2069,3 +2069,16 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     sit at the foot of edit.html, away from the Cloud workflow checklist on
     deliverables.html; `props`/`above the line` are `notag`, so they never
     pop over in prose.
+
+46. **Edit page trimmed to its budget (14 Oct 2026).** Merging the section-menu
+    work from `origin/develop` pushed the edit page's first paint to 658,539
+    bytes against a 655,360 cap. Rather than raise the row in
+    `scripts/budget.json`, the cut-versions UI (cards, timecoded notes, the
+    add forms, the copy button and their events) moved to `src/ui/edit-cuts.js`,
+    a 5.5 KB chunk. `edit.js` always renders the `#cuts` section's heading (a
+    fragment target must resolve before any script arrives) and loads the
+    chunk when the section comes within 600px of the viewport; the scene
+    rows' dailies links stay in `edit.js`. Edit first paint is now 638.4 KB of
+    640. Known and NOT this change: `stripboard.html#dood` lands 34px behind
+    the chrome in verify's fragment check, on `origin/develop` alone as well,
+    from the section-menu work.

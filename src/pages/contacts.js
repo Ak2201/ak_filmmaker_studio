@@ -79,23 +79,31 @@ function renderHeader(contacts, sheets) {
   const cast = contacts.filter((c) => c.department === 'Cast').length;
   const depts = new Set(contacts.map((c) => c.department).filter(Boolean)).size;
   return h('header.bd-head', {}, [
-    h('p.bd-eyebrow', { text: 'Cast & Crew · people, and the day they are called' }),
-    h('h1.bd-title', { text: 'Cast & Crew.' }),
-    h('p.bd-deck', {
-      text: 'Everybody on the film, once, with a department and a number. '
-          + 'The call sheets are built from this list and from the scenes '
-          + 'in the breakdown — so a name is typed here and nowhere else.'
-    }),
-    h('div.bd-stats', {}, [
-      stat(String(contacts.length), contacts.length === 1 ? 'person' : 'people'),
-      stat(String(cast), cast === 1 ? 'in the cast' : 'in the cast'),
-      stat(String(depts), depts === 1 ? 'department' : 'departments'),
-      stat(String(sheets.length), sheets.length === 1 ? 'call sheet' : 'call sheets')
+    h('div.ct-head-row', {}, [
+      h('div.ct-head-copy', {}, [
+        h('p.bd-eyebrow', { text: 'Cast & Crew · call sheets & unit directory' }),
+        h('h1.bd-title', { text: 'Call Sheets & Dispatch.' }),
+        h('p.bd-deck', {
+          text: 'Everybody on the film, once, with a department and a number. '
+              + 'One call sheet per shoot day, built from this list and from the scenes '
+              + 'in the breakdown — call times, the light, the route to the nearest hospital, '
+              + 'and a WhatsApp message for each person called. A name is typed here and nowhere else.'
+        })
+      ]),
+      contacts.length
+        ? h('button.btn.primary', { type: 'button', 'data-action': 'sheet-add', text: 'New shoot day' })
+        : null
+    ]),
+    h('div.bd-stats.ct-kpis', {}, [
+      kpi('Unit roster', String(contacts.length), contacts.length === 1 ? 'person on the unit' : 'people on the unit'),
+      kpi('Talent registry', String(cast), 'in the cast'),
+      kpi('Production base', String(depts), depts === 1 ? 'department' : 'departments'),
+      kpi('Production slates', String(sheets.length), sheets.length === 1 ? 'call sheet built' : 'call sheets built')
     ])
   ]);
 }
-const stat = (value, label) =>
-  h('div.bd-stat', {}, [h('strong', { text: value }), h('span', { text: label })]);
+const kpi = (label, value, sub) =>
+  h('div.bd-stat.ct-kpi', {}, [h('span.ct-kpi-l', { text: label }), h('strong', { text: value }), h('span.ct-kpi-s', { text: sub })]);
 
 /* ---- the teaching empty state ------------------------------
    An empty module explains itself instead of showing a blank grid,
@@ -242,7 +250,7 @@ function iconBtn(glyph, action, label, disabled, danger) {
 
 /* ---- the unit list ------------------------------------------ */
 function renderPeople(contacts) {
-  const wrap = h('section.ct-people', { id: 'contacts' });
+  const wrap = h('section.ct-people', { id: 'contacts', 'data-tab-label': 'Unit directory' });
   wrap.append(
     h('h2.bd-h2', { text: 'The unit list' }),
     h('p.bd-sub', { text: 'Grouped by department. The colour down the side is the department, nothing else.' })
@@ -273,7 +281,7 @@ function renderPeople(contacts) {
 
 /* ---- call sheets -------------------------------------------- */
 function renderSheets(sheets, contacts, scenes) {
-  const wrap = h('section.ct-sheets', { id: 'call-sheets' });
+  const wrap = h('section.ct-sheets', { id: 'call-sheets', 'data-tab-label': 'Call sheets' });
   wrap.append(
     h('h2.bd-h2', { text: 'Call sheets' }),
     h('p.bd-sub', {
@@ -363,8 +371,104 @@ function renderSheet(sheet, contacts, scenes) {
   return card;
 }
 
+/* ---- the day at a glance -----------------------------------------
+   A read-only summary of the sheet below it: the day's four times, the
+   place and its pin, the light, the route and safety, and the scenes
+   with their pages. Every line is looked up from the models the form
+   below edits (the sheet, the scenes, the recce, the DPR, sun.js), so
+   it adds no field and stores nothing. A fact that has no source is not
+   drawn rather than drawn empty. */
+function glanceFact(label, value) {
+  return h('div.ct-gl-fact', {}, [h('span.ct-gl-l', { text: label }), h('strong', { text: value })]);
+}
+function renderDayCard(sheet, scenes) {
+  const onSheet = sheetScenes(sheet, scenes);
+  const sched = scheduleOf(sheet, scenes);
+  const date = sheetDateOf(sheet, scenes);
+  const total = Locations.calendarDays(scenes).length;
+  const places = placesOf(onSheet);
+  const lit = lightOf(sheet, scenes);
+  const eighths = onSheet.reduce((a, s) => a + (Number(s.eighths) || 0), 0);
+  const dpr = sched.day ? DPR.getDPR(sched.day) : null;
+  const wrap = wrapOf(sheet, onSheet);
+
+  const card = h('section.ct-glance', { 'aria-label': 'This shoot day at a glance' });
+  card.append(h('div.ct-gl-head', {}, [
+    h('h3.ct-gl-title', { text: sheet.title || 'Shoot day' }),
+    sched.day ? h('span.ct-gl-badge', { text: 'Day ' + sched.day + (total ? ' of ' + total : '') }) : null
+  ]));
+  card.append(h('div.ct-gl-times', {}, [
+    glanceFact('Date', date ? prettyDate(date) : 'Not set'),
+    glanceFact('General call', sheet.generalCall || 'Not set'),
+    dpr && dpr.firstShot ? glanceFact('Ready to shoot', dpr.firstShot) : null,
+    glanceFact('Planned wrap', wrap || 'Not set')
+  ]));
+
+  const cols = h('div.ct-gl-cols');
+  // place + pin
+  const first = places.find((p) => Geo.coordsOf(p.recce)) || places[0] || null;
+  const pin = first ? Geo.coordsOf(first.recce) : null;
+  const where = h('div.ct-gl-col', {}, [
+    h('h4.ct-gl-h', { text: 'Location & unit base' }),
+    h('p.ct-gl-p', { text: sheet.location || (first ? first.name : 'No location yet') })
+  ]);
+  if (first && first.recce.address) where.append(h('p.ct-gl-small', { text: first.recce.address }));
+  if (pin) where.append(h('p.ct-gl-pin', { text: 'Lat ' + pin.lat + ' · Long ' + pin.lng }));
+  if (first) where.append(h('a.ct-gl-link', {
+    href: Geo.recceMapsLink(first.name, first.recce), target: '_blank', rel: 'noopener noreferrer', text: 'Open in Maps'
+  }));
+  cols.append(where);
+  // light
+  const sun = h('div.ct-gl-col', {}, [h('h4.ct-gl-h', { text: 'Solar & daylight' })]);
+  if (lit) {
+    const l = lit.light;
+    sun.append(h('p.ct-gl-p', { text: 'Sunrise ' + (l.sunrise || '—') + ' · Sunset ' + (l.sunset || '—') }));
+    const gold = [l.goldenAm, l.goldenPm].filter(Boolean).join(' · ');
+    if (gold) sun.append(h('p.ct-gl-small', { text: 'Golden hour ' + gold }));
+    sun.append(h('p.ct-gl-small', { text: lightNote(lit) }));
+    const late = lateScenes(sheet, onSheet, l);
+    if (late.length) sun.append(h('p.ct-flag', { role: 'note', text: lateText(sheet, onSheet, l, late) }));
+  } else {
+    sun.append(h('p.ct-gl-small', { text: 'Give the sheet a date and the light for the day appears here.' }));
+  }
+  cols.append(sun);
+  // route + safety, from the recce fields the form below edits
+  const safe = h('div.ct-gl-col', {}, [h('h4.ct-gl-h', { text: 'Route & emergency safety' })]);
+  const noted = places.filter((p) => p.recce.hospital || p.recce.police);
+  if (noted.length) {
+    noted.forEach((p) => {
+      const box = h('div.ct-gl-safe');
+      if (noted.length > 1) box.append(h('span.ct-gl-l', { text: p.name }));
+      if (p.recce.hospital) box.append(h('p.ct-gl-small', {}, [h('span.ct-gl-l', { text: 'Nearest hospital ' }), p.recce.hospital]));
+      if (p.recce.police) box.append(h('p.ct-gl-small', {}, [h('span.ct-gl-l', { text: 'Nearest police ' }), p.recce.police]));
+      safe.append(box);
+    });
+  } else {
+    safe.append(h('p.ct-gl-small', { text: places.length
+      ? 'No hospital or police station noted yet. Add them under Route & safety below.'
+      : 'Tick a scene with a location and its route and safety details appear here.' }));
+  }
+  cols.append(safe);
+  card.append(cols);
+
+  // scenes
+  const sc = h('div.ct-gl-scenes', {}, [
+    h('h4.ct-gl-h', { text: 'Scenes to shoot' + (onSheet.length ? ' · ' + onSheet.length + ' · ' + formatEighths(eighths) + ' pages' : '') })
+  ]);
+  if (!onSheet.length) sc.append(h('p.ct-gl-small', { text: 'No scenes ticked for this day yet.' }));
+  onSheet.forEach((s) => sc.append(h('div.ct-gl-scene', {}, [
+    h('span.ct-gl-no', { text: 'Scene ' + (s.number || '—') }),
+    h('span.ct-gl-slug', { text: slugOf(s) }),
+    h('span.ct-gl-pg', { text: formatEighths(s.eighths) + ' pgs' }),
+    s.synopsis ? h('span.ct-gl-syn', { text: s.synopsis }) : null
+  ])));
+  card.append(sc);
+  return card;
+}
+
 function renderSheetEdit(sheet, contacts, scenes) {
   const edit = h('div.ct-edit');
+  edit.append(renderDayCard(sheet, scenes));
 
   edit.append(h('div.ct-sheet-bar', {}, [
     field('input.ct-sheet-title', {
@@ -881,8 +985,12 @@ function render() {
 
   const main = h('main', { id: 'main' });
   main.append(renderHeader(contacts, sheets));
-  main.append(renderPeople(contacts));
-  main.append(renderSheets(sheets, contacts, scenes));
+  /* Call sheets lead once there is a unit to call; with nobody on the
+     list yet, the directory is the first thing to do and comes first. */
+  const people = renderPeople(contacts);
+  const sheetsEl = renderSheets(sheets, contacts, scenes);
+  if (contacts.length) main.append(sheetsEl, people);
+  else main.append(people, sheetsEl);
 
   mountPathBar(main);   // the pre-production path, above the tool and Back / Next below it
   app.replaceChildren(main);

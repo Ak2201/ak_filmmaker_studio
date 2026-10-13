@@ -432,9 +432,14 @@ function brandPlugin() {
    page's data JSON is its own chunk.
    ============================================================ */
 
+/* The app's version, from package.json, as a BUILD constant: the status bar
+   (src/ui/status-bar.js) prints it, and nothing fetches it at run time. */
+const APP_VERSION = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version || '';
+
 export default defineConfig({
   base: './',
   appType: 'mpa',
+  define: { 'import.meta.env.VITE_APP_VERSION': JSON.stringify(APP_VERSION) },
   /* ------------------------------------------------------------
      DEV ONLY, AND IT FIXES A BUG THAT LOOKS LIKE A BROKEN APP.
      The site gate gives up after GIVE_UP_MS (20s) and FAILS CLOSED:
@@ -645,7 +650,7 @@ export default defineConfig({
              page and in the app, and it is pure for the same reason. */
           if (/\/src\/lib\/(funnel|invite-code|auth-scope|motion|trial-time)\.js$/.test(id)) return 'startlib';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account)\.js$/;
-          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|section-menu|palette|fragments|footer|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
+          const CORE_UI = /\/src\/ui\/(chrome|shell|tabs|section-menu|palette|fragments|footer|status-bar|no-project|actionbar|auth|modal-focus|icon|blueprint-drawer-mount|trial-band|motion-app|mobile-nav|project-switcher|dialog|site-banner)\.js$/;
           const CORE_DATA = /\/src\/data\/(navigation|announcements|steps\.stages|section-icons)\.json$/;
           if (CORE_LIB.test(id) || CORE_UI.test(id) || CORE_DATA.test(id)) return 'studio';
           // billing.js's Razorpay helper, shared with the edge functions.

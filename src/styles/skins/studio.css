@@ -61,7 +61,7 @@
      what give it its shape. */
   --sk-card-bg:         var(--paper-raised);
   --sk-card-ink:        var(--ink-body);
-  /* DESIGN.md: a card is outlined in a violet hairline (dark: rgba(139,92,246,.15)
+  /* DESIGN.md: a card is outlined in a violet hairline (dark: violet at 15%
      via --rule-hair); light keeps its lavender one. */
   --sk-card-line:       var(--rule-hair);
   --sk-card-line-w:     1px;

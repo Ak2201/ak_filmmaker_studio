@@ -388,7 +388,7 @@
 
   --track-label: 0.1em;    /* uppercase mono labels: DESIGN.md label-md is .1em (lg .08, sm .12) */
   --track-wide:  0.32em;   /* cover stamps, phase eyebrows */
-  --track-tight:  -0.03em; /* display headings */
+  --track-tight:  -0.015em; /* display headings (DESIGN.md: -0.01 to -0.02em) */
 
   /* ---- space (4px base) --------------------------------- */
   --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
@@ -886,6 +886,9 @@
   --shadow-cta:         0 4px 20px var(--cta-glow);
   --hero-glow:          radial-gradient(ellipse at top, color-mix(in srgb, var(--brand) 6%, transparent), transparent 70%);
   --blur-glass:         blur(20px);
+  /* The 2px line under the nav band on every page (Stitch export): the
+     brand at full strength, easing to nothing. Follows both themes. */
+  --band-line:          linear-gradient(90deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 55%, transparent) 40%, transparent 100%);
 }
 
 /* ============================================================

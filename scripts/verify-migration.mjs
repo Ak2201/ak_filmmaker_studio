@@ -431,9 +431,8 @@ const EXPECTED = {
   short: {},
   library: {},
   budget: {},
-  /* Emptied: the dashboard revamp's five rows went stale once develop
-     re-baselined (b31871c) after it, which is the anti-rot check doing
-     its job. */
+  /* EMPTIED by the 12 Oct 2026 re-baseline, which captured the dashboard
+     revamp's words (the journey strip folded into the stage cards). */
   dashboard: {},
   /* AI Desk (12 Oct 2026): the "AI coverage report" item left the ⋯ menu
      for the AI pill in the toolbar, whose menu (Coverage report, …) is
@@ -545,39 +544,12 @@ const EXPECTED = {
   edit: {},
   deliverables: {},
   screening: {},
-  /* 12 Oct 2026, the conversion pass. Each row is a word a deliberate
-     rewording took off the page; re-baseline the next time this grows
-     (it will be absorbed by the recapture the UI revamp needs anyway). */
-  invite: {
-    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
-  },
+  /* The conversion pass's rows were absorbed by the 12 Oct 2026 recapture
+     that followed the UI revamp and the plan features. */
+  invite: {},
   admin: {},
   vault: {},
-  purchase: {
-    are: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    can: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    chrome: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    collaborators: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    device: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    do: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    extension: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    limited: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    links: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    never: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    projects: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    seats: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    share: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    synced: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    team: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    unlocks: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    work: 'plan deck rewritten (12 Oct 2026): it said a plan only sets cloud limits and that "work on this device is never limited", untrue since the three-plan split',
-    see: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
-    show: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
-    signed: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
-    usage: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
-    here: 'signed-out heading/deck reworded: "Sign in to see the plans … show here once you are signed in" became "Sign in to buy a plan", the prices now shown',
-    prices: 'the prices are on the page now (src/ui/list-prices.js), so the "SEE PRICES" link became "COMPARE EVERY FEATURE"'
-  }
+  purchase: {}
 };
 
 
@@ -2779,13 +2751,10 @@ const exported = await rtPage.evaluate(async () => {
   const origClick = HTMLAnchorElement.prototype.click;
   URL.createObjectURL = function (b2) { blob = b2; return 'blob:verify-stub'; };
   HTMLAnchorElement.prototype.click = function () {};
-  /* The Backup menu in the band (src/ui/topbar-backup.js, UI revamp 1)
-     replaced the hub's [data-action="export-all"]. Its handler awaits a
-     lazy import of the backup module before building the file, so the
-     capture waits for the blob instead of reading it on this tick. */
-  const btn = document.querySelector('[data-action="bk-export"]') || document.querySelector('[data-action="export-all"]');
-  if (!btn) { URL.createObjectURL = origCreate; HTMLAnchorElement.prototype.click = origClick; return { text: null, noControl: true }; }
-  btn.click();
+  /* Backup moved into the band's menu (12 Oct 2026, topbar-backup.js) and its
+     work is a lazy import, so the click returns before the file is made: keep
+     the stubs in place until the blob arrives (or five seconds pass). */
+  document.querySelector('[data-action="bk-export"]').click();
   for (let i = 0; i < 100 && !blob; i++) await new Promise((r) => setTimeout(r, 50));
   URL.createObjectURL = origCreate;
   HTMLAnchorElement.prototype.click = origClick;
@@ -2803,18 +2772,9 @@ if (!exported.unavailable && exported.text) {
   await rtPage.evaluate((text) => {
     const S = window.StudioStore;
     S.listProjects().forEach((p) => S.deleteProject(p.id));
-    let input = document.getElementById('importAllFile');
-    if (!input) {
-      /* The band's Backup menu builds its file input on the first
-         [data-action="bk-import"] click; stub the picker so headless
-         Chromium opens nothing, then feed the file to that input. */
-      const pick = HTMLInputElement.prototype.click;
-      HTMLInputElement.prototype.click = function () {};
-      const imp = document.querySelector('[data-action="bk-import"]');
-      if (imp) imp.click();
-      HTMLInputElement.prototype.click = pick;
-      input = document.querySelector('input[type="file"][aria-label="Import a studio backup"]');
-    }
+    /* the band's Backup menu creates its hidden file input on first use */
+    document.querySelector('[data-action="bk-import"]').click();
+    const input = document.querySelector('input[type="file"][aria-label="Import a studio backup"]');
     const dt = new DataTransfer();
     dt.items.add(new File([text], 'backup.json', { type: 'application/json' }));
     input.files = dt.files;

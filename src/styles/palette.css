@@ -117,7 +117,32 @@
 .pal-close:hover { background: var(--paper-sunk); color: var(--ink); border-color: var(--ink-muted); }
 .pal-close:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 
+/* ---- the prefix hint -------------------------------------
+   One line, shown only while the field is exactly > # or @. Plain
+   muted text on the box's own ground: it explains, it is not a row. */
+.pal-hint {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  max-width: none;
+  border-bottom: 1px solid var(--rule-hair);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+.pal-hint[hidden] { display: none; }
+
 /* ---- the rows -------------------------------------------- */
+/* "Recent" / "Everything": a label inside the list, not an option. */
+.pal-sep {
+  list-style: none;
+  padding: var(--s2) var(--s3) var(--s1);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
 .pal-list {
   list-style: none;
   margin: 0;
@@ -224,6 +249,8 @@
   text-transform: uppercase;
   color: var(--ink-muted);
 }
+
+.pal-foot-keys { margin-left: auto; }
 
 /* The page behind does not scroll while the palette is open. */
 body.pal-open { overflow: hidden; }

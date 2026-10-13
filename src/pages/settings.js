@@ -95,6 +95,7 @@ import { aiPill } from '../ui/ai-pill.js';
 import { REGIONS, region, chosenRegion, detectRegion, setRegion } from '../lib/region.js';
 import DriveSync, { DRIVE_STATES } from '../lib/drive-sync.js';
 import PlanGate from '../lib/plan-gate.js';
+import Billing from '../lib/billing.js';   // CORE (the `studio` chunk), so this adds no chunk
 /* The backup FILE is backup.js's, exactly as it is for the hub's
    Export and for Drive's upload. This page calls it; it does not
    know what a backup looks like. Already a static import here
@@ -110,6 +111,10 @@ import { openCloudAuthModal, mayConfigure } from '../ui/auth.js';
 import { accountSection } from '../ui/account-panel.js';
 import * as AuthUI from '../ui/auth.js';
 import { ask, tell } from '../ui/dialog.js';
+/* The restore preview (Data & backup → Drive): the reader and the
+   comparison are backup.js's, the panel is restore-preview.js's. */
+import { buildBackup, downloadBackup, summariseBackup, compareForRestore } from '../lib/backup.js';
+import { restorePreview, replaceSentences } from '../ui/restore-preview.js';
 import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { OPTOUT_KEY, usageOptedOut } from '../lib/usage.js';
@@ -480,6 +485,11 @@ function renderStorage() {
 
 let versions = null;     // null until EARLIER VERSIONS is opened
 let busy = '';           // which control is mid-flight, for the label
+/* The restore preview, when one is open: what the Drive file holds
+   beside what this browser holds, drawn before the confirmation. A
+   render flag like `versions` — never stored. { kind: 'head' |
+   'version' | 'theirs', rev, source, savedAt, incoming, current, plan } */
+let restorePrev = null;
 
 const when = (iso) => {
   if (!iso) return 'never';
@@ -526,7 +536,7 @@ function conflictCard(st) {
   card.append(rows);
   card.append(h('div.st-drive-actions', {}, [
     driveButton('drive-keep-mine', 'Keep mine — upload over Drive', { busyLabel: 'Uploading…' }),
-    driveButton('drive-take-theirs', 'Take theirs — replace this browser', { busyLabel: 'Restoring…' })
+    driveButton('drive-take-theirs', 'Take theirs — replace this browser', { busyLabel: 'Reading Drive…' })
   ]));
   return card;
 }
@@ -690,12 +700,21 @@ function renderDrive() {
 
   const actions = h('div.st-drive-actions');
   actions.append(driveButton('drive-backup', 'Back up now', { primary: true, busyLabel: 'Uploading…' }));
-  actions.append(driveButton('drive-restore', 'Restore from Drive', { busyLabel: 'Restoring…' }));
+  actions.append(driveButton('drive-restore', 'Restore from Drive', { busyLabel: 'Reading Drive…' }));
   actions.append(driveButton('drive-versions', versions ? 'Hide earlier versions' : 'Earlier versions', { busyLabel: 'Reading…' }));
   actions.append(driveButton('drive-disconnect', 'Disconnect'));
   sec.append(actions);
 
   if (versions) sec.append(versionList());
+
+  if (restorePrev) {
+    sec.append(restorePreview({
+      plan: restorePrev.plan, incoming: restorePrev.incoming, current: restorePrev.current,
+      source: restorePrev.source, savedAt: restorePrev.savedAt,
+      actions: { confirm: 'drive-restore-confirm', cancel: 'drive-restore-cancel', download: 'drive-restore-download' },
+      disabled: !!busy
+    }));
+  }
 
   if (st.link) {
     sec.append(h('p.st-note', {}, [
@@ -826,12 +845,35 @@ function renderAccountMine() {
 /* The plan, as a summary and nothing more. Buying, invoices and refunds are
    on the Purchase page ONLY (owner, 12 Oct 2026): this card reads what the
    studio already knows (plan-gate.js) and sends you there. */
+/* USAGE AGAINST THE PLAN'S CAPS (12 Oct 2026). billing_status() carries the
+   limits and what is used; ui/plan-cards.js's usageList() draws them (and
+   brings plans.css with it), so both are fetched together, once, and only
+   for somebody signed in who has a plan to be counted against. The answer is
+   held here and the card is drawn from it, so the redraw that follows the
+   fetch finds it cached and asks for nothing \u2014 no loop, and no request from
+   a page that is only being looked at signed out. It is dropped when the
+   account or the plan changes. Nothing is stored. */
+let usageSeen = null;        // { st, usageList } | { failed: true }
+let usageFetching = false;
+function dropUsage() { usageSeen = null; }
+function wantUsage() {
+  if (usageSeen || usageFetching) return;
+  usageFetching = true;
+  Promise.all([Billing.status(), import('../ui/plan-cards.js')])
+    .then(([st, m]) => { usageSeen = st ? { st, usageList: m.usageList } : { failed: true }; })
+    .catch(() => { usageSeen = { failed: true }; })
+    .finally(() => { usageFetching = false; if (!busy) render(); });
+}
+
 function renderPlanCard() {
   const cp = PlanGate.currentPlan();
+  const c = window.StudioCloud;
+  const signedIn = !!(c && c.getSession && c.getSession());
   const sec = section('plan-summary', 'Your plan', 'Plan.',
     'What you have, and when it ends. Everything about buying, invoices and refunds is on the Purchase page.');
+  const off = PlanGate.purchasesOff();
   let line;
-  if (PlanGate.purchasesOff()) line = 'The studio is free to use right now. Nothing needs buying.';
+  if (off) line = 'The studio is free to use right now. Nothing needs buying.';
   else if (cp.reason === 'trial') {
     const end = PlanGate.trialEndsAt();
     line = 'Free trial' + (end ? ' \u00b7 ends ' + end.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '') + '.';
@@ -840,7 +882,32 @@ function renderPlanCard() {
   else if (cp.reason === 'expired') line = 'Your free trial has ended. A plan brings it back.';
   else line = cp.gated ? (cp.planName || 'No plan') + '.' : 'Plan details load when you are signed in.';
   sec.append(h('p.st-plan-line', { text: line }));
-  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', { href: 'purchase.html', text: 'Plan & purchases \u2192' })]));
+
+  /* The second line: what the plan means for what you can keep and share. */
+  let usageNote = '';
+  if (off) usageNote = 'The studio is open, so nothing is capped: sync as many films as you like and share them freely.';
+  else if (!signedIn) usageNote = '';   // the line above already says plan details need a sign-in
+  else if (cp.reason === 'granted') usageNote = 'Nothing is capped while this access stands.';
+  else if (cp.reason === 'trial') usageNote = 'Plan limits on synced films and shares apply once you choose a plan.';
+  else if (cp.reason === 'expired') usageNote = 'Everything you wrote is still saved on this device.';
+  if (usageNote) sec.append(h('p.st-plan-note', { text: usageNote }));
+
+  const bought = signedIn && !off && cp.reason === 'paid';
+  if (bought) {
+    wantUsage();
+    const seen = usageSeen;
+    if (seen && seen.st && seen.st.plan && seen.st.plan !== 'free') {
+      sec.append(h('h3.st-plan-sub', { text: 'Your usage' }), seen.usageList(seen.st));
+    } else if (!seen || !seen.failed) {
+      sec.append(h('p.st-plan-note', { text: 'Counting your usage\u2026' }));
+    } else {
+      sec.append(h('p.st-plan-note', { text: 'Your usage could not be loaded just now. The Purchase page shows it too.' }));
+    }
+  }
+  sec.append(h('p.st-plan-link', {}, [h('a.btn.primary', {
+    href: 'purchase.html',
+    text: bought ? 'Manage plan \u2192' : 'Plan & purchases \u2192'
+  })]));
   return sec;
 }
 
@@ -1044,18 +1111,7 @@ function run(action, fn) {
 const DRIVE_ACTIONS = {
   'drive-connect':  () => run('drive-connect', () => DriveSync.connect()),
   'drive-backup':   () => run('drive-backup', () => DriveSync.push()),
-  'drive-restore':  () => run('drive-restore', async () => {
-    /* A restore REPLACES the projects this browser shares with the
-       file. Asked out loud, every time, because the one thing this
-       app refuses is deciding that silently. */
-    if (!await ask({
-      title: 'Replace this browser’s copy?',
-      body: 'Every project that is also in the Drive backup is replaced. Projects the backup has never heard of are left alone. Drive keeps the current version either way.',
-      confirm: 'REPLACE', danger: true
-    })) return;
-    const r = await DriveSync.pull();
-    if (r && r.ok) location.reload();
-  }),
+  'drive-restore':  () => run('drive-restore', () => openRestorePreview('head', null, 'The backup in Drive')),
   'drive-versions': () => run('drive-versions', async () => {
     if (versions) { versions = null; return; }
     versions = await DriveSync.listVersions();
@@ -1068,14 +1124,68 @@ const DRIVE_ACTIONS = {
     })) return;
     DriveSync.disconnect();
     versions = null;
+    restorePrev = null;
     render();
   },
   'drive-keep-mine':   () => run('drive-keep-mine', () => DriveSync.resolveConflict('mine')),
-  'drive-take-theirs': () => run('drive-take-theirs', async () => {
-    const r = await DriveSync.resolveConflict('theirs');
-    if (r && r.ok) location.reload();
-  })
+  'drive-take-theirs': () => run('drive-take-theirs', () => openRestorePreview('theirs', null, 'The backup in Drive')),
+  'drive-restore-cancel': () => { restorePrev = null; render(); },
+  /* The preview's own buttons. Restore still ends in ask(): the panel is
+     what the dialog is about, not a replacement for it. */
+  'drive-restore-download': () => {
+    try {
+      const n = downloadBackup();
+      StudioUI.toast('Backup downloaded \u2014 ' + plural(n, 'project', 'projects') + ' in the file.');
+    } catch (e) {
+      StudioUI.toastError('The backup could not be written. ' + ((e && e.message) || 'Nothing was changed.'), { duration: 6000 });
+    }
+  },
+  'drive-restore-confirm': () => {
+    const p = restorePrev;
+    if (!p) return;
+    run('drive-restore-confirm', async () => {
+      /* A restore REPLACES the projects this browser shares with the
+         file. Asked out loud, every time, because the one thing this
+         app refuses is deciding that silently — and the question
+         repeats the panel's own sentences so the two cannot disagree. */
+      const sentences = replaceSentences(p.plan, p.incoming);
+      if (!await ask({
+        title: 'Replace this browser\u2019s copy?',
+        body: [...sentences, 'The file in Drive is not changed by this.'],
+        confirm: 'REPLACE', danger: true
+      })) return;
+      const r = p.kind === 'theirs'
+        ? await DriveSync.resolveConflict('theirs')
+        : await DriveSync.pull(p.rev ? { revisionId: p.rev } : {});
+      if (r && r.ok) { restorePrev = null; location.reload(); }
+    });
+  }
 };
+
+/* Read the Drive file a restore would apply and open the preview — and
+   NOTHING else: no write, no apply. A file that cannot be read says why
+   in a toast and no panel opens, because a restore of something that
+   cannot be read could only fail. `kind` is what the confirm will do:
+   'head' (the current Drive file), 'version' (an earlier revision, `rev`),
+   'theirs' (the conflict's "take theirs"). */
+async function openRestorePreview(kind, rev, source) {
+  const r = await DriveSync.previewRemote(rev ? { revisionId: rev } : {});
+  if (!r.ok) { StudioUI.toastError(r.message || 'Drive did not answer.', { duration: 6000 }); return; }
+  const { pageCount } = await import('../lib/script.js');
+  const incoming = summariseBackup(r.all, { pageCount });
+  if (!incoming.ok) { StudioUI.toastError(incoming.problem || 'That backup could not be read.', { duration: 6000 }); return; }
+  const current = summariseBackup(buildBackup(), { pageCount });
+  restorePrev = {
+    kind, rev: rev || null, source, incoming, current,
+    plan: compareForRestore(incoming, current),
+    savedAt: when(incoming.exported || r.modifiedTime)
+  };
+  /* The panel renders when run() redraws; bring it into view after that. */
+  setTimeout(() => {
+    const el = document.querySelector('.st-restore');
+    if (el) { el.scrollIntoView({ block: 'nearest' }); try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }, 60);
+}
 
 /* ---- the admin console's two buttons ------------------------
    Both delegate to code that already exists: the modal owns the form,
@@ -1109,16 +1219,10 @@ delegate(document, 'click', '[data-action^="drive-"]', async (e, el) => {
   const act = el.getAttribute('data-action');
   if (act === 'drive-restore-version') {
     const rev = el.getAttribute('data-rev');
-    if (!await ask({
-      title: 'Restore this version?',
-      body: 'Restore the studio from the version saved on ' + when((versions || []).find((v) => v.id === rev)?.modifiedTime)
-          + '. This replaces the projects that version contains. Drive keeps the current version too, so this is reversible.',
-      confirm: 'RESTORE'
-    })) return;
-    return run('drive-restore-version', async () => {
-      const r = await DriveSync.restoreVersion(rev);
-      if (r && r.ok) location.reload();
-    });
+    /* The date comes from the file itself (savedAt), so the line says
+       "An earlier version of the backup, saved <date>" and no more. */
+    return run('drive-restore-version', () =>
+      openRestorePreview('version', rev, 'An earlier version of the backup in Drive'));
   }
   const fn = DRIVE_ACTIONS[act];
   if (fn) fn();
@@ -1170,7 +1274,7 @@ DriveSync.onDriveStatus(() => { if (!busy) render(); });
    how these go. Anything whose VISIBILITY depends on who is signed
    in has to redraw when that answer arrives. */
 if (window.StudioCloud && window.StudioCloud.onAuth) {
-  window.StudioCloud.onAuth(() => { refreshGate(); if (!busy) render(); });
+  window.StudioCloud.onAuth(() => { dropUsage(); refreshGate(); if (!busy) render(); });
 }
 
 /* THE GATE'S ANSWER ARRIVES LATER STILL — a round trip after the
@@ -1189,7 +1293,7 @@ async function refreshGate() {
 wireGateUI(() => { if (!busy) render(); });
 Store.subscribe('gate:changed', () => refreshGate());
 /* The Drive section reads the plan's drive_backup, which arrives later. */
-Store.subscribe('plan:changed', () => { if (!busy) render(); });
+Store.subscribe('plan:changed', () => { dropUsage(); if (!busy) render(); });
 refreshGate();
 
 render();

@@ -873,7 +873,11 @@ function render() {
       h('div.db-body', {}, [col, renderDesk(snap)]), renderLauncher());
   }
 
-  if (!commitMain(app, main, mountShell)) return;
+  /* The path line is applied whether or not the swap happened: a skipped
+     swap leaves last time's DOM, whose path fact may have gone stale. */
+  const painted = commitMain(app, main, mountShell);
+  if (project) loadPath();
+  if (!painted) return;
   /* Play once: render() runs on every store event, and a desk that
      re-faded on each edit would be noise. */
   if (!revealed) { revealed = true; reveal(main); }
@@ -885,6 +889,47 @@ function render() {
     StudioUI.wireGlossaryPopovers();
     StudioUI.polishEmptyStates();
   } catch (e) { console.warn('[dashboard] chrome', e); }
+}
+
+/* ---- the Pre-production card says where on the path ---------------
+   "Step 3 of 11 · next: Vision & look". journey.js is first paint and
+   pure for Node, so it never imports the path model; this page loads
+   src/lib/preprod-path.js after the first render and patches the card.
+   The card already reads correctly without it (journey.js's own facts),
+   so a slow or failed import changes nothing. The line is derived at
+   patch time and stored nowhere; render() rebuilds the card on every
+   store event, so the patch is re-applied after each one. */
+let pathModule = null;      // the loaded module, once
+let pathLoading = false;
+
+function patchPathFact() {
+  const card = document.getElementById('stage-preprod');
+  const facts = card && card.querySelector('.st-facts');
+  if (!facts || !pathModule) return;
+  const old = facts.querySelector('.st-path-fact');
+  if (old) old.remove();
+  let line = '';
+  try {
+    const steps = pathModule.pathSteps();
+    const next = pathModule.nextStep(steps);
+    if (!next) return;
+    line = steps.every((s) => s.state === 'done')
+      ? 'All ' + steps.length + ' steps done'
+      : 'Step ' + next.n + ' of ' + steps.length + ' · next: ' + next.label;
+  } catch (e) { return; }
+  facts.prepend(h('li.st-path-fact', { text: line }));
+}
+
+function loadPath() {
+  if (pathModule) { patchPathFact(); return; }
+  if (pathLoading) return;
+  pathLoading = true;
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  idle(() => {
+    import('../lib/preprod-path.js')
+      .then((m) => { pathModule = m; patchPathFact(); })
+      .catch((e) => { pathLoading = false; console.warn('[dashboard] path', e); });
+  });
 }
 
 /* ---- events — delegated, no inline handlers ---------------------- */

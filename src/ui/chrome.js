@@ -585,7 +585,7 @@ const DEFAULT_SHORTCUTS = [
      palette's on every page, the hub included; the hub's field moved
      to `/`, so the row was wrong and the two rows are one. */
   { keys: ['/'],          label: 'Focus the search input on this page (the hub, the blueprints)' },
-  { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, settings' }
+  { keys: ['⌘ K', 'Ctrl K'], label: 'Search the whole studio — modules, scenes, people, places, script lines. Start with > for commands, # for a scene number, @ for a person' }
 ];
 /* A page may add its own section to the sheet — write.html prints its
    keyboard preset there (src/ui/write-shortcuts.js). One group per

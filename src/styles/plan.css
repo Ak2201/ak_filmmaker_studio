@@ -491,3 +491,42 @@
 @media (pointer: coarse) {
   .pl-media-open:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+/* ------------------------------------------------------------
+   THE LIGHT ON A RECCE CARD (src/lib/recce-light.js)
+   Times per dated shoot day at the location's own pin; a flag in
+   words, with a rule as the second signal, when the wrap outlasts
+   the sun. An empty .pl-light takes no room.
+   ------------------------------------------------------------ */
+.pl-light { display: grid; gap: var(--s2); min-width: 0; }
+.pl-light:empty { display: none; }
+.pl-light-note { margin: 0; font-size: var(--t-small); color: var(--ink-muted); overflow-wrap: anywhere; }
+.pl-light-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; min-width: 0; }
+.pl-light-row {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+  font-size: var(--t-small);
+  color: var(--ink-body);
+}
+.pl-light-row strong { color: var(--ink); }
+.pl-light-times {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.pl-light-flag {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink);
+  background: var(--warn-wash);
+  border-left: var(--sk-hue-rule-w, 3px) solid var(--warn);
+  border-radius: var(--sk-radius, var(--radius));
+  overflow-wrap: anywhere;
+}
+@media print {
+  .pl-light-flag { background: var(--print-paper); color: var(--print-ink); border-left-color: var(--print-ink); }
+}

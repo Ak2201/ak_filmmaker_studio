@@ -181,7 +181,27 @@ let DUPS = new Set();
    it always had, so the handlers below are the same ones. Nothing here is
    stored: the status chip is derived from the scene's own fields, and which
    rows are open, selected or filtered lives in SL for this page view only. */
-const SL = { q: '', ie: '', dn: '', st: '', open: new Set(), sel: new Set() };
+const SL = {
+  q: '', ie: '', dn: '', st: '', open: new Set(), sel: new Set(),
+  /* Saved filters (1.7). IN MEMORY ONLY: they live and die with this page
+     view and are written nowhere — no localStorage, no sessionStorage. A
+     preset that survives a reload would be a new storage key, which is an
+     owner decision (docs/NEXT-IDEAS-PLAN.md 3.2). */
+  presets: [
+    { id: 'p-night-ext', name: 'Night exteriors', q: '', ie: 'EXT', dn: 'NIGHT', st: '' },
+    { id: 'p-untagged', name: 'Untagged scenes', q: '', ie: '', dn: '', st: 'untagged' }
+  ],
+  presetSeq: 0
+};
+const filterActive = () => !!(SL.q.trim() || SL.ie || SL.dn || SL.st);
+const KEYS_HINT = 'Keys: Up and Down arrows move between scenes (from the open/close button or the location). '
+  + 'Enter opens or closes a scene. N adds a scene. Delete moves the focused scene to the bin, with Undo. '
+  + 'On a drag handle, Up and Down reorder the scene.';
+const GRIP_ON = 'Drag to reorder this scene (or focus it and press Up or Down)';
+const GRIP_OFF = 'Reordering is off while a search or filter is active: clear it to drag scenes into a new order';
+/* Eight shoot-day colours, from the phase and category hues in tokens.css
+   (scene-list.css maps slot -> token). Day N uses slot ((N - 1) mod 8) + 1. */
+const daySlot = (day) => ((day - 1) % 8) + 1;
 
 /** Where a scene stands, from the fields it already has. Nothing stored. */
 function sceneStatus(scene) {
@@ -226,7 +246,14 @@ function renderScene(scene, i, total) {
   markNumber(numberCell, scene, DUPS);
 
   const cast = castSummary(scene);
+  const day = shootDayOf(scene);
+  const off = filterActive();
+  if (day) card.append(h('span.bd-sl-day', { 'data-slot': String(daySlot(day)), title: 'Day ' + day, 'aria-hidden': 'true' }));
   card.append(h('div.bd-sl-main', {}, [
+    h('button.bd-icon.bd-sl-grip', {
+      type: 'button', 'data-action': 'sl-grip', 'aria-disabled': String(off), title: off ? GRIP_OFF : GRIP_ON,
+      'aria-label': 'Reorder scene ' + (scene.number || i + 1) + '. Drag, or press Up or Down.', text: '\u283F'
+    }),
     h('input.bd-sl-pick', { type: 'checkbox', 'data-action': 'sl-pick', checked: SL.sel.has(scene.id), 'aria-label': 'Select scene ' + (scene.number || i + 1) }),
     numberCell,
     h('div.bd-sl-where', {}, [
@@ -324,7 +351,8 @@ function renderScene(scene, i, total) {
  *  the search box on every keystroke. */
 function renderSceneBar(scenes) {
   const opt = (v, l, cur) => h('option', { value: v, text: l, selected: v === cur });
-  const bar = h('div.bd-sl-bar', {}, [
+  const bar = h('div.bd-sl-bar', { role: 'group', 'aria-label': 'Find and filter scenes', 'aria-describedby': 'bdSlKeys', title: KEYS_HINT }, [
+    h('span#bdSlKeys.visually-hidden', { text: KEYS_HINT }),
     h('input#bdSceneSearch.bd-sl-search', { type: 'search', value: SL.q, placeholder: 'Find a scene — number, place, cast, anything in it…', 'data-action-key': 'sl-find', 'aria-label': 'Find a scene' }),
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'ie', 'aria-label': 'Filter by interior or exterior' },
       [opt('', 'INT / EXT', SL.ie)].concat(INT_EXT.map((v) => opt(v, v, SL.ie)))),
@@ -333,7 +361,7 @@ function renderSceneBar(scenes) {
     h('select.bd-sel.bd-sl-filter', { 'data-sl-filter': 'st', 'aria-label': 'Filter by where the scene stands' },
       [['', 'Any status'], ['untagged', 'Untagged'], ['tagged', 'Tagged'], ['scheduled', 'Scheduled'], ['shot', 'Shot'], ['part', 'Part shot'], ['dropped', 'Dropped']].map(([v, l]) => opt(v, l, SL.st))),
     h('button.btn.bd-sl-expand', { type: 'button', 'data-action': 'sl-expand', text: SL.open.size ? 'COLLAPSE ALL' : 'EXPAND ALL' }),
-    h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', text: scenes.length + ' scenes' })
+    h('span.bd-sl-count', { role: 'status', 'aria-live': 'polite', title: KEYS_HINT, text: scenes.length + ' scenes' })
   ]);
   const bulk = h('div.bd-sl-bulk', { hidden: !SL.sel.size, role: 'group', 'aria-label': 'Selected scenes' }, [
     h('strong.bd-sl-bulk-n', { text: SL.sel.size + ' selected' }),
@@ -346,7 +374,65 @@ function renderSceneBar(scenes) {
   ]);
   const names = h('datalist#bdElementNames');
   for (const el of Scenes.elementIndex()) names.append(h('option', { value: el.name }));
-  return h('div.bd-sl-tools', {}, [bar, bulk, names]);
+  return h('div.bd-sl-tools', {}, [bar, renderPresets(), bulk, names]);
+}
+
+/* ---- saved filters (in memory) ------------------------------ */
+const PRESET_KEYS = ['q', 'ie', 'dn', 'st'];
+const STATUS_LABELS = { untagged: 'Untagged', tagged: 'Tagged', scheduled: 'Scheduled', shot: 'Shot', part: 'Part shot', dropped: 'Dropped' };
+function describeFilter(f) {
+  const bits = [];
+  if (f.ie) bits.push(f.ie);
+  if (f.dn) bits.push(f.dn.toLowerCase());
+  if (f.st) bits.push((STATUS_LABELS[f.st] || f.st).toLowerCase());
+  if (f.q && f.q.trim()) bits.push('\u201C' + f.q.trim() + '\u201D');
+  return bits.join(' \u00B7 ') || 'every scene';
+}
+const presetOn = (p) => PRESET_KEYS.every((k) => String(p[k] || '').trim().toLowerCase() === String(SL[k] || '').trim().toLowerCase());
+function renderPresets() {
+  const on = filterActive();
+  return h('div.bd-sl-presets', { role: 'group', 'aria-label': 'Saved filters (kept until you reload this page)' }, [
+    h('button.btn.bd-sl-save', {
+      type: 'button', 'data-action': 'sl-save', disabled: !on, text: 'SAVE THIS FILTER',
+      title: on ? 'Name the current search and filters and keep them as a button (until you reload this page)' : 'Set a search or a filter first, then save it'
+    })
+  ].concat(SL.presets.map((p) => {
+    const active = on && presetOn(p);
+    return h('span.bd-sl-preset' + (active ? '.is-on' : ''), { 'data-preset': p.id }, [
+      h('button.bd-sl-preset-apply', { type: 'button', 'data-action': 'sl-preset', 'aria-pressed': String(active), title: 'Show: ' + describeFilter(p), text: p.name }),
+      h('button.bd-sl-preset-x', { type: 'button', 'data-action': 'sl-preset-x', 'aria-label': 'Remove the saved filter ' + p.name, title: 'Remove this saved filter', text: '\u2715' })
+    ]);
+  })));
+}
+/** Redraw the preset strip in place, and give focus back to the control the
+ *  reader was on (a chip that was just pressed has been replaced). */
+function refreshPresets() {
+  const old = document.querySelector('.bd-sl-presets');
+  if (!old) return;
+  const ae = document.activeElement;
+  const back = ae && old.contains(ae)
+    ? { action: ae.dataset.action, id: ae.closest('[data-preset]')?.dataset.preset } : null;
+  const fresh = renderPresets();
+  old.replaceWith(fresh);
+  if (!back) return;
+  let node = back.id
+    ? fresh.querySelector('[data-preset="' + CSS.escape(back.id) + '"] [data-action="' + back.action + '"]')
+    : fresh.querySelector('[data-action="' + back.action + '"]');
+  if (!node || node.disabled) node = fresh.querySelector('[data-action="sl-save"], [data-action="sl-preset"]');
+  if (node) node.focus();
+}
+/** Push SL's filter values back into the toolbar's controls. */
+function syncBar() {
+  const q = document.getElementById('bdSceneSearch');
+  if (q) q.value = SL.q;
+  document.querySelectorAll('[data-sl-filter]').forEach((el) => { el.value = SL[el.dataset.slFilter] || ''; });
+}
+function updateGrips() {
+  const off = filterActive();
+  document.querySelectorAll('.bd-sl-grip').forEach((g) => {
+    g.setAttribute('aria-disabled', String(off));
+    g.title = off ? GRIP_OFF : GRIP_ON;
+  });
 }
 
 /** Hide the rows the filters rule out, in place. */
@@ -364,6 +450,8 @@ function applySceneFilter() {
   if (count) count.textContent = (shown === total ? total + (total === 1 ? ' scene' : ' scenes') : shown + ' of ' + total + ' scenes');
   const none = document.querySelector('.bd-sl-none');
   if (none) none.hidden = shown > 0;
+  updateGrips();
+  refreshPresets();
 }
 
 function field(spec, props, text) {
@@ -774,7 +862,7 @@ function render(focus) {
     for (const id of [...SL.sel]) if (!scenes.some((s) => s.id === id)) SL.sel.delete(id);
     tagging.append(renderSceneBar(scenes));
     tagging.append(h('div.bd-sl-head', { 'aria-hidden': 'true' }, [
-      h('span'), h('span', { text: 'No.' }), h('span', { text: 'Location' }), h('span', { text: 'INT / EXT' }), h('span', { text: 'Time' }),
+      h('span'), h('span'), h('span', { text: 'No.' }), h('span', { text: 'Location' }), h('span', { text: 'INT / EXT' }), h('span', { text: 'Time' }),
       h('span', { text: 'Length' }), h('span', { text: 'Cast' }), h('span', { text: 'Status' }), h('span')
     ]));
     scenes.forEach((s, i) => tagging.append(renderScene(s, i, scenes.length)));
@@ -816,14 +904,15 @@ const inScene = (id, sel) => '[data-scene="' + CSS.escape(id || '') + '"] ' + se
 /* ---- events — delegated, no inline handlers ----------------- */
 const sceneIdOf = (el) => el.closest('[data-scene]')?.dataset.scene;
 
-delegate(document, 'click', '[data-action="scene-add"]', () => {
+function addSceneAndFocus() {
   const made = Scenes.addScene();
   SL.q = ''; SL.ie = ''; SL.dn = ''; SL.st = '';   // the new row must be visible
   if (made) SL.open.add(made.id);
   render();
   const last = made && document.querySelector(inScene(made.id, '.bd-slug'));
   if (last) last.focus();
-});
+}
+delegate(document, 'click', '[data-action="scene-add"]', addSceneAndFocus);
 /* ---- the list's own controls (nothing here is stored) ---- */
 delegate(document, 'click', '[data-action="sl-toggle"]', (e, el) => {
   const id = sceneIdOf(el);
@@ -841,6 +930,40 @@ delegate(document, 'change', '[data-action="sl-pick"]', (e, el) => {
   if (bulk) { bulk.hidden = !SL.sel.size; const n = bulk.querySelector('.bd-sl-bulk-n'); if (n) n.textContent = SL.sel.size + ' selected'; }
 });
 delegate(document, 'click', '[data-action="sl-clear"]', () => { SL.sel.clear(); render(); });
+delegate(document, 'click', '[data-action="sl-preset"]', (e, el) => {
+  const p = SL.presets.find((x) => x.id === el.closest('[data-preset]')?.dataset.preset);
+  if (!p) return;
+  /* Pressing the active preset again clears the filter it set. */
+  const was = filterActive() && presetOn(p);
+  for (const k of PRESET_KEYS) SL[k] = was ? '' : (p[k] || '');
+  syncBar();
+  applySceneFilter();
+});
+delegate(document, 'click', '[data-action="sl-preset-x"]', (e, el) => {
+  const id = el.closest('[data-preset]')?.dataset.preset;
+  const p = SL.presets.find((x) => x.id === id);
+  if (!p) return;
+  SL.presets = SL.presets.filter((x) => x.id !== id);
+  refreshPresets();
+  document.querySelector('[data-action="sl-save"]:not([disabled]), .bd-sl-search')?.focus();
+  StudioUI.toast('Removed the saved filter \u201C' + p.name + '\u201D.', { type: 'success' });
+});
+delegate(document, 'click', '[data-action="sl-save"]', async () => {
+  if (!filterActive()) return;
+  const snap = Object.fromEntries(PRESET_KEYS.map((k) => [k, SL[k]]));
+  const name = await askText({
+    title: 'Save this filter',
+    body: 'Showing: ' + describeFilter(snap) + '. Give it a name. Saved filters stay until you reload this page.',
+    value: describeFilter(snap), confirm: 'SAVE'
+  });
+  if (!name) return;
+  const clash = SL.presets.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  if (clash) Object.assign(clash, snap);
+  else SL.presets.push({ id: 'p-' + (++SL.presetSeq), name, ...snap });
+  refreshPresets();
+  document.querySelector('.bd-sl-presets [data-action="sl-save"]')?.focus();
+  StudioUI.toast('Saved the filter \u201C' + name + '\u201D. It stays until you reload this page.', { type: 'success' });
+});
 delegate(document, 'input', '[data-action-key="sl-find"]', (e, el) => { SL.q = el.value; applySceneFilter(); });
 delegate(document, 'change', '[data-sl-filter]', (e, el) => { SL[el.dataset.slFilter] = el.value; applySceneFilter(); });
 delegate(document, 'change', '[data-sl-bulk]', (e, el) => {
@@ -884,8 +1007,8 @@ function moveAndFocus(el, dir) {
 }
 delegate(document, 'click', '[data-action="scene-up"]',   (e, el) => moveAndFocus(el, -1));
 delegate(document, 'click', '[data-action="scene-down"]', (e, el) => moveAndFocus(el,  1));
-delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
-  const id = sceneIdOf(el);
+delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => binOne(sceneIdOf(el)));
+function binOne(id) {
   const scene = Scenes.listScenes().find((x) => x.id === id);
   const label = scene && (scene.number || scene.location) ? ' ' + (scene.number || scene.location).toString().slice(0, 30) : '';
   // removeScene() goes through the bin (src/lib/scene-bin.js), so the
@@ -894,6 +1017,180 @@ delegate(document, 'click', '[data-action="scene-del"]',  (e, el) => {
   const gone = binScenes([id]);
   render();
   undoBin(gone, 'Scene' + label + ' moved to the bin — its shots, frames and call-sheet places went with it.');
+}
+
+/* ---- keyboard flow (1.5) --------------------------------------
+   Up / Down walk the rows (from the open-close button or the location,
+   the two controls whose arrow keys mean nothing else — a select or a
+   number box uses them to change its value, so they are left alone);
+   Enter on the toggle is the button's own click; N adds a scene; Delete
+   bins the focused row with the same UNDO toast the button gives. Nothing
+   here fires while a field, a select or a dialog has the keyboard. */
+const typing = (el) => !!el && !!el.closest && !!el.closest('textarea, select, [contenteditable=""], [contenteditable="true"], input:not([type="checkbox"]):not([type="radio"]):not([type="button"])');
+const visibleRows = () => [...document.querySelectorAll('.bd-sl[data-scene]')].filter((r) => !r.hidden);
+function neighbourRowId(row) {
+  const rows = visibleRows(), i = rows.indexOf(row);
+  const n = rows[i + 1] || rows[i - 1];
+  return n ? n.dataset.scene : null;
+}
+document.addEventListener('keydown', (e) => {
+  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (!t || !t.closest || t.closest('dialog, [role="dialog"], [aria-modal="true"], .modal-overlay')) return;
+  const row = t.closest('.bd-sl[data-scene]');
+
+  if (row && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    const kind = t.matches('.bd-sl-toggle') ? '.bd-sl-toggle' : t.matches('.bd-slug') ? '.bd-slug' : '';
+    if (!kind) return;
+    const rows = visibleRows();
+    const next = rows[rows.indexOf(row) + (e.key === 'ArrowUp' ? -1 : 1)];
+    e.preventDefault();
+    if (next) next.querySelector(kind)?.focus();
+    return;
+  }
+  if (row && e.key === 'Delete' && !e.shiftKey && !typing(t)) {
+    e.preventDefault();
+    const id = row.dataset.scene, near = neighbourRowId(row);
+    binOne(id);
+    const n = near && document.querySelector(inScene(near, '.bd-sl-toggle'));
+    if (n) n.focus();
+    return;
+  }
+  if (e.key === 'n' && !e.shiftKey && !typing(t)) {
+    const sec = document.getElementById('scenes');
+    if (!sec || !sec.offsetParent) return;                       // another tab, or no page
+    if (t !== document.body && !sec.contains(t)) return;         // keep clear of the rest of the page
+    e.preventDefault();
+    addSceneAndFocus();
+  }
+});
+
+/* ---- drag to reorder (2.1) -------------------------------------
+   Pointer events, the stripboard's pattern, so a thumb can do it. Nothing
+   moves in the DOM until the drop: a line shows where the scene would
+   land, the row dims, a tag follows the pointer, Esc or a pointercancel
+   puts everything back and writes nothing. The drop is ONE write
+   (Scenes.reorderScene). The handle is inert while a search or filter is
+   active — the rows on screen are then not the list, and a position among
+   them would not mean a position in it. Up / Down on the focused handle is
+   the keyboard route, and the open row keeps its arrow buttons. */
+const RD = { p: null, active: false, line: null, tag: null, at: null };
+const RD_START_PX = 6;
+function sayLive(text) {
+  let el = document.getElementById('bdSlLive');
+  if (!el) {
+    el = h('div#bdSlLive.visually-hidden', { role: 'status', 'aria-live': 'polite' });
+    document.body.append(el);
+  }
+  el.textContent = '';
+  setTimeout(() => { el.textContent = text; }, 40);
+}
+const sceneLabel = (id) => {
+  const s = Scenes.listScenes().find((x) => x.id === id);
+  return 'Scene ' + ((s && (s.number || s.location)) || '');
+};
+delegate(document, 'pointerdown', '.bd-sl-grip', (e, grip) => {
+  if (e.button !== 0) return;
+  if (filterActive()) { sayLive('Reordering is off while a search or filter is active. Clear it to drag scenes.'); return; }
+  const row = grip.closest('.bd-sl');
+  RD.p = { grip, row, id: row.dataset.scene, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+  try { grip.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
+});
+function beginRowDrag(e) {
+  const p = RD.p;
+  RD.active = true;
+  p.row.classList.add('is-dragging');
+  document.body.classList.add('bd-sl-is-dragging');
+  RD.line = h('div.bd-sl-drop', { 'aria-hidden': 'true' });
+  RD.tag = h('div.bd-sl-drag-tag', { 'aria-hidden': 'true', text: sceneLabel(p.id) });
+  document.body.append(RD.tag);
+  sayLive('Dragging ' + sceneLabel(p.id).toLowerCase() + '. Release where it should go, or press Escape to cancel.');
+  updateRowDrag(e);
+}
+function updateRowDrag(e) {
+  const p = RD.p;
+  RD.tag.style.left = e.clientX + 'px';
+  RD.tag.style.top = e.clientY + 'px';
+  const edge = 72, vh = window.innerHeight;
+  if (e.clientY < edge) window.scrollBy(0, -Math.ceil((edge - e.clientY) / 4));
+  else if (e.clientY > vh - edge) window.scrollBy(0, Math.ceil((e.clientY - (vh - edge)) / 4));
+
+  const rows = visibleRows().filter((r) => r !== p.row);
+  RD.line.remove();
+  RD.at = null;
+  if (!rows.length) return;
+  const first = rows[0].getBoundingClientRect(), last = rows[rows.length - 1].getBoundingClientRect();
+  if (e.clientY < first.top - 80 || e.clientY > last.bottom + 80) return;   // pointer is nowhere near the list
+  /* The row's own line is its midpoint, so a tall open row is judged by
+     its top line and a pointer in its detail lands AFTER it. */
+  let anchor = null, before = false;
+  for (const r of rows) {
+    const rect = r.getBoundingClientRect();
+    const main = r.querySelector('.bd-sl-main');
+    const lineH = Math.min(rect.height, main ? main.getBoundingClientRect().height : rect.height);
+    if (e.clientY < rect.top + lineH / 2) { anchor = r; before = true; break; }
+  }
+  if (!anchor) { anchor = rows[rows.length - 1]; before = false; }
+  if (before) anchor.before(RD.line); else anchor.after(RD.line);
+  const ids = rows.map((r) => r.dataset.scene);
+  const index = ids.indexOf(anchor.dataset.scene) + (before ? 0 : 1);
+  const from = visibleRows().indexOf(p.row);
+  if (index === from) { RD.line.remove(); return; }   // its own place: nothing to write
+  RD.at = { index };
+}
+function endRowDrag({ drop }) {
+  const p = RD.p;
+  if (!p) return;
+  const at = drop ? RD.at : null;
+  const wasActive = RD.active;
+  if (wasActive) {
+    try { p.grip.releasePointerCapture(p.pointerId); } catch (err) { /* already released */ }
+    p.row.classList.remove('is-dragging');
+    document.body.classList.remove('bd-sl-is-dragging');
+    if (RD.line) RD.line.remove();
+    if (RD.tag) RD.tag.remove();
+  }
+  RD.p = null; RD.active = false; RD.at = null; RD.line = null; RD.tag = null;
+  if (!wasActive) return;
+  if (!at) { sayLive('Drag cancelled. Nothing moved.'); return; }
+  const all = Scenes.listScenes();
+  Scenes.reorderScene(p.id, at.index);
+  render(inScene(p.id, '.bd-sl-grip'));
+  sayLive(sceneLabel(p.id) + ' moved to position ' + (at.index + 1) + ' of ' + all.length + '.');
+}
+document.addEventListener('pointermove', (e) => {
+  const p = RD.p;
+  if (!p || e.pointerId !== p.pointerId) return;
+  if (!RD.active) {
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < RD_START_PX) return;
+    beginRowDrag(e);
+    return;
+  }
+  e.preventDefault();
+  updateRowDrag(e);
+});
+document.addEventListener('pointerup', (e) => { if (RD.p && e.pointerId === RD.p.pointerId) endRowDrag({ drop: true }); });
+document.addEventListener('pointercancel', (e) => { if (RD.p && e.pointerId === RD.p.pointerId) endRowDrag({ drop: false }); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && RD.active) { e.preventDefault(); endRowDrag({ drop: false }); }
+});
+/* A long press on a touch handle must not open the context menu. */
+document.addEventListener('contextmenu', (e) => {
+  if (RD.p && e.target.closest && e.target.closest('.bd-sl-grip')) e.preventDefault();
+});
+/* The keyboard route: Up / Down on the handle moves the scene one place. */
+delegate(document, 'keydown', '.bd-sl-grip', (e, grip) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  e.preventDefault();
+  if (filterActive()) { sayLive('Reordering is off while a search or filter is active. Clear it first.'); return; }
+  const id = sceneIdOf(grip);
+  const list = Scenes.listScenes();
+  const i = list.findIndex((x) => x.id === id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+  if (i < 0 || j < 0 || j >= list.length) { sayLive(sceneLabel(id) + ' is already ' + (j < 0 ? 'first' : 'last') + '.'); return; }
+  Scenes.reorderScene(id, j);
+  render(inScene(id, '.bd-sl-grip'));
+  sayLive(sceneLabel(id) + ' moved to position ' + (j + 1) + ' of ' + list.length + '.');
 });
 
 /* ---- the bin ------------------------------------------------- */
@@ -959,7 +1256,7 @@ delegate(document, 'click', '[data-action="el-remove"]', (e, el) => {
 // since the field was entered (UX audit H10). saveOnInput() debounces
 // the store write and flushes it on pagehide / hidden.
 import { saveOnInput } from '../lib/autosave.js';
-import { ask, askDanger } from '../ui/dialog.js';
+import { ask, askDanger, askText } from '../ui/dialog.js';
 const sceneValue = (el) => el.dataset.sceneField === 'eighths'
   ? Math.max(0, parseInt(el.value, 10) || 0)
   : el.dataset.sceneField === 'number' ? el.value.trim() : el.value;

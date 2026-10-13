@@ -202,6 +202,21 @@ export function moveScene(id, delta) {
   return scenes;
 }
 
+/** Put a scene at a position in ONE write (a drag lands anywhere in the list,
+ *  and N calls to moveScene would be N writes and N autosaves). `toIndex` is
+ *  where the scene ends up in the new order, clamped to the list. */
+export function reorderScene(id, toIndex) {
+  const scenes = listScenes();
+  const from = scenes.findIndex((s) => s.id === id);
+  if (from < 0) return scenes;
+  const to = Math.max(0, Math.min(scenes.length - 1, Number.isFinite(toIndex) ? Math.trunc(toIndex) : from));
+  if (to === from) return scenes;
+  const [row] = scenes.splice(from, 1);
+  scenes.splice(to, 0, row);
+  saveScenes(scenes);
+  return scenes;
+}
+
 /* ---- element tagging ---------------------------------------
    Elements live ON the scene rather than in a separate list keyed by
    scene index. Indices renumber when a scene is reordered, and the
@@ -301,7 +316,7 @@ export function totalEighths(scenes) {
 
 export default {
   SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, SHOT_STATES, shotLabel,
-  blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene,
+  blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene, reorderScene,
   rawScenes, writeRawScenes,
   tagElement, untagElement, tagMany, untagMany, elementIndex, formatEighths, totalEighths
 };

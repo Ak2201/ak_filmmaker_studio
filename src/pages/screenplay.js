@@ -42,6 +42,7 @@ import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
+import { installLineLanding } from '../ui/script-find.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { mountBeats } from '../ui/beats-panel.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
@@ -748,6 +749,8 @@ mountFocusMode(() => doc);
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
 if (location.hash === '#import') openImport(true);
+/* script.html#line-<id>: a search result opens the page at that line. */
+installLineLanding(editor);
 function syncGuide() {
   const g = document.getElementById('guide');
   if (!g) return;

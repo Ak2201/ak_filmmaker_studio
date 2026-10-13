@@ -1,0 +1,29 @@
+/* The hub's "Today" line: a single row, a label, a sentence and a button.
+   Loaded with src/pages/hub/today-line.js, after first paint. Shapes are
+   skin variables, colours are tokens, the button is 44px where a finger is. */
+.today-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+  background: var(--sk-card-bg);
+  color: var(--ink);
+  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule));
+  border-radius: var(--sk-radius, var(--radius));
+}
+.today-line[hidden] { display: none; }
+.today-line .tl-lab {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.today-line .tl-text { flex: 1 1 16rem; max-width: none; margin: 0; min-width: 0; color: var(--ink); }
+.today-line .tl-where { color: var(--ink-muted); }
+.today-line .tl-go { flex: 0 0 auto; }
+@media (pointer: coarse) {
+  .today-line .tl-go { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; }
+}

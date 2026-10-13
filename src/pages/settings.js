@@ -1023,10 +1023,11 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
 /* A tab panel: the thing tabs.js turns into a tab. Cards are filtered for
    null first (Element.append(null) inserts the text "null"); a panel with no
    cards is not drawn at all (Team before sign-in, Admin for everyone else). */
-function tabPane(id, label, group, cards) {
+function tabPane(id, label, group, cards, menu = {}) {
   const kept = cards.filter(Boolean);
   if (!kept.length) return null;
-  return h('section.st-tab', { id, 'data-tab-label': label, 'data-tab-group': group }, kept);
+  /* menu: { icon, hint } for the shared side menu (src/ui/section-menu.js) */
+  return h('section.st-tab', { id, 'data-tab-label': label, 'data-tab-group': group, 'data-tab-icon': menu.icon, 'data-tab-hint': menu.hint }, kept);
 }
 
 function render() {
@@ -1042,11 +1043,11 @@ function render() {
 
   const team = accountSection((id, eyebrow, title, deck) => section(id === 'account' ? 'account-people' : id, eyebrow, title, deck));
   const panes = [
-    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)]),
-    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()]),
-    tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()]),
-    tabPane('team', 'Team', 'Together', [team]),
-    tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()])
+    tabPane('account', 'Account', 'You', [renderAccountMine(), renderPlanCard(), renderActivitySection(), inviteSection(section, gateStatus)], { icon: 'person', hint: 'Your sign-in, your plan, your activity and invites.' }),
+    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
+    tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
+    tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
+    tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()], { icon: 'admin_panel_settings', hint: 'Studio-wide settings for administrators.' })
   ].filter(Boolean);
 
   const body = h('div.st-body.st-console', {}, panes);

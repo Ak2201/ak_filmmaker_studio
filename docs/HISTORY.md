@@ -2082,3 +2082,20 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     640. Known and NOT this change: `stripboard.html#dood` lands 34px behind
     the chrome in verify's fragment check, on `origin/develop` alone as well,
     from the section-menu work.
+
+47. **The `#dood` landing, fixed (14 Oct 2026).** `stripboard.html#dood` failed
+    verify's fragment sweep on `origin/develop` (landed at 117px under a 151px
+    band). Two causes, both in `src/ui/fragments.js`. (1) The browser's own
+    scroll to a fragment can finish AFTER the resolver has landed and declared
+    itself settled, and nothing mutates to wake the resolver; a landing is now
+    guarded for 2.5s (`guardLanding`): it re-lands on scroll events, once per
+    frame, and stands down on any wheel, touch, key or press. It is armed when
+    a resolve starts, not only once it settles. (2) The check for "arrived"
+    compared the target to `scroll-padding-top` alone, but
+    `path-bar.css` gives each tab section `scroll-margin-top` = the path bar's
+    height, so the true resting place is padding + margin (163 + 64 = 227
+    here); `restTop(el)` now adds the margin in both the settle test and the
+    guard, which also lets the resolver settle on such targets instead of
+    re-landing until its timeout. Found by logging every scroll call with its
+    stack: the explicit calls landed at different `y` each time because each
+    aligned to a different effective padding.

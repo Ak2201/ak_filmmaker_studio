@@ -80,6 +80,69 @@ function stopWaiting() {
   if (_timer) { clearTimeout(_timer); _timer = 0; }
 }
 
+/* A LANDING CAN BE UNDONE BY THE BROWSER'S OWN.
+
+   Opening `page.html#frag` makes the browser scroll to the fragment
+   itself, and html has `scroll-behavior: smooth`, so that scroll is an
+   animation. It reads `scroll-padding-top` when it STARTS. If the band
+   grows after that (a tab strip built a frame later is 53px of chrome)
+   the animation still runs to the old, smaller padding — and it can
+   finish AFTER the resolver has landed correctly and called itself
+   settled, moving the target back out from under the chrome with no
+   mutation for the resolver to notice. Measured on stripboard.html#dood
+   in the seeded studio: landed at 163px, then slid to 117px against a
+   151px band, every time.
+
+   So a settled landing is guarded for a short while: if the target
+   drifts from where the settle condition says it belongs, put it back,
+   `instant`. The guard stands down the moment the reader does anything
+   — wheel, touch, a key, a press — so it can never fight somebody who
+   has chosen to move. It is not a loop: it reacts to scroll events, once
+   per frame, and ends by itself. */
+/* Where an element belongs when a scroll has landed it: scroll-padding-top
+   on <html> PLUS the element's own scroll-margin-top. Both are real parts of
+   what `scrollIntoView({block:'start'})` aligns to — path-bar.css gives each
+   tab section a margin the height of the pre-production bar, so a target
+   with one rests lower than the padding alone says, and a check that
+   ignored it never agreed the target had arrived. */
+function restTop(el) {
+  const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  return pad + margin;
+}
+
+let _guard = null;
+const GUARD_MS = 2500;
+function stopGuard() {
+  if (_guard) { _guard(); _guard = null; }
+}
+function guardLanding(id) {
+  stopGuard();
+  let moved = false;
+  let raf = 0;
+  const mark = () => { moved = true; };
+  const inputs = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
+  inputs.forEach((e) => window.addEventListener(e, mark, { passive: true, capture: true }));
+  const onScroll = () => {
+    if (raf || moved) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (moved) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (Math.abs(el.getBoundingClientRect().top - restTop(el)) > 2) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  const timer = setTimeout(() => stopGuard(), GUARD_MS);
+  _guard = () => {
+    clearTimeout(timer);
+    if (raf) cancelAnimationFrame(raf);
+    window.removeEventListener('scroll', onScroll);
+    inputs.forEach((e) => window.removeEventListener(e, mark, { capture: true }));
+  };
+}
+
 function idFromHash(hash) {
   /* `#people?user=7`: what follows a `?` is the page's own state (the
      admin drawer), not an element id. */
@@ -131,8 +194,13 @@ function tryLand(id) {
  *  pair of causes. */
 export function resolveFragment(hash = location.hash) {
   stopWaiting();
+  stopGuard();
   const id = idFromHash(hash);
   if (!id) return;
+  /* Armed from the start, not only once the landing settles: the
+     browser's own scroll can finish after the resolver has stopped
+     watching, and nothing mutates to wake it. */
+  guardLanding(id);
 
   let lastTop = null;
   let stableTicks = 0;
@@ -173,7 +241,7 @@ export function resolveFragment(hash = location.hash) {
        where it should be? The target is `scroll-padding-top`, which is
        the measured chrome; anything within a couple of pixels of it
        has arrived. If not, scroll again and keep waiting. */
-    const want = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    const want = restTop(el);
     const now = el.getBoundingClientRect().top;
     if (Math.abs(now - want) > 2) {
       /* 'instant', NOT 'auto'. Per spec 'auto' means "use the computed
@@ -190,7 +258,7 @@ export function resolveFragment(hash = location.hash) {
     return ++stableTicks >= 3;
   };
 
-  if (settle()) return;
+  if (settle()) { guardLanding(id); return; }
   if (typeof MutationObserver !== 'function') return;
 
   /* rAF-throttled, for the same reason shell.js throttles its own
@@ -200,7 +268,7 @@ export function resolveFragment(hash = location.hash) {
   let raf = 0;
   const tick = () => {
     if (raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; if (settle()) stopWaiting(); });
+    raf = requestAnimationFrame(() => { raf = 0; if (settle()) { stopWaiting(); guardLanding(id); } });
   };
   _observer = new MutationObserver(tick);
   _observer.observe(document.body, { childList: true, subtree: true });
